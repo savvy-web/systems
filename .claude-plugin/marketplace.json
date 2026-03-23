@@ -1,0 +1,23 @@
+{
+	"name": "savvy-web-systems",
+	"owner": {
+		"name": "Savvy Web",
+		"email": "spencer@savvyweb.systems"
+	},
+	"metadata": {
+		"description": "Claude Code plugins for the Savvy Web Silk Suite"
+	},
+	"plugins": [
+		{
+			"name": "changesets",
+			"source": {
+				"source": "git-subdir",
+				"url": "https://github.com/savvy-web/changesets",
+				"path": "plugin"
+			},
+			"description": "Companion plugin for @savvy-web/changesets that helps write well-structured changeset files for GitHub release documentation",
+			"category": "developer-tools",
+			"tags": ["changesets", "changelog", "release-notes"]
+		}
+	]
+}
