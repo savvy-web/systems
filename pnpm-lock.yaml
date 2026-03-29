@@ -35,16 +35,16 @@ importers:
         version: 0.7.1(@changesets/cli@2.30.0(@types/node@25.5.0))(@effect/cluster@0.58.0(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/sql@0.51.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/sql@0.51.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))
       '@savvy-web/commitlint':
         specifier: ^0.4.4
-        version: 0.4.4(@commitlint/cli@20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.3.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/typeclass@0.40.0(effect@3.21.0))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(commitizen@4.3.1(@types/node@25.5.0)(typescript@5.9.3))(husky@9.1.7)
+        version: 0.4.4(@commitlint/cli@20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/typeclass@0.40.0(effect@3.21.0))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(commitizen@4.3.1(@types/node@25.5.0)(typescript@5.9.3))(husky@9.1.7)
       '@savvy-web/lint-staged':
         specifier: ^0.6.6
-        version: 0.6.6(e06d2f90a6e82f4ffaf9be0acc478414)
+        version: 0.6.6(7cb54225fca3f83988aa1ecc9e25aa94)
       '@savvy-web/rslib-builder':
         specifier: ^0.19.1
-        version: 0.19.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@pnpm/logger@1001.0.1)(@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3))(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(jiti@2.6.1)(typescript@5.9.3)
+        version: 0.19.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@pnpm/logger@1001.0.1)(@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260329.1)(typescript@5.9.3))(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260329.1)(jiti@2.6.1)(typescript@5.9.3)
       '@savvy-web/vitest':
-        specifier: ^1.1.0
-        version: 1.1.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))
+        specifier: ^1.2.0
+        version: 1.2.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260329.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))
 
   packages/silk-effects:
     dependencies:
@@ -58,18 +58,18 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1(effect@3.21.0)
       workspaces-effect:
-        specifier: ^0.1.0
-        version: 0.1.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0)
+        specifier: ^0.2.0
+        version: 0.2.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0)
       yaml-effect:
         specifier: ^0.2.3
         version: 0.2.3(effect@3.21.0)
     devDependencies:
       '@savvy-web/rslib-builder':
         specifier: ^0.19.1
-        version: 0.19.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@pnpm/logger@1001.0.1)(@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3))(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(jiti@2.6.1)(typescript@5.9.3)
+        version: 0.19.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@pnpm/logger@1001.0.1)(@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260329.1)(typescript@5.9.3))(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260329.1)(jiti@2.6.1)(typescript@5.9.3)
       '@savvy-web/vitest':
-        specifier: ^1.1.0
-        version: 1.1.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))
+        specifier: ^1.2.0
+        version: 1.2.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260329.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))
       '@types/node':
         specifier: catalog:silk
         version: 25.5.0
@@ -1070,8 +1070,8 @@ packages:
       react-dom:
         optional: true
 
-  '@savvy-web/vitest@1.1.0':
-    resolution: {integrity: sha512-k9xMjivMhK0nyB3WEmMQZy90987Ti6mn3np2QAUqftw56peEpFBVQGL4ndnNJ89MA1ZInMEZVe84/bYvtViq9Q==}
+  '@savvy-web/vitest@1.2.0':
+    resolution: {integrity: sha512-9QOV5PeiW5D5oMRlv0NjrE0w/L/zRhazkTW3HvThixAK8P+47qaScZfXjOtmCHTITrW88j6Ao+NTsofWQoybRQ==}
     peerDependencies:
       '@types/node': ^25.5.0
       '@typescript/native-preview': ^7.0.0-dev.20260124.1
@@ -1257,43 +1257,43 @@ packages:
     resolution: {integrity: sha512-zhahknjobV2FiD6Ee9iLbS7OV9zi10rG26odsQdfBO/hjSzUQbkIYgda+iNKK1zNiW2ey+Lf8MU5btN17V3dUw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-BmJGDWC0bSQ2w5O/E+Mw9eTv9RklJ3vjshu7UdD92bUMxc4V4dkBhYj5r0qxbl4f+VFNX7fXvcDDI+9o+Kb6yw==}
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-zS1thDk7luD82nXVwvMd97F7FgxAE6jGtSmnHeXdaQ+6hJQcQLOVkfUdaehhdodqKDapWA2jEURxQAYjDGvv3g==}
     cpu: [arm64]
     os: [darwin]
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-osc0XQn+AV4X/Vz4hehMm9YtwjZU8VN57FBx4/bsoZ2Z3H1KCA2vbrPQx1hxobrA/+LxkTEk/i6L+z1XwI3RTw==}
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-3IJ2qmpjQ1OXpZNUhJRjF1+SbDuqGC14Ug8DjWJlPBp06isi1fcJph90f5qW//FxEsNnJPYRcNwpP0A2RbTASg==}
     cpu: [x64]
     os: [darwin]
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-UdPWbxynH/yu54Bx9SSmUsdBQVcKeB8hVLXWiF6qKGDQxwUmqo04xa+PUdxryUXxYzjedbqKMhDLL/W0AlbUMQ==}
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-gQb6SjB5JlUKDaDuz6mv/m+/OBWVDlcjHINFOykBZZYZtgxBx6nEDjLrT8TiJRjmHEG6hSbv+yisUL9IThWycA==}
     cpu: [arm64]
     os: [linux]
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-869rJ0Clw7aQTApV1dts2bKV+V6E0qNFJae3SNRo+4TPmrwlmYct3ouGrsQsDCat6XIaCdul8YOBzmj4QUzuMw==}
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-WKSSJrH611DFFAg6YCkgbnkdy0a4RRpzvDpNXtPzLTbMYC5oJdq3Dpvncx5nrJvGh4J4yvzXoMxraGPyygqGLw==}
     cpu: [arm]
     os: [linux]
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-0ZPwzToIRV4r2L/wZUwTD9DvZsVnezrc7x5xwZedGvuRifUKMAAwI+rGaKHqHq5nE5Y1gQA/wwMPPJ4xq6hzVw==}
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-kg4r+ssxoEWruBynUg9bFMdcMpo5NupzAPqNBlV8uWbmYGZjaPLonFWAi9ZZMiVJY/x5ZQ9GBl6xskwLdd3PJQ==}
     cpu: [x64]
     os: [linux]
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-iCgWfPDIbs0xB+zkVu5IFfcco3II3b7DhatIa1hQiTFH4vGs0A4/LskLbSYyWOId4j5WEkCKK5T0KNnEYfbg1g==}
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-Qi4lddVxl5MG7Tk67gYhCFnoqqLGd4TvaI8RN4qHFjt3GV8s6c+0cQGsJXJnVgMx27qbyDTdsyAa2pvb42rYcQ==}
     cpu: [arm64]
     os: [win32]
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-k1/yoqrELzkm6eOFaYm9x+M7mDOlArO1P0YvEgEmcdnL6Igm+0ZmGy6eDmhk9pshPb0GfL1knN6c+5sJA7YReA==}
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-+k5+usuB8HZ6Xc+enLdb95ZJd25bQqsnI1zXxfRCHP+RS9mxs70Mi9ezQz3lKOLZFFXShSH7iW9iulm8KwVzCQ==}
     cpu: [x64]
     os: [win32]
 
-  '@typescript/native-preview@7.0.0-dev.20260328.1':
-    resolution: {integrity: sha512-e2f1LaETJ1wFIZSZAJwsAumWixGaRslUjESf0nSrZGUensq3ZwXddoDJPPoDLkSAr/Fa3v5aff+dJ39UbNfbNQ==}
+  '@typescript/native-preview@7.0.0-dev.20260329.1':
+    resolution: {integrity: sha512-v5lJ0TgSt2m9yVk2xoj9+NH/gTDeWTLaWGPx6MJsUKOYd6bmCJhHbMcWmb8d/zlfhE9ffpixUKYj62CdYfriqA==}
     hasBin: true
 
   '@vitest/coverage-v8@4.1.2':
@@ -1630,19 +1630,19 @@ packages:
     resolution: {integrity: sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==}
     engines: {node: '>= 0.6'}
 
-  conventional-changelog-angular@8.3.0:
-    resolution: {integrity: sha512-DOuBwYSqWzfwuRByY9O4oOIvDlkUCTDzfbOgcSbkY+imXXj+4tmrEFao3K+FxemClYfYnZzsvudbwrhje9VHDA==}
+  conventional-changelog-angular@8.3.1:
+    resolution: {integrity: sha512-6gfI3otXK5Ph5DfCOI1dblr+kN3FAm5a97hYoQkqNZxOaYa5WKfXH+AnpsmS+iUH2mgVC2Cg2Qw9m5OKcmNrIg==}
     engines: {node: '>=18'}
 
-  conventional-changelog-conventionalcommits@9.3.0:
-    resolution: {integrity: sha512-kYFx6gAyjSIMwNtASkI3ZE99U1fuVDJr0yTYgVy+I2QG46zNZfl2her+0+eoviG82c5WQvW1jMt1eOQTeJLodA==}
+  conventional-changelog-conventionalcommits@9.3.1:
+    resolution: {integrity: sha512-dTYtpIacRpcZgrvBYvBfArMmK2xvIpv2TaxM0/ZI5CBtNUzvF2x0t15HsbRABWprS6UPmvj+PzHVjSx4qAVKyw==}
     engines: {node: '>=18'}
 
   conventional-commit-types@3.0.0:
     resolution: {integrity: sha512-SmmCYnOniSsAa9GqWOeLqc179lfr5TRu5b4QFDkbsrJ5TZjPJx85wtOr3zn+1dbeNiXDKGPbZ72IKbPhLXh/Lg==}
 
-  conventional-commits-parser@6.3.0:
-    resolution: {integrity: sha512-RfOq/Cqy9xV9bOA8N+ZH6DlrDR+5S3Mi0B5kACEjESpE+AviIpAptx9a9cFpWCCvgRtWT+0BbUw+e1BZfts9jg==}
+  conventional-commits-parser@6.4.0:
+    resolution: {integrity: sha512-tvRg7FIBNlyPzjdG8wWRlPHQJJHI7DylhtRGeU9Lq+JuoPh5BKpPRX83ZdLrvXuOSu5Eo/e7SzOQhU4Hd2Miuw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3335,11 +3335,6 @@ packages:
   secure-keys@1.0.0:
     resolution: {integrity: sha512-nZi59hW3Sl5P3+wOO89eHBAAGwmCPd2aE1+dLZV5MO+ItQctIvAqihzaAXIQhvtH4KJPxM080HsnqltR2y8cWg==}
 
-  semver-effect@0.1.0:
-    resolution: {integrity: sha512-QMV5tYjNaw0rshAg9niTMkqdQrCZ/0js4nskBIzzdEx/LAcHEGPMGQbTlR++YC9JUkSssGjh/YC/JaMRV7JExw==}
-    peerDependencies:
-      effect: ^3.19.19
-
   semver-effect@0.2.1:
     resolution: {integrity: sha512-W4JwQ4Ot6Yl/Fr8OT5OJnxc9SSuLKqslCb9fbbIFwm0198usbn2KoDKhWrCntDUT935UM85ljflwJIFe2YQ6LA==}
     peerDependencies:
@@ -3837,11 +3832,11 @@ packages:
   workspace-tools@0.41.0:
     resolution: {integrity: sha512-iBB6LNqtJpfjTWnyjlgOwdJmf1wBTUsIr1V5phOBCJMywubpYAijDUqhgz7RfrTYdscA4vEFyhjiy4OSAGULcA==}
 
-  workspaces-effect@0.1.0:
-    resolution: {integrity: sha512-fgVL0er3lMSnJ+GtFQR6lfU4kDShbyZXR3TeJ1toHotuFxT83OxkgtZdRRY+DhVp3LbwUhOkejmHhyhiOmXt0A==}
+  workspaces-effect@0.2.0:
+    resolution: {integrity: sha512-8gpe5UyQseuYEb9JuAcacti5kjsGJLgjWayfuH6+enFljRJeVEk1E9SKNHYu1coxVPadtKKCXocEnTgnEYXf5w==}
     peerDependencies:
-      '@effect/platform': ^0.94.0
-      effect: ^3.19.0
+      '@effect/platform': '>=0.96.0'
+      effect: '>=3.21.0'
 
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
@@ -3880,11 +3875,6 @@ packages:
 
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
-
-  yaml-effect@0.1.7:
-    resolution: {integrity: sha512-3gSV9rEnpwmonOeOufYE+xJMQ/PVIOf6RImW2l8kUnFURdLFmrZ1sURljRx8yo5x8eAEqa/KvdRLVnwyzNNDUg==}
-    peerDependencies:
-      effect: ^3.19.0
 
   yaml-effect@0.2.3:
     resolution: {integrity: sha512-378iw8DWn+6cLzHfOZFLEPu/UXcymHtixKe+CM9OFk9G/uFeQfRU/WNnKRVjIkTCj9M8EwJdiOgH3rOrUwyFyQ==}
@@ -4145,12 +4135,12 @@ snapshots:
       human-id: 4.1.3
       prettier: 2.8.8
 
-  '@commitlint/cli@20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.3.0)(typescript@5.9.3)':
+  '@commitlint/cli@20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3)':
     dependencies:
       '@commitlint/format': 20.5.0
       '@commitlint/lint': 20.5.0
       '@commitlint/load': 20.5.0(@types/node@25.5.0)(typescript@5.9.3)
-      '@commitlint/read': 20.5.0(conventional-commits-parser@6.3.0)
+      '@commitlint/read': 20.5.0(conventional-commits-parser@6.4.0)
       '@commitlint/types': 20.5.0
       tinyexec: 1.0.4
       yargs: 17.7.2
@@ -4163,7 +4153,7 @@ snapshots:
   '@commitlint/config-conventional@20.5.0':
     dependencies:
       '@commitlint/types': 20.5.0
-      conventional-changelog-conventionalcommits: 9.3.0
+      conventional-changelog-conventionalcommits: 9.3.1
 
   '@commitlint/config-validator@20.5.0':
     dependencies:
@@ -4218,14 +4208,14 @@ snapshots:
   '@commitlint/parse@20.5.0':
     dependencies:
       '@commitlint/types': 20.5.0
-      conventional-changelog-angular: 8.3.0
-      conventional-commits-parser: 6.3.0
+      conventional-changelog-angular: 8.3.1
+      conventional-commits-parser: 6.4.0
 
-  '@commitlint/read@20.5.0(conventional-commits-parser@6.3.0)':
+  '@commitlint/read@20.5.0(conventional-commits-parser@6.4.0)':
     dependencies:
       '@commitlint/top-level': 20.4.3
       '@commitlint/types': 20.5.0
-      git-raw-commits: 5.0.1(conventional-commits-parser@6.3.0)
+      git-raw-commits: 5.0.1(conventional-commits-parser@6.4.0)
       minimist: 1.2.8
       tinyexec: 1.0.4
     transitivePeerDependencies:
@@ -4256,16 +4246,16 @@ snapshots:
 
   '@commitlint/types@20.5.0':
     dependencies:
-      conventional-commits-parser: 6.3.0
+      conventional-commits-parser: 6.4.0
       picocolors: 1.1.1
 
-  '@conventional-changelog/git-client@2.6.0(conventional-commits-parser@6.3.0)':
+  '@conventional-changelog/git-client@2.6.0(conventional-commits-parser@6.4.0)':
     dependencies:
       '@simple-libs/child-process-utils': 1.0.2
       '@simple-libs/stream-utils': 1.2.0
       semver: 7.7.4
     optionalDependencies:
-      conventional-commits-parser: 6.3.0
+      conventional-commits-parser: 6.4.0
 
   '@effect/cli@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0)':
     dependencies:
@@ -4867,10 +4857,10 @@ snapshots:
     transitivePeerDependencies:
       - '@module-federation/runtime-tools'
 
-  '@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3)':
+  '@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260329.1)(typescript@5.9.3)':
     dependencies:
       '@rsbuild/core': 2.0.0-beta.10
-      rsbuild-plugin-dts: 0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@rsbuild/core@2.0.0-beta.10)(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3)
+      rsbuild-plugin-dts: 0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@rsbuild/core@2.0.0-beta.10)(@typescript/native-preview@7.0.0-dev.20260329.1)(typescript@5.9.3)
     optionalDependencies:
       '@microsoft/api-extractor': 7.57.7(@types/node@25.5.0)
       typescript: 5.9.3
@@ -4999,9 +4989,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@savvy-web/commitlint@0.4.4(@commitlint/cli@20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.3.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/typeclass@0.40.0(effect@3.21.0))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(commitizen@4.3.1(@types/node@25.5.0)(typescript@5.9.3))(husky@9.1.7)':
+  '@savvy-web/commitlint@0.4.4(@commitlint/cli@20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/typeclass@0.40.0(effect@3.21.0))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(commitizen@4.3.1(@types/node@25.5.0)(typescript@5.9.3))(husky@9.1.7)':
     dependencies:
-      '@commitlint/cli': 20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.3.0)(typescript@5.9.3)
+      '@commitlint/cli': 20.5.0(@types/node@25.5.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3)
       '@commitlint/config-conventional': 20.5.0
       '@effect/cli': 0.75.0(@effect/platform@0.96.0(effect@3.21.0))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0)
       '@effect/cluster': 0.58.0(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/sql@0.51.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(effect@3.21.0)
@@ -5023,14 +5013,14 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@savvy-web/lint-staged@0.6.6(e06d2f90a6e82f4ffaf9be0acc478414)':
+  '@savvy-web/lint-staged@0.6.6(7cb54225fca3f83988aa1ecc9e25aa94)':
     dependencies:
       '@effect/cli': 0.75.0(@effect/platform@0.96.0(effect@3.21.0))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0)
       '@effect/platform': 0.96.0(effect@3.21.0)
       '@effect/platform-node': 0.106.0(@effect/cluster@0.58.0(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/sql@0.51.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(@effect/rpc@0.75.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/sql@0.51.0(@effect/experimental@0.60.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0))(effect@3.21.0)
       '@types/node': 25.5.0
       '@typescript-eslint/parser': 8.57.2(eslint@10.1.0(jiti@2.6.1))(typescript@5.9.3)
-      '@typescript/native-preview': 7.0.0-dev.20260328.1
+      '@typescript/native-preview': 7.0.0-dev.20260329.1
       cosmiconfig: 9.0.1(typescript@5.9.3)
       effect: 3.21.0
       eslint: 10.1.0(jiti@2.6.1)
@@ -5058,7 +5048,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@savvy-web/rslib-builder@0.19.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@pnpm/logger@1001.0.1)(@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3))(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(jiti@2.6.1)(typescript@5.9.3)':
+  '@savvy-web/rslib-builder@0.19.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@pnpm/logger@1001.0.1)(@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260329.1)(typescript@5.9.3))(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260329.1)(jiti@2.6.1)(typescript@5.9.3)':
     dependencies:
       '@microsoft/api-extractor': 7.57.7(@types/node@25.5.0)
       '@microsoft/tsdoc': 0.16.0
@@ -5068,10 +5058,10 @@ snapshots:
       '@pnpm/exportable-manifest': 1000.4.2(@pnpm/logger@1001.0.1)
       '@pnpm/lockfile.fs': 1001.1.32(@pnpm/logger@1001.0.1)
       '@pnpm/workspace.read-manifest': 1000.3.1
-      '@rslib/core': 0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3)
+      '@rslib/core': 0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260329.1)(typescript@5.9.3)
       '@types/node': 25.5.0
       '@typescript-eslint/parser': 8.57.2(eslint@10.1.0(jiti@2.6.1))(typescript@5.9.3)
-      '@typescript/native-preview': 7.0.0-dev.20260328.1
+      '@typescript/native-preview': 7.0.0-dev.20260329.1
       deep-equal: 2.2.3
       eslint: 10.1.0(jiti@2.6.1)
       eslint-plugin-tsdoc: 0.5.2(eslint@10.1.0(jiti@2.6.1))(typescript@5.9.3)
@@ -5086,10 +5076,10 @@ snapshots:
       - jiti
       - supports-color
 
-  '@savvy-web/vitest@1.1.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))':
+  '@savvy-web/vitest@1.2.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260329.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))':
     dependencies:
       '@types/node': 25.5.0
-      '@typescript/native-preview': 7.0.0-dev.20260328.1
+      '@typescript/native-preview': 7.0.0-dev.20260329.1
       '@vitest/coverage-v8': 4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))
       typescript: 5.9.3
       vitest: 4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))
@@ -5281,36 +5271,36 @@ snapshots:
       '@typescript-eslint/types': 8.57.2
       eslint-visitor-keys: 5.0.1
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260328.1':
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260329.1':
     optional: true
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260328.1':
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260329.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260328.1':
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260329.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260328.1':
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260329.1':
     optional: true
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260328.1':
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260329.1':
     optional: true
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260328.1':
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260329.1':
     optional: true
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260328.1':
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260329.1':
     optional: true
 
-  '@typescript/native-preview@7.0.0-dev.20260328.1':
+  '@typescript/native-preview@7.0.0-dev.20260329.1':
     optionalDependencies:
-      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260328.1
-      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260328.1
-      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260328.1
-      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260328.1
-      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260328.1
-      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260328.1
-      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260328.1
+      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260329.1
+      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260329.1
+      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260329.1
+      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260329.1
+      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260329.1
+      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260329.1
+      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260329.1
 
   '@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))':
     dependencies:
@@ -5656,17 +5646,17 @@ snapshots:
 
   content-type@1.0.5: {}
 
-  conventional-changelog-angular@8.3.0:
+  conventional-changelog-angular@8.3.1:
     dependencies:
       compare-func: 2.0.0
 
-  conventional-changelog-conventionalcommits@9.3.0:
+  conventional-changelog-conventionalcommits@9.3.1:
     dependencies:
       compare-func: 2.0.0
 
   conventional-commit-types@3.0.0: {}
 
-  conventional-commits-parser@6.3.0:
+  conventional-commits-parser@6.4.0:
     dependencies:
       '@simple-libs/stream-utils': 1.2.0
       meow: 13.2.0
@@ -6193,9 +6183,9 @@ snapshots:
 
   git-hooks-list@4.2.1: {}
 
-  git-raw-commits@5.0.1(conventional-commits-parser@6.3.0):
+  git-raw-commits@5.0.1(conventional-commits-parser@6.4.0):
     dependencies:
-      '@conventional-changelog/git-client': 2.6.0(conventional-commits-parser@6.3.0)
+      '@conventional-changelog/git-client': 2.6.0(conventional-commits-parser@6.4.0)
       meow: 13.2.0
     transitivePeerDependencies:
       - conventional-commits-filter
@@ -7549,13 +7539,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  rsbuild-plugin-dts@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@rsbuild/core@2.0.0-beta.10)(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3):
+  rsbuild-plugin-dts@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@rsbuild/core@2.0.0-beta.10)(@typescript/native-preview@7.0.0-dev.20260329.1)(typescript@5.9.3):
     dependencies:
       '@ast-grep/napi': 0.37.0
       '@rsbuild/core': 2.0.0-beta.10
     optionalDependencies:
       '@microsoft/api-extractor': 7.57.7(@types/node@25.5.0)
-      '@typescript/native-preview': 7.0.0-dev.20260328.1
+      '@typescript/native-preview': 7.0.0-dev.20260329.1
       typescript: 5.9.3
 
   run-async@2.4.1: {}
@@ -7585,10 +7575,6 @@ snapshots:
   safer-buffer@2.1.2: {}
 
   secure-keys@1.0.0: {}
-
-  semver-effect@0.1.0(effect@3.21.0):
-    dependencies:
-      effect: 3.21.0
 
   semver-effect@0.2.1(effect@3.21.0):
     dependencies:
@@ -8093,13 +8079,14 @@ snapshots:
       js-yaml: 4.1.1
       micromatch: 4.0.8
 
-  workspaces-effect@0.1.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0):
+  workspaces-effect@0.2.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0):
     dependencies:
       '@effect/platform': 0.96.0(effect@3.21.0)
       effect: 3.21.0
       jsonc-effect: 0.2.1(effect@3.21.0)
-      semver-effect: 0.1.0(effect@3.21.0)
-      yaml-effect: 0.1.7(effect@3.21.0)
+      minimatch: 10.2.4
+      semver-effect: 0.2.1(effect@3.21.0)
+      yaml-effect: 0.2.3(effect@3.21.0)
 
   wrap-ansi@7.0.0:
     dependencies:
@@ -8130,10 +8117,6 @@ snapshots:
   y18n@5.0.8: {}
 
   yallist@4.0.0: {}
-
-  yaml-effect@0.1.7(effect@3.21.0):
-    dependencies:
-      effect: 3.21.0
 
   yaml-effect@0.2.3(effect@3.21.0):
     dependencies:

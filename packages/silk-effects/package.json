@@ -21,13 +21,7 @@
 	"sideEffects": false,
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts",
-		"./publish": "./src/publish/index.ts",
-		"./versioning": "./src/versioning/index.ts",
-		"./tags": "./src/tags/index.ts",
-		"./hooks": "./src/hooks/index.ts",
-		"./config": "./src/config/index.ts",
-		"./biome": "./src/biome/index.ts"
+		".": "./src/index.ts"
 	},
 	"scripts": {
 		"build": "turbo run build:dev build:prod --log-order=grouped",
@@ -39,12 +33,12 @@
 		"@effect/platform": "catalog:silk",
 		"jsonc-effect": "^0.2.1",
 		"semver-effect": "^0.2.1",
-		"workspaces-effect": "^0.1.0",
+		"workspaces-effect": "^0.2.0",
 		"yaml-effect": "^0.2.3"
 	},
 	"devDependencies": {
 		"@savvy-web/rslib-builder": "^0.19.1",
-		"@savvy-web/vitest": "^1.1.0",
+		"@savvy-web/vitest": "^1.2.0",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:silk"
 	},

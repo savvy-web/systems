@@ -11,6 +11,8 @@ Shared [Effect](https://effect.website/) library providing Silk Suite convention
 - Detect versioning strategy (single, fixed-group, independent) from changeset config
 - Format git tags consistently based on workspace structure
 - Manage tool-owned sections inside user-editable files without clobbering user content
+- Define reusable section identities with typed content factories (`SectionDefinition`)
+- Discover and resolve CLI tools globally or locally with version enforcement and caching
 - Discover config files using a priority-based search convention
 - Keep Biome `$schema` URLs in sync across config files
 
@@ -24,9 +26,11 @@ pnpm add @savvy-web/silk-effects effect @effect/platform @effect/platform-node
 
 ## Quick Start
 
+All exports come from the package root:
+
 ```typescript
 import { Effect } from "effect";
-import { TargetResolver, TargetResolverLive } from "@savvy-web/silk-effects/publish";
+import { TargetResolver, TargetResolverLive } from "@savvy-web/silk-effects";
 
 const targets = await Effect.runPromise(
   Effect.gen(function* () {
@@ -36,16 +40,24 @@ const targets = await Effect.runPromise(
 );
 ```
 
-Modules that access the filesystem require a platform layer:
+Services that access the filesystem require a platform layer:
 
 ```typescript
+import { Effect } from "effect";
 import { NodeContext } from "@effect/platform-node";
-import { ManagedSection, ManagedSectionLive } from "@savvy-web/silk-effects/hooks";
+import {
+  ManagedSection,
+  ManagedSectionLive,
+  SectionDefinition,
+} from "@savvy-web/silk-effects";
+
+const def = SectionDefinition.make({ toolName: "MY-TOOL" });
+const block = def.block("\nnpx lint-staged\n");
 
 await Effect.runPromise(
   Effect.gen(function* () {
-    const section = yield* ManagedSection;
-    yield* section.write(".husky/pre-commit", "silk", "\nnpx lint-staged\n");
+    const ms = yield* ManagedSection;
+    yield* ms.sync(".husky/pre-commit", block);
   }).pipe(
     Effect.provide(ManagedSectionLive),
     Effect.provide(NodeContext.layer),
@@ -53,18 +65,19 @@ await Effect.runPromise(
 );
 ```
 
-## Modules
+## Services
 
-Each module has its own entry point -- import only what you need:
-
-| Module | Entry Point | Platform Layer | Docs |
-| ------ | ----------- | -------------- | ---- |
-| Publish | `@savvy-web/silk-effects/publish` | No | [docs/publish.md](./docs/publish.md) |
-| Versioning | `@savvy-web/silk-effects/versioning` | Yes | [docs/versioning.md](./docs/versioning.md) |
-| Tags | `@savvy-web/silk-effects/tags` | No | [docs/tags.md](./docs/tags.md) |
-| Hooks | `@savvy-web/silk-effects/hooks` | Yes | [docs/hooks.md](./docs/hooks.md) |
-| Config | `@savvy-web/silk-effects/config` | Yes | [docs/config.md](./docs/config.md) |
-| Biome | `@savvy-web/silk-effects/biome` | Yes | [docs/biome.md](./docs/biome.md) |
+| Service | Platform Layer | Description |
+| ------- | -------------- | ----------- |
+| `TargetResolver` | No | Resolve publish targets from shorthand strings or objects |
+| `SilkPublishabilityPlugin` | No | Detect publishable packages from `package.json` |
+| `TagStrategy` | No | Determine and format git tags by versioning strategy |
+| `VersioningStrategy` | Yes (FileSystem) | Detect versioning strategy from changeset config |
+| `ChangesetConfigReader` | Yes (FileSystem) | Read and parse changeset configuration |
+| `ManagedSection` | Yes (FileSystem) | Read/write/sync/check tool-owned sections in user files |
+| `ConfigDiscovery` | Yes (FileSystem) | Locate config files by priority-based search |
+| `BiomeSchemaSync` | Yes (FileSystem) | Keep Biome `$schema` URLs in sync across config files |
+| `ToolDiscovery` | Yes (CommandExecutor) | Locate CLI tools globally or locally, with caching |
 
 ## Documentation
 

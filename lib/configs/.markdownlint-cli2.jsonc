@@ -7,13 +7,13 @@
 	"ignores": [
 		"**/node_modules",
 		"**/.cache",
-		"**/coverage",
 		"**/.coverage",
-		"**/dist",
 		"**/CHANGELOG.md",
-		"**/.claude/plans",
+		"**/coverage",
+		"**/dist",
 		"**/docs/superpowers",
 		"**/.changeset",
+		"**/.claude/plans",
 		"**/.claude/design"
 	],
 	"customRules": ["@savvy-web/changesets/markdownlint"],

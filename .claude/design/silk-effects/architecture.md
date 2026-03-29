@@ -4,8 +4,8 @@ title: "@savvy-web/silk-effects Architecture"
 module: silk-effects
 category: architecture
 status: current
-completeness: 90
-last-synced: 2026-03-28
+completeness: 95
+last-synced: 2026-03-29
 depends-on: []
 ---
 
@@ -15,6 +15,8 @@ depends-on: []
 - [Current State](#current-state)
 - [Module Architecture](#module-architecture)
 - [Service Patterns](#service-patterns)
+- [Value Object Patterns](#value-object-patterns)
+- [Tagged Enum Patterns](#tagged-enum-patterns)
 - [Dependencies](#dependencies)
 - [Consumer Guide](#consumer-guide)
 - [Rationale](#rationale)
@@ -28,7 +30,7 @@ package consumed by ~33 repositories.
 The library builds on top of foundation libraries (`workspaces-effect`, `semver-effect`,
 `jsonc-effect`, `yaml-effect`) to provide higher-level, Silk-opinionated behavior for
 publishability detection, versioning strategy, tag formatting, managed sections, config
-discovery, and Biome schema synchronization.
+discovery, Biome schema synchronization, and CLI tool discovery.
 
 **Package:** `@savvy-web/silk-effects`
 **Location:** `packages/silk-effects` in `savvy-web/systems`
@@ -36,22 +38,41 @@ discovery, and Biome schema synchronization.
 
 ## Current State
 
-v0.1.0 — all 6 modules implemented with full test coverage:
+v0.1.0 (branch: `feat/section-definition` adds v0.2.0 types/services) — all modules
+implemented with full test coverage:
 
-| Module | Export | Services | Tests |
-| ------ | ------ | -------- | ----- |
-| Publish | `./publish` | `TargetResolver`, `SilkPublishabilityPlugin` | 56 |
-| Versioning | `./versioning` | `ChangesetConfigReader`, `VersioningStrategy` | 20 |
-| Tags | `./tags` | `TagStrategy` | 7 |
-| Hooks | `./hooks` | `ManagedSection` | 20 |
-| Config | `./config` | `ConfigDiscovery` | 9 |
-| Biome | `./biome` | `BiomeSchemaSync` | 19 |
+| Area | Files | Tests |
+| ---- | ----- | ----- |
+| Errors | `errors/*.ts` (13 error classes) | co-located `.test.ts` |
+| Schemas | `schemas/*.ts` (12 schema files) | co-located `.test.ts` |
+| Services | `services/*.ts` (9 services) | co-located `.test.ts` |
+| Utils | `utils/ToolCommand.ts` | co-located `.test.ts` |
 
-Total: 131 tests, all passing.
+Total: 243 tests across 19 test files, all co-located with source.
+
+**Single root export:** All public API is exported from the package root (`"."`). There are no
+sub-path exports (`./publish`, `./hooks`, etc.). Consumers import everything from
+`@savvy-web/silk-effects`.
 
 ## Module Architecture
 
-### Publish (`./publish`)
+### Source Layout
+
+The package is organized by role, not by domain:
+
+```text
+src/
+  index.ts              ← single root export
+  errors/               ← Data.TaggedError classes (one per file)
+  schemas/              ← Schema.TaggedClass / Schema.Class value objects and enums
+  services/             ← Context.Tag services with Live layers
+  utils/                ← helpers (ToolCommand wrapper)
+```
+
+Tests are co-located with source (`*.test.ts` next to `*.ts`), not in a
+separate `__test__` directory.
+
+### Publish (TargetResolver, SilkPublishabilityPlugin)
 
 Multi-registry target resolution and publishability detection.
 
@@ -84,7 +105,7 @@ SilkPublishabilityPlugin (service)
 4. Has `publishConfig.registry` → resolve single target
 5. Default → resolve `"npm"` shorthand
 
-### Versioning (`./versioning`)
+### Versioning (ChangesetConfigReader, VersioningStrategy)
 
 Changeset configuration reading with Silk detection, and versioning strategy determination.
 
@@ -110,7 +131,7 @@ VersioningStrategy (service)
 - `"fixed-group"` — all publishable packages in one `fixed` group
 - `"independent"` — multiple packages not in a single fixed group
 
-### Tags (`./tags`)
+### Tags (TagStrategy)
 
 Git tag format determination based on versioning strategy.
 
@@ -126,18 +147,67 @@ TagStrategy (service)
 - Scoped + `@scope/pkg`: `@scope/pkg@1.2.3`
 - Scoped + unscoped: `my-pkg@1.2.3`
 
-### Hooks (`./hooks`)
+### Managed Sections (ManagedSection + SectionDefinition)
 
-Managed section pattern for tool-owned regions in user-editable files.
+Managed section pattern for tool-owned regions in user-editable files. This module was
+significantly redesigned in v0.2.0 with a `SectionDefinition` abstraction separating
+section identity from section content.
+
+#### Value Objects
+
+```text
+SectionDefinition (Schema.TaggedClass)
+  toolName: string
+  commentStyle: "#" | "//"  (default "#")
+  ── Equal/Hash on toolName + commentStyle
+  ── block(content) → SectionBlock
+  ── generate<C>(fn) → (config: C) => SectionBlock
+  ── generateEffect<C, E, R>(fn) → (config: C) => Effect<SectionBlock, ...>
+  ── diff(that) → SectionDiff
+  ── static: generate, generateEffect, withValidation, diff (dual API)
+  ── get beginMarker / endMarker → string
+
+ShellSectionDefinition (Schema.TaggedClass)
+  toolName: string
+  ── commentStyle always "#" (not configurable)
+  ── Same block/generate/generateEffect/marker API as SectionDefinition
+
+SectionBlock (Schema.TaggedClass)
+  toolName: string
+  commentStyle: "#" | "//"
+  content: string
+  ── Equal/Hash on normalized content (trimmed, whitespace-collapsed)
+  ── get text / normalized / rendered → string
+  ── prepend(lines) / append(lines) → SectionBlock
+  ── diff(that) → SectionDiff
+  ── static: diff, prepend, append (dual API)
+```
+
+#### Service
 
 ```text
 ManagedSection (service)
-  read(path, toolName) → { before, managed, after } | null
-  write(path, toolName, content) → void
-  update(path, toolName, content) → void
-  isManaged(path, toolName) → boolean
+  read(definition)  → (path) → Effect<SectionBlock | null, SectionParseError>
+  read(path, definition) → Effect<SectionBlock | null, SectionParseError>
+
+  isManaged(definition) → (path) → Effect<boolean>
+  isManaged(path, definition) → Effect<boolean>
+
+  write(block)  → (path) → Effect<void, SectionWriteError>
+  write(path, block) → Effect<void, SectionWriteError>
+
+  sync(block)  → (path) → Effect<SyncResult, SectionWriteError>
+  sync(path, block) → Effect<SyncResult, SectionWriteError>
+
+  check(block) → (path) → Effect<CheckResult, SectionParseError>
+  check(path, block) → Effect<CheckResult, SectionParseError>
+
   Depends on: FileSystem
 ```
+
+All methods support dual API (data-first and data-last). Identity-only operations (`read`,
+`isManaged`) accept a `SectionDefinition`. Content operations (`write`, `sync`, `check`)
+accept a `SectionBlock`.
 
 **Marker format:**
 
@@ -149,7 +219,7 @@ managed content here
 
 Supports `#` and `//` comment styles. Preserves user content outside markers.
 
-### Config (`./config`)
+### Config (ConfigDiscovery)
 
 Config file discovery following the Silk convention.
 
@@ -165,7 +235,7 @@ ConfigDiscovery (service)
 1. `{cwd}/lib/configs/{name}` → source: `"lib"`
 2. `{cwd}/{name}` → source: `"root"`
 
-### Biome (`./biome`)
+### Biome (BiomeSchemaSync)
 
 Version-aware Biome schema URL synchronization.
 
@@ -178,6 +248,69 @@ BiomeSchemaSync (service)
 
 Scans for `biome.json` / `biome.jsonc`, compares `$schema` URL against expected
 version, and optionally updates in place. Strips semver range prefixes (`^`, `~`, `>=`).
+
+### Tool Discovery (ToolDiscovery)
+
+CLI tool resolution — locating tools globally (PATH) or locally (via package manager),
+extracting versions, enforcing source and version constraints, and caching results.
+
+#### Value Objects
+
+```text
+ToolDefinition (class implements Equal.Equal)
+  name: string
+  versionExtractor: VersionExtractor  (default: Flag("--version"))
+  policy: ResolutionPolicy            (default: Report)
+  source: SourceRequirement           (default: Any)
+  ── Equal/Hash on name only
+  ── static make(options) → ToolDefinition
+
+ResolvedTool (Schema.TaggedClass)
+  name: string
+  source: "global" | "local"
+  version: Option<string>
+  globalVersion: Option<string>
+  localVersion: Option<string>
+  packageManager: "npm" | "pnpm" | "yarn" | "bun"
+  mismatch: boolean
+  ── get isGlobal / isLocal / hasVersionMismatch → boolean
+  ── exec(...args) → ToolCommand
+  ── dlx(...args) → ToolCommand
+  ── Equal/Hash on name + source + version
+```
+
+#### Service
+
+```text
+ToolDiscovery (service)
+  resolve(definition) → Effect<ResolvedTool, ToolResolutionError>
+  require(definition, message?) → Effect<ResolvedTool, ToolNotFoundError>
+  isAvailable(definition) → Effect<boolean>
+  clearCache → Effect<void>
+
+  Depends on: CommandExecutor, PackageManagerDetector, WorkspaceRoot
+```
+
+Results are cached by tool name (Ref-based Map); `clearCache` resets the cache.
+
+### ToolCommand (util)
+
+Thin wrapper around `@effect/platform` `Command.Command` providing instance method
+ergonomics.
+
+```text
+ToolCommand (class)
+  command: Command.Command
+  ── string(encoding?) → Effect<string, PlatformError, CommandExecutor>
+  ── exitCode() → Effect<number, PlatformError, CommandExecutor>
+  ── lines(encoding?) → Effect<string[], PlatformError, CommandExecutor>
+  ── stream() → Stream<Uint8Array, PlatformError, CommandExecutor>
+  ── env(record) → ToolCommand
+  ── workingDirectory(cwd) → ToolCommand
+  ── stdin(input) → ToolCommand
+```
+
+Returned by `ResolvedTool.exec()` and `ResolvedTool.dlx()`.
 
 ## Service Patterns
 
@@ -218,9 +351,49 @@ export class ModuleError extends Data.TaggedError("ModuleError")<{
 ### Schema Types
 
 ```typescript
-export const SchemaName = Schema.Struct({ ... });
-export type SchemaName = typeof SchemaName.Type;
+export class ValueObject extends Schema.TaggedClass<ValueObject>()("ValueObject", {
+  field: Schema.String,
+}) {}
 ```
+
+## Value Object Patterns
+
+Value objects in this package implement `Equal.Equal` and `Hash.Hash` for structural
+comparison. Two patterns are used:
+
+**Schema-based** (preferred for serialisable types): Extend `Schema.TaggedClass`. Override
+`[Equal.symbol]` and `[Hash.symbol]` to control comparison semantics (e.g. `SectionBlock`
+compares on normalized content, not raw content; `ResolvedTool` compares on
+name + source + version).
+
+**Plain class** (for non-serialisable types with complex construction): Implement
+`Equal.Equal` directly with a private constructor and a static `make()` factory.
+`ToolDefinition` uses this pattern because its fields include function-valued tagged enums
+that cannot be round-tripped through Schema.
+
+## Tagged Enum Patterns
+
+Discriminated union types that don't need Schema round-tripping use `Data.taggedEnum`:
+
+```typescript
+export type SectionDiffDefinition = {
+  readonly Unchanged: {};
+  readonly Changed: { readonly added: ReadonlyArray<string>; readonly removed: ReadonlyArray<string> };
+};
+export type SectionDiff = Data.TaggedEnum<SectionDiffDefinition>;
+export const SectionDiff = Data.taggedEnum<SectionDiff>();
+```
+
+Tagged enums used in this package:
+
+| Enum | Variants | Purpose |
+| ---- | -------- | ------- |
+| `SectionDiff` | `Unchanged`, `Changed` | Result of comparing two section contents |
+| `SyncResult` | `Created`, `Updated`, `Unchanged` | Result of a `ManagedSection.sync` call |
+| `CheckResult` | `Found`, `NotFound` | Result of a `ManagedSection.check` call |
+| `VersionExtractor` | `Flag`, `Json`, `None` | How to extract a version from CLI output |
+| `ResolutionPolicy` | `Report`, `PreferLocal`, `PreferGlobal`, `RequireMatch` | Version mismatch handling |
+| `SourceRequirement` | `Any`, `OnlyLocal`, `OnlyGlobal`, `Both` | Where a tool must be found |
 
 ## Dependencies
 
@@ -235,20 +408,25 @@ export type SchemaName = typeof SchemaName.Type;
 ```
 
 **Runtime requirement:** Consumers must provide a platform layer (`NodeContext.layer`,
-`BunContext.layer`, etc.) for modules that use `FileSystem`.
+`BunContext.layer`, etc.) for modules that use `FileSystem` or `CommandExecutor`.
 
 **Modules requiring FileSystem:**
 
-- hooks/ManagedSection
-- config/ConfigDiscovery
-- biome/BiomeSchemaSync
-- versioning/ChangesetConfigReader
+- `ManagedSection` / `ManagedSectionLive`
+- `ConfigDiscovery` / `ConfigDiscoveryLive`
+- `BiomeSchemaSync` / `BiomeSchemaSyncLive`
+- `ChangesetConfigReader` / `ChangesetConfigReaderLive`
 
-**Pure modules (no FileSystem):**
+**Modules requiring CommandExecutor + PackageManagerDetector + WorkspaceRoot:**
 
-- publish/TargetResolver
-- publish/SilkPublishabilityPlugin (delegates to TargetResolver)
-- tags/TagStrategy
+- `ToolDiscovery` / `ToolDiscoveryLive`
+
+**Pure modules (no platform requirements):**
+
+- `TargetResolver` / `TargetResolverLive`
+- `SilkPublishabilityPlugin` / `SilkPublishabilityPluginLive` (delegates to TargetResolver)
+- `TagStrategy` / `TagStrategyLive`
+- All value objects and tagged enums
 
 ## Consumer Guide
 
@@ -260,11 +438,26 @@ pnpm add @savvy-web/silk-effects effect @effect/platform @effect/platform-node
 
 ### Usage
 
+All exports come from the package root:
+
 ```typescript
 import { Effect } from "effect";
 import { NodeContext } from "@effect/platform-node";
-import { TargetResolver, TargetResolverLive } from "@savvy-web/silk-effects/publish";
+import {
+  TargetResolver,
+  TargetResolverLive,
+  ManagedSection,
+  ManagedSectionLive,
+  SectionDefinition,
+  ToolDiscovery,
+  ToolDiscoveryLive,
+  ToolDefinition,
+} from "@savvy-web/silk-effects";
+```
 
+**Pure services (no platform layer needed):**
+
+```typescript
 const result = await Effect.runPromise(
   Effect.gen(function* () {
     const resolver = yield* TargetResolver;
@@ -275,15 +468,16 @@ const result = await Effect.runPromise(
 );
 ```
 
-For FileSystem-dependent services:
+**FileSystem-dependent services:**
 
 ```typescript
-import { ManagedSection, ManagedSectionLive } from "@savvy-web/silk-effects/hooks";
+const def = SectionDefinition.make({ toolName: "MY-TOOL" });
 
 const result = await Effect.runPromise(
   Effect.gen(function* () {
     const ms = yield* ManagedSection;
-    yield* ms.write(".husky/pre-commit", "MY-TOOL", "\nnpx lint-staged\n");
+    const block = def.block("\nnpx lint-staged\n");
+    return yield* ms.sync(".husky/pre-commit", block);
   }).pipe(
     Effect.provide(ManagedSectionLive),
     Effect.provide(NodeContext.layer),
@@ -291,14 +485,20 @@ const result = await Effect.runPromise(
 );
 ```
 
-### Selective Imports
-
-Each module has its own entry point — import only what you need:
+**ToolDiscovery:**
 
 ```typescript
-import { TargetResolver } from "@savvy-web/silk-effects/publish";
-import { ManagedSection } from "@savvy-web/silk-effects/hooks";
-import { BiomeSchemaSync } from "@savvy-web/silk-effects/biome";
+const result = await Effect.runPromise(
+  Effect.gen(function* () {
+    const td = yield* ToolDiscovery;
+    const tool = yield* td.resolve(ToolDefinition.make({ name: "biome" }));
+    const cmd = tool.exec("check", ".");
+    return yield* cmd.string();
+  }).pipe(
+    Effect.provide(ToolDiscoveryLive),
+    Effect.provide(NodeContext.layer),
+  )
+);
 ```
 
 ## Rationale
@@ -311,7 +511,7 @@ runtimes without requiring separate implementations.
 
 ### Why extract these patterns?
 
-These 6 patterns were independently implemented in 3-6 repos each. Extracting them
+These patterns were independently implemented in 3-6 repos each. Extracting them
 eliminates duplication, ensures consistent behavior, and provides a single point for
 version-bumping the shared logic.
 
@@ -319,6 +519,28 @@ version-bumping the shared logic.
 
 Consumers already depend on `effect`. Bundling it would cause version conflicts and
 bloated output. As a peer, consumers get a single copy.
+
+### Why SectionDefinition separates identity from content?
+
+In v0.1.0 `ManagedSection` accepted raw `(path, toolName, content)` tuples. The v0.2.0
+redesign separates section identity (`SectionDefinition` — tool name + comment style) from
+section content (`SectionBlock` — the actual managed lines). This enables:
+
+- Typed factories via `generate`/`generateEffect` that bind a config-to-string function
+  to a definition
+- Equal/Hash semantics: definitions compare on identity, blocks compare on normalized content
+- Validation hooks (`withValidation`) attached to a definition rather than inline
+- Cleaner service API: identity operations take `SectionDefinition`, write/sync/check take
+  `SectionBlock`
+
+### Why role-based folders instead of domain folders?
+
+Earlier iterations organized by domain (`hooks/`, `publish/`, `biome/`, etc.) and exposed
+sub-path exports. This created friction: consumers needed to know which sub-path to import
+from, the build config required multiple entry points, and tests lived separately in a
+`__test__` directory. The role-based layout (`errors/`, `schemas/`, `services/`, `utils/`)
+with a single root export and co-located tests simplifies both the build and the consumer
+experience.
 
 ### Why layered changeset config?
 

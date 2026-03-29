@@ -34,8 +34,15 @@ pnpm lint:md        # Markdown lint
 
 Design docs live in `.claude/design/` (tracked):
 
-- `silk-effects/architecture.md` — module architecture, service patterns, consumer guide
-- Planned: `templates/architecture.md`, `cli/architecture.md`
+**silk-effects architecture, service patterns, and consumer guide:**
+→ `@./.claude/design/silk-effects/architecture.md`
+
+Load when working on silk-effects, implementing new services, or onboarding
+consumer repos. Covers role-based folder layout, single root export, all 9
+services, value object patterns, and the v0.2.0 ManagedSection + ToolDiscovery
+redesigns.
+
+Planned: `templates/architecture.md`, `cli/architecture.md`
 
 ## Ecosystem Context
 
