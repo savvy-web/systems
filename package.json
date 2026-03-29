@@ -1,0 +1,60 @@
+{
+	"name": "savvy-web-systems",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Savvy Web Systems Workspace configuration packages",
+	"homepage": "https://github.com/savvy-web/systems",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"type": "module",
+	"scripts": {
+		"build": "echo \"No build step needed\"",
+		"ci:build": "CI=\"true\" echo \"No build step needed\"",
+		"ci:test": "CI=\"true\" echo \"No test step needed\"",
+		"ci:version": "savvy-changesets version && biome format --write .",
+		"commit:check": "savvy-commit check",
+		"commit:init": "savvy-commit init",
+		"lint": "biome check --max-diagnostics=none",
+		"lint:fix": "biome check --write --max-diagnostics=none",
+		"lint:fix:unsafe": "biome check --write --unsafe --max-diagnostics=none",
+		"lint:md": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc'",
+		"lint:md:fix": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc' --fix",
+		"prepare": "husky",
+		"test": "echo \"No test step needed\"",
+		"typecheck": "turbo run types:check --log-prefix=none --log-order=grouped",
+		"types:check": "tsgo --noEmit"
+	},
+	"devDependencies": {
+		"@savvy-web/changesets": "^0.7.1",
+		"@savvy-web/commitlint": "^0.4.4",
+		"@savvy-web/lint-staged": "^0.6.6",
+		"@savvy-web/rslib-builder": "^0.19.1",
+		"@savvy-web/vitest": "^1.1.0"
+	},
+	"packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319",
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "10.33.0",
+			"onFail": "ignore"
+		},
+		"runtime": [
+			{
+				"name": "node",
+				"version": "24.11.0",
+				"onFail": "ignore"
+			}
+		]
+	}
+}
