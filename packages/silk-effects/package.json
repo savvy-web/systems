@@ -1,0 +1,75 @@
+{
+	"name": "@savvy-web/silk-effects",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Shared Effect library for Silk Suite conventions",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk-effects",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/silk-effects"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./publish": "./src/publish/index.ts",
+		"./versioning": "./src/versioning/index.ts",
+		"./tags": "./src/tags/index.ts",
+		"./hooks": "./src/hooks/index.ts",
+		"./config": "./src/config/index.ts",
+		"./biome": "./src/biome/index.ts"
+	},
+	"scripts": {
+		"build": "turbo run build:dev build:prod --log-order=grouped",
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"@effect/platform": "catalog:silk",
+		"jsonc-effect": "^0.2.1",
+		"semver-effect": "^0.2.1",
+		"workspaces-effect": "^0.1.0",
+		"yaml-effect": "^0.2.3"
+	},
+	"devDependencies": {
+		"@savvy-web/rslib-builder": "^0.19.1",
+		"@savvy-web/vitest": "^1.1.0",
+		"@types/node": "catalog:silk",
+		"effect": "catalog:silk"
+	},
+	"peerDependencies": {
+		"effect": "catalog:silkPeers"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}

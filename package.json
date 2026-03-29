@@ -19,9 +19,9 @@
 	},
 	"type": "module",
 	"scripts": {
-		"build": "echo \"No build step needed\"",
-		"ci:build": "CI=\"true\" echo \"No build step needed\"",
-		"ci:test": "CI=\"true\" echo \"No test step needed\"",
+		"build": "turbo run build:dev build:prod --log-order=grouped --log-prefix=none",
+		"ci:build": "CI=\"true\" turbo run build:dev build:prod --log-order=grouped --output-logs=full --log-prefix=none",
+		"ci:test": "CI=\"true\" vitest run --coverage",
 		"ci:version": "savvy-changesets version && biome format --write .",
 		"commit:check": "savvy-commit check",
 		"commit:init": "savvy-commit init",
@@ -31,7 +31,7 @@
 		"lint:md": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc'",
 		"lint:md:fix": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc' --fix",
 		"prepare": "husky",
-		"test": "echo \"No test step needed\"",
+		"test": "vitest run",
 		"typecheck": "turbo run types:check --log-prefix=none --log-order=grouped",
 		"types:check": "tsgo --noEmit"
 	},

@@ -4,7 +4,7 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 
 ## Repository Purpose
 
-- Planned packages: silk-effects (shared Effect library), templates (scaffolding), cli (workspace management)
+- **silk-effects** — shared Effect library (implemented), **templates** and **cli** (planned)
 - Public documentation site (docs/ — placeholder for future RSPress site)
 - Cross-repo planning and coordination
 - Claude Code plugin marketplace entry point (.claude-plugin/)
@@ -32,8 +32,10 @@ pnpm lint:md        # Markdown lint
 
 ## Design Documentation
 
-Internal design docs live in `.claude/design/systems/` (local only, gitignored).
-See CLAUDE.local.md for details on what's available and how to use them.
+Design docs live in `.claude/design/` (tracked):
+
+- `silk-effects/architecture.md` — module architecture, service patterns, consumer guide
+- Planned: `templates/architecture.md`, `cli/architecture.md`
 
 ## Ecosystem Context
 
@@ -53,4 +55,4 @@ Key coordination points:
 - Source package.json `"private": true` is transformed by builders based on publishConfig.access
 - Use `catalog:silk` for pinned dependencies, `catalog:silkPeers` for peer dependency ranges
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`
-- README.md is for external users; .claude/design/ is for internal architecture
+- README.md is for external users; .claude/design/ for package architecture docs

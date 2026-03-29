@@ -1,0 +1,138 @@
+{
+	"$schema": "https://spencerbegg.gs/schemas/design-config/1.0.0/schema.json",
+	"version": "1.0.0",
+	"project": {
+		"name": "savvy-web/systems",
+		"type": "monorepo",
+		"repository": "https://github.com/savvy-web/systems",
+		"maintainer": "C. Spencer Beggs"
+	},
+	"paths": {
+		"designDocs": ".claude/design",
+		"plans": ".claude/plans",
+		"skills": ".claude/skills",
+		"context": "CLAUDE.md",
+		"localContext": "CLAUDE.local.md"
+	},
+	"modules": {
+		"silk-effects": {
+			"path": "packages/silk-effects",
+			"designDocsPath": ".claude/design/silk-effects",
+			"categories": ["architecture", "integration"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/silk-effects/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"templates": {
+			"path": "packages/templates",
+			"designDocsPath": ".claude/design/templates",
+			"categories": ["architecture", "integration"],
+			"maintainer": "C. Spencer Beggs",
+			"status": "planned",
+			"userDocs": {
+				"readme": "packages/templates/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"cli": {
+			"path": "packages/cli",
+			"designDocsPath": ".claude/design/cli",
+			"categories": ["architecture", "integration"],
+			"maintainer": "C. Spencer Beggs",
+			"status": "planned",
+			"userDocs": {
+				"readme": "packages/cli/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		}
+	},
+	"skills": {
+		"baseNamespace": "design-docs:",
+		"enabled": [
+			"design-init",
+			"design-validate",
+			"design-update",
+			"design-sync",
+			"design-review",
+			"design-audit",
+			"design-search",
+			"design-index",
+			"design-link",
+			"design-report",
+			"design-prune",
+			"plan-create",
+			"plan-list",
+			"plan-explore",
+			"plan-validate",
+			"plan-complete",
+			"context-review",
+			"context-update",
+			"context-validate",
+			"docs-generate-readme",
+			"docs-generate-repo",
+			"docs-review"
+		]
+	},
+	"quality": {
+		"designDocs": {
+			"maxLineLength": 120,
+			"requireFrontmatter": true,
+			"requireTOC": true,
+			"minSections": ["Overview", "Current State", "Rationale"]
+		},
+		"userDocs": {
+			"level1": {
+				"targetWordCount": [200, 500],
+				"maxLineLength": 80,
+				"requireSections": ["Features", "Installation", "Usage"]
+			},
+			"level2": {
+				"maxLineLength": 120,
+				"requireNavigation": true
+			},
+			"level3": {
+				"framework": "rspress",
+				"requireMetadata": true,
+				"requireCodeExamples": true
+			}
+		},
+		"context": {
+			"rootMaxLines": 500,
+			"childMaxLines": 300,
+			"requireDesignDocPointers": true
+		},
+		"plans": {
+			"maxLineLength": 120,
+			"requireFrontmatter": true,
+			"requiredFields": ["name", "title", "created", "status", "progress"],
+			"validStatuses": ["ready", "in-progress", "blocked", "completed", "abandoned"],
+			"progressRange": [0, 100],
+			"stalenessThresholdDays": 30,
+			"archiveAfterDays": 30
+		}
+	},
+	"integration": {
+		"ci": {
+			"enabled": false,
+			"validateOnPR": false,
+			"syncOnMerge": false
+		},
+		"git": {
+			"trackDesignDocs": true,
+			"requireReviewForChanges": false
+		},
+		"plans": {
+			"enabled": true,
+			"bidirectionalLinking": true,
+			"autoSyncProgress": false,
+			"validateOnCommit": true,
+			"cacheMetadata": true,
+			"cacheTTL": 300
+		}
+	}
+}

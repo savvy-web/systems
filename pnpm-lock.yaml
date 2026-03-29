@@ -4,6 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  silk:
+    '@effect/platform':
+      specifier: ^0.96.0
+      version: 0.96.0
+    '@types/node':
+      specifier: ^25.5.0
+      version: 25.5.0
+    effect:
+      specifier: ^3.21.0
+      version: 3.21.0
+
 overrides:
   '@isaacs/brace-expansion': ^5.0.1
   lodash: ^4.17.23
@@ -33,6 +45,38 @@ importers:
       '@savvy-web/vitest':
         specifier: ^1.1.0
         version: 1.1.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))
+
+  packages/silk-effects:
+    dependencies:
+      '@effect/platform':
+        specifier: catalog:silk
+        version: 0.96.0(effect@3.21.0)
+      jsonc-effect:
+        specifier: ^0.2.1
+        version: 0.2.1(effect@3.21.0)
+      semver-effect:
+        specifier: ^0.2.1
+        version: 0.2.1(effect@3.21.0)
+      workspaces-effect:
+        specifier: ^0.1.0
+        version: 0.1.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0)
+      yaml-effect:
+        specifier: ^0.2.3
+        version: 0.2.3(effect@3.21.0)
+    devDependencies:
+      '@savvy-web/rslib-builder':
+        specifier: ^0.19.1
+        version: 0.19.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@pnpm/logger@1001.0.1)(@rslib/core@0.20.1(@microsoft/api-extractor@7.57.7(@types/node@25.5.0))(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@5.9.3))(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(jiti@2.6.1)(typescript@5.9.3)
+      '@savvy-web/vitest':
+        specifier: ^1.1.0
+        version: 1.1.0(@types/node@25.5.0)(@typescript/native-preview@7.0.0-dev.20260328.1)(@vitest/coverage-v8@4.1.2(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3))))(typescript@5.9.3)(vitest-agent-reporter@1.2.0(1f6092ef9658cd7ecc46d5bbacd3c6e3))(vitest@4.1.2(@types/node@25.5.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.3)))
+      '@types/node':
+        specifier: catalog:silk
+        version: 25.5.0
+      effect:
+        specifier: catalog:silk
+        version: 3.21.0
+    publishDirectory: dist/dev
 
 packages:
 
@@ -3291,6 +3335,16 @@ packages:
   secure-keys@1.0.0:
     resolution: {integrity: sha512-nZi59hW3Sl5P3+wOO89eHBAAGwmCPd2aE1+dLZV5MO+ItQctIvAqihzaAXIQhvtH4KJPxM080HsnqltR2y8cWg==}
 
+  semver-effect@0.1.0:
+    resolution: {integrity: sha512-QMV5tYjNaw0rshAg9niTMkqdQrCZ/0js4nskBIzzdEx/LAcHEGPMGQbTlR++YC9JUkSssGjh/YC/JaMRV7JExw==}
+    peerDependencies:
+      effect: ^3.19.19
+
+  semver-effect@0.2.1:
+    resolution: {integrity: sha512-W4JwQ4Ot6Yl/Fr8OT5OJnxc9SSuLKqslCb9fbbIFwm0198usbn2KoDKhWrCntDUT935UM85ljflwJIFe2YQ6LA==}
+    peerDependencies:
+      effect: '>=3.21.0'
+
   semver@7.5.4:
     resolution: {integrity: sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA==}
     engines: {node: '>=10'}
@@ -3783,6 +3837,12 @@ packages:
   workspace-tools@0.41.0:
     resolution: {integrity: sha512-iBB6LNqtJpfjTWnyjlgOwdJmf1wBTUsIr1V5phOBCJMywubpYAijDUqhgz7RfrTYdscA4vEFyhjiy4OSAGULcA==}
 
+  workspaces-effect@0.1.0:
+    resolution: {integrity: sha512-fgVL0er3lMSnJ+GtFQR6lfU4kDShbyZXR3TeJ1toHotuFxT83OxkgtZdRRY+DhVp3LbwUhOkejmHhyhiOmXt0A==}
+    peerDependencies:
+      '@effect/platform': ^0.94.0
+      effect: ^3.19.0
+
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
     engines: {node: '>=10'}
@@ -3820,6 +3880,16 @@ packages:
 
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
+
+  yaml-effect@0.1.7:
+    resolution: {integrity: sha512-3gSV9rEnpwmonOeOufYE+xJMQ/PVIOf6RImW2l8kUnFURdLFmrZ1sURljRx8yo5x8eAEqa/KvdRLVnwyzNNDUg==}
+    peerDependencies:
+      effect: ^3.19.0
+
+  yaml-effect@0.2.3:
+    resolution: {integrity: sha512-378iw8DWn+6cLzHfOZFLEPu/UXcymHtixKe+CM9OFk9G/uFeQfRU/WNnKRVjIkTCj9M8EwJdiOgH3rOrUwyFyQ==}
+    peerDependencies:
+      effect: '>=3.21.0'
 
   yaml-lint@1.7.0:
     resolution: {integrity: sha512-zeBC/kskKQo4zuoGQ+IYjw6C9a/YILr2SXoEZA9jM0COrSwvwVbfTiFegT8qYBSBgOwLMWGL8sY137tOmFXGnQ==}
@@ -7516,6 +7586,14 @@ snapshots:
 
   secure-keys@1.0.0: {}
 
+  semver-effect@0.1.0(effect@3.21.0):
+    dependencies:
+      effect: 3.21.0
+
+  semver-effect@0.2.1(effect@3.21.0):
+    dependencies:
+      effect: 3.21.0
+
   semver@7.5.4:
     dependencies:
       lru-cache: 6.0.0
@@ -8015,6 +8093,14 @@ snapshots:
       js-yaml: 4.1.1
       micromatch: 4.0.8
 
+  workspaces-effect@0.1.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0):
+    dependencies:
+      '@effect/platform': 0.96.0(effect@3.21.0)
+      effect: 3.21.0
+      jsonc-effect: 0.2.1(effect@3.21.0)
+      semver-effect: 0.1.0(effect@3.21.0)
+      yaml-effect: 0.1.7(effect@3.21.0)
+
   wrap-ansi@7.0.0:
     dependencies:
       ansi-styles: 4.3.0
@@ -8044,6 +8130,14 @@ snapshots:
   y18n@5.0.8: {}
 
   yallist@4.0.0: {}
+
+  yaml-effect@0.1.7(effect@3.21.0):
+    dependencies:
+      effect: 3.21.0
+
+  yaml-effect@0.2.3(effect@3.21.0):
+    dependencies:
+      effect: 3.21.0
 
   yaml-lint@1.7.0:
     dependencies:
