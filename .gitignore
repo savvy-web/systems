@@ -32,7 +32,6 @@ pnpm-release.json
 .claude/plans
 .claude/agents
 .claude/skills
-.claude/design
 CLAUDE.local.md
 **/coverage-debug
 .claude/plugins-debug.log

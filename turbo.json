@@ -2,6 +2,20 @@
 	"$schema": "https://turborepo.com/schema.v2.json",
 	"globalPassThroughEnv": ["GITHUB_ACTIONS", "CI"],
 	"tasks": {
+		"build:dev": {
+			"cache": false,
+			"dependsOn": [],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/package.json",
+				"$TURBO_ROOT$/tsconfig.json",
+				"package.json",
+				"tsconfig.json",
+				"src/**/*.ts"
+			],
+			"outputLogs": "full",
+			"outputs": ["dist/dev/**"]
+		},
 		"build:prod": {
 			"cache": true,
 			"dependsOn": ["types:check"],
@@ -21,7 +35,7 @@
 				"LICENSE"
 			],
 			"outputLogs": "full",
-			"outputs": ["dist/**"]
+			"outputs": ["dist/npm/**"]
 		},
 		"types:check": {
 			"cache": true,
