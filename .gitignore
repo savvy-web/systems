@@ -38,3 +38,4 @@ CLAUDE.local.md
 docs/superpowers
 .act.secrets.env
 .mcp.json
+.worktrees
