@@ -1,10 +1,10 @@
----
-"@savvy-web/silk-effects": minor
----
+# @savvy-web/silk-effects
 
-## Features
+## 0.1.0
 
-Introduces `@savvy-web/silk-effects`, a platform-agnostic Effect library that consolidates shared Silk Suite conventions into a single package consumed across the ecosystem. The library is built on `@effect/platform` and requires `effect` as a peer dependency -- consumers supply their own platform layer.
+### Features
+
+* [`d553939`](https://github.com/savvy-web/systems/commit/d5539392f70a56ada8b035313fa2d11c98fa5bde) Introduces `@savvy-web/silk-effects`, a platform-agnostic Effect library that consolidates shared Silk Suite conventions into a single package consumed across the ecosystem. The library is built on `@effect/platform` and requires `effect` as a peer dependency -- consumers supply their own platform layer.
 
 ### Publish -- Multi-Registry Target Resolution
 
@@ -13,13 +13,16 @@ The `./publish` module resolves raw publish-target values into fully-normalized 
 The module also ships `SilkPublishabilityPlugin`, a plugin for `workspaces-effect` that detects whether a workspace package is publishable by inspecting `publishConfig.access` and `private` fields.
 
 ```typescript
-import { TargetResolver, TargetResolverLive } from "@savvy-web/silk-effects/publish";
+import {
+  TargetResolver,
+  TargetResolverLive,
+} from "@savvy-web/silk-effects/publish";
 
 const targets = await Effect.runPromise(
   Effect.gen(function* () {
     const resolver = yield* TargetResolver;
     return yield* resolver.resolve(["npm", "github"]);
-  }).pipe(Effect.provide(TargetResolverLive))
+  }).pipe(Effect.provide(TargetResolverLive)),
 );
 ```
 
