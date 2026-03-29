@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/silk-effects",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"private": true,
 	"description": "Shared Effect library for Silk Suite conventions",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk-effects",
