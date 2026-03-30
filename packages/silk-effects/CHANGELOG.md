@@ -1,5 +1,11 @@
 # @savvy-web/silk-effects
 
+## 0.2.1
+
+### Bug Fixes
+
+* [`31824c1`](https://github.com/savvy-web/systems/commit/31824c15a013cf5ce13462c4dfc223785f9e893e) Bumps workspaces-effect dependency for parsing issue fix
+
 ## 0.2.0
 
 ### Features
