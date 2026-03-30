@@ -58,8 +58,8 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1(effect@3.21.0)
       workspaces-effect:
-        specifier: ^0.2.0
-        version: 0.2.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0)
+        specifier: ^0.3.0
+        version: 0.3.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0)
       yaml-effect:
         specifier: ^0.2.3
         version: 0.2.3(effect@3.21.0)
@@ -3839,6 +3839,12 @@ packages:
 
   workspaces-effect@0.2.0:
     resolution: {integrity: sha512-8gpe5UyQseuYEb9JuAcacti5kjsGJLgjWayfuH6+enFljRJeVEk1E9SKNHYu1coxVPadtKKCXocEnTgnEYXf5w==}
+    peerDependencies:
+      '@effect/platform': '>=0.96.0'
+      effect: '>=3.21.0'
+
+  workspaces-effect@0.3.0:
+    resolution: {integrity: sha512-ntu9AdP2Q2DTLQdb8rLddzkTBidkbnH0glTS4VVLj/DDTI21ru+sVZq1SIdaNgKqG0DHACoIqRcYGYxvYn3x5g==}
     peerDependencies:
       '@effect/platform': '>=0.96.0'
       effect: '>=3.21.0'
@@ -8095,6 +8101,15 @@ snapshots:
       micromatch: 4.0.8
 
   workspaces-effect@0.2.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0):
+    dependencies:
+      '@effect/platform': 0.96.0(effect@3.21.0)
+      effect: 3.21.0
+      jsonc-effect: 0.2.1(effect@3.21.0)
+      minimatch: 10.2.4
+      semver-effect: 0.2.1(effect@3.21.0)
+      yaml-effect: 0.2.3(effect@3.21.0)
+
+  workspaces-effect@0.3.0(@effect/platform@0.96.0(effect@3.21.0))(effect@3.21.0):
     dependencies:
       '@effect/platform': 0.96.0(effect@3.21.0)
       effect: 3.21.0

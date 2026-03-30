@@ -33,7 +33,7 @@
 		"@effect/platform": "catalog:silk",
 		"jsonc-effect": "^0.2.1",
 		"semver-effect": "^0.2.1",
-		"workspaces-effect": "^0.2.0",
+		"workspaces-effect": "^0.3.0",
 		"yaml-effect": "^0.2.3"
 	},
 	"devDependencies": {
