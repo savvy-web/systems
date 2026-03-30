@@ -31,9 +31,14 @@ function parseContent(
 		return null;
 	}
 
+	let managed = content.slice(beginIndex + begin.length, endIndex);
+	// Strip boundary newlines added by assembly so round-trips stay clean
+	if (managed.startsWith("\n")) managed = managed.slice(1);
+	if (managed.endsWith("\n")) managed = managed.slice(0, -1);
+
 	return {
 		before: content.slice(0, beginIndex),
-		managed: content.slice(beginIndex + begin.length, endIndex),
+		managed,
 		after: content.slice(endIndex + end.length),
 	};
 }
@@ -47,7 +52,7 @@ function assembleContent(
 ): string {
 	const begin = beginMarker(toolName, commentStyle);
 	const end = endMarker(toolName, commentStyle);
-	return `${before}${begin}${managed}${end}${after}`;
+	return `${before}${begin}\n${managed}\n${end}${after}`;
 }
 
 // ── Service ─────────────────────────────────────────────────────
@@ -167,12 +172,12 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 							const trimmed = raw.trimEnd();
 							const begin = beginMarker(block.toolName, block.commentStyle);
 							const end = endMarker(block.toolName, block.commentStyle);
-							fileContent = `${trimmed}\n\n${begin}${block.content}${end}\n`;
+							fileContent = `${trimmed}\n\n${begin}\n${block.content}\n${end}\n`;
 						}
 					} else {
 						const begin = beginMarker(block.toolName, block.commentStyle);
 						const end = endMarker(block.toolName, block.commentStyle);
-						fileContent = `${begin}${block.content}${end}\n`;
+						fileContent = `${begin}\n${block.content}\n${end}\n`;
 					}
 
 					yield* fs

@@ -46,7 +46,7 @@ export class SectionBlock extends Schema.TaggedClass<SectionBlock>()("SectionBlo
 	get rendered(): string {
 		const begin = `${this.commentStyle} --- BEGIN ${this.toolName.toUpperCase()} MANAGED SECTION ---`;
 		const end = `${this.commentStyle} --- END ${this.toolName.toUpperCase()} MANAGED SECTION ---`;
-		return `${begin}${this.content}${end}`;
+		return `${begin}\n${this.content}\n${end}`;
 	}
 
 	prepend(lines: string): SectionBlock {

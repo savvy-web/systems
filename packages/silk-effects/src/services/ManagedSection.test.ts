@@ -59,7 +59,7 @@ describe("ManagedSection.read", () => {
 			Effect.andThen(ManagedSection, (s) => s.read("/hook", DEF)),
 		);
 		expect(result).toBeInstanceOf(SectionBlock);
-		expect(result!.content).toBe("\nmanaged\n");
+		expect(result!.content).toBe("managed");
 		expect(result!.toolName).toBe(TOOL);
 	});
 
@@ -78,7 +78,7 @@ describe("ManagedSection.read", () => {
 describe("ManagedSection.write", () => {
 	it("creates new file when it does not exist", async () => {
 		const files: Record<string, string> = {};
-		const block = DEF.block("\nnew content\n");
+		const block = DEF.block("new content");
 		await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.write("/hook", block)),
@@ -90,7 +90,7 @@ describe("ManagedSection.write", () => {
 
 	it("replaces existing managed section", async () => {
 		const files = { "/hook": `#!/bin/sh\n${BEGIN}\nold\n${END}\n# after\n` };
-		const block = DEF.block("\nnew\n");
+		const block = DEF.block("new");
 		await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.write("/hook", block)),
@@ -102,7 +102,7 @@ describe("ManagedSection.write", () => {
 
 	it("appends to file without markers", async () => {
 		const files = { "/hook": "#!/bin/sh\n# user hook\n" };
-		const block = DEF.block("\nmanaged\n");
+		const block = DEF.block("managed");
 		await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.write("/hook", block)),
@@ -149,7 +149,7 @@ describe("ManagedSection.isManaged", () => {
 describe("ManagedSection.sync", () => {
 	it("returns Created when file does not exist", async () => {
 		const files: Record<string, string> = {};
-		const block = DEF.block("\ncontent\n");
+		const block = DEF.block("content");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.sync("/hook", block)),
@@ -160,7 +160,7 @@ describe("ManagedSection.sync", () => {
 
 	it("returns Unchanged when content matches", async () => {
 		const files = { "/hook": `${BEGIN}\ncontent\n${END}\n` };
-		const block = DEF.block("\ncontent\n");
+		const block = DEF.block("content");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.sync("/hook", block)),
@@ -170,7 +170,7 @@ describe("ManagedSection.sync", () => {
 
 	it("returns Updated with diff when content differs", async () => {
 		const files = { "/hook": `${BEGIN}\nold content\n${END}\n` };
-		const block = DEF.block("\nnew content\n");
+		const block = DEF.block("new content");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.sync("/hook", block)),
@@ -185,7 +185,7 @@ describe("ManagedSection.sync", () => {
 
 	it("returns Created when file exists without markers", async () => {
 		const files = { "/hook": "#!/bin/sh\n" };
-		const block = DEF.block("\ncontent\n");
+		const block = DEF.block("content");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.sync("/hook", block)),
@@ -199,7 +199,7 @@ describe("ManagedSection.sync", () => {
 describe("ManagedSection.check", () => {
 	it("returns NotFound when file does not exist", async () => {
 		const files: Record<string, string> = {};
-		const block = DEF.block("\ncontent\n");
+		const block = DEF.block("content");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.check("/hook", block)),
@@ -209,7 +209,7 @@ describe("ManagedSection.check", () => {
 
 	it("returns Found + isUpToDate when content matches", async () => {
 		const files = { "/hook": `${BEGIN}\ncontent\n${END}\n` };
-		const block = DEF.block("\ncontent\n");
+		const block = DEF.block("content");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.check("/hook", block)),
@@ -223,7 +223,7 @@ describe("ManagedSection.check", () => {
 
 	it("returns Found + not isUpToDate when content differs", async () => {
 		const files = { "/hook": `${BEGIN}\nold\n${END}\n` };
-		const block = DEF.block("\nnew\n");
+		const block = DEF.block("new");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.check("/hook", block)),
@@ -237,7 +237,7 @@ describe("ManagedSection.check", () => {
 
 	it("returns NotFound when file has no markers", async () => {
 		const files = { "/hook": "no markers" };
-		const block = DEF.block("\ncontent\n");
+		const block = DEF.block("content");
 		const result = await runWith(
 			files,
 			Effect.andThen(ManagedSection, (s) => s.check("/hook", block)),

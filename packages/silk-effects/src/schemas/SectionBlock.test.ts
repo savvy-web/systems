@@ -26,7 +26,7 @@ describe("SectionBlock", () => {
 		});
 
 		it("rendered wraps content in markers", () => {
-			const block = SectionBlock.make({ toolName: TOOL, commentStyle: "#", content: "\nhello\n" });
+			const block = SectionBlock.make({ toolName: TOOL, commentStyle: "#", content: "hello" });
 			expect(block.rendered).toBe(
 				"# --- BEGIN MY-TOOL MANAGED SECTION ---\nhello\n# --- END MY-TOOL MANAGED SECTION ---",
 			);

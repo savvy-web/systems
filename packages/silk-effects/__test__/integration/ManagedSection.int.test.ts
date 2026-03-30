@@ -26,11 +26,11 @@ describe("lint-staged consumer workflow", () => {
 
 	const preCommitBlock = LintSection.generate(
 		(cfg: { configPath: string }) =>
-			`\n# Skip in CI\nif ! { [ -n "$CI" ]; }; then\nlint-staged --config "$ROOT/${cfg.configPath}"\nfi\n`,
+			`# Skip in CI\nif ! { [ -n "$CI" ]; }; then\nlint-staged --config "$ROOT/${cfg.configPath}"\nfi`,
 	);
 
 	const shellScriptsBlock = LintSection.generate(
-		(_cfg?: undefined) => `\n# Skip in CI\nif ! { [ -n "$CI" ]; }; then\ngit config core.fileMode false\nfi\n`,
+		(_cfg?: undefined) => `# Skip in CI\nif ! { [ -n "$CI" ]; }; then\ngit config core.fileMode false\nfi`,
 	);
 
 	it("init workflow: sync creates hooks", async () => {
