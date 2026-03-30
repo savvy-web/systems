@@ -40,10 +40,10 @@ claude plugin add marketplace savvy-web/systems
 
 **Available plugins:**
 
-- **changesets** -- Companion plugin for `@savvy-web/changesets` that helps write
-  well-structured changeset files for GitHub release documentation
-
-See the [marketplace manifest](.claude-plugin/marketplace.json) for the full listing.
+- **changesets** -- Companion for `@savvy-web/changesets`: structured changeset files
+- **vitest** -- Companion for `@savvy-web/vitest`: well-structured test files
+- **lint-staged** -- Companion for `@savvy-web/lint-staged`: lint-staged configuration
+- **commitlint** -- Companion for `@savvy-web/commitlint`: commitlint configuration
 
 ## Ecosystem
 

@@ -26,9 +26,31 @@
 				"url": "https://github.com/savvy-web/vitest",
 				"path": "plugin"
 			},
-			"description": "Companion plugin for Vitest that helps write well-structured test files for GitHub release documentation",
+			"description": "Companion plugin for @savvy-web/vitest that helps write well-structured test files for GitHub release documentation",
 			"category": "developer-tools",
 			"tags": ["vitest", "testing", "unit-tests"]
+		},
+		{
+			"name": "lint-staged",
+			"source": {
+				"source": "git-subdir",
+				"url": "https://github.com/savvy-web/lint-staged",
+				"path": "plugin"
+			},
+			"description": "Companion plugin for @savvy-web/lint-staged that helps write well-structured lint-staged configuration files for GitHub release documentation",
+			"category": "developer-tools",
+			"tags": ["lint-staged", "linting", "pre-commit-hooks"]
+		},
+		{
+			"name": "commitlint",
+			"source": {
+				"source": "git-subdir",
+				"url": "https://github.com/savvy-web/commitlint",
+				"path": "plugin"
+			},
+			"description": "Companion plugin for @savvy-web/commitlint that helps write well-structured commitlint configuration files for GitHub release documentation",
+			"category": "developer-tools",
+			"tags": ["commitlint", "commit-msg", "git-hooks"]
 		}
 	]
 }
