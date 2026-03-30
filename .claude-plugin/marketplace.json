@@ -12,7 +12,7 @@
 			"name": "changesets",
 			"source": {
 				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/changesets",
+				"url": "https://github.com/savvy-web/changesets.git",
 				"path": "plugin"
 			},
 			"description": "Companion plugin for @savvy-web/changesets that helps write well-structured changeset files for GitHub release documentation",
@@ -23,7 +23,7 @@
 			"name": "vitest",
 			"source": {
 				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/vitest",
+				"url": "https://github.com/savvy-web/vitest.git",
 				"path": "plugin"
 			},
 			"description": "Companion plugin for @savvy-web/vitest that helps write well-structured test files for GitHub release documentation",
@@ -34,7 +34,7 @@
 			"name": "lint-staged",
 			"source": {
 				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/lint-staged",
+				"url": "https://github.com/savvy-web/lint-staged.git",
 				"path": "plugin"
 			},
 			"description": "Companion plugin for @savvy-web/lint-staged that helps write well-structured lint-staged configuration files for GitHub release documentation",
@@ -45,7 +45,7 @@
 			"name": "commitlint",
 			"source": {
 				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/commitlint",
+				"url": "https://github.com/savvy-web/commitlint.git",
 				"path": "plugin"
 			},
 			"description": "Companion plugin for @savvy-web/commitlint that helps write well-structured commitlint configuration files for GitHub release documentation",
