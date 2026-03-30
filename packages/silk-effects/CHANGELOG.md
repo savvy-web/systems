@@ -1,5 +1,13 @@
 # @savvy-web/silk-effects
 
+## 0.2.2
+
+### Bug Fixes
+
+* [`b65d3d2`](https://github.com/savvy-web/systems/commit/b65d3d26fb9da4474b9e39225d8c4b85d35e6eac) ### Fix ManagedSection markers missing newline separators from content
+
+BEGIN/END markers were concatenated directly with managed content, producing malformed output where markers and content appeared on the same line. The service now ensures markers are always on their own lines and handles boundary newlines transparently on read/write round-trips.
+
 ## 0.2.1
 
 ### Bug Fixes
