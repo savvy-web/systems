@@ -18,6 +18,17 @@
 			"description": "Companion plugin for @savvy-web/changesets that helps write well-structured changeset files for GitHub release documentation",
 			"category": "developer-tools",
 			"tags": ["changesets", "changelog", "release-notes"]
+		},
+		{
+			"name": "vitest",
+			"source": {
+				"source": "git-subdir",
+				"url": "https://github.com/savvy-web/vitest",
+				"path": "plugin"
+			},
+			"description": "Companion plugin for Vitest that helps write well-structured test files for GitHub release documentation",
+			"category": "developer-tools",
+			"tags": ["vitest", "testing", "unit-tests"]
 		}
 	]
 }
