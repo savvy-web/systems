@@ -2,6 +2,13 @@
 	"$schema": "https://turborepo.com/schema.v2.json",
 	"globalPassThroughEnv": ["GITHUB_ACTIONS", "CI"],
 	"tasks": {
+		"//#types:check": {
+			"cache": true,
+			"dependsOn": [],
+			"inputs": ["*.ts", "src/**/*.ts", "lib/**/*.ts", "lib/**/*.mts"],
+			"outputLogs": "full",
+			"outputs": []
+		},
 		"build:dev": {
 			"cache": false,
 			"dependsOn": [],
@@ -36,13 +43,6 @@
 			],
 			"outputLogs": "full",
 			"outputs": ["dist/npm/**"]
-		},
-		"types:check": {
-			"cache": true,
-			"dependsOn": [],
-			"inputs": ["*.ts", "src/**/*.ts", "lib/**/*.ts", "lib/**/*.mts"],
-			"outputLogs": "errors-only",
-			"outputs": []
 		}
 	}
 }
