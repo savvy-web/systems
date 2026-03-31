@@ -20,10 +20,10 @@ const Features = Schema.Struct({
 
 export const WorkspaceOptions = Schema.Struct({
 	name: Schema.String,
-	dirname: Schema.optional(Schema.String),
 	packageManager: Schema.Literal("pnpm", "npm", "bun"),
 	packageManagerVersion: Schema.String,
 	nodeVersion: Schema.String,
+	biomeVersion: Schema.optionalWith(Schema.String, { default: () => "2.3.3" }),
 	features: Schema.optional(Features),
 });
 
@@ -77,7 +77,7 @@ export function createWorkspace(options: unknown): TemplateEntry[] {
 
 	// Optional: biome
 	if (features.biome) {
-		entries.push(...createBiome({ version: "2.3.3", root: true }));
+		entries.push(...createBiome({ version: opts.biomeVersion, root: true }));
 	}
 
 	// Optional: turbo

@@ -37,7 +37,7 @@ export const PackageJsonOptions = Schema.Struct({
 	author: Schema.optional(Author),
 	sideEffects: Schema.optional(Schema.Boolean),
 	type: Schema.optional(Schema.Literal("module", "commonjs")),
-	exports: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+	exports: Schema.optional(Schema.Unknown),
 	scripts: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
 	dependencies: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
 	devDependencies: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),

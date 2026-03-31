@@ -5,7 +5,7 @@ describe("workspace template", () => {
 	it("always includes core templates", () => {
 		const result = createWorkspace({
 			name: "my-workspace",
-			dirname: "my-workspace",
+
 			packageManager: "pnpm",
 			packageManagerVersion: "10.33.0",
 			nodeVersion: "24.11.0",
@@ -21,7 +21,7 @@ describe("workspace template", () => {
 	it("includes pnpm-workspace when packageManager is pnpm", () => {
 		const result = createWorkspace({
 			name: "my-workspace",
-			dirname: "my-workspace",
+
 			packageManager: "pnpm",
 			packageManagerVersion: "10.33.0",
 			nodeVersion: "24.11.0",
@@ -33,7 +33,7 @@ describe("workspace template", () => {
 	it("excludes pnpm-workspace when packageManager is not pnpm", () => {
 		const result = createWorkspace({
 			name: "my-workspace",
-			dirname: "my-workspace",
+
 			packageManager: "npm",
 			packageManagerVersion: "10.9.2",
 			nodeVersion: "24.11.0",
@@ -45,7 +45,7 @@ describe("workspace template", () => {
 	it("includes optional templates when features enabled", () => {
 		const result = createWorkspace({
 			name: "my-workspace",
-			dirname: "my-workspace",
+
 			packageManager: "pnpm",
 			packageManagerVersion: "10.33.0",
 			nodeVersion: "24.11.0",
@@ -67,7 +67,7 @@ describe("workspace template", () => {
 	it("excludes optional templates when features disabled", () => {
 		const result = createWorkspace({
 			name: "my-workspace",
-			dirname: "my-workspace",
+
 			packageManager: "pnpm",
 			packageManagerVersion: "10.33.0",
 			nodeVersion: "24.11.0",
@@ -83,7 +83,7 @@ describe("workspace template", () => {
 	it("configures package.json with engines and packageManager", () => {
 		const result = createWorkspace({
 			name: "my-workspace",
-			dirname: "my-workspace",
+
 			packageManager: "pnpm",
 			packageManagerVersion: "10.33.0",
 			nodeVersion: "24.11.0",
