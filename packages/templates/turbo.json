@@ -1,0 +1,22 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"build:dev": {
+			"cache": true,
+			"dependsOn": ["types:check"],
+			"outputLogs": "errors-only",
+			"outputs": ["dist/dev/**", ".rslib/declarations/dev/**"]
+		},
+		"build:prod": {
+			"cache": true,
+			"dependsOn": ["types:check"],
+			"outputs": ["dist/npm/**", ".rslib/declarations/npm/**"]
+		},
+		"types:check": {
+			"cache": true,
+			"dependsOn": ["^build:dev"],
+			"outputLogs": "errors-only",
+			"outputs": ["dist/.tsbuildinfo.lib"]
+		}
+	}
+}

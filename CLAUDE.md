@@ -4,7 +4,9 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 
 ## Repository Purpose
 
-- **silk-effects** — shared Effect library (implemented), **templates** and **cli** (planned)
+- **silk-effects** — shared Effect library (implemented)
+- **templates** — pure TypeScript project scaffolding (implemented)
+- **cli** (planned)
 - Public documentation site (docs/ — placeholder for future RSPress site)
 - Cross-repo planning and coordination
 - Claude Code plugin marketplace entry point (.claude-plugin/)
@@ -42,7 +44,14 @@ consumer repos. Covers role-based folder layout, single root export, all 9
 services, value object patterns, and the v0.2.0 ManagedSection + ToolDiscovery
 redesigns.
 
-Planned: `templates/architecture.md`, `cli/architecture.md`
+**templates architecture, template inventory, and design decisions:**
+→ `@./.claude/design/templates/architecture.md`
+
+Load when working on templates, adding new templates, or understanding the
+pure-function content generation approach. Covers all 10 templates, Effect
+Schema validation, TemplateEntry abstraction, and workspace compositor.
+
+Planned: `cli/architecture.md`
 
 ## Ecosystem Context
 
