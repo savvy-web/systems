@@ -1,0 +1,627 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`template snapshots > biome: root with extends 1`] = `
+[
+  {
+    "content": "{
+	"$schema": "https://biomejs.dev/schemas/2.3.3/schema.json",
+	"extends": [
+		"@savvy-web/biome-config"
+	],
+	"root": true
+}",
+    "filename": "biome.jsonc",
+    "name": "biome",
+  },
+]
+`;
+
+exports[`template snapshots > changeset: with repo 1`] = `
+[
+  {
+    "content": "{
+	"$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+	"changelog": [
+		"@savvy-web/changesets/changelog",
+		{
+			"repo": "savvy-web/systems"
+		}
+	],
+	"commit": false,
+	"fixed": [],
+	"linked": [],
+	"access": "public",
+	"baseBranch": "main",
+	"updateInternalDependencies": "patch",
+	"privatePackages": {
+		"version": true,
+		"tag": false
+	},
+	"ignore": []
+}",
+    "filename": ".changeset/config.json",
+    "name": "changeset",
+  },
+]
+`;
+
+exports[`template snapshots > gitignore: all sections enabled 1`] = `
+[
+  {
+    "content": "# OS files
+**/.DS_Store
+
+# Node.js
+**/node_modules
+**/*.tsbuildinfo*
+
+# Build artifacts
+**/dist
+**/.rslib
+**/.turbo
+**/*.api.json
+
+# Test artifacts
+**/.coverage
+**/.vitest
+
+# Release artifacts
+pnpm-publish-summary.json
+pnpm-release.json
+.changeset/status.json
+
+# Private keys
+**/*.asc
+
+# AI agent settings
+.mcp.json
+
+# Environment files
+**/.env
+**/.env.*
+",
+    "filename": ".gitignore",
+    "name": "gitignore",
+  },
+]
+`;
+
+exports[`template snapshots > gitignore: with additional patterns 1`] = `
+[
+  {
+    "content": "# OS files
+**/.DS_Store
+
+# Node.js
+**/node_modules
+**/*.tsbuildinfo*
+
+# Build artifacts
+**/dist
+**/.rslib
+**/.turbo
+**/*.api.json
+
+# Test artifacts
+**/.coverage
+**/.vitest
+
+# Environment files
+**/.env
+**/.env.*
+
+# Additional
+*.log
+tmp/
+.worktrees
+",
+    "filename": ".gitignore",
+    "name": "gitignore",
+  },
+]
+`;
+
+exports[`template snapshots > package-json: full ecosystem package 1`] = `
+[
+  {
+    "content": "{
+	"name": "@savvy-web/silk-effects",
+	"version": "0.2.2",
+	"private": true,
+	"description": "Shared Effect library for Silk Suite conventions",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk-effects",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/silk-effects"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build": "turbo run build:dev build:prod --log-order=grouped",
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"@effect/platform": "catalog:silk",
+		"jsonc-effect": "^0.2.1"
+	},
+	"devDependencies": {
+		"@savvy-web/rslib-builder": "^0.19.1",
+		"@savvy-web/vitest": "^1.2.1",
+		"effect": "catalog:silk"
+	},
+	"peerDependencies": {
+		"effect": "catalog:silkPeers"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}",
+    "filename": "package.json",
+    "name": "package-json",
+  },
+]
+`;
+
+exports[`template snapshots > package-json: minimal 1`] = `
+[
+  {
+    "content": "{
+	"name": "bare-package",
+	"version": "0.0.0"
+}",
+    "filename": "package.json",
+    "name": "package-json",
+  },
+]
+`;
+
+exports[`template snapshots > pnpm: workspace with catalog 1`] = `
+[
+  {
+    "content": "packages:
+  - .
+  - packages/*
+autoInstallPeers: true
+catalogMode: strict
+catalog:
+  effect: ^3.21.0
+  '@types/node': ^24.0.0
+",
+    "filename": "pnpm-workspace.yaml",
+    "name": "pnpm-workspace",
+  },
+]
+`;
+
+exports[`template snapshots > readme: with description 1`] = `
+[
+  {
+    "content": "# Silk Suite Systems
+
+Coordination hub for the Silk Suite open-source ecosystem.
+",
+    "filename": "README.md",
+    "name": "readme",
+  },
+]
+`;
+
+exports[`template snapshots > tsconfig: minimal 1`] = `
+[
+  {
+    "content": "{}",
+    "filename": "tsconfig.json",
+    "name": "tsconfig",
+  },
+]
+`;
+
+exports[`template snapshots > tsconfig: with extends and references 1`] = `
+[
+  {
+    "content": "{
+	"extends": [
+		"@savvy-web/rslib-builder/tsconfig/ecma/lib.json"
+	],
+	"composite": true,
+	"include": [
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	],
+	"references": [
+		{
+			"path": "./packages/a"
+		},
+		{
+			"path": "./packages/b"
+		}
+	]
+}",
+    "filename": "tsconfig.json",
+    "name": "tsconfig",
+  },
+]
+`;
+
+exports[`template snapshots > turbo: root with full options 1`] = `
+[
+  {
+    "content": "{
+	"$schema": "https://turborepo.com/schema.v2.json",
+	"tasks": {
+		"build:dev": {
+			"cache": false,
+			"dependsOn": [],
+			"outputs": [
+				"dist/dev/**"
+			]
+		},
+		"build:prod": {
+			"cache": true,
+			"dependsOn": [
+				"types:check"
+			],
+			"outputs": [
+				"dist/npm/**"
+			]
+		},
+		"types:check": {
+			"cache": true,
+			"dependsOn": [],
+			"outputLogs": "errors-only"
+		}
+	},
+	"globalDependencies": [
+		"tsconfig.json"
+	],
+	"globalPassThroughEnv": [
+		"GITHUB_ACTIONS",
+		"CI"
+	]
+}",
+    "filename": "turbo.json",
+    "name": "turbo-root",
+  },
+]
+`;
+
+exports[`template snapshots > turbo: workspace with task overrides 1`] = `
+[
+  {
+    "content": "{
+	"extends": [
+		"//"
+	],
+	"tasks": {
+		"build:dev": {
+			"cache": true,
+			"dependsOn": [
+				"types:check"
+			],
+			"outputLogs": "errors-only",
+			"outputs": [
+				"dist/dev/**",
+				".rslib/declarations/dev/**"
+			]
+		}
+	}
+}",
+    "filename": "turbo.json",
+    "name": "turbo-workspace",
+  },
+]
+`;
+
+exports[`template snapshots > vscode: all features enabled 1`] = `
+[
+  {
+    "content": "{
+	"editor.formatOnSave": true,
+	"eslint.enable": false,
+	"prettier.enable": false,
+	"biome.enabled": true,
+	"biome.requireConfiguration": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.ts": "explicit",
+		"source.organizeImports.biome": "explicit",
+		"source.fixAll.biome": "explicit"
+	},
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/dist": true,
+		"**/.rslib": true,
+		"**/*.tsbuildinfo": true,
+		"**/.vitest": true,
+		"**/.coverage": true,
+		"**/.turbo": true
+	},
+	"files.exclude": {
+		"**/node_modules": true,
+		"**/dist": true,
+		"**/.rslib": true,
+		"**/*.tsbuildinfo": true,
+		"**/.vitest": true,
+		"**/.coverage": true,
+		"**/.turbo": true
+	}
+}",
+    "filename": ".vscode/settings.json",
+    "name": "vscode-settings",
+  },
+  {
+    "content": "{
+	"recommendations": [
+		"Anthropic.claude-code",
+		"biomejs.biome",
+		"eamodio.gitlens",
+		"vitest.explorer"
+	]
+}",
+    "filename": ".vscode/extensions.json",
+    "name": "vscode-extensions",
+  },
+]
+`;
+
+exports[`template snapshots > workspace: full pnpm workspace with all features 1`] = `
+[
+  {
+    "content": "{
+	"name": "savvy-web-systems",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"packageManager": "pnpm@10.33.0",
+	"engines": {
+		"node": ">=24.11.0"
+	}
+}",
+    "filename": "package.json",
+    "name": "package-json",
+  },
+  {
+    "content": "{}",
+    "filename": "tsconfig.json",
+    "name": "tsconfig",
+  },
+  {
+    "content": "# OS files
+**/.DS_Store
+
+# Node.js
+**/node_modules
+**/*.tsbuildinfo*
+
+# Build artifacts
+**/dist
+**/.rslib
+**/.turbo
+**/*.api.json
+
+# Test artifacts
+**/.coverage
+**/.vitest
+
+# Release artifacts
+pnpm-publish-summary.json
+pnpm-release.json
+.changeset/status.json
+
+# Private keys
+**/*.asc
+
+# AI agent settings
+.mcp.json
+
+# Environment files
+**/.env
+**/.env.*
+",
+    "filename": ".gitignore",
+    "name": "gitignore",
+  },
+  {
+    "content": "# savvy-web-systems
+",
+    "filename": "README.md",
+    "name": "readme",
+  },
+  {
+    "content": "packages:
+  - packages/*
+autoInstallPeers: true
+",
+    "filename": "pnpm-workspace.yaml",
+    "name": "pnpm-workspace",
+  },
+  {
+    "content": "{
+	"$schema": "https://biomejs.dev/schemas/2.3.3/schema.json",
+	"root": true
+}",
+    "filename": "biome.jsonc",
+    "name": "biome",
+  },
+  {
+    "content": "{
+	"$schema": "https://turborepo.com/schema.v2.json",
+	"tasks": {
+		"build": {
+			"dependsOn": [
+				"^build"
+			],
+			"outputs": [
+				"dist/**"
+			]
+		},
+		"test": {
+			"dependsOn": [
+				"build"
+			]
+		},
+		"types:check": {
+			"cache": true,
+			"outputLogs": "errors-only"
+		}
+	},
+	"globalPassThroughEnv": [
+		"CI",
+		"GITHUB_ACTIONS"
+	]
+}",
+    "filename": "turbo.json",
+    "name": "turbo-root",
+  },
+  {
+    "content": "{
+	"$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+	"changelog": "@savvy-web/changesets/changelog",
+	"commit": false,
+	"fixed": [],
+	"linked": [],
+	"access": "restricted",
+	"baseBranch": "main",
+	"updateInternalDependencies": "patch",
+	"privatePackages": {
+		"version": true,
+		"tag": false
+	},
+	"ignore": []
+}",
+    "filename": ".changeset/config.json",
+    "name": "changeset",
+  },
+  {
+    "content": "{
+	"editor.formatOnSave": true,
+	"eslint.enable": false,
+	"prettier.enable": false,
+	"biome.enabled": true,
+	"biome.requireConfiguration": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.ts": "explicit",
+		"source.organizeImports.biome": "explicit",
+		"source.fixAll.biome": "explicit"
+	},
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/dist": true,
+		"**/.rslib": true,
+		"**/*.tsbuildinfo": true,
+		"**/.vitest": true,
+		"**/.coverage": true,
+		"**/.turbo": true
+	},
+	"files.exclude": {
+		"**/node_modules": true,
+		"**/dist": true,
+		"**/.rslib": true,
+		"**/*.tsbuildinfo": true,
+		"**/.vitest": true,
+		"**/.coverage": true,
+		"**/.turbo": true
+	}
+}",
+    "filename": ".vscode/settings.json",
+    "name": "vscode-settings",
+  },
+  {
+    "content": "{
+	"recommendations": []
+}",
+    "filename": ".vscode/extensions.json",
+    "name": "vscode-extensions",
+  },
+]
+`;
+
+exports[`template snapshots > workspace: minimal npm project 1`] = `
+[
+  {
+    "content": "{
+	"name": "simple-project",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"packageManager": "npm@10.9.2",
+	"engines": {
+		"node": ">=24.11.0"
+	}
+}",
+    "filename": "package.json",
+    "name": "package-json",
+  },
+  {
+    "content": "{}",
+    "filename": "tsconfig.json",
+    "name": "tsconfig",
+  },
+  {
+    "content": "# OS files
+**/.DS_Store
+
+# Node.js
+**/node_modules
+**/*.tsbuildinfo*
+
+# Build artifacts
+**/dist
+**/.rslib
+**/.turbo
+**/*.api.json
+
+# Test artifacts
+**/.coverage
+**/.vitest
+
+# Environment files
+**/.env
+**/.env.*
+",
+    "filename": ".gitignore",
+    "name": "gitignore",
+  },
+  {
+    "content": "# simple-project
+",
+    "filename": "README.md",
+    "name": "readme",
+  },
+]
+`;

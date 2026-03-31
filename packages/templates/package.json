@@ -1,0 +1,67 @@
+{
+	"name": "@savvy-web/templates",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Pure TypeScript templates for Silk Suite project scaffolding",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/templates",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/templates"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build": "turbo run build:dev build:prod --log-order=grouped",
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"js-yaml": "^4.1.1",
+		"sort-package-json": "^3.6.1"
+	},
+	"devDependencies": {
+		"@savvy-web/rslib-builder": "^0.19.1",
+		"@savvy-web/vitest": "^1.2.1",
+		"@types/js-yaml": "^4.0.9",
+		"@types/node": "catalog:silk",
+		"effect": "catalog:silk"
+	},
+	"peerDependencies": {
+		"effect": "catalog:silkPeers"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}
