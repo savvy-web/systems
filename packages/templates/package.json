@@ -35,7 +35,7 @@
 	},
 	"devDependencies": {
 		"@savvy-web/rslib-builder": "^0.19.1",
-		"@savvy-web/vitest": "^1.2.1",
+		"@savvy-web/vitest": "^1.2.2",
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:silk"
