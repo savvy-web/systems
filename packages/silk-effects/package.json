@@ -37,7 +37,7 @@
 		"yaml-effect": "^0.2.3"
 	},
 	"devDependencies": {
-		"@savvy-web/rslib-builder": "^0.19.1",
+		"@savvy-web/rslib-builder": "^0.20.0",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:silk"
 	},
