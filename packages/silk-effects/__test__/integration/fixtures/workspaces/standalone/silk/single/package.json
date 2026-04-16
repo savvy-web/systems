@@ -1,0 +1,9 @@
+{
+	"name": "silk-standalone-pkg",
+	"version": "1.0.0",
+	"private": true,
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/npm"
+	}
+}

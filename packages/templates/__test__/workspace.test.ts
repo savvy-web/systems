@@ -88,6 +88,7 @@ describe("workspace template", () => {
 			packageManagerVersion: "10.33.0",
 			nodeVersion: "24.11.0",
 		});
+		// biome-ignore lint/style/noNonNullAssertion: asserted defined on previous line
 		const pkgEntry = result.find((e) => e.name === "package-json")!;
 		const pkg = JSON.parse(pkgEntry.content);
 		expect(pkg.packageManager).toContain("pnpm@10.33.0");
@@ -95,7 +96,9 @@ describe("workspace template", () => {
 	});
 
 	it("requires all mandatory fields", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createWorkspace({} as any)).toThrow();
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createWorkspace({ name: "test" } as any)).toThrow();
 	});
 });

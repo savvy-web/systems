@@ -1,0 +1,8 @@
+{
+	"name": "@scope/ignored-pkg",
+	"version": "1.0.0",
+	"private": true,
+	"publishConfig": {
+		"access": "public"
+	}
+}

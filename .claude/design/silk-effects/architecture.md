@@ -5,7 +5,7 @@ module: silk-effects
 category: architecture
 status: current
 completeness: 95
-last-synced: 2026-03-29
+last-synced: 2026-04-15
 depends-on: []
 ---
 
@@ -19,6 +19,7 @@ depends-on: []
 - [Tagged Enum Patterns](#tagged-enum-patterns)
 - [Dependencies](#dependencies)
 - [Consumer Guide](#consumer-guide)
+- [Testing Strategy](#testing-strategy)
 - [Rationale](#rationale)
 
 ## Overview
@@ -43,12 +44,14 @@ implemented with full test coverage:
 
 | Area | Files | Tests |
 | ---- | ----- | ----- |
-| Errors | `errors/*.ts` (13 error classes) | co-located `.test.ts` |
-| Schemas | `schemas/*.ts` (12 schema files) | co-located `.test.ts` |
-| Services | `services/*.ts` (9 services) | co-located `.test.ts` |
-| Utils | `utils/ToolCommand.ts` | co-located `.test.ts` |
+| Errors | `errors/*.ts` (14 error classes) | `__test__/errors/` |
+| Schemas | `schemas/*.ts` (13 schema files) | `__test__/schemas/` |
+| Services | `services/*.ts` (10 services) | `__test__/services/` |
+| Utils | `utils/ToolCommand.ts` | `__test__/utils/` |
 
-Total: 243 tests across 19 test files, all co-located with source.
+Tests live in a dedicated `__test__/` directory (22 test files, 105 fixture files)
+mirroring the source structure. Integration tests with real filesystem fixtures live
+in `__test__/integration/`.
 
 **Single root export:** All public API is exported from the package root (`"."`). There are no
 sub-path exports (`./publish`, `./hooks`, etc.). Consumers import everything from
@@ -67,10 +70,19 @@ src/
   schemas/              ← Schema.TaggedClass / Schema.Class value objects and enums
   services/             ← Context.Tag services with Live layers
   utils/                ← helpers (ToolCommand wrapper)
+
+__test__/
+  errors/               ← error class tests
+  schemas/              ← schema/value object tests
+  services/             ← service tests
+  utils/                ← utility tests
+  integration/          ← integration tests with real filesystem
+    fixtures/workspaces/  ← workspace fixture tree (see Testing Strategy)
 ```
 
-Tests are co-located with source (`*.test.ts` next to `*.ts`), not in a
-separate `__test__` directory.
+Tests were moved from co-located (`*.test.ts` next to `*.ts`) to a dedicated
+`__test__/` directory that mirrors the source layout. This enables Vitest
+auto-discovery and cleanly separates source from test code.
 
 ### Publish (TargetResolver, SilkPublishabilityPlugin)
 
@@ -312,6 +324,119 @@ ToolCommand (class)
 
 Returned by `ResolvedTool.exec()` and `ResolvedTool.dlx()`.
 
+### Workspace Analysis (SilkWorkspaceAnalyzer)
+
+Composite service that orchestrates full workspace analysis — discovering packages,
+detecting publishability, computing versioning/tag strategies, and wiring up
+fixed/linked release groups.
+
+#### SilkPublishConfig
+
+Extends upstream `PublishConfig` from `workspaces-effect` with the Silk `targets`
+extension for multi-registry publishing, using Schema's `.extend()` API:
+
+```text
+SilkPublishConfig extends PublishConfig
+  targets: optional Array<PublishTargetShorthand | PublishTargetObject>
+```
+
+#### Value Objects
+
+```text
+AnalyzedWorkspace (Schema.TaggedClass)
+  name: string
+  version: { current: string }
+  path: string
+  root: boolean
+  publishConfig: SilkPublishConfig | null
+  publishable: boolean
+  targets: Array<ResolvedTarget>
+  versioned: boolean
+  tagged: boolean
+  released: boolean
+  linked: Array<AnalyzedWorkspace>     (circular ref via Schema.suspend)
+  fixed: Array<AnalyzedWorkspace>      (circular ref via Schema.suspend)
+
+  ── get isRoot / isPublishable / isReleasable / isFixed / isLinked → boolean
+  ── publishesTo(registry) → boolean
+  ── hasTarget("npm" | "github" | "jsr") → boolean
+  ── targetFor(registry) → Option<ResolvedTarget>
+  ── toString() → "name@version"
+  ── toJSON() → plain object (omits linked/fixed to avoid cycles)
+  ── Equal/Hash on name + path
+  ── static: publishable, releasable (array filters)
+  ── static: findByName (dual-API: data-first and data-last)
+  ── static: pretty (via Pretty.make)
+
+WorkspaceAnalysis (Schema.TaggedClass)
+  root: string
+  runtime: "node" | "bun"
+  packageManager: { type: "npm" | "pnpm" | "yarn" | "bun", version?: string }
+  workspaces: Array<AnalyzedWorkspace>
+  changesetConfig: ChangesetConfig | SilkChangesetConfig | null
+  versioning: VersioningStrategyResult | null
+  tagStrategy: "single" | "scoped" | null
+
+  ── findWorkspace(name) → Option<AnalyzedWorkspace>
+  ── get rootWorkspace → AnalyzedWorkspace
+  ── get publishableWorkspaces / versionedWorkspaces / taggedWorkspaces
+       / releasableWorkspaces → ReadonlyArray<AnalyzedWorkspace>
+  ── get isSilk → boolean (checks changesetConfig._isSilk)
+  ── get hasChangesets → boolean (changesetConfig != null)
+  ── Equal/Hash on root
+  ── static: pretty (via Pretty.make)
+```
+
+#### Service
+
+```text
+SilkWorkspaceAnalyzer (Context.Tag)
+  analyze(root: string) → Effect<WorkspaceAnalysis, WorkspaceAnalysisError>
+```
+
+#### Live Layer
+
+```text
+SilkWorkspaceAnalyzerLive
+  Requires:
+    FileSystem, WorkspaceDiscovery, PackageManagerDetector,
+    SilkPublishabilityPlugin, ChangesetConfigReader,
+    VersioningStrategy, TagStrategy
+```
+
+The live layer orchestrates a 9-step pipeline:
+
+1. Detect package manager and runtime
+2. Discover workspace packages
+3. Read changeset config (optional)
+4. For each package: read raw `package.json`, detect publishability via
+   `SilkPublishabilityPlugin`, compute release status
+5. Wire up fixed/linked group cross-references (in-place mutation)
+6. Compute versioning strategy
+7. Determine tag strategy
+8. Build final `WorkspaceAnalysis`
+
+#### Release Status Computation
+
+The `computeReleaseStatus` function determines `versioned`, `tagged`, and `released`
+flags per-package based on the changeset config:
+
+- **No changesets config:** all flags `false`
+- **Package in `ignore` list:** all flags `false`
+- **Publishable package** (public or private with publishConfig.access): all flags `true`
+- **Truly private package** (no publish targets): consults `privatePackages` config
+  - `undefined` → all `false`
+  - `false` → all `false` (completely ignored)
+  - `{ version, tag }` → flags match config; `released = versioned && tagged`
+
+#### ChangesetConfig
+
+`ChangesetConfig` is extended to cover the full `@changesets/config@3.1.1` upstream
+spec, including all optional fields: `changelog`, `commit`, `fixed`, `linked`,
+`access`, `baseBranch`, `updateInternalDependencies`, `ignore`, `privatePackages`,
+`prettier`, `changedFilePatterns`, `bumpVersionsWithWorkspaceProtocolOnly`, and
+`snapshot` (with `useCalculatedVersion` and `prereleaseTemplate`).
+
 ## Service Patterns
 
 All services follow the same Effect-TS patterns:
@@ -421,6 +546,12 @@ Tagged enums used in this package:
 
 - `ToolDiscovery` / `ToolDiscoveryLive`
 
+**Composite modules (FileSystem + multiple upstream services):**
+
+- `SilkWorkspaceAnalyzer` / `SilkWorkspaceAnalyzerLive`
+  Depends on: `FileSystem`, `WorkspaceDiscovery`, `PackageManagerDetector`,
+  `SilkPublishabilityPlugin`, `ChangesetConfigReader`, `VersioningStrategy`, `TagStrategy`
+
 **Pure modules (no platform requirements):**
 
 - `TargetResolver` / `TargetResolverLive`
@@ -501,6 +632,91 @@ const result = await Effect.runPromise(
 );
 ```
 
+## Testing Strategy
+
+### Directory Layout
+
+Tests live in `__test__/` mirroring the source tree:
+
+```text
+__test__/
+  errors/
+    SectionErrors.test.ts
+    ToolErrors.test.ts
+  schemas/
+    PublishabilitySchemas.test.ts
+    ResolvedTool.test.ts
+    SectionBlock.test.ts
+    SectionDefinition.test.ts
+    SectionResults.test.ts
+    ToolDefinition.test.ts
+    ToolResults.test.ts
+    WorkspaceAnalysisSchemas.test.ts
+  services/
+    BiomeSchemaSync.test.ts
+    ChangesetConfigReader.test.ts
+    ConfigDiscovery.test.ts
+    ManagedSection.test.ts
+    SilkPublishabilityPlugin.test.ts
+    TagStrategy.test.ts
+    TargetResolver.test.ts
+    ToolDiscovery.test.ts
+    VersioningStrategy.test.ts
+  utils/
+    ToolCommand.test.ts
+  integration/
+    ManagedSection.int.test.ts
+    SilkWorkspaceAnalyzer.int.test.ts
+    fixtures/workspaces/
+      standalone/{default,silk}/
+      node/{pnpm,npm,yarn}/{default,silk}/
+      bun/{default,silk}/
+```
+
+### Fixture Tree
+
+Integration tests use a hierarchical fixture tree organized by runtime, package
+manager, and Silk vs. default configuration:
+
+```text
+fixtures/workspaces/
+  standalone/
+    default/     custom-registry, multi-target, not-publishable, npm-target, private
+    silk/        single
+  node/
+    pnpm/
+      default/   basic, explicit-paths, monorepo, multi-root, nested-globs, root-as-package
+      silk/      fixed-group, ignored, independent, linked, multi-fixed,
+                 private-not-versioned, private-versioned-only,
+                 private-versioned-tagged, single
+    npm/
+      default/   basic, object-form
+      silk/      basic
+    yarn/
+      default/   basic
+      silk/      basic
+  bun/
+    default/     basic
+    silk/        basic
+```
+
+105 fixture files cover publishConfig permutations, workspace patterns, changeset
+configs, fixed/linked groups, private package handling, and multi-registry targets.
+
+### Test Approaches
+
+- **Unit tests** (schemas, errors, utils): Verify construction, encoding/decoding,
+  Equal/Hash semantics, getters, and static methods.
+- **Property-based tests**: Use `fast-check` to lock down class invariants (e.g.
+  `AnalyzedWorkspace` Equal/Hash consistency, `findByName` behavior) independent
+  of implementation details.
+- **Service tests**: Provide mock layers and verify service contract behavior.
+- **Integration tests**: Run `SilkWorkspaceAnalyzer.analyze` against real fixture
+  directories using `@effect/platform-node` filesystem. Catches schema decode issues
+  and service composition errors that unit tests miss.
+- **Pretty printing**: `Pretty.make` is wired on `AnalyzedWorkspace` and
+  `WorkspaceAnalysis` for debugging and test output readability.
+
 ## Rationale
 
 ### Why platform-agnostic?
@@ -547,3 +763,35 @@ experience.
 `ChangesetConfig` matches the upstream `@changesets/types` spec so the module works with
 any changesets project. `SilkChangesetConfig` extends it for Silk-specific features without
 breaking compatibility.
+
+### Why `__test__/` directory?
+
+Vitest auto-discovers test files by pattern matching. A dedicated `__test__/` directory
+provides clean separation of source and test code, avoids test files appearing in editor
+file explorers alongside source, and allows the test tree to mirror the source tree for
+easy navigation. The build pipeline excludes `__test__/` without needing per-file
+`*.test.ts` exclusion patterns.
+
+### Why composite SilkWorkspaceAnalyzer?
+
+Workspace analysis requires coordinating seven services in a specific order with
+error mapping between service boundaries. A single composite service provides one
+entry point for consumers who need a full workspace picture, hiding the orchestration
+complexity. Individual services remain available for consumers who only need one
+piece (e.g. just publishability or just tag strategy).
+
+### Why fixture-driven integration tests?
+
+Schema decode errors, service composition bugs, and filesystem edge cases only
+surface when running against real directory structures. The fixture tree captures
+real-world workspace layouts (pnpm with fixed groups, npm with object-form
+workspaces, bun monorepos, standalone projects) that exercise the full analysis
+pipeline end-to-end. Fixtures are cheap to add and serve as living documentation
+of supported workspace patterns.
+
+### Why property-based tests?
+
+Class invariants (Equal/Hash consistency, static filter methods, dual-API
+behavior) must hold for all inputs, not just hand-picked examples. Property-based
+tests with fast-check lock down these invariants independent of implementation
+changes, catching edge cases that example-based tests miss.

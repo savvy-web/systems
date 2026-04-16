@@ -94,10 +94,12 @@ describe("package-json template", () => {
 	});
 
 	it("rejects invalid options via Schema", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createPackageJson({} as any)).toThrow();
 	});
 
 	it("validates type field", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createPackageJson({ name: "test", type: "invalid" as any })).toThrow();
 	});
 

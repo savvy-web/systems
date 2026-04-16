@@ -24,6 +24,7 @@ describe("readme template", () => {
 	});
 
 	it("requires name", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createReadme({} as any)).toThrow();
 	});
 });

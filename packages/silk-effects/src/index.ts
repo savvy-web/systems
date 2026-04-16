@@ -23,6 +23,7 @@ export { ToolNotFoundError } from "./errors/ToolNotFoundError.js";
 export { ToolResolutionError } from "./errors/ToolResolutionError.js";
 export { ToolVersionMismatchError } from "./errors/ToolVersionMismatchError.js";
 export { VersioningDetectionError } from "./errors/VersioningDetectionError.js";
+export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
 
 // ── Schemas ────────────────────────────────────────────────────
 export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
@@ -61,12 +62,14 @@ export type {
 	VersioningStrategyResult,
 	VersioningStrategyType,
 } from "./schemas/VersioningSchemas.js";
+export { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "./schemas/WorkspaceAnalysisSchemas.js";
 // ── Services ───────────────────────────────────────────────────
 export { BiomeSchemaSync, BiomeSchemaSyncLive, buildSchemaUrl, extractSemver } from "./services/BiomeSchemaSync.js";
 export { ChangesetConfigReader, ChangesetConfigReaderLive } from "./services/ChangesetConfigReader.js";
 export { ConfigDiscovery, ConfigDiscoveryLive } from "./services/ConfigDiscovery.js";
 export { ManagedSection, ManagedSectionLive } from "./services/ManagedSection.js";
 export { SilkPublishabilityPlugin, SilkPublishabilityPluginLive } from "./services/SilkPublishabilityPlugin.js";
+export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/SilkWorkspaceAnalyzer.js";
 export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";
 export { TargetResolver, TargetResolverLive } from "./services/TargetResolver.js";
 export { ToolDiscovery, ToolDiscoveryLive } from "./services/ToolDiscovery.js";

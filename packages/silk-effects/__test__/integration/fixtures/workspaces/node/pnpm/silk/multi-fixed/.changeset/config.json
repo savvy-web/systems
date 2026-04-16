@@ -1,0 +1,11 @@
+{
+	"$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+	"changelog": ["@savvy-web/changesets/changelog", { "repo": "scope/silk-multi-fixed-monorepo" }],
+	"commit": false,
+	"access": "public",
+	"baseBranch": "main",
+	"updateInternalDependencies": "patch",
+	"ignore": [],
+	"fixed": [["@scope/group1-a", "@scope/group1-b"], ["@scope/group2-a", "@scope/group2-b"]],
+	"linked": []
+}

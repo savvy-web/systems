@@ -1,0 +1,8 @@
+{
+	"name": "@scope/lib-custom",
+	"version": "1.0.0",
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://custom.registry.com/"
+	}
+}

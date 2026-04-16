@@ -1,7 +1,40 @@
 import { Schema } from "effect";
 
 /**
- * Standard changesets configuration matching the `@changesets/types` upstream spec.
+ * Configuration for how private packages are handled during versioning.
+ *
+ * @remarks
+ * When set to `false`, private packages are completely ignored.
+ * When set to an object, `tag` and `version` control whether private packages
+ * receive git tags and version bumps respectively.
+ *
+ * @since 0.2.0
+ */
+const PrivatePackagesConfig = Schema.Union(
+	Schema.Struct({
+		tag: Schema.optional(Schema.Boolean),
+		version: Schema.optional(Schema.Boolean),
+	}),
+	Schema.Literal(false),
+);
+
+/**
+ * Snapshot release configuration for changesets.
+ *
+ * @remarks
+ * Controls how snapshot versions are generated.
+ * `useCalculatedVersion` prepends the calculated version to the snapshot tag.
+ * `prereleaseTemplate` is a custom template string for snapshot version format.
+ *
+ * @since 0.2.0
+ */
+const SnapshotConfig = Schema.Struct({
+	useCalculatedVersion: Schema.optional(Schema.Boolean),
+	prereleaseTemplate: Schema.optional(Schema.String),
+});
+
+/**
+ * Standard changesets configuration matching the `@changesets/config@3.1.1` spec.
  *
  * @remarks
  * Represents the parsed `.changeset/config.json` file. All fields are optional
@@ -10,16 +43,21 @@ import { Schema } from "effect";
  *
  * @since 0.1.0
  */
-// Standard changesets config (matches @changesets/types upstream spec)
+// Standard changesets config (matches @changesets/config@3.1.1 upstream spec)
 export const ChangesetConfig = Schema.Struct({
-	changelog: Schema.optional(Schema.Union(Schema.String, Schema.Array(Schema.Unknown))),
-	commit: Schema.optional(Schema.Boolean),
+	changelog: Schema.optional(Schema.Union(Schema.String, Schema.Array(Schema.Unknown), Schema.Literal(false))),
+	commit: Schema.optional(Schema.Union(Schema.Boolean, Schema.String, Schema.Array(Schema.Unknown))),
 	fixed: Schema.optional(Schema.Array(Schema.Array(Schema.String))),
 	linked: Schema.optional(Schema.Array(Schema.Array(Schema.String))),
 	access: Schema.optional(Schema.Literal("public", "restricted")),
 	baseBranch: Schema.optional(Schema.String),
 	updateInternalDependencies: Schema.optional(Schema.Literal("patch", "minor", "major")),
 	ignore: Schema.optional(Schema.Array(Schema.String)),
+	privatePackages: Schema.optional(PrivatePackagesConfig),
+	prettier: Schema.optional(Schema.Boolean),
+	changedFilePatterns: Schema.optional(Schema.Array(Schema.String)),
+	bumpVersionsWithWorkspaceProtocolOnly: Schema.optional(Schema.Boolean),
+	snapshot: Schema.optional(SnapshotConfig),
 });
 /** @since 0.1.0 */
 export type ChangesetConfig = typeof ChangesetConfig.Type;

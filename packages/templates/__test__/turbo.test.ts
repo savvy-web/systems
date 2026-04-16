@@ -39,6 +39,7 @@ describe("turbo root template", () => {
 	});
 
 	it("requires tasks", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createTurboRoot({} as any)).toThrow();
 	});
 });

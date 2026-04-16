@@ -34,6 +34,7 @@ describe("biome template", () => {
 	});
 
 	it("requires version", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createBiome({} as any)).toThrow();
 	});
 });
