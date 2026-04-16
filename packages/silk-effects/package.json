@@ -30,18 +30,21 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
-		"@effect/platform": "catalog:silk",
 		"jsonc-effect": "^0.2.1",
 		"semver-effect": "^0.2.1",
-		"workspaces-effect": "^0.3.0",
+		"workspaces-effect": "^0.4.1",
 		"yaml-effect": "^0.2.3"
 	},
 	"devDependencies": {
+		"@effect/platform": "catalog:silk",
+		"@effect/platform-node": "catalog:silk",
 		"@savvy-web/rslib-builder": "^0.20.1",
 		"@types/node": "catalog:silk",
-		"effect": "catalog:silk"
+		"effect": "catalog:silk",
+		"fast-check": "^4.6.0"
 	},
 	"peerDependencies": {
+		"@effect/platform": "catalog:silkPeers",
 		"effect": "catalog:silkPeers"
 	},
 	"publishConfig": {

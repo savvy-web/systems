@@ -1,0 +1,12 @@
+{
+	"name": "@scope/lib-multi",
+	"version": "1.0.0",
+	"private": true,
+	"publishConfig": {
+		"access": "public",
+		"targets": [
+			"npm",
+			"github"
+		]
+	}
+}

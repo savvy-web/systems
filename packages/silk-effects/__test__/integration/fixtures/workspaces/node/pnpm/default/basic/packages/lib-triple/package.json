@@ -1,0 +1,13 @@
+{
+	"name": "@scope/lib-triple",
+	"version": "1.0.0",
+	"private": true,
+	"publishConfig": {
+		"access": "public",
+		"targets": [
+			"npm",
+			"github",
+			"jsr"
+		]
+	}
+}

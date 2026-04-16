@@ -1,0 +1,15 @@
+{
+	"$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+	"changelog": ["@savvy-web/changesets/changelog", { "repo": "scope/silk-single-monorepo" }],
+	"commit": false,
+	"access": "public",
+	"baseBranch": "main",
+	"updateInternalDependencies": "patch",
+	"ignore": [],
+	"fixed": [],
+	"linked": [],
+	"privatePackages": {
+		"tag": true,
+		"version": true
+	}
+}

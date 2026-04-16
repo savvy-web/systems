@@ -1,0 +1,8 @@
+{
+  "name": "two",
+  "version": "1.0.0",
+  "description": "This is the second package in the monorepo, with no publishConfig (public)",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -40,9 +40,9 @@ Design docs live in `.claude/design/` (tracked):
 → `@./.claude/design/silk-effects/architecture.md`
 
 Load when working on silk-effects, implementing new services, or onboarding
-consumer repos. Covers role-based folder layout, single root export, all 9
-services, value object patterns, and the v0.2.0 ManagedSection + ToolDiscovery
-redesigns.
+consumer repos. Covers role-based folder layout, single root export, all 10
+services, value object patterns, the v0.2.0 ManagedSection + ToolDiscovery
+redesigns, and the SilkWorkspaceAnalyzer composite service.
 
 **templates architecture, template inventory, and design decisions:**
 → `@./.claude/design/templates/architecture.md`

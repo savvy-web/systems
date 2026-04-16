@@ -43,6 +43,7 @@ describe("pnpm workspace template", () => {
 	});
 
 	it("requires packages", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: intentionally passing invalid input to test schema validation
 		expect(() => createPnpmWorkspace({} as any)).toThrow();
 	});
 });

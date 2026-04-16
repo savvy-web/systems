@@ -1,7 +1,7 @@
 import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
 
 export default NodeLibraryBuilder.create({
-	externals: ["effect"],
+	externals: ["effect", "@effect/platform"],
 	apiModel: {
 		suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }],
 		tsdoc: {
