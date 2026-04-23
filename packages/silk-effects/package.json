@@ -38,7 +38,7 @@
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
-		"@savvy-web/rslib-builder": "^0.20.1",
+		"@savvy-web/rslib-builder": "^0.20.2",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:silk",
 		"fast-check": "^4.6.0"
