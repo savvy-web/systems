@@ -33,7 +33,7 @@
 		"jsonc-effect": "^0.2.1",
 		"semver-effect": "^0.2.1",
 		"workspaces-effect": "^0.4.1",
-		"yaml-effect": "^0.2.3"
+		"yaml-effect": "^0.6.0"
 	},
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",
@@ -41,7 +41,7 @@
 		"@savvy-web/rslib-builder": "^0.20.4",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:silk",
-		"fast-check": "^4.6.0"
+		"fast-check": "^4.8.0"
 	},
 	"peerDependencies": {
 		"@effect/platform": "catalog:silkPeers",
