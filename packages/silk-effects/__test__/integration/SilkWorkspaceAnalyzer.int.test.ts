@@ -13,10 +13,8 @@ import {
 } from "workspaces-effect";
 import type { AnalyzedWorkspace } from "../../src/schemas/WorkspaceAnalysisSchemas.js";
 import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
-import { SilkPublishabilityPluginLive } from "../../src/services/SilkPublishabilityPlugin.js";
 import { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "../../src/services/SilkWorkspaceAnalyzer.js";
 import { TagStrategyLive } from "../../src/services/TagStrategy.js";
-import { TargetResolverLive } from "../../src/services/TargetResolver.js";
 import { VersioningStrategyLive } from "../../src/services/VersioningStrategy.js";
 
 // ---------------------------------------------------------------------------
@@ -53,8 +51,6 @@ const makeTestLayer = (fixturePath: string, pmLayer?: Layer.Layer<PackageManager
 
 	const pm = pmLayer ?? PackageManagerDetectorLive.pipe(Layer.provide(platform));
 
-	const publishability = SilkPublishabilityPluginLive.pipe(Layer.provide(TargetResolverLive));
-
 	const changesetReader = ChangesetConfigReaderLive.pipe(Layer.provide(platform));
 
 	const versioning = VersioningStrategyLive.pipe(Layer.provide(changesetReader));
@@ -63,9 +59,7 @@ const makeTestLayer = (fixturePath: string, pmLayer?: Layer.Layer<PackageManager
 	const topoSorter = TopologicalSorterLive.pipe(Layer.provide(depGraph));
 
 	return SilkWorkspaceAnalyzerLive.pipe(
-		Layer.provide(
-			Layer.mergeAll(platform, discovery, topoSorter, pm, publishability, changesetReader, versioning, TagStrategyLive),
-		),
+		Layer.provide(Layer.mergeAll(platform, discovery, topoSorter, pm, changesetReader, versioning, TagStrategyLive)),
 	);
 };
 
@@ -111,7 +105,7 @@ describe("SilkWorkspaceAnalyzer integration", () => {
 				expect(ws.released).toBe(false);
 			});
 
-			it("not-publishable: public package without publishConfig", async () => {
+			it("not-publishable: public package without publishConfig is publishable by canonical silk rule", async () => {
 				const root = fixtureRoot("standalone/default/not-publishable");
 				const result = await analyze(root, mockPM("npm"));
 
@@ -119,8 +113,11 @@ describe("SilkWorkspaceAnalyzer integration", () => {
 
 				const ws = Option.getOrThrow(result.rootWorkspace);
 				expect(ws.name).toBe("not-publishable-pkg");
-				expect(ws.publishable).toBe(false);
-				expect(ws.targets).toHaveLength(0);
+				// Non-private, no publishConfig → canonical silk rule: default npm target
+				expect(ws.publishable).toBe(true);
+				expect(ws.targets).toHaveLength(1);
+				expect(ws.targets[0].registry).toBe("https://registry.npmjs.org/");
+				expect(ws.targets[0].access).toBe("public");
 			});
 
 			it("npm-target: publishable with default npm target", async () => {
@@ -134,7 +131,6 @@ describe("SilkWorkspaceAnalyzer integration", () => {
 				expect(ws.publishable).toBe(true);
 				expect(ws.targets).toHaveLength(1);
 				expect(ws.targets[0].registry).toBe("https://registry.npmjs.org/");
-				expect(ws.targets[0].protocol).toBe("npm");
 			});
 
 			it("multi-target: publishable with two object targets", async () => {
@@ -258,9 +254,9 @@ describe("SilkWorkspaceAnalyzer integration", () => {
 				expect(libCustom.targets).toHaveLength(1);
 				expect(libCustom.targets[0].registry).toBe("https://custom.registry.com/");
 
-				// @scope/lib-minimal: no private, no publishConfig → not publishable
+				// @scope/lib-minimal: no private, no publishConfig → canonical silk rule: default npm target
 				const libMinimal = Option.getOrThrow(result.findWorkspace("@scope/lib-minimal"));
-				expect(libMinimal.publishable).toBe(false);
+				expect(libMinimal.publishable).toBe(true);
 
 				// @scope/lib-link: private + access + linkDirectory → publishable
 				const libLink = Option.getOrThrow(result.findWorkspace("@scope/lib-link"));
@@ -669,9 +665,10 @@ describe("SilkWorkspaceAnalyzer integration", () => {
 			const root = fixtureRoot("node/pnpm/default/basic");
 			const result = await analyze(root);
 
-			// lib-npm, lib-multi, lib-triple, lib-objects, lib-custom, lib-link, app = 7 publishable
-			// root, internal, lib-minimal are NOT publishable
-			expect(result.publishableWorkspaces).toHaveLength(7);
+			// lib-npm, lib-multi, lib-triple, lib-objects, lib-custom, lib-link, app, lib-minimal = 8 publishable
+			// lib-minimal is non-private with no publishConfig → canonical silk rule: default npm target
+			// root (private, no publishConfig) and internal (private, no publishConfig) are NOT publishable
+			expect(result.publishableWorkspaces).toHaveLength(8);
 			expect(result.publishableWorkspaces.every((w) => w.publishable)).toBe(true);
 		});
 
