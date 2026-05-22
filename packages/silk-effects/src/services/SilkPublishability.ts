@@ -92,6 +92,8 @@ export class SilkPublishability {
 	static detect(pkgName: string, raw: RawPackageJson): ReadonlyArray<PublishTarget> {
 		const pc = raw.publishConfig;
 
+		// An explicitly empty `targets: []` is treated identically to a missing one — it falls
+		// through to the access/private branches rather than resolving to zero targets.
 		if (pc?.targets && pc.targets.length > 0) {
 			const results: PublishTarget[] = [];
 			for (const target of pc.targets) {
@@ -174,6 +176,9 @@ export class SilkPublishability {
 		return Effect.gen(function* () {
 			const discovery = yield* WorkspaceDiscovery;
 			const detector = yield* PublishabilityDetector;
+			// Discovery errors become defects (the `never` error channel): this resolver assumes a
+			// healthy workspace. Callers needing to recover from discovery failure should yield
+			// `WorkspaceDiscovery` directly rather than wrapping this in `Effect.catchAll`.
 			const packages = yield* discovery.listPackages().pipe(Effect.orDie);
 			const out: PublishablePackage[] = [];
 			for (const pkg of packages) {
