@@ -13,12 +13,10 @@
 export { BiomeSyncError } from "./errors/BiomeSyncError.js";
 export { ChangesetConfigError } from "./errors/ChangesetConfigError.js";
 export { ConfigNotFoundError } from "./errors/ConfigNotFoundError.js";
-export { PublishConfigError } from "./errors/PublishConfigError.js";
 export { SectionParseError } from "./errors/SectionParseError.js";
 export { SectionValidationError } from "./errors/SectionValidationError.js";
 export { SectionWriteError } from "./errors/SectionWriteError.js";
 export { TagFormatError } from "./errors/TagFormatError.js";
-export { TargetResolutionError } from "./errors/TargetResolutionError.js";
 export { ToolNotFoundError } from "./errors/ToolNotFoundError.js";
 export { ToolResolutionError } from "./errors/ToolResolutionError.js";
 export { ToolVersionMismatchError } from "./errors/ToolVersionMismatchError.js";
@@ -29,19 +27,6 @@ export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
 export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
 export type { CommentStyle } from "./schemas/CommentStyle.js";
 export type { ConfigDiscoveryOptions, ConfigLocation, ConfigSource } from "./schemas/ConfigDiscoverySchemas.js";
-export type {
-	AuthStrategy,
-	PublishProtocol,
-	PublishTarget,
-	PublishTargetObject,
-	PublishTargetShorthand,
-	ResolvedTarget,
-} from "./schemas/PublishabilitySchemas.js";
-export {
-	PublishTarget as PublishTargetSchema,
-	PublishTargetShorthand as PublishTargetShorthandSchema,
-	ResolvedTarget as ResolvedTargetSchema,
-} from "./schemas/PublishabilitySchemas.js";
 // ── Schemas (tools) ───────────────────────────────────────────
 export { ResolvedTool } from "./schemas/ResolvedTool.js";
 export { SectionBlock } from "./schemas/SectionBlock.js";
@@ -57,21 +42,32 @@ export type {
 } from "./schemas/ToolResults.js";
 export { ResolutionPolicy, SourceRequirement, ToolSource, VersionExtractor } from "./schemas/ToolResults.js";
 export type {
-	ChangesetConfig,
-	SilkChangesetConfig,
+	ChangesetConfigFile,
+	SilkChangesetConfigFile,
 	VersioningStrategyResult,
 	VersioningStrategyType,
 } from "./schemas/VersioningSchemas.js";
 export { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "./schemas/WorkspaceAnalysisSchemas.js";
 // ── Services ───────────────────────────────────────────────────
 export { BiomeSchemaSync, BiomeSchemaSyncLive, buildSchemaUrl, extractSemver } from "./services/BiomeSchemaSync.js";
+export type { ChangesetMode } from "./services/ChangesetConfig.js";
+export { ChangesetConfig, ChangesetConfigLive } from "./services/ChangesetConfig.js";
 export { ChangesetConfigReader, ChangesetConfigReaderLive } from "./services/ChangesetConfigReader.js";
 export { ConfigDiscovery, ConfigDiscoveryLive } from "./services/ConfigDiscovery.js";
 export { ManagedSection, ManagedSectionLive } from "./services/ManagedSection.js";
-export { SilkPublishabilityPlugin, SilkPublishabilityPluginLive } from "./services/SilkPublishabilityPlugin.js";
+export type {
+	PublishablePackage,
+	RawPackageJson,
+	RawPublishConfig,
+	RawTargetSpec,
+} from "./services/SilkPublishability.js";
+export {
+	PublishabilityDetectorAdaptiveLive,
+	SilkPublishability,
+	SilkPublishabilityDetectorLive,
+} from "./services/SilkPublishability.js";
 export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/SilkWorkspaceAnalyzer.js";
 export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";
-export { TargetResolver, TargetResolverLive } from "./services/TargetResolver.js";
 export { ToolDiscovery, ToolDiscoveryLive } from "./services/ToolDiscovery.js";
 export { VersioningStrategy, VersioningStrategyLive } from "./services/VersioningStrategy.js";
 

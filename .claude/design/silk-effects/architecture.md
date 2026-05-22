@@ -5,7 +5,7 @@ module: silk-effects
 category: architecture
 status: current
 completeness: 95
-last-synced: 2026-04-15
+last-synced: 2026-05-22
 depends-on: []
 ---
 
@@ -39,19 +39,16 @@ discovery, Biome schema synchronization, and CLI tool discovery.
 
 ## Current State
 
-v0.1.0 (branch: `feat/section-definition` adds v0.2.0 types/services) — all modules
-implemented with full test coverage:
+Published at v0.3.0; a pending minor changeset standardizes publishability on `workspaces-effect`'s `PublishTarget` and `PublishabilityDetector` (the `SilkPublishability` rules + `ChangesetConfig` accessor service, `@since 0.4.0`). All modules implemented with full test coverage:
 
-| Area | Files | Tests |
-| ---- | ----- | ----- |
-| Errors | `errors/*.ts` (14 error classes) | `__test__/errors/` |
-| Schemas | `schemas/*.ts` (13 schema files) | `__test__/schemas/` |
-| Services | `services/*.ts` (10 services) | `__test__/services/` |
+| Area | Source | Tests |
+| ---- | ------ | ----- |
+| Errors | `errors/*.ts` (one `Data.TaggedError` per file) | `__test__/errors/` |
+| Schemas | `schemas/*.ts` (value objects and enums) | `__test__/schemas/` |
+| Services | `services/*.ts` (`Context.Tag` services with Live layers) | `__test__/services/` |
 | Utils | `utils/ToolCommand.ts` | `__test__/utils/` |
 
-Tests live in a dedicated `__test__/` directory (22 test files, 105 fixture files)
-mirroring the source structure. Integration tests with real filesystem fixtures live
-in `__test__/integration/`.
+Tests live in a dedicated `__test__/` directory mirroring the source structure. Integration tests with real filesystem fixtures live in `__test__/integration/`.
 
 **Single root export:** All public API is exported from the package root (`"."`). There are no
 sub-path exports (`./publish`, `./hooks`, etc.). Consumers import everything from
@@ -84,57 +81,85 @@ Tests were moved from co-located (`*.test.ts` next to `*.ts`) to a dedicated
 `__test__/` directory that mirrors the source layout. This enables Vitest
 auto-discovery and cleanly separates source from test code.
 
-### Publish (TargetResolver, SilkPublishabilityPlugin)
+### Publish (SilkPublishability)
 
-Multi-registry target resolution and publishability detection.
+Silk publishability rules layered over `workspaces-effect`'s `PublishTarget` value object and `PublishabilityDetector` Context.Tag. The package no longer maintains its own resolved-target model: there is one canonical target shape (`PublishTarget` from `workspaces-effect`, fields `name`, `registry`, `directory`, `access`, `provenance`) and silk-effects supplies the silk *rule* for producing it. The `auth`/`tokenEnv`/OIDC token-resolution concern has moved out to consumers.
+
+`SilkPublishability` (`src/services/SilkPublishability.ts`) is an all-static class so the full rule surface is visible in one place:
 
 ```text
-PublishTarget (schema)          ResolvedTarget (schema)
-  string | object       →       { protocol, registry, directory,
-                                  access, provenance, tag, auth, tokenEnv }
-
-TargetResolver (service)
-  resolve(target) → ResolvedTarget[]
-
-SilkPublishabilityPlugin (service)
-  detect(pkgJson) → ResolvedTarget[]
-  Depends on: TargetResolver
+SilkPublishability (static class)
+  detect(pkgName, raw) → ReadonlyArray<PublishTarget>     pure, the silk targets-first rule
+  expandShorthand(target, parentRegistry) → string        shorthand/URL → registry URL
+  resolveTargetAccess(target, parentAccess) → access?      per-target access resolution
+  resolveTargets(pkg, root) → Effect<…, PublishabilityDetector | FileSystem>
+                                                           detector + private-dist build filter
+  listPublishable(root)  → Effect<…, WorkspaceDiscovery | PublishabilityDetector>
+                                                           discovery + detector
 ```
 
-**Shorthand expansion:**
+`resolveTargets` runs the configured `PublishabilityDetector`, then drops any target whose built `directory` package.json is `private: true` (the dist-output filter). `listPublishable` discovers packages and keeps those the detector reports as publishable.
 
-- `"npm"` → npmjs.org, OIDC auth
-- `"github"` → npm.pkg.github.com, token auth (`GITHUB_TOKEN`)
-- `"jsr"` → JSR, OIDC auth
-- `"https://..."` → custom registry, token auth (derived from hostname)
-- `{ protocol, registry, ... }` → pass-through with defaults
+`RawPackageJson`, `RawPublishConfig` and `RawTargetSpec` describe the unschematized `package.json`/`publishConfig` shape that `detect` consumes — silk rules read fields (notably `targets`) that the upstream `PublishConfig` schema strips. `PublishablePackage` is the discovery result shape.
 
-**Publishability rules:**
+**Detector layers** — both override the `workspaces-effect` `PublishabilityDetector` Tag:
 
-1. `private: true` + no `publishConfig` → not publishable
-2. No `publishConfig.access` and no `publishConfig.targets` → not publishable
-3. Has `publishConfig.targets` array → resolve each target
-4. Has `publishConfig.registry` → resolve single target
-5. Default → resolve `"npm"` shorthand
+```text
+SilkPublishabilityDetectorLive : Layer<PublishabilityDetector, never, FileSystem>
+  detect reads pkg.packageJsonPath and applies SilkPublishability.detect (silk rule only)
 
-### Versioning (ChangesetConfigReader, VersioningStrategy)
+PublishabilityDetectorAdaptiveLive : Layer<PublishabilityDetector, never, FileSystem | ChangesetConfig>
+  detect short-circuits to [] for changeset-ignored packages, then dispatches on
+  ChangesetConfig.mode: none → []; silk → SilkPublishability.detect;
+  vanilla → workspaces-effect PublishabilityDetectorLive
+```
 
-Changeset configuration reading with Silk detection, and versioning strategy determination.
+**Shorthand expansion** (`expandShorthand`):
+
+- `"npm"` → `https://registry.npmjs.org/`
+- `"github"` → `https://npm.pkg.github.com/`
+- `"jsr"` → `https://jsr.io/`
+- `"http(s)://…"` → verbatim
+- anything else → parent `publishConfig.registry`, else the npm default
+
+**Publishability rules** (`SilkPublishability.detect`, targets-first precedence):
+
+1. `publishConfig.targets` non-empty → one `PublishTarget` per target whose resolved access is `public`/`restricted`, regardless of `private`
+2. else `publishConfig.access` is `public`/`restricted` → one target
+3. else `private !== true` → one default npm target
+4. else → `[]`
+
+### Versioning (ChangesetConfigReader, ChangesetConfig, VersioningStrategy)
+
+Changeset configuration reading with Silk detection, a high-level config accessor, and versioning strategy determination.
 
 ```text
 ChangesetConfigReader (service)
-  read(root) → ChangesetConfig | SilkChangesetConfig
+  read(root) → ChangesetConfigFile | SilkChangesetConfigFile
   Depends on: FileSystem
 
+ChangesetConfig (service)
+  mode(root) → "silk" | "vanilla" | "none"
+  versionPrivate(root) → boolean
+  ignorePatterns(root) → ReadonlyArray<string>
+  isIgnored(name, root) → boolean
+  fixed(root) → ReadonlyArray<ReadonlyArray<string>>
+  static matches(name, pattern) → boolean      the one ignore matcher
+  Depends on: ChangesetConfigReader
+
 VersioningStrategy (service)
-  detect(publishablePackages) → VersioningStrategyResult
+  detect(publishablePackages, root) → VersioningStrategyResult
   Depends on: ChangesetConfigReader
 ```
 
+`ChangesetConfig` (`src/services/ChangesetConfig.ts`) is a per-root cached accessor over the reader. Every accessor is total (error channel `never`): a missing or unreadable config collapses to `mode: "none"` with empty/false defaults. The static `ChangesetConfig.matches` is the single ignore-pattern matcher used across the package — exact name match, or `@scope/*` wildcard (the kept prefix includes the trailing slash, so `@scope/*` matches `@scope/anything` but not the bare `@scope`).
+
+**Schema vs service naming:** the bare name `ChangesetConfig` is now the *service*. The decoded config *schema* types were renamed to `ChangesetConfigFile` / `SilkChangesetConfigFile` in `src/schemas/VersioningSchemas.ts`, and `ChangesetConfigReader.read` returns that union.
+
 **Config layering:**
 
-- `ChangesetConfig` — matches upstream `@changesets/types` spec
-- `SilkChangesetConfig` — extends with `_isSilk: true` when `changelog` field
+- `ChangesetConfigFile` — matches upstream `@changesets/config@3.1.1` spec
+- `SilkChangesetConfigFile` — extends with `_isSilk: true` when `changelog` field
   references `@savvy-web/changesets`
 
 **Strategy types:**
@@ -333,12 +358,14 @@ fixed/linked release groups.
 #### SilkPublishConfig
 
 Extends upstream `PublishConfig` from `workspaces-effect` with the Silk `targets`
-extension for multi-registry publishing, using Schema's `.extend()` API:
+extension for multi-registry publishing, using `PublishConfig.extend()`:
 
 ```text
 SilkPublishConfig extends PublishConfig
   targets: optional Array<PublishTargetShorthand | PublishTargetObject>
 ```
+
+The `targets` input schemas (`PublishTargetShorthand`, `PublishTargetObject`) are module-local to `src/schemas/WorkspaceAnalysisSchemas.ts`. These are the *input* shapes that describe what may be written in `publishConfig.targets`; they are distinct from the output `PublishTarget` value object that `SilkPublishability.detect` produces.
 
 #### Value Objects
 
@@ -350,7 +377,7 @@ AnalyzedWorkspace (Schema.TaggedClass)
   root: boolean
   publishConfig: SilkPublishConfig | null
   publishable: boolean
-  targets: Array<ResolvedTarget>
+  targets: Array<PublishTarget>
   versioned: boolean
   tagged: boolean
   released: boolean
@@ -359,8 +386,9 @@ AnalyzedWorkspace (Schema.TaggedClass)
 
   ── get isRoot / isPublishable / isReleasable / isFixed / isLinked → boolean
   ── publishesTo(registry) → boolean
-  ── hasTarget("npm" | "github" | "jsr") → boolean
-  ── targetFor(registry) → Option<ResolvedTarget>
+  ── hasTarget("npm" | "github" | "jsr") → boolean (matches via the shorthand's registry URL,
+       e.g. "jsr" → https://jsr.io/)
+  ── targetFor(registry) → Option<PublishTarget>
   ── toString() → "name@version"
   ── toJSON() → plain object (omits linked/fixed to avoid cycles)
   ── Equal/Hash on name + path
@@ -373,7 +401,7 @@ WorkspaceAnalysis (Schema.TaggedClass)
   runtime: "node" | "bun"
   packageManager: { type: "npm" | "pnpm" | "yarn" | "bun", version?: string }
   workspaces: Array<AnalyzedWorkspace>
-  changesetConfig: ChangesetConfig | SilkChangesetConfig | null
+  changesetConfig: ChangesetConfigFile | SilkChangesetConfigFile | null
   versioning: VersioningStrategyResult | null
   tagStrategy: "single" | "scoped" | null
 
@@ -399,22 +427,23 @@ SilkWorkspaceAnalyzer (Context.Tag)
 ```text
 SilkWorkspaceAnalyzerLive
   Requires:
-    FileSystem, WorkspaceDiscovery, PackageManagerDetector,
-    SilkPublishabilityPlugin, ChangesetConfigReader,
+    FileSystem, WorkspaceDiscovery, TopologicalSorter,
+    PackageManagerDetector, ChangesetConfigReader,
     VersioningStrategy, TagStrategy
 ```
 
-The live layer orchestrates a 9-step pipeline:
+The analyzer no longer depends on a publishability *service*: it calls `SilkPublishability.detect(pkg.name, raw)` directly (pure, synchronous) on the raw `package.json` read from disk. The live layer orchestrates a 10-step pipeline:
 
 1. Detect package manager and runtime
 2. Discover workspace packages
-3. Read changeset config (optional)
-4. For each package: read raw `package.json`, detect publishability via
-   `SilkPublishabilityPlugin`, compute release status
-5. Wire up fixed/linked group cross-references (in-place mutation)
-6. Compute versioning strategy
-7. Determine tag strategy
-8. Build final `WorkspaceAnalysis`
+3. Topologically sort packages (dependencies first)
+4. Read changeset config (optional)
+5. For each package: read raw `package.json`, detect publishability via
+   `SilkPublishability.detect`, compute release status
+6. Wire up fixed/linked group cross-references (immutable reconstruction)
+7. Compute versioning strategy
+8. Determine tag strategy
+9. Build final `WorkspaceAnalysis`
 
 #### Release Status Computation
 
@@ -422,20 +451,17 @@ The `computeReleaseStatus` function determines `versioned`, `tagged`, and `relea
 flags per-package based on the changeset config:
 
 - **No changesets config:** all flags `false`
-- **Package in `ignore` list:** all flags `false`
+- **Package in `ignore` list:** all flags `false` (matched with `ChangesetConfig.matches`, so
+  `@scope/*` wildcards apply — not exact-string `.includes`)
 - **Publishable package** (public or private with publishConfig.access): all flags `true`
 - **Truly private package** (no publish targets): consults `privatePackages` config
   - `undefined` → all `false`
   - `false` → all `false` (completely ignored)
   - `{ version, tag }` → flags match config; `released = versioned && tagged`
 
-#### ChangesetConfig
+#### ChangesetConfigFile schema
 
-`ChangesetConfig` is extended to cover the full `@changesets/config@3.1.1` upstream
-spec, including all optional fields: `changelog`, `commit`, `fixed`, `linked`,
-`access`, `baseBranch`, `updateInternalDependencies`, `ignore`, `privatePackages`,
-`prettier`, `changedFilePatterns`, `bumpVersionsWithWorkspaceProtocolOnly`, and
-`snapshot` (with `useCalculatedVersion` and `prereleaseTemplate`).
+`ChangesetConfigFile` covers the full `@changesets/config@3.1.1` upstream spec, including all optional fields: `changelog`, `commit`, `fixed`, `linked`, `access`, `baseBranch`, `updateInternalDependencies`, `ignore`, `privatePackages`, `prettier`, `changedFilePatterns`, `bumpVersionsWithWorkspaceProtocolOnly`, and `snapshot` (with `useCalculatedVersion` and `prereleaseTemplate`). `SilkChangesetConfigFile` extends it with the `_isSilk` marker.
 
 ## Service Patterns
 
@@ -541,21 +567,28 @@ Tagged enums used in this package:
 - `ConfigDiscovery` / `ConfigDiscoveryLive`
 - `BiomeSchemaSync` / `BiomeSchemaSyncLive`
 - `ChangesetConfigReader` / `ChangesetConfigReaderLive`
+- `SilkPublishabilityDetectorLive` (override of `workspaces-effect`'s `PublishabilityDetector`)
+- `PublishabilityDetectorAdaptiveLive` (also requires `ChangesetConfig`)
 
 **Modules requiring CommandExecutor + PackageManagerDetector + WorkspaceRoot:**
 
 - `ToolDiscovery` / `ToolDiscoveryLive`
 
+**Modules requiring ChangesetConfigReader:**
+
+- `ChangesetConfig` / `ChangesetConfigLive`
+- `VersioningStrategy` / `VersioningStrategyLive`
+
 **Composite modules (FileSystem + multiple upstream services):**
 
 - `SilkWorkspaceAnalyzer` / `SilkWorkspaceAnalyzerLive`
-  Depends on: `FileSystem`, `WorkspaceDiscovery`, `PackageManagerDetector`,
-  `SilkPublishabilityPlugin`, `ChangesetConfigReader`, `VersioningStrategy`, `TagStrategy`
+  Depends on: `FileSystem`, `WorkspaceDiscovery`, `TopologicalSorter`, `PackageManagerDetector`,
+  `ChangesetConfigReader`, `VersioningStrategy`, `TagStrategy`
 
 **Pure modules (no platform requirements):**
 
-- `TargetResolver` / `TargetResolverLive`
-- `SilkPublishabilityPlugin` / `SilkPublishabilityPluginLive` (delegates to TargetResolver)
+- `SilkPublishability` (all-static class — `detect`/`expandShorthand`/`resolveTargetAccess` are pure;
+  `resolveTargets`/`listPublishable` are Effects requiring the `PublishabilityDetector` Tag)
 - `TagStrategy` / `TagStrategyLive`
 - All value objects and tagged enums
 
@@ -575,8 +608,7 @@ All exports come from the package root:
 import { Effect } from "effect";
 import { NodeContext } from "@effect/platform-node";
 import {
-  TargetResolver,
-  TargetResolverLive,
+  SilkPublishability,
   ManagedSection,
   ManagedSectionLive,
   SectionDefinition,
@@ -586,17 +618,16 @@ import {
 } from "@savvy-web/silk-effects";
 ```
 
-**Pure services (no platform layer needed):**
+**Pure publishability rule (no platform layer needed):**
+
+`SilkPublishability.detect` is a pure function over a raw `package.json`, returning `workspaces-effect` `PublishTarget` records:
 
 ```typescript
-const result = await Effect.runPromise(
-  Effect.gen(function* () {
-    const resolver = yield* TargetResolver;
-    return yield* resolver.resolve(["npm", "github"]);
-  }).pipe(
-    Effect.provide(TargetResolverLive),
-  )
-);
+const targets = SilkPublishability.detect("@my-org/pkg", {
+  private: true,
+  publishConfig: { access: "public", targets: ["npm", "github"] },
+});
+// → one PublishTarget per public/restricted target
 ```
 
 **FileSystem-dependent services:**
@@ -644,7 +675,6 @@ __test__/
     SectionErrors.test.ts
     ToolErrors.test.ts
   schemas/
-    PublishabilitySchemas.test.ts
     ResolvedTool.test.ts
     SectionBlock.test.ts
     SectionDefinition.test.ts
@@ -654,18 +684,19 @@ __test__/
     WorkspaceAnalysisSchemas.test.ts
   services/
     BiomeSchemaSync.test.ts
+    ChangesetConfig.test.ts
     ChangesetConfigReader.test.ts
     ConfigDiscovery.test.ts
     ManagedSection.test.ts
-    SilkPublishabilityPlugin.test.ts
+    SilkPublishability.test.ts
     TagStrategy.test.ts
-    TargetResolver.test.ts
     ToolDiscovery.test.ts
     VersioningStrategy.test.ts
   utils/
     ToolCommand.test.ts
   integration/
     ManagedSection.int.test.ts
+    publishability.int.test.ts
     SilkWorkspaceAnalyzer.int.test.ts
     fixtures/workspaces/
       standalone/{default,silk}/
@@ -700,8 +731,7 @@ fixtures/workspaces/
     silk/        basic
 ```
 
-105 fixture files cover publishConfig permutations, workspace patterns, changeset
-configs, fixed/linked groups, private package handling, and multi-registry targets.
+Fixtures cover publishConfig permutations, workspace patterns, changeset configs, fixed/linked groups, private package handling and multi-registry targets.
 
 ### Test Approaches
 
@@ -760,9 +790,7 @@ experience.
 
 ### Why layered changeset config?
 
-`ChangesetConfig` matches the upstream `@changesets/types` spec so the module works with
-any changesets project. `SilkChangesetConfig` extends it for Silk-specific features without
-breaking compatibility.
+`ChangesetConfigFile` matches the upstream `@changesets/config` spec so the module works with any changesets project. `SilkChangesetConfigFile` extends it for Silk-specific features without breaking compatibility. The high-level `ChangesetConfig` service then layers total, cached accessors (`mode`, `isIgnored`, `fixed`, …) over the raw file so callers — including the adaptive publishability detector — never handle decode failures themselves.
 
 ### Why `__test__/` directory?
 

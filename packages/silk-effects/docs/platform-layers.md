@@ -1,64 +1,49 @@
-# Platform Layers
+# Platform layers
 
 Guide to providing platform dependencies for silk-effects services.
 
 ## Overview
 
-`@savvy-web/silk-effects` is platform-agnostic. Services declare their
-dependencies through Effect's `Layer` type system, and you provide concrete
-implementations at the edge of your program. This page explains which platform
-layers are needed and how to compose them.
+`@savvy-web/silk-effects` is platform-agnostic. Services declare their dependencies through Effect's `Layer` type system, and you provide concrete implementations at the edge of your program. This page explains which platform layers are needed and how to compose them.
 
-## Layer Tiers
+## Layer tiers
 
-### Tier 0: No Platform Layer
+### Tier 0: no platform layer
 
-These services are pure -- they perform no I/O and have no platform dependencies.
-You only need to provide the service's own `Live` layer.
+These services are pure — they perform no I/O and have no platform dependencies. You only need to provide the service's own `Live` layer.
 
-**Services:** `TargetResolver`, `SilkPublishabilityPlugin`, `TagStrategy`
+**Services:** `TagStrategy`, and the static `SilkPublishability.detect`
+
+`SilkPublishability.detect` is a static, so it needs no layer and no Effect runtime at all:
+
+```typescript
+import { SilkPublishability } from "@savvy-web/silk-effects";
+
+const targets = SilkPublishability.detect("@my-org/pkg", rawPackageJson);
+// => ReadonlyArray<PublishTarget>
+```
+
+`TagStrategy` is a `Context.Tag`, so provide its `Live` layer:
 
 ```typescript
 import { Effect } from "effect";
-import { TargetResolver, TargetResolverLive } from "@savvy-web/silk-effects";
+import { TagStrategy, TagStrategyLive } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
-  const resolver = yield* TargetResolver;
-  return yield* resolver.resolve("npm");
+  const ts = yield* TagStrategy;
+  return yield* ts.formatTag("@my-org/pkg", "1.0.0", strategy);
 }).pipe(
-  Effect.provide(TargetResolverLive),
+  Effect.provide(TagStrategyLive),
 );
 
 await Effect.runPromise(program);
 ```
 
-For `SilkPublishabilityPlugin`, you also need `TargetResolverLive` since it
-depends on `TargetResolver`:
+### Tier 1: FileSystem layer
 
-```typescript
-import { Effect } from "effect";
-import {
-  SilkPublishabilityPlugin,
-  SilkPublishabilityPluginLive,
-  TargetResolverLive,
-} from "@savvy-web/silk-effects";
+These services read or write files. They depend on `FileSystem` from `@effect/platform`, which is provided by your runtime's context layer.
 
-const program = Effect.gen(function* () {
-  const plugin = yield* SilkPublishabilityPlugin;
-  return yield* plugin.detect(pkgJson);
-}).pipe(
-  Effect.provide(SilkPublishabilityPluginLive),
-  Effect.provide(TargetResolverLive),
-);
-```
-
-### Tier 1: FileSystem Layer
-
-These services read or write files. They depend on `FileSystem` from
-`@effect/platform`, which is provided by your runtime's context layer.
-
-**Services:** `ChangesetConfigReader`, `VersioningStrategy`, `ManagedSection`,
-`ConfigDiscovery`, `BiomeSchemaSync`
+**Services:** `SilkPublishabilityDetectorLive`, `PublishabilityDetectorAdaptiveLive`, `ChangesetConfig`, `ChangesetConfigReader`, `VersioningStrategy`, `ManagedSection`, `ConfigDiscovery`, `BiomeSchemaSync`
 
 **Node.js:**
 
@@ -88,11 +73,11 @@ const program = Effect.gen(function* () {
 );
 ```
 
-### Tier 2: FileSystem + CommandExecutor Layer
+The publishability detector layers also live in this tier. `SilkPublishabilityDetectorLive` requires only `FileSystem`; `PublishabilityDetectorAdaptiveLive` additionally requires `ChangesetConfig` (see below).
 
-`ToolDiscovery` additionally requires `CommandExecutor` (to run shell commands)
-and two services from `workspaces-effect`: `PackageManagerDetector` and
-`WorkspaceRoot`.
+### Tier 2: FileSystem + CommandExecutor layer
+
+`ToolDiscovery` additionally requires `CommandExecutor` (to run shell commands) and two services from `workspaces-effect`: `PackageManagerDetector` and `WorkspaceRoot`.
 
 **Services:** `ToolDiscovery`
 
@@ -114,22 +99,18 @@ const program = Effect.gen(function* () {
 );
 ```
 
-`NodeContext.layer` provides `FileSystem`, `CommandExecutor`, and other platform
-services. `PackageManagerDetector` and `WorkspaceRoot` from `workspaces-effect`
-are typically auto-provided through that library's default layers.
+`NodeContext.layer` provides `FileSystem`, `CommandExecutor` and other platform services. `PackageManagerDetector` and `WorkspaceRoot` from `workspaces-effect` are typically auto-provided through that library's default layers.
 
-## Composing Service Layers
+## Composing service layers
 
-When using multiple services together, compose their layers. Effect's type
-system ensures all dependencies are satisfied.
+When using multiple services together, compose their layers. Effect's type system ensures all dependencies are satisfied.
 
 ### Services with shared dependencies
 
-Services that share a dependency (like `FileSystem`) only need the platform
-layer provided once:
+Services that share a dependency (like `FileSystem`) only need the platform layer provided once:
 
 ```typescript
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
 import { NodeContext } from "@effect/platform-node";
 import {
   ManagedSection, ManagedSectionLive,
@@ -154,93 +135,70 @@ await Effect.runPromise(
 );
 ```
 
-### Services with inter-service dependencies
+### Adaptive publishability with ChangesetConfig
 
-Some services depend on other silk-effects services. Provide them in dependency
-order:
+`PublishabilityDetectorAdaptiveLive` overrides `workspaces-effect`'s `PublishabilityDetector` Tag and dispatches by changeset mode. It needs the `ChangesetConfig` service, which in turn needs `ChangesetConfigReader`. Wire them with `Layer.mergeAll` and provide the platform layer once:
+
+```typescript
+import { Effect, Layer } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import { PublishabilityDetector } from "workspaces-effect";
+import {
+  ChangesetConfig, ChangesetConfigLive, ChangesetConfigReaderLive,
+  PublishabilityDetectorAdaptiveLive,
+} from "@savvy-web/silk-effects";
+
+const layer = Layer.mergeAll(
+  PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(ChangesetConfigLive)),
+  ChangesetConfigLive,
+  ChangesetConfigReaderLive,
+).pipe(Layer.provide(NodeContext.layer));
+
+const program = Effect.gen(function* () {
+  const detector = yield* PublishabilityDetector;
+  const config = yield* ChangesetConfig;
+  const mode = yield* config.mode(process.cwd());
+  return yield* detector.detect(pkg, process.cwd());
+}).pipe(Effect.provide(layer));
+
+await Effect.runPromise(program);
+// => ReadonlyArray<PublishTarget>
+```
+
+For unconditional silk rules without changeset awareness, use `SilkPublishabilityDetectorLive` instead, which needs only the platform layer:
 
 ```typescript
 import { Effect } from "effect";
 import { NodeContext } from "@effect/platform-node";
-import {
-  SilkPublishabilityPlugin, SilkPublishabilityPluginLive,
-  TargetResolverLive,
-  VersioningStrategy, VersioningStrategyLive,
-  ChangesetConfigReaderLive,
-  TagStrategy, TagStrategyLive,
-} from "@savvy-web/silk-effects";
+import { PublishabilityDetector } from "workspaces-effect";
+import { SilkPublishabilityDetectorLive } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
-  const plugin = yield* SilkPublishabilityPlugin;
-  const versioning = yield* VersioningStrategy;
-  const tags = yield* TagStrategy;
-
-  // Detect publishability
-  const targets = yield* plugin.detect(pkgJson);
-
-  // Determine versioning strategy
-  const vResult = yield* versioning.detect(
-    targets.map(() => "@my-org/pkg"),
-    process.cwd(),
-  );
-
-  // Format tag
-  const tagType = yield* tags.determine(vResult);
-  return yield* tags.formatTag("@my-org/pkg", "1.0.0", tagType);
-});
-
-await Effect.runPromise(
-  program.pipe(
-    // Service layers
-    Effect.provide(SilkPublishabilityPluginLive),
-    Effect.provide(TargetResolverLive),
-    Effect.provide(VersioningStrategyLive),
-    Effect.provide(ChangesetConfigReaderLive),
-    Effect.provide(TagStrategyLive),
-    // Platform layer
-    Effect.provide(NodeContext.layer),
-  ),
-);
-```
-
-### Building a combined layer
-
-For larger programs, you can merge layers:
-
-```typescript
-import { Layer } from "effect";
-import { NodeContext } from "@effect/platform-node";
-
-const SilkLive = Layer.mergeAll(
-  TargetResolverLive,
-  TagStrategyLive,
-).pipe(
-  Layer.provideMerge(SilkPublishabilityPluginLive),
-);
-
-const program = Effect.gen(function* () {
-  // All three services available
-  const resolver = yield* TargetResolver;
-  const plugin = yield* SilkPublishabilityPlugin;
-  const tags = yield* TagStrategy;
-  // ...
+  const detector = yield* PublishabilityDetector;
+  return yield* detector.detect(pkg, process.cwd());
 }).pipe(
-  Effect.provide(SilkLive),
+  Effect.provide(SilkPublishabilityDetectorLive),
+  Effect.provide(NodeContext.layer),
 );
+
+await Effect.runPromise(program);
+// => ReadonlyArray<PublishTarget>
 ```
 
-## Dependency Graph
+## Dependency graph
 
 ```text
-TargetResolver          (no deps)
-SilkPublishabilityPlugin --> TargetResolver
-TagStrategy             (no deps)
-ChangesetConfigReader   --> FileSystem
-VersioningStrategy      --> ChangesetConfigReader
-ManagedSection          --> FileSystem
-ConfigDiscovery         --> FileSystem
-BiomeSchemaSync         --> FileSystem
-ToolDiscovery           --> CommandExecutor, PackageManagerDetector, WorkspaceRoot
+SilkPublishability.detect          (pure static, no layer)
+TagStrategy                        (no deps)
+SilkPublishabilityDetectorLive     --> FileSystem
+PublishabilityDetectorAdaptiveLive --> FileSystem, ChangesetConfig
+ChangesetConfigReader              --> FileSystem
+ChangesetConfig                    --> ChangesetConfigReader
+VersioningStrategy                 --> ChangesetConfigReader
+ManagedSection                     --> FileSystem
+ConfigDiscovery                    --> FileSystem
+BiomeSchemaSync                    --> FileSystem
+ToolDiscovery                      --> CommandExecutor, PackageManagerDetector, WorkspaceRoot
 ```
 
 ## Testing
@@ -248,7 +206,7 @@ ToolDiscovery           --> CommandExecutor, PackageManagerDetector, WorkspaceRo
 For testing, you can provide mock layers instead of real platform layers:
 
 ```typescript
-import { Layer } from "effect";
+import { Effect, Layer } from "effect";
 import { FileSystem } from "@effect/platform";
 
 const MockFileSystem = Layer.succeed(FileSystem.FileSystem, {

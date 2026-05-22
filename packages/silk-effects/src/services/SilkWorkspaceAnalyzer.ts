@@ -2,13 +2,14 @@ import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer, Option } from "effect";
 import type { CyclicDependencyError, PackageManagerDetectionError, WorkspaceDiscoveryError } from "workspaces-effect";
 import { PackageManagerDetector, TopologicalSorter, WorkspaceDiscovery } from "workspaces-effect";
-import type { TargetResolutionError } from "../errors/TargetResolutionError.js";
 import type { VersioningDetectionError } from "../errors/VersioningDetectionError.js";
 import { WorkspaceAnalysisError } from "../errors/WorkspaceAnalysisError.js";
-import type { ChangesetConfig, SilkChangesetConfig } from "../schemas/VersioningSchemas.js";
+import type { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
 import { AnalyzedWorkspace, WorkspaceAnalysis } from "../schemas/WorkspaceAnalysisSchemas.js";
+import { ChangesetConfig } from "./ChangesetConfig.js";
 import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
-import { SilkPublishabilityPlugin } from "./SilkPublishabilityPlugin.js";
+import type { RawPackageJson } from "./SilkPublishability.js";
+import { SilkPublishability } from "./SilkPublishability.js";
 import { TagStrategy } from "./TagStrategy.js";
 import { VersioningStrategy } from "./VersioningStrategy.js";
 
@@ -19,9 +20,9 @@ import { VersioningStrategy } from "./VersioningStrategy.js";
  *
  * @remarks
  * Orchestrates {@link WorkspaceDiscovery}, {@link PackageManagerDetector},
- * {@link SilkPublishabilityPlugin}, {@link ChangesetConfigReader},
- * {@link VersioningStrategy}, and {@link TagStrategy} to produce a
- * complete {@link WorkspaceAnalysis} for a given workspace root.
+ * {@link ChangesetConfigReader}, {@link VersioningStrategy}, and
+ * {@link TagStrategy} to produce a complete {@link WorkspaceAnalysis} for a
+ * given workspace root.
  *
  * @example
  * ```typescript
@@ -66,7 +67,7 @@ export class SilkWorkspaceAnalyzer extends Context.Tag("@savvy-web/silk-effects/
  * @remarks
  * We read from disk rather than using WorkspacePackage.publishConfig because
  * the upstream PublishConfig schema strips unknown fields (like Silk `targets`).
- * SilkPublishabilityPlugin.detect needs the full raw publishConfig.
+ * SilkPublishability.detect needs the full raw publishConfig.
  */
 const readRawPkgJson = (
 	fs: FileSystem.FileSystem,
@@ -104,7 +105,7 @@ function computeReleaseStatus(
 	pkgName: string,
 	isPrivate: boolean,
 	isPublishable: boolean,
-	config: ChangesetConfig | SilkChangesetConfig | null,
+	config: ChangesetConfigFile | SilkChangesetConfigFile | null,
 ): { versioned: boolean; tagged: boolean; released: boolean } {
 	// No changesets config → nothing is versioned/tagged/released
 	if (config == null) {
@@ -112,7 +113,7 @@ function computeReleaseStatus(
 	}
 
 	// Package in ignore list → not versioned/tagged/released
-	if (config.ignore?.includes(pkgName)) {
+	if ((config.ignore ?? []).some((p) => ChangesetConfig.matches(pkgName, p))) {
 		return { versioned: false, tagged: false, released: false };
 	}
 
@@ -152,8 +153,7 @@ function computeReleaseStatus(
  *
  * @remarks
  * Requires {@link WorkspaceDiscovery}, {@link PackageManagerDetector},
- * {@link SilkPublishabilityPlugin}, {@link ChangesetConfigReader},
- * {@link VersioningStrategy}, and {@link TagStrategy}.
+ * {@link ChangesetConfigReader}, {@link VersioningStrategy}, and {@link TagStrategy}.
  *
  * @since 0.2.0
  */
@@ -164,7 +164,6 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 	| WorkspaceDiscovery
 	| TopologicalSorter
 	| PackageManagerDetector
-	| SilkPublishabilityPlugin
 	| ChangesetConfigReader
 	| VersioningStrategy
 	| TagStrategy
@@ -175,7 +174,6 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 		const discovery = yield* WorkspaceDiscovery;
 		const sorter = yield* TopologicalSorter;
 		const pmDetector = yield* PackageManagerDetector;
-		const publishability = yield* SilkPublishabilityPlugin;
 		const configReader = yield* ChangesetConfigReader;
 		const versioningStrategy = yield* VersioningStrategy;
 		const tagStrategy = yield* TagStrategy;
@@ -231,15 +229,7 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 
 				for (const pkg of sortedPackages) {
 					const pkgJson = yield* readRawPkgJson(fs, pkg.packageJsonPath);
-					const targets = yield* publishability.detect(pkgJson).pipe(
-						Effect.mapError(
-							(err: TargetResolutionError) =>
-								new WorkspaceAnalysisError({
-									root,
-									reason: `Publishability detection failed for ${pkg.name}: ${String(err)}`,
-								}),
-						),
-					);
+					const targets = SilkPublishability.detect(pkg.name, pkgJson as RawPackageJson);
 
 					const isPublishable = targets.length > 0;
 					const isRoot = pkg.relativePath === ".";

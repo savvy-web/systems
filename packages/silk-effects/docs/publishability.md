@@ -1,135 +1,220 @@
-# SilkPublishabilityPlugin
+# Publishability
 
-Determines whether a package is publishable under Silk conventions and resolves
-its publish targets.
+Determine whether a package is publishable under Silk conventions and resolve its publish targets.
 
-**Platform layer:** None (pure service, delegates to TargetResolver)
+## What it does
 
-**Since:** 0.1.0
+In the Silk ecosystem, `package.json` uses `publishConfig` to declare publish intent, and `private: true` is the norm on workspace packages. `SilkPublishability` applies the silk publishability rules to a raw `package.json` and returns the publish targets it resolves. A target is a `PublishTarget` record from `workspaces-effect` with `name`, `registry`, `directory`, `access` and `provenance` fields.
 
-## What It Does
+Three usage levels are available:
 
-In the Silk ecosystem, `package.json` uses `publishConfig` to declare publish
-intent. `SilkPublishabilityPlugin` inspects a parsed `package.json` object and
-applies the Silk publishability rules to determine if the package should be
-published, and if so, to which registries.
+- `SilkPublishability.detect` — a pure static you call directly, no layers.
+- `SilkPublishabilityDetectorLive` / `PublishabilityDetectorAdaptiveLive` — layers that override `workspaces-effect`'s `PublishabilityDetector` Tag, so silk rules flow into any program that yields the detector.
+- `SilkPublishability.resolveTargets` / `SilkPublishability.listPublishable` — Effects that read from disk to filter targets and discover publishable packages.
 
-## Service API
+## SilkPublishability
 
-```typescript
-class SilkPublishabilityPlugin extends Context.Tag(
-  "@savvy-web/silk-effects/SilkPublishabilityPlugin"
-)<
-  SilkPublishabilityPlugin,
-  {
-    readonly detect: (
-      pkgJson: Record<string, unknown>,
-    ) => Effect.Effect<ReadonlyArray<ResolvedTarget>, TargetResolutionError>;
-  }
->() {}
-```
-
-### `detect(pkgJson)`
-
-Inspect a parsed `package.json` object and return the resolved publish targets.
-
-- **pkgJson** -- The parsed `package.json` contents as a plain object.
-- **Returns** -- `Effect<ReadonlyArray<ResolvedTarget>, TargetResolutionError>`.
-  Returns an empty array when the package is not publishable.
-
-## Layer
+A class whose members are all static, so a consumer sees the full rule surface in one place.
 
 ```typescript
-export const SilkPublishabilityPluginLive: Layer.Layer<
-  SilkPublishabilityPlugin,
-  never,
-  TargetResolver
->;
+class SilkPublishability {
+  static detect(pkgName: string, raw: RawPackageJson): ReadonlyArray<PublishTarget>;
+  static expandShorthand(target: string, parentRegistry: string | undefined): string;
+  static resolveTargetAccess(
+    target: RawTargetSpec,
+    parentAccess: "public" | "restricted" | undefined,
+  ): "public" | "restricted" | undefined;
+  static resolveTargets(
+    pkg: WorkspacePackage,
+    root: string,
+  ): Effect.Effect<ReadonlyArray<PublishTarget>, never, PublishabilityDetector | FileSystem.FileSystem>;
+  static listPublishable(
+    root: string,
+  ): Effect.Effect<ReadonlyArray<PublishablePackage>, never, WorkspaceDiscovery | PublishabilityDetector>;
+}
 ```
 
-Requires `TargetResolver` to resolve target strings and objects.
+### `detect(pkgName, raw)`
 
-## Publishability Rules
+Apply the silk rules to a raw `package.json` and return the resolved targets. Pure — no Effect, no layers.
 
-The rules are evaluated in order. The first matching rule determines the result.
+- **pkgName** — the package name, used to populate each `PublishTarget.name`.
+- **raw** — the raw `package.json` fields silk rules consult (`RawPackageJson`).
+- **Returns** — `ReadonlyArray<PublishTarget>`. Empty when the package is not publishable.
+
+### `expandShorthand(target, parentRegistry)`
+
+Expand a shorthand string target to a registry URL. `"npm"` → `https://registry.npmjs.org/`, `"github"` → `https://npm.pkg.github.com/`, `"jsr"` → `https://jsr.io/`. An `http(s)://…` value is used verbatim. Anything else falls back to the parent `publishConfig.registry`, then the npm default.
+
+### `resolveTargetAccess(target, parentAccess)`
+
+Resolve the access for one target spec. String targets always inherit the parent `publishConfig.access`; object targets use their own `.access` else the parent's.
+
+### `resolveTargets(pkg, root)`
+
+Resolve a package's publish targets via the `PublishabilityDetector` Tag, then drop any whose built `directory` `package.json` is `private: true`. Returned targets keep the detector's original (possibly package-relative) `directory`. Requires `PublishabilityDetector` and `FileSystem`.
+
+### `listPublishable(root)`
+
+The publishable, non-ignored packages in a workspace, resolved through the single `PublishabilityDetector` (which already honors changeset ignore in adaptive mode). Returns `PublishablePackage` records (`name`, `version`, `path`, `targetCount`). Requires `WorkspaceDiscovery` and `PublishabilityDetector`.
+
+## Publishability rules
+
+`detect` evaluates these in order. The first matching rule determines the result.
 
 | # | Condition | Result |
 | - | --------- | ------ |
-| 1 | `private: true` AND no `publishConfig` | Not publishable (empty array) |
-| 2 | No `publishConfig.access` AND no `publishConfig.targets` | Not publishable (empty array) |
-| 3 | `publishConfig.targets` is an array | Resolve each target via TargetResolver |
-| 4 | `publishConfig.registry` exists | Resolve as a single registry target |
-| 5 | Default (has `publishConfig.access` but no targets/registry) | Resolve `"npm"` shorthand |
+| 1 | `publishConfig.targets` is a non-empty array | One `PublishTarget` per surviving target (entries whose resolved access is neither `public` nor `restricted` are skipped) |
+| 2 | `publishConfig.access` is `public` or `restricted` | A single `PublishTarget` |
+| 3 | `private !== true` | A single default `PublishTarget` |
+| 4 | otherwise | `[]` (not publishable) |
 
-**Important:** In the Silk build system, `"private": true` in the source
-`package.json` is normal. The builder transforms it based on `publishConfig.access`
-during build. A package with `private: true` and `publishConfig.access: "public"`
-is publishable.
+Targets-first precedence means a `publishConfig.targets` array resolves regardless of the `private` flag. The `private` flag is consulted only as the last-resort default in rule 3.
 
-## Error Types
+## Detector overrides
 
-### TargetResolutionError
+`SilkPublishability.detect` is also exposed through `workspaces-effect`'s `PublishabilityDetector` Tag. Provide one of these layers and every consumer that yields `PublishabilityDetector` gets silk behavior.
 
-Inherited from `TargetResolver.resolve`. Raised when a target in the
-`publishConfig.targets` array cannot be resolved.
-
-### PublishConfigError
-
-Available for consumers that need to signal invalid `publishConfig` structure.
+### SilkPublishabilityDetectorLive
 
 ```typescript
-class PublishConfigError extends Data.TaggedError("PublishConfigError")<{
-  readonly packageName: string;
-  readonly reason: string;
-}> {}
+export const SilkPublishabilityDetectorLive: Layer.Layer<
+  PublishabilityDetector,
+  never,
+  FileSystem.FileSystem
+>;
 ```
+
+Applies silk rules unconditionally. `detect` reads the raw `package.json` from `pkg.packageJsonPath` and applies `SilkPublishability.detect`. Requires `FileSystem`.
+
+```typescript
+import { Effect } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import { PublishabilityDetector } from "workspaces-effect";
+import { SilkPublishabilityDetectorLive } from "@savvy-web/silk-effects";
+
+const program = Effect.gen(function* () {
+  const detector = yield* PublishabilityDetector;
+  return yield* detector.detect(pkg, root);
+}).pipe(
+  Effect.provide(SilkPublishabilityDetectorLive),
+  Effect.provide(NodeContext.layer),
+);
+
+const targets = await Effect.runPromise(program);
+// => ReadonlyArray<PublishTarget>
+```
+
+### PublishabilityDetectorAdaptiveLive
+
+```typescript
+export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
+  PublishabilityDetector,
+  never,
+  FileSystem.FileSystem | ChangesetConfig
+>;
+```
+
+Ignore-aware. `detect` short-circuits to `[]` for changeset-`ignore`d packages, then dispatches on `ChangesetConfig.mode`:
+
+- `none` → `[]`
+- `silk` → `SilkPublishability.detect`
+- `vanilla` → the `workspaces-effect` library default
+
+Requires `FileSystem` and `ChangesetConfig`. Compose it with the `ChangesetConfig` service and its reader:
+
+```typescript
+import { Effect, Layer } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import { PublishabilityDetector } from "workspaces-effect";
+import {
+  ChangesetConfig, ChangesetConfigLive, ChangesetConfigReaderLive,
+  PublishabilityDetectorAdaptiveLive,
+} from "@savvy-web/silk-effects";
+
+const layer = Layer.mergeAll(
+  PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(ChangesetConfigLive)),
+  ChangesetConfigLive,
+  ChangesetConfigReaderLive,
+).pipe(Layer.provide(NodeContext.layer));
+
+const program = Effect.gen(function* () {
+  const detector = yield* PublishabilityDetector;
+  return yield* detector.detect(pkg, root);
+}).pipe(Effect.provide(layer));
+
+const targets = await Effect.runPromise(program);
+// => ReadonlyArray<PublishTarget>
+```
+
+## Related types
+
+```typescript
+// A single declared publish target in a raw publishConfig.targets array
+type RawTargetSpec =
+  | string
+  | {
+      readonly access?: "public" | "restricted";
+      readonly protocol?: string;
+      readonly registry?: string;
+      readonly directory?: string;
+      readonly provenance?: boolean;
+    };
+
+// The raw publishConfig fields silk rules consult
+interface RawPublishConfig {
+  readonly access?: "public" | "restricted";
+  readonly registry?: string;
+  readonly directory?: string;
+  readonly targets?: ReadonlyArray<RawTargetSpec>;
+}
+
+// The raw package.json fields silk rules consult
+interface RawPackageJson {
+  readonly name?: string;
+  readonly version?: string;
+  readonly private?: boolean;
+  readonly publishConfig?: RawPublishConfig;
+}
+
+// A publishable workspace package and the count of its resolved targets
+interface PublishablePackage {
+  readonly name: string;
+  readonly version: string;
+  readonly path: string;
+  readonly targetCount: number;
+}
+```
+
+`PublishTarget` comes from `workspaces-effect` (import it from there) and carries `name`, `registry`, `directory`, `access` and `provenance`.
 
 ## Usage
 
 ```typescript
-import { Effect } from "effect";
-import {
-  SilkPublishabilityPlugin,
-  SilkPublishabilityPluginLive,
-  TargetResolverLive,
-} from "@savvy-web/silk-effects";
+import { SilkPublishability } from "@savvy-web/silk-effects";
 
-const program = Effect.gen(function* () {
-  const plugin = yield* SilkPublishabilityPlugin;
-  return yield* plugin.detect({
-    name: "@my-org/my-package",
-    private: true,
-    publishConfig: {
-      access: "public",
-      targets: ["npm", "github"],
-    },
-  });
+// Targets-first: one PublishTarget per publishConfig.targets entry
+const targets = SilkPublishability.detect("@my-org/my-package", {
+  name: "@my-org/my-package",
+  private: true,
+  publishConfig: { access: "public", targets: ["npm", "github"] },
 });
-
-const targets = await Effect.runPromise(
-  program.pipe(
-    Effect.provide(SilkPublishabilityPluginLive),
-    Effect.provide(TargetResolverLive),
-  ),
-);
-// => [{ registry: "https://registry.npmjs.org/", ... }, { registry: "https://npm.pkg.github.com/", ... }]
+// => [PublishTarget { registry: "https://registry.npmjs.org/", access: "public", ... },
+//     PublishTarget { registry: "https://npm.pkg.github.com/", access: "public", ... }]
 ```
 
+In the Silk build system, `"private": true` in the source `package.json` is normal. The builder transforms it based on `publishConfig.access` during build, so a package with `private: true` and `publishConfig.access: "public"` is publishable.
+
 ```typescript
-// Not publishable -- returns empty array
-const targets = await Effect.runPromise(
-  Effect.gen(function* () {
-    const plugin = yield* SilkPublishabilityPlugin;
-    return yield* plugin.detect({ private: true });
-  }).pipe(
-    Effect.provide(SilkPublishabilityPluginLive),
-    Effect.provide(TargetResolverLive),
-  ),
-);
+// Not publishable -> empty array
+const none = SilkPublishability.detect("@my-org/internal", { private: true });
 // => []
 ```
 
-## Dependencies on Other Services
+## Dependencies on other services
 
-- **TargetResolver** -- Used to resolve individual target values from `publishConfig.targets`
-  and `publishConfig.registry`.
+- `SilkPublishability.detect`, `expandShorthand`, `resolveTargetAccess` — none (pure).
+- `SilkPublishability.resolveTargets` — `PublishabilityDetector` and `FileSystem`.
+- `SilkPublishability.listPublishable` — `WorkspaceDiscovery` and `PublishabilityDetector`.
+- `SilkPublishabilityDetectorLive` — `FileSystem`.
+- `PublishabilityDetectorAdaptiveLive` — `FileSystem` and `ChangesetConfig`.

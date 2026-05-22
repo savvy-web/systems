@@ -38,13 +38,13 @@ const SnapshotConfig = Schema.Struct({
  *
  * @remarks
  * Represents the parsed `.changeset/config.json` file. All fields are optional
- * to allow partial configs. Use {@link SilkChangesetConfig} when the Silk changelog
+ * to allow partial configs. Use {@link SilkChangesetConfigFile} when the Silk changelog
  * adapter is detected.
  *
  * @since 0.1.0
  */
 // Standard changesets config (matches @changesets/config@3.1.1 upstream spec)
-export const ChangesetConfig = Schema.Struct({
+export const ChangesetConfigFile = Schema.Struct({
 	changelog: Schema.optional(Schema.Union(Schema.String, Schema.Array(Schema.Unknown), Schema.Literal(false))),
 	commit: Schema.optional(Schema.Union(Schema.Boolean, Schema.String, Schema.Array(Schema.Unknown))),
 	fixed: Schema.optional(Schema.Array(Schema.Array(Schema.String))),
@@ -60,27 +60,27 @@ export const ChangesetConfig = Schema.Struct({
 	snapshot: Schema.optional(SnapshotConfig),
 });
 /** @since 0.1.0 */
-export type ChangesetConfig = typeof ChangesetConfig.Type;
+export type ChangesetConfigFile = typeof ChangesetConfigFile.Type;
 
 /**
  * Extended changeset config for repos using the `@savvy-web/changesets` changelog adapter.
  *
  * @remarks
- * Extends {@link ChangesetConfig} with a `_isSilk` marker flag that is automatically
+ * Extends {@link ChangesetConfigFile} with a `_isSilk` marker flag that is automatically
  * set to `true`. Detected by {@link ChangesetConfigReader} when the `changelog` field
  * references `@savvy-web/changesets`.
  *
  * @since 0.1.0
  */
 // Silk extension — detected by checking changelog field
-export const SilkChangesetConfig = Schema.extend(
-	ChangesetConfig,
+export const SilkChangesetConfigFile = Schema.extend(
+	ChangesetConfigFile,
 	Schema.Struct({
 		_isSilk: Schema.optionalWith(Schema.Boolean, { default: () => true }),
 	}),
 );
 /** @since 0.1.0 */
-export type SilkChangesetConfig = typeof SilkChangesetConfig.Type;
+export type SilkChangesetConfigFile = typeof SilkChangesetConfigFile.Type;
 
 /**
  * Versioning strategy classification for a workspace.

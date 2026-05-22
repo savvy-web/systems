@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import type { ChangesetConfig } from "../../src/schemas/VersioningSchemas.js";
+import type { ChangesetConfigFile } from "../../src/schemas/VersioningSchemas.js";
 import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 import { VersioningStrategy, VersioningStrategyLive } from "../../src/services/VersioningStrategy.js";
 
@@ -8,17 +8,17 @@ import { VersioningStrategy, VersioningStrategyLive } from "../../src/services/V
 // Mock ChangesetConfigReader
 // ---------------------------------------------------------------------------
 
-function makeConfigLayer(config: ChangesetConfig) {
+function makeConfigLayer(config: ChangesetConfigFile) {
 	return Layer.succeed(ChangesetConfigReader, {
 		read: (_root: string) => Effect.succeed(config),
 	});
 }
 
-function makeLayer(config: ChangesetConfig) {
+function makeLayer(config: ChangesetConfigFile) {
 	return VersioningStrategyLive.pipe(Layer.provide(makeConfigLayer(config)));
 }
 
-function runWith<A, E>(config: ChangesetConfig, effect: Effect.Effect<A, E, VersioningStrategy>): Promise<A> {
+function runWith<A, E>(config: ChangesetConfigFile, effect: Effect.Effect<A, E, VersioningStrategy>): Promise<A> {
 	return Effect.runPromise(Effect.provide(effect, makeLayer(config)));
 }
 

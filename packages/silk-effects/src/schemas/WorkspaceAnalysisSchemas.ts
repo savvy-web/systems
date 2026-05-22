@@ -1,9 +1,22 @@
 import { Equal, Function as Fn, Hash, Option, Pretty, Schema } from "effect";
-import { PublishConfig } from "workspaces-effect";
-import type { ResolvedTarget as ResolvedTargetType } from "./PublishabilitySchemas.js";
-import { PublishTargetObject, PublishTargetShorthand, ResolvedTarget } from "./PublishabilitySchemas.js";
+import { PublishConfig, PublishTarget } from "workspaces-effect";
 import { TagStrategyType } from "./TagStrategySchemas.js";
-import { ChangesetConfig, SilkChangesetConfig, VersioningStrategyResult } from "./VersioningSchemas.js";
+import { ChangesetConfigFile, SilkChangesetConfigFile, VersioningStrategyResult } from "./VersioningSchemas.js";
+
+// ── SilkPublishConfig input target schemas (module-local) ─────────────────────
+
+const PublishProtocol = Schema.Literal("npm", "jsr");
+
+const PublishTargetShorthand = Schema.Literal("npm", "github", "jsr");
+
+const PublishTargetObject = Schema.Struct({
+	protocol: Schema.optionalWith(PublishProtocol, { default: () => "npm" as const }),
+	registry: Schema.optional(Schema.String),
+	directory: Schema.optional(Schema.String),
+	access: Schema.optional(Schema.Literal("public", "restricted")),
+	provenance: Schema.optional(Schema.Boolean),
+	tag: Schema.optional(Schema.String),
+});
 
 /**
  * Silk-extended publishConfig schema.
@@ -24,6 +37,7 @@ export class SilkPublishConfig extends PublishConfig.extend<SilkPublishConfig>("
 const KNOWN_REGISTRIES: Record<string, string> = {
 	npm: "https://registry.npmjs.org/",
 	github: "https://npm.pkg.github.com/",
+	jsr: "https://jsr.io/",
 };
 
 const WorkspaceVersion = Schema.Struct({
@@ -43,7 +57,7 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 	root: Schema.Boolean,
 	publishConfig: Schema.NullOr(SilkPublishConfig),
 	publishable: Schema.Boolean,
-	targets: Schema.Array(ResolvedTarget),
+	targets: Schema.Array(PublishTarget),
 	versioned: Schema.Boolean,
 	tagged: Schema.Boolean,
 	released: Schema.Boolean,
@@ -77,14 +91,11 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 	}
 
 	hasTarget(shorthand: "npm" | "github" | "jsr"): boolean {
-		if (shorthand === "jsr") {
-			return this.targets.some((t) => t.protocol === "jsr");
-		}
 		const registry = KNOWN_REGISTRIES[shorthand];
 		return registry !== undefined && this.publishesTo(registry);
 	}
 
-	targetFor(registry: string): Option.Option<ResolvedTargetType> {
+	targetFor(registry: string): Option.Option<PublishTarget> {
 		const found = this.targets.find((t) => t.registry === registry);
 		return found ? Option.some(found) : Option.none();
 	}
@@ -164,7 +175,7 @@ export class WorkspaceAnalysis extends Schema.TaggedClass<WorkspaceAnalysis>()("
 	runtime: Schema.Literal("node", "bun"),
 	packageManager: PackageManagerInfo,
 	workspaces: Schema.Array(AnalyzedWorkspace),
-	changesetConfig: Schema.NullOr(Schema.Union(SilkChangesetConfig, ChangesetConfig)),
+	changesetConfig: Schema.NullOr(Schema.Union(SilkChangesetConfigFile, ChangesetConfigFile)),
 	versioning: Schema.NullOr(VersioningStrategyResult),
 	tagStrategy: Schema.NullOr(TagStrategyType),
 }) {

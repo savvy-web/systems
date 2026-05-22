@@ -1,6 +1,7 @@
 import { Option, Schema } from "effect";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { PublishTarget } from "workspaces-effect";
 import { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "../../src/schemas/WorkspaceAnalysisSchemas.js";
 
 describe("SilkPublishConfig", () => {
@@ -103,16 +104,12 @@ describe("AnalyzedWorkspace", () => {
 	it("hasTarget checks target registries", () => {
 		const ws = makeWorkspace({
 			targets: [
-				{
-					protocol: "npm" as const,
+				new PublishTarget({
+					name: "@scope/lib",
 					registry: "https://registry.npmjs.org/",
 					directory: "dist/npm",
-					access: "public" as const,
-					provenance: false,
-					tag: "latest",
-					auth: "oidc" as const,
-					tokenEnv: null,
-				},
+					access: "public",
+				}),
 			],
 		});
 		expect(ws.hasTarget("npm")).toBe(true);

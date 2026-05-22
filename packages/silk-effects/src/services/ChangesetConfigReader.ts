@@ -1,7 +1,7 @@
 import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer, Schema } from "effect";
 import { ChangesetConfigError } from "../errors/ChangesetConfigError.js";
-import { ChangesetConfig, SilkChangesetConfig } from "../schemas/VersioningSchemas.js";
+import { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
 
 const SILK_CHANGELOG_MARKER = "@savvy-web/changesets";
 
@@ -20,8 +20,8 @@ function isSilkChangelog(changelog: unknown): boolean {
  *
  * @remarks
  * Automatically detects whether the config uses the Silk changelog adapter
- * (`@savvy-web/changesets`) and decodes as {@link SilkChangesetConfig} or the
- * standard {@link ChangesetConfig} accordingly.
+ * (`@savvy-web/changesets`) and decodes as {@link SilkChangesetConfigFile} or the
+ * standard {@link ChangesetConfigFile} accordingly.
  *
  * @example
  * ```typescript
@@ -49,7 +49,7 @@ export class ChangesetConfigReader extends Context.Tag("@savvy-web/silk-effects/
 		 *
 		 * @since 0.1.0
 		 */
-		readonly read: (root: string) => Effect.Effect<ChangesetConfig | SilkChangesetConfig, ChangesetConfigError>;
+		readonly read: (root: string) => Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError>;
 	}
 >() {}
 
@@ -67,7 +67,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 
-		const read = (root: string): Effect.Effect<ChangesetConfig | SilkChangesetConfig, ChangesetConfigError> => {
+		const read = (root: string): Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError> => {
 			const configPath = `${root}/.changeset/config.json`;
 
 			return Effect.gen(function* () {
@@ -112,7 +112,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 				const rawConfig = parsed as { changelog?: unknown };
 
 				if (isSilkChangelog(rawConfig.changelog)) {
-					return yield* Schema.decodeUnknown(SilkChangesetConfig)(parsed).pipe(
+					return yield* Schema.decodeUnknown(SilkChangesetConfigFile)(parsed).pipe(
 						Effect.mapError(
 							(cause) =>
 								new ChangesetConfigError({
@@ -123,7 +123,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 					);
 				}
 
-				return yield* Schema.decodeUnknown(ChangesetConfig)(parsed).pipe(
+				return yield* Schema.decodeUnknown(ChangesetConfigFile)(parsed).pipe(
 					Effect.mapError(
 						(cause) =>
 							new ChangesetConfigError({

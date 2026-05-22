@@ -1,0 +1,9 @@
+{
+	"name": "@rspress/example",
+	"version": "0.0.1",
+	"private": true,
+	"publishConfig": {
+		"access": "public",
+		"targets": [{ "registry": "https://registry.npmjs.org/", "directory": "dist/npm", "access": "public" }]
+	}
+}
