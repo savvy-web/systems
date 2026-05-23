@@ -1,5 +1,14 @@
 # @savvy-web/silk-effects
 
+## 0.4.1
+
+### Dependencies
+
+* | [`846ab73`](https://github.com/savvy-web/systems/commit/846ab73ee6d7dba52822cd7d346fa0c2b66156da) | Dependency    | Type    | Action  | From    | To |
+  | :------------------------------------------------------------------------------------------------ | :------------ | :------ | :------ | :------ | -- |
+  | workspaces-effect                                                                                 | dependency    | updated | ^1.0.0  | ^1.1.0  |    |
+  | @savvy-web/rslib-builder                                                                          | devDependency | updated | ^0.20.4 | ^0.20.6 |    |
+
 ## 0.4.0
 
 ### Minor Changes
