@@ -80,7 +80,7 @@ Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
 
 - [silk-router-action](https://github.com/savvy-web/silk-router-action) --
   Release pipeline entry point: phase detection and release plan computation
-- [workflow-release-action](https://github.com/savvy-web/workflow-release-action) --
+- [silk-release-action](https://github.com/savvy-web/silk-release-action) --
   Release engine: branch management, validation, multi-registry publishing
 - [workflow-runtime-action](https://github.com/savvy-web/workflow-runtime-action) --
   Runtime setup from `devEngines` with smart caching
