@@ -32,13 +32,13 @@
 	"dependencies": {
 		"jsonc-effect": "^0.2.1",
 		"semver-effect": "^0.2.1",
-		"workspaces-effect": "^1.0.0",
+		"workspaces-effect": "^1.1.0",
 		"yaml-effect": "^0.6.0"
 	},
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
-		"@savvy-web/rslib-builder": "^0.20.4",
+		"@savvy-web/rslib-builder": "^0.20.6",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:silk",
 		"fast-check": "^4.6.0"

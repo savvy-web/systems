@@ -40,11 +40,11 @@ importers:
         specifier: ^0.9.0
         version: 0.9.0(@commitlint/cli@20.5.3(@types/node@25.9.1)(conventional-commits-parser@6.4.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.3)(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/typeclass@0.40.0(effect@3.21.2))(@effect/workflow@0.18.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(commitizen@4.3.1(@types/node@25.9.1)(typescript@5.9.3))(husky@9.1.7)
       '@savvy-web/lint-staged':
-        specifier: ^1.0.1
+        specifier: ^1.1.0
         version: 1.1.0(d00706601e8cadb3cf8ad471f337f0fc)
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.4
-        version: 0.20.5(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)
+        specifier: ^0.20.6
+        version: 0.20.6(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)
       '@savvy-web/vitest':
         specifier: ^1.3.2
         version: 1.3.2(020aab2da3c2670a16b1679ef52e518b)
@@ -58,8 +58,8 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1(effect@3.21.2)
       workspaces-effect:
-        specifier: ^1.0.0
-        version: 1.0.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
+        specifier: ^1.1.0
+        version: 1.1.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       yaml-effect:
         specifier: ^0.6.0
         version: 0.6.0(effect@3.21.2)
@@ -71,8 +71,8 @@ importers:
         specifier: catalog:silk
         version: 0.106.0(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.4
-        version: 0.20.5(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)
+        specifier: ^0.20.6
+        version: 0.20.6(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)
       '@types/node':
         specifier: catalog:silk
         version: 25.9.1
@@ -94,8 +94,8 @@ importers:
         version: 3.6.1
     devDependencies:
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.4
-        version: 0.20.5(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)
+        specifier: ^0.20.6
+        version: 0.20.6(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)
       '@savvy-web/vitest':
         specifier: ^1.3.2
         version: 1.3.2(020aab2da3c2670a16b1679ef52e518b)
@@ -1125,8 +1125,8 @@ packages:
       '@biomejs/biome':
         optional: true
 
-  '@savvy-web/rslib-builder@0.20.5':
-    resolution: {integrity: sha512-rR+ezNPNlDtnMV1J5AHehRS18JbMtcLFFW7fqJM7j9F37YUjmFxn+WvTyMKumB/bOE+A7tDfOEfrUmeGqOD81A==}
+  '@savvy-web/rslib-builder@0.20.6':
+    resolution: {integrity: sha512-TfsRzraDRp6zk75Vlf7DXPMTOIG3ZszQWULq/cqi31xvzNK4CZtUnzKIIc4QtYMt/f1AM9O1iIW53LZRSetUYg==}
     peerDependencies:
       '@rsbuild/plugin-react': ^2.0.0
       '@rslib/core': ^0.21.0
@@ -1266,7 +1266,6 @@ packages:
 
   '@types/parse-path@7.1.0':
     resolution: {integrity: sha512-EULJ8LApcVEPbrfND0cRQqutIOdiIgJ1Mgrhpy755r14xMohPTEpkV/k28SJvuOs9bHRFW8x+KeDAEPiGQPB9Q==}
-    deprecated: This is a stub types definition. parse-path provides its own type definitions, so you do not need this installed.
 
   '@types/ssri@7.1.5':
     resolution: {integrity: sha512-odD/56S3B51liILSk5aXJlnYt99S6Rt9EFDDqGtJM26rKHApHcwyU/UoYHrzKkdkHMAIquGWCuHtQTbes+FRQw==}
@@ -3972,6 +3971,12 @@ packages:
       '@effect/platform': '>=0.96.0'
       effect: '>=3.21.0'
 
+  workspaces-effect@1.1.0:
+    resolution: {integrity: sha512-vo+6mcz+kFDgS+OdZxIXqxKT/6mKhAaUvfcRA9CY2pPa4/3cm7xqrYp/ar/+b/6aikyw4Qum8zS/gSgwk5kUPQ==}
+    peerDependencies:
+      '@effect/platform': '>=0.96.0'
+      effect: '>=3.21.0'
+
   wrap-ansi@10.0.0:
     resolution: {integrity: sha512-SGcvg80f0wUy2/fXES19feHMz8E0JoXv2uNgHOu4Dgi2OrCy1lqwFYEJz1BLbDI0exjPMe/ZdzZ/YpGECBG/aQ==}
     engines: {node: '>=20'}
@@ -5247,7 +5252,7 @@ snapshots:
       sort-package-json: 3.6.1
       turbo: 2.9.14
       typescript: 5.9.3
-      workspaces-effect: 1.0.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
+      workspaces-effect: 1.1.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       yaml: 2.9.0
       yaml-lint: 1.7.0
     transitivePeerDependencies:
@@ -5259,7 +5264,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@savvy-web/rslib-builder@0.20.5(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)':
+  '@savvy-web/rslib-builder@0.20.6(@pnpm/logger@1001.0.1)(@rslib/core@0.21.5(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260521.1)(typescript@5.9.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260521.1)(jiti@2.6.1)(typescript@5.9.3)':
     dependencies:
       '@microsoft/api-extractor': 7.58.7(@types/node@25.9.1)
       '@microsoft/tsdoc': 0.16.0
@@ -5413,8 +5418,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.56.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.56.1(typescript@5.9.3)
-      '@typescript-eslint/types': 8.56.1
+      '@typescript-eslint/tsconfig-utils': 8.59.4(typescript@5.9.3)
+      '@typescript-eslint/types': 8.59.4
       debug: 4.4.3
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -8354,6 +8359,15 @@ snapshots:
       yaml-effect: 0.5.0(effect@3.21.2)
 
   workspaces-effect@1.0.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2):
+    dependencies:
+      '@effect/platform': 0.96.1(effect@3.21.2)
+      effect: 3.21.2
+      jsonc-effect: 0.2.1(effect@3.21.2)
+      minimatch: 10.2.5
+      semver-effect: 0.2.1(effect@3.21.2)
+      yaml-effect: 0.6.0(effect@3.21.2)
+
+  workspaces-effect@1.1.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2):
     dependencies:
       '@effect/platform': 0.96.1(effect@3.21.2)
       effect: 3.21.2
