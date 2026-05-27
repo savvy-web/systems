@@ -5,7 +5,7 @@ module: silk-effects
 category: architecture
 status: current
 completeness: 95
-last-synced: 2026-05-22
+last-synced: 2026-05-27
 depends-on: []
 ---
 
@@ -39,7 +39,7 @@ discovery, Biome schema synchronization, and CLI tool discovery.
 
 ## Current State
 
-Published at v0.3.0; a pending minor changeset standardizes publishability on `workspaces-effect`'s `PublishTarget` and `PublishabilityDetector` (the `SilkPublishability` rules + `ChangesetConfig` accessor service, `@since 0.4.0`). All modules implemented with full test coverage:
+Published at v0.4.1. A pending minor changeset adds the `ManagedSection.syncMany`/`remove` multi-section primitives and the `SavvySections` shared husky-hook shells (`@since 0.5.0`); both are additive. All modules implemented with full test coverage:
 
 | Area | Source | Tests |
 | ---- | ------ | ----- |
@@ -236,15 +236,23 @@ ManagedSection (service)
   sync(block)  → (path) → Effect<SyncResult, SectionWriteError>
   sync(path, block) → Effect<SyncResult, SectionWriteError>
 
+  syncMany(blocks)  → (path) → Effect<ReadonlyArray<SyncResult>, SectionWriteError>
+  syncMany(path, blocks) → Effect<ReadonlyArray<SyncResult>, SectionWriteError>
+
   check(block) → (path) → Effect<CheckResult, SectionParseError>
   check(path, block) → Effect<CheckResult, SectionParseError>
+
+  remove(definition)  → (path) → Effect<boolean, SectionWriteError>
+  remove(path, definition) → Effect<boolean, SectionWriteError>
 
   Depends on: FileSystem
 ```
 
-All methods support dual API (data-first and data-last). Identity-only operations (`read`,
-`isManaged`) accept a `SectionDefinition`. Content operations (`write`, `sync`, `check`)
-accept a `SectionBlock`.
+All methods support dual API (data-first and data-last). Identity-only operations (`read`, `isManaged`, `remove`) accept a `SectionDefinition`. Content operations (`write`, `sync`, `syncMany`, `check`) accept a `SectionBlock`.
+
+`syncMany` (`@since 0.5.0`) is the multi-section compositor: it ensures every listed block exists with the given content in declared relative order, updating present sections in place, inserting a missing section adjacent to its declared sibling (before the nearest present successor, else after the nearest present predecessor, else appended) and normalizing order when sections are present but out of order. It preserves user content before, after and between managed sections and leaves unrelated tool sections in place. It returns one content-based `SyncResult` per input block in input order — a pure reorder of identical content reports `Unchanged` — and is idempotent. Single-section `sync` parses one tool at a time via `parseContent`; `syncMany` needs the general all-tools marker parser `findAllSections` plus a text/section tokenization to rebuild the file around fixed content, both internal to `ManagedSection.ts`.
+
+`remove` (`@since 0.5.0`) deletes a section's `[begin … end]` span including markers, returning `true` if removed and `false` if the section (or the file) was absent — a missing file is not an error. It collapses the leftover blank line so repeated edits never accumulate gaps. The primary use is rename-migration: a consumer removes its old-name section and `syncMany`s the new one.
 
 **Marker format:**
 
@@ -255,6 +263,20 @@ managed content here
 ```
 
 Supports `#` and `//` comment styles. Preserves user content outside markers.
+
+#### SavvySections (shared husky-hook shells)
+
+`src/schemas/SavvySections.ts` centralizes the shell content the Silk Suite husky hooks share, so consumer CLIs no longer hand-write package-manager detection. Two consumers drive this: `@savvy-web/commitlint` (`savvy-commit`) and `@savvy-web/lint-staged` (`savvy-lint`). All symbols are `@since 0.5.0` and exported from the package root.
+
+```text
+SavvyBaseSection : ShellSectionDefinition   toolName "savvy-base"
+savvyBasePreamble() → string                ROOT, in_ci, detect_pm/PM, pm_exec (side-effect-free)
+SavvyHooksSection : ShellSectionDefinition  toolName "savvy-hooks"
+savvyHooksHygiene() → string                self-guarded core.fileMode + chmod +x
+savvyToolSection(toolName, command) → SectionBlock
+```
+
+The composition contract is the load-bearing part. `savvyToolSection` produces a one-line block whose content is exactly `in_ci || pm_exec <command>` with `command` appended verbatim — no parsing, quoting or interpolation, so shell tokens like `$ROOT` and `$1` survive into the literal. Its precondition is that a `savvy-base` section precedes it in the same hook file so `in_ci`/`pm_exec` are defined; consumers satisfy this by passing `[SavvyBaseSection.block(savvyBasePreamble()), savvyToolSection(…)]` to `syncMany` in that order. `pm_exec` uses local/exec semantics per package manager and `bun x` (space form, not the `bunx` shim) so it works regardless of how bun was installed. See `SavvySections.ts` for the exact shell bodies.
 
 ### Config (ConfigDiscovery)
 

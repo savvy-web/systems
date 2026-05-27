@@ -245,3 +245,113 @@ describe("ManagedSection.check", () => {
 		expect(result._tag).toBe("NotFound");
 	});
 });
+
+// ── remove ──────────────────────────────────────────────────────
+
+describe("ManagedSection.remove", () => {
+	it("removes a present section and reports true, preserving surrounding content", async () => {
+		const files = { "/hook": `#!/bin/sh\n# top\n\n${BEGIN}\nmanaged\n${END}\n\n# bottom\n` };
+		const removed = await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)),
+		);
+		expect(removed).toBe(true);
+		expect(files["/hook"]).not.toContain(BEGIN);
+		expect(files["/hook"]).not.toContain(END);
+		expect(files["/hook"]).not.toContain("managed");
+		// Surrounding content kept; collapsed to a single blank line between survivors.
+		expect(files["/hook"]).toBe("#!/bin/sh\n# top\n\n# bottom\n");
+	});
+
+	it("returns false when the section is absent (file has no markers)", async () => {
+		const files = { "/hook": "#!/bin/sh\n# no markers\n" };
+		const removed = await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)),
+		);
+		expect(removed).toBe(false);
+		expect(files["/hook"]).toBe("#!/bin/sh\n# no markers\n");
+	});
+
+	it("returns false when the file is missing (no error)", async () => {
+		const files: Record<string, string> = {};
+		const removed = await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)),
+		);
+		expect(removed).toBe(false);
+	});
+
+	it("works with dual API (data-last)", async () => {
+		const files = { "/hook": `${BEGIN}\nmanaged\n${END}\n` };
+		const removed = await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove(DEF)("/hook")),
+		);
+		expect(removed).toBe(true);
+		expect(files["/hook"]).toBe("");
+	});
+
+	it("keeps a single trailing newline when the section is at the end", async () => {
+		const files = { "/hook": `#!/bin/sh\nA\n\n${BEGIN}\nm\n${END}\n` };
+		await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)),
+		);
+		expect(files["/hook"]).toBe("#!/bin/sh\nA\n");
+	});
+
+	it("is idempotent: second remove returns false and leaves content stable", async () => {
+		const files = { "/hook": `#!/bin/sh\n# top\n\n${BEGIN}\nmanaged\n${END}\n\n# bottom\n` };
+		const first = await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)),
+		);
+		const afterFirst = files["/hook"];
+		const second = await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)),
+		);
+		expect(first).toBe(true);
+		expect(second).toBe(false);
+		expect(files["/hook"]).toBe(afterFirst);
+	});
+
+	it("does not accumulate blank gaps across remove/re-add/remove cycles", async () => {
+		const files = { "/hook": `#!/bin/sh\n# top\n\n${BEGIN}\nmanaged\n${END}\n\n# bottom\n` };
+		const afterFirst = await runWith(
+			files,
+			Effect.gen(function* () {
+				const s = yield* ManagedSection;
+				yield* s.remove("/hook", DEF);
+				return files["/hook"];
+			}),
+		);
+		await runWith(
+			files,
+			Effect.gen(function* () {
+				const s = yield* ManagedSection;
+				yield* s.write("/hook", DEF.block("managed"));
+				yield* s.remove("/hook", DEF);
+			}),
+		);
+		// Re-adding then removing returns to the same shape — no growing blank gaps.
+		expect(files["/hook"]).toBe(afterFirst);
+	});
+
+	it("removes only the targeted section, leaving other sections intact", async () => {
+		const OTHER_BEGIN = "# --- BEGIN OTHER MANAGED SECTION ---";
+		const OTHER_END = "# --- END OTHER MANAGED SECTION ---";
+		const files = {
+			"/hook": `${BEGIN}\nmine\n${END}\n\n${OTHER_BEGIN}\ntheirs\n${OTHER_END}\n`,
+		};
+		const removed = await runWith(
+			files,
+			Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)),
+		);
+		expect(removed).toBe(true);
+		expect(files["/hook"]).not.toContain(BEGIN);
+		expect(files["/hook"]).toContain(OTHER_BEGIN);
+		expect(files["/hook"]).toContain("theirs");
+	});
+});
