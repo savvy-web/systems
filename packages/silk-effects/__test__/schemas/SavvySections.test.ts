@@ -38,7 +38,7 @@ pm_exec() {
 
 const EXPECTED_HYGIENE = `if ! { [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; }; then
   git config core.fileMode false
-  git ls-files -z '*.sh' | xargs -0 -r chmod +x 2>/dev/null || true
+  git ls-files -z '*.sh' | xargs -0 chmod +x 2>/dev/null || true
 fi`;
 
 describe("savvyBasePreamble", () => {

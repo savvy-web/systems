@@ -2,21 +2,6 @@ import type { SectionBlock } from "./SectionBlock.js";
 import { ShellSectionDefinition } from "./SectionDefinition.js";
 
 /**
- * Shared shell content for Silk Suite husky hooks.
- *
- * @remarks
- * Consumer CLIs (`savvy-commit`, `savvy-lint`) inject these "base" sections into hook
- * files so individual tools no longer hand-write package-manager detection or repo
- * hygiene. Each consumer then layers its own one-line tool section on top, calling the
- * `in_ci` / `pm_exec` helpers defined by {@link savvyBasePreamble}.
- *
- * Compose multiple sections per hook file with
- * {@link ManagedSection.syncMany | ManagedSection.syncMany}.
- *
- * @since 0.5.0
- */
-
-/**
  * Section identity for the shared package-manager preamble.
  *
  * `toolName` is `"savvy-base"`; pair with {@link savvyBasePreamble} to build the block:
@@ -97,7 +82,7 @@ pm_exec() {
 export function savvyHooksHygiene(): string {
 	return `if ! { [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; }; then
   git config core.fileMode false
-  git ls-files -z '*.sh' | xargs -0 -r chmod +x 2>/dev/null || true
+  git ls-files -z '*.sh' | xargs -0 chmod +x 2>/dev/null || true
 fi`;
 }
 
