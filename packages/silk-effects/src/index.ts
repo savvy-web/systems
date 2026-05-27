@@ -29,6 +29,13 @@ export type { CommentStyle } from "./schemas/CommentStyle.js";
 export type { ConfigDiscoveryOptions, ConfigLocation, ConfigSource } from "./schemas/ConfigDiscoverySchemas.js";
 // ── Schemas (tools) ───────────────────────────────────────────
 export { ResolvedTool } from "./schemas/ResolvedTool.js";
+export {
+	SavvyBaseSection,
+	SavvyHooksSection,
+	savvyBasePreamble,
+	savvyHooksHygiene,
+	savvyToolSection,
+} from "./schemas/SavvySections.js";
 export { SectionBlock } from "./schemas/SectionBlock.js";
 export { SectionDefinition, ShellSectionDefinition } from "./schemas/SectionDefinition.js";
 export type { CheckResultDefinition, SectionDiffDefinition, SyncResultDefinition } from "./schemas/SectionResults.js";

@@ -9,7 +9,7 @@ Shared [Effect](https://effect.website/) library providing Silk Suite convention
 
 - Detect a package's publish targets from its `package.json` `publishConfig`, with multi-registry support and a changeset-ignore-aware override for `workspaces-effect`'s `PublishabilityDetector`
 - Read changeset config through a typed accessor service that reports silk vs vanilla mode, ignore patterns and fixed groups
-- Manage tool-owned sections in user-editable files without clobbering surrounding content
+- Manage tool-owned sections in user-editable files without clobbering surrounding content, including ordered multi-section sync for composing several managed regions per file
 - Discover and resolve CLI tools globally or locally with version enforcement and caching
 - Detect versioning strategy and format git tags from changeset configuration
 - Locate config files and keep Biome schema URLs in sync across workspaces
@@ -166,7 +166,7 @@ Manage tool-owned delimited sections inside user-editable files. Sections are bo
 
 `SectionBlock` represents the content between markers. It supports `diff()`, `prepend()` and `append()` operations and uses normalized content for equality comparison.
 
-Methods: `read`, `write`, `sync`, `check`, `isManaged` — all support dual API (data-first and data-last) for pipe composition.
+Methods: `read`, `write`, `sync`, `syncMany`, `check`, `remove`, `isManaged` — all support dual API (data-first and data-last) for pipe composition. `sync` manages one section; `syncMany` manages several ordered sections in one file; `remove` deletes a section including its markers.
 
 ```typescript
 import { Effect } from "effect";
@@ -192,6 +192,10 @@ await Effect.runPromise(
     // Check: compare file content against expected block
     const check = yield* ms.check(".husky/pre-commit", block);
     // => CheckResult: Found | NotFound
+
+    // Remove: delete the section and its markers, collapsing the leftover blank line
+    const removed = yield* ms.remove(".husky/pre-commit", def);
+    // => true if a section was removed, false if none was present
   }).pipe(
     Effect.provide(ManagedSectionLive),
     Effect.provide(NodeContext.layer),
@@ -206,6 +210,37 @@ const jsDef = SectionDefinition.make({ toolName: "MY-TOOL", commentStyle: "//" }
 ```
 
 Use `ShellSectionDefinition` when the comment style is always `#` and should not be configurable.
+
+`syncMany` keeps several sections in one file in their declared relative order. It updates existing sections in place, inserts a missing section next to its declared sibling, normalizes order when sections drift out of order and preserves user content and unrelated tool sections. It returns one `SyncResult` per input block in input order and is idempotent.
+
+The `SavvySections` exports compose ordered managed sections per husky hook file. A base section defines shared shell, then each consumer layers its own one-line tool section on top:
+
+- `SavvyBaseSection` is a `ShellSectionDefinition` (tool name `savvy-base`); pair it with `savvyBasePreamble()`, which defines `ROOT`, the `in_ci` predicate, `PM` via package-manager detection and `pm_exec`.
+- `SavvyHooksSection` (tool name `savvy-hooks`) pairs with `savvyHooksHygiene()`, a self-guarded repo-hygiene block that runs outside CI.
+- `savvyToolSection(toolName, command)` builds a consumer's one-line tool section whose content is exactly `in_ci || pm_exec <command>` — the command is appended verbatim, so shell tokens like `$ROOT` and `$1` survive into the output. A `savvy-base` section must precede it in the same hook file, so pass both to `syncMany` in that order.
+
+```typescript
+import { Effect } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import {
+  ManagedSection, ManagedSectionLive,
+  SavvyBaseSection, savvyBasePreamble, savvyToolSection,
+} from "@savvy-web/silk-effects";
+
+await Effect.runPromise(
+  Effect.gen(function* () {
+    const ms = yield* ManagedSection;
+    const results = yield* ms.syncMany(".husky/commit-msg", [
+      SavvyBaseSection.block(savvyBasePreamble()),
+      savvyToolSection("savvy-commit", 'commitlint --config "$ROOT/lib/configs/commitlint.config.ts" --edit "$1"'),
+    ]);
+    // => ReadonlyArray<SyncResult>, one per input block in declared order
+  }).pipe(
+    Effect.provide(ManagedSectionLive),
+    Effect.provide(NodeContext.layer),
+  ),
+);
+```
 
 #### VersioningStrategy
 

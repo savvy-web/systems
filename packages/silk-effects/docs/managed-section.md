@@ -23,6 +23,7 @@ content.
 - [Layer](#layer)
 - [Tagged Enums](#tagged-enums)
 - [Section Markers](#section-markers)
+- [Shared Husky-Hook Helpers](#shared-husky-hook-helpers)
 - [Error Types](#error-types)
 - [Usage](#usage)
 - [Dependencies on Other Services](#dependencies-on-other-services)
@@ -175,17 +176,28 @@ class ManagedSection extends Context.Tag("@savvy-web/silk-effects/ManagedSection
       (path: string, block: SectionBlock): Effect<SyncResult, SectionWriteError>;
     };
 
+    readonly syncMany: {
+      (blocks: ReadonlyArray<SectionBlock>): (path: string) => Effect<ReadonlyArray<SyncResult>, SectionWriteError>;
+      (path: string, blocks: ReadonlyArray<SectionBlock>): Effect<ReadonlyArray<SyncResult>, SectionWriteError>;
+    };
+
     readonly check: {
       (block: SectionBlock): (path: string) => Effect<CheckResult, SectionParseError>;
       (path: string, block: SectionBlock): Effect<CheckResult, SectionParseError>;
+    };
+
+    readonly remove: {
+      (definition: SectionDefinition): (path: string) => Effect<boolean, SectionWriteError>;
+      (path: string, definition: SectionDefinition): Effect<boolean, SectionWriteError>;
     };
   }
 >() {}
 ```
 
 All methods support **dual API** (data-first and data-last). Identity-only
-operations (`read`, `isManaged`) accept a `SectionDefinition`. Content
-operations (`write`, `sync`, `check`) accept a `SectionBlock`.
+operations (`read`, `isManaged`, `remove`) accept a `SectionDefinition`. Content
+operations (`write`, `sync`, `syncMany`, `check`) accept a `SectionBlock` or an
+array of them.
 
 ### `read(path, definition)` / `read(definition)(path)`
 
@@ -218,12 +230,30 @@ Smart write that reports what changed.
 - Returns `SyncResult`: `Created()`, `Updated({ diff })`, or `Unchanged()`.
 - Fails with `SectionWriteError` on I/O errors.
 
+### `syncMany(path, blocks)` / `syncMany(blocks)(path)`
+
+Sync several sections in one file in their declared relative order.
+
+- Ensures every block exists with its given content in the declared order: updates existing sections in place, inserts a missing section adjacent to its declared sibling and normalizes order when sections drift out of order.
+- Preserves user content and any unrelated tool sections in the file.
+- Returns one `SyncResult` per input block, in input order. Tags are content-based like `sync`, so a pure reorder of identical content reports `Unchanged()`.
+- Idempotent: running it again with the same blocks reports `Unchanged()` for each and writes nothing.
+- Fails with `SectionWriteError` on I/O errors.
+
 ### `check(path, block)` / `check(block)(path)`
 
 Read-only comparison without writing.
 
 - Returns `CheckResult`: `Found({ isUpToDate, diff })` or `NotFound()`.
 - Fails with `SectionParseError` on I/O errors.
+
+### `remove(path, definition)` / `remove(definition)(path)`
+
+Remove a managed section, markers and all.
+
+- Deletes the `[begin … end]` span including the markers, then collapses the leftover blank line so repeated removals never accumulate empty gaps.
+- Returns `true` if a section was removed, `false` if the file has no such section. A missing file returns `false` without erroring.
+- Fails with `SectionWriteError` on I/O errors.
 
 ## Layer
 
@@ -287,6 +317,68 @@ managed content here
 
 The tool name is uppercased in the markers. User content outside the markers is
 preserved on write operations.
+
+## Shared Husky-Hook Helpers
+
+**Since:** 0.5.0
+
+`SavvySections` provides ready-made sections for composing multiple ordered
+managed regions in a single husky hook file with `syncMany`. A base section
+defines shared shell, then each consumer layers its own one-line tool section on
+top, calling the helpers the base defines.
+
+| Export | Kind | Pairs with | Description |
+| ------ | ---- | ---------- | ----------- |
+| `SavvyBaseSection` | `ShellSectionDefinition` (`savvy-base`) | `savvyBasePreamble()` | Section identity for the shared package-manager preamble |
+| `savvyBasePreamble()` | `() => string` | `SavvyBaseSection` | Preamble shell defining `ROOT`, the `in_ci` predicate, `PM` (via package-manager detection) and `pm_exec` |
+| `SavvyHooksSection` | `ShellSectionDefinition` (`savvy-hooks`) | `savvyHooksHygiene()` | Section identity for the shared repo-hygiene block |
+| `savvyHooksHygiene()` | `() => string` | `SavvyHooksSection` | Self-guarded repo-hygiene shell that runs outside CI |
+| `savvyToolSection(toolName, command)` | `(toolName: string, command: string) => SectionBlock` | a preceding `savvy-base` section | Builds a consumer's one-line tool section |
+
+`savvyBasePreamble()` and `savvyHooksHygiene()` return shell with no surrounding
+markers or trailing newline; pair each with its section identity's `block()` to
+turn it into a `SectionBlock`.
+
+`savvyToolSection(toolName, command)` returns a shell `SectionBlock` (comment
+style `#`) whose content is exactly `in_ci || pm_exec <command>`. The command is
+appended verbatim — it is not parsed, quoted or interpolated, so shell tokens
+like `$ROOT` and `$1` survive into the generated literal.
+
+**Precondition:** a `savvy-base` section must precede a `savvyToolSection` block
+in the same hook file so `in_ci` and `pm_exec` are defined. Guarantee this by
+passing both to `syncMany` in order, base first.
+
+```typescript
+import { Effect } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import {
+  ManagedSection,
+  ManagedSectionLive,
+  SavvyBaseSection,
+  savvyBasePreamble,
+  savvyToolSection,
+} from "@savvy-web/silk-effects";
+
+const program = Effect.gen(function* () {
+  const ms = yield* ManagedSection;
+
+  const results = yield* ms.syncMany(".husky/commit-msg", [
+    SavvyBaseSection.block(savvyBasePreamble()),
+    savvyToolSection(
+      "savvy-commit",
+      'commitlint --config "$ROOT/lib/configs/commitlint.config.ts" --edit "$1"',
+    ),
+  ]);
+  // results => ReadonlyArray<SyncResult>, one per block in declared order
+});
+
+await Effect.runPromise(
+  program.pipe(
+    Effect.provide(ManagedSectionLive),
+    Effect.provide(NodeContext.layer),
+  ),
+);
+```
 
 ## Error Types
 
@@ -375,6 +467,39 @@ const program = Effect.gen(function* () {
   } else {
     console.log("No changes needed");
   }
+});
+```
+
+### Sync several ordered sections
+
+```typescript
+const program = Effect.gen(function* () {
+  const ms = yield* ManagedSection;
+
+  // Existing sections update in place; missing ones insert next to their
+  // declared sibling; user content and unrelated tool sections are preserved.
+  const results = yield* ms.syncMany(".husky/pre-commit", [
+    baseBlock,
+    lintBlock,
+    typecheckBlock,
+  ]);
+
+  for (const result of results) {
+    // result => Created | Updated | Unchanged, one per input block in order
+    console.log(result._tag);
+  }
+});
+```
+
+### Remove a section
+
+```typescript
+const program = Effect.gen(function* () {
+  const ms = yield* ManagedSection;
+
+  const removed = yield* ms.remove(".husky/pre-commit", def);
+  // removed => true if a section was removed, false if none was present
+  // (a missing file also returns false, without erroring)
 });
 ```
 
