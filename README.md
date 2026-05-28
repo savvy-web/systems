@@ -82,7 +82,7 @@ Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
   Release pipeline entry point: phase detection and release plan computation
 - [silk-release-action](https://github.com/savvy-web/silk-release-action) --
   Release engine: branch management, validation, multi-registry publishing
-- [workflow-runtime-action](https://github.com/savvy-web/workflow-runtime-action) --
+- [silk-runtime-action](https://github.com/savvy-web/silk-runtime-action) --
   Runtime setup from `devEngines` with smart caching
 - [silk-sync-action](https://github.com/savvy-web/silk-sync-action) --
   Organization-wide repo settings and label synchronization
