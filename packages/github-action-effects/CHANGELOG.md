@@ -1,5 +1,14 @@
 # @savvy-web/github-action-effects
 
+## 2.0.3
+
+### Other
+
+* [`d7bcbf9`](https://github.com/savvy-web/systems/commit/d7bcbf9b2329dfd86d61fb4bb619e0b3558a71a2) The package source has moved into the `savvy-web/systems` monorepo. It is no longer maintained in its former standalone repository.
+
+- The published package, its public API, its exports, and its npm package name are all unchanged — no action required on upgrade.
+- Package metadata (`repository`, `homepage`, `bugs`) now points at `savvy-web/systems`.
+
 > Migrated from `savvy-web/github-action-effects@ea861e8` on 2026-05-30. Earlier release history lives in the original source repository.
 
 ## 2.0.2
