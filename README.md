@@ -25,6 +25,18 @@ pnpm add @savvy-web/silk-effects effect @effect/platform @effect/platform-node
 
 See the [silk-effects README](./packages/silk-effects/README.md) for usage examples.
 
+### @savvy-web/github-action-effects
+
+[Effect](https://effect.website/) services for building GitHub Actions: schema-validated inputs, structured logging that maps to workflow commands and typed wrappers around the GitHub API, with no `@actions/*` packages in the dependency tree.
+
+See the [github-action-effects README](./packages/github-action-effects/README.md) for usage examples.
+
+### @savvy-web/github-action-builder
+
+Zero-config build tool for creating GitHub Actions from TypeScript. Bundles with rsbuild, validates `action.yml` against GitHub's schema and outputs production-ready Node.js 24 actions.
+
+See the [github-action-builder README](./packages/github-action-builder/README.md) for usage examples.
+
 ### Planned
 
 - **@savvy-web/templates** -- Effect-based project scaffolding (replacing Yeoman generators)
@@ -55,8 +67,6 @@ Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
   TypeScript library builder using RSlib/Rsbuild with auto entry detection
 - [@savvy-web/bun-builder](https://github.com/savvy-web/bun-builder) --
   Bun-native builder with lifecycle-phase architecture
-- [@savvy-web/github-action-builder](https://github.com/savvy-web/github-action-builder) --
-  Zero-config GitHub Action builder for Node.js 24
 
 ### Developer Experience
 
@@ -73,8 +83,6 @@ Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
 
 - [@savvy-web/pnpm-plugin-silk](https://github.com/savvy-web/pnpm-plugin-silk) --
   Centralized dependency catalogs and version management via pnpm config dependencies
-- [@savvy-web/github-action-effects](https://github.com/savvy-web/github-action-effects) --
-  Effect-based services for GitHub Actions replacing `@actions/*`
 
 ### CI/CD Pipeline
 

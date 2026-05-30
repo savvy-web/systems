@@ -1,0 +1,335 @@
+/**
+ * \@savvy-web/github-action-effects
+ *
+ * Effect-based utility library for building robust, well-logged,
+ * and schema-validated GitHub Actions.
+ *
+ * @packageDocumentation
+ */
+
+export type { ActionRunOptions, CoreServices } from "./Action.js";
+// -- Namespaces --
+export { Action } from "./Action.js";
+// -- Errors --
+export { ActionCacheError } from "./errors/ActionCacheError.js";
+export { ActionEnvironmentError } from "./errors/ActionEnvironmentError.js";
+export { ActionInputError } from "./errors/ActionInputError.js";
+export { ActionOutputError } from "./errors/ActionOutputError.js";
+export { ActionStateError } from "./errors/ActionStateError.js";
+export { ArtifactError } from "./errors/ArtifactError.js";
+export { AttestError } from "./errors/AttestError.js";
+export { ChangesetError } from "./errors/ChangesetError.js";
+export { CheckRunError } from "./errors/CheckRunError.js";
+export { CommandRunnerError } from "./errors/CommandRunnerError.js";
+export { ConfigLoaderError } from "./errors/ConfigLoaderError.js";
+export { GitBranchError } from "./errors/GitBranchError.js";
+export { GitCommitError } from "./errors/GitCommitError.js";
+export { GitHubAppError } from "./errors/GitHubAppError.js";
+export { GitHubArtifactMetadataError } from "./errors/GitHubArtifactMetadataError.js";
+export { GitHubClientError } from "./errors/GitHubClientError.js";
+export { GitHubCommitError } from "./errors/GitHubCommitError.js";
+export { GitHubContentError } from "./errors/GitHubContentError.js";
+export { GitHubGraphQLError } from "./errors/GitHubGraphQLError.js";
+export { GitHubIssueError } from "./errors/GitHubIssueError.js";
+export { GitHubReleaseError } from "./errors/GitHubReleaseError.js";
+export { GitTagError } from "./errors/GitTagError.js";
+export { GlobError } from "./errors/GlobError.js";
+export { IoError } from "./errors/IoError.js";
+export { NpmRegistryError } from "./errors/NpmRegistryError.js";
+export { OidcTokenError } from "./errors/OidcTokenError.js";
+export { PackageManagerError } from "./errors/PackageManagerError.js";
+export { PackagePublishError } from "./errors/PackagePublishError.js";
+export { PullRequestCommentError } from "./errors/PullRequestCommentError.js";
+export { PullRequestError } from "./errors/PullRequestError.js";
+export { RateLimitError } from "./errors/RateLimitError.js";
+export { RuntimeEnvironmentError } from "./errors/RuntimeEnvironmentError.js";
+export { SbomError } from "./errors/SbomError.js";
+export { SemverResolverError } from "./errors/SemverResolverError.js";
+export { SigstoreSignerError } from "./errors/SigstoreSignerError.js";
+export { SlsaError } from "./errors/SlsaError.js";
+export { TokenPermissionError } from "./errors/TokenPermissionError.js";
+export { ToolInstallerError } from "./errors/ToolInstallerError.js";
+export { WorkflowDispatchError } from "./errors/WorkflowDispatchError.js";
+export { WorkspaceDetectorError } from "./errors/WorkspaceDetectorError.js";
+export type { ProvisionOptions } from "./GitHubToken.js";
+export { GitHubToken } from "./GitHubToken.js";
+// -- Layers --
+export { ActionCacheLive } from "./layers/ActionCacheLive.js";
+export type { ActionCacheTestState } from "./layers/ActionCacheTest.js";
+export { ActionCacheTest } from "./layers/ActionCacheTest.js";
+export { ActionEnvironmentLive } from "./layers/ActionEnvironmentLive.js";
+export { ActionEnvironmentTest } from "./layers/ActionEnvironmentTest.js";
+export { ActionLoggerLive } from "./layers/ActionLoggerLive.js";
+export type { ActionLoggerTestState } from "./layers/ActionLoggerTest.js";
+export { ActionLoggerTest } from "./layers/ActionLoggerTest.js";
+export { ActionOutputsLive } from "./layers/ActionOutputsLive.js";
+export type { ActionOutputsTestState } from "./layers/ActionOutputsTest.js";
+export { ActionOutputsTest } from "./layers/ActionOutputsTest.js";
+export { ActionStateLive } from "./layers/ActionStateLive.js";
+export type { ActionStateTestState } from "./layers/ActionStateTest.js";
+export { ActionStateTest } from "./layers/ActionStateTest.js";
+export { ArtifactLive } from "./layers/ArtifactLive.js";
+export type { ArtifactTestState } from "./layers/ArtifactTest.js";
+export { ArtifactTest } from "./layers/ArtifactTest.js";
+export { AttestLive } from "./layers/AttestLive.js";
+export type { AttestTestState } from "./layers/AttestTest.js";
+export { AttestTest, AttestTestFullLayer, makeAttestTestState } from "./layers/AttestTest.js";
+export { ChangesetAnalyzerLive } from "./layers/ChangesetAnalyzerLive.js";
+export type { ChangesetAnalyzerTestState } from "./layers/ChangesetAnalyzerTest.js";
+export { ChangesetAnalyzerTest } from "./layers/ChangesetAnalyzerTest.js";
+export { CheckRunLive } from "./layers/CheckRunLive.js";
+export type { CheckRunRecord, CheckRunTestState } from "./layers/CheckRunTest.js";
+export { CheckRunTest } from "./layers/CheckRunTest.js";
+export { CommandRunnerLive } from "./layers/CommandRunnerLive.js";
+export type { CommandResponse } from "./layers/CommandRunnerTest.js";
+export { CommandRunnerTest } from "./layers/CommandRunnerTest.js";
+export { ConfigLoaderLive } from "./layers/ConfigLoaderLive.js";
+export type { ConfigLoaderTestState } from "./layers/ConfigLoaderTest.js";
+export { ConfigLoaderTest } from "./layers/ConfigLoaderTest.js";
+export { DryRunLive } from "./layers/DryRunLive.js";
+export type { DryRunTestState } from "./layers/DryRunTest.js";
+export { DryRunTest } from "./layers/DryRunTest.js";
+export { GitBranchLive } from "./layers/GitBranchLive.js";
+export type { GitBranchTestState } from "./layers/GitBranchTest.js";
+export { GitBranchTest } from "./layers/GitBranchTest.js";
+export { GitCommitLive } from "./layers/GitCommitLive.js";
+export type { GitCommitTestState } from "./layers/GitCommitTest.js";
+export { GitCommitTest } from "./layers/GitCommitTest.js";
+export { GitHubAppLive } from "./layers/GitHubAppLive.js";
+export type { GitHubAppTestState } from "./layers/GitHubAppTest.js";
+export { GitHubAppTest } from "./layers/GitHubAppTest.js";
+export { GitHubArtifactMetadataLive } from "./layers/GitHubArtifactMetadataLive.js";
+export type { GitHubArtifactMetadataTestState } from "./layers/GitHubArtifactMetadataTest.js";
+export { GitHubArtifactMetadataTest } from "./layers/GitHubArtifactMetadataTest.js";
+export { GitHubClientLive } from "./layers/GitHubClientLive.js";
+export type { GitHubClientTestState, RestResponse } from "./layers/GitHubClientTest.js";
+export { GitHubClientTest } from "./layers/GitHubClientTest.js";
+export { GitHubCommitLive } from "./layers/GitHubCommitLive.js";
+export type { GitHubCommitTestState } from "./layers/GitHubCommitTest.js";
+export { GitHubCommitTest } from "./layers/GitHubCommitTest.js";
+export { GitHubContentLive } from "./layers/GitHubContentLive.js";
+export type { GitHubContentTestState } from "./layers/GitHubContentTest.js";
+export { GitHubContentTest } from "./layers/GitHubContentTest.js";
+export { GitHubGraphQLLive } from "./layers/GitHubGraphQLLive.js";
+export type { GitHubGraphQLTestState } from "./layers/GitHubGraphQLTest.js";
+export { GitHubGraphQLTest } from "./layers/GitHubGraphQLTest.js";
+export { GitHubIssueLive } from "./layers/GitHubIssueLive.js";
+export type { GitHubIssueTestState } from "./layers/GitHubIssueTest.js";
+export { GitHubIssueTest } from "./layers/GitHubIssueTest.js";
+export { GitHubReleaseLive } from "./layers/GitHubReleaseLive.js";
+export type { GitHubReleaseTestState } from "./layers/GitHubReleaseTest.js";
+export { GitHubReleaseTest } from "./layers/GitHubReleaseTest.js";
+export { GitTagLive } from "./layers/GitTagLive.js";
+export type { GitTagTestState } from "./layers/GitTagTest.js";
+export { GitTagTest } from "./layers/GitTagTest.js";
+export { GlobLive } from "./layers/GlobLive.js";
+export type { GlobTestState } from "./layers/GlobTest.js";
+export { GlobTest } from "./layers/GlobTest.js";
+export { NpmRegistryLive } from "./layers/NpmRegistryLive.js";
+export type { NpmRegistryTestState } from "./layers/NpmRegistryTest.js";
+export { NpmRegistryTest } from "./layers/NpmRegistryTest.js";
+export { OctokitAuthAppLive } from "./layers/OctokitAuthAppLive.js";
+export { OidcTokenIssuerLive, saveToken } from "./layers/OidcTokenIssuerLive.js";
+export { OidcTokenIssuerTest } from "./layers/OidcTokenIssuerTest.js";
+export { PackageManagerAdapterLive } from "./layers/PackageManagerAdapterLive.js";
+export type { PackageManagerAdapterTestState } from "./layers/PackageManagerAdapterTest.js";
+export { PackageManagerAdapterTest } from "./layers/PackageManagerAdapterTest.js";
+export { PackagePublishLive } from "./layers/PackagePublishLive.js";
+export type { PackagePublishTestState } from "./layers/PackagePublishTest.js";
+export { PackagePublishTest } from "./layers/PackagePublishTest.js";
+export { PullRequestCommentLive } from "./layers/PullRequestCommentLive.js";
+export type { PullRequestCommentTestState } from "./layers/PullRequestCommentTest.js";
+export { PullRequestCommentTest } from "./layers/PullRequestCommentTest.js";
+export { PullRequestLive } from "./layers/PullRequestLive.js";
+export type { PullRequestRecord, PullRequestTestState } from "./layers/PullRequestTest.js";
+export { PullRequestTest } from "./layers/PullRequestTest.js";
+export { RateLimiterLive } from "./layers/RateLimiterLive.js";
+export type { RateLimiterTestState } from "./layers/RateLimiterTest.js";
+export { RateLimiterTest } from "./layers/RateLimiterTest.js";
+export type { ResilienceOptions } from "./layers/resilience.js";
+export { resilienceSchedule } from "./layers/resilience.js";
+export { SbomLive } from "./layers/SbomLive.js";
+export type { SbomTestState } from "./layers/SbomTest.js";
+export { SbomTest, makeSbomTestState } from "./layers/SbomTest.js";
+export { SigstoreSignerLive, makeSigstoreSignerLive } from "./layers/SigstoreSignerLive.js";
+export { SigstoreSignerTest } from "./layers/SigstoreSignerTest.js";
+export { TokenPermissionCheckerLive } from "./layers/TokenPermissionCheckerLive.js";
+export type { TokenPermissionCheckerTestState } from "./layers/TokenPermissionCheckerTest.js";
+export { TokenPermissionCheckerTest } from "./layers/TokenPermissionCheckerTest.js";
+export { ToolInstallerLive } from "./layers/ToolInstallerLive.js";
+export type { ToolInstallerTestState } from "./layers/ToolInstallerTest.js";
+export { ToolInstallerTest } from "./layers/ToolInstallerTest.js";
+export { WorkflowDispatchLive } from "./layers/WorkflowDispatchLive.js";
+export type { DispatchRecord, WorkflowDispatchTestState } from "./layers/WorkflowDispatchTest.js";
+export { WorkflowDispatchTest } from "./layers/WorkflowDispatchTest.js";
+export { WorkspaceDetectorLive } from "./layers/WorkspaceDetectorLive.js";
+export type { WorkspaceDetectorTestState } from "./layers/WorkspaceDetectorTest.js";
+export { WorkspaceDetectorTest } from "./layers/WorkspaceDetectorTest.js";
+// -- Runtime --
+export { ActionInput } from "./runtime/ActionInput.js";
+export { ActionsConfigProvider } from "./runtime/ActionsConfigProvider.js";
+export { ActionsLogger } from "./runtime/ActionsLogger.js";
+export { ActionsRuntime } from "./runtime/ActionsRuntime.js";
+export * as Step from "./runtime/Step.js";
+export type { AnnotationProperties } from "./runtime/WorkflowCommand.js";
+export type { AttestInput, AttestationRecord } from "./schemas/Attestation.js";
+export {
+	CYCLONEDX_BOM,
+	IN_TOTO_STATEMENT_V1,
+	InTotoStatement,
+	InTotoSubject,
+	SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE,
+	SLSA_PROVENANCE_V1,
+	SPDX_V2_3,
+	SigstoreBundle,
+} from "./schemas/Attestation.js";
+// -- Schemas --
+export type {
+	BumpType as BumpTypeType,
+	Changeset as ChangesetType,
+	ChangesetFile as ChangesetFileType,
+} from "./schemas/Changeset.js";
+export { BumpType, Changeset, ChangesetFile } from "./schemas/Changeset.js";
+export type { GitHubContext as GitHubContextType, RunnerContext as RunnerContextType } from "./schemas/Environment.js";
+export { GitHubContext, RunnerContext } from "./schemas/Environment.js";
+export type { WebhookPayload as WebhookPayloadType } from "./schemas/EventPayload.js";
+export { WebhookPayload } from "./schemas/EventPayload.js";
+export { CapturedOutput, ChecklistItem, Status } from "./schemas/GithubMarkdown.js";
+export type { FileChange as FileChangeType, TreeEntry as TreeEntryType } from "./schemas/GitTree.js";
+export {
+	FileChange,
+	FileChangeContent,
+	FileChangeDeletion,
+	TreeEntry,
+	TreeEntryContent,
+	TreeEntryDeletion,
+} from "./schemas/GitTree.js";
+export { ActionLogLevel, LogLevelInput } from "./schemas/LogLevel.js";
+export type { NpmPackageInfo as NpmPackageInfoType } from "./schemas/NpmPackage.js";
+export { NpmPackageInfo } from "./schemas/NpmPackage.js";
+export type {
+	PackageManagerInfo as PackageManagerInfoType,
+	PackageManagerName as PackageManagerNameType,
+} from "./schemas/PackageManager.js";
+export { PackageManagerInfo, PackageManagerName } from "./schemas/PackageManager.js";
+export type { RateLimitStatus as RateLimitStatusType } from "./schemas/RateLimit.js";
+export { RateLimitStatus } from "./schemas/RateLimit.js";
+export type {
+	ExtraPermission as ExtraPermissionType,
+	PermissionCheckResult as PermissionCheckResultType,
+	PermissionGap as PermissionGapType,
+	PermissionLevel as PermissionLevelType,
+} from "./schemas/TokenPermission.js";
+export { ExtraPermission, PermissionCheckResult, PermissionGap, PermissionLevel } from "./schemas/TokenPermission.js";
+export type {
+	WorkspaceInfo as WorkspaceInfoType,
+	WorkspacePackage as WorkspacePackageType,
+	WorkspaceType as WorkspaceTypeType,
+} from "./schemas/Workspace.js";
+export { WorkspaceInfo, WorkspacePackage, WorkspaceType } from "./schemas/Workspace.js";
+// -- Services --
+export { ActionCache } from "./services/ActionCache.js";
+export { ActionEnvironment } from "./services/ActionEnvironment.js";
+export { ActionLogger } from "./services/ActionLogger.js";
+export { ActionOutputs } from "./services/ActionOutputs.js";
+export { ActionState } from "./services/ActionState.js";
+export type {
+	ArtifactItem,
+	DownloadOptions,
+	FindBy,
+	UploadOptions,
+	UploadResult,
+} from "./services/Artifact.js";
+export { Artifact } from "./services/Artifact.js";
+export type { AttestationListEntry, ProvenanceAttestationInput, SbomAttestationInput } from "./services/Attest.js";
+export { Attest } from "./services/Attest.js";
+export { ChangesetAnalyzer } from "./services/ChangesetAnalyzer.js";
+export type {
+	AnnotationLevel,
+	CheckRunAnnotation,
+	CheckRunConclusion,
+	CheckRunData,
+	CheckRunOutput,
+} from "./services/CheckRun.js";
+export { CheckRun } from "./services/CheckRun.js";
+export type { ExecOptions, ExecOutput } from "./services/CommandRunner.js";
+export { CommandRunner } from "./services/CommandRunner.js";
+export { ConfigLoader } from "./services/ConfigLoader.js";
+export { DryRun } from "./services/DryRun.js";
+export { GitBranch } from "./services/GitBranch.js";
+export { GitCommit } from "./services/GitCommit.js";
+export type { BotIdentity, InstallationToken as InstallationTokenType } from "./services/GitHubApp.js";
+export { GitHubApp, InstallationToken } from "./services/GitHubApp.js";
+export type { StorageRecordInput } from "./services/GitHubArtifactMetadata.js";
+export { GitHubArtifactMetadata } from "./services/GitHubArtifactMetadata.js";
+export { GitHubClient } from "./services/GitHubClient.js";
+export type { CommitComparison, CommitDetail, CommitFile, CommitSummary } from "./services/GitHubCommit.js";
+export { GitHubCommit } from "./services/GitHubCommit.js";
+export { GitHubContent } from "./services/GitHubContent.js";
+export { GitHubGraphQL } from "./services/GitHubGraphQL.js";
+export type { IssueData } from "./services/GitHubIssue.js";
+export { GitHubIssue } from "./services/GitHubIssue.js";
+export type { ReleaseAsset, ReleaseData } from "./services/GitHubRelease.js";
+export { GitHubRelease } from "./services/GitHubRelease.js";
+export type { TagRef } from "./services/GitTag.js";
+export { GitTag } from "./services/GitTag.js";
+export type { GlobOptions, HashFilesOptions } from "./services/Glob.js";
+export { Glob } from "./services/Glob.js";
+export { NpmRegistry } from "./services/NpmRegistry.js";
+export type { AppAuth } from "./services/OctokitAuthApp.js";
+export { OctokitAuthApp } from "./services/OctokitAuthApp.js";
+export { OidcTokenIssuer } from "./services/OidcTokenIssuer.js";
+export type { InstallOptions } from "./services/PackageManagerAdapter.js";
+export { PackageManagerAdapter } from "./services/PackageManagerAdapter.js";
+export type {
+	DryRunResult,
+	IdempotentPublishInput,
+	IdempotentPublishResult,
+	PackResult,
+	RegistryTarget,
+} from "./services/PackagePublish.js";
+export { PackagePublish } from "./services/PackagePublish.js";
+export type { PullRequestFile, PullRequestInfo, PullRequestListOptions } from "./services/PullRequest.js";
+export { PullRequest } from "./services/PullRequest.js";
+export type { CommentRecord } from "./services/PullRequestComment.js";
+export { PullRequestComment } from "./services/PullRequestComment.js";
+export { RateLimiter } from "./services/RateLimiter.js";
+export type {
+	CycloneDXBom,
+	InFlightPackage,
+	ResolvedDependency,
+	SbomAuthor,
+	SbomContact,
+	SbomInput,
+	SbomSupplier,
+} from "./services/Sbom.js";
+export { Sbom } from "./services/Sbom.js";
+export type { SigstoreSignerConfig } from "./services/SigstoreSigner.js";
+export { IN_TOTO_PAYLOAD_TYPE, SIGSTORE_OIDC_AUDIENCE, SigstoreSigner } from "./services/SigstoreSigner.js";
+export { TokenPermissionChecker } from "./services/TokenPermissionChecker.js";
+export { ToolInstaller } from "./services/ToolInstaller.js";
+export type { PollOptions, WorkflowRunStatus } from "./services/WorkflowDispatch.js";
+export { WorkflowDispatch } from "./services/WorkflowDispatch.js";
+export { WorkspaceDetector } from "./services/WorkspaceDetector.js";
+export { AutoMerge } from "./utils/AutoMerge.js";
+export type { AccumulateResult } from "./utils/ErrorAccumulator.js";
+export { ErrorAccumulator } from "./utils/ErrorAccumulator.js";
+export { GithubMarkdown } from "./utils/GithubMarkdown.js";
+export { IoUtil } from "./utils/IoUtil.js";
+export { buildStatement, npmPurl, serializeStatement, subject } from "./utils/intoto.js";
+export { PathUtils } from "./utils/PathUtils.js";
+export type { RegistryType } from "./utils/RegistryClassifier.js";
+export {
+	generatePackageViewUrl,
+	getRegistryDisplayName,
+	getRegistryType,
+	isCustomRegistry,
+	isGitHubPackagesRegistry,
+	isJsrRegistry,
+	isNpmRegistry,
+} from "./utils/RegistryClassifier.js";
+export type { Report } from "./utils/ReportBuilder.js";
+export { ReportBuilder } from "./utils/ReportBuilder.js";
+export { SemverResolver } from "./utils/SemverResolver.js";
+export type { OidcClaims } from "./utils/slsa.js";
+export { GITHUB_BUILD_TYPE, buildSLSAProvenancePredicate, decodeJwtClaims } from "./utils/slsa.js";

@@ -1,0 +1,105 @@
+{
+	"name": "@savvy-web/github-action-builder",
+	"version": "0.7.2",
+	"private": true,
+	"description": "A zero-config build tool for creating GitHub Actions from TypeScript. Bundles with rsbuild, validates action.yml against GitHub's schema, and outputs production-ready Node.js 24 actions.",
+	"keywords": [
+		"github-actions",
+		"github",
+		"actions",
+		"rsbuild",
+		"rspack",
+		"bundler",
+		"typescript",
+		"node24",
+		"cli",
+		"build-tool",
+		"action-builder",
+		"effect-ts",
+		"esm"
+	],
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/github-action-builder",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/github-action-builder"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./tsconfig/action.json": "./src/public/tsconfig/action.json"
+	},
+	"bin": {
+		"github-action-builder": "./src/cli/index.ts"
+	},
+	"scripts": {
+		"build": "turbo run build:dev build:prod --log-order=grouped",
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"@effect/cli": "catalog:silk",
+		"@effect/platform": "catalog:silk",
+		"@effect/platform-node": "catalog:silk",
+		"@effect/printer": "catalog:silk",
+		"@effect/printer-ansi": "catalog:silk",
+		"@effect/typeclass": "catalog:silk",
+		"@rsbuild/core": "^2.0.9",
+		"effect": "catalog:silk",
+		"jiti": "^2.7.0",
+		"picocolors": "^1.1.1",
+		"yaml-effect": "^0.6.0"
+	},
+	"devDependencies": {
+		"@savvy-web/rslib-builder": "^0.20.11",
+		"@savvy-web/vitest": "^1.3.2",
+		"@types/node": "catalog:silk"
+	},
+	"peerDependencies": {
+		"@types/node": "catalog:silkPeers",
+		"@typescript/native-preview": "catalog:silkPeers",
+		"typescript": "catalog:silkPeers"
+	},
+	"peerDependenciesMeta": {
+		"@types/node": {
+			"optional": false
+		},
+		"@typescript/native-preview": {
+			"optional": false
+		},
+		"typescript": {
+			"optional": false
+		}
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}

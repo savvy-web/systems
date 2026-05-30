@@ -1,0 +1,32 @@
+{
+	"compilerOptions": {
+		"allowJs": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"exactOptionalPropertyTypes": true,
+		"lib": ["ES2022"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"target": "ES2022",
+		"types": ["node"]
+	},
+	"exclude": ["node_modules", "dist"],
+	"include": [
+		"${configDir}/*.ts",
+		"${configDir}/*.mts",
+		"${configDir}/*.cts",
+		"${configDir}/src/**/*.ts",
+		"${configDir}/src/**/*.mts",
+		"${configDir}/src/**/*.cts",
+		"${configDir}/lib/**/*.ts",
+		"${configDir}/lib/**/*.mts",
+		"${configDir}/lib/**/*.cts",
+		"${configDir}/__test__/**/*.ts",
+		"${configDir}/__test__/**/*.mts",
+		"${configDir}/__test__/**/*.cts",
+		"${configDir}/types/**/*.d.ts"
+	]
+}
