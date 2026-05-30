@@ -5,13 +5,45 @@ import { Effect, Fiber, Metric, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { commandExecutions } from "../runtime/Telemetry.js";
 import { CommandRunner } from "../services/CommandRunner.js";
-import { CommandRunnerLive } from "./CommandRunnerLive.js";
+import { CommandRunnerLive, escapeWindowsArg } from "./CommandRunnerLive.js";
 
 const run = <A, E>(effect: Effect.Effect<A, E, CommandRunner>) =>
 	Effect.runPromise(Effect.provide(effect, CommandRunnerLive));
 
 const runExit = <A, E>(effect: Effect.Effect<A, E, CommandRunner>) =>
 	Effect.runPromise(Effect.exit(Effect.provide(effect, CommandRunnerLive)));
+
+describe("escapeWindowsArg", () => {
+	it("returns the argument unchanged when it has no cmd.exe metacharacters", () => {
+		expect(escapeWindowsArg("hello")).toBe("hello");
+	});
+
+	it("leaves interior backslashes alone when no quoting is needed", () => {
+		expect(escapeWindowsArg("C:\\Users\\test")).toBe("C:\\Users\\test");
+	});
+
+	it("wraps an argument containing a space in double quotes", () => {
+		expect(escapeWindowsArg("foo bar")).toBe('"foo bar"');
+	});
+
+	it("wraps an argument containing a metacharacter in double quotes", () => {
+		expect(escapeWindowsArg("a&b")).toBe('"a&b"');
+	});
+
+	it("escapes a bare interior double quote", () => {
+		expect(escapeWindowsArg('a"b')).toBe('"a\\"b"');
+	});
+
+	it("doubles a backslash run that precedes an interior quote, then escapes the quote", () => {
+		// foo\"bar -> "foo\\\"bar" : 2 backslashes (doubled) + escaped quote
+		expect(escapeWindowsArg('foo\\"bar')).toBe('"foo\\\\\\"bar"');
+	});
+
+	it("doubles a trailing backslash run so it is not read as an escaped closing quote", () => {
+		// C:\path with space\ -> "C:\path with space\\" : trailing \ doubled before the closing quote
+		expect(escapeWindowsArg("C:\\path with space\\")).toBe('"C:\\path with space\\\\"');
+	});
+});
 
 describe("CommandRunnerLive", () => {
 	describe("exec", () => {

@@ -21,8 +21,10 @@ import { CommandRunner } from "../services/CommandRunner.js";
  * Limitation: `%VAR%` and `!VAR!` (delayed expansion) environment variable
  * expansion still occurs inside double quotes in cmd.exe. Callers must not
  * pass untrusted values containing `%`- or `!`-delimited variable references.
+ *
+ * @internal Exported only for unit testing; not re-exported from the package entry.
  */
-const escapeWindowsArg = (arg: string): string => {
+export const escapeWindowsArg = (arg: string): string => {
 	if (/[&|<>^() "!%]/.test(arg)) {
 		const escaped = arg.replace(/(\\+)(?=")|"|(\\+)$/g, (_match, beforeQuote, atEnd) => {
 			if (beforeQuote !== undefined) return `${beforeQuote}${beforeQuote}`;
