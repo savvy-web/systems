@@ -1,0 +1,808 @@
+# @savvy-web/github-action-effects
+
+> Migrated from `savvy-web/github-action-effects@ea861e8` on 2026-05-30. Earlier release history lives in the original source repository.
+
+## 2.0.2
+
+### Bug Fixes
+
+* [`364c7a9`](https://github.com/savvy-web/github-action-effects/commit/364c7a94891afb76e38c25eb2836594edda08c63) `Attest.listForSubject` now pins `X-GitHub-Api-Version: 2026-03-10` on requests to the GitHub repository attestations endpoint. The previously used default API version has been deprecated (Sunset 2028-03-10) and produced a deprecation warning on every call.
+
+Under the new version the inline Sigstore `bundle` field is absent from list responses. When a `predicateType` filter is supplied, the server-side `predicate_type` query parameter narrows results without any per-entry bundle fetch. When no filter is supplied, each entry's `bundle_url` is fetched to recover the `predicateType`. The public `AttestationListEntry` type is unchanged.
+
+* [`6abe152`](https://github.com/savvy-web/github-action-effects/commit/6abe15277edc848cab5aaa16b5e19b653859aa10) `GitHubClientLive` now correctly treats GitHub secondary rate-limit responses as retryable. A 403 carrying a `Retry-After` header, or a 403 with `x-ratelimit-remaining: 0` and an `x-ratelimit-reset` timestamp, is retried with back-off rather than surfacing as a permanent failure. A bare 403 with no rate-limit signals remains non-retryable so genuine permission denials are not looped on.
+
+## 2.0.1
+
+### Bug Fixes
+
+* [`56ea730`](https://github.com/savvy-web/github-action-effects/commit/56ea730e014b1873ae69022c41ae228567943a0c) Accept `null` in `WebhookPayload`'s `IssueRef.body`, `IssueRef.html_url`, `Repository.full_name`, and `Repository.html_url` fields. GitHub webhook payloads carry these as `null` (not absent) when the issue or PR has no description, or when an event payload omits the rendered URL. Previously decoding any such payload through `ActionEnvironment.payload` failed with `ActionEnvironmentError: Event payload did not match the expected shape: WebhookPayload — Expected string, actual null`.
+
+## 2.0.0
+
+### Breaking Changes
+
+* [`a43f8ed`](https://github.com/savvy-web/github-action-effects/commit/a43f8ed8e53797f385fb33276decd4e16656f63d) ### `GitHubClientLive.fromApp` now requires a `Scope`
+
+`fromApp` builds as a scoped layer so it can revoke its installation token on
+scope close. Consumers on `ActionsRuntime.Default` / `Action.run` are unaffected
+(the run boundary establishes and finalizes the scope automatically). Consumers
+who provide `fromApp` via a bare `Effect.provide` must now wrap in
+`Effect.scoped`.
+
+### Features
+
+* [`a43f8ed`](https://github.com/savvy-web/github-action-effects/commit/a43f8ed8e53797f385fb33276decd4e16656f63d) ### Resilient `GitHubClient` — automatic retry and rate-limit awareness
+
+Every `GitHubClient` call (`rest`, `graphql`, `paginate`, and the new
+`paginateStream`) now retries retryable failures (429 and 5xx) automatically
+with an exponential, jittered, capped backoff, and honors server-advised delays
+from the `Retry-After` and `x-ratelimit-reset` response headers. Resilience is
+on by default; every `GitHubClientLive` constructor (`fromEnv`, `fromToken`,
+`fromApp`) accepts an optional `ResilienceOptions` argument to tune
+`maxRetries` / `baseDelay` / `maxDelay` or disable retries entirely. The pure
+`resilienceSchedule` builder is exported for reuse. All 14 `GitHubClient`-backed
+services inherit this with no code change. `GitHubClientError` gained an optional
+`retryAfterMs` field carrying the server-advised delay.
+
+### Bug Fixes
+
+* [`a43f8ed`](https://github.com/savvy-web/github-action-effects/commit/a43f8ed8e53797f385fb33276decd4e16656f63d) ### `RateLimiter` no longer probes `GET /rate_limit` on every guarded call
+
+`withRateLimit` previously issued a pre-flight `GET /rate_limit` before every
+guarded effect, wasting a request and quota per call. It now reads the
+`x-ratelimit-*` headers observed on real responses (cached in a shared `Ref`
+via an internal `RateLimitState`) and only waits or fails when the cached
+remaining quota is below the 10 percent threshold. `checkRest` is cache-first
+(the shared snapshot holds the core/REST bucket) and probes only on a cache
+miss; `checkGraphQL` always probes, since REST and GraphQL have independent
+quotas. Strictly fewer requests, identical wait/fail policy. To share the observed
+snapshot between the client and the rate limiter, provide `RateLimitState.Default`
+once at the graph root; without it each falls back to a private cache (still
+probe-free).
+
+### Documentation
+
+* [`a43f8ed`](https://github.com/savvy-web/github-action-effects/commit/a43f8ed8e53797f385fb33276decd4e16656f63d) Comprehensive documentation pass covering the 2.0 release surface.
+
+**Accuracy against the final 2.0 API:** corrects stale descriptions throughout
+`docs/` — `GitHubClientLive.fromEnv()` is now a function; `fromToken` takes a
+`Redacted<string>`; `fromApp` is a scoped layer that revokes its token on scope
+close and requires `HttpClient.HttpClient`. The "Upgrading to 2.0" migration note
+and `@actions/*` substitution map are re-verified against the merged code.
+
+**New services documented:** `Glob` (glob patterns + SHA-256 `hashFiles`),
+`IoUtil` (`which`/`whichOrFail`/`findInPath`), `Artifact` (upload/list/get/
+download/delete, with the "must run inside a JS action" env constraint),
+`ActionInput` (YAML 1.2 Core Schema `boolean`, `multiline`), the typed event
+payload (`ActionEnvironment.payload`, `repo`, `issue`, `isDebug` +
+`WebhookPayload`), `PathUtils`, `ActionLogger.notice`, and the
+`WorkflowCommand` notice/stop-commands/echo helpers.
+`GitHubClient.paginateStream` and `GithubMarkdown.image`/`quote` are also
+covered.
+
+**Four new guides:** "Building a robust action" (best practices), "Coming from
+`@actions/*`" (toolkit-parity walkthrough), "Logging and error handling", and
+"Resilient GitHub API calls" (retry, rate-limit awareness, streaming pagination).
+
+**Structure:** three existing guides (SLSA attestations, publishing, step-buffered
+logging) were already present and are preserved; `docs/` is renumbered to a
+contiguous 01-16 reading order with the new guides in the guides cluster.
+
+### Refactoring
+
+* [`a43f8ed`](https://github.com/savvy-web/github-action-effects/commit/a43f8ed8e53797f385fb33276decd4e16656f63d) ### Sigstore bundle serialized via `Schema.encode`
+
+`AttestLive` now serializes the Sigstore bundle with `Schema.encode` instead of a
+`JSON.parse(JSON.stringify(...))` round-trip.
+
+### Maintenance
+
+* [`a43f8ed`](https://github.com/savvy-web/github-action-effects/commit/a43f8ed8e53797f385fb33276decd4e16656f63d) ### Trim required peer dependencies to the three Effect packages actually used
+
+`@effect/cluster`, `@effect/rpc`, and `@effect/sql` were declared as required
+peers but are never imported anywhere in the library. They are now removed from
+`peerDependencies` and `peerDependenciesMeta`. Consumers only need `effect`,
+`@effect/platform`, and `@effect/platform-node`; the dropped packages still
+resolve transitively through `@effect/platform-node` if any code path needs
+them.
+
+### `GitHubClientLive.fromEnv` is now a constructor function
+
+`fromEnv` changed from a bare `Layer` value to a function
+`(resilience?: ResilienceOptions) => Layer` so it can accept resilience tuning,
+matching `fromToken` and `fromApp`. Call it as `GitHubClientLive.fromEnv()`
+(or `GitHubClientLive.fromEnv({ enabled: false })` for bare behavior).
+
+### Secrets are now `Redacted` by default
+
+Public method signatures that take a token or private key now accept
+`Redacted<string>` instead of `string`: `GitHubApp.generateToken` /
+`resolveAppIdentity` / `revokeToken` / `withToken`,
+`GitHubClientLive.fromToken(token)` / `fromApp({ privateKey })`, and
+`PackagePublish.setupAuth(registry, token)` / `RegistryTarget.token`. Wrap bare
+strings with `Redacted.make(...)` at the call site. The persisted
+`InstallationToken.token` field is now `Redacted<string>` (decoded type) — read
+it with `Redacted.value(...)`. The encoded `GITHUB_STATE` bytes are unchanged.
+
+### `GitHubAppLive` and `ActionCacheLive` require `HttpClient.HttpClient`
+
+The raw-`fetch` migration adds an `HttpClient.HttpClient` requirement to both
+layers. The `Action.run` / `ActionsRuntime.Default` path provides it
+automatically (it now bundles `FetchHttpClient.layer`). Consumers that compose
+layers manually must add `FetchHttpClient.layer` (from `@effect/platform`).
+
+### Streaming pagination — `GitHubClient.paginateStream`
+
+A new `paginateStream` method returns an Effect `Stream` that fetches one page at
+a time, so consumers can `takeWhile` / `take` and stop early without buffering or
+fetching the remaining pages. The eager `paginate` is unchanged and agrees with
+`paginateStream` on page boundaries.
+
+### Resource safety
+
+`CommandRunner` and `ToolInstaller` now register interruption finalizers on their
+async spawns, so a `timeout` / `race` / interrupt no longer leaks child processes
+or download sockets.
+
+### Secret hardening
+
+Every token / private key stays `Redacted` end-to-end, unwrapped only at the wire
+boundary; the npm auth token is no longer passed as a command argument (it is
+written to `.npmrc` directly) and `CommandRunnerError` scrubs known auth-token
+args, closing the error-message leak; the generated installation token is masked
+via `setSecret`.
+
+### HTTP seam
+
+`GitHubAppLive` and `ActionCacheLive` use `@effect/platform` `HttpClient` instead
+of raw `fetch` — interruption-aware and testable.
+
+### Observability (opt-in)
+
+GitHub API calls, command executions, and rate-limit events now emit
+`Effect.withSpan` traces and `Metric` counters. Inert unless an OpenTelemetry /
+metrics layer is provided.
+
+### New `Artifact` service (`@actions/artifact` v2 parity)
+
+* `uploadArtifact(name, files, rootDirectory, options?)` zips the file set and
+  uploads it via the GitHub Actions results backend (Twirp
+  `github.actions.results.api.v1.ArtifactService` + Azure Block Blob), returning
+  `{ id, size }`. `listArtifacts`, `getArtifact` (-> `Option`), `downloadArtifact`
+  (signed-URL download + unzip) and `deleteArtifact` complete the surface. A
+  `findBy` option is reserved for cross-run/cross-repo reads through the public
+  REST API (`actions:read`); that path is not yet implemented and fails clearly.
+* Reads `ACTIONS_RESULTS_URL` / `ACTIONS_RUNTIME_TOKEN` (set on GitHub-hosted
+  runners), decoding the run/job backend IDs from the runtime token's `scp`
+  claim. v2 rejects re-uploading the same artifact name in a run, surfaced as a
+  typed error. New `ArtifactError` (with a `retryable` flag) and `ArtifactTest`
+  in-memory layer. No dependency on `@actions/artifact`; zip/unzip shells out to
+  `zip`/`unzip` with a Windows PowerShell fallback.
+* The Twirp plumbing (`twirpCall`, the `CONFLICT` sentinel and the retry
+  schedule) is now shared between the cache and artifact layers; no behavior
+  change to `ActionCache`.
+
+> The artifact backend is an internal GitHub protocol reverse-engineered from
+> `actions/toolkit` and may change without notice; the implementation mirrors
+> the already-shipped V2 cache layer. This ships as a draft pending end-to-end
+> validation against a live GitHub-hosted runner.
+
+### New `Glob` service + `hashFiles` (`@actions/glob` parity)
+
+* `Glob.glob(patterns, options?)` resolves newline/comma-separated glob patterns
+  (`*`, `?`, `[...]`, `**`, `!` excludes, `~` expansion) to a sorted array of
+  absolute paths. `GlobLive` wraps `node:fs.globSync`; `GlobTest` is an in-memory
+  namespace layer (`empty`/`layer`).
+* `Glob.hashFiles(patterns, options?)` computes the `@actions/glob`-compatible
+  SHA-256 hash-of-hashes over matched files (per-file SHA-256 binary digests fed,
+  in glob order, into one accumulating SHA-256), so keys interoperate with
+  `ActionCache`. Files outside the workspace root are skipped. Returns
+  `Option.none()` when nothing matches (the toolkit returns `""`; recover that
+  verbatim with `Option.getOrElse(() => "")`).
+* New `GlobError`. Internal path-resolution shared with `ActionCache` (refactor;
+  no behavior change).
+
+### New `IoUtil` namespace (`@actions/io` `which`/`findInPath` parity)
+
+* `IoUtil.which(tool)` returns `Option.some(absolutePath)` for the first
+  executable match on `PATH`, `Option.none()` on miss; `IoUtil.whichOrFail(tool)`
+  fails with the new `IoError` instead. `IoUtil.findInPath(tool)` returns every
+  match. Honors `PATHEXT` on Windows and POSIX execute-bit checks. Reads
+  `FileSystem` from context (provided by `ActionsRuntime.Default`).
+* `cp`/`mv`/`rmRF`/`mkdirP` are documented as direct `@effect/platform`
+  `FileSystem` calls (a documented filesystem I/O recipe) rather than new
+  wrappers, since `FileSystem` is already in context everywhere.
+
+### Toolkit parity — context, inputs, and core conveniences
+
+* `ActionInput.boolean` / `ActionInput.multiline`: GitHub-faithful input `Config`
+  combinators. `boolean` follows the YAML 1.2 "Core Schema" exactly
+  (`true|True|TRUE` / `false|False|FALSE`), failing on anything else — unlike
+  `Config.boolean`, which silently accepts `yes`/`on`/`1`/`no`/`off`/`0`.
+* `ActionEnvironment.payload`: parses `GITHUB_EVENT_PATH` into a schema-validated
+  `WebhookPayload` (tolerant of unknown keys; empty when unset/missing).
+  `ActionEnvironment.repo` / `.issue` mirror `@actions/github` `context.repo` /
+  `context.issue`; `ActionEnvironment.isDebug` mirrors `core.isDebug()`.
+* `WorkflowCommand.notice` + `ActionLogger.notice` for `::notice::` annotations,
+  with an `AnnotationProperties` → command-properties mapper matching the toolkit.
+* `WorkflowCommand.stopCommands` / `resumeCommands` / `setCommandEcho` for
+  untrusted-output handling.
+* `GithubMarkdown.image` / `GithubMarkdown.quote` (exact `@actions/core` summary
+  HTML).
+* `PathUtils.toPosixPath` / `toWin32Path` / `toPlatformPath`.
+* `OidcTokenIssuer.getToken(audience?)` — `audience` is now optional, matching
+  `core.getIDToken(audience?)` for cloud-provider OIDC federation. Backward
+  compatible; Sigstore callers are unaffected.
+
+### `fromApp` revokes its installation token on scope close
+
+`GitHubClientLive.fromApp` now builds as a scoped layer and revokes the minted
+installation token when its scope closes, instead of leaving short-lived tokens
+to expire. A `Layer.memoize` recipe is documented on `fromApp` for sharing one
+App client (and one token) across multiple provides in a single run.
+
+### CI now runs the full production build on every pull request
+
+The shared `release-validate` reusable workflow now runs `ci:build` (rslib dev +
+prod, api-extractor forgotten-export detection, and TSDoc validation) on PRs.
+The previous PR checks ran lint and tests but not the production build, which is
+how a forgotten barrel export / multi-line TSDoc code span shipped a broken
+build in a prior release.
+
+## 1.2.0
+
+### Features
+
+* [`ba766b1`](https://github.com/savvy-web/github-action-effects/commit/ba766b1dfaf2f453ccefd9fc7ff3af73cc747f7c) ### New attestation stack — `Attest`, `SigstoreSigner`, `OidcTokenIssuer`, `Sbom`
+
+This branch introduces a complete artifact-attestation toolchain — every service, schema, and helper below is **new** (no equivalent existed on `main`):
+
+* **`Attest` service** — the end-to-end attest/sign/upload surface. `buildStatement` constructs an in-toto Statement v1 from subjects + a typed predicate; `buildBundle` signs it into a Sigstore bundle; `attest` does the full build → sign → `POST /repos/{owner}/{repo}/attestations` round trip and returns an `AttestationRecord` (statement + bundle + attestation id + UI URL); `provenance` and `sbom` are the SLSA-provenance and CycloneDX-SBOM convenience wrappers; `save` writes a statement or bundle to disk for inspection. Live and Test layers (`AttestLive`, `AttestTest`, with `AttestTestFullLayer` / `makeAttestTestState`) ship alongside.
+* **`SigstoreSigner` service** — signs an in-toto statement into a Sigstore v0.3 DSSE bundle via Fulcio + Rekor. Exports `IN_TOTO_PAYLOAD_TYPE`, `SIGSTORE_OIDC_AUDIENCE`, the `SigstoreSignerConfig` knobs (`fulcioBaseURL` / `rekorBaseURL`), and a `makeSigstoreSignerLive` factory. Backed by the new `@sigstore/sign` and `@sigstore/bundle` dependencies.
+* **`OidcTokenIssuer` service** — requests a GitHub Actions OIDC ID token for a given audience (e.g. `"sigstore"` for Fulcio cert issuance), reading `ACTIONS_ID_TOKEN_REQUEST_TOKEN` / `ACTIONS_ID_TOKEN_REQUEST_URL`. `saveToken` is exported for persisting the issued token. This is the `id-token: write` plumbing the signer depends on.
+* **`Sbom` service** — generates a CycloneDX 1.5 BOM from a resolved dependency graph (`generate`), serializes it to canonical JSON (`serializeJson`), and writes it to disk (`save`). Models `ResolvedDependency`, `InFlightPackage` (siblings released in the same wave that the registry can't see yet), `SbomInput`, and re-exports the `CycloneDXBom` model so callers don't depend on `@cyclonedx/cyclonedx-library` directly. Backed by the new `@cyclonedx/cyclonedx-library` dependency.
+
+Supporting public surface, also new:
+
+* **`Attestation` schema cluster** (`src/schemas/Attestation.ts`) — `InTotoStatement`, `InTotoSubject`, `SigstoreBundle`, the `AttestInput` / `AttestationRecord` shapes, and the predicate-type / media-type constants `IN_TOTO_STATEMENT_V1`, `SLSA_PROVENANCE_V1`, `CYCLONEDX_BOM`, `SPDX_V2_3`, `SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE`.
+* **`intoto` helpers** (`src/utils/intoto.ts`) — pure, Effect-free constructors `buildStatement`, `subject`, `serializeStatement`, and the `npmPurl` PURL helper, for building and inspecting statements without the service plumbing.
+* **`slsa` helpers** (`src/utils/slsa.ts`) — `decodeJwtClaims` (extract OIDC claims from a runner-issued JWT without re-verifying) and `buildSLSAProvenancePredicate` (assemble a SLSA Provenance v1 predicate matching `@actions/attest`'s shape), plus the `GITHUB_BUILD_TYPE` constant and `OidcClaims` type.
+* **New error types** — `AttestError`, `SigstoreSignerError`, `OidcTokenError`, `SbomError`, and `SlsaError`.
+
+### Bug Fixes
+
+* [`ba766b1`](https://github.com/savvy-web/github-action-effects/commit/ba766b1dfaf2f453ccefd9fc7ff3af73cc747f7c) ### `GitTag` resolves annotated tags to commit SHAs
+
+`GitTag.list` switched from `git.listMatchingRefs` to `repos.listTags` to surface annotated tags consistently. `GitTag.resolve` now peels through annotated-tag indirections up to `MAX_TAG_PEEL` hops; exhausting the peel loop yields a typed `GitTagError` instead of returning a tag-object SHA where a commit SHA was expected.
+
+### Maintenance
+
+* [`ba766b1`](https://github.com/savvy-web/github-action-effects/commit/ba766b1dfaf2f453ccefd9fc7ff3af73cc747f7c) ### New runtime dependencies for the attestation stack
+
+The attestation toolchain adds three direct dependencies: `@sigstore/sign` and `@sigstore/bundle` (Sigstore DSSE bundle construction, used by `SigstoreSigner`) and `@cyclonedx/cyclonedx-library` (CycloneDX BOM model + JSON serialization, used by `Sbom`). All are pure-ESM and carry no `@actions/*` transitive dependencies, preserving the zero-CJS posture.
+
+### New `GitHubContent`, `GitHubCommit`, and `GitHubArtifactMetadata` services
+
+Three new REST-backed services (all new files vs `main`), each with Live and Test layers:
+
+* **`GitHubContent`** — `getFile(path, ref?)` reads a repository file's decoded UTF-8 contents at a ref (default branch when `ref` omitted); fails with `GitHubContentError` when the path is not a file.
+* **`GitHubCommit`** — reads the GitHub commit graph (distinct from the local-`git` `GitCommit` service): `get(ref)`, `list(ref)`, and `compare(base, head)`, modeling `CommitSummary` / `CommitDetail` / `CommitFile` / `CommitComparison`. Fails with the new `GitHubCommitError`.
+* **`GitHubArtifactMetadata`** — `createStorageRecord(input)` writes a GitHub Packages artifact-metadata storage record (the `StorageRecordInput` shape: purl, digest, version, registry/artifact URLs) linking an attestation to a published artifact. Fails with the new `GitHubArtifactMetadataError`.
+
+### New `RegistryClassifier` utility namespace
+
+`src/utils/RegistryClassifier.ts` exports URL-safe registry classification: `getRegistryType`, `getRegistryDisplayName`, `generatePackageViewUrl`, the `isNpmRegistry` / `isGitHubPackagesRegistry` / `isJsrRegistry` / `isCustomRegistry` predicates, and the `RegistryType` type. All functions parse the URL and check the hostname (exact or subdomain match) rather than substring-matching, closing the CWE-20 spoofing vector (`http://evil-npmjs.org`, `http://npmjs.org.evil.com`).
+
+### New `Step` module — step-buffered logging primitive
+
+A new top-level `Step` namespace exports `withStep`, `success`, `collapse`, and `groupStep` for orchestrators that want one summary line per logical step with detail buffered for error spills. Behaviour summary:
+
+* `Step.withStep(name, effect)` opens a fresh debug buffer for the step, runs the effect, emits `✅ <name>: <line>` on success (line set via `Step.success`), or `❌ <name>: <error>` + the spilled debug buffer on failure. Original error propagates untouched.
+* `Step.collapse(steps, reducer)` runs N steps in parallel; all-success → one collapsed info line; any failure or `null`-from-reducer → fall back to per-step nested lines.
+* `Step.groupStep(name, effect)` wraps `withStep` inside `ActionLogger.group` — the right shape for phase-level entry points.
+
+Inside a `withStep` envelope, `Effect.logDebug` and `Effect.logInfo` are buffered; only the success line emits live on the happy path. Warnings and errors pass through (they map to GitHub Actions annotations). Outside a step, the existing logger semantics are unchanged.
+
+### `Attest.listForSubject` for idempotent attestation reuse
+
+Part of the new `Attest` service (above). Probes `GET /repos/{owner}/{repo}/attestations/sha256:{hex}` for existing attestations on a tarball digest, parses each bundle's in-toto statement to extract the predicate type, and returns the matching attestation URLs. Empty list on 404. Lets the orchestrator skip re-writing attestations on a recovery run where the tarball already has them.
+
+### `Attest.sbom` accepts a pre-built BOM document
+
+The new `Attest` service's `sbom` method's options carry a `bomDocument` field. Pass a parsed CycloneDX BOM and the library attests it verbatim, replacing the prior dependency-array path that produced a sparse BOM with no components. The dependency-array path still works for callers that have not migrated.
+
+### `PackagePublish` redesign for the self-recovering publish chain
+
+* `pack` now returns `{ tarballPath, digest, sha256Hex, name, version, packedSize, unpackedSize, fileCount }`. `digest` is the npm `sha512-<base64>` integrity format (matches `dist.integrity`); `sha256Hex` is the lowercase hex sha256 of the tarball file (the format the GitHub artifact-metadata and attestation APIs accept). The two are produced from the same on-disk tarball and are not interchangeable.
+* New `publishTarball(tarballPath, options)` method publishes a pre-packed tarball to a specific registry. Lets the orchestrator pack once per build directory and publish the identical bytes to N registries without a second pack.
+* New `packageManager` option on `publish` and `publishIdempotent.options` dispatches `npm publish` through the active manager's executor (`pnpm dlx npm`, `yarn npm`, `bun x npm`, or bare `npm`). The non-default dispatchers fetch a fresh npm 11.5.1+ rather than the runner's bundled npm 10.x — critical for npm trusted publishing's OIDC token exchange.
+* `npm publish` invocations now always include `--loglevel verbose` and stream to the runner log via `runner.exec({ streaming: true })`. The verbose flag surfaces the OIDC token-exchange request that would otherwise be invisible on failure.
+* `publishIdempotent` is now deprecated. Its fused probe-then-publish logic hardcoded the default registry and could not recover from a partial publish across multiple registries. New callers should compose `pack` + `NpmRegistry.getPublishedIntegrity` + `publishTarball` themselves.
+
+### `NpmRegistry` per-target probe
+
+* `getVersions(pkg, options?)` and `getPackageInfo(pkg, version?, options?)` accept an optional `{ registry }` override; appends `--registry <url>` to the `npm view` invocation. The prior signatures keep working with no override (default registry).
+* New `getPublishedIntegrity(packageName, version, { registry })` method. Returns `Option.some(digest)` when the version is present with `dist.integrity`, `Option.none()` on E404 ("not published"). The single decision primitive for the self-recovering publish flow.
+
+### `Sbom` service supplier and author metadata
+
+On the new `Sbom` service (above), `Sbom.generate` accepts optional `supplier` and `authors` fields. Threaded onto the emitted BOM's `metadata.supplier` and `metadata.authors`, satisfying NTIA minimum-elements compliance for a caller that supplies the template.
+
+### Existing GitHub services gained methods and fields
+
+Additive only — every existing signature still type-checks:
+
+* **`GitHubIssue`** — new `get(issueNumber)` returning `IssueData`; `IssueData` gained optional `htmlUrl` and `nodeId`.
+* **`CheckRun`** — new `get(checkRunId)` and a new `CheckRunData` shape (`id` / `name` / `status` / `conclusion` / `htmlUrl`). `create` now resolves to `CheckRunData` rather than a bare check-run id, so callers get the full record without a follow-up `get`.
+* **`GitHubRelease`** — new `updateRelease(releaseId, options)` (returns the updated `ReleaseData`) and `listReleaseAssets(releaseId)`.
+* **`PullRequest`** — new `listFiles(number)` and `listAssociatedWithCommit(sha)`, plus a new `PullRequestFile` shape. `PullRequestInfo` gained optional `mergedAt`, `body`, `mergeCommitSha`, and `baseSha` fields.
+
+### `PackagePublishError` carries the source error
+
+`PackagePublishError` gained an optional `cause` field holding the underlying error (e.g. the `CommandRunnerError` from a failed `npm` invocation, with its `stderr` / `exitCode` / `args`), and its `operation` union grew `publishTarball`, `publishIdempotent`, and `dryRun` to match the redesigned service. The `message` getter (see below) reads `cause` to append the command output.
+
+### Stderr-tail truncation in error messages
+
+`CommandRunnerError.message` and `PackagePublishError.message` now show the LAST 2000 characters of stderr when truncated, with a `...[N chars truncated from head]...` marker. The prior head-truncation hid the actual `npm error` lines (which sit at the END of stderr after the warnings and notice block) behind the noise. `CommandRunnerError` also gained an optional `stdout` field — populated on non-zero exit — so the formatter can fall back to stdout when stderr is empty (some CLIs route error context there).
+
+### `NpmRegistryError.message` and `PackagePublishError.message` getters
+
+`Data.TaggedError` does not synthesise a `message` getter from its fields. Without it, callers that caught these errors into a generic `{ error: e.message }` shape saw empty strings — the publish orchestrator's "integrity probe failed" line read "failed —" with nothing after the dash. Both classes now produce a useful `[<operation>] <pkg-or-cmd>: <reason>` message string.
+
+### `PackagePublish.dryRun` parses both npm output shapes
+
+`npm publish --dry-run --json` emits a single JSON object; the prior `dryRun` implementation parsed only the array form. Now tolerates both, so dry-run packed/unpacked sizes and file counts populate correctly.
+
+### Octokit deprecation-warning suppression
+
+The `@octokit/plugin-request-log` plugin emits a `POST /repos/... - 422 ...` line to stdout on every non-2xx HTTP response, bypassing the Effect logger. A custom `log` object on the Octokit constructor now routes these through `WorkflowCommand.issue("debug", ...)`, so idempotent-recovery 422s (existing tag, existing release) no longer leak past `Step.withStep`'s buffer. The structured `GitHubClientError` still carries the full context on real failures.
+
+The newer `predicate_type` query parameter on `GET /repos/.../attestations/{digest}` is deprecated as of 2026-03-10 (removal 2028-03-10). `Attest.listForSubject` no longer sends it — the library already re-filters client-side on the parsed in-toto `predicateType` for an authoritative match, so the server-side query was redundant.
+
+### `Action.run` and test-runtime cast adjustments
+
+Pre-existing `tsgo` strict-mode errors at the `Effect.runPromise` seam are pinned with explicit `as Effect.Effect<A, E, never>` casts at the run boundary. The casts are safe because `ActionsRuntime.Default` resolves every transitive context requirement; the casts are needed because `tsgo` does not always narrow `Effect.provide`'s requires-channel to `never` through layer composition.
+
+## 1.1.1
+
+### Bug Fixes
+
+* [`514296a`](https://github.com/savvy-web/github-action-effects/commit/514296a5cca7062dd48be54de0aa2715469f1e9c) Fix `botIdentity()` silently falling back to `github-actions[bot]` when the App's identity could not be resolved. The `/users/{username}` lookup was authenticated with the App JWT, which GitHub rejects on public user endpoints — causing a 401 and a silent fallback. The lookup now uses the installation token, which has the correct permissions. An additional guard prevents a nonsensical `/users/[bot]` request when `GET /app` returns no slug. Consumers that sign commits via the Git Data API will now get the correct author identity (`<appUserId>+<appSlug>[bot]@users.noreply.github.com`) and avoid DCO mismatches.
+
+## 1.1.0
+
+### Breaking Changes
+
+* [`5b3b5b6`](https://github.com/savvy-web/github-action-effects/commit/5b3b5b6fbc07d5bda7d781dd206af489b3978497) `GitHubApp.botIdentity` now takes `{ appSlug?, appUserId? }` instead of a bare slug string. Call sites passing a string must pass an object; it produces verified identities when both fields are present.
+
+### Features
+
+* [`5b3b5b6`](https://github.com/savvy-web/github-action-effects/commit/5b3b5b6fbc07d5bda7d781dd206af489b3978497) `GitHubToken` now resolves and persists the GitHub App identity during the `pre` phase — best-effort, so a lookup failure degrades gracefully instead of failing the action.
+* New `GitHubToken.read()` exposes the persisted installation token, and `GitHubToken.botIdentity()` derives a verified commit identity (numeric-ID-prefixed email) from it.
+* New `GitHubApp.resolveAppIdentity` method performs the App slug and bot-user-ID lookup.
+
+## 1.0.0
+
+### Features
+
+* [`8dd0764`](https://github.com/savvy-web/github-action-effects/commit/8dd0764798a3524b482b46906459d4176e699034) Explicit GitHub token construction, an App-token lifecycle convenience, and per-group log flushing.
+* **BREAKING:** `GitHubClientLive` is now a namespace object. Replace `GitHubClientLive` with `GitHubClientLive.fromEnv`. New `GitHubClientLive.fromToken(token)` builds a client from an explicit token (string or `Redacted`); `GitHubClientLive.fromApp({ clientId, privateKey, installationId? })` builds one from GitHub App credentials. Resolves #108 and #109.
+* New `GitHubToken` namespace — `provision` (pre), `client` (main), `dispose` (post) — for the GitHub App installation-token lifecycle, with optional post-generation permission verification.
+
+### Bug Fixes
+
+* [`8dd0764`](https://github.com/savvy-web/github-action-effects/commit/8dd0764798a3524b482b46906459d4176e699034) `ActionLogger` now flushes buffered output inside a failing `group` before `::endgroup::`, instead of only at the outer `withBuffer` boundary. Resolves #86.
+
+## 0.11.14
+
+### Dependencies
+
+* | [`d0c42c0`](https://github.com/savvy-web/github-action-effects/commit/d0c42c0e21afa3115768476532a98b9da4c0a38c) | Dependency    | Type    | Action | From   | To |
+  | :-------------------------------------------------------------------------------------------------------------- | :------------ | :------ | :----- | :----- | -- |
+  | @savvy-web/vitest                                                                                               | devDependency | updated | ^1.3.0 | ^1.3.1 |    |
+
+## 0.11.13
+
+### Dependencies
+
+* | [`58ec41d`](https://github.com/savvy-web/github-action-effects/commit/58ec41dd5acab2861c38eb812498ad064fb12df9) | Dependency    | Type    | Action  | From    | To |
+  | :-------------------------------------------------------------------------------------------------------------- | :------------ | :------ | :------ | :------ | -- |
+  | @savvy-web/lint-staged                                                                                          | devDependency | updated | ^0.8.0  | ^1.0.0  |    |
+  | @savvy-web/rslib-builder                                                                                        | devDependency | updated | ^0.20.1 | ^0.20.2 |    |
+
+### Other
+
+* [`c1b25f5`](https://github.com/savvy-web/github-action-effects/commit/c1b25f54dbe1f40ef604b7e3373f5873014ab76e) Support for TypeScript v6
+
+## 0.11.12
+
+### Other
+
+* [`71aec8e`](https://github.com/savvy-web/github-action-effects/commit/71aec8e0183e02cde2a65aa543e63e544deabba4) Upgrades to new `@savvy-web/vitest` standard setup
+
+## 0.11.11
+
+### Features
+
+* [`f1c7e5c`](https://github.com/savvy-web/github-action-effects/commit/f1c7e5cf35d9a4fbcf7e59451582e9bde379f752) Add `streaming` option to `CommandRunner.ExecOptions` that forwards
+  stdout/stderr to `process.stdout`/`process.stderr` in real-time while still
+  capturing output, improving log visibility for long-running commands (Fixes #80)
+* Add Windows shell argument escaping via `escapeWindowsArg()` to prevent
+  cmd.exe metacharacter injection when `shell: true` is used for `.cmd`/`.bat`
+  file resolution (Fixes #62)
+
+### Bug Fixes
+
+* [`f1c7e5c`](https://github.com/savvy-web/github-action-effects/commit/f1c7e5cf35d9a4fbcf7e59451582e9bde379f752) Fix cache restore extracting files relative to working directory instead of at
+  their correct absolute paths by adding `-P` (absolute-names) flag to both tar
+  create and extract operations (Fixes #81)
+
+## 0.11.10
+
+### Bug Fixes
+
+* [`5b0b1bd`](https://github.com/savvy-web/github-action-effects/commit/5b0b1bd6852b923883ec50b4fadefedf03f39c38) Only use tar `-k` flag on Windows where file locking causes "Permission denied" errors. Linux/macOS use plain `xzf` which correctly overwrites existing files by default. Fixes #76.
+
+## 0.11.9
+
+### Bug Fixes
+
+* [`3a0542f`](https://github.com/savvy-web/github-action-effects/commit/3a0542fd9d2835fc0cb66b414d6141b701f0b0c3) Use `-k` (keep old files) flag for tar extraction to skip existing files instead of failing with "Permission denied" on Windows. Tolerates exit code 1 (non-fatal warnings) while still failing on exit code 2+ (fatal errors). Fixes #76.
+
+## 0.11.8
+
+### Bug Fixes
+
+* [`3636618`](https://github.com/savvy-web/github-action-effects/commit/3636618043429c9e011b3b94299246091c7e7910) Remove `--force-local` flag from tar commands — bsdtar (used on all GitHub Actions runner platforms) does not support it and does not need it. Plain `tar czf`/`tar xzf` works correctly across all platforms. Fixes #71.
+
+## 0.11.7
+
+### Bug Fixes
+
+* [`2a3a4f6`](https://github.com/savvy-web/github-action-effects/commit/2a3a4f67eda185d3ac7eb8b56f2cf269ad769219) Remove `--overwrite` flag from tar extraction — bsdtar (used on macOS and Windows runners) does not support it, and both GNU tar and bsdtar overwrite by default. Fixes #71.
+
+## 0.11.6
+
+### Bug Fixes
+
+* [`283add4`](https://github.com/savvy-web/github-action-effects/commit/283add4e2f72da6e5e8761bfbbff5e6a59ebcb84) Fix Windows tar extraction by adding `--force-local` flag to prevent colons in paths from being interpreted as remote hosts, and `--overwrite` to handle extracting over existing files. Fixes #71.
+* Treat HTTP 409 (Conflict) on `CreateCacheEntry` as silent success since the cache already exists for that key. Fixes #72.
+
+## 0.11.5
+
+### Bug Fixes
+
+* [`1784de5`](https://github.com/savvy-web/github-action-effects/commit/1784de503919abbaf58c2593fda28ec318c6f511) Use snake\_case field names in Twirp cache protocol requests and responses to match the protobuf wire format. Fixes #69.
+
+- [`1749567`](https://github.com/savvy-web/github-action-effects/commit/1749567d1bf0e0d31904fd9230c323625376cc87) Resolve tilde paths, expand absolute glob patterns, filter non-existent paths, and deduplicate parent/child entries before passing cache paths to tar. Fixes #68.
+
+## 0.11.4
+
+### Bug Fixes
+
+* [`1e19145`](https://github.com/savvy-web/github-action-effects/commit/1e19145e7f00a52b4603b759d710d0a0c9043c1b) Expand glob patterns to real filesystem paths before passing to tar in ActionCacheLive.save(). Fixes #66.
+
+## 0.11.3
+
+### Bug Fixes
+
+* [`50f4caa`](https://github.com/savvy-web/github-action-effects/commit/50f4caa1863449d84b97e936be8496df8f4d78bf) Fix ActionCacheLive save/restore failing on GitHub Actions runners with V2 cache service enabled (`ACTIONS_CACHE_SERVICE_V2=True`).
+
+- Replace V1 REST protocol (`_apis/artifactcache/` at `ACTIONS_CACHE_URL`) with V2 Twirp RPC at `ACTIONS_RESULTS_URL`
+- Restore uses `GetCacheEntryDownloadURL` → Azure Blob download via `@azure/storage-blob`
+- Save uses `CreateCacheEntry` → Azure Blob upload → `FinalizeCacheEntryUpload`
+- Version hash updated to match `@actions/cache` format (`paths|gzip|1.0`)
+- Add `@azure/storage-blob` as direct dependency for reliable Azure Blob uploads/downloads
+- Add exponential backoff retry for Twirp RPC calls on transient errors
+
+## 0.11.2
+
+### Bug Fixes
+
+* [`3192780`](https://github.com/savvy-web/github-action-effects/commit/31927803cb5cd21511d6a295ef63806e18cd9098) Use `path.delimiter` instead of hardcoded `:` in `ActionOutputs.addPath()` so Windows PATH entries use `;`
+* Add `shell: true` to `spawn()` on Windows in `CommandRunner` so `.cmd`/`.bat` files like `corepack.cmd` are resolved
+
+## 0.11.1
+
+### Bug Fixes
+
+* [`7105768`](https://github.com/savvy-web/github-action-effects/commit/7105768c494c16e0aba7c9ea463a0b671e7ec85a) Fix ToolInstaller.download() hanging on Windows GitHub Actions runners by replacing fetch/undici with node:https direct streaming. Add Windows PowerShell zip extraction support for extractZip().
+
+- Replace `globalThis.fetch` + `Readable.fromWeb()` with `node:https`/`node:http` and `stream.pipeline()` for reliable cross-platform binary downloads
+- Add 3-minute socket timeout matching `@actions/tool-cache` behavior
+- Add manual HTTP redirect following (up to 10 hops)
+- Add retry with exponential backoff for transient errors (5xx, 408, 429, socket timeout, network errors)
+- Add `User-Agent: github-action-effects` header
+- Add Windows zip extraction via PowerShell `System.IO.Compression.ZipFile` (pwsh → powershell fallback)
+- Add `-oq` flags to `unzip` on non-Windows for quiet overwrite behavior
+
+## 0.11.0
+
+### Features
+
+* [`bcef2a2`](https://github.com/savvy-web/github-action-effects/commit/bcef2a2aa3e8cc7040165171669afa6034862087) Replace all `@actions/*` packages with native ESM implementations.
+
+- Add runtime layer: `WorkflowCommand`, `RuntimeFile`,
+  `ActionsConfigProvider`, `ActionsLogger`, `ActionsRuntime.Default`
+- Inputs via Effect `Config` API backed by custom ConfigProvider
+  (replaces `ActionInputs` service)
+- Logging via Effect `Logger` emitting GitHub workflow commands
+  (replaces `@actions/core` logging)
+- Rewrite `ActionOutputsLive`, `ActionStateLive` with `RuntimeFile`
+- Rewrite `CommandRunnerLive` with `node:child_process` spawn
+- Rewrite `GitHubClientLive` with direct `@octokit/rest`
+  (self-contained Layer, no longer a factory function)
+- Rewrite `ToolInstallerLive` with low-level primitives
+  (find, download, extractTar, extractZip, cacheDir, cacheFile)
+- Rewrite `ActionCacheLive` with native cache protocol via `fetch`
+- Reduce `ActionLogger` to `group` + `withBuffer`
+  (annotations handled by Effect Logger)
+- Simplify `Action.run` to use `ActionsRuntime.Default`
+- Add `@octokit/rest` and `@octokit/auth-app` as direct dependencies
+- Remove all `@actions/*` peer and dev dependencies
+
+### Other
+
+* [`bcef2a2`](https://github.com/savvy-web/github-action-effects/commit/bcef2a2aa3e8cc7040165171669afa6034862087) Closes #51
+
+## 0.10.0
+
+### Breaking Changes
+
+* [`ff327e0`](https://github.com/savvy-web/github-action-effects/commit/ff327e02c9e3eeff205c54b4c8912ece843457b7) Remove `OtelExporterLive`, `OtelTelemetryLive`, `InMemoryTracer`,
+  `ActionTelemetry`, `ActionTelemetryLive`, `ActionTelemetryTest`,
+  `TelemetryReport`, `GitHubOtelAttributes`, and all OTel schemas
+* Remove `Effect.withSpan` instrumentation from all service layers
+* Remove `timings()` method from `ReportBuilder`
+* Remove 12 `@opentelemetry/*` dependencies
+* `Action.run()` no longer reads `otel-*` inputs
+
+### Features
+
+* [`ff327e0`](https://github.com/savvy-web/github-action-effects/commit/ff327e02c9e3eeff205c54b4c8912ece843457b7) Add `cacheFile` to `ActionsToolCache` service (closes #46)
+* Add `installBinary` and `installBinaryAndAddToPath` to `ToolInstaller`
+  for single-binary tools like Biome CLI (closes #40)
+* Add `BinaryInstallOptions` type export
+
+### Other
+
+* [`ff327e0`](https://github.com/savvy-web/github-action-effects/commit/ff327e02c9e3eeff205c54b4c8912ece843457b7) Fixes #47.
+
+## 0.9.0
+
+### Breaking Changes
+
+* [`64b6a04`](https://github.com/savvy-web/github-action-effects/commit/64b6a049057d9a6384a83d576efff4025915ee28) `Action.run()` signature changed from `run(program, layer?)` to `run(program, options?)` where options is `{ layer?, platform? }`. Live layer types now include wrapper service requirements (e.g., `Layer.Layer<ActionInputs, never, ActionsCore>`).
+
+### Features
+
+* [`64b6a04`](https://github.com/savvy-web/github-action-effects/commit/64b6a049057d9a6384a83d576efff4025915ee28) Add `./testing` subpath export and platform abstraction for @actions/\* packages.
+
+### Bug Fixes
+
+* [`6dcae85`](https://github.com/savvy-web/github-action-effects/commit/6dcae852802f778490b600bbb9f8fa57b29f7e27) Replace dynamic `import()` with static imports in Live layers for ncc bundling compatibility.
+
+ToolInstallerLive and GitHubAppLive previously used dynamic `import()` for `@actions/tool-cache`, `@actions/core`, and `@octokit/auth-app`. This broke `@vercel/ncc` bundling because ncc cannot follow dynamic imports, requiring consumers to add bare import hints in their entry points. All Live layers now use static imports consistently, so ncc resolves every dependency chain automatically without manual workarounds.
+
+### Other
+
+* [`64b6a04`](https://github.com/savvy-web/github-action-effects/commit/64b6a049057d9a6384a83d576efff4025915ee28) **Platform abstraction:** Six new wrapper services (ActionsCore, ActionsGitHub, ActionsCache, ActionsExec, ActionsToolCache, OctokitAuthApp) abstract @actions/\* packages behind Effect DI. All Live layers now consume these wrappers instead of importing @actions/\* directly. ActionsPlatformLive bundles all six for convenience.
+
+**Testing subpath:** `@savvy-web/github-action-effects/testing` provides all service tags, Live layers, test layers, errors, schemas, and utils without triggering any @actions/\* module resolution. Eliminates \~20 lines of vi.mock boilerplate per consumer test file.
+
+## 0.8.0
+
+### Breaking Changes
+
+* [`bcc26cc`](https://github.com/savvy-web/github-action-effects/commit/bcc26cccfdf3bffa9b1bd9472e7b1009d8711c11) Removed all `*Base` error exports (e.g., `ActionInputErrorBase`, `GitHubClientErrorBase`)
+* Service types are now class-based `Context.Tag` instances; code that used the old interface type as a type annotation should use `typeof ServiceName.Service` instead
+
+### Refactoring
+
+* [`bcc26cc`](https://github.com/savvy-web/github-action-effects/commit/bcc26cccfdf3bffa9b1bd9472e7b1009d8711c11) Migrate services from `Context.GenericTag` to class-based `Context.Tag` and simplify error declarations.
+
+**Services:** All 30 service definitions now use `class extends Context.Tag("github-action-effects/ServiceName")` instead of the deprecated `interface + Context.GenericTag` pattern.
+
+**Errors:** All 28 error types now use inline `Data.TaggedError` class declarations instead of the separate `Base` export pattern.
+
+**SemverResolver:** Updated to use the new `semver-effect` API (`SemVer.parse`, `Range.parse`, instance bump methods).
+
+### Dependencies
+
+* | [`bcc26cc`](https://github.com/savvy-web/github-action-effects/commit/bcc26cccfdf3bffa9b1bd9472e7b1009d8711c11) | Dependency     | Type  | Action | From    | To |
+  | :-------------------------------------------------------------------------------------------------------------- | :------------- | :---- | :----- | :------ | -- |
+  | @effect/cluster                                                                                                 | peerDependency | added | —      | ^0.57.0 |    |
+  | @effect/rpc                                                                                                     | peerDependency | added | —      | ^0.74.0 |    |
+  | @effect/sql                                                                                                     | peerDependency | added | —      | ^0.50.0 |    |
+
+## 0.7.0
+
+### Features
+
+* [`363246a`](https://github.com/savvy-web/github-action-effects/commit/363246a4ba14dc60a633fe36ec3e08f9bf276ef6) Telemetry timing reports are now only written to step summaries when
+  `log-level` is set to `debug` (or `auto` with `RUNNER_DEBUG=1`),
+  reducing clutter in action output for most users.
+
+### Refactoring
+
+* [`363246a`](https://github.com/savvy-web/github-action-effects/commit/363246a4ba14dc60a633fe36ec3e08f9bf276ef6) Replace imperative parsing libraries with pure Effect implementations.
+  SemverResolver now uses `semver-effect`, ConfigLoaderLive uses
+  `jsonc-effect` and `yaml-effect`, and WorkspaceDetectorLive uses
+  `yaml-effect`. All three provide typed errors natively, eliminating
+  manual `Effect.try` wrappers. `jsonc-parser` and `yaml` are no longer
+  required as peer dependencies.
+
+### Dependencies
+
+* | [`363246a`](https://github.com/savvy-web/github-action-effects/commit/363246a4ba14dc60a633fe36ec3e08f9bf276ef6) | Dependency     | Type    | Action | From   | To |
+  | :-------------------------------------------------------------------------------------------------------------- | :------------- | :------ | :----- | :----- | -- |
+  | semver-effect                                                                                                   | dependency     | added   | —      | ^0.1.0 |    |
+  | jsonc-effect                                                                                                    | dependency     | added   | —      | ^0.2.0 |    |
+  | yaml-effect                                                                                                     | dependency     | added   | —      | ^0.1.5 |    |
+  | semver                                                                                                          | dependency     | removed | ^7.7.4 | —      |    |
+  | @types/semver                                                                                                   | devDependency  | removed | ^7.7.1 | —      |    |
+  | jsonc-parser                                                                                                    | peerDependency | removed | ^3.3.1 | —      |    |
+  | yaml                                                                                                            | peerDependency | removed | ^2.8.2 | —      |    |
+
+- | [`89d7a8b`](https://github.com/savvy-web/github-action-effects/commit/89d7a8b9248f8058ecfbdca9bb6073d2ff5113d9) | Dependency     | Type    | Action   | From     | To |
+  | :-------------------------------------------------------------------------------------------------------------- | :------------- | :------ | :------- | :------- | -- |
+  | @effect/opentelemetry                                                                                           | dependency     | updated | ^0.61.0  | ^0.62.0  |    |
+  | @effect/cluster                                                                                                 | devDependency  | added   | —        | ^0.57.0  |    |
+  | @effect/platform                                                                                                | devDependency  | updated | ^0.94.0  | ^0.95.0  |    |
+  | @effect/platform-node                                                                                           | devDependency  | updated | ^0.104.0 | ^0.105.0 |    |
+  | @effect/rpc                                                                                                     | devDependency  | added   | —        | ^0.74.0  |    |
+  | @effect/sql                                                                                                     | devDependency  | added   | —        | ^0.50.0  |    |
+  | effect                                                                                                          | devDependency  | updated | ^3.19.19 | ^3.20.0  |    |
+  | @savvy-web/changesets                                                                                           | devDependency  | updated | ^0.4.2   | ^0.5.1   |    |
+  | @savvy-web/commitlint                                                                                           | devDependency  | updated | ^0.4.0   | ^0.4.1   |    |
+  | @savvy-web/lint-staged                                                                                          | devDependency  | updated | ^0.5.1   | ^0.6.0   |    |
+  | @savvy-web/rslib-builder                                                                                        | devDependency  | updated | ^0.16.0  | ^0.18.1  |    |
+  | @savvy-web/vitest                                                                                               | devDependency  | updated | ^0.2.0   | ^0.2.1   |    |
+  | @actions/cache                                                                                                  | peerDependency | updated | ^4.0.0   | ^6.0.0   |    |
+  | @actions/tool-cache                                                                                             | peerDependency | updated | ^3.0.0   | ^4.0.0   |    |
+
+## 0.6.3
+
+### Bug Fixes
+
+* [`ccbbf97`](https://github.com/savvy-web/github-action-effects/commit/ccbbf97e6c531283f9a20f5b0b23f7dbaa27d84f) Retry GitBranch operations on transient 5xx errors with exponential backoff (#24)
+* Auto-buffer action output at info level and flush on failure (#25)
+* Enrich CommandRunnerError.message with command, args, and stderr context (#26)
+
+## 0.6.2
+
+### Bug Fixes
+
+* [`509d2a2`](https://github.com/savvy-web/github-action-effects/commit/509d2a2a7a633f01bfe4051ef53508bc6f545deb) Fix `NpmRegistry.getPackageInfo` returning undefined for `integrity` and `tarball` fields due to `npm view` using flat dot-notation keys (`"dist.integrity"`) instead of nested objects. Fixes #21.
+
+## 0.6.1
+
+### Bug Fixes
+
+* [`87e2ce3`](https://github.com/savvy-web/github-action-effects/commit/87e2ce33648daceeb399d2c217b47cdf767d4cdc) Fix GitHubApp.withToken failing with "installationId option is required" by auto-discovering the installation ID when not explicitly provided. The fix authenticates as the app (JWT), lists installations, and matches by GITHUB\_REPOSITORY owner. Fixes #18.
+
+## 0.6.0
+
+### Features
+
+* [`d632223`](https://github.com/savvy-web/github-action-effects/commit/d6322233af73df9fe0a041baa8493e73cad2f412) Add `Action.formatCause` for robust error extraction from Effect causes
+  with `[Tag] message` format and fallback chain that never returns empty
+
+### Bug Fixes
+
+* [`d632223`](https://github.com/savvy-web/github-action-effects/commit/d6322233af73df9fe0a041baa8493e73cad2f412) Fix `Action.run` silent failures by upgrading `catchAllCause` with
+  diagnostic output (error message, JS stack trace, Effect span trace via
+  `core.debug`). Fixes #15.
+
+### Other
+
+* [`d632223`](https://github.com/savvy-web/github-action-effects/commit/d6322233af73df9fe0a041baa8493e73cad2f412) Move OTel packages from optional peer dependencies to regular dependencies
+  with static imports, eliminating dynamic `import()` failures in ncc bundles
+* Remove unused `OtelExporterError` after OTel layer rewrite
+
+## 0.5.0
+
+### Features
+
+* [`fba5094`](https://github.com/savvy-web/github-action-effects/commit/fba50941e3858c34187a360652b4f2a539294df3) Support file deletions in `GitCommit.createTree` and `commitFiles` via `sha: null` on `TreeEntry` and `FileChange` union types. Fixes #11.
+
+## 0.4.0
+
+### Breaking Changes
+
+* [`53d50e9`](https://github.com/savvy-web/github-action-effects/commit/53d50e9ae2e7e3161ca008d672ace88d6086a304) **ActionTelemetry refactored**: Removed `span()` and `getTimings()` methods. Use `Effect.withSpan()` for tracing instead. `ActionTelemetry` is now metrics-only (`metric`, `attribute`, `getMetrics`).
+* **SpanData schema removed**: `SpanData` removed from `schemas/Telemetry.ts`. Use `CompletedSpan` from `InMemoryTracer` instead.
+
+### Features
+
+* [`53d50e9`](https://github.com/savvy-web/github-action-effects/commit/53d50e9ae2e7e3161ca008d672ace88d6086a304) Add Tier 1 services — CommandRunner, ActionEnvironment, ActionCache — for structured shell execution, environment variable access, and cache operations.
+
+- [`53d50e9`](https://github.com/savvy-web/github-action-effects/commit/53d50e9ae2e7e3161ca008d672ace88d6086a304) **GitHubClient.paginate**: Paginated REST API calls with automatic page concatenation, empty-page termination, and configurable maxPages limit.
+- **GitHubGraphQL**: Dedicated GraphQL service with operation naming, mutation/query distinction, and structured GraphQL error extraction. Delegates to GitHubClient.graphql with error mapping.
+- **DryRun**: Cross-cutting dry-run mode with guard pattern for mutation interception. When enabled, guard() logs the operation and returns a fallback instead of executing.
+- **NpmRegistry**: Query npm registry for package metadata (versions, dist-tags, package info, integrity hashes) via CommandRunner using `npm view --json`.
+- **ErrorAccumulator**: Utility namespace for "process all, collect failures" patterns with sequential and concurrent variants.
+- **WorkspaceDetector**: Detect monorepo workspace structure (pnpm, npm, yarn, bun, single) and list workspace packages via @effect/platform FileSystem.
+
+* [`53d50e9`](https://github.com/savvy-web/github-action-effects/commit/53d50e9ae2e7e3161ca008d672ace88d6086a304) ### Telemetry Overhaul
+
+- **InMemoryTracer**: Custom Effect `Tracer` that captures completed spans in memory for GitHub-native output (step summaries, PR comments).
+- **Effect.withSpan instrumentation**: All public service methods across 11 live layers are now instrumented with `Effect.withSpan` for automatic tracing.
+- **OtelTelemetryLive**: Optional layer bridging Effect's Tracer to OpenTelemetry exporters. Requires `@effect/opentelemetry` and `@opentelemetry/api` as optional peer deps.
+- **TelemetryReport**: Utility namespace for rendering span data as GitHub-flavored Markdown tables.
+- **ReportBuilder**: Immutable fluent builder for composing structured Markdown reports with sections, stats, details, and timing data.
+- **Action.run() auto-summary**: Automatically writes a timing summary to GitHub step summary after program completion.
+
+* [`53d50e9`](https://github.com/savvy-web/github-action-effects/commit/53d50e9ae2e7e3161ca008d672ace88d6086a304) **GitHubRelease**: Service for GitHub Releases API — create releases, upload assets, get by tag, list with pagination.
+* **GitHubIssue**: Service for Issues API — list with filters, close, comment, and get linked issues via GraphQL.
+* **GitTag**: Service for Git tag refs — create, delete, list with prefix filter, resolve tag to SHA.
+* **SemverResolver**: Utility namespace for semver operations — compare, satisfies, latestInRange, increment, parse.
+* **AutoMerge**: Utility namespace for PR auto-merge — enable/disable via GraphQL mutations.
+* **PackagePublish**: Service for npm publishing workflow — registry auth setup, pack with digest, publish, integrity verification, multi-registry support.
+* **TokenPermissionChecker**: Service for GitHub App token permission validation with three enforcement modes (assertSufficient, assertExact, warnOverPermissioned) and structured result reporting.
+* **GitHubOtelAttributes**: Utility to map GitHub Actions environment variables to OpenTelemetry semantic convention resource attributes (cicd.*, vcs.*).
+* **OtelConfig.resourceAttributes**: Extended OTel configuration to accept custom resource attributes.
+
+- [`53d50e9`](https://github.com/savvy-web/github-action-effects/commit/53d50e9ae2e7e3161ca008d672ace88d6086a304) **OTel Exporter Inputs**: Standardized OpenTelemetry exporter configuration for GitHub Actions. Four inputs (otel-enabled, otel-endpoint, otel-protocol, otel-headers) are automatically parsed by `Action.run()` with env var fallback (`OTEL_EXPORTER_OTLP_*`). Supports auto/enabled/disabled modes, grpc/http-protobuf/http-json protocols, and OTLP-format header parsing.
+- **OtelExporterLive**: Layer that dynamically imports the correct OTLP trace and metric exporter packages based on protocol, with helpful error messages when packages are missing.
+- **OtelExporterConfig**: Schema and resolution logic for OTel configuration with input-over-env-var precedence.
+
+* [`53d50e9`](https://github.com/savvy-web/github-action-effects/commit/53d50e9ae2e7e3161ca008d672ace88d6086a304) Add Tier 2 services — GitHubClient, CheckRun, PullRequestComment — for authenticated GitHub API operations, check run management with bracket pattern, and idempotent sticky PR comments.
+
+### New Services
+
+* **GitHubApp**: GitHub App authentication lifecycle — generate installation tokens, revoke tokens, and bracket-style `withToken` for automatic cleanup. Requires `@octokit/auth-app` as optional peer dep.
+* **RateLimiter**: GitHub API rate limit awareness — check remaining quota, wait-and-retry with configurable thresholds, exponential backoff retry.
+* **ChangesetAnalyzer**: Parse, query, and generate changeset files with YAML frontmatter validation.
+* **GitBranch**: Branch management via GitHub's Git Data API — create, delete, get SHA, and reset branches.
+* **GitCommit**: Verified commits via GitHub's Git Data API — create trees, commits, and update refs for programmatic file changes.
+* **ConfigLoader**: Schema-validated config file loading for JSON, JSONC, and YAML formats. JSONC requires `jsonc-parser`, YAML requires `yaml` as optional peer deps.
+* **ToolInstaller**: Tool binary management — download, extract, cache, and add to PATH. Requires `@actions/tool-cache` as optional peer dep.
+* **PackageManagerAdapter**: Unified package manager interface — detect PM from package.json or lockfiles, install dependencies, query cache paths, and execute PM commands. Supports npm, pnpm, yarn, bun, and deno.
+
+## 0.3.0
+
+### Breaking Changes
+
+* [`30efe1c`](https://github.com/savvy-web/github-action-effects/commit/30efe1c067bb963889215a43b3d565e88831f391) `@effect/platform` and `@effect/platform-node` are now required peer dependencies.
+
+### Features
+
+* [`30efe1c`](https://github.com/savvy-web/github-action-effects/commit/30efe1c067bb963889215a43b3d565e88831f391) Provide Node.js platform services automatically in `Action.run()`.
+
+`Action.run()` now merges `NodeContext.layer` from `@effect/platform-node` into its core layers. Programs run via `Action.run()` automatically have access to `FileSystem`, `Path`, `Terminal`, `CommandExecutor`, and `WorkerManager` without manually providing them.
+
+## 0.2.0
+
+### Features
+
+* [`5d14ae8`](https://github.com/savvy-web/github-action-effects/commit/5d14ae8f3dfc0a360a037a8c1bdf3f83270a443b) **ActionState service**: New Effect service for typed state transfer between action phases (pre/main/post) using Schema encode/decode for complex object serialization
+* **ActionInputs additions**: `getMultiline` for newline-delimited lists, `getBoolean`/`getBooleanOptional` for boolean inputs
+* **ActionOutputs additions**: `setFailed` for marking action failure, `setSecret` for masking generated values in logs
+* **Action namespace**: Groups top-level helpers under `Action.*` — `Action.run()`, `Action.parseInputs()`, `Action.makeLogger()`, `Action.setLogLevel()`, `Action.resolveLogLevel()`
+* **GithubMarkdown namespace**: Groups GFM builder functions under `GithubMarkdown.*` — `GithubMarkdown.table()`, `GithubMarkdown.bold()`, etc.
+
+## 0.1.0
+
+### Features
+
+* [`8635765`](https://github.com/savvy-web/github-action-effects/commit/8635765a949b36db3b8461fce713418243a85f61) **ActionInputs** service: schema-validated input reading with `get`, `getOptional`, `getSecret`, and `getJson` methods
+* **ActionLogger** service: structured logging with three levels (info/verbose/debug), auto mode, two-channel routing (user-facing + GitHub debug), collapsible groups, and buffer-on-failure pattern
+* **ActionOutputs** service: typed output setting with `set`, `setJson`, `summary`, `exportVariable`, and `addPath` methods
+* **GFM builders**: pure functions for markdown tables, headings, details, lists, checklists, status icons, links, code blocks, and more
+* **Schema definitions**: `ActionLogLevel`, `LogLevelInput`, `Status`, `ChecklistItem`, `CapturedOutput` with Effect Schema annotations
+* **Test layers**: in-memory implementations for all services with namespace object pattern (`*.empty()` / `*.layer()`)
+* **Error types**: `ActionInputError` and `ActionOutputError` using Effect's `Data.TaggedError` pattern
+
+## 0.0.1
+
+### Patch Changes
+
+* ae454d3: Update dependencies:
+
+  **Dependencies:**
+
+  * @savvy-web/commitlint: ^0.2.0 → ^0.2.1
+  * @savvy-web/lint-staged: ^0.1.3 → ^0.2.1
+  * @savvy-web/rslib-builder: ^0.11.0 → ^0.12.0

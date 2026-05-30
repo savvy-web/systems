@@ -55,9 +55,16 @@ jobs:
           config-dependencies: |
             @savvy-web/pnpm-plugin-silk
           dependencies: |
+            @azure/storage-blob
+            @octokit/auth-app
+            @octokit/rest
+            @rsbuild/*
             @savvy-web/*
+            fast-check
+            jiti
             jsonc-effect
             js-yaml
+            picocolors
             sort-package-json
             semver-effect
             workspaces-effect

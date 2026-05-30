@@ -6,6 +6,8 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 
 - **silk-effects** — shared Effect library (implemented)
 - **templates** — pure TypeScript project scaffolding (implemented)
+- **github-action-builder** — zero-config rsbuild build tool for Node.js 24 GitHub Actions (implemented)
+- **github-action-effects** — Effect-based library replacing @actions/* with 37 schema-validated services (implemented)
 - **cli** (planned)
 - Public documentation site (docs/ — placeholder for future RSPress site)
 - Cross-repo planning and coordination
@@ -47,6 +49,16 @@ Load when working on silk-effects, implementing new services, or onboarding cons
 Load when working on templates, adding new templates, or understanding the
 pure-function content generation approach. Covers all 10 templates, Effect
 Schema validation, TemplateEntry abstraction, and workspace compositor.
+
+**github-action-effects services, layers, errors, and integration points:**
+→ `@./.claude/design/github-action-effects/index.md`
+
+Load when working on github-action-effects or building GitHub Actions on its Effect services. Indexes the 37 services, layer composition, error/schema definitions, integration points, and testing strategy across six docs.
+
+**github-action-builder architecture and build pipeline:**
+→ `@./.claude/design/github-action-builder/architecture.md`
+
+Load when working on github-action-builder or configuring action builds. Covers the zero-config rsbuild pipeline targeting Node.js 24 GitHub Actions.
 
 Planned: `cli/architecture.md`
 
