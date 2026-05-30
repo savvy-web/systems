@@ -11,7 +11,12 @@ import { CommandRunner } from "../services/CommandRunner.js";
  *
  * When `shell: true` is set, Node.js delegates to cmd.exe which interprets
  * metacharacters like `&`, `|`, `>`, `<`, `^`, `(`, `)`. Wrapping args in
- * double quotes neutralizes these. Internal double quotes are escaped with `\`.
+ * double quotes neutralizes these. Internal double quotes are escaped with `\`,
+ * and any run of backslashes that immediately precedes a double quote (or the
+ * closing quote at the end of the argument) is doubled. Without that, a value
+ * ending in `\` produces a trailing `\"` that `CommandLineToArgvW` treats as an
+ * escaped quote — consuming the closing delimiter — and a `\` before an interior
+ * `"` would split one argument into two.
  *
  * Limitation: `%VAR%` and `!VAR!` (delayed expansion) environment variable
  * expansion still occurs inside double quotes in cmd.exe. Callers must not
@@ -19,7 +24,12 @@ import { CommandRunner } from "../services/CommandRunner.js";
  */
 const escapeWindowsArg = (arg: string): string => {
 	if (/[&|<>^() "!%]/.test(arg)) {
-		return `"${arg.replace(/"/g, '\\"')}"`;
+		const escaped = arg.replace(/(\\+)(?=")|"|(\\+)$/g, (_match, beforeQuote, atEnd) => {
+			if (beforeQuote !== undefined) return `${beforeQuote}${beforeQuote}`;
+			if (atEnd !== undefined) return `${atEnd}${atEnd}`;
+			return '\\"';
+		});
+		return `"${escaped}"`;
 	}
 	return arg;
 };
