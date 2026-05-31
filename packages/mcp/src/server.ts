@@ -14,6 +14,7 @@ import type { McpContext } from "./context.js";
 import { registerAllResources } from "./resources/index.js";
 import { effectToZodSchema } from "./schema/effect-to-zod.js";
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
+import { CURRENT_MCP_VERSION } from "./version.js";
 
 /** Wrap a markdown string + structured object in the dual-channel tool result. */
 const structuredResult = <T extends object>(text: string, structured: T) => ({
@@ -23,7 +24,7 @@ const structuredResult = <T extends object>(text: string, structured: T) => ({
 
 /** Build the MCP server for the given context, registering tools + resources. */
 export function buildServer(ctx: McpContext): McpServer {
-	const server = new McpServer({ name: "savvy-mcp", version: "0.1.0" });
+	const server = new McpServer({ name: "savvy-mcp", version: CURRENT_MCP_VERSION });
 
 	server.registerTool(
 		"workspace_info",

@@ -32,10 +32,7 @@ export const effectToZodSchema = <A, I>(schema: Schema.Schema<A, I, never>): z.Z
 	return z.object({}).catchall(z.unknown());
 };
 
-const isObjectLike = (schema: z.ZodTypeAny): boolean => {
-	const def = (schema as { _zod?: { def?: { type?: string; shape?: unknown } } })._zod?.def;
-	return def?.type === "object" || def?.shape !== undefined;
-};
+const isObjectLike = (schema: z.ZodTypeAny): boolean => schema instanceof z.ZodObject;
 
 const REF_PREFIX = "#/$defs/";
 
