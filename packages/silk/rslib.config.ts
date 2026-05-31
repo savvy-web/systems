@@ -1,11 +1,11 @@
 import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
 
 export default NodeLibraryBuilder.create({
+	externals: ["typescript", "source-map-support"],
 	format: ["esm", "cjs"],
 	cjsInterop: true,
-	externals: ["@savvy-web/silk-effects"],
-	dtsBundledPackages: ["@commitlint/types"],
 	exportsAsIndexes: true,
+	dtsBundledPackages: ["@commitlint/types"],
 	copyPatterns: [{ from: "./**/*.jsonc", context: "./src/public" }],
 	apiModel: {
 		suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }],

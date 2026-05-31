@@ -38,23 +38,22 @@
 		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
-	"dependencies": {
-		"@savvy-web/silk-effects": "workspace:*"
-	},
 	"devDependencies": {
-		"@savvy-web/rslib-builder": "^0.20.11",
-		"@types/node": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
-		"typescript": "catalog:silk",
-		"turbo": "^2.9.16",
-		"lint-staged": "^17.0.6",
 		"@changesets/cli": "^2.31.0",
 		"@commitlint/cli": "^21.0.2",
 		"@commitlint/config-conventional": "^21.0.2",
+		"@savvy-web/rslib-builder": "^0.20.12",
+		"@savvy-web/silk-effects": "workspace:*",
+		"@types/node": "catalog:silk",
+		"@typescript/native-preview": "catalog:silk",
 		"commitizen": "^4.3.1",
+		"husky": "^9.1.7",
+		"lint-staged": "^17.0.7",
 		"markdownlint-cli2": "^0.22.1",
 		"markdownlint-cli2-formatter-codequality": "^0.0.7",
-		"husky": "^9.1.7"
+		"prettier": "^3.8.3",
+		"turbo": "^2.9.16",
+		"typescript": "catalog:silk"
 	},
 	"peerDependencies": {
 		"@biomejs/biome": "2.4.16",
@@ -65,11 +64,11 @@
 		"@types/node": "catalog:silkPeers",
 		"@typescript/native-preview": "catalog:silkPeers",
 		"commitizen": "^4.3.0",
-		"turbo": "^2.9.16",
 		"husky": "^9.1.0",
 		"lint-staged": "^17.0.5",
 		"markdownlint-cli2": "^0.22.1",
 		"markdownlint-cli2-formatter-codequality": "^0.0.7",
+		"turbo": "^2.9.16",
 		"typescript": "catalog:silkPeers"
 	},
 	"peerDependenciesMeta": {
