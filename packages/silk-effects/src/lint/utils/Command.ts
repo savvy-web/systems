@@ -63,7 +63,6 @@ function validateCommandName(name: string): void {
 /**
  * Static utility class for shell command operations.
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class Command {
 	/** Cached package manager detection result */
 	private static cachedPackageManager: PackageManager | null = null;

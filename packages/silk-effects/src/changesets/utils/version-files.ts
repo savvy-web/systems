@@ -96,7 +96,7 @@ export interface WorkspaceVersion {
  *
  * @internal
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
+
 export class VersionFiles {
 	/**
 	 * Extract and validate `versionFiles` from a pre-parsed changeset config object.

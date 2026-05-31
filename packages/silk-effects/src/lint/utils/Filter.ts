@@ -15,7 +15,6 @@
 /**
  * Static utility class for filtering file lists.
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class Filter {
 	/**
 	 * Exclude files matching any of the given patterns.

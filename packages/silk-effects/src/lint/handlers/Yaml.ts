@@ -36,7 +36,6 @@ import { getWorkspaceRoot } from "../utils/Workspace.js";
  * };
  * ```
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class Yaml {
 	/**
 	 * Glob pattern for matching YAML files.

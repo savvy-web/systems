@@ -1,11 +1,7 @@
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { BiomeSyncOptions, BiomeSyncResult } from "../../src/schemas/BiomeConfig.js";
-import {
-	ConfigDiscoveryOptions,
-	ConfigLocation,
-	ConfigSource,
-} from "../../src/schemas/ConfigDiscoverySchemas.js";
+import { ConfigDiscoveryOptions, ConfigLocation, ConfigSource } from "../../src/schemas/ConfigDiscoverySchemas.js";
 
 describe("BiomeSyncResult", () => {
 	it("decodes a valid result object", () => {

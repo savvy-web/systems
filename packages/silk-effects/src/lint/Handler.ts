@@ -30,7 +30,6 @@ import type { BaseHandlerOptions, LintStagedHandler } from "./types.js"; // type
  * - `handler` - Pre-configured handler with defaults
  * - `create()` - Factory method for custom configuration
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export abstract class Handler {
 	/**
 	 * Default glob pattern for this handler.

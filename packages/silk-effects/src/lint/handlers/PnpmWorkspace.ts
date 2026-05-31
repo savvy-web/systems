@@ -52,7 +52,6 @@ const DEFAULT_STRINGIFY_OPTIONS = {
  * };
  * ```
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class PnpmWorkspace {
 	/**
 	 * Glob pattern for matching pnpm-workspace.yaml.

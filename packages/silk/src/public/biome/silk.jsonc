@@ -46,6 +46,11 @@
 		},
 		"enabled": true,
 		"rules": {
+			"complexity": {
+				"noStaticOnlyClass": {
+					"level": "off"
+				}
+			},
 			"correctness": {
 				"noUnusedVariables": {
 					"level": "error",

@@ -1,8 +1,6 @@
 {
 	"$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/v0.22.0/schema/markdownlint-cli2-config-schema.json",
-	"globs": [
-		"**/*.{md,mdx}"
-	],
+	"globs": ["**/*.{md,mdx}"],
 	"fix": true,
 	"gitignore": true,
 	"noBanner": true,
@@ -16,9 +14,7 @@
 		"**/.claude/plans",
 		"**/docs/superpowers"
 	],
-	"customRules": [
-		"@savvy-web/silk/changesets/markdownlint"
-	],
+	"customRules": ["@savvy-web/silk/changesets/markdownlint"],
 	"config": {
 		"default": true,
 		"MD001": true,
@@ -56,14 +52,7 @@
 		"MD031": true,
 		"MD032": true,
 		"MD033": {
-			"allowed_elements": [
-				"br",
-				"details",
-				"summary",
-				"img",
-				"sup",
-				"sub"
-			]
+			"allowed_elements": ["br", "details", "summary", "img", "sup", "sub"]
 		},
 		"MD034": true,
 		"MD035": true,

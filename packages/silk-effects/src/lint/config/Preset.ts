@@ -30,7 +30,6 @@ export type PresetExtendOptions = CreateConfigOptions;
  * });
  * ```
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class Preset {
 	/**
 	 * Minimal preset: formatting only.

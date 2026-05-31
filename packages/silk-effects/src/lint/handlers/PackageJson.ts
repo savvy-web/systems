@@ -32,7 +32,6 @@ import { isWorkspacePackagePath } from "../utils/Workspace.js";
  * };
  * ```
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class PackageJson {
 	/**
 	 * Glob pattern for matching package.json files.

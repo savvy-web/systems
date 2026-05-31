@@ -43,7 +43,6 @@ import { getWorkspacePackagePaths, getWorkspaceRoot } from "../utils/Workspace.j
  * };
  * ```
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class Biome {
 	/**
 	 * Glob pattern for matching JavaScript/TypeScript/JSON files.

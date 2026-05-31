@@ -265,8 +265,9 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 							toolName: block.toolName,
 							commentStyle: block.commentStyle,
 						} as SectionDefinition) as Effect.Effect<SectionBlock | null, SectionParseError>
+					)
 						/* v8 ignore next -- error path requires the upstream read to fail */
-					).pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
+						.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
 
 					if (onDisk === null) {
 						yield* write(path, block);

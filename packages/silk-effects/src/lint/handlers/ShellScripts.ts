@@ -27,7 +27,6 @@ import { Filter } from "../utils/Filter.js";
  * };
  * ```
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class ShellScripts {
 	/**
 	 * Glob pattern for matching shell script files.

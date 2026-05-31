@@ -40,7 +40,6 @@ export type TypeScriptCompiler = "tsgo" | "tsc";
  * };
  * ```
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: Intentional pattern for TSDoc discoverability
 export class TypeScript {
 	/**
 	 * Glob pattern for matching TypeScript files.

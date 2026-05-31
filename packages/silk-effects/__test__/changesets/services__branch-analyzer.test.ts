@@ -417,9 +417,7 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 
 describe("makeBranchAnalyzerTest", () => {
 	it("returns a layer that always succeeds with the fixed analysis", async () => {
-		const { makeBranchAnalyzerTest, BranchAnalyzer } = await import(
-			"../../src/changesets/services/branch-analyzer.js"
-		);
+		const { makeBranchAnalyzerTest, BranchAnalyzer } = await import("../../src/changesets/services/branch-analyzer.js");
 		const fixed: BranchAnalysis = {
 			baseBranch: "main",
 			mergeBaseSha: "0000000000000000000000000000000000000000",
