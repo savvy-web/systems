@@ -10,9 +10,9 @@
  *
  * @example
  * ```bash
- * savvy-changesets analyze-branch
- * savvy-changesets analyze-branch --base main --json
- * savvy-changesets analyze-branch --cwd ./project --base develop
+ * savvy changeset analyze-branch
+ * savvy changeset analyze-branch --base main --json
+ * savvy changeset analyze-branch --cwd ./project --base develop
  * ```
  *
  * @internal

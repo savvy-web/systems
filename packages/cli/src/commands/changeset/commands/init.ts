@@ -23,10 +23,10 @@
  *
  * @example
  * ```bash
- * savvy-changesets init
- * savvy-changesets init --force
- * savvy-changesets init --check
- * savvy-changesets init --skip-markdownlint
+ * savvy changeset init
+ * savvy changeset init --force
+ * savvy changeset init --check
+ * savvy changeset init --skip-markdownlint
  * ```
  *
  * @internal
@@ -299,7 +299,7 @@ export function legacyVersionFilesWarning(configPath: string): string {
 	return [
 		`DEPRECATION: ${configPath} uses the legacy top-level \`versionFiles[]\` array.`,
 		"  Migrate each entry to `changelog[1].packages[<entry.package>].versionFiles`",
-		"  and remove the top-level field. Run `savvy-changesets config show --json`",
+		"  and remove the top-level field. Run `savvy changeset config show --json`",
 		"  to see the normalized form, or check the 0.9.0 release notes for examples.",
 		"  Removed in @savvy-web/changesets 1.0.0.",
 	].join("\n");
@@ -712,7 +712,7 @@ export function runChangesetInit(opts: {
 			for (const issue of issues) {
 				yield* Effect.logWarning(`${issue.file}: ${issue.message}`);
 			}
-			yield* Effect.logWarning('Run "savvy-changesets init --force" to fix.');
+			yield* Effect.logWarning('Run "savvy changeset init --force" to fix.');
 			return;
 		}
 

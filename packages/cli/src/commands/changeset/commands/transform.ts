@@ -21,9 +21,9 @@
  *
  * @example
  * ```bash
- * savvy-changesets transform CHANGELOG.md
- * savvy-changesets transform --dry-run CHANGELOG.md
- * savvy-changesets transform --check CHANGELOG.md
+ * savvy changeset transform CHANGELOG.md
+ * savvy changeset transform --dry-run CHANGELOG.md
+ * savvy changeset transform --check CHANGELOG.md
  * ```
  *
  * @internal

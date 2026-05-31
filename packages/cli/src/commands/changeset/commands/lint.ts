@@ -14,8 +14,8 @@
  *
  * @example
  * ```bash
- * savvy-changesets lint .changeset
- * savvy-changesets lint --quiet .changeset
+ * savvy changeset lint .changeset
+ * savvy changeset lint --quiet .changeset
  * ```
  *
  * @internal

@@ -5,14 +5,14 @@
  * Wraps {@link ConfigInspector.inspect} and renders either human-readable
  * output (default) or JSON (`--json` / `--format=json`). The same data shape
  * the agent consumes is what the user sees, so debugging an unexpected
- * classification result becomes a single `savvy-changesets config show --json`
+ * classification result becomes a single `savvy changeset config show --json`
  * invocation.
  *
  * @example
  * ```bash
- * savvy-changesets config show
- * savvy-changesets config show --json
- * savvy-changesets config show ./path/to/project --json
+ * savvy changeset config show
+ * savvy changeset config show --json
+ * savvy changeset config show ./path/to/project --json
  * ```
  *
  * @internal

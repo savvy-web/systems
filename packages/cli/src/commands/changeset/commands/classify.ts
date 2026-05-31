@@ -8,8 +8,8 @@
  *
  * @example
  * ```bash
- * savvy-changesets classify packages/foo/src/index.ts plugin/SKILL.md
- * savvy-changesets classify --cwd ./monorepo plugin/x.md --json
+ * savvy changeset classify packages/foo/src/index.ts plugin/SKILL.md
+ * savvy changeset classify --cwd ./monorepo plugin/x.md --json
  * ```
  *
  * @internal

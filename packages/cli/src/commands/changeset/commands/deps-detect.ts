@@ -15,9 +15,9 @@
  *
  * @example
  * ```bash
- * savvy-changesets deps detect
- * savvy-changesets deps detect --from HEAD~5 --to HEAD --json
- * savvy-changesets deps detect --package @scope/foo --markdown
+ * savvy changeset deps detect
+ * savvy changeset deps detect --from HEAD~5 --to HEAD --json
+ * savvy changeset deps detect --package @scope/foo --markdown
  * ```
  *
  * @internal

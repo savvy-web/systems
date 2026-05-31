@@ -10,8 +10,8 @@
  *
  * @example
  * ```bash
- * savvy-changesets release-surface @savvy-web/changesets
- * savvy-changesets release-surface @scope/foo --json
+ * savvy changeset release-surface @savvy-web/changesets
+ * savvy changeset release-surface @scope/foo --json
  * ```
  *
  * @internal

@@ -12,8 +12,8 @@
  *
  * @example
  * ```bash
- * savvy-changesets config validate
- * savvy-changesets config validate ./path/to/project
+ * savvy changeset config validate
+ * savvy changeset config validate ./path/to/project
  * ```
  *
  * @internal

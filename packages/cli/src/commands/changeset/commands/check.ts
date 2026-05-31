@@ -14,7 +14,7 @@
  *
  * @example
  * ```bash
- * savvy-changesets check .changeset
+ * savvy changeset check .changeset
  * ```
  *
  * @internal

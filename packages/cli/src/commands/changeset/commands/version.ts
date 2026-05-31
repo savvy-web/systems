@@ -23,8 +23,8 @@
  *
  * @example
  * ```bash
- * savvy-changesets version
- * savvy-changesets version --dry-run
+ * savvy changeset version
+ * savvy changeset version --dry-run
  * ```
  *
  * @internal

@@ -7,7 +7,7 @@
  *
  * @example
  * ```bash
- * savvy-changesets validate-file .changeset/cool-lions-sing.md
+ * savvy changeset validate-file .changeset/cool-lions-sing.md
  * ```
  *
  * @internal

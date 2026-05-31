@@ -35,9 +35,9 @@
  *
  * @example
  * ```bash
- * savvy-changesets deps regen
- * savvy-changesets deps regen --dry-run --json
- * savvy-changesets deps regen --package @scope/foo
+ * savvy changeset deps regen
+ * savvy changeset deps regen --dry-run --json
+ * savvy changeset deps regen --package @scope/foo
  * ```
  *
  * @internal
