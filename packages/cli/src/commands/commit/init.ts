@@ -101,11 +101,9 @@ const configOption = Options.text("config").pipe(
 /* v8 ignore stop */
 
 /** Content for the commitlint config file. */
-const CONFIG_CONTENT = `import { CommitlintConfig, type CommitlintUserConfig } from "@savvy-web/silk/commitlint";
+const CONFIG_CONTENT = `import { CommitlintConfig } from "@savvy-web/silk/commitlint";
 
-const config: CommitlintUserConfig = CommitlintConfig.silk();
-
-export default config;
+export default CommitlintConfig.silk();
 `;
 
 /** Make a file executable. */
