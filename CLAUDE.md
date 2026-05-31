@@ -7,7 +7,9 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 - **silk-effects** — shared Effect library; also hosts the dev-tooling business logic under three namespace exports (`Changesets`, `Commitlint`, `Lint`); dual-format esm+cjs (implemented)
 - **cli** — `@savvy-web/cli`, the `savvy` binary with `init`/`check`/`commit`/`changeset`/`lint` commands; replaces the three old per-tool bins (implemented)
 - **silk** — `@savvy-web/silk`, the single install-target of thin config-integration shims plus the biome asset (implemented)
-- **plugins/silk** — merged Claude Code plugin (`silk@savvy-web-systems`): 13 skills, the `changeset-manager` agent, merged hooks (implemented)
+- **mcp** — `@savvy-web/mcp`, the spawnable `savvy-mcp` server exposing a `workspace_info` tool and a `silk://catalog` resource layer over silk-effects; a standalone server, not a discovery host (implemented)
+- **plugins/silk** — merged Claude Code plugin (`silk@savvy-web-systems`): 13 skills, the `changeset-manager` agent, merged hooks, plus `savvy-mcp` wiring (implemented)
+- **plugins/github-actions** — empty plugin skeleton spawning the shared `savvy-mcp` server (implemented)
 - **templates** — pure TypeScript project scaffolding (implemented)
 - **github-action-builder** — zero-config rsbuild build tool for Node.js 24 GitHub Actions (implemented)
 - **github-action-effects** — Effect-based library replacing @actions/* with 37 schema-validated services (implemented)
@@ -77,7 +79,13 @@ Load when working on `@savvy-web/silk`. Covers the drop-in shim contract, the ex
 
 Load when working on `plugins/silk`. Covers the skill/agent/hook merge, the tool-prefixed-vs-unprefixed skill naming scheme, and the hooks repointed at the unified `savvy` bin.
 
+**@savvy-web/mcp architecture — the `savvy-mcp` server, its runtime layer, tool half, and resource half:**
+→ `@./.claude/design/mcp/architecture.md`
+
+Load when working on the MCP host. Covers the standalone (non-discovery) server, the information-in-mcp/direction-in-plugins split, the `ManagedRuntime` over silk-effects, the `workspace_info` tool with its Effect-Schema→zod bridge, the `silk://catalog` resource taxonomy, and the dual-plugin (`silk` + `github-actions`) integration.
+
 Silk Core sub-project 1 design: `@./docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md`
+Silk Core sub-project 2 (MCP host) design: `@./docs/superpowers/specs/2026-05-31-savvy-mcp-host-design.md`
 
 ## Ecosystem Context
 
@@ -98,5 +106,5 @@ Key coordination points:
 - Use `catalog:silk` for pinned dependencies, `catalog:silkPeers` for peer dependency ranges
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`
 - README.md is for external users; .claude/design/ for package architecture docs
-- `@savvy-web/cli` and `@savvy-web/silk` must NOT import each other (the cli↔silk non-import invariant) — see `@./.claude/design/cli/architecture.md`
+- `@savvy-web/cli` and `@savvy-web/silk` must NOT import each other (the cli↔silk non-import invariant); `@savvy-web/mcp` imports neither cli nor silk — all three depend only on silk-effects (the cli↔silk↔mcp non-import invariant) — see `@./.claude/design/cli/architecture.md` and `@./.claude/design/mcp/architecture.md`
 - `@savvy-web/silk` and `@savvy-web/cli` are a `fixed` changeset group (versioned and released together); silk ships dual-format esm+cjs for its CJS consumers

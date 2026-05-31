@@ -9,6 +9,7 @@ completeness: 85
 related:
   - ./architecture.md
   - ../cli/architecture.md
+  - ../mcp/architecture.md
 dependencies: []
 ---
 
@@ -46,6 +47,11 @@ Implemented. Contents:
 - **Hooks** (`plugins/silk/hooks/`): all three source hook sets merged into one `hooks.json` plus
   per-event script dirs (`session-start`, `pre-tool-use`, `post-tool-use`, `user-prompt-submit`)
   and a shared `lib/`.
+- **MCP wiring** (sub-project 2): an `mcpServers` block in `.claude-plugin/plugin.json` spawns the
+  shared `savvy-mcp` server via `bin/start-mcp.sh`, and a `mcp-orientation.sh` SessionStart hook
+  nudges the agent to read `silk://catalog` and prefer `workspace_info` over bash. This is the
+  "direction" half of the information-vs-direction split — see `../mcp/architecture.md`. The
+  sibling `plugins/github-actions` reuses the identical launcher and server declaration.
 
 ## Skill Naming Scheme
 

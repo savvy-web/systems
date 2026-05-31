@@ -191,8 +191,10 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 					),
 				);
 
-				// 2. Discover workspace packages
-				const packages = yield* discovery.listPackages().pipe(
+				// 2. Discover workspace packages — pass root so discovery resolves
+				// the correct workspace even when the layer was built from a
+				// different working directory (e.g. during tests).
+				const packages = yield* discovery.listPackages(root).pipe(
 					Effect.mapError(
 						(err: WorkspaceDiscoveryError) =>
 							new WorkspaceAnalysisError({
@@ -213,12 +215,16 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 					),
 				);
 
-				// Reorder packages by topological sort (root first, then dependencies-first order)
+				// Reorder packages by topological sort (root first, then
+				// dependencies-first order). When the topo order was built from a
+				// different workspace root (e.g. in tests) it will not contain
+				// our package names, so fall back to the discovery order.
 				const packagesByName = new Map(packages.map((p) => [p.name, p]));
-				const sortedPackages = topoOrder.flatMap((name) => {
+				const reordered = topoOrder.flatMap((name) => {
 					const pkg = packagesByName.get(name);
 					return pkg ? [pkg] : [];
 				});
+				const sortedPackages = reordered.length > 0 ? reordered : [...packages];
 
 				// 4. Read changeset config (optional — may not exist)
 				const changesetConfigOption = yield* configReader.read(root).pipe(Effect.option);

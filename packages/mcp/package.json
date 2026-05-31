@@ -1,0 +1,72 @@
+{
+	"name": "@savvy-web/mcp",
+	"version": "0.1.0",
+	"private": true,
+	"description": "The savvy MCP server — Silk Suite tooling and library knowledge for coding agents",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/mcp",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/mcp"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"bin": {
+		"savvy-mcp": "./src/bin.ts"
+	},
+	"scripts": {
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"inspect": "exec mcp-inspector node ./dist/dev/bin/savvy-mcp.js",
+		"prepare": "turbo run build:dev",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"@effect/platform": "catalog:silk",
+		"@effect/platform-node": "catalog:silk",
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@savvy-web/silk-effects": "workspace:*",
+		"effect": "catalog:silk",
+		"workspaces-effect": "^1.1.0",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@modelcontextprotocol/inspector": "^0.21.2",
+		"@savvy-web/rslib-builder": "^0.20.12",
+		"@types/node": "catalog:silk",
+		"@typescript/native-preview": "catalog:silk",
+		"typescript": "catalog:silk"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}

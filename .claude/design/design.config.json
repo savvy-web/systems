@@ -81,6 +81,17 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"mcp": {
+			"path": "packages/mcp",
+			"designDocsPath": ".claude/design/mcp",
+			"categories": ["architecture", "integration"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/mcp/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"skills": {
