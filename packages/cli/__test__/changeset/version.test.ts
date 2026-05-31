@@ -8,6 +8,7 @@ import { runVersion } from "../../src/commands/changeset/commands/version.js";
 
 vi.mock("node:child_process", () => ({
 	execSync: vi.fn(),
+	execFile: vi.fn(),
 }));
 
 vi.mock("node:fs", () => ({
