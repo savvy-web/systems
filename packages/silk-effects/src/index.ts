@@ -9,6 +9,13 @@
  * @packageDocumentation
  */
 
+// ── Changesets namespace ───────────────────────────────────────
+export * as Changesets from "./changesets/index.js";
+// Flat re-export so a generated commitlint.config.ts can name the inferred
+// default-export type (CommitlintConfig.silk()) for declaration emit.
+export type { CommitlintUserConfig } from "./commitlint/index.js";
+// ── Commitlint namespace ──────────────────────────────────────
+export * as Commitlint from "./commitlint/index.js";
 // ── Errors ─────────────────────────────────────────────────────
 export { BiomeSyncError } from "./errors/BiomeSyncError.js";
 export { ChangesetConfigError } from "./errors/ChangesetConfigError.js";
@@ -22,7 +29,8 @@ export { ToolResolutionError } from "./errors/ToolResolutionError.js";
 export { ToolVersionMismatchError } from "./errors/ToolVersionMismatchError.js";
 export { VersioningDetectionError } from "./errors/VersioningDetectionError.js";
 export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
-
+// ── Lint namespace ─────────────────────────────────────────────
+export * as Lint from "./lint/index.js";
 // ── Schemas ────────────────────────────────────────────────────
 export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
 export type { CommentStyle } from "./schemas/CommentStyle.js";
@@ -77,6 +85,5 @@ export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/Sil
 export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";
 export { ToolDiscovery, ToolDiscoveryLive } from "./services/ToolDiscovery.js";
 export { VersioningStrategy, VersioningStrategyLive } from "./services/VersioningStrategy.js";
-
 // ── Utils ─────────────────────────────────────────────────────
 export { ToolCommand } from "./utils/ToolCommand.js";

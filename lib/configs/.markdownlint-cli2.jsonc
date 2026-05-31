@@ -7,16 +7,14 @@
 	"ignores": [
 		"**/node_modules",
 		"**/.cache",
-		"**/.coverage",
-		"**/CHANGELOG.md",
 		"**/coverage",
+		"**/.coverage",
 		"**/dist",
-		"**/docs/superpowers",
-		"**/.changeset",
+		"**/CHANGELOG.md",
 		"**/.claude/plans",
-		"**/.claude/design"
+		"**/docs/superpowers"
 	],
-	"customRules": ["@savvy-web/changesets/markdownlint"],
+	"customRules": ["@savvy-web/silk/changesets/markdownlint"],
 	"config": {
 		"default": true,
 		"MD001": true,

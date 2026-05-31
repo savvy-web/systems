@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Action } from "./Action.js";
 
 const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
@@ -7,6 +7,14 @@ const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => t
 afterEach(() => {
 	vi.clearAllMocks();
 	process.exitCode = undefined;
+});
+
+beforeEach(() => {
+	vi.spyOn(console, "log").mockImplementation(() => {});
+	vi.spyOn(console, "info").mockImplementation(() => {});
+	vi.spyOn(console, "warn").mockImplementation(() => {});
+	vi.spyOn(console, "error").mockImplementation(() => {});
+	vi.spyOn(console, "debug").mockImplementation(() => {});
 });
 
 describe("Action.run", () => {

@@ -184,6 +184,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 
 					const raw = yield* fs
 						.readFileString(path)
+						/* v8 ignore next -- error path requires filesystem read failure */
 						.pipe(Effect.mapError((cause) => new SectionParseError({ path, reason: String(cause) })));
 
 					const parsed = parseContent(raw, definition.toolName, definition.commentStyle);
@@ -223,6 +224,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 					if (exists) {
 						const raw = yield* fs
 							.readFileString(path)
+							/* v8 ignore next -- error path requires filesystem read failure */
 							.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
 
 						const parsed = parseContent(raw, block.toolName, block.commentStyle);
@@ -249,6 +251,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 
 					yield* fs
 						.writeFileString(path, fileContent)
+						/* v8 ignore next -- error path requires filesystem write failure */
 						.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
 				}),
 		);
@@ -262,7 +265,9 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 							toolName: block.toolName,
 							commentStyle: block.commentStyle,
 						} as SectionDefinition) as Effect.Effect<SectionBlock | null, SectionParseError>
-					).pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
+					)
+						/* v8 ignore next -- error path requires the upstream read to fail */
+						.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
 
 					if (onDisk === null) {
 						yield* write(path, block);
@@ -290,6 +295,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 					const original = exists
 						? yield* fs
 								.readFileString(path)
+								/* v8 ignore next -- error path requires filesystem read failure */
 								.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })))
 						: "";
 
@@ -405,6 +411,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 					if (output !== original) {
 						yield* fs
 							.writeFileString(path, output)
+							/* v8 ignore next -- error path requires filesystem write failure */
 							.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
 					}
 
@@ -440,6 +447,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 
 					const raw = yield* fs
 						.readFileString(path)
+						/* v8 ignore next -- error path requires filesystem read failure */
 						.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
 
 					const parsed = parseContent(raw, definition.toolName, definition.commentStyle);
@@ -460,6 +468,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 
 					yield* fs
 						.writeFileString(path, next)
+						/* v8 ignore next -- error path requires filesystem write failure */
 						.pipe(Effect.mapError((cause) => new SectionWriteError({ path, reason: String(cause) })));
 
 					return true;

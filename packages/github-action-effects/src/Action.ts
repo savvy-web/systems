@@ -114,7 +114,6 @@ export const Action = {
 		// see the comment above where `fullLayer` is declared. Cast back to
 		// `R: never` at the run boundary; the layer has fully resolved the
 		// program by this point so no requirements actually remain.
-		// biome-ignore lint/suspicious/noExplicitAny: matches the type-erasure seam at fullLayer
 		return Effect.runPromise(runnable as Effect.Effect<void, never, never>).catch(() => {
 			// Last resort — if even the error handler fails, the process should still exit
 			process.exitCode = 1;

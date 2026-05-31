@@ -73,6 +73,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 			return Effect.gen(function* () {
 				const exists = yield* fs.exists(configPath).pipe(
 					Effect.mapError(
+						/* v8 ignore next 4 -- error path requires fs.exists to fail */
 						(cause) =>
 							new ChangesetConfigError({
 								path: configPath,
@@ -92,6 +93,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 
 				const raw = yield* fs.readFileString(configPath).pipe(
 					Effect.mapError(
+						/* v8 ignore next 4 -- error path requires fs.readFileString to fail */
 						(cause) =>
 							new ChangesetConfigError({
 								path: configPath,
@@ -114,6 +116,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 				if (isSilkChangelog(rawConfig.changelog)) {
 					return yield* Schema.decodeUnknown(SilkChangesetConfigFile)(parsed).pipe(
 						Effect.mapError(
+							/* v8 ignore next 4 -- error path requires schema decode failure */
 							(cause) =>
 								new ChangesetConfigError({
 									path: configPath,
@@ -125,6 +128,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 
 				return yield* Schema.decodeUnknown(ChangesetConfigFile)(parsed).pipe(
 					Effect.mapError(
+						/* v8 ignore next 4 -- error path requires schema decode failure */
 						(cause) =>
 							new ChangesetConfigError({
 								path: configPath,

@@ -1,0 +1,100 @@
+{
+	"name": "@savvy-web/silk",
+	"version": "0.1.0",
+	"private": true,
+	"description": "The single Silk Suite dev-tooling package — changeset, commitlint, lint, and biome conventions",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/silk"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		"./changesets": "./src/changesets/index.ts",
+		"./changesets/changelog": "./src/changesets/changelog.ts",
+		"./changesets/markdownlint": "./src/changesets/markdownlint.ts",
+		"./changesets/remark": "./src/changesets/remark.ts",
+		"./commitlint": "./src/commitlint/index.ts",
+		"./commitlint/static": "./src/commitlint/static.ts",
+		"./commitlint/prompt": "./src/commitlint/prompt.ts",
+		"./commitlint/formatter": "./src/commitlint/formatter.ts",
+		"./lint": "./src/lint/index.ts",
+		"./biome": "./src/public/biome/silk.jsonc"
+	},
+	"scripts": {
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"prepare": "turbo run build:dev",
+		"types:check": "tsgo --noEmit"
+	},
+	"devDependencies": {
+		"@changesets/cli": "^2.31.0",
+		"@commitlint/cli": "^21.0.2",
+		"@commitlint/config-conventional": "^21.0.2",
+		"@savvy-web/rslib-builder": "^0.20.12",
+		"@savvy-web/silk-effects": "workspace:*",
+		"@types/node": "catalog:silk",
+		"@typescript/native-preview": "catalog:silk",
+		"commitizen": "^4.3.1",
+		"husky": "^9.1.7",
+		"lint-staged": "^17.0.7",
+		"markdownlint-cli2": "^0.22.1",
+		"markdownlint-cli2-formatter-codequality": "^0.0.7",
+		"prettier": "^3.8.3",
+		"turbo": "^2.9.16",
+		"typescript": "catalog:silk"
+	},
+	"peerDependencies": {
+		"@biomejs/biome": "2.4.16",
+		"@changesets/cli": "^2.31.0",
+		"@commitlint/cli": "^21.0.1",
+		"@commitlint/config-conventional": "^21.0.2",
+		"@savvy-web/cli": "workspace:*",
+		"@types/node": "catalog:silkPeers",
+		"@typescript/native-preview": "catalog:silkPeers",
+		"commitizen": "^4.3.0",
+		"husky": "^9.1.0",
+		"lint-staged": "^17.0.5",
+		"markdownlint-cli2": "^0.22.1",
+		"markdownlint-cli2-formatter-codequality": "^0.0.7",
+		"turbo": "^2.9.16",
+		"typescript": "catalog:silkPeers"
+	},
+	"peerDependenciesMeta": {
+		"@biomejs/biome": {
+			"optional": true
+		}
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}

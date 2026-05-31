@@ -135,6 +135,7 @@ export const BiomeSchemaSyncLive: Layer.Layer<BiomeSchemaSync, never, FileSystem
 				for (const configPath of configs) {
 					const raw = yield* fs.readFileString(configPath).pipe(
 						Effect.mapError(
+							/* v8 ignore next 4 -- error path requires a filesystem read failure */
 							(cause) =>
 								new BiomeSyncError({
 									path: configPath,
@@ -145,6 +146,7 @@ export const BiomeSchemaSyncLive: Layer.Layer<BiomeSchemaSync, never, FileSystem
 
 					const parsed = (yield* parseJsonc(raw).pipe(
 						Effect.mapError(
+							/* v8 ignore next 4 -- error path requires a JSONC parse failure */
 							(e) =>
 								new BiomeSyncError({
 									path: configPath,
@@ -177,6 +179,7 @@ export const BiomeSchemaSyncLive: Layer.Layer<BiomeSchemaSync, never, FileSystem
 						const updated_content = raw.replaceAll(schema, expectedUrl);
 						yield* fs.writeFileString(configPath, updated_content).pipe(
 							Effect.mapError(
+								/* v8 ignore next 4 -- error path requires a filesystem write failure */
 								(cause) =>
 									new BiomeSyncError({
 										path: configPath,

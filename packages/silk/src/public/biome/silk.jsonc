@@ -1,0 +1,149 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": {
+					"level": "on",
+					"options": {
+						"identifierOrder": "lexicographic"
+					}
+				}
+			}
+		},
+		"enabled": true
+	},
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": true,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 120
+	},
+	"json": {
+		"assist": {
+			"enabled": true
+		},
+		"formatter": {
+			"enabled": true,
+			"expand": "auto"
+		},
+		"linter": {
+			"enabled": true
+		}
+	},
+	"css": {
+		"parser": {
+			"cssModules": true
+		},
+		"linter": {
+			"enabled": true
+		}
+	},
+	"linter": {
+		"domains": {
+			"project": "all"
+		},
+		"enabled": true,
+		"rules": {
+			"complexity": {
+				"noStaticOnlyClass": {
+					"level": "off"
+				}
+			},
+			"correctness": {
+				"noUnusedVariables": {
+					"level": "error",
+					"options": {
+						"ignoreRestSiblings": true
+					}
+				},
+				"useImportExtensions": {
+					"level": "error",
+					"options": {
+						"forceJsExtensions": true
+					}
+				},
+				"noUnresolvedImports": "off"
+			},
+			"nursery": {
+				"useExplicitType": "off"
+			},
+			"recommended": true,
+			"style": {
+				"useConsistentTypeDefinitions": "error",
+				"useImportType": {
+					"level": "error",
+					"options": {
+						"style": "separatedType"
+					}
+				},
+				"useNodejsImportProtocol": "error"
+			},
+			"suspicious": {
+				"noDuplicateDependencies": "error",
+				"noImportCycles": "error",
+				"noBiomeFirstException": "error",
+				"noDuplicateObjectKeys": "error",
+				"noQuickfixBiome": "error",
+				"useBiomeIgnoreFolder": "error"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["package.json"],
+			"json": {
+				"formatter": {
+					"expand": "auto"
+				}
+			}
+		},
+		{
+			"assist": {
+				"actions": {
+					"source": {
+						"useSortedKeys": "on"
+					}
+				}
+			},
+			"includes": ["**/turbo.json", "**/tsconfig.json", "**/tsconfig.*.json"]
+		},
+		{
+			"includes": ["**/*.test.ts"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUndeclaredDependencies": "off"
+					}
+				}
+			}
+		}
+	],
+	"root": true,
+	"vcs": {
+		"clientKind": "git",
+		"defaultBranch": "main",
+		"enabled": true,
+		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/.turbo",
+			"!**/.git",
+			"!**/.rslib",
+			"!**/.vitest",
+			"!**/.coverage",
+			"!coverage",
+			"!**/__test__/fixtures",
+			"!**/__test__/snapshots",
+			"!**/__test__/**/fixtures",
+			"!**/__test__/**/snapshots",
+			"!**/__fixtures__",
+			"!**/__snapshots__"
+		]
+	}
+}
