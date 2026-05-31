@@ -1,7 +1,15 @@
 import { Clock, Duration, Effect, Fiber, Ref, TestClock, TestContext } from "effect";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientError } from "../errors/GitHubClientError.js";
 import { resilienceSchedule, withResilience } from "./resilience.js";
+
+beforeEach(() => {
+	vi.spyOn(console, "log").mockImplementation(() => {});
+	vi.spyOn(console, "info").mockImplementation(() => {});
+	vi.spyOn(console, "warn").mockImplementation(() => {});
+	vi.spyOn(console, "error").mockImplementation(() => {});
+	vi.spyOn(console, "debug").mockImplementation(() => {});
+});
 
 const retryableError = (overrides?: Partial<{ status: number; retryAfterMs: number }>) =>
 	new GitHubClientError({

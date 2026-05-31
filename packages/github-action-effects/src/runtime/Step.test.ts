@@ -20,6 +20,14 @@ const run = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
 const runExit = <A, E>(effect: Effect.Effect<A, E>): Promise<Exit.Exit<A, E>> =>
 	Effect.runPromiseExit(Effect.provide(effect, baseLoggerLayer) as Effect.Effect<A, E, never>);
 
+beforeEach(() => {
+	vi.spyOn(console, "log").mockImplementation(() => {});
+	vi.spyOn(console, "info").mockImplementation(() => {});
+	vi.spyOn(console, "warn").mockImplementation(() => {});
+	vi.spyOn(console, "error").mockImplementation(() => {});
+	vi.spyOn(console, "debug").mockImplementation(() => {});
+});
+
 describe("Step", () => {
 	let writeSpy: ReturnType<typeof vi.spyOn>;
 	let captured: string[];

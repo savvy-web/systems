@@ -4,10 +4,18 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppLayer } from "../layers/app.js";
 import { defineConfig } from "../schemas/config.js";
 import { PersistLocalService } from "./persist-local.js";
+
+beforeEach(() => {
+	vi.spyOn(console, "log").mockImplementation(() => {});
+	vi.spyOn(console, "info").mockImplementation(() => {});
+	vi.spyOn(console, "warn").mockImplementation(() => {});
+	vi.spyOn(console, "error").mockImplementation(() => {});
+	vi.spyOn(console, "debug").mockImplementation(() => {});
+});
 
 describe("PersistLocalService", () => {
 	const testDir = resolve(process.cwd(), ".test-fixtures-persist-local");

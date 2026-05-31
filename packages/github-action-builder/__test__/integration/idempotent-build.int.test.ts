@@ -16,11 +16,19 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubAction } from "../../src/index.js";
 
 const sourceFixture = resolve(dirname(fileURLToPath(import.meta.url)), "fixtures/ignore-modules");
+
+beforeEach(() => {
+	vi.spyOn(console, "log").mockImplementation(() => {});
+	vi.spyOn(console, "info").mockImplementation(() => {});
+	vi.spyOn(console, "warn").mockImplementation(() => {});
+	vi.spyOn(console, "error").mockImplementation(() => {});
+	vi.spyOn(console, "debug").mockImplementation(() => {});
+});
 
 function buildOnce(cwd: string) {
 	const action = GitHubAction.create({

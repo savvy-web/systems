@@ -1,7 +1,15 @@
 import { Effect, Exit } from "effect";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runInit } from "../src/commands/init.js";
+
+beforeEach(() => {
+	vi.spyOn(console, "log").mockImplementation(() => {});
+	vi.spyOn(console, "info").mockImplementation(() => {});
+	vi.spyOn(console, "warn").mockImplementation(() => {});
+	vi.spyOn(console, "error").mockImplementation(() => {});
+	vi.spyOn(console, "debug").mockImplementation(() => {});
+});
 
 describe("savvy init orchestrator", () => {
 	it("runs changeset, commit, and lint init in order and succeeds", async () => {
