@@ -51,6 +51,13 @@
 			"description": "Companion plugin for @savvy-web/commitlint that helps write well-structured commitlint configuration files for GitHub release documentation",
 			"category": "developer-tools",
 			"tags": ["commitlint", "commit-msg", "git-hooks"]
+		},
+		{
+			"name": "silk",
+			"source": "./plugins/silk",
+			"description": "Companion plugin for the Savvy Web Silk Suite — changeset, commit, and lint conventions, skills, and agents for silk-effects, templates, and the savvy CLI",
+			"category": "developer-tools",
+			"tags": ["silk-suite", "changesets", "commitlint", "biome", "code-quality"]
 		}
 	]
 }

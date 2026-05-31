@@ -1,0 +1,60 @@
+# Auto-allow regex list for the @savvy-web/silk plugin. POSIX-ERE.
+# One regex per line. Lines starting with # are comments.
+# Each regex is matched against the FULL command string.
+
+# === Tier A — read-only / informational ===
+^[[:space:]]*ls(\b|$)
+^[[:space:]]*tree(\b|$)
+^[[:space:]]*find(\b|$)
+^[[:space:]]*cat(\b|$)
+^[[:space:]]*head(\b|$)
+^[[:space:]]*tail(\b|$)
+^[[:space:]]*grep(\b|$)
+^[[:space:]]*rg(\b|$)
+^[[:space:]]*wc(\b|$)
+^[[:space:]]*which(\b|$)
+^[[:space:]]*file(\b|$)
+^[[:space:]]*stat(\b|$)
+^[[:space:]]*pwd(\b|$)
+^[[:space:]]*realpath(\b|$)
+^[[:space:]]*dirname(\b|$)
+^[[:space:]]*basename(\b|$)
+^[[:space:]]*echo(\b|$)
+^[[:space:]]*printf(\b|$)
+^[[:space:]]*sort(\b|$)
+^[[:space:]]*uniq(\b|$)
+^[[:space:]]*cut(\b|$)
+^[[:space:]]*tr(\b|$)
+^[[:space:]]*tee(\b|$)
+^[[:space:]]*date(\b|$)
+# `env` bare is intentionally NOT auto-allowed because it bypasses the hard-exclusion
+# checks in match-safe-bash.sh (`env rm -rf .`, `env curl ...`). Only allow `env` when
+# used as an env-var setter prefixing a non-git/gh runner. `env VAR=val git/gh ...` is
+# intentionally NOT auto-allowed so commit-related commands still route through the
+# validation cold path; the cold path's is-commit-related.sh matches the env-prefixed
+# form too.
+^[[:space:]]*env([[:space:]]+[A-Z_][A-Z0-9_]*=[^[:space:]]+)*[[:space:]]+(pnpm|node)(\b|$)
+^[[:space:]]*jq(\b|$)
+^[[:space:]]*git[[:space:]]+(status|diff|log|show|rev-parse|ls-files|ls-tree|remote|branch|config|stash[[:space:]]+list|stash[[:space:]]+show)(\b|$)
+^[[:space:]]*gh[[:space:]]+(api|pr[[:space:]]+(view|list|diff|checks)|issue[[:space:]]+(view|list)|repo[[:space:]]+view|run[[:space:]]+(list|view|watch))(\b|$)
+^[[:space:]]*node[[:space:]]+--version(\b|$)
+^[[:space:]]*pnpm[[:space:]]+--version(\b|$)
+^[[:space:]]*npm[[:space:]]+--version(\b|$)
+^[[:space:]]*yarn[[:space:]]+--version(\b|$)
+^[[:space:]]*bun[[:space:]]+--version(\b|$)
+
+# === Tier B — write/state-changing but workflow-essential ===
+# NOTE: `git commit`, `gh pr create`, and `gh pr edit` are intentionally NOT auto-allowed.
+# They route through the commit-message validation cold path in pre-tool-use/commit-bash.sh.
+^[[:space:]]*git[[:space:]]+add(\b|$)
+^[[:space:]]*git[[:space:]]+checkout(\b|$)
+# `git rm` enumerates safe forms only. Bare `git rm` and `git rm -rf .` are NOT auto-allowed.
+# Hard exclusion below also denies --force / -rf variants explicitly.
+^[[:space:]]*git[[:space:]]+rm[[:space:]]+--cached\b
+^[[:space:]]*git[[:space:]]+rm[[:space:]]+[^-][^[:space:]]*([[:space:]]+[^-][^[:space:]]*)*$
+# `git stash` enumerates safe operations (push/pop/apply/save/list/show). drop/clear are NOT auto-allowed.
+^[[:space:]]*git[[:space:]]+stash([[:space:]]+(push|pop|apply|save|list|show))?(\b|$)
+^[[:space:]]*git[[:space:]]+reset[[:space:]]+--soft\b
+^[[:space:]]*git[[:space:]]+push(\b|$)
+^[[:space:]]*gh[[:space:]]+(pr[[:space:]]+comment|issue[[:space:]]+(create|close|comment))(\b|$)
+^[[:space:]]*pnpm[[:space:]]+(exec|run|test|lint|typecheck|build)(\b|$)

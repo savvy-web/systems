@@ -1,0 +1,71 @@
+{
+	"name": "@savvy-web/cli",
+	"version": "0.1.0",
+	"private": true,
+	"description": "The savvy CLI — unified commit, changeset, and lint commands for the Silk Suite",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/cli",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/cli"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"bin": {
+		"savvy": "./src/bin/cli.ts"
+	},
+	"scripts": {
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"prepare": "turbo run build:dev",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"@effect/cli": "catalog:silk",
+		"@effect/platform": "catalog:silk",
+		"@effect/platform-node": "catalog:silk",
+		"@savvy-web/silk-effects": "workspace:*",
+		"effect": "catalog:silk",
+		"jsonc-effect": "^0.2.1",
+		"workspaces-effect": "^1.1.0",
+		"yaml": "^2.9.0"
+	},
+	"devDependencies": {
+		"@savvy-web/rslib-builder": "^0.20.11",
+		"@types/node": "catalog:silk",
+		"@typescript/native-preview": "catalog:silk",
+		"typescript": "catalog:silk"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}

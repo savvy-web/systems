@@ -1,4 +1,4 @@
-import { Option } from "effect";
+import { Equal, Hash, Option } from "effect";
 import { describe, expect, it } from "vitest";
 import { ResolvedTool } from "../../src/schemas/ResolvedTool.js";
 import { ToolCommand } from "../../src/utils/ToolCommand.js";
@@ -76,6 +76,30 @@ describe("ResolvedTool", () => {
 
 		it("returns ToolCommand for yarn dlx", () => {
 			expect(makeTool({ packageManager: "yarn" }).dlx("check")).toBeInstanceOf(ToolCommand);
+		});
+	});
+
+	describe("Equal and Hash protocols", () => {
+		it("Equal.equals returns true for structurally identical tools", () => {
+			const a = makeTool();
+			const b = makeTool();
+			expect(Equal.equals(a, b)).toBe(true);
+		});
+
+		it("Equal.equals returns false when name differs", () => {
+			const a = makeTool({ name: "biome" });
+			const b = makeTool({ name: "prettier" });
+			expect(Equal.equals(a, b)).toBe(false);
+		});
+
+		it("Equal.equals returns false when compared to a non-ResolvedTool value", () => {
+			const a = makeTool();
+			expect(Equal.equals(a, "not-a-tool")).toBe(false);
+		});
+
+		it("Hash.hash returns a number", () => {
+			const tool = makeTool();
+			expect(typeof Hash.hash(tool)).toBe("number");
 		});
 	});
 });

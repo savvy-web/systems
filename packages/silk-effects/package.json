@@ -24,24 +24,43 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"build": "turbo run build:dev build:prod --log-order=grouped",
 		"build:dev": "rslib build --config-loader native --env-mode dev",
 		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
+		"@changesets/get-github-info": "^0.8.0",
 		"jsonc-effect": "^0.2.1",
+		"mdast-util-heading-range": "^4.0.0",
+		"mdast-util-to-string": "^4.0.0",
+		"prettier": "^3.8.3",
+		"remark-gfm": "^4.0.1",
+		"remark-parse": "^11.0.0",
+		"remark-stringify": "^11.0.0",
 		"semver-effect": "^0.2.1",
+		"shell-quote": "^1.8.4",
+		"sort-package-json": "^3.6.1",
+		"tinyglobby": "^0.2.16",
+		"unified": "^11.0.5",
+		"unified-lint-rule": "^3.0.1",
+		"unist-util-visit": "^5.1.0",
 		"workspaces-effect": "^1.1.0",
-		"yaml-effect": "^0.6.0"
+		"yaml": "^2.9.0",
+		"yaml-effect": "^0.6.0",
+		"yaml-lint": "^1.7.0"
 	},
 	"devDependencies": {
-		"@effect/platform": "catalog:silk",
+		"@changesets/types": "^6.1.0",
+		"@commitlint/types": "^21.0.1",
 		"@effect/platform-node": "catalog:silk",
 		"@savvy-web/rslib-builder": "^0.20.11",
+		"@types/mdast": "^4.0.4",
 		"@types/node": "catalog:silk",
+		"@types/shell-quote": "^1.7.5",
 		"effect": "catalog:silk",
-		"fast-check": "^4.8.0"
+		"fast-check": "^4.8.0",
+		"markdownlint": "^0.40.0"
 	},
 	"peerDependencies": {
 		"@effect/platform": "catalog:silkPeers",

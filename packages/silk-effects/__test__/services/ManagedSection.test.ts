@@ -355,3 +355,67 @@ describe("ManagedSection.remove", () => {
 		expect(files["/hook"]).toContain("theirs");
 	});
 });
+
+// ── error paths (filesystem failures) ───────────────────────────
+
+const makeFailingFs = (overrides: { exists?: boolean; read?: "ok" | "fail"; write?: "ok" | "fail"; content?: string }) =>
+	Layer.succeed(FileSystem.FileSystem, {
+		exists: () => Effect.succeed(overrides.exists ?? true),
+		readFileString: (path: string) =>
+			overrides.read === "fail" ? Effect.fail(new Error(`EIO read: ${path}`)) : Effect.succeed(overrides.content ?? ""),
+		writeFileString: (path: string) =>
+			overrides.write === "fail" ? Effect.fail(new Error(`EIO write: ${path}`)) : Effect.void,
+	} as unknown as FileSystem.FileSystem);
+
+function runFail<A, E>(layer: Layer.Layer<FileSystem.FileSystem>, effect: Effect.Effect<A, E, ManagedSection>) {
+	return Effect.runPromiseExit(Effect.provide(effect, ManagedSectionLive.pipe(Layer.provide(layer))));
+}
+
+describe("ManagedSection error paths", () => {
+	const failRead = makeFailingFs({ exists: true, read: "fail" });
+	const block = DEF.block("managed");
+	const managed = `${BEGIN}\nmanaged\n${END}\n`;
+
+	it("read surfaces a filesystem read failure", async () => {
+		const exit = await runFail(failRead, Effect.andThen(ManagedSection, (s) => s.read("/hook", DEF)));
+		expect(exit._tag).toBe("Failure");
+	});
+
+	it("write surfaces a read failure when the target file exists", async () => {
+		const exit = await runFail(failRead, Effect.andThen(ManagedSection, (s) => s.write("/hook", block)));
+		expect(exit._tag).toBe("Failure");
+	});
+
+	it("sync surfaces a read failure", async () => {
+		const exit = await runFail(failRead, Effect.andThen(ManagedSection, (s) => s.sync("/hook", block)));
+		expect(exit._tag).toBe("Failure");
+	});
+
+	it("syncMany surfaces a read failure", async () => {
+		const exit = await runFail(failRead, Effect.andThen(ManagedSection, (s) => s.syncMany("/hook", [block])));
+		expect(exit._tag).toBe("Failure");
+	});
+
+	it("remove surfaces a read failure", async () => {
+		const exit = await runFail(failRead, Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)));
+		expect(exit._tag).toBe("Failure");
+	});
+
+	it("write surfaces a write failure when creating a new file", async () => {
+		const failWrite = makeFailingFs({ exists: false, write: "fail" });
+		const exit = await runFail(failWrite, Effect.andThen(ManagedSection, (s) => s.write("/hook", block)));
+		expect(exit._tag).toBe("Failure");
+	});
+
+	it("syncMany surfaces a write failure", async () => {
+		const failWrite = makeFailingFs({ exists: false, write: "fail" });
+		const exit = await runFail(failWrite, Effect.andThen(ManagedSection, (s) => s.syncMany("/hook", [block])));
+		expect(exit._tag).toBe("Failure");
+	});
+
+	it("remove surfaces a write failure when stripping an existing section", async () => {
+		const failWrite = makeFailingFs({ exists: true, read: "ok", write: "fail", content: managed });
+		const exit = await runFail(failWrite, Effect.andThen(ManagedSection, (s) => s.remove("/hook", DEF)));
+		expect(exit._tag).toBe("Failure");
+	});
+});

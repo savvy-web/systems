@@ -1,0 +1,28 @@
+# Auto-allow MCP operation suffixes for the GitKraken MCP server (mcp__gk__<op>).
+# === Read ===
+git_status
+git_log_or_diff
+git_blame
+git_branch
+git_fetch
+gitkraken_workspace_list
+gitlens_launchpad
+gitlens_start_review
+gitlens_start_work
+pull_request_get_detail
+pull_request_get_comments
+pull_request_assigned_to_me
+issues_get_detail
+issues_assigned_to_me
+repository_get_file_content
+# === Write ===
+git_add_or_commit
+git_checkout
+git_pull
+git_push
+git_stash
+git_worktree
+pull_request_create
+pull_request_create_review
+issues_add_comment
+gitlens_commit_composer

@@ -1,0 +1,105 @@
+{
+	"hooks": {
+		"SessionStart": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/changeset-env-export.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
+				"matcher": "startup",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/commit-main.sh\"",
+						"timeout": 10
+					}
+				]
+			},
+			{
+				"matcher": "startup",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/lint-staged-env.sh\"",
+						"timeout": 5
+					}
+				]
+			}
+		],
+		"PreToolUse": [
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/changeset-push-guard.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/commit-bash.sh\""
+					}
+				]
+			},
+			{
+				"matcher": "mcp__gk__.*|mcp__github(-[^_].*)?__.*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/commit-mcp.sh\""
+					}
+				]
+			},
+			{
+				"matcher": "Read|Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/commit-fs.sh\""
+					}
+				]
+			}
+		],
+		"PostToolUse": [
+			{
+				"matcher": "Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/changeset-validate-changeset.sh\"",
+						"timeout": 15
+					}
+				]
+			},
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/commit-bash.sh\""
+					}
+				]
+			}
+		],
+		"UserPromptSubmit": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/commit-main.sh\""
+					}
+				]
+			}
+		]
+	}
+}

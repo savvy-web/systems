@@ -36,9 +36,9 @@
 		"./testing": "./src/testing.ts"
 	},
 	"scripts": {
-		"build": "turbo run build:dev build:prod --log-order=grouped",
 		"build:dev": "rslib build --config-loader native --env-mode dev",
 		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {

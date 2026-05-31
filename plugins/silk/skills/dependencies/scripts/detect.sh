@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# detect.sh — Thin wrapper around `savvy-changesets deps detect --json`.
+#
+# Read-only inspection: returns the per-workspace-package dependency diff
+# between the merge-base with the base branch and the working tree.
+# Output is JSON — one entry per affected workspace package, each with a
+# rows array suitable for serializing into a CSH005 table.
+#
+# Forwards any extra args to the CLI (e.g., `--from`, `--to`,
+# `--package`, `--markdown`).
+
+set -euo pipefail
+
+PROJECT_DIR="${CHANGESETS_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+if [ ! -d "$PROJECT_DIR" ]; then
+	echo "ERROR: project dir not found: $PROJECT_DIR" >&2
+	exit 1
+fi
+cd "$PROJECT_DIR"
+
+PM="${CHANGESETS_PACKAGE_MANAGER:-}"
+if [ -z "$PM" ]; then
+	if [ -f package.json ] && command -v jq >/dev/null 2>&1; then
+		PM=$(jq -r '.packageManager // empty' package.json 2>/dev/null | cut -d'@' -f1)
+	fi
+	if [ -z "$PM" ]; then
+		if [ -f pnpm-lock.yaml ]; then PM=pnpm
+		elif [ -f yarn.lock ]; then PM=yarn
+		elif [ -f bun.lock ]; then PM=bun
+		else PM=npm
+		fi
+	fi
+fi
+
+case "$PM" in
+	pnpm) CMD=(pnpm exec savvy-changesets) ;;
+	yarn) CMD=(yarn exec savvy-changesets) ;;
+	bun)  CMD=(bunx savvy-changesets) ;;
+	*)    CMD=(npx --no -- savvy-changesets) ;;
+esac
+
+if ! "${CMD[@]}" --version >/dev/null 2>&1; then
+	echo "ERROR: savvy-changesets CLI is not installed in $PROJECT_DIR" >&2
+	exit 1
+fi
+
+exec "${CMD[@]}" deps detect --json "$@"

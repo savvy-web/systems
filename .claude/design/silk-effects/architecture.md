@@ -5,14 +5,21 @@ module: silk-effects
 category: architecture
 status: current
 completeness: 95
-last-synced: 2026-05-27
+created: 2026-03-06
+updated: 2026-05-31
+last-synced: 2026-05-31
 depends-on: []
+related:
+  - ../silk/architecture.md
+  - ../cli/architecture.md
+dependencies: []
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Current State](#current-state)
+- [Tool Namespaces (Changesets, Commitlint, Lint)](#tool-namespaces-changesets-commitlint-lint)
 - [Module Architecture](#module-architecture)
 - [Service Patterns](#service-patterns)
 - [Value Object Patterns](#value-object-patterns)
@@ -33,9 +40,18 @@ The library builds on top of foundation libraries (`workspaces-effect`, `semver-
 publishability detection, versioning strategy, tag formatting, managed sections, config
 discovery, Biome schema synchronization, and CLI tool discovery.
 
+As of Silk Core sub-project 1, silk-effects **also hosts the per-tool business logic** of the three
+standalone dev-tooling packages (`@savvy-web/changesets`, `@savvy-web/commitlint`,
+`@savvy-web/lint-staged`), exposed under three namespace exports — `Changesets`, `Commitlint` and
+`Lint`. This package is the shared layer that both thin consumers (`@savvy-web/cli` and
+`@savvy-web/silk`) import. See `../cli/architecture.md` and `../silk/architecture.md`, and
+`docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md` for the merge design.
+
 **Package:** `@savvy-web/silk-effects`
 **Location:** `packages/silk-effects` in `savvy-web/systems`
 **Runtime:** Platform-agnostic via `@effect/platform` — consumers provide their platform layer
+**Build:** dual-format (esm + cjs) so config-integration consumers can `require()` it — see
+[Why dual-format](#why-dual-format-cjs--esm)
 
 ## Current State
 
@@ -52,7 +68,29 @@ Tests live in a dedicated `__test__/` directory mirroring the source structure. 
 
 **Single root export:** All public API is exported from the package root (`"."`). There are no
 sub-path exports (`./publish`, `./hooks`, etc.). Consumers import everything from
-`@savvy-web/silk-effects`.
+`@savvy-web/silk-effects`. The three tool namespaces are re-exported from the root as
+`export * as Changesets` / `Commitlint` / `Lint` (see `src/index.ts`).
+
+## Tool Namespaces (Changesets, Commitlint, Lint)
+
+Sub-project 1 extracted the business logic of the three standalone dev-tooling packages into
+silk-effects under three namespace objects. Each namespace is a self-contained subtree under `src/`
+(`src/changesets/`, `src/commitlint/`, `src/lint/`) with its own `index.ts` barrel. This is the real
+work of the sub-project — a genuine extraction, not a mechanical copy.
+
+| Namespace | Holds | Subtree |
+| --- | --- | --- |
+| `Changesets` | transformer, linter, changelog formatter (`changelogFunctions`), remark plugins + presets, markdownlint rules, services (ConfigInspector, BranchAnalyzer, WorkspaceSnapshotReader, …), schemas, the class API wrappers (Categories, Changelog, ChangesetLinter, ChangelogTransformer, DependencyTable) | `src/changesets/` |
+| `Commitlint` | `CommitlintConfig` factory + `staticConfig`, DCO/scope detection, formatter, commitizen prompt adapter, hook logic | `src/commitlint/` |
+| `Lint` | the 7 handlers (Biome, Markdown, PackageJson, Yaml, TypeScript, PnpmWorkspace, ShellScripts), `Preset`, `createConfig`, Command/Filter/Workspace utils, managed-section + template data | `src/lint/` |
+
+Why these three live here rather than in `silk`: in each source package the CLI commands and the
+config-export modules share the tool's own internal logic (the changeset `transform` command and the
+`./remark` export run the same plugins; the `lint` command and the `./markdownlint` export run the
+same rules). `cli` must not import `silk`, so the shared logic has only one viable home — the library
+layer both thin packages import. `@savvy-web/cli` consumes the namespaces as command logic;
+`@savvy-web/silk` re-exports them as config-integration shims. The namespace contents themselves are
+discoverable in each subtree's `index.ts`; this table is the topology, not an inventory.
 
 ## Module Architecture
 
@@ -62,11 +100,14 @@ The package is organized by role, not by domain:
 
 ```text
 src/
-  index.ts              ← single root export
+  index.ts              ← single root export (re-exports the three tool namespaces too)
   errors/               ← Data.TaggedError classes (one per file)
   schemas/              ← Schema.TaggedClass / Schema.Class value objects and enums
   services/             ← Context.Tag services with Live layers
   utils/                ← helpers (ToolCommand wrapper)
+  changesets/           ← Changesets namespace (extracted @savvy-web/changesets logic)
+  commitlint/           ← Commitlint namespace (extracted @savvy-web/commitlint logic)
+  lint/                 ← Lint namespace (extracted @savvy-web/lint-staged logic)
 
 __test__/
   errors/               ← error class tests
@@ -787,6 +828,23 @@ version-bumping the shared logic.
 
 Consumers already depend on `effect`. Bundling it would cause version conflicts and
 bloated output. As a peer, consumers get a single copy.
+
+### Why dual-format (CJS + ESM)?
+
+silk-effects now builds both ESM and CJS. The driver is `@savvy-web/silk`: its config-integration
+shims are dual-format because some external loaders `require()` them from CommonJS — notably
+markdownlint-cli2's custom-rule loader, which loads `@savvy-web/silk/changesets/markdownlint` via a
+CJS path. `silk` externals silk-effects, so silk's CJS output emits `require("@savvy-web/silk-effects")`,
+which only resolves if silk-effects exposes a CJS entry. Dual-format here is therefore a hard
+requirement of the consumer chain, not a convenience.
+
+### Why host the three tool namespaces here?
+
+The three dev-tooling packages couple their CLI commands to their config-export modules through
+shared per-tool logic. The merge (sub-project 1) keeps `@savvy-web/cli` and `@savvy-web/silk` thin
+with neither importing the other, which forces the shared logic into the one library both import —
+silk-effects. The namespaces (`Changesets`, `Commitlint`, `Lint`) are that shared home. See the
+[Tool Namespaces](#tool-namespaces-changesets-commitlint-lint) section.
 
 ### Why SectionDefinition separates identity from content?
 

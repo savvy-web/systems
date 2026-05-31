@@ -4,11 +4,13 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 
 ## Repository Purpose
 
-- **silk-effects** — shared Effect library (implemented)
+- **silk-effects** — shared Effect library; also hosts the dev-tooling business logic under three namespace exports (`Changesets`, `Commitlint`, `Lint`); dual-format esm+cjs (implemented)
+- **cli** — `@savvy-web/cli`, the `savvy` binary with `init`/`check`/`commit`/`changeset`/`lint` commands; replaces the three old per-tool bins (implemented)
+- **silk** — `@savvy-web/silk`, the single install-target of thin config-integration shims plus the biome asset (implemented)
+- **plugins/silk** — merged Claude Code plugin (`silk@savvy-web-systems`): 13 skills, the `changeset-manager` agent, merged hooks (implemented)
 - **templates** — pure TypeScript project scaffolding (implemented)
 - **github-action-builder** — zero-config rsbuild build tool for Node.js 24 GitHub Actions (implemented)
 - **github-action-effects** — Effect-based library replacing @actions/* with 37 schema-validated services (implemented)
-- **cli** (planned)
 - Public documentation site (docs/ — placeholder for future RSPress site)
 - Cross-repo planning and coordination
 - Claude Code plugin marketplace entry point (.claude-plugin/)
@@ -60,7 +62,22 @@ Load when working on github-action-effects or building GitHub Actions on its Eff
 
 Load when working on github-action-builder or configuring action builds. Covers the zero-config rsbuild pipeline targeting Node.js 24 GitHub Actions.
 
-Planned: `cli/architecture.md`
+**@savvy-web/cli architecture — the `savvy` binary and runtime layer stack:**
+→ `@./.claude/design/cli/architecture.md`
+
+Load when working on the `savvy` CLI. Covers the static command tree, the merged runtime layer stack assembled in `src/cli/index.ts`, the runtime-smoke-test layer-completeness gate (vs tsgo), and the cli↔silk non-import invariant.
+
+**@savvy-web/silk architecture — the config-integration shim surface and Biome asset:**
+→ `@./.claude/design/silk/architecture.md`
+
+Load when working on `@savvy-web/silk`. Covers the drop-in shim contract, the export map, the dual-format-for-CJS requirement, peerDep wiring, and the consumer model.
+
+**plugins/silk — the merged Claude Code plugin:**
+→ `@./.claude/design/silk/plugin.md`
+
+Load when working on `plugins/silk`. Covers the skill/agent/hook merge, the tool-prefixed-vs-unprefixed skill naming scheme, and the hooks repointed at the unified `savvy` bin.
+
+Silk Core sub-project 1 design: `@./docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md`
 
 ## Ecosystem Context
 
@@ -81,3 +98,5 @@ Key coordination points:
 - Use `catalog:silk` for pinned dependencies, `catalog:silkPeers` for peer dependency ranges
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`
 - README.md is for external users; .claude/design/ for package architecture docs
+- `@savvy-web/cli` and `@savvy-web/silk` must NOT import each other (the cli↔silk non-import invariant) — see `@./.claude/design/cli/architecture.md`
+- `@savvy-web/silk` and `@savvy-web/cli` are a `fixed` changeset group (versioned and released together); silk ships dual-format esm+cjs for its CJS consumers

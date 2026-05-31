@@ -65,9 +65,19 @@
 			"designDocsPath": ".claude/design/cli",
 			"categories": ["architecture", "integration"],
 			"maintainer": "C. Spencer Beggs",
-			"status": "planned",
 			"userDocs": {
 				"readme": "packages/cli/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"silk": {
+			"path": "packages/silk",
+			"designDocsPath": ".claude/design/silk",
+			"categories": ["architecture", "integration"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/silk/README.md",
 				"repoDocs": null,
 				"siteDocs": null
 			}
