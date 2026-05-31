@@ -4,3 +4,5 @@ autoInstallPeers: true
 configDependencies:
   "@savvy-web/pnpm-plugin-silk": 0.13.4+sha512-WNNQ5wNiBHfihbxFtX6oti+fxJb0AXHCVosdBCwFFyNXKk9YAWLM3Qa+9Z9b1x1bFedFBTsXjoDQk/kWAlddyg==
 loglevel: info
+overrides:
+  serve-handler>minimatch: ^3.1.2

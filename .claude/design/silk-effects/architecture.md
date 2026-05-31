@@ -12,6 +12,7 @@ depends-on: []
 related:
   - ../silk/architecture.md
   - ../cli/architecture.md
+  - ../mcp/architecture.md
 dependencies: []
 ---
 
@@ -46,6 +47,10 @@ standalone dev-tooling packages (`@savvy-web/changesets`, `@savvy-web/commitlint
 `Lint`. This package is the shared layer that both thin consumers (`@savvy-web/cli` and
 `@savvy-web/silk`) import. See `../cli/architecture.md` and `../silk/architecture.md`, and
 `docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md` for the merge design.
+
+`@savvy-web/mcp` (the `savvy-mcp` server) is now a third consumer: it composes its own runtime layer
+from silk-effects services (notably `SilkWorkspaceAnalyzer` + `WorkspaceRoot`) plus `workspaces-effect`,
+and surfaces them as MCP tools. See `../mcp/architecture.md`.
 
 **Package:** `@savvy-web/silk-effects`
 **Location:** `packages/silk-effects` in `savvy-web/systems`
@@ -498,7 +503,7 @@ SilkWorkspaceAnalyzerLive
 The analyzer no longer depends on a publishability *service*: it calls `SilkPublishability.detect(pkg.name, raw)` directly (pure, synchronous) on the raw `package.json` read from disk. The live layer orchestrates a 10-step pipeline:
 
 1. Detect package manager and runtime
-2. Discover workspace packages
+2. Discover workspace packages — `discovery.listPackages(root)` is passed `root` so discovery resolves the requested workspace even when the layer was built from a different working directory (e.g. a server launched from a subdirectory, or a test). The topo reorder falls back to discovery order when the (possibly rootless) topo sort does not contain the discovered package names.
 3. Topologically sort packages (dependencies first)
 4. Read changeset config (optional)
 5. For each package: read raw `package.json`, detect publishability via

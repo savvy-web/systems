@@ -9,6 +9,7 @@ completeness: 90
 related:
   - ../silk/architecture.md
   - ../silk-effects/architecture.md
+  - ../mcp/architecture.md
 dependencies:
   - ../silk-effects/architecture.md
 ---

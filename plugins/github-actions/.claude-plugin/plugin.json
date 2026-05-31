@@ -1,7 +1,7 @@
 {
-	"name": "silk",
+	"name": "github-actions",
 	"version": "0.1.0",
-	"description": "Companion plugin for @savvy-web/silk — changeset, commit, and lint conventions, skills, and agents for the Silk Suite",
+	"description": "Savvy Web GitHub Actions assistant — Effect-based action development conventions and knowledge, served via the shared savvy MCP",
 	"author": {
 		"name": "C. Spencer Beggs",
 		"email": "spencer@savvyweb.systems",
@@ -10,7 +10,7 @@
 	"homepage": "https://github.com/savvy-web/systems",
 	"repository": "https://github.com/savvy-web/systems.git",
 	"license": "MIT",
-	"keywords": ["silk-suite", "changesets", "commitlint", "lint-staged", "biome", "code-quality"],
+	"keywords": ["github-actions", "workflows", "automation", "ci-cd", "effect"],
 	"mcpServers": {
 		"savvy-mcp": {
 			"command": "sh",

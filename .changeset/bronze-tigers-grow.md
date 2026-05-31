@@ -49,3 +49,7 @@ const config = Lint.Config.createConfig({ preset: "strict" });
 ### Dual-format build
 
 The package now ships both ESM and CJS bundles. The CJS build allows tools with CommonJS loaders — such as `markdownlint-cli2`'s custom-rule loader — to `require()` the markdownlint rules directly from `@savvy-web/silk-effects`.
+
+## Bug Fixes
+
+- `SilkWorkspaceAnalyzer.analyze(root)` now passes `root` through to `WorkspaceDiscovery.listPackages()`. Previously the call omitted `root`, causing package discovery to resolve from the process working directory rather than the requested workspace root. Topological sort falls back to discovery order when the sort was built against a different root (e.g. in tests).

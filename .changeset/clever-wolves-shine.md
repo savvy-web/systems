@@ -31,3 +31,7 @@ export { default } from "@savvy-web/silk/commitlint";
 // .changeset/config.json
 { "changelog": "@savvy-web/silk/changesets/changelog" }
 ```
+
+### MCP server integration
+
+The bundled `silk@savvy-web-systems` Claude Code plugin now ships an MCP server entry point. A `start-mcp.sh` launcher wires the plugin into Claude Code's MCP layer, and a new `mcp-orientation` session-start hook surfaces relevant context at the start of each session.
