@@ -1,5 +1,5 @@
 /**
- * `savvy-commit hook session-start` — emits the additionalContext block
+ * `savvy commit hook session-start` — emits the additionalContext block
  * the SessionStart hook injects into the agent's context.
  *
  * @internal

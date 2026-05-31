@@ -1,5 +1,5 @@
 /**
- * `savvy-commit hook post-commit-verify` — replays commitlint, checks the
+ * `savvy commit hook post-commit-verify` — replays commitlint, checks the
  * signature, and verifies the closes trailer if the branch implies one.
  *
  * @internal

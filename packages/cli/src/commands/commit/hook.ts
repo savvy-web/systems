@@ -1,5 +1,5 @@
 /**
- * `savvy-commit hook` parent command — internal CLI surface used by the
+ * `savvy commit hook` parent command — internal CLI surface used by the
  * commitlint plugin's bash hooks.
  *
  * @internal

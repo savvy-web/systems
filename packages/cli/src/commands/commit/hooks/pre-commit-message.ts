@@ -1,5 +1,5 @@
 /**
- * `savvy-commit hook pre-commit-message` — reads a PreToolUse envelope on
+ * `savvy commit hook pre-commit-message` — reads a PreToolUse envelope on
  * stdin and emits deny/advise/silent output for the bash hook.
  *
  * @internal

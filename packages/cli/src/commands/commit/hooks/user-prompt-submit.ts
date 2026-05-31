@@ -1,5 +1,5 @@
 /**
- * `savvy-commit hook user-prompt-submit` — emits a compact reminder when
+ * `savvy commit hook user-prompt-submit` — emits a compact reminder when
  * the prompt mentions commit-related verbs.
  *
  * @internal

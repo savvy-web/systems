@@ -3,7 +3,17 @@
 	"changelog": [
 		"@savvy-web/silk/changesets/changelog",
 		{
-			"repo": "savvy-web/systems"
+			"repo": "savvy-web/systems",
+			"packages": {
+				"@savvy-web/silk": {
+					"versionFiles": [
+						{
+							"glob": "plugins/silk/.claude-plugin/plugin.json",
+							"paths": ["$.version"]
+						}
+					]
+				}
+			}
 		}
 	],
 	"commit": false,
