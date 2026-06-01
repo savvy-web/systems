@@ -32,11 +32,10 @@ async function main(): Promise<void> {
 	const runtime = ManagedRuntime.make(appLayer);
 	const contentRoot = resolveContentRoot();
 	const manifest = loadManifest(contentRoot);
-	// Preload every body for the search index. At launch Fuse ranks on
-	// title/tags/summary only — body is intentionally not a search key yet — so
-	// this map is forward-looking content storage for a later body-content boost,
-	// not a current search input. Resource reads stream fresh from disk per
-	// request (stateless readers). A read failure here fails boot loudly.
+	// Preload every body for the search index. Fuse indexes body at a low weight
+	// (0.03) so a term appearing only in a doc body still surfaces the doc, while
+	// title/tags/summary dominate ranking. Resource reads still stream fresh from
+	// disk per request (stateless readers). A read failure here fails boot loudly.
 	const bodies = Object.fromEntries(
 		manifest.entries.map((e) => [e.uri, readDocBody(contentRoot, e.uri.replace(/^silk:\/\//, ""))]),
 	);

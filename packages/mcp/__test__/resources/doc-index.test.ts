@@ -65,6 +65,33 @@ describe("DocIndex", () => {
 		expect(results.every((r) => r.tier === "standards")).toBe(true);
 	});
 
+	it("surfaces a doc when the query term appears only in its body", () => {
+		const m: Manifest = {
+			generatedAt: "2026-06-01T00:00:00Z",
+			entries: [
+				{
+					id: "standards/commit-contract",
+					uri: "silk://standards/commit-contract",
+					title: "Commit contract",
+					summary: "Commit rules.",
+					tier: "standards",
+					source: "hand",
+					status: "stable",
+					tags: ["commit"],
+					audience: ["assistant"],
+					priority: 0.5,
+					related: [],
+				},
+			],
+		};
+		const idx = DocIndex.fromManifest(m, {
+			"silk://standards/commit-contract": "Bodies mention quadrupedalism as a unique token.",
+		});
+		const results = idx.search("quadrupedalism");
+		expect(results[0]?.uri).toBe("silk://standards/commit-contract");
+		expect(results[0]?.matchedOn).toContain("body");
+	});
+
 	it("excludes deprecated docs from the index", () => {
 		const withDeprecated: Manifest = {
 			generatedAt: manifest.generatedAt,

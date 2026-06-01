@@ -71,7 +71,8 @@ export class DocIndex {
 			keys: [
 				{ name: "title", weight: 0.55 },
 				{ name: "tags", weight: 0.3 },
-				{ name: "summary", weight: 0.15 },
+				{ name: "summary", weight: 0.12 },
+				{ name: "body", weight: 0.03 },
 			],
 		});
 		return new DocIndex(fuse, entries);
