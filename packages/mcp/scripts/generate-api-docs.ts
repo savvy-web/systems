@@ -11,8 +11,8 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ApiItemRef, DocMeta } from "@savvy-web/api-extractor-llms";
-import { loadApiModel, renderPackage } from "@savvy-web/api-extractor-llms";
+import type { ApiItemRef, DocMeta } from "api-extractor-llms";
+import { loadApiModel, renderPackage } from "api-extractor-llms";
 import type { ApiTarget } from "./api-targets.js";
 import { API_TARGETS } from "./api-targets.js";
 

@@ -1,7 +1,7 @@
 ---
 id: guides/api-docs-from-api-extractor
 title: Generating API docs from API Extractor
-summary: Configure apiModel, build the model, and render LLM-lean markdown with @savvy-web/api-extractor-llms.
+summary: Configure apiModel, build the model, and render LLM-lean markdown with api-extractor-llms.
 tier: guides
 source: hand
 tags: [api, build]
@@ -57,7 +57,7 @@ is the unscoped package name with an `.api.json` suffix.
 `dist/dev/` may also contain a model depending on the build configuration.
 The generator script probes `dist/dev/` first, then `dist/npm/`.
 
-## Step 3 — Render with `@savvy-web/api-extractor-llms`
+## Step 3 — Render with `api-extractor-llms`
 
 The rendering library takes a model path, two injectable callbacks, and returns
 one `RenderedDoc` per top-level public member.
@@ -65,8 +65,8 @@ one `RenderedDoc` per top-level public member.
 ### Core API
 
 ```typescript
-import { loadApiModel, renderPackage } from "@savvy-web/api-extractor-llms";
-import type { FrontmatterRenderer, RouteFormatter } from "@savvy-web/api-extractor-llms";
+import { loadApiModel, renderPackage } from "api-extractor-llms";
+import type { FrontmatterRenderer, RouteFormatter } from "api-extractor-llms";
 
 const pkg = await loadApiModel("/path/to/silk-effects.api.json");
 
