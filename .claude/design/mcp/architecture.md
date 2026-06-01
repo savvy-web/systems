@@ -51,23 +51,29 @@ content-rich server with two concrete jobs (tools and resources) and no discover
 **Bin:** `savvy-mcp` → `src/bin.ts` → `startMcpServer()` in `src/server.ts`
 **Build:** ESM-only via `@savvy-web/rslib-builder` (`NodeLibraryBuilder`)
 
-This is Silk Core sub-project 2. The full as-built design and decision log live in
-`docs/superpowers/specs/2026-05-31-savvy-mcp-host-design.md` (a walking skeleton: one real tool,
-one real resource family) and the implementation record in
-`docs/superpowers/plans/2026-05-31-savvy-mcp-host-skeleton.md`.
+This is Silk Core sub-project 2. The original walking-skeleton design and decision log live in
+`docs/superpowers/specs/2026-05-31-savvy-mcp-host-design.md`; the resource-layer rebuild that
+replaced the inlined-string skeleton with the manifest-backed corpus is specced in
+`docs/superpowers/specs/2026-05-31-mcp-resource-layer-and-taxonomy-design.md` and recorded in
+`docs/superpowers/plans/2026-05-31-mcp-resource-layer-phase-a.md`.
 
 ## Current State
 
-Implemented and verified end-to-end via the MCP Inspector against the built `savvy-mcp` binary.
-The skeleton ships one tool (`workspace_info`), the `silk://catalog` plus standards/packages/guides
-resource layer (content inlined as TS constants), `plugins/silk` MCP wiring, and an empty
-`plugins/github-actions` skeleton that spawns the same server. `private: true` in source; the
-builder flips it on build.
+Implemented and verified end-to-end via the MCP Inspector against the built `savvy-mcp` binary. The
+server ships two tools (`workspace_info`, `silk_docs_search`), the manifest-backed resource layer
+(`silk://catalog` plus a single `silk://{+path}` template over an on-disk markdown corpus),
+`plugins/silk` MCP wiring, and an empty `plugins/github-actions` skeleton that spawns the same
+server. `private: true` in source; the builder flips it on build.
 
 `@savvy-web/mcp` depends on `@savvy-web/silk-effects` (`workspace:*`), `workspaces-effect`,
-`@effect/platform`, `@effect/platform-node`, `effect`, `@modelcontextprotocol/sdk` and `zod` (v4).
-Unlike `@savvy-web/silk`, which bundles silk-effects for CJS `require()` reasons, the MCP is a real
-Node process so silk-effects is a normal runtime **dependency**, not bundled.
+`@effect/platform`, `@effect/platform-node`, `effect`, `@modelcontextprotocol/sdk`, `fuse.js` and
+`zod` (v4). Unlike `@savvy-web/silk`, which bundles silk-effects for CJS `require()` reasons, the MCP
+is a real Node process so silk-effects is a normal runtime **dependency**, not bundled.
+
+What is **not** built (deferred to later phases): the API-model generation pipeline
+(`apiModel: true` → `.api.json` → `llms-api.txt`), the `related`-graph retrieval boost, body-content
+search, query logging, and MCP completions/subscriptions/pagination — all deliberately absent for
+now.
 
 ## The Information-vs-Direction Split
 
@@ -126,29 +132,78 @@ workspace names and `targets` to registry URL strings. This avoids the recursive
 See `src/tools/workspace-info.ts` for the schema, the `toWorkspaceInfoResult` mapper and the
 transcript transform.
 
+`silk_docs_search` (`src/tools/docs-search.ts`) is the read-only entry into the resource corpus. It
+takes a plain keyword/phrase query — no operator DSL — and returns ranked hits with a normalized
+higher-is-better `confidence` plus a high/medium/low `confidenceLabel`. It runs **synchronously off
+the in-memory index, not the Effect runtime** (no silk-effects services involved), and never returns
+empty: when nothing scores, it falls back to the priority-ordered top-N so the agent always has a
+starting point. See [The Resource Half](#the-resource-half) for the index it queries.
+
 ## The Resource Half
 
-Resources serve hand-authored library knowledge behind a stable URI scheme. Two discovery surfaces
-coexist: a curated catalog and native SDK listing.
+Resources serve a curated, on-disk markdown corpus behind a stable URI scheme. A build-time compiler
+validates the corpus and emits a manifest; the runtime serves from that manifest plus the bodies on
+disk.
 
-- **`silk://catalog`** is a single token-cheap resource listing every available resource grouped by
-  tier, each line a URI plus a "load when …" hint. It is the agent's mandated first read.
-- Every resource is **also** registered natively with the SDK (title + description) so MCP-client
-  enumeration works alongside the catalog.
+### The content corpus and its identity contract
 
-The URI taxonomy is the load-bearing contract, designed to stay stable when `packages/*` content
-later swaps from hand-authored to generated-from-API-model:
+The corpus is hand-authored markdown under `src/resources/content/{standards,packages,guides}/**.md`,
+each file carrying YAML front-matter (`id`, `title`, `summary`, `tier`, `source`, `status`, `tags`,
+`audience`, `priority`, `related`). The front-matter shape is the load-bearing contract — see the
+Effect Schemas in `src/resources/schema.ts` (`DocFrontMatter`, `ManifestEntry`, `Manifest`).
+
+The **`id` is the stable identity**, not the file path: the URI is derived as `silk://<id>`, never
+from where the file sits on disk. `ID_PATTERN` requires the id to be tier-prefixed and allows an
+optional trailing slash for directory-index docs (e.g. `packages/silk-effects/` resolves to
+`content/packages/silk-effects/index.md`). Directories prefixed with `_` (e.g. `_templates/`) are
+skipped by the compiler.
+
+The URI taxonomy stays stable when `packages/*` content later swaps from hand-authored to
+generated-from-API-model:
 
 - `silk://standards/<topic>` — Silk development standards (commits, changesets, lint, testing).
 - `silk://packages/<pkg>/<topic>` — per-package API/usage docs.
 - `silk://guides/<slug>` — higher-level conceptual articles layered over the packages.
 
-A catalog-integrity test (`__test__/resources/catalog.test.ts`) asserts every URI listed in the
-catalog resolves to registered content — a cheap guard against drift in the hand-authored catalog.
-For the skeleton, content is **inlined as TS string constants** (`src/resources/content.ts`) to
-avoid any build-output path-resolution failure mode; scaling to bundled markdown files behind the
-same catalog and URI scheme is a later concern. See `src/resources/{catalog,index}.ts` for the
-model and registration.
+Tags are drawn from a controlled vocabulary in `content/tags.json` (canonical tags → aliases); the
+compiler canonicalizes and rejects unknown tags via `src/resources/tags.ts`.
+
+### The build-time compiler
+
+`scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `scripts/build-catalog.ts` is the I/O
+shell that walks the corpus, parses front-matter with gray-matter, runs `compileCorpus`, and writes
+`content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory
+match, `related`-target resolution, controlled tags, per-tier body-size budgets, a dead
+`workflow-*`-name grep, the generated-doc provenance marker, and a `git log` lastModified stamp per
+doc. The manifest is a **gitignored build artifact**, regenerated each build.
+
+`build:catalog` (run with `tsx`) is chained ahead of `build:dev`/`build:prod` in `package.json`, and
+`rslib.config.ts` `copyPatterns` bundles `content/` into `dist/<env>/resources/content` so the built
+binary serves the same corpus.
+
+### Runtime serving
+
+Two discovery surfaces coexist over the manifest:
+
+- **`silk://catalog`** is a single FIXED resource rendered from the manifest by `catalog.ts`, listing
+  every doc grouped by tier with a "load when …" hint. It is the agent's mandated first read.
+- A single **`silk://{+path}` `ResourceTemplate`** (`src/resources/index.ts`) handles both `list()`
+  and read. `list()` returns every doc except the catalog and `deprecated` docs; the read handler
+  keys the body lookup off `variables.path` (never `uri.pathname`). Per-doc annotations
+  (audience/priority/lastModified) appear in both list entries and read contents.
+
+`load.ts` resolves the content root across the source and built layouts (throwing a diagnostic that
+lists the probed paths if no manifest is found) and reads bodies through the path-security resolver
+in `paths.ts`. See `src/resources/{catalog,index,load,schema}.ts` for the model.
+
+### Search index
+
+`silk_docs_search` queries an in-memory Fuse `DocIndex` (`src/resources/doc-index.ts`), built once
+in `bin.ts` before `server.connect` and held per process. It keys title 0.55 / tags 0.3 / summary
+0.15 — **body is intentionally not indexed at launch** (bodies are preloaded into the index as
+forward-looking storage for a later body-content boost, not a current search input). Results
+tie-break by curated `priority`, and the index never returns empty (priority-ordered fallback). See
+[The Tool Half](#the-tool-half) for the tool wrapping it.
 
 ## Root Resolution
 

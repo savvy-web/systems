@@ -1,57 +1,35 @@
 /**
- * The resource catalog model: the list of resources grouped by tier, each with
- * a "load when" hint, plus the renderer for the `silk://catalog` resource.
+ * Render the `silk://catalog` resource from the manifest: grouped by tier, each
+ * line a URI + summary "load when" hint + provenance marker.
  *
  * @packageDocumentation
  */
 
-/** One catalog entry: a resource URI, its title, tier, and a load-when hint. */
-export interface CatalogEntry {
-	readonly uri: string;
-	readonly title: string;
-	readonly tier: "Standards" | "Packages" | "Guides";
-	readonly loadWhen: string;
-}
+import type { Manifest, ManifestEntry } from "./schema.js";
 
-/** The catalog — the agent's mandated first read. */
-export const CATALOG_ENTRIES: ReadonlyArray<CatalogEntry> = [
-	{
-		uri: "silk://standards/changesets",
-		title: "Silk standard: changesets",
-		tier: "Standards",
-		loadWhen: "writing or reviewing a changeset, or deciding a version bump",
-	},
-	{
-		uri: "silk://packages/silk-effects/",
-		title: "@savvy-web/silk-effects overview",
-		tier: "Packages",
-		loadWhen: "using @savvy-web/silk-effects and unsure which service or layer applies",
-	},
-	{
-		uri: "silk://packages/silk-effects/managed-section",
-		title: "silk-effects: ManagedSection",
-		tier: "Packages",
-		loadWhen: "editing a tool-managed block inside a shared config file",
-	},
-	{
-		uri: "silk://guides/llm-friendly-json-schemas",
-		title: "Guide: LLM-friendly JSON Schemas for tool outputs",
-		tier: "Guides",
-		loadWhen: "designing an MCP tool output schema or a GitHub Action's outputs",
-	},
+const TIER_HEADINGS: ReadonlyArray<[ManifestEntry["tier"], string]> = [
+	["standards", "Standards"],
+	["packages", "Packages"],
+	["guides", "Guides"],
 ];
 
-const TIERS: ReadonlyArray<CatalogEntry["tier"]> = ["Standards", "Packages", "Guides"];
-
-/** Render the catalog as grouped markdown with load-when hints. */
-export const renderCatalogMarkdown = (): string => {
-	const lines: string[] = ["# silk://catalog", "", "Read this first, then fetch only the resources you need.", ""];
-	for (const tier of TIERS) {
-		lines.push(`## ${tier}`, "");
-		for (const entry of CATALOG_ENTRIES.filter((e) => e.tier === tier)) {
-			lines.push(`- \`${entry.uri}\` — ${entry.title}. load when: ${entry.loadWhen}.`);
+export function renderCatalogMarkdown(manifest: Manifest): string {
+	const lines: string[] = [
+		"# silk://catalog",
+		"",
+		"Read this first to orient. To fetch a doc, call `resources/read` with its `silk://` URI.",
+		"To search by intent, use the `silk_docs_search` tool.",
+		"",
+	];
+	for (const [tier, heading] of TIER_HEADINGS) {
+		const entries = manifest.entries.filter((e) => e.tier === tier && e.status !== "deprecated");
+		if (entries.length === 0) continue;
+		lines.push(`## ${heading}`, "");
+		for (const e of entries) {
+			const gen = e.source === "generated" ? " (generated)" : "";
+			lines.push(`- \`${e.uri}\`${gen} — ${e.title}. load when: ${e.summary}`);
 		}
 		lines.push("");
 	}
 	return lines.join("\n");
-};
+}

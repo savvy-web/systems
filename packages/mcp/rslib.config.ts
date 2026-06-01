@@ -10,6 +10,7 @@ export default NodeLibraryBuilder.create({
 		"workspaces-effect",
 		"zod",
 	],
+	copyPatterns: [{ from: "src/resources/content", to: "resources/content" }],
 	transform({ pkg }) {
 		delete pkg.devDependencies;
 		delete pkg.bundleDependencies;

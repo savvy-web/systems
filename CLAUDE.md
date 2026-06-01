@@ -7,7 +7,7 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 - **silk-effects** — shared Effect library; also hosts the dev-tooling business logic under three namespace exports (`Changesets`, `Commitlint`, `Lint`); dual-format esm+cjs (implemented)
 - **cli** — `@savvy-web/cli`, the `savvy` binary with `init`/`check`/`commit`/`changeset`/`lint` commands; replaces the three old per-tool bins (implemented)
 - **silk** — `@savvy-web/silk`, the single install-target of thin config-integration shims plus the biome asset (implemented)
-- **mcp** — `@savvy-web/mcp`, the spawnable `savvy-mcp` server exposing a `workspace_info` tool and a `silk://catalog` resource layer over silk-effects; a standalone server, not a discovery host (implemented)
+- **mcp** — `@savvy-web/mcp`, the spawnable `savvy-mcp` server exposing the `workspace_info` and `silk_docs_search` tools plus a manifest-backed resource layer (`silk://catalog` plus a `silk://{+path}` template over a compiled markdown corpus) over silk-effects; a standalone server, not a discovery host (implemented)
 - **plugins/silk** — merged Claude Code plugin (`silk@savvy-web-systems`): 13 skills, the `changeset-manager` agent, merged hooks, plus `savvy-mcp` wiring (implemented)
 - **plugins/github-actions** — empty plugin skeleton spawning the shared `savvy-mcp` server (implemented)
 - **templates** — pure TypeScript project scaffolding (implemented)
@@ -82,7 +82,7 @@ Load when working on `plugins/silk`. Covers the skill/agent/hook merge, the tool
 **@savvy-web/mcp architecture — the `savvy-mcp` server, its runtime layer, tool half, and resource half:**
 → `@./.claude/design/mcp/architecture.md`
 
-Load when working on the MCP host. Covers the standalone (non-discovery) server, the information-in-mcp/direction-in-plugins split, the `ManagedRuntime` over silk-effects, the `workspace_info` tool with its Effect-Schema→zod bridge, the `silk://catalog` resource taxonomy, and the dual-plugin (`silk` + `github-actions`) integration.
+Load when working on the MCP host. Covers the standalone (non-discovery) server, the information-in-mcp/direction-in-plugins split, the `ManagedRuntime` over silk-effects, the `workspace_info` tool with its Effect-Schema→zod bridge, the `silk_docs_search` tool over an in-memory Fuse `DocIndex`, the build-time catalog compiler that emits the gitignored manifest from the markdown corpus, the `silk://catalog` + `silk://{+path}` resource layer rendered from that manifest, and the dual-plugin (`silk` + `github-actions`) integration.
 
 Silk Core sub-project 1 design: `@./docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md`
 Silk Core sub-project 2 (MCP host) design: `@./docs/superpowers/specs/2026-05-31-savvy-mcp-host-design.md`

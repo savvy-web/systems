@@ -1,3 +1,26 @@
 {
-	"extends": ["@savvy-web/rslib-builder/tsconfig/ecma/lib.json"]
+	"extends": ["@savvy-web/rslib-builder/tsconfig/ecma/lib.json"],
+	"include": [
+		"types/*.ts",
+		"package.json",
+		"*.ts",
+		"*.cts",
+		"*.mts",
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		"src/**/*.cts",
+		"src/**/*.mts",
+		"lib/**/*.ts",
+		"lib/**/*.tsx",
+		"lib/**/*.cts",
+		"lib/**/*.mts",
+		"scripts/**/*.ts",
+		"scripts/**/*.cts",
+		"scripts/**/*.mts",
+		"__test__/**/*.ts",
+		"__test__/**/*.tsx",
+		"__test__/**/*.cts",
+		"__test__/**/*.mts",
+		"public/**/*.json"
+	]
 }
