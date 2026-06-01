@@ -6,10 +6,10 @@ set -euo pipefail
 # runs the savvy changeset CLI to validate it, and emits findings as
 # additionalContext. Never blocks the tool call.
 
-# shellcheck source=../lib/changesets-hook-output.sh
-. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/changesets-hook-output.sh"
-# shellcheck source=../lib/changesets-hook-debug.sh
-. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/changesets-hook-debug.sh"
+# shellcheck source=../lib/hook-output.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
+# shellcheck source=../lib/hook-debug.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
 # shellcheck source=../lib/source-session-env.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/source-session-env.sh"
 
@@ -46,16 +46,16 @@ if [[ "$file_path" =~ \.changeset/README\.md$ ]]; then
 	exit 0
 fi
 
-# Resolve project root via three-tier fallback. CHANGESETS_PROJECT_DIR
+# Resolve project root via three-tier fallback. SILK_PROJECT_DIR
 # survives subshells via the per-session env file written by SessionStart.
-project_dir="${CHANGESETS_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"
+project_dir="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"
 if [ -z "$project_dir" ]; then
 	project_dir=$(pwd)
 fi
 
 # Resolve package manager. Prefer the value SessionStart already detected
 # so we don't re-stat files on every tool call.
-PM="${CHANGESETS_PACKAGE_MANAGER:-}"
+PM="${SILK_PACKAGE_MANAGER:-}"
 if [ -z "$PM" ]; then
 	if [ -f "$project_dir/package.json" ]; then
 		PM=$(jq -r '.packageManager // empty' "$project_dir/package.json" 2>/dev/null | cut -d'@' -f1)

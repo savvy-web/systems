@@ -6,17 +6,17 @@ set -euo pipefail
 #
 # Strategy: fire once per push attempt, not per commit. Surface a clear,
 # actionable deny reason that tells the caller exactly how to proceed —
-# either create a changeset, or retry with CHANGESETS_SKIP_PUSH_CHECK=1
+# either create a changeset, or retry with SILK_SKIP_PUSH_CHECK=1
 # prefixed to the same command for branches that genuinely don't need one
 # (docs-only, internal refactor, dependency pin within range, etc.).
 #
 # Fails open: anything ambiguous (no jq, not a git repo, no upstream base
 # ref, detached HEAD) emits a no-op and lets the push proceed.
 
-# shellcheck source=../lib/changesets-hook-output.sh
-. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/changesets-hook-output.sh"
-# shellcheck source=../lib/changesets-hook-debug.sh
-. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/changesets-hook-debug.sh"
+# shellcheck source=../lib/hook-output.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
+# shellcheck source=../lib/hook-debug.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
 # shellcheck source=../lib/source-session-env.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/source-session-env.sh"
 
@@ -42,8 +42,8 @@ fi
 
 # Walk past leading whitespace, an optional leading `env` keyword, and any
 # inline `FOO=bar` assignments so commands like
-#   CHANGESETS_SKIP_PUSH_CHECK=1 git push ...
-#   env CHANGESETS_SKIP_PUSH_CHECK=1 git push ...
+#   SILK_SKIP_PUSH_CHECK=1 git push ...
+#   env SILK_SKIP_PUSH_CHECK=1 git push ...
 # both resolve to the `git push` verb. Track whether the override appeared
 # anywhere in the leading prefix chain.
 #
@@ -61,7 +61,7 @@ while [[ "$trimmed" =~ ^([A-Za-z_][A-Za-z0-9_]*)=([^[:space:]]+)[[:space:]]+(.*)
 		\"*\") val="${val#\"}"; val="${val%\"}" ;;
 		\'*\') val="${val#\'}"; val="${val%\'}" ;;
 	esac
-	if [ "$key" = "CHANGESETS_SKIP_PUSH_CHECK" ]; then
+	if [ "$key" = "SILK_SKIP_PUSH_CHECK" ]; then
 		case "$val" in
 			1 | true | yes | on | TRUE | YES | ON) inline_override=1 ;;
 		esac
@@ -76,10 +76,10 @@ if [[ ! "$trimmed" =~ ^git[[:space:]]+push([[:space:]]|$) ]]; then
 	exit 0
 fi
 
-# Session-level override: a developer can `export CHANGESETS_SKIP_PUSH_CHECK=1`
+# Session-level override: a developer can `export SILK_SKIP_PUSH_CHECK=1`
 # before launching Claude Code to disable the guard for the whole session.
 session_override=0
-case "${CHANGESETS_SKIP_PUSH_CHECK:-}" in
+case "${SILK_SKIP_PUSH_CHECK:-}" in
 	1 | true | yes | on | TRUE | YES | ON) session_override=1 ;;
 esac
 
@@ -88,7 +88,7 @@ if [ "$inline_override" = "1" ] || [ "$session_override" = "1" ]; then
 	exit 0
 fi
 
-project_dir="${CHANGESETS_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"
+project_dir="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"
 if [ -z "$project_dir" ]; then
 	project_dir=$(pwd)
 fi
@@ -156,9 +156,9 @@ Pick one path before re-running:
    Run /silk:changeset-create to draft one, commit it, then push again.
 
 2. The change has NO user-facing impact (docs-only, internal refactor, CI/test-only, dependency pin bump within range, or anything covered by the plugin's exclusion rules):
-   Re-run the same push prefixed with CHANGESETS_SKIP_PUSH_CHECK=1, for example:
+   Re-run the same push prefixed with SILK_SKIP_PUSH_CHECK=1, for example:
 
-       CHANGESETS_SKIP_PUSH_CHECK=1 ${command}
+       SILK_SKIP_PUSH_CHECK=1 ${command}
 
    The prefix is per-invocation; you do not need to export it. The guard fires once and yields to the override.
 

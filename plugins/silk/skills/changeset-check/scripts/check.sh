@@ -2,7 +2,7 @@
 # check.sh — Run @savvy-web/changesets validation against .changeset/.
 # Bundled with the `check` skill.
 #
-# Reads CHANGESETS_PROJECT_DIR and CHANGESETS_PACKAGE_MANAGER (set by the
+# Reads SILK_PROJECT_DIR and SILK_PACKAGE_MANAGER (set by the
 # SessionStart hook) when available; otherwise resolves them from the
 # current working directory and project metadata.
 #
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-PROJECT_DIR="${CHANGESETS_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+PROJECT_DIR="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
 if [ ! -d "$PROJECT_DIR" ]; then
 	echo "ERROR: project dir not found: $PROJECT_DIR" >&2
 	exit 1
@@ -24,7 +24,7 @@ if [ ! -d .changeset ]; then
 	exit 0
 fi
 
-PM="${CHANGESETS_PACKAGE_MANAGER:-}"
+PM="${SILK_PACKAGE_MANAGER:-}"
 if [ -z "$PM" ]; then
 	if [ -f package.json ] && command -v jq >/dev/null 2>&1; then
 		PM=$(jq -r '.packageManager // empty' package.json 2>/dev/null | cut -d'@' -f1)

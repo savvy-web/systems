@@ -10,6 +10,7 @@ related:
   - ../silk-effects/architecture.md
   - ../cli/architecture.md
   - ../silk/plugin.md
+  - ../docs/architecture.md
   - ../api-extractor-llms/architecture.md
 dependencies:
   - ../silk-effects/architecture.md
@@ -43,11 +44,11 @@ It is **not** a discovery host. An earlier silk-core framing imagined a thin hos
 **Bin:** `savvy-mcp` → `src/bin.ts` → `startMcpServer()` in `src/server.ts`
 **Build:** ESM-only via `@savvy-web/rslib-builder` (`NodeLibraryBuilder`)
 
-This is Silk Core sub-project 2. The original walking-skeleton design and decision log live in `docs/superpowers/specs/2026-05-31-savvy-mcp-host-design.md`; the resource-layer rebuild that replaced the inlined-string skeleton with the manifest-backed corpus is specced in `docs/superpowers/specs/2026-05-31-mcp-resource-layer-and-taxonomy-design.md` and recorded in `docs/superpowers/plans/2026-05-31-mcp-resource-layer-phase-a.md`. The Phase B work (API-doc generation pipeline, body search, related-graph boost, query logging) is recorded in `docs/superpowers/plans/2026-06-01-mcp-resource-layer-phase-b.md`.
+This is Silk Core sub-project 2. The server grew in three increments — the walking-skeleton tool host, the manifest-backed resource-layer rebuild, then the Phase B work (API-doc generation pipeline, body search, related-graph boost, query logging) — all now as-built and described below. For the forward-looking roadmap see `docs/superpowers/specs/2026-06-01-silk-suite-0.1.0-closeout-and-roadmap.md`.
 
 ## Current State
 
-Implemented and verified end-to-end. The server ships two tools (`workspace_info`, `silk_docs_search`), the manifest-backed resource layer (`silk://catalog` plus a single `silk://{+path}` template over an on-disk markdown corpus), a turbo-orchestrated API-doc generation pipeline, body-content search, a related-graph retrieval boost, structured query logging, `plugins/silk` MCP wiring, and an empty `plugins/github-actions` skeleton that spawns the same server. `private: true` in source; the builder flips it on build.
+Implemented and verified end-to-end. The server ships two tools (`workspace_info`, `silk_docs_search`), the manifest-backed resource layer (`silk://catalog` plus a single `silk://{+path}` template over an on-disk markdown corpus), a turbo-orchestrated API-doc generation pipeline, body-content search, a related-graph retrieval boost, structured query logging, and MCP wiring across three Claude Code plugins (`plugins/silk`, `plugins/github-actions`, `plugins/docs`) that each spawn the same server. `private: true` in source; the builder flips it on build.
 
 `@savvy-web/mcp` depends on `@savvy-web/silk-effects` (`workspace:*`), `workspaces-effect`, `@effect/platform`, `@effect/platform-node`, `effect`, `@modelcontextprotocol/sdk`, `fuse.js` and `zod` (v4). `api-extractor-llms` — an external npm package (extracted from this monorepo), not a workspace sibling — is a `devDependency` (`^0.1.0`, used only by the `generate:api-docs` script, not bundled into the server). Unlike `@savvy-web/silk`, which bundles silk-effects for CJS `require()` reasons, the MCP is a real Node process so silk-effects is a normal runtime **dependency**, not bundled.
 
@@ -55,7 +56,7 @@ What is **not** built (deferred to Phase C): per-service/deep API pages; separat
 
 ## The Information-vs-Direction Split
 
-The load-bearing architectural principle. **Information lives in the MCP; direction lives in the plugins.** The server carries every resource and tool regardless of the current project — including, eventually, GitHub Actions knowledge. Each plugin decides which resources and tools to point the agent at, so a non-Actions project never gets bloated with Actions context even though the shared server could serve it. This split is why two plugins (`plugins/silk`, `plugins/github-actions`) spawn the identical server but orient the agent differently. The MCP itself carries no per-project gating.
+The load-bearing architectural principle. **Information lives in the MCP; direction lives in the plugins.** The server carries every resource and tool regardless of the current project — including, eventually, GitHub Actions knowledge. Each plugin decides which resources and tools to point the agent at, so a non-Actions project never gets bloated with Actions context even though the shared server could serve it. This split is why three plugins (`plugins/silk`, `plugins/github-actions`, `plugins/docs`) spawn the identical server but orient the agent differently. The MCP itself carries no per-project gating.
 
 ## The Runtime Layer
 
@@ -161,11 +162,11 @@ The `savvy-mcp` bin resolves its base directory by precedence `argv[2]` → `SAV
 
 ## Plugin Integration
 
-A plugin declares the server via an `mcpServers` block in `.claude-plugin/plugin.json` whose command runs a `bin/start-mcp.sh` launcher (detect package manager → `exec <pm> savvy-mcp`), passing the project dir through `CLAUDE_PROJECT_DIR`. The same launcher and declaration are reused by both `plugins/silk` and `plugins/github-actions`, and each plugin is registered in the repo's `.claude-plugin/marketplace.json`.
+A plugin declares the server via an `mcpServers` block in `.claude-plugin/plugin.json` whose command runs a `bin/start-mcp.sh` launcher (detect package manager → `exec <pm> savvy-mcp`), passing the project dir through `CLAUDE_PROJECT_DIR`. The same launcher and declaration are reused by all three plugins — `plugins/silk`, `plugins/github-actions` and `plugins/docs` — and each is registered in the repo's `.claude-plugin/marketplace.json`.
 
-Direction is added per plugin as a lightweight SessionStart orientation hook telling the agent to read `silk://catalog` before researching and to prefer `workspace_info` over bash for workspace questions. `plugins/github-actions` ships deliberately empty of Actions content — a manifest, the shared launcher and one orientation hook — to validate the information-vs-direction split with two real consumers and leave a buildout-ready shell. See `../silk/plugin.md` for the `plugins/silk` merge and the orientation-hook wiring.
+Direction is added per plugin as SessionStart orientation hooks telling the agent to read `silk://catalog` before researching, prefer `silk_docs_search` over filesystem grep, and consult `workspace_info` before reporting workspace facts. The silk and github-actions hooks were strengthened to the `cc-nudge-hooks` TIER-1/TIER-2 structure and now drain stdin; `plugins/github-actions` is no longer an empty skeleton (its hook libs are the full-featured silk versions). `plugins/docs` adds the *write* side of direction — an `mcp` corpus-authoring agent and two mode commands — over the same shared server. See `../silk/plugin.md` for the silk read-side orientation and the `docs-search` skill, and `../docs/architecture.md` for the docs plugin and the three-tier query/authoring split.
 
-When both plugins are active in one session, each declares the server, so Claude Code may spawn one instance per plugin. The server is stateless and lightweight, so this is acceptable; in practice a project enables the general (`silk`) or specialized (`github-actions`) plugin as appropriate.
+When several plugins are active in one session, each declares the server, so Claude Code may spawn one instance per plugin. The server is stateless and lightweight, so this is acceptable.
 
 ## Boundaries and Invariants
 

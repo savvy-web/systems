@@ -26,8 +26,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/changeset-check/scripts/check.sh"
 
 The script:
 
-- Resolves the project directory from `CHANGESETS_PROJECT_DIR` (set by SessionStart) or `CLAUDE_PROJECT_DIR`, falling back to the current working directory.
-- Detects the package manager from `CHANGESETS_PACKAGE_MANAGER`, `package.json#packageManager`, or lockfile presence.
+- Resolves the project directory from `SILK_PROJECT_DIR` (set by SessionStart) or `CLAUDE_PROJECT_DIR`, falling back to the current working directory.
+- Detects the package manager from `SILK_PACKAGE_MANAGER`, `package.json#packageManager`, or lockfile presence.
 - Invokes `<pm> exec savvy-changesets check .changeset`.
 - Pass-through prints the CLI's output. Exit code 0 = all clean; non-zero = violations found.
 

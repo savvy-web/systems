@@ -45,8 +45,7 @@ As of Silk Core sub-project 1, silk-effects **also hosts the per-tool business l
 standalone dev-tooling packages (`@savvy-web/changesets`, `@savvy-web/commitlint`,
 `@savvy-web/lint-staged`), exposed under three namespace exports — `Changesets`, `Commitlint` and
 `Lint`. This package is the shared layer that both thin consumers (`@savvy-web/cli` and
-`@savvy-web/silk`) import. See `../cli/architecture.md` and `../silk/architecture.md`, and
-`docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md` for the merge design.
+`@savvy-web/silk`) import. See `../cli/architecture.md` and `../silk/architecture.md`.
 
 `@savvy-web/mcp` (the `savvy-mcp` server) is now a third consumer: it composes its own runtime layer
 from silk-effects services (notably `SilkWorkspaceAnalyzer` + `WorkspaceRoot`) plus `workspaces-effect`,

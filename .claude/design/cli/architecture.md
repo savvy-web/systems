@@ -41,9 +41,7 @@ business logic of its own: every command handler imports the work it does from
 **Versioning:** `fixed` changeset group with `@savvy-web/silk` (they always release together)
 
 This package replaces the three standalone bins `savvy-changesets`, `savvy-commit` and `savvy-lint`
-with one. It is the result of Silk Core sub-project 1 — see
-`docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md` for the approved design and
-decision log.
+with one. It is the result of Silk Core sub-project 1.
 
 ## Current State
 

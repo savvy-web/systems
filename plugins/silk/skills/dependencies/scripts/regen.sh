@@ -11,14 +11,14 @@
 
 set -euo pipefail
 
-PROJECT_DIR="${CHANGESETS_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+PROJECT_DIR="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
 if [ ! -d "$PROJECT_DIR" ]; then
 	echo "ERROR: project dir not found: $PROJECT_DIR" >&2
 	exit 1
 fi
 cd "$PROJECT_DIR"
 
-PM="${CHANGESETS_PACKAGE_MANAGER:-}"
+PM="${SILK_PACKAGE_MANAGER:-}"
 if [ -z "$PM" ]; then
 	if [ -f package.json ] && command -v jq >/dev/null 2>&1; then
 		PM=$(jq -r '.packageManager // empty' package.json 2>/dev/null | cut -d'@' -f1)
