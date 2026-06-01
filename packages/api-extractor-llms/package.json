@@ -1,0 +1,79 @@
+{
+	"name": "@savvy-web/api-extractor-llms",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Render Microsoft API Extractor models into LLM-lean markdown. Pure model loading, TSDoc extraction, type-signature formatting, and per-item markdown rendering.",
+	"keywords": ["api-extractor", "tsdoc", "llms", "documentation", "markdown", "effect-ts", "esm"],
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/api-extractor-llms",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/api-extractor-llms"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"prepare": "turbo run build:dev",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"@microsoft/api-extractor-model": "^7.33.8",
+		"@microsoft/tsdoc": "^0.16.0"
+	},
+	"devDependencies": {
+		"@savvy-web/rslib-builder": "^0.20.12",
+		"@savvy-web/vitest": "^1.3.2",
+		"@types/node": "catalog:silk"
+	},
+	"peerDependencies": {
+		"@types/node": "catalog:silkPeers",
+		"@typescript/native-preview": "catalog:silkPeers",
+		"typescript": "catalog:silkPeers"
+	},
+	"peerDependenciesMeta": {
+		"@types/node": {
+			"optional": false
+		},
+		"@typescript/native-preview": {
+			"optional": false
+		},
+		"typescript": {
+			"optional": false
+		}
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev",
+		"linkDirectory": true,
+		"targets": [
+			{
+				"protocol": "npm",
+				"registry": "https://npm.pkg.github.com/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			},
+			{
+				"protocol": "npm",
+				"registry": "https://registry.npmjs.org/",
+				"directory": "dist/npm",
+				"access": "public",
+				"provenance": true
+			}
+		]
+	}
+}
