@@ -16,9 +16,10 @@ The rendering pipeline is split into a shared body-rendering core and two inject
 import { loadApiModel, renderItem, renderPackage } from "@savvy-web/api-extractor-llms";
 
 const model = await loadApiModel("path/to/my-package.api.json");
-const docs = await renderPackage(model, {
-  frontmatterRenderer: myFrontmatterRenderer,
-  routeFormatter: myRouteFormatter,
+const docs = renderPackage(model, {
+  packageName: "@my-scope/my-package",
+  frontmatter: myFrontmatterRenderer,
+  routeFor: myRouteFormatter,
 });
 
 // docs is an array of RenderedDoc — one per exported API item
@@ -48,7 +49,7 @@ import {
 import { TypeSignatureFormatter, CrossLinker } from "@savvy-web/api-extractor-llms";
 
 const formatter = new TypeSignatureFormatter();
-const linker = new CrossLinker(myRouteFormatter);
+const linker = new CrossLinker(myRefs, myRouteFormatter);
 ```
 
 **Exported types:** `ApiItemRef`, `DocMeta`, `RouteFormatter`, `FrontmatterRenderer`, `RenderedDoc`, `RenderPackageOptions`, `ItemKindSlug`.
