@@ -19,7 +19,7 @@ the next build.
 
 1. A library package sets `apiModel` in its rslib config.
 2. `build:prod` emits `<unscoped>.api.json` (a Microsoft API Extractor model file).
-3. The `@savvy-web/api-extractor-llms` library renders that model into LLM-lean
+3. The `api-extractor-llms` library renders that model into LLM-lean
    markdown.
 4. The rendered docs appear in the MCP resource layer under
    `silk://packages/<pkg>/api/<kind>/<name>`.
@@ -58,6 +58,6 @@ docs.
 ## See also
 
 The resource taxonomy that governs where generated and hand-authored docs live is at
-`silk://packages/mcp/resource-taxonomy`. The `@savvy-web/api-extractor-llms` library
+`silk://packages/mcp/resource-taxonomy`. The `api-extractor-llms` library
 is the renderer; the `@savvy-web/rslib-builder` build tool exposes the `apiModel`
 config option.

@@ -94,12 +94,12 @@
 			}
 		},
 		"api-extractor-llms": {
-			"path": "packages/api-extractor-llms",
+			"path": ".claude/design/api-extractor-llms",
 			"designDocsPath": ".claude/design/api-extractor-llms",
 			"categories": ["architecture"],
 			"maintainer": "C. Spencer Beggs",
 			"userDocs": {
-				"readme": "packages/api-extractor-llms/README.md",
+				"readme": null,
 				"repoDocs": null,
 				"siteDocs": null
 			}

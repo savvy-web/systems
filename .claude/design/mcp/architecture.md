@@ -49,9 +49,9 @@ This is Silk Core sub-project 2. The original walking-skeleton design and decisi
 
 Implemented and verified end-to-end. The server ships two tools (`workspace_info`, `silk_docs_search`), the manifest-backed resource layer (`silk://catalog` plus a single `silk://{+path}` template over an on-disk markdown corpus), a turbo-orchestrated API-doc generation pipeline, body-content search, a related-graph retrieval boost, structured query logging, `plugins/silk` MCP wiring, and an empty `plugins/github-actions` skeleton that spawns the same server. `private: true` in source; the builder flips it on build.
 
-`@savvy-web/mcp` depends on `@savvy-web/silk-effects` (`workspace:*`), `workspaces-effect`, `@effect/platform`, `@effect/platform-node`, `effect`, `@modelcontextprotocol/sdk`, `fuse.js` and `zod` (v4). `@savvy-web/api-extractor-llms` is a `devDependency` (used only by the `generate:api-docs` script, not bundled into the server). Unlike `@savvy-web/silk`, which bundles silk-effects for CJS `require()` reasons, the MCP is a real Node process so silk-effects is a normal runtime **dependency**, not bundled.
+`@savvy-web/mcp` depends on `@savvy-web/silk-effects` (`workspace:*`), `workspaces-effect`, `@effect/platform`, `@effect/platform-node`, `effect`, `@modelcontextprotocol/sdk`, `fuse.js` and `zod` (v4). `api-extractor-llms` — an external npm package (extracted from this monorepo), not a workspace sibling — is a `devDependency` (`^0.1.0`, used only by the `generate:api-docs` script, not bundled into the server). Unlike `@savvy-web/silk`, which bundles silk-effects for CJS `require()` reasons, the MCP is a real Node process so silk-effects is a normal runtime **dependency**, not bundled.
 
-What is **not** built (deferred to Phase C): per-service/deep API pages; separate-repo package overviews and action docs; the cross-repo refactor of `rspress-plugin-api-extractor` to consume `@savvy-web/api-extractor-llms`; `silk://guides/silk-v2-release-pipeline` (blocked until the v2 pipeline exists); and MCP completions/subscriptions/pagination.
+What is **not** built (deferred to Phase C): per-service/deep API pages; separate-repo package overviews and action docs; the cross-repo refactor of `rspress-plugin-api-extractor` to consume `api-extractor-llms`; `silk://guides/silk-v2-release-pipeline` (blocked until the v2 pipeline exists); and MCP completions/subscriptions/pagination.
 
 ## The Information-vs-Direction Split
 
@@ -103,7 +103,7 @@ Generated docs are `source: generated` entries in the corpus. They are produced 
 
 **Targets.** `scripts/api-targets.ts` declares the four in-monorepo library packages that are generation targets: `silk-effects`, `templates`, `github-action-effects` and `github-action-builder`. `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle. Excluding mcp keeps the build subgraph acyclic even if `silk` later depends on `mcp`.
 
-**Generator.** `scripts/generate-api-docs.ts` reads each target's `dist/npm/<unscoped>.api.json` (emitted by `build:prod`), calls `@savvy-web/api-extractor-llms` `renderPackage` with two injected services, and writes the resulting docs under `content/packages/<dir>/api/`. The two injected services are:
+**Generator.** `scripts/generate-api-docs.ts` reads each target's `dist/npm/<unscoped>.api.json` (emitted by `build:prod`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `content/packages/<dir>/api/`. The two injected services are:
 
 - A `FrontmatterRenderer` — `frontMatterFor(target, meta)` → `toYaml(fm)` — that builds silk YAML front-matter with `source: generated`, `tier: packages`, `tags: [<dir>, api]`, `priority: 0.3` and **empty `related`**.
 - A `RouteFormatter` — `silk://packages/<dir>/api/<kind>/<slug>` — that maps item refs to silk URIs.
@@ -126,9 +126,9 @@ The body-budget guard in `scripts/compile.ts` exempts `source: generated` docs f
 @savvy-web/mcp#build:dev / build:prod
 ```
 
-`generate:api-docs` depends on the four explicit `#build:prod` tasks (not `^build:prod`) so `silk`/`cli`/`mcp` never enter mcp's build subgraph. `build:catalog` depends on `generate:api-docs`. mcp's own `build:dev`/`build:prod` depend on `build:catalog`. The four prod builds are `cache: true`, so turbo restores their `dist/npm` (including `.api.json`) from cache on repeat runs. `generate:api-docs` and `build:catalog` are `cache: false` (outputs are ephemeral build artifacts, not committed).
+`generate:api-docs` depends only on the four explicit in-monorepo library `#build:prod` tasks (not `^build:prod`) so `silk`/`cli`/`mcp` never enter mcp's build subgraph. It has **no** workspace edge for the renderer itself: `api-extractor-llms` is now an external npm package, so the generator pulls it from `node_modules` rather than waiting on a sibling build (the former `@savvy-web/api-extractor-llms#build:dev` edge is gone). `build:catalog` depends on `generate:api-docs`. mcp's own `build:dev`/`build:prod` depend on `build:catalog`. The four prod builds are `cache: true`, so turbo restores their `dist/npm` (including `.api.json`) from cache on repeat runs. `generate:api-docs` and `build:catalog` are `cache: false` (outputs are ephemeral build artifacts, not committed).
 
-See `../api-extractor-llms/architecture.md` for the shared library that performs the actual rendering.
+See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
 
 ### The build-time compiler
 
@@ -169,7 +169,7 @@ When both plugins are active in one session, each declares the server, so Claude
 
 ## Boundaries and Invariants
 
-- **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from `silk-effects` (and `workspaces-effect`), preserving the cli↔silk↔mcp non-import invariant. `@savvy-web/api-extractor-llms` is a `devDependency` used only by the generator script — it imports neither cli nor silk, so the invariant continues to hold.
+- **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from `silk-effects` (and `workspaces-effect`), preserving the cli↔silk↔mcp non-import invariant. `api-extractor-llms` is no longer part of this invariant: it is an external npm package, consumed by mcp purely as a build-time `devDependency` (the generator script imports it from `node_modules`), so it is outside the workspace dependency graph entirely.
 - **ESM-only, real Node process.** silk-effects is a normal runtime dependency, not bundled — the opposite of `@savvy-web/silk`'s dual-format CJS-bundling requirement.
 - **Effect Schema is canonical; zod is a boundary-only dependency** confined to the `effect-to-zod` bridge at the SDK registration edge.
 - **Generated docs carry empty `related`.** No committed hand-authored doc may reference a generated `packages/*/api/*` id — a bare install skips generation and would leave a dangling `related` reference that fails `build:catalog`. The related-graph boost operates only on hand-authored `related` links, which are always present.

@@ -6,7 +6,7 @@
 
 ### Ephemeral API-Doc Generation Pipeline
 
-The server now generates per-package API-reference docs at startup from in-monorepo library packages' API Extractor models, via `@savvy-web/api-extractor-llms`. The generated docs occupy the `silk://packages/<pkg>/api/*` tier of the resource tree and are available immediately to agents via `silk_docs_search` and the `silk://{+path}` resource template. Generation is ephemeral — docs are produced on demand during the build phase and are not checked into the repo.
+The server now generates per-package API-reference docs at startup from in-monorepo library packages' API Extractor models, via `api-extractor-llms`. The generated docs occupy the `silk://packages/<pkg>/api/*` tier of the resource tree and are available immediately to agents via `silk_docs_search` and the `silk://{+path}` resource template. Generation is ephemeral — docs are produced on demand during the build phase and are not checked into the repo.
 
 ### Body-Content Search
 
