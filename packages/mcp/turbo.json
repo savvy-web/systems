@@ -1,16 +1,34 @@
 {
 	"extends": ["//"],
 	"tasks": {
+		"build:catalog": {
+			"cache": false,
+			"dependsOn": ["generate:api-docs"],
+			"inputs": ["src/resources/content/**"],
+			"outputs": ["src/resources/content/manifest.json"]
+		},
 		"build:dev": {
-			"cache": true,
-			"dependsOn": ["types:check"],
+			"cache": false,
+			"dependsOn": ["build:catalog"],
+			"inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "src/resources/content/**"],
 			"outputLogs": "errors-only",
 			"outputs": ["dist/dev/**", ".rslib/declarations/dev/**"]
 		},
 		"build:prod": {
 			"cache": true,
-			"dependsOn": ["types:check"],
+			"dependsOn": ["build:catalog", "types:check"],
+			"inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "src/resources/content/**"],
 			"outputs": ["dist/npm/**", ".rslib/declarations/npm/**"]
+		},
+		"generate:api-docs": {
+			"cache": false,
+			"dependsOn": [
+				"@savvy-web/silk-effects#build:prod",
+				"@savvy-web/templates#build:prod",
+				"@savvy-web/github-action-effects#build:prod",
+				"@savvy-web/github-action-builder#build:prod"
+			],
+			"outputs": ["src/resources/content/packages/*/api/**"]
 		},
 		"inspect": {
 			"cache": false,

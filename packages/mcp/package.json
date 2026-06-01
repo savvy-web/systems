@@ -27,8 +27,8 @@
 	},
 	"scripts": {
 		"build:catalog": "tsx scripts/build-catalog.ts",
-		"build:dev": "pnpm run build:catalog && rslib build --config-loader native --env-mode dev",
-		"build:prod": "pnpm run build:catalog && rslib build --config-loader native --env-mode npm",
+		"build:dev": "rslib build --config-loader native --env-mode dev",
+		"build:prod": "rslib build --config-loader native --env-mode npm",
 		"generate:api-docs": "tsx scripts/generate-api-docs.ts",
 		"inspect": "exec mcp-inspector node ./dist/dev/bin/savvy-mcp.js",
 		"prepare": "turbo run build:dev",
