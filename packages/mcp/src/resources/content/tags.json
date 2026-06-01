@@ -17,5 +17,9 @@
 	"silk": ["install"],
 	"mcp": ["resources", "savvy-mcp"],
 	"build": ["rslib", "esm"],
-	"workspace": ["monorepo", "workspaces"]
+	"workspace": ["monorepo", "workspaces"],
+	"api": ["api-reference", "reference"],
+	"templates": ["scaffolding"],
+	"github-action-effects": ["gha-effects"],
+	"github-action-builder": ["gha-builder"]
 }
