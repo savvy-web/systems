@@ -21,5 +21,7 @@
 	"api": ["api-reference", "reference"],
 	"templates": ["scaffolding"],
 	"github-action-effects": ["gha-effects"],
-	"github-action-builder": ["gha-builder"]
+	"github-action-builder": ["gha-builder"],
+	"semver": ["versioning"],
+	"github-actions": ["gha", "actions"]
 }
