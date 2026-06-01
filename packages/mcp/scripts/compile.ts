@@ -62,11 +62,12 @@ export function compileCorpus(docs: ReadonlyArray<RawDoc>, registry: TagRegistry
 		if (dirTier !== fm.tier) errors.push(`${doc.relPath}: tier ${fm.tier} does not match directory ${dirTier}`);
 		if (!fm.id.startsWith(`${fm.tier}/`)) errors.push(`${doc.relPath}: id ${fm.id} must start with ${fm.tier}/`);
 
-		let tags: string[] = fm.tags as string[];
+		let tags: string[];
 		try {
 			tags = canonicalizeTags(fm.tags, registry);
 		} catch (err) {
 			errors.push(`${doc.relPath}: ${(err as Error).message}`);
+			continue;
 		}
 
 		for (const dead of DEAD_NAMES) {

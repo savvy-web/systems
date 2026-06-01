@@ -20,7 +20,7 @@ export interface ResourceDeps {
 	readonly contentRoot: string;
 }
 
-const resourceName = (uri: string): string => `silk_${uri.replace(/[^A-Za-z0-9]/g, "_")}`;
+const resourceName = (entry: ManifestEntry): string => `silk_${entry.id.replace(/[^A-Za-z0-9]/g, "_")}`;
 
 const toSdkAnnotations = (e: ManifestEntry) => ({
 	audience: [...e.audience],
@@ -56,7 +56,7 @@ export function registerAllResources(server: McpServer, deps: ResourceDeps): voi
 				resources: manifest.entries
 					.filter((e) => e.uri !== "silk://catalog" && e.status !== "deprecated")
 					.map((e) => ({
-						name: resourceName(e.uri),
+						name: resourceName(e),
 						uri: e.uri,
 						title: e.title,
 						description: e.summary,
