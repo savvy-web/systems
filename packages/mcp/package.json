@@ -29,6 +29,7 @@
 		"build:catalog": "tsx scripts/build-catalog.ts",
 		"build:dev": "pnpm run build:catalog && rslib build --config-loader native --env-mode dev",
 		"build:prod": "pnpm run build:catalog && rslib build --config-loader native --env-mode npm",
+		"generate:api-docs": "tsx scripts/generate-api-docs.ts",
 		"inspect": "exec mcp-inspector node ./dist/dev/bin/savvy-mcp.js",
 		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
@@ -45,6 +46,7 @@
 	},
 	"devDependencies": {
 		"@modelcontextprotocol/inspector": "^0.21.2",
+		"@savvy-web/api-extractor-llms": "workspace:*",
 		"@savvy-web/rslib-builder": "^0.20.12",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
