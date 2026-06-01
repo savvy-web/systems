@@ -5,16 +5,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/changeset-env-export.sh\"",
-						"timeout": 5
-					}
-				]
-			},
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/mcp-orientation.sh\"",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/orientation.sh\"",
 						"timeout": 5
 					}
 				]
@@ -24,18 +15,8 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/commit-main.sh\"",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/startup-only.sh\"",
 						"timeout": 10
-					}
-				]
-			},
-			{
-				"matcher": "startup",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/lint-staged-env.sh\"",
-						"timeout": 5
 					}
 				]
 			}

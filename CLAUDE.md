@@ -9,7 +9,8 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 - **silk** — `@savvy-web/silk`, the single install-target of thin config-integration shims plus the biome asset (implemented)
 - **mcp** — `@savvy-web/mcp`, the spawnable `savvy-mcp` server exposing the `workspace_info` and `silk_docs_search` tools plus a manifest-backed resource layer (`silk://catalog` plus a `silk://{+path}` template over a compiled markdown corpus) over silk-effects; Phase B adds per-package API-reference docs (`silk://packages/<pkg>/api/*`) generated from API Extractor models via the external `api-extractor-llms` npm package, body-content search, a related-graph see-also boost, and query logging; a standalone server, not a discovery host (implemented)
 - **plugins/silk** — merged Claude Code plugin (`silk@savvy-web-systems`): 13 skills, the `changeset-manager` agent, merged hooks, plus `savvy-mcp` wiring (implemented)
-- **plugins/github-actions** — empty plugin skeleton spawning the shared `savvy-mcp` server (implemented)
+- **plugins/docs** — `docs@savvy-web-systems` plugin holding the `mcp` corpus-documentation agent (authors/improves docs in the savvy MCP corpus), two capability skills (`corpus-authoring`, `corpus-verify`), and two mode commands (`/docs:write-guide`, `/docs:improve`); spawns the shared `savvy-mcp` server; its version maps to `@savvy-web/mcp` (implemented)
+- **plugins/github-actions** — Claude Code plugin spawning the shared `savvy-mcp` server, with a TIER-1/2 SessionStart orientation hook and full hook libs that direct agents to the shared savvy MCP; no actions-specific tools/resources yet (future) (implemented)
 - **templates** — pure TypeScript project scaffolding (implemented)
 - **github-action-builder** — zero-config rsbuild build tool for Node.js 24 GitHub Actions (implemented)
 - **github-action-effects** — Effect-based library replacing @actions/* with 37 schema-validated services (implemented)
@@ -77,18 +78,22 @@ Load when working on `@savvy-web/silk`. Covers the drop-in shim contract, the ex
 
 Load when working on `plugins/silk`. Covers the skill/agent/hook merge, the tool-prefixed-vs-unprefixed skill naming scheme, and the hooks repointed at the unified `savvy` bin.
 
+**plugins/docs — the corpus-documentation Claude Code plugin:**
+→ `@./.claude/design/docs/architecture.md`
+
+Load when working on `plugins/docs`. Covers the `mcp` corpus-documentation agent, the `corpus-authoring`/`corpus-verify` capability skills, the `/docs:write-guide` and `/docs:improve` mode commands, the SessionStart orientation hook, and the `savvy-mcp` wiring whose version maps to `@savvy-web/mcp`. (Path may need adjustment if the design-doc agent uses a different filename.)
+
 **@savvy-web/mcp architecture — the `savvy-mcp` server, its runtime layer, tool half, and resource half:**
 → `@./.claude/design/mcp/architecture.md`
 
-Load when working on the MCP host. Covers the standalone (non-discovery) server, the information-in-mcp/direction-in-plugins split, the `ManagedRuntime` over silk-effects, the `workspace_info` tool with its Effect-Schema→zod bridge, the `silk_docs_search` tool over an in-memory Fuse `DocIndex`, the build-time catalog compiler that emits the gitignored manifest from the markdown corpus, the `silk://catalog` + `silk://{+path}` resource layer rendered from that manifest, the Phase B generated API-doc tier (`silk://packages/<pkg>/api/*`) driven by the external `api-extractor-llms` npm package, body-content search, see-also boost, query logging, and the dual-plugin (`silk` + `github-actions`) integration.
+Load when working on the MCP host. Covers the standalone (non-discovery) server, the information-in-mcp/direction-in-plugins split, the `ManagedRuntime` over silk-effects, the `workspace_info` tool with its Effect-Schema→zod bridge, the `silk_docs_search` tool over an in-memory Fuse `DocIndex`, the build-time catalog compiler that emits the gitignored manifest from the markdown corpus, the `silk://catalog` + `silk://{+path}` resource layer rendered from that manifest, the Phase B generated API-doc tier (`silk://packages/<pkg>/api/*`) driven by the external `api-extractor-llms` npm package, body-content search, see-also boost, query logging, and the three-plugin (`silk`, `github-actions`, `docs`) integration.
 
 **api-extractor-llms — API Extractor model → LLM-markdown rendering library (extracted to a standalone repo):**
 → `@./.claude/design/api-extractor-llms/architecture.md`
 
 Load when working on the mcp API-doc generation pipeline. The renderer now ships as the external unscoped npm package `api-extractor-llms` (its own repo, `spencerbeggs/api-extractor-llms`); mcp consumes it as a build-time devDependency. This doc covers the single output system, the injectable FrontmatterRenderer + RouteFormatter, the extraction/formatter/cross-linker modules, and the boundaries.
 
-Silk Core sub-project 1 design: `@./docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md`
-Silk Core sub-project 2 (MCP host) design: `@./docs/superpowers/specs/2026-05-31-savvy-mcp-host-design.md`
+Silk Suite roadmap and remaining 0.1.0 work (plan of record): `@./docs/superpowers/specs/2026-06-01-silk-suite-0.1.0-closeout-and-roadmap.md`
 
 ## Ecosystem Context
 
@@ -110,4 +115,4 @@ Key coordination points:
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`
 - README.md is for external users; .claude/design/ for package architecture docs
 - `@savvy-web/cli` and `@savvy-web/silk` must NOT import each other (the cli↔silk non-import invariant); `@savvy-web/mcp` imports neither cli nor silk — all three depend only on silk-effects within the repo (the cli↔silk↔mcp non-import invariant) — see `@./.claude/design/cli/architecture.md` and `@./.claude/design/mcp/architecture.md`; mcp depends on the external unscoped npm package `api-extractor-llms` as a build-time devDependency for its API-doc pipeline; that build chain runs via turbo: the four in-monorepo library targets' `build:prod` → mcp `generate:api-docs` (using `api-extractor-llms`) → `build:catalog` → mcp `build`
-- `@savvy-web/silk` and `@savvy-web/cli` are a `fixed` changeset group (versioned and released together); silk ships dual-format esm+cjs for its CJS consumers
+- `@savvy-web/silk` and `@savvy-web/cli` are a `fixed` changeset group (versioned and released together); silk ships dual-format esm+cjs for its CJS consumers; `@savvy-web/mcp` versions independently and also drives the `plugins/docs` plugin's version file

@@ -1,7 +1,7 @@
 {
-	"name": "silk",
+	"name": "docs",
 	"version": "0.0.0",
-	"description": "Companion plugin for @savvy-web/silk — changeset, commit, and lint conventions, skills, and agents for the Silk Suite",
+	"description": "Savvy Web documentation authoring assistant — corpus front-matter schema, tier rules, and build:catalog integrity, served via the shared savvy MCP",
 	"author": {
 		"name": "C. Spencer Beggs",
 		"email": "spencer@savvyweb.systems",
@@ -10,7 +10,7 @@
 	"homepage": "https://github.com/savvy-web/systems",
 	"repository": "https://github.com/savvy-web/systems.git",
 	"license": "MIT",
-	"keywords": ["silk-suite", "changesets", "commitlint", "lint-staged", "biome", "code-quality"],
+	"keywords": ["silk-suite", "documentation", "mcp", "savvy-mcp"],
 	"mcpServers": {
 		"savvy-mcp": {
 			"command": "sh",

@@ -8,7 +8,7 @@
 				"@savvy-web/silk": {
 					"versionFiles": [
 						{
-							"glob": "plugins/silk/.claude-plugin/plugin.json",
+							"glob": "plugins/*/.claude-plugin/plugin.json",
 							"paths": ["$.version"]
 						}
 					]

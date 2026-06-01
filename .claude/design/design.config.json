@@ -103,6 +103,17 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"docs": {
+			"path": "plugins/docs",
+			"designDocsPath": ".claude/design/docs",
+			"categories": ["architecture", "integration"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": null,
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"skills": {

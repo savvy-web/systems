@@ -42,8 +42,7 @@ what the consuming tool loads.
 `copyPatterns`
 **Versioning:** `fixed` changeset group with `@savvy-web/cli` (they always release together)
 
-This package is the result of Silk Core sub-project 1 — see
-`docs/superpowers/specs/2026-05-30-silk-subproject-1-merge-design.md`. It replaces the
+This package is the result of Silk Core sub-project 1. It replaces the
 config-integration subpaths of three standalone packages (`@savvy-web/changesets`,
 `@savvy-web/commitlint`, `@savvy-web/lint-staged`) as drop-in equivalents.
 

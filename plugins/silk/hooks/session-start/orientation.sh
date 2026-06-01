@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# SessionStart hook: persist namespaced env vars and inject changeset context.
+# SessionStart hook (no matcher — fires on all starts including resume/compact):
+# persist namespaced SILK_* env vars and inject MCP orientation + changeset +
+# dogfood-feedback context into every session.
 #
-# Writes the three canonical plugin paths to a per-session env file and the
-# CLAUDE_ENV_FILE so reader hooks and Bash-tool subprocesses can recover them.
-# Also emits additionalContext describing the changeset format, available
-# tools, and active hooks.
+# Merges: changeset-env-export.sh + mcp-orientation.sh
+#
+# Contract: reads SessionStart envelope on stdin, writes 5 SILK_* exports to
+# the per-session silk-hook.sh file and CLAUDE_ENV_FILE, then emits
+# additionalContext with TIER-1 MCP catalog nudge, TIER-2 workspace_info nudge,
+# changesets plugin context, and a dogfood-feedback reminder.
 
-# shellcheck source=../lib/changesets-hook-output.sh
-. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/changesets-hook-output.sh"
-# shellcheck source=../lib/changesets-hook-debug.sh
-. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/changesets-hook-debug.sh"
+# shellcheck source=../lib/hook-output.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
+# shellcheck source=../lib/hook-debug.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
 
-_HOOK="session-start-env-export"
+_HOOK="session-start-orientation"
 
 # Fail open without jq.
 if ! command -v jq &>/dev/null; then
@@ -31,7 +35,7 @@ data_dir="${CLAUDE_PLUGIN_DATA:-}"
 plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
 
 # Detect package manager so reader hooks can reuse the same logic via the
-# CHANGESETS_PACKAGE_MANAGER export. Fail open to "npm" if anything goes wrong.
+# SILK_PACKAGE_MANAGER export. Fail open to "npm" if anything goes wrong.
 detect_pm() {
 	if [ -z "$project_dir" ] || [ ! -d "$project_dir" ]; then
 		echo "npm"
@@ -61,18 +65,18 @@ package_manager=$(detect_pm)
 if [ -n "$session_id" ]; then
 	env_dir="${HOME}/.claude/session-env/${session_id}"
 	mkdir -p "$env_dir"
-	hook_env_file="${env_dir}/changesets-hook.sh"
+	hook_env_file="${env_dir}/silk-hook.sh"
 
 	{
-		printf 'export CHANGESETS_PROJECT_DIR=%q\n' "$project_dir"
-		printf 'export CHANGESETS_DATA_DIR=%q\n' "$data_dir"
-		printf 'export CHANGESETS_PLUGIN_ROOT=%q\n' "$plugin_root"
-		printf 'export CHANGESETS_SESSION_ID=%q\n' "$session_id"
-		printf 'export CHANGESETS_PACKAGE_MANAGER=%q\n' "$package_manager"
+		printf 'export SILK_PROJECT_DIR=%q\n' "$project_dir"
+		printf 'export SILK_DATA_DIR=%q\n' "$data_dir"
+		printf 'export SILK_PLUGIN_ROOT=%q\n' "$plugin_root"
+		printf 'export SILK_SESSION_ID=%q\n' "$session_id"
+		printf 'export SILK_PACKAGE_MANAGER=%q\n' "$package_manager"
 	} > "$hook_env_file"
 
 	if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-		for var in CHANGESETS_PROJECT_DIR CHANGESETS_DATA_DIR CHANGESETS_PLUGIN_ROOT CHANGESETS_SESSION_ID CHANGESETS_PACKAGE_MANAGER; do
+		for var in SILK_PROJECT_DIR SILK_DATA_DIR SILK_PLUGIN_ROOT SILK_SESSION_ID SILK_PACKAGE_MANAGER; do
 			grep -q "^export ${var}=" "$CLAUDE_ENV_FILE" 2>/dev/null || \
 				grep "^export ${var}=" "$hook_env_file" >> "$CLAUDE_ENV_FILE"
 		done
@@ -87,6 +91,36 @@ case "$package_manager" in
 esac
 
 CONTEXT=$(cat <<CONTEXT
+<EXTREMELY_IMPORTANT>
+A shared MCP server (savvy-mcp) is active this session. It serves the Silk Suite
+documentation corpus and workspace analysis tools.
+
+Before you research any Silk convention, package API, standards rule, or
+architecture decision by guessing, reading source files, or running git/grep,
+you ABSOLUTELY MUST first:
+
+1. Read the resource silk://catalog — it lists every available doc grouped by
+   tier (Standards, Packages, Guides) with a "load when" hint, so you fetch only
+   what the task needs.
+2. Use the silk_docs_search tool to find relevant docs by keyword. It returns
+   ranked, scored hits and is faster and more accurate than filesystem grep.
+
+If there is even a 1% chance the corpus answers your question, search it before
+guessing. This is not negotiable.
+
+For detailed query technique, the silk docs-search skill is available on demand.
+</EXTREMELY_IMPORTANT>
+
+<important>
+When you need workspace layout, package names, publish or version state, or any
+other structural fact about the workspace, call the workspace_info MCP tool
+before running shell commands or answering from memory. It returns structured
+JSON. Use Bash workspace commands only when:
+  - you need git status or branch info (workspace_info does not cover this), or
+  - you need output from a task-specific script the tool does not provide, or
+  - workspace_info is unavailable or errors.
+</important>
+
 <changesets_plugin>
 
 <overview>
@@ -143,6 +177,16 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
 </active_hooks>
 
 </changesets_plugin>
+
+<reminder>
+<dogfood_feedback>
+This plugin (silk@savvy-web-systems) is newly released and is being dogfooded. During this session, if a skill, hook, the savvy CLI, or an agent such as changeset-manager returns wrong, unhelpful, or confusing results, fires incorrectly, or shows any rough edge worth improving, note it.
+
+When you dispatch a subagent, ask it to note any such rough edges and report them back to you.
+
+At the end of the session, surface what you noticed and ask the user, for example: "I ran into X with the silk plugin. Want me to open an issue in savvy-web/systems?" Open an issue ONLY if the user explicitly agrees, using: gh issue create --repo savvy-web/systems --title "..." --body "...". You MUST wait for explicit user confirmation before opening any issue. Never file one on your own judgement.
+</dogfood_feedback>
+</reminder>
 CONTEXT
 )
 

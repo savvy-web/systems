@@ -8,7 +8,7 @@ description: >
   only when there is genuine ambiguity.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, Bash(git:*), Bash(pnpm:*), Bash(yarn:*), Bash(bun:*), Bash(npm:*), Bash(npx:*), Bash(bunx:*), Bash(jq:*), Bash(cat:*), Bash(ls:*), Bash(find:*)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - changeset-style
   - status
