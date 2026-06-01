@@ -56,7 +56,11 @@ export class DocIndex {
 	) {}
 
 	static fromManifest(manifest: Manifest, bodies: Readonly<Record<string, string>>): DocIndex {
-		const entries: Indexed[] = manifest.entries.map((e) => ({ ...e, body: bodies[e.uri] ?? "" }));
+		// Deprecated docs are hidden from the catalog and the resource list, so keep
+		// them out of search too — an agent should not be steered to a retired doc.
+		const entries: Indexed[] = manifest.entries
+			.filter((e) => e.status !== "deprecated")
+			.map((e) => ({ ...e, body: bodies[e.uri] ?? "" }));
 		const fuse = new Fuse(entries, {
 			useExtendedSearch: true,
 			ignoreLocation: true,

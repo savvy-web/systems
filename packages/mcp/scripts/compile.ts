@@ -55,7 +55,10 @@ export function compileCorpus(docs: ReadonlyArray<RawDoc>, registry: TagRegistry
 		}
 		const fm = decoded.right;
 
-		if (seenIds.has(fm.id)) errors.push(`${doc.relPath}: duplicate id ${fm.id}`);
+		if (seenIds.has(fm.id)) {
+			errors.push(`${doc.relPath}: duplicate id ${fm.id}`);
+			continue;
+		}
 		seenIds.add(fm.id);
 
 		const dirTier = doc.relPath.split("/")[0];

@@ -64,4 +64,32 @@ describe("DocIndex", () => {
 		const results = index.search("commit", { tier: "standards" });
 		expect(results.every((r) => r.tier === "standards")).toBe(true);
 	});
+
+	it("excludes deprecated docs from the index", () => {
+		const withDeprecated: Manifest = {
+			generatedAt: manifest.generatedAt,
+			entries: [
+				...manifest.entries,
+				{
+					id: "standards/legacy-policy",
+					uri: "silk://standards/legacy-policy",
+					title: "Legacy changeset policy",
+					summary: "The retired changeset policy.",
+					tier: "standards",
+					source: "hand",
+					status: "deprecated",
+					tags: ["changeset"],
+					audience: ["assistant"],
+					priority: 0.9,
+					related: [],
+				},
+			],
+		};
+		const idx = DocIndex.fromManifest(withDeprecated, {
+			...bodies,
+			"silk://standards/legacy-policy": "Old policy.",
+		});
+		const uris = idx.search("changeset").map((r) => r.uri);
+		expect(uris).not.toContain("silk://standards/legacy-policy");
+	});
 });

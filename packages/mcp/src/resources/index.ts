@@ -54,7 +54,7 @@ export function registerAllResources(server: McpServer, deps: ResourceDeps): voi
 		new ResourceTemplate("silk://{+path}", {
 			list: async () => ({
 				resources: manifest.entries
-					.filter((e) => e.uri !== "silk://catalog" && e.status !== "deprecated")
+					.filter((e) => e.status !== "deprecated")
 					.map((e) => ({
 						name: resourceName(e),
 						uri: e.uri,
