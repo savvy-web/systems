@@ -79,7 +79,7 @@ export function compileCorpus(docs: ReadonlyArray<RawDoc>, registry: TagRegistry
 
 		const budget = opts.bodyBudgetBytes?.[fm.tier];
 		const bytes = Buffer.byteLength(doc.body, "utf8");
-		if (budget !== undefined && bytes > budget) {
+		if (fm.source !== "generated" && budget !== undefined && bytes > budget) {
 			warnings.push(`${doc.relPath}: body ${bytes} bytes exceeds budget ${budget} — split into focused pages`);
 		}
 
