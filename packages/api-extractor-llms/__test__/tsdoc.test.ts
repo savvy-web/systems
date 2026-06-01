@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractPlainText } from "../src/tsdoc.js";
+import { extractPlainText, getReturns } from "../src/tsdoc.js";
 
 // extractPlainText walks any node exposing { kind, getChildNodes } or leaf text.
 const plain = (text: string) => ({ kind: "PlainText", text });
@@ -26,5 +26,11 @@ describe("extractPlainText", () => {
 
 	it("renders a soft break as a single space", () => {
 		expect(extractPlainText({ kind: "SoftBreak" } as never)).toBe(" ");
+	});
+});
+
+describe("getReturns", () => {
+	it("returns null for an item with no tsdoc", () => {
+		expect(getReturns({} as never)).toBeNull();
 	});
 });

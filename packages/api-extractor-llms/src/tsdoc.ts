@@ -86,11 +86,11 @@ export function getReturns(item: ApiItem): { description: string } | null {
 	if (item instanceof ApiDocumentedItem) {
 		const tsdoc = item.tsdocComment;
 		if (tsdoc?.returnsBlock) {
-			// biome-ignore lint/suspicious/noExplicitAny: dynamic access
+			// biome-ignore lint/suspicious/noExplicitAny: TSDoc returns block internals need dynamic access
 			const description = extractPlainText((tsdoc.returnsBlock as any).content)
 				.replace(/\s+/g, " ")
 				.trim();
-			return { description };
+			return description.length > 0 ? { description } : null;
 		}
 	}
 	return null;
