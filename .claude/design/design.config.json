@@ -92,6 +92,17 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"api-extractor-llms": {
+			"path": "packages/api-extractor-llms",
+			"designDocsPath": ".claude/design/api-extractor-llms",
+			"categories": ["architecture"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/api-extractor-llms/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"skills": {

@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import type { McpContext } from "./context.js";
 import { registerAllResources } from "./resources/index.js";
+import { stderrQueryLogger } from "./resources/query-log.js";
 import { effectToZodSchema } from "./schema/effect-to-zod.js";
 import { DocsSearchResult, DocsSearchResultAsMarkdown, runDocsSearch } from "./tools/docs-search.js";
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
@@ -59,10 +60,15 @@ export function buildServer(ctx: McpContext): McpServer {
 			annotations: { readOnlyHint: true },
 		},
 		async (args) => {
-			const data = runDocsSearch(ctx.docIndex, args.query, {
-				...(args.limit !== undefined ? { limit: args.limit } : {}),
-				...(args.tier !== undefined ? { tier: args.tier } : {}),
-			});
+			const data = runDocsSearch(
+				ctx.docIndex,
+				args.query,
+				{
+					...(args.limit !== undefined ? { limit: args.limit } : {}),
+					...(args.tier !== undefined ? { tier: args.tier } : {}),
+				},
+				stderrQueryLogger,
+			);
 			const text = Schema.decodeSync(DocsSearchResultAsMarkdown)(data);
 			return structuredResult(text, data);
 		},

@@ -65,6 +65,77 @@ describe("DocIndex", () => {
 		expect(results.every((r) => r.tier === "standards")).toBe(true);
 	});
 
+	it("surfaces a doc when the query term appears only in its body", () => {
+		const m: Manifest = {
+			generatedAt: "2026-06-01T00:00:00Z",
+			entries: [
+				{
+					id: "standards/commit-contract",
+					uri: "silk://standards/commit-contract",
+					title: "Commit contract",
+					summary: "Commit rules.",
+					tier: "standards",
+					source: "hand",
+					status: "stable",
+					tags: ["commit"],
+					audience: ["assistant"],
+					priority: 0.5,
+					related: [],
+				},
+			],
+		};
+		const idx = DocIndex.fromManifest(m, {
+			"silk://standards/commit-contract": "Bodies mention quadrupedalism as a unique token.",
+		});
+		const results = idx.search("quadrupedalism");
+		expect(results[0]?.uri).toBe("silk://standards/commit-contract");
+		expect(results[0]?.matchedOn).toContain("body");
+	});
+
+	it("appends related neighbors of a top hit as see-also entries", () => {
+		const m: Manifest = {
+			generatedAt: "2026-06-01T00:00:00Z",
+			entries: [
+				{
+					id: "standards/changeset-discipline",
+					uri: "silk://standards/changeset-discipline",
+					title: "Changeset discipline",
+					summary: "When a changeset is required.",
+					tier: "standards",
+					source: "hand",
+					status: "stable",
+					tags: ["changeset"],
+					audience: ["assistant"],
+					priority: 0.8,
+					related: ["standards/commit-contract"],
+				},
+				{
+					id: "standards/commit-contract",
+					uri: "silk://standards/commit-contract",
+					title: "Commit contract",
+					summary: "Commit rules.",
+					tier: "standards",
+					source: "hand",
+					status: "stable",
+					tags: ["commit"],
+					audience: ["assistant"],
+					priority: 0.5,
+					related: [],
+				},
+			],
+		};
+		const idx = DocIndex.fromManifest(m, {
+			"silk://standards/changeset-discipline": "changeset",
+			"silk://standards/commit-contract": "commit",
+		});
+		const results = idx.search("changeset");
+		const uris = results.map((r) => r.uri);
+		expect(uris).toContain("silk://standards/changeset-discipline");
+		expect(uris).toContain("silk://standards/commit-contract"); // pulled in as see-also
+		const seeAlso = results.find((r) => r.uri === "silk://standards/commit-contract");
+		expect(seeAlso?.matchedOn).toContain("related");
+	});
+
 	it("excludes deprecated docs from the index", () => {
 		const withDeprecated: Manifest = {
 			generatedAt: manifest.generatedAt,

@@ -68,4 +68,13 @@ describe("compileCorpus", () => {
 		const out = compileCorpus([doc({ frontMatter: { ...baseFrontMatter, source: "generated" } })], registry, {});
 		expect(out.bodies["silk://standards/changeset-discipline"]).toMatch(/Generated from the API Extractor model/);
 	});
+
+	it("does not warn on body budget for generated docs", () => {
+		const out = compileCorpus(
+			[doc({ body: "x".repeat(20000), frontMatter: { ...baseFrontMatter, source: "generated" } })],
+			registry,
+			{ bodyBudgetBytes: { standards: 4000 } },
+		);
+		expect(out.warnings.join("\n")).not.toMatch(/exceeds budget/);
+	});
 });
