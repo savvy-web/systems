@@ -21,6 +21,7 @@ export interface SearchResult {
 	readonly confidence: number; // 0..1, higher is better
 	readonly confidenceLabel: "high" | "medium" | "low";
 	readonly matchedOn: ReadonlyArray<string>;
+	readonly related: ReadonlyArray<string>;
 }
 
 export interface SearchOptions {
@@ -53,6 +54,7 @@ export class DocIndex {
 	private constructor(
 		private readonly fuse: Fuse<Indexed>,
 		private readonly entries: ReadonlyArray<Indexed>,
+		private readonly byUri: ReadonlyMap<string, Indexed>,
 	) {}
 
 	static fromManifest(manifest: Manifest, bodies: Readonly<Record<string, string>>): DocIndex {
@@ -75,7 +77,8 @@ export class DocIndex {
 				{ name: "body", weight: 0.03 },
 			],
 		});
-		return new DocIndex(fuse, entries);
+		const byUri = new Map(entries.map((e) => [e.uri, e]));
+		return new DocIndex(fuse, entries, byUri);
 	}
 
 	search(query: string, opts: SearchOptions = {}): SearchResult[] {
@@ -98,7 +101,23 @@ export class DocIndex {
 
 		ranked.sort((a, b) => b.confidence - a.confidence || (b.item.priority ?? 0.5) - (a.item.priority ?? 0.5));
 
-		return ranked.slice(0, limit).map(({ item, confidence, matchedOn }) => ({
+		// See-also: pull in related neighbors of the strongest hits that aren't
+		// already ranked, as low-confidence entries. The related graph is
+		// compile-time validated, so every id resolves.
+		const present = new Set(ranked.map((r) => r.item.uri));
+		const seeAlso: RankedResult[] = [];
+		for (const r of ranked.slice(0, 3)) {
+			for (const rel of r.item.related) {
+				const uri = rel.startsWith("silk://") ? rel : `silk://${rel}`;
+				if (present.has(uri)) continue;
+				const neighbor = this.byUri.get(uri);
+				if (!neighbor) continue;
+				present.add(uri);
+				seeAlso.push({ item: neighbor, confidence: 0, matchedOn: ["related"] });
+			}
+		}
+
+		return [...ranked, ...seeAlso].slice(0, limit).map(({ item, confidence, matchedOn }) => ({
 			uri: item.uri,
 			title: item.title,
 			summary: item.summary,
@@ -107,6 +126,7 @@ export class DocIndex {
 			confidence: Number(confidence.toFixed(3)),
 			confidenceLabel: confidenceLabel(confidence),
 			matchedOn: [...new Set(matchedOn)].filter(Boolean),
+			related: item.related,
 		}));
 	}
 
