@@ -1,59 +1,84 @@
 /**
- * Registers the catalog and every content resource against the MCP server.
+ * Register the `silk://catalog` fixed resource plus a single `silk://{+path}`
+ * ResourceTemplate (read + list) over the compiled manifest. Resources are
+ * stateless readers; per-doc annotations are emitted in list() entries and read
+ * contents (no per-URI registration with one template).
  *
  * @packageDocumentation
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { CATALOG_ENTRIES, renderCatalogMarkdown } from "./catalog.js";
-import {
-	GUIDES_LLM_JSON_SCHEMAS_MD,
-	PACKAGES_SILK_EFFECTS_INDEX_MD,
-	PACKAGES_SILK_EFFECTS_MANAGED_SECTION_MD,
-	STANDARDS_CHANGESETS_MD,
-} from "./content.js";
+import { renderCatalogMarkdown } from "./catalog.js";
+import { readDocBody } from "./load.js";
+import type { Manifest, ManifestEntry } from "./schema.js";
 
-/** Map of resource URI to markdown content, keyed by the catalog entries. */
-export const RESOURCE_CONTENT: Readonly<Record<string, string>> = {
-	"silk://standards/changesets": STANDARDS_CHANGESETS_MD,
-	"silk://packages/silk-effects/": PACKAGES_SILK_EFFECTS_INDEX_MD,
-	"silk://packages/silk-effects/managed-section": PACKAGES_SILK_EFFECTS_MANAGED_SECTION_MD,
-	"silk://guides/llm-friendly-json-schemas": GUIDES_LLM_JSON_SCHEMAS_MD,
-};
+export interface ResourceDeps {
+	readonly manifest: Manifest;
+	readonly bodies?: Readonly<Record<string, string>>; // test injection; runtime reads from disk
+	readonly contentRoot: string;
+}
 
-/** Stable, client-safe resource name from a URI. */
-const resourceName = (uri: string): string => `silk_${uri.replace(/[^A-Za-z0-9]/g, "_")}`;
+const resourceName = (entry: ManifestEntry): string => `silk_${entry.id.replace(/[^A-Za-z0-9]/g, "_")}`;
 
-/** Register the catalog plus every content resource. */
-export function registerAllResources(server: McpServer): void {
+const toSdkAnnotations = (e: ManifestEntry) => ({
+	audience: [...e.audience],
+	priority: e.priority,
+	...(e.lastModified ? { lastModified: e.lastModified } : {}),
+});
+
+export function registerAllResources(server: McpServer, deps: ResourceDeps): void {
+	const { manifest, bodies, contentRoot } = deps;
+
 	server.registerResource(
 		"silk_catalog",
 		"silk://catalog",
 		{
 			title: "Silk resource catalog",
 			description:
-				"Read this first. Lists every Silk resource grouped by tier (Standards, Packages, Guides), each with a 'load when' hint, so you fetch only what a task needs.",
+				"Read this first. Lists every Silk resource grouped by tier with a 'load when' hint. Fetch a doc with resources/read <uri>; search by intent with silk_docs_search.",
 			mimeType: "text/markdown",
 		},
 		async (uri) => ({
-			contents: [{ uri: uri.href, mimeType: "text/markdown", text: renderCatalogMarkdown() }],
+			contents: [{ uri: uri.href, mimeType: "text/markdown", text: renderCatalogMarkdown(manifest) }],
 		}),
 	);
 
-	for (const entry of CATALOG_ENTRIES) {
-		const text = RESOURCE_CONTENT[entry.uri] ?? "";
-		server.registerResource(
-			resourceName(entry.uri),
-			entry.uri,
-			{
-				title: entry.title,
-				description: `Load when: ${entry.loadWhen}.`,
-				mimeType: "text/markdown",
-			},
-			async (uri) => ({
-				contents: [{ uri: uri.href, mimeType: "text/markdown", text }],
+	const byUri = new Map(manifest.entries.map((e) => [e.uri, e]));
+	const readBody = (uri: string, relPath: string): string =>
+		bodies ? (bodies[uri] ?? "") : readDocBody(contentRoot, relPath);
+
+	server.registerResource(
+		"silk_doc",
+		new ResourceTemplate("silk://{+path}", {
+			list: async () => ({
+				resources: manifest.entries
+					.filter((e) => e.status !== "deprecated")
+					.map((e) => ({
+						name: resourceName(e),
+						uri: e.uri,
+						title: e.title,
+						description: e.summary,
+						mimeType: "text/markdown",
+						annotations: toSdkAnnotations(e),
+					})),
 			}),
-		);
-	}
+		}),
+		{ title: "Silk documentation resource", mimeType: "text/markdown" },
+		async (uri, variables) => {
+			const relPath = String(variables.path ?? "");
+			const entry = byUri.get(uri.href);
+			return {
+				contents: [
+					{
+						uri: uri.href,
+						mimeType: "text/markdown",
+						text: readBody(uri.href, relPath),
+						...(entry ? { annotations: toSdkAnnotations(entry) } : {}),
+					},
+				],
+			};
+		},
+	);
 }

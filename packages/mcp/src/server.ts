@@ -13,6 +13,7 @@ import { z } from "zod";
 import type { McpContext } from "./context.js";
 import { registerAllResources } from "./resources/index.js";
 import { effectToZodSchema } from "./schema/effect-to-zod.js";
+import { DocsSearchResult, DocsSearchResultAsMarkdown, runDocsSearch } from "./tools/docs-search.js";
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
 import { CURRENT_MCP_VERSION } from "./version.js";
 
@@ -44,7 +45,30 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 	);
 
-	registerAllResources(server);
+	server.registerTool(
+		"silk_docs_search",
+		{
+			description:
+				"Search Silk documentation by intent. Pass plain keywords or a short phrase describing what you need (e.g. 'changeset bump rules'). Returns ranked docs with a confidence label; fetch a hit with resources/read <uri>. Read silk://catalog first to orient.",
+			inputSchema: {
+				query: z.string().describe("Keywords or a short phrase describing the doc you need."),
+				limit: z.optional(z.number()).describe("Max results (default 10)."),
+				tier: z.optional(z.enum(["standards", "packages", "guides"])).describe("Restrict to one tier."),
+			},
+			outputSchema: effectToZodSchema(DocsSearchResult) as never,
+			annotations: { readOnlyHint: true },
+		},
+		async (args) => {
+			const data = runDocsSearch(ctx.docIndex, args.query, {
+				...(args.limit !== undefined ? { limit: args.limit } : {}),
+				...(args.tier !== undefined ? { tier: args.tier } : {}),
+			});
+			const text = Schema.decodeSync(DocsSearchResultAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	registerAllResources(server, { manifest: ctx.manifest, contentRoot: ctx.contentRoot });
 
 	return server;
 }

@@ -1,0 +1,21 @@
+{
+	"changeset": ["changesets"],
+	"release": [],
+	"commit": ["commits", "conventional-commits"],
+	"dco": [],
+	"tdd": [],
+	"catalog": ["version-catalog"],
+	"dependencies": ["deps", "peer-dependencies"],
+	"lint": ["linting", "biome", "markdownlint"],
+	"test": ["testing", "vitest"],
+	"publishability": ["publish", "publishConfig", "private"],
+	"silk-effects": [],
+	"effect": ["layers", "context-tag"],
+	"managed-section": ["sections", "husky"],
+	"cli": ["savvy"],
+	"init": ["setup", "scaffold"],
+	"silk": ["install"],
+	"mcp": ["resources", "savvy-mcp"],
+	"build": ["rslib", "esm"],
+	"workspace": ["monorepo", "workspaces"]
+}

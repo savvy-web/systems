@@ -1,0 +1,41 @@
+import { Schema } from "effect";
+import { describe, expect, it } from "vitest";
+
+import { DocIndex } from "../../src/resources/doc-index.js";
+import type { Manifest } from "../../src/resources/schema.js";
+import { DocsSearchResult, formatDocsSearchMarkdown } from "../../src/tools/docs-search.js";
+
+const manifest: Manifest = {
+	generatedAt: "2026-05-31T00:00:00Z",
+	entries: [
+		{
+			id: "standards/changeset-discipline",
+			uri: "silk://standards/changeset-discipline",
+			title: "Changeset discipline",
+			summary: "When a changeset is required.",
+			tier: "standards",
+			source: "hand",
+			status: "stable",
+			tags: ["changeset"],
+			audience: ["assistant"],
+			priority: 0.8,
+			related: [],
+		},
+	],
+};
+
+describe("docs-search tool", () => {
+	const index = DocIndex.fromManifest(manifest, { "silk://standards/changeset-discipline": "ship a changeset" });
+
+	it("DocsSearchResult validates the search output shape", () => {
+		const results = index.search("changeset");
+		const decoded = Schema.decodeUnknownSync(DocsSearchResult)({ query: "changeset", results });
+		expect(decoded.results[0].uri).toBe("silk://standards/changeset-discipline");
+	});
+
+	it("renders a lean markdown transcript", () => {
+		const md = formatDocsSearchMarkdown({ query: "changeset", results: index.search("changeset") });
+		expect(md).toMatch(/changeset-discipline/);
+		expect(md).toMatch(/high|medium|low/);
+	});
+});

@@ -8,8 +8,14 @@ import type { SilkWorkspaceAnalyzer } from "@savvy-web/silk-effects";
 import type { ManagedRuntime } from "effect";
 import type { WorkspaceDiscoveryError, WorkspaceRoot } from "workspaces-effect";
 
-/** The long-lived runtime + the project working directory. */
+import type { DocIndex } from "./resources/doc-index.js";
+import type { Manifest } from "./resources/schema.js";
+
+/** The long-lived runtime, the project working directory, and the resource layer. */
 export interface McpContext {
 	readonly runtime: ManagedRuntime.ManagedRuntime<SilkWorkspaceAnalyzer | WorkspaceRoot, WorkspaceDiscoveryError>;
 	readonly cwd: string;
+	readonly docIndex: DocIndex;
+	readonly manifest: Manifest;
+	readonly contentRoot: string;
 }
