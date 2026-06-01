@@ -23,6 +23,7 @@
 		"generate:api-docs": {
 			"cache": false,
 			"dependsOn": [
+				"@savvy-web/api-extractor-llms#build:dev",
 				"@savvy-web/silk-effects#build:prod",
 				"@savvy-web/templates#build:prod",
 				"@savvy-web/github-action-effects#build:prod",

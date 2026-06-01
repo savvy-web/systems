@@ -1,5 +1,5 @@
 /**
- * @savvy-web/api-extractor-llms — render Microsoft API Extractor models into
+ * `@savvy-web/api-extractor-llms` — render Microsoft API Extractor models into
  * LLM-lean markdown, with injectable frontmatter and crosslink routes.
  *
  * @packageDocumentation
