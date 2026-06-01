@@ -120,7 +120,7 @@ export function getExamples(item: ApiItem): Array<{ language: string; code: stri
 	return examples;
 }
 
-/** The `@deprecated` block message, if present. */
+/** Reads the deprecation-block message from an ApiItem, if one is present. */
 export function getDeprecation(item: ApiItem): { message: string } | null {
 	if (item instanceof ApiDocumentedItem) {
 		const tsdoc = item.tsdocComment;
