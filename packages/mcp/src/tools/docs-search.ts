@@ -10,6 +10,8 @@
 import { ParseResult, Schema } from "effect";
 
 import type { DocIndex, SearchResult } from "../resources/doc-index.js";
+import type { QueryLogger } from "../resources/query-log.js";
+import { formatQueryLogLine } from "../resources/query-log.js";
 
 export const DocsSearchHit = Schema.Struct({
 	uri: Schema.String,
@@ -60,7 +62,9 @@ export const runDocsSearch = (
 	index: DocIndex,
 	query: string,
 	opts: { limit?: number; tier?: "standards" | "packages" | "guides" },
+	logger?: QueryLogger,
 ): DocsSearchResultType => {
 	const results: SearchResult[] = index.search(query, opts);
+	if (logger) logger(formatQueryLogLine(query, results));
 	return { query, results };
 };
