@@ -2,6 +2,9 @@ import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
 
 export default NodeLibraryBuilder.create({
 	externals: ["effect"],
+	apiModel: {
+		suppressWarnings: [{ messageId: "ae-forgotten-export" }],
+	},
 	transform({ pkg }) {
 		delete pkg.devDependencies;
 		delete pkg.publishConfig;
