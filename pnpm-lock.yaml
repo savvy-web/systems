@@ -109,8 +109,8 @@ importers:
         version: 2.9.0
     devDependencies:
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.12
-        version: 0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+        specifier: ^0.21.0
+        version: 0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@types/node':
         specifier: catalog:silk
         version: 25.9.1
@@ -165,8 +165,8 @@ importers:
         version: 0.6.0(effect@3.21.2)
     devDependencies:
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.12
-        version: 0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+        specifier: ^0.21.0
+        version: 0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@savvy-web/vitest':
         specifier: ^1.3.2
         version: 1.3.2(acac641cdd5079d7e0d57a0a8e21154d)
@@ -221,8 +221,8 @@ importers:
         specifier: catalog:silk
         version: 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.12
-        version: 0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+        specifier: ^0.21.0
+        version: 0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@savvy-web/vitest':
         specifier: ^1.3.2
         version: 1.3.2(acac641cdd5079d7e0d57a0a8e21154d)
@@ -265,8 +265,8 @@ importers:
         specifier: ^0.21.2
         version: 0.21.2(@types/node@25.9.1)(typescript@6.0.3)
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.12
-        version: 0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+        specifier: ^0.21.0
+        version: 0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@types/node':
         specifier: catalog:silk
         version: 25.9.1
@@ -306,8 +306,8 @@ importers:
         specifier: ^21.0.2
         version: 21.0.2
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.12
-        version: 0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+        specifier: ^0.21.0
+        version: 0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@savvy-web/silk-effects':
         specifier: workspace:*
         version: link:../silk-effects/dist/dev
@@ -416,8 +416,8 @@ importers:
         specifier: catalog:silk
         version: 0.106.0(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.12
-        version: 0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+        specifier: ^0.21.0
+        version: 0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
@@ -441,15 +441,15 @@ importers:
   packages/templates:
     dependencies:
       js-yaml:
-        specifier: ^4.1.1
-        version: 4.1.1
+        specifier: ^4.2.0
+        version: 4.2.0
       sort-package-json:
         specifier: ^3.6.1
         version: 3.6.1
     devDependencies:
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.12
-        version: 0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+        specifier: ^0.21.0
+        version: 0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@savvy-web/vitest':
         specifier: ^1.3.2
         version: 1.3.2(acac641cdd5079d7e0d57a0a8e21154d)
@@ -2283,8 +2283,8 @@ packages:
   '@rushstack/ts-command-line@5.3.9':
     resolution: {integrity: sha512-GIHqU+sRGQ3LGWAZu1O+9Yh++qwtyNIIGuNbcWHJjBTm2qRez0cwINUHZ+pQLR8UuzZDcMajrDaNbUYoaL/XtQ==}
 
-  '@savvy-web/rslib-builder@0.20.12':
-    resolution: {integrity: sha512-edRu97DwpTs7GEcCCZzGn/s+mqYJcemg6zxAK6USvaUEDFV1MGdZEyIz2lPeNtgYPpVNSd8qaeabFgFcn97rlg==}
+  '@savvy-web/rslib-builder@0.21.0':
+    resolution: {integrity: sha512-791xa1HKC0vvnAcObBcC9F/esUCNw32zGYWa/LBmrukjEx8rs56zhdXSig8ePLhfCOw4R1oxyDRZwsE+nSX2OA==}
     peerDependencies:
       '@rsbuild/plugin-react': ^2.0.0
       '@rslib/core': ^0.22.0
@@ -2460,8 +2460,8 @@ packages:
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
-  '@typescript-eslint/parser@8.60.0':
-    resolution: {integrity: sha512-fcqpj/MyK4sxDPcbe7STNPbpQL4RLZOPWuaTmwZYuc+hJKzRf58yRxfhqGpc6PIq9ZyfSBpfHgmUHmHs0KwHwg==}
+  '@typescript-eslint/parser@8.60.1':
+    resolution: {integrity: sha512-A0M6ua6H252bVjPvvtSgl2QA4+ET9S5Mtkb2GDyTxIhH/C4qDItT7RQNO5PhMC6NXGYXOR9dIalcDDgBKT7oFA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
@@ -2473,8 +2473,8 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4 <6.0.0'
 
-  '@typescript-eslint/project-service@8.60.0':
-    resolution: {integrity: sha512-aZu74NNKJeUWqCjDddzdiKaS82dgYgV/vmf+Ui3ZdZejmgfXR/q+pRumgobnQ2cCJTgGTWp4ypiwsuofFubavg==}
+  '@typescript-eslint/project-service@8.60.1':
+    resolution: {integrity: sha512-eXkTH2bxmXlqD1RnOPmLZ9ZM9D3VwSx04JOwBnP9RQ+yUA5a2Mu7SfW8uaV2Aon53NJzZlZYuX7tn91Izf+xaw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       typescript: '>=4.8.4 <6.1.0'
@@ -2483,8 +2483,8 @@ packages:
     resolution: {integrity: sha512-YAi4VDKcIZp0O4tz/haYKhmIDZFEUPOreKbfdAN3SzUDMcPhJ8QI99xQXqX+HoUVq8cs85eRKnD+rne2UAnj2w==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript-eslint/scope-manager@8.60.0':
-    resolution: {integrity: sha512-pFzqhllJMs+jghLQWzV00ds39xLzuyqPSev5pd8f4Ir0rtKR3ZLUB4/4dhjOFighWb9larvtfJvqL+4yKDI3Xw==}
+  '@typescript-eslint/scope-manager@8.60.1':
+    resolution: {integrity: sha512-gvI5OQoptnxQnchOirukCuQ55svJSTuD/4k5+pC267xyBtYry748R9/c3tYUzb/iE6RZfllRz2lVulLCHkTm4w==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@typescript-eslint/tsconfig-utils@8.56.1':
@@ -2493,8 +2493,8 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4 <6.0.0'
 
-  '@typescript-eslint/tsconfig-utils@8.60.0':
-    resolution: {integrity: sha512-BZPR3RGYlAXnly6ymAxfkVn5rCbZzQNou0rxv3GfWZ8cTQp+hhVd73khbGLAd8k1TlAPLISH337M+tAgAnaJDQ==}
+  '@typescript-eslint/tsconfig-utils@8.60.1':
+    resolution: {integrity: sha512-nh8w4qAteiKuZu3pSSzG/yGKpw0OlkrKnzFmbVRenKaD4qc+7i1GrmZaLVkr8rk4uipiPGMOW4YsM6WmKZ5CvA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       typescript: '>=4.8.4 <6.1.0'
@@ -2503,8 +2503,8 @@ packages:
     resolution: {integrity: sha512-dbMkdIUkIkchgGDIv7KLUpa0Mda4IYjo4IAMJUZ+3xNoUXxMsk9YtKpTHSChRS85o+H9ftm51gsK1dZReY9CVw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript-eslint/types@8.60.0':
-    resolution: {integrity: sha512-AsE7x2XaAK+CVbeih0Fvbn+r1qHxtpLDJ3XUuFcIinT318T90yHMJC+Zgv+jUuDjQQd06HKwxnDu6sz1IcTilA==}
+  '@typescript-eslint/types@8.60.1':
+    resolution: {integrity: sha512-4h0tY8ppCkdCzcrl2YM5M3my0xsE1Tf8om3owEu5oPWmXwkKRmk0j0LGDzYBGUcAlesEbxBhazqu/K4cu3Ug7w==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@typescript-eslint/typescript-estree@8.56.1':
@@ -2513,8 +2513,8 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4 <6.0.0'
 
-  '@typescript-eslint/typescript-estree@8.60.0':
-    resolution: {integrity: sha512-3AcZNBGMClm6CXDyo8kYvVGT/sx29sS0oBsIb9oZI2gunA4Vm2M3YHzRLPvsUBBsl+yB5FPtltq7gGH0iTlp9g==}
+  '@typescript-eslint/typescript-estree@8.60.1':
+    resolution: {integrity: sha512-alpRkfG8hlVE5kdJW2GkfgDgXxold3e8e4l6EnmhRmRLbekgAPCCGDVD++sABy9FcgPFroq+uFcCSM1vR57Cew==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       typescript: '>=4.8.4 <6.1.0'
@@ -2530,8 +2530,8 @@ packages:
     resolution: {integrity: sha512-KiROIzYdEV85YygXw6BI/Dx4fnBlFQu6Mq4QE4MOH9fFnhohw6wX/OAvDY2/C+ut0I3RSPKenvZJIVYqJNkhEw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript-eslint/visitor-keys@8.60.0':
-    resolution: {integrity: sha512-9WI52t8ZGLVGrPMBet25yAftqY/n95+zmoUUtJBBQTKDSKUu7OsPTroT2op7U9JatkoRccL0YkWDNMFfC4Sjxg==}
+  '@typescript-eslint/visitor-keys@8.60.1':
+    resolution: {integrity: sha512-EbGRQg4FhrmwLodl+t3JNAnXHWVr9Vp+Zl1QBZVPY4ByfkzIT8cX3K6QWODHtkIZqqJVEWvhHSx3v5PDHsaQag==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260527.2':
@@ -3961,6 +3961,10 @@ packages:
 
   js-yaml@4.1.1:
     resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
+    hasBin: true
+
+  js-yaml@4.2.0:
+    resolution: {integrity: sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw==}
     hasBin: true
 
   json-buffer@3.0.1:
@@ -6048,7 +6052,7 @@ snapshots:
   '@changesets/parse@0.4.3':
     dependencies:
       '@changesets/types': 6.1.0
-      js-yaml: 4.1.1
+      js-yaml: 4.2.0
 
   '@changesets/pre@2.0.2':
     dependencies:
@@ -7606,7 +7610,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@savvy-web/rslib-builder@0.20.12(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)':
+  '@savvy-web/rslib-builder@0.21.0(@pnpm/logger@1001.0.1)(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260527.2)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)':
     dependencies:
       '@microsoft/api-extractor': 7.58.7(@types/node@25.9.1)
       '@microsoft/tsdoc': 0.16.0
@@ -7619,7 +7623,7 @@ snapshots:
       '@rsbuild/core': 2.0.9
       '@rslib/core': 0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260527.2)(typescript@6.0.3)
       '@types/node': 25.9.1
-      '@typescript-eslint/parser': 8.60.0(eslint@10.4.1(jiti@2.7.0))(typescript@6.0.3)
+      '@typescript-eslint/parser': 8.60.1(eslint@10.4.1(jiti@2.7.0))(typescript@6.0.3)
       '@typescript/native-preview': 7.0.0-dev.20260527.2
       deep-equal: 2.2.3
       eslint: 10.4.1(jiti@2.7.0)
@@ -7769,12 +7773,12 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@typescript-eslint/parser@8.60.0(eslint@10.4.1(jiti@2.7.0))(typescript@6.0.3)':
+  '@typescript-eslint/parser@8.60.1(eslint@10.4.1(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
-      '@typescript-eslint/scope-manager': 8.60.0
-      '@typescript-eslint/types': 8.60.0
-      '@typescript-eslint/typescript-estree': 8.60.0(typescript@6.0.3)
-      '@typescript-eslint/visitor-keys': 8.60.0
+      '@typescript-eslint/scope-manager': 8.60.1
+      '@typescript-eslint/types': 8.60.1
+      '@typescript-eslint/typescript-estree': 8.60.1(typescript@6.0.3)
+      '@typescript-eslint/visitor-keys': 8.60.1
       debug: 4.4.3
       eslint: 10.4.1(jiti@2.7.0)
       typescript: 6.0.3
@@ -7783,17 +7787,17 @@ snapshots:
 
   '@typescript-eslint/project-service@8.56.1(typescript@6.0.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.56.1(typescript@6.0.3)
-      '@typescript-eslint/types': 8.56.1
+      '@typescript-eslint/tsconfig-utils': 8.60.1(typescript@6.0.3)
+      '@typescript-eslint/types': 8.60.1
       debug: 4.4.3
       typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.60.0(typescript@6.0.3)':
+  '@typescript-eslint/project-service@8.60.1(typescript@6.0.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.60.0(typescript@6.0.3)
-      '@typescript-eslint/types': 8.60.0
+      '@typescript-eslint/tsconfig-utils': 8.60.1(typescript@6.0.3)
+      '@typescript-eslint/types': 8.60.1
       debug: 4.4.3
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -7804,22 +7808,22 @@ snapshots:
       '@typescript-eslint/types': 8.56.1
       '@typescript-eslint/visitor-keys': 8.56.1
 
-  '@typescript-eslint/scope-manager@8.60.0':
+  '@typescript-eslint/scope-manager@8.60.1':
     dependencies:
-      '@typescript-eslint/types': 8.60.0
-      '@typescript-eslint/visitor-keys': 8.60.0
+      '@typescript-eslint/types': 8.60.1
+      '@typescript-eslint/visitor-keys': 8.60.1
 
   '@typescript-eslint/tsconfig-utils@8.56.1(typescript@6.0.3)':
     dependencies:
       typescript: 6.0.3
 
-  '@typescript-eslint/tsconfig-utils@8.60.0(typescript@6.0.3)':
+  '@typescript-eslint/tsconfig-utils@8.60.1(typescript@6.0.3)':
     dependencies:
       typescript: 6.0.3
 
   '@typescript-eslint/types@8.56.1': {}
 
-  '@typescript-eslint/types@8.60.0': {}
+  '@typescript-eslint/types@8.60.1': {}
 
   '@typescript-eslint/typescript-estree@8.56.1(typescript@6.0.3)':
     dependencies:
@@ -7836,12 +7840,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@8.60.0(typescript@6.0.3)':
+  '@typescript-eslint/typescript-estree@8.60.1(typescript@6.0.3)':
     dependencies:
-      '@typescript-eslint/project-service': 8.60.0(typescript@6.0.3)
-      '@typescript-eslint/tsconfig-utils': 8.60.0(typescript@6.0.3)
-      '@typescript-eslint/types': 8.60.0
-      '@typescript-eslint/visitor-keys': 8.60.0
+      '@typescript-eslint/project-service': 8.60.1(typescript@6.0.3)
+      '@typescript-eslint/tsconfig-utils': 8.60.1(typescript@6.0.3)
+      '@typescript-eslint/types': 8.60.1
+      '@typescript-eslint/visitor-keys': 8.60.1
       debug: 4.4.3
       minimatch: 10.2.5
       semver: 7.8.1
@@ -7867,9 +7871,9 @@ snapshots:
       '@typescript-eslint/types': 8.56.1
       eslint-visitor-keys: 5.0.1
 
-  '@typescript-eslint/visitor-keys@8.60.0':
+  '@typescript-eslint/visitor-keys@8.60.1':
     dependencies:
-      '@typescript-eslint/types': 8.60.0
+      '@typescript-eslint/types': 8.60.1
       eslint-visitor-keys: 5.0.1
 
   '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260527.2':
@@ -8388,7 +8392,7 @@ snapshots:
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.1
-      js-yaml: 4.1.1
+      js-yaml: 4.2.0
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 6.0.3
@@ -9374,6 +9378,10 @@ snapshots:
       esprima: 4.0.1
 
   js-yaml@4.1.1:
+    dependencies:
+      argparse: 2.0.1
+
+  js-yaml@4.2.0:
     dependencies:
       argparse: 2.0.1
 
@@ -10402,7 +10410,7 @@ snapshots:
 
   read-yaml-file@2.1.0:
     dependencies:
-      js-yaml: 4.1.1
+      js-yaml: 4.2.0
       strip-bom: 4.0.0
 
   readable-stream@3.6.2:
@@ -11166,7 +11174,7 @@ snapshots:
       fast-glob: 3.3.3
       git-url-parse: 16.1.0
       jju: 1.4.0
-      js-yaml: 4.1.1
+      js-yaml: 4.2.0
       micromatch: 4.0.8
 
   workspace-tools@0.41.7:
@@ -11175,7 +11183,7 @@ snapshots:
       fast-glob: 3.3.3
       git-url-parse: 16.1.0
       jju: 1.4.0
-      js-yaml: 4.1.1
+      js-yaml: 4.2.0
       micromatch: 4.0.8
 
   workspaces-effect@1.1.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2):
@@ -11218,7 +11226,7 @@ snapshots:
 
   write-yaml-file@5.0.0:
     dependencies:
-      js-yaml: 4.1.1
+      js-yaml: 4.2.0
       write-file-atomic: 5.0.1
 
   ws@8.21.0: {}

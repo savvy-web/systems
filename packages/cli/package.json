@@ -42,7 +42,7 @@
 		"yaml": "^2.9.0"
 	},
 	"devDependencies": {
-		"@savvy-web/rslib-builder": "^0.20.12",
+		"@savvy-web/rslib-builder": "^0.21.0",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"typescript": "catalog:silk"
