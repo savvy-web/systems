@@ -20,6 +20,7 @@ export const DocsSearchHit = Schema.Struct({
 	confidence: Schema.Number,
 	confidenceLabel: Schema.Literal("high", "medium", "low"),
 	matchedOn: Schema.Array(Schema.String),
+	related: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] as ReadonlyArray<string> }),
 }).annotations({ identifier: "DocsSearchHit" });
 
 export const DocsSearchResult = Schema.Struct({
