@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/mcp",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"private": true,
 	"description": "The savvy MCP server — Silk Suite tooling and library knowledge for coding agents",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/mcp",
