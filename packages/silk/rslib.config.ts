@@ -19,6 +19,21 @@ export default NodeLibraryBuilder.create({
 		},
 	},
 	transform({ pkg }) {
+		// `@savvy-web/cli` and `@savvy-web/mcp` are declared as regular
+		// `dependencies` in source so changesets versions them in lockstep with
+		// silk: a peerDependency on a released workspace package forces a major
+		// bump (1.0.0) on every minor of the dependency. Consumers should still
+		// receive them as peers alongside the rest of the suite, so promote them
+		// back into `peerDependencies` for the published manifest before the
+		// `dependencies` block is stripped below.
+		for (const name of ["@savvy-web/cli", "@savvy-web/mcp"]) {
+			const range = pkg.dependencies?.[name];
+			if (range) {
+				pkg.peerDependencies ??= {};
+				pkg.peerDependencies[name] = range;
+			}
+		}
+		delete pkg.dependencies;
 		delete pkg.devDependencies;
 		delete pkg.bundleDependencies;
 		delete pkg.scripts;

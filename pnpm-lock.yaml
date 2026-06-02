@@ -45,6 +45,10 @@ catalogs:
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
+  silkPeers:
+    '@effect/platform':
+      specifier: '>=0.96.0'
+      version: 0.96.1
 
 overrides:
   '@isaacs/brace-expansion': ^5.0.1
@@ -64,6 +68,9 @@ importers:
       '@savvy-web/cli':
         specifier: workspace:*
         version: link:packages/cli/dist/dev
+      '@savvy-web/mcp':
+        specifier: workspace:*
+        version: link:packages/mcp/dist/dev
       '@savvy-web/silk':
         specifier: workspace:*
         version: link:packages/silk/dist/dev

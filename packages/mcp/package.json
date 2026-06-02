@@ -25,6 +25,7 @@
 	"bin": {
 		"savvy-mcp": "./src/bin.ts"
 	},
+	"files": ["resources"],
 	"scripts": {
 		"build:catalog": "tsx lib/scripts/build-catalog.ts",
 		"build:dev": "rslib build --config-loader native --env-mode dev",
