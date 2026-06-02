@@ -26,10 +26,10 @@
 		"savvy-mcp": "./src/bin.ts"
 	},
 	"scripts": {
-		"build:catalog": "tsx scripts/build-catalog.ts",
+		"build:catalog": "tsx lib/scripts/build-catalog.ts",
 		"build:dev": "rslib build --config-loader native --env-mode dev",
 		"build:prod": "rslib build --config-loader native --env-mode npm",
-		"generate:api-docs": "tsx scripts/generate-api-docs.ts",
+		"generate:api-docs": "tsx lib/scripts/generate-api-docs.ts",
 		"inspect": "exec mcp-inspector node ./dist/dev/bin/savvy-mcp.js",
 		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
@@ -46,13 +46,15 @@
 	},
 	"devDependencies": {
 		"@modelcontextprotocol/inspector": "^0.21.2",
-		"@savvy-web/rslib-builder": "^0.20.12",
+		"@rslib/core": "0.22.0",
+		"@savvy-web/rslib-builder": "^0.21.0",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"api-extractor-llms": "^0.1.0",
 		"gray-matter": "^4.0.3",
 		"tsx": "^4.22.4",
-		"typescript": "catalog:silk"
+		"typescript": "catalog:silk",
+		"vitest": "^4.1.8"
 	},
 	"publishConfig": {
 		"access": "public",

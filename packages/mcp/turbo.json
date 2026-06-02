@@ -2,44 +2,34 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:catalog": {
-			"cache": false,
+			"cache": true,
 			"dependsOn": ["generate:api-docs"],
-			"inputs": ["src/resources/content/**"],
+			"inputs": ["$TURBO_DEFAULT$", "src/resources/content/**", "!src/resources/content/manifest.json"],
 			"outputs": ["src/resources/content/manifest.json"]
 		},
 		"build:dev": {
-			"cache": false,
-			"dependsOn": ["build:catalog"],
-			"inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "src/resources/content/**"],
-			"outputLogs": "errors-only",
-			"outputs": ["dist/dev/**", ".rslib/declarations/dev/**"]
+			"dependsOn": ["$TURBO_EXTENDS$", "build:catalog"],
+			"inputs": ["$TURBO_EXTENDS$", "src/resources/content/**"]
 		},
 		"build:prod": {
-			"cache": true,
-			"dependsOn": ["build:catalog", "types:check"],
-			"inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "src/resources/content/**"],
-			"outputs": ["dist/npm/**", ".rslib/declarations/npm/**"]
+			"dependsOn": ["$TURBO_EXTENDS$", "build:catalog"],
+			"inputs": ["$TURBO_EXTENDS$", "src/resources/content/**"]
 		},
 		"generate:api-docs": {
-			"cache": false,
+			"cache": true,
 			"dependsOn": [
 				"@savvy-web/silk-effects#build:prod",
 				"@savvy-web/templates#build:prod",
 				"@savvy-web/github-action-effects#build:prod",
 				"@savvy-web/github-action-builder#build:prod"
 			],
+			"inputs": ["$TURBO_DEFAULT$", "lib/models/*/**"],
 			"outputs": ["src/resources/content/packages/*/api/**"]
 		},
 		"inspect": {
 			"cache": false,
 			"dependsOn": ["build:dev"],
 			"outputLogs": "full"
-		},
-		"types:check": {
-			"cache": true,
-			"dependsOn": ["^build:dev"],
-			"outputLogs": "errors-only",
-			"outputs": ["dist/.tsbuildinfo.lib"]
 		}
 	}
 }

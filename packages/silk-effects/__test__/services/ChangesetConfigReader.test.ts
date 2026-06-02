@@ -112,6 +112,30 @@ describe("ChangesetConfigReader", () => {
 
 			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
 		});
+
+		it("detects Silk config for the consolidated @savvy-web/silk/changesets/changelog string adapter", async () => {
+			const config = {
+				changelog: "@savvy-web/silk/changesets/changelog",
+				baseBranch: "main",
+			};
+			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+
+			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+
+			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+		});
+
+		it("detects Silk config when changelog array uses @savvy-web/silk/changesets/changelog as first element", async () => {
+			const config = {
+				changelog: ["@savvy-web/silk/changesets/changelog", { repo: "savvy-web/systems" }],
+				baseBranch: "main",
+			};
+			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+
+			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+
+			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+		});
 	});
 
 	describe("error cases", () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { API_TARGETS } from "../../scripts/api-targets.js";
-import { frontMatterFor } from "../../scripts/generate-api-docs.js";
+import { API_TARGETS } from "../../lib/scripts/api-targets.js";
+import { frontMatterFor } from "../../lib/scripts/generate-api-docs.js";
 
 const target = API_TARGETS.find((t) => t.dir === "silk-effects");
 if (!target) throw new Error("silk-effects target missing");

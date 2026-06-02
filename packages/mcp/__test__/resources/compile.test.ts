@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { RawDoc } from "../../scripts/compile.js";
-import { compileCorpus } from "../../scripts/compile.js";
+import type { RawDoc } from "../../lib/scripts/compile.js";
+import { compileCorpus } from "../../lib/scripts/compile.js";
 
 const registry = { changeset: ["changesets"], lint: ["biome"] };
 

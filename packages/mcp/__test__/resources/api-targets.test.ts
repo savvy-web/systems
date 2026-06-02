@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { API_TARGETS } from "../../scripts/api-targets.js";
+import { API_TARGETS } from "../../lib/scripts/api-targets.js";
 
 describe("API_TARGETS", () => {
 	it("lists the in-monorepo packages to generate API docs for", () => {

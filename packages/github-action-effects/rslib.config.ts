@@ -2,6 +2,7 @@ import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
 
 export default NodeLibraryBuilder.create({
 	apiModel: {
+		localPaths: ["../mcp/lib/models/github-action-effects"],
 		suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }],
 	},
 	externals: [
