@@ -58,10 +58,7 @@ export type CreateConfigOptions = Lint.CreateConfigOptions;
 
 export type LintStagedConfig = Lint.LintStagedConfig;
 
-// Facade whose preset methods are declared HERE (in @savvy-web/silk) and
-// annotated with silk's own LintStagedConfig, delegating to the silk-effects
-// Preset. Declaring the signatures in silk makes the inferred return type
-// portable for consumers that depend on silk but not silk-effects (no TS2883).
+// Facade declared in silk so consumer configs infer the return type from a direct dep (avoids TS2883).
 export const Preset = {
 	minimal(extend?: Lint.PresetExtendOptions): LintStagedConfig {
 		return Lint.Preset.minimal(extend);
