@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
 import { GitHubCommitError } from "../errors/GitHubCommitError.js";
-import type { CommitComparison, CommitDetail, CommitSummary } from "../services/GitHubCommit.js";
+import type { CommitComparison, CommitDetail, CommitFile, CommitSummary } from "../services/GitHubCommit.js";
 import { GitHubCommit } from "../services/GitHubCommit.js";
 
 /**
@@ -15,6 +15,8 @@ export interface GitHubCommitTestState {
 	readonly commitLists: Map<string, ReadonlyArray<CommitSummary>>;
 	/** Comparisons keyed by `${base}...${head}`, returned by compare. */
 	readonly comparisons: Map<string, CommitComparison>;
+	/** Changed files by ref, returned by changedFiles. */
+	readonly changedFiles: Map<string, ReadonlyArray<CommitFile>>;
 }
 
 const makeTestGitHubCommit = (state: GitHubCommitTestState): typeof GitHubCommit.Service => ({
@@ -30,6 +32,8 @@ const makeTestGitHubCommit = (state: GitHubCommitTestState): typeof GitHubCommit
 	list: (ref) => Effect.succeed(state.commitLists.get(ref) ?? []),
 
 	compare: (base, head) => Effect.succeed(state.comparisons.get(`${base}...${head}`) ?? { commits: [], files: [] }),
+
+	changedFiles: (ref) => Effect.succeed(state.changedFiles.get(ref) ?? []),
 });
 
 /**
@@ -47,5 +51,6 @@ export const GitHubCommitTest = {
 		commits: new Map(),
 		commitLists: new Map(),
 		comparisons: new Map(),
+		changedFiles: new Map(),
 	}),
 } as const;

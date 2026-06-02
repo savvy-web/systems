@@ -5,7 +5,7 @@ import { Data } from "effect";
  */
 export class GitHubCommitError extends Data.TaggedError("GitHubCommitError")<{
 	/** The operation that failed. */
-	readonly operation: "get" | "list" | "compare";
+	readonly operation: "get" | "list" | "compare" | "changedFiles";
 
 	/** The ref involved, when known. */
 	readonly ref?: string;

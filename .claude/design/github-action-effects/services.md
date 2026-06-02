@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-05-29
-last-synced: 2026-05-29
+updated: 2026-06-02
+last-synced: 2026-06-02
 completeness: 97
 related:
   - ./index.md
@@ -72,7 +72,7 @@ by `ActionsLogger`.
 │   ├── RateLimiter         — Rate limit awareness and retry
 │   ├── WorkflowDispatch    — Trigger and monitor workflow runs
 │   ├── GitHubContent       — Read repository file contents at a ref
-│   ├── GitHubCommit        — Read the commit graph (get/list/compare)
+│   ├── GitHubCommit        — Read the commit graph (get/list/compare/changedFiles)
 │   └── GitHubArtifactMetadata — GitHub Packages artifact-metadata storage records
 │
 ├── Build Tooling
@@ -600,7 +600,8 @@ Read the GitHub commit graph via the REST API. Distinct from `GitCommit`, which 
 
 - `get(ref)` -- Get a single commit by ref (SHA or branch name). Returns `CommitDetail`
 - `list(ref)` -- List commits reachable from a ref, paginated. Returns `Array<CommitSummary>`
-- `compare(base, head)` -- Compare two commits/refs; returns the commits and changed files between base and head. Returns `CommitComparison`
+- `compare(base, head)` -- Compare two commits/refs; returns the commits and changed files between base and head. Returns `CommitComparison`. Paginates by commit, so a single-commit comparison is truncated to its first 300 files — use `changedFiles` for the complete set in that case
+- `changedFiles(ref)` -- List every file changed in a single commit, paginated via `repos.getCommit`. Unlike `compare`, this paginates by the commit's files rather than by commit, so it returns the full set even for large (e.g. squash-merge) commits. Returns `Array<CommitFile>`
 
 **Types:** `CommitSummary { sha, message, author }`, `CommitDetail extends CommitSummary { parents }`, `CommitFile { filename, status }`, `CommitComparison { commits, files }`
 
