@@ -23,8 +23,8 @@ fi
 MCP="$SYSTEMS_DIR/packages/mcp"
 SCHEMA="$MCP/src/resources/schema.ts"
 TAGS="$MCP/src/resources/content/tags.json"
-COMPILE="$MCP/scripts/compile.ts"
-BUILD="$MCP/scripts/build-catalog.ts"
+COMPILE="$MCP/lib/scripts/compile.ts"
+BUILD="$MCP/lib/scripts/build-catalog.ts"
 
 echo "## Front-matter schema (live from schema.ts)"
 echo '```ts'

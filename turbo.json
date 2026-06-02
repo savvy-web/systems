@@ -6,24 +6,24 @@
 			"cache": true,
 			"dependsOn": [],
 			"inputs": ["*.ts", "src/**/*.ts", "lib/**/*.ts", "lib/**/*.mts"],
-			"outputLogs": "full",
-			"outputs": []
-		},
-		"build:catalog": {
-			"cache": false,
-			"dependsOn": [],
-			"outputs": []
+			"outputLogs": "errors-only",
+			"outputs": ["dist/.tsbuildinfo.lib"]
 		},
 		"build:dev": {
-			"cache": false,
-			"dependsOn": [],
+			"cache": true,
+			"dependsOn": ["^build:dev"],
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/package.json",
+				"$TURBO_ROOT$/pnpm-workspace.yaml",
+				"$TURBO_ROOT$/pnpm-lock.yaml",
 				"$TURBO_ROOT$/tsconfig.json",
 				"package.json",
 				"tsconfig.json",
-				"src/**/*.ts"
+				"README.md",
+				"LICENSE",
+				"lib/**/*",
+				"src/**/*"
 			],
 			"outputLogs": "full",
 			"outputs": ["dist/dev/**"]
@@ -34,25 +34,25 @@
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/package.json",
-				"$TURBO_ROOT$/tsconfig.json",
-				"$TURBO_ROOT$/pnpm-lock.yaml",
 				"$TURBO_ROOT$/pnpm-workspace.yaml",
-				"action.yml",
+				"$TURBO_ROOT$/pnpm-lock.yaml",
+				"$TURBO_ROOT$/tsconfig.json",
 				"package.json",
 				"tsconfig.json",
-				"src/**/*.ts",
-				"lib/**/*.ts",
-				"lib/**/*.mts",
 				"README.md",
-				"LICENSE"
+				"LICENSE",
+				"lib/**/*",
+				"src/**/*"
 			],
 			"outputLogs": "full",
 			"outputs": ["dist/npm/**"]
 		},
-		"generate:api-docs": {
-			"cache": false,
-			"dependsOn": [],
-			"outputs": []
+		"types:check": {
+			"cache": true,
+			"dependsOn": ["^build:dev"],
+			"inputs": ["*.ts", "src/**/*.ts", "lib/**/*.ts", "lib/**/*.mts", "__test__/**/*.ts"],
+			"outputLogs": "errors-only",
+			"outputs": ["dist/.tsbuildinfo.lib"]
 		}
 	}
 }

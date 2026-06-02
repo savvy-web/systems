@@ -11,12 +11,12 @@ import { fileURLToPath } from "node:url";
 
 import matter from "gray-matter";
 
-import { loadTagRegistry } from "../src/resources/tags.js";
+import { loadTagRegistry } from "../../src/resources/tags.js";
 import type { RawDoc } from "./compile.js";
 import { compileCorpus } from "./compile.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const contentRoot = join(here, "..", "src", "resources", "content");
+const contentRoot = join(here, "..", "..", "src", "resources", "content");
 
 function walk(dir: string): string[] {
 	return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

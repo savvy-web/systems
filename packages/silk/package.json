@@ -38,11 +38,16 @@
 		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
+	"dependencies": {
+		"@savvy-web/cli": "workspace:*",
+		"@savvy-web/mcp": "workspace:*"
+	},
 	"devDependencies": {
 		"@changesets/cli": "^2.31.0",
 		"@commitlint/cli": "^21.0.2",
 		"@commitlint/config-conventional": "^21.0.2",
-		"@savvy-web/rslib-builder": "^0.20.12",
+		"@rslib/core": "0.22.0",
+		"@savvy-web/rslib-builder": "^0.21.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
@@ -53,14 +58,14 @@
 		"markdownlint-cli2-formatter-codequality": "^0.0.7",
 		"prettier": "^3.8.3",
 		"turbo": "^2.9.16",
-		"typescript": "catalog:silk"
+		"typescript": "catalog:silk",
+		"vitest": "^4.1.8"
 	},
 	"peerDependencies": {
 		"@biomejs/biome": "2.4.16",
 		"@changesets/cli": "^2.31.0",
 		"@commitlint/cli": "^21.0.1",
 		"@commitlint/config-conventional": "^21.0.2",
-		"@savvy-web/cli": "workspace:*",
 		"@types/node": "catalog:silkPeers",
 		"@typescript/native-preview": "catalog:silkPeers",
 		"commitizen": "^4.3.0",

@@ -113,7 +113,7 @@ Generated docs carry empty `related` by design (decision 4 from the plan): no co
 
 The generator is **skip-tolerant**: if a target's model is absent, it logs `SKIP` and exits 0. A bare `pnpm install` (which runs `prepare: turbo run build:dev`) therefore never fails due to a missing model.
 
-The body-budget guard in `scripts/compile.ts` exempts `source: generated` docs from the per-tier byte-size warning — generated pages are split per API item, not editorially constrained.
+The body-budget guard in `lib/scripts/compile.ts` exempts `source: generated` docs from the per-tier byte-size warning — generated pages are split per API item, not editorially constrained.
 
 **Turbo orchestration.** `packages/mcp/turbo.json` (extends `//`) declares the task graph:
 
@@ -133,7 +133,7 @@ See `../api-extractor-llms/architecture.md` for the external library that perfor
 
 ### The build-time compiler
 
-`scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `scripts/build-catalog.ts` is the I/O shell that walks the corpus, parses front-matter with gray-matter, runs `compileCorpus`, and writes `content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory match, `related`-target resolution, controlled tags, per-tier body-size budgets (skipped for `source: generated`), a dead `workflow-*`-name grep, the generated-doc provenance marker, and a `git log` lastModified stamp per doc. The manifest is a **gitignored build artifact**, regenerated each build.
+`lib/scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `scripts/build-catalog.ts` is the I/O shell that walks the corpus, parses front-matter with gray-matter, runs `compileCorpus`, and writes `content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory match, `related`-target resolution, controlled tags, per-tier body-size budgets (skipped for `source: generated`), a dead `workflow-*`-name grep, the generated-doc provenance marker, and a `git log` lastModified stamp per doc. The manifest is a **gitignored build artifact**, regenerated each build.
 
 `build:catalog` (run with `tsx`) is sequenced via turbo (see above) ahead of `build:dev`/`build:prod`. `rslib.config.ts` `copyPatterns` bundles `content/` into `dist/<env>/resources/content` so the built binary serves the same corpus, including generated docs.
 

@@ -41,3 +41,6 @@ docs/superpowers
 .mcp.json
 .worktrees
 docs/superpowers
+
+# Local development files
+packages/mcp/lib/models/*/

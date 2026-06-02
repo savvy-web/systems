@@ -54,13 +54,17 @@
 		"@changesets/types": "^6.1.0",
 		"@commitlint/types": "^21.0.1",
 		"@effect/platform-node": "catalog:silk",
-		"@savvy-web/rslib-builder": "^0.20.12",
+		"@rslib/core": "0.22.0",
+		"@savvy-web/rslib-builder": "^0.21.0",
 		"@types/mdast": "^4.0.4",
 		"@types/node": "catalog:silk",
 		"@types/shell-quote": "^1.7.5",
+		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
 		"fast-check": "^4.8.0",
-		"markdownlint": "^0.40.0"
+		"markdownlint": "^0.40.0",
+		"typescript": "catalog:silk",
+		"vitest": "^4.1.8"
 	},
 	"peerDependencies": {
 		"@effect/platform": "catalog:silkPeers",

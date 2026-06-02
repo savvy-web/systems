@@ -6,10 +6,10 @@
  */
 
 import { Schema } from "effect";
-import type { Manifest, ManifestEntry } from "../src/resources/schema.js";
-import { DocFrontMatter } from "../src/resources/schema.js";
-import type { TagRegistry } from "../src/resources/tags.js";
-import { canonicalizeTags } from "../src/resources/tags.js";
+import type { Manifest, ManifestEntry } from "../../src/resources/schema.js";
+import { DocFrontMatter } from "../../src/resources/schema.js";
+import type { TagRegistry } from "../../src/resources/tags.js";
+import { canonicalizeTags } from "../../src/resources/tags.js";
 
 export interface RawDoc {
 	readonly relPath: string; // e.g. "standards/changeset-discipline.md"
