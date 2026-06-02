@@ -47,7 +47,7 @@
 		"@commitlint/cli": "^21.0.2",
 		"@commitlint/config-conventional": "^21.0.2",
 		"@rslib/core": "0.22.0",
-		"@savvy-web/rslib-builder": "^0.21.0",
+		"@savvy-web/rslib-builder": "^0.21.1",
 		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",

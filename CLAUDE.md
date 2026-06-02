@@ -71,7 +71,7 @@ Load when working on the `savvy` CLI. Covers the static command tree, the merged
 **@savvy-web/silk architecture — the config-integration shim surface and Biome asset:**
 → `@./.claude/design/silk/architecture.md`
 
-Load when working on `@savvy-web/silk`. Covers the drop-in shim contract, the export map, the dual-format-for-CJS requirement, peerDep wiring, and the consumer model.
+Load when working on `@savvy-web/silk`. Covers the drop-in shim contract, the export map, the dual-format-for-CJS requirement, peerDep wiring, the consumer model, and the type-portability invariant (silk-local facades over the `CommitlintConfig`/`Preset` factories so consumer configs emit portable `.d.ts` and avoid TS2883).
 
 **plugins/silk — the merged Claude Code plugin:**
 → `@./.claude/design/silk/plugin.md`
