@@ -1,5 +1,19 @@
 # @savvy-web/silk
 
+## 0.2.1
+
+### Bug Fixes
+
+* [`29ea5bb`](https://github.com/savvy-web/systems/commit/29ea5bb049ba469e5d44282fd1ae8fbf78b78dba) Fixed a portability error in the config-integration shims. Consumer config files that infer a factory's return type — `export default CommitlintConfig.silk()` from `@savvy-web/silk/commitlint`, or `Preset.silk()` / `Preset.minimal()` / `Preset.standard()` / `Preset.get(...)` from `@savvy-web/silk/lint` — failed to type-check under pnpm with TS2883, because the inferred type's canonical home was `@savvy-web/silk-effects`, a transitive dependency the consumer could not name. The shims now wrap these factories in silk-local facades with silk-owned return types, so consumer declaration emit is portable and no type annotation is needed. The public API is unchanged and consumers require no code changes.
+  | Dependency     | Type       | Action  | From  | To    |
+  | -------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/cli | dependency | updated | 0.2.0 | 0.2.1 |
+  | @savvy-web/mcp | dependency | updated | 0.2.0 | 0.2.1 |
+
+### Documentation
+
+* [`a9ea047`](https://github.com/savvy-web/systems/commit/a9ea04701507a3d5fb290dbaa1eeb3d5f599a67b) Added package READMEs for `@savvy-web/silk`, `@savvy-web/cli`, and `@savvy-web/mcp`. Each covers installation, quick-start usage, and the package's public surface — the `savvy` commands for the CLI, the drop-in config shim export map for silk, and the tool and resource surface for the MCP server. These READMEs ship with each package and render on its npm page.
+
 ## 0.2.0
 
 ### Features

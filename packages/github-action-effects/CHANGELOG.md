@@ -1,5 +1,13 @@
 # @savvy-web/github-action-effects
 
+## 2.1.0
+
+### Features
+
+* [`a9ea047`](https://github.com/savvy-web/systems/commit/a9ea04701507a3d5fb290dbaa1eeb3d5f599a67b) Added `GitHubCommit.changedFiles(ref)` — lists every file changed in a single commit, paginated via `repos.getCommit`. Unlike `compare`, which paginates by commit and therefore truncates a single-commit comparison to its first 300 files, `changedFiles` returns the complete set even for large (e.g. squash-merge) commits.
+
+- `changedFiles` added to the `GitHubCommit` service interface, its live layer, and the test double
+
 ## 2.0.3
 
 ### Other
