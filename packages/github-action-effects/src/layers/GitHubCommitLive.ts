@@ -16,12 +16,13 @@ interface RawListedCommit {
 	readonly sha: string;
 	readonly commit: RawCommitMeta;
 }
-interface RawCommit extends RawListedCommit {
-	readonly parents: ReadonlyArray<{ readonly sha: string }>;
-}
 interface RawCommitFile {
 	readonly filename: string;
 	readonly status: string;
+}
+interface RawCommit extends RawListedCommit {
+	readonly parents: ReadonlyArray<{ readonly sha: string }>;
+	readonly files?: ReadonlyArray<RawCommitFile>;
 }
 interface RawComparison {
 	readonly commits: ReadonlyArray<RawListedCommit>;
@@ -98,6 +99,21 @@ export const GitHubCommitLive: Layer.Layer<GitHubCommit, never, GitHubClient> = 
 			).pipe(
 				Effect.map((data) => toComparison(data as unknown as RawComparison)),
 				Effect.mapError(mapClientError("compare", `${base}...${head}`)),
+			),
+
+		changedFiles: (ref: string) =>
+			Effect.flatMap(client.repo, ({ owner, repo }) =>
+				client.paginate<RawCommitFile>(
+					"repos.getCommit",
+					(octokit, page, perPage) =>
+						asCommits(octokit)
+							.rest.repos.getCommit({ owner, repo, ref, page, per_page: perPage })
+							.then((res) => ({ ...res, data: [...(res.data.files ?? [])] })),
+					{},
+				),
+			).pipe(
+				Effect.map((files) => files.map((f) => ({ filename: f.filename, status: f.status }))),
+				Effect.mapError(mapClientError("changedFiles", ref)),
 			),
 	})),
 );

@@ -25,6 +25,24 @@ pnpm add @savvy-web/silk-effects effect @effect/platform @effect/platform-node
 
 See the [silk-effects README](./packages/silk-effects/README.md) for usage examples.
 
+### @savvy-web/silk
+
+The single package a consumer installs to get the whole Silk Suite dev-tooling system: drop-in config entry points for changesets, commitlint and lint-staged, a Biome preset and — through its peers — the `savvy` CLI.
+
+See the [silk README](./packages/silk/README.md) for the config entry points and export map.
+
+### @savvy-web/cli
+
+The `savvy` binary: one command to set up changeset, commit and lint conventions in a Silk Suite project, check them and run the git hooks behind them.
+
+See the [cli README](./packages/cli/README.md) for the command reference.
+
+### @savvy-web/mcp
+
+The `savvy-mcp` Model Context Protocol server, serving Silk Suite tooling and library knowledge to coding agents as structured tools and a curated documentation corpus.
+
+See the [mcp README](./packages/mcp/README.md) for the tool and resource surface.
+
 ### @savvy-web/github-action-effects
 
 [Effect](https://effect.website/) services for building GitHub Actions: schema-validated inputs, structured logging that maps to workflow commands and typed wrappers around the GitHub API, with no `@actions/*` packages in the dependency tree.
@@ -40,7 +58,6 @@ See the [github-action-builder README](./packages/github-action-builder/README.m
 ### Planned
 
 - **@savvy-web/templates** -- Effect-based project scaffolding (replacing Yeoman generators)
-- **@savvy-web/cli** -- `savvy` CLI for workspace management
 
 ## Claude Code Plugin Marketplace
 

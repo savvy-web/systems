@@ -63,5 +63,18 @@ export class GitHubCommit extends Context.Tag("github-action-effects/GitHubCommi
 
 		/** Compare two commits/refs; returns the commits and changed files between base and head. */
 		readonly compare: (base: string, head: string) => Effect.Effect<CommitComparison, GitHubCommitError>;
+
+		/**
+		 * List every file changed in a single commit, paginated.
+		 *
+		 * @remarks
+		 * Backed by `repos.getCommit`, whose `files` array is capped at 300 per
+		 * page but paginates by file for a single commit — so this returns the
+		 * complete set even for large (e.g. squash-merge) commits. Prefer this
+		 * over {@link compare} when the comparison is a single commit: the
+		 * compare endpoint paginates by commit, so a one-commit comparison is
+		 * permanently truncated to its first 300 files.
+		 */
+		readonly changedFiles: (ref: string) => Effect.Effect<ReadonlyArray<CommitFile>, GitHubCommitError>;
 	}
 >() {}

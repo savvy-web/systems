@@ -102,6 +102,52 @@ describe("GitHubCommitLive", () => {
 		});
 	});
 
+	it("changedFiles aggregates files across all paginated getCommit pages", async () => {
+		// Regression: a squash-merged release commit changed 554 files; the
+		// compareCommits endpoint paginates by commit and caps a single-commit
+		// comparison at 300 files, dropping packages whose package.json sorts
+		// past #300. changedFiles must surface every page's files.
+		const result = await Effect.runPromise(
+			Effect.gen(function* () {
+				const svc = yield* GitHubCommit;
+				return yield* svc.changedFiles("squash-sha");
+			}).pipe(
+				Effect.provide(GitHubCommitLive),
+				Effect.provide(
+					GitHubClientTest.layer(
+						clientState({
+							paginate: [
+								[
+									"repos.getCommit",
+									[
+										[{ filename: "packages/cli/package.json", status: "modified" }],
+										[{ filename: "packages/silk/package.json", status: "modified" }],
+									],
+								],
+							],
+						}),
+					),
+				),
+			),
+		);
+		expect(result).toEqual([
+			{ filename: "packages/cli/package.json", status: "modified" },
+			{ filename: "packages/silk/package.json", status: "modified" },
+		]);
+	});
+
+	it("changedFiles wraps client errors as GitHubCommitError carrying the ref", async () => {
+		const result = await Effect.runPromise(
+			Effect.gen(function* () {
+				const svc = yield* GitHubCommit;
+				return yield* svc.changedFiles("squash-sha");
+			}).pipe(Effect.provide(GitHubCommitLive), Effect.provide(GitHubClientTest.layer(clientState({}))), Effect.flip),
+		);
+		expect(result._tag).toBe("GitHubCommitError");
+		expect(result.operation).toBe("changedFiles");
+		expect(result.ref).toBe("squash-sha");
+	});
+
 	it("compare wraps client errors as GitHubCommitError carrying the base...head ref", async () => {
 		const result = await Effect.runPromise(
 			Effect.gen(function* () {
