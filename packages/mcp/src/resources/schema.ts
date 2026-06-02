@@ -39,7 +39,6 @@ export const ManifestEntry = Schema.Struct({
 export type ManifestEntry = Schema.Schema.Type<typeof ManifestEntry>;
 
 export const Manifest = Schema.Struct({
-	generatedAt: Schema.String,
 	entries: Schema.Array(ManifestEntry),
 });
 export type Manifest = Schema.Schema.Type<typeof Manifest>;

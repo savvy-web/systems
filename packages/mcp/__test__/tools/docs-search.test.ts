@@ -6,7 +6,6 @@ import type { Manifest } from "../../src/resources/schema.js";
 import { DocsSearchResult, formatDocsSearchMarkdown, runDocsSearch } from "../../src/tools/docs-search.js";
 
 const manifest: Manifest = {
-	generatedAt: "2026-05-31T00:00:00Z",
 	entries: [
 		{
 			id: "standards/changeset-discipline",
@@ -49,7 +48,6 @@ describe("docs-search tool", () => {
 
 	it("DocsSearchHit carries the related ids", () => {
 		const m: Manifest = {
-			generatedAt: "2026-06-01T00:00:00Z",
 			entries: [
 				{
 					id: "standards/a",

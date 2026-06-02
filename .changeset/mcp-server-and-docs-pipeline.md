@@ -21,9 +21,9 @@ The `McpContext` public export carries the resource layer, so the barrel also re
 
 The server is built on `@modelcontextprotocol/sdk` with Effect-based service wiring over `@savvy-web/silk-effects`. Effect Schema is the source of truth for tool input and output, bridged to Zod only at the MCP registration boundary. It consumes the external unscoped `api-extractor-llms` npm package as a build-time devDependency to render the generated API-reference tier (see below).
 
-### Ephemeral API-doc generation pipeline
+### API-doc generation pipeline
 
-The server generates per-package API-reference docs at startup from in-monorepo library packages' API Extractor models, via `api-extractor-llms`. The generated docs occupy the `silk://packages/<pkg>/api/*` tier of the resource tree and are available immediately to agents via `silk_docs_search` and the `silk://{+path}` resource template. Generation is ephemeral — docs are produced on demand during the build phase and are not checked into the repo.
+The server's per-package API-reference docs are rendered from in-monorepo library packages' API Extractor models, via `api-extractor-llms`. They occupy the `silk://packages/<pkg>/api/*` tier of the resource tree and are available to agents via `silk_docs_search` and the `silk://{+path}` resource template. The rendered markdown is tracked source content that ships in the published package; only the upstream `.api.json` Extractor models stay out of version control. The catalog `manifest.json` is likewise tracked, and every resource carries an accurate `lastModified` drawn from its git history.
 
 ### Body-content search
 

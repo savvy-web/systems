@@ -4,7 +4,6 @@ import { renderCatalogMarkdown } from "../../src/resources/catalog.js";
 import type { Manifest } from "../../src/resources/schema.js";
 
 const manifest: Manifest = {
-	generatedAt: "2026-05-31T00:00:00Z",
 	entries: [
 		{
 			id: "standards/commit-contract",

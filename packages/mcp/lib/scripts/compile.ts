@@ -97,7 +97,7 @@ export function compileCorpus(docs: ReadonlyArray<RawDoc>, registry: TagRegistry
 	}
 
 	return {
-		manifest: { generatedAt: "", entries },
+		manifest: { entries },
 		bodies,
 		errors,
 		warnings,
