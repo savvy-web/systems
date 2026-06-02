@@ -7,7 +7,7 @@ import { buildServer } from "../src/server.js";
 
 describe("buildServer", () => {
 	it("assembles the server, registering the tools and resources without throwing", () => {
-		const manifest: Manifest = { generatedAt: "2026-05-31T00:00:00Z", entries: [] };
+		const manifest: Manifest = { entries: [] };
 		const ctx: McpContext = {
 			runtime: null as unknown as McpContext["runtime"],
 			cwd: "/tmp",

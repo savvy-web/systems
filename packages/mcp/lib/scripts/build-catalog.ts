@@ -8,6 +8,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 import matter from "gray-matter";
 
@@ -57,6 +58,23 @@ if (result.errors.length > 0) {
 	process.exit(1);
 }
 
-const manifest = { ...result.manifest, generatedAt: new Date().toISOString() };
-writeFileSync(join(contentRoot, "manifest.json"), `${JSON.stringify(manifest, null, "\t")}\n`);
-process.stderr.write(`[build-catalog] wrote manifest with ${manifest.entries.length} entries\n`);
+const { manifest } = result;
+const manifestPath = join(contentRoot, "manifest.json");
+const next = `${JSON.stringify(manifest, null, "\t")}\n`;
+
+// Only rewrite when the compiled manifest differs in value from what's on disk.
+// Deep-equality on the parsed JSON (not the serialized bytes) means a formatter
+// reindenting manifest.json won't trigger a rewrite, so the build doesn't fight
+// lint/format or churn git on no-op runs.
+let current: unknown;
+try {
+	current = JSON.parse(readFileSync(manifestPath, "utf8"));
+} catch {
+	current = undefined;
+}
+if (isDeepStrictEqual(current, JSON.parse(next))) {
+	process.stderr.write(`[build-catalog] manifest unchanged (${manifest.entries.length} entries)\n`);
+} else {
+	writeFileSync(manifestPath, next);
+	process.stderr.write(`[build-catalog] wrote manifest with ${manifest.entries.length} entries\n`);
+}

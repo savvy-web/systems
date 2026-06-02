@@ -4,7 +4,6 @@ import { DocIndex } from "../../src/resources/doc-index.js";
 import type { Manifest } from "../../src/resources/schema.js";
 
 const manifest: Manifest = {
-	generatedAt: "2026-05-31T00:00:00Z",
 	entries: [
 		{
 			id: "standards/changeset-discipline",
@@ -67,7 +66,6 @@ describe("DocIndex", () => {
 
 	it("surfaces a doc when the query term appears only in its body", () => {
 		const m: Manifest = {
-			generatedAt: "2026-06-01T00:00:00Z",
 			entries: [
 				{
 					id: "standards/commit-contract",
@@ -94,7 +92,6 @@ describe("DocIndex", () => {
 
 	it("appends related neighbors of a top hit as see-also entries", () => {
 		const m: Manifest = {
-			generatedAt: "2026-06-01T00:00:00Z",
 			entries: [
 				{
 					id: "standards/changeset-discipline",
@@ -138,7 +135,6 @@ describe("DocIndex", () => {
 
 	it("excludes deprecated docs from the index", () => {
 		const withDeprecated: Manifest = {
-			generatedAt: manifest.generatedAt,
 			entries: [
 				...manifest.entries,
 				{

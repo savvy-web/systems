@@ -3,8 +3,8 @@ status: current
 module: mcp
 category: architecture
 created: 2026-05-31
-updated: 2026-06-01
-last-synced: 2026-06-01
+updated: 2026-06-02
+last-synced: 2026-06-02
 completeness: 95
 related:
   - ../silk-effects/architecture.md
@@ -82,7 +82,7 @@ Every tool follows the conventions proven by `workspace_info` (`src/tools/worksp
 
 ## The Resource Half
 
-Resources serve a curated, on-disk markdown corpus behind a stable URI scheme. A build-time compiler validates the corpus and emits a manifest; the runtime serves from that manifest plus the bodies on disk. The Phase B work added an ephemeral API-doc generation pipeline that feeds generated docs into this same corpus.
+Resources serve a curated, on-disk markdown corpus behind a stable URI scheme. A build-time compiler validates the corpus and emits the (tracked) manifest; the runtime serves from that manifest plus the bodies on disk. The Phase B work added an API-doc generation pipeline that renders generated docs into this same corpus as tracked source content.
 
 ### The content corpus and its identity contract
 
@@ -100,7 +100,7 @@ Tags are drawn from a controlled vocabulary in `content/tags.json` (canonical ta
 
 ### The API-doc generation pipeline
 
-Generated docs are `source: generated` entries in the corpus. They are produced by an ephemeral turbo-orchestrated pipeline and are **gitignored** (`src/resources/content/packages/*/api/`). On a fresh clone or bare install they are absent; `build:catalog` and `build:dev`/`build:prod` will (re)generate them via turbo.
+Generated docs are `source: generated` entries in the corpus. They are produced by a turbo-orchestrated pipeline and are **tracked source content** (`src/resources/content/packages/*/api/`), committed to the repo and shipped in the npm tarball. Only the upstream API Extractor `.api.json` **model files** are gitignored, via the root `.gitignore` rule `packages/mcp/lib/models/*/`. Tracking the rendered docs (rather than gitignoring them) is what gives each entry a real `lastModified` — the file's git commit date — instead of the epoch fallback the compiler emits when `git log` has no record of the file (see [The build-time compiler](#the-build-time-compiler)). The pipeline still regenerates them deterministically from the models; the deep-equality write guard means a no-op run leaves the committed files untouched.
 
 **Targets.** `scripts/api-targets.ts` declares the four in-monorepo library packages that are generation targets: `silk-effects`, `templates`, `github-action-effects` and `github-action-builder`. `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle. Excluding mcp keeps the build subgraph acyclic even if `silk` later depends on `mcp`.
 
@@ -127,13 +127,15 @@ The body-budget guard in `lib/scripts/compile.ts` exempts `source: generated` do
 @savvy-web/mcp#build:dev / build:prod
 ```
 
-`generate:api-docs` depends only on the four explicit in-monorepo library `#build:prod` tasks (not `^build:prod`) so `silk`/`cli`/`mcp` never enter mcp's build subgraph. It has **no** workspace edge for the renderer itself: `api-extractor-llms` is now an external npm package, so the generator pulls it from `node_modules` rather than waiting on a sibling build (the former `@savvy-web/api-extractor-llms#build:dev` edge is gone). `build:catalog` depends on `generate:api-docs`. mcp's own `build:dev`/`build:prod` depend on `build:catalog`. The four prod builds are `cache: true`, so turbo restores their `dist/npm` (including `.api.json`) from cache on repeat runs. `generate:api-docs` and `build:catalog` are `cache: false` (outputs are ephemeral build artifacts, not committed).
+`generate:api-docs` depends only on the four explicit in-monorepo library `#build:prod` tasks (not `^build:prod`) so `silk`/`cli`/`mcp` never enter mcp's build subgraph. It has **no** workspace edge for the renderer itself: `api-extractor-llms` is now an external npm package, so the generator pulls it from `node_modules` rather than waiting on a sibling build (the former `@savvy-web/api-extractor-llms#build:dev` edge is gone). `build:catalog` depends on `generate:api-docs`. mcp's own `build:dev`/`build:prod` depend on `build:catalog`. The four prod builds are `cache: true`, so turbo restores their `dist/npm` (including `.api.json`) from cache on repeat runs. `generate:api-docs` and `build:catalog` are also `cache: true` with declared `outputs` (`content/packages/*/api/**` and `manifest.json` respectively): both write into tracked source content, so a no-op run restores from cache and — combined with the build-catalog write guard — leaves git clean.
 
 See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
 
 ### The build-time compiler
 
-`lib/scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `scripts/build-catalog.ts` is the I/O shell that walks the corpus, parses front-matter with gray-matter, runs `compileCorpus`, and writes `content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory match, `related`-target resolution, controlled tags, per-tier body-size budgets (skipped for `source: generated`), a dead `workflow-*`-name grep, the generated-doc provenance marker, and a `git log` lastModified stamp per doc. The manifest is a **gitignored build artifact**, regenerated each build.
+`lib/scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `lib/scripts/build-catalog.ts` is the I/O shell that walks the corpus, parses front-matter with gray-matter, runs `compileCorpus`, and writes `content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory match, `related`-target resolution, controlled tags, per-tier body-size budgets (skipped for `source: generated`), a dead `workflow-*`-name grep, the generated-doc provenance marker, and a per-doc `lastModified` stamp from `git log -1 --format=%cI -- <file>` (falling back to the epoch when git has no record of the file — which is why both the rendered API docs and the manifest are tracked rather than gitignored).
+
+The manifest is **tracked source content**, not a build artifact: `{ entries }` only — a deterministic function of the corpus, with each entry's `lastModified` being the file's git commit date. The former per-build `generatedAt` wall-clock timestamp was dropped (nothing read it at runtime; it was pure git churn), so two builds of the same content produce byte-identical manifests. `build-catalog.ts` applies a `node:util` `isDeepStrictEqual` write guard: it only rewrites `manifest.json` when the parsed value actually differs from what is on disk, so a Biome reindent of the committed file does not trigger a rewrite and the build never fights the formatter or churns git on no-op runs. Biome owns the committed format; the build respects it.
 
 `build:catalog` (run with `tsx`) is sequenced via turbo (see above) ahead of `build:dev`/`build:prod`. `rslib.config.ts` `copyPatterns` bundles `content/` into `dist/<env>/resources/content` so the built binary serves the same corpus, including generated docs.
 
@@ -185,9 +187,9 @@ The parent silk-core spec framed the MCP as a thin discovery host peer to the CL
 
 `WorkspaceAnalysis` uses recursive `Schema.suspend` for `linked`/`fixed` cross-references, which the Effect-Schema → JSON-Schema → zod bridge cannot inline. Projecting to a flat, name-only result both satisfies the bridge and produces more token-efficient output for the consuming agent. The projection is the tool's contract; the rich analysis stays the analyzer's contract in silk-effects.
 
-### Why generated docs are ephemeral and gitignored
+### Why generated docs and the manifest are tracked, not gitignored
 
-Generated API docs are a deterministic function of the source packages' `.api.json` models, which are themselves build artifacts. Committing them would bloat the repo and create a false impression that they are hand-maintained. The turbo pipeline reconstructs them on any machine that builds mcp. The skip-tolerant generator ensures a bare install never fails even when models are absent.
+Generated API docs are a deterministic function of the source packages' `.api.json` models. They were originally gitignored on the theory that committing them would bloat the repo and imply hand-maintenance. That backfired: the compiler stamps each entry's `lastModified` from `git log -1 --format=%cI -- <file>`, and a gitignored file has no commit, so `git log` returned empty and every generated doc — plus the manifest itself — fell back to the epoch (`1970-01-01T00:00:00.000Z`). Tracking the rendered docs and the manifest as source content gives them real commit dates and a correct `lastModified`. The deterministic, churn-free manifest (no `generatedAt`) plus the deep-equality write guard keep the committed copies stable across rebuilds, and the skip-tolerant generator still ensures a bare install never fails when models are absent. Only the upstream `.api.json` models stay gitignored, since those are genuine throwaway build inputs.
 
 ### Why the related-graph boost uses compiled-time-validated ids
 

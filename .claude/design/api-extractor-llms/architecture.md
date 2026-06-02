@@ -3,8 +3,8 @@ status: current
 module: api-extractor-llms
 category: architecture
 created: 2026-06-01
-updated: 2026-06-01
-last-synced: 2026-06-01
+updated: 2026-06-02
+last-synced: 2026-06-02
 completeness: 100
 related:
   - ../mcp/architecture.md
@@ -34,7 +34,7 @@ Extracted and published as `api-extractor-llms@^0.1.0` (unscoped name). It is no
 
 ## How this repo consumes it
 
-`packages/mcp/scripts/generate-api-docs.ts` imports `loadApiModel` and `renderPackage` from `"api-extractor-llms"` and drives the mcp API-doc generation pipeline. mcp injects a silk-specific `FrontmatterRenderer` and a `silk://packages/<dir>/api/<kind>/<slug>` `RouteFormatter`, then writes the rendered docs into the gitignored `content/packages/*/api/` corpus. The full pipeline — targets, turbo orchestration, the generated-doc identity contract — is documented in `../mcp/architecture.md` under "The API-doc generation pipeline".
+`packages/mcp/scripts/generate-api-docs.ts` imports `loadApiModel` and `renderPackage` from `"api-extractor-llms"` and drives the mcp API-doc generation pipeline. mcp injects a silk-specific `FrontmatterRenderer` and a `silk://packages/<dir>/api/<kind>/<slug>` `RouteFormatter`, then writes the rendered docs into the tracked `content/packages/*/api/` corpus (committed source content, not gitignored — only the upstream `.api.json` models are gitignored). The full pipeline — targets, turbo orchestration, the generated-doc identity contract — is documented in `../mcp/architecture.md` under "The API-doc generation pipeline".
 
 ## Rationale
 
