@@ -3,9 +3,9 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-05-31
-last-synced: 2026-05-31
-completeness: 90
+updated: 2026-06-02
+last-synced: 2026-06-02
+completeness: 92
 related:
   - ../cli/architecture.md
   - ../silk-effects/architecture.md
@@ -25,6 +25,7 @@ config-integration shim surface over `@savvy-web/silk-effects`, plus a static Bi
 - [The Shim Contract](#the-shim-contract)
 - [Export Map](#export-map)
 - [Boundaries and Invariants](#boundaries-and-invariants)
+- [The Type-Portability Invariant](#the-type-portability-invariant)
 - [Consumer Model](#consumer-model)
 - [Rationale](#rationale)
 
@@ -32,9 +33,11 @@ config-integration shim surface over `@savvy-web/silk-effects`, plus a static Bi
 
 `@savvy-web/silk` is the install surface, not a library. Each subpath export is a thin **shim** that
 re-exports `silk-effects` logic shaped into the exact module form an external tool's config loader
-expects. The shims carry no logic — they re-export from the `Changesets`, `Commitlint` and `Lint`
-namespaces of `silk-effects` and reshape the export (default vs named, array vs object) to match
-what the consuming tool loads.
+expects. The shims carry no business logic — they re-export from the `Changesets`, `Commitlint` and
+`Lint` namespaces of `silk-effects` and reshape the export (default vs named, array vs object) to
+match what the consuming tool loads. The two config-factory shims (`commitlint`, `lint`) wrap their
+factory in a silk-local **facade** so the inferred return type stays portable for consumers — see
+[the type-portability invariant](#the-type-portability-invariant).
 
 **Package:** `@savvy-web/silk`
 **Location:** `packages/silk` in `savvy-web/systems`
@@ -68,7 +71,8 @@ just re-export symbols:
 - `./changesets/remark` — named exports for every transform plugin, preset and lint rule that remark
   configs import. See `src/changesets/remark.ts`.
 - `./commitlint/static` — default export is the static config object (no auto-detection). The root
-  `./commitlint` default-exports `CommitlintConfig` (the auto-detecting factory).
+  `./commitlint` default-exports `CommitlintConfig` (the auto-detecting factory, now a silk-local
+  facade — see [the type-portability invariant](#the-type-portability-invariant)).
 - `./lint` — re-exports the full lint-staged consumer surface (handlers, `Preset`, `createConfig`,
   workspace utils, section/template data). CLI commands are deliberately **not** re-exported here —
   those are `cli`'s job.
@@ -108,6 +112,35 @@ The mapping from each old package's subpaths into this tree is the load-bearing 
   `./changesets/markdownlint` through a CommonJS path. silk is `format: ["esm", "cjs"]` and externals
   `silk-effects`, so silk-effects must also expose a CJS entry for the `require` to resolve. That is
   why both packages build dual-format.
+
+## The type-portability invariant
+
+A consumer config that infers a silk factory's return type must emit a portable `.d.ts` — its
+declaration must name the return type from `@savvy-web/silk` (a direct dependency), never from
+`@savvy-web/silk-effects` (only a transitive dependency). TypeScript names an inferred type from
+where the function **signature** is declared, not where the value is imported, so a shim that simply
+re-exports the silk-effects class by value (`export const Preset = Lint.Preset`) leaks the canonical
+return type back to silk-effects and triggers **TS2883** ("inferred type cannot be named… likely not
+portable") in any `export default CommitlintConfig.silk()` / `export default Preset.silk()` config.
+
+The fix is a silk-local **facade**: each config-factory shim declares the factory's method signatures
+in silk itself, annotated with a silk-owned return type, and delegates the body to the silk-effects
+implementation. This pins the consumer-visible canonical home to `@savvy-web/silk/*`.
+
+- `commitlint` — `export interface CommitlintUserConfig extends Commitlint.CommitlintUserConfig {}`
+  (empty-extends: structurally identical, auto-syncing, silk-owned canonical home) plus a
+  `CommitlintConfig` object facade whose `silk(options?)` returns silk's `CommitlintUserConfig`. See
+  `src/commitlint/index.ts`.
+- `lint` — a `Preset` object facade wrapping all four statics (`minimal`/`standard`/`silk`/`get`),
+  each annotated with silk's own `LintStagedConfig` alias. See `src/lint/index.ts`.
+
+The facade is behaviorally equivalent to the silk-effects class: those classes have private
+constructors and only static factory methods, so consumers never instantiate or use them as a class
+type. The `Changesets`/`Commitlint`/`Lint` namespaces in silk-effects are unchanged and still
+consumed by cli/mcp; silk-effects itself is untouched. The changesets shims export plain values, not
+an inferred factory return type, so they do not need facades. The rejected alternative —
+`dtsBundledPackages: ["@savvy-web/silk-effects"]` — is invalid because API Extractor cannot inline a
+star-namespace re-export.
 
 ## Consumer Model
 

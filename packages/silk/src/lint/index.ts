@@ -56,15 +56,30 @@ export type Yaml = typeof Lint.Yaml;
 export const createConfig = Lint.createConfig;
 export type CreateConfigOptions = Lint.CreateConfigOptions;
 
-export const Preset = Lint.Preset;
-export type Preset = typeof Lint.Preset;
+export type LintStagedConfig = Lint.LintStagedConfig;
+
+// Facade declared in silk so consumer configs infer the return type from a direct dep (avoids TS2883).
+export const Preset = {
+	minimal(extend?: Lint.PresetExtendOptions): LintStagedConfig {
+		return Lint.Preset.minimal(extend);
+	},
+	standard(extend?: Lint.PresetExtendOptions): LintStagedConfig {
+		return Lint.Preset.standard(extend);
+	},
+	silk(extend?: Lint.PresetExtendOptions): LintStagedConfig {
+		return Lint.Preset.silk(extend);
+	},
+	get(name: "minimal" | "standard" | "silk", extend?: Lint.PresetExtendOptions): LintStagedConfig {
+		return Lint.Preset.get(name, extend);
+	},
+};
+export type Preset = typeof Preset;
 export type PresetExtendOptions = Lint.PresetExtendOptions;
 
 // === Types ===
 
 export type BaseHandlerOptions = Lint.BaseHandlerOptions;
 export type BiomeOptions = Lint.BiomeOptions;
-export type LintStagedConfig = Lint.LintStagedConfig;
 export type LintStagedEntry = Lint.LintStagedEntry;
 export type LintStagedHandler = Lint.LintStagedHandler;
 export type MarkdownOptions = Lint.MarkdownOptions;

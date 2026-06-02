@@ -21,13 +21,19 @@ export type RuleApplicability = Commitlint.RuleApplicability;
 export type RuleConfigTuple = Commitlint.RuleConfigTuple;
 export type RuleSeverity = Commitlint.RuleSeverity;
 export type RulesConfig = Commitlint.RulesConfig;
-export type CommitlintUserConfig = Commitlint.CommitlintUserConfig;
+// silk-owned canonical home so consumer configs name the silk() return type from a direct dep (avoids TS2883).
+export interface CommitlintUserConfig extends Commitlint.CommitlintUserConfig {}
 export type ConfigOptions = Commitlint.ConfigOptions;
 
-export const CommitlintConfig = Commitlint.CommitlintConfig;
+// Facade declared in silk so consumer configs infer the return type from a direct dep (avoids TS2883).
+export const CommitlintConfig = {
+	silk(options?: Commitlint.ConfigOptions): CommitlintUserConfig {
+		return Commitlint.CommitlintConfig.silk(options);
+	},
+};
 export const COMMIT_TYPES = Commitlint.COMMIT_TYPES;
 export const COMMIT_TYPE_DEFINITIONS = Commitlint.COMMIT_TYPE_DEFINITIONS;
 export const TDD_SCOPE_PATTERN = Commitlint.TDD_SCOPE_PATTERN;
 export const TDD_STATES = Commitlint.TDD_STATES;
 
-export default Commitlint.CommitlintConfig;
+export default CommitlintConfig;
