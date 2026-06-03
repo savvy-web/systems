@@ -157,10 +157,10 @@ export function runCommitCheck(): Effect.Effect<
 				yield* Effect.log(`${CHECK_MARK} Base section: up-to-date`);
 			} else if (CheckResult.$is("Found")(baseStatus)) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${WARNING} Base section: outdated (run 'savvy commit init' to update)`);
+				yield* Effect.log(`${WARNING} Base section: outdated (run 'savvy init' to update)`);
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Base section: not found (run 'savvy commit init' to add)`);
+				yield* Effect.log(`${BULLET} Base section: not found (run 'savvy init' to add)`);
 			}
 
 			const block = yield* ms.read(HUSKY_HOOK_PATH, SECTION_DEF);
@@ -172,15 +172,15 @@ export function runCommitCheck(): Effect.Effect<
 						yield* Effect.log(`${CHECK_MARK} Commit section: up-to-date`);
 					} else {
 						sectionsHealthy = false;
-						yield* Effect.log(`${WARNING} Commit section: outdated (run 'savvy commit init' to update)`);
+						yield* Effect.log(`${WARNING} Commit section: outdated (run 'savvy init' to update)`);
 					}
 				} else {
 					sectionsHealthy = false;
-					yield* Effect.log(`${WARNING} Commit section: outdated (run 'savvy commit init' to update)`);
+					yield* Effect.log(`${WARNING} Commit section: outdated (run 'savvy init' to update)`);
 				}
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Commit section: not found (run 'savvy commit init' to add)`);
+				yield* Effect.log(`${BULLET} Commit section: not found (run 'savvy init' to add)`);
 			}
 		}
 
@@ -189,7 +189,7 @@ export function runCommitCheck(): Effect.Effect<
 			const hygieneExists = yield* fs.exists(hookPath);
 			if (!hygieneExists) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} not found (run 'savvy commit init' to add)`);
+				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} not found (run 'savvy init' to add)`);
 				continue;
 			}
 			const hygieneStatus = yield* ms.check(hookPath, SavvyHooksSection.block(savvyHooksHygiene()));
@@ -197,10 +197,10 @@ export function runCommitCheck(): Effect.Effect<
 				yield* Effect.log(`${CHECK_MARK} Hygiene hook: ${hookPath}`);
 			} else if (CheckResult.$is("Found")(hygieneStatus)) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${WARNING} Hygiene hook: ${hookPath} outdated (run 'savvy commit init' to update)`);
+				yield* Effect.log(`${WARNING} Hygiene hook: ${hookPath} outdated (run 'savvy init' to update)`);
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} section not found (run 'savvy commit init' to add)`);
+				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} section not found (run 'savvy init' to add)`);
 			}
 		}
 
@@ -224,7 +224,7 @@ export function runCommitCheck(): Effect.Effect<
 		yield* Effect.log("");
 		const hasIssues = !foundConfig || !hasHuskyHook || !sectionsHealthy;
 		if (hasIssues) {
-			yield* Effect.log(`${CROSS_MARK} Commitlint needs configuration. Run: savvy commit init`);
+			yield* Effect.log(`${CROSS_MARK} Commitlint needs configuration. Run: savvy init`);
 		} else {
 			yield* Effect.log(`${CHECK_MARK} Commitlint is configured correctly.`);
 		}

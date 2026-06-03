@@ -148,7 +148,7 @@ function checkBiomeSchemas() {
 				statuses.push({ path: configPath, matches: true });
 			} else {
 				statuses.push({ path: configPath, matches: false });
-				warnings.push(`${WARNING}  ${configPath}: biome $schema is outdated.\n   Run 'savvy lint init' to update it.`);
+				warnings.push(`${WARNING}  ${configPath}: biome $schema is outdated.\n   Run 'savvy init' to update it.`);
 			}
 		}
 
@@ -236,16 +236,16 @@ export function runLintCheck(opts: {
 
 			if (baseStatusLabel !== "up-to-date" || lintStatusLabel !== "up-to-date") {
 				warnings.push(
-					`${WARNING}  Your ${Lint.HUSKY_HOOK_PATH} managed sections are out of date.\n   Run 'savvy lint init' to update (preserves your custom hooks).`,
+					`${WARNING}  Your ${Lint.HUSKY_HOOK_PATH} managed sections are out of date.\n   Run 'savvy init' to update (preserves your custom hooks).`,
 				);
 			}
 		} else {
 			sectionsHealthy = false;
-			warnings.push(`${WARNING}  No husky pre-commit hook found.\n   Run 'savvy lint init' to create it.`);
+			warnings.push(`${WARNING}  No husky pre-commit hook found.\n   Run 'savvy init' to create it.`);
 		}
 
 		if (!foundConfig) {
-			warnings.push(`${WARNING}  No lint-staged config file found.\n   Run 'savvy lint init' to create one.`);
+			warnings.push(`${WARNING}  No lint-staged config file found.\n   Run 'savvy init' to create one.`);
 		}
 
 		// Hygiene hooks: co-owned savvy-hooks section.
@@ -265,10 +265,10 @@ export function runLintCheck(opts: {
 
 			if (!found) {
 				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} has no savvy-hooks section.\n   Run 'savvy lint init' to add it.`);
+				warnings.push(`${WARNING}  ${hookPath} has no savvy-hooks section.\n   Run 'savvy init' to add it.`);
 			} else if (!isUpToDate) {
 				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} savvy-hooks section is outdated.\n   Run 'savvy lint init' to update.`);
+				warnings.push(`${WARNING}  ${hookPath} savvy-hooks section is outdated.\n   Run 'savvy init' to update.`);
 			}
 		}
 
@@ -303,12 +303,12 @@ export function runLintCheck(opts: {
 
 			if (!markdownlintStatus.schemaMatches) {
 				warnings.push(
-					`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: $schema differs from template.\n   Run 'savvy lint init' to update it.`,
+					`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: $schema differs from template.\n   Run 'savvy init' to update it.`,
 				);
 			}
 			if (!markdownlintStatus.configMatches) {
 				warnings.push(
-					`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template.\n   Run 'savvy lint init --force' to overwrite.`,
+					`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template.\n   Run 'savvy init --force' to overwrite.`,
 				);
 			}
 		}
@@ -345,18 +345,18 @@ export function runLintCheck(opts: {
 			if (baseStatusLabel === "up-to-date") {
 				yield* Effect.log(`${CHECK_MARK} Base section: up-to-date`);
 			} else if (baseStatusLabel === "outdated") {
-				yield* Effect.log(`${WARNING} Base section: outdated (run 'savvy lint init' to update)`);
+				yield* Effect.log(`${WARNING} Base section: outdated (run 'savvy init' to update)`);
 			} else {
-				yield* Effect.log(`${BULLET} Base section: not found (run 'savvy lint init' to add)`);
+				yield* Effect.log(`${BULLET} Base section: not found (run 'savvy init' to add)`);
 			}
 
 			const lintLabel = detectedConfigPath ? ` (config: ${detectedConfigPath})` : "";
 			if (lintStatusLabel === "up-to-date") {
 				yield* Effect.log(`${CHECK_MARK} Lint section: up-to-date${lintLabel}`);
 			} else if (lintStatusLabel === "outdated") {
-				yield* Effect.log(`${WARNING} Lint section: outdated (run 'savvy lint init' to update)`);
+				yield* Effect.log(`${WARNING} Lint section: outdated (run 'savvy init' to update)`);
 			} else {
-				yield* Effect.log(`${BULLET} Lint section: not found (run 'savvy lint init' to add)`);
+				yield* Effect.log(`${BULLET} Lint section: not found (run 'savvy init' to add)`);
 			}
 		}
 
@@ -367,7 +367,7 @@ export function runLintCheck(opts: {
 			} else if (status.isUpToDate) {
 				yield* Effect.log(`${CHECK_MARK} ${status.path}: up-to-date`);
 			} else {
-				yield* Effect.log(`${WARNING} ${status.path}: outdated (run 'savvy lint init' to update)`);
+				yield* Effect.log(`${WARNING} ${status.path}: outdated (run 'savvy init' to update)`);
 			}
 		}
 
@@ -429,7 +429,7 @@ export function runLintCheck(opts: {
 			if (status.matches) {
 				yield* Effect.log(`  ${CHECK_MARK} ${status.path}: biome $schema up-to-date`);
 			} else {
-				yield* Effect.log(`  ${WARNING} ${status.path}: biome $schema outdated (run 'savvy lint init' to update)`);
+				yield* Effect.log(`  ${WARNING} ${status.path}: biome $schema outdated (run 'savvy init' to update)`);
 			}
 		}
 
@@ -441,7 +441,7 @@ export function runLintCheck(opts: {
 			!foundConfig || !hasHuskyHook || !sectionsHealthy || hasMarkdownlintIssues || hasBiomeSchemaIssues;
 
 		if (hasIssues) {
-			yield* Effect.log(`${WARNING} Some issues found. Run 'savvy lint init' to fix.`);
+			yield* Effect.log(`${WARNING} Some issues found. Run 'savvy init' to fix.`);
 		} else {
 			yield* Effect.log(`${CHECK_MARK} Lint-staged is configured correctly.`);
 		}

@@ -47,6 +47,7 @@ import { PackageManagerDetectorLive, WorkspaceDiscoveryLive, WorkspaceRootLive }
 
 import { changesetCommand } from "../commands/changeset/index.js";
 import { checkCommand } from "../commands/check.js";
+import { cleanCommand } from "../commands/clean.js";
 import { commitCommand } from "../commands/commit/index.js";
 import { initCommand } from "../commands/init.js";
 import { lintCommand } from "../commands/lint/index.js";
@@ -57,7 +58,7 @@ import { lintCommand } from "../commands/lint/index.js";
  * Root `savvy` command nesting the two orchestrators and three command groups.
  */
 const rootCommand = Command.make("savvy").pipe(
-	Command.withSubcommands([initCommand, checkCommand, commitCommand, changesetCommand, lintCommand]),
+	Command.withSubcommands([initCommand, checkCommand, cleanCommand, commitCommand, changesetCommand, lintCommand]),
 );
 
 const cli = Command.run(rootCommand, {

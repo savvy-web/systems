@@ -1,12 +1,10 @@
 import { Command } from "@effect/cli";
 
-import { checkCommand } from "./check.js";
 import { hookCommand } from "./hook.js";
-import { initCommand } from "./init.js";
 
 /* v8 ignore start -- CLI registration; each command tested via exported handler */
 const _commitCommand = Command.make("commit").pipe(
-	Command.withSubcommands([initCommand, checkCommand, hookCommand]),
+	Command.withSubcommands([hookCommand]),
 	Command.withDescription("Commit standards: config, checks, and Claude hook handlers"),
 );
 

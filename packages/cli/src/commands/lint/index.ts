@@ -1,12 +1,10 @@
 import { Command } from "@effect/cli";
 
-import { checkCommand } from "./check.js";
 import { fmtCommand } from "./fmt.js";
-import { initCommand } from "./init.js";
 
 /* v8 ignore start -- CLI registration; each command tested via exported handler */
 const _lintCommand = Command.make("lint").pipe(
-	Command.withSubcommands([initCommand, checkCommand, fmtCommand]),
+	Command.withSubcommands([fmtCommand]),
 	Command.withDescription("Code-quality: lint-staged config, checks, and in-place formatting"),
 );
 

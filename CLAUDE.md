@@ -5,7 +5,7 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 ## Repository Purpose
 
 - **silk-effects** — shared Effect library; also hosts the dev-tooling business logic under three namespace exports (`Changesets`, `Commitlint`, `Lint`); dual-format esm+cjs (implemented)
-- **cli** — `@savvy-web/cli`, the `savvy` binary with `init`/`check`/`commit`/`changeset`/`lint` commands; replaces the three old per-tool bins (implemented)
+- **cli** — `@savvy-web/cli`, the `savvy` binary with `init`/`check`/`commit`/`changeset`/`lint`/`clean` commands; `savvy init`/`savvy check` are the sole setup/validation entry points (the per-tool init/check subcommands were removed from the changeset/commit/lint groups); replaces the three old per-tool bins (implemented)
 - **silk** — `@savvy-web/silk`, the single install-target of thin config-integration shims plus the biome asset (implemented)
 - **mcp** — `@savvy-web/mcp`, the spawnable `savvy-mcp` server exposing the `workspace_info` and `silk_docs_search` tools plus a manifest-backed resource layer (`silk://catalog` plus a `silk://{+path}` template over a compiled markdown corpus) over silk-effects; Phase B adds per-package API-reference docs (`silk://packages/<pkg>/api/*`) generated from API Extractor models via the external `api-extractor-llms` npm package, body-content search, a related-graph see-also boost, and query logging; a standalone server, not a discovery host (implemented)
 - **plugins/silk** — merged Claude Code plugin (`silk@savvy-web-systems`): 13 skills, the `changeset-manager` agent, merged hooks, plus `savvy-mcp` wiring (implemented)

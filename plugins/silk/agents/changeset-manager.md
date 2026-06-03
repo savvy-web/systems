@@ -169,7 +169,7 @@ You can invoke any plugin skill via the `Skill` tool. `changeset-style` and `sta
 | `status` | Preloaded | Inventory-awareness rules — already in scope at startup. |
 | `config` | Lazy | **Invoke once per run during inventory.** Ships two scripts: `analyze-branch.sh` (the primary call — diff + classification in one shot) and `inspect.sh` (config-only view when no diff is involved). The CLI does the resolution; you read the JSON. |
 | `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the analyze-branch result is a workspace `package.json` with `status: "modified"`.** Runs `regen.sh` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
-| `changeset-check` | Lazy | Invoke after a write to verify CSH001-CSH005 compliance, especially when you've touched several files. Its bundled `scripts/check.sh` shells out to `savvy changeset check` for deterministic output. |
+| `changeset-check` | Lazy | Invoke after a write to verify CSH001-CSH005 compliance, especially when you've touched several files. Its bundled `scripts/check.sh` shells out to `savvy changeset lint` for deterministic output. |
 | `changeset-list` | Lazy | Invoke during the inventory step if you want the structured listing rather than reading files yourself. Its bundled `scripts/list.sh` shells out to the project's `@changesets/cli` for JSON output. |
 | `changeset-preview` | Lazy | Invoke when you want to see what the final CHANGELOG would look like before deciding whether more changeset work is needed. |
 | `update` | Lazy | Mechanics for modifying an existing changeset's frontmatter or body. |

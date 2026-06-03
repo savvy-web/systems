@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# inspect.sh — Thin wrapper around `savvy-changesets config show --json`.
+# inspect.sh — Thin wrapper around `savvy changeset config show --json`.
 #
 # Surfaces the resolved `.changeset/config.json` for the changeset-manager
 # agent. The heavy lifting (JSONC parsing, schema validation, workspace
@@ -7,7 +7,7 @@
 # CLI; this script's only job is package-manager detection plus the
 # pass-through invocation.
 #
-# Output: JSON document on stdout from `savvy-changesets config show --json`.
+# Output: JSON document on stdout from `savvy changeset config show --json`.
 # Errors: CLI exits non-zero with a human-readable message on stderr when
 # the config is missing or invalid. The script preserves that contract —
 # callers must check the exit code, not look for an `error` field in JSON.
@@ -39,15 +39,16 @@ if [ -z "$PM" ]; then
 fi
 
 case "$PM" in
-	pnpm) CMD=(pnpm exec savvy-changesets) ;;
-	yarn) CMD=(yarn exec savvy-changesets) ;;
-	bun)  CMD=(bunx savvy-changesets) ;;
-	*)    CMD=(npx --no -- savvy-changesets) ;;
+	pnpm) CMD=(pnpm exec savvy) ;;
+	yarn) CMD=(yarn exec savvy) ;;
+	bun)  CMD=(bunx savvy) ;;
+	*)    CMD=(npx --no -- savvy) ;;
 esac
 
 if ! "${CMD[@]}" --version >/dev/null 2>&1; then
-	echo "ERROR: savvy-changesets CLI is not installed in $PROJECT_DIR" >&2
+	echo "ERROR: savvy CLI is not installed in $PROJECT_DIR" >&2
+	echo "Install @savvy-web/cli as a dev dependency (or ensure Silk Suite tooling is set up) to use this skill." >&2
 	exit 1
 fi
 
-exec "${CMD[@]}" config show --json "$@"
+exec "${CMD[@]}" changeset config show --json "$@"

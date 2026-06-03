@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# regen.sh — Thin wrapper around `savvy-changesets deps regen --json`.
+# regen.sh — Thin wrapper around `savvy changeset deps regen --json`.
 #
 # DESTRUCTIVE: deletes every pure dependency changeset in `.changeset/`
 # (strict definition: single-package frontmatter + only a `## Dependencies`
@@ -33,15 +33,16 @@ if [ -z "$PM" ]; then
 fi
 
 case "$PM" in
-	pnpm) CMD=(pnpm exec savvy-changesets) ;;
-	yarn) CMD=(yarn exec savvy-changesets) ;;
-	bun)  CMD=(bunx savvy-changesets) ;;
-	*)    CMD=(npx --no -- savvy-changesets) ;;
+	pnpm) CMD=(pnpm exec savvy) ;;
+	yarn) CMD=(yarn exec savvy) ;;
+	bun)  CMD=(bunx savvy) ;;
+	*)    CMD=(npx --no -- savvy) ;;
 esac
 
 if ! "${CMD[@]}" --version >/dev/null 2>&1; then
-	echo "ERROR: savvy-changesets CLI is not installed in $PROJECT_DIR" >&2
+	echo "ERROR: savvy CLI is not installed in $PROJECT_DIR" >&2
+	echo "Install @savvy-web/cli as a dev dependency (or ensure Silk Suite tooling is set up) to use this skill." >&2
 	exit 1
 fi
 
-exec "${CMD[@]}" deps regen --json "$@"
+exec "${CMD[@]}" changeset deps regen --json "$@"
