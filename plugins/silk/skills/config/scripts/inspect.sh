@@ -39,10 +39,10 @@ if [ -z "$PM" ]; then
 fi
 
 case "$PM" in
-	pnpm) CMD=(pnpm exec savvy changeset) ;;
-	yarn) CMD=(yarn exec savvy changeset) ;;
-	bun)  CMD=(bunx savvy changeset) ;;
-	*)    CMD=(npx --no -- savvy changeset) ;;
+	pnpm) CMD=(pnpm exec savvy) ;;
+	yarn) CMD=(yarn exec savvy) ;;
+	bun)  CMD=(bunx savvy) ;;
+	*)    CMD=(npx --no -- savvy) ;;
 esac
 
 if ! "${CMD[@]}" --version >/dev/null 2>&1; then
@@ -51,4 +51,4 @@ if ! "${CMD[@]}" --version >/dev/null 2>&1; then
 	exit 1
 fi
 
-exec "${CMD[@]}" config show --json "$@"
+exec "${CMD[@]}" changeset config show --json "$@"
