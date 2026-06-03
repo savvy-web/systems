@@ -2,7 +2,7 @@
 # lint.sh — Machine-readable changeset validation (file:line:col format).
 # Bundled with the `check` skill alongside check.sh.
 #
-# Wraps `savvy-changesets lint .changeset`. Use this when you want output
+# Wraps `savvy changeset lint .changeset`. Use this when you want output
 # that can be programmatically parsed (e.g., to feed into Edit tool fixes);
 # use check.sh for the human-readable summary.
 
@@ -35,14 +35,15 @@ if [ -z "$PM" ]; then
 fi
 
 case "$PM" in
-	pnpm) CMD=(pnpm exec savvy-changesets) ;;
-	yarn) CMD=(yarn exec savvy-changesets) ;;
-	bun)  CMD=(bunx savvy-changesets) ;;
-	*)    CMD=(npx --no -- savvy-changesets) ;;
+	pnpm) CMD=(pnpm exec savvy changeset) ;;
+	yarn) CMD=(yarn exec savvy changeset) ;;
+	bun)  CMD=(bunx savvy changeset) ;;
+	*)    CMD=(npx --no -- savvy changeset) ;;
 esac
 
 if ! "${CMD[@]}" --version >/dev/null 2>&1; then
-	echo "ERROR: savvy-changesets CLI is not installed in $PROJECT_DIR" >&2
+	echo "ERROR: savvy CLI is not installed in $PROJECT_DIR" >&2
+	echo "Install @savvy-web/cli as a dev dependency (or ensure Silk Suite tooling is set up) to use this skill." >&2
 	exit 1
 fi
 

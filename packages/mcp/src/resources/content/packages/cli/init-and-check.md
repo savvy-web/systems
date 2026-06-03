@@ -23,8 +23,10 @@ Both orchestrators sequence the three per-tool handlers and short-circuit on the
 first failure. They live at `src/commands/init.ts` and `src/commands/check.ts`. The
 per-tool handlers are injected rather than imported inline, so the orchestration
 logic — the sequencing and short-circuit — is unit-testable without standing up the
-full runtime. Per-tool `init` and `check` stay reachable under their namespaces
-(`savvy changeset init`, `savvy lint check`, and so on).
+full runtime. There is no per-tool setup or validation entry point: `savvy init`
+and `savvy check` are the only ones. The namespaced groups expose the remaining
+per-tool operations instead (`savvy changeset lint`, `savvy lint fmt`,
+`savvy commit hook ...`, and so on).
 
 ## Layer
 

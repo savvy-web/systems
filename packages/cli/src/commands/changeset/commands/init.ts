@@ -21,12 +21,15 @@
  * {@link checkConfig}, {@link checkBaseMarkdownlint}, and
  * {@link checkChangesetMarkdownlint}, reporting any issues as warnings.
  *
+ * @remarks
+ * `runChangesetInit` backs the changeset step of the unified `savvy init`
+ * orchestrator; there is no standalone `savvy changeset init` subcommand. The
+ * exported `initCommand` is retained only as a direct test entry point.
+ *
  * @example
  * ```bash
- * savvy changeset init
- * savvy changeset init --force
- * savvy changeset init --check
- * savvy changeset init --skip-markdownlint
+ * savvy init           # runs the changeset, commit, and lint init steps
+ * savvy init --force    # overwrite existing config files and hooks
  * ```
  *
  * @internal
@@ -44,8 +47,23 @@ import { WorkspaceRoot } from "workspaces-effect";
 
 const { LegacyVersionFilesSchema } = Changesets;
 
-const CUSTOM_RULES_ENTRY = "@savvy-web/changesets/markdownlint";
-const CHANGELOG_ENTRY = "@savvy-web/changesets/changelog";
+/**
+ * Canonical changelog formatter written by `init` — the `@savvy-web/silk`
+ * shim that consumers actually install (the standalone `@savvy-web/changesets`
+ * package was merged into `@savvy-web/silk`).
+ */
+const CHANGELOG_ENTRY = "@savvy-web/silk/changesets/changelog";
+/** Pre-merge standalone formatter; still accepted by `check` for backward compat. */
+const LEGACY_CHANGELOG_ENTRY = "@savvy-web/changesets/changelog";
+/** Changelog formatters `check` treats as valid (canonical silk shim + legacy). */
+const ACCEPTED_CHANGELOG_ENTRIES: readonly string[] = [CHANGELOG_ENTRY, LEGACY_CHANGELOG_ENTRY];
+
+/** Canonical markdownlint custom-rule entry written by `init` — the silk shim. */
+const CUSTOM_RULES_ENTRY = "@savvy-web/silk/changesets/markdownlint";
+/** Pre-merge standalone custom-rule entry; still accepted by `check`. */
+const LEGACY_CUSTOM_RULES_ENTRY = "@savvy-web/changesets/markdownlint";
+/** Custom-rule entries `check` treats as valid (canonical silk shim + legacy). */
+const ACCEPTED_CUSTOM_RULES_ENTRIES: readonly string[] = [CUSTOM_RULES_ENTRY, LEGACY_CUSTOM_RULES_ENTRY];
 
 const MARKDOWNLINT_CONFIG_PATHS = [
 	"lib/configs/.markdownlint-cli2.jsonc",
@@ -224,7 +242,7 @@ export function ensureChangesetDir(root: string): Effect.Effect<string, InitErro
  *
  * When `force` is `true` or the file does not exist, writes a fresh config
  * with the default schema. Otherwise, patches only the `changelog` field to
- * point at `\@savvy-web/changesets/changelog` with the detected `repoSlug`.
+ * point at `\@savvy-web/silk/changesets/changelog` with the detected `repoSlug`.
  *
  * @param changesetDir - Absolute path to the `.changeset/` directory
  * @param repoSlug - The `owner/repo` GitHub slug to embed in the config
@@ -339,7 +357,8 @@ export function warnIfLegacyVersionFiles(changesetDir: string): Effect.Effect<vo
  *
  * Locates the project's markdownlint-cli2 config file via
  * {@link findMarkdownlintConfig}, then uses `jsonc-effect` to:
- * 1. Append `\@savvy-web/changesets/markdownlint` to the `customRules` array.
+ * 1. Register `\@savvy-web/silk/changesets/markdownlint` in the `customRules`
+ *    array, migrating any pre-merge `\@savvy-web/changesets/markdownlint` entry.
  * 2. Add each CSH rule name to the `config` object (set to `false` so they
  *    are recognized but disabled at the project root -- they are enabled in
  *    `.changeset/.markdownlint.json`).
@@ -371,18 +390,24 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 
 		let parsed = (yield* parseJsonc(text)) as Record<string, unknown>;
 
-		// Add customRules entry if missing
-		if (!Array.isArray(parsed.customRules) || !(parsed.customRules as string[]).includes(CUSTOM_RULES_ENTRY)) {
-			if (!Array.isArray(parsed.customRules)) {
-				// customRules key doesn't exist yet — set the whole array
-				const edits = yield* modify(text, ["customRules"], [CUSTOM_RULES_ENTRY], {
-					formattingOptions: JSONC_FORMAT,
-				});
-				text = yield* applyEdits(text, edits);
-			} else {
-				// customRules exists but doesn't contain our entry — append by index
-				const currentArray = parsed.customRules as unknown[];
-				const edits = yield* modify(text, ["customRules", currentArray.length], CUSTOM_RULES_ENTRY, {
+		// Reconcile customRules: register the canonical silk shim, migrate any
+		// pre-merge standalone entry to it, and dedupe. `init` always writes the
+		// silk entry; `check` accepts either form.
+		const currentRules = Array.isArray(parsed.customRules) ? (parsed.customRules as unknown[]) : null;
+		if (currentRules === null) {
+			// customRules key doesn't exist yet — set the whole array
+			const edits = yield* modify(text, ["customRules"], [CUSTOM_RULES_ENTRY], {
+				formattingOptions: JSONC_FORMAT,
+			});
+			text = yield* applyEdits(text, edits);
+		} else {
+			// Keep unrelated rules in order; drop any legacy or duplicate silk
+			// entry, then append exactly one canonical silk entry.
+			const desired = currentRules.filter((r) => r !== LEGACY_CUSTOM_RULES_ENTRY && r !== CUSTOM_RULES_ENTRY);
+			desired.push(CUSTOM_RULES_ENTRY);
+			const changed = desired.length !== currentRules.length || desired.some((r, i) => r !== currentRules[i]);
+			if (changed) {
+				const edits = yield* modify(text, ["customRules"], desired, {
 					formattingOptions: JSONC_FORMAT,
 				});
 				text = yield* applyEdits(text, edits);
@@ -523,8 +548,10 @@ export function checkChangesetDir(root: string): CheckIssue[] {
 /**
  * Check that `.changeset/config.json` exists and has the correct changelog entry.
  *
- * Verifies that the `changelog` field points to `\@savvy-web/changesets/changelog`
- * and that the embedded `repo` value matches `repoSlug`.
+ * Verifies that the `changelog` field points to the silk changelog shim
+ * (`\@savvy-web/silk/changesets/changelog`; the pre-merge
+ * `\@savvy-web/changesets/changelog` is still accepted) and that the embedded
+ * `repo` value matches `repoSlug`.
  *
  * @param changesetDir - Absolute path to the `.changeset/` directory
  * @param repoSlug - The expected `owner/repo` GitHub slug
@@ -544,7 +571,7 @@ export function checkConfig(changesetDir: string, repoSlug: string): CheckIssue[
 		const entry = Array.isArray(changelog) ? changelog[0] : changelog;
 		const repo = Array.isArray(changelog) ? changelog[1]?.repo : undefined;
 
-		if (entry !== CHANGELOG_ENTRY) {
+		if (!ACCEPTED_CHANGELOG_ENTRIES.includes(entry)) {
 			issues.push({
 				file: ".changeset/config.json",
 				message: `changelog formatter is "${entry}", expected "${CHANGELOG_ENTRY}"`,
@@ -605,7 +632,10 @@ export function checkBaseMarkdownlint(root: string): CheckIssue[] {
 		const parsed = Effect.runSync(parseJsonc(raw)) as Record<string, unknown>;
 		const issues: CheckIssue[] = [];
 
-		if (!Array.isArray(parsed.customRules) || !(parsed.customRules as string[]).includes(CUSTOM_RULES_ENTRY)) {
+		if (
+			!Array.isArray(parsed.customRules) ||
+			!(parsed.customRules as string[]).some((r) => ACCEPTED_CUSTOM_RULES_ENTRIES.includes(r))
+		) {
 			issues.push({
 				file: foundPath,
 				message: `customRules does not include ${CUSTOM_RULES_ENTRY}`,
@@ -712,7 +742,7 @@ export function runChangesetInit(opts: {
 			for (const issue of issues) {
 				yield* Effect.logWarning(`${issue.file}: ${issue.message}`);
 			}
-			yield* Effect.logWarning('Run "savvy changeset init --force" to fix.');
+			yield* Effect.logWarning('Run "savvy init --force" to fix.');
 			return;
 		}
 

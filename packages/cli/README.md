@@ -24,15 +24,12 @@ npx savvy init
 # initializes changeset, commit and lint conventions in one pass
 
 npx savvy check
-# runs the changeset, commit and lint checks; exits non-zero on the first failure
+# runs the changeset, commit and lint checks; reports every failure in one pass
 ```
 
-The command groups map to the tools they manage:
+`savvy init` and `savvy check` are the only setup entry points. The command groups expose the remaining per-tool operations:
 
 ```bash
-npx savvy commit check
-# validates the staged commit message against the conventional-commit rules
-
 npx savvy changeset version
 # applies pending changesets and bumps package versions
 
@@ -40,15 +37,26 @@ npx savvy lint fmt package-json
 # formats package.json files to the Silk Suite conventions
 ```
 
+Remove build and cache artifacts across the whole workspace:
+
+```bash
+npx savvy clean --dry-run
+# previews what would be removed across every workspace package and the repo root
+
+npx savvy clean --globs dist,.turbo,coverage
+# removes only the given patterns
+```
+
 ## Commands
 
 - `savvy init` — orchestrator that runs changeset, commit and lint setup in one pass.
-- `savvy check` — orchestrator that runs all three checks and short-circuits on the first failure.
-- `savvy commit` — commit-message validation plus the husky hook handlers (session-start, pre-commit-message, post-commit-verify, user-prompt-submit).
-- `savvy changeset` — changeset init, check, lint, transform, version, classify, branch analysis, release-surface and config inspection.
-- `savvy lint` — lint setup, check and formatters for package.json, the pnpm workspace file and YAML.
+- `savvy check` — orchestrator that runs all three checks and reports every failure (it does not short-circuit).
+- `savvy clean` — removes build and cache artifacts (`dist`, `.turbo`, `coverage`, `node_modules`, `.rslib` by default) from every workspace package (leaves first) and the repo root (last); `--globs` to customize, `--dry-run` to preview.
+- `savvy commit` — the husky/Claude hook handlers (session-start, pre-commit-message, post-commit-verify, user-prompt-submit).
+- `savvy changeset` — changeset lint, transform, version, classify, branch analysis, release-surface and config inspection.
+- `savvy lint` — formatters for package.json, the pnpm workspace file and YAML.
 
-Each group also exposes per-tool `init` and `check` subcommands under its namespace. Run any command with `--help` to see its full surface:
+Run any command with `--help` to see its full surface:
 
 ```bash
 npx savvy changeset --help

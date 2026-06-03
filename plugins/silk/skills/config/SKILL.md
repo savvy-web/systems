@@ -3,7 +3,7 @@ name: config
 description: >
   Surface the project's .changeset/config.json and the branch's
   diff-with-classification via two thin wrappers around the
-  @savvy-web/changesets CLI. The agent uses these to get reliable
+  savvy CLI (@savvy-web/cli). The agent uses these to get reliable
   package attribution without re-implementing the logic.
 user-invocable: false
 model: sonnet
@@ -13,13 +13,13 @@ allowed-tools: Bash(bash *)
 # Inspect Changeset Configuration
 
 This is an agent-internal skill. Two bundled scripts wrap the
-`@savvy-web/changesets` CLI:
+`savvy` CLI (`@savvy-web/cli`):
 
-- **`scripts/inspect.sh`** — `savvy-changesets config show --json`. Returns
+- **`scripts/inspect.sh`** — `savvy changeset config show --json`. Returns
   the resolved config: changelog formatter, base branch, ignore list, and
   per-package release surfaces (with `additionalScopes`, `versionFiles`,
   and the materialized file lists).
-- **`scripts/analyze-branch.sh`** — `savvy-changesets analyze-branch --json`.
+- **`scripts/analyze-branch.sh`** — `savvy changeset analyze-branch --json`.
   Returns the merge-base SHA, the per-file diff classification, the deduped
   set of affected packages, and the list of unmapped paths the agent
   should ask the user about.
@@ -105,7 +105,7 @@ Output schema (matches `InspectedConfig` in the CLI source):
 Both scripts propagate the CLI's exit code:
 
 - **Exit 0**: JSON document on stdout.
-- **Exit 1, CLI not installed**: stderr says so. The agent should report that `@savvy-web/changesets` must be installed in the project (it is a peer dep) and stop.
+- **Exit 1, CLI not installed**: stderr says so. The agent should report that `@savvy-web/cli` must be installed in the project (it provides the `savvy` binary) and stop.
 - **Exit non-zero, ConfigurationError or GitError**: stderr has a structured message from the CLI (overlap conflict, unknown package, dual-shape, missing base branch, etc.). The agent should report the message to the user and stop — these are real configuration problems the user must fix.
 
 ## What this skill does not do

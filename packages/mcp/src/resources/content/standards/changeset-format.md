@@ -128,4 +128,5 @@ commits to changelog entries.
 The discipline rules governing when a changeset is required are at
 `silk://standards/changeset-discipline`. The `changeset-style` Claude Code skill
 carries worked examples for all three content-depth tiers. The `changeset-check`
-skill validates files against CSH001–CSH005 via `savvy changeset check`.
+skill validates files against CSH001–CSH005 via `savvy changeset lint` (or
+`savvy changeset validate-file <file>` for a single file).

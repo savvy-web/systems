@@ -218,7 +218,7 @@ describe("handleConfig", () => {
 		const written = getWritten(calls, 0);
 		const config = JSON.parse(written);
 		expect(config.$schema).toContain("@changesets/config");
-		expect(config.changelog).toEqual(["@savvy-web/changesets/changelog", { repo: "savvy-web/changesets" }]);
+		expect(config.changelog).toEqual(["@savvy-web/silk/changesets/changelog", { repo: "savvy-web/changesets" }]);
 		expect(config.commit).toBe(false);
 		expect(config.access).toBe("restricted");
 		expect(config.baseBranch).toBe("main");
@@ -246,7 +246,7 @@ describe("handleConfig", () => {
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
 		const config = JSON.parse(getWritten(calls, 0));
-		expect(config.changelog).toEqual(["@savvy-web/changesets/changelog", { repo: "org/repo" }]);
+		expect(config.changelog).toEqual(["@savvy-web/silk/changesets/changelog", { repo: "org/repo" }]);
 		// Preserved existing values
 		expect(config.commit).toBe(true);
 		expect(config.access).toBe("public");
@@ -306,7 +306,7 @@ describe("handleConfig", () => {
 		// Force writes full defaults — existing commit/baseBranch are replaced
 		expect(config.commit).toBe(false);
 		expect(config.baseBranch).toBe("main");
-		expect(config.changelog).toEqual(["@savvy-web/changesets/changelog", { repo: "org/repo" }]);
+		expect(config.changelog).toEqual(["@savvy-web/silk/changesets/changelog", { repo: "org/repo" }]);
 	});
 
 	it("returns InitError when writeFileSync throws", async () => {
@@ -371,7 +371,7 @@ describe("handleBaseMarkdownlint", () => {
 		expect(getWrittenPath(calls, 0)).toBe(baseConfigPath);
 		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
 		expect(parsed.customRules).toContain("some-other-plugin");
-		expect(parsed.customRules).toContain("@savvy-web/changesets/markdownlint");
+		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
 		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
 		expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
 		expect((parsed.config as Record<string, unknown>)["changeset-content-structure"]).toBe(false);
@@ -394,7 +394,7 @@ describe("handleBaseMarkdownlint", () => {
 		const calls = vi.mocked(writeFileSync).mock.calls;
 		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
 		expect(Array.isArray(parsed.customRules)).toBe(true);
-		expect(parsed.customRules).toContain("@savvy-web/changesets/markdownlint");
+		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
 	});
 
 	it("creates config object when missing", async () => {
@@ -438,7 +438,7 @@ describe("handleBaseMarkdownlint", () => {
 
 	it("does not duplicate customRules entry when already present", async () => {
 		const baseConfig = {
-			customRules: ["@savvy-web/changesets/markdownlint"],
+			customRules: ["@savvy-web/silk/changesets/markdownlint"],
 			config: {
 				"changeset-heading-hierarchy": false,
 				"changeset-required-sections": false,
@@ -456,9 +456,60 @@ describe("handleBaseMarkdownlint", () => {
 		const calls = vi.mocked(writeFileSync).mock.calls;
 		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
 		const count = (parsed.customRules as string[]).filter(
-			(r: string) => r === "@savvy-web/changesets/markdownlint",
+			(r: string) => r === "@savvy-web/silk/changesets/markdownlint",
 		).length;
 		expect(count).toBe(1);
+	});
+
+	it("migrates a legacy @savvy-web/changesets/markdownlint entry to the silk shim", async () => {
+		const baseConfig = {
+			customRules: ["some-other-plugin", "@savvy-web/changesets/markdownlint"],
+			config: {
+				"changeset-heading-hierarchy": false,
+				"changeset-required-sections": false,
+				"changeset-content-structure": false,
+				"changeset-uncategorized-content": false,
+				"changeset-dependency-table-format": false,
+			},
+		};
+
+		vi.mocked(existsSync).mockReturnValue(true);
+		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+		vi.mocked(writeFileSync).mockReturnValue(undefined);
+
+		await Effect.runPromise(handleBaseMarkdownlint(root));
+
+		const calls = vi.mocked(writeFileSync).mock.calls;
+		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const rules = parsed.customRules as string[];
+		// Unrelated plugins are preserved.
+		expect(rules).toContain("some-other-plugin");
+		// The silk shim is registered, and the pre-merge standalone entry is removed.
+		expect(rules).toContain("@savvy-web/silk/changesets/markdownlint");
+		expect(rules).not.toContain("@savvy-web/changesets/markdownlint");
+	});
+
+	it("dedupes a config that already lists both the silk shim and the legacy entry", async () => {
+		const baseConfig = {
+			customRules: ["@savvy-web/silk/changesets/markdownlint", "@savvy-web/changesets/markdownlint"],
+			config: {
+				"changeset-heading-hierarchy": false,
+				"changeset-required-sections": false,
+				"changeset-content-structure": false,
+				"changeset-uncategorized-content": false,
+				"changeset-dependency-table-format": false,
+			},
+		};
+
+		vi.mocked(existsSync).mockReturnValue(true);
+		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+		vi.mocked(writeFileSync).mockReturnValue(undefined);
+
+		await Effect.runPromise(handleBaseMarkdownlint(root));
+
+		const calls = vi.mocked(writeFileSync).mock.calls;
+		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		expect(parsed.customRules).toEqual(["@savvy-web/silk/changesets/markdownlint"]);
 	});
 
 	it("does not overwrite existing rule values in config", async () => {
@@ -506,7 +557,7 @@ describe("handleBaseMarkdownlint", () => {
 		expect(written).toContain("/* Config block */");
 		// Values are still correct
 		const parsed = Effect.runSync(parseJsonc(written)) as Record<string, unknown>;
-		expect(parsed.customRules).toContain("@savvy-web/changesets/markdownlint");
+		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
 		expect((parsed.config as Record<string, unknown>).default).toBe(true);
 	});
 
@@ -730,6 +781,16 @@ describe("checkConfig", () => {
 		expect(checkConfig(changesetDir, "owner/repo")).toEqual([]);
 	});
 
+	it("accepts the @savvy-web/silk/changesets/changelog formatter", () => {
+		vi.mocked(existsSync).mockReturnValue(true);
+		vi.mocked(readFileSync).mockReturnValue(
+			JSON.stringify({
+				changelog: ["@savvy-web/silk/changesets/changelog", { repo: "owner/repo" }],
+			}),
+		);
+		expect(checkConfig(changesetDir, "owner/repo")).toEqual([]);
+	});
+
 	it("returns issue when config.json does not exist", () => {
 		vi.mocked(existsSync).mockReturnValue(false);
 		const issues = checkConfig(changesetDir, "owner/repo");
@@ -843,6 +904,23 @@ describe("checkBaseMarkdownlint", () => {
 		vi.mocked(readFileSync).mockReturnValue(
 			JSON.stringify({
 				customRules: ["@savvy-web/changesets/markdownlint"],
+				config: {
+					"changeset-heading-hierarchy": false,
+					"changeset-required-sections": false,
+					"changeset-content-structure": false,
+					"changeset-uncategorized-content": false,
+					"changeset-dependency-table-format": false,
+				},
+			}),
+		);
+		expect(checkBaseMarkdownlint(root)).toEqual([]);
+	});
+
+	it("accepts the @savvy-web/silk/changesets/markdownlint custom rule", () => {
+		vi.mocked(existsSync).mockReturnValue(true);
+		vi.mocked(readFileSync).mockReturnValue(
+			JSON.stringify({
+				customRules: ["@savvy-web/silk/changesets/markdownlint"],
 				config: {
 					"changeset-heading-hierarchy": false,
 					"changeset-required-sections": false,

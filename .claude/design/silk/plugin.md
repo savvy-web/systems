@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-01
-last-synced: 2026-06-01
+updated: 2026-06-02
+last-synced: 2026-06-02
 completeness: 88
 related:
   - ./architecture.md
@@ -86,6 +86,8 @@ This two-tier read split, plus the separate `plugins/docs` write plugin, is one 
 All source hook sets merge into `plugins/silk/hooks/hooks.json`. PreToolUse/PostToolUse matchers combine across the changesets push-guard and the commitlint bash/fs/mcp guards. Every hook script is **repointed** from the legacy `savvy-changesets …` / `savvy-commit …` bins to the unified `savvy changeset …` / `savvy commit hook …` paths; the shared resolver in `hooks/lib/` targets the single `savvy` bin.
 
 The open hygiene concern (carried from the spec) is avoiding double-fires where the changesets and commitlint guards both match `Bash` — check `hooks.json`'s matcher set when adding a new Bash guard.
+
+The same repoint applies to the **skill scripts**: the bundled scripts that shell out to the CLI (`changeset-check`'s `check.sh`/`lint.sh`, `config`'s `analyze-branch.sh`/`inspect.sh`, `dependencies`' `detect.sh`/`regen.sh`) target the unified `savvy changeset …` subcommands rather than the retired `savvy-changesets` standalone bin. Notably `changeset-check` validates via `savvy changeset lint` (the renamed CSH001–CSH005 entry point), not a `check` subcommand. Any plugin caller — hook or skill — that invokes the CLI goes through the single `savvy` bin; no script may assume a per-tool `savvy-*` bin is installed.
 
 ### SessionStart: two hooks, split by responsibility
 

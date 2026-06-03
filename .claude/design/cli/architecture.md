@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-05-31
-last-synced: 2026-05-31
+updated: 2026-06-02
+last-synced: 2026-06-02
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -24,16 +24,19 @@ command shell over `@savvy-web/silk-effects`, built on `@effect/cli` + `@effect/
 - [Overview](#overview)
 - [Current State](#current-state)
 - [Command Tree](#command-tree)
+- [The clean command](#the-clean-command)
 - [The Runtime Layer Stack](#the-runtime-layer-stack)
 - [Boundaries and Invariants](#boundaries-and-invariants)
 - [Rationale](#rationale)
 
 ## Overview
 
-`@savvy-web/cli` owns the `savvy` binary and the statically-defined command tree. It carries no
-business logic of its own: every command handler imports the work it does from
-`@savvy-web/silk-effects`, and the package exists only to wire those handlers into a single
-`@effect/cli` tree and provide the runtime layer stack that satisfies their service requirements.
+`@savvy-web/cli` owns the `savvy` binary and the statically-defined command tree. Almost all of its
+business logic lives elsewhere: every command handler imports the work it does from
+`@savvy-web/silk-effects`, and the package exists mainly to wire those handlers into a single
+`@effect/cli` tree and provide the runtime layer stack that satisfies their service requirements. The
+lone exception is `savvy clean`, whose filesystem artifact removal has no `silk-effects` equivalent
+and lives in `src/commands/clean.ts` (see [The clean command](#the-clean-command)).
 
 **Package:** `@savvy-web/cli`
 **Location:** `packages/cli` in `savvy-web/systems`
@@ -63,21 +66,32 @@ configured" gate. Commands assume the system is set up (`savvy init` is what set
 ```text
 savvy init        orchestrator → changeset · commit · lint init in one pass
 savvy check       orchestrator → runs all three checks
-savvy commit      init · check · hook(session-start · pre-commit-message ·
+savvy clean       remove build/cache artifacts across the workspace
+savvy commit      hook(session-start · pre-commit-message ·
                   post-commit-verify · user-prompt-submit)
-savvy changeset   init · check · lint · transform · validate-file · version ·
+savvy changeset   lint · transform · validate-file · version ·
                   classify · analyze-branch · release-surface ·
                   config(show · validate) · deps(detect · regen)
-savvy lint        init · check · fmt(package-json · pnpm-workspace · yaml)
+savvy lint        fmt(package-json · pnpm-workspace · yaml)
 ```
 
-Each group lives under `src/commands/{commit,changeset,lint}/` and exports its group command plus
-named handler functions (e.g. `runChangesetInit`, `runChangesetCheck`). The top-level `init` and
-`check` orchestrators (`src/commands/init.ts`, `src/commands/check.ts`) sequence the three tool
-handlers and short-circuit on first failure; the tool handlers are injected so the orchestration
-logic is unit-testable without a runtime. Per-tool `init`/`check` stay reachable under their
-namespaces. The plugin hooks and skills shell out to these subcommands (repointed from the legacy
-`savvy-changesets …` / `savvy-commit …` paths).
+The root `savvy init` and `savvy check` orchestrators are the *only* setup/validation entry points — there are no per-tool `init`/`check` subcommands on the three groups.
+
+Each group lives under `src/commands/{commit,changeset,lint}/` and exports its group command plus named handler functions (e.g. `runChangesetInit`, `runChangesetCheck`). The top-level `init` and `check` orchestrators (`src/commands/init.ts`, `src/commands/check.ts`) sequence the three tool handlers and short-circuit on first failure; the tool handlers are injected so the orchestration logic is unit-testable without a runtime. The plugin hooks and skills shell out to these subcommands (repointed from the legacy `savvy-changesets …` / `savvy-commit …` paths).
+
+`savvy clean` (`src/commands/clean.ts`) is a flat top-level command alongside `init` and `check`, registered in the root `withSubcommands` list. It is the one top-level command that carries its own logic rather than delegating to a `silk-effects` handler: filesystem artifact removal has no equivalent in `silk-effects` and needs no service beyond `WorkspaceDiscovery`. See [The clean command](#the-clean-command).
+
+The per-tool `init`/`check` leaves are *not* wired into the CLI tree. Their `runChangesetInit`/`runChangesetCheck`/`runCommitInit`/`runCommitCheck`/`runLintInit`/`runLintCheck` handler functions still exist and are exactly what the root orchestrators call. The leaf `initCommand`/`checkCommand` `Command` objects also still exist in the leaf files, but only as direct unit-test entry points (`initCommand.handler(...)`) — the groups no longer pass them to `withSubcommands`. The `savvy check` helpers emit `savvy init` as their remediation hint (not the retired `savvy lint init` / `savvy commit init`).
+
+## The clean command
+
+`savvy clean` removes build and cache artifacts across a silk workspace. It defaults to the patterns `dist`, `.turbo`, `coverage`, `node_modules` and `.rslib`, overridable via `--globs`/`-g` (comma-separated). `--dry-run`/`-n` previews without touching disk. The handler `runClean` lives entirely in `src/commands/clean.ts` — this is the only top-level command whose logic does not descend into `silk-effects`.
+
+The flow is: discover packages via `WorkspaceDiscovery.listPackages()`, partition on `isRootWorkspace` so leaves are processed before the root workspace, glob each pattern at the top level of every workspace root, dedup matches across overlapping roots, then delete. Globbing uses Node's native `fs.promises.glob` (no third-party glob dependency); patterns match top-level entries by default, and `**` opts into recursion guarded by a descent filter that skips `node_modules` and `.git`.
+
+Three safety properties are load-bearing and must survive any edit. Containment: every match is `realpath`-resolved and rejected unless it stays within its workspace root, so symlinks and `..` cannot escape. The workspace root directory itself and its `package.json` are never removed. Removal runs via `fs.promises.rm({ recursive, force })` under bounded concurrency, leaves before the root; per-target failures are collected rather than thrown, and a non-empty failure set produces a non-zero exit without aborting the remaining deletions.
+
+`clean` adds no new runtime layers. `runClean` requires only `WorkspaceDiscovery`, already present in `AppLive`. The two filesystem-touching units, `collectTargets` (glob + containment) and `removeTargets` (deletion), are unit-tested against temp-dir fixtures; `runClean` is tested against a stubbed `WorkspaceDiscovery` layer.
 
 ## The Runtime Layer Stack
 
@@ -146,6 +160,8 @@ the changeset `lint` command and the `./markdownlint` export run the same rules)
 in `silk` and the commands sat in `cli`, `cli` would have to import `silk` — which the topology
 forbids. The shared logic therefore descended into `silk-effects`, leaving both `cli` and `silk`
 thin and neither importing the other. See `silk-effects/architecture.md` for the extraction.
+
+`changeset init` reflects this same topology in what it *writes*. Consumers install only `@savvy-web/silk`, so `init` writes the silk shim paths into a consumer's `.changeset/config.json` and `.markdownlint-cli2.jsonc` — the changelog formatter `@savvy-web/silk/changesets/changelog` and the markdownlint customRule `@savvy-web/silk/changesets/markdownlint`. `savvy check` accepts both the silk path and the legacy `@savvy-web/changesets/*` path (backward compat), but `init` always writes the silk path and migrates a legacy customRule entry to it (dropping duplicates). Writing the standalone specifier would regress a silk-only consumer to reference a package it does not install. See `src/commands/changeset/commands/init.ts` for the accepted-vs-canonical entry constants.
 
 ### Why static, not discovered
 
