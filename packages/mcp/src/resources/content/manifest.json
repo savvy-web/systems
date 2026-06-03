@@ -82,7 +82,7 @@
 			"priority": 0.5,
 			"related": ["packages/cli/command-tree", "packages/silk/install-and-setup"],
 			"uri": "silk://packages/cli/init-and-check",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-03T00:09:23-04:00"
 		},
 		{
 			"id": "packages/mcp/resource-taxonomy",
@@ -240,7 +240,7 @@
 			"priority": 0.5,
 			"related": ["standards/changeset-discipline"],
 			"uri": "silk://standards/changeset-format",
-			"lastModified": "2026-06-01T11:45:48-04:00"
+			"lastModified": "2026-06-03T00:09:23-04:00"
 		},
 		{
 			"id": "standards/commit-contract",
