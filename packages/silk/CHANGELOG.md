@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 0.3.1
+
+### Other
+
+* [`6511053`](https://github.com/savvy-web/systems/commit/651105346f97d6e486106c4a2f992e0b2cbbac0f) Upgrades to pnpm v11 deployments
+  | Dependency     | Type       | Action  | From  | To    |
+  | -------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/cli | dependency | updated | 0.3.0 | 0.3.1 |
+  | @savvy-web/mcp | dependency | updated | 0.3.0 | 0.3.1 |
+
 ## 0.3.0
 
 ### Patch Changes
