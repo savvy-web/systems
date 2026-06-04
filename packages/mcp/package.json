@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/mcp",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"private": true,
 	"description": "The savvy MCP server — Silk Suite tooling and library knowledge for coding agents",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/mcp",
@@ -25,9 +25,7 @@
 	"bin": {
 		"savvy-mcp": "./src/bin.ts"
 	},
-	"files": [
-		"resources"
-	],
+	"files": ["resources"],
 	"scripts": {
 		"build:catalog": "tsx lib/scripts/build-catalog.ts",
 		"build:dev": "rslib build --config-loader native --env-mode dev",
