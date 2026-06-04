@@ -86,8 +86,8 @@ importers:
         specifier: workspace:*
         version: file:packages/silk/dist/dev(94d98aece01f32cac21398b2ac507a46)
       '@savvy-web/vitest':
-        specifier: ^1.3.2
-        version: 1.3.2(34c961d600fe65c4f077102c7de596b0)
+        specifier: ^1.4.0
+        version: 1.4.0(34c961d600fe65c4f077102c7de596b0)
 
   packages/cli:
     dependencies:
@@ -2403,11 +2403,11 @@ packages:
       '@biomejs/biome':
         optional: true
 
-  '@savvy-web/vitest@1.3.2':
-    resolution: {integrity: sha512-Lm2OK2yhCryvpyG/t6qw2NV44GmkGbISRuUMsjOkQIE35+uEaqadWCUiyRajnkJxxDRAuswcjI0gxMb2/WcMsQ==}
+  '@savvy-web/vitest@1.4.0':
+    resolution: {integrity: sha512-xEqatA4kw41PXC1wtO923w3jGVJf3DjCdR6XXM9Zk+3v4xvCOs1eosQ4+0FFCvRYEZPGGiLOCHl5oJzM19mbrw==}
     peerDependencies:
-      '@types/node': ^25.6.0
-      '@typescript/native-preview': ^7.0.0-dev.20260124.1
+      '@types/node': ^25.9.0
+      '@typescript/native-preview': ^7.0.0-dev.20260513.1
       '@vitest/coverage-v8': ^4.1.0
       typescript: ^6.0.0
       vitest: ^4.1.0
@@ -5675,9 +5675,6 @@ packages:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
 
-  workspace-tools@0.41.4:
-    resolution: {integrity: sha512-FuSHMNmM1AXJaaWIUMFsWH/+dR0KEzkHhTv96KZ5iKxCvi4TXnATRr/U23d8d8DMUx7oL/oVfr9SvEaDvDYN2A==}
-
   workspace-tools@0.41.7:
     resolution: {integrity: sha512-krsae4CHOG+jBRj76xtiFeQ35BEJC1Yb4601a3dLoZm1oeswSRiEvgcHJel2JXZESiKT/pXiISOodpLsIKWf+Q==}
 
@@ -7821,14 +7818,14 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@savvy-web/vitest@1.3.2(34c961d600fe65c4f077102c7de596b0)':
+  '@savvy-web/vitest@1.4.0(34c961d600fe65c4f077102c7de596b0)':
     dependencies:
       '@types/node': 25.9.1
       '@vitest/coverage-v8': 4.1.8(vitest@4.1.8)
       typescript: 6.0.3
       vitest: 4.1.8(@types/node@25.9.1)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       vitest-agent-reporter: 1.3.1(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@vitest/coverage-v8@4.1.8)(typescript@6.0.3)(vitest@4.1.8)
-      workspace-tools: 0.41.4
+      workspace-tools: 0.41.7
 
   '@sec-ant/readable-stream@0.4.1': {}
 
@@ -11328,15 +11325,6 @@ snapshots:
       stackback: 0.0.2
 
   word-wrap@1.2.5: {}
-
-  workspace-tools@0.41.4:
-    dependencies:
-      '@yarnpkg/lockfile': 1.1.0
-      fast-glob: 3.3.3
-      git-url-parse: 16.1.0
-      jju: 1.4.0
-      js-yaml: 4.2.0
-      micromatch: 4.0.8
 
   workspace-tools@0.41.7:
     dependencies:
