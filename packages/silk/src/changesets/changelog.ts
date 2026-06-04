@@ -10,4 +10,5 @@
 
 import { Changesets } from "@savvy-web/silk-effects";
 
-export default Changesets.changelogFunctions;
+const changelogFunctions: typeof Changesets.changelogFunctions = Changesets.changelogFunctions;
+export default changelogFunctions;

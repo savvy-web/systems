@@ -21,7 +21,7 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 ## Tech Stack
 
 - **Runtime:** Node.js 24.11.0+
-- **Package Manager:** pnpm 10.33.0 with @savvy-web/pnpm-plugin-silk config dependency
+- **Package Manager:** pnpm 11.5.1 with @savvy-web/pnpm-plugin-silk 0.14.2 config dependency
 - **Build:** Turborepo orchestration, @savvy-web/rslib-builder for packages
 - **Linting:** Biome, markdownlint
 - **Testing:** Vitest via @savvy-web/vitest
@@ -38,6 +38,14 @@ pnpm lint           # Biome check
 pnpm lint:fix       # Biome auto-fix
 pnpm lint:md        # Markdown lint
 ```
+
+## Install & Build Orchestration (fragile)
+
+The workspace install/build wiring is fragile. Do NOT remove these `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`, `injectWorkspacePackages: true`, `syncInjectedDepsAfterScripts: [build:dev, build:prod]`. Each package's `prepare` runs `turbo run build:dev` (mcp also drives `build:prod`), and `publishConfig` uses `linkDirectory: true` + `directory: dist/dev`, so consumers resolve the built `dist/dev` via injected hard-linked workspace deps. Keep `verifyDepsBeforeRun` off (else `pnpm run` inside `prepare` auto-installs and aborts with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`) and injection on (so the hoisted `savvy` bin resolves to `dist/dev`, not raw `src`).
+
+**Cold-install bootstrap:** On a clean checkout (e.g. after `rm -rf node_modules`), run `pnpm install --ignore-scripts` first, then `pnpm build`. A plain scripted `pnpm install` fails with `Catalog(s) not found: silkPeers`: rslib-builder's WorkspaceCatalog reads peer-only catalogs (`catalog:silkPeers`) only from `node_modules/.pnpm-workspace-state-v1.json` (they are deduped out of the lockfile), but pnpm writes that state file AFTER `prepare` runs the build that needs it. The `--ignore-scripts` install writes the state file without building; warm installs are unaffected.
+
+**Known issue (still to fix):** Proper fix belongs in @savvy-web/rslib-builder (WorkspaceCatalog must not depend on the transient `.pnpm-workspace-state-v1.json` that is absent during `prepare`) or in the orchestration (do not build inside `prepare`).
 
 ## Design Documentation
 

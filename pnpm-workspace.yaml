@@ -1,10 +1,15 @@
 packages:
   - packages/*
-autoInstallPeers: false
+autoInstallPeers: true
 configDependencies:
   "@savvy-web/pnpm-plugin-silk": 0.14.2+sha512-X5dEwhQ0U4tuPN7EWyrVPVfHnpvgJk3FHNolufgCCZVUrXjQFtY5zNsu+jgZa9/SFMfvKO2+Fh4WC/24mRnpOg==
+injectWorkspacePackages: true
 loglevel: info
 publicHoistPattern:
-  - vitest-agent-reporter
-  - vitest
   - "@vitest/coverage-v8"
+  - vitest
+  - vitest-agent-reporter
+syncInjectedDepsAfterScripts:
+  - build:dev
+  - build:prod
+verifyDepsBeforeRun: false
