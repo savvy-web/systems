@@ -21,7 +21,7 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 ## Tech Stack
 
 - **Runtime:** Node.js 24.11.0+
-- **Package Manager:** pnpm 11.5.1 with @savvy-web/pnpm-plugin-silk 0.14.2 config dependency
+- **Package Manager:** pnpm 11.5.1 with @savvy-web/pnpm-plugin-silk 0.14.5 config dependency
 - **Build:** Turborepo orchestration, @savvy-web/rslib-builder for packages
 - **Linting:** Biome, markdownlint
 - **Testing:** Vitest via @savvy-web/vitest
@@ -39,13 +39,19 @@ pnpm lint:fix       # Biome auto-fix
 pnpm lint:md        # Markdown lint
 ```
 
-## Install & Build Orchestration (fragile)
+## Install & Build Orchestration
 
-The workspace install/build wiring is fragile. Do NOT remove these `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`, `injectWorkspacePackages: true`, `syncInjectedDepsAfterScripts: [build:dev, build:prod]`. Each package's `prepare` runs `turbo run build:dev` (mcp also drives `build:prod`), and `publishConfig` uses `linkDirectory: true` + `directory: dist/dev`, so consumers resolve the built `dist/dev` via injected hard-linked workspace deps. Keep `verifyDepsBeforeRun` off (else `pnpm run` inside `prepare` auto-installs and aborts with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`) and injection on (so the hoisted `savvy` bin resolves to `dist/dev`, not raw `src`).
+Install and build are DECOUPLED. There are no per-package `prepare` build scripts; `pnpm install` never builds. Build is an explicit post-install step: `pnpm build` (turbo `build:dev` + `build:prod`).
 
-**Cold-install bootstrap:** On a clean checkout (e.g. after `rm -rf node_modules`), run `pnpm install --ignore-scripts` first, then `pnpm build`. A plain scripted `pnpm install` fails with `Catalog(s) not found: silkPeers`: rslib-builder's WorkspaceCatalog reads peer-only catalogs (`catalog:silkPeers`) only from `node_modules/.pnpm-workspace-state-v1.json` (they are deduped out of the lockfile), but pnpm writes that state file AFTER `prepare` runs the build that needs it. The `--ignore-scripts` install writes the state file without building; warm installs are unaffected.
+Required `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`. The plugin is pinned in `pnpm-workspace.yaml` WITH its `+sha512-...` integrity hash (turbo/reproducibility need it); `pnpm add --config` omits the hash, so add it by hand. Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts`: injection hard-links each package's `dist/dev` at link time, which is absent on a cold cache, so a frozen install aborts with `ENOENT`. Plain `link:` symlinks (publishConfig `directory: dist/dev` + `linkDirectory: true`) tolerate the not-yet-built dir. `@savvy-web/cli` and `@savvy-web/mcp` are direct root devDependencies so they link to `dist/dev`. Plugin 0.14.5 drops `@savvy-web/cli`/`@savvy-web/mcp` from the in-monorepo hoist pattern and excludes `@typescript/native-preview*` from its `minimumReleaseAge` supply-chain check.
 
-**Known issue (still to fix):** Proper fix belongs in @savvy-web/rslib-builder (WorkspaceCatalog must not depend on the transient `.pnpm-workspace-state-v1.json` that is absent during `prepare`) or in the orchestration (do not build inside `prepare`).
+This is one symptom of a build-on-install ordering tension: workspace consumers resolve the BUILT `dist/dev`, which must exist before links, bins, and checks work — but the build needs install to finish first. Known consequences:
+
+- NEVER build inside an install hook (`prepare`/`postprepare`). mcp's `build:dev` pulls the libraries' `build:prod` (api-docs chain), and `build:prod` resolves `catalog:silkPeers` from `node_modules/.pnpm-workspace-state-v1.json`, which pnpm writes only AFTER install scripts. An install-time build fails with `Catalog(s) not found: silkPeers`. Build must run after `pnpm install` completes.
+- `savvy` is not on PATH on a cold runner: the `.bin/savvy` shim is created at link time, before `dist/dev` exists, and the decoupled install never recreates it. The release flow's `ci:version` works around this by building cli+silk first and invoking the built bin by path: `node packages/cli/dist/dev/bin/savvy.js`.
+- CI checks that import `@savvy-web/*` packages resolve to `dist/dev` (via `linkDirectory`); a fresh runner is unbuilt, so a post-install `pnpm build:dev` must run before those checks. Handled in the CI workflow, not via an install hook.
+
+Working recipe: cold `pnpm install --frozen-lockfile` succeeds (no build), then `pnpm build` (explicit; `silkPeers` now resolves because the state file exists). CI order must be install → build → checks. The planned `@savvy-web/bundler` redesign (link `src`, never build in `prepare`) is the intended fix that eliminates this whole class of problems.
 
 ## Design Documentation
 
