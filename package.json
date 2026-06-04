@@ -37,6 +37,8 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"devDependencies": {
+		"@savvy-web/cli": "workspace:*",
+		"@savvy-web/mcp": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
 		"@savvy-web/vitest": "^1.4.0"
 	},

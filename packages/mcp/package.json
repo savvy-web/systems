@@ -34,7 +34,6 @@
 		"build:prod": "rslib build --config-loader native --env-mode npm",
 		"generate:api-docs": "tsx lib/scripts/generate-api-docs.ts",
 		"inspect": "exec mcp-inspector node ./dist/dev/bin/savvy-mcp.js",
-		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
