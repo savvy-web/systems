@@ -23,7 +23,7 @@
 		"check": "savvy check",
 		"ci:build": "CI=\"true\" turbo run build:dev build:prod --log-order=grouped --output-logs=full --log-prefix=none",
 		"ci:test": "CI=\"true\" vitest run",
-		"ci:version": "savvy changeset version && biome format --write .",
+		"ci:version": "turbo run build:dev --filter=@savvy-web/cli && node packages/cli/dist/dev/bin/savvy.js changeset version && biome format --write .",
 		"dev:mcp": "turbo run inspect --filter=@savvy-web/mcp",
 		"init": "savvy init",
 		"lint": "biome check --max-diagnostics=none",
