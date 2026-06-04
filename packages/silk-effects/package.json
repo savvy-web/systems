@@ -51,11 +51,12 @@
 		"yaml-lint": "^1.7.0"
 	},
 	"devDependencies": {
+		"@effect/platform": "catalog:silk",
 		"@changesets/types": "^6.1.0",
 		"@commitlint/types": "^21.0.1",
 		"@effect/platform-node": "catalog:silk",
 		"@rslib/core": "0.22.0",
-		"@savvy-web/rslib-builder": "^0.21.1",
+		"@savvy-web/rslib-builder": "^0.21.3",
 		"@types/mdast": "^4.0.4",
 		"@types/node": "catalog:silk",
 		"@types/shell-quote": "^1.7.5",

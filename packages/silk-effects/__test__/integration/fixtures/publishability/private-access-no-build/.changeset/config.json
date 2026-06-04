@@ -1,4 +1,4 @@
 {
-	"changelog": ["@savvy-web/changesets/changelog", {}],
+	"changelog": ["@savvy-web/silk/changesets/changelog", {}],
 	"privatePackages": { "version": true, "tag": true }
 }

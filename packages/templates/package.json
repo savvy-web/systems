@@ -24,9 +24,9 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"build": "turbo run build:dev build:prod --log-order=grouped",
 		"build:dev": "rslib build --config-loader native --env-mode dev",
 		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
@@ -35,7 +35,7 @@
 	},
 	"devDependencies": {
 		"@rslib/core": "0.22.0",
-		"@savvy-web/rslib-builder": "^0.21.1",
+		"@savvy-web/rslib-builder": "^0.21.3",
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",

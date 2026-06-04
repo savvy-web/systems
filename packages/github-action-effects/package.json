@@ -59,7 +59,7 @@
 		"@effect/rpc": "catalog:silk",
 		"@effect/sql": "catalog:silk",
 		"@rslib/core": "0.22.0",
-		"@savvy-web/rslib-builder": "^0.21.1",
+		"@savvy-web/rslib-builder": "^0.21.3",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",

@@ -35,7 +35,7 @@
 	"files.exclude": {
 		"**/.coverage": true,
 		"**/.rslib": true,
-		"**/.turbo": true,
+		"**/.turbo": false,
 		"**/.vitest": true,
 		"**/*.tsbuildinfo": true,
 		"**/dist": false,

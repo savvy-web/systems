@@ -1,8 +1,10 @@
 packages:
   - packages/*
-autoInstallPeers: true
+autoInstallPeers: false
 configDependencies:
-  "@savvy-web/pnpm-plugin-silk": 0.13.4+sha512-WNNQ5wNiBHfihbxFtX6oti+fxJb0AXHCVosdBCwFFyNXKk9YAWLM3Qa+9Z9b1x1bFedFBTsXjoDQk/kWAlddyg==
+  "@savvy-web/pnpm-plugin-silk": 0.14.2+sha512-X5dEwhQ0U4tuPN7EWyrVPVfHnpvgJk3FHNolufgCCZVUrXjQFtY5zNsu+jgZa9/SFMfvKO2+Fh4WC/24mRnpOg==
 loglevel: info
-overrides:
-  serve-handler>minimatch: ^3.1.2
+publicHoistPattern:
+  - vitest-agent-reporter
+  - vitest
+  - "@vitest/coverage-v8"

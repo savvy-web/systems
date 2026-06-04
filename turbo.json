@@ -21,6 +21,7 @@
 				"package.json",
 				"tsconfig.json",
 				"README.md",
+				"rslib.config.ts",
 				"LICENSE",
 				"lib/**/*",
 				"src/**/*"
@@ -39,6 +40,7 @@
 				"$TURBO_ROOT$/tsconfig.json",
 				"package.json",
 				"tsconfig.json",
+				"rslib.config.ts",
 				"README.md",
 				"LICENSE",
 				"lib/**/*",

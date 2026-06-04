@@ -1,5 +1,5 @@
 {
-	"changelog": ["@savvy-web/changesets/changelog", {}],
+	"changelog": ["@savvy-web/silk/changesets/changelog", {}],
 	"ignore": ["@libraries/*", "@rspress/*"],
 	"privatePackages": { "version": true, "tag": true }
 }
