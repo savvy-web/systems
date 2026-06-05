@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import type { ExtractorMessage } from "@microsoft/api-extractor";
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from "@microsoft/api-extractor";
 import { TSDocConfigFile } from "@microsoft/tsdoc-config";
+import { MetaGenerationError } from "../errors.js";
 import type { WarningSuppressionRule } from "./config.js";
 import { createMessageSuppressor } from "./message-suppressor.js";
 
@@ -70,8 +71,9 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 	});
 
 	if (!result.succeeded) {
-		throw new Error(
-			`API Extractor reported ${result.errorCount} error(s) and ${result.warningCount} warning(s) for ${options.entryDtsPath}`,
-		);
+		throw new MetaGenerationError({
+			entry: options.entryDtsPath,
+			reason: `API Extractor reported ${result.errorCount} error(s) and ${result.warningCount} warning(s)`,
+		});
 	}
 }

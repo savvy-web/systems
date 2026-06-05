@@ -19,6 +19,7 @@ describe("runBuild meta target", () => {
 			readPackageName: () => "@scope/fixture",
 			readVersion: () => "1.0.0",
 			readExports: () => ({ ".": "./src/index.ts" }),
+			writeTsconfig: () => "/fake/tsconfig.json",
 			writeOutput: () => {},
 		});
 		expect(build).not.toHaveBeenCalled();
@@ -26,6 +27,26 @@ describe("runBuild meta target", () => {
 		const arg = generateMeta.mock.calls[0]?.[0];
 		expect(arg?.dtsDir).toContain("dist/dev");
 		expect(arg?.localPaths).toEqual(["../models"]);
+	});
+
+	it("throws when --target meta is requested but no meta option is configured", async () => {
+		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
+		const build = vi.fn(async () => {});
+		await expect(
+			runBuild(defineBuild({}), {
+				cwd: "/abs/pkg",
+				argv: ["--target", "meta"],
+				buildTargetGroups: build,
+				generateMeta,
+				readPackageName: () => "@scope/fixture",
+				readVersion: () => "1.0.0",
+				readExports: () => ({ ".": "./src/index.ts" }),
+				writeTsconfig: () => "/fake/tsconfig.json",
+				writeOutput: () => {},
+			}),
+		).rejects.toThrow("`savvy build --target meta` requires a `meta` option");
+		expect(generateMeta).not.toHaveBeenCalled();
+		expect(build).not.toHaveBeenCalled();
 	});
 
 	it("does not call generateMeta for --target npm when meta is unset", async () => {

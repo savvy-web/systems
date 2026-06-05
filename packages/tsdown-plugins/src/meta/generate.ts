@@ -50,7 +50,10 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 	let mainEntryDidTsdocMetadata = false;
 	for (const entryName of entryNames) {
 		const entryDtsPath = join(dtsDir, `${entries[entryName]}.d.ts`);
-		const perEntryApiJson = join(outMetaDir, `${entryName}.entry.api.json`);
+		// Entry names can contain path separators (e.g. "foo/index", "bin/cli"); flatten so the
+		// intermediate working file stays directly under outMetaDir rather than a missing subdir.
+		const safeEntry = entryName.replace(/[\\/]/g, "__");
+		const perEntryApiJson = join(outMetaDir, `${safeEntry}.entry.api.json`);
 		intermediateApiJsons.push(perEntryApiJson);
 		const isMain = (exportPaths[entryName] ?? (entryName === "index" ? "." : `./${entryName}`)) === ".";
 		runApiExtractor({
