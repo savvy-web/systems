@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runBuild } from "../src/run.js";
 
 describe("runBuild", () => {
-	it("maps target dev -> groups ['dev'] and invokes buildTargetGroups", async () => {
+	it("maps target dev -> a single dev group spec and invokes buildTargetGroups", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
 			{ formats: ["esm"], externals: ["typescript"], devManifest: "preserve" },
@@ -13,15 +13,16 @@ describe("runBuild", () => {
 				argv: ["--target", "dev"],
 				buildTargetGroups: spy,
 				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
 			},
 		);
 		expect(spy).toHaveBeenCalledOnce();
 		const arg = spy.mock.calls[0][0];
-		expect(arg.groups).toEqual(["dev"]);
+		expect(arg.groups).toEqual([{ id: "dev", name: "base" }]);
 		expect(arg.externals).toEqual(["typescript"]);
 	});
 
-	it("maps target npm -> groups ['npm']", async () => {
+	it("maps target npm -> a single npm group spec (default, no targets)", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
 			{ formats: ["esm"], externals: [], devManifest: "preserve" },
@@ -30,9 +31,12 @@ describe("runBuild", () => {
 				argv: ["--target", "npm"],
 				buildTargetGroups: spy,
 				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+				readPublishTargets: () => undefined,
+				writeTargetsBinding: () => "x",
 			},
 		);
-		expect(spy.mock.calls[0][0].groups).toEqual(["npm"]);
+		expect(spy.mock.calls[0][0].groups).toEqual([{ id: "npm", name: "base" }]);
 	});
 
 	it("uses the injected writeTsconfig (no temp-dir write) and forwards its path", async () => {

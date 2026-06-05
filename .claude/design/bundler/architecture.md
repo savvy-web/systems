@@ -26,6 +26,7 @@ The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consu
 - [The savvy.build.ts contract](#the-savvybuildts-contract)
 - [defineBuild and runBuild](#definebuild-and-runbuild)
 - [TargetGroup and Target model](#targetgroup-and-target-model)
+- [Multi-target publishing](#multi-target-publishing)
 - [Dist layout](#dist-layout)
 - [Meta generation wiring](#meta-generation-wiring)
 - [The orchestrator to tsdown boundary](#the-orchestrator-to-tsdown-boundary)
@@ -51,7 +52,9 @@ The SP1 exit gate is output parity building the real `@savvy-web/cli` end-to-end
 
 Track A (API Extractor meta generation) also landed on top of SP1: `--target meta` generates an `.api.json` model into configured `localPaths`, and `--target npm` additionally emits a `meta/` release-asset bundle. All meta behavior lives in `@savvy-web/tsdown-plugins`' `src/meta/` (`generateMeta`); the bundler only wires it. See [Meta generation wiring](#meta-generation-wiring).
 
-Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2), renamed-package multi-byte-variant publishing (SP4), dual-format esm+cjs, and virtual entries. SP1 builds a `dev` TargetGroup plus a single `npm` prod TargetGroup.
+Track C (multi-target / renamed-package publishing) also landed: `--target npm` now derives ALL prod byte-variant groups from `publishConfig.targets` via `resolveTargets`, builds each, writes a `dist/prod/targets.json` binding and emits one report group per built group. The derivation lives entirely in `@savvy-web/tsdown-plugins`' `src/targets/`; the bundler only wires it. See [Multi-target publishing](#multi-target-publishing).
+
+Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2), dual-format esm+cjs, and virtual entries. Track C delivers the multi-byte-variant publishing originally scoped for SP4. SP1 builds a `dev` TargetGroup; `--target npm` builds the single-`npm` default or, when a package declares the Record-map `publishConfig.targets`, every derived prod group.
 
 ## The two-package split
 
@@ -90,7 +93,7 @@ export default defineBuild({
 Two functions, deliberately separated so the config surface stays pure and the orchestration stays injectable.
 
 - **`defineBuild(input)`** (`src/config.ts`) normalizes and validates the config (`formats`, `externals`, `devManifest`, `transform`, `output`) into a `BuildConfig`, applying defaults (`formats: ["esm"]`, `devManifest: "preserve"`). It does **not** itself run the build — see `src/config.ts` for the note on why the `import.meta.main` gate lives in `run.ts`.
-- **`runBuild(config, options)`** (`src/run.ts`) is the orchestrator: parse argv → read `package.json` at cwd → write the resolved dts tsconfig (`writeResolvedTsconfig`) → derive entries (`packageJsonEntries`) → call `buildTargetGroups` for the selected group → assemble a `BuildReport` and render it via `renderReport`/`ReportPipelineLive`. Every IO dependency (`buildTargetGroups`, `writeOutput`, `readVersion`, `readPackageName`) is injectable on `RunOptions` so the orchestration is unit-testable without touching disk or spawning tsdown.
+- **`runBuild(config, options)`** (`src/run.ts`) is the orchestrator: parse argv → read `package.json` at cwd → write the resolved dts tsconfig (`writeResolvedTsconfig`) → derive entries (`packageJsonEntries`) → derive the build groups (a single `dev` group, or all prod groups from `publishConfig.targets`) → call `buildTargetGroups` → on `--target npm` write the `targets.json` binding → assemble a `BuildReport` (one entry per built group) and render it via `renderReport`/`ReportPipelineLive`. Every IO dependency (`buildTargetGroups`, `generateMeta`, `readExports`, `readPublishTargets`, `writeTargetsBinding`) is injectable on `RunOptions` so the orchestration is unit-testable without touching disk or spawning tsdown.
 
 The `BuildReport` the bundler assembles in SP1 is intentionally minimal (per-TargetGroup `{ id, entries, timings, warnings, errors }`); SP2 extends it with `wouldFailProd[]` preflight findings. The report *schema* and *reporter pipeline* are owned by `tsdown-plugins`.
 
@@ -98,12 +101,20 @@ The `BuildReport` the bundler assembles in SP1 is intentionally minimal (per-Tar
 
 Two terms from the program glossary, load-bearing across the whole bundler design:
 
-- **TargetGroup** — a single build output: a `dist/<group>/pkg` folder containing a complete, self-consistent bundle (built code + one specific `package.json` manifest variant). The unit of **bytes**. SP1 groups are `dev` and `npm`; the `TargetGroupId` union in `tsdown-plugins` is `"dev" | "npm"`.
+- **TargetGroup** — a single build output: a `dist/<group>/pkg` folder containing a complete, self-consistent bundle (built code + one specific `package.json` manifest variant). The unit of **bytes**. The `dev` group plus one prod group per distinct byte-variant; the `TargetGroupId` in `tsdown-plugins` is now any `string` (Track C widened it from `"dev" | "npm"`), and a group is described by `BuildGroupSpec` (`{ id, name }`) so it carries its resolved manifest name.
 - **Target** — a publish destination: a registry endpoint plus its publish config. A Target is bound to exactly one TargetGroup (the bytes it ships).
 
-The relationship is **N Targets : 1 TargetGroup** — `dist/npm` shipped to npm + GitHub Packages + a custom registry is three Targets, identical bytes. You split into more than one publishable TargetGroup *only* when a manifest change alters the bundled bytes (in practice a `name`/scope transform, which matters for release attestation) — that is the SP4 multi-byte-variant case, out of SP1.
+The relationship is **N Targets : 1 TargetGroup** — `dist/prod/npm` shipped to npm + GitHub Packages + a custom registry is three Targets, identical bytes. You split into more than one publishable TargetGroup *only* when a manifest change alters the bundled bytes (in practice a `name`/scope transform, which matters for release attestation). Track C makes both relationships declarative through `publishConfig.targets`: a `name`/string override creates a new byte-variant group, while a `from` target binds an extra registry endpoint to an existing group's bytes. See [Multi-target publishing](#multi-target-publishing).
 
-**The boundary:** the bundler **builds TargetGroups**. Targets (registry upload + attestation) are the release action's job, consuming the built `dist/{group}/pkg` folders. The bundler's responsibility ends at emitting a valid `pkg/`.
+**The boundary:** the bundler **builds TargetGroups**. Targets (registry upload + attestation) are the release action's job, consuming the built `dist/{group}/pkg` folders. The bundler's responsibility ends at emitting a valid `pkg/` plus the binding that tells the release action which Targets map to which group.
+
+## Multi-target publishing
+
+Track C wires the bundler to `publishConfig.targets`. The derivation itself (which groups, which registries, which validation) lives wholly in `@savvy-web/tsdown-plugins`' `resolveTargets` (see `../tsdown-plugins/architecture.md`); the bundler reads config and threads results.
+
+- **`--target npm`** reads `publishConfig.targets`, calls `deriveProdGroups` (a `run.ts` helper wrapping `resolveTargets`, defaulting to `{ npm: true }` when none is declared), builds every resolved group via `buildTargetGroups`, then `writeTargetsBinding(cwd, resolution)` writes `dist/prod/targets.json` and the report carries one group per built group. The single-target common case still yields exactly one `npm` group named after the package.
+- **`--target dev`** builds a single `dev` group named after the base name and writes NO binding (dev is registry-less, local-link only). `--target meta` is unchanged.
+- **The legacy-array guard is load-bearing.** `publishConfig.targets` already exists in every current in-repo package as the rslib-builder ARRAY form. The default reader treats an array-valued `targets` as `undefined` and falls back to the single-`npm` default, so existing packages' build behavior is unchanged and the new multi-target path stays **dormant** until a package migrates `publishConfig.targets` to the Record-map form. The two shapes collide on the same key by design; only the Record map activates Track C.
 
 ## Dist layout
 
@@ -113,9 +124,12 @@ dist/
     pkg/                # ← pnpm linkDirectory points HERE; clean publishable bytes
     meta/              # (Track A) staging outMetaDir for --target meta before copy into localPaths
   prod/
-    npm/                # SP1: just npm. SP4: one folder per distinct byte-variant
+    targets.json        # (Track C) the TargetResolution binding for the release action
+    npm/                # one folder per distinct byte-variant group (Track C); npm is the single-target default
       pkg/              # the tarball root — transformed manifest + built code
-      meta/            # (Track A) meta bundle (release assets) when config.meta is set
+      meta/            # (Track A) meta bundle (release assets) into the canonical group only, when config.meta is set
+    github/             # (Track C) a second byte-variant — e.g. a rescoped @scope/name manifest
+      pkg/
 ```
 
 - **`pkg/` *is* the tarball** — nothing to ignore. This retires rslib's "mix meta files into `dist/npm` and exclude them via package.json ignore patterns" hack.
@@ -130,7 +144,7 @@ dist/
 Track A adds API Extractor meta generation. The bundler is pure wiring over `generateMeta` from `@savvy-web/tsdown-plugins` (all the behavior lives there — see `../tsdown-plugins/architecture.md`); the bundler decides *when* and *where*.
 
 - **`--target meta`** runs `generateMeta` over the already-built `dist/dev/pkg` dts (API Extractor over the emitted dev `.d.ts`; there is **no** tsdown build), stages the bundle in `dist/dev/meta` and copies the resulting api-model into the `localPaths` configured in `config.meta`. This is why the `build:meta` turbo task depends only on `build:dev`. It throws if `config.meta` is unset.
-- **`--target npm`** additionally emits a `meta/` release-asset bundle into `dist/prod/npm/meta` (the folder reserved in the dist layout, empty `localPaths`) when `config.meta` is set — so meta ships as a publish asset, not mixed into `pkg/`.
+- **`--target npm`** additionally emits a `meta/` release-asset bundle (empty `localPaths`) when `config.meta` is set — so meta ships as a publish asset, not mixed into `pkg/`. With Track C's multiple prod groups, meta is emitted **once into the canonical group's dir** — the group whose resolved name matches the package name, else the first group (`dist/prod/<canonicalId>/meta`). Per-variant meta is out of scope; renamed variants share the canonical group's api-model.
 - **Decoupling:** meta is split from the prod build on purpose. `build:prod` emits the `meta/` asset; `savvy build --target meta` emits the api-model into other packages' `localPaths` and depends only on `build:dev`. Neither path re-runs the bundle.
 - **`deriveExportPaths`** (a `run.ts` helper) recovers export keys from the package `exports` map to drive the per-entry extraction. `generateMeta`/`readExports` are injectable on `RunOptions` so the wiring stays unit-testable.
 
@@ -160,7 +174,8 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 
 - **The bundler owns no build behavior.** Every behavior is a helper in `@savvy-web/tsdown-plugins`; the bundler only wires them. Anything the front door does, a hand-written `tsdown.config.ts` can do by importing the same helper. This includes meta: `generateMeta` lives in tsdown-plugins; the bundler only decides when (`--target meta`/`--target npm`) and where (`localPaths`/`dist/prod/npm/meta`).
 - **Meta is decoupled from the bundle.** Neither `--target meta` nor the npm meta-asset path re-runs the tsdown build — they run API Extractor over the already-emitted dev `.d.ts`. `build:meta` is uncached and depends only on `build:dev`.
-- **The bundler's responsibility ends at `dist/{group}/pkg`.** Registry upload + attestation (Targets) are the release action's job.
+- **The bundler's responsibility ends at `dist/{group}/pkg` plus `dist/prod/targets.json`.** Registry upload + attestation (Targets) are the release action's job; it consumes the binding to learn which built group each Target deploys. `resolveTargets` is the single source of truth for the derivation — the bundler never reimplements it.
+- **The legacy-array `publishConfig.targets` path stays dormant.** Only the Record-map form activates Track C; an array-valued `targets` (the current rslib-builder shape) falls back to the single-`npm` default, leaving existing packages' bytes unchanged.
 - **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency.
 - **Built by rslib-builder until self-host.** Both packages keep `@savvy-web/rslib-builder` + `@rslib/core` devDeps and an `rslib.config.ts` for now; dogfooding/self-hosting is a deliberate post-SP1 step.
 

@@ -12,6 +12,7 @@ describe("runBuild reporting", () => {
 				argv: ["--target", "npm"],
 				buildTargetGroups: (async () => {}) as never,
 				writeOutput: (o) => sink.push(o.content),
+				writeTargetsBinding: () => "x",
 				readVersion: () => "1.0.0",
 				readPackageName: () => "@x/p",
 			},

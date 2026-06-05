@@ -8,7 +8,9 @@ import type { Json } from "./transform.js";
 import { transformManifest } from "./transform.js";
 
 export interface TargetGroupRef {
-	readonly id: string; // "dev" | "npm" | ...
+	readonly id: string; // "dev", "npm", "github", or any custom prod variant id
+	/** The package.json name this group's manifest carries (the declarative rename). */
+	readonly name: string;
 	readonly isProd: boolean;
 }
 
@@ -30,6 +32,8 @@ export async function buildEmittedManifest(options: BuildEmittedManifestOptions)
 		// structurally compatible records, so the casts are safe at this boundary.
 		base = (await resolveManifest(pkg as unknown as ManifestLike)) as unknown as Json;
 	}
+	// Apply the declarative rename so the user transform and the emitted manifest both see it.
+	base = { ...base, name: targetGroup.name };
 	return transformManifest(base, {
 		transform: transform ? (p) => transform({ pkg: p, targetGroup }) : undefined,
 	});

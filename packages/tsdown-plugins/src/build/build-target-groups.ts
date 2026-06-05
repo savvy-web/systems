@@ -5,7 +5,7 @@ import type { Plugin } from "rolldown";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { Json } from "../manifest/transform.js";
-import type { TargetGroupId } from "./target-groups.js";
+import type { BuildGroupSpec } from "./target-groups.js";
 import { deriveTargetGroupOptions } from "./target-groups.js";
 
 /** Signature compatible with tsdown's `build(inlineConfig)`. */
@@ -16,7 +16,7 @@ export interface BuildTargetGroupsOptions {
 	readonly version: string;
 	readonly entry: Record<string, string>;
 	readonly tsconfigPath: string;
-	readonly groups: ReadonlyArray<TargetGroupId>;
+	readonly groups: ReadonlyArray<BuildGroupSpec>;
 	readonly devManifest: "preserve" | "resolve";
 	readonly externals?: ReadonlyArray<string>;
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
@@ -32,7 +32,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 
 	for (const group of options.groups) {
 		const derived = deriveTargetGroupOptions({
-			group,
+			group: group.id,
 			cwd: options.cwd,
 			version: options.version,
 			entry: options.entry,
@@ -40,7 +40,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			devManifest: options.devManifest,
 			...(options.externals !== undefined ? { externals: options.externals } : {}),
 		});
-		const targetGroup: TargetGroupRef = { id: group, isProd: derived.isProd };
+		const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: derived.isProd };
 		const manifestPlugin = emitManifest({
 			targetGroup,
 			devManifest: options.devManifest,

@@ -59,4 +59,11 @@ export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 	return { target, watch };
 }
 
-export type { MetaOptions } from "@savvy-web/tsdown-plugins";
+export type {
+	MetaOptions,
+	PublishTargetValue,
+	PublishTargets,
+	ResolvedGroup,
+	ResolvedTarget,
+	TargetResolution,
+} from "@savvy-web/tsdown-plugins";

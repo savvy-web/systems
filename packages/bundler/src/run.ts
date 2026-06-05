@@ -2,10 +2,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
+	BuildGroupSpec,
 	BuildTargetGroupsOptions,
 	GenerateMetaOptions,
 	MetaResult,
+	PublishTargets,
 	RenderedOutput,
+	TargetResolution,
 } from "@savvy-web/tsdown-plugins";
 import {
 	ReportPipelineLive,
@@ -13,7 +16,9 @@ import {
 	packageJsonEntries,
 	buildTargetGroups as realBuildTargetGroups,
 	generateMeta as realGenerateMeta,
+	writeTargetsBinding as realWriteTargetsBinding,
 	renderReport,
+	resolveTargets,
 	writeResolvedTsconfig,
 } from "@savvy-web/tsdown-plugins";
 import { Effect } from "effect";
@@ -37,20 +42,41 @@ export interface RunOptions {
 	readonly generateMeta?: (o: GenerateMetaOptions) => Promise<MetaResult>;
 	/** Injectable for tests: returns the package.json `exports` map. */
 	readonly readExports?: () => Record<string, string> | undefined;
+	/** Injectable for tests: returns package.json publishConfig.targets, or undefined. */
+	readonly readPublishTargets?: (() => PublishTargets | undefined) | undefined;
+	/** Injectable for tests: writes the target binding artifact. */
+	readonly writeTargetsBinding?: ((cwd: string, resolution: TargetResolution) => string) | undefined;
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
-function readPackageJson(cwd: string): { name?: string; version?: string; exports?: unknown; bin?: unknown } {
+function readPackageJson(cwd: string): {
+	name?: string;
+	version?: string;
+	exports?: unknown;
+	bin?: unknown;
+	publishConfig?: unknown;
+} {
 	try {
 		return JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8")) as {
 			name?: string;
 			version?: string;
 			exports?: unknown;
 			bin?: unknown;
+			publishConfig?: unknown;
 		};
 	} catch {
 		return {};
 	}
+}
+
+/** Resolve the prod build groups and the target binding from publishConfig.targets (or the single-npm default). */
+function deriveProdGroups(
+	targets: PublishTargets | undefined,
+	baseName: string,
+): { groups: ReadonlyArray<BuildGroupSpec>; resolution: TargetResolution } {
+	const effective: PublishTargets = targets !== undefined && Object.keys(targets).length > 0 ? targets : { npm: true };
+	const resolution = resolveTargets({ targets: effective, baseName });
+	return { groups: resolution.groups.map((g) => ({ id: g.id, name: g.name })), resolution };
 }
 
 /** Map entry names to export paths using the package exports map. index maps to ".". */
@@ -83,6 +109,17 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	const entries = packageJsonEntries({ pkg, cwd });
 	const exportsMap = options.readExports ? options.readExports() : (pkg.exports as Record<string, string> | undefined);
 	const runGenerateMeta = options.generateMeta ?? realGenerateMeta;
+	const readPublishTargets =
+		options.readPublishTargets ??
+		(() => {
+			// Only the new map form (Record) drives multi-target; ignore legacy array-form targets.
+			const declared = (pkg.publishConfig as { targets?: unknown } | undefined)?.targets;
+			return declared !== undefined && !Array.isArray(declared) && typeof declared === "object"
+				? (declared as PublishTargets)
+				: undefined;
+		});
+	const publishTargets = readPublishTargets();
+	const writeBinding = options.writeTargetsBinding ?? realWriteTargetsBinding;
 
 	// --target meta: generate the api-model from the dev build's dts into localPaths. No tsdown build.
 	if (target === "meta") {
@@ -114,19 +151,31 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	}
 
 	const startMs = Date.now();
+	// dev: one dev group named after the base; npm: all resolved prod groups (meta already returned above).
+	const { groups, resolution } =
+		target === "dev"
+			? { groups: [{ id: "dev", name: packageName }] as ReadonlyArray<BuildGroupSpec>, resolution: undefined }
+			: deriveProdGroups(publishTargets, packageName);
 	await build({
 		cwd,
 		version,
 		entry: entries,
 		tsconfigPath,
-		groups: [target as "dev" | "npm"], // meta already returned above
+		groups,
 		devManifest: config.devManifest,
 		externals: config.externals,
 		...(config.transform !== undefined ? { transform: config.transform } : {}),
 	});
 
-	// --target npm with meta set: emit the meta/ release-asset bundle alongside pkg/.
+	// Write the target-to-group binding for the release action (prod only).
+	if (target === "npm" && resolution !== undefined) {
+		writeBinding(cwd, resolution);
+	}
+
+	// --target npm with meta set: emit the meta/ release-asset bundle alongside the canonical group's pkg/.
 	if (target === "npm" && config.meta !== undefined) {
+		const metaGroup = groups.find((g) => g.name === packageName) ?? groups[0];
+		const metaGroupId = metaGroup?.id ?? "npm";
 		const norm = normalizeMetaOptions(config.meta);
 		const dtsBasenames: Record<string, string> = {};
 		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
@@ -134,10 +183,10 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			cwd,
 			packageName,
 			tsconfigPath,
-			dtsDir: join(cwd, "dist", "prod", "npm", "pkg"),
+			dtsDir: join(cwd, "dist", "prod", metaGroupId, "pkg"),
 			entries: dtsBasenames,
 			exportPaths: deriveExportPaths(entries, exportsMap),
-			outMetaDir: join(cwd, "dist", "prod", "npm", "meta"),
+			outMetaDir: join(cwd, "dist", "prod", metaGroupId, "meta"),
 			localPaths: [],
 			tsdoc: norm.tsdoc,
 		});
@@ -149,16 +198,14 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	const reportEntries = Object.keys(entries);
 	const report = {
 		package: packageName,
-		targetGroups: [
-			{
-				id: target,
-				entries: reportEntries,
-				emittedFiles: [],
-				timings: { totalMs },
-				warnings: [],
-				errors: [],
-			},
-		],
+		targetGroups: groups.map((g) => ({
+			id: g.id,
+			entries: reportEntries,
+			emittedFiles: [],
+			timings: { totalMs },
+			warnings: [],
+			errors: [],
+		})),
 	};
 
 	const explicitFormat = config.output?.format;
