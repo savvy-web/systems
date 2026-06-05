@@ -1,5 +1,5 @@
 // packages/bundler/src/config.ts
-import type { ExeConfig, Json, JsxConfig, MetaOptions, TargetGroupRef } from "@savvy-web/tsdown-plugins";
+import type { BuildFormat, ExeConfig, Json, JsxConfig, MetaOptions, TargetGroupRef } from "@savvy-web/tsdown-plugins";
 
 export interface OutputConfig {
 	readonly console?: { readonly human?: boolean; readonly agent?: boolean; readonly ci?: boolean };
@@ -15,6 +15,12 @@ export interface BuildConfigInput {
 	readonly meta?: MetaOptions;
 	readonly jsx?: JsxConfig | undefined;
 	readonly exe?: ExeConfig | ReadonlyArray<ExeConfig> | undefined;
+	/**
+	 * Output module formats forwarded to the tsdown build. Defaults to esm-only;
+	 * add "cjs" for a dual-format esm plus cjs build. This is the live field;
+	 * the legacy "formats" field above is not consumed by the build.
+	 */
+	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 }
 
 export interface BuildConfig {
@@ -26,6 +32,8 @@ export interface BuildConfig {
 	readonly meta?: MetaOptions | undefined;
 	readonly jsx?: JsxConfig | undefined;
 	readonly exe?: ExeConfig | ReadonlyArray<ExeConfig> | undefined;
+	/** Output module formats forwarded to the tsdown build (esm-only by default; add "cjs" for dual-format). */
+	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 }
 
 /** Normalize + validate a defineBuild config. Pure when imported; self-runs when entry (see run.ts). */
@@ -39,6 +47,7 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 		meta: input.meta,
 		jsx: input.jsx,
 		exe: input.exe,
+		format: input.format,
 	};
 	// Self-execution: only when this module's importer is the program entry.
 	// run.ts performs the actual import.meta.main gate (it has access to the caller's meta).
@@ -66,6 +75,7 @@ export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 }
 
 export type {
+	BuildFormat,
 	ExeConfig,
 	ExeTarget,
 	JsxConfig,

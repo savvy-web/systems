@@ -229,6 +229,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		externals: config.externals,
 		...(config.transform !== undefined ? { transform: config.transform } : {}),
 		...(jsx !== undefined ? { jsx } : {}),
+		...(config.format !== undefined ? { format: config.format } : {}),
 	});
 
 	// Write the target-to-group binding for the release action (prod only).

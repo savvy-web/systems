@@ -64,3 +64,6 @@ packages/bundler/__test__/integration/fixtures/jsx/dist/
 # bundler exe integration fixture build artifacts
 packages/bundler/__test__/integration/fixtures/exe/dist/
 packages/bundler/__test__/integration/fixtures/exe/bin/
+
+# bundler dual-format integration fixture build artifacts
+packages/bundler/__test__/integration/fixtures/dual-format/dist/

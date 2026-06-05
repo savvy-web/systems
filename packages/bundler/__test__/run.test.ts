@@ -97,4 +97,35 @@ describe("runBuild", () => {
 		);
 		expect(spy.mock.calls[0][0].jsx).toBeUndefined();
 	});
+
+	it("forwards format to the build", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve", format: ["esm", "cjs"] },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect(spy.mock.calls[0][0].format).toEqual(["esm", "cjs"]);
+	});
+
+	it("omits format from the build call when the config does not request it", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve" },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect("format" in spy.mock.calls[0][0]).toBe(false);
+		expect(spy.mock.calls[0][0].format).toBeUndefined();
+	});
 });

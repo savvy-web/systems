@@ -89,4 +89,108 @@ describe("buildTargetGroups", () => {
 		});
 		expect(captured[0]?.inputOptions?.jsx).toEqual({ runtime: "automatic", importSource: "react" });
 	});
+
+	it("emits dual import/require export conditions when format includes cjs", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "btg-"));
+		await writeFile(
+			join(dir, "package.json"),
+			JSON.stringify({ name: "base", version: "1.0.0", exports: { ".": "./src/index.ts" } }),
+		);
+
+		// Drive the emitManifest plugin's generateBundle hook, capturing the emitted package.json.
+		const captureBuild = (manifests: Array<Record<string, unknown>>) =>
+			(async (cfg: { plugins: Array<{ name: string; generateBundle?: () => Promise<void> }> }) => {
+				const emit = cfg.plugins.find((p) => p.name === "savvy:emit-manifest");
+				await emit?.generateBundle?.call({
+					emitFile(file: { fileName: string; source: string }) {
+						if (file.fileName === "package.json") manifests.push(JSON.parse(file.source));
+					},
+				});
+			}) as never;
+
+		const dual: Array<Record<string, unknown>> = [];
+		await buildTargetGroups({
+			cwd: dir,
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: join(dir, "tsconfig.json"),
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			format: ["esm", "cjs"],
+			build: captureBuild(dual),
+		});
+		expect((dual[0]?.exports as Record<string, unknown>)["."]).toEqual({
+			types: "./index.d.ts",
+			import: "./index.js",
+			require: "./index.cjs",
+		});
+
+		const esm: Array<Record<string, unknown>> = [];
+		await buildTargetGroups({
+			cwd: dir,
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: join(dir, "tsconfig.json"),
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build: captureBuild(esm),
+		});
+		expect((esm[0]?.exports as Record<string, unknown>)["."]).toEqual({
+			types: "./index.d.ts",
+			import: "./index.js",
+		});
+	});
+
+	it("enables cjs interop on the tsdown build when cjs is in the format", async () => {
+		const captured: Array<Record<string, unknown>> = [];
+		const build = (async (cfg: Record<string, unknown>) => {
+			captured.push(cfg);
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			format: ["esm", "cjs"],
+			build,
+		});
+		expect(captured[0]?.cjsDefault).toBe(true);
+	});
+
+	it("omits cjs interop when the format is esm-only", async () => {
+		const captured: Array<Record<string, unknown>> = [];
+		const build = (async (cfg: Record<string, unknown>) => {
+			captured.push(cfg);
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build,
+		});
+		expect(captured[0]?.cjsDefault).toBeUndefined();
+	});
+
+	it("passes the configured format through to the tsdown build", async () => {
+		const captured: Array<{ format?: unknown }> = [];
+		const build = (async (cfg: { format?: unknown }) => {
+			captured.push({ format: cfg.format });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			format: ["esm", "cjs"],
+			build,
+		});
+		expect(captured[0]?.format).toEqual(["esm", "cjs"]);
+	});
 });

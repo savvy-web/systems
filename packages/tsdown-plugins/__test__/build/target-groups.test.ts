@@ -50,4 +50,19 @@ describe("deriveTargetGroupOptions", () => {
 		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve" });
 		expect(o.jsx).toBeUndefined();
 	});
+
+	it("forwards an explicit esm+cjs format", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve", format: ["esm", "cjs"] });
+		expect(o.format).toEqual(["esm", "cjs"]);
+	});
+
+	it("sets fixedExtension false for esm-only (default)", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve" });
+		expect(o.fixedExtension).toBe(false);
+	});
+
+	it("keeps fixedExtension false for esm+cjs (tsdown derives .js/.cjs for type:module)", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve", format: ["esm", "cjs"] });
+		expect(o.fixedExtension).toBe(false);
+	});
 });

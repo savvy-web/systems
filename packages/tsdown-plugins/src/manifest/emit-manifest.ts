@@ -19,6 +19,8 @@ export interface BuildEmittedManifestOptions {
 	readonly targetGroup: TargetGroupRef;
 	readonly devManifest: "preserve" | "resolve";
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
+	/** Emit dual import/require export conditions (set when the build includes cjs). */
+	readonly dual?: boolean | undefined;
 }
 
 /** Compute the final manifest bytes for a TargetGroup (catalog resolution + standard transforms). */
@@ -36,6 +38,7 @@ export async function buildEmittedManifest(options: BuildEmittedManifestOptions)
 	base = { ...base, name: targetGroup.name };
 	return transformManifest(base, {
 		transform: transform ? (p) => transform({ pkg: p, targetGroup }) : undefined,
+		dual: options.dual ?? false,
 	});
 }
 
@@ -45,6 +48,8 @@ export interface EmitManifestOptions {
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
 	/** Source package dir to read package.json/LICENSE/README from. */
 	readonly sourceDir: string;
+	/** Emit dual import/require export conditions (set when the build includes cjs). */
+	readonly dual?: boolean | undefined;
 }
 
 /** Rolldown plugin: emit the transformed package.json + LICENSE/README into the output pkg/ root. */
@@ -59,6 +64,7 @@ export function emitManifest(options: EmitManifestOptions): Plugin {
 				targetGroup: options.targetGroup,
 				devManifest: options.devManifest ?? "preserve",
 				transform: options.transform,
+				dual: options.dual,
 			});
 			this.emitFile({
 				type: "asset",

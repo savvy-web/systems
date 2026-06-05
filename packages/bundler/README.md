@@ -128,6 +128,18 @@ const config = defineBuild({
 
 The resolved JSX settings feed both the dts tsconfig and the tsdown transform. Omit `jsx` to inherit the tsconfig value.
 
+## Dual-format output
+
+Builds are esm-only by default. Set the `format` field to add a CommonJS output alongside the ESM one:
+
+```ts
+const config = defineBuild({
+  format: ["esm", "cjs"],
+});
+```
+
+A dual-format build emits an ESM `.js` and a require-able CJS `.cjs` (with named-export interop) plus matching `.d.ts` and `.d.cts` declarations, and writes a manifest carrying both `import` and `require` export conditions. Omit `format`, or pass `["esm"]`, for an ESM-only build.
+
 ## Features
 
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
@@ -136,6 +148,7 @@ The resolved JSX settings feed both the dts tsconfig and the tsdown transform. O
 - **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target npm` builds the distinct byte variants and writes a `targets.json` binding for the release step.
 - **Executable binaries** — an `exe` config compiles SEA binaries from a bin entry via `@tsdown/exe`, inferring the platform from the package's `os`/`cpu` when targets are omitted.
 - **JSX, config-first** — JSX transform is inherited from `tsconfig.json` and overridable via the `jsx` field, feeding both the dts tsconfig and the tsdown transform.
+- **Dual-format output** — esm-only by default; set `format` to `["esm", "cjs"]` for a require-able CJS output with named-export interop, `.d.cts` declarations and dual `import`/`require` export conditions.
 - **Fast-fail config validation** — `runBuild` validates the config (`publishConfig.targets`, `exe`, `meta`) before any build work, raising a typed `ConfigValidationError` on the first violation.
 - **One devDependency** — `tsdown` is a regular dependency, pinned and tested transitively, so you never carry it or its plugin peers in your own tree.
 - **Injectable orchestration** — `runBuild` takes its IO dependencies as options, so the build is testable without spawning a real bundle.
@@ -143,7 +156,7 @@ The resolved JSX settings feed both the dts tsconfig and the tsdown transform. O
 
 ## API
 
-- `defineBuild(input)` — normalizes a build config (`formats`, `externals`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`), applying defaults. Pure; it does not run the build.
+- `defineBuild(input)` — normalizes a build config (`formats`, `externals`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). Pure; it does not run the build.
 - `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.
 
