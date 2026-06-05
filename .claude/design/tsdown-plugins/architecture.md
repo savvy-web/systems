@@ -5,7 +5,7 @@ category: architecture
 created: 2026-06-05
 updated: 2026-06-05
 last-synced: 2026-06-05
-completeness: 85
+completeness: 88
 related:
   - ../bundler/architecture.md
   - ../cli/architecture.md
@@ -15,7 +15,7 @@ dependencies:
 
 # @savvy-web/tsdown-plugins architecture
 
-The interface-only plugin pack that holds every build behavior `@savvy-web/bundler` drives — entry detection, manifest emission, catalog resolution, the dts tsconfig port, the per-TargetGroup build loop, the full Effect output reporter, the API Extractor meta-generation pipeline and the `publishConfig.targets` derivation. Authored against rolldown's plugin *type* only, so it imports no tsdown runtime and carries no tsdown peer dependency. This doc covers the SP1 foundation plus the Track A meta capability and the Track C multi-target derivation.
+The interface-only plugin pack that holds every build behavior `@savvy-web/bundler` drives — entry detection, manifest emission, catalog resolution, the dts tsconfig port, the per-TargetGroup build loop, the full Effect output reporter, the API Extractor meta-generation pipeline, the `publishConfig.targets` derivation, the JSX tsconfig→rolldown mapping, the SEA exe-compile wrapper and the fast-fail config validator. Authored against rolldown's plugin *type* only, so it imports no tsdown runtime and carries no tsdown peer dependency. This doc covers the SP1 foundation plus Track A (meta), Track C (multi-target derivation), Track D (JSX/React) and Track B (SEA executables) plus the §8 config-validation service.
 
 ## Table of Contents
 
@@ -30,6 +30,9 @@ The interface-only plugin pack that holds every build behavior `@savvy-web/bundl
 - [The output reporter](#the-output-reporter)
 - [The meta-generation pipeline](#the-meta-generation-pipeline)
 - [The targets derivation](#the-targets-derivation)
+- [JSX resolution](#jsx-resolution)
+- [The SEA exe-compile wrapper](#the-sea-exe-compile-wrapper)
+- [The config-validation service](#the-config-validation-service)
 - [The escape-hatch contract](#the-escape-hatch-contract)
 - [Boundaries and Invariants](#boundaries-and-invariants)
 - [Rationale](#rationale)
@@ -42,15 +45,15 @@ The package is implemented in Effect (`Data.TaggedError` typed errors, `Context.
 
 **Package:** `@savvy-web/tsdown-plugins`
 **Location:** `packages/tsdown-plugins` in `savvy-web/systems`
-**Public surface:** `src/index.ts` — the semver'd export surface (entry helpers, manifest transforms + `emitManifest`, `resolveManifest`, dts tsconfig helpers, `deriveTargetGroupOptions`/`buildTargetGroups` + `BuildGroupSpec`, the reporter pipeline + formatters + `BuildReport` schema, the meta surface `normalizeMetaOptions`/`generateMeta` + its option/result types + `MetaGenerationError`, the targets surface `resolveTargets`/`isTargetObject`/`writeTargetsBinding` + the `PublishTargets`/`TargetResolution` types, re-exported catalog errors)
+**Public surface:** `src/index.ts` — the semver'd export surface (entry helpers, manifest transforms + `emitManifest`, `resolveManifest`, dts tsconfig helpers, `deriveTargetGroupOptions`/`buildTargetGroups` + `BuildGroupSpec`, the reporter pipeline + formatters + `BuildReport` schema, the meta surface `normalizeMetaOptions`/`generateMeta` + its option/result types + `MetaGenerationError`, the targets surface `resolveTargets`/`isTargetObject`/`writeTargetsBinding` + the `PublishTargets`/`TargetResolution` types, the jsx surface `resolveJsxConfig`/`readTsconfigJsx` + `JsxConfig`/`TsconfigJsx`, the exe surface `normalizeExeOptions`/`runExeBuild` + its config types + `DEFAULT_EXE_NODE_VERSION`, the config-validation surface `ConfigValidator`/`ConfigValidatorLive` + `ValidationInput` + `ConfigValidationError`, re-exported catalog errors)
 **Versioning:** independent; auto-bumps the bundler when it changes.
 **Status:** Silk bundler program SP1 (Foundation). Spec/plan (local/gitignored): `docs/superpowers/specs/2026-06-04-savvy-bundler-sp1-foundation-design.md`, `docs/superpowers/plans/2026-06-04-savvy-bundler-sp1.md`.
 
 ## Current State
 
-SP1 implemented, plus Track A (API Extractor meta generation, the `src/meta/` module) and Track C (the `src/targets/` module — `publishConfig.targets` derivation into byte-variant groups, plus the name-aware TargetGroup plumbing that lets the build loop carry a per-group renamed manifest). Built by `@savvy-web/rslib-builder` until the stack self-hosts (post-SP1). Runtime `dependencies` are `workspaces-effect` (`^1.2.0`, for `CatalogResolver`), `@effect/platform-node` (provides `NodeContext` at the resolution boundary), `sort-package-json`, `std-env`, `picocolors`, `json-schema-effect`, plus the meta deps `@microsoft/api-extractor`, `@microsoft/tsdoc`, `@microsoft/tsdoc-config` and `deep-equal`; `effect` is a `catalog:silkPeers` peer. `tsdown`/`rolldown` are devDependencies — types only.
+SP1 implemented, plus Track A (API Extractor meta generation, the `src/meta/` module), Track C (the `src/targets/` module — `publishConfig.targets` derivation into byte-variant groups, plus the name-aware TargetGroup plumbing that lets the build loop carry a per-group renamed manifest), Track D (the `src/jsx/` module — tsconfig→rolldown JSX mapping threaded through the dts tsconfig and the build loop) and Track B (the `src/exe/` module — SEA executable compilation over `@tsdown/exe`) plus the §8 config-validation service (`src/config-validation/`). Built by `@savvy-web/rslib-builder` until the stack self-hosts (post-SP1). Runtime `dependencies` are `workspaces-effect` (`^1.2.0`, for `CatalogResolver`), `@effect/platform-node` (provides `NodeContext` at the resolution boundary), `sort-package-json`, `std-env`, `picocolors`, `json-schema-effect`, plus the meta deps `@microsoft/api-extractor`, `@microsoft/tsdoc`, `@microsoft/tsdoc-config` and `deep-equal`; `effect` is a `catalog:silkPeers` peer. `tsdown`/`rolldown` are devDependencies — types only. (The `@tsdown/exe` runtime dependency lives on the *bundler*, not here — tsdown lazily imports it; see `../bundler/architecture.md`.)
 
-Out of SP1/Track A/Track C: the SP2 preflight findings the reporter will later carry, per-variant meta (meta is still emitted once into the canonical group), dual-format CJS interop. The error set, formatter set, service set and the `resolveTargets` validation cases are discoverable in source — this doc documents the topology, not the enumerations.
+Out of SP1/Tracks A/B/C/D: the SP2 preflight findings the reporter will later carry, per-variant meta (meta is still emitted once into the canonical group), dual-format CJS interop and **Track E (publishability + self-hosting)**, which is not done in this branch. The error set, formatter set, service set, the `resolveTargets` validation cases and the `ConfigValidator` rule set are discoverable in source — this doc documents the topology, not the enumerations.
 
 ## The interface-only boundary
 
@@ -69,9 +72,12 @@ The surface divides into pure helpers, one rolldown plugin, one async catalog wr
 - **dts:** `buildResolvedTsconfig`/`writeResolvedTsconfig` (`src/dts/resolved-tsconfig.ts`).
 - **Build loop:** `deriveTargetGroupOptions` (pure, `src/build/target-groups.ts`), `buildTargetGroups` (`src/build/build-target-groups.ts`). The loop is driven by `ReadonlyArray<BuildGroupSpec>` (`{ id, name }`), so each group carries its own resolved manifest name.
 - **Targets:** the pure `src/targets/` module — `resolveTargets`/`isTargetObject` + the public/resolved types (`config.ts`, `resolve-targets.ts`) and `writeTargetsBinding` (`binding.ts`). See [The targets derivation](#the-targets-derivation).
+- **JSX:** the pure `src/jsx/config.ts` — `resolveJsxConfig` (tsconfig→rolldown mapping) and `readTsconfigJsx` (best-effort source-tsconfig read). See [JSX resolution](#jsx-resolution).
+- **Exe:** the `src/exe/` module — `normalizeExeOptions` + its config types (`config.ts`) and `runExeBuild` (`build.ts`, the interface-only tsdown-exe wrapper). See [The SEA exe-compile wrapper](#the-sea-exe-compile-wrapper).
+- **Config validation:** the `src/config-validation/` module — the `ConfigValidator` `Context.Tag` service + `ValidationInput` (`ConfigValidator.ts`) and `ConfigValidatorLive` (`ConfigValidatorLive.ts`). See [The config-validation service](#the-config-validation-service).
 - **Reporter:** four `Context.Tag` services `EnvironmentDetector → ExecutorResolver → FormatSelector → OutputRenderer` each with a sibling `*Live` layer, composed into `ReportPipelineLive`; the `renderReport` program; five formatters; the `BuildReport` `Schema` and its SchemaStore export. See [The output reporter](#the-output-reporter).
 - **Meta:** the `src/meta/` module — `normalizeMetaOptions` + types (`config.ts`), `createMessageSuppressor` (`message-suppressor.ts`), `buildTsdocConfig`/`writeTsdocConfig` (`tsdoc-config.ts`), `mergeApiModels`/`rewriteCanonicalReferences` (`merge-models.ts`), `runApiExtractor` (`api-extractor.ts`) and the `generateMeta` orchestrator (`generate.ts`). See [The meta-generation pipeline](#the-meta-generation-pipeline).
-- **Errors:** typed `Data.TaggedError`s in `src/errors.ts` (including `MetaGenerationError`, thrown by `runApiExtractor` on a failed extraction and re-exported from `src/index.ts` so consumers can `catchTag` meta failures by type); the catalog errors (`CatalogAssemblyError`, `CatalogResolutionError`) are owned by `workspaces-effect` and re-exported from `src/index.ts` so consumers and the reporter can `catchTag` them.
+- **Errors:** typed `Data.TaggedError`s in `src/errors.ts` (including `MetaGenerationError`, thrown by `runApiExtractor` on a failed extraction, and `ConfigValidationError` `{ path, reason }`, the single typed error every structural-config guard raises — `resolveTargets`, the exe/meta checks and the `ConfigValidator` — both re-exported from `src/index.ts` so consumers can `catchTag` by type); the catalog errors (`CatalogAssemblyError`, `CatalogResolutionError`) are owned by `workspaces-effect` and re-exported from `src/index.ts` so consumers and the reporter can `catchTag` them.
 
 ## Entry detection
 
@@ -87,11 +93,11 @@ The surface divides into pure helpers, one rolldown plugin, one async catalog wr
 
 ## The dts resolved-tsconfig port
 
-SP1 decision: **tsdown native dts on the tsc path, NOT isolatedDeclarations.** Without `isolatedDeclarations`, rolldown-plugin-dts falls back to the TS compiler for emit, which under pnpm symlinks reproduces rslib's TS2742/TS2883 portability failures. The fix is ported from rslib's `writeBundleTempConfig`: `writeResolvedTsconfig` writes a temp tsconfig with **absolute** `rootDir`/`include`/`typeRoots`, explicit `types` (forwarded from the project tsconfig, default `["node"]`) and `composite: false`/`incremental: false` so stale build info never skips emit. The orchestrator passes that temp path to tsdown's `dts: { tsconfig }`. See `src/dts/resolved-tsconfig.ts` for the exact compilerOptions.
+SP1 decision: **tsdown native dts on the tsc path, NOT isolatedDeclarations.** Without `isolatedDeclarations`, rolldown-plugin-dts falls back to the TS compiler for emit, which under pnpm symlinks reproduces rslib's TS2742/TS2883 portability failures. The fix is ported from rslib's `writeBundleTempConfig`: `writeResolvedTsconfig` writes a temp tsconfig with **absolute** `rootDir`/`include`/`typeRoots`, explicit `types` (forwarded from the project tsconfig, default `["node"]`) and `composite: false`/`incremental: false` so stale build info never skips emit. The orchestrator passes that temp path to tsdown's `dts: { tsconfig }`. `ResolvedTsconfigOptions` also takes optional `jsx`/`jsxImportSource` (Track D) so the dts compiler sees the same JSX runtime the build does — otherwise `.tsx` declaration emit fails. See `src/dts/resolved-tsconfig.ts` for the exact compilerOptions.
 
 ## The per-TargetGroup build loop
 
-`deriveTargetGroupOptions` (pure) maps a `TargetGroupId` to the tsdown options: `outDir` (`dev → dist/dev/pkg`, prod → `dist/prod/<group>/pkg`), `sourcemap`/`minify` (dev lenient, prod minified), `format: ["esm"]`, `unbundle: true`, `platform: "node"`, `fixedExtension: false`, the `dts.tsconfig` path and the `__PACKAGE_VERSION__` define. Track C widened `TargetGroupId` from the SP1 `"dev" | "npm"` union to any `string` — a prod group id is now an arbitrary `publishConfig.targets` key (`npm`, `github`, a custom key) — and the loop input is `ReadonlyArray<BuildGroupSpec>` (`{ id, name }`) rather than bare ids, so each group threads `group.id` into `deriveTargetGroupOptions`/the output dir and `group.name` into its `TargetGroupRef` for the declarative rename. `buildTargetGroups` runs `tsdown.build()` once per group with `config: false`, wiring in the per-group `emitManifest` plugin, `deps.neverBundle` externals and a `public/` auto-copy. Two SP1 facts cross into tsdown here: `unbundle: true` is the `disableSharedChunks` analogue (rolldown `preserveModules`, no shared runtime chunk), and `fixedExtension: false` forces package-`type`-ambient extensions over tsdown's node default. The loop is exposed as a composable helper — **not** locked inside the bundler — so the escape hatch gets multi-group builds too. `tsdown.build` is injectable on the options for tests, the only place tsdown's runtime is touched.
+`deriveTargetGroupOptions` (pure) maps a `TargetGroupId` to the tsdown options: `outDir` (`dev → dist/dev/pkg`, prod → `dist/prod/<group>/pkg`), `sourcemap`/`minify` (dev lenient, prod minified), `format: ["esm"]`, `unbundle: true`, `platform: "node"`, `fixedExtension: false`, the `dts.tsconfig` path and the `__PACKAGE_VERSION__` define. Track C widened `TargetGroupId` from the SP1 `"dev" | "npm"` union to any `string` — a prod group id is now an arbitrary `publishConfig.targets` key (`npm`, `github`, a custom key) — and the loop input is `ReadonlyArray<BuildGroupSpec>` (`{ id, name }`) rather than bare ids, so each group threads `group.id` into `deriveTargetGroupOptions`/the output dir and `group.name` into its `TargetGroupRef` for the declarative rename. `buildTargetGroups` runs `tsdown.build()` once per group with `config: false`, wiring in the per-group `emitManifest` plugin, `deps.neverBundle` externals and a `public/` auto-copy. Track D threads an optional `jsx?: JsxConfig` through `DeriveOptions`/`DerivedTsdownOptions`/`BuildTargetGroupsOptions` into the build's `inputOptions.jsx`, so a `.tsx` package gets the right rolldown JSX transform. Two SP1 facts cross into tsdown here: `unbundle: true` is the `disableSharedChunks` analogue (rolldown `preserveModules`, no shared runtime chunk), and `fixedExtension: false` forces package-`type`-ambient extensions over tsdown's node default. The loop is exposed as a composable helper — **not** locked inside the bundler — so the escape hatch gets multi-group builds too. `tsdown.build` is injectable on the options for tests, the only place tsdown's runtime is touched.
 
 ## The output reporter
 
@@ -127,9 +133,36 @@ Track C added `src/targets/`, the **single source of truth for turning `publishC
 - **Groups are byte-variants.** Every `true` target collapses into ONE canonical base-name group (folder id `npm` if present, else the first true id). A string or object `name` override gets its own group (folder id = its key, manifest name = the override). A group `dir` is always `dist/prod/<id>/pkg`.
 - **`from` reuses bytes.** An object target with `from: <id>` adds no new group — it binds a registry endpoint to a referenced group's already-built bytes. This is the N-Targets:1-TargetGroup relationship made declarative.
 - **Default registries** fill in for the well-known keys (`npm` → `registry.npmjs.org`, `github` → `npm.pkg.github.com`); a custom key must supply `{ registry }`.
-- **Structural validation throws** (plain `Error`, not a tagged Effect error — this is pure config validation outside the Effect boundary) for the invalid shapes: empty targets, `from`+`name` together, dangling/chained/self-referencing `from`, a custom key with no registry and `github: true` against an unscoped base name. The exact case list lives in `resolve-targets.ts`.
+- **Structural validation throws `ConfigValidationError`** (`{ path, reason }`, the single typed error in `src/errors.ts`) for the invalid shapes: empty targets, `from`+`name` together, dangling/chained/self-referencing `from`, a custom key with no registry and `github: true` against an unscoped base name. `resolveTargets` is pure and throws synchronously outside the Effect boundary, but it throws the *typed* error (§8 made it the single source of truth — the verbatim reason strings are preserved); the `ConfigValidator` layer delegates target validation to it and re-surfaces the throw as a typed Effect failure. The exact case list lives in `resolve-targets.ts`.
 
 `writeTargetsBinding(cwd, resolution)` (`binding.ts`) writes the `TargetResolution` to `dist/prod/targets.json` (tab-indented, trailing newline) and returns the path. This file is the bundler→release-action contract: it records which groups exist and which registry each target deploys to, so the release action uploads the built `dist/prod/<id>/pkg` bytes to the right endpoints without re-deriving anything.
+
+## JSX resolution
+
+Track D added `src/jsx/config.ts`, the **tsconfig→rolldown JSX mapping** so a `.tsx` package builds with the right runtime without per-package wiring. Two pure functions:
+
+- **`resolveJsxConfig(tsconfig, override)`** maps a TS `compilerOptions.jsx` to the rolldown `JsxConfig` the build forwards: `react-jsx`/`react-jsxdev` → `{ runtime: "automatic", importSource: jsxImportSource ?? "react" }`, `react` → `{ runtime: "classic" }`, `preserve`/`react-native`/absent → `undefined` (nothing to configure). An explicit `override` wins (and the automatic-runtime importSource still defaults to `"react"`).
+- **`readTsconfigJsx(cwd)`** is the best-effort inference source: it reads `<cwd>/tsconfig.json` `compilerOptions.jsx`/`jsxImportSource`, returning `{}` on absence or parse error.
+
+The resolved `JsxConfig` flows two ways from the bundler: into the dts tsconfig (the `jsx`/`jsxImportSource` fields above) and into the build loop's `inputOptions.jsx`. Keeping the mapping here means the bundler only resolves *effective* jsx (override ?? inference) once and threads the result; see `../bundler/architecture.md`.
+
+## The SEA exe-compile wrapper
+
+Track B added `src/exe/`, the **interface-only wrapper over tsdown's exe (SEA) mode** for packages that ship a single-executable binary. Two units:
+
+- **`normalizeExeOptions(exe, pkgOsCpu)` (`config.ts`, pure)** turns the `ExeConfig` (object or array) into one fully-resolved `NormalizedExe` per binary: entry defaults to `./src/bin.ts`; targets are inferred from the package's `os`/`cpu` when not stated (`win32` → the `win` token, `arm64`/`x64` only); `nodeVersion` defaults to `DEFAULT_EXE_NODE_VERSION`; `seaConfig` defaults `{ disableExperimentalSEAWarning: true, useCodeCache: false, useSnapshot: false }`. It does no structural validation — empty-fileName/empty-targets checks live in the config validator.
+- **`runExeBuild(options)` (`build.ts`)** runs one tsdown build per spec in exe mode, `config: false`, `format: "esm"`, `platform: "node"`, with `deps.alwaysBundle = id => !id.startsWith("node:")` (a SEA must bundle every non-builtin import — nothing is resolvable from disk inside the binary). The tsdown `build` fn is injectable (a lazy `import("tsdown")` default), so this stays interface-only and unit-testable; `ExeBuild` is deliberately loose-typed (`config: unknown`) so no tsdown runtime type leaks in. The actual `@tsdown/exe` runtime dep lives on the *bundler*; tsdown lazily imports it when the exe option is used.
+
+Real binary compilation is a CI/mac-runner manual step, out of the hermetic test suite; the in-repo tests inject a fake build and assert the spec/options.
+
+## The config-validation service
+
+§8 added `src/config-validation/`, the **fast-fail validator the bundler runs first** over the resolved config so a structurally-bad `savvy.build.ts` or `publishConfig.targets` fails before any build work across the dev/npm/meta/exe paths.
+
+- **`ConfigValidator` (`ConfigValidator.ts`)** is a `Context.Tag` service with one method `validate(input: ValidationInput) → Effect<void, ConfigValidationError>`. `ValidationInput` is the normalized fact bundle the bundler assembles (baseName, `hasExports`, optional `targets`/`exe`/`osCpu`/`meta`).
+- **`ConfigValidatorLive` (`ConfigValidatorLive.ts`)** is a `Layer.succeed` wrapping a **synchronous** `check` in `Effect.try`, surfacing the throw as a typed `ConfigValidationError` failure. The rules: targets are delegated to `resolveTargets` (single source of truth); exe is run through `normalizeExeOptions` then checked for empty fileName and empty targets; meta validates tsdoc `tagDefinitions` syntaxKind (`block`/`inline`/`modifier`) and that any existing `localPaths` are directories, gated behind a **prerequisite `!hasExports` cross-field guard** (a package with no exports cannot emit an api-model, so that fails fast first).
+
+The validator is the bundler-facing entry point, but every individual rule reuses the same pure functions the build paths use (`resolveTargets`, `normalizeExeOptions`) — it adds the cross-field and presence checks, not a parallel rule set.
 
 ## The escape-hatch contract
 
@@ -156,6 +189,8 @@ Four guarantees hold this together: **parity** (the plugins *are* the front door
 - **Entry rules and the bin leading-`./` strip are exact rslib parity** — they must not drift, since they determine output bytes and (for bins) npm-install correctness.
 - **All meta behavior lives here.** `generateMeta` and its units own the API Extractor pipeline; the bundler only wires it. Meta runs over the emitted dev `.d.ts`, decoupled from the prod tsdown build.
 - **`resolveTargets` is the single source of truth for the targets derivation.** The bundler and Track E both derive from it rather than reimplementing the `publishConfig.targets` → groups/targets mapping. The declarative rename (`base.name = targetGroup.name`) is the only mechanism that produces a renamed manifest variant.
+- **`ConfigValidationError` is the single typed config error.** §8 made every structural-config guard (`resolveTargets`, the exe/meta checks, the cross-field rules) throw it rather than a plain `Error`; the `ConfigValidator` layer composes those same pure checks and re-surfaces the throw as a typed Effect failure.
+- **The exe path keeps the interface-only boundary.** `runExeBuild` touches tsdown only through the injectable, loose-typed `ExeBuild` seam (lazy `import("tsdown")`); the `@tsdown/exe` runtime dep is the bundler's, not this package's.
 - **`src/index.ts` is the semver'd contract.** It is what the escape hatch and the bundler both depend on.
 
 ## Rationale

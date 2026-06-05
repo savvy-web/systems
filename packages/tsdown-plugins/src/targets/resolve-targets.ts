@@ -1,3 +1,4 @@
+import { ConfigValidationError } from "../errors.js";
 import type { PublishTargetObject, PublishTargets, TargetResolution } from "./config.js";
 import { isTargetObject } from "./config.js";
 
@@ -7,11 +8,15 @@ const DEFAULT_REGISTRIES: Record<string, string> = {
 	github: "https://npm.pkg.github.com",
 };
 
-/** Resolve a `publishConfig.targets` map into the distinct groups to build and every target bound to one. Pure; throws plain Error on structurally-invalid config. */
+/** Resolve a `publishConfig.targets` map into the distinct groups to build and every target bound to one. Pure; throws ConfigValidationError on structurally-invalid config. */
 export function resolveTargets(options: { targets: PublishTargets; baseName: string }): TargetResolution {
 	const { targets, baseName } = options;
 	const ids = Object.keys(targets);
-	if (ids.length === 0) throw new Error("publishConfig.targets must declare at least one target");
+	if (ids.length === 0)
+		throw new ConfigValidationError({
+			path: "publishConfig.targets",
+			reason: "publishConfig.targets must declare at least one target",
+		});
 
 	// All `true` targets collapse into one canonical base-name group, foldered "npm" if present else the first true id.
 	const trueIds = ids.filter((id) => targets[id] === true);
@@ -20,7 +25,10 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 	const registryFor = (id: string, explicit: string | undefined): string => {
 		const registry = explicit ?? DEFAULT_REGISTRIES[id];
 		if (registry === undefined) {
-			throw new Error(`Target "${id}" has no registry; custom targets must set { registry }`);
+			throw new ConfigValidationError({
+				path: `publishConfig.targets.${id}`,
+				reason: `Target "${id}" has no registry; custom targets must set { registry }`,
+			});
 		}
 		return registry;
 	};
@@ -37,25 +45,35 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 		const value = targets[id];
 		if (value === true) {
 			if (DEFAULT_REGISTRIES[id] === undefined) {
-				throw new Error(`Target "${id}: true" is not a known registry; use an object with { registry }`);
+				throw new ConfigValidationError({
+					path: `publishConfig.targets.${id}`,
+					reason: `Target "${id}: true" is not a known registry; use an object with { registry }`,
+				});
 			}
 			if (id === "github" && !baseName.startsWith("@")) {
-				throw new Error(`"github: true" needs a scoped base name; use a string/name override to rescope "${baseName}"`);
+				throw new ConfigValidationError({
+					path: "publishConfig.targets.github",
+					reason: `"github: true" needs a scoped base name; use a string/name override to rescope "${baseName}"`,
+				});
 			}
 			const gid = canonicalId as string; // non-null: this branch implies a true target exists
 			addGroup(gid, baseName);
 			resolved.push({ id, group: gid, name: baseName, registry: registryFor(id, undefined) });
 		} else if (typeof value === "string") {
 			if (DEFAULT_REGISTRIES[id] === undefined) {
-				throw new Error(
-					`Target "${id}" uses a string name override but has no known registry; use an object { registry, name }`,
-				);
+				throw new ConfigValidationError({
+					path: `publishConfig.targets.${id}`,
+					reason: `Target "${id}" uses a string name override but has no known registry; use an object { registry, name }`,
+				});
 			}
 			addGroup(id, value);
 			resolved.push({ id, group: id, name: value, registry: registryFor(id, undefined) });
 		} else if (isTargetObject(value)) {
 			if (value.from !== undefined && value.name !== undefined) {
-				throw new Error(`Target "${id}" sets both "from" and "name"; they are mutually exclusive`);
+				throw new ConfigValidationError({
+					path: `publishConfig.targets.${id}`,
+					reason: `Target "${id}" sets both "from" and "name"; they are mutually exclusive`,
+				});
 			}
 			if (value.from !== undefined) {
 				deferredFrom.push({ id, obj: value });
@@ -73,14 +91,23 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 	for (const { id, obj } of deferredFrom) {
 		const fromId = obj.from as string;
 		if (fromId === id) {
-			throw new Error(`Target "${id}" references itself in "from" (self-referencing from is not allowed)`);
+			throw new ConfigValidationError({
+				path: `publishConfig.targets.${id}`,
+				reason: `Target "${id}" references itself in "from" (self-referencing from is not allowed)`,
+			});
 		}
 		if (deferredFrom.some((d) => d.id === fromId)) {
-			throw new Error(`Target "${id}" reuses "from: ${fromId}", which itself uses "from" (no chained reuse)`);
+			throw new ConfigValidationError({
+				path: `publishConfig.targets.${id}`,
+				reason: `Target "${id}" reuses "from: ${fromId}", which itself uses "from" (no chained reuse)`,
+			});
 		}
 		const ref = resolved.find((t) => t.id === fromId);
 		if (ref === undefined) {
-			throw new Error(`Target "${id}" has a dangling "from: ${fromId}" (no such target)`);
+			throw new ConfigValidationError({
+				path: `publishConfig.targets.${id}`,
+				reason: `Target "${id}" has a dangling "from: ${fromId}" (no such target)`,
+			});
 		}
 		resolved.push({ id, group: ref.group, name: ref.name, registry: registryFor(id, obj.registry) });
 	}

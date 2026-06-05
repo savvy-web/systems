@@ -37,3 +37,13 @@ export class MetaGenerationError extends Data.TaggedError("MetaGenerationError")
 		return `Meta generation failed for entry "${this.entry}": ${this.reason}`;
 	}
 }
+
+/** A savvy.build.ts or publishConfig.targets config is structurally invalid; raised before any build work. */
+export class ConfigValidationError extends Data.TaggedError("ConfigValidationError")<{
+	readonly path: string;
+	readonly reason: string;
+}> {
+	get message(): string {
+		return `Config validation failed at "${this.path}": ${this.reason}`;
+	}
+}

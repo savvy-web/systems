@@ -5,7 +5,7 @@ category: architecture
 created: 2026-06-05
 updated: 2026-06-05
 last-synced: 2026-06-05
-completeness: 85
+completeness: 88
 related:
   - ../tsdown-plugins/architecture.md
   - ../cli/architecture.md
@@ -29,6 +29,9 @@ The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consu
 - [Multi-target publishing](#multi-target-publishing)
 - [Dist layout](#dist-layout)
 - [Meta generation wiring](#meta-generation-wiring)
+- [JSX wiring](#jsx-wiring)
+- [Exe compilation wiring](#exe-compilation-wiring)
+- [The config-validation gate](#the-config-validation-gate)
 - [The orchestrator to tsdown boundary](#the-orchestrator-to-tsdown-boundary)
 - [Catalog resolution and the process.cwd() constraint](#catalog-resolution-and-the-processcwd-constraint)
 - [Boundaries and Invariants](#boundaries-and-invariants)
@@ -54,7 +57,9 @@ Track A (API Extractor meta generation) also landed on top of SP1: `--target met
 
 Track C (multi-target / renamed-package publishing) also landed: `--target npm` now derives ALL prod byte-variant groups from `publishConfig.targets` via `resolveTargets`, builds each, writes a `dist/prod/targets.json` binding and emits one report group per built group. The derivation lives entirely in `@savvy-web/tsdown-plugins`' `src/targets/`; the bundler only wires it. See [Multi-target publishing](#multi-target-publishing).
 
-Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2), dual-format esm+cjs, and virtual entries. Track C delivers the multi-byte-variant publishing originally scoped for SP4. SP1 builds a `dev` TargetGroup; `--target npm` builds the single-`npm` default or, when a package declares the Record-map `publishConfig.targets`, every derived prod group.
+Tracks B (SEA executables), D (JSX/React) and a §8 config-validation gate also landed on this branch. `--target exe` compiles single-executable binaries over `@tsdown/exe`; JSX runtime is inherited from the package tsconfig (or an explicit `defineBuild({ jsx })` override) and threaded into both the dts tsconfig and the build; a `ConfigValidator` runs FIRST in `runBuild` to fast-fail on bad config across every target path. All the behavior lives in `@savvy-web/tsdown-plugins`; the bundler wires it. See [JSX wiring](#jsx-wiring), [Exe compilation wiring](#exe-compilation-wiring) and [The config-validation gate](#the-config-validation-gate).
+
+Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2 — distinct from the §8 fast-fail gate, which checks structural config only), dual-format esm+cjs, and virtual entries. Track C delivers the multi-byte-variant publishing originally scoped for SP4. SP1 builds a `dev` TargetGroup; `--target npm` builds the single-`npm` default or, when a package declares the Record-map `publishConfig.targets`, every derived prod group. **Track E (publishability + self-hosting) is NOT done on this branch** — both packages are still built by `@savvy-web/rslib-builder`.
 
 ## The two-package split
 
@@ -82,8 +87,9 @@ export default defineBuild({
 
 - **No bin.** `package.json` scripts run the file directly: `"build:dev": "node savvy.build.ts --target dev"`, `"build:prod": "node savvy.build.ts --target npm"`.
 - **Self-execution** is gated on `import.meta.main` at the *file* (so `run.ts` performs the gate with access to the caller's `import.meta`; `defineBuild` in `config.ts` stays pure). Imported by the silk plugin or the cli for introspection, it returns a side-effect-free config object. Run directly, it parses `process.argv` and builds.
-- **Baseline arg surface:** `--target <dev|npm|meta>` (default `dev`) and `--watch`. `meta` was added by Track A; `--mode` and friends arrive with SP2. See `parseArgs` in `src/config.ts`.
+- **Baseline arg surface:** `--target <dev|npm|meta|exe>` (default `dev`) and `--watch`. `meta` was added by Track A, `exe` by Track B; `--mode` and friends arrive with SP2. See `parseArgs` in `src/config.ts`.
 - **Meta config:** an optional `meta?: MetaOptions` (re-exported from `@savvy-web/tsdown-plugins`) on the `defineBuild` input enables meta generation. `--target meta` requires it; `--target npm` emits a `meta/` bundle only when it is set.
+- **Exe and JSX config:** `defineBuild` also takes optional `exe?: ExeConfig | ExeConfig[]` (one binary per entry, required by `--target exe`) and `jsx?: JsxConfig` (an explicit override; otherwise inferred from the package tsconfig). Both types are re-exported from `@savvy-web/tsdown-plugins`. See [Exe compilation wiring](#exe-compilation-wiring) and [JSX wiring](#jsx-wiring).
 - **Node baseline:** native TS type-stripping (Node 24.11+). No tsx fallback.
 
 `savvy.build.ts` replaces rslib's inscrutable factory-notation `rslib.config.ts`. It is agent-legible and a reliable signal the silk plugin can detect and introspect.
@@ -93,7 +99,7 @@ export default defineBuild({
 Two functions, deliberately separated so the config surface stays pure and the orchestration stays injectable.
 
 - **`defineBuild(input)`** (`src/config.ts`) normalizes and validates the config (`formats`, `externals`, `devManifest`, `transform`, `output`) into a `BuildConfig`, applying defaults (`formats: ["esm"]`, `devManifest: "preserve"`). It does **not** itself run the build — see `src/config.ts` for the note on why the `import.meta.main` gate lives in `run.ts`.
-- **`runBuild(config, options)`** (`src/run.ts`) is the orchestrator: parse argv → read `package.json` at cwd → write the resolved dts tsconfig (`writeResolvedTsconfig`) → derive entries (`packageJsonEntries`) → derive the build groups (a single `dev` group, or all prod groups from `publishConfig.targets`) → call `buildTargetGroups` → on `--target npm` write the `targets.json` binding → assemble a `BuildReport` (one entry per built group) and render it via `renderReport`/`ReportPipelineLive`. Every IO dependency (`buildTargetGroups`, `generateMeta`, `readExports`, `readPublishTargets`, `writeTargetsBinding`) is injectable on `RunOptions` so the orchestration is unit-testable without touching disk or spawning tsdown.
+- **`runBuild(config, options)`** (`src/run.ts`) is the orchestrator: parse argv → read `package.json` at cwd → resolve effective jsx (explicit override ?? `readTsconfigJsx` inference) → write the resolved dts tsconfig (`writeResolvedTsconfig`, with the jsx forwarded) → derive entries (`packageJsonEntries`) → **run `ConfigValidator.validate(...)` first to fast-fail bad config** → branch on `--target`: `meta` and `exe` short-circuit before the main build; otherwise derive the build groups (a single `dev` group, or all prod groups from `publishConfig.targets`) → call `buildTargetGroups` (jsx threaded in) → on `--target npm` write the `targets.json` binding → assemble a `BuildReport` (one entry per built group) and render it via `renderReport`/`ReportPipelineLive`. Every IO dependency (`buildTargetGroups`, `generateMeta`, `readExports`, `readPublishTargets`, `writeTargetsBinding`, `runExeBuild`, `readTsconfigJsx`, `readOsCpu`) is injectable on `RunOptions` so the orchestration is unit-testable without touching disk or spawning tsdown.
 
 The `BuildReport` the bundler assembles in SP1 is intentionally minimal (per-TargetGroup `{ id, entries, timings, warnings, errors }`); SP2 extends it with `wouldFailProd[]` preflight findings. The report *schema* and *reporter pipeline* are owned by `tsdown-plugins`.
 
@@ -154,6 +160,25 @@ Track A adds API Extractor meta generation. The bundler is pure wiring over `gen
 
 `turbo.json` defines `build:meta` with `dependsOn: ["build:dev"]`, `cache: false`, `outputs: []`. It is **intentionally uncached** because it writes into *other* packages' `localPaths` — outputs outside its own cache scope — so turbo cannot track or restore them correctly. See `README.md` for the consumer-facing description.
 
+## JSX wiring
+
+Track D lets a `.tsx` package build with the right JSX runtime with zero extra config. The mapping itself (`resolveJsxConfig`/`readTsconfigJsx`) lives in `@savvy-web/tsdown-plugins`' `src/jsx/`; the bundler resolves the *effective* config once and threads it.
+
+- **Resolution order:** `runBuild` computes `resolveJsxConfig(readTsconfigJsx(cwd), config.jsx)` — an explicit `defineBuild({ jsx })` override wins, else the runtime is inferred from the package's own `tsconfig.json` `compilerOptions.jsx` (`react-jsx`/`react-jsxdev` → automatic with importSource default `"react"`, `react` → classic, `preserve`/none → undefined).
+- **Two consumers, one resolution:** the resolved `jsx` flows both into the dts tsconfig (`writeResolvedTsconfig({ jsx, jsxImportSource })`, so declaration emit over `.tsx` sees the same runtime) and into the `buildTargetGroups` call (`inputOptions.jsx`). The real `.tsx` integration fixture asserts the automatic runtime (a `react/jsx-runtime` import, no `React.createElement`).
+
+## Exe compilation wiring
+
+Track B adds `--target exe` for packages that ship a single-executable (SEA) binary. All the behavior lives in `@savvy-web/tsdown-plugins`' `src/exe/` (`normalizeExeOptions`/`runExeBuild`); the bundler wires the branch.
+
+- **The branch** sits after the meta short-circuit, before the main library build. It normalizes `config.exe` via `normalizeExeOptions` (passing the package `os`/`cpu`, both injectable as `readOsCpu`) and delegates to the injectable `runExeBuild`, emitting binaries into `dist/dev/pkg/bin`. It throws if no `exe` is configured.
+- **`@tsdown/exe ^0.22.1` is a RUNTIME dependency of the bundler** (not of tsdown-plugins) — tsdown lazily `importWithError`s it only when the exe option is used. This keeps tsdown-plugins interface-only while letting the bundler ship the SEA toolchain.
+- Real binary compilation is a CI/mac-runner manual step, out of the hermetic test suite; the in-repo tests inject a fake `runExeBuild` and assert the wiring.
+
+## The config-validation gate
+
+§8 added a fast-fail validator that runs FIRST in `runBuild`, after the publishTargets/exports facts are computed but before any build branch, so a structurally-bad config fails immediately across the dev/npm/meta/exe paths rather than partway through a build. The rule set lives in `@savvy-web/tsdown-plugins`' `ConfigValidator`/`ConfigValidatorLive` (see `../tsdown-plugins/architecture.md`); the bundler assembles the `ValidationInput` (baseName, `hasExports`, and the optional `targets`/`exe`/`osCpu`/`meta`) and runs `ConfigValidator.validate(...)` via `Effect.runPromise` over `ConfigValidatorLive`. A failure surfaces as a typed `ConfigValidationError`. This is **not** the SP2 `bundler check` preflight model — it validates structural config shape only, not prod-build viability.
+
 ## The orchestrator to tsdown boundary
 
 `runBuild` delegates the per-group build loop to `buildTargetGroups` (`tsdown-plugins/src/build/build-target-groups.ts`), which calls `tsdown.build()` once per TargetGroup with config-file loading bypassed (`config: false`) and inline options derived from `deriveTargetGroupOptions`. SP1 fixed choices that cross this boundary:
@@ -176,8 +201,9 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 - **Meta is decoupled from the bundle.** Neither `--target meta` nor the npm meta-asset path re-runs the tsdown build — they run API Extractor over the already-emitted dev `.d.ts`. `build:meta` is uncached and depends only on `build:dev`.
 - **The bundler's responsibility ends at `dist/{group}/pkg` plus `dist/prod/targets.json`.** Registry upload + attestation (Targets) are the release action's job; it consumes the binding to learn which built group each Target deploys. `resolveTargets` is the single source of truth for the derivation — the bundler never reimplements it.
 - **The legacy-array `publishConfig.targets` path stays dormant.** Only the Record-map form activates Track C; an array-valued `targets` (the current rslib-builder shape) falls back to the single-`npm` default, leaving existing packages' bytes unchanged.
-- **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency.
-- **Built by rslib-builder until self-host.** Both packages keep `@savvy-web/rslib-builder` + `@rslib/core` devDeps and an `rslib.config.ts` for now; dogfooding/self-hosting is a deliberate post-SP1 step.
+- **Config validation runs first.** `ConfigValidator.validate` gates every target path; the rules live in tsdown-plugins (`resolveTargets`, the exe/meta checks) and the bundler only assembles the `ValidationInput`. It is structural-shape validation, distinct from the SP2 `bundler check` preflight.
+- **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency. `@tsdown/exe` is a bundler runtime dependency (lazily imported by tsdown for `--target exe`), again not a peer.
+- **Built by rslib-builder until self-host.** Both packages keep `@savvy-web/rslib-builder` + `@rslib/core` devDeps and an `rslib.config.ts` for now; **Track E (publishability + self-hosting) is the remaining outstanding work** and is not done on this branch. Dogfooding/self-hosting is a deliberate post-SP1 step.
 
 ## Rationale
 

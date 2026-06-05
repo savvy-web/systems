@@ -1,5 +1,6 @@
 // packages/tsdown-plugins/src/build/target-groups.ts
 import { join } from "node:path";
+import type { JsxConfig } from "../jsx/config.js";
 
 /** A build group id: "dev" or any prod byte-variant id (e.g. "npm", "github", a custom key). */
 export type TargetGroupId = string;
@@ -18,6 +19,8 @@ export interface DeriveOptions {
 	readonly tsconfigPath: string;
 	readonly devManifest: "preserve" | "resolve";
 	readonly externals?: ReadonlyArray<string>;
+	/** JSX transform settings to forward to rolldown's inputOptions. */
+	readonly jsx?: JsxConfig | undefined;
 }
 
 export interface DerivedTsdownOptions {
@@ -35,6 +38,8 @@ export interface DerivedTsdownOptions {
 	readonly dts: { readonly tsconfig: string };
 	readonly define: Record<string, string>;
 	readonly isProd: boolean;
+	/** JSX transform settings to forward to rolldown's inputOptions. */
+	readonly jsx?: JsxConfig | undefined;
 }
 
 const outDirFor = (cwd: string, group: TargetGroupId): string =>
@@ -57,5 +62,6 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 		dts: { tsconfig: options.tsconfigPath },
 		define: { __PACKAGE_VERSION__: JSON.stringify(options.version) },
 		isProd,
+		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 	};
 }

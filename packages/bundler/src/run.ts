@@ -5,19 +5,29 @@ import type {
 	BuildGroupSpec,
 	BuildTargetGroupsOptions,
 	GenerateMetaOptions,
+	JsxConfig,
 	MetaResult,
+	NormalizedExe,
 	PublishTargets,
 	RenderedOutput,
+	RunExeBuildOptions,
 	TargetResolution,
+	TsconfigJsx,
 } from "@savvy-web/tsdown-plugins";
 import {
+	ConfigValidator,
+	ConfigValidatorLive,
 	ReportPipelineLive,
+	normalizeExeOptions,
 	normalizeMetaOptions,
 	packageJsonEntries,
+	readTsconfigJsx,
 	buildTargetGroups as realBuildTargetGroups,
 	generateMeta as realGenerateMeta,
+	runExeBuild as realRunExeBuild,
 	writeTargetsBinding as realWriteTargetsBinding,
 	renderReport,
+	resolveJsxConfig,
 	resolveTargets,
 	writeResolvedTsconfig,
 } from "@savvy-web/tsdown-plugins";
@@ -46,6 +56,12 @@ export interface RunOptions {
 	readonly readPublishTargets?: (() => PublishTargets | undefined) | undefined;
 	/** Injectable for tests: writes the target binding artifact. */
 	readonly writeTargetsBinding?: ((cwd: string, resolution: TargetResolution) => string) | undefined;
+	/** Injectable for tests: reads the jsx-relevant tsconfig compilerOptions slice. */
+	readonly readTsconfigJsx?: (() => TsconfigJsx) | undefined;
+	/** Injectable for tests. */
+	readonly runExeBuild?: ((o: RunExeBuildOptions) => Promise<void>) | undefined;
+	/** Injectable for tests: returns the package os/cpu arrays. */
+	readonly readOsCpu?: (() => { os: ReadonlyArray<string>; cpu: ReadonlyArray<string> }) | undefined;
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
@@ -55,6 +71,8 @@ function readPackageJson(cwd: string): {
 	exports?: unknown;
 	bin?: unknown;
 	publishConfig?: unknown;
+	os?: unknown;
+	cpu?: unknown;
 } {
 	try {
 		return JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8")) as {
@@ -63,6 +81,8 @@ function readPackageJson(cwd: string): {
 			exports?: unknown;
 			bin?: unknown;
 			publishConfig?: unknown;
+			os?: unknown;
+			cpu?: unknown;
 		};
 	} catch {
 		return {};
@@ -104,7 +124,16 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	const version = options.readVersion ? options.readVersion() : (pkg.version ?? "0.0.0");
 	const packageName = options.readPackageName ? options.readPackageName() : (pkg.name ?? "unknown");
 
-	const writeTsconfig = options.writeTsconfig ?? ((c: string) => writeResolvedTsconfig({ cwd: c }));
+	const readJsx = options.readTsconfigJsx ?? ((): TsconfigJsx => readTsconfigJsx(cwd));
+	const jsx: JsxConfig | undefined = resolveJsxConfig(readJsx(), config.jsx);
+	const writeTsconfig =
+		options.writeTsconfig ??
+		((c: string) =>
+			writeResolvedTsconfig({
+				cwd: c,
+				...(jsx?.runtime === "automatic" ? { jsx: "react-jsx", jsxImportSource: jsx.importSource } : {}),
+				...(jsx?.runtime === "classic" ? { jsx: "react" } : {}),
+			}));
 	const tsconfigPath = writeTsconfig(cwd);
 	const entries = packageJsonEntries({ pkg, cwd });
 	const exportsMap = options.readExports ? options.readExports() : (pkg.exports as Record<string, string> | undefined);
@@ -120,6 +149,23 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		});
 	const publishTargets = readPublishTargets();
 	const writeBinding = options.writeTargetsBinding ?? realWriteTargetsBinding;
+
+	// Fast-fail config validation: run BEFORE any build branch so every target path is gated.
+	const osCpuForValidate = options.readOsCpu
+		? options.readOsCpu()
+		: { os: (pkg.os as string[] | undefined) ?? [], cpu: (pkg.cpu as string[] | undefined) ?? [] };
+	await Effect.runPromise(
+		Effect.flatMap(ConfigValidator, (v) =>
+			v.validate({
+				baseName: packageName,
+				hasExports: exportsMap !== undefined && Object.keys(exportsMap).length > 0,
+				...(publishTargets !== undefined ? { targets: publishTargets } : {}),
+				...(config.exe !== undefined ? { exe: config.exe } : {}),
+				osCpu: osCpuForValidate,
+				...(config.meta !== undefined ? { meta: config.meta } : {}),
+			}),
+		).pipe(Effect.provide(ConfigValidatorLive)),
+	);
 
 	// --target meta: generate the api-model from the dev build's dts into localPaths. No tsdown build.
 	if (target === "meta") {
@@ -150,6 +196,23 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		return;
 	}
 
+	// --target exe: compile SEA binaries via @tsdown/exe. No tsdown library build.
+	if (target === "exe") {
+		if (config.exe === undefined) {
+			throw new Error("`savvy build --target exe` requires an `exe` option in the build config");
+		}
+		const specs = normalizeExeOptions(config.exe, osCpuForValidate);
+		const exe = options.runExeBuild ?? realRunExeBuild;
+		await exe({ cwd, outDir: join(cwd, "dist", "dev", "pkg", "bin"), specs });
+		const writeExeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
+		writeExeOutput({
+			target: "stdout",
+			contentType: "text/plain",
+			content: `exe: compiled ${specs.length} binary/binaries for ${packageName}`,
+		});
+		return;
+	}
+
 	const startMs = Date.now();
 	// dev: one dev group named after the base; npm: all resolved prod groups (meta already returned above).
 	const { groups, resolution } =
@@ -165,6 +228,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		devManifest: config.devManifest,
 		externals: config.externals,
 		...(config.transform !== undefined ? { transform: config.transform } : {}),
+		...(jsx !== undefined ? { jsx } : {}),
 	});
 
 	// Write the target-to-group binding for the release action (prod only).

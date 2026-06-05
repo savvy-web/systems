@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"@savvy-web/tsdown-plugins": "workspace:*",
+		"@tsdown/exe": "^0.22.1",
 		"tsdown": "^0.22.2"
 	},
 	"devDependencies": {

@@ -36,6 +36,7 @@ pnpm-release.json
 .claude/agents
 .claude/cache
 .claude/skills
+.claude/worktrees
 CLAUDE.local.md
 **/coverage-debug
 .claude/plugins-debug.log
@@ -56,3 +57,10 @@ packages/bundler/__test__/integration/fixtures/multi-meta/tsdoc.json
 
 # bundler multitarget integration fixture build artifacts
 packages/bundler/__test__/integration/fixtures/multitarget/dist/
+
+# bundler jsx integration fixture build artifacts
+packages/bundler/__test__/integration/fixtures/jsx/dist/
+
+# bundler exe integration fixture build artifacts
+packages/bundler/__test__/integration/fixtures/exe/dist/
+packages/bundler/__test__/integration/fixtures/exe/bin/
