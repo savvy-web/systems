@@ -1,0 +1,17 @@
+{
+	"name": "multitarget-base",
+	"version": "1.0.0",
+	"type": "module",
+	"private": true,
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"publishConfig": {
+		"access": "public",
+		"targets": {
+			"npm": true,
+			"github": "@scope/multitarget-base",
+			"mirror": { "from": "npm", "registry": "https://mirror.test" }
+		}
+	}
+}

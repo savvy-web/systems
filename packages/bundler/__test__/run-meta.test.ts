@@ -49,6 +49,32 @@ describe("runBuild meta target", () => {
 		expect(build).not.toHaveBeenCalled();
 	});
 
+	it("falls back to the first group's dir for meta when no group is named after the package", async () => {
+		const generateMeta = vi.fn<
+			(o: { dtsDir: string; outMetaDir: string }) => Promise<{ apiJsonPath: string; apiJsonFilename: string }>
+		>(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
+		const build = vi.fn(async () => {});
+		await runBuild(defineBuild({ meta: { localPaths: ["../models"] } }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "npm"],
+			buildTargetGroups: build,
+			generateMeta,
+			readPackageName: () => "x",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeTsconfig: () => "/fake/tsconfig.json",
+			writeOutput: () => {},
+			writeTargetsBinding: () => "binding",
+			readPublishTargets: () => ({ github: "@scope/x" }),
+		});
+		expect(build).toHaveBeenCalledTimes(1);
+		expect(generateMeta).toHaveBeenCalledTimes(1);
+		const arg = generateMeta.mock.calls[0]?.[0];
+		// No group is named "x", so the canonical group falls back to groups[0] ("github").
+		expect(arg?.dtsDir).toContain("github");
+		expect(arg?.outMetaDir).toContain("github");
+	});
+
 	it("does not call generateMeta for --target npm when meta is unset", async () => {
 		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
 		const build = vi.fn(async () => {});
@@ -61,6 +87,7 @@ describe("runBuild meta target", () => {
 			readVersion: () => "1.0.0",
 			readExports: () => ({ ".": "./src/index.ts" }),
 			writeOutput: () => {},
+			writeTargetsBinding: () => "x",
 		});
 		expect(build).toHaveBeenCalledTimes(1);
 		expect(generateMeta).not.toHaveBeenCalled();

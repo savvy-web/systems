@@ -1,7 +1,14 @@
 // packages/tsdown-plugins/src/build/target-groups.ts
 import { join } from "node:path";
 
-export type TargetGroupId = "dev" | "npm";
+/** A build group id: "dev" or any prod byte-variant id (e.g. "npm", "github", a custom key). */
+export type TargetGroupId = string;
+
+/** A prod/dev group to build: its folder id and the resolved package name its manifest carries. */
+export interface BuildGroupSpec {
+	readonly id: TargetGroupId;
+	readonly name: string;
+}
 
 export interface DeriveOptions {
 	readonly group: TargetGroupId;

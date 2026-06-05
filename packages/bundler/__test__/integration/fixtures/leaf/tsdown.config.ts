@@ -18,7 +18,7 @@ export default defineConfig({
 	define: { __PACKAGE_VERSION__: JSON.stringify("1.2.3") },
 	plugins: [
 		emitManifest({
-			targetGroup: { id: "npm", isProd: true },
+			targetGroup: { id: "npm", name: "@fixture/leaf", isProd: true },
 			sourceDir: cwd,
 		}),
 	],

@@ -2,7 +2,7 @@ export type { ManifestLike } from "workspaces-effect";
 export { CatalogAssemblyError, CatalogResolutionError } from "workspaces-effect";
 export type { BuildTargetGroupsOptions, TsdownBuild } from "./build/build-target-groups.js";
 export { buildTargetGroups } from "./build/build-target-groups.js";
-export type { DeriveOptions, DerivedTsdownOptions, TargetGroupId } from "./build/target-groups.js";
+export type { BuildGroupSpec, DeriveOptions, DerivedTsdownOptions, TargetGroupId } from "./build/target-groups.js";
 export { deriveTargetGroupOptions } from "./build/target-groups.js";
 export { resolveManifest } from "./catalog/resolve-catalogs.js";
 export type { ResolvedTsconfig, ResolvedTsconfigOptions } from "./dts/resolved-tsconfig.js";
@@ -62,3 +62,14 @@ export { FormatSelector } from "./report/services/FormatSelector.js";
 export { OutputRenderer } from "./report/services/OutputRenderer.js";
 export type { Timer } from "./report/timer.js";
 export { createTimer, formatTime } from "./report/timer.js";
+export { writeTargetsBinding } from "./targets/binding.js";
+export type {
+	PublishTargetObject,
+	PublishTargetValue,
+	PublishTargets,
+	ResolvedGroup,
+	ResolvedTarget,
+	TargetResolution,
+} from "./targets/config.js";
+export { isTargetObject } from "./targets/config.js";
+export { resolveTargets } from "./targets/resolve-targets.js";

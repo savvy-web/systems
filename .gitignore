@@ -53,3 +53,6 @@ packages/mcp/src/resources/content/packages/*/api/
 packages/bundler/__test__/integration/fixtures/multi-meta/dist/
 packages/bundler/__test__/integration/fixtures/multi-meta/models/
 packages/bundler/__test__/integration/fixtures/multi-meta/tsdoc.json
+
+# bundler multitarget integration fixture build artifacts
+packages/bundler/__test__/integration/fixtures/multitarget/dist/

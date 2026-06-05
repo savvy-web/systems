@@ -52,6 +52,26 @@ npm run build:prod
 
 `--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target npm` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish.
 
+## Multi-target publishing
+
+By default `--target npm` builds a single group named after the package and writes it to `dist/prod/npm/pkg`. To publish the same package to more than one registry, or under more than one name, declare a `publishConfig.targets` map in `package.json`:
+
+```json
+{
+  "publishConfig": {
+    "targets": {
+      "npm": true,
+      "github": "@scope/internal-name",
+      "mirror": { "registry": "https://registry.example.com", "from": "npm" }
+    }
+  }
+}
+```
+
+Each key is a target. `true` publishes under the package's own name to a well-known registry (`npm`, `github`); a string renames the group for that target; an object form takes `{ registry }` plus either `name` (a rename) or `from` (reuse another target's built bytes). `--target npm` then builds one byte-variant group per distinct name, applies the rename to each group's manifest and writes `dist/prod/<group>/pkg`. It also writes `dist/prod/targets.json`, the group-to-registry binding the release step consumes to know what to publish where.
+
+With no `targets` map the build falls back to the single-`npm` group above.
+
 ## API Extractor meta
 
 Set the optional `meta` field on `defineBuild` to generate an [API Extractor](https://api-extractor.com/) api-model from a package's type declarations:
@@ -82,6 +102,7 @@ With `meta` set, two behaviors come online:
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
 - **Two build targets** — a `dev` target for local linking and an `npm` target with a resolved, publishable manifest, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
 - **Manifest resolution** — `catalog:` and `workspace:` specifiers are resolved against the workspace for the published target, and preserved for the linked dev target.
+- **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target npm` builds the distinct byte variants and writes a `targets.json` binding for the release step.
 - **One devDependency** — `tsdown` is a regular dependency, pinned and tested transitively, so you never carry it or its plugin peers in your own tree.
 - **Injectable orchestration** — `runBuild` takes its IO dependencies as options, so the build is testable without spawning a real bundle.
 - **Escape hatch** — every build behavior lives in [`@savvy-web/tsdown-plugins`](https://www.npmjs.com/package/@savvy-web/tsdown-plugins); compose the same helpers in a hand-written `tsdown.config.ts` when you outgrow the front door.

@@ -22,4 +22,17 @@ describe("deriveTargetGroupOptions", () => {
 		expect(o.sourcemap).toBe(false);
 		expect(o.minify).toBe(true);
 	});
+
+	it("folders an arbitrary prod group id under dist/prod/<id>/pkg", () => {
+		const derived = deriveTargetGroupOptions({
+			group: "github",
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			devManifest: "preserve",
+		});
+		expect(derived.outDir).toBe("/abs/pkg/dist/prod/github/pkg");
+		expect(derived.isProd).toBe(true);
+	});
 });
