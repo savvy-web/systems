@@ -7,7 +7,11 @@ export interface ResolvedTsconfigOptions {
 	/** Absolute package root. */
 	readonly cwd: string;
 	/** Explicit `types` to forward (default ["node"]). Pulled from the project tsconfig by the caller. */
-	readonly types?: ReadonlyArray<string>;
+	readonly types?: ReadonlyArray<string> | undefined;
+	/** TS `compilerOptions.jsx` to forward into the dts tsconfig (e.g. "react-jsx"). */
+	readonly jsx?: string | undefined;
+	/** TS `compilerOptions.jsxImportSource` to forward (e.g. "react"). */
+	readonly jsxImportSource?: string | undefined;
 }
 
 export interface ResolvedTsconfig {
@@ -35,6 +39,8 @@ export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): Resolve
 			composite: false,
 			incremental: false,
 			tsBuildInfoFile: undefined,
+			...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
+			...(options.jsxImportSource !== undefined ? { jsxImportSource: options.jsxImportSource } : {}),
 		},
 		include: [
 			join(cwd, "src/**/*.ts"),

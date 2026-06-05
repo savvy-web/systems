@@ -18,4 +18,17 @@ describe("buildResolvedTsconfig", () => {
 	it("defaults types to ['node'] when none forwarded", () => {
 		expect(buildResolvedTsconfig({ cwd: "/abs/pkg" }).compilerOptions.types).toEqual(["node"]);
 	});
+
+	it("injects jsx and jsxImportSource into compilerOptions when provided", () => {
+		const cfg = buildResolvedTsconfig({ cwd: "/abs/pkg", jsx: "react-jsx", jsxImportSource: "react" }) as {
+			compilerOptions: { jsx?: string; jsxImportSource?: string };
+		};
+		expect(cfg.compilerOptions.jsx).toBe("react-jsx");
+		expect(cfg.compilerOptions.jsxImportSource).toBe("react");
+	});
+
+	it("omits jsx keys when not provided", () => {
+		const cfg = buildResolvedTsconfig({ cwd: "/abs/pkg" }) as { compilerOptions: { jsx?: string } };
+		expect(cfg.compilerOptions.jsx).toBeUndefined();
+	});
 });

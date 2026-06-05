@@ -43,6 +43,9 @@ export default defineConfig({
 - **Manifest transforms** — `transformManifest`, `transformExports`, `transformBin` and `normalizeBinPaths` rewrite a source `package.json` into a publishable one; `emitManifest` is the rolldown plugin that writes it.
 - **Catalog resolution** — `resolveManifest` resolves `catalog:` and `workspace:` specifiers against the workspace, delegating to `workspaces-effect`'s `CatalogResolver`.
 - **Multi-target resolution** — `resolveTargets` turns a `publishConfig.targets` map into the distinct byte-variant groups to build and the registry bindings for each; `writeTargetsBinding` persists that resolution as `dist/prod/targets.json` for the release step.
+- **JSX resolution** — `resolveJsxConfig` and `readTsconfigJsx` derive the effective JSX transform from a package's tsconfig, with an explicit override winning.
+- **Executable binaries** — `normalizeExeOptions` fills the SEA defaults and infers targets from the package's `os`/`cpu`; `runExeBuild` drives `@tsdown/exe` to compile the binaries.
+- **Config validation** — the `ConfigValidator` Effect service (with `ConfigValidatorLive`) fast-fails on a bad `publishConfig.targets`, `exe` or `meta` config, raising the typed `ConfigValidationError`.
 - **dts tsconfig port** — `buildResolvedTsconfig` and `writeResolvedTsconfig` write a temp tsconfig with absolute paths so type declarations emit cleanly under pnpm symlinks.
 - **Per-target build loop** — `deriveTargetGroupOptions` and `buildTargetGroups` map a target to its `tsdown` options and run the build once per target, exposed as a helper so the escape hatch gets multi-target builds too.
 - **API Extractor meta** — `generateMeta` runs [API Extractor](https://api-extractor.com/) over a package's emitted `.d.ts` to write an api-model bundle (`.api.json`, `tsdoc-metadata.json`, resolved `tsconfig.json`); `normalizeMetaOptions` fills the `MetaOptions` defaults that drive it.

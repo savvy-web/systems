@@ -64,6 +64,15 @@ describe("resolveTargets", () => {
 		);
 	});
 
+	it("throws a ConfigValidationError (typed) on a dangling from", () => {
+		try {
+			resolveTargets({ targets: { x: { from: "nope", registry: "https://r" } }, baseName: "x" });
+			expect.unreachable("should have thrown");
+		} catch (e) {
+			expect((e as { _tag?: string })._tag).toBe("ConfigValidationError");
+		}
+	});
+
 	it("throws on chained from", () => {
 		expect(() =>
 			resolveTargets({

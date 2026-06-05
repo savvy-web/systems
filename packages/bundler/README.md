@@ -50,7 +50,7 @@ npm run build:prod
 # writes dist/prod/npm/pkg — the tarball root, with a resolved manifest and built code
 ```
 
-`--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target npm` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish.
+`--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target npm` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish. Two further targets, `--target meta` and `--target exe`, are covered below.
 
 ## Multi-target publishing
 
@@ -97,19 +97,53 @@ With `meta` set, two behaviors come online:
 
 `meta` is optional; omit it and neither behavior runs. `--target meta` errors if the config has no `meta` field.
 
+## Executable binaries
+
+Set the optional `exe` field to compile a single-executable application (SEA) from a bin entry, via [`@tsdown/exe`](https://www.npmjs.com/package/@tsdown/exe):
+
+```ts
+const config = defineBuild({
+  formats: ["esm"],
+  exe: {
+    fileName: "savvy",
+    entry: "./src/bin.ts",
+    // targets default to the package's own os/cpu when omitted
+    targets: [{ platform: "linux", arch: "x64" }],
+  },
+});
+```
+
+`savvy build --target exe` compiles each declared binary into `dist/dev/pkg/bin`. Pass an array to `exe` to compile several. When `targets` is omitted the platform is inferred from the package's `os`/`cpu` fields. `--target exe` errors if the config has no `exe` field.
+
+## JSX
+
+Packages that emit JSX inherit their transform from `tsconfig.json` (`compilerOptions.jsx`/`jsxImportSource`) with no extra config. Set the optional `jsx` field on `defineBuild` to override it:
+
+```ts
+const config = defineBuild({
+  formats: ["esm"],
+  jsx: { runtime: "automatic", importSource: "preact" },
+});
+```
+
+The resolved JSX settings feed both the dts tsconfig and the tsdown transform. Omit `jsx` to inherit the tsconfig value.
+
 ## Features
 
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
-- **Two build targets** — a `dev` target for local linking and an `npm` target with a resolved, publishable manifest, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
+- **Four build targets** — `dev` for local linking, `npm` for a resolved publishable manifest, `meta` for an API Extractor api-model and `exe` for SEA binaries, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
 - **Manifest resolution** — `catalog:` and `workspace:` specifiers are resolved against the workspace for the published target, and preserved for the linked dev target.
 - **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target npm` builds the distinct byte variants and writes a `targets.json` binding for the release step.
+- **Executable binaries** — an `exe` config compiles SEA binaries from a bin entry via `@tsdown/exe`, inferring the platform from the package's `os`/`cpu` when targets are omitted.
+- **JSX, config-first** — JSX transform is inherited from `tsconfig.json` and overridable via the `jsx` field, feeding both the dts tsconfig and the tsdown transform.
+- **Fast-fail config validation** — `runBuild` validates the config (`publishConfig.targets`, `exe`, `meta`) before any build work, raising a typed `ConfigValidationError` on the first violation.
 - **One devDependency** — `tsdown` is a regular dependency, pinned and tested transitively, so you never carry it or its plugin peers in your own tree.
 - **Injectable orchestration** — `runBuild` takes its IO dependencies as options, so the build is testable without spawning a real bundle.
 - **Escape hatch** — every build behavior lives in [`@savvy-web/tsdown-plugins`](https://www.npmjs.com/package/@savvy-web/tsdown-plugins); compose the same helpers in a hand-written `tsdown.config.ts` when you outgrow the front door.
 
 ## API
 
-- `defineBuild(input)` — normalizes a build config (`formats`, `externals`, `devManifest`, `transform`, `output`, `meta`), applying defaults. Pure; it does not run the build.
+- `defineBuild(input)` — normalizes a build config (`formats`, `externals`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`), applying defaults. Pure; it does not run the build.
 - `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.
 

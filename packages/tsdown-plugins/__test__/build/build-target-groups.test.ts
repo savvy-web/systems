@@ -7,9 +7,9 @@ import { buildTargetGroups } from "../../src/build/build-target-groups.js";
 
 describe("buildTargetGroups", () => {
 	it("calls the builder once per group with the derived outDir + emitManifest plugin", async () => {
-		const calls: Array<{ outDir: string; plugins: number }> = [];
-		const fakeBuild = vi.fn(async (cfg: { outDir: string; plugins: unknown[] }) => {
-			calls.push({ outDir: cfg.outDir, plugins: cfg.plugins.length });
+		const calls: Array<{ outDir: string; plugins: number; inputOptions: { jsx?: unknown } | undefined }> = [];
+		const fakeBuild = vi.fn(async (cfg: { outDir: string; plugins: unknown[]; inputOptions?: { jsx?: unknown } }) => {
+			calls.push({ outDir: cfg.outDir, plugins: cfg.plugins.length, inputOptions: cfg.inputOptions });
 			return [];
 		});
 		await buildTargetGroups({
@@ -28,6 +28,7 @@ describe("buildTargetGroups", () => {
 		expect(calls[0].outDir).toBe("/abs/pkg/dist/dev/pkg");
 		expect(calls[1].outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
 		expect(calls[0].plugins).toBeGreaterThanOrEqual(1); // emitManifest present
+		expect(calls[0].inputOptions?.jsx).toBeUndefined(); // no jsx configured -> inputOptions omitted
 	});
 
 	it("builds once per group spec, threading the spec's name into the manifest pipeline", async () => {
@@ -69,5 +70,23 @@ describe("buildTargetGroups", () => {
 			join(dir, "dist/prod/npm/pkg"),
 		]);
 		expect(seenNames.sort()).toEqual(["@scope/base", "base"]);
+	});
+
+	it("passes jsx through to the tsdown build inputOptions when configured", async () => {
+		const captured: Array<{ inputOptions: { jsx?: unknown } | undefined }> = [];
+		const build = (async (cfg: { inputOptions?: { jsx?: unknown } }) => {
+			captured.push({ inputOptions: cfg.inputOptions });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			jsx: { runtime: "automatic", importSource: "react" },
+			build,
+		});
+		expect(captured[0]?.inputOptions?.jsx).toEqual({ runtime: "automatic", importSource: "react" });
 	});
 });

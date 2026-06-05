@@ -23,6 +23,11 @@ describe("defineBuild", () => {
 		});
 		expect(c.meta?.localPaths).toEqual(["../models"]);
 	});
+
+	it("passes exe through", () => {
+		const c = defineBuild({ exe: { fileName: "tool" } });
+		expect(c.exe).toEqual({ fileName: "tool" });
+	});
 });
 
 describe("parseArgs", () => {

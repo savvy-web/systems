@@ -2,6 +2,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "rolldown";
+import type { JsxConfig } from "../jsx/config.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { Json } from "../manifest/transform.js";
@@ -21,6 +22,8 @@ export interface BuildTargetGroupsOptions {
 	readonly externals?: ReadonlyArray<string>;
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	readonly extraPlugins?: ReadonlyArray<Plugin>;
+	/** JSX transform settings forwarded to rolldown's inputOptions. */
+	readonly jsx?: JsxConfig | undefined;
 	/** Injectable for tests; defaults to tsdown's build. */
 	readonly build?: TsdownBuild;
 }
@@ -39,6 +42,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			tsconfigPath: options.tsconfigPath,
 			devManifest: options.devManifest,
 			...(options.externals !== undefined ? { externals: options.externals } : {}),
+			...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 		});
 		const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: derived.isProd };
 		const manifestPlugin = emitManifest({
@@ -62,6 +66,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			define: derived.define,
 			...(options.externals ? { deps: { neverBundle: options.externals } } : {}),
 			...(copy ? { copy } : {}),
+			...(derived.jsx !== undefined ? { inputOptions: { jsx: derived.jsx } } : {}),
 			plugins: [manifestPlugin, ...(options.extraPlugins ?? [])],
 		});
 	}

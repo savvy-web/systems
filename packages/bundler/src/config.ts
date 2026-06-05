@@ -1,5 +1,5 @@
 // packages/bundler/src/config.ts
-import type { Json, MetaOptions, TargetGroupRef } from "@savvy-web/tsdown-plugins";
+import type { ExeConfig, Json, JsxConfig, MetaOptions, TargetGroupRef } from "@savvy-web/tsdown-plugins";
 
 export interface OutputConfig {
 	readonly console?: { readonly human?: boolean; readonly agent?: boolean; readonly ci?: boolean };
@@ -13,6 +13,8 @@ export interface BuildConfigInput {
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	readonly output?: OutputConfig;
 	readonly meta?: MetaOptions;
+	readonly jsx?: JsxConfig | undefined;
+	readonly exe?: ExeConfig | ReadonlyArray<ExeConfig> | undefined;
 }
 
 export interface BuildConfig {
@@ -22,6 +24,8 @@ export interface BuildConfig {
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
 	readonly output?: OutputConfig | undefined;
 	readonly meta?: MetaOptions | undefined;
+	readonly jsx?: JsxConfig | undefined;
+	readonly exe?: ExeConfig | ReadonlyArray<ExeConfig> | undefined;
 }
 
 /** Normalize + validate a defineBuild config. Pure when imported; self-runs when entry (see run.ts). */
@@ -33,6 +37,8 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 		transform: input.transform,
 		output: input.output,
 		meta: input.meta,
+		jsx: input.jsx,
+		exe: input.exe,
 	};
 	// Self-execution: only when this module's importer is the program entry.
 	// run.ts performs the actual import.meta.main gate (it has access to the caller's meta).
@@ -40,17 +46,17 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 }
 
 export interface ParsedArgs {
-	readonly target: "dev" | "npm" | "meta";
+	readonly target: "dev" | "npm" | "meta" | "exe";
 	readonly watch: boolean;
 }
 
 export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
-	let target: "dev" | "npm" | "meta" = "dev";
+	let target: "dev" | "npm" | "meta" | "exe" = "dev";
 	let watch = false;
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--target") {
 			const v = argv[i + 1];
-			if (v === "dev" || v === "npm" || v === "meta") target = v;
+			if (v === "dev" || v === "npm" || v === "meta" || v === "exe") target = v;
 			i++;
 		} else if (argv[i] === "--watch") {
 			watch = true;
@@ -60,7 +66,11 @@ export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 }
 
 export type {
+	ExeConfig,
+	ExeTarget,
+	JsxConfig,
 	MetaOptions,
+	NormalizedExe,
 	PublishTargetValue,
 	PublishTargets,
 	ResolvedGroup,

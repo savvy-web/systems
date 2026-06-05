@@ -105,9 +105,12 @@ importers:
       '@savvy-web/tsdown-plugins':
         specifier: workspace:*
         version: link:../tsdown-plugins/dist/dev
+      '@tsdown/exe':
+        specifier: ^0.22.1
+        version: 0.22.2(tsdown@0.22.2)
       tsdown:
         specifier: ^0.22.2
-        version: 0.22.2(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3)
+        version: 0.22.2(@tsdown/exe@0.22.2)(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3)
     devDependencies:
       '@effect/platform':
         specifier: catalog:silk
@@ -634,7 +637,7 @@ importers:
         version: 1.1.0
       tsdown:
         specifier: ^0.22.2
-        version: 0.22.2(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3)
+        version: 0.22.2(@tsdown/exe@0.22.2)(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3)
       typescript:
         specifier: catalog:silk
         version: 6.0.3
@@ -2683,6 +2686,12 @@ packages:
 
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
+
+  '@tsdown/exe@0.22.2':
+    resolution: {integrity: sha512-bMV/iEZJ8091Hu25vMGqOTpdxJQ9BuWAOSi5SAV/Nn0hCKswIfoFfZ/w9MDHgUGKMVPHoc/Xmh/ARxOxsX9rKA==}
+    engines: {node: ^22.18.0 || >=24.0.0}
+    peerDependencies:
+      tsdown: 0.22.2
 
   '@turbo/darwin-64@2.9.16':
     resolution: {integrity: sha512-jLjApWTSNd7JZ5JaLYfelW1ytnGQOvB7ivl+2RD1xQvJTbi8I9gBjzcga7tDZVPyaxpl10YTfJt3BrYXR18KDw==}
@@ -8223,6 +8232,13 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
+  '@tsdown/exe@0.22.2(tsdown@0.22.2)':
+    dependencies:
+      obug: 2.1.1
+      semver: 7.8.1
+      tinyexec: 1.2.4
+      tsdown: 0.22.2(@tsdown/exe@0.22.2)(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3)
+
   '@turbo/darwin-64@2.9.16':
     optional: true
 
@@ -11508,7 +11524,7 @@ snapshots:
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
 
-  tsdown@0.22.2(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3):
+  tsdown@0.22.2(@tsdown/exe@0.22.2)(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3):
     dependencies:
       ansis: 4.3.1
       cac: 7.0.0
@@ -11526,6 +11542,7 @@ snapshots:
       tree-kill: 1.2.2
       unconfig-core: 7.5.0
     optionalDependencies:
+      '@tsdown/exe': 0.22.2(tsdown@0.22.2)
       tsx: 4.22.4
       typescript: 6.0.3
     transitivePeerDependencies:

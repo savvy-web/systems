@@ -35,4 +35,19 @@ describe("deriveTargetGroupOptions", () => {
 		expect(derived.outDir).toBe("/abs/pkg/dist/prod/github/pkg");
 		expect(derived.isProd).toBe(true);
 	});
+
+	it("threads jsx through to DerivedTsdownOptions when provided", () => {
+		const o = deriveTargetGroupOptions({
+			...base,
+			group: "dev",
+			devManifest: "preserve",
+			jsx: { runtime: "automatic", importSource: "react" },
+		});
+		expect(o.jsx).toEqual({ runtime: "automatic", importSource: "react" });
+	});
+
+	it("omits jsx from DerivedTsdownOptions when not provided", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve" });
+		expect(o.jsx).toBeUndefined();
+	});
 });
