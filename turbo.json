@@ -49,6 +49,38 @@
 			"outputLogs": "full",
 			"outputs": ["dist/npm/**"]
 		},
+		"build:savvy:dev": {
+			"cache": true,
+			"dependsOn": ["^build:savvy:dev"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/pnpm-workspace.yaml",
+				"$TURBO_ROOT$/pnpm-lock.yaml",
+				"package.json",
+				"tsconfig.json",
+				"savvy.build.ts",
+				"README.md",
+				"LICENSE",
+				"src/**/*"
+			],
+			"outputs": ["dist/dev/**"]
+		},
+		"build:savvy:prod": {
+			"cache": true,
+			"dependsOn": ["^build:savvy:dev"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/pnpm-workspace.yaml",
+				"$TURBO_ROOT$/pnpm-lock.yaml",
+				"package.json",
+				"tsconfig.json",
+				"savvy.build.ts",
+				"README.md",
+				"LICENSE",
+				"src/**/*"
+			],
+			"outputs": ["dist/prod/**"]
+		},
 		"types:check": {
 			"cache": true,
 			"dependsOn": ["^build:dev"],
