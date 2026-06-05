@@ -27,6 +27,7 @@ The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consu
 - [defineBuild and runBuild](#definebuild-and-runbuild)
 - [TargetGroup and Target model](#targetgroup-and-target-model)
 - [Dist layout](#dist-layout)
+- [Meta generation wiring](#meta-generation-wiring)
 - [The orchestrator to tsdown boundary](#the-orchestrator-to-tsdown-boundary)
 - [Catalog resolution and the process.cwd() constraint](#catalog-resolution-and-the-processcwd-constraint)
 - [Boundaries and Invariants](#boundaries-and-invariants)
@@ -48,7 +49,9 @@ SP1 implemented. The package exposes `defineBuild`/`runBuild` (`src/index.ts`) a
 
 The SP1 exit gate is output parity building the real `@savvy-web/cli` end-to-end: bin compilation (`savvy`), dts over a large Effect codebase, `catalog:silk` + `workspace:*` resolution and the manifest transform, in one package.
 
-Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2), API Extractor / TSDoc `meta/` content (SP3), renamed-package multi-byte-variant publishing (SP4), dual-format esm+cjs, and virtual entries. SP1 builds a `dev` TargetGroup plus a single `npm` prod TargetGroup.
+Track A (API Extractor meta generation) also landed on top of SP1: `--target meta` generates an `.api.json` model into configured `localPaths`, and `--target npm` additionally emits a `meta/` release-asset bundle. All meta behavior lives in `@savvy-web/tsdown-plugins`' `src/meta/` (`generateMeta`); the bundler only wires it. See [Meta generation wiring](#meta-generation-wiring).
+
+Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2), renamed-package multi-byte-variant publishing (SP4), dual-format esm+cjs, and virtual entries. SP1 builds a `dev` TargetGroup plus a single `npm` prod TargetGroup.
 
 ## The two-package split
 
@@ -76,7 +79,8 @@ export default defineBuild({
 
 - **No bin.** `package.json` scripts run the file directly: `"build:dev": "node savvy.build.ts --target dev"`, `"build:prod": "node savvy.build.ts --target npm"`.
 - **Self-execution** is gated on `import.meta.main` at the *file* (so `run.ts` performs the gate with access to the caller's `import.meta`; `defineBuild` in `config.ts` stays pure). Imported by the silk plugin or the cli for introspection, it returns a side-effect-free config object. Run directly, it parses `process.argv` and builds.
-- **Baseline arg surface (SP1):** `--target <dev|npm>` (default `dev`) and `--watch`. `--mode` and friends arrive with SP2. See `parseArgs` in `src/config.ts`.
+- **Baseline arg surface:** `--target <dev|npm|meta>` (default `dev`) and `--watch`. `meta` was added by Track A; `--mode` and friends arrive with SP2. See `parseArgs` in `src/config.ts`.
+- **Meta config:** an optional `meta?: MetaOptions` (re-exported from `@savvy-web/tsdown-plugins`) on the `defineBuild` input enables meta generation. `--target meta` requires it; `--target npm` emits a `meta/` bundle only when it is set.
 - **Node baseline:** native TS type-stripping (Node 24.11+). No tsx fallback.
 
 `savvy.build.ts` replaces rslib's inscrutable factory-notation `rslib.config.ts`. It is agent-legible and a reliable signal the silk plugin can detect and introspect.
@@ -107,11 +111,11 @@ The relationship is **N Targets : 1 TargetGroup** — `dist/npm` shipped to npm 
 dist/
   dev/                  # the dev TargetGroup (registry-less, local-link only)
     pkg/                # ← pnpm linkDirectory points HERE; clean publishable bytes
-    meta/              # (SP3 content) build-internal meta bundle; folder established now
+    meta/              # (Track A) staging outMetaDir for --target meta before copy into localPaths
   prod/
     npm/                # SP1: just npm. SP4: one folder per distinct byte-variant
       pkg/              # the tarball root — transformed manifest + built code
-      meta/            # (SP3) transformed meta bundle (release assets)
+      meta/            # (Track A) meta bundle (release assets) when config.meta is set
 ```
 
 - **`pkg/` *is* the tarball** — nothing to ignore. This retires rslib's "mix meta files into `dist/npm` and exclude them via package.json ignore patterns" hack.
@@ -120,6 +124,21 @@ dist/
 - Local linking itself is the existing pnpm `linkDirectory` + injection mechanism — the bundler does not touch it.
 
 `deriveTargetGroupOptions` in `tsdown-plugins` (`src/build/target-groups.ts`) owns the `outDir` mapping: `dev → dist/dev/pkg`, prod group → `dist/prod/<group>/pkg`.
+
+## Meta generation wiring
+
+Track A adds API Extractor meta generation. The bundler is pure wiring over `generateMeta` from `@savvy-web/tsdown-plugins` (all the behavior lives there — see `../tsdown-plugins/architecture.md`); the bundler decides *when* and *where*.
+
+- **`--target meta`** runs `generateMeta` over the already-built `dist/dev/pkg` dts (API Extractor over the emitted dev `.d.ts`; there is **no** tsdown build), stages the bundle in `dist/dev/meta` and copies the resulting api-model into the `localPaths` configured in `config.meta`. This is why the `build:meta` turbo task depends only on `build:dev`. It throws if `config.meta` is unset.
+- **`--target npm`** additionally emits a `meta/` release-asset bundle into `dist/prod/npm/meta` (the folder reserved in the dist layout, empty `localPaths`) when `config.meta` is set — so meta ships as a publish asset, not mixed into `pkg/`.
+- **Decoupling:** meta is split from the prod build on purpose. `build:prod` emits the `meta/` asset; `savvy build --target meta` emits the api-model into other packages' `localPaths` and depends only on `build:dev`. Neither path re-runs the bundle.
+- **`deriveExportPaths`** (a `run.ts` helper) recovers export keys from the package `exports` map to drive the per-entry extraction. `generateMeta`/`readExports` are injectable on `RunOptions` so the wiring stays unit-testable.
+
+**Known limitation:** `deriveExportPaths` handles only plain string exports. *Conditional* exports (object-valued entries) and nested subpaths like `./foo/bar` fall through to a heuristic. Every current Silk package uses plain string exports, so nothing triggers it today, but a package with conditional exports would need this hardened first.
+
+### The build:meta turbo task
+
+`turbo.json` defines `build:meta` with `dependsOn: ["build:dev"]`, `cache: false`, `outputs: []`. It is **intentionally uncached** because it writes into *other* packages' `localPaths` — outputs outside its own cache scope — so turbo cannot track or restore them correctly. See `README.md` for the consumer-facing description.
 
 ## The orchestrator to tsdown boundary
 
@@ -139,7 +158,8 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 
 ## Boundaries and Invariants
 
-- **The bundler owns no build behavior.** Every behavior is a helper in `@savvy-web/tsdown-plugins`; the bundler only wires them. Anything the front door does, a hand-written `tsdown.config.ts` can do by importing the same helper.
+- **The bundler owns no build behavior.** Every behavior is a helper in `@savvy-web/tsdown-plugins`; the bundler only wires them. Anything the front door does, a hand-written `tsdown.config.ts` can do by importing the same helper. This includes meta: `generateMeta` lives in tsdown-plugins; the bundler only decides when (`--target meta`/`--target npm`) and where (`localPaths`/`dist/prod/npm/meta`).
+- **Meta is decoupled from the bundle.** Neither `--target meta` nor the npm meta-asset path re-runs the tsdown build — they run API Extractor over the already-emitted dev `.d.ts`. `build:meta` is uncached and depends only on `build:dev`.
 - **The bundler's responsibility ends at `dist/{group}/pkg`.** Registry upload + attestation (Targets) are the release action's job.
 - **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency.
 - **Built by rslib-builder until self-host.** Both packages keep `@savvy-web/rslib-builder` + `@rslib/core` devDeps and an `rslib.config.ts` for now; dogfooding/self-hosting is a deliberate post-SP1 step.

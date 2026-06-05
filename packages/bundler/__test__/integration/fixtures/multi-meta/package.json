@@ -1,0 +1,10 @@
+{
+	"name": "@fixture/multi-meta",
+	"version": "1.0.0",
+	"type": "module",
+	"private": true,
+	"exports": {
+		".": "./src/index.ts",
+		"./sub": "./src/sub.ts"
+	}
+}

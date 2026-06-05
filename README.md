@@ -63,7 +63,7 @@ See the [bundler README](./packages/bundler/README.md) for the `savvy.build.ts` 
 
 ### @savvy-web/tsdown-plugins
 
-The interface-only tsdown/rolldown plugin pack behind `@savvy-web/bundler`: entry detection, manifest transforms and catalog resolution, the dts tsconfig port, the per-target build loop and the output reporter. Compose the same helpers in a hand-written `tsdown.config.ts` as a published escape hatch.
+The interface-only tsdown/rolldown plugin pack behind `@savvy-web/bundler`: entry detection, manifest transforms and catalog resolution, the dts tsconfig port, the per-target build loop, API Extractor meta generation and the output reporter. Compose the same helpers in a hand-written `tsdown.config.ts` as a published escape hatch.
 
 See the [tsdown-plugins README](./packages/tsdown-plugins/README.md) for the helper surface.
 

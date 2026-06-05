@@ -30,6 +30,10 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:silk",
+		"@microsoft/api-extractor": "^7.58.7",
+		"@microsoft/tsdoc": "^0.16.0",
+		"@microsoft/tsdoc-config": "^0.18.1",
+		"deep-equal": "^2.2.3",
 		"json-schema-effect": "^0.2.1",
 		"picocolors": "^1.1.1",
 		"sort-package-json": "^3.6.1",
@@ -40,6 +44,7 @@
 		"@effect/platform": "catalog:silk",
 		"@rslib/core": "0.22.0",
 		"@savvy-web/rslib-builder": "^0.21.3",
+		"@types/deep-equal": "^1.0.4",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",

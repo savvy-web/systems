@@ -16,6 +16,13 @@ describe("defineBuild", () => {
 		expect(cfg.externals).toEqual(["typescript"]);
 		expect(cfg.transform).toBe(t);
 	});
+
+	it("carries the meta option through", () => {
+		const c = defineBuild({
+			meta: { localPaths: ["../models"], tsdoc: { tagDefinitions: [{ tagName: "@since", syntaxKind: "block" }] } },
+		});
+		expect(c.meta?.localPaths).toEqual(["../models"]);
+	});
 });
 
 describe("parseArgs", () => {

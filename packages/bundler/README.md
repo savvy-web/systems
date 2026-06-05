@@ -52,6 +52,31 @@ npm run build:prod
 
 `--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target npm` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish.
 
+## API Extractor meta
+
+Set the optional `meta` field on `defineBuild` to generate an [API Extractor](https://api-extractor.com/) api-model from a package's type declarations:
+
+```ts
+const config = defineBuild({
+  formats: ["esm"],
+  meta: {
+    // directories the generated api-model is copied into on `--target meta`
+    localPaths: ["../mcp/models/@savvy-web/bundler"],
+    tsdoc: {
+      suppressWarnings: [{ messageId: "ae-undocumented" }],
+      tagDefinitions: [{ tagName: "@internal", syntaxKind: "modifier" }],
+    },
+  },
+});
+```
+
+With `meta` set, two behaviors come online:
+
+- `savvy build --target meta` runs API Extractor over the dev build's `.d.ts` — no tsdown build, so it depends only on a prior `--target dev`. It writes the api-model (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into each `localPaths` directory.
+- `savvy build --target npm` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
+
+`meta` is optional; omit it and neither behavior runs. `--target meta` errors if the config has no `meta` field.
+
 ## Features
 
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
@@ -63,9 +88,13 @@ npm run build:prod
 
 ## API
 
-- `defineBuild(input)` — normalizes a build config (`formats`, `externals`, `devManifest`, `transform`, `output`), applying defaults. Pure; it does not run the build.
+- `defineBuild(input)` — normalizes a build config (`formats`, `externals`, `devManifest`, `transform`, `output`, `meta`), applying defaults. Pure; it does not run the build.
 - `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.
+
+## Turbo tasks
+
+`pnpm turbo run build:meta` regenerates api-models into the `localPaths` configured in each package's `savvy.build.ts`, reading the dev build's `dist/dev/pkg` dts; it depends on `build:dev` and is intentionally uncached because it writes outside the package's own cache scope.
 
 ## License
 

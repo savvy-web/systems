@@ -15,7 +15,7 @@ dependencies:
 
 # @savvy-web/tsdown-plugins architecture
 
-The interface-only plugin pack that holds every build behavior `@savvy-web/bundler` drives — entry detection, manifest emission, catalog resolution, the dts tsconfig port, the per-TargetGroup build loop and the full Effect output reporter. Authored against rolldown's plugin *type* only, so it imports no tsdown runtime and carries no tsdown peer dependency. This doc covers the SP1 foundation.
+The interface-only plugin pack that holds every build behavior `@savvy-web/bundler` drives — entry detection, manifest emission, catalog resolution, the dts tsconfig port, the per-TargetGroup build loop, the full Effect output reporter and the API Extractor meta-generation pipeline. Authored against rolldown's plugin *type* only, so it imports no tsdown runtime and carries no tsdown peer dependency. This doc covers the SP1 foundation plus the Track A meta capability.
 
 ## Table of Contents
 
@@ -28,6 +28,7 @@ The interface-only plugin pack that holds every build behavior `@savvy-web/bundl
 - [The dts resolved-tsconfig port](#the-dts-resolved-tsconfig-port)
 - [The per-TargetGroup build loop](#the-per-targetgroup-build-loop)
 - [The output reporter](#the-output-reporter)
+- [The meta-generation pipeline](#the-meta-generation-pipeline)
 - [The escape-hatch contract](#the-escape-hatch-contract)
 - [Boundaries and Invariants](#boundaries-and-invariants)
 - [Rationale](#rationale)
@@ -40,15 +41,15 @@ The package is implemented in Effect (`Data.TaggedError` typed errors, `Context.
 
 **Package:** `@savvy-web/tsdown-plugins`
 **Location:** `packages/tsdown-plugins` in `savvy-web/systems`
-**Public surface:** `src/index.ts` — the semver'd export surface (entry helpers, manifest transforms + `emitManifest`, `resolveManifest`, dts tsconfig helpers, `deriveTargetGroupOptions`/`buildTargetGroups`, the reporter pipeline + formatters + `BuildReport` schema, re-exported catalog errors)
+**Public surface:** `src/index.ts` — the semver'd export surface (entry helpers, manifest transforms + `emitManifest`, `resolveManifest`, dts tsconfig helpers, `deriveTargetGroupOptions`/`buildTargetGroups`, the reporter pipeline + formatters + `BuildReport` schema, the meta surface `normalizeMetaOptions`/`generateMeta` + its option/result types, re-exported catalog errors)
 **Versioning:** independent; auto-bumps the bundler when it changes.
 **Status:** Silk bundler program SP1 (Foundation). Spec/plan (local/gitignored): `docs/superpowers/specs/2026-06-04-savvy-bundler-sp1-foundation-design.md`, `docs/superpowers/plans/2026-06-04-savvy-bundler-sp1.md`.
 
 ## Current State
 
-SP1 implemented. Built by `@savvy-web/rslib-builder` until the stack self-hosts (post-SP1). Runtime `dependencies` are `workspaces-effect` (`^1.2.0`, for `CatalogResolver`), `@effect/platform-node` (provides `NodeContext` at the resolution boundary), `sort-package-json`, `std-env`, `picocolors` and `json-schema-effect`; `effect` is a `catalog:silkPeers` peer. `tsdown`/`rolldown` are devDependencies — types only.
+SP1 implemented, plus Track A (API Extractor meta generation, the `src/meta/` module). Built by `@savvy-web/rslib-builder` until the stack self-hosts (post-SP1). Runtime `dependencies` are `workspaces-effect` (`^1.2.0`, for `CatalogResolver`), `@effect/platform-node` (provides `NodeContext` at the resolution boundary), `sort-package-json`, `std-env`, `picocolors`, `json-schema-effect`, plus the meta deps `@microsoft/api-extractor`, `@microsoft/tsdoc`, `@microsoft/tsdoc-config` and `deep-equal`; `effect` is a `catalog:silkPeers` peer. `tsdown`/`rolldown` are devDependencies — types only.
 
-Out of SP1: the SP2 preflight findings the reporter will later carry, API/TSDoc meta (SP3), multi-byte-variant manifests (SP4), dual-format CJS interop. The error set, formatter set and service set are discoverable in source — this doc documents the topology, not the enumerations.
+Out of SP1/Track A: the SP2 preflight findings the reporter will later carry, multi-byte-variant manifests (SP4), dual-format CJS interop. The error set, formatter set and service set are discoverable in source — this doc documents the topology, not the enumerations.
 
 ## The interface-only boundary
 
@@ -67,7 +68,8 @@ The surface divides into pure helpers, one rolldown plugin, one async catalog wr
 - **dts:** `buildResolvedTsconfig`/`writeResolvedTsconfig` (`src/dts/resolved-tsconfig.ts`).
 - **Build loop:** `deriveTargetGroupOptions` (pure, `src/build/target-groups.ts`), `buildTargetGroups` (`src/build/build-target-groups.ts`).
 - **Reporter:** four `Context.Tag` services `EnvironmentDetector → ExecutorResolver → FormatSelector → OutputRenderer` each with a sibling `*Live` layer, composed into `ReportPipelineLive`; the `renderReport` program; five formatters; the `BuildReport` `Schema` and its SchemaStore export. See [The output reporter](#the-output-reporter).
-- **Errors:** typed `Data.TaggedError`s in `src/errors.ts`; the catalog errors (`CatalogAssemblyError`, `CatalogResolutionError`) are owned by `workspaces-effect` and re-exported from `src/index.ts` so consumers and the reporter can `catchTag` them.
+- **Meta:** the `src/meta/` module — `normalizeMetaOptions` + types (`config.ts`), `createMessageSuppressor` (`message-suppressor.ts`), `buildTsdocConfig`/`writeTsdocConfig` (`tsdoc-config.ts`), `mergeApiModels`/`rewriteCanonicalReferences` (`merge-models.ts`), `runApiExtractor` (`api-extractor.ts`) and the `generateMeta` orchestrator (`generate.ts`). See [The meta-generation pipeline](#the-meta-generation-pipeline).
+- **Errors:** typed `Data.TaggedError`s in `src/errors.ts` (including `MetaGenerationError`, defined for the meta pipeline but not yet thrown — the Track A runner/orchestrator throw plain `Error` today); the catalog errors (`CatalogAssemblyError`, `CatalogResolutionError`) are owned by `workspaces-effect` and re-exported from `src/index.ts` so consumers and the reporter can `catchTag` them.
 
 ## Entry detection
 
@@ -97,6 +99,21 @@ Mirrored (copied, not shared) from the `spencerbeggs/vitest-llm-reporter` / `vit
 - **Formatter contract:** `render(reports, ctx) → RenderedOutput[]`, each `{ target, content, contentType }`, sync and pure. Formatters: `terminal`, `json`, `markdown`, `ci-annotations`, `silent`.
 - **`BuildReport` Schema (SP1 shape):** per package → per TargetGroup `{ entries, emittedFiles, timings, warnings[], errors[] }`. SP2 extends it with `wouldFailProd[]`. A SchemaStore-compatible JSON Schema is emitted via `json-schema-effect` (`src/report/schema-export.ts`) so the structured `json`/`markdown` output validates and editors get autocomplete.
 
+## The meta-generation pipeline
+
+Track A added `src/meta/`, which holds **all** the meta behavior the bundler wires; the bundler owns no meta logic of its own (see `../bundler/architecture.md`). Meta is the API Extractor `.api.json` model the bundler emits into other packages' `localPaths` (for downstream API-doc consumers like mcp) and, on a prod build, into the `meta/` release-asset bundle. It is deliberately **decoupled from the prod tsdown build**: generating meta runs API Extractor over the already-emitted dev `.d.ts`, not as part of bundling.
+
+The module is a set of separately-tested units; each file is the source of truth for its own mechanics:
+
+- **`generateMeta` (`generate.ts`)** — the orchestrator. Writes `tsdoc.json`, runs the extractor once per entry into `outMetaDir`, takes the single model or `mergeApiModels` when more than one entry, writes `<unscoped>.api.json` + `tsdoc-metadata.json` (main entry only) + a copied resolved `tsconfig.json` into `outMetaDir`, copies that bundle into each `localPaths` dir, and removes the per-entry `*.entry.api.json` intermediates so they never leak into the bundle.
+- **`runApiExtractor` (`api-extractor.ts`)** — single-entry wrapper over the real `@microsoft/api-extractor`, configured in-memory via `ExtractorConfig.prepare({ configObject })` (no `api-extractor.json` file) with `dtsRollup`/`apiReport` disabled and the message suppressor wired into the `messageCallback`. It runs over the tsdown-emitted per-file `.d.ts` (unbundle dts) using the SP1 resolved tsconfig — **not** rslib's spawn-tsgo-to-temp approach.
+- **`mergeApiModels`/`rewriteCanonicalReferences` (`merge-models.ts`)** — multi-entry merge, ported verbatim from rslib-builder, using hand-rolled JSON surgery rather than `@microsoft/api-extractor-model`. Keeps the main `.` entry canonical and rewrites sub-entry canonical references to `${packageName}/${subpath}!`.
+- **`buildTsdocConfig`/`writeTsdocConfig` (`tsdoc-config.ts`)** — deterministic, idempotent `tsdoc.json` emission, standard tags populated from `@microsoft/tsdoc`'s `StandardTags`, behind a deep-equal write guard so an unchanged config is not rewritten.
+- **`createMessageSuppressor` (`message-suppressor.ts`)** — an API Extractor message matcher (messageId exact-match AND optional regex/substring on the text, with a regex→substring fallback).
+- **`normalizeMetaOptions` + types (`config.ts`)** — `MetaOptions`/`TsdocOptions`/`TsdocTagDefinition`/`WarningSuppressionRule`/`NormalizedMeta`.
+
+**Known limitation (verbatim parity port):** `rewriteCanonicalReferences` only walks `members`, not `excerptTokens[*].canonicalReference` or `references[*]`, so cross-entry `@link`s authored in a sub-entry may not be rewritten. This matches rslib-builder's behavior and is not fixed by Track A.
+
 ## The escape-hatch contract
 
 A power user composes the same plugins by hand:
@@ -120,6 +137,7 @@ Four guarantees hold this together: **parity** (the plugins *are* the front door
 - **No catalog-source logic.** `resolveManifest` delegates entirely to `workspaces-effect`'s `CatalogResolver`; the catalog error types are re-exported, not redefined.
 - **Effect stays behind the boundary.** Plugin objects and `resolveManifest` are plain values/Promises; the reporter Effect is run by the consumer.
 - **Entry rules and the bin leading-`./` strip are exact rslib parity** — they must not drift, since they determine output bytes and (for bins) npm-install correctness.
+- **All meta behavior lives here.** `generateMeta` and its units own the API Extractor pipeline; the bundler only wires it. Meta runs over the emitted dev `.d.ts`, decoupled from the prod tsdown build.
 - **`src/index.ts` is the semver'd contract.** It is what the escape hatch and the bundler both depend on.
 
 ## Rationale

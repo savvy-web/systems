@@ -44,6 +44,7 @@ export default defineConfig({
 - **Catalog resolution** — `resolveManifest` resolves `catalog:` and `workspace:` specifiers against the workspace, delegating to `workspaces-effect`'s `CatalogResolver`.
 - **dts tsconfig port** — `buildResolvedTsconfig` and `writeResolvedTsconfig` write a temp tsconfig with absolute paths so type declarations emit cleanly under pnpm symlinks.
 - **Per-target build loop** — `deriveTargetGroupOptions` and `buildTargetGroups` map a target to its `tsdown` options and run the build once per target, exposed as a helper so the escape hatch gets multi-target builds too.
+- **API Extractor meta** — `generateMeta` runs [API Extractor](https://api-extractor.com/) over a package's emitted `.d.ts` to write an api-model bundle (`.api.json`, `tsdoc-metadata.json`, resolved `tsconfig.json`); `normalizeMetaOptions` fills the `MetaOptions` defaults that drive it.
 - **Output reporter** — `renderReport` plus the `BuildReport` schema and a set of formatters (terminal, JSON, markdown, CI annotations, silent) render a build report for humans, agents or CI.
 
 ## Effect

@@ -20,6 +20,16 @@ export {
 	transformExports,
 	transformManifest,
 } from "./manifest/transform.js";
+export type {
+	MetaOptions,
+	NormalizedMeta,
+	TsdocOptions,
+	TsdocTagDefinition,
+	WarningSuppressionRule,
+} from "./meta/config.js";
+export { normalizeMetaOptions } from "./meta/config.js";
+export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
+export { generateMeta } from "./meta/generate.js";
 export type { Formatter, FormatterContext, RenderedOutput } from "./report/formatters/index.js";
 export {
 	CiAnnotationsFormatter,
