@@ -13,6 +13,8 @@ import {
 	ChangesetConfigReaderLive,
 	SilkWorkspaceAnalyzerLive,
 	TagStrategyLive,
+	ToolDiscoveryLive,
+	Turbo,
 	VersioningStrategyLive,
 } from "@savvy-web/silk-effects";
 import { Layer } from "effect";
@@ -34,9 +36,17 @@ const DepsLive = Layer.mergeAll(
 );
 
 /**
- * The MCP runtime layer. Provides `SilkWorkspaceAnalyzer` and `WorkspaceRoot`;
- * requires `FileSystem` + `Path` from the host's platform layer.
+ * The MCP runtime layer. Provides `SilkWorkspaceAnalyzer`, `WorkspaceRoot`, and
+ * `Turbo.TurboInspector`; requires `CommandExecutor` + `FileSystem` + `Path`
+ * from the host's platform layer (`NodeContext.layer` in bin.ts).
+ *
+ * `TurboInspectorLive` is fed its own `ToolDiscoveryLive`, whose
+ * `PackageManagerDetector` + `WorkspaceRoot` requirements are satisfied by
+ * {@link DepsLive}; the leftover `CommandExecutor` + `FileSystem` flow up to the
+ * host platform layer.
  */
-export const SilkRuntimeLive = Layer.mergeAll(SilkWorkspaceAnalyzerLive, WorkspaceRootLive).pipe(
-	Layer.provide(DepsLive),
-);
+export const SilkRuntimeLive = Layer.mergeAll(
+	SilkWorkspaceAnalyzerLive,
+	WorkspaceRootLive,
+	Turbo.TurboInspectorLive.pipe(Layer.provide(ToolDiscoveryLive)),
+).pipe(Layer.provide(DepsLive));

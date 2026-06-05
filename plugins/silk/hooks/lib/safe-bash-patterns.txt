@@ -35,6 +35,12 @@
 # form too.
 ^[[:space:]]*env([[:space:]]+[A-Z_][A-Z0-9_]*=[^[:space:]]+)*[[:space:]]+(pnpm|node)(\b|$)
 ^[[:space:]]*jq(\b|$)
+# turbo --dry / --dry=json runs are read-only by design (never execute tasks).
+# turbo run <task> WITHOUT --dry executes the task — that form is intentionally NOT here.
+# The command must END at the --dry flag (optional =value, trailing whitespace) and contain no
+# shell-chaining/redirect/subshell metacharacters, so a trailing `; rm -rf` cannot ride along
+# (match-safe-bash.sh greps the whole command rather than splitting it).
+^[[:space:]]*turbo[[:space:]]+[^;&|<>(){}$`]*--dry(=[A-Za-z]+)?[[:space:]]*$
 ^[[:space:]]*git[[:space:]]+(status|diff|log|show|rev-parse|ls-files|ls-tree|remote|branch|config|stash[[:space:]]+list|stash[[:space:]]+show)(\b|$)
 ^[[:space:]]*gh[[:space:]]+(api|pr[[:space:]]+(view|list|diff|checks)|issue[[:space:]]+(view|list)|repo[[:space:]]+view|run[[:space:]]+(list|view|watch))(\b|$)
 ^[[:space:]]*node[[:space:]]+--version(\b|$)

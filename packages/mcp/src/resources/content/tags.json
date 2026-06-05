@@ -23,5 +23,7 @@
 	"github-action-effects": ["gha-effects"],
 	"github-action-builder": ["gha-builder"],
 	"semver": ["versioning"],
-	"github-actions": ["gha", "actions"]
+	"github-actions": ["gha", "actions"],
+	"turbo": ["turborepo"],
+	"ci": ["continuous-integration", "remote-cache"]
 }

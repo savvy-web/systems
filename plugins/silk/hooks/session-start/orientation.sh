@@ -119,7 +119,33 @@ JSON. Use Bash workspace commands only when:
   - you need git status or branch info (workspace_info does not cover this), or
   - you need output from a task-specific script the tool does not provide, or
   - workspace_info is unavailable or errors.
+
+When you need to diagnose a Turborepo cache miss, inspect the task graph, or
+identify which packages are affected by a change, call the turbo_inspect MCP
+tool before hand-running turbo commands or guessing. It is read-only and never
+executes tasks. Use Bash turbo commands only when you need a field turbo_inspect
+does not surface (and always with --dry in that case).
 </important>
+
+<turbo_capability>
+The savvy-mcp server provides a read-only Turborepo inspection tool:
+
+  mcp__savvy-mcp__turbo_inspect
+    mode: "cache"    — per-package HIT/MISS verdict plus the exact hash
+                       contributors (input files, env vars, external-dep hashes,
+                       global hash). Use for cache-miss diagnosis.
+    mode: "graph"    — full task graph and critical path. Use before any
+                       dependsOn / outputs / inputs refactor.
+    mode: "affected" — changed-package set (what --affected would select).
+                       Use to scope CI or confirm graph edges.
+
+For lighter Turborepo questions (configuring a task, understanding dependsOn,
+anti-patterns) the turbo skill is available on demand: /silk:turbo.
+
+For multi-step cache diagnosis, turbo.json refactors, or CI cache setup,
+dispatch the turborepo agent — it drives turbo_inspect, interprets the hash
+contributors, and recommends concrete changes.
+</turbo_capability>
 
 <changesets_plugin>
 
@@ -174,6 +200,10 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
   <hook event="PreToolUse" matcher="Bash">
     Before git commits, you are reminded to consider whether a changeset is needed.
   </hook>
+  <note>
+    turbo_inspect (mcp__savvy-mcp__turbo_inspect) has no hook — it is a
+    read-only MCP tool; call it directly when Turborepo questions arise.
+  </note>
 </active_hooks>
 
 </changesets_plugin>

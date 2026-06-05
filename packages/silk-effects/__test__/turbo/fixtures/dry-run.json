@@ -1,0 +1,56 @@
+{
+  "id": "fixture",
+  "version": "1",
+  "turboVersion": "2.9.16",
+  "globalCacheInputs": {
+    "rootKey": "fixture-root-key",
+    "files": { "package.json": "aaa111" },
+    "hashOfExternalDependencies": "ext-global-hash",
+    "hashOfInternalDependencies": "int-global-hash",
+    "environmentVariables": {
+      "specified": { "env": [], "passThroughEnv": ["CI"] },
+      "configured": ["NODE_ENV"],
+      "inferred": [],
+      "passthrough": []
+    },
+    "engines": {}
+  },
+  "tasks": [
+    {
+      "taskId": "@savvy-web/tsdown-plugins#build:dev",
+      "task": "build:dev",
+      "package": "@savvy-web/tsdown-plugins",
+      "directory": "packages/tsdown-plugins",
+      "hash": "hash-aaa",
+      "inputs": { "src/index.ts": "f1", "package.json": "f2" },
+      "hashOfExternalDependencies": "ext-aaa",
+      "cache": { "local": true, "remote": false, "status": "HIT", "timeSaved": 1200 },
+      "dependencies": [],
+      "dependents": ["@savvy-web/bundler#build:dev"],
+      "environmentVariables": {
+        "specified": { "env": [], "passThroughEnv": null },
+        "configured": [],
+        "inferred": [],
+        "passthrough": null
+      }
+    },
+    {
+      "taskId": "@savvy-web/bundler#build:dev",
+      "task": "build:dev",
+      "package": "@savvy-web/bundler",
+      "directory": "packages/bundler",
+      "hash": "hash-bbb",
+      "inputs": { "src/index.ts": "g1" },
+      "hashOfExternalDependencies": "ext-bbb",
+      "cache": { "local": false, "remote": false, "status": "MISS", "timeSaved": 0 },
+      "dependencies": ["@savvy-web/tsdown-plugins#build:dev"],
+      "dependents": [],
+      "environmentVariables": {
+        "specified": { "env": ["NODE_ENV"], "passThroughEnv": null },
+        "configured": ["NODE_ENV"],
+        "inferred": [],
+        "passthrough": null
+      }
+    }
+  ]
+}

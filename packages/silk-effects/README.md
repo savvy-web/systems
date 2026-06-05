@@ -13,6 +13,7 @@ Shared [Effect](https://effect.website/) library providing Silk Suite convention
 - Discover and resolve CLI tools globally or locally with version enforcement and caching
 - Detect versioning strategy and format git tags from changeset configuration
 - Locate config files and keep Biome schema URLs in sync across workspaces
+- Inspect a Turborepo read-only — diagnose per-package cache hits, derive the task graph and compute affected packages, all over `turbo --dry`
 
 ## Install
 
@@ -377,6 +378,28 @@ const biome = yield* td.require(
   ToolDefinition.make({ name: "biome" }),
   "Biome is required for linting",
 );
+```
+
+#### TurboInspector
+
+Read-only Turborepo inspection. Every method shells out to `turbo` with `--dry=json`, so no task ever runs. `diagnoseCache(task, cwd)` reports a per-package cache HIT/MISS breakdown for a task, `taskGraph(cwd, task?)` derives the task graph and its critical path and `affected(cwd, base?)` lists the packages affected relative to `base` (default `main`). It resolves the `turbo` binary through `ToolDiscovery` and fails with a tagged error when `turbo` is missing or the directory is not a Turborepo. The service tag and its layer are exported under the `Turbo` namespace.
+
+```typescript
+import { Effect } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import { Turbo, ToolDiscoveryLive } from "@savvy-web/silk-effects";
+
+const diagnosis = await Effect.runPromise(
+  Effect.gen(function* () {
+    const turbo = yield* Turbo.TurboInspector;
+    return yield* turbo.diagnoseCache("build:dev", process.cwd());
+  }).pipe(
+    Effect.provide(Turbo.TurboInspectorLive),
+    Effect.provide(ToolDiscoveryLive),
+    Effect.provide(NodeContext.layer),
+  ),
+);
+// => CacheDiagnosis: per-package HIT/MISS breakdown for the task
 ```
 
 ## Documentation

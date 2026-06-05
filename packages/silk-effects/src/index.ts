@@ -85,5 +85,7 @@ export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/Sil
 export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";
 export { ToolDiscovery, ToolDiscoveryLive } from "./services/ToolDiscovery.js";
 export { VersioningStrategy, VersioningStrategyLive } from "./services/VersioningStrategy.js";
+// ── Turbo namespace ────────────────────────────────────────────
+export * as Turbo from "./turbo/index.js";
 // ── Utils ─────────────────────────────────────────────────────
 export { ToolCommand } from "./utils/ToolCommand.js";
