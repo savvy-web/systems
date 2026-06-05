@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import type { SilkWorkspaceAnalyzer } from "@savvy-web/silk-effects";
+import type { SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
 import type { ManagedRuntime } from "effect";
 import type { WorkspaceDiscoveryError, WorkspaceRoot } from "workspaces-effect";
 
@@ -13,7 +13,10 @@ import type { Manifest } from "./resources/schema.js";
 
 /** The long-lived runtime, the project working directory, and the resource layer. */
 export interface McpContext {
-	readonly runtime: ManagedRuntime.ManagedRuntime<SilkWorkspaceAnalyzer | WorkspaceRoot, WorkspaceDiscoveryError>;
+	readonly runtime: ManagedRuntime.ManagedRuntime<
+		SilkWorkspaceAnalyzer | WorkspaceRoot | Turbo.TurboInspector,
+		WorkspaceDiscoveryError
+	>;
 	readonly cwd: string;
 	readonly docIndex: DocIndex;
 	readonly manifest: Manifest;

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
-import { SilkWorkspaceAnalyzer } from "@savvy-web/silk-effects";
+import { SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -42,5 +42,15 @@ describe("SilkRuntimeLive – layer completeness", () => {
 		expect(analysis._tag).toBe("WorkspaceAnalysis");
 		expect(analysis.root).toBe(dir);
 		expect(analysis.workspaces.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("resolves Turbo.TurboInspector from the runtime layer", async () => {
+		const resolved = await Effect.runPromise(
+			Effect.gen(function* () {
+				const inspector = yield* Turbo.TurboInspector;
+				return typeof inspector.diagnoseCache;
+			}).pipe(Effect.provide(AppLayer)),
+		);
+		expect(resolved).toBe("function");
 	});
 });

@@ -6,8 +6,8 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-05-31
-last-synced: 2026-05-31
+updated: 2026-06-05
+last-synced: 2026-06-05
 depends-on: []
 related:
   - ../silk/architecture.md
@@ -48,8 +48,13 @@ standalone dev-tooling packages (`@savvy-web/changesets`, `@savvy-web/commitlint
 `@savvy-web/silk`) import. See `../cli/architecture.md` and `../silk/architecture.md`.
 
 `@savvy-web/mcp` (the `savvy-mcp` server) is now a third consumer: it composes its own runtime layer
-from silk-effects services (notably `SilkWorkspaceAnalyzer` + `WorkspaceRoot`) plus `workspaces-effect`,
-and surfaces them as MCP tools. See `../mcp/architecture.md`.
+from silk-effects services (notably `SilkWorkspaceAnalyzer` + `WorkspaceRoot` + `Turbo.TurboInspector`) plus
+`workspaces-effect`, and surfaces them as MCP tools. See `../mcp/architecture.md`.
+
+A fourth namespace export, `Turbo` (`@since 0.7.0`), adds read-only Turborepo inspection built on
+`ToolDiscovery`/`ToolCommand`. Unlike the three tool namespaces above, it is not extracted CLI business
+logic — it is a small Context.Tag service plus pure digest transforms. See
+[Turbo Inspection](#turbo-inspection-turbo-namespace).
 
 **Package:** `@savvy-web/silk-effects`
 **Location:** `packages/silk-effects` in `savvy-web/systems`
@@ -59,7 +64,7 @@ and surfaces them as MCP tools. See `../mcp/architecture.md`.
 
 ## Current State
 
-Published at v0.4.1. A pending minor changeset adds the `ManagedSection.syncMany`/`remove` multi-section primitives and the `SavvySections` shared husky-hook shells (`@since 0.5.0`); both are additive. All modules implemented with full test coverage:
+Published at v0.6.1. A pending minor changeset adds the `Turbo` namespace — read-only Turborepo inspection (`TurboInspector` + `TurboDigest`), `@since 0.7.0`; additive. (Earlier `@since 0.5.0` additions: the `ManagedSection.syncMany`/`remove` multi-section primitives and the `SavvySections` shared husky-hook shells.) All modules implemented with full test coverage:
 
 | Area | Source | Tests |
 | ---- | ------ | ----- |
@@ -112,6 +117,7 @@ src/
   changesets/           ← Changesets namespace (extracted @savvy-web/changesets logic)
   commitlint/           ← Commitlint namespace (extracted @savvy-web/commitlint logic)
   lint/                 ← Lint namespace (extracted @savvy-web/lint-staged logic)
+  turbo/                ← Turbo namespace (TurboInspector service + TurboDigest transforms)
 
 __test__/
   errors/               ← error class tests
@@ -530,6 +536,29 @@ flags per-package based on the changeset config:
 
 `ChangesetConfigFile` covers the full `@changesets/config@3.1.1` upstream spec, including all optional fields: `changelog`, `commit`, `fixed`, `linked`, `access`, `baseBranch`, `updateInternalDependencies`, `ignore`, `privatePackages`, `prettier`, `changedFilePatterns`, `bumpVersionsWithWorkspaceProtocolOnly`, and `snapshot` (with `useCalculatedVersion` and `prereleaseTemplate`). `SilkChangesetConfigFile` extends it with the `_isSilk` marker.
 
+### Turbo Inspection (Turbo namespace)
+
+The `Turbo` namespace (`src/turbo/`, re-exported from the root as `export * as Turbo`, `@since 0.7.0`) provides read-only Turborepo introspection. **Every operation invokes `turbo run … --dry=json` and never executes a task** — this is the load-bearing safety invariant of the whole namespace. It exists to back the MCP `turbo_inspect` tool (see `../mcp/architecture.md`); the cache-miss and graph reasoning lives here so the tool file stays glue.
+
+The namespace splits into a service for I/O and a pure transformer for the math, mirroring the rest of the package:
+
+```text
+TurboInspector (Context.Tag)
+  diagnoseCache(task, cwd) → CacheDiagnosis     per-package HIT/MISS + per-miss hash-contributor breakdown
+  taskGraph(cwd, task?)    → TaskGraphResult     nodes + memoized-DFS critical path (default task build:dev)
+  affected(cwd, base?)     → AffectedResult      changed packages + their dependents (default base HEAD^)
+  All methods fail with TurboError (the namespace error union)
+
+TurboDigest (all-static class)
+  pure transforms from a decoded TurboDryRun into the three flat result shapes — no DI, directly unit-testable
+```
+
+`TurboInspectorLive` requires `ToolDiscovery | CommandExecutor | FileSystem`. It mirrors `ToolDiscoveryLive`'s discharge pattern: the `CommandExecutor` is captured at layer construction and re-provided onto each command effect with `Effect.provideService`, keeping the public method effects at `R = never`. The methods take an explicit `cwd` (the MCP handler resolves the workspace root and passes it); the layer guards on a `turbo.json` at that `cwd` (`NotATurboRepoError`) before shelling out via a `ToolDefinition.make({ name: "turbo" })` resolution.
+
+**Schemas** (`src/turbo/schemas/`): `TurboDryRun` is the input decode shape for `turbo … --dry=json`; `CacheDiagnosis`, `TaskGraphResult` and `AffectedResult` are the deliberately **flat, bridge-safe** result shapes — no recursion, so the MCP's Effect-Schema→zod bridge round-trips them cleanly. See the structs in `src/turbo/schemas/results.ts`.
+
+**Errors** (`src/turbo/errors.ts`): the `TurboError` union — `TurboNotInstalledError` (binary unresolvable), `NotATurboRepoError` (no `turbo.json`), `DryRunParseError` (bad JSON / decode failure) and `TurboExecError` (non-zero exit). `TurboNotInstalledError` and `TurboExecError` are intentionally distinct so callers can tell "turbo absent" from "turbo ran and failed".
+
 ## Service Patterns
 
 All services follow the same Effect-TS patterns:
@@ -640,6 +669,10 @@ Tagged enums used in this package:
 **Modules requiring CommandExecutor + PackageManagerDetector + WorkspaceRoot:**
 
 - `ToolDiscovery` / `ToolDiscoveryLive`
+
+**Modules requiring ToolDiscovery + CommandExecutor + FileSystem:**
+
+- `Turbo.TurboInspector` / `Turbo.TurboInspectorLive` (`TurboDigest` itself is pure)
 
 **Modules requiring ChangesetConfigReader:**
 

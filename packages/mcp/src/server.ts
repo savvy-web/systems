@@ -15,6 +15,8 @@ import { registerAllResources } from "./resources/index.js";
 import { stderrQueryLogger } from "./resources/query-log.js";
 import { effectToZodSchema } from "./schema/effect-to-zod.js";
 import { DocsSearchResult, DocsSearchResultAsMarkdown, runDocsSearch } from "./tools/docs-search.js";
+import type { TurboInspectArgs } from "./tools/turbo-inspect.js";
+import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "./tools/turbo-inspect.js";
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
 import { CURRENT_MCP_VERSION } from "./version.js";
 
@@ -70,6 +72,27 @@ export function buildServer(ctx: McpContext): McpServer {
 				stderrQueryLogger,
 			);
 			const text = Schema.decodeSync(DocsSearchResultAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
+		"turbo_inspect",
+		{
+			description:
+				"Read-only Turborepo inspection. mode=cache diagnoses why a task's cache is hitting/missing (per-package status plus the exact hash contributors: input files, env vars, external-dep hashes, global hash). mode=graph returns the task graph and critical path. mode=affected lists changed packages and their dependents. Never executes tasks (uses --dry).",
+			inputSchema: {
+				mode: z.enum(["cache", "graph", "affected"]).describe("Which inspection to run."),
+				task: z.optional(z.string()).describe("Task name (defaults to build:dev for cache/graph)."),
+				base: z.optional(z.string()).describe("Base git ref for affected mode."),
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(TurboInspectResult) as never,
+			annotations: { readOnlyHint: true },
+		},
+		async (args) => {
+			const data = await ctx.runtime.runPromise(turboInspect(args as TurboInspectArgs, ctx.cwd));
+			const text = Schema.decodeSync(TurboInspectAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
