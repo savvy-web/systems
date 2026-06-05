@@ -81,6 +81,10 @@ describe("resolveTargets", () => {
 		expect(() => resolveTargets({ targets: { github: true }, baseName: "x" })).toThrow(/scoped/);
 	});
 
+	it("throws on an unknown registry key with value true", () => {
+		expect(() => resolveTargets({ targets: { custom: true }, baseName: "x" })).toThrow(/not a known registry/);
+	});
+
 	it("throws when targets is empty", () => {
 		expect(() => resolveTargets({ targets: {}, baseName: "x" })).toThrow(/at least one/);
 	});
