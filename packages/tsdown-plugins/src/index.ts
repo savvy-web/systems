@@ -11,6 +11,7 @@ export type { ExtractOptions, ExtractResult, PackageJsonLike } from "./entry/ext
 export { extractEntries } from "./entry/extract.js";
 export type { PackageJsonEntriesOptions } from "./entry/package-json-entries.js";
 export { packageJsonEntries } from "./entry/package-json-entries.js";
+export { MetaGenerationError } from "./errors.js";
 export type { BuildEmittedManifestOptions, EmitManifestOptions, TargetGroupRef } from "./manifest/emit-manifest.js";
 export { buildEmittedManifest, emitManifest } from "./manifest/emit-manifest.js";
 export type { Json, TransformManifestOptions } from "./manifest/transform.js";
@@ -20,6 +21,16 @@ export {
 	transformExports,
 	transformManifest,
 } from "./manifest/transform.js";
+export type {
+	MetaOptions,
+	NormalizedMeta,
+	TsdocOptions,
+	TsdocTagDefinition,
+	WarningSuppressionRule,
+} from "./meta/config.js";
+export { normalizeMetaOptions } from "./meta/config.js";
+export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
+export { generateMeta } from "./meta/generate.js";
 export type { Formatter, FormatterContext, RenderedOutput } from "./report/formatters/index.js";
 export {
 	CiAnnotationsFormatter,

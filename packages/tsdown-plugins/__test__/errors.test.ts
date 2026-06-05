@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BuildFailed, EntryDetectionError, ManifestEmitError } from "../src/errors.js";
+import { BuildFailed, EntryDetectionError, ManifestEmitError, MetaGenerationError } from "../src/errors.js";
 
 describe("typed errors", () => {
 	it("EntryDetectionError and ManifestEmitError are tagged", () => {
@@ -11,5 +11,11 @@ describe("typed errors", () => {
 		const e = new BuildFailed({ targetGroup: "npm", reason: "tsdown threw" });
 		expect(e._tag).toBe("BuildFailed");
 		expect(e.message).toContain("npm");
+	});
+
+	it("MetaGenerationError carries the entry and reason", () => {
+		const e = new MetaGenerationError({ entry: "index", reason: "extractor failed" });
+		expect(e._tag).toBe("MetaGenerationError");
+		expect(e.message).toContain("index");
 	});
 });

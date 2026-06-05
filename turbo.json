@@ -29,6 +29,11 @@
 			"outputLogs": "full",
 			"outputs": ["dist/dev/**"]
 		},
+		"build:meta": {
+			"cache": false,
+			"dependsOn": ["build:dev"],
+			"outputs": []
+		},
 		"build:prod": {
 			"cache": true,
 			"dependsOn": ["types:check"],

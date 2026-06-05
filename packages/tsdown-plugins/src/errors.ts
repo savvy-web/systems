@@ -27,3 +27,13 @@ export class BuildFailed extends Data.TaggedError("BuildFailed")<{
 		return `Build failed for TargetGroup "${this.targetGroup}": ${this.reason}`;
 	}
 }
+
+/** API Extractor meta generation failed for an entry. */
+export class MetaGenerationError extends Data.TaggedError("MetaGenerationError")<{
+	readonly entry: string;
+	readonly reason: string;
+}> {
+	get message(): string {
+		return `Meta generation failed for entry "${this.entry}": ${this.reason}`;
+	}
+}
