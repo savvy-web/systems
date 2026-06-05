@@ -114,6 +114,28 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"bundler": {
+			"path": "packages/bundler",
+			"designDocsPath": ".claude/design/bundler",
+			"categories": ["architecture"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/bundler/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"tsdown-plugins": {
+			"path": "packages/tsdown-plugins",
+			"designDocsPath": ".claude/design/tsdown-plugins",
+			"categories": ["architecture"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/tsdown-plugins/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"skills": {

@@ -2,6 +2,9 @@
 **/node_modules
 **/*.tsbuildinfo
 **/build
+# Allow src/build and __test__/build source directories (not output dirs)
+!**/src/build/
+!**/__test__/build/
 **/.rslib
 **/.artifacts
 **/.turbo

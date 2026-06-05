@@ -1,0 +1,8 @@
+{
+	"name": "@fixture/leaf",
+	"version": "1.2.3",
+	"private": true,
+	"type": "module",
+	"exports": { ".": "./src/index.ts" },
+	"publishConfig": { "access": "public" }
+}

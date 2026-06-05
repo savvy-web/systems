@@ -55,6 +55,18 @@ Zero-config build tool for creating GitHub Actions from TypeScript. Bundles with
 
 See the [github-action-builder README](./packages/github-action-builder/README.md) for usage examples.
 
+### @savvy-web/bundler
+
+The zero-config bundler for Silk Suite TypeScript packages. A package configures it with a single self-executing `savvy.build.ts`, runs it against the `dev` or `npm` target and gets a clean, publishable `dist/<target>/pkg`. Install one devDependency; `tsdown` comes pinned transitively.
+
+See the [bundler README](./packages/bundler/README.md) for the `savvy.build.ts` contract and script wiring.
+
+### @savvy-web/tsdown-plugins
+
+The interface-only tsdown/rolldown plugin pack behind `@savvy-web/bundler`: entry detection, manifest transforms and catalog resolution, the dts tsconfig port, the per-target build loop and the output reporter. Compose the same helpers in a hand-written `tsdown.config.ts` as a published escape hatch.
+
+See the [tsdown-plugins README](./packages/tsdown-plugins/README.md) for the helper surface.
+
 ### Planned
 
 - **@savvy-web/templates** -- Effect-based project scaffolding (replacing Yeoman generators)

@@ -14,6 +14,8 @@ Coordination hub for the Silk Suite open-source ecosystem by Savvy Web Systems.
 - **templates** — pure TypeScript project scaffolding (implemented)
 - **github-action-builder** — zero-config rsbuild build tool for Node.js 24 GitHub Actions (implemented)
 - **github-action-effects** — Effect-based library replacing @actions/* with 37 schema-validated services (implemented)
+- **tsdown-plugins** — `@savvy-web/tsdown-plugins`, the interface-only tsdown/rolldown plugin pack holding every build behavior (entry detection, manifest transforms + `emitManifest`, `resolveManifest` over `workspaces-effect`'s `CatalogResolver`, the dts tsconfig port, `buildTargetGroups`, the Effect output reporter); authored against rolldown's `Plugin` type only, no tsdown peer; SP1 foundation of the `@savvy-web/bundler` program (implemented)
+- **bundler** — `@savvy-web/bundler`, the tsdown-based replacement for `@savvy-web/rslib-builder`: the `defineBuild`/`runBuild` orchestrator and self-executing `savvy.build.ts` contract driving tsdown programmatically over the `tsdown-plugins` helpers; catalog/`workspace:` resolution delegated to `workspaces-effect`'s `CatalogResolver`; both packages built by rslib-builder until self-hosting; SP1 foundation (implemented)
 - Public documentation site (docs/ — placeholder for future RSPress site)
 - Cross-repo planning and coordination
 - Claude Code plugin marketplace entry point (.claude-plugin/)
@@ -51,7 +53,7 @@ This is one symptom of a build-on-install ordering tension: workspace consumers 
 - `savvy` is not on PATH on a cold runner: the `.bin/savvy` shim is created at link time, before `dist/dev` exists, and the decoupled install never recreates it. The release flow's `ci:version` works around this by building cli+silk first and invoking the built bin by path: `node packages/cli/dist/dev/bin/savvy.js`.
 - CI checks that import `@savvy-web/*` packages resolve to `dist/dev` (via `linkDirectory`); a fresh runner is unbuilt, so a post-install `pnpm build:dev` must run before those checks. Handled in the CI workflow, not via an install hook.
 
-Working recipe: cold `pnpm install --frozen-lockfile` succeeds (no build), then `pnpm build` (explicit; `silkPeers` now resolves because the state file exists). CI order must be install → build → checks. The planned `@savvy-web/bundler` redesign (link `src`, never build in `prepare`) is the intended fix that eliminates this whole class of problems.
+Working recipe: cold `pnpm install --frozen-lockfile` succeeds (no build), then `pnpm build` (explicit; `silkPeers` now resolves because the state file exists). CI order must be install → build → checks. The `@savvy-web/bundler` redesign (link `src`, never build in `prepare`) is the intended fix that eliminates this whole class of problems; its SP1 foundation (`@savvy-web/bundler` + `@savvy-web/tsdown-plugins`) now lands in-repo, built by rslib-builder until self-hosting.
 
 ## Design Documentation
 
@@ -76,6 +78,16 @@ Load when working on github-action-effects or building GitHub Actions on its Eff
 → `@./.claude/design/github-action-builder/architecture.md`
 
 Load when working on github-action-builder or configuring action builds. Covers the zero-config rsbuild pipeline targeting Node.js 24 GitHub Actions.
+
+**@savvy-web/bundler architecture — the tsdown-based rslib-builder replacement, `defineBuild`/`runBuild`, and the `savvy.build.ts` contract:**
+→ `@./.claude/design/bundler/architecture.md`
+
+Load when working on `@savvy-web/bundler` or the Silk bundler program. Covers the SP1 foundation, the thin orchestrator over `@savvy-web/tsdown-plugins`, the self-executing `savvy.build.ts` contract, the TargetGroup model and dist layout, the orchestrator→tsdown boundary, catalog resolution delegated to `workspaces-effect`'s `CatalogResolver`, and the build-by-rslib-builder-until-self-hosting status.
+
+**@savvy-web/tsdown-plugins architecture — the interface-only tsdown/rolldown plugin pack:**
+→ `@./.claude/design/tsdown-plugins/architecture.md`
+
+Load when working on `@savvy-web/tsdown-plugins` or the bundler's build behaviors. Covers the interface-only (no tsdown runtime / no peer) boundary, the Effect service and helper map, entry detection, manifest emission + catalog delegation, the dts resolved-tsconfig port, the per-TargetGroup build loop, the output reporter, and the published escape-hatch contract.
 
 **@savvy-web/cli architecture — the `savvy` binary and runtime layer stack:**
 → `@./.claude/design/cli/architecture.md`
@@ -130,3 +142,4 @@ Key coordination points:
 - README.md is for external users; .claude/design/ for package architecture docs
 - `@savvy-web/cli` and `@savvy-web/silk` must NOT import each other (the cli↔silk non-import invariant); `@savvy-web/mcp` imports neither cli nor silk — all three depend only on silk-effects within the repo (the cli↔silk↔mcp non-import invariant) — see `@./.claude/design/cli/architecture.md` and `@./.claude/design/mcp/architecture.md`; mcp depends on the external unscoped npm package `api-extractor-llms` as a build-time devDependency for its API-doc pipeline; that build chain runs via turbo: the four in-monorepo library targets' `build:prod` → mcp `generate:api-docs` (using `api-extractor-llms`) → `build:catalog` → mcp `build`
 - `@savvy-web/silk` and `@savvy-web/cli` are a `fixed` changeset group (versioned and released together); silk ships dual-format esm+cjs for its CJS consumers; `@savvy-web/mcp` versions independently and also drives the `plugins/docs` plugin's version file
+- `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` version independently (changesets auto-bumps the bundler when tsdown-plugins changes; not a fixed group); both are built by `@savvy-web/rslib-builder` until the stack self-hosts; `tsdown-plugins` is authored against rolldown's `Plugin` type only (no tsdown peer) and delegates catalog/`workspace:` resolution to `workspaces-effect@^1.2.0`'s `CatalogResolver` — see `@./.claude/design/bundler/architecture.md` and `@./.claude/design/tsdown-plugins/architecture.md`

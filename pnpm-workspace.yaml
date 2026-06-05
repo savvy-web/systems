@@ -4,6 +4,9 @@ autoInstallPeers: true
 configDependencies:
   "@savvy-web/pnpm-plugin-silk": 0.14.5+sha512-bA2uq4Z7cQ2tIUN96J3MjE1arvv1IpDYzwdxlXaaUB0YJud5PlYBjIZ+9dNzvc34KpcfaLIN0AhuIRrg0BFkLA==
 loglevel: info
+minimumReleaseAgeExclude:
+  - tsdown@0.22.2
+  - workspaces-effect@1.2.0
 publicHoistPattern:
   - "@vitest/coverage-v8"
   - vitest

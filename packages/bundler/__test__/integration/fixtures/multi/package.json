@@ -1,0 +1,8 @@
+{
+	"name": "@fixture/multi",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"exports": { ".": "./src/index.ts", "./other": "./src/other.ts" },
+	"publishConfig": { "access": "public" }
+}
