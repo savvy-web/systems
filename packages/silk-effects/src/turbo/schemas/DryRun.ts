@@ -24,6 +24,7 @@ export const TurboDryTask = Schema.Struct({
 	taskId: Schema.String,
 	task: Schema.String,
 	package: Schema.String,
+	directory: Schema.String,
 	hash: Schema.String,
 	inputs: Schema.Record({ key: Schema.String, value: Schema.String }),
 	hashOfExternalDependencies: Schema.String,

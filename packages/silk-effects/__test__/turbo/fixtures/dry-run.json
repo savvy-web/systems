@@ -9,7 +9,7 @@
     "hashOfInternalDependencies": "int-global-hash",
     "environmentVariables": {
       "specified": { "env": [], "passThroughEnv": ["CI"] },
-      "configured": [],
+      "configured": ["NODE_ENV"],
       "inferred": [],
       "passthrough": []
     },
@@ -20,6 +20,7 @@
       "taskId": "@savvy-web/tsdown-plugins#build:dev",
       "task": "build:dev",
       "package": "@savvy-web/tsdown-plugins",
+      "directory": "packages/tsdown-plugins",
       "hash": "hash-aaa",
       "inputs": { "src/index.ts": "f1", "package.json": "f2" },
       "hashOfExternalDependencies": "ext-aaa",
@@ -37,6 +38,7 @@
       "taskId": "@savvy-web/bundler#build:dev",
       "task": "build:dev",
       "package": "@savvy-web/bundler",
+      "directory": "packages/bundler",
       "hash": "hash-bbb",
       "inputs": { "src/index.ts": "g1" },
       "hashOfExternalDependencies": "ext-bbb",

@@ -37,11 +37,13 @@ describe("TurboDigest.cacheDiagnosis", () => {
 		expect(miss.dependsOn).toEqual(["@savvy-web/tsdown-plugins#build:dev"]);
 	});
 
-	it("summarizes the global hash", () => {
+	it("summarizes the global hash, excluding pass-through env vars", () => {
 		const d = TurboDigest.cacheDiagnosis("build:dev", decoded);
 		expect(d.global.rootKey).toBe("fixture-root-key");
 		expect(d.global.globalFileCount).toBe(1);
-		expect(d.global.globalEnvVars).toContain("CI");
+		// configured/inferred env contribute to the hash; pass-through vars do not.
+		expect(d.global.globalEnvVars).toContain("NODE_ENV");
+		expect(d.global.globalEnvVars).not.toContain("CI");
 	});
 });
 
@@ -64,16 +66,23 @@ describe("TurboDigest.taskGraph", () => {
 describe("TurboDigest.affected", () => {
 	const decoded = Schema.decodeUnknownSync(TurboDryRun)(fixture);
 
-	it("identifies direct dependents of changed packages", () => {
-		const r = TurboDigest.affected("main", ["@savvy-web/tsdown-plugins"], decoded);
+	it("splits directly-changed packages from dependents using changed file paths", () => {
+		// A file under tsdown-plugins changed; bundler is in the affected set only as a dependent.
+		const r = TurboDigest.affected("main", ["packages/tsdown-plugins/src/index.ts"], decoded);
 		expect(r.packages).toEqual(["@savvy-web/tsdown-plugins"]);
-		expect(r.dependents).toContain("@savvy-web/bundler");
-		expect(r.dependents).not.toContain("@savvy-web/tsdown-plugins");
+		expect(r.dependents).toEqual(["@savvy-web/bundler"]);
 	});
 
-	it("returns empty sets when changed is empty", () => {
+	it("reports the whole affected set as dependents when the change is outside any package", () => {
+		// A root-level change (e.g. the lockfile) makes the graph affected but no package directly changed.
+		const r = TurboDigest.affected("main", ["pnpm-lock.yaml"], decoded);
+		expect(r.packages).toEqual([]);
+		expect(r.dependents).toEqual(["@savvy-web/tsdown-plugins", "@savvy-web/bundler"]);
+	});
+
+	it("treats an empty change set as no directly-changed packages", () => {
 		const r = TurboDigest.affected("main", [], decoded);
 		expect(r.packages).toEqual([]);
-		expect(r.dependents).toEqual([]);
+		expect(r.dependents).toEqual(["@savvy-web/tsdown-plugins", "@savvy-web/bundler"]);
 	});
 });

@@ -1,4 +1,4 @@
-import { CommandExecutor, FileSystem } from "@effect/platform";
+import { Command, CommandExecutor, FileSystem } from "@effect/platform";
 import { Context, Effect, Layer, Schema } from "effect";
 import { ToolDefinition } from "../../schemas/ToolDefinition.js";
 import { ToolDiscovery } from "../../services/ToolDiscovery.js";
@@ -40,8 +40,11 @@ export class TurboInspector extends Context.Tag("@savvy-web/silk-effects/TurboIn
 		readonly taskGraph: (cwd: string, task?: string) => Effect.Effect<TaskGraphResultType, TurboError>;
 
 		/**
-		 * Compute the affected packages relative to `base` (default `HEAD^`) by
-		 * running `turbo run build:dev --affected --dry=json` in `cwd`.
+		 * Compute the packages affected relative to `base` (default `main`), split into
+		 * the directly-changed packages and their dependents. Runs
+		 * `turbo run build:dev --affected --dry=json` (with `TURBO_SCM_BASE=<base>`) for the
+		 * affected set and `git diff --name-only <base>...HEAD` to identify which of those
+		 * packages actually changed; everything else in the set is a dependent.
 		 *
 		 * @since 0.7.0
 		 */
@@ -53,6 +56,9 @@ const TURBO = ToolDefinition.make({ name: "turbo" });
 
 /** Default task used by {@link TurboInspector.taskGraph} and {@link TurboInspector.affected}. */
 const DEFAULT_BUILD_TASK = "build:dev";
+
+/** Default git ref `affected` compares against — matches Turborepo's own `--affected` default. */
+const DEFAULT_AFFECTED_BASE = "main";
 
 /**
  * Live implementation of {@link TurboInspector}.
@@ -80,18 +86,33 @@ export const TurboInspectorLive: Layer.Layer<
 		const runTurbo = (
 			cwd: string,
 			args: ReadonlyArray<string>,
+			env?: Record<string, string>,
 		): Effect.Effect<string, TurboNotInstalledError | TurboExecError> =>
 			discovery.require(TURBO).pipe(
 				Effect.mapError((e) => new TurboNotInstalledError({ reason: e.reason })),
-				Effect.flatMap((resolved) =>
-					Effect.provideService(
-						resolved
-							.exec(...args)
-							.workingDirectory(cwd)
-							.string(),
+				Effect.flatMap((resolved) => {
+					const command = resolved.exec(...args).workingDirectory(cwd);
+					return Effect.provideService(
+						(env ? command.env(env) : command).string(),
 						CommandExecutor.CommandExecutor,
 						executor,
-					).pipe(Effect.mapError((e) => new TurboExecError({ args: [...args], reason: String(e) }))),
+					).pipe(Effect.mapError((e) => new TurboExecError({ args: [...args], reason: String(e) })));
+				}),
+			);
+
+		/** Run a read-only `git` command in `cwd` and return its non-empty output lines. */
+		const runGit = (cwd: string, args: ReadonlyArray<string>): Effect.Effect<ReadonlyArray<string>, TurboExecError> =>
+			Effect.provideService(
+				Command.string(Command.workingDirectory(Command.make("git", ...args), cwd)),
+				CommandExecutor.CommandExecutor,
+				executor,
+			).pipe(
+				Effect.mapError((e) => new TurboExecError({ args: ["git", ...args], reason: String(e) })),
+				Effect.map((stdout) =>
+					stdout
+						.split("\n")
+						.map((line) => line.trim())
+						.filter((line) => line.length > 0),
 				),
 			);
 
@@ -105,9 +126,10 @@ export const TurboInspectorLive: Layer.Layer<
 			task: string,
 			cwd: string,
 			args: ReadonlyArray<string>,
+			env?: Record<string, string>,
 		): Effect.Effect<TurboDryRunType, TurboError> =>
 			ensureTurboRepo(cwd).pipe(
-				Effect.flatMap(() => runTurbo(cwd, args)),
+				Effect.flatMap(() => runTurbo(cwd, args, env)),
 				Effect.flatMap((stdout) =>
 					Effect.try({
 						try: () => JSON.parse(stdout) as unknown,
@@ -126,14 +148,26 @@ export const TurboInspectorLive: Layer.Layer<
 				dryRun(task, cwd, ["run", task, "--dry=json"]).pipe(Effect.map((dry) => TurboDigest.cacheDiagnosis(task, dry))),
 			taskGraph: (cwd, task) => {
 				const t = task ?? DEFAULT_BUILD_TASK;
-				return dryRun(t, cwd, ["run", t, "--dry=json"]).pipe(Effect.map((dry) => TurboDigest.taskGraph(dry, t)));
+				// Run the resolved task, but echo the caller's original `task` into the
+				// result so the `task` key is omitted when no specific task was requested
+				// (matching TurboDigest.taskGraph's contract).
+				return dryRun(t, cwd, ["run", t, "--dry=json"]).pipe(Effect.map((dry) => TurboDigest.taskGraph(dry, task)));
 			},
-			affected: (cwd, base) =>
-				dryRun("affected", cwd, ["run", DEFAULT_BUILD_TASK, "--affected", "--dry=json"]).pipe(
-					Effect.map((dry) =>
-						TurboDigest.affected(base ?? "HEAD^", [...new Set(dry.tasks.map((task) => task.package))], dry),
+			affected: (cwd, base) => {
+				const ref = base ?? DEFAULT_AFFECTED_BASE;
+				// `--affected` expands to changed packages AND their dependents; pair it with
+				// `git diff` (same base, via TURBO_SCM_BASE) to recover which packages directly
+				// changed versus which are only dependents.
+				return Effect.all({
+					changedFiles: runGit(cwd, ["diff", "--name-only", `${ref}...HEAD`]),
+					dry: dryRun(
+						`${DEFAULT_BUILD_TASK} --affected`,
+						cwd,
+						["run", DEFAULT_BUILD_TASK, "--affected", "--dry=json"],
+						{ TURBO_SCM_BASE: ref },
 					),
-				),
+				}).pipe(Effect.map(({ changedFiles, dry }) => TurboDigest.affected(ref, changedFiles, dry)));
+			},
 		});
 	}),
 );

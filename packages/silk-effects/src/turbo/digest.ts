@@ -47,11 +47,7 @@ export class TurboDigest {
 				globalFileCount: Object.keys(g.files).length,
 				externalDependenciesHash: g.hashOfExternalDependencies,
 				internalDependenciesHash: g.hashOfInternalDependencies,
-				globalEnvVars: [
-					...g.environmentVariables.configured,
-					...g.environmentVariables.inferred,
-					...(g.environmentVariables.specified.passThroughEnv ?? []),
-				],
+				globalEnvVars: [...g.environmentVariables.configured, ...g.environmentVariables.inferred],
 			},
 		};
 	}
@@ -102,22 +98,34 @@ export class TurboDigest {
 		return overall;
 	}
 
-	/** Build the affected result from a changed-package list and the dry-run graph. */
-	static affected(base: string, changed: readonly string[], dry: TurboDryRunType): AffectedResultType {
-		const changedSet = new Set(changed);
-		const dependents = new Set<string>();
-		for (const t of dry.tasks) {
-			if (changedSet.has(t.package)) {
-				for (const d of t.dependents) {
-					const pkg = d.split("#")[0];
-					if (pkg && !changedSet.has(pkg)) dependents.add(pkg);
-				}
-			}
-		}
+	/**
+	 * Split an `--affected` dry-run into directly-changed packages and their dependents.
+	 *
+	 * @remarks
+	 * `turbo run <task> --affected --dry=json` already expands the set to include the
+	 * directly-changed packages *and* their transitive dependents, so every task in
+	 * `dry.tasks` is in the affected set. To recover the split we need the set of files
+	 * that actually changed (`changedFiles`, from `git diff --name-only <base>...HEAD`):
+	 * a package is *directly changed* when a changed file lives under its `directory`,
+	 * and everything else in the affected set is therefore a *dependent*. When the change
+	 * is outside any affected package (e.g. a root file like `pnpm-lock.yaml`, which makes
+	 * the whole graph affected), no package is directly changed and the full set is reported
+	 * as dependents.
+	 */
+	static affected(base: string, changedFiles: readonly string[], dry: TurboDryRunType): AffectedResultType {
+		const packageDir = new Map<string, string>();
+		for (const t of dry.tasks) packageDir.set(t.package, t.directory);
+		const affectedPackages = [...packageDir.keys()];
+		const isDirectlyChanged = (pkg: string): boolean => {
+			const dir = packageDir.get(pkg);
+			if (dir === undefined) return false;
+			const prefix = dir.endsWith("/") ? dir : `${dir}/`;
+			return changedFiles.some((file) => file === dir || file.startsWith(prefix));
+		};
 		return {
 			base,
-			packages: [...changedSet],
-			dependents: [...dependents],
+			packages: affectedPackages.filter(isDirectlyChanged),
+			dependents: affectedPackages.filter((pkg) => !isDirectlyChanged(pkg)),
 		};
 	}
 }
