@@ -22,7 +22,7 @@ export class NotATurboRepoError extends Data.TaggedError("NotATurboRepoError")<{
 	readonly cwd: string;
 }> {
 	get message() {
-		return `Not a Turborepo: no turbo.json found at or above ${this.cwd}`;
+		return `Not a Turborepo: no turbo.json found in ${this.cwd}`;
 	}
 }
 

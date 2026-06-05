@@ -382,21 +382,19 @@ const biome = yield* td.require(
 
 #### TurboInspector
 
-Read-only Turborepo inspection. Every method shells out to `turbo` with `--dry=json`, so no task ever runs. `diagnoseCache(task, cwd)` reports a per-package cache HIT/MISS breakdown for a task, `taskGraph(cwd, task?)` derives the task graph and its critical path and `affected(cwd, base?)` lists the packages affected relative to `base` (default `HEAD^`). It resolves the `turbo` binary through `ToolDiscovery` and fails with a tagged error when `turbo` is missing or the directory is not a Turborepo.
+Read-only Turborepo inspection. Every method shells out to `turbo` with `--dry=json`, so no task ever runs. `diagnoseCache(task, cwd)` reports a per-package cache HIT/MISS breakdown for a task, `taskGraph(cwd, task?)` derives the task graph and its critical path and `affected(cwd, base?)` lists the packages affected relative to `base` (default `main`). It resolves the `turbo` binary through `ToolDiscovery` and fails with a tagged error when `turbo` is missing or the directory is not a Turborepo. The service tag and its layer are exported under the `Turbo` namespace.
 
 ```typescript
 import { Effect } from "effect";
 import { NodeContext } from "@effect/platform-node";
-import {
-  TurboInspector, TurboInspectorLive, ToolDiscoveryLive,
-} from "@savvy-web/silk-effects";
+import { Turbo, ToolDiscoveryLive } from "@savvy-web/silk-effects";
 
 const diagnosis = await Effect.runPromise(
   Effect.gen(function* () {
-    const turbo = yield* TurboInspector;
+    const turbo = yield* Turbo.TurboInspector;
     return yield* turbo.diagnoseCache("build:dev", process.cwd());
   }).pipe(
-    Effect.provide(TurboInspectorLive),
+    Effect.provide(Turbo.TurboInspectorLive),
     Effect.provide(ToolDiscoveryLive),
     Effect.provide(NodeContext.layer),
   ),
