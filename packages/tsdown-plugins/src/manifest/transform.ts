@@ -12,13 +12,24 @@ const toBuiltJs = (p: string): string =>
 		.replace(/^src\//, "")
 		.replace(/\.tsx?$/, ".js");
 const toBuiltDts = (p: string): string => toBuiltJs(p).replace(/\.js$/, ".d.ts");
+const toBuiltCjs = (p: string): string => toBuiltJs(p).replace(/\.js$/, ".cjs");
 
 const isTs = (p: string): boolean => p.endsWith(".ts") || p.endsWith(".tsx");
 
-/** Rewrite an exports map: TS string targets become a types/import conditions object. */
-export function transformExports(exports: unknown): unknown {
+/** Build the conditions object for a TS export target (adds require when dual-format). */
+const tsConditions = (p: string, dual: boolean): Json => ({
+	types: toBuiltDts(p),
+	import: toBuiltJs(p),
+	...(dual ? { require: toBuiltCjs(p) } : {}),
+});
+
+/**
+ * Rewrite an exports map: TS string targets become a types/import conditions object.
+ * When dual is true (a cjs build), each TS condition also gets a require entry.
+ */
+export function transformExports(exports: unknown, dual = false): unknown {
 	if (typeof exports === "string") {
-		return isTs(exports) ? { types: toBuiltDts(exports), import: toBuiltJs(exports) } : exports;
+		return isTs(exports) ? tsConditions(exports, dual) : exports;
 	}
 	if (exports && typeof exports === "object") {
 		const out: Json = {};
@@ -28,9 +39,9 @@ export function transformExports(exports: unknown): unknown {
 				continue;
 			}
 			if (typeof value === "string" && isTs(value)) {
-				out[key] = { types: toBuiltDts(value), import: toBuiltJs(value) };
+				out[key] = tsConditions(value, dual);
 			} else {
-				out[key] = value;
+				out[key] = transformExports(value, dual);
 			}
 		}
 		return out;
@@ -65,6 +76,8 @@ export function normalizeBinPaths(bin: unknown): unknown {
 export interface TransformManifestOptions {
 	/** Run after the standard transforms, before the bin final-guard + sort. */
 	readonly transform?: ((pkg: Json) => Json) | undefined;
+	/** Emit dual import/require export conditions (set when the build includes cjs). */
+	readonly dual?: boolean | undefined;
 }
 
 /** Apply the full standard manifest transform (excluding catalog resolution, done upstream). */
@@ -75,7 +88,7 @@ export function transformManifest(pkg: Json, options: TransformManifestOptions =
 	};
 	const isPrivate = !(publishConfig?.access === "public");
 	let result: Json = { ...rest, private: isPrivate };
-	if (result.exports) result.exports = transformExports(result.exports);
+	if (result.exports) result.exports = transformExports(result.exports, options.dual ?? false);
 	if (result.bin) result.bin = transformBin(result.bin);
 	if (options.transform) result = options.transform(result);
 	if (result.bin) result.bin = normalizeBinPaths(result.bin);

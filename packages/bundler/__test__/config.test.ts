@@ -28,6 +28,11 @@ describe("defineBuild", () => {
 		const c = defineBuild({ exe: { fileName: "tool" } });
 		expect(c.exe).toEqual({ fileName: "tool" });
 	});
+
+	it("passes format through", () => {
+		const c = defineBuild({ format: ["esm", "cjs"] });
+		expect(c.format).toEqual(["esm", "cjs"]);
+	});
 });
 
 describe("parseArgs", () => {

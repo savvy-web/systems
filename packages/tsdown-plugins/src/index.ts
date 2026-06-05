@@ -2,7 +2,13 @@ export type { ManifestLike } from "workspaces-effect";
 export { CatalogAssemblyError, CatalogResolutionError } from "workspaces-effect";
 export type { BuildTargetGroupsOptions, TsdownBuild } from "./build/build-target-groups.js";
 export { buildTargetGroups } from "./build/build-target-groups.js";
-export type { BuildGroupSpec, DeriveOptions, DerivedTsdownOptions, TargetGroupId } from "./build/target-groups.js";
+export type {
+	BuildFormat,
+	BuildGroupSpec,
+	DeriveOptions,
+	DerivedTsdownOptions,
+	TargetGroupId,
+} from "./build/target-groups.js";
 export { deriveTargetGroupOptions } from "./build/target-groups.js";
 export { resolveManifest } from "./catalog/resolve-catalogs.js";
 export type { ValidationInput } from "./config-validation/ConfigValidator.js";

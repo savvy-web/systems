@@ -6,7 +6,7 @@ import type { JsxConfig } from "../jsx/config.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { Json } from "../manifest/transform.js";
-import type { BuildGroupSpec } from "./target-groups.js";
+import type { BuildFormat, BuildGroupSpec } from "./target-groups.js";
 import { deriveTargetGroupOptions } from "./target-groups.js";
 
 /** Signature compatible with tsdown's `build(inlineConfig)`. */
@@ -20,6 +20,8 @@ export interface BuildTargetGroupsOptions {
 	readonly groups: ReadonlyArray<BuildGroupSpec>;
 	readonly devManifest: "preserve" | "resolve";
 	readonly externals?: ReadonlyArray<string>;
+	/** Output formats to emit. Defaults to esm-only when unset. */
+	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	readonly extraPlugins?: ReadonlyArray<Plugin>;
 	/** JSX transform settings forwarded to rolldown's inputOptions. */
@@ -42,6 +44,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			tsconfigPath: options.tsconfigPath,
 			devManifest: options.devManifest,
 			...(options.externals !== undefined ? { externals: options.externals } : {}),
+			...(options.format !== undefined ? { format: options.format } : {}),
 			...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 		});
 		const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: derived.isProd };
@@ -50,6 +53,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			devManifest: options.devManifest,
 			transform: options.transform,
 			sourceDir: options.cwd,
+			dual: derived.format.includes("cjs"),
 		});
 		await build({
 			config: false,
@@ -66,6 +70,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			define: derived.define,
 			...(options.externals ? { deps: { neverBundle: options.externals } } : {}),
 			...(copy ? { copy } : {}),
+			...(derived.cjsDefault !== undefined ? { cjsDefault: derived.cjsDefault } : {}),
 			...(derived.jsx !== undefined ? { inputOptions: { jsx: derived.jsx } } : {}),
 			plugins: [manifestPlugin, ...(options.extraPlugins ?? [])],
 		});

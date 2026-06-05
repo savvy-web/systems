@@ -23,9 +23,29 @@ describe("manifest transform", () => {
 	});
 
 	it("rewrites a TS string export to a types+import conditions object", () => {
-		expect(transformExports({ ".": "./src/index.ts" })).toEqual({
+		expect(transformExports({ ".": "./src/index.ts" }, false)).toEqual({
 			".": { types: "./index.d.ts", import: "./index.js" },
 		});
+	});
+
+	it("emits import-only conditions for a TS export when not dual-format", () => {
+		expect(transformExports({ "./changesets": "./src/changesets/index.ts" }, false)).toEqual({
+			"./changesets": { types: "./changesets/index.d.ts", import: "./changesets/index.js" },
+		});
+	});
+
+	it("emits both import and require conditions for a TS export when dual-format", () => {
+		expect(transformExports({ "./changesets": "./src/changesets/index.ts" }, true)).toEqual({
+			"./changesets": {
+				types: "./changesets/index.d.ts",
+				import: "./changesets/index.js",
+				require: "./changesets/index.cjs",
+			},
+		});
+	});
+
+	it("leaves a non-TS (e.g. .jsonc/.json) export untouched in both modes", () => {
+		expect(transformExports({ "./asset": "./src/asset.jsonc" }, true)).toEqual({ "./asset": "./src/asset.jsonc" });
 	});
 
 	it("rewrites TS bins to bin/<name>.js and strips leading ./", () => {
