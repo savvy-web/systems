@@ -23,6 +23,13 @@ export interface BuildTargetGroupsOptions {
 	/** Output formats to emit. Defaults to esm-only when unset. */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
+	/**
+	 * Extra rolldown plugins, forwarded to BOTH the JS pass and the dts-only pass. A plugin
+	 * with JS-lifecycle side effects (asset emitters, banner injectors) runs in both passes;
+	 * the dts pass uses `emitDtsOnly`, so it produces no JS chunks and most rolldown hooks are
+	 * no-ops there, but a caller relying on a hook firing exactly once should guard the second
+	 * invocation.
+	 */
 	readonly extraPlugins?: ReadonlyArray<Plugin>;
 	/** JSX transform settings forwarded to rolldown's inputOptions. */
 	readonly jsx?: JsxConfig | undefined;

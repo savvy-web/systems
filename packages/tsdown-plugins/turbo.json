@@ -2,11 +2,11 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:dev": {
-			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts", "!rslib.config.ts"],
+			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
 			"outputs": ["dist/dev/**"]
 		},
 		"build:prod": {
-			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts", "!rslib.config.ts"],
+			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
 			"outputs": ["dist/prod/**"]
 		}
 	}
