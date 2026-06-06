@@ -7,7 +7,6 @@ import type {
 	GenerateMetaOptions,
 	JsxConfig,
 	MetaResult,
-	NormalizedExe,
 	PublishTargets,
 	RenderedOutput,
 	RunExeBuildOptions,

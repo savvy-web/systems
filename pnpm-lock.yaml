@@ -83,7 +83,7 @@ importers:
     devDependencies:
       '@savvy-web/bundler':
         specifier: workspace:*
-        version: link:packages/bundler/dist/dev
+        version: link:packages/bundler/dist/dev/pkg
       '@savvy-web/cli':
         specifier: workspace:*
         version: link:packages/cli/dist/dev
@@ -95,7 +95,7 @@ importers:
         version: link:packages/silk/dist/dev
       '@savvy-web/tsdown-plugins':
         specifier: workspace:*
-        version: link:packages/tsdown-plugins/dist/dev
+        version: link:packages/tsdown-plugins/dist/dev/pkg
       '@savvy-web/vitest':
         specifier: ^1.4.0
         version: 1.4.0(50634bd49325027c6591d46854cf1d2c)
@@ -104,7 +104,7 @@ importers:
     dependencies:
       '@savvy-web/tsdown-plugins':
         specifier: workspace:*
-        version: link:../tsdown-plugins/dist/dev
+        version: link:../tsdown-plugins/dist/dev/pkg
       '@tsdown/exe':
         specifier: ^0.22.1
         version: 0.22.2(tsdown@0.22.2)
@@ -118,12 +118,6 @@ importers:
       '@effect/platform-node':
         specifier: catalog:silk
         version: 0.106.0(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
-      '@rslib/core':
-        specifier: 0.22.0
-        version: 0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3)
-      '@savvy-web/rslib-builder':
-        specifier: ^0.21.3
-        version: 0.21.3(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260604.1)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@types/node':
         specifier: catalog:silk
         version: 25.9.1
@@ -133,13 +127,16 @@ importers:
       effect:
         specifier: catalog:silk
         version: 3.21.2
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-    publishDirectory: dist/dev
+    publishDirectory: dist/dev/pkg
 
   packages/cli:
     dependencies:
@@ -154,7 +151,7 @@ importers:
         version: 0.106.0(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@savvy-web/silk-effects':
         specifier: workspace:*
-        version: link:../silk-effects/dist/dev
+        version: link:../silk-effects/dist/dev/pkg
       effect:
         specifier: catalog:silk
         version: 3.21.2
@@ -224,25 +221,25 @@ importers:
         specifier: ^0.6.0
         version: 0.6.0(effect@3.21.2)
     devDependencies:
-      '@rslib/core':
-        specifier: 0.22.0
-        version: 0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3)
-      '@savvy-web/rslib-builder':
-        specifier: ^0.21.3
-        version: 0.21.3(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260604.1)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+      '@savvy-web/bundler':
+        specifier: workspace:*
+        version: link:../bundler/dist/dev/pkg
       '@types/node':
         specifier: catalog:silk
         version: 25.9.1
       '@typescript/native-preview':
         specifier: catalog:silk
         version: 7.0.0-dev.20260604.1
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-    publishDirectory: dist/dev
+    publishDirectory: dist/dev/pkg
 
   packages/github-action-effects:
     dependencies:
@@ -289,12 +286,9 @@ importers:
       '@effect/sql':
         specifier: catalog:silk
         version: 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
-      '@rslib/core':
-        specifier: 0.22.0
-        version: 0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3)
-      '@savvy-web/rslib-builder':
-        specifier: ^0.21.3
-        version: 0.21.3(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260604.1)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+      '@savvy-web/bundler':
+        specifier: workspace:*
+        version: link:../bundler/dist/dev/pkg
       '@types/node':
         specifier: catalog:silk
         version: 25.9.1
@@ -304,13 +298,16 @@ importers:
       effect:
         specifier: catalog:silk
         version: 3.21.2
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-    publishDirectory: dist/dev
+    publishDirectory: dist/dev/pkg
 
   packages/mcp:
     dependencies:
@@ -325,7 +322,7 @@ importers:
         version: 1.29.0(zod@4.4.3)
       '@savvy-web/silk-effects':
         specifier: workspace:*
-        version: link:../silk-effects/dist/dev
+        version: link:../silk-effects/dist/dev/pkg
       effect:
         specifier: catalog:silk
         version: 3.21.2
@@ -400,7 +397,7 @@ importers:
         version: 0.21.3(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260604.1)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@savvy-web/silk-effects':
         specifier: workspace:*
-        version: link:../silk-effects/dist/dev
+        version: link:../silk-effects/dist/dev/pkg
       '@types/node':
         specifier: catalog:silk
         version: 25.9.1
@@ -508,12 +505,9 @@ importers:
       '@effect/platform-node':
         specifier: catalog:silk
         version: 0.106.0(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
-      '@rslib/core':
-        specifier: 0.22.0
-        version: 0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3)
-      '@savvy-web/rslib-builder':
-        specifier: ^0.21.3
-        version: 0.21.3(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260604.1)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+      '@savvy-web/bundler':
+        specifier: workspace:*
+        version: link:../bundler/dist/dev/pkg
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
@@ -535,13 +529,16 @@ importers:
       markdownlint:
         specifier: ^0.40.0
         version: 0.40.0
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-    publishDirectory: dist/dev
+    publishDirectory: dist/dev/pkg
 
   packages/templates:
     dependencies:
@@ -552,12 +549,9 @@ importers:
         specifier: ^3.6.1
         version: 3.7.1
     devDependencies:
-      '@rslib/core':
-        specifier: 0.22.0
-        version: 0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3)
-      '@savvy-web/rslib-builder':
-        specifier: ^0.21.3
-        version: 0.21.3(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260604.1)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
+      '@savvy-web/bundler':
+        specifier: workspace:*
+        version: link:../bundler/dist/dev/pkg
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -570,13 +564,16 @@ importers:
       effect:
         specifier: catalog:silk
         version: 3.21.2
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-    publishDirectory: dist/dev
+    publishDirectory: dist/dev/pkg
 
   packages/tsdown-plugins:
     dependencies:
@@ -614,12 +611,6 @@ importers:
       '@effect/platform':
         specifier: catalog:silk
         version: 0.96.1(effect@3.21.2)
-      '@rslib/core':
-        specifier: 0.22.0
-        version: 0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3)
-      '@savvy-web/rslib-builder':
-        specifier: ^0.21.3
-        version: 0.21.3(@rslib/core@0.22.0(@microsoft/api-extractor@7.58.7(@types/node@25.9.1))(@typescript/native-preview@7.0.0-dev.20260604.1)(typescript@6.0.3))(@types/node@25.9.1)(@typescript/native-preview@7.0.0-dev.20260604.1)(jiti@2.7.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@6.0.3)
       '@types/deep-equal':
         specifier: ^1.0.4
         version: 1.0.4
@@ -638,13 +629,16 @@ importers:
       tsdown:
         specifier: ^0.22.2
         version: 0.22.2(@tsdown/exe@0.22.2)(@typescript/native-preview@7.0.0-dev.20260604.1)(tsx@4.22.4)(typescript@6.0.3)
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-    publishDirectory: dist/dev
+    publishDirectory: dist/dev/pkg
 
 packages:
 

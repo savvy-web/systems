@@ -7,7 +7,7 @@ import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { Json } from "../manifest/transform.js";
 import type { BuildFormat, BuildGroupSpec } from "./target-groups.js";
-import { deriveTargetGroupOptions } from "./target-groups.js";
+import { deriveDtsPassOptions, deriveTargetGroupOptions } from "./target-groups.js";
 
 /** Signature compatible with tsdown's `build(inlineConfig)`. */
 export type TsdownBuild = (config: Record<string, unknown>) => Promise<unknown>;
@@ -30,13 +30,27 @@ export interface BuildTargetGroupsOptions {
 	readonly build?: TsdownBuild;
 }
 
-/** Run tsdown.build() once per TargetGroup. Composable so the escape hatch gets multi-group too. */
+/**
+ * Run tsdown.build() per TargetGroup. Composable so the escape hatch gets multi-group too.
+ *
+ * Each group runs TWO passes to the SAME outDir:
+ *  1. JS pass — per-module JS (`unbundle: true`, `dts: false`), with the `emitManifest` plugin
+ *     and the `public/` copy. Default `clean: true` gives it a fresh outDir.
+ *  2. dts pass — bundled declarations only (`unbundle: false`, `dts: { emitDtsOnly: true }`,
+ *     `clean: false`). No manifest plugin, no copy, no sourcemaps. `clean: false` is load-bearing:
+ *     it must NOT wipe the JS the first pass just wrote.
+ *
+ * Why two passes: tsdown's `unbundle` maps to rolldown `output.preserveModules` for the whole
+ * build (JS and the dts plugin share it), so a single pass cannot give per-module JS + bundled
+ * dts. Per-module dts breaks type portability (TS2883); bundling the JS re-bundles workspace
+ * consumers. The split keeps per-module JS AND rolled-up, self-contained declarations.
+ */
 export async function buildTargetGroups(options: BuildTargetGroupsOptions): Promise<void> {
 	const build: TsdownBuild = options.build ?? ((await import("tsdown")).build as unknown as TsdownBuild);
 	const copy = existsSync(join(options.cwd, "public")) ? ["public"] : undefined;
 
 	for (const group of options.groups) {
-		const derived = deriveTargetGroupOptions({
+		const deriveInput = {
 			group: group.id,
 			cwd: options.cwd,
 			version: options.version,
@@ -46,33 +60,58 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			...(options.externals !== undefined ? { externals: options.externals } : {}),
 			...(options.format !== undefined ? { format: options.format } : {}),
 			...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
-		});
-		const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: derived.isProd };
+		};
+		const js = deriveTargetGroupOptions(deriveInput);
+		const dts = deriveDtsPassOptions(deriveInput);
+		const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: js.isProd };
 		const manifestPlugin = emitManifest({
 			targetGroup,
 			devManifest: options.devManifest,
 			transform: options.transform,
 			sourceDir: options.cwd,
-			dual: derived.format.includes("cjs"),
+			dual: js.format.includes("cjs"),
 		});
+
+		// Pass 1: per-module JS, no dts. Emits the manifest + copies public/ exactly once.
 		await build({
 			config: false,
 			cwd: options.cwd,
-			entry: derived.entry,
-			outDir: derived.outDir,
-			format: derived.format,
-			platform: derived.platform,
-			sourcemap: derived.sourcemap,
-			minify: derived.minify,
-			unbundle: derived.unbundle,
-			fixedExtension: derived.fixedExtension,
-			dts: derived.dts,
-			define: derived.define,
+			entry: js.entry,
+			outDir: js.outDir,
+			format: js.format,
+			platform: js.platform,
+			sourcemap: js.sourcemap,
+			minify: js.minify,
+			unbundle: js.unbundle,
+			clean: js.clean,
+			fixedExtension: js.fixedExtension,
+			dts: js.dts,
+			define: js.define,
 			...(options.externals ? { deps: { neverBundle: options.externals } } : {}),
 			...(copy ? { copy } : {}),
-			...(derived.cjsDefault !== undefined ? { cjsDefault: derived.cjsDefault } : {}),
-			...(derived.jsx !== undefined ? { inputOptions: { jsx: derived.jsx } } : {}),
+			...(js.cjsDefault !== undefined ? { cjsDefault: js.cjsDefault } : {}),
+			...(js.jsx !== undefined ? { inputOptions: { jsx: js.jsx } } : {}),
 			plugins: [manifestPlugin, ...(options.extraPlugins ?? [])],
+		});
+
+		// Pass 2: bundled declarations only, appended to the same outDir. NO manifest, NO copy,
+		// NO sourcemaps, and clean:false so it does not wipe the JS pass above.
+		await build({
+			config: false,
+			cwd: options.cwd,
+			entry: dts.entry,
+			outDir: dts.outDir,
+			format: dts.format,
+			platform: dts.platform,
+			sourcemap: dts.sourcemap,
+			unbundle: dts.unbundle,
+			clean: dts.clean,
+			fixedExtension: dts.fixedExtension,
+			dts: dts.dts,
+			define: dts.define,
+			...(options.externals ? { deps: { neverBundle: options.externals } } : {}),
+			...(dts.jsx !== undefined ? { inputOptions: { jsx: dts.jsx } } : {}),
+			plugins: [...(options.extraPlugins ?? [])],
 		});
 	}
 }

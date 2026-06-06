@@ -20,11 +20,12 @@
 	},
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./ecma.json": "./public/ecma.json"
 	},
 	"scripts": {
-		"build:dev": "rslib build --config-loader native --env-mode dev",
-		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"build:dev": "tsx savvy.build.ts --target dev",
+		"build:prod": "tsx savvy.build.ts --target npm",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
@@ -35,11 +36,10 @@
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
-		"@rslib/core": "0.22.0",
-		"@savvy-web/rslib-builder": "^0.21.3",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
+		"tsx": "^4.22.4",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.8"
 	},
@@ -48,20 +48,20 @@
 	},
 	"publishConfig": {
 		"access": "public",
-		"directory": "dist/dev",
+		"directory": "dist/dev/pkg",
 		"linkDirectory": true,
 		"targets": [
 			{
 				"protocol": "npm",
 				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/npm",
+				"directory": "dist/prod/npm/pkg",
 				"access": "public",
 				"provenance": true
 			},
 			{
 				"protocol": "npm",
 				"registry": "https://registry.npmjs.org/",
-				"directory": "dist/npm",
+				"directory": "dist/prod/npm/pkg",
 				"access": "public",
 				"provenance": true
 			}

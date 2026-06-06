@@ -28,34 +28,53 @@ export interface DeriveOptions {
 	readonly jsx?: JsxConfig | undefined;
 }
 
+/**
+ * The JS pass: per-module JavaScript, no declarations.
+ *
+ * The build runs TWO tsdown passes per TargetGroup to the SAME outDir:
+ *  - pass 1 (this) emits per-module JS (`unbundle: true`) with `dts: false` and the
+ *    default `clean: true`, so it starts from a fresh outDir;
+ *  - pass 2 (`DerivedDtsPassOptions`) emits ONLY bundled declarations (`unbundle: false`,
+ *    `dts: { emitDtsOnly: true }`) with `clean: false`, so it must NOT wipe pass 1.
+ *
+ * We cannot do this in a single pass: tsdown's `unbundle` maps to rolldown
+ * `output.preserveModules` for the WHOLE build, and the dts plugin shares it — so one pass
+ * gives EITHER per-module JS + per-module dts OR bundled JS + bundled dts. Per-module dts
+ * breaks type portability (TS2883) when a package exports only its root entry, and bundling
+ * the JS re-bundles workspace consumers (e.g. silk re-bundling silk-effects crashes at
+ * runtime). The split keeps per-module JS (no re-bundle hazard) AND bundled, self-contained
+ * declarations (no TS2883).
+ */
 export interface DerivedTsdownOptions {
 	readonly outDir: string;
 	readonly sourcemap: boolean;
 	readonly minify: boolean;
 	readonly format: ReadonlyArray<BuildFormat>;
 	readonly unbundle: true;
+	/** JS pass starts fresh; it owns the outDir before the dts pass appends to it. */
+	readonly clean: true;
 	readonly platform: "node";
 	/**
 	 * Controls output file extensions. Always false for this builder.
 	 *
 	 * tsdown 0.22.2 finding (verified by running a real esm+cjs build of a type:module package):
-	 * - With fixedExtension: false, tsdown already emits ESM index.js plus CJS index.cjs (and
-	 *   index.d.ts plus index.d.cts) for a type:module package. There is no collision: tsdown
-	 *   derives the .js extension for ESM and the .cjs extension for CJS automatically. An earlier
-	 *   M1.1 note claimed the two formats collide on ambient .js under fixedExtension: false; that
-	 *   claim was wrong and is corrected here.
+	 * - With fixedExtension: false, tsdown emits ESM index.js plus CJS index.cjs for a
+	 *   type:module package in the JS pass. There is no collision: tsdown derives the .js
+	 *   extension for ESM and the .cjs extension for CJS automatically. An earlier M1.1 note
+	 *   claimed the two formats collide on ambient .js under fixedExtension: false; that claim
+	 *   was wrong and is corrected here.
 	 * - This .js plus .cjs scheme is the one we want. It matches the rslib parity target, where
 	 *   silk's dual-format output uses import: .js, require: .cjs, and a single types: .d.ts, and
 	 *   it matches the flat manifest the emit-manifest transform writes.
 	 * - Setting fixedExtension: true would instead yield .mjs plus .cjs (and .d.mts plus .d.cts),
 	 *   which is NOT wanted, so dual-format needs no fixedExtension change and we leave it false.
-	 * - dts emission produces a CJS declaration (.d.cts) when cjs is in format; tsdown's
-	 *   DtsOptions.cjsReexport can make it a re-export stub, but the default full second pass
-	 *   is fine here.
+	 * - The matching `.d.ts` / `.d.cts` declarations are emitted by the SEPARATE dts pass (see
+	 *   `DerivedDtsPassOptions`), which keeps `unbundle: false` so the declarations are rolled up.
 	 */
 	readonly fixedExtension: false;
 	readonly entry: Record<string, string>;
-	readonly dts: { readonly tsconfig: string };
+	/** JS pass emits no declarations; the dts pass owns them. */
+	readonly dts: false;
 	readonly define: Record<string, string>;
 	readonly isProd: boolean;
 	/**
@@ -71,19 +90,44 @@ export interface DerivedTsdownOptions {
 	 *   cjsInterop: true.
 	 * - We only set it (to true) when cjs is in the format, so esm-only builds leave the tsdown
 	 *   default untouched and stay byte-identical to before.
-	 * - CJS declarations (.d.cts) are emitted automatically by the dts pass when both esm and
-	 *   cjs are in format (DtsOptions.cjsReexport only switches the full second pass to a
-	 *   re-export stub, which we do not want), so no extra flag is needed for declarations.
 	 */
 	readonly cjsDefault?: boolean | undefined;
 	/** JSX transform settings to forward to rolldown's inputOptions. */
 	readonly jsx?: JsxConfig | undefined;
 }
 
+/**
+ * The dts pass: bundled (rolled-up, self-contained) declarations only, no JS.
+ *
+ * Appended to the SAME outDir as the JS pass, so `clean` MUST be false (otherwise it wipes
+ * the per-module JS the JS pass just wrote). `unbundle: false` makes rolldown roll the
+ * declarations up per public entry, so a type re-exported through the root entry lands inline
+ * in `index.d.ts` (fixing TS2883) instead of as a per-module sibling `.d.ts`.
+ * `dts: { emitDtsOnly: true }` strips the JS chunks this pass would otherwise produce.
+ *
+ * Dual format: when `format` includes `cjs`, the dts pass still emits both `index.d.ts` (esm)
+ * and `index.d.cts` (cjs) to the shared outDir.
+ */
+export interface DerivedDtsPassOptions {
+	readonly outDir: string;
+	readonly sourcemap: false;
+	readonly format: ReadonlyArray<BuildFormat>;
+	readonly unbundle: false;
+	readonly clean: false;
+	readonly platform: "node";
+	readonly fixedExtension: false;
+	readonly entry: Record<string, string>;
+	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true };
+	readonly define: Record<string, string>;
+	readonly isProd: boolean;
+	/** JSX transform settings to forward to rolldown's inputOptions (dts compile honors JSX). */
+	readonly jsx?: JsxConfig | undefined;
+}
+
 const outDirFor = (cwd: string, group: TargetGroupId): string =>
 	group === "dev" ? join(cwd, "dist/dev/pkg") : join(cwd, "dist/prod", group, "pkg");
 
-/** Derive the tsdown options for one TargetGroup (pure; orchestrator adds plugins + externals). */
+/** Derive the JS-pass tsdown options for one TargetGroup (per-module JS, no dts). */
 export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownOptions {
 	const isProd = options.group !== "dev";
 	const format = options.format ?? ["esm"];
@@ -94,16 +138,37 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 		minify: isProd,
 		format,
 		unbundle: true,
+		clean: true,
 		platform: "node",
 		// Always false: tsdown derives ESM .js plus CJS .cjs for a type:module package, the
 		// scheme we want. fixedExtension: true would yield .mjs and break the manifest parity.
 		fixedExtension: false,
 		entry: options.entry,
-		dts: { tsconfig: options.tsconfigPath },
+		dts: false,
 		define: { __PACKAGE_VERSION__: JSON.stringify(options.version) },
 		isProd,
 		// Only enable CJS interop when cjs is actually built; esm-only keeps tsdown's default.
 		...(hasCjs ? { cjsDefault: true } : {}),
+		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
+	};
+}
+
+/** Derive the dts-pass tsdown options for one TargetGroup (bundled declarations only). */
+export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOptions {
+	const isProd = options.group !== "dev";
+	const format = options.format ?? ["esm"];
+	return {
+		outDir: outDirFor(options.cwd, options.group),
+		sourcemap: false,
+		format,
+		unbundle: false,
+		clean: false,
+		platform: "node",
+		fixedExtension: false,
+		entry: options.entry,
+		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true },
+		define: { __PACKAGE_VERSION__: JSON.stringify(options.version) },
+		isProd,
 		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 	};
 }

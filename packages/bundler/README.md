@@ -52,6 +52,20 @@ npm run build:prod
 
 `--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target npm` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish. Two further targets, `--target meta` and `--target exe`, are covered below.
 
+Every build emits per-module JavaScript alongside a single rolled-up, self-contained `.d.ts` per public entry. Each entry's declaration file pulls in every re-exported type, so a consumer that infers a type from your public API never has to reach into a deep sibling module that no export subpath addresses.
+
+## TypeScript config
+
+The bundler ships its shared TypeScript base as a subpath export. Extend it from your package's `tsconfig.json` so source and declaration emit line up with what the bundler expects:
+
+```json
+{
+  "extends": ["@savvy-web/bundler/ecma.json"]
+}
+```
+
+`ecma.json` sets ESNext libs, NodeNext resolution, strict mode and `composite` declaration output. Override any of it in your own `tsconfig.json`.
+
 ## Multi-target publishing
 
 By default `--target npm` builds a single group named after the package and writes it to `dist/prod/npm/pkg`. To publish the same package to more than one registry, or under more than one name, declare a `publishConfig.targets` map in `package.json`:
@@ -144,6 +158,8 @@ A dual-format build emits an ESM `.js` and a require-able CJS `.cjs` (with named
 
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
 - **Four build targets** — `dev` for local linking, `npm` for a resolved publishable manifest, `meta` for an API Extractor api-model and `exe` for SEA binaries, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
+- **Bundled declarations** — per-module JavaScript with a single rolled-up `.d.ts` per public entry, so re-exported types stay reachable through your published export subpaths.
+- **Shared tsconfig base** — extend `@savvy-web/bundler/ecma.json` for the ESNext/NodeNext/strict settings the build expects.
 - **Manifest resolution** — `catalog:` and `workspace:` specifiers are resolved against the workspace for the published target, and preserved for the linked dev target.
 - **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target npm` builds the distinct byte variants and writes a `targets.json` binding for the release step.
 - **Executable binaries** — an `exe` config compiles SEA binaries from a bin entry via `@tsdown/exe`, inferring the platform from the package's `os`/`cpu` when targets are omitted.
