@@ -1,7 +1,8 @@
-import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
+import { defineBuild, runBuild } from "@savvy-web/bundler";
 
-export default NodeLibraryBuilder.create({
-	apiModel: {
+const config = defineBuild({
+	devManifest: "preserve",
+	meta: {
 		localPaths: ["../mcp/lib/models/github-action-builder"],
 		tsdoc: {
 			tagDefinitions: [
@@ -12,13 +13,7 @@ export default NodeLibraryBuilder.create({
 			],
 		},
 	},
-	copyPatterns: [
-		{
-			from: "./**/*.json",
-			context: "./src/public",
-		},
-	],
-	transform({ pkg }) {
+	transform: ({ pkg }) => {
 		delete pkg.devDependencies;
 		delete pkg.bundleDependencies;
 		delete pkg.scripts;
@@ -27,3 +22,9 @@ export default NodeLibraryBuilder.create({
 		return pkg;
 	},
 });
+
+export default config;
+
+if (import.meta.main) {
+	await runBuild(config, { cwd: import.meta.dirname, argv: process.argv.slice(2) });
+}

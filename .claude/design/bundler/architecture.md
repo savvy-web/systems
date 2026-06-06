@@ -16,7 +16,7 @@ dependencies:
 
 # @savvy-web/bundler architecture
 
-The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consumer installs one devDependency (`@savvy-web/bundler`), writes a self-executing `savvy.build.ts` and gets a pinned, tested tsdown transitively. This doc covers the SP1 foundation; `@savvy-web/rslib-builder` is unchanged and still builds the ecosystem (including these two packages) until the stack self-hosts.
+The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consumer installs one devDependency (`@savvy-web/bundler`), writes a self-executing `savvy.build.ts` and gets a pinned, tested tsdown transitively. This doc covers the SP1 foundation plus the M2 self-host (the bundler, `tsdown-plugins` and four leaf libraries now build via the bundler, not rslib) and the M3 bundled-dts default. The remaining rslib consumers are `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` (M4/M5).
 
 ## Table of Contents
 
@@ -28,6 +28,8 @@ The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consu
 - [TargetGroup and Target model](#targetgroup-and-target-model)
 - [Multi-target publishing](#multi-target-publishing)
 - [Dual-format esm plus cjs](#dual-format-esm-plus-cjs)
+- [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder)
+- [The shipped ecma.json tsconfig preset](#the-shipped-ecmajson-tsconfig-preset)
 - [Dist layout](#dist-layout)
 - [Meta generation wiring](#meta-generation-wiring)
 - [JSX wiring](#jsx-wiring)
@@ -50,7 +52,7 @@ The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consu
 
 ## Current State
 
-SP1 implemented. The package exposes `defineBuild`/`runBuild` (`src/index.ts`) and is itself built by `@savvy-web/rslib-builder` (it carries `@rslib/core` + `@savvy-web/rslib-builder` devDeps and an `rslib.config.ts`) until the stack self-hosts in a later sub-project. `tsdown` is a regular `dependency` (programmatic, transitively pinned for consumers); `@savvy-web/tsdown-plugins` is `workspace:*`.
+SP1 implemented, plus the M2 self-host and the M3 bundled-dts default. The package exposes `defineBuild`/`runBuild` (`src/index.ts`) and **now builds itself** via an escape-hatch `savvy.build.ts` (it dropped the `@rslib/core` + `@savvy-web/rslib-builder` devDeps and the `rslib.config.ts`, added `tsx`). `tsdown` is a regular `dependency` (programmatic, transitively pinned for consumers); `@savvy-web/tsdown-plugins` is `workspace:*`. See [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder).
 
 The SP1 exit gate is output parity building the real `@savvy-web/cli` end-to-end: bin compilation (`savvy`), dts over a large Effect codebase, `catalog:silk` + `workspace:*` resolution and the manifest transform, in one package.
 
@@ -62,7 +64,9 @@ Tracks B (SEA executables), D (JSX/React) and a §8 config-validation gate also 
 
 M1 (dual-format esm plus cjs) also landed: `defineBuild({ format })` surfaces an optional `format?: ReadonlyArray<BuildFormat>` (`"esm" | "cjs"`, default `["esm"]`) that the bundler forwards into the build loop, and adding `"cjs"` produces a dual-format build (esm `.js` plus cjs `.cjs`, dual `import`/`require` export conditions, CJS interop). The default is esm-only so every existing build is byte-unchanged. This is the prerequisite for self-hosting `systems` onto the bundler; no package opts in yet. See [Dual-format esm plus cjs](#dual-format-esm-plus-cjs).
 
-Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2 — distinct from the §8 fast-fail gate, which checks structural config only) and virtual entries. Track C delivers the multi-byte-variant publishing originally scoped for SP4; M1 delivers dual-format. SP1 builds a `dev` TargetGroup; `--target npm` builds the single-`npm` default or, when a package declares the Record-map `publishConfig.targets`, every derived prod group. **Track E (publishability + self-hosting) is NOT done** — both packages are still built by `@savvy-web/rslib-builder`.
+M2 (self-host) and M3 (bundled dts) landed on top: the bundler, `tsdown-plugins` and four leaf libraries (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`) now build via the bundler stack instead of rslib, and the build emits a single rolled-up `.d.ts` per public entry by default. See [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder) and (for the two-pass dts mechanics) `../tsdown-plugins/architecture.md`.
+
+Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2 — distinct from the §8 fast-fail gate, which checks structural config only) and virtual entries. Track C delivers the multi-byte-variant publishing originally scoped for SP4; M1 delivers dual-format. SP1 builds a `dev` TargetGroup; `--target npm` builds the single-`npm` default or, when a package declares the Record-map `publishConfig.targets`, every derived prod group. **Track E (full publishability) remains outstanding**, but M2 self-hosting is done — the only packages still built by `@savvy-web/rslib-builder` are `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` (M4/M5).
 
 ## The two-package split
 
@@ -134,6 +138,26 @@ M1 makes the build's output formats configurable so a package can emit both esm 
 - **Why M1 exists:** it is the prerequisite for self-hosting `systems` onto the bundler. The first real `format: ["esm", "cjs"]` consumer is silk, in the separate M2–M6 self-host plan.
 - A real end-to-end integration fixture (`__test__/integration/dual-format/`) proves a dual-format build emits both formats, dual conditions and a require-able cjs output.
 
+## Self-hosting: the three-tier bootstrap ladder
+
+M2 retired rslib from the bundler stack and its four leaf libraries. The ladder resolves the chicken-and-egg of a builder building itself across three tiers:
+
+- **Tier 1 — `@savvy-web/tsdown-plugins`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from its **OWN `./src`** (`tsx` compiles the TS on the fly — no built copy exists yet). It cannot use `defineBuild`/`runBuild` because those live in the bundler, which is downstream.
+- **Tier 2 — `@savvy-web/bundler`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from the **already-built `@savvy-web/tsdown-plugins`** (the workspace link). It cannot use its own `defineBuild`/`runBuild` (that would need an already-built bundler).
+- **Tier 3 — the four leaf libraries** (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`) build via the normal **front-door** `defineBuild`/`runBuild`, because the bundler is built by the time they run.
+
+Each migrated package: added `savvy.build.ts` + a `turbo.json` `$TURBO_EXTENDS$` override of `build:dev`/`build:prod`/`build:meta` outputs/inputs, swapped scripts to `tsx savvy.build.ts --target dev|npm|meta`, dropped `@savvy-web/rslib-builder` + `@rslib/core` (added `@savvy-web/bundler` + `tsx`) and deleted `rslib.config.ts`. The two escape-hatch `savvy.build.ts` files port the exact externals and prod-strip transform from the old `rslib.config.ts`; they call `buildTargetGroups` with no `meta`, so API Extractor never runs in a self-build (the old rslib `_base` apiModel suppression is therefore not carried over — see the comment headers in each `savvy.build.ts`).
+
+`@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` deliberately STAY on rslib (M4/M5). Decoupled install→build ordering was verified cold: a frozen install succeeds with no build, then `pnpm build` resolves `catalog:silkPeers`.
+
+## The shipped ecma.json tsconfig preset
+
+Dropping the rslib devDep removes the `@savvy-web/rslib-builder/tsconfig/ecma/lib.json` base that all six packages extended, which would leave tsgo falling back to broken defaults. The bundler now ships its own base preset:
+
+- **`packages/bundler/public/ecma.json`** is published via the top-level `public/` copy convention and exported as `"./ecma.json": "./public/ecma.json"`. The four leaves extend `@savvy-web/bundler/ecma.json` (package specifier).
+- **The bundler extends its OWN copy by relative path** (`./public/ecma.json`) rather than the package specifier, to avoid a build-before-typecheck cycle (the package specifier resolves only after the `public/` copy lands in `dist`).
+- **`@savvy-web/tsdown-plugins` is upstream of the bundler**, so it cannot consume the package specifier. It keeps a byte-identical **synced local copy** at `packages/tsdown-plugins/ecma.json` (extends `./ecma.json`), guarded by `__test__/ecma-sync.test.ts` which fails if the two files drift.
+
 ## Dist layout
 
 ```text
@@ -193,9 +217,9 @@ Track B adds `--target exe` for packages that ship a single-executable (SEA) bin
 
 ## The orchestrator to tsdown boundary
 
-`runBuild` delegates the per-group build loop to `buildTargetGroups` (`tsdown-plugins/src/build/build-target-groups.ts`), which calls `tsdown.build()` once per TargetGroup with config-file loading bypassed (`config: false`) and inline options derived from `deriveTargetGroupOptions`. SP1 fixed choices that cross this boundary:
+`runBuild` delegates the per-group build loop to `buildTargetGroups` (`tsdown-plugins/src/build/build-target-groups.ts`), which calls `tsdown.build()` with config-file loading bypassed (`config: false`) and inline options derived from `deriveTargetGroupOptions`. M3 made this **two tsdown passes per TargetGroup** to the same outDir — a JS pass (`unbundle: true`, `dts: false`) and a bundled-dts pass (`unbundle: false`, `dts: { emitDtsOnly: true }`, `clean: false`) — so the build emits per-module JS plus a single rolled-up `.d.ts` per public entry. The two-pass mechanics and rationale live in `../tsdown-plugins/architecture.md`. SP1 fixed choices that cross this boundary:
 
-- `unbundle: true` (rolldown `preserveModules`) replaces rslib's `disableSharedChunks` — one-to-one source→output, no shared cross-entry runtime chunk, which sidesteps the multi-entry ESM `__webpack_require__` collision rslib worked around.
+- `unbundle: true` (rolldown `preserveModules`) on the JS pass replaces rslib's `disableSharedChunks` — one-to-one source→output, no shared cross-entry runtime chunk, which sidesteps the multi-entry ESM `__webpack_require__` collision rslib worked around. The dts pass uses `unbundle: false` so declarations roll up.
 - `fixedExtension: false` overrides tsdown's node-platform default so output uses the package-`type`-ambient extension (`.js`/`.d.ts` for `"type": "module"`). It stays `false` even for dual-format: tsdown 0.22.2 emits esm `.js` plus cjs `.cjs` with no collision under that setting, while `fixedExtension: true` would wrongly yield `.mjs`. See the empirical finding in `../tsdown-plugins/architecture.md`.
 - bin shebang/`chmod` is tsdown's native `ShebangPlugin` — the bundler only handles bin→entry naming and the manifest `bin` rewrite, not the executable bit.
 
@@ -216,7 +240,7 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 - **Dual-format is opt-in and dormant.** `format` defaults to esm-only, so the M1 capability adds nothing to a build until a package passes `format: ["esm", "cjs"]`. The bundler surfaces `defineBuild({ format })` and forwards it; the actual format/interop/manifest behavior is `tsdown-plugins`'.
 - **Config validation runs first.** `ConfigValidator.validate` gates every target path; the rules live in tsdown-plugins (`resolveTargets`, the exe/meta checks) and the bundler only assembles the `ValidationInput`. It is structural-shape validation, distinct from the SP2 `bundler check` preflight.
 - **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency. `@tsdown/exe` is a bundler runtime dependency (lazily imported by tsdown for `--target exe`), again not a peer.
-- **Built by rslib-builder until self-host.** Both packages keep `@savvy-web/rslib-builder` + `@rslib/core` devDeps and an `rslib.config.ts` for now; **Track E (publishability + self-hosting) is the remaining outstanding work** and is not done on this branch. Dogfooding/self-hosting is a deliberate post-SP1 step.
+- **Self-hosting is done (M2).** The bundler, `tsdown-plugins` and four leaf libraries build via the bundler stack (no rslib); only `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` remain rslib-built (M4/M5). **Track E (full publishability) is the remaining outstanding work.** The two upstream packages self-build through escape-hatch `savvy.build.ts` files (not the front door) — see [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder).
 
 ## Rationale
 

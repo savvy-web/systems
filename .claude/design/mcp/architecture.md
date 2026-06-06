@@ -106,7 +106,7 @@ Generated docs are `source: generated` entries in the corpus. They are produced 
 
 **Targets.** `scripts/api-targets.ts` declares the four in-monorepo library packages that are generation targets: `silk-effects`, `templates`, `github-action-effects` and `github-action-builder`. `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle. Excluding mcp keeps the build subgraph acyclic even if `silk` later depends on `mcp`.
 
-**Generator.** `scripts/generate-api-docs.ts` reads each target's `dist/npm/<unscoped>.api.json` (emitted by `build:prod`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `content/packages/<dir>/api/`. The two injected services are:
+**Generator.** `scripts/generate-api-docs.ts` reads each target's `.api.json` model from `lib/models/<pkg>/` (where the bundler's `--target meta` copies it via each leaf's `meta.localPaths`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `content/packages/<dir>/api/`. The two injected services are:
 
 - A `FrontmatterRenderer` — `frontMatterFor(target, meta)` → `toYaml(fm)` — that builds silk YAML front-matter with `source: generated`, `tier: packages`, `tags: [<dir>, api]`, `priority: 0.3` and **empty `related`**.
 - A `RouteFormatter` — `silk://packages/<dir>/api/<kind>/<slug>` — that maps item refs to silk URIs.
@@ -120,8 +120,8 @@ The body-budget guard in `lib/scripts/compile.ts` exempts `source: generated` do
 **Turbo orchestration.** `packages/mcp/turbo.json` (extends `//`) declares the task graph:
 
 ```text
-@savvy-web/{silk-effects,templates,github-action-effects,github-action-builder}#build:prod
-      ↓ (emit dist/npm/*.api.json)
+@savvy-web/{silk-effects,templates,github-action-effects,github-action-builder}#build:meta
+      ↓ (copy *.api.json into mcp/lib/models/<pkg>/ via meta.localPaths)
 @savvy-web/mcp#generate:api-docs
       ↓ (write content/packages/*/api/**)
 @savvy-web/mcp#build:catalog
@@ -129,7 +129,7 @@ The body-budget guard in `lib/scripts/compile.ts` exempts `source: generated` do
 @savvy-web/mcp#build:dev / build:prod
 ```
 
-`generate:api-docs` depends only on the four explicit in-monorepo library `#build:prod` tasks (not `^build:prod`) so `silk`/`cli`/`mcp` never enter mcp's build subgraph. It has **no** workspace edge for the renderer itself: `api-extractor-llms` is now an external npm package, so the generator pulls it from `node_modules` rather than waiting on a sibling build (the former `@savvy-web/api-extractor-llms#build:dev` edge is gone). `build:catalog` depends on `generate:api-docs`. mcp's own `build:dev`/`build:prod` depend on `build:catalog`. The four prod builds are `cache: true`, so turbo restores their `dist/npm` (including `.api.json`) from cache on repeat runs. `generate:api-docs` and `build:catalog` are also `cache: true` with declared `outputs` (`content/packages/*/api/**` and `manifest.json` respectively): both write into tracked source content, so a no-op run restores from cache and — combined with the build-catalog write guard — leaves git clean.
+Under the bundler the four leaves emit their API Extractor model only via a separate `savvy build --target meta` step (each package's `build:meta` script copies the `.api.json` into `meta.localPaths`, i.e. `mcp/lib/models/<pkg>/`), **not** during `build:prod`. So `generate:api-docs` `dependsOn` was repointed from the four leaves' `#build:prod` to their `#build:meta` (still the four explicit in-monorepo library tasks, not `^build:meta`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). It has **no** workspace edge for the renderer itself: `api-extractor-llms` is now an external npm package, so the generator pulls it from `node_modules` rather than waiting on a sibling build (the former `@savvy-web/api-extractor-llms#build:dev` edge is gone). `build:catalog` depends on `generate:api-docs`. mcp's own `build:dev`/`build:prod` depend on `build:catalog`. The `build:meta` tasks are uncached (they write into mcp's `localPaths`, outside their own cache scope). `generate:api-docs` and `build:catalog` are `cache: true` with declared `outputs` (`content/packages/*/api/**` and `manifest.json` respectively): both write into tracked source content, so a no-op run restores from cache and — combined with the build-catalog write guard — leaves git clean.
 
 See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
 

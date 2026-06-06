@@ -1,8 +1,16 @@
 {
 	"extends": ["//"],
 	"tasks": {
+		"build:dev": {
+			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
+			"outputs": ["dist/dev/**"]
+		},
+		"build:meta": {
+			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"]
+		},
 		"build:prod": {
-			"outputs": ["$TURBO_EXTENDS$", "../mcp/lib/models/github-action-effects/**"]
+			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
+			"outputs": ["dist/prod/**"]
 		}
 	}
 }

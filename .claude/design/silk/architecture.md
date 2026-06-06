@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-02
-last-synced: 2026-06-02
+updated: 2026-06-05
+last-synced: 2026-06-05
 completeness: 92
 related:
   - ../cli/architecture.md
@@ -22,6 +22,7 @@ config-integration shim surface over `@savvy-web/silk-effects`, plus a static Bi
 
 - [Overview](#overview)
 - [Current State](#current-state)
+- [Known issue: non-deterministic rslib bundle](#known-issue-non-deterministic-rslib-bundle)
 - [The Shim Contract](#the-shim-contract)
 - [Export Map](#export-map)
 - [Boundaries and Invariants](#boundaries-and-invariants)
@@ -55,6 +56,10 @@ Implemented and dogfooded inside `systems` (`.changeset/config.json`, commitlint
 biome and markdownlint config reference `@savvy-web/silk/*`). All shims live under `src/`, one file
 per subpath; the Biome preset is a copied asset, not a shim. `private: true` in source; the builder
 flips it on build.
+
+## Known issue: non-deterministic rslib bundle
+
+silk is still built by `@savvy-web/rslib-builder` (it is M5 of the bundler self-host migration; cli/mcp/silk are the remaining rslib consumers). Its rslib bundle of `effect`'s `Logger.replace` is **non-deterministic under parallel cold builds**: the chunk holding `Logger.replace` occasionally initializes in the wrong order, so loading `@savvy-web/silk/commitlint` throws `replace is not a function` and `@savvy-web/silk/lint` can throw a null `Lint.Handler`. A fresh `rm -rf packages/silk/dist && pnpm --filter @savvy-web/silk build:dev` (a clean serial rebuild) fixes it. This is an rslib/rolldown chunk-init ordering bug, **not** caused by silk-effects' bundled-dts default — silk-effects' JS stays per-module and unchanged (only its declarations are bundled; see `../tsdown-plugins/architecture.md`). Expected to resolve when silk migrates onto `@savvy-web/bundler` at M5.
 
 ## The Shim Contract
 

@@ -6,12 +6,37 @@ import { describe, expect, it, vi } from "vitest";
 import { buildTargetGroups } from "../../src/build/build-target-groups.js";
 
 describe("buildTargetGroups", () => {
-	it("calls the builder once per group with the derived outDir + emitManifest plugin", async () => {
-		const calls: Array<{ outDir: string; plugins: number; inputOptions: { jsx?: unknown } | undefined }> = [];
-		const fakeBuild = vi.fn(async (cfg: { outDir: string; plugins: unknown[]; inputOptions?: { jsx?: unknown } }) => {
-			calls.push({ outDir: cfg.outDir, plugins: cfg.plugins.length, inputOptions: cfg.inputOptions });
-			return [];
-		});
+	it("runs a JS pass + a dts pass per group (two passes to the same outDir)", async () => {
+		const calls: Array<{
+			outDir: string;
+			plugins: number;
+			hasManifest: boolean;
+			dts: unknown;
+			unbundle: unknown;
+			clean: unknown;
+			inputOptions: { jsx?: unknown } | undefined;
+		}> = [];
+		const fakeBuild = vi.fn(
+			async (cfg: {
+				outDir: string;
+				plugins: Array<{ name?: string }>;
+				dts: unknown;
+				unbundle: unknown;
+				clean: unknown;
+				inputOptions?: { jsx?: unknown };
+			}) => {
+				calls.push({
+					outDir: cfg.outDir,
+					plugins: cfg.plugins.length,
+					hasManifest: cfg.plugins.some((p) => p.name === "savvy:emit-manifest"),
+					dts: cfg.dts,
+					unbundle: cfg.unbundle,
+					clean: cfg.clean,
+					inputOptions: cfg.inputOptions,
+				});
+				return [];
+			},
+		);
 		await buildTargetGroups({
 			cwd: "/abs/pkg",
 			version: "1.0.0",
@@ -24,11 +49,29 @@ describe("buildTargetGroups", () => {
 			devManifest: "preserve",
 			build: fakeBuild as never,
 		});
-		expect(fakeBuild).toHaveBeenCalledTimes(2);
-		expect(calls[0].outDir).toBe("/abs/pkg/dist/dev/pkg");
-		expect(calls[1].outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
-		expect(calls[0].plugins).toBeGreaterThanOrEqual(1); // emitManifest present
-		expect(calls[0].inputOptions?.jsx).toBeUndefined(); // no jsx configured -> inputOptions omitted
+		// 2 groups x 2 passes = 4 calls.
+		expect(fakeBuild).toHaveBeenCalledTimes(4);
+
+		// Group "dev": JS pass then dts pass, both to dist/dev/pkg.
+		const [devJs, devDts, npmJs, npmDts] = calls;
+		expect(devJs.outDir).toBe("/abs/pkg/dist/dev/pkg");
+		expect(devDts.outDir).toBe("/abs/pkg/dist/dev/pkg");
+		expect(npmJs.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
+		expect(npmDts.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
+
+		// JS pass: per-module JS, no dts, manifest plugin present, fresh outDir.
+		expect(devJs.hasManifest).toBe(true);
+		expect(devJs.dts).toBe(false);
+		expect(devJs.unbundle).toBe(true);
+		expect(devJs.clean).toBe(true);
+
+		// dts pass: bundled declarations only, NO manifest plugin, clean:false (keep JS pass output).
+		expect(devDts.hasManifest).toBe(false);
+		expect(devDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
+		expect(devDts.unbundle).toBe(false);
+		expect(devDts.clean).toBe(false);
+
+		expect(devJs.inputOptions?.jsx).toBeUndefined(); // no jsx configured -> inputOptions omitted
 	});
 
 	it("builds once per group spec, threading the spec's name into the manifest pipeline", async () => {
@@ -65,12 +108,14 @@ describe("buildTargetGroups", () => {
 			build,
 		});
 
-		expect(calls.map((c) => c.outDir).sort()).toEqual([
+		// Two passes per group share an outDir, so dedup before comparing.
+		expect([...new Set(calls.map((c) => c.outDir))].sort()).toEqual([
 			join(dir, "dist/prod/github/pkg"),
 			join(dir, "dist/prod/npm/pkg"),
 		]);
+		// The manifest transform fires once per group (JS pass only), not on the dts pass.
 		expect(seenNames.sort()).toEqual(["@scope/base", "base"]);
-	});
+	}, 30_000); // real fs (mkdtemp + manifest read) can starve past the 5s default under full-suite load
 
 	it("passes jsx through to the tsdown build inputOptions when configured", async () => {
 		const captured: Array<{ inputOptions: { jsx?: unknown } | undefined }> = [];
@@ -139,7 +184,7 @@ describe("buildTargetGroups", () => {
 			types: "./index.d.ts",
 			import: "./index.js",
 		});
-	});
+	}, 30_000); // real fs (mkdtemp + manifest read) can starve past the 5s default under full-suite load
 
 	it("enables cjs interop on the tsdown build when cjs is in the format", async () => {
 		const captured: Array<Record<string, unknown>> = [];
