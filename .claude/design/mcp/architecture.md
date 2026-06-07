@@ -3,8 +3,8 @@ status: current
 module: mcp
 category: architecture
 created: 2026-05-31
-updated: 2026-06-05
-last-synced: 2026-06-05
+updated: 2026-06-07
+last-synced: 2026-06-07
 completeness: 95
 related:
   - ../silk-effects/architecture.md
@@ -42,7 +42,8 @@ It is **not** a discovery host. An earlier silk-core framing imagined a thin hos
 **Package:** `@savvy-web/mcp`
 **Location:** `packages/mcp` in `savvy-web/systems`
 **Bin:** `savvy-mcp` → `src/bin.ts` → `startMcpServer()` in `src/server.ts`
-**Build:** ESM-only via `@savvy-web/rslib-builder` (`NodeLibraryBuilder`)
+**Build:** ESM-only via `@savvy-web/bundler` (M5 self-host); the markdown corpus ships through the
+top-level `public/content` copy convention. See [The content corpus](#the-content-corpus-and-its-identity-contract).
 
 This is Silk Core sub-project 2. The server grew in three increments — the walking-skeleton tool host, the manifest-backed resource-layer rebuild, then the Phase B work (API-doc generation pipeline, body search, related-graph boost, query logging) — all now as-built and described below. For the forward-looking roadmap see `docs/superpowers/specs/2026-06-01-silk-suite-0.1.0-closeout-and-roadmap.md`.
 
@@ -84,11 +85,11 @@ Every tool follows the conventions proven by `workspace_info` (`src/tools/worksp
 
 ## The Resource Half
 
-Resources serve a curated, on-disk markdown corpus behind a stable URI scheme. A build-time compiler validates the corpus and emits the (tracked) manifest; the runtime serves from that manifest plus the bodies on disk. The Phase B work added an API-doc generation pipeline that renders generated docs into this same corpus as tracked source content.
+Resources serve a curated, on-disk markdown corpus behind a stable URI scheme. A build-time compiler validates the corpus and emits the (tracked, hand-authored-baseline) manifest; the runtime serves from that manifest plus the bodies on disk. The Phase B work added an API-doc generation pipeline that renders generated docs into this same corpus as gitignored, ephemeral build output.
 
 ### The content corpus and its identity contract
 
-The corpus lives under `src/resources/content/{standards,packages,guides}/**.md`. Each file carries YAML front-matter (`id`, `title`, `summary`, `tier`, `source`, `status`, `tags`, `audience`, `priority`, `related`). The front-matter shape is the load-bearing contract — see the Effect Schemas in `src/resources/schema.ts` (`DocFrontMatter`, `ManifestEntry`, `Manifest`).
+The corpus lives under `public/content/{standards,packages,guides}/**.md` (relocated from `src/resources/content` in M5, because the bundler copies only the top-level `public/` directory). Each file carries YAML front-matter (`id`, `title`, `summary`, `tier`, `source`, `status`, `tags`, `audience`, `priority`, `related`). The front-matter shape is the load-bearing contract — see the Effect Schemas in `src/resources/schema.ts` (`DocFrontMatter`, `ManifestEntry`, `Manifest`).
 
 The **`id` is the stable identity**, not the file path: the URI is derived as `silk://<id>`, never from where the file sits on disk. `ID_PATTERN` requires the id to be tier-prefixed and allows an optional trailing slash for directory-index docs (e.g. `packages/silk-effects/` resolves to `content/packages/silk-effects/index.md`). Directories prefixed with `_` (e.g. `_templates/`) are skipped by the compiler.
 
@@ -102,11 +103,11 @@ Tags are drawn from a controlled vocabulary in `content/tags.json` (canonical ta
 
 ### The API-doc generation pipeline
 
-Generated docs are `source: generated` entries in the corpus. They are produced by a turbo-orchestrated pipeline and are **tracked source content** (`src/resources/content/packages/*/api/`), committed to the repo and shipped in the npm tarball. Only the upstream API Extractor `.api.json` **model files** are gitignored, via the root `.gitignore` rule `packages/mcp/lib/models/*/`. Tracking the rendered docs (rather than gitignoring them) is what gives each entry a real `lastModified` — the file's git commit date — instead of the epoch fallback the compiler emits when `git log` has no record of the file (see [The build-time compiler](#the-build-time-compiler)). The pipeline still regenerates them deterministically from the models; the deep-equality write guard means a no-op run leaves the committed files untouched.
+Generated docs are `source: generated` entries in the corpus. They are produced by a turbo-orchestrated pipeline and are **gitignored, ephemeral build output** (`public/content/packages/*/api/`, ignored via the root `.gitignore`), regenerated deterministically from each package's `.api.json` model on every build. The upstream API Extractor `.api.json` **model files** are also gitignored (`packages/mcp/lib/models/*/`). The committed `manifest.json` is the hand-authored baseline ONLY (it carries no `source: generated` entries); `build:catalog` inflates it in place with the generated entries on a local build but the deep-equality write guard keeps the committed baseline unchanged on a clean run. The generator is skip-tolerant, so a bare install with no models never fails. Because the generated docs are gitignored, `git log` has no commit for them and the compiler stamps their `lastModified` with the epoch fallback (see [The build-time compiler](#the-build-time-compiler)) — only hand-authored docs get a real commit date.
 
 **Targets.** `scripts/api-targets.ts` declares the four in-monorepo library packages that are generation targets: `silk-effects`, `templates`, `github-action-effects` and `github-action-builder`. `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle. Excluding mcp keeps the build subgraph acyclic even if `silk` later depends on `mcp`.
 
-**Generator.** `scripts/generate-api-docs.ts` reads each target's `.api.json` model from `lib/models/<pkg>/` (where the bundler's `--target meta` copies it via each leaf's `meta.localPaths`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `content/packages/<dir>/api/`. The two injected services are:
+**Generator.** `lib/scripts/generate-api-docs.ts` reads each target's `.api.json` model from `lib/models/<pkg>/` (where the bundler's `--target meta` copies it via each leaf's `meta.localPaths`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `public/content/packages/<dir>/api/` (gitignored). The two injected services are:
 
 - A `FrontmatterRenderer` — `frontMatterFor(target, meta)` → `toYaml(fm)` — that builds silk YAML front-matter with `source: generated`, `tier: packages`, `tags: [<dir>, api]`, `priority: 0.3` and **empty `related`**.
 - A `RouteFormatter` — `silk://packages/<dir>/api/<kind>/<slug>` — that maps item refs to silk URIs.
@@ -123,23 +124,23 @@ The body-budget guard in `lib/scripts/compile.ts` exempts `source: generated` do
 @savvy-web/{silk-effects,templates,github-action-effects,github-action-builder}#build:meta
       ↓ (copy *.api.json into mcp/lib/models/<pkg>/ via meta.localPaths)
 @savvy-web/mcp#generate:api-docs
-      ↓ (write content/packages/*/api/**)
+      ↓ (write public/content/packages/*/api/** — gitignored)
 @savvy-web/mcp#build:catalog
       ↓ (compile manifest.json)
 @savvy-web/mcp#build:dev / build:prod
 ```
 
-Under the bundler the four leaves emit their API Extractor model only via a separate `savvy build --target meta` step (each package's `build:meta` script copies the `.api.json` into `meta.localPaths`, i.e. `mcp/lib/models/<pkg>/`), **not** during `build:prod`. So `generate:api-docs` `dependsOn` was repointed from the four leaves' `#build:prod` to their `#build:meta` (still the four explicit in-monorepo library tasks, not `^build:meta`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). It has **no** workspace edge for the renderer itself: `api-extractor-llms` is now an external npm package, so the generator pulls it from `node_modules` rather than waiting on a sibling build (the former `@savvy-web/api-extractor-llms#build:dev` edge is gone). `build:catalog` depends on `generate:api-docs`. mcp's own `build:dev`/`build:prod` depend on `build:catalog`. The `build:meta` tasks are uncached (they write into mcp's `localPaths`, outside their own cache scope). `generate:api-docs` and `build:catalog` are `cache: true` with declared `outputs` (`content/packages/*/api/**` and `manifest.json` respectively): both write into tracked source content, so a no-op run restores from cache and — combined with the build-catalog write guard — leaves git clean.
+Under the bundler the four leaves emit their API Extractor model only via a separate `savvy build --target meta` step (each package's `build:meta` script copies the `.api.json` into `meta.localPaths`, i.e. `mcp/lib/models/<pkg>/`), **not** during `build:prod`. So `generate:api-docs` `dependsOn` was repointed from the four leaves' `#build:prod` to their `#build:meta` (still the four explicit in-monorepo library tasks, not `^build:meta`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). It has **no** workspace edge for the renderer itself: `api-extractor-llms` is now an external npm package, so the generator pulls it from `node_modules` rather than waiting on a sibling build. `build:catalog` depends on `generate:api-docs`; mcp's own `build:dev`/`build:prod` depend on `build:catalog` (their inputs include `public/content/**`). The `build:meta` tasks are uncached (they write into mcp's `localPaths`, outside their own cache scope). `generate:api-docs` is `cache: true` (its output, `public/content/packages/*/api/**`, is gitignored ephemeral content); `build:catalog`'s only declared output is the tracked `public/content/manifest.json`, and its inputs exclude that manifest so a manifest rewrite does not re-trigger it. The committed manifest is the hand-authored baseline; the deep-equality write guard keeps a clean rebuild from churning it.
 
 See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
 
 ### The build-time compiler
 
-`lib/scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `lib/scripts/build-catalog.ts` is the I/O shell that walks the corpus, parses front-matter with gray-matter, runs `compileCorpus`, and writes `content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory match, `related`-target resolution, controlled tags, per-tier body-size budgets (skipped for `source: generated`), a dead `workflow-*`-name grep, the generated-doc provenance marker, and a per-doc `lastModified` stamp from `git log -1 --format=%cI -- <file>` (falling back to the epoch when git has no record of the file — which is why both the rendered API docs and the manifest are tracked rather than gitignored).
+`lib/scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `lib/scripts/build-catalog.ts` is the I/O shell that walks the corpus under `public/content`, parses front-matter with gray-matter, runs `compileCorpus`, and writes `public/content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory match, `related`-target resolution, controlled tags, per-tier body-size budgets (skipped for `source: generated`), a dead `workflow-*`-name grep, the generated-doc provenance marker, and a per-doc `lastModified` stamp from `git log -1 --format=%cI -- <file>` (falling back to the epoch when git has no record of the file — which is the case for the gitignored generated API docs).
 
-The manifest is **tracked source content**, not a build artifact: `{ entries }` only — a deterministic function of the corpus, with each entry's `lastModified` being the file's git commit date. The former per-build `generatedAt` wall-clock timestamp was dropped (nothing read it at runtime; it was pure git churn), so two builds of the same content produce byte-identical manifests. `build-catalog.ts` applies a `node:util` `isDeepStrictEqual` write guard: it only rewrites `manifest.json` when the parsed value actually differs from what is on disk, so a Biome reindent of the committed file does not trigger a rewrite and the build never fights the formatter or churns git on no-op runs. Biome owns the committed format; the build respects it.
+The **committed** `manifest.json` is the hand-authored baseline (`{ entries }` only — the 29 hand-authored docs, no generated entries), a deterministic function of the hand-authored corpus, with each entry's `lastModified` being the file's git commit date. The former per-build `generatedAt` wall-clock timestamp was dropped (nothing read it at runtime; it was pure git churn). On a local build `build-catalog.ts` regenerates and inflates the manifest in place with the gitignored generated API entries, but a `node:util` `isDeepStrictEqual` write guard only rewrites `manifest.json` when the parsed value differs from disk — so a clean rebuild (or a Biome reindent) leaves the committed baseline byte-identical and the build never fights the formatter or churns git. Biome owns the committed format; the build respects it. Do NOT commit the inflated manifest.
 
-`build:catalog` (run with `tsx`) is sequenced via turbo (see above) ahead of `build:dev`/`build:prod`. `rslib.config.ts` `copyPatterns` bundles `content/` into `dist/<env>/resources/content` so the built binary serves the same corpus, including generated docs.
+`build:catalog` (run with `tsx`) is sequenced via turbo (see above) ahead of `build:dev`/`build:prod`. The corpus ships through the top-level `public/content` directory, which the bundler copies wholesale into the built `dist/<group>/pkg` so the built binary serves the same corpus (the bundler's only copy convention is `public/`; there is no `copyPatterns`).
 
 ### Runtime serving
 
@@ -189,9 +190,9 @@ The parent silk-core spec framed the MCP as a thin discovery host peer to the CL
 
 `WorkspaceAnalysis` uses recursive `Schema.suspend` for `linked`/`fixed` cross-references, which the Effect-Schema → JSON-Schema → zod bridge cannot inline. Projecting to a flat, name-only result both satisfies the bridge and produces more token-efficient output for the consuming agent. The projection is the tool's contract; the rich analysis stays the analyzer's contract in silk-effects.
 
-### Why generated docs and the manifest are tracked, not gitignored
+### Why the manifest is tracked but generated docs are gitignored
 
-Generated API docs are a deterministic function of the source packages' `.api.json` models. They were originally gitignored on the theory that committing them would bloat the repo and imply hand-maintenance. That backfired: the compiler stamps each entry's `lastModified` from `git log -1 --format=%cI -- <file>`, and a gitignored file has no commit, so `git log` returned empty and every generated doc — plus the manifest itself — fell back to the epoch (`1970-01-01T00:00:00.000Z`). Tracking the rendered docs and the manifest as source content gives them real commit dates and a correct `lastModified`. The deterministic, churn-free manifest (no `generatedAt`) plus the deep-equality write guard keep the committed copies stable across rebuilds, and the skip-tolerant generator still ensures a bare install never fails when models are absent. Only the upstream `.api.json` models stay gitignored, since those are genuine throwaway build inputs.
+The committed `manifest.json` is the hand-authored baseline only; the rendered API docs (and the `.api.json` models) are gitignored, ephemeral build output regenerated deterministically on every build. This is the deliberate split: tracking the baseline manifest gives the hand-authored docs real `lastModified` commit dates and lets a bare install serve the curated corpus without running generation, while keeping the bulky per-API-item generated pages out of git history. The cost is that gitignored generated docs have no commit, so the compiler stamps their `lastModified` with the epoch fallback — acceptable for transient generated pages. The deep-equality write guard keeps a local build (which inflates the manifest in place with generated entries) from committing the inflated version, and the skip-tolerant generator ensures a bare install never fails when models are absent. The relocation to `public/content` (M5) moved the gitignore rule but kept this split intact.
 
 ### Why the related-graph boost uses compiled-time-validated ids
 

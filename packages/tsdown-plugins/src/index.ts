@@ -2,6 +2,7 @@ export type { ManifestLike } from "workspaces-effect";
 export { CatalogAssemblyError, CatalogResolutionError } from "workspaces-effect";
 export type { BuildTargetGroupsOptions, TsdownBuild } from "./build/build-target-groups.js";
 export { buildTargetGroups } from "./build/build-target-groups.js";
+export { cjsDefaultInterop } from "./build/cjs-default-interop.js";
 export type {
 	BuildFormat,
 	BuildGroupSpec,

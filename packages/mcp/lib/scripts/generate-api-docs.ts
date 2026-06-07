@@ -22,7 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // into each sibling package's dist/ — keeping the task's inputs inside this
 // package so turbo can cache it.
 const modelsRoot = join(here, "..", "models"); // packages/mcp/lib/scripts -> packages/mcp/lib/models
-const contentRoot = join(here, "..", "..", "src", "resources", "content"); // -> packages/mcp/src/resources/content
+const contentRoot = join(here, "..", "..", "public", "content"); // -> packages/mcp/public/content
 
 export interface GeneratedFrontMatter {
 	readonly id: string;

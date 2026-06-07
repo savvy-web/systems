@@ -32,7 +32,17 @@ const resolveSourcePath = (value: unknown): string | undefined => {
 	return undefined;
 };
 
-const createEntryName = (exportKey: string, exportsAsIndexes: boolean): string => {
+/**
+ * Map an export key to the tsdown entry name (the emitted output basename).
+ *
+ * `.` becomes `index`; otherwise the leading `./` is stripped and, unless
+ * `exportsAsIndexes` is set, nested slashes are flattened to dashes
+ * (e.g. `./changesets/markdownlint` to `changesets-markdownlint`). The manifest
+ * transform reuses this so the declared output path always matches the emitted file.
+ *
+ * @internal
+ */
+export const createEntryName = (exportKey: string, exportsAsIndexes: boolean): string => {
 	if (exportKey === ".") return "index";
 	const withoutPrefix = exportKey.replace(/^\.\//, "");
 	return exportsAsIndexes ? `${withoutPrefix}/index` : withoutPrefix.replace(/\//g, "-");
@@ -58,6 +68,16 @@ export function extractEntries(pkg: PackageJsonLike, options: ExtractOptions = {
 			const resolved = resolveToTypeScript(sourcePath);
 			if (!isTypeScriptFile(resolved)) continue;
 			const name = createEntryName(key, exportsAsIndexes);
+			// The slash-to-dash flattening is not injective (e.g. "./a-b/c" and "./a/b-c"
+			// both flatten to "a-b-c"). A collision would silently overwrite one entry and
+			// its manifest target, producing a corrupt artifact, so fail loudly instead.
+			if (name in entries) {
+				const previousKey = exportPaths[name];
+				throw new Error(
+					`Export key "${key}" flattens to entry name "${name}", which collides with export key "${previousKey}". ` +
+						`Rename one of the conflicting exports so each produces a distinct entry name.`,
+				);
+			}
 			entries[name] = resolved;
 			exportPaths[name] = key;
 		}

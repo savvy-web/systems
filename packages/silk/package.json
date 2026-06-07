@@ -30,23 +30,25 @@
 		"./commitlint/prompt": "./src/commitlint/prompt.ts",
 		"./commitlint/formatter": "./src/commitlint/formatter.ts",
 		"./lint": "./src/lint/index.ts",
-		"./biome": "./src/public/biome/silk.jsonc"
+		"./biome": "./public/biome/silk.jsonc"
 	},
 	"scripts": {
-		"build:dev": "rslib build --config-loader native --env-mode dev",
-		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"build:dev": "tsx savvy.build.ts --target dev",
+		"build:prod": "tsx savvy.build.ts --target npm",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
+		"@effect/platform": "catalog:silk",
 		"@savvy-web/cli": "workspace:*",
-		"@savvy-web/mcp": "workspace:*"
+		"@savvy-web/mcp": "workspace:*",
+		"effect": "catalog:silk",
+		"semver": "^7.8.1"
 	},
 	"devDependencies": {
 		"@changesets/cli": "^2.31.0",
 		"@commitlint/cli": "^21.0.2",
 		"@commitlint/config-conventional": "^21.0.2",
-		"@rslib/core": "0.22.0",
-		"@savvy-web/rslib-builder": "^0.21.3",
+		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
@@ -56,6 +58,7 @@
 		"markdownlint-cli2": "^0.22.1",
 		"markdownlint-cli2-formatter-codequality": "^0.0.7",
 		"prettier": "^3.8.3",
+		"tsx": "^4.22.4",
 		"turbo": "^2.9.16",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.8"
@@ -82,20 +85,20 @@
 	},
 	"publishConfig": {
 		"access": "public",
-		"directory": "dist/dev",
+		"directory": "dist/dev/pkg",
 		"linkDirectory": true,
 		"targets": [
 			{
 				"protocol": "npm",
 				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/npm",
+				"directory": "dist/prod/npm/pkg",
 				"access": "public",
 				"provenance": true
 			},
 			{
 				"protocol": "npm",
 				"registry": "https://registry.npmjs.org/",
-				"directory": "dist/npm",
+				"directory": "dist/prod/npm/pkg",
 				"access": "public",
 				"provenance": true
 			}

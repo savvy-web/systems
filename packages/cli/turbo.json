@@ -1,4 +1,13 @@
 {
 	"extends": ["//"],
-	"tasks": {}
+	"tasks": {
+		"build:dev": {
+			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
+			"outputs": ["dist/dev/**"]
+		},
+		"build:prod": {
+			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
+			"outputs": ["dist/prod/**"]
+		}
+	}
 }

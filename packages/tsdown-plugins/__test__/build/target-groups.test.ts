@@ -71,6 +71,16 @@ describe("deriveTargetGroupOptions (JS pass)", () => {
 		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve", format: ["esm", "cjs"] });
 		expect(o.fixedExtension).toBe(false);
 	});
+
+	it("never carries bundledPackages on the JS pass (dts-only concern)", () => {
+		const o = deriveTargetGroupOptions({
+			...base,
+			group: "dev",
+			devManifest: "preserve",
+			bundledPackages: ["@commitlint/types"],
+		} as never);
+		expect((o as unknown as Record<string, unknown>).bundledPackages).toBeUndefined();
+	});
 });
 
 describe("deriveDtsPassOptions (dts pass)", () => {
@@ -109,5 +119,20 @@ describe("deriveDtsPassOptions (dts pass)", () => {
 			jsx: { runtime: "automatic", importSource: "react" },
 		});
 		expect(o.jsx).toEqual({ runtime: "automatic", importSource: "react" });
+	});
+
+	it("threads bundledPackages into the dts pass when provided", () => {
+		const o = deriveDtsPassOptions({
+			...base,
+			group: "dev",
+			devManifest: "preserve",
+			bundledPackages: ["@commitlint/types"],
+		});
+		expect(o.bundledPackages).toEqual(["@commitlint/types"]);
+	});
+
+	it("omits bundledPackages from the dts pass when not provided", () => {
+		const o = deriveDtsPassOptions({ ...base, group: "dev", devManifest: "preserve" });
+		expect(o.bundledPackages).toBeUndefined();
 	});
 });

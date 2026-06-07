@@ -290,7 +290,7 @@ export class Command {
 	 * @remarks
 	 * Resolves the unified `savvy` binary via the standard tool search and
 	 * appends the `lint` subcommand, falling back to the cli dev build at
-	 * `packages/cli/dist/dev/bin/cli.js` for dogfooding scenarios where the
+	 * `packages/cli/dist/dev/pkg/bin/savvy.js` for dogfooding scenarios where the
 	 * bin isn't linked yet.
 	 *
 	 * @returns The command string to invoke `savvy lint`
@@ -303,7 +303,7 @@ export class Command {
 
 		// Fallback for dogfooding: use the cli dev build directly
 		const root = Command.findRoot();
-		return `node ${root}/packages/cli/dist/dev/bin/cli.js lint`;
+		return `node ${root}/packages/cli/dist/dev/pkg/bin/savvy.js lint`;
 	}
 
 	/**

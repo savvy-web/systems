@@ -33,6 +33,26 @@ describe("defineBuild", () => {
 		const c = defineBuild({ format: ["esm", "cjs"] });
 		expect(c.format).toEqual(["esm", "cjs"]);
 	});
+
+	it("passes bundledPackages through", () => {
+		const c = defineBuild({ bundledPackages: ["@commitlint/types"] });
+		expect(c.bundledPackages).toEqual(["@commitlint/types"]);
+	});
+
+	it("passes bundleNodeModules through", () => {
+		const c = defineBuild({ bundleNodeModules: true });
+		expect(c.bundleNodeModules).toBe(true);
+	});
+
+	it("passes dtsExternals through", () => {
+		const c = defineBuild({ dtsExternals: ["effect", "@effect/platform"] });
+		expect(c.dtsExternals).toEqual(["effect", "@effect/platform"]);
+	});
+
+	it("leaves dtsExternals undefined when not provided", () => {
+		const c = defineBuild({});
+		expect(c.dtsExternals).toBeUndefined();
+	});
 });
 
 describe("parseArgs", () => {

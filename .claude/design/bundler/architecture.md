@@ -3,9 +3,9 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-05
-last-synced: 2026-06-05
-completeness: 89
+updated: 2026-06-07
+last-synced: 2026-06-07
+completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
   - ../cli/architecture.md
@@ -16,7 +16,7 @@ dependencies:
 
 # @savvy-web/bundler architecture
 
-The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consumer installs one devDependency (`@savvy-web/bundler`), writes a self-executing `savvy.build.ts` and gets a pinned, tested tsdown transitively. This doc covers the SP1 foundation plus the M2 self-host (the bundler, `tsdown-plugins` and four leaf libraries now build via the bundler, not rslib) and the M3 bundled-dts default. The remaining rslib consumers are `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` (M4/M5).
+The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consumer installs one devDependency (`@savvy-web/bundler`), writes a self-executing `savvy.build.ts` and gets a pinned, tested tsdown transitively. This doc covers the SP1 foundation plus the M2 self-host, the M3 bundled-dts default and the M4–M6 finish: **all nine in-repo packages now build via the bundler and `@savvy-web/rslib-builder` + `@rslib/core` are decommissioned from `systems`**. The M4–M6 work added the bundling-posture knobs (`bundleNodeModules`, `bundledPackages`, `dtsExternals`) and the cjs-default-interop plugin that let the bundler reproduce every rslib posture cli/mcp/silk needed. Only Track E (full publishability) remains outstanding.
 
 ## Table of Contents
 
@@ -28,6 +28,7 @@ The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consu
 - [TargetGroup and Target model](#targetgroup-and-target-model)
 - [Multi-target publishing](#multi-target-publishing)
 - [Dual-format esm plus cjs](#dual-format-esm-plus-cjs)
+- [Bundling-posture knobs](#bundling-posture-knobs)
 - [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder)
 - [The shipped ecma.json tsconfig preset](#the-shipped-ecmajson-tsconfig-preset)
 - [Dist layout](#dist-layout)
@@ -64,9 +65,9 @@ Tracks B (SEA executables), D (JSX/React) and a §8 config-validation gate also 
 
 M1 (dual-format esm plus cjs) also landed: `defineBuild({ format })` surfaces an optional `format?: ReadonlyArray<BuildFormat>` (`"esm" | "cjs"`, default `["esm"]`) that the bundler forwards into the build loop, and adding `"cjs"` produces a dual-format build (esm `.js` plus cjs `.cjs`, dual `import`/`require` export conditions, CJS interop). The default is esm-only so every existing build is byte-unchanged. This is the prerequisite for self-hosting `systems` onto the bundler; no package opts in yet. See [Dual-format esm plus cjs](#dual-format-esm-plus-cjs).
 
-M2 (self-host) and M3 (bundled dts) landed on top: the bundler, `tsdown-plugins` and four leaf libraries (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`) now build via the bundler stack instead of rslib, and the build emits a single rolled-up `.d.ts` per public entry by default. See [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder) and (for the two-pass dts mechanics) `../tsdown-plugins/architecture.md`.
+M2 (self-host), M3 (bundled dts) and the M4–M6 finish landed on top: the bundler, `tsdown-plugins` and all seven library/host packages now build via the bundler stack instead of rslib, the build emits a single rolled-up `.d.ts` per public entry by default, and M6 deleted rslib from `systems` entirely. M4 migrated `@savvy-web/cli`; M5 migrated `@savvy-web/mcp` (corpus relocated to `public/content`) and `@savvy-web/silk` (the hard case — dual-format, force-bundled runtime, see `../silk/architecture.md`); M6 removed `@savvy-web/rslib-builder`/`@rslib/core` and the dead `build:savvy` turbo tasks. See [Self-hosting: the bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder), [Bundling-posture knobs](#bundling-posture-knobs) and (for the two-pass dts mechanics) `../tsdown-plugins/architecture.md`.
 
-Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2 — distinct from the §8 fast-fail gate, which checks structural config only) and virtual entries. Track C delivers the multi-byte-variant publishing originally scoped for SP4; M1 delivers dual-format. SP1 builds a `dev` TargetGroup; `--target npm` builds the single-`npm` default or, when a package declares the Record-map `publishConfig.targets`, every derived prod group. **Track E (full publishability) remains outstanding**, but M2 self-hosting is done — the only packages still built by `@savvy-web/rslib-builder` are `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` (M4/M5).
+Explicitly out of SP1 (see the spec's decomposition): the `bundler check` preflight/validation model (SP2 — distinct from the §8 fast-fail gate, which checks structural config only) and virtual entries. Track C delivers the multi-byte-variant publishing originally scoped for SP4; M1 delivers dual-format. SP1 builds a `dev` TargetGroup; `--target npm` builds the single-`npm` default or, when a package declares the Record-map `publishConfig.targets`, every derived prod group. **Track E (full publishability) remains the one outstanding item.** Self-hosting is otherwise COMPLETE — `@savvy-web/rslib-builder` and `@rslib/core` no longer exist in `systems` (M6); every package builds via the bundler.
 
 ## The two-package split
 
@@ -105,7 +106,7 @@ export default defineBuild({
 
 Two functions, deliberately separated so the config surface stays pure and the orchestration stays injectable.
 
-- **`defineBuild(input)`** (`src/config.ts`) normalizes and validates the config (`externals`, `devManifest`, `transform`, `output`, the optional `meta`/`jsx`/`exe`/`format`) into a `BuildConfig`, applying defaults (`devManifest: "preserve"`). It does **not** itself run the build — see `src/config.ts` for the note on why the `import.meta.main` gate lives in `run.ts`. The optional `format?: ReadonlyArray<BuildFormat>` is the **live** dual-format field (M1). A pre-existing dead `formats: ReadonlyArray<"esm">` field still sits beside it but is not consumed by the build — `format` is the one `runBuild` reads.
+- **`defineBuild(input)`** (`src/config.ts`) normalizes and validates the config (`externals`, `devManifest`, `transform`, `output`, the optional `meta`/`jsx`/`exe`/`format` plus the M4–M6 posture knobs `bundleNodeModules`/`bundledPackages`/`dtsExternals`) into a `BuildConfig`, applying defaults (`devManifest: "preserve"`). It does **not** itself run the build — see `src/config.ts` for the note on why the `import.meta.main` gate lives in `run.ts`. The optional `format?: ReadonlyArray<BuildFormat>` is the **live** dual-format field (M1). A pre-existing dead `formats: ReadonlyArray<"esm">` field still sits beside it but is not consumed by the build — `format` is the one `runBuild` reads.
 - **`runBuild(config, options)`** (`src/run.ts`) is the orchestrator: parse argv → read `package.json` at cwd → resolve effective jsx (explicit override ?? `readTsconfigJsx` inference) → write the resolved dts tsconfig (`writeResolvedTsconfig`, with the jsx forwarded) → derive entries (`packageJsonEntries`) → **run `ConfigValidator.validate(...)` first to fast-fail bad config** → branch on `--target`: `meta` and `exe` short-circuit before the main build; otherwise derive the build groups (a single `dev` group, or all prod groups from `publishConfig.targets`) → call `buildTargetGroups` (jsx and `config.format` threaded in via conditional spread) → on `--target npm` write the `targets.json` binding → assemble a `BuildReport` (one entry per built group) and render it via `renderReport`/`ReportPipelineLive`. Every IO dependency (`buildTargetGroups`, `generateMeta`, `readExports`, `readPublishTargets`, `writeTargetsBinding`, `runExeBuild`, `readTsconfigJsx`, `readOsCpu`) is injectable on `RunOptions` so the orchestration is unit-testable without touching disk or spawning tsdown.
 
 The `BuildReport` the bundler assembles in SP1 is intentionally minimal (per-TargetGroup `{ id, entries, timings, warnings, errors }`); SP2 extends it with `wouldFailProd[]` preflight findings. The report *schema* and *reporter pipeline* are owned by `tsdown-plugins`.
@@ -138,23 +139,33 @@ M1 makes the build's output formats configurable so a package can emit both esm 
 - **Why M1 exists:** it is the prerequisite for self-hosting `systems` onto the bundler. The first real `format: ["esm", "cjs"]` consumer is silk, in the separate M2–M6 self-host plan.
 - A real end-to-end integration fixture (`__test__/integration/dual-format/`) proves a dual-format build emits both formats, dual conditions and a require-able cjs output.
 
+## Bundling-posture knobs
+
+M4–M6 added three `defineBuild` knobs so a package can pick any rslib bundling posture. As with every behavior, the mechanics live in `@savvy-web/tsdown-plugins` (the per-pass `deps` shapes, the dts-posture mirror — see [Bundling posture](../tsdown-plugins/architecture.md)); `runBuild` only conditional-spreads each onto the `buildTargetGroups` call. They were driven by the cli/mcp/silk migration: cli/mcp use `externals` only (their runtime deps stay external), while silk needs all three.
+
+- **`bundleNodeModules?: boolean`** force-bundles every node_modules/workspace dep not in `externals` into the package output (rslib's bundle-everything-except-externals), and the dts pass inlines the matching types. Defaults off. silk's self-contained CJS-requireable artifact depends on it.
+- **`bundledPackages?: ReadonlyArray<string>`** inlines ONLY the listed packages' declarations into the bundled dts (rslib `dtsBundledPackages` parity), externalizing the rest. JS-pass-unaffected.
+- **`dtsExternals?: ReadonlyArray<string>`** externalizes the listed packages in the dts pass ONLY (emitted as `import` references), while the JS pass still bundles them per `bundleNodeModules`. For dependencies whose types cannot be inlined — silk lists `effect`/`@effect/platform` here because effect's `declare module` augmentations would inline into TS2320 conflicts in consumers.
+
+An integration fixture per knob (`__test__/integration/bundle-node-modules`, `bundled-packages`) proves the JS/dts split. The cjs-default-interop footer (rslib `cjsInterop` parity) is not a knob — it activates automatically for any dual-format build; see `../tsdown-plugins/architecture.md`.
+
 ## Self-hosting: the three-tier bootstrap ladder
 
-M2 retired rslib from the bundler stack and its four leaf libraries. The ladder resolves the chicken-and-egg of a builder building itself across three tiers:
+M2 retired rslib from the bundler stack and four leaf libraries; M4–M6 then migrated the last three packages and deleted rslib outright. The ladder resolves the chicken-and-egg of a builder building itself across three tiers:
 
 - **Tier 1 — `@savvy-web/tsdown-plugins`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from its **OWN `./src`** (`tsx` compiles the TS on the fly — no built copy exists yet). It cannot use `defineBuild`/`runBuild` because those live in the bundler, which is downstream.
 - **Tier 2 — `@savvy-web/bundler`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from the **already-built `@savvy-web/tsdown-plugins`** (the workspace link). It cannot use its own `defineBuild`/`runBuild` (that would need an already-built bundler).
-- **Tier 3 — the four leaf libraries** (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`) build via the normal **front-door** `defineBuild`/`runBuild`, because the bundler is built by the time they run.
+- **Tier 3 — the seven downstream packages** (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`, plus the M4–M6 additions `cli`, `mcp` and `silk`) build via the normal **front-door** `defineBuild`/`runBuild`, because the bundler is built by the time they run.
 
-Each migrated package: added `savvy.build.ts` + a `turbo.json` `$TURBO_EXTENDS$` override of `build:dev`/`build:prod`/`build:meta` outputs/inputs, swapped scripts to `tsx savvy.build.ts --target dev|npm|meta`, dropped `@savvy-web/rslib-builder` + `@rslib/core` (added `@savvy-web/bundler` + `tsx`) and deleted `rslib.config.ts`. The two escape-hatch `savvy.build.ts` files port the exact externals and prod-strip transform from the old `rslib.config.ts`; they call `buildTargetGroups` with no `meta`, so API Extractor never runs in a self-build (the old rslib `_base` apiModel suppression is therefore not carried over — see the comment headers in each `savvy.build.ts`).
+Each migrated package: added `savvy.build.ts` + a `turbo.json` `$TURBO_EXTENDS$` override of `build:dev`/`build:prod`/`build:meta` outputs/inputs, swapped scripts to `node savvy.build.ts --target dev|npm|meta`, dropped `@savvy-web/rslib-builder` + `@rslib/core` and deleted `rslib.config.ts`. The two escape-hatch (tier 1/2) `savvy.build.ts` files port the exact externals and prod-strip transform from the old `rslib.config.ts`; they call `buildTargetGroups` with no `meta`, so API Extractor never runs in a self-build (the old rslib `_base` apiModel suppression is therefore not carried over — see the comment headers in each `savvy.build.ts`). The front-door tier-3 files use the corresponding `defineBuild` options.
 
-`@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` deliberately STAY on rslib (M4/M5). Decoupled install→build ordering was verified cold: a frozen install succeeds with no build, then `pnpm build` resolves `catalog:silkPeers`.
+The three M4–M6 migrations had package-specific concerns: `cli` switched its `publishConfig` to the `dist/dev/pkg` + `dist/prod/npm/pkg` layout and fixed the silk-effects dogfood bin path (`dist/dev/pkg/bin/savvy.js`); `mcp` relocated its corpus from `src/resources/content` to top-level `public/content` because the bundler copies only `public/` (loader probe paths, `tags.ts` and turbo follow the move); `silk` is the hard case — dual-format with a force-bundled runtime, documented in `../silk/architecture.md`. M6 also added a bundler `types:check → dependsOn ["^build:dev","build:dev"]` cold-ordering fix (its fixtures import the self-package's `dist`). Decoupled install→build ordering was verified cold: a frozen install succeeds with no build, then `pnpm build` resolves `catalog:silkPeers`.
 
 ## The shipped ecma.json tsconfig preset
 
 Dropping the rslib devDep removes the `@savvy-web/rslib-builder/tsconfig/ecma/lib.json` base that all six packages extended, which would leave tsgo falling back to broken defaults. The bundler now ships its own base preset:
 
-- **`packages/bundler/public/ecma.json`** is published via the top-level `public/` copy convention and exported as `"./ecma.json": "./public/ecma.json"`. The four leaves extend `@savvy-web/bundler/ecma.json` (package specifier).
+- **`packages/bundler/public/ecma.json`** is published via the top-level `public/` copy convention and exported as `"./ecma.json": "./public/ecma.json"`. Every migrated downstream package extends `@savvy-web/bundler/ecma.json` (package specifier).
 - **The bundler extends its OWN copy by relative path** (`./public/ecma.json`) rather than the package specifier, to avoid a build-before-typecheck cycle (the package specifier resolves only after the `public/` copy lands in `dist`).
 - **`@savvy-web/tsdown-plugins` is upstream of the bundler**, so it cannot consume the package specifier. It keeps a byte-identical **synced local copy** at `packages/tsdown-plugins/ecma.json` (extends `./ecma.json`), guarded by `__test__/ecma-sync.test.ts` which fails if the two files drift.
 
@@ -240,7 +251,8 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 - **Dual-format is opt-in and dormant.** `format` defaults to esm-only, so the M1 capability adds nothing to a build until a package passes `format: ["esm", "cjs"]`. The bundler surfaces `defineBuild({ format })` and forwards it; the actual format/interop/manifest behavior is `tsdown-plugins`'.
 - **Config validation runs first.** `ConfigValidator.validate` gates every target path; the rules live in tsdown-plugins (`resolveTargets`, the exe/meta checks) and the bundler only assembles the `ValidationInput`. It is structural-shape validation, distinct from the SP2 `bundler check` preflight.
 - **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency. `@tsdown/exe` is a bundler runtime dependency (lazily imported by tsdown for `--target exe`), again not a peer.
-- **Self-hosting is done (M2).** The bundler, `tsdown-plugins` and four leaf libraries build via the bundler stack (no rslib); only `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` remain rslib-built (M4/M5). **Track E (full publishability) is the remaining outstanding work.** The two upstream packages self-build through escape-hatch `savvy.build.ts` files (not the front door) — see [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder).
+- **Self-hosting is complete (M2–M6).** Every in-repo package builds via the bundler stack; `@savvy-web/rslib-builder` and `@rslib/core` are decommissioned from `systems` (M6). **Track E (full publishability) is the remaining outstanding work.** The two upstream packages (`tsdown-plugins`, `bundler`) self-build through escape-hatch `savvy.build.ts` files; everything else uses the front door — see [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder).
+- **The bundling-posture knobs are pure wiring.** `bundleNodeModules`/`bundledPackages`/`dtsExternals` are conditional-spread onto `buildTargetGroups`; the dts-posture mirror and the cjs-default-interop plugin live in tsdown-plugins. See [Bundling-posture knobs](#bundling-posture-knobs).
 
 ## Rationale
 

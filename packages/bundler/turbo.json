@@ -8,6 +8,9 @@
 		"build:prod": {
 			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
 			"outputs": ["dist/prod/**"]
+		},
+		"types:check": {
+			"dependsOn": ["^build:dev", "build:dev"]
 		}
 	}
 }

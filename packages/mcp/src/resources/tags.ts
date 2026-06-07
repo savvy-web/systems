@@ -7,16 +7,16 @@
  */
 
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+
+import { resolveContentRoot } from "./load.js";
 
 /** Map of canonical tag -> allowed aliases. */
 export type TagRegistry = Readonly<Record<string, ReadonlyArray<string>>>;
 
-/** Load the checked-in registry from the content directory (source layout). */
+/** Load the checked-in registry from the content directory (source/built layouts). */
 export function loadTagRegistry(): TagRegistry {
-	const here = dirname(fileURLToPath(import.meta.url));
-	const path = join(here, "content", "tags.json");
+	const path = join(resolveContentRoot(), "tags.json");
 	return JSON.parse(readFileSync(path, "utf8")) as TagRegistry;
 }
 
