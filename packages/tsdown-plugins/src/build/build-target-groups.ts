@@ -34,7 +34,9 @@ export interface BuildTargetGroupsOptions {
 	/**
 	 * External packages whose declarations are inlined into the bundled dts
 	 * (rslib `dtsBundledPackages` equivalent). Forwarded to the dts pass as
-	 * tsdown `deps.onlyBundle`; the JS pass is unaffected.
+	 * `deps.dts.alwaysBundle` alongside `skipNodeModulesBundle: true`; unlike
+	 * `deps.onlyBundle` this does not enable tsdown's strict-mode check that
+	 * errors on every unlisted transitive dependency. The JS pass is unaffected.
 	 */
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 	/**

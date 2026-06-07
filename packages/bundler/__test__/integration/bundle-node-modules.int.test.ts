@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { defineBuild } from "../../src/config.js";
@@ -6,7 +6,15 @@ import { runBuild } from "../../src/run.js";
 
 const FIX = join(import.meta.dirname, "fixtures/bundle-node-modules");
 const OUT = join(FIX, "dist/dev/pkg");
-const BUNDLED_DEP = join(OUT, "node_modules/.pnpm/tinyrainbow@3.1.0/node_modules/tinyrainbow/dist/index.js");
+// Derive tinyrainbow's pnpm virtual-store dirname from the installed version so a
+// devDep version bump does not break the path assertions below. The bundler copies
+// the dep under OUT using this same `name@version` dirname, so reading it from the
+// root store (always present, unlike OUT which only exists after a build) keeps the
+// bundled-path assertion in sync with whatever version is installed.
+const PNPM_STORE = join(import.meta.dirname, "../../../../node_modules/.pnpm");
+const TINYRAINBOW_DIR = readdirSync(PNPM_STORE).find((d) => d.startsWith("tinyrainbow@"));
+if (!TINYRAINBOW_DIR) throw new Error("tinyrainbow not found in the pnpm store");
+const BUNDLED_DEP = join(OUT, "node_modules/.pnpm", TINYRAINBOW_DIR, "node_modules/tinyrainbow/dist/index.js");
 
 /** True only when the bare specifier survives as a real import/require (not a comment). */
 function hasBareReference(js: string, specifier: string): boolean {

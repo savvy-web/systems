@@ -25,8 +25,7 @@ import { Manifest } from "./schema.js";
 export function resolveContentRoot(): string {
 	const here = dirname(fileURLToPath(import.meta.url));
 	const candidates = [
-		join(here, "public", "content"), // dead probe — only matches if a future caller runs from the pkg root
-		join(here, "..", "public", "content"), // built: load.js at dist/<env>/pkg/resources/, or bin at dist/<env>/pkg/bin/
+		join(here, "..", "public", "content"), // built: load.js at dist/<env>/pkg/resources/ -> pkg/public/content
 		join(here, "..", "..", "public", "content"), // source: src/resources/ via tsx -> packages/mcp/public/content
 	];
 	for (const candidate of candidates) {

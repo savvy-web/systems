@@ -1,13 +1,13 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defineBuild } from "../../src/config.js";
 import { runBuild } from "../../src/run.js";
 
 const FIX = join(import.meta.dirname, "fixtures/bundled-packages");
 const OUT = join(FIX, "dist/dev/pkg");
 
-describe("bundledPackages: selective dts inlining (deps.onlyBundle)", () => {
+describe("bundledPackages: selective dts inlining (deps.dts.alwaysBundle)", () => {
 	beforeAll(async () => {
 		rmSync(join(FIX, "dist"), { recursive: true, force: true });
 		await runBuild(defineBuild({ devManifest: "preserve", externals: ["effect"], bundledPackages: ["rolldown"] }), {
@@ -16,6 +16,10 @@ describe("bundledPackages: selective dts inlining (deps.onlyBundle)", () => {
 			writeOutput: () => {},
 		});
 	}, 120_000);
+
+	afterAll(() => {
+		rmSync(join(FIX, "dist"), { recursive: true, force: true });
+	});
 
 	it("inlines the bundledPackages target (rolldown) into the entry dts", () => {
 		expect(existsSync(join(OUT, "index.d.ts"))).toBe(true);
