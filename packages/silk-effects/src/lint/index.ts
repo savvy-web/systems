@@ -83,9 +83,9 @@
 //   public/biome/silk.jsonc — NOT COPIED
 //     The biome config asset lives in the lint-staged build output and is
 //     referenced by path from consumer repos. silk-effects does not need to
-//     bundle or copy this file; consumers will import it from @savvy-web/lint-staged
-//     directly (which still re-exports "./biome/silk.jsonc"). No copyPatterns
-//     entry needed in rslib.config.ts.
+//     bundle or copy this file; consumers will import it from @savvy-web/silk
+//     directly (which re-exports "./biome/silk.jsonc"). The bundler copies only
+//     the public/ convention, so no build-config copy entry is needed here.
 //
 // =============================================================================
 

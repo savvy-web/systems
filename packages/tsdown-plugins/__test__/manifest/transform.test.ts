@@ -28,24 +28,55 @@ describe("manifest transform", () => {
 		});
 	});
 
-	it("emits import-only conditions for a TS export when not dual-format", () => {
-		expect(transformExports({ "./changesets": "./src/changesets/index.ts" }, false)).toEqual({
-			"./changesets": { types: "./changesets/index.d.ts", import: "./changesets/index.js" },
+	it("derives a nested subpath export's output from the flat entry name (not the source path)", () => {
+		expect(transformExports({ "./commitlint": "./src/commitlint/index.ts" }, false)).toEqual({
+			"./commitlint": { types: "./commitlint.d.ts", import: "./commitlint.js" },
 		});
 	});
 
-	it("emits both import and require conditions for a TS export when dual-format", () => {
-		expect(transformExports({ "./changesets": "./src/changesets/index.ts" }, true)).toEqual({
-			"./changesets": {
-				types: "./changesets/index.d.ts",
-				import: "./changesets/index.js",
-				require: "./changesets/index.cjs",
+	it("derives a deeper nested subpath export's output as a dash-joined flat basename", () => {
+		expect(transformExports({ "./changesets/markdownlint": "./src/changesets/markdownlint/index.ts" }, false)).toEqual({
+			"./changesets/markdownlint": {
+				types: "./changesets-markdownlint.d.ts",
+				import: "./changesets-markdownlint.js",
 			},
+		});
+	});
+
+	it("emits import-only conditions for a TS export when not dual-format", () => {
+		expect(transformExports({ "./changesets": "./src/changesets/index.ts" }, false)).toEqual({
+			"./changesets": { types: "./changesets.d.ts", import: "./changesets.js" },
+		});
+	});
+
+	it("emits both import and require conditions for a nested TS export when dual-format", () => {
+		expect(transformExports({ "./commitlint": "./src/commitlint/index.ts" }, true)).toEqual({
+			"./commitlint": {
+				types: "./commitlint.d.ts",
+				import: "./commitlint.js",
+				require: "./commitlint.cjs",
+			},
+		});
+	});
+
+	it("keeps a flat/root export byte-identical to the emitted index file in dual-format", () => {
+		expect(transformExports({ ".": "./src/index.ts" }, true)).toEqual({
+			".": { types: "./index.d.ts", import: "./index.js", require: "./index.cjs" },
 		});
 	});
 
 	it("leaves a non-TS (e.g. .jsonc/.json) export untouched in both modes", () => {
 		expect(transformExports({ "./asset": "./src/asset.jsonc" }, true)).toEqual({ "./asset": "./src/asset.jsonc" });
+		expect(transformExports({ "./biome": "./public/biome/silk.jsonc" }, true)).toEqual({
+			"./biome": "./public/biome/silk.jsonc",
+		});
+	});
+
+	it("preserves a representative flat leaf export map byte-identically (regression)", () => {
+		expect(transformExports({ ".": "./src/index.ts", "./asset": "./public/ecma.json" }, false)).toEqual({
+			".": { types: "./index.d.ts", import: "./index.js" },
+			"./asset": "./public/ecma.json",
+		});
 	});
 
 	it("rewrites TS bins to bin/<name>.js and strips leading ./", () => {

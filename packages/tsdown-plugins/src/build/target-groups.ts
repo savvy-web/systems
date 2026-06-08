@@ -26,6 +26,14 @@ export interface DeriveOptions {
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 	/** JSX transform settings to forward to rolldown's inputOptions. */
 	readonly jsx?: JsxConfig | undefined;
+	/**
+	 * External packages whose declarations should be INLINED into the bundled dts
+	 * (the rslib `dtsBundledPackages` equivalent). Maps to tsdown's `deps.onlyBundle`
+	 * in the dts pass, so ONLY these node_modules packages are rolled into the
+	 * `.d.ts` and every other dependency stays an external `import`. dts-pass-only:
+	 * runtime JS bundling is unaffected.
+	 */
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 }
 
 /**
@@ -122,6 +130,8 @@ export interface DerivedDtsPassOptions {
 	readonly isProd: boolean;
 	/** JSX transform settings to forward to rolldown's inputOptions (dts compile honors JSX). */
 	readonly jsx?: JsxConfig | undefined;
+	/** External packages to inline into the bundled dts (tsdown `deps.onlyBundle`). */
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 }
 
 const outDirFor = (cwd: string, group: TargetGroupId): string =>
@@ -170,5 +180,6 @@ export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOpti
 		define: { __PACKAGE_VERSION__: JSON.stringify(options.version) },
 		isProd,
 		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
+		...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),
 	};
 }

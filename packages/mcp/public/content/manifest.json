@@ -12,7 +12,7 @@
 			"priority": 0.5,
 			"related": ["standards/api-model-pipeline", "packages/rslib-builder/overview"],
 			"uri": "silk://guides/api-docs-from-api-extractor",
-			"lastModified": "2026-06-01T14:57:44-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "guides/building-a-github-action",
@@ -26,7 +26,7 @@
 			"priority": 0.5,
 			"related": ["guides/choosing-a-builder", "standards/api-model-pipeline"],
 			"uri": "silk://guides/building-a-github-action",
-			"lastModified": "2026-06-01T11:45:48-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "guides/choosing-a-builder",
@@ -40,7 +40,7 @@
 			"priority": 0.5,
 			"related": ["packages/rslib-builder/overview"],
 			"uri": "silk://guides/choosing-a-builder",
-			"lastModified": "2026-06-01T11:45:48-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "guides/llm-friendly-json-schemas",
@@ -54,7 +54,7 @@
 			"priority": 0.5,
 			"related": ["packages/mcp/resource-taxonomy"],
 			"uri": "silk://guides/llm-friendly-json-schemas",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/cli/command-tree",
@@ -68,7 +68,7 @@
 			"priority": 0.5,
 			"related": ["packages/cli/init-and-check", "packages/silk/install-and-setup"],
 			"uri": "silk://packages/cli/command-tree",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/cli/init-and-check",
@@ -82,7 +82,7 @@
 			"priority": 0.5,
 			"related": ["packages/cli/command-tree", "packages/silk/install-and-setup"],
 			"uri": "silk://packages/cli/init-and-check",
-			"lastModified": "2026-06-03T00:09:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/mcp/resource-taxonomy",
@@ -96,7 +96,7 @@
 			"priority": 0.5,
 			"related": ["packages/silk-effects/"],
 			"uri": "silk://packages/mcp/resource-taxonomy",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/rslib-builder/overview",
@@ -110,7 +110,7 @@
 			"priority": 0.5,
 			"related": ["standards/catalog-usage", "standards/publishability"],
 			"uri": "silk://packages/rslib-builder/overview",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/silk/export-map",
@@ -124,7 +124,7 @@
 			"priority": 0.5,
 			"related": ["packages/silk/install-and-setup"],
 			"uri": "silk://packages/silk/export-map",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/silk/install-and-setup",
@@ -138,7 +138,7 @@
 			"priority": 0.5,
 			"related": ["packages/silk/export-map", "packages/cli/init-and-check"],
 			"uri": "silk://packages/silk/install-and-setup",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/silk-effects/",
@@ -156,7 +156,7 @@
 				"standards/publishability"
 			],
 			"uri": "silk://packages/silk-effects/",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/silk-effects/managed-section",
@@ -170,7 +170,7 @@
 			"priority": 0.5,
 			"related": ["packages/silk-effects/", "packages/silk-effects/platform-layers"],
 			"uri": "silk://packages/silk-effects/managed-section",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "packages/silk-effects/platform-layers",
@@ -184,7 +184,7 @@
 			"priority": 0.5,
 			"related": ["packages/silk-effects/", "packages/silk-effects/managed-section"],
 			"uri": "silk://packages/silk-effects/platform-layers",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/api-model-pipeline",
@@ -198,7 +198,7 @@
 			"priority": 0.5,
 			"related": ["packages/mcp/resource-taxonomy"],
 			"uri": "silk://standards/api-model-pipeline",
-			"lastModified": "2026-06-01T14:57:44-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/catalog-usage",
@@ -212,7 +212,7 @@
 			"priority": 0.8,
 			"related": ["standards/publishability"],
 			"uri": "silk://standards/catalog-usage",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/changeset-discipline",
@@ -226,7 +226,7 @@
 			"priority": 0.8,
 			"related": ["packages/silk-effects/", "standards/publishability"],
 			"uri": "silk://standards/changeset-discipline",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/changeset-format",
@@ -240,7 +240,7 @@
 			"priority": 0.5,
 			"related": ["standards/changeset-discipline"],
 			"uri": "silk://standards/changeset-format",
-			"lastModified": "2026-06-03T00:09:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/commit-contract",
@@ -254,7 +254,7 @@
 			"priority": 0.8,
 			"related": ["standards/changeset-discipline"],
 			"uri": "silk://standards/commit-contract",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/dependency-conventions",
@@ -268,7 +268,7 @@
 			"priority": 0.5,
 			"related": ["standards/catalog-usage"],
 			"uri": "silk://standards/dependency-conventions",
-			"lastModified": "2026-06-01T11:45:48-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/linting-conventions",
@@ -282,7 +282,7 @@
 			"priority": 0.8,
 			"related": ["standards/test-classification"],
 			"uri": "silk://standards/linting-conventions",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/publishability",
@@ -296,7 +296,7 @@
 			"priority": 0.8,
 			"related": ["packages/silk-effects/", "standards/catalog-usage"],
 			"uri": "silk://standards/publishability",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/semver",
@@ -310,7 +310,7 @@
 			"priority": 0.5,
 			"related": ["standards/changeset-discipline"],
 			"uri": "silk://standards/semver",
-			"lastModified": "2026-06-01T11:45:48-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/test-classification",
@@ -324,7 +324,7 @@
 			"priority": 0.8,
 			"related": ["standards/linting-conventions"],
 			"uri": "silk://standards/test-classification",
-			"lastModified": "2026-06-01T00:16:43-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/turbo/best-practices",
@@ -338,7 +338,7 @@
 			"priority": 0.7,
 			"related": ["standards/turbo/environment", "standards/turbo/filtering", "standards/dependency-conventions"],
 			"uri": "silk://standards/turbo/best-practices",
-			"lastModified": "2026-06-05T14:04:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/turbo/boundaries",
@@ -352,7 +352,7 @@
 			"priority": 0.5,
 			"related": ["standards/dependency-conventions", "standards/turbo/best-practices"],
 			"uri": "silk://standards/turbo/boundaries",
-			"lastModified": "2026-06-05T14:04:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/turbo/ci",
@@ -366,7 +366,7 @@
 			"priority": 0.6,
 			"related": ["standards/turbo/filtering", "standards/turbo/environment", "standards/turbo/best-practices"],
 			"uri": "silk://standards/turbo/ci",
-			"lastModified": "2026-06-05T14:04:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/turbo/environment",
@@ -380,7 +380,7 @@
 			"priority": 0.7,
 			"related": ["standards/turbo/best-practices", "standards/turbo/ci"],
 			"uri": "silk://standards/turbo/environment",
-			"lastModified": "2026-06-05T14:04:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/turbo/filtering",
@@ -394,7 +394,7 @@
 			"priority": 0.6,
 			"related": ["standards/turbo/ci", "standards/turbo/best-practices"],
 			"uri": "silk://standards/turbo/filtering",
-			"lastModified": "2026-06-05T14:04:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		},
 		{
 			"id": "standards/turbo/watch",
@@ -408,7 +408,7 @@
 			"priority": 0.5,
 			"related": ["standards/turbo/best-practices", "standards/turbo/filtering"],
 			"uri": "silk://standards/turbo/watch",
-			"lastModified": "2026-06-05T14:04:23-04:00"
+			"lastModified": "2026-06-07T14:08:42-04:00"
 		}
 	]
 }

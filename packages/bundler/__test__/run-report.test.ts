@@ -9,7 +9,7 @@ describe("runBuild reporting", () => {
 			{ formats: ["esm"], externals: [], devManifest: "preserve", output: { format: "json" } },
 			{
 				cwd: "/abs/pkg",
-				argv: ["--target", "npm"],
+				argv: ["--target", "prod"],
 				buildTargetGroups: (async () => {}) as never,
 				writeOutput: (o) => sink.push(o.content),
 				writeTargetsBinding: () => "x",

@@ -4,16 +4,8 @@
 		"build:catalog": {
 			"cache": true,
 			"dependsOn": ["generate:api-docs"],
-			"inputs": ["$TURBO_DEFAULT$", "src/resources/content/**", "!src/resources/content/manifest.json"],
-			"outputs": ["src/resources/content/manifest.json"]
-		},
-		"build:dev": {
-			"dependsOn": ["$TURBO_EXTENDS$", "build:catalog"],
-			"inputs": ["$TURBO_EXTENDS$", "src/resources/content/**"]
-		},
-		"build:prod": {
-			"dependsOn": ["$TURBO_EXTENDS$", "build:catalog"],
-			"inputs": ["$TURBO_EXTENDS$", "src/resources/content/**"]
+			"inputs": ["$TURBO_DEFAULT$", "public/content/**", "!public/content/manifest.json"],
+			"outputs": ["public/content/manifest.json"]
 		},
 		"generate:api-docs": {
 			"cache": true,
@@ -24,7 +16,7 @@
 				"@savvy-web/github-action-builder#build:meta"
 			],
 			"inputs": ["$TURBO_DEFAULT$", "lib/models/*/**"],
-			"outputs": ["src/resources/content/packages/*/api/**"]
+			"outputs": ["public/content/packages/*/api/**"]
 		},
 		"inspect": {
 			"cache": false,

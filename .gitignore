@@ -48,7 +48,7 @@ docs/superpowers
 
 # Local development files
 packages/mcp/lib/models/*/
-packages/mcp/src/resources/content/packages/*/api/
+packages/mcp/public/content/packages/*/api/
 
 # bundler multi-meta integration fixture build artifacts
 packages/bundler/__test__/integration/fixtures/multi-meta/dist/
@@ -67,3 +67,10 @@ packages/bundler/__test__/integration/fixtures/exe/bin/
 
 # bundler dual-format integration fixture build artifacts
 packages/bundler/__test__/integration/fixtures/dual-format/dist/
+
+# Claude Code autonomous-loop wakeup lock (transient harness artifact)
+.claude/scheduled_tasks.lock
+
+
+# Don't store models for now
+website/lib/models/*

@@ -3,12 +3,14 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-05
-last-synced: 2026-06-05
+updated: 2026-06-07
+last-synced: 2026-06-07
 completeness: 92
 related:
   - ../cli/architecture.md
   - ../silk-effects/architecture.md
+  - ../tsdown-plugins/architecture.md
+  - ../bundler/architecture.md
 dependencies:
   - ../silk-effects/architecture.md
 ---
@@ -22,7 +24,7 @@ config-integration shim surface over `@savvy-web/silk-effects`, plus a static Bi
 
 - [Overview](#overview)
 - [Current State](#current-state)
-- [Known issue: non-deterministic rslib bundle](#known-issue-non-deterministic-rslib-bundle)
+- [How silk builds: force-bundle the runtime, externalize types](#how-silk-builds-force-bundle-the-runtime-externalize-types)
 - [The Shim Contract](#the-shim-contract)
 - [Export Map](#export-map)
 - [Boundaries and Invariants](#boundaries-and-invariants)
@@ -42,8 +44,9 @@ factory in a silk-local **facade** so the inferred return type stays portable fo
 
 **Package:** `@savvy-web/silk`
 **Location:** `packages/silk` in `savvy-web/systems`
-**Build:** dual-format (esm + cjs) via `@savvy-web/rslib-builder`; ships the Biome asset via
-`copyPatterns`
+**Build:** dual-format (esm + cjs) via `@savvy-web/bundler` (M5 self-host); ships the Biome asset
+through the top-level `public/` convention. See
+[How silk builds](#how-silk-builds-force-bundle-the-runtime-externalize-types).
 **Versioning:** `fixed` changeset group with `@savvy-web/cli` (they always release together)
 
 This package is the result of Silk Core sub-project 1. It replaces the
@@ -54,12 +57,62 @@ config-integration subpaths of three standalone packages (`@savvy-web/changesets
 
 Implemented and dogfooded inside `systems` (`.changeset/config.json`, commitlint, lint-staged,
 biome and markdownlint config reference `@savvy-web/silk/*`). All shims live under `src/`, one file
-per subpath; the Biome preset is a copied asset, not a shim. `private: true` in source; the builder
-flips it on build.
+per subpath; the Biome preset is a copied `public/` asset, not a shim. `private: true` in source; the
+builder flips it on build. silk now builds via `@savvy-web/bundler` (M5) — the rslib builder is gone.
+See [How silk builds](#how-silk-builds-force-bundle-the-runtime-externalize-types) for the build
+posture that the bundler migration settled on, which is **not** the approach the original plan
+described.
 
-## Known issue: non-deterministic rslib bundle
+## How silk builds: force-bundle the runtime, externalize types
 
-silk is still built by `@savvy-web/rslib-builder` (it is M5 of the bundler self-host migration; cli/mcp/silk are the remaining rslib consumers). Its rslib bundle of `effect`'s `Logger.replace` is **non-deterministic under parallel cold builds**: the chunk holding `Logger.replace` occasionally initializes in the wrong order, so loading `@savvy-web/silk/commitlint` throws `replace is not a function` and `@savvy-web/silk/lint` can throw a null `Lint.Handler`. A fresh `rm -rf packages/silk/dist && pnpm --filter @savvy-web/silk build:dev` (a clean serial rebuild) fixes it. This is an rslib/rolldown chunk-init ordering bug, **not** caused by silk-effects' bundled-dts default — silk-effects' JS stays per-module and unchanged (only its declarations are bundled; see `../tsdown-plugins/architecture.md`). Expected to resolve when silk migrates onto `@savvy-web/bundler` at M5.
+silk's build is the most demanding consumer of the bundler, and reconciling it drove four of the
+bundler's M4–M6 capabilities (`bundleNodeModules`, `dtsExternals`, the cjs-default-interop plugin and
+the flat-manifest collision guard — see `../tsdown-plugins/architecture.md`). The authoritative
+config is `packages/silk/savvy.build.ts`; its comment headers are the source of truth for each
+decision below.
+
+**The original plan dead-ended.** The earlier intent (recorded in prior versions of this doc) was to
+externalize `@savvy-web/silk-effects` from silk's bundle and have both packages ship dual-format, so
+the CJS `require` chain resolved silk-effects' own `.cjs`. That failed: `workspaces-effect` (a
+transitive silk-effects dep) is ESM-only, so a CJS `require` of an externalized silk-effects chain
+breaks. The shipped approach is the opposite — silk **force-bundles** its runtime into a
+self-contained artifact.
+
+- **`bundleNodeModules: true` force-bundles `silk-effects` and its transitive node_modules deps into
+  silk's own JS** (esm `.js` + cjs `.cjs`). Nothing in the runtime chain is externalized except the
+  three packages below, so a CJS `require("@savvy-web/silk/...")` resolves entirely from silk's own
+  bytes with no ESM-only dependency to trip over.
+- **`externals: ["typescript", "source-map-support", "semver"]`.** `typescript`/`source-map-support`
+  are normal externals. `semver` is externalized specifically because rolldown cannot emit semver's
+  circular CommonJS modules (`comparator` ↔ `range`) into ESM output without a
+  `require_range is not a function` init-order crash; it is declared as a runtime dependency instead.
+- **`dtsExternals: ["effect", "@effect/platform"]` externalizes those two in the DECLARATION pass
+  only.** The emitted `.d.ts`/`.d.cts` reference effect's types via `import` rather than inlining
+  them, while the JS pass still force-bundles effect. Inlining effect's cross-module
+  `declare module` interface augmentations produced conflicting interface-extension errors (TS2320)
+  when a consumer type-checked silk's dts. effect and `@effect/platform` are declared as runtime
+  dependencies (alongside semver) so consumers can resolve those dts type imports; both expose a
+  CJS-resolvable entry so the `require()` path still works. `silk-effects`, `workspaces-effect` and
+  `unified` are deliberately NOT in `dtsExternals` — their declarations inline cleanly and they are
+  ESM-only, so declaring them as deps would make tsdown externalize them from the JS too and break
+  the CJS `require`. They stay bundled in BOTH passes.
+- **`bundledPackages: ["@commitlint/types"]` is now DORMANT.** The silk-local commitlint facade (see
+  [the type-portability invariant](#the-type-portability-invariant)) means `@commitlint/types` is no
+  longer reachable in silk's dts, so the dts-inlining knob has nothing to inline. It is left in the
+  config as documentation of intent.
+- **The cjs-default-interop plugin is load-bearing for silk's CJS consumers.** rolldown's
+  `output.exports` cannot emit `module.exports = <default>` while keeping named exports, so an ESM
+  consumer doing `import(x).default` would receive a `{ default, ...named }` wrapper. silk's
+  `./changesets/markdownlint` default-exports the rules ARRAY, which markdownlint-cli2 reads as
+  `module.default` and `.flat()`s; without the interop footer it gets the wrapper object and aborts.
+  The plugin (rslib `cjsInterop` parity) runs automatically because silk builds dual-format — see
+  `../tsdown-plugins/architecture.md`.
+- **The peerDep promotion transform.** `@savvy-web/cli` and `@savvy-web/mcp` are declared as regular
+  `dependencies` in source (so changesets versions them in lockstep with silk; a peerDependency on a
+  released workspace package forces a major bump on every minor). The transform promotes them back
+  into `peerDependencies` for the published manifest, then keeps ONLY `{semver, effect,
+  @effect/platform}` as runtime `dependencies` (the externalized/dts-externalized packages consumers
+  must resolve) and strips the rest, since everything else is bundled.
 
 ## The Shim Contract
 
@@ -113,10 +166,12 @@ The mapping from each old package's subpaths into this tree is the load-bearing 
   and the toolchain peers via `catalog:silkPeers`. Installing `silk` pulls the `savvy` bin and all
   the tools its configs reference.
 - **Dual-format build is mandatory, not cosmetic.** Some consumers `require()` silk subpaths from
-  CJS — notably markdownlint-cli2's custom-rule loader, which loads
-  `./changesets/markdownlint` through a CommonJS path. silk is `format: ["esm", "cjs"]` and externals
-  `silk-effects`, so silk-effects must also expose a CJS entry for the `require` to resolve. That is
-  why both packages build dual-format.
+  CJS — notably markdownlint-cli2's custom-rule loader, which loads `./changesets/markdownlint`
+  through a CommonJS path. silk is `format: ["esm", "cjs"]` and **force-bundles** its silk-effects
+  runtime chain (`bundleNodeModules`) so the `require` resolves from silk's own self-contained bytes
+  rather than chasing an ESM-only transitive dep. The dual-format build also activates the
+  cjs-default-interop footer that the markdownlint-cli2 default-as-array consumer requires. See
+  [How silk builds](#how-silk-builds-force-bundle-the-runtime-externalize-types).
 
 ## The type-portability invariant
 

@@ -2,11 +2,6 @@ import { defineBuild, runBuild } from "@savvy-web/bundler";
 
 const config = defineBuild({
 	externals: [
-		"@actions/cache",
-		"@actions/core",
-		"@actions/exec",
-		"@actions/github",
-		"@actions/tool-cache",
 		"@effect/cluster",
 		"@effect/platform",
 		"@effect/platform-node",
@@ -17,7 +12,7 @@ const config = defineBuild({
 	],
 	devManifest: "preserve",
 	meta: {
-		localPaths: ["../mcp/lib/models/github-action-effects"],
+		localPaths: ["../mcp/lib/models/github-action-effects", "../../website/lib/models/github-action-effects"],
 		tsdoc: { suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }] },
 	},
 	transform: ({ pkg }) => {

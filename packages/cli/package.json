@@ -26,8 +26,8 @@
 		"savvy": "./src/bin/cli.ts"
 	},
 	"scripts": {
-		"build:dev": "rslib build --config-loader native --env-mode dev",
-		"build:prod": "rslib build --config-loader native --env-mode npm",
+		"build:dev": "node savvy.build.ts --target dev",
+		"build:prod": "node savvy.build.ts --target prod",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
@@ -41,32 +41,20 @@
 		"yaml": "^2.9.0"
 	},
 	"devDependencies": {
-		"@rslib/core": "0.22.0",
-		"@savvy-web/rslib-builder": "^0.21.3",
+		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
+		"tsx": "^4.22.4",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.8"
 	},
 	"publishConfig": {
 		"access": "public",
-		"directory": "dist/dev",
+		"directory": "dist/dev/pkg",
 		"linkDirectory": true,
-		"targets": [
-			{
-				"protocol": "npm",
-				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/npm",
-				"access": "public",
-				"provenance": true
-			},
-			{
-				"protocol": "npm",
-				"registry": "https://registry.npmjs.org/",
-				"directory": "dist/npm",
-				"access": "public",
-				"provenance": true
-			}
-		]
+		"targets": {
+			"npm": true,
+			"github": true
+		}
 	}
 }

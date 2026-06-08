@@ -135,6 +135,53 @@ describe("buildTargetGroups", () => {
 		expect(captured[0]?.inputOptions?.jsx).toEqual({ runtime: "automatic", importSource: "react" });
 	});
 
+	it("attaches the cjs-default-interop plugin to BOTH the JS and dts passes only when format includes cjs", async () => {
+		// Capture plugin names per pass. The JS pass has dts === false; the dts pass has dts
+		// !== false (the emitDtsOnly pass). The dts-pass attachment is LOAD-BEARING: tsdown's
+		// dts pass re-emits the .cjs for dual format and would overwrite the JS pass's footer,
+		// so the interop plugin MUST be present there too (a refactor dropping it would silently
+		// regress the lint:md fix while every JS-pass-only assertion still passes).
+		const passes: Array<{ kind: "js" | "dts"; plugins: Array<string> }> = [];
+		const build = (async (cfg: { dts: unknown; plugins: Array<{ name?: string }> }) => {
+			passes.push({
+				kind: cfg.dts === false ? "js" : "dts",
+				plugins: cfg.plugins.map((p) => p.name ?? ""),
+			});
+		}) as never;
+
+		// esm-only (default): interop plugin absent from BOTH passes.
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build,
+		});
+		const esmJs = passes.find((p) => p.kind === "js");
+		const esmDts = passes.find((p) => p.kind === "dts");
+		expect(esmJs?.plugins).not.toContain("savvy:cjs-default-interop");
+		expect(esmDts?.plugins).not.toContain("savvy:cjs-default-interop");
+
+		// dual esm+cjs: interop plugin present on BOTH the JS pass and the dts pass.
+		passes.length = 0;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			format: ["esm", "cjs"],
+			build,
+		});
+		const dualJs = passes.find((p) => p.kind === "js");
+		const dualDts = passes.find((p) => p.kind === "dts");
+		expect(dualJs?.plugins).toContain("savvy:cjs-default-interop");
+		expect(dualDts?.plugins).toContain("savvy:cjs-default-interop");
+	});
+
 	it("emits dual import/require export conditions when format includes cjs", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "btg-"));
 		await writeFile(
@@ -237,5 +284,330 @@ describe("buildTargetGroups", () => {
 			build,
 		});
 		expect(captured[0]?.format).toEqual(["esm", "cjs"]);
+	});
+
+	it("inlines bundledPackages in the dts pass via skipNodeModulesBundle + deps.dts.alwaysBundle, not the JS pass", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["typescript"],
+			bundledPackages: ["@commitlint/types"],
+			build,
+		});
+		// [0] = JS pass, [1] = dts pass for the single group.
+		// JS pass must NOT carry the dts-only inlining knobs.
+		expect((captured[0]?.deps as { onlyBundle?: unknown } | undefined)?.onlyBundle).toBeUndefined();
+		expect(
+			(captured[0]?.deps as { skipNodeModulesBundle?: unknown } | undefined)?.skipNodeModulesBundle,
+		).toBeUndefined();
+		expect((captured[0]?.deps as { dts?: unknown } | undefined)?.dts).toBeUndefined();
+		// dts pass: externalize all node_modules, force-bundle only the listed packages.
+		// onlyBundle is intentionally NOT used (it puts tsdown into strict mode).
+		expect((captured[1]?.deps as { onlyBundle?: unknown })?.onlyBundle).toBeUndefined();
+		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(true);
+		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
+			"@commitlint/types",
+		]);
+		// neverBundle (externals) still applies on the dts pass too.
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
+	});
+
+	it("inlines bundledPackages without neverBundle when bundledPackages is set but externals are not", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			bundledPackages: ["@commitlint/types"],
+			build,
+		});
+		// JS pass: no deps at all.
+		expect(captured[0]?.deps).toBeUndefined();
+		// dts pass: skipNodeModulesBundle + dts.alwaysBundle present, neverBundle absent.
+		expect((captured[1]?.deps as { onlyBundle?: unknown })?.onlyBundle).toBeUndefined();
+		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(true);
+		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
+			"@commitlint/types",
+		]);
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toBeUndefined();
+	});
+
+	it("inlines all node_modules into BOTH passes when bundleNodeModules is set (dts posture tracks the JS pass)", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["typescript"],
+			bundleNodeModules: true,
+			build,
+		});
+		// [0] = JS pass: skipNodeModulesBundle false, neverBundle (externals) still present.
+		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
+		// [1] = dts pass: must MATCH the JS posture so the declarations are self-contained
+		// (rslib parity). skipNodeModulesBundle false inlines every node_modules type; no
+		// dts.alwaysBundle because bundledPackages is not set.
+		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		expect((captured[1]?.deps as { dts?: unknown })?.dts).toBeUndefined();
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
+	});
+
+	it("inlines all node_modules into the dts AND keeps dts.alwaysBundle when both bundleNodeModules and bundledPackages are set", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["typescript"],
+			bundleNodeModules: true,
+			bundledPackages: ["@commitlint/types"],
+			build,
+		});
+		// JS pass unchanged: skipNodeModulesBundle false, no dts/onlyBundle inlining knobs.
+		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		expect((captured[0]?.deps as { dts?: unknown })?.dts).toBeUndefined();
+		// dts pass: bundleNodeModules wins (skipNodeModulesBundle false inlines everything),
+		// and dts.alwaysBundle is included as belt-and-suspenders since bundledPackages is set.
+		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
+			"@commitlint/types",
+		]);
+		// onlyBundle is never used (strict-mode trap).
+		expect((captured[1]?.deps as { onlyBundle?: unknown })?.onlyBundle).toBeUndefined();
+	});
+
+	it("sets deps.skipNodeModulesBundle false on the JS pass even when no externals are configured", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			bundleNodeModules: true,
+			build,
+		});
+		// JS pass: skipNodeModulesBundle false present, neverBundle absent (no externals).
+		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toBeUndefined();
+	});
+
+	it("leaves the JS pass deps unchanged when bundleNodeModules is absent or false", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["typescript"],
+			build,
+		});
+		// JS pass: only neverBundle, no skipNodeModulesBundle key.
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
+		expect(captured[0]?.deps as Record<string, unknown>).not.toHaveProperty("skipNodeModulesBundle");
+	});
+
+	it("keeps the leaf dts pass deps byte-identical (only neverBundle) when neither bundle flag is set", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["effect"],
+			build,
+		});
+		// dts pass (the four-leaves else-branch): neverBundle ONLY — no skipNodeModulesBundle,
+		// no dts.alwaysBundle, no onlyBundle. This guards against regressing the leaves.
+		expect(captured[1]?.deps).toEqual({ neverBundle: ["effect"] });
+	});
+
+	it("emits no deps at all on either pass when no externals and no bundle flags are set", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build,
+		});
+		expect(captured[0]?.deps).toBeUndefined();
+		expect(captured[1]?.deps).toBeUndefined();
+	});
+
+	it("emits no deps at all on either pass when externals is an explicit empty array and no bundle flags are set", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			// Explicit empty array (the runBuild default). An empty array is truthy, so a
+			// naive truthy guard would emit a spurious empty `deps: {}` on both passes.
+			externals: [],
+			build,
+		});
+		expect(captured[0]?.deps).toBeUndefined();
+		expect(captured[1]?.deps).toBeUndefined();
+	});
+
+	it("unions dtsExternals into the dts pass neverBundle while the JS pass bundles them (bundleNodeModules)", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["typescript", "source-map-support"],
+			bundleNodeModules: true,
+			bundledPackages: ["@commitlint/types"],
+			dtsExternals: ["effect", "@effect/platform"],
+			build,
+		});
+		// JS pass: still force-bundles node_modules; neverBundle is the externals ONLY,
+		// NOT the dtsExternals (the JS pass bundles effect for the self-contained runtime).
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript", "source-map-support"]);
+		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// dts pass: neverBundle is the UNION of externals + dtsExternals, so effect stays an
+		// external import reference in the .d.ts while every other node_modules type inlines.
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual([
+			"typescript",
+			"source-map-support",
+			"effect",
+			"@effect/platform",
+		]);
+		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
+			"@commitlint/types",
+		]);
+	});
+
+	it("unions dtsExternals into the dts pass neverBundle with no externals configured", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			bundleNodeModules: true,
+			dtsExternals: ["effect"],
+			build,
+		});
+		// JS pass: no neverBundle (no externals), still force-bundles everything.
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toBeUndefined();
+		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// dts pass: neverBundle is just the dtsExternals.
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["effect"]);
+		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+	});
+
+	it("unions dtsExternals into the dts pass neverBundle in the bundledPackages-only branch", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["typescript"],
+			bundledPackages: ["@commitlint/types"],
+			dtsExternals: ["effect"],
+			build,
+		});
+		// JS pass: neverBundle is externals only (no dtsExternals, no bundle flag here).
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
+		// dts pass: neverBundle is the union; skipNodeModulesBundle true + alwaysBundle preserved.
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript", "effect"]);
+		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(true);
+		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
+			"@commitlint/types",
+		]);
+	});
+
+	it("unions dtsExternals into the dts pass neverBundle in the plain branch (no bundle flags)", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["typescript"],
+			dtsExternals: ["effect"],
+			build,
+		});
+		// JS pass: externals only.
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
+		// dts pass: union, nothing else (plain leaf branch).
+		expect(captured[1]?.deps).toEqual({ neverBundle: ["typescript", "effect"] });
 	});
 });

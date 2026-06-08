@@ -4,7 +4,7 @@ const config = defineBuild({
 	externals: ["effect"],
 	devManifest: "preserve",
 	meta: {
-		localPaths: ["../mcp/lib/models/templates"],
+		localPaths: ["../mcp/lib/models/templates", "../../website/lib/models/templates"],
 		tsdoc: { suppressWarnings: [{ messageId: "ae-forgotten-export" }] },
 	},
 	transform: ({ pkg }) => {

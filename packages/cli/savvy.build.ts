@@ -1,6 +1,6 @@
-import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
+import { defineBuild, runBuild } from "@savvy-web/bundler";
 
-export default NodeLibraryBuilder.create({
+const config = defineBuild({
 	externals: [
 		"@effect/cli",
 		"@effect/platform",
@@ -9,12 +9,20 @@ export default NodeLibraryBuilder.create({
 		"effect",
 		"workspaces-effect",
 	],
-	transform({ pkg }) {
+	devManifest: "preserve",
+	transform: ({ pkg }) => {
 		delete pkg.devDependencies;
 		delete pkg.bundleDependencies;
 		delete pkg.scripts;
 		delete pkg.publishConfig;
+		delete pkg.packageManager;
 		delete pkg.devEngines;
 		return pkg;
 	},
 });
+
+export default config;
+
+if (import.meta.main) {
+	await runBuild(config, { cwd: import.meta.dirname, argv: process.argv.slice(2) });
+}

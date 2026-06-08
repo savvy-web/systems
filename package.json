@@ -23,7 +23,7 @@
 		"check": "savvy check",
 		"ci:build": "CI=\"true\" turbo run build:dev build:prod --log-order=grouped --output-logs=full --log-prefix=none",
 		"ci:test": "CI=\"true\" vitest run",
-		"ci:version": "turbo run build:dev --filter=@savvy-web/cli --filter=@savvy-web/silk && node packages/cli/dist/dev/bin/savvy.js changeset version && biome format --write .",
+		"ci:version": "turbo run build:dev --filter=@savvy-web/cli --filter=@savvy-web/silk && node packages/cli/dist/dev/pkg/bin/savvy.js changeset version && biome format --write .",
 		"dev:mcp": "turbo run inspect --filter=@savvy-web/mcp",
 		"init": "savvy init",
 		"lint": "biome check --max-diagnostics=none",
@@ -31,17 +31,15 @@
 		"lint:fix:unsafe": "biome check --write --unsafe --max-diagnostics=none",
 		"lint:md": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc'",
 		"lint:md:fix": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc' --fix",
-		"prepare": "husky",
+		"prepare": "husky && turbo run build:dev",
 		"test": "vitest run",
 		"typecheck": "turbo run types:check //#types:check --log-prefix=none --log-order=grouped",
 		"types:check": "tsgo --noEmit"
 	},
 	"devDependencies": {
-		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@savvy-web/tsdown-plugins": "workspace:*",
 		"@savvy-web/vitest": "^1.4.0"
 	},
 	"packageManager": "pnpm@11.5.1+sha512.93f7b57422ea7068257235b4c16eb60762eb68e1dc23723199cc739043ea9be2c4143274a399d8c6defa2b1176226d9ca1c4b63482d6200c1a8fbaa78c1d1485",

@@ -24,8 +24,8 @@
 		"./ecma.json": "./public/ecma.json"
 	},
 	"scripts": {
-		"build:dev": "tsx savvy.build.ts --target dev",
-		"build:prod": "tsx savvy.build.ts --target npm",
+		"build:dev": "node savvy.build.ts --target dev",
+		"build:prod": "node savvy.build.ts --target prod",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
@@ -39,6 +39,8 @@
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
+		"rolldown": "^1.1.0",
+		"tinyrainbow": "^3.1.0",
 		"tsx": "^4.22.4",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.8"

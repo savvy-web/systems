@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-06-02
-last-synced: 2026-06-02
+updated: 2026-06-07
+last-synced: 2026-06-07
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -55,7 +55,13 @@ commitlint live) is sub-project 1's "done" criterion.
 
 `@savvy-web/cli` depends on `@savvy-web/silk-effects` (`workspace:*`), `@effect/cli`,
 `@effect/platform`, `@effect/platform-node`, `effect`, plus `workspaces-effect`, `jsonc-effect` and
-`yaml`. `private: true` in source; the rslib-builder flips it on build via `publishConfig.access`.
+`yaml`. `private: true` in source; the builder flips it on build via `publishConfig.access`.
+
+It now builds via `@savvy-web/bundler` (M4): a front-door `savvy.build.ts` declaring its runtime
+deps as `externals` (the cli keeps them external rather than bundling), with the `publishConfig`
+moved to the `dist/dev/pkg` link layout + `dist/prod/npm/pkg` tarball root. The migration also fixed
+the silk-effects dogfood bin path to `dist/dev/pkg/bin/savvy.js`. The rslib builder is gone. See
+`../bundler/architecture.md`.
 
 ## Command Tree
 

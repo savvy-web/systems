@@ -9,6 +9,30 @@ export interface OutputConfig {
 export interface BuildConfigInput {
 	readonly formats?: ReadonlyArray<"esm">;
 	readonly externals?: ReadonlyArray<string>;
+	/**
+	 * External packages whose type declarations are inlined into the bundled dts
+	 * (the rslib `dtsBundledPackages` equivalent). Only these node_modules
+	 * packages are rolled into the emitted `.d.ts`; all other deps stay external.
+	 */
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	/**
+	 * Packages externalized in the dts pass ONLY — referenced via `import` in the
+	 * emitted `.d.ts` rather than inlined — while the JS pass still bundles them per
+	 * `bundleNodeModules`. Use when a dependency's types cannot be safely inlined,
+	 * for example effect's cross-module `declare module` augmentations, which inline
+	 * into conflicting interface-extension errors in consumers. Declare these as
+	 * package dependencies so consumers can resolve the emitted type imports.
+	 */
+	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+	/**
+	 * Force-bundle node_modules (and workspace) JS dependencies that are not
+	 * externalized into the package output, restoring the self-contained bundle
+	 * the rslib builder produced. Threads tsdown `deps.skipNodeModulesBundle:
+	 * false` into BOTH the JS output and the bundled declarations: the dts posture
+	 * tracks the JS posture, so node_modules types are inlined into the `.d.ts`
+	 * and the published package needs no extra declared deps for them. Defaults to false.
+	 */
+	readonly bundleNodeModules?: boolean | undefined;
 	readonly devManifest?: "preserve" | "resolve";
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	readonly output?: OutputConfig;
@@ -26,6 +50,28 @@ export interface BuildConfigInput {
 export interface BuildConfig {
 	readonly formats: ReadonlyArray<"esm">;
 	readonly externals: ReadonlyArray<string>;
+	/**
+	 * External packages whose type declarations are inlined into the bundled dts
+	 * (the rslib `dtsBundledPackages` equivalent). Only these node_modules
+	 * packages are rolled into the emitted `.d.ts`; all other deps stay external.
+	 */
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	/**
+	 * Packages externalized in the dts pass ONLY — referenced via `import` in the
+	 * emitted `.d.ts` rather than inlined — while the JS pass still bundles them per
+	 * `bundleNodeModules`. Use when a dependency's types cannot be safely inlined
+	 * (e.g. effect's cross-module `declare module` augmentations). Declare these as
+	 * package dependencies so consumers can resolve the emitted type imports.
+	 */
+	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+	/**
+	 * Force-bundle node_modules (and workspace) JS dependencies that are not
+	 * externalized into the package output (rslib parity). Threads tsdown
+	 * `deps.skipNodeModulesBundle: false` into BOTH the JS output and the bundled
+	 * declarations — the dts posture tracks the JS posture, inlining node_modules
+	 * types into the `.d.ts`. Defaults to false.
+	 */
+	readonly bundleNodeModules?: boolean | undefined;
 	readonly devManifest: "preserve" | "resolve";
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
 	readonly output?: OutputConfig | undefined;
@@ -41,6 +87,9 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 	const config: BuildConfig = {
 		formats: input.formats ?? ["esm"],
 		externals: input.externals ?? [],
+		bundledPackages: input.bundledPackages,
+		dtsExternals: input.dtsExternals,
+		bundleNodeModules: input.bundleNodeModules,
 		devManifest: input.devManifest ?? "preserve",
 		transform: input.transform,
 		output: input.output,
@@ -55,17 +104,17 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 }
 
 export interface ParsedArgs {
-	readonly target: "dev" | "npm" | "meta" | "exe";
+	readonly target: "dev" | "prod" | "meta" | "exe";
 	readonly watch: boolean;
 }
 
 export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
-	let target: "dev" | "npm" | "meta" | "exe" = "dev";
+	let target: "dev" | "prod" | "meta" | "exe" = "dev";
 	let watch = false;
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--target") {
 			const v = argv[i + 1];
-			if (v === "dev" || v === "npm" || v === "meta" || v === "exe") target = v;
+			if (v === "dev" || v === "prod" || v === "meta" || v === "exe") target = v;
 			i++;
 		} else if (argv[i] === "--watch") {
 			watch = true;

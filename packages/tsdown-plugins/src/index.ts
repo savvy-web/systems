@@ -2,6 +2,8 @@ export type { ManifestLike } from "workspaces-effect";
 export { CatalogAssemblyError, CatalogResolutionError } from "workspaces-effect";
 export type { BuildTargetGroupsOptions, TsdownBuild } from "./build/build-target-groups.js";
 export { buildTargetGroups } from "./build/build-target-groups.js";
+export { cjsDefaultInterop } from "./build/cjs-default-interop.js";
+export { syncPublicDir } from "./build/sync-public.js";
 export type {
 	BuildFormat,
 	BuildGroupSpec,
@@ -46,6 +48,8 @@ export type {
 export { normalizeMetaOptions } from "./meta/config.js";
 export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
 export { generateMeta } from "./meta/generate.js";
+export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
+export { TsconfigResolver, resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
 export type { Formatter, FormatterContext, RenderedOutput } from "./report/formatters/index.js";
 export {
 	CiAnnotationsFormatter,

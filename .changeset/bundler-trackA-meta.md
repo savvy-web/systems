@@ -18,7 +18,7 @@ New exports:
 
 * New `meta?: MetaOptions` field on `defineBuild`
 * New `savvy build --target meta` — generates the api-model from the dev build's `.d.ts` and writes it into each configured `localPaths` directory. The target depends only on `build:dev` and runs no tsdown build of its own.
-* `savvy build --target npm` now also emits a `meta/` release-asset bundle into `dist/prod/npm/meta` when `meta` is configured.
+* `savvy build --target prod` now also emits a `meta/` release-asset bundle into `dist/prod/npm/meta` when `meta` is configured.
 
 ## Dependencies
 

@@ -226,18 +226,21 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		groups,
 		devManifest: config.devManifest,
 		externals: config.externals,
+		...(config.bundledPackages !== undefined ? { bundledPackages: config.bundledPackages } : {}),
+		...(config.dtsExternals !== undefined ? { dtsExternals: config.dtsExternals } : {}),
+		...(config.bundleNodeModules !== undefined ? { bundleNodeModules: config.bundleNodeModules } : {}),
 		...(config.transform !== undefined ? { transform: config.transform } : {}),
 		...(jsx !== undefined ? { jsx } : {}),
 		...(config.format !== undefined ? { format: config.format } : {}),
 	});
 
 	// Write the target-to-group binding for the release action (prod only).
-	if (target === "npm" && resolution !== undefined) {
+	if (target === "prod" && resolution !== undefined) {
 		writeBinding(cwd, resolution);
 	}
 
-	// --target npm with meta set: emit the meta/ release-asset bundle alongside the canonical group's pkg/.
-	if (target === "npm" && config.meta !== undefined) {
+	// --target prod with meta set: emit the meta/ release-asset bundle alongside the canonical group's pkg/.
+	if (target === "prod" && config.meta !== undefined) {
 		const metaGroup = groups.find((g) => g.name === packageName) ?? groups[0];
 		const metaGroupId = metaGroup?.id ?? "npm";
 		const norm = normalizeMetaOptions(config.meta);

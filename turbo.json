@@ -18,78 +18,69 @@
 				"$TURBO_ROOT$/pnpm-workspace.yaml",
 				"$TURBO_ROOT$/pnpm-lock.yaml",
 				"$TURBO_ROOT$/tsconfig.json",
+				"README.md",
+				"LICENSE",
 				"package.json",
 				"tsconfig.json",
-				"README.md",
-				"rslib.config.ts",
-				"LICENSE",
+				"*.ts",
+				"*.mts",
+				"*.cts",
+				"public/**/*",
 				"lib/**/*",
 				"src/**/*"
 			],
 			"outputLogs": "full",
-			"outputs": ["dist/dev/**"]
+			"outputs": ["dist/dev/pkg/**"]
 		},
 		"build:meta": {
 			"cache": false,
 			"dependsOn": ["build:dev"],
-			"outputs": []
+			"inputs": ["$TURBO_DEFAULT$", "dist/dev/pkg/**"],
+			"outputs": ["dist/dev/meta/**"]
 		},
 		"build:prod": {
 			"cache": true,
-			"dependsOn": ["types:check"],
+			"dependsOn": ["types:check", "build:meta"],
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/package.json",
 				"$TURBO_ROOT$/pnpm-workspace.yaml",
 				"$TURBO_ROOT$/pnpm-lock.yaml",
 				"$TURBO_ROOT$/tsconfig.json",
-				"package.json",
-				"tsconfig.json",
-				"rslib.config.ts",
 				"README.md",
 				"LICENSE",
+				"package.json",
+				"tsconfig.json",
+				"*.ts",
+				"*.mts",
+				"*.cts",
+				"public/**/*",
 				"lib/**/*",
 				"src/**/*"
 			],
 			"outputLogs": "full",
-			"outputs": ["dist/npm/**"]
-		},
-		"build:savvy:dev": {
-			"cache": true,
-			"dependsOn": ["^build:savvy:dev"],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"$TURBO_ROOT$/pnpm-workspace.yaml",
-				"$TURBO_ROOT$/pnpm-lock.yaml",
-				"package.json",
-				"tsconfig.json",
-				"savvy.build.ts",
-				"README.md",
-				"LICENSE",
-				"src/**/*"
-			],
-			"outputs": ["dist/dev/**"]
-		},
-		"build:savvy:prod": {
-			"cache": true,
-			"dependsOn": ["^build:savvy:dev"],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"$TURBO_ROOT$/pnpm-workspace.yaml",
-				"$TURBO_ROOT$/pnpm-lock.yaml",
-				"package.json",
-				"tsconfig.json",
-				"savvy.build.ts",
-				"README.md",
-				"LICENSE",
-				"src/**/*"
-			],
 			"outputs": ["dist/prod/**"]
 		},
 		"types:check": {
 			"cache": true,
 			"dependsOn": ["^build:dev"],
-			"inputs": ["*.ts", "src/**/*.ts", "lib/**/*.ts", "lib/**/*.mts", "__test__/**/*.ts"],
+			"inputs": [
+				"*.ts",
+				"*.mts",
+				"*.cts",
+				"src/**/*.ts",
+				"src/**/*.tsx",
+				"src/**/*.mts",
+				"src/**/*.cts",
+				"lib/**/*.ts",
+				"lib/**/*.tsx",
+				"lib/**/*.mts",
+				"lib/**/*.cts",
+				"__test__/**/*.ts",
+				"__test__/**/*.tsx",
+				"__test__/**/*.mts",
+				"__test__/**/*.cts"
+			],
 			"outputLogs": "errors-only",
 			"outputs": ["dist/.tsbuildinfo.lib"]
 		}

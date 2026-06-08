@@ -11,7 +11,7 @@ open-source ecosystem maintained by Savvy Web Systems.
 * **Languages:** TypeScript, YAML configuration
 * **Package Manager:** pnpm 10.33.0 with `@savvy-web/pnpm-plugin-silk` config dependency
 * **Node.js Version:** 24.11.0 (specified in devEngines)
-* **Build System:** Turborepo orchestration, `@savvy-web/rslib-builder` for packages
+* **Build System:** Turborepo orchestration, `@savvy-web/bundler` for packages
 
 ## Planned Packages
 

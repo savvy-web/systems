@@ -1,16 +1,8 @@
 {
 	"extends": ["//"],
 	"tasks": {
-		"build:dev": {
-			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
-			"outputs": ["dist/dev/**"]
-		},
 		"build:meta": {
-			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"]
-		},
-		"build:prod": {
-			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts"],
-			"outputs": ["dist/prod/**"]
+			"outputs": ["$TURBO_EXTENDS$", "../mcp/lib/models/silk-effects", "../../website/lib/models/silk-effects"]
 		}
 	}
 }

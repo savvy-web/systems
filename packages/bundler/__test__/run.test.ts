@@ -22,13 +22,13 @@ describe("runBuild", () => {
 		expect(arg.externals).toEqual(["typescript"]);
 	});
 
-	it("maps target npm -> a single npm group spec (default, no targets)", async () => {
+	it("maps target prod -> a single npm group spec (default, no targets)", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
 			{ formats: ["esm"], externals: [], devManifest: "preserve" },
 			{
 				cwd: "/abs/pkg",
-				argv: ["--target", "npm"],
+				argv: ["--target", "prod"],
 				buildTargetGroups: spy,
 				writeTsconfig: () => "/tmp/fake-tsconfig.json",
 				readPackageName: () => "base",
@@ -127,5 +127,98 @@ describe("runBuild", () => {
 		);
 		expect("format" in spy.mock.calls[0][0]).toBe(false);
 		expect(spy.mock.calls[0][0].format).toBeUndefined();
+	});
+
+	it("forwards bundledPackages to the build", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve", bundledPackages: ["@commitlint/types"] },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect(spy.mock.calls[0][0].bundledPackages).toEqual(["@commitlint/types"]);
+	});
+
+	it("omits bundledPackages from the build call when the config does not request it", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve" },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect("bundledPackages" in spy.mock.calls[0][0]).toBe(false);
+		expect(spy.mock.calls[0][0].bundledPackages).toBeUndefined();
+	});
+
+	it("forwards bundleNodeModules to the build", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve", bundleNodeModules: true },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect(spy.mock.calls[0][0].bundleNodeModules).toBe(true);
+	});
+
+	it("omits bundleNodeModules from the build call when the config does not request it", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve" },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect("bundleNodeModules" in spy.mock.calls[0][0]).toBe(false);
+		expect(spy.mock.calls[0][0].bundleNodeModules).toBeUndefined();
+	});
+
+	it("forwards dtsExternals to the build", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve", dtsExternals: ["effect", "@effect/platform"] },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect(spy.mock.calls[0][0].dtsExternals).toEqual(["effect", "@effect/platform"]);
+	});
+
+	it("omits dtsExternals from the build call when the config does not request it", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve" },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect("dtsExternals" in spy.mock.calls[0][0]).toBe(false);
+		expect(spy.mock.calls[0][0].dtsExternals).toBeUndefined();
 	});
 });

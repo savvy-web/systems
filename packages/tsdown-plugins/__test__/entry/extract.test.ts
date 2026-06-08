@@ -44,6 +44,17 @@ describe("extractEntries", () => {
 		expect(r.entries).toEqual({ "foo/bar/index": "./src/foo/bar.ts" });
 	});
 
+	it("throws when two distinct export keys flatten to the same entry name", () => {
+		expect(() => extractEntries({ exports: { "./a-b/c": "./src/a-b/c.ts", "./a/b-c": "./src/a/b-c.ts" } })).toThrow(
+			/collides/,
+		);
+	});
+
+	it("does not throw for distinct export keys that flatten to distinct names", () => {
+		const r = extractEntries({ exports: { "./a/b": "./src/a/b.ts", "./a/c": "./src/a/c.ts" } });
+		expect(r.entries).toEqual({ "a-b": "./src/a/b.ts", "a-c": "./src/a/c.ts" });
+	});
+
 	it("string bin -> bin/cli", () => {
 		expect(extractEntries({ bin: "./src/bin/cli.ts" }).entries).toEqual({ "bin/cli": "./src/bin/cli.ts" });
 	});

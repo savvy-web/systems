@@ -1,35 +1,43 @@
 // packages/tsdown-plugins/src/manifest/transform.ts
 import sortPackageJson from "sort-package-json";
+import { createEntryName } from "../entry/extract.js";
 
 export type Json = Record<string, unknown>;
 
 const stripLeadingDotSlash = (p: string): string => (p.startsWith("./") ? p.slice(2) : p);
 
-/** TS source path to built .js (and .d.ts for types). Mirrors rslib transformExportPath. */
-const toBuiltJs = (p: string): string =>
-	"./" +
-	stripLeadingDotSlash(p)
-		.replace(/^src\//, "")
-		.replace(/\.tsx?$/, ".js");
-const toBuiltDts = (p: string): string => toBuiltJs(p).replace(/\.js$/, ".d.ts");
-const toBuiltCjs = (p: string): string => toBuiltJs(p).replace(/\.js$/, ".cjs");
+/**
+ * Built .js output basename for an export, derived from the entry NAME (the basename
+ * the build actually emits) rather than the source path. The entry namer flattens
+ * nested subpaths to a dash-joined basename (e.g. `./commitlint` to `commitlint.js`,
+ * `./changesets/markdownlint` to `changesets-markdownlint.js`), so the declared path
+ * always matches the file tsdown emits. The build never sets exportsAsIndexes, so the
+ * manifest mirrors the flat (false) naming here.
+ */
+const toBuiltJs = (exportKey: string): string => `./${createEntryName(exportKey, false)}.js`;
+const toBuiltDts = (exportKey: string): string => toBuiltJs(exportKey).replace(/\.js$/, ".d.ts");
+const toBuiltCjs = (exportKey: string): string => toBuiltJs(exportKey).replace(/\.js$/, ".cjs");
 
 const isTs = (p: string): boolean => p.endsWith(".ts") || p.endsWith(".tsx");
 
 /** Build the conditions object for a TS export target (adds require when dual-format). */
-const tsConditions = (p: string, dual: boolean): Json => ({
-	types: toBuiltDts(p),
-	import: toBuiltJs(p),
-	...(dual ? { require: toBuiltCjs(p) } : {}),
+const tsConditions = (exportKey: string, dual: boolean): Json => ({
+	types: toBuiltDts(exportKey),
+	import: toBuiltJs(exportKey),
+	...(dual ? { require: toBuiltCjs(exportKey) } : {}),
 });
 
 /**
  * Rewrite an exports map: TS string targets become a types/import conditions object.
  * When dual is true (a cjs build), each TS condition also gets a require entry.
+ *
+ * The output path is derived from the export KEY via the shared entry-name function,
+ * never from the source path, so the manifest target always matches the emitted file.
  */
 export function transformExports(exports: unknown, dual = false): unknown {
+	// A bare string export is the root (`.`) target.
 	if (typeof exports === "string") {
-		return isTs(exports) ? tsConditions(exports, dual) : exports;
+		return isTs(exports) ? tsConditions(".", dual) : exports;
 	}
 	if (exports && typeof exports === "object") {
 		const out: Json = {};
@@ -39,7 +47,7 @@ export function transformExports(exports: unknown, dual = false): unknown {
 				continue;
 			}
 			if (typeof value === "string" && isTs(value)) {
-				out[key] = tsConditions(value, dual);
+				out[key] = tsConditions(key, dual);
 			} else {
 				out[key] = transformExports(value, dual);
 			}

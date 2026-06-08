@@ -12,12 +12,12 @@ const base = {
 };
 
 describe("runBuild multi-target", () => {
-	it("builds one group per resolved prod group and writes the binding for --target npm", async () => {
+	it("builds one group per resolved prod group and writes the binding for --target prod", async () => {
 		const buildTargetGroups = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		const writeTargetsBinding = vi.fn(() => "/abs/pkg/dist/prod/targets.json");
 		await runBuild(defineBuild({}), {
 			cwd: "/abs/pkg",
-			argv: ["--target", "npm"],
+			argv: ["--target", "prod"],
 			buildTargetGroups,
 			writeTargetsBinding,
 			readPublishTargets: () => ({ npm: true, github: "@scope/base" }),
@@ -34,7 +34,7 @@ describe("runBuild multi-target", () => {
 		const writeTargetsBinding = vi.fn(() => "x");
 		await runBuild(defineBuild({}), {
 			cwd: "/abs/pkg",
-			argv: ["--target", "npm"],
+			argv: ["--target", "prod"],
 			buildTargetGroups,
 			writeTargetsBinding,
 			readPublishTargets: () => undefined,
