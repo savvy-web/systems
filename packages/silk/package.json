@@ -42,6 +42,7 @@
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
 		"effect": "catalog:silk",
+		"prettier": "^3.8.3",
 		"semver": "^7.8.1"
 	},
 	"devDependencies": {
@@ -57,7 +58,6 @@
 		"lint-staged": "^17.0.7",
 		"markdownlint-cli2": "^0.22.1",
 		"markdownlint-cli2-formatter-codequality": "^0.0.7",
-		"prettier": "^3.8.3",
 		"tsx": "^4.22.4",
 		"turbo": "^2.9.16",
 		"typescript": "catalog:silk",

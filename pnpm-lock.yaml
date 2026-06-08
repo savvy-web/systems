@@ -382,6 +382,9 @@ importers:
       effect:
         specifier: catalog:silk
         version: 3.21.2
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
       semver:
         specifier: ^7.8.1
         version: 7.8.1
@@ -422,9 +425,6 @@ importers:
       markdownlint-cli2-formatter-codequality:
         specifier: ^0.0.7
         version: 0.0.7(markdownlint-cli2@0.22.1)
-      prettier:
-        specifier: ^3.8.3
-        version: 3.8.3
       tsx:
         specifier: ^4.22.4
         version: 4.22.4
