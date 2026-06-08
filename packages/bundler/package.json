@@ -24,8 +24,8 @@
 		"./ecma.json": "./public/ecma.json"
 	},
 	"scripts": {
-		"build:dev": "tsx savvy.build.ts --target dev",
-		"build:prod": "tsx savvy.build.ts --target npm",
+		"build:dev": "node savvy.build.ts --target dev",
+		"build:prod": "node savvy.build.ts --target npm",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {

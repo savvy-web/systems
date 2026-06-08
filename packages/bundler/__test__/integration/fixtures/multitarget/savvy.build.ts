@@ -1,4 +1,5 @@
-import { defineBuild, runBuild } from "@savvy-web/bundler";
+import { defineBuild } from "../../../../src/config.js";
+import { runBuild } from "../../../../src/run.js";
 
 const config = defineBuild({});
 

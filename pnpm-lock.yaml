@@ -81,9 +81,6 @@ importers:
 
   .:
     devDependencies:
-      '@savvy-web/bundler':
-        specifier: workspace:*
-        version: link:packages/bundler/dist/dev/pkg
       '@savvy-web/cli':
         specifier: workspace:*
         version: link:packages/cli/dist/dev/pkg
@@ -93,9 +90,6 @@ importers:
       '@savvy-web/silk':
         specifier: workspace:*
         version: link:packages/silk/dist/dev/pkg
-      '@savvy-web/tsdown-plugins':
-        specifier: workspace:*
-        version: link:packages/tsdown-plugins/dist/dev/pkg
       '@savvy-web/vitest':
         specifier: ^1.4.0
         version: 1.4.0(50634bd49325027c6591d46854cf1d2c)

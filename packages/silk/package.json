@@ -33,8 +33,9 @@
 		"./biome": "./public/biome/silk.jsonc"
 	},
 	"scripts": {
-		"build:dev": "tsx savvy.build.ts --target dev",
-		"build:prod": "tsx savvy.build.ts --target npm",
+		"build:dev": "node savvy.build.ts --target dev",
+		"build:prod": "node savvy.build.ts --target npm",
+		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
@@ -87,21 +88,9 @@
 		"access": "public",
 		"directory": "dist/dev/pkg",
 		"linkDirectory": true,
-		"targets": [
-			{
-				"protocol": "npm",
-				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/prod/npm/pkg",
-				"access": "public",
-				"provenance": true
-			},
-			{
-				"protocol": "npm",
-				"registry": "https://registry.npmjs.org/",
-				"directory": "dist/prod/npm/pkg",
-				"access": "public",
-				"provenance": true
-			}
-		]
+		"targets": {
+			"npm": true,
+			"github": true
+		}
 	}
 }
