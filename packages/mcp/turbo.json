@@ -7,16 +7,6 @@
 			"inputs": ["$TURBO_DEFAULT$", "public/content/**", "!public/content/manifest.json"],
 			"outputs": ["public/content/manifest.json"]
 		},
-		"build:dev": {
-			"dependsOn": ["$TURBO_EXTENDS$", "build:catalog"],
-			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts", "public/content/**"],
-			"outputs": ["dist/dev/**"]
-		},
-		"build:prod": {
-			"dependsOn": ["$TURBO_EXTENDS$", "build:catalog"],
-			"inputs": ["$TURBO_EXTENDS$", "savvy.build.ts", "public/content/**"],
-			"outputs": ["dist/prod/**"]
-		},
 		"generate:api-docs": {
 			"cache": true,
 			"dependsOn": [
