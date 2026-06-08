@@ -1,8 +1,9 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runApiExtractor } from "./api-extractor.js";
 import type { NormalizedMeta } from "./config.js";
 import { mergeApiModels } from "./merge-models.js";
+import { resolvePortableTsconfig } from "./tsconfig-resolver.js";
 import { writeTsdocConfig } from "./tsdoc-config.js";
 
 function unscopedName(name: string): string {
@@ -21,7 +22,7 @@ export interface GenerateMetaOptions {
 	readonly entries: Record<string, string>;
 	/** Map of entry name to its export path (".", "./sub"). */
 	readonly exportPaths: Record<string, string>;
-	/** Where to write the meta bundle (.api.json + tsdoc-metadata.json + tsconfig.json). */
+	/** Where to write the meta bundle (.api.json + package.json + tsconfig.json). */
 	readonly outMetaDir: string;
 	/** Directories (relative to cwd) to copy the meta bundle into. */
 	readonly localPaths: ReadonlyArray<string>;
@@ -33,7 +34,13 @@ export interface MetaResult {
 	readonly apiJsonFilename: string;
 }
 
-/** Generate the api-model meta bundle from already-emitted .d.ts. Writes tsdoc.json (idempotent), runs the extractor per entry, merges if needed, writes the bundle to outMetaDir, and copies it into each localPaths dir. */
+/**
+ * Generate the api-model meta bundle from already-emitted .d.ts. Writes tsdoc.json (idempotent),
+ * runs the extractor per entry, merges if needed, and writes the "virtual TS env" trio to
+ * outMetaDir (`<unscoped>.api.json` + the final `package.json` + a portable `tsconfig.json`),
+ * copying that trio into each localPaths dir. The api-extractor `tsdoc-metadata.json` is a
+ * published-package artifact and is written into `dtsDir` (the built pkg/), not the meta bundle.
+ */
 export async function generateMeta(options: GenerateMetaOptions): Promise<MetaResult> {
 	const { cwd, packageName, tsconfigPath, dtsDir, entries, exportPaths, outMetaDir, localPaths, tsdoc } = options;
 	const tsdocConfigPath = writeTsdocConfig(cwd, tsdoc);
@@ -41,7 +48,9 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 
 	mkdirSync(outMetaDir, { recursive: true });
 	const apiJsonFilename = `${unscopedName(packageName)}.api.json`;
-	const tsdocMetadataPath = join(outMetaDir, "tsdoc-metadata.json");
+	// tsdoc-metadata.json is a published-package artifact (TSDoc tooling reads it from the package
+	// root), so emit it into the built pkg dir rather than the shiki/Twoslash meta bundle.
+	const tsdocMetadataPath = join(dtsDir, "tsdoc-metadata.json");
 
 	const entryNames = Object.keys(entries);
 	const perEntryModels = new Map<string, Record<string, unknown>>();
@@ -83,16 +92,24 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 	// Remove the per-entry working files now that the final merged model is written.
 	for (const intermediate of intermediateApiJsons) rmSync(intermediate, { force: true });
 
-	// Copy the resolved tsconfig into the bundle (for downstream reproducibility).
-	const bundleTsconfig = join(outMetaDir, "tsconfig.json");
-	copyFileSync(tsconfigPath, bundleTsconfig);
+	// The meta bundle is a self-contained virtual TS env for shiki/Twoslash. Beside the api-model
+	// it carries the FINAL transformed package.json (from the built pkg dir, not the source
+	// manifest) and a portable, derived tsconfig (compilerOptions-only, no absolute paths or emit
+	// settings). The portable config is derived from the package's own tsconfig; `tsconfigPath` (the
+	// build's resolved api-extractor compile config) is the fallback when there is no own tsconfig.
+	const bundlePackageJson = join(outMetaDir, "package.json");
+	copyFileSync(join(dtsDir, "package.json"), bundlePackageJson);
 
-	// Copy the bundle into each localPaths dir.
+	const bundleTsconfig = join(outMetaDir, "tsconfig.json");
+	const portableTsconfig = resolvePortableTsconfig(cwd, tsconfigPath);
+	writeFileSync(bundleTsconfig, `${JSON.stringify(portableTsconfig, null, 2)}\n`, "utf-8");
+
+	// Copy the trio into each localPaths dir (api.json + package.json + tsconfig.json).
 	for (const localPath of localPaths) {
 		const dest = join(cwd, localPath);
 		mkdirSync(dest, { recursive: true });
 		copyFileSync(apiJsonPath, join(dest, apiJsonFilename));
-		if (existsSync(tsdocMetadataPath)) copyFileSync(tsdocMetadataPath, join(dest, "tsdoc-metadata.json"));
+		copyFileSync(bundlePackageJson, join(dest, "package.json"));
 		copyFileSync(bundleTsconfig, join(dest, "tsconfig.json"));
 	}
 

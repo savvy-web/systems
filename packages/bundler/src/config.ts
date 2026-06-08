@@ -104,17 +104,17 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 }
 
 export interface ParsedArgs {
-	readonly target: "dev" | "npm" | "meta" | "exe";
+	readonly target: "dev" | "prod" | "meta" | "exe";
 	readonly watch: boolean;
 }
 
 export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
-	let target: "dev" | "npm" | "meta" | "exe" = "dev";
+	let target: "dev" | "prod" | "meta" | "exe" = "dev";
 	let watch = false;
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--target") {
 			const v = argv[i + 1];
-			if (v === "dev" || v === "npm" || v === "meta" || v === "exe") target = v;
+			if (v === "dev" || v === "prod" || v === "meta" || v === "exe") target = v;
 			i++;
 		} else if (argv[i] === "--watch") {
 			watch = true;

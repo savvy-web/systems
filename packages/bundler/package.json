@@ -25,7 +25,7 @@
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
-		"build:prod": "node savvy.build.ts --target npm",
+		"build:prod": "node savvy.build.ts --target prod",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {

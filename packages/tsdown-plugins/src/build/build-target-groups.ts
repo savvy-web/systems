@@ -1,5 +1,4 @@
 // packages/tsdown-plugins/src/build/build-target-groups.ts
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "rolldown";
 import type { JsxConfig } from "../jsx/config.js";
@@ -7,6 +6,7 @@ import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { Json } from "../manifest/transform.js";
 import { cjsDefaultInterop } from "./cjs-default-interop.js";
+import { syncPublicDir } from "./sync-public.js";
 import type { BuildFormat, BuildGroupSpec } from "./target-groups.js";
 import { deriveDtsPassOptions, deriveTargetGroupOptions } from "./target-groups.js";
 
@@ -84,7 +84,7 @@ export interface BuildTargetGroupsOptions {
  */
 export async function buildTargetGroups(options: BuildTargetGroupsOptions): Promise<void> {
 	const build: TsdownBuild = options.build ?? ((await import("tsdown")).build as unknown as TsdownBuild);
-	const copy = existsSync(join(options.cwd, "public")) ? ["public"] : undefined;
+	const publicDir = join(options.cwd, "public");
 
 	for (const group of options.groups) {
 		const deriveInput = {
@@ -110,7 +110,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			dual: js.format.includes("cjs"),
 		});
 
-		// Pass 1: per-module JS, no dts. Emits the manifest + copies public/ exactly once.
+		// Pass 1: per-module JS, no dts. Emits the manifest; public/ is mirrored separately below.
 		await build({
 			config: false,
 			cwd: options.cwd,
@@ -136,7 +136,6 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						},
 					}
 				: {}),
-			...(copy ? { copy } : {}),
 			...(js.cjsDefault !== undefined ? { cjsDefault: js.cjsDefault } : {}),
 			...(js.jsx !== undefined ? { inputOptions: { jsx: js.jsx } } : {}),
 			// The cjs-default-interop plugin is a no-op for esm; only attach it when cjs is built.
@@ -149,6 +148,10 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				...(options.extraPlugins ?? []),
 			],
 		});
+
+		// Mirror public/ into the group's pkg dir (idempotent; replaces tsdown's copy, which
+		// EEXISTs on a pre-existing target). Pass 1 owns the outDir, so sync before the dts pass.
+		syncPublicDir(publicDir, join(js.outDir, "public"));
 
 		// dts-pass neverBundle = union of externals + dtsExternals (dts-pass-only externals).
 		const dtsNeverBundle = [...(options.externals ?? []), ...(options.dtsExternals ?? [])];

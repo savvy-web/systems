@@ -17,7 +17,7 @@ describe("runBuild config validation (fast-fail)", () => {
 		await expect(
 			runBuild(defineBuild({}), {
 				cwd: "/abs/pkg",
-				argv: ["--target", "npm"],
+				argv: ["--target", "prod"],
 				buildTargetGroups,
 				writeTargetsBinding: vi.fn(() => "x"),
 				readPublishTargets: () => ({ a: { from: "nope", registry: "https://r" } }),
@@ -32,7 +32,7 @@ describe("runBuild config validation (fast-fail)", () => {
 		await expect(
 			runBuild(defineBuild({}), {
 				cwd: "/abs/pkg",
-				argv: ["--target", "npm"],
+				argv: ["--target", "prod"],
 				buildTargetGroups,
 				writeTargetsBinding: vi.fn(() => "x"),
 				readPublishTargets: () => ({ npm: true, a: { from: "npm", name: "@s/x", registry: "https://r" } }),

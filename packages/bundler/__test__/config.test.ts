@@ -59,7 +59,7 @@ describe("parseArgs", () => {
 	it("defaults target to dev", () => {
 		expect(parseArgs([])).toEqual({ target: "dev", watch: false });
 	});
-	it("parses --target npm and --watch", () => {
-		expect(parseArgs(["--target", "npm", "--watch"])).toEqual({ target: "npm", watch: true });
+	it("parses --target prod and --watch", () => {
+		expect(parseArgs(["--target", "prod", "--watch"])).toEqual({ target: "prod", watch: true });
 	});
 });

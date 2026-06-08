@@ -22,13 +22,13 @@ describe("runBuild", () => {
 		expect(arg.externals).toEqual(["typescript"]);
 	});
 
-	it("maps target npm -> a single npm group spec (default, no targets)", async () => {
+	it("maps target prod -> a single npm group spec (default, no targets)", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
 			{ formats: ["esm"], externals: [], devManifest: "preserve" },
 			{
 				cwd: "/abs/pkg",
-				argv: ["--target", "npm"],
+				argv: ["--target", "prod"],
 				buildTargetGroups: spy,
 				writeTsconfig: () => "/tmp/fake-tsconfig.json",
 				readPackageName: () => "base",

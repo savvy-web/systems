@@ -29,10 +29,9 @@
 	"scripts": {
 		"build:catalog": "tsx lib/scripts/build-catalog.ts",
 		"build:dev": "node savvy.build.ts --target dev",
-		"build:prod": "node savvy.build.ts --target npm",
+		"build:prod": "node savvy.build.ts --target prod",
 		"generate:api-docs": "tsx lib/scripts/generate-api-docs.ts",
 		"inspect": "exec mcp-inspector node ./dist/dev/pkg/bin/savvy-mcp.js",
-		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {

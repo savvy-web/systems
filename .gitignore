@@ -70,3 +70,7 @@ packages/bundler/__test__/integration/fixtures/dual-format/dist/
 
 # Claude Code autonomous-loop wakeup lock (transient harness artifact)
 .claude/scheduled_tasks.lock
+
+
+# Don't store models for now
+website/lib/models/*

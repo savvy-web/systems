@@ -40,7 +40,7 @@ Wire the two targets into `package.json` scripts and run them with Node's native
 {
   "scripts": {
     "build:dev": "node savvy.build.ts --target dev",
-    "build:prod": "node savvy.build.ts --target npm"
+    "build:prod": "node savvy.build.ts --target prod"
   }
 }
 ```
@@ -50,7 +50,7 @@ npm run build:prod
 # writes dist/prod/npm/pkg — the tarball root, with a resolved manifest and built code
 ```
 
-`--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target npm` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish. Two further targets, `--target meta` and `--target exe`, are covered below.
+`--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target prod` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish. Two further targets, `--target meta` and `--target exe`, are covered below.
 
 Every build emits per-module JavaScript alongside a single rolled-up, self-contained `.d.ts` per public entry. Each entry's declaration file pulls in every re-exported type, so a consumer that infers a type from your public API never has to reach into a deep sibling module that no export subpath addresses.
 
@@ -68,7 +68,7 @@ The bundler ships its shared TypeScript base as a subpath export. Extend it from
 
 ## Multi-target publishing
 
-By default `--target npm` builds a single group named after the package and writes it to `dist/prod/npm/pkg`. To publish the same package to more than one registry, or under more than one name, declare a `publishConfig.targets` map in `package.json`:
+By default `--target prod` builds a single group named after the package and writes it to `dist/prod/npm/pkg`. To publish the same package to more than one registry, or under more than one name, declare a `publishConfig.targets` map in `package.json`:
 
 ```json
 {
@@ -82,7 +82,7 @@ By default `--target npm` builds a single group named after the package and writ
 }
 ```
 
-Each key is a target. `true` publishes under the package's own name to a well-known registry (`npm`, `github`); a string renames the group for that target; an object form takes `{ registry }` plus either `name` (a rename) or `from` (reuse another target's built bytes). `--target npm` then builds one byte-variant group per distinct name, applies the rename to each group's manifest and writes `dist/prod/<group>/pkg`. It also writes `dist/prod/targets.json`, the group-to-registry binding the release step consumes to know what to publish where.
+Each key is a target. `true` publishes under the package's own name to a well-known registry (`npm`, `github`); a string renames the group for that target; an object form takes `{ registry }` plus either `name` (a rename) or `from` (reuse another target's built bytes). `--target prod` then builds one byte-variant group per distinct name, applies the rename to each group's manifest and writes `dist/prod/<group>/pkg`. It also writes `dist/prod/targets.json`, the group-to-registry binding the release step consumes to know what to publish where.
 
 With no `targets` map the build falls back to the single-`npm` group above.
 
@@ -107,7 +107,7 @@ const config = defineBuild({
 With `meta` set, two behaviors come online:
 
 - `savvy build --target meta` runs API Extractor over the dev build's `.d.ts` — no tsdown build, so it depends only on a prior `--target dev`. It writes the api-model (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into each `localPaths` directory.
-- `savvy build --target npm` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
+- `savvy build --target prod` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
 
 `meta` is optional; omit it and neither behavior runs. `--target meta` errors if the config has no `meta` field.
 
@@ -181,7 +181,7 @@ const config = defineBuild({
 - **Bundled declarations** — per-module JavaScript with a single rolled-up `.d.ts` per public entry, so re-exported types stay reachable through your published export subpaths.
 - **Shared tsconfig base** — extend `@savvy-web/bundler/ecma.json` for the ESNext/NodeNext/strict settings the build expects.
 - **Manifest resolution** — `catalog:` and `workspace:` specifiers are resolved against the workspace for the published target, and preserved for the linked dev target.
-- **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target npm` builds the distinct byte variants and writes a `targets.json` binding for the release step.
+- **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target prod` builds the distinct byte variants and writes a `targets.json` binding for the release step.
 - **Executable binaries** — an `exe` config compiles SEA binaries from a bin entry via `@tsdown/exe`, inferring the platform from the package's `os`/`cpu` when targets are omitted.
 - **JSX, config-first** — JSX transform is inherited from `tsconfig.json` and overridable via the `jsx` field, feeding both the dts tsconfig and the tsdown transform.
 - **Dual-format output** — esm-only by default; set `format` to `["esm", "cjs"]` for a require-able CJS output with default-export interop, `.d.cts` declarations and dual `import`/`require` export conditions.

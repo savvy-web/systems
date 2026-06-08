@@ -4,7 +4,7 @@ const config = defineBuild({
 	externals: ["effect", "@effect/platform"],
 	devManifest: "preserve",
 	meta: {
-		localPaths: ["../mcp/lib/models/silk-effects"],
+		localPaths: ["../mcp/lib/models/silk-effects", "../../website/lib/models/silk-effects"],
 		tsdoc: {
 			suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }],
 			tagDefinitions: [{ tagName: "@since", syntaxKind: "block" }],

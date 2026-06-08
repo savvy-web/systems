@@ -3,7 +3,7 @@ import { defineBuild, runBuild } from "@savvy-web/bundler";
 const config = defineBuild({
 	devManifest: "preserve",
 	meta: {
-		localPaths: ["../mcp/lib/models/github-action-builder"],
+		localPaths: ["../mcp/lib/models/github-action-builder", "../../website/lib/models/github-action-builder"],
 		tsdoc: {
 			tagDefinitions: [
 				{ tagName: "@schema", syntaxKind: "modifier" },

@@ -1,4 +1,12 @@
 {
 	"extends": ["//"],
-	"tasks": {}
+	"tasks": {
+		"build:meta": {
+			"outputs": [
+				"$TURBO_EXTENDS$",
+				"../mcp/lib/models/github-action-effects",
+				"../../website/lib/models/github-action-effects"
+			]
+		}
+	}
 }

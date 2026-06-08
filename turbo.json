@@ -40,7 +40,7 @@
 		},
 		"build:prod": {
 			"cache": true,
-			"dependsOn": ["types:check"],
+			"dependsOn": ["types:check", "build:meta"],
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/package.json",

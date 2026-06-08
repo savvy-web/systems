@@ -21,6 +21,6 @@ New exports: `resolveTargets`, `writeTargetsBinding`, `isTargetObject`, `BuildGr
 
 #### `@savvy-web/bundler`
 
-* `savvy build --target npm` now derives every prod byte-variant group from `publishConfig.targets`, builds each into `dist/prod/<group>/pkg` with the correct per-registry name, and writes the `dist/prod/targets.json` binding.
+* `savvy build --target prod` now derives every prod byte-variant group from `publishConfig.targets`, builds each into `dist/prod/<group>/pkg` with the correct per-registry name, and writes the `dist/prod/targets.json` binding.
 * With no `publishConfig.targets` declared, the build defaults to a single `npm` group named after the package — fully backward-compatible.
 * Re-exports the target and resolved types from `@savvy-web/tsdown-plugins` for consumers.

@@ -15,7 +15,7 @@ describe("SP1 exit gate: @savvy-web/cli parity", () => {
 				formats: ["esm"],
 				externals: ["effect", "@effect/cli", "@effect/platform", "@effect/platform-node"],
 			}),
-			{ cwd: CLI, argv: ["--target", "npm"] },
+			{ cwd: CLI, argv: ["--target", "prod"] },
 		);
 		const pkgDir = join(CLI, "dist/prod/npm/pkg");
 		// bin compiled and shebang-preserved

@@ -31,7 +31,7 @@
 		"lint:fix:unsafe": "biome check --write --unsafe --max-diagnostics=none",
 		"lint:md": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc'",
 		"lint:md:fix": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc' --fix",
-		"prepare": "husky",
+		"prepare": "husky && turbo run build:dev",
 		"test": "vitest run",
 		"typecheck": "turbo run types:check //#types:check --log-prefix=none --log-order=grouped",
 		"types:check": "tsgo --noEmit"

@@ -4,7 +4,7 @@
 //
 // Forgotten-export / TSDoc (ae-forgotten-export) check: under the bundler, the
 // api-extractor pass only runs through generateMeta, which is invoked by
-// `runBuild` for `--target meta` and for `--target npm` WHEN a `meta` option is
+// `runBuild` for `--target meta` and for `--target prod` WHEN a `meta` option is
 // configured (see packages/bundler/src/run.ts). The escape hatch calls
 // buildTargetGroups directly with no `meta`, so api-extractor never runs here and
 // there is nothing to suppress. This differs from the old rslib build, whose
@@ -34,7 +34,9 @@ await buildTargetGroups({
 	groups: target === "npm" ? [{ id: "npm", name: pkg.name }] : [{ id: "dev", name: pkg.name }],
 	devManifest: "preserve",
 	// tsdown/rolldown are type-only imports; keep effect external like the rslib config did.
-	externals: ["effect", "tsdown", "rolldown"],
+	// typescript is a runtime dep (tsconfig-resolver uses the TS API); externalize it so the
+	// 8 MB compiler is not inlined into the bundle.
+	externals: ["effect", "tsdown", "rolldown", "typescript"],
 	// Reproduce the rslib config's prod strip.
 	transform: ({ pkg: p }) => {
 		delete p.devDependencies;

@@ -6,7 +6,7 @@
 //
 // Forgotten-export / TSDoc (ae-forgotten-export) check: under the bundler, the
 // api-extractor pass only runs through generateMeta, which is invoked by `runBuild`
-// for `--target meta` and for `--target npm` WHEN a `meta` option is configured
+// for `--target meta` and for `--target prod` WHEN a `meta` option is configured
 // (see packages/bundler/src/run.ts). The escape hatch calls buildTargetGroups directly with no `meta`,
 // so api-extractor never runs here and there is nothing to suppress — same as tier 1.
 // This differs from the old rslib build, whose NodeLibraryBuilder ran api-extractor

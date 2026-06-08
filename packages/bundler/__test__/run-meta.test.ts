@@ -56,7 +56,7 @@ describe("runBuild meta target", () => {
 		const build = vi.fn(async () => {});
 		await runBuild(defineBuild({ meta: { localPaths: ["../models"] } }), {
 			cwd: "/abs/pkg",
-			argv: ["--target", "npm"],
+			argv: ["--target", "prod"],
 			buildTargetGroups: build,
 			generateMeta,
 			readPackageName: () => "x",
@@ -75,12 +75,12 @@ describe("runBuild meta target", () => {
 		expect(arg?.outMetaDir).toContain("github");
 	});
 
-	it("does not call generateMeta for --target npm when meta is unset", async () => {
+	it("does not call generateMeta for --target prod when meta is unset", async () => {
 		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
 		const build = vi.fn(async () => {});
 		await runBuild(defineBuild({}), {
 			cwd: "/abs/pkg",
-			argv: ["--target", "npm"],
+			argv: ["--target", "prod"],
 			buildTargetGroups: build,
 			generateMeta,
 			readPackageName: () => "@scope/fixture",

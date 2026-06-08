@@ -7,9 +7,9 @@ import { runBuild } from "../../src/run.js";
 const FIX = join(import.meta.dirname, "fixtures", "multitarget");
 
 describe("multi-target build (real, renamed variants + from reuse)", () => {
-	it("--target npm emits one byte-variant folder per distinct name plus the binding", async () => {
+	it("--target prod emits one byte-variant folder per distinct name plus the binding", async () => {
 		rmSync(join(FIX, "dist"), { recursive: true, force: true });
-		await runBuild(defineBuild({}), { cwd: FIX, argv: ["--target", "npm"], writeOutput: () => {} });
+		await runBuild(defineBuild({}), { cwd: FIX, argv: ["--target", "prod"], writeOutput: () => {} });
 
 		// npm group -> base name (unscoped)
 		const npmPkg = JSON.parse(readFileSync(join(FIX, "dist/prod/npm/pkg/package.json"), "utf-8")) as {
