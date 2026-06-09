@@ -28,6 +28,18 @@ const config = defineBuild({
 	dtsExternals: ["effect", "@effect/platform"],
 	overrides: [
 		{
+			// The Changesets CLI loads the changelog formatter via `resolve-from` +
+			// `require()` (see @changesets/apply-release-plan), so this entry must stay
+			// CJS-loadable exactly like the markdownlint entry below. An ESM-only export
+			// (only `import` + `types`, no `require` condition) makes the CJS resolver throw
+			// ERR_PACKAGE_PATH_NOT_EXPORTED, which broke `savvy changeset version`. CJS cannot
+			// require() ESM-only silk-effects, so this entry INLINES it (and its transitive
+			// node_modules) via `bundleNodeModules`, same as markdownlint.
+			entries: ["./changesets/changelog"],
+			format: ["esm", "cjs"],
+			bundleNodeModules: true,
+		},
+		{
 			// markdownlint-cli2 require()s this entry, so it must stay CJS-loadable. CJS cannot
 			// require() ESM-only silk-effects (its package exports declare no `require`
 			// condition), so this entry INLINES silk-effects (and its transitive node_modules)
@@ -58,12 +70,12 @@ const config = defineBuild({
 		// `peerDependencies` for the published manifest BEFORE the `dependencies`
 		// block is stripped below.
 		const deps = pkg.dependencies as Record<string, string> | undefined;
-		const peers = (pkg.peerDependencies as Record<string, string> | undefined) ?? {};
-		for (const name of ["@savvy-web/cli", "@savvy-web/mcp"]) {
-			const range = deps?.[name];
-			if (range) peers[name] = range;
-		}
-		pkg.peerDependencies = peers;
+		// const peers = (pkg.peerDependencies as Record<string, string> | undefined) ?? {};
+		// for (const name of ["@savvy-web/cli", "@savvy-web/mcp"]) {
+		// 	const range = deps?.[name];
+		// 	if (range) peers[name] = range;
+		// }
+		// pkg.peerDependencies = peers;
 		// The surviving runtime dependencies are `semver` (externalized in JS, see above),
 		// the two `dtsExternals` packages (externalized in the dts so consumers can resolve
 		// the type imports), and `@savvy-web/silk-effects` (externalized in the BASE ESM

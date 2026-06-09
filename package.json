@@ -20,6 +20,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "turbo run build:dev build:prod --log-order=grouped --log-prefix=none",
+		"build:dev": "\"Built devDeps\"",
+		"build:prod": "\"Built deps\"",
 		"check": "savvy check",
 		"ci:build": "CI=\"true\" turbo run build:dev build:prod --log-order=grouped --output-logs=full --log-prefix=none",
 		"ci:test": "CI=\"true\" vitest run",
@@ -31,7 +33,7 @@
 		"lint:fix:unsafe": "biome check --write --unsafe --max-diagnostics=none",
 		"lint:md": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc'",
 		"lint:md:fix": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc' --fix",
-		"prepare": "husky && turbo run build:dev",
+		"prepare": "husky",
 		"test": "vitest run",
 		"typecheck": "turbo run types:check //#types:check --log-prefix=none --log-order=grouped",
 		"types:check": "tsgo --noEmit"

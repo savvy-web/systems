@@ -35,12 +35,11 @@
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
+		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:silk",
-		"@savvy-web/cli": "workspace:*",
-		"@savvy-web/mcp": "workspace:*",
 		"effect": "catalog:silk",
 		"prettier": "^3.8.3",
 		"semver": "^7.8.1"
@@ -50,6 +49,8 @@
 		"@commitlint/cli": "^21.0.2",
 		"@commitlint/config-conventional": "^21.0.2",
 		"@savvy-web/bundler": "workspace:*",
+		"@savvy-web/cli": "workspace:*",
+		"@savvy-web/mcp": "workspace:*",
 		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
@@ -68,6 +69,8 @@
 		"@changesets/cli": "^2.31.0",
 		"@commitlint/cli": "^21.0.1",
 		"@commitlint/config-conventional": "^21.0.2",
+		"@savvy-web/cli": "workspace:*",
+		"@savvy-web/mcp": "workspace:*",
 		"@types/node": "catalog:silkPeers",
 		"@typescript/native-preview": "catalog:silkPeers",
 		"commitizen": "^4.3.0",
