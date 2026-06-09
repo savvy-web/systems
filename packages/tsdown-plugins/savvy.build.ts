@@ -15,7 +15,13 @@
 // in rslib.config.ts's `apiModel` is therefore not carried over (no check fires).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildTargetGroups, packageJsonEntries, writeResolvedTsconfig } from "./src/index.js";
+import {
+	buildTargetGroups,
+	defaultManifestTransform,
+	packageJsonEntries,
+	removeDeclarationMaps,
+	writeResolvedTsconfig,
+} from "./src/index.js";
 
 const cwd = import.meta.dirname;
 const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8")) as { name: string; version: string };
@@ -38,12 +44,9 @@ await buildTargetGroups({
 	// 8 MB compiler is not inlined into the bundle.
 	externals: ["effect", "tsdown", "rolldown", "typescript"],
 	// Reproduce the rslib config's prod strip.
-	transform: ({ pkg: p }) => {
-		delete p.devDependencies;
-		delete p.publishConfig;
-		delete p.packageManager;
-		delete p.devEngines;
-		delete p.scripts;
-		return p;
-	},
+	transform: defaultManifestTransform,
 });
+
+// Strip declaration source-maps from the published prod pkg/ (the front door does this in
+// runBuild; the escape hatch must do it itself). dev keeps them.
+if (target === "prod") removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));

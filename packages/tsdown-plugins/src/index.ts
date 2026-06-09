@@ -1,8 +1,10 @@
 export type { ManifestLike } from "workspaces-effect";
 export { CatalogAssemblyError, CatalogResolutionError } from "workspaces-effect";
-export type { BuildTargetGroupsOptions, TsdownBuild } from "./build/build-target-groups.js";
+export type { BuildTargetGroupsOptions, EntryOverride, TsdownBuild } from "./build/build-target-groups.js";
 export { buildTargetGroups } from "./build/build-target-groups.js";
 export { cjsDefaultInterop } from "./build/cjs-default-interop.js";
+export { nodeBuiltinDefaultInterop } from "./build/node-builtin-default-interop.js";
+export { removeDeclarationMaps } from "./build/strip-maps.js";
 export { syncPublicDir } from "./build/sync-public.js";
 export type {
 	BuildFormat,
@@ -19,7 +21,7 @@ export { ConfigValidatorLive } from "./config-validation/ConfigValidatorLive.js"
 export type { ResolvedTsconfig, ResolvedTsconfigOptions } from "./dts/resolved-tsconfig.js";
 export { buildResolvedTsconfig, writeResolvedTsconfig } from "./dts/resolved-tsconfig.js";
 export type { ExtractOptions, ExtractResult, PackageJsonLike } from "./entry/extract.js";
-export { extractEntries } from "./entry/extract.js";
+export { createEntryName, extractEntries } from "./entry/extract.js";
 export type { PackageJsonEntriesOptions } from "./entry/package-json-entries.js";
 export { packageJsonEntries } from "./entry/package-json-entries.js";
 export { ConfigValidationError, MetaGenerationError } from "./errors.js";
@@ -31,8 +33,9 @@ export type { JsxConfig, TsconfigJsx } from "./jsx/config.js";
 export { readTsconfigJsx, resolveJsxConfig } from "./jsx/config.js";
 export type { BuildEmittedManifestOptions, EmitManifestOptions, TargetGroupRef } from "./manifest/emit-manifest.js";
 export { buildEmittedManifest, emitManifest } from "./manifest/emit-manifest.js";
-export type { Json, TransformManifestOptions } from "./manifest/transform.js";
+export type { DualExports, Json, TransformManifestOptions } from "./manifest/transform.js";
 export {
+	defaultManifestTransform,
 	normalizeBinPaths,
 	transformBin,
 	transformExports,

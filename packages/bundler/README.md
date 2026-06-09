@@ -22,8 +22,7 @@ Add a `savvy.build.ts` to the package root. It both exports a config object and 
 import { defineBuild, runBuild } from "@savvy-web/bundler";
 
 const config = defineBuild({
-  formats: ["esm"],
-  externals: ["typescript"],
+  format: ["esm"],
   devManifest: "preserve",
 });
 
@@ -92,7 +91,7 @@ Set the optional `meta` field on `defineBuild` to generate an [API Extractor](ht
 
 ```ts
 const config = defineBuild({
-  formats: ["esm"],
+  format: ["esm"],
   meta: {
     // directories the generated api-model is copied into on `--target meta`
     localPaths: ["../mcp/models/@savvy-web/bundler"],
@@ -117,7 +116,7 @@ Set the optional `exe` field to compile a single-executable application (SEA) fr
 
 ```ts
 const config = defineBuild({
-  formats: ["esm"],
+  format: ["esm"],
   exe: {
     fileName: "savvy",
     entry: "./src/bin.ts",
@@ -135,7 +134,7 @@ Packages that emit JSX inherit their transform from `tsconfig.json` (`compilerOp
 
 ```ts
 const config = defineBuild({
-  formats: ["esm"],
+  format: ["esm"],
   jsx: { runtime: "automatic", importSource: "preact" },
 });
 ```
@@ -156,10 +155,12 @@ A dual-format build emits an ESM `.js` and a require-able CJS `.cjs` plus matchi
 
 ## Bundling dependencies
 
-By default a build leaves your dependencies external — they stay `import`ed from the published `.js` and referenced from the `.d.ts`, and the consumer resolves them from their own `node_modules`. Three fields change that, for the cases where a dependency cannot be left external:
+Dependencies you declare in `package.json` are externalized automatically — they stay `import`ed from the published `.js` and referenced from the `.d.ts`, and the consumer resolves them from their own `node_modules`. You don't list declared deps anywhere; `externals` exists only to externalize a package tsdown would otherwise bundle (a transitive dep you reference but don't declare). Four fields change the bundling posture, for the cases where a dependency cannot be left external:
 
 ```ts
 const config = defineBuild({
+  // force-inline these specific packages into the .js, even ones declared in package.json
+  bundle: ["some-declared-dep"],
   // force-bundle every non-externalized node_modules and workspace dep into the output
   bundleNodeModules: true,
   // inline only these packages' types into the bundled .d.ts; the rest stay external
@@ -170,9 +171,56 @@ const config = defineBuild({
 });
 ```
 
+- `bundle` inlines the listed packages into the JavaScript output, the inverse of `externals`, even for packages declared in `package.json` that would otherwise be auto-externalized. Declarations are not inlined by this option — pair it with `bundledPackages` to roll a package's types into the `.d.ts` too.
 - `bundleNodeModules` inlines node_modules and workspace JavaScript into the output so the published package is self-contained, and inlines their types into the bundled `.d.ts` to match.
 - `bundledPackages` inlines only the listed packages' declarations into the `.d.ts` while every other dependency stays external. Use it for a types-only dependency you don't want consumers to install.
 - `dtsExternals` keeps a package out of the declaration bundle when its types cannot be safely inlined — effect's cross-module `declare module` augmentations, for one, inline into conflicting interface extensions in consumers. The package is referenced by `import` in the `.d.ts` and still bundled in the JavaScript, so declare it as a package dependency.
+
+## Per-entry overrides
+
+The format and bundling fields above apply to every export entry. Use `overrides` to pin a subset of entries to their own format and bundling, layered onto the base config. The base build stays as configured; only the listed `entries` (by export subpath) get the override:
+
+```ts
+const config = defineBuild({
+  format: ["esm"], // base entries are ESM-only
+  overrides: [
+    {
+      // this one entry is also require-able, and inlines its node_modules so a
+      // CommonJS caller never has to resolve an ESM-only dependency
+      entries: ["./changesets/markdownlint"],
+      format: ["esm", "cjs"],
+      bundleNodeModules: true,
+    },
+  ],
+});
+```
+
+Each override carries the same `format`, `bundle`, `externals`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` fields as the base config. An override does not inherit the base `externals` — list what that partition needs. The build errors if an override names an export path the package does not declare.
+
+## Minified output
+
+Prod output is not minified by default. This builder targets Node libraries, where readable output matters more than bundle size — minified code degrades stack traces and trips some security scanners. Set `minify` to opt back in:
+
+```ts
+const config = defineBuild({
+  minify: true, // applies to prod target groups only; dev is never minified
+});
+```
+
+## Manifest transform
+
+Every build runs a manifest transform after resolving `publishConfig.targets`, to produce the published `package.json`. By default it strips build- and dev-only fields (`devDependencies`, `scripts`, `publishConfig` and the like). Supplying your own `transform` replaces that default — import `defaultManifestTransform` and call it from yours if you still want the stripping:
+
+```ts
+import { defaultManifestTransform, defineBuild } from "@savvy-web/bundler";
+
+const config = defineBuild({
+  transform: ({ pkg }) => {
+    // custom manifest work here
+    return defaultManifestTransform({ pkg });
+  },
+});
+```
 
 ## Features
 
@@ -185,7 +233,10 @@ const config = defineBuild({
 - **Executable binaries** — an `exe` config compiles SEA binaries from a bin entry via `@tsdown/exe`, inferring the platform from the package's `os`/`cpu` when targets are omitted.
 - **JSX, config-first** — JSX transform is inherited from `tsconfig.json` and overridable via the `jsx` field, feeding both the dts tsconfig and the tsdown transform.
 - **Dual-format output** — esm-only by default; set `format` to `["esm", "cjs"]` for a require-able CJS output with default-export interop, `.d.cts` declarations and dual `import`/`require` export conditions.
-- **Dependency bundling** — dependencies stay external by default; `bundleNodeModules`, `bundledPackages` and `dtsExternals` force-bundle node_modules into the output, inline select declarations into the `.d.ts` or hold a package out of the declaration bundle when its types cannot be inlined.
+- **Dependency bundling** — declared dependencies stay external by default; `bundle`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` force-inline specific packages or all node_modules into the output, inline select declarations into the `.d.ts` or hold a package out of the declaration bundle when its types cannot be inlined.
+- **Per-entry overrides** — `overrides` pins a subset of export entries to their own format and bundling, so one entry can ship dual-format CJS in an otherwise ESM-only package without changing the rest.
+- **Readable prod output** — prod output is unminified by default to keep stack traces legible and pass security scanners; `minify` opts back in.
+- **Default manifest stripping** — the published `package.json` drops build- and dev-only fields automatically; a custom `transform` replaces the default and can re-apply it via `defaultManifestTransform`.
 - **Fast-fail config validation** — `runBuild` validates the config (`publishConfig.targets`, `exe`, `meta`) before any build work, raising a typed `ConfigValidationError` on the first violation.
 - **One devDependency** — `tsdown` is a regular dependency, pinned and tested transitively, so you never carry it or its plugin peers in your own tree.
 - **Injectable orchestration** — `runBuild` takes its IO dependencies as options, so the build is testable without spawning a real bundle.
@@ -193,7 +244,7 @@ const config = defineBuild({
 
 ## API
 
-- `defineBuild(input)` — normalizes a build config (`externals`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). Pure; it does not run the build.
+- `defineBuild(input)` — normalizes a build config (`externals`, `bundle`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `minify`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`, `overrides`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). `minify` defaults to false, `transform` defaults to a manifest stripper, and `overrides` pins a subset of entries to their own format and bundling. Pure; it does not run the build.
 - `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.
 

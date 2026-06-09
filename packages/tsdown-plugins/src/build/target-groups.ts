@@ -24,6 +24,8 @@ export interface DeriveOptions {
 	readonly externals?: ReadonlyArray<string>;
 	/** Output formats to emit. Defaults to esm-only when unset. */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
+	/** Minify prod output (prod groups only; dev is never minified). Defaults to false. */
+	readonly minify?: boolean | undefined;
 	/** JSX transform settings to forward to rolldown's inputOptions. */
 	readonly jsx?: JsxConfig | undefined;
 	/**
@@ -145,7 +147,9 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 	return {
 		outDir: outDirFor(options.cwd, options.group),
 		sourcemap: !isProd,
-		minify: isProd,
+		// Minify is opt-in (default false) and prod-only: dev never minifies, and prod
+		// minifies only when the caller asked. Node libraries favor readable output.
+		minify: isProd && (options.minify ?? false),
 		format,
 		unbundle: true,
 		clean: true,

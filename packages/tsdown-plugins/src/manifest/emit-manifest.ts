@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { Plugin } from "rolldown";
 import type { ManifestLike } from "../catalog/resolve-catalogs.js";
 import { resolveManifest } from "../catalog/resolve-catalogs.js";
-import type { Json } from "./transform.js";
+import type { DualExports, Json } from "./transform.js";
 import { transformManifest } from "./transform.js";
 
 export interface TargetGroupRef {
@@ -19,8 +19,8 @@ export interface BuildEmittedManifestOptions {
 	readonly targetGroup: TargetGroupRef;
 	readonly devManifest: "preserve" | "resolve";
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
-	/** Emit dual import/require export conditions (set when the build includes cjs). */
-	readonly dual?: boolean | undefined;
+	/** Which exports emit dual import/require conditions. boolean (uniform) or a Set of export keys (per-entry). */
+	readonly dual?: DualExports | undefined;
 }
 
 /** Compute the final manifest bytes for a TargetGroup (catalog resolution + standard transforms). */
@@ -48,8 +48,8 @@ export interface EmitManifestOptions {
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
 	/** Source package dir to read package.json/LICENSE/README from. */
 	readonly sourceDir: string;
-	/** Emit dual import/require export conditions (set when the build includes cjs). */
-	readonly dual?: boolean | undefined;
+	/** Which exports emit dual import/require conditions. boolean (uniform) or a Set of export keys (per-entry). */
+	readonly dual?: DualExports | undefined;
 }
 
 /** Rolldown plugin: emit the transformed package.json + LICENSE/README into the output pkg/ root. */

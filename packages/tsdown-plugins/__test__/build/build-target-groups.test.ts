@@ -286,6 +286,50 @@ describe("buildTargetGroups", () => {
 		expect(captured[0]?.format).toEqual(["esm", "cjs"]);
 	});
 
+	it("threads `bundle` into the JS-pass deps.alwaysBundle (force-inline), alongside neverBundle", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["effect"],
+			bundle: ["semver-effect", "@savvy-web/silk-effects"],
+			build,
+		});
+		// [0] = JS pass: alwaysBundle present (force-inline), coexisting with neverBundle.
+		expect((captured[0]?.deps as { alwaysBundle?: unknown })?.alwaysBundle).toEqual([
+			"semver-effect",
+			"@savvy-web/silk-effects",
+		]);
+		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["effect"]);
+		// JS-pass-only: the dts pass does NOT carry alwaysBundle from `bundle`.
+		expect((captured[1]?.deps as { alwaysBundle?: unknown } | undefined)?.alwaysBundle).toBeUndefined();
+	});
+
+	it("omits alwaysBundle when `bundle` is not set", async () => {
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			externals: ["effect"],
+			build,
+		});
+		expect((captured[0]?.deps as { alwaysBundle?: unknown } | undefined)?.alwaysBundle).toBeUndefined();
+	});
+
 	it("inlines bundledPackages in the dts pass via skipNodeModulesBundle + deps.dts.alwaysBundle, not the JS pass", async () => {
 		const captured: Array<{ deps?: unknown }> = [];
 		const build = (async (cfg: { deps?: unknown }) => {
@@ -587,6 +631,60 @@ describe("buildTargetGroups", () => {
 		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
 			"@commitlint/types",
 		]);
+	});
+
+	it("builds a base partition plus an override partition with per-partition format/deps", async () => {
+		const calls: Array<{ entry: unknown; format: unknown; clean: unknown; deps?: unknown; hasManifest: boolean }> = [];
+		const build = (async (cfg: {
+			entry: unknown;
+			format: unknown;
+			clean: unknown;
+			deps?: unknown;
+			plugins?: Array<{ name?: string }>;
+		}) => {
+			calls.push({
+				entry: cfg.entry,
+				format: cfg.format,
+				clean: cfg.clean,
+				deps: cfg.deps,
+				hasManifest: (cfg.plugins ?? []).some((p) => p.name === "savvy:emit-manifest"),
+			});
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { commitlint: "src/commitlint/index.ts" }, // BASE entries only (overrides removed upstream)
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			format: ["esm"],
+			overrides: [
+				{
+					entry: { "changesets-markdownlint": "src/changesets/markdownlint.ts" },
+					format: ["esm", "cjs"],
+					bundle: ["@savvy-web/silk-effects"],
+				},
+			],
+			build,
+		});
+		// Order: base JS (clean:true), base dts (clean:false), override JS (clean:false), override dts (clean:false).
+		expect(calls[0]?.clean).toBe(true);
+		expect(calls[0]?.entry).toEqual({ commitlint: "src/commitlint/index.ts" });
+		expect(calls[0]?.format).toEqual(["esm"]);
+		// every later pass is clean:false (never wipes the base output)
+		expect(calls.slice(1).every((c) => c.clean === false)).toBe(true);
+		// an override JS pass carries the override entry, dual format, and alwaysBundle
+		const overrideJs = calls.find(
+			(c) =>
+				JSON.stringify(c.entry) === JSON.stringify({ "changesets-markdownlint": "src/changesets/markdownlint.ts" }) &&
+				Array.isArray(c.format) &&
+				(c.format as string[]).includes("cjs"),
+		);
+		expect(overrideJs).toBeDefined();
+		expect((overrideJs?.deps as { alwaysBundle?: unknown })?.alwaysBundle).toEqual(["@savvy-web/silk-effects"]);
+		// manifest is emitted exactly once (base partition's JS pass only)
+		expect(calls.filter((c) => c.hasManifest).length).toBe(1);
+		expect(calls[0]?.hasManifest).toBe(true);
 	});
 
 	it("unions dtsExternals into the dts pass neverBundle in the plain branch (no bundle flags)", async () => {

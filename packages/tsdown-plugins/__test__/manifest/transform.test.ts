@@ -1,6 +1,44 @@
 // packages/tsdown-plugins/__test__/manifest/transform.test.ts
 import { describe, expect, it } from "vitest";
-import { normalizeBinPaths, transformBin, transformExports, transformManifest } from "../../src/manifest/transform.js";
+import {
+	defaultManifestTransform,
+	normalizeBinPaths,
+	transformBin,
+	transformExports,
+	transformManifest,
+} from "../../src/manifest/transform.js";
+
+describe("defaultManifestTransform", () => {
+	it("strips every build/dev-only field from the manifest", () => {
+		const out = defaultManifestTransform({
+			pkg: {
+				name: "@x/p",
+				version: "1.0.0",
+				dependencies: { effect: "^3" },
+				devDependencies: { vitest: "^4" },
+				bundleDependencies: ["a"],
+				scripts: { build: "x" },
+				publishConfig: { access: "public" },
+				packageManager: "pnpm@11",
+				devEngines: { runtime: { name: "node" } },
+			},
+		});
+		expect(out.devDependencies).toBeUndefined();
+		expect(out.bundleDependencies).toBeUndefined();
+		expect(out.scripts).toBeUndefined();
+		expect(out.publishConfig).toBeUndefined();
+		expect(out.packageManager).toBeUndefined();
+		expect(out.devEngines).toBeUndefined();
+		// Consumer-facing fields are preserved.
+		expect(out.name).toBe("@x/p");
+		expect(out.dependencies).toEqual({ effect: "^3" });
+	});
+
+	it("is a no-op when none of the stripped fields are present", () => {
+		const out = defaultManifestTransform({ pkg: { name: "@x/p", version: "1.0.0" } });
+		expect(out).toEqual({ name: "@x/p", version: "1.0.0" });
+	});
+});
 
 describe("manifest transform", () => {
 	it("strips publishConfig + scripts and sets private from publishConfig.access", () => {
@@ -92,5 +130,32 @@ describe("manifest transform", () => {
 	it("runs sort-package-json (name before version before exports)", () => {
 		const out = transformManifest({ exports: { ".": "./src/index.ts" }, version: "1.0.0", name: "@x/p" });
 		expect(Object.keys(out).slice(0, 2)).toEqual(["name", "version"]);
+	});
+
+	it("emits require conditions only for export keys in a dual Set (per-entry dual)", () => {
+		const exports = {
+			"./changesets/markdownlint": "./src/changesets/markdownlint.ts",
+			"./commitlint": "./src/commitlint/index.ts",
+		};
+		const out = transformExports(exports, new Set(["./changesets/markdownlint"])) as Record<
+			string,
+			Record<string, string>
+		>;
+		// markdownlint is in the set -> gets require
+		expect(out["./changesets/markdownlint"].require).toBe("./changesets-markdownlint.cjs");
+		expect(out["./changesets/markdownlint"].import).toBe("./changesets-markdownlint.js");
+		// commitlint is NOT in the set -> import only, no require
+		expect(out["./commitlint"].require).toBeUndefined();
+		expect(out["./commitlint"].import).toBe("./commitlint.js");
+	});
+
+	it("treats dual:true as every TS export dual (back-compat) and dual:false as none", () => {
+		const exports = { "./a": "./src/a.ts", "./b": "./src/b.ts" };
+		const all = transformExports(exports, true) as Record<string, Record<string, string>>;
+		expect(all["./a"].require).toBe("./a.cjs");
+		expect(all["./b"].require).toBe("./b.cjs");
+		const none = transformExports(exports, false) as Record<string, Record<string, string>>;
+		expect(none["./a"].require).toBeUndefined();
+		expect(none["./b"].require).toBeUndefined();
 	});
 });

@@ -4,14 +4,30 @@ import type { Plugin } from "rolldown";
 import type { JsxConfig } from "../jsx/config.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
-import type { Json } from "../manifest/transform.js";
+import type { DualExports, Json } from "../manifest/transform.js";
 import { cjsDefaultInterop } from "./cjs-default-interop.js";
+import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
 import { syncPublicDir } from "./sync-public.js";
 import type { BuildFormat, BuildGroupSpec } from "./target-groups.js";
 import { deriveDtsPassOptions, deriveTargetGroupOptions } from "./target-groups.js";
 
 /** Signature compatible with tsdown's `build(inlineConfig)`. */
 export type TsdownBuild = (config: Record<string, unknown>) => Promise<unknown>;
+
+/**
+ * One entry partition built with its own format + bundling posture, layered into the
+ * SAME outDir as the base build (clean:false). Anything omitted falls back to the base
+ * build's value. `entry` is a subset of the package's entries (entryName -> source path).
+ */
+export interface EntryOverride {
+	readonly entry: Record<string, string>;
+	readonly format?: ReadonlyArray<BuildFormat> | undefined;
+	readonly externals?: ReadonlyArray<string> | undefined;
+	readonly bundle?: ReadonlyArray<string> | undefined;
+	readonly bundleNodeModules?: boolean | undefined;
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+}
 
 export interface BuildTargetGroupsOptions {
 	readonly cwd: string;
@@ -47,8 +63,20 @@ export interface BuildTargetGroupsOptions {
 	 * self-contained. Defaults to false (current behavior).
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
+	/**
+	 * Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`),
+	 * even declared deps that would otherwise be auto-externalized. The inverse of
+	 * `externals`. JS pass only; `alwaysBundle` is allowed alongside our `skipNodeModulesBundle:
+	 * false` (the throw only fires when skipNodeModulesBundle is true).
+	 */
+	readonly bundle?: ReadonlyArray<string> | undefined;
 	/** Output formats to emit. Defaults to esm-only when unset. */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
+	/**
+	 * Minify the JS output of PROD groups only (dev is never minified). Defaults to
+	 * false — this builder targets Node libraries where readable output is preferred.
+	 */
+	readonly minify?: boolean | undefined;
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	/**
 	 * Extra rolldown plugins, forwarded to BOTH the JS pass and the dts-only pass. A plugin
@@ -63,6 +91,18 @@ export interface BuildTargetGroupsOptions {
 	readonly extraPlugins?: ReadonlyArray<Plugin>;
 	/** JSX transform settings forwarded to rolldown's inputOptions. */
 	readonly jsx?: JsxConfig | undefined;
+	/**
+	 * Entry partitions with their own format/bundling, built into the same outDir after
+	 * the base entries. Used for per-entry format overrides (e.g. one CJS entry in an
+	 * otherwise ESM-only package). The base `entry` must already EXCLUDE these entries.
+	 */
+	readonly overrides?: ReadonlyArray<EntryOverride> | undefined;
+	/**
+	 * Which export keys get a CJS `require` condition in the emitted manifest. Pass a Set
+	 * when overrides give different entries different formats; omit for the uniform
+	 * `format`-includes-cjs behavior.
+	 */
+	readonly dualExports?: DualExports | undefined;
 	/** Injectable for tests; defaults to tsdown's build. */
 	readonly build?: TsdownBuild;
 }
@@ -87,90 +127,107 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 	const publicDir = join(options.cwd, "public");
 
 	for (const group of options.groups) {
-		const deriveInput = {
-			group: group.id,
-			cwd: options.cwd,
-			version: options.version,
-			entry: options.entry,
-			tsconfigPath: options.tsconfigPath,
-			devManifest: options.devManifest,
-			...(options.externals !== undefined ? { externals: options.externals } : {}),
-			...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),
-			...(options.format !== undefined ? { format: options.format } : {}),
-			...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
-		};
-		const js = deriveTargetGroupOptions(deriveInput);
-		const dts = deriveDtsPassOptions(deriveInput);
-		const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: js.isProd };
-		const manifestPlugin = emitManifest({
-			targetGroup,
-			devManifest: options.devManifest,
-			transform: options.transform,
-			sourceDir: options.cwd,
-			dual: js.format.includes("cjs"),
-		});
+		// Partition 0 is the base (options-level config); the rest come from options.overrides.
+		const partitions: ReadonlyArray<EntryOverride> = [
+			{
+				entry: options.entry,
+				...(options.format !== undefined ? { format: options.format } : {}),
+				...(options.externals !== undefined ? { externals: options.externals } : {}),
+				...(options.bundle !== undefined ? { bundle: options.bundle } : {}),
+				...(options.bundleNodeModules !== undefined ? { bundleNodeModules: options.bundleNodeModules } : {}),
+				...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),
+				...(options.dtsExternals !== undefined ? { dtsExternals: options.dtsExternals } : {}),
+			},
+			...(options.overrides ?? []),
+		];
 
-		// Pass 1: per-module JS, no dts. Emits the manifest; public/ is mirrored separately below.
-		await build({
-			config: false,
-			cwd: options.cwd,
-			entry: js.entry,
-			outDir: js.outDir,
-			format: js.format,
-			platform: js.platform,
-			sourcemap: js.sourcemap,
-			minify: js.minify,
-			unbundle: js.unbundle,
-			clean: js.clean,
-			fixedExtension: js.fixedExtension,
-			dts: js.dts,
-			define: js.define,
-			...(options.externals?.length || options.bundleNodeModules
-				? {
-						deps: {
-							...(options.externals?.length ? { neverBundle: options.externals } : {}),
-							// skipNodeModulesBundle: false force-bundles node_modules deps not in
-							// neverBundle (rslib parity). JS pass only; tsdown forbids combining it
-							// with deps.alwaysBundle, so this is the minimal correct knob.
-							...(options.bundleNodeModules ? { skipNodeModulesBundle: false } : {}),
-						},
-					}
-				: {}),
-			...(js.cjsDefault !== undefined ? { cjsDefault: js.cjsDefault } : {}),
-			...(js.jsx !== undefined ? { inputOptions: { jsx: js.jsx } } : {}),
-			// The cjs-default-interop plugin is a no-op for esm; only attach it when cjs is built.
-			// It promotes a default+named CJS ENTRY chunk to `module.exports = <default>` (rslib
-			// cjsInterop parity), so `import(x).default` is the value, not the {default,...named}
-			// wrapper rolldown's exports:"auto"/"named" emit for default+named modules.
-			plugins: [
-				manifestPlugin,
-				...(js.format.includes("cjs") ? [cjsDefaultInterop()] : []),
-				...(options.extraPlugins ?? []),
-			],
-		});
+		for (let p = 0; p < partitions.length; p++) {
+			const part = partitions[p];
+			if (part === undefined) continue;
+			const isBase = p === 0;
+			const partExternals = part.externals;
+			const partBundle = part.bundle;
+			const partBundleNodeModules = part.bundleNodeModules;
+			const partBundledPackages = part.bundledPackages;
+			const partDtsExternals = part.dtsExternals;
 
-		// Mirror public/ into the group's pkg dir (idempotent; replaces tsdown's copy, which
-		// EEXISTs on a pre-existing target). Pass 1 owns the outDir, so sync before the dts pass.
-		syncPublicDir(publicDir, join(js.outDir, "public"));
+			const deriveInput = {
+				group: group.id,
+				cwd: options.cwd,
+				version: options.version,
+				entry: part.entry,
+				tsconfigPath: options.tsconfigPath,
+				devManifest: options.devManifest,
+				...(partExternals !== undefined ? { externals: partExternals } : {}),
+				...(partBundledPackages !== undefined ? { bundledPackages: partBundledPackages } : {}),
+				...(part.format !== undefined ? { format: part.format } : {}),
+				...(options.minify !== undefined ? { minify: options.minify } : {}),
+				...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
+			};
+			const js = deriveTargetGroupOptions(deriveInput);
+			const dts = deriveDtsPassOptions(deriveInput);
+			const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: js.isProd };
 
-		// dts-pass neverBundle = union of externals + dtsExternals (dts-pass-only externals).
-		const dtsNeverBundle = [...(options.externals ?? []), ...(options.dtsExternals ?? [])];
+			// Manifest is emitted ONCE per group, by the base partition's JS pass, covering the
+			// whole package's exports with per-entry dual conditions.
+			const manifestPlugin = isBase
+				? emitManifest({
+						targetGroup,
+						devManifest: options.devManifest,
+						transform: options.transform,
+						sourceDir: options.cwd,
+						dual: options.dualExports ?? js.format.includes("cjs"),
+					})
+				: undefined;
 
-		// Pass 2: bundled declarations only, appended to the same outDir. NO manifest, NO copy,
-		// NO sourcemaps, and clean:false so it does not wipe the JS pass above.
-		await build({
-			config: false,
-			cwd: options.cwd,
-			entry: dts.entry,
-			outDir: dts.outDir,
-			format: dts.format,
-			platform: dts.platform,
-			sourcemap: dts.sourcemap,
-			unbundle: dts.unbundle,
-			clean: dts.clean,
-			fixedExtension: dts.fixedExtension,
-			dts: dts.dts,
-			define: dts.define,
+			// Pass 1: per-module JS. clean only on the very first partition (it owns the outDir).
+			await build({
+				config: false,
+				cwd: options.cwd,
+				entry: js.entry,
+				outDir: js.outDir,
+				format: js.format,
+				platform: js.platform,
+				sourcemap: js.sourcemap,
+				minify: js.minify,
+				unbundle: js.unbundle,
+				clean: isBase ? js.clean : false,
+				fixedExtension: js.fixedExtension,
+				dts: js.dts,
+				define: js.define,
+				...(partExternals?.length || partBundleNodeModules || partBundle?.length
+					? {
+							deps: {
+								...(partExternals?.length ? { neverBundle: partExternals } : {}),
+								// alwaysBundle force-inlines these packages (inverse of neverBundle), even
+								// declared deps tsdown would auto-externalize. Allowed alongside
+								// skipNodeModulesBundle:false (the throw only fires when it is true).
+								...(partBundle?.length ? { alwaysBundle: partBundle } : {}),
+								...(partBundleNodeModules ? { skipNodeModulesBundle: false } : {}),
+							},
+						}
+					: {}),
+				...(js.cjsDefault !== undefined ? { cjsDefault: js.cjsDefault } : {}),
+				...(js.jsx !== undefined ? { inputOptions: { jsx: js.jsx } } : {}),
+				// nodeBuiltinDefaultInterop rewrites default imports of node: builtins to namespace
+				// form so rolldown's CJS codegen emits correct interop (it otherwise accesses
+				// `.default` on a bare `require("node:x")`, which is undefined). cjsDefaultInterop
+				// promotes a default+named CJS entry chunk to module.exports = <default> (rslib
+				// cjsInterop parity). Both are cjs-only and no-ops for esm.
+				plugins: [
+					...(manifestPlugin ? [manifestPlugin] : []),
+					...(js.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
+					...(options.extraPlugins ?? []),
+				],
+			});
+
+			// Mirror public/ once, after the base partition's JS pass owns the outDir.
+			if (isBase) syncPublicDir(publicDir, join(js.outDir, "public"));
+
+			const dtsNeverBundle = [...(partExternals ?? []), ...(partDtsExternals ?? [])];
+
+			// Pass 2: bundled dts for this partition's entries. Always clean:false.
+			//
 			// The dts pass's bundling posture tracks the JS pass's. There are three cases:
 			//
 			//  1. bundleNodeModules — the JS pass force-bundles all node_modules (rslib
@@ -195,28 +252,44 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// and `dtsExternals`: dtsExternals are externalized in the dts pass only (emitted as
 			// import references in the .d.ts) while the JS pass still bundles them. The JS pass
 			// neverBundle (above) carries `externals` only — never dtsExternals.
-			...(dtsNeverBundle.length > 0 || options.bundleNodeModules || dts.bundledPackages
-				? {
-						deps: {
-							...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
-							...(options.bundleNodeModules
-								? {
-										skipNodeModulesBundle: false,
-										...(dts.bundledPackages ? { dts: { alwaysBundle: dts.bundledPackages } } : {}),
-									}
-								: dts.bundledPackages
-									? { skipNodeModulesBundle: true, dts: { alwaysBundle: dts.bundledPackages } }
-									: {}),
-						},
-					}
-				: {}),
-			...(dts.jsx !== undefined ? { inputOptions: { jsx: dts.jsx } } : {}),
-			// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
-			// `.cjs` JS chunk in this pass, overwriting the JS pass's footer'd `.cjs` with a
-			// footer-less one (verified). Re-attach the interop plugin here so the footer lands on
-			// the FINAL `.cjs`. The plugin is gated to cjs entry chunks with default+named exports,
-			// so it is a no-op on the esm `.js`/`.d.ts` and on any pass that emits no such chunk.
-			plugins: [...(dts.format.includes("cjs") ? [cjsDefaultInterop()] : []), ...(options.extraPlugins ?? [])],
-		});
+			await build({
+				config: false,
+				cwd: options.cwd,
+				entry: dts.entry,
+				outDir: dts.outDir,
+				format: dts.format,
+				platform: dts.platform,
+				sourcemap: dts.sourcemap,
+				unbundle: dts.unbundle,
+				clean: false,
+				fixedExtension: dts.fixedExtension,
+				dts: dts.dts,
+				define: dts.define,
+				...(dtsNeverBundle.length > 0 || partBundleNodeModules || dts.bundledPackages
+					? {
+							deps: {
+								...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
+								...(partBundleNodeModules
+									? {
+											skipNodeModulesBundle: false,
+											...(dts.bundledPackages ? { dts: { alwaysBundle: dts.bundledPackages } } : {}),
+										}
+									: dts.bundledPackages
+										? { skipNodeModulesBundle: true, dts: { alwaysBundle: dts.bundledPackages } }
+										: {}),
+							},
+						}
+					: {}),
+				...(dts.jsx !== undefined ? { inputOptions: { jsx: dts.jsx } } : {}),
+				// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
+				// `.cjs` JS chunk in this pass, overwriting the JS pass's footer'd `.cjs` with a
+				// footer-less one (verified). Re-attach the interop plugins here so the footer lands on
+				// the FINAL `.cjs` (this is the chunk that inlines vendor deps like vfile).
+				plugins: [
+					...(dts.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
+					...(options.extraPlugins ?? []),
+				],
+			});
+		}
 	}
 }

@@ -1,28 +1,15 @@
 import { defineBuild, runBuild } from "@savvy-web/bundler";
 
 const config = defineBuild({
-	externals: [
-		"@effect/cluster",
-		"@effect/platform",
-		"@effect/platform-node",
-		"@effect/rpc",
-		"@effect/sql",
-		"@octokit/auth-app",
-		"effect",
-	],
+	// Only UNDECLARED transitive packages need listing here: effect, @effect/platform,
+	// @effect/platform-node, and @octokit/auth-app are declared deps (auto-externalized).
+	// @effect/cluster/@effect/rpc/@effect/sql are referenced transitively but not declared,
+	// so tsdown would bundle them without this explicit externalization.
+	externals: ["@effect/cluster", "@effect/rpc", "@effect/sql"],
 	devManifest: "preserve",
 	meta: {
 		localPaths: ["../mcp/lib/models/github-action-effects", "../../website/lib/models/github-action-effects"],
 		tsdoc: { suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }] },
-	},
-	transform: ({ pkg }) => {
-		delete pkg.devDependencies;
-		delete pkg.bundleDependencies;
-		delete pkg.scripts;
-		delete pkg.publishConfig;
-		delete pkg.packageManager;
-		delete pkg.devEngines;
-		return pkg;
 	},
 });
 

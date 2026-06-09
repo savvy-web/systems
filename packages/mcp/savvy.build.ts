@@ -1,25 +1,10 @@
 import { defineBuild, runBuild } from "@savvy-web/bundler";
 
 const config = defineBuild({
-	externals: [
-		"@effect/platform",
-		"@effect/platform-node",
-		"@modelcontextprotocol/sdk",
-		"@savvy-web/silk-effects",
-		"effect",
-		"workspaces-effect",
-		"zod",
-	],
+	// No `externals`: tsdown auto-externalizes everything declared in dependencies/
+	// peerDependencies/optionalDependencies (effect, @effect/*, @modelcontextprotocol/sdk,
+	// @savvy-web/silk-effects, workspaces-effect, zod are all declared), so the list was redundant.
 	devManifest: "preserve",
-	transform: ({ pkg }) => {
-		delete pkg.devDependencies;
-		delete pkg.bundleDependencies;
-		delete pkg.scripts;
-		delete pkg.publishConfig;
-		delete pkg.packageManager;
-		delete pkg.devEngines;
-		return pkg;
-	},
 });
 
 export default config;
