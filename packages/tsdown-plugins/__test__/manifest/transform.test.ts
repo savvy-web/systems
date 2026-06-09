@@ -38,6 +38,18 @@ describe("defaultManifestTransform", () => {
 		const out = defaultManifestTransform({ pkg: { name: "@x/p", version: "1.0.0" } });
 		expect(out).toEqual({ name: "@x/p", version: "1.0.0" });
 	});
+
+	it("does NOT mutate the supplied pkg (returns a stripped copy)", () => {
+		const pkg = { name: "@x/p", version: "1.0.0", scripts: { build: "x" }, devDependencies: { vitest: "^4" } };
+		const out = defaultManifestTransform({ pkg });
+		// input is untouched
+		expect(pkg.scripts).toEqual({ build: "x" });
+		expect(pkg.devDependencies).toEqual({ vitest: "^4" });
+		// output is the stripped copy
+		expect(out).not.toBe(pkg);
+		expect(out.scripts).toBeUndefined();
+		expect(out.devDependencies).toBeUndefined();
+	});
 });
 
 describe("manifest transform", () => {

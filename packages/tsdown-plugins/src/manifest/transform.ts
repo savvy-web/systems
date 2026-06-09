@@ -43,10 +43,15 @@ const NON_PUBLISHED_FIELDS = [
  *
  * `targetGroup` is accepted (so this is assignable wherever the full transform
  * signature is expected) but unused; the strip is identical for every group.
+ *
+ * Pure: the supplied `pkg` is NOT mutated — a shallow copy with the fields removed
+ * is returned, so external callers invoking this from a custom transform keep their
+ * input intact.
  */
 export function defaultManifestTransform({ pkg }: { pkg: Json }): Json {
-	for (const field of NON_PUBLISHED_FIELDS) delete pkg[field];
-	return pkg;
+	const out: Json = { ...pkg };
+	for (const field of NON_PUBLISHED_FIELDS) delete out[field];
+	return out;
 }
 
 const stripLeadingDotSlash = (p: string): string => (p.startsWith("./") ? p.slice(2) : p);

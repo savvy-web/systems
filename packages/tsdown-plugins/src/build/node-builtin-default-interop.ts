@@ -76,7 +76,7 @@ export function nodeBuiltinDefaultInterop(): Plugin {
 			// import NAME, { a, b } from "node:x"  ->  import * as NAME ... ; import { a, b } ...
 			out = out.replace(DEFAULT_WITH_NAMED, (match, lead, indent, name, named, quote, spec) =>
 				isNodeBuiltin(spec)
-					? `${lead}${indent}import * as ${name} from ${quote}${spec}${quote};${indent}import ${named} from ${quote}${spec}${quote}`
+					? `${lead}${indent}import * as ${name} from ${quote}${spec}${quote};\n${indent}import ${named} from ${quote}${spec}${quote}`
 					: match,
 			);
 
