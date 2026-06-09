@@ -13,7 +13,8 @@ export default defineConfig({
 	platform: "node",
 	unbundle: true,
 	fixedExtension: false,
-	minify: true,
+	// Unminified, mirroring the front door's default (Node libraries favor readable output).
+	minify: false,
 	dts: { tsconfig: writeResolvedTsconfig({ cwd }) },
 	define: { __PACKAGE_VERSION__: JSON.stringify("1.2.3") },
 	plugins: [

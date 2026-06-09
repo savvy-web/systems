@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type {
 	BuildGroupSpec,
 	BuildTargetGroupsOptions,
+	EntryOverride,
 	GenerateMetaOptions,
 	JsxConfig,
 	MetaResult,
@@ -17,6 +18,7 @@ import {
 	ConfigValidator,
 	ConfigValidatorLive,
 	ReportPipelineLive,
+	createEntryName,
 	normalizeExeOptions,
 	normalizeMetaOptions,
 	packageJsonEntries,
@@ -25,6 +27,7 @@ import {
 	generateMeta as realGenerateMeta,
 	runExeBuild as realRunExeBuild,
 	writeTargetsBinding as realWriteTargetsBinding,
+	removeDeclarationMaps,
 	renderReport,
 	resolveJsxConfig,
 	resolveTargets,
@@ -212,6 +215,63 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		return;
 	}
 
+	// Per-entry format overrides: pin specific export paths to their own format/bundling.
+	// Entries come from packageJsonEntries (the authoritative, filtered entry map: it drops
+	// non-.ts exports, resolves object exports, rewrites /dist/*.js -> /src/*.ts, skips .json,
+	// and includes bin). Override export paths are flattened to entry names via createEntryName.
+	let overridePartitions: EntryOverride[] = [];
+	let baseEntries: Record<string, string> = entries;
+	let dualExports: ReadonlySet<string> | undefined;
+	if (config.overrides) {
+		const partitions: EntryOverride[] = [];
+		const overriddenEntryNames = new Set<string>();
+		const baseFormatHasCjs = (config.format ?? ["esm"]).includes("cjs");
+		const dualExportKeys = new Set<string>();
+		const exportPathByEntry = deriveExportPaths(entries, exportsMap); // entryName -> export key
+		for (const ov of config.overrides) {
+			const partEntry: Record<string, string> = {};
+			for (const exportPath of ov.entries) {
+				// Require the canonical package.json exports-key form. A non-canonical value like
+				// "changesets/markdownlint" would still flatten to a valid entry name and build the
+				// JS, but its dualExports key would not match the manifest's "./"-prefixed export key,
+				// silently dropping the require condition. Fail loudly instead.
+				if (exportPath !== "." && !exportPath.startsWith("./")) {
+					throw new Error(
+						`overrides: entry "${exportPath}" must be a canonical export path — use "." for the root or a "./"-prefixed subpath (e.g. "./changesets/markdownlint")`,
+					);
+				}
+				const entryName = createEntryName(exportPath, false);
+				const src = entries[entryName];
+				if (src === undefined) {
+					throw new Error(
+						`overrides: export path "${exportPath}" (entry "${entryName}") is not a build entry of ${packageName}`,
+					);
+				}
+				partEntry[entryName] = src;
+				overriddenEntryNames.add(entryName);
+				if ((ov.format ?? config.format ?? ["esm"]).includes("cjs")) dualExportKeys.add(exportPath);
+			}
+			partitions.push({
+				entry: partEntry,
+				...(ov.format !== undefined ? { format: ov.format } : {}),
+				...(ov.externals !== undefined ? { externals: ov.externals } : {}),
+				...(ov.bundle !== undefined ? { bundle: ov.bundle } : {}),
+				...(ov.bundleNodeModules !== undefined ? { bundleNodeModules: ov.bundleNodeModules } : {}),
+				...(ov.bundledPackages !== undefined ? { bundledPackages: ov.bundledPackages } : {}),
+				...(ov.dtsExternals !== undefined ? { dtsExternals: ov.dtsExternals } : {}),
+			});
+		}
+		const onlyBase: Record<string, string> = {};
+		for (const [name, src] of Object.entries(entries)) {
+			if (overriddenEntryNames.has(name)) continue;
+			onlyBase[name] = src;
+			if (baseFormatHasCjs) dualExportKeys.add(exportPathByEntry[name] ?? (name === "index" ? "." : `./${name}`));
+		}
+		overridePartitions = partitions;
+		baseEntries = onlyBase;
+		dualExports = dualExportKeys;
+	}
+
 	const startMs = Date.now();
 	// dev: one dev group named after the base; npm: all resolved prod groups (meta already returned above).
 	const { groups, resolution } =
@@ -221,7 +281,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	await build({
 		cwd,
 		version,
-		entry: entries,
+		entry: config.overrides !== undefined ? baseEntries : entries,
 		tsconfigPath,
 		groups,
 		devManifest: config.devManifest,
@@ -229,9 +289,13 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		...(config.bundledPackages !== undefined ? { bundledPackages: config.bundledPackages } : {}),
 		...(config.dtsExternals !== undefined ? { dtsExternals: config.dtsExternals } : {}),
 		...(config.bundleNodeModules !== undefined ? { bundleNodeModules: config.bundleNodeModules } : {}),
+		...(config.bundle !== undefined ? { bundle: config.bundle } : {}),
+		...(config.minify !== undefined ? { minify: config.minify } : {}),
 		...(config.transform !== undefined ? { transform: config.transform } : {}),
 		...(jsx !== undefined ? { jsx } : {}),
 		...(config.format !== undefined ? { format: config.format } : {}),
+		...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
+		...(dualExports !== undefined ? { dualExports } : {}),
 	});
 
 	// Write the target-to-group binding for the release action (prod only).
@@ -257,6 +321,14 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			localPaths: [],
 			tsdoc: norm.tsdoc,
 		});
+	}
+
+	// Strip declaration source-maps from the PUBLISHED prod pkg/ dirs. They are emitted for
+	// meta generation (API Extractor reads them for original-source positions, consumed in the
+	// block above), but reference .ts sources the tarball does not ship — dead weight that leaks
+	// local paths. Done after meta so prod meta still sees them; dev keeps them for `--target meta`.
+	if (target === "prod") {
+		for (const g of groups) removeDeclarationMaps(join(cwd, "dist", "prod", g.id, "pkg"));
 	}
 
 	const totalMs = Date.now() - startMs;

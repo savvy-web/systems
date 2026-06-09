@@ -4,6 +4,56 @@ import { createEntryName } from "../entry/extract.js";
 
 export type Json = Record<string, unknown>;
 
+/**
+ * Which exports get a CJS `require` condition. `true`/`false` apply uniformly to every
+ * TS export; a Set marks ONLY the listed export keys (e.g. "./changesets/markdownlint")
+ * as dual — used by per-entry format overrides.
+ */
+export type DualExports = boolean | ReadonlySet<string>;
+
+const isDualKey = (dual: DualExports, exportKey: string): boolean =>
+	typeof dual === "boolean" ? dual : dual.has(exportKey);
+
+/**
+ * Package.json fields that are never wanted in a published manifest: they describe
+ * how the package is BUILT/DEVELOPED, not how it is CONSUMED. The bundler reads
+ * everything it needs from the source manifest before transforms run (entry
+ * detection, `publishConfig.targets` for the byte-variant groups, catalog
+ * resolution), so dropping these from the emitted manifest is always safe.
+ */
+const NON_PUBLISHED_FIELDS = [
+	"devDependencies",
+	"bundleDependencies",
+	"scripts",
+	"publishConfig",
+	"packageManager",
+	"devEngines",
+] as const;
+
+/**
+ * The default `transform` applied to every package's manifest when its
+ * `savvy.build.ts` does not provide one of its own. Strips the build/dev-only
+ * fields in {@link NON_PUBLISHED_FIELDS} from the emitted package.json.
+ *
+ * This is the pattern nearly every package repeated by hand (inherited from
+ * rslib-builder); `defineBuild` now applies it automatically so a package needs a
+ * `transform` only when it has genuinely custom manifest work to do (e.g. silk
+ * promoting workspace deps to peerDependencies). A custom transform REPLACES this
+ * default — re-export it and call it from a custom transform to keep the stripping.
+ *
+ * `targetGroup` is accepted (so this is assignable wherever the full transform
+ * signature is expected) but unused; the strip is identical for every group.
+ *
+ * Pure: the supplied `pkg` is NOT mutated — a shallow copy with the fields removed
+ * is returned, so external callers invoking this from a custom transform keep their
+ * input intact.
+ */
+export function defaultManifestTransform({ pkg }: { pkg: Json }): Json {
+	const out: Json = { ...pkg };
+	for (const field of NON_PUBLISHED_FIELDS) delete out[field];
+	return out;
+}
+
 const stripLeadingDotSlash = (p: string): string => (p.startsWith("./") ? p.slice(2) : p);
 
 /**
@@ -29,15 +79,16 @@ const tsConditions = (exportKey: string, dual: boolean): Json => ({
 
 /**
  * Rewrite an exports map: TS string targets become a types/import conditions object.
- * When dual is true (a cjs build), each TS condition also gets a require entry.
+ * Each TS condition also gets a `require` entry when `dual` is `true` (uniform) or when
+ * the export key is in the `dual` Set (per-entry).
  *
  * The output path is derived from the export KEY via the shared entry-name function,
  * never from the source path, so the manifest target always matches the emitted file.
  */
-export function transformExports(exports: unknown, dual = false): unknown {
+export function transformExports(exports: unknown, dual: DualExports = false): unknown {
 	// A bare string export is the root (`.`) target.
 	if (typeof exports === "string") {
-		return isTs(exports) ? tsConditions(".", dual) : exports;
+		return isTs(exports) ? tsConditions(".", isDualKey(dual, ".")) : exports;
 	}
 	if (exports && typeof exports === "object") {
 		const out: Json = {};
@@ -47,7 +98,7 @@ export function transformExports(exports: unknown, dual = false): unknown {
 				continue;
 			}
 			if (typeof value === "string" && isTs(value)) {
-				out[key] = tsConditions(key, dual);
+				out[key] = tsConditions(key, isDualKey(dual, key));
 			} else {
 				out[key] = transformExports(value, dual);
 			}
@@ -84,8 +135,8 @@ export function normalizeBinPaths(bin: unknown): unknown {
 export interface TransformManifestOptions {
 	/** Run after the standard transforms, before the bin final-guard + sort. */
 	readonly transform?: ((pkg: Json) => Json) | undefined;
-	/** Emit dual import/require export conditions (set when the build includes cjs). */
-	readonly dual?: boolean | undefined;
+	/** Which exports emit dual import/require conditions. boolean = uniform; Set = per-export-key. */
+	readonly dual?: DualExports | undefined;
 }
 
 /** Apply the full standard manifest transform (excluding catalog resolution, done upstream). */

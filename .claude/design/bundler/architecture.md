@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-08
-last-synced: 2026-06-08
+updated: 2026-06-09
+last-synced: 2026-06-09
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -16,7 +16,7 @@ dependencies:
 
 # @savvy-web/bundler architecture
 
-The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consumer installs one devDependency (`@savvy-web/bundler`), writes a self-executing `savvy.build.ts` and gets a pinned, tested tsdown transitively. This doc covers the SP1 foundation plus the M2 self-host, the M3 bundled-dts default and the M4–M6 finish: **all nine in-repo packages now build via the bundler and `@savvy-web/rslib-builder` + `@rslib/core` are decommissioned from `systems`**. The M4–M6 work added the bundling-posture knobs (`bundleNodeModules`, `bundledPackages`, `dtsExternals`) and the cjs-default-interop plugin that let the bundler reproduce every rslib posture cli/mcp/silk needed. Only Track E (full publishability) remains outstanding.
+The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consumer installs one devDependency (`@savvy-web/bundler`), writes a self-executing `savvy.build.ts` and gets a pinned, tested tsdown transitively. This doc covers the SP1 foundation plus the M2 self-host, the M3 bundled-dts default and the M4–M6 finish: **all nine in-repo packages now build via the bundler and `@savvy-web/rslib-builder` + `@rslib/core` are decommissioned from `systems`**. The M4–M6 work added the bundling-posture knobs (`bundleNodeModules`, `bundledPackages`, `dtsExternals`) and the cjs-default-interop plugin that let the bundler reproduce every rslib posture cli/mcp/silk needed. Post-M6 hardening then added per-entry format/bundling `overrides`, the `bundle` force-inline knob, the node-builtin default-interop fix, the `defaultManifestTransform`/`minify` fluent defaults and the prod declaration source-map strip. Only Track E (full publishability) remains outstanding.
 
 ## Table of Contents
 
@@ -29,6 +29,8 @@ The all-in-one, tsdown-based replacement for `@savvy-web/rslib-builder`. A consu
 - [Multi-target publishing](#multi-target-publishing)
 - [Dual-format esm plus cjs](#dual-format-esm-plus-cjs)
 - [Bundling-posture knobs](#bundling-posture-knobs)
+- [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides)
+- [Fluent defaults: manifest strip and unminified prod](#fluent-defaults-manifest-strip-and-unminified-prod)
 - [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder)
 - [The shipped ecma.json tsconfig preset](#the-shipped-ecmajson-tsconfig-preset)
 - [Dist layout](#dist-layout)
@@ -108,8 +110,8 @@ export default defineBuild({
 
 Two functions, deliberately separated so the config surface stays pure and the orchestration stays injectable.
 
-- **`defineBuild(input)`** (`src/config.ts`) normalizes and validates the config (`externals`, `devManifest`, `transform`, `output`, the optional `meta`/`jsx`/`exe`/`format` plus the M4–M6 posture knobs `bundleNodeModules`/`bundledPackages`/`dtsExternals`) into a `BuildConfig`, applying defaults (`devManifest: "preserve"`). It does **not** itself run the build — see `src/config.ts` for the note on why the `import.meta.main` gate lives in `run.ts`. The optional `format?: ReadonlyArray<BuildFormat>` is the **live** dual-format field (M1). A pre-existing dead `formats: ReadonlyArray<"esm">` field still sits beside it but is not consumed by the build — `format` is the one `runBuild` reads.
-- **`runBuild(config, options)`** (`src/run.ts`) is the orchestrator: parse argv → read `package.json` at cwd → resolve effective jsx (explicit override ?? `readTsconfigJsx` inference) → write the resolved dts tsconfig (`writeResolvedTsconfig`, with the jsx forwarded) → derive entries (`packageJsonEntries`) → **run `ConfigValidator.validate(...)` first to fast-fail bad config** → branch on `--target`: `meta` and `exe` short-circuit before the main build; otherwise derive the build groups (a single `dev` group, or all prod groups from `publishConfig.targets`) → call `buildTargetGroups` (jsx and `config.format` threaded in via conditional spread) → on `--target prod` write the `targets.json` binding → assemble a `BuildReport` (one entry per built group) and render it via `renderReport`/`ReportPipelineLive`. Every IO dependency (`buildTargetGroups`, `generateMeta`, `readExports`, `readPublishTargets`, `writeTargetsBinding`, `runExeBuild`, `readTsconfigJsx`, `readOsCpu`) is injectable on `RunOptions` so the orchestration is unit-testable without touching disk or spawning tsdown.
+- **`defineBuild(input)`** (`src/config.ts`) normalizes and validates the config (`externals`, `devManifest`, `transform`, `output`, the optional `meta`/`jsx`/`exe`/`format`, the posture knobs `bundleNodeModules`/`bundle`/`bundledPackages`/`dtsExternals`, the per-entry `overrides` and `minify`) into a `BuildConfig`, applying defaults (`devManifest: "preserve"`, `transform: defaultManifestTransform`, `minify: false`). It does **not** itself run the build — see `src/config.ts` for the note on why the `import.meta.main` gate lives in `run.ts`. The optional `format?: ReadonlyArray<BuildFormat>` is the **live** dual-format field (M1). A pre-existing dead `formats: ReadonlyArray<"esm">` field still sits beside it but is not consumed by the build — `format` is the one `runBuild` reads.
+- **`runBuild(config, options)`** (`src/run.ts`) is the orchestrator: parse argv → read `package.json` at cwd → resolve effective jsx (explicit override ?? `readTsconfigJsx` inference) → write the resolved dts tsconfig (`writeResolvedTsconfig`, with the jsx forwarded) → derive entries (`packageJsonEntries`) → **run `ConfigValidator.validate(...)` first to fast-fail bad config** → branch on `--target`: `meta` and `exe` short-circuit before the main build; otherwise resolve any per-entry `overrides` into base+override entry partitions (computing the `dualExports` Set) → derive the build groups (a single `dev` group, or all prod groups from `publishConfig.targets`) → call `buildTargetGroups` (jsx, `config.format`, the posture knobs, `overrides`/`dualExports` threaded in via conditional spread) → on `--target prod` write the `targets.json` binding then `removeDeclarationMaps` on each prod group's `pkg/` (after meta has run) → assemble a `BuildReport` (one entry per built group) and render it via `renderReport`/`ReportPipelineLive`. Every IO dependency (`buildTargetGroups`, `generateMeta`, `readExports`, `readPublishTargets`, `writeTargetsBinding`, `runExeBuild`, `readTsconfigJsx`, `readOsCpu`) is injectable on `RunOptions` so the orchestration is unit-testable without touching disk or spawning tsdown.
 
 The `BuildReport` the bundler assembles in SP1 is intentionally minimal (per-TargetGroup `{ id, entries, timings, warnings, errors }`); SP2 extends it with `wouldFailProd[]` preflight findings. The report *schema* and *reporter pipeline* are owned by `tsdown-plugins`.
 
@@ -143,13 +145,33 @@ M1 makes the build's output formats configurable so a package can emit both esm 
 
 ## Bundling-posture knobs
 
-M4–M6 added three `defineBuild` knobs so a package can pick any rslib bundling posture. As with every behavior, the mechanics live in `@savvy-web/tsdown-plugins` (the per-pass `deps` shapes, the dts-posture mirror — see [Bundling posture](../tsdown-plugins/architecture.md)); `runBuild` only conditional-spreads each onto the `buildTargetGroups` call. They were driven by the cli/mcp/silk migration: cli/mcp use `externals` only (their runtime deps stay external), while silk needs all three.
+M4–M6 added the bundling-posture `defineBuild` knobs so a package can pick any rslib bundling posture. As with every behavior, the mechanics live in `@savvy-web/tsdown-plugins` (the per-pass `deps` shapes, the dts-posture mirror — see [Bundling posture](../tsdown-plugins/architecture.md)); `runBuild` only conditional-spreads each onto the `buildTargetGroups` call.
+
+**tsdown already auto-externalizes declared deps, so `externals` is rarely needed.** tsdown externalizes `dependencies`+`peerDependencies`+`optionalDependencies` by default, so the post-M6 cleanup dropped the redundant `externals` lists from cli/mcp/templates/silk-effects entirely; github-action-effects keeps only its three undeclared `@effect/*` transitives and silk keeps `source-map-support`. `externals` now names only undeclared transitives that must stay external; the four knobs cover the postures that DEPART from the auto-externalize default.
 
 - **`bundleNodeModules?: boolean`** force-bundles every node_modules/workspace dep not in `externals` into the package output (rslib's bundle-everything-except-externals), and the dts pass inlines the matching types. Defaults off. silk's self-contained CJS-requireable artifact depends on it.
+- **`bundle?: ReadonlyArray<string>`** force-INLINES the listed packages into the JS output (tsdown `deps.alwaysBundle`), even declared deps that would otherwise be auto-externalized — the inverse of `externals`. JS-pass-only; declarations are not inlined by it (use `bundledPackages` for that).
 - **`bundledPackages?: ReadonlyArray<string>`** inlines ONLY the listed packages' declarations into the bundled dts (rslib `dtsBundledPackages` parity), externalizing the rest. JS-pass-unaffected.
 - **`dtsExternals?: ReadonlyArray<string>`** externalizes the listed packages in the dts pass ONLY (emitted as `import` references), while the JS pass still bundles them per `bundleNodeModules`. For dependencies whose types cannot be inlined — silk lists `effect`/`@effect/platform` here because effect's `declare module` augmentations would inline into TS2320 conflicts in consumers.
 
-An integration fixture per knob (`__test__/integration/bundle-node-modules`, `bundled-packages`) proves the JS/dts split. The cjs-default-interop footer (rslib `cjsInterop` parity) is not a knob — it activates automatically for any dual-format build; see `../tsdown-plugins/architecture.md`.
+An integration fixture per knob (`__test__/integration/bundle-node-modules`, `bundled-packages`) proves the JS/dts split. The cjs-default-interop footer (rslib `cjsInterop` parity) and the node-builtin default-interop rewrite are not knobs — they activate automatically for any dual-format build; see `../tsdown-plugins/architecture.md`.
+
+## Per-entry format and bundling overrides
+
+A package can pin SOME export paths to their own format/bundling while the base build uses a different posture. This is silk's shape: base entries are ESM-only with silk-effects externalized, but `./changesets/markdownlint` must be dual-format CJS force-bundling silk-effects (see `../silk/architecture.md`). The partition machinery lives in `@savvy-web/tsdown-plugins` (`EntryOverride` + the partition loop, the `DualExports` Set — see [Per-entry overrides](../tsdown-plugins/architecture.md)); the bundler resolves config into partitions.
+
+- **`defineBuild({ overrides })`** takes `ReadonlyArray<BuildEntryOverride>`. Each override lists `entries` (canonical export paths like `"./changesets/markdownlint"` or `"."`) plus its own optional `format`/`bundle`/`externals`/`bundleNodeModules`/`bundledPackages`/`dtsExternals`.
+- **`runBuild` resolves export paths to entry partitions.** It maps each override `entries` export path through `createEntryName` (re-exported from tsdown-plugins) to the build entry name, partitions the package's full entry map into a base set (everything not overridden) plus one `EntryOverride` per config override, computes the `dualExports` Set (which export keys emit cjs, from the base format and each override's format) and threads `overrides`/`dualExports` into `buildTargetGroups`. The base `entry` passed to the build EXCLUDES the overridden entries.
+- **Override export paths must be canonical** — `runBuild` THROWS if an entry omits the `./` prefix (a non-canonical `"changesets/markdownlint"` would flatten to a valid entry name and build the JS, but its `dualExports` key would not match the manifest's `"./"`-prefixed export key, silently dropping the `require` condition), and throws if an export path is not actually a build entry of the package.
+- **The no-override path is byte-identical to before.** With no `overrides`, `runBuild` passes the full entry map and no partitions, so the build is exactly the prior single-partition two-pass loop.
+
+## Fluent defaults: manifest strip and unminified prod
+
+Two `defineBuild` defaults moved into the bundler so packages stop carrying boilerplate (the mechanics live in `../tsdown-plugins/architecture.md`):
+
+- **`transform` defaults to `defaultManifestTransform`.** Nearly every package's `transform` was the identical block stripping build/dev-only manifest fields (`devDependencies`/`scripts`/`publishConfig`/`packageManager`/`devEngines`/`bundleDependencies`). `defineBuild` now applies `defaultManifestTransform` (re-exported from `@savvy-web/bundler` and tsdown-plugins) when no `transform` is supplied, so cli/mcp/templates/silk-effects/github-action-builder dropped their hand-written strip entirely. A custom `transform` REPLACES the default, so silk and the two self-hosting builders import and call `defaultManifestTransform` themselves to keep the strip.
+- **`minify` defaults to `false` and applies to PROD only.** Prod output is now UNMINIFIED by default (the prior default was minified). This builder targets Node libraries where readable output is preferred — minification trips SCA scanners and degrades stack traces. `defineBuild({ minify: true })` opts back in; dev is never minified regardless.
+- **Declaration source-maps are stripped from prod.** `runBuild` calls `removeDeclarationMaps` on each prod group's `pkg/` AFTER meta generation has consumed the `.d.ts.map`/`.d.cts.map` files (the dts tsconfig emits them; API Extractor reads them; they are dead weight that leaks local paths in the published tarball). Dev keeps them so `--target meta` can read them. The two self-hosting builders call `removeDeclarationMaps` directly in their escape-hatch `savvy.build.ts`.
 
 ## Self-hosting: the three-tier bootstrap ladder
 
@@ -257,7 +279,9 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 - **Config validation runs first.** `ConfigValidator.validate` gates every target path; the rules live in tsdown-plugins (`resolveTargets`, the exe/meta checks) and the bundler only assembles the `ValidationInput`. It is structural-shape validation, distinct from the SP2 `bundler check` preflight.
 - **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency. `@tsdown/exe` is a bundler runtime dependency (lazily imported by tsdown for `--target exe`), again not a peer.
 - **Self-hosting is complete (M2–M6).** Every in-repo package builds via the bundler stack; `@savvy-web/rslib-builder` and `@rslib/core` are decommissioned from `systems` (M6). **Track E (full publishability) is the remaining outstanding work.** The two upstream packages (`tsdown-plugins`, `bundler`) self-build through escape-hatch `savvy.build.ts` files; everything else uses the front door — see [Self-hosting: the three-tier bootstrap ladder](#self-hosting-the-three-tier-bootstrap-ladder).
-- **The bundling-posture knobs are pure wiring.** `bundleNodeModules`/`bundledPackages`/`dtsExternals` are conditional-spread onto `buildTargetGroups`; the dts-posture mirror and the cjs-default-interop plugin live in tsdown-plugins. See [Bundling-posture knobs](#bundling-posture-knobs).
+- **The bundling-posture knobs are pure wiring.** `bundleNodeModules`/`bundle`/`bundledPackages`/`dtsExternals` are conditional-spread onto `buildTargetGroups`; the dts-posture mirror, the cjs-default-interop plugin and the node-builtin default-interop plugin live in tsdown-plugins. See [Bundling-posture knobs](#bundling-posture-knobs).
+- **Per-entry overrides are resolved in `runBuild`, not the build loop.** `runBuild` maps override export paths to entry partitions (throwing on a non-canonical or non-existent export path), computes the `dualExports` Set and threads partitions into `buildTargetGroups`; tsdown-plugins owns the partition loop. A no-override build is byte-identical. See [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides).
+- **`externals` lists only departures; defaults strip and unminify.** tsdown auto-externalizes declared deps, so `externals` names undeclared transitives only. `transform` defaults to `defaultManifestTransform` (a custom transform replaces and re-calls it), `minify` defaults off and applies to prod only, and prod declaration source-maps are stripped after meta generation. See [Fluent defaults](#fluent-defaults-manifest-strip-and-unminified-prod).
 
 ## Rationale
 

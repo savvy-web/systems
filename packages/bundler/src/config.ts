@@ -1,5 +1,17 @@
 // packages/bundler/src/config.ts
 import type { BuildFormat, ExeConfig, Json, JsxConfig, MetaOptions, TargetGroupRef } from "@savvy-web/tsdown-plugins";
+import { defaultManifestTransform } from "@savvy-web/tsdown-plugins";
+
+export interface BuildEntryOverride {
+	/** Export paths to pin to this partition, e.g. "./changesets/markdownlint" (or "." for root). */
+	readonly entries: ReadonlyArray<string>;
+	readonly format?: ReadonlyArray<BuildFormat> | undefined;
+	readonly bundle?: ReadonlyArray<string> | undefined;
+	readonly externals?: ReadonlyArray<string> | undefined;
+	readonly bundleNodeModules?: boolean | undefined;
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+}
 
 export interface OutputConfig {
 	readonly console?: { readonly human?: boolean; readonly agent?: boolean; readonly ci?: boolean };
@@ -33,7 +45,30 @@ export interface BuildConfigInput {
 	 * and the published package needs no extra declared deps for them. Defaults to false.
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
+	/**
+	 * Force-bundle (inline) these packages into the JS output, even ones declared in
+	 * package.json that would otherwise be auto-externalized. The inverse of `externals`;
+	 * maps to tsdown `deps.alwaysBundle`. Accepts package names. Use when you declare a
+	 * dependency for metadata/types but want its code inlined. Declarations are NOT
+	 * inlined by this option — use `bundledPackages` to also roll a package's types into
+	 * the emitted `.d.ts`.
+	 */
+	readonly bundle?: ReadonlyArray<string> | undefined;
+	/**
+	 * Minify the prod build output. Applies ONLY to prod target groups (dev is never
+	 * minified) and defaults to false: this builder targets Node libraries, where
+	 * readable output matters more than bundle size — minified/obfuscated code trips
+	 * security/SCA scanners and degrades stack traces. Set true to opt back in.
+	 */
+	readonly minify?: boolean | undefined;
 	readonly devManifest?: "preserve" | "resolve";
+	/**
+	 * Final mutation of the emitted package.json, run after the declarative
+	 * `publishConfig.targets` rename. Defaults to {@link defaultManifestTransform},
+	 * which strips build/dev-only fields (devDependencies, scripts, publishConfig,
+	 * etc.). Supplying your own REPLACES that default — import and call
+	 * `defaultManifestTransform` from it if you still want the stripping.
+	 */
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	readonly output?: OutputConfig;
 	readonly meta?: MetaOptions;
@@ -45,6 +80,12 @@ export interface BuildConfigInput {
 	 * the legacy "formats" field above is not consumed by the build.
 	 */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
+	/**
+	 * Per-entry format/bundling overrides. Each group pins its `entries` (export paths) to
+	 * its own format and bundling, layered onto the base build. Use to keep one entry CJS in
+	 * an otherwise ESM-only package (e.g. silk's `./changesets/markdownlint`).
+	 */
+	readonly overrides?: ReadonlyArray<BuildEntryOverride> | undefined;
 }
 
 export interface BuildConfig {
@@ -72,6 +113,10 @@ export interface BuildConfig {
 	 * types into the `.d.ts`. Defaults to false.
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
+	/** Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`). Inverse of `externals`. */
+	readonly bundle?: ReadonlyArray<string> | undefined;
+	/** Minify prod output (prod groups only; dev is never minified). defineBuild defaults this to false. */
+	readonly minify?: boolean | undefined;
 	readonly devManifest: "preserve" | "resolve";
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
 	readonly output?: OutputConfig | undefined;
@@ -80,6 +125,7 @@ export interface BuildConfig {
 	readonly exe?: ExeConfig | ReadonlyArray<ExeConfig> | undefined;
 	/** Output module formats forwarded to the tsdown build (esm-only by default; add "cjs" for dual-format). */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
+	readonly overrides?: ReadonlyArray<BuildEntryOverride> | undefined;
 }
 
 /** Normalize + validate a defineBuild config. Pure when imported; self-runs when entry (see run.ts). */
@@ -90,13 +136,20 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 		bundledPackages: input.bundledPackages,
 		dtsExternals: input.dtsExternals,
 		bundleNodeModules: input.bundleNodeModules,
+		bundle: input.bundle,
+		minify: input.minify ?? false,
 		devManifest: input.devManifest ?? "preserve",
-		transform: input.transform,
+		// Default to stripping build/dev-only manifest fields (the pattern nearly every
+		// package repeated by hand). A package supplies its own transform only for genuinely
+		// custom manifest work; doing so REPLACES this default (re-export and call
+		// defaultManifestTransform to keep the stripping). See @savvy-web/tsdown-plugins.
+		transform: input.transform ?? defaultManifestTransform,
 		output: input.output,
 		meta: input.meta,
 		jsx: input.jsx,
 		exe: input.exe,
 		format: input.format,
+		overrides: input.overrides,
 	};
 	// Self-execution: only when this module's importer is the program entry.
 	// run.ts performs the actual import.meta.main gate (it has access to the caller's meta).

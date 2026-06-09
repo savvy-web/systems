@@ -75,7 +75,7 @@ Biome (`biome.jsonc`) extends the bundled preset:
 | `./lint` | lint-staged handlers, `Preset`, `createConfig` and workspace utils |
 | `./biome` | Static Biome preset asset |
 
-The package ships dual-format ESM and CommonJS, because some loaders — markdownlint-cli2's custom-rule loader among them — `require()` these subpaths from a CommonJS context.
+Most subpaths ship as ESM. The `./changesets/markdownlint` entry additionally ships a CommonJS build, because markdownlint-cli2's custom-rule loader `require()`s it from a CommonJS context.
 
 ## License
 

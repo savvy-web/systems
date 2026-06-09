@@ -22,11 +22,22 @@ describe("deriveTargetGroupOptions (JS pass)", () => {
 		expect(o.clean).toBe(true);
 	});
 
-	it("npm group -> dist/prod/npm/pkg, sourcemaps off, minify on", () => {
+	it("npm group -> dist/prod/npm/pkg, sourcemaps off, minify off by default", () => {
 		const o = deriveTargetGroupOptions({ ...base, group: "npm", devManifest: "preserve" });
 		expect(o.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
 		expect(o.sourcemap).toBe(false);
+		// Default is unminified: Node libraries favor readable output.
+		expect(o.minify).toBe(false);
+	});
+
+	it("prod group minifies only when minify:true is passed", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "npm", devManifest: "preserve", minify: true });
 		expect(o.minify).toBe(true);
+	});
+
+	it("dev group never minifies even with minify:true (prod-only option)", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve", minify: true });
+		expect(o.minify).toBe(false);
 	});
 
 	it("folders an arbitrary prod group id under dist/prod/<id>/pkg", () => {

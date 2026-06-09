@@ -1,4 +1,5 @@
 // packages/bundler/__test__/config.test.ts
+import { defaultManifestTransform } from "@savvy-web/tsdown-plugins";
 import { describe, expect, it } from "vitest";
 import { defineBuild, parseArgs } from "../src/config.js";
 
@@ -10,7 +11,12 @@ describe("defineBuild", () => {
 		expect(cfg.externals).toEqual([]);
 	});
 
-	it("passes through externals and a transform", () => {
+	it("defaults transform to defaultManifestTransform when none is provided", () => {
+		const cfg = defineBuild({});
+		expect(cfg.transform).toBe(defaultManifestTransform);
+	});
+
+	it("passes through externals and a transform (a custom transform REPLACES the default)", () => {
 		const t = ({ pkg }: { pkg: Record<string, unknown> }) => pkg;
 		const cfg = defineBuild({ externals: ["typescript"], transform: t });
 		expect(cfg.externals).toEqual(["typescript"]);
@@ -39,6 +45,19 @@ describe("defineBuild", () => {
 		expect(c.bundledPackages).toEqual(["@commitlint/types"]);
 	});
 
+	it("defaults minify to false (prod output is unminified by default)", () => {
+		expect(defineBuild({}).minify).toBe(false);
+	});
+
+	it("passes minify:true through", () => {
+		expect(defineBuild({ minify: true }).minify).toBe(true);
+	});
+
+	it("passes bundle through and leaves it undefined when not provided", () => {
+		expect(defineBuild({ bundle: ["semver-effect"] }).bundle).toEqual(["semver-effect"]);
+		expect(defineBuild({}).bundle).toBeUndefined();
+	});
+
 	it("passes bundleNodeModules through", () => {
 		const c = defineBuild({ bundleNodeModules: true });
 		expect(c.bundleNodeModules).toBe(true);
@@ -52,6 +71,14 @@ describe("defineBuild", () => {
 	it("leaves dtsExternals undefined when not provided", () => {
 		const c = defineBuild({});
 		expect(c.dtsExternals).toBeUndefined();
+	});
+
+	it("passes overrides through and leaves them undefined when not provided", () => {
+		const cfg = defineBuild({
+			overrides: [{ entries: ["./changesets/markdownlint"], format: ["esm", "cjs"], bundle: ["x"] }],
+		});
+		expect(cfg.overrides).toEqual([{ entries: ["./changesets/markdownlint"], format: ["esm", "cjs"], bundle: ["x"] }]);
+		expect(defineBuild({}).overrides).toBeUndefined();
 	});
 });
 

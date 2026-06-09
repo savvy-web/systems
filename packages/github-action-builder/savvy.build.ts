@@ -13,14 +13,6 @@ const config = defineBuild({
 			],
 		},
 	},
-	transform: ({ pkg }) => {
-		delete pkg.devDependencies;
-		delete pkg.bundleDependencies;
-		delete pkg.scripts;
-		delete pkg.publishConfig;
-		delete pkg.devEngines;
-		return pkg;
-	},
 });
 
 export default config;

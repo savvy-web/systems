@@ -1,7 +1,7 @@
 import { defineBuild, runBuild } from "@savvy-web/bundler";
 
 const config = defineBuild({
-	externals: ["effect", "@effect/platform"],
+	// No `externals`: effect and @effect/platform are declared deps, auto-externalized by tsdown.
 	devManifest: "preserve",
 	meta: {
 		localPaths: ["../mcp/lib/models/silk-effects", "../../website/lib/models/silk-effects"],
@@ -9,14 +9,6 @@ const config = defineBuild({
 			suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }],
 			tagDefinitions: [{ tagName: "@since", syntaxKind: "block" }],
 		},
-	},
-	transform: ({ pkg }) => {
-		delete pkg.devDependencies;
-		delete pkg.publishConfig;
-		delete pkg.packageManager;
-		delete pkg.devEngines;
-		delete pkg.scripts;
-		return pkg;
 	},
 });
 
