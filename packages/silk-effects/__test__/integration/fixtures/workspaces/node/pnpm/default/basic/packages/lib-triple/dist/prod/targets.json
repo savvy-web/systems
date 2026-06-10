@@ -1,0 +1,8 @@
+{
+	"groups": [{ "id": "npm", "name": "@scope/lib-triple", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@scope/lib-triple", "registry": "https://registry.npmjs.org/" },
+		{ "id": "github", "group": "npm", "name": "@scope/lib-triple", "registry": "https://npm.pkg.github.com/" },
+		{ "id": "jsr", "group": "npm", "name": "@scope/lib-triple", "registry": "https://jsr.io/" }
+	]
+}

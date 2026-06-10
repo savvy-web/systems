@@ -1,0 +1,6 @@
+{
+	"groups": [{ "id": "npm", "name": "@fixture/ignore-main", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@fixture/ignore-main", "registry": "https://registry.npmjs.org" }
+	]
+}

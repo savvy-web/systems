@@ -12,6 +12,11 @@
 **/.vitest
 **/.cache
 **/dist
+# silk-effects integration fixtures ship hand-authored dist/prod bindings
+# (dist/prod/targets.json + built-private package.json) that MUST be committed —
+# they are test inputs, not build output. Re-include them after the broad **/dist.
+!packages/silk-effects/__test__/integration/fixtures/**/dist/
+!packages/silk-effects/__test__/integration/fixtures/**/dist/**
 coverage/
 **/*.asc
 pnpm-publish-summary.json

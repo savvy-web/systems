@@ -40,6 +40,16 @@ const KNOWN_REGISTRIES: Record<string, string> = {
 	jsr: "https://jsr.io/",
 };
 
+/**
+ * Compare registry URLs ignoring a trailing slash. `SilkPublishability` resolves
+ * targets from the bundler's `dist/prod/targets.json` binding, which writes
+ * registry endpoints WITHOUT a trailing slash (`https://registry.npmjs.org`),
+ * while `KNOWN_REGISTRIES` / `NPM_DEFAULT` use the trailing-slash form. Normalize
+ * both sides so `hasTarget`/`targetFor` match regardless of which form a target
+ * carries (binding-driven, placeholder, or access-branch fallback).
+ */
+const sameRegistry = (a: string, b: string): boolean => a.replace(/\/+$/, "") === b.replace(/\/+$/, "");
+
 const WorkspaceVersion = Schema.Struct({
 	current: Schema.String,
 });
@@ -87,7 +97,7 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 	}
 
 	publishesTo(registry: string): boolean {
-		return this.targets.some((t) => t.registry === registry);
+		return this.targets.some((t) => sameRegistry(t.registry, registry));
 	}
 
 	hasTarget(shorthand: "npm" | "github" | "jsr"): boolean {
@@ -96,7 +106,7 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 	}
 
 	targetFor(registry: string): Option.Option<PublishTarget> {
-		const found = this.targets.find((t) => t.registry === registry);
+		const found = this.targets.find((t) => sameRegistry(t.registry, registry));
 		return found ? Option.some(found) : Option.none();
 	}
 

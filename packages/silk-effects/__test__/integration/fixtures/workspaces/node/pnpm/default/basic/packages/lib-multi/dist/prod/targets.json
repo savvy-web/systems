@@ -1,0 +1,7 @@
+{
+	"groups": [{ "id": "npm", "name": "@scope/lib-multi", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@scope/lib-multi", "registry": "https://registry.npmjs.org/" },
+		{ "id": "github", "group": "npm", "name": "@scope/lib-multi", "registry": "https://npm.pkg.github.com/" }
+	]
+}
