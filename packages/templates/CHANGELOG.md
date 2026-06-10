@@ -1,5 +1,14 @@
 # @savvy-web/templates
 
+## 0.1.3
+
+### Dependencies
+
+* | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type    | Action | From   | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :----- | :----- | -- |
+  | js-yaml                                                                                           | dependency | updated | ^4.1.1 | ^4.2.0 |    |
+  | sort-package-json                                                                                 | dependency | updated | ^3.6.1 | ^4.0.0 |    |
+
 ## 0.1.2
 
 ### Build System

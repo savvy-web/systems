@@ -1,5 +1,16 @@
 # @savvy-web/github-action-effects
 
+## 2.1.4
+
+### Dependencies
+
+* | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type    | Action   | From     | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :------- | :------- | -- |
+  | @azure/storage-blob                                                                               | dependency | updated | ^12.31.0 | ^12.32.0 |    |
+  | @cyclonedx/cyclonedx-library                                                                      | dependency | updated | ^10.0.0  | ^10.1.0  |    |
+  | @sigstore/bundle                                                                                  | dependency | updated | ^4.0.0   | ^5.0.0   |    |
+  | @sigstore/sign                                                                                    | dependency | updated | ^4.1.1   | ^5.0.0   |    |
+
 ## 2.1.3
 
 ### Bug Fixes

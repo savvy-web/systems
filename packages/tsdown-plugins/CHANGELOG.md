@@ -1,5 +1,13 @@
 # @savvy-web/tsdown-plugins
 
+## 0.2.1
+
+### Dependencies
+
+* | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type    | Action | From   | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :----- | :----- | -- |
+  | sort-package-json                                                                                 | dependency | updated | ^3.6.1 | ^4.0.0 |    |
+
 ## 0.2.0
 
 ### Features
