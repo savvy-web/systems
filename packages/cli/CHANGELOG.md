@@ -1,5 +1,17 @@
 # @savvy-web/cli
 
+## 0.4.0
+
+### Build System
+
+* [`8543348`](https://github.com/savvy-web/systems/commit/85433481b31cfa35ddfe2669dc6217efde327b9e) Now built with `@savvy-web/bundler`. Versioned in lockstep with `@savvy-web/silk` and `@savvy-web/mcp` (fixed release group).
+
+### Patch Changes
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 0.6.1 | 1.0.0 |
+
 ## 0.3.1
 
 ### Other

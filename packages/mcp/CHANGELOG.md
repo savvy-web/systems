@@ -1,5 +1,21 @@
 # @savvy-web/mcp
 
+## 0.4.0
+
+### Features
+
+* [`8543348`](https://github.com/savvy-web/systems/commit/85433481b31cfa35ddfe2669dc6217efde327b9e) Adds the `turbo_inspect` tool — a read-only Turborepo inspector over silk-effects' `Turbo` namespace, returning a discriminated-union result keyed by mode (cache|graph|affected) — plus the `silk://standards/turbo/*` corpus docs.
+
+### Build System
+
+* [`8543348`](https://github.com/savvy-web/systems/commit/85433481b31cfa35ddfe2669dc6217efde327b9e) Now built with `@savvy-web/bundler`.
+
+### Patch Changes
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 0.6.1 | 1.0.0 |
+
 ## 0.3.1
 
 ### Other

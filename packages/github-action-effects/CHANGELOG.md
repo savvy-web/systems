@@ -1,5 +1,11 @@
 # @savvy-web/github-action-effects
 
+## 2.1.2
+
+### Build System
+
+* [`8543348`](https://github.com/savvy-web/systems/commit/85433481b31cfa35ddfe2669dc6217efde327b9e) Now built with `@savvy-web/bundler`.
+
 ## 2.1.1
 
 ### Other

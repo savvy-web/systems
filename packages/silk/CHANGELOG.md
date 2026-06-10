@@ -1,5 +1,22 @@
 # @savvy-web/silk
 
+## 0.4.0
+
+### Bug Fixes
+
+* [`8543348`](https://github.com/savvy-web/systems/commit/85433481b31cfa35ddfe2669dc6217efde327b9e) The `./changesets/markdownlint` entry stays dual-format CJS (markdownlint-cli2 `require()`s it) via a per-entry format override.
+
+### Build System
+
+* [`8543348`](https://github.com/savvy-web/systems/commit/85433481b31cfa35ddfe2669dc6217efde327b9e) Now built with `@savvy-web/bundler`. Versioned in lockstep with `@savvy-web/cli` and `@savvy-web/mcp` (fixed release group).
+
+### Patch Changes
+
+| Dependency     | Type       | Action  | From  | To    |
+| -------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/cli | dependency | updated | 0.3.1 | 0.4.0 |
+| @savvy-web/mcp | dependency | updated | 0.3.1 | 0.4.0 |
+
 ## 0.3.1
 
 ### Other
