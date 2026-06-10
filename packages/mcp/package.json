@@ -25,7 +25,6 @@
 	"bin": {
 		"savvy-mcp": "./src/bin.ts"
 	},
-	"files": ["public"],
 	"scripts": {
 		"build:catalog": "tsx lib/scripts/build-catalog.ts",
 		"build:dev": "node savvy.build.ts --target dev",
