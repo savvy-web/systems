@@ -106,6 +106,16 @@ const DEFAULT_REGISTRIES: Record<string, string> = {
 };
 
 /**
+ * Whether a registry supports provenance attestation. The npm public registry
+ * (Sigstore trusted publishing) and GitHub Packages (npm provenance + GitHub
+ * artifact attestation) do; custom registries do not. The bundler's Record-map
+ * `targets` no longer carries a per-target `provenance` flag, so it is derived
+ * from the registry here — `npm`/`github` targets get `provenance: true`.
+ */
+const supportsProvenance = (registry: string): boolean =>
+	registry.includes("registry.npmjs.org") || registry.includes("npm.pkg.github.com");
+
+/**
  * Silk publishability rules over `workspaces-effect`'s {@link PublishTarget}.
  *
  * @remarks
@@ -157,21 +167,23 @@ export class SilkPublishability {
 							registry: t.registry,
 							directory: dirByGroup.get(t.group) ?? `dist/prod/${t.group}/pkg`,
 							access,
+							provenance: supportsProvenance(t.registry),
 						}),
 				);
 			}
 			// Pre-build: no binding yet. Emit one placeholder per declared key so publishability
 			// and target counts are correct; the directory is best-effort (group collapsing is
 			// only known from the binding) and unused until the prod build writes it.
-			return Object.keys(targets).map(
-				(id) =>
-					new PublishTarget({
-						name: pkgName,
-						registry: DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT,
-						directory: `dist/prod/${id}/pkg`,
-						access,
-					}),
-			);
+			return Object.keys(targets).map((id) => {
+				const registry = DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT;
+				return new PublishTarget({
+					name: pkgName,
+					registry,
+					directory: `dist/prod/${id}/pkg`,
+					access,
+					provenance: supportsProvenance(registry),
+				});
+			});
 		}
 
 		if (pc && (pc.access === "public" || pc.access === "restricted")) {

@@ -374,11 +374,16 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							readonly provenance?: boolean;
 						},
 					) => {
-						const args = ["publish", "--dry-run", "--json"];
-						if (options?.registry) args.push("--registry", options.registry);
-						if (options?.tag) args.push("--tag", options.tag);
-						if (options?.access) args.push("--access", options.access);
-						if (options?.provenance) args.push("--provenance");
+						// Size the package via `npm pack --dry-run --json`, not `npm publish
+						// --dry-run --json`: current npm does not emit the size/unpackedSize/
+						// entryCount fields from `publish --dry-run --json`, so packed sizes came
+						// back undefined. `npm pack --dry-run --json` reliably emits them (as an
+						// array, which the parser below already tolerates) and skips writing the
+						// tarball. The tarball is identical across registries, so the publish-only
+						// options (registry/tag/access/provenance) do not affect pack output and
+						// are intentionally not forwarded.
+						void options;
+						const args = ["pack", "--dry-run", "--json"];
 
 						return runner.execCapture("npm", args, { cwd: packageDir }).pipe(
 							Effect.flatMap((output) =>

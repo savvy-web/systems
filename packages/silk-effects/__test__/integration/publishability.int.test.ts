@@ -125,7 +125,7 @@ describe("publishability fixture harness", () => {
 		expect(publishTargets[0].directory).toBe("dist/prod/github/pkg");
 		expect(publishTargets[0].registry).toBe("https://npm.pkg.github.com");
 		expect(publishTargets[0].access).toBe("public");
-		expect(publishTargets[0].provenance).toBe(false);
+		expect(publishTargets[0].provenance).toBe(true);
 		expect(versionable).toBe(true);
 	});
 
@@ -138,7 +138,7 @@ describe("publishability fixture harness", () => {
 		for (const target of publishTargets) {
 			expect(target.directory).toBe("dist/prod/npm/pkg");
 			expect(target.access).toBe("public");
-			expect(target.provenance).toBe(false);
+			expect(target.provenance).toBe(true);
 		}
 		expect(versionable).toBe(true);
 	});
@@ -177,7 +177,7 @@ describe("publishability fixture harness", () => {
 		for (const target of publishTargets) {
 			expect(target.directory).toBe("dist/prod/npm/pkg");
 			expect(target.access).toBe("public");
-			expect(target.provenance).toBe(false);
+			expect(target.provenance).toBe(true);
 		}
 		expect(versionable).toBe(true);
 	});

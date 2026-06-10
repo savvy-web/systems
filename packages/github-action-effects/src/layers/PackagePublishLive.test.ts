@@ -793,8 +793,8 @@ describe("PackagePublishLive", () => {
 			const runner = makeMockRunner({
 				execCapture: (command, args, options) => {
 					calls.push({ command, args, cwd: options?.cwd });
-					// `npm publish --dry-run --json` emits a single JSON object —
-					// not an array (that is `npm pack --dry-run --json`).
+					// `npm pack --dry-run --json` emits an array of pack entries; the parser
+					// tolerates a single object too, which this asserts.
 					return Effect.succeed({
 						exitCode: 0,
 						stdout: JSON.stringify({ size: 1234, unpackedSize: 5678, entryCount: 9 }),
@@ -825,18 +825,8 @@ describe("PackagePublishLive", () => {
 			expect(result.fileCount).toBe(9);
 			expect(calls).toHaveLength(1);
 			expect(calls[0]?.command).toBe("npm");
-			expect(calls[0]?.args).toEqual([
-				"publish",
-				"--dry-run",
-				"--json",
-				"--registry",
-				"https://registry.npmjs.org",
-				"--tag",
-				"latest",
-				"--access",
-				"public",
-				"--provenance",
-			]);
+			// Sizing uses `npm pack --dry-run --json`; publish-only options are not forwarded.
+			expect(calls[0]?.args).toEqual(["pack", "--dry-run", "--json"]);
 			expect(calls[0]?.cwd).toBe("/pkg");
 		});
 
