@@ -1,5 +1,11 @@
 # @savvy-web/github-action-builder
 
+## 0.7.5
+
+### Build System
+
+* [`09dc242`](https://github.com/savvy-web/systems/commit/09dc24206868d50fa885adb6985d7d7d8ec62578) Now built with `@savvy-web/bundler`.
+
 ## 0.7.4
 
 ### Other
