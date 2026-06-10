@@ -6,8 +6,8 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-06-05
-last-synced: 2026-06-05
+updated: 2026-06-09
+last-synced: 2026-06-09
 depends-on: []
 related:
   - ../silk/architecture.md
@@ -64,7 +64,7 @@ logic — it is a small Context.Tag service plus pure digest transforms. See
 
 ## Current State
 
-Published at v0.6.1. A pending minor changeset adds the `Turbo` namespace — read-only Turborepo inspection (`TurboInspector` + `TurboDigest`), `@since 0.7.0`; additive. (Earlier `@since 0.5.0` additions: the `ManagedSection.syncMany`/`remove` multi-section primitives and the `SavvySections` shared husky-hook shells.) All modules implemented with full test coverage:
+Published at v0.6.1. Two pending changesets: a minor adds the `Turbo` namespace — read-only Turborepo inspection (`TurboInspector` + `TurboDigest`), `@since 0.7.0`; additive — and a MAJOR reworks `SilkPublishability` publish-target resolution to the bundler's `dist/prod/targets.json` binding (the `detect` third-argument binding, the new `readTargetsBinding` + binding types, the dropped legacy-array `publishConfig.targets` support and removed `RawTargetSpec`; `@since 1.0.0`). (Earlier `@since 0.5.0` additions: the `ManagedSection.syncMany`/`remove` multi-section primitives and the `SavvySections` shared husky-hook shells.) All modules implemented with full test coverage:
 
 | Area | Source | Tests |
 | ---- | ------ | ----- |
@@ -140,9 +140,7 @@ Silk publishability rules layered over `workspaces-effect`'s `PublishTarget` val
 
 ```text
 SilkPublishability (static class)
-  detect(pkgName, raw) → ReadonlyArray<PublishTarget>     pure, the silk targets-first rule
-  expandShorthand(target, parentRegistry) → string        shorthand/URL → registry URL
-  resolveTargetAccess(target, parentAccess) → access?      per-target access resolution
+  detect(pkgName, raw, binding) → ReadonlyArray<PublishTarget>   pure, the silk targets-first rule
   resolveTargets(pkg, root) → Effect<…, PublishabilityDetector | FileSystem>
                                                            detector + private-dist build filter
   listPublishable(root)  → Effect<…, WorkspaceDiscovery | PublishabilityDetector>
@@ -151,33 +149,37 @@ SilkPublishability (static class)
 
 `resolveTargets` runs the configured `PublishabilityDetector`, then drops any target whose built `directory` package.json is `private: true` (the dist-output filter). `listPublishable` discovers packages and keeps those the detector reports as publishable.
 
-`RawPackageJson`, `RawPublishConfig` and `RawTargetSpec` describe the unschematized `package.json`/`publishConfig` shape that `detect` consumes — silk rules read fields (notably `targets`) that the upstream `PublishConfig` schema strips. `PublishablePackage` is the discovery result shape.
+**Binding-driven target resolution (1.0 breaking change).** `detect` no longer supports the legacy ARRAY form of `publishConfig.targets`. Only the bundler's keyed Record-map (`{ npm: true, github: true, … }`) is recognized, and `detect` takes a THIRD argument: the parsed `dist/prod/targets.json` binding (or `null` before the prod build has run). The two forms produce different output:
+
+- **With a binding** (post-prod-build): one `PublishTarget` per resolved registry target, with `directory = dist/prod/<group>/pkg` taken from the bound group — NOT `publishConfig.directory`. `npm: true` + `github: true` collapse into ONE byte-group (one tarball/dir) deployed to two registry targets.
+- **Without a binding** (pre-build): one count-accurate placeholder `PublishTarget` per declared key, so publishability and target counts are correct even before the build; the directory is best-effort and unused until the binding exists.
+
+`access` resolves to `publishConfig.access ?? "public"`; `provenance` defaults false. See `SilkPublishability.detect` for the exact precedence (targets-map → `publishConfig.access` → `private !== true` → `[]`).
+
+`readTargetsBinding(fs, pkgPath)` (`@since 1.0.0`) reads `<pkg>/dist/prod/targets.json`, returning `null` when missing/malformed (i.e. pre-build). Both detector layers and the workspace analyzer read it and thread it into `detect`.
+
+`RawPackageJson`, `RawPublishConfig` and the Record-map target types (`RawTargetObject` / `RawTargetValue` / `RawPublishTargets`) describe the unschematized `package.json`/`publishConfig` shape that `detect` consumes — silk rules read fields (notably `targets`) that the upstream `PublishConfig` schema strips. The binding types are `TargetsBinding` / `TargetBinding` / `TargetGroupBinding`. `PublishablePackage` is the discovery result shape. (The legacy `RawTargetSpec` type was removed in the 1.0 change.)
 
 **Detector layers** — both override the `workspaces-effect` `PublishabilityDetector` Tag:
 
 ```text
 SilkPublishabilityDetectorLive : Layer<PublishabilityDetector, never, FileSystem>
-  detect reads pkg.packageJsonPath and applies SilkPublishability.detect (silk rule only)
+  detect reads pkg.packageJsonPath + readTargetsBinding(pkg.path) and applies
+  SilkPublishability.detect (silk rule only)
 
 PublishabilityDetectorAdaptiveLive : Layer<PublishabilityDetector, never, FileSystem | ChangesetConfig>
   detect short-circuits to [] for changeset-ignored packages, then dispatches on
-  ChangesetConfig.mode: none → []; silk → SilkPublishability.detect;
+  ChangesetConfig.mode: none → []; silk → SilkPublishability.detect (with the binding);
   vanilla → workspaces-effect PublishabilityDetectorLive
 ```
 
-**Shorthand expansion** (`expandShorthand`):
-
-- `"npm"` → `https://registry.npmjs.org/`
-- `"github"` → `https://npm.pkg.github.com/`
-- `"jsr"` → `https://jsr.io/`
-- `"http(s)://…"` → verbatim
-- anything else → parent `publishConfig.registry`, else the npm default
+Both layers read the package's `dist/prod/targets.json` via `readTargetsBinding(fs, pkg.path)` and pass it through to `detect`, so post-build resolution uses the bundler's actual group layout and pre-build resolution falls back to declared-key placeholders.
 
 **Publishability rules** (`SilkPublishability.detect`, targets-first precedence):
 
-1. `publishConfig.targets` non-empty → one `PublishTarget` per target whose resolved access is `public`/`restricted`, regardless of `private`
-2. else `publishConfig.access` is `public`/`restricted` → one target
-3. else `private !== true` → one default npm target
+1. non-empty Record-map `publishConfig.targets` → publishable regardless of `private`; one `PublishTarget` per resolved registry target (from the binding) or per declared key (pre-build placeholder)
+2. else `publishConfig.access` is `public`/`restricted` → one target at `publishConfig.directory`
+3. else `private !== true` → one default public target
 4. else → `[]`
 
 ### Versioning (ChangesetConfigReader, ChangesetConfig, VersioningStrategy)
@@ -505,14 +507,14 @@ SilkWorkspaceAnalyzerLive
     VersioningStrategy, TagStrategy
 ```
 
-The analyzer no longer depends on a publishability *service*: it calls `SilkPublishability.detect(pkg.name, raw)` directly (pure, synchronous) on the raw `package.json` read from disk. The live layer orchestrates a 10-step pipeline:
+The analyzer no longer depends on a publishability *service*: it reads each package's raw `package.json` plus its `dist/prod/targets.json` binding (via `readTargetsBinding`, `null` pre-build) and calls `SilkPublishability.detect(pkg.name, raw, binding)` directly (pure, synchronous). The live layer orchestrates a 10-step pipeline:
 
 1. Detect package manager and runtime
 2. Discover workspace packages — `discovery.listPackages(root)` is passed `root` so discovery resolves the requested workspace even when the layer was built from a different working directory (e.g. a server launched from a subdirectory, or a test). The topo reorder falls back to discovery order when the (possibly rootless) topo sort does not contain the discovered package names.
 3. Topologically sort packages (dependencies first)
 4. Read changeset config (optional)
-5. For each package: read raw `package.json`, detect publishability via
-   `SilkPublishability.detect`, compute release status
+5. For each package: read raw `package.json` + the `dist/prod/targets.json` binding, detect
+   publishability via `SilkPublishability.detect`, compute release status
 6. Wire up fixed/linked group cross-references (immutable reconstruction)
 7. Compute versioning strategy
 8. Determine tag strategy
@@ -687,8 +689,8 @@ Tagged enums used in this package:
 
 **Pure modules (no platform requirements):**
 
-- `SilkPublishability` (all-static class — `detect`/`expandShorthand`/`resolveTargetAccess` are pure;
-  `resolveTargets`/`listPublishable` are Effects requiring the `PublishabilityDetector` Tag)
+- `SilkPublishability` (all-static class — `detect` is pure; `resolveTargets`/`listPublishable` are
+  Effects requiring the `PublishabilityDetector` Tag; `readTargetsBinding` is an `Effect` requiring `FileSystem`)
 - `TagStrategy` / `TagStrategyLive`
 - All value objects and tagged enums
 
@@ -720,14 +722,15 @@ import {
 
 **Pure publishability rule (no platform layer needed):**
 
-`SilkPublishability.detect` is a pure function over a raw `package.json`, returning `workspaces-effect` `PublishTarget` records:
+`SilkPublishability.detect` is a pure function over a raw `package.json` plus the bundler's resolved `dist/prod/targets.json` binding (`null` pre-build), returning `workspaces-effect` `PublishTarget` records:
 
 ```typescript
-const targets = SilkPublishability.detect("@my-org/pkg", {
-  private: true,
-  publishConfig: { access: "public", targets: ["npm", "github"] },
-});
-// → one PublishTarget per public/restricted target
+const targets = SilkPublishability.detect(
+  "@my-org/pkg",
+  { private: true, publishConfig: { access: "public", targets: { npm: true, github: true } } },
+  null, // pre-build: one count-accurate placeholder per declared key
+);
+// → with a binding: one PublishTarget per resolved registry target (npm+github collapse to one group)
 ```
 
 **FileSystem-dependent services:**

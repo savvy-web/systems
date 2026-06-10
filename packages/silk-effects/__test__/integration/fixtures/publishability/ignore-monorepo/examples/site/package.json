@@ -4,6 +4,8 @@
 	"private": true,
 	"publishConfig": {
 		"access": "public",
-		"targets": [{ "registry": "https://registry.npmjs.org/", "directory": "dist/npm", "access": "public" }]
+		"targets": {
+			"npm": true
+		}
 	}
 }

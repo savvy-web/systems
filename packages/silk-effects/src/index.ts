@@ -74,12 +74,18 @@ export type {
 	PublishablePackage,
 	RawPackageJson,
 	RawPublishConfig,
-	RawTargetSpec,
+	RawPublishTargets,
+	RawTargetObject,
+	RawTargetValue,
+	TargetBinding,
+	TargetGroupBinding,
+	TargetsBinding,
 } from "./services/SilkPublishability.js";
 export {
 	PublishabilityDetectorAdaptiveLive,
 	SilkPublishability,
 	SilkPublishabilityDetectorLive,
+	readTargetsBinding,
 } from "./services/SilkPublishability.js";
 export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/SilkWorkspaceAnalyzer.js";
 export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";

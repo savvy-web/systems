@@ -4,7 +4,9 @@
 	"private": true,
 	"publishConfig": {
 		"access": "public",
-		"directory": "dist/npm",
-		"targets": ["npm", "github"]
+		"targets": {
+			"npm": true,
+			"github": true
+		}
 	}
 }

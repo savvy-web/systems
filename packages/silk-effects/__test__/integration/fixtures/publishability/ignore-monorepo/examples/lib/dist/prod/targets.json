@@ -1,0 +1,7 @@
+{
+	"groups": [{ "id": "npm", "name": "@libraries/example", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@libraries/example", "registry": "https://registry.npmjs.org" },
+		{ "id": "github", "group": "npm", "name": "@libraries/example", "registry": "https://npm.pkg.github.com" }
+	]
+}

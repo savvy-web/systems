@@ -1,0 +1,7 @@
+{
+	"groups": [{ "id": "npm", "name": "@fixture/private-multi-target", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@fixture/private-multi-target", "registry": "https://registry.npmjs.org" },
+		{ "id": "github", "group": "npm", "name": "@fixture/private-multi-target", "registry": "https://npm.pkg.github.com" }
+	]
+}

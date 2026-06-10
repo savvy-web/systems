@@ -8,15 +8,20 @@
  * `{ publishTargets, versionable }` disposition.
  *
  * The fixtures cover every `silkDetect` permutation and the
- * `privatePackages.version` interaction. `private-target-with-directory`
- * guards the `42cc7e2` regression (per-target `directory` discarded, target
- * resolved to the private dev build and dropped); `private-shorthand-targets`
- * guards shorthand-string expansion; `public-multi-target` mirrors the
- * `@savvy-web/lint-staged` shape (public source + `publishConfig.targets`) and
- * guards the regression where a non-private source short-circuited to a single
- * default target at `publishConfig.directory` (the private `dist/dev` artifact),
- * which the private-build filter then dropped — misclassifying the package as
- * version-only.
+ * `privatePackages.version` interaction, all expressed in the bundler's
+ * Record-map `publishConfig.targets` form (the legacy array form is removed).
+ * Each multi-target fixture ships a realistic `dist/prod/targets.json` binding,
+ * so resolved targets carry the binding's `name`/`registry` and their group's
+ * `dist/prod/<group>/pkg` directory.
+ *
+ * `private-target-with-directory` covers a single well-known `github: true`
+ * target; `private-multi-target`/`public-multi-target` cover the `npm: true` +
+ * `github: true` dual-registry collapse (one scoped-name group, two registry
+ * targets); `private-shorthand-targets` covers the `npm: true` + `github: true`
+ * pair resolving to canonical registries from the binding; `private-mixed-access`
+ * covers a `from`-reuse target (a custom key reusing `npm`'s group bytes under a
+ * custom registry); `private-target-built-private` covers the private-build
+ * filter dropping a target whose bound group's `package.json` is `private: true`.
  */
 
 import { fileURLToPath } from "node:url";
@@ -114,63 +119,65 @@ describe("publishability fixture harness", () => {
 		expect(versionable).toBe(true);
 	});
 
-	it("should resolve one target to the per-target dist/npm directory with provenance when a private package declares a target directory (private-target-with-directory fixture, 42cc7e2 regression guard)", async () => {
+	it("should resolve one github target at its group's dist/prod dir when a private package declares github: true (private-target-with-directory fixture)", async () => {
 		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-target-with-directory"));
 		expect(publishTargets).toHaveLength(1);
-		expect(publishTargets[0].directory).toBe("dist/npm");
-		expect(publishTargets[0].registry).toBe("https://npm.pkg.github.com/");
+		expect(publishTargets[0].directory).toBe("dist/prod/github/pkg");
+		expect(publishTargets[0].registry).toBe("https://npm.pkg.github.com");
 		expect(publishTargets[0].access).toBe("public");
-		expect(publishTargets[0].provenance).toBe(true);
+		expect(publishTargets[0].provenance).toBe(false);
 		expect(versionable).toBe(true);
 	});
 
-	it("should resolve two targets for npm and GitHub Packages when a private package declares multiple object targets (private-multi-target fixture)", async () => {
+	it("should collapse npm: true + github: true into one group deployed to two registries when a private package declares both well-known targets (private-multi-target fixture)", async () => {
 		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-multi-target"));
 		expect(publishTargets).toHaveLength(2);
 		const registries = publishTargets.map((t) => t.registry).sort();
-		expect(registries).toEqual(["https://npm.pkg.github.com/", "https://registry.npmjs.org/"]);
+		expect(registries).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
+		// Both registry targets deploy the same scoped-name group's bytes.
 		for (const target of publishTargets) {
-			expect(target.directory).toBe("dist/npm");
+			expect(target.directory).toBe("dist/prod/npm/pkg");
 			expect(target.access).toBe("public");
+			expect(target.provenance).toBe(false);
 		}
 		expect(versionable).toBe(true);
 	});
 
-	it("should expand shorthand string targets to their canonical registries when a private package uses target shorthands (private-shorthand-targets fixture, shorthand-expansion guard)", async () => {
+	it("should resolve the well-known npm and github keys to their canonical registries from the binding (private-shorthand-targets fixture)", async () => {
 		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-shorthand-targets"));
 		expect(publishTargets).toHaveLength(2);
 		const registries = publishTargets.map((t) => t.registry).sort();
-		expect(registries).toEqual(["https://npm.pkg.github.com/", "https://registry.npmjs.org/"]);
+		expect(registries).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
 		for (const target of publishTargets) {
-			expect(target.directory).toBe("dist/npm");
+			expect(target.directory).toBe("dist/prod/npm/pkg");
 			expect(target.access).toBe("public");
 		}
 		expect(versionable).toBe(true);
 	});
 
-	it("should skip the access-less target and default the surviving target's registry when a private package mixes target access (private-mixed-access fixture)", async () => {
+	it("should reuse the npm group's bytes for a from-target pointed at a custom registry (private-mixed-access fixture)", async () => {
 		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-mixed-access"));
-		expect(publishTargets).toHaveLength(1);
-		expect(publishTargets[0].registry).toBe("https://registry.npmjs.org/");
-		expect(publishTargets[0].directory).toBe("dist/npm");
-		expect(publishTargets[0].access).toBe("public");
+		expect(publishTargets).toHaveLength(2);
+		const registries = publishTargets.map((t) => t.registry).sort();
+		expect(registries).toEqual(["https://mirror.example.com", "https://registry.npmjs.org"]);
+		// The `from: "npm"` mirror target deploys the same group bytes as npm.
+		for (const target of publishTargets) {
+			expect(target.directory).toBe("dist/prod/npm/pkg");
+			expect(target.access).toBe("public");
+		}
 		expect(versionable).toBe(true);
 	});
 
-	it("should resolve both targets at dist/npm when a non-private source declares publishConfig.targets (public-multi-target fixture, lint-staged version-only regression guard)", async () => {
+	it("should resolve both registry targets at the collapsed group's dist/prod dir when a non-private source declares npm + github (public-multi-target fixture)", async () => {
 		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("public-multi-target"));
 		expect(publishTargets).toHaveLength(2);
-		// Declaration order is preserved (GitHub Packages first, then npm) — these
-		// must resolve to the public dist/npm artifact, NOT the private dist/dev
-		// build named by publishConfig.directory.
-		expect(publishTargets.map((t) => t.registry)).toEqual([
-			"https://npm.pkg.github.com/",
-			"https://registry.npmjs.org/",
-		]);
+		// The binding's target order is preserved (npm, then github); both deploy the
+		// single collapsed scoped-name group's bytes.
+		expect(publishTargets.map((t) => t.registry)).toEqual(["https://registry.npmjs.org", "https://npm.pkg.github.com"]);
 		for (const target of publishTargets) {
-			expect(target.directory).toBe("dist/npm");
+			expect(target.directory).toBe("dist/prod/npm/pkg");
 			expect(target.access).toBe("public");
-			expect(target.provenance).toBe(true);
+			expect(target.provenance).toBe(false);
 		}
 		expect(versionable).toBe(true);
 	});
@@ -220,8 +227,8 @@ describe("changeset ignore (ignore-monorepo fixture)", () => {
 			resolveWorkspacePackage("ignore-monorepo", "package", "@fixture/ignore-main"),
 		);
 		expect(targets).toHaveLength(1);
-		expect(targets[0].directory).toBe("dist/npm");
-		expect(targets[0].registry).toBe("https://registry.npmjs.org/");
+		expect(targets[0].directory).toBe("dist/prod/npm/pkg");
+		expect(targets[0].registry).toBe("https://registry.npmjs.org");
 	});
 
 	it("excludes a @libraries/* example package despite its publishConfig.targets", async () => {

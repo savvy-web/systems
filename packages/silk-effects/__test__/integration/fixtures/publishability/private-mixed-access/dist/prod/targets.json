@@ -1,0 +1,7 @@
+{
+	"groups": [{ "id": "npm", "name": "@fixture/private-mixed-access", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@fixture/private-mixed-access", "registry": "https://registry.npmjs.org" },
+		{ "id": "mirror", "group": "npm", "name": "@fixture/private-mixed-access", "registry": "https://mirror.example.com" }
+	]
+}

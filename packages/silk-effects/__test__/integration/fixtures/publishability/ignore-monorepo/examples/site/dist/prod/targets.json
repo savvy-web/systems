@@ -1,0 +1,6 @@
+{
+	"groups": [{ "id": "npm", "name": "@rspress/example", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@rspress/example", "registry": "https://registry.npmjs.org" }
+	]
+}

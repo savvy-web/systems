@@ -37,17 +37,21 @@ import {
 } from "@savvy-web/silk-effects";
 ```
 
-`SilkPublishability.detect` is a pure static — no layers, no Effect runtime. Pass a package name and the raw `package.json` and get back the publish targets the silk rules resolve:
+`SilkPublishability.detect` is a pure static — no layers, no Effect runtime. Pass a package name, the raw `package.json` and the bundler's resolved target binding (or `null` before the prod build has run) and get back the publish targets the silk rules resolve:
 
 ```typescript
 import { SilkPublishability } from "@savvy-web/silk-effects";
 
-const targets = SilkPublishability.detect("@my-org/my-package", {
-  private: true,
-  publishConfig: { access: "public", targets: ["npm", "github"] },
-});
-// => [PublishTarget { name: "@my-org/my-package", registry: "https://registry.npmjs.org/", ... },
-//     PublishTarget { name: "@my-org/my-package", registry: "https://npm.pkg.github.com/", ... }]
+const targets = SilkPublishability.detect(
+  "@my-org/my-package",
+  {
+    private: true,
+    publishConfig: { access: "public", targets: { npm: true, github: true } },
+  },
+  null, // pre-build: one count-accurate placeholder per declared target key
+);
+// => [PublishTarget { name: "@my-org/my-package", registry: "https://registry.npmjs.org", ... },
+//     PublishTarget { name: "@my-org/my-package", registry: "https://npm.pkg.github.com", ... }]
 ```
 
 ## Services
@@ -62,23 +66,27 @@ These services are pure logic — no filesystem or shell access needed.
 
 #### SilkPublishability
 
-Apply silk publishability rules to a raw `package.json` and resolve its publish targets. Targets are `PublishTarget` records from `workspaces-effect` with `name`, `registry`, `directory`, `access` and `provenance` fields. The static `detect`, `expandShorthand` and `resolveTargetAccess` helpers are pure; `resolveTargets` and `listPublishable` are Effects that read from disk (see below).
+Apply silk publishability rules to a raw `package.json` and the bundler's resolved target binding, and resolve the publish targets. Targets are `PublishTarget` records from `workspaces-effect` with `name`, `registry`, `directory`, `access` and `provenance` fields. The static `detect` helper is pure; `resolveTargets` and `listPublishable` are Effects that read from disk (see below), and `readTargetsBinding` reads the binding `detect` consumes.
 
-In silk mode `private: true` is the norm on workspace `package.json` files. Publishability is derived from `publishConfig`, with the `private` flag consulted only as a last-resort default.
+In silk mode `private: true` is the norm on workspace `package.json` files. Publishability is derived from `publishConfig`, with the `private` flag consulted only as a last-resort default. Publish targets are declared as the bundler's keyed `publishConfig.targets` map; the legacy array form is no longer supported.
 
 ```typescript
 import { SilkPublishability } from "@savvy-web/silk-effects";
 
-// Targets-first: one PublishTarget per surviving publishConfig.targets entry
-const targets = SilkPublishability.detect("@my-org/pkg", {
-  private: true,
-  publishConfig: { access: "public", targets: ["npm", "github"] },
-});
-// => [PublishTarget { registry: "https://registry.npmjs.org/", access: "public", ... },
-//     PublishTarget { registry: "https://npm.pkg.github.com/", access: "public", ... }]
+// Targets-first: one PublishTarget per declared publishConfig.targets key
+const targets = SilkPublishability.detect(
+  "@my-org/pkg",
+  {
+    private: true,
+    publishConfig: { access: "public", targets: { npm: true, github: true } },
+  },
+  null, // pre-build placeholder; pass the dist/prod/targets.json binding post-build
+);
+// => [PublishTarget { registry: "https://registry.npmjs.org", access: "public", ... },
+//     PublishTarget { registry: "https://npm.pkg.github.com", access: "public", ... }]
 
 // Not publishable -> empty array
-const none = SilkPublishability.detect("@my-org/internal", { private: true });
+const none = SilkPublishability.detect("@my-org/internal", { private: true }, null);
 // => []
 ```
 

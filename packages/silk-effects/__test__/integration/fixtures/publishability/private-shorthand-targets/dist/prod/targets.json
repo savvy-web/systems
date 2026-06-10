@@ -1,0 +1,7 @@
+{
+	"groups": [{ "id": "npm", "name": "@fixture/private-shorthand-targets", "dir": "dist/prod/npm/pkg" }],
+	"targets": [
+		{ "id": "npm", "group": "npm", "name": "@fixture/private-shorthand-targets", "registry": "https://registry.npmjs.org" },
+		{ "id": "github", "group": "npm", "name": "@fixture/private-shorthand-targets", "registry": "https://npm.pkg.github.com" }
+	]
+}

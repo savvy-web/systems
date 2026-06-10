@@ -1,0 +1,11 @@
+{
+	"groups": [{ "id": "github", "name": "@fixture/private-target-with-directory", "dir": "dist/prod/github/pkg" }],
+	"targets": [
+		{
+			"id": "github",
+			"group": "github",
+			"name": "@fixture/private-target-with-directory",
+			"registry": "https://npm.pkg.github.com"
+		}
+	]
+}

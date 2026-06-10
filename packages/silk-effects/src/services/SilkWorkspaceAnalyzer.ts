@@ -9,7 +9,7 @@ import { AnalyzedWorkspace, WorkspaceAnalysis } from "../schemas/WorkspaceAnalys
 import { ChangesetConfig } from "./ChangesetConfig.js";
 import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
 import type { RawPackageJson } from "./SilkPublishability.js";
-import { SilkPublishability } from "./SilkPublishability.js";
+import { SilkPublishability, readTargetsBinding } from "./SilkPublishability.js";
 import { TagStrategy } from "./TagStrategy.js";
 import { VersioningStrategy } from "./VersioningStrategy.js";
 
@@ -235,7 +235,8 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 
 				for (const pkg of sortedPackages) {
 					const pkgJson = yield* readRawPkgJson(fs, pkg.packageJsonPath);
-					const targets = SilkPublishability.detect(pkg.name, pkgJson as RawPackageJson);
+					const binding = yield* readTargetsBinding(fs, pkg.path);
+					const targets = SilkPublishability.detect(pkg.name, pkgJson as RawPackageJson, binding);
 
 					const isPublishable = targets.length > 0;
 					const isRoot = pkg.relativePath === ".";
