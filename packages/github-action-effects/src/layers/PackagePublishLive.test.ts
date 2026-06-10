@@ -1205,6 +1205,71 @@ describe("PackagePublishLive", () => {
 			]);
 		});
 
+		it("omits --provenance for GitHub Packages even when provenance is true (npm OIDC is npm-public-only)", async () => {
+			const calls: Array<{ command: string; args: ReadonlyArray<string> }> = [];
+			const runner = makeMockRunner({
+				exec: (command, args) => {
+					calls.push({ command, args });
+					return Effect.succeed(0);
+				},
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+			await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) =>
+						svc.publishTarball("/tmp/pkg.tgz", {
+							registry: "https://npm.pkg.github.com/",
+							access: "public",
+							provenance: true,
+						}),
+					),
+					Effect.provide(layer),
+				),
+			);
+
+			expect(calls).toHaveLength(1);
+			expect(calls[0]?.args).not.toContain("--provenance");
+			expect(calls[0]?.args).toEqual([
+				"publish",
+				"/tmp/pkg.tgz",
+				"--registry",
+				"https://npm.pkg.github.com/",
+				"--access",
+				"public",
+				"--loglevel",
+				"verbose",
+			]);
+		});
+
+		it("keeps --provenance for the npm public registry when provenance is true", async () => {
+			const calls: Array<{ command: string; args: ReadonlyArray<string> }> = [];
+			const runner = makeMockRunner({
+				exec: (command, args) => {
+					calls.push({ command, args });
+					return Effect.succeed(0);
+				},
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+			await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) =>
+						svc.publishTarball("/tmp/pkg.tgz", {
+							registry: "https://registry.npmjs.org/",
+							access: "public",
+							provenance: true,
+						}),
+					),
+					Effect.provide(layer),
+				),
+			);
+
+			expect(calls[0]?.args).toContain("--provenance");
+		});
+
 		it("wraps CommandRunnerError into PackagePublishError with the registry attached", async () => {
 			const runner = makeMockRunner({
 				exec: () =>
