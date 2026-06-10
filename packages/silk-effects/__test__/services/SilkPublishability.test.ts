@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
@@ -14,6 +14,22 @@ import {
 const writePkg = (dir: string, content: unknown): void => {
 	writeFileSync(join(dir, "package.json"), JSON.stringify(content), "utf-8");
 };
+
+/** Write a `dist/prod/targets.json` binding (the bundler's prod-build artifact). */
+const writeBinding = (dir: string, binding: unknown): void => {
+	const prod = join(dir, "dist", "prod");
+	mkdirSync(prod, { recursive: true });
+	writeFileSync(join(prod, "targets.json"), JSON.stringify(binding), "utf-8");
+};
+
+/** The canonical `npm: true, github: true` binding: one scoped-name group, two registry targets. */
+const dualRegistryBinding = (name: string) => ({
+	groups: [{ id: "npm", name, dir: "dist/prod/npm/pkg" }],
+	targets: [
+		{ id: "npm", group: "npm", name, registry: "https://registry.npmjs.org" },
+		{ id: "github", group: "npm", name, registry: "https://npm.pkg.github.com" },
+	],
+});
 
 const makeWsPkg = (
 	dir: string,
@@ -67,7 +83,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		tmpDir = mkdtempSync(join(tmpdir(), "pub-"));
 	});
 
-	it("private !== true → publishable (one target)", async () => {
+	it("private !== true, no targets → publishable (one default target)", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0" });
 		const targets = await runSilk(
 			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
@@ -75,44 +91,109 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		expect(targets.length).toBe(1);
 	});
 
-	it("private !== true + publishConfig.targets → resolves every target (regression: was one default in pc.directory)", async () => {
-		// The lint-staged shape: a public source package that declares explicit
-		// multi-registry targets in dist/npm. Silk publishability must come from
-		// the declared targets, not the `private` flag — otherwise the single
-		// default target points at pc.directory (dist/dev, the private dev/link
-		// artifact) and gets filtered out, misclassifying the package as
-		// version-only.
+	it("object-form targets + binding → one PublishTarget per resolved registry target", async () => {
+		// The canonical bundler shape: `npm: true, github: true` collapse into one scoped-name
+		// byte group deployed to two registries. The directory is the bound group's prod dir,
+		// NOT the dev/link `directory` field.
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", directory: "dist/dev/pkg", targets: { npm: true, github: true } },
+		});
+		writeBinding(tmpDir, dualRegistryBinding("@scope/x"));
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(2);
+		expect(targets.every((t) => t.directory === "dist/prod/npm/pkg")).toBe(true);
+		expect(targets.map((t) => t.registry)).toEqual(["https://registry.npmjs.org", "https://npm.pkg.github.com"]);
+		expect(targets.every((t) => t.access === "public")).toBe(true);
+		expect(targets.every((t) => t.name === "@scope/x")).toBe(true);
+	});
+
+	it("object-form targets, no binding (pre-build) → one placeholder per declared key", async () => {
+		// Before the prod build writes targets.json, publishability and the target COUNT must
+		// still be correct (directory is best-effort and unused pre-build).
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", directory: "dist/dev/pkg", targets: { npm: true, github: true } },
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(2);
+		expect(targets.map((t) => t.registry).sort()).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
+	});
+
+	it("object-form targets make a private package publishable (targets-first)", async () => {
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { npm: true } },
+		});
+		writeBinding(tmpDir, {
+			groups: [{ id: "npm", name: "@scope/x", dir: "dist/prod/npm/pkg" }],
+			targets: [{ id: "npm", group: "npm", name: "@scope/x", registry: "https://registry.npmjs.org" }],
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].directory).toBe("dist/prod/npm/pkg");
+	});
+
+	it("object-form targets without access → access defaults to public", async () => {
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { targets: { npm: true } },
+		});
+		writeBinding(tmpDir, {
+			groups: [{ id: "npm", name: "@scope/x", dir: "dist/prod/npm/pkg" }],
+			targets: [{ id: "npm", group: "npm", name: "@scope/x", registry: "https://registry.npmjs.org" }],
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].access).toBe("public");
+	});
+
+	it("object-form targets inherit publishConfig.access (restricted)", async () => {
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "restricted", targets: { npm: true } },
+		});
+		writeBinding(tmpDir, {
+			groups: [{ id: "npm", name: "@scope/x", dir: "dist/prod/npm/pkg" }],
+			targets: [{ id: "npm", group: "npm", name: "@scope/x", registry: "https://registry.npmjs.org" }],
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].access).toBe("restricted");
+	});
+
+	it("empty targets map → falls through to the access branch", async () => {
 		writePkg(tmpDir, {
 			name: "x",
 			version: "1.0.0",
-			private: false,
-			publishConfig: {
-				directory: "dist/dev",
-				access: "public",
-				targets: [
-					{
-						protocol: "npm",
-						registry: "https://npm.pkg.github.com/",
-						directory: "dist/npm",
-						access: "public",
-						provenance: true,
-					},
-					{
-						protocol: "npm",
-						registry: "https://registry.npmjs.org/",
-						directory: "dist/npm",
-						access: "public",
-						provenance: true,
-					},
-				],
-			},
+			private: true,
+			publishConfig: { access: "public", directory: "dist/dev/pkg", targets: {} },
 		});
 		const targets = await runSilk(
 			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
 		);
-		expect(targets.length).toBe(2);
-		expect(targets.every((t) => t.directory === "dist/npm")).toBe(true);
-		expect(targets.map((t) => t.registry)).toEqual(["https://npm.pkg.github.com/", "https://registry.npmjs.org/"]);
+		expect(targets.length).toBe(1);
+		expect(targets[0].directory).toBe("dist/dev/pkg");
 	});
 
 	it("private === true + publishConfig.access public, no targets → publishable", async () => {
@@ -122,34 +203,6 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		);
 		expect(targets.length).toBe(1);
 		expect(targets[0].access).toBe("public");
-	});
-
-	it("private === true + publishConfig.targets with public target → publishable", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { targets: [{ protocol: "npm", registry: "https://registry.npmjs.org/", access: "public" }] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].access).toBe("public");
-	});
-
-	it("private === true + publishConfig.targets inheriting parent access → publishable", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { access: "restricted", targets: [{ protocol: "npm", registry: "https://x" }] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].access).toBe("restricted");
 	});
 
 	it("private === true + no publishConfig → not publishable", async () => {
@@ -168,177 +221,6 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		expect(targets.length).toBe(0);
 	});
 
-	it("expands shorthand 'github' target with parent access → publishable", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { access: "public", targets: ["github"] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].access).toBe("public");
-		expect(targets[0].registry).toBe("https://npm.pkg.github.com/");
-	});
-
-	it("private === true + object target with own directory → uses target.directory", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: {
-				directory: "dist/dev",
-				access: "public",
-				targets: [
-					{
-						protocol: "npm",
-						registry: "https://npm.pkg.github.com/",
-						directory: "dist/npm",
-						access: "public",
-						provenance: true,
-					},
-				],
-			},
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].directory).toBe("dist/npm");
-		expect(targets[0].registry).toBe("https://npm.pkg.github.com/");
-		expect(targets[0].access).toBe("public");
-	});
-
-	it("private === true + object target with no directory → falls back to pc.directory", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: {
-				directory: "dist/dev",
-				access: "public",
-				targets: [{ protocol: "npm", registry: "https://registry.npmjs.org/", access: "public" }],
-			},
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].directory).toBe("dist/dev");
-	});
-
-	it("private === true + string shorthand target → uses pc.directory", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { directory: "dist/dev", access: "public", targets: ["npm"] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].directory).toBe("dist/dev");
-	});
-
-	it("shorthand 'npm' target → registry expands to registry.npmjs.org", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { access: "public", targets: ["npm"] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].registry).toBe("https://registry.npmjs.org/");
-	});
-
-	it("shorthand 'github' target → registry expands to npm.pkg.github.com", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { access: "public", targets: ["github"] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].registry).toBe("https://npm.pkg.github.com/");
-	});
-
-	it("shorthand 'jsr' target → registry expands to jsr.io", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { access: "public", targets: ["jsr"] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].registry).toBe("https://jsr.io/");
-	});
-
-	it("string URL target → registry used verbatim", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { access: "public", targets: ["https://custom.example.com/"] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].registry).toBe("https://custom.example.com/");
-	});
-
-	it("unknown string target → falls back to publishConfig.registry", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: { access: "public", registry: "https://fallback.example.com/", targets: ["something-unknown"] },
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].registry).toBe("https://fallback.example.com/");
-	});
-
-	it("private === true + object target with provenance → resolves provenance true", async () => {
-		writePkg(tmpDir, {
-			name: "x",
-			version: "1.0.0",
-			private: true,
-			publishConfig: {
-				directory: "dist/dev",
-				access: "public",
-				targets: [
-					{
-						protocol: "npm",
-						registry: "https://npm.pkg.github.com/",
-						directory: "dist/npm",
-						access: "public",
-						provenance: true,
-					},
-				],
-			},
-		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
-		expect(targets.length).toBe(1);
-		expect(targets[0].provenance).toBe(true);
-	});
-
 	it("missing package.json → not publishable", async () => {
 		// no writePkg call — tmpDir exists but no package.json
 		const targets = await runSilk(
@@ -353,6 +235,22 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
 		);
 		expect(targets.length).toBe(0);
+	});
+
+	it("malformed targets.json → falls back to pre-build placeholders", async () => {
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { npm: true } },
+		});
+		mkdirSync(join(tmpDir, "dist", "prod"), { recursive: true });
+		writeFileSync(join(tmpDir, "dist", "prod", "targets.json"), "{ not valid json", "utf-8");
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].directory).toBe("dist/prod/npm/pkg");
 	});
 });
 
@@ -427,15 +325,15 @@ describe("PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk ru
 		tmpDir = mkdtempSync(join(tmpdir(), "pub-"));
 	});
 
-	it("silk mode: private + publishConfig.targets public → publishable", async () => {
+	it("silk mode: private + object-form targets → publishable", async () => {
 		writePkg(tmpDir, {
-			name: "x",
+			name: "@scope/x",
 			version: "1.0.0",
 			private: true,
-			publishConfig: { targets: [{ protocol: "npm", registry: "https://registry.npmjs.org/", access: "public" }] },
+			publishConfig: { access: "public", targets: { npm: true } },
 		});
 		const targets = await runAdaptive(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
 			"silk",
 		);
 		expect(targets.length).toBe(1);
@@ -455,7 +353,7 @@ describe("PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk ru
 			name: "@libraries/x",
 			version: "1.0.0",
 			private: true,
-			publishConfig: { targets: [{ protocol: "npm", registry: "https://registry.npmjs.org/", access: "public" }] },
+			publishConfig: { access: "public", targets: { npm: true } },
 		});
 		const targets = await runAdaptive(
 			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@libraries/x"), tmpDir)),

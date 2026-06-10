@@ -4,11 +4,14 @@ Determine whether a package is publishable under Silk conventions and resolve it
 
 ## What it does
 
-In the Silk ecosystem, `package.json` uses `publishConfig` to declare publish intent, and `private: true` is the norm on workspace packages. `SilkPublishability` applies the silk publishability rules to a raw `package.json` and returns the publish targets it resolves. A target is a `PublishTarget` record from `workspaces-effect` with `name`, `registry`, `directory`, `access` and `provenance` fields.
+In the Silk ecosystem, `package.json` uses `publishConfig` to declare publish intent, and `private: true` is the norm on workspace packages. `SilkPublishability` applies the silk publishability rules to a raw `package.json` and the bundler's resolved target binding, then returns the publish targets it resolves. A target is a `PublishTarget` record from `workspaces-effect` with `name`, `registry`, `directory`, `access` and `provenance` fields.
+
+Publish targets are declared as the bundler's keyed `publishConfig.targets` map (`{ npm: true, github: true }`). The bundler's `--target prod` build writes a `dist/prod/targets.json` binding that records the distinct byte-variant groups and binds each declared registry target to one group; `detect` resolves against that binding. The legacy array form of `publishConfig.targets` is no longer supported.
 
 Three usage levels are available:
 
-- `SilkPublishability.detect` — a pure static you call directly, no layers.
+- `SilkPublishability.detect` — a pure static you call directly, no layers. Takes the raw `package.json` plus the binding (`null` before the prod build has run).
+- `readTargetsBinding` — an Effect that reads a package's `dist/prod/targets.json` binding for `detect`, returning `null` when it is missing (pre-build).
 - `SilkPublishabilityDetectorLive` / `PublishabilityDetectorAdaptiveLive` — layers that override `workspaces-effect`'s `PublishabilityDetector` Tag, so silk rules flow into any program that yields the detector.
 - `SilkPublishability.resolveTargets` / `SilkPublishability.listPublishable` — Effects that read from disk to filter targets and discover publishable packages.
 
@@ -18,12 +21,11 @@ A class whose members are all static, so a consumer sees the full rule surface i
 
 ```typescript
 class SilkPublishability {
-  static detect(pkgName: string, raw: RawPackageJson): ReadonlyArray<PublishTarget>;
-  static expandShorthand(target: string, parentRegistry: string | undefined): string;
-  static resolveTargetAccess(
-    target: RawTargetSpec,
-    parentAccess: "public" | "restricted" | undefined,
-  ): "public" | "restricted" | undefined;
+  static detect(
+    pkgName: string,
+    raw: RawPackageJson,
+    binding: TargetsBinding | null,
+  ): ReadonlyArray<PublishTarget>;
   static resolveTargets(
     pkg: WorkspacePackage,
     root: string,
@@ -34,21 +36,18 @@ class SilkPublishability {
 }
 ```
 
-### `detect(pkgName, raw)`
+### `detect(pkgName, raw, binding)`
 
-Apply the silk rules to a raw `package.json` and return the resolved targets. Pure — no Effect, no layers.
+Apply the silk rules to a raw `package.json` and the bundler's resolved target binding, and return the resolved targets. Pure — no Effect, no layers.
 
-- **pkgName** — the package name, used to populate each `PublishTarget.name`.
+- **pkgName** — the package name, used as the base name for `true`/empty-object targets and to populate each `PublishTarget.name`.
 - **raw** — the raw `package.json` fields silk rules consult (`RawPackageJson`).
+- **binding** — the parsed `dist/prod/targets.json` binding (`TargetsBinding`), or `null` when the prod build has not run yet. With a binding, one `PublishTarget` is emitted per resolved registry target and its `directory` is the bound group's `dist/prod/<group>/pkg`; `npm: true` + `github: true` collapse into one byte-group deployed to two registries. Without a binding, one count-accurate placeholder is emitted per declared key so publishability and target counts are correct before the build.
 - **Returns** — `ReadonlyArray<PublishTarget>`. Empty when the package is not publishable.
 
-### `expandShorthand(target, parentRegistry)`
+### `readTargetsBinding(fs, pkgPath)`
 
-Expand a shorthand string target to a registry URL. `"npm"` → `https://registry.npmjs.org/`, `"github"` → `https://npm.pkg.github.com/`, `"jsr"` → `https://jsr.io/`. An `http(s)://…` value is used verbatim. Anything else falls back to the parent `publishConfig.registry`, then the npm default.
-
-### `resolveTargetAccess(target, parentAccess)`
-
-Resolve the access for one target spec. String targets always inherit the parent `publishConfig.access`; object targets use their own `.access` else the parent's.
+Read a package's `dist/prod/targets.json` binding from disk, returning `null` when the file is missing or malformed (i.e. the prod build has not run). The detector layers and the workspace analyzer call this and thread the result into `detect`. Requires `FileSystem`.
 
 ### `resolveTargets(pkg, root)`
 
@@ -64,12 +63,12 @@ The publishable, non-ignored packages in a workspace, resolved through the singl
 
 | # | Condition | Result |
 | - | --------- | ------ |
-| 1 | `publishConfig.targets` is a non-empty array | One `PublishTarget` per surviving target (entries whose resolved access is neither `public` nor `restricted` are skipped) |
+| 1 | `publishConfig.targets` is a non-empty map | With a binding: one `PublishTarget` per resolved registry target, its directory the bound group's `dist/prod/<group>/pkg`. Without a binding: one count-accurate placeholder per declared key |
 | 2 | `publishConfig.access` is `public` or `restricted` | A single `PublishTarget` |
 | 3 | `private !== true` | A single default `PublishTarget` |
 | 4 | otherwise | `[]` (not publishable) |
 
-Targets-first precedence means a `publishConfig.targets` array resolves regardless of the `private` flag. The `private` flag is consulted only as the last-resort default in rule 3.
+Targets-first precedence means a non-empty `publishConfig.targets` map resolves regardless of the `private` flag. The `private` flag is consulted only as the last-resort default in rule 3. An empty map, or the legacy array form (no longer supported), falls through to the access/private branches rather than resolving to zero targets.
 
 ## Detector overrides
 
@@ -150,23 +149,26 @@ const targets = await Effect.runPromise(program);
 ## Related types
 
 ```typescript
-// A single declared publish target in a raw publishConfig.targets array
-type RawTargetSpec =
-  | string
-  | {
-      readonly access?: "public" | "restricted";
-      readonly protocol?: string;
-      readonly registry?: string;
-      readonly directory?: string;
-      readonly provenance?: boolean;
-    };
+// A single object-form publish target in the publishConfig.targets map
+interface RawTargetObject {
+  readonly registry?: string;
+  readonly name?: string; // name override; mutually exclusive with `from`
+  readonly from?: string; // reuse another target's group bytes
+}
+
+// A publishConfig.targets value: true (well-known registry, base name), a string
+// (name override), or an object
+type RawTargetValue = true | string | RawTargetObject;
+
+// The publishConfig.targets map, keyed by target id (npm, github, or a custom key)
+type RawPublishTargets = Record<string, RawTargetValue>;
 
 // The raw publishConfig fields silk rules consult
 interface RawPublishConfig {
   readonly access?: "public" | "restricted";
   readonly registry?: string;
   readonly directory?: string;
-  readonly targets?: ReadonlyArray<RawTargetSpec>;
+  readonly targets?: RawPublishTargets;
 }
 
 // The raw package.json fields silk rules consult
@@ -186,6 +188,31 @@ interface PublishablePackage {
 }
 ```
 
+The bundler's `dist/prod/targets.json` binding types describe what `detect` resolves against:
+
+```typescript
+// A resolved byte-variant group from dist/prod/targets.json
+interface TargetGroupBinding {
+  readonly id: string; // group folder id
+  readonly name: string; // the package.json name this group's manifest carries
+  readonly dir: string; // the group's pkg output dir, e.g. dist/prod/npm/pkg
+}
+
+// A resolved registry target (one per publishConfig.targets key)
+interface TargetBinding {
+  readonly id: string; // the publishConfig.targets key (npm, github, …)
+  readonly group: string; // the group id whose bytes this target deploys
+  readonly name: string; // the resolved name for that group
+  readonly registry: string; // the resolved registry endpoint
+}
+
+// The dist/prod/targets.json binding the bundler emits for the release step
+interface TargetsBinding {
+  readonly groups: ReadonlyArray<TargetGroupBinding>;
+  readonly targets: ReadonlyArray<TargetBinding>;
+}
+```
+
 `PublishTarget` comes from `workspaces-effect` (import it from there) and carries `name`, `registry`, `directory`, `access` and `provenance`.
 
 ## Usage
@@ -193,27 +220,32 @@ interface PublishablePackage {
 ```typescript
 import { SilkPublishability } from "@savvy-web/silk-effects";
 
-// Targets-first: one PublishTarget per publishConfig.targets entry
-const targets = SilkPublishability.detect("@my-org/my-package", {
-  name: "@my-org/my-package",
-  private: true,
-  publishConfig: { access: "public", targets: ["npm", "github"] },
-});
-// => [PublishTarget { registry: "https://registry.npmjs.org/", access: "public", ... },
-//     PublishTarget { registry: "https://npm.pkg.github.com/", access: "public", ... }]
+// Targets-first: one PublishTarget per declared publishConfig.targets key
+const targets = SilkPublishability.detect(
+  "@my-org/my-package",
+  {
+    name: "@my-org/my-package",
+    private: true,
+    publishConfig: { access: "public", targets: { npm: true, github: true } },
+  },
+  null, // pre-build placeholder; pass the dist/prod/targets.json binding post-build
+);
+// => [PublishTarget { registry: "https://registry.npmjs.org", access: "public", ... },
+//     PublishTarget { registry: "https://npm.pkg.github.com", access: "public", ... }]
 ```
 
 In the Silk build system, `"private": true` in the source `package.json` is normal. The builder transforms it based on `publishConfig.access` during build, so a package with `private: true` and `publishConfig.access: "public"` is publishable.
 
 ```typescript
 // Not publishable -> empty array
-const none = SilkPublishability.detect("@my-org/internal", { private: true });
+const none = SilkPublishability.detect("@my-org/internal", { private: true }, null);
 // => []
 ```
 
 ## Dependencies on other services
 
-- `SilkPublishability.detect`, `expandShorthand`, `resolveTargetAccess` — none (pure).
+- `SilkPublishability.detect` — none (pure).
+- `readTargetsBinding` — `FileSystem`.
 - `SilkPublishability.resolveTargets` — `PublishabilityDetector` and `FileSystem`.
 - `SilkPublishability.listPublishable` — `WorkspaceDiscovery` and `PublishabilityDetector`.
 - `SilkPublishabilityDetectorLive` — `FileSystem`.

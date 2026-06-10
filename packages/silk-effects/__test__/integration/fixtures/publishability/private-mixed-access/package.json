@@ -3,15 +3,10 @@
 	"version": "1.0.0",
 	"private": true,
 	"publishConfig": {
-		"targets": [
-			{
-				"access": "public",
-				"directory": "dist/npm"
-			},
-			{
-				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/npm"
-			}
-		]
+		"access": "public",
+		"targets": {
+			"npm": true,
+			"mirror": { "from": "npm", "registry": "https://mirror.example.com" }
+		}
 	}
 }

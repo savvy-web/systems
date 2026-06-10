@@ -10,23 +10,71 @@ import {
 } from "workspaces-effect";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 
-/** A single declared publish target in a raw `publishConfig.targets` array. */
-export type RawTargetSpec =
-	| string
-	| {
-			readonly access?: "public" | "restricted";
-			readonly protocol?: string;
-			readonly registry?: string;
-			readonly directory?: string;
-			readonly provenance?: boolean;
-	  };
+/** A single object-form publish target in the `publishConfig.targets` map (mirrors the bundler's `PublishTargetObject`). */
+export interface RawTargetObject {
+	/** Registry endpoint. Defaulted for the well-known `npm`/`github` keys. */
+	readonly registry?: string;
+	/** Name override for this target's own group. Mutually exclusive with `from`. */
+	readonly name?: string;
+	/** Reuse another target's group bytes. Mutually exclusive with `name`. */
+	readonly from?: string;
+}
+
+/** A `publishConfig.targets` value: `true` (well-known registry, base name), a string (name override), or an object. */
+export type RawTargetValue = true | string | RawTargetObject;
+
+/**
+ * The `publishConfig.targets` map, keyed by target id (`npm`, `github`, or a custom key).
+ *
+ * @remarks
+ * This is the bundler's Record-map form. The legacy array form is no longer supported
+ * (removed in the 1.0 breaking change) — declare targets as a keyed map and let the
+ * bundler emit the {@link TargetsBinding} that silk publishability resolves against.
+ */
+export type RawPublishTargets = Record<string, RawTargetValue>;
 
 /** Raw `publishConfig` shape (the unschematized fields silk rules consult). */
 export interface RawPublishConfig {
 	readonly access?: "public" | "restricted";
 	readonly registry?: string;
 	readonly directory?: string;
-	readonly targets?: ReadonlyArray<RawTargetSpec>;
+	readonly targets?: RawPublishTargets;
+}
+
+/** A resolved byte-variant group from the bundler's `dist/prod/targets.json` binding. */
+export interface TargetGroupBinding {
+	/** Group folder id; the group's bytes live at {@link dir}. */
+	readonly id: string;
+	/** The `package.json.name` this group's manifest carries. */
+	readonly name: string;
+	/** The group's pkg output dir, relative to the package root (e.g. `dist/prod/npm/pkg`). */
+	readonly dir: string;
+}
+
+/** A resolved registry target from the bundler's `dist/prod/targets.json` binding (one per `publishConfig.targets` key). */
+export interface TargetBinding {
+	/** The `publishConfig.targets` key (`npm`, `github`, …). */
+	readonly id: string;
+	/** The group id whose bytes this target deploys. */
+	readonly group: string;
+	/** The resolved name for that group. */
+	readonly name: string;
+	/** The resolved registry endpoint. */
+	readonly registry: string;
+}
+
+/**
+ * The `dist/prod/targets.json` binding the bundler emits for the release action to consume.
+ *
+ * @remarks
+ * Written by `@savvy-web/bundler`'s `--target prod` build. `groups` is the distinct
+ * byte-variant build set; `targets` binds every declared registry target to one group.
+ * `npm: true` + `github: true` collapse into one scoped-name group deployed to two
+ * registries (one group, two targets).
+ */
+export interface TargetsBinding {
+	readonly groups: ReadonlyArray<TargetGroupBinding>;
+	readonly targets: ReadonlyArray<TargetBinding>;
 }
 
 /** Raw `package.json` shape consumed by {@link SilkPublishability.detect}. */
@@ -48,6 +96,16 @@ export interface PublishablePackage {
 const NPM_DEFAULT = "https://registry.npmjs.org/";
 
 /**
+ * Default registry endpoints for the well-known target keys. Kept in sync with the
+ * bundler's `resolveTargets` so the pre-build fallback matches what the binding will carry
+ * (no trailing slash).
+ */
+const DEFAULT_REGISTRIES: Record<string, string> = {
+	npm: "https://registry.npmjs.org",
+	github: "https://npm.pkg.github.com",
+};
+
+/**
  * Silk publishability rules over `workspaces-effect`'s {@link PublishTarget}.
  *
  * @remarks
@@ -59,64 +117,61 @@ const NPM_DEFAULT = "https://registry.npmjs.org/";
  */
 export class SilkPublishability {
 	/**
-	 * Resolve the access for one target spec. String targets always inherit the parent
-	 * `publishConfig.access`; object targets use their own `.access` else the parent's.
+	 * Apply silk publishability rules to a raw `package.json` and the bundler's resolved
+	 * target binding. Targets-first precedence:
+	 *
+	 * - A non-empty `publishConfig.targets` map (the bundler's Record-map form) makes the
+	 *   package publishable regardless of `private`. With a `binding` (post-prod-build), one
+	 *   {@link PublishTarget} is emitted per resolved registry target, its `directory` set to
+	 *   the bound group's `dist/prod/<group>/pkg` dir. Without a binding (pre-build), one
+	 *   placeholder target is emitted per declared key so publishability and target counts
+	 *   are correct; the directory is best-effort and unused until the build writes the
+	 *   binding.
+	 * - Else `publishConfig.access` → one target at `publishConfig.directory`.
+	 * - Else `private !== true` → one default public target.
+	 * - Else `[]`.
+	 *
+	 * @param pkgName - The package's name (the base name for `true`/empty-object targets).
+	 * @param raw - The raw `package.json` (silk reads the unschematized `publishConfig`).
+	 * @param binding - The parsed `dist/prod/targets.json` binding, or `null` when the prod
+	 *   build has not run yet. See {@link readTargetsBinding}.
 	 */
-	static resolveTargetAccess(
-		target: RawTargetSpec,
-		parentAccess: "public" | "restricted" | undefined,
-	): "public" | "restricted" | undefined {
-		if (typeof target === "string") return parentAccess;
-		return target.access ?? parentAccess;
-	}
-
-	/**
-	 * Expand a shorthand string target to a registry URL. `"npm"`/`"github"`/`"jsr"` map to
-	 * canonical registries; `http(s)://…` is verbatim; anything else falls back to the parent
-	 * `publishConfig.registry` (or the npm default).
-	 */
-	static expandShorthand(target: string, parentRegistry: string | undefined): string {
-		if (target === "npm") return NPM_DEFAULT;
-		if (target === "github") return "https://npm.pkg.github.com/";
-		if (target === "jsr") return "https://jsr.io/";
-		if (target.startsWith("https://") || target.startsWith("http://")) return target;
-		return parentRegistry ?? NPM_DEFAULT;
-	}
-
-	/**
-	 * Apply silk publishability rules to a raw `package.json`. Targets-first precedence:
-	 * `publishConfig.targets` → one PublishTarget per surviving target (regardless of
-	 * `private`); else `publishConfig.access` → one target; else `private !== true` → one
-	 * default target; else `[]`.
-	 */
-	static detect(pkgName: string, raw: RawPackageJson): ReadonlyArray<PublishTarget> {
+	static detect(pkgName: string, raw: RawPackageJson, binding: TargetsBinding | null): ReadonlyArray<PublishTarget> {
 		const pc = raw.publishConfig;
+		const targets = pc?.targets;
 
-		// An explicitly empty `targets: []` is treated identically to a missing one — it falls
-		// through to the access/private branches rather than resolving to zero targets.
-		if (pc?.targets && pc.targets.length > 0) {
-			const results: PublishTarget[] = [];
-			for (const target of pc.targets) {
-				const access = SilkPublishability.resolveTargetAccess(target, pc.access);
-				if (access !== "public" && access !== "restricted") continue;
-				const registry =
-					typeof target === "string"
-						? SilkPublishability.expandShorthand(target, pc.registry)
-						: (target.registry ?? pc.registry ?? NPM_DEFAULT);
-				const directory =
-					typeof target === "string" ? (pc.directory ?? ".") : (target.directory ?? pc.directory ?? ".");
-				const provenance = typeof target === "string" ? undefined : target.provenance;
-				results.push(
-					new PublishTarget({
-						name: pkgName,
-						registry,
-						directory,
-						access,
-						...(provenance !== undefined ? { provenance } : {}),
-					}),
+		// Object-form `publishConfig.targets` (the bundler's Record-map). A declared, non-empty
+		// map makes the package publishable regardless of `private`. An empty map — or the
+		// legacy ARRAY form (no longer supported as of the 1.0 breaking change) — falls through
+		// to the access/private branches rather than resolving to zero targets.
+		if (targets && typeof targets === "object" && !Array.isArray(targets) && Object.keys(targets).length > 0) {
+			const access = pc?.access ?? "public";
+			if (binding) {
+				// Post-build: the bundler wrote dist/prod/targets.json. One PublishTarget per
+				// resolved registry target; its bytes live in the bound group's pkg dir.
+				const dirByGroup = new Map(binding.groups.map((g) => [g.id, g.dir]));
+				return binding.targets.map(
+					(t) =>
+						new PublishTarget({
+							name: t.name,
+							registry: t.registry,
+							directory: dirByGroup.get(t.group) ?? `dist/prod/${t.group}/pkg`,
+							access,
+						}),
 				);
 			}
-			return results;
+			// Pre-build: no binding yet. Emit one placeholder per declared key so publishability
+			// and target counts are correct; the directory is best-effort (group collapsing is
+			// only known from the binding) and unused until the prod build writes it.
+			return Object.keys(targets).map(
+				(id) =>
+					new PublishTarget({
+						name: pkgName,
+						registry: DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT,
+						directory: `dist/prod/${id}/pkg`,
+						access,
+					}),
+			);
 		}
 
 		if (pc && (pc.access === "public" || pc.access === "restricted")) {
@@ -217,6 +272,29 @@ const readRaw = (fs: FileSystem.FileSystem, packageJsonPath: string): Effect.Eff
 	);
 
 /**
+ * Read the bundler's `<pkgPath>/dist/prod/targets.json` binding via FileSystem.
+ *
+ * @remarks
+ * Returns `null` when the file is missing/unreadable/malformed — i.e. before the prod build
+ * has run. {@link SilkPublishability.detect} falls back to declared-key placeholders in that
+ * case. Used by the silk {@link PublishabilityDetector} layers and the workspace analyzer.
+ *
+ * @param fs - The FileSystem service.
+ * @param pkgPath - Absolute path to the package directory.
+ * @since 1.0.0
+ */
+export const readTargetsBinding = (fs: FileSystem.FileSystem, pkgPath: string): Effect.Effect<TargetsBinding | null> =>
+	fs.readFileString(join(pkgPath, "dist", "prod", "targets.json")).pipe(
+		Effect.flatMap((content) =>
+			Effect.try({
+				try: () => JSON.parse(content) as TargetsBinding,
+				catch: () => new Error("invalid targets.json"),
+			}),
+		),
+		Effect.orElseSucceed(() => null),
+	);
+
+/**
  * Override of `workspaces-effect`'s {@link PublishabilityDetector} Tag with pure silk rules.
  *
  * @remarks Requires `FileSystem` (captured at layer build); `detect` reads the raw
@@ -231,9 +309,12 @@ export const SilkPublishabilityDetectorLive: Layer.Layer<PublishabilityDetector,
 			const fs = yield* FileSystem.FileSystem;
 			return {
 				detect: (pkg: WorkspacePackage, _root: string) =>
-					readRaw(fs, pkg.packageJsonPath).pipe(
-						Effect.map((raw) => (raw ? SilkPublishability.detect(pkg.name, raw) : [])),
-					),
+					Effect.gen(function* () {
+						const raw = yield* readRaw(fs, pkg.packageJsonPath);
+						if (!raw) return [];
+						const binding = yield* readTargetsBinding(fs, pkg.path);
+						return SilkPublishability.detect(pkg.name, raw, binding);
+					}),
 			};
 		}),
 	);
@@ -266,7 +347,9 @@ export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
 					if (mode === "none") return [];
 					if (mode === "silk") {
 						const raw = yield* readRaw(fs, pkg.packageJsonPath);
-						return raw ? SilkPublishability.detect(pkg.name, raw) : [];
+						if (!raw) return [];
+						const binding = yield* readTargetsBinding(fs, pkg.path);
+						return SilkPublishability.detect(pkg.name, raw, binding);
 					}
 					return yield* vanilla.detect(pkg, root);
 				}),

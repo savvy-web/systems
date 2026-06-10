@@ -3,11 +3,10 @@
 	"version": "0.0.1",
 	"private": true,
 	"publishConfig": {
-		"directory": "dist/dev",
 		"access": "public",
-		"targets": [
-			{ "registry": "https://registry.npmjs.org/", "directory": "dist/npm", "access": "public" },
-			{ "registry": "https://npm.pkg.github.com/", "directory": "dist/npm", "access": "public" }
-		]
+		"targets": {
+			"npm": true,
+			"github": true
+		}
 	}
 }

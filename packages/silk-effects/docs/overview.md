@@ -46,16 +46,20 @@ See [Platform layers](./platform-layers.md) for the full guide.
 
 ### Pure logic (no layers)
 
-`SilkPublishability.detect` is a static — call it directly with a package name and the raw `package.json`:
+`SilkPublishability.detect` is a static — call it directly with a package name, the raw `package.json` and the bundler's target binding (`null` before the prod build has run):
 
 ```typescript
 import { SilkPublishability } from "@savvy-web/silk-effects";
 
-const targets = SilkPublishability.detect("@my-org/pkg", {
-  private: true,
-  publishConfig: { access: "public", targets: ["npm"] },
-});
-// => [PublishTarget { registry: "https://registry.npmjs.org/", access: "public", ... }]
+const targets = SilkPublishability.detect(
+  "@my-org/pkg",
+  {
+    private: true,
+    publishConfig: { access: "public", targets: { npm: true } },
+  },
+  null,
+);
+// => [PublishTarget { registry: "https://registry.npmjs.org", access: "public", ... }]
 ```
 
 ### FileSystem service

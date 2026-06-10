@@ -19,7 +19,7 @@ These services are pure — they perform no I/O and have no platform dependencie
 ```typescript
 import { SilkPublishability } from "@savvy-web/silk-effects";
 
-const targets = SilkPublishability.detect("@my-org/pkg", rawPackageJson);
+const targets = SilkPublishability.detect("@my-org/pkg", rawPackageJson, null);
 // => ReadonlyArray<PublishTarget>
 ```
 

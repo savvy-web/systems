@@ -3,16 +3,9 @@
 	"version": "1.0.0",
 	"private": true,
 	"publishConfig": {
-		"directory": "dist/dev",
 		"access": "public",
-		"targets": [
-			{
-				"protocol": "npm",
-				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/npm",
-				"access": "public",
-				"provenance": true
-			}
-		]
+		"targets": {
+			"github": true
+		}
 	}
 }

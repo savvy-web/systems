@@ -19,7 +19,9 @@ import {
 	defaultManifestTransform,
 	packageJsonEntries,
 	removeDeclarationMaps,
+	resolveTargets,
 	writeResolvedTsconfig,
+	writeTargetsBinding,
 } from "@savvy-web/tsdown-plugins";
 
 const cwd = import.meta.dirname;
@@ -48,4 +50,10 @@ await buildTargetGroups({
 
 // Strip declaration source-maps from the published prod pkg/ (the front door does this in
 // runBuild; the escape hatch must do it itself). dev keeps them.
-if (target === "prod") removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
+if (target === "prod") {
+	removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
+	// Emit the dist/prod/targets.json binding the release action consumes — the front
+	// door (runBuild) writes this; the escape hatch must too, or the action falls back
+	// to the dist/dev directory. npm+github collapse into the single built npm group.
+	writeTargetsBinding(cwd, resolveTargets({ targets: { npm: true, github: true }, baseName: pkg.name }));
+}

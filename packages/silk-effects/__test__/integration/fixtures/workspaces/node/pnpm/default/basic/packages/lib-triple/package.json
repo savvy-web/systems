@@ -4,10 +4,10 @@
 	"private": true,
 	"publishConfig": {
 		"access": "public",
-		"targets": [
-			"npm",
-			"github",
-			"jsr"
-		]
+		"targets": {
+			"npm": true,
+			"github": true,
+			"jsr": { "registry": "https://jsr.io/" }
+		}
 	}
 }
