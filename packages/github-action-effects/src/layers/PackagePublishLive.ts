@@ -9,6 +9,7 @@ import { CommandRunner } from "../services/CommandRunner.js";
 import { NpmRegistry } from "../services/NpmRegistry.js";
 import type { DryRunResult, IdempotentPublishInput, PackResult } from "../services/PackagePublish.js";
 import { PackagePublish } from "../services/PackagePublish.js";
+import { isNpmRegistry } from "../utils/RegistryClassifier.js";
 
 /**
  * The size-bearing fields of npm's `--json` dry-run output.
@@ -228,7 +229,13 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 						if (options?.registry) args.push("--registry", options.registry);
 						if (options?.tag) args.push("--tag", options.tag);
 						if (options?.access) args.push("--access", options.access);
-						if (options?.provenance) args.push("--provenance");
+						// Only npm's public registry supports `--provenance` (Sigstore OIDC
+						// trusted publishing). An undefined registry means npm's default
+						// (the public registry); a set registry must be npm. GitHub Packages
+						// 404s the OIDC exchange — its provenance is the GitHub artifact
+						// attestation, not this flag.
+						if (options?.provenance && (options.registry === undefined || isNpmRegistry(options.registry)))
+							args.push("--provenance");
 						// `--loglevel verbose` makes npm log its HTTP requests,
 						// including the OIDC trusted-publisher exchange against
 						// `<registry>/-/npm/v1/oidc/token/exchange` and the upstream
@@ -278,7 +285,13 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							const { cmd, baseArgs } = getNpmCommand(options.packageManager);
 							const args = [...baseArgs, "publish", tarballPath, "--registry", options.registry];
 							if (options.access) args.push("--access", options.access);
-							if (options.provenance) args.push("--provenance");
+							// `--provenance` runs npm's Sigstore OIDC trusted-publishing token
+							// exchange, which only the npm public registry supports. GitHub
+							// Packages (and custom registries) 404 the OIDC endpoint and then
+							// fail ENEEDAUTH even with a valid _authToken, so only pass the flag
+							// for npm. GitHub Packages provenance is the separate GitHub artifact
+							// attestation handled by the attest step.
+							if (options.provenance && isNpmRegistry(options.registry)) args.push("--provenance");
 							if (options.tag) args.push("--tag", options.tag);
 							// See `publish` above for why verbose + streaming.
 							// `cwd` is intentionally absent — the tarball path is
