@@ -1,5 +1,11 @@
 # @savvy-web/github-action-effects
 
+## 2.1.3
+
+### Bug Fixes
+
+* [`75c0a42`](https://github.com/savvy-web/systems/commit/75c0a429f5a053609ee5bbe8f3fe54392edff82c) Handle trailing slashes in registry urls.
+
 ## 2.1.2
 
 ### Build System
