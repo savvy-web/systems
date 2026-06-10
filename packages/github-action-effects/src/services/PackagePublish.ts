@@ -188,6 +188,13 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 				readonly provenance?: boolean;
 				readonly tag?: string;
 				readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+				/**
+				 * Force classic `_authToken` auth by stripping the GitHub Actions OIDC env so
+				 * npm does not attempt (and fail) tokenless trusted publishing. Required for
+				 * GitHub Packages and as the bootstrap path for npm packages that have no
+				 * trusted publisher configured yet.
+				 */
+				readonly tokenAuth?: boolean;
 			},
 		) => Effect.Effect<void, PackagePublishError>;
 

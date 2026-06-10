@@ -72,9 +72,12 @@ describe("PackagePublishLive", () => {
 
 		// The token is NEVER passed as a command argument.
 		expect(calls.flatMap((c) => c.args)).not.toContain("ghp_token");
-		// It is written to the user .npmrc with the correct key.
+		// It is written to the user .npmrc with npm's nerf-darted key, which always
+		// carries a trailing slash (`//host/:_authToken`) — even when the registry was
+		// given as a bare host with none. Without the slash npm never matches the key and
+		// the publish fails ENEEDAUTH despite a configured token.
 		expect(existsSync(npmrcPath)).toBe(true);
-		expect(readFileSync(npmrcPath, "utf8")).toContain("//npm.pkg.github.com:_authToken=ghp_token");
+		expect(readFileSync(npmrcPath, "utf8")).toContain("//npm.pkg.github.com/:_authToken=ghp_token");
 		// And masked in the runner log.
 		expect(outputsState.secrets).toContain("ghp_token");
 	});
@@ -94,6 +97,25 @@ describe("PackagePublishLive", () => {
 		// npm matches `//npm.pkg.github.com/:_authToken`; keeping the scheme
 		// (`//https://…`) yields a key npm never matches → ENEEDAUTH.
 		expect(readFileSync(npmrcPath, "utf8")).toContain("//npm.pkg.github.com/:_authToken=ghp_token");
+	});
+
+	it("setupAuth normalizes a registry URL WITHOUT a trailing slash to the slash key (bundler binding regression)", async () => {
+		const runner = makeMockRunner({});
+		const registry = NpmRegistryTest.empty();
+		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+		// The bundler's dist/prod/targets.json binding emits registries with no trailing
+		// slash. npm's nerf-dart always has one, so the key must still carry it.
+		await Effect.runPromise(
+			PackagePublish.pipe(
+				Effect.flatMap((svc) => svc.setupAuth("https://npm.pkg.github.com", Redacted.make("ghp_token"))),
+				Effect.provide(layer),
+			),
+		);
+
+		const npmrc = readFileSync(npmrcPath, "utf8");
+		expect(npmrc).toContain("//npm.pkg.github.com/:_authToken=ghp_token");
+		expect(npmrc).not.toContain("//npm.pkg.github.com:_authToken");
 	});
 
 	it("publish runs npm publish with flags", async () => {
@@ -664,8 +686,8 @@ describe("PackagePublishLive", () => {
 		expect(calls.flatMap((c) => c.args)).not.toContain("npm-token");
 		expect(calls.flatMap((c) => c.args)).not.toContain("ghp-token");
 		const npmrc = readFileSync(npmrcPath, "utf8");
-		expect(npmrc).toContain("//registry.npmjs.org:_authToken=npm-token");
-		expect(npmrc).toContain("//npm.pkg.github.com:_authToken=ghp-token");
+		expect(npmrc).toContain("//registry.npmjs.org/:_authToken=npm-token");
+		expect(npmrc).toContain("//npm.pkg.github.com/:_authToken=ghp-token");
 
 		// First registry: publish with tag and access.
 		expect(calls[0]?.args).toEqual([
@@ -1270,6 +1292,68 @@ describe("PackagePublishLive", () => {
 			expect(calls[0]?.args).toContain("--provenance");
 		});
 
+		it("tokenAuth strips the GitHub Actions OIDC env so npm uses the _authToken", async () => {
+			const prevUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+			const prevToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+			process.env.ACTIONS_ID_TOKEN_REQUEST_URL = "https://example.test/idtoken";
+			process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN = "request-token";
+			try {
+				const calls: Array<{ env: Record<string, string> | undefined }> = [];
+				const runner = makeMockRunner({
+					exec: (_command, _args, options) => {
+						calls.push({ env: options?.env });
+						return Effect.succeed(0);
+					},
+				});
+				const registry = NpmRegistryTest.empty();
+				const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+				await Effect.runPromise(
+					PackagePublish.pipe(
+						Effect.flatMap((svc) =>
+							svc.publishTarball("/tmp/pkg.tgz", {
+								registry: "https://npm.pkg.github.com/",
+								access: "public",
+								tokenAuth: true,
+							}),
+						),
+						Effect.provide(layer),
+					),
+				);
+
+				// A full env override is passed, with the OIDC vars removed.
+				expect(calls[0]?.env).toBeDefined();
+				expect(calls[0]?.env?.ACTIONS_ID_TOKEN_REQUEST_URL).toBeUndefined();
+				expect(calls[0]?.env?.ACTIONS_ID_TOKEN_REQUEST_TOKEN).toBeUndefined();
+			} finally {
+				if (prevUrl === undefined) delete process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+				else process.env.ACTIONS_ID_TOKEN_REQUEST_URL = prevUrl;
+				if (prevToken === undefined) delete process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+				else process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN = prevToken;
+			}
+		});
+
+		it("does not override the env when tokenAuth is not set (inherits process env for trusted publishing)", async () => {
+			const calls: Array<{ env: Record<string, string> | undefined }> = [];
+			const runner = makeMockRunner({
+				exec: (_command, _args, options) => {
+					calls.push({ env: options?.env });
+					return Effect.succeed(0);
+				},
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+			await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) => svc.publishTarball("/tmp/pkg.tgz", { registry: "https://registry.npmjs.org/" })),
+					Effect.provide(layer),
+				),
+			);
+
+			expect(calls[0]?.env).toBeUndefined();
+		});
+
 		it("wraps CommandRunnerError into PackagePublishError with the registry attached", async () => {
 			const runner = makeMockRunner({
 				exec: () =>
@@ -1297,7 +1381,9 @@ describe("PackagePublishLive", () => {
 			expect(error).toBeInstanceOf(PackagePublishError);
 			expect(error.operation).toBe("publishTarball");
 			expect(error.registry).toBe("https://npm.pkg.github.com/");
-			expect(error.reason).toBe("Command failed with exit code 1");
+			// The reason now surfaces npm's actual error (extracted from stderr) instead of
+			// the opaque "Command exited with code 1".
+			expect(error.reason).toBe("npm error 403 Forbidden");
 			expect((error.cause as CommandRunnerError).stderr).toBe("npm error 403 Forbidden");
 		});
 	});

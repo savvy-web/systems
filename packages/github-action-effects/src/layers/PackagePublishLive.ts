@@ -57,7 +57,14 @@ interface NpmPackJsonEntry {
 const authTokenKey = (registry: string): string => {
 	const withoutScheme = registry.replace(/^https?:\/\//, "");
 	const prefixed = withoutScheme.startsWith("//") ? withoutScheme : `//${withoutScheme}`;
-	return `${prefixed}:_authToken`;
+	// npm nerf-darts a registry WITH a trailing slash (`//host/:_authToken`) — registry
+	// URLs are normalized to end in `/` before the token is looked up. A key written
+	// without the slash (`//host:_authToken`) is never matched, so the publish goes out
+	// unauthenticated and fails ENEEDAUTH even though a token was configured. The bundler's
+	// `dist/prod/targets.json` binding emits registries WITHOUT a trailing slash, so
+	// normalize one in here.
+	const withSlash = prefixed.endsWith("/") ? prefixed : `${prefixed}/`;
+	return `${withSlash}:_authToken`;
 };
 
 /**
@@ -127,6 +134,47 @@ const getNpmCommand = (pm?: "npm" | "pnpm" | "yarn" | "bun"): { cmd: string; bas
 };
 
 /**
+ * The GitHub Actions OIDC environment variables. When present, npm 11.5+ AUTO-attempts
+ * tokenless trusted publishing (the `/-/npm/v1/oidc/token/exchange` POST) on every publish —
+ * regardless of `--provenance` — and does NOT fall back to a configured `_authToken` when the
+ * exchange fails. GitHub Packages never supports that exchange (404), and an npm-public package
+ * with no trusted publisher configured 404s too. {@link tokenAuthEnv} strips these so npm uses
+ * the `_authToken` instead.
+ */
+const OIDC_ENV_VARS = ["ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"] as const;
+
+/**
+ * Build a child environment that inherits the current process env MINUS the GitHub Actions
+ * OIDC variables, forcing npm onto classic `_authToken` auth (no trusted-publishing attempt).
+ * `CommandRunner` replaces the child env with the value passed, so this returns the full env.
+ */
+const tokenAuthEnv = (): Record<string, string> => {
+	const env: Record<string, string> = {};
+	for (const [key, value] of Object.entries(process.env)) {
+		if (value !== undefined) env[key] = value;
+	}
+	for (const key of OIDC_ENV_VARS) delete env[key];
+	return env;
+};
+
+/**
+ * Extract a concise, actionable summary from npm's stderr — the `npm error`/`npm warn`
+ * lines and any auth/OIDC markers — so a publish failure surfaces the real cause
+ * (ENEEDAUTH, E404, OIDC exchange) instead of the opaque "Command exited with code 1".
+ * Returns undefined when there is nothing useful to add (the caller falls back to the
+ * generic reason).
+ */
+const npmErrorSummary = (stderr: string | undefined): string | undefined => {
+	if (!stderr) return undefined;
+	const lines = stderr
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => /^npm (error|warn)\b/i.test(line) || /ENEEDAUTH|E40\d|need auth|oidc/i.test(line));
+	const summary = [...new Set(lines)].slice(0, 6).join(" | ");
+	return summary.length > 0 ? summary : undefined;
+};
+
+/**
  * Live PackagePublish layer using CommandRunner and NpmRegistry.
  *
  * @public
@@ -139,8 +187,16 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 				const service: typeof PackagePublish.Service = {
 					setupAuth: (registryUrl: string, token: Redacted.Redacted<string>) =>
 						// Mask the token in the runner log first, then write it to
-						// `.npmrc` off-argv (never as a command argument).
-						outputs.setSecret(Redacted.value(token)).pipe(Effect.flatMap(() => writeAuthToken(registryUrl, token))),
+						// `.npmrc` off-argv (never as a command argument). Log the resolved
+						// auth-config KEY and target `.npmrc` (never the token) so a registry /
+						// nerf-dart mismatch — the cause of a token-present ENEEDAUTH — is
+						// visible in the run without leaking the secret.
+						outputs.setSecret(Redacted.value(token)).pipe(
+							Effect.flatMap(() => writeAuthToken(registryUrl, token)),
+							Effect.tap(() =>
+								Effect.logInfo(`setupAuth: ${registryUrl} → wrote ${authTokenKey(registryUrl)} to ${userNpmrcPath()}`),
+							),
+						),
 
 					pack: (packageDir: string) =>
 						Effect.gen(function* () {
@@ -276,11 +332,18 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							readonly provenance?: boolean;
 							readonly tag?: string;
 							readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+							/**
+							 * Force classic `_authToken` auth by stripping the OIDC env so npm does
+							 * not attempt (and fail) trusted publishing. Required for GitHub
+							 * Packages (never supports the exchange) and as the bootstrap path for
+							 * npm packages with no trusted publisher configured yet.
+							 */
+							readonly tokenAuth?: boolean;
 						},
 					) =>
 						Effect.gen(function* () {
 							yield* Effect.logInfo(
-								`publishTarball: ${tarballPath} → ${options.registry} (access=${options.access ?? "default"}, provenance=${options.provenance === true})`,
+								`publishTarball: ${tarballPath} → ${options.registry} (access=${options.access ?? "default"}, provenance=${options.provenance === true}, tokenAuth=${options.tokenAuth === true})`,
 							);
 							const { cmd, baseArgs } = getNpmCommand(options.packageManager);
 							const args = [...baseArgs, "publish", tarballPath, "--registry", options.registry];
@@ -297,14 +360,22 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							// `cwd` is intentionally absent — the tarball path is
 							// absolute, so npm resolves it without help.
 							args.push("--loglevel", "verbose");
-							yield* runner.exec(cmd, args, { streaming: true }).pipe(
+							// In tokenAuth mode, run npm with the OIDC env stripped so it uses the
+							// configured `_authToken` instead of attempting trusted publishing.
+							const execOptions = options.tokenAuth
+								? { streaming: true as const, env: tokenAuthEnv() }
+								: { streaming: true as const };
+							yield* runner.exec(cmd, args, execOptions).pipe(
 								Effect.asVoid,
 								Effect.mapError(
 									(error) =>
 										new PackagePublishError({
 											operation: "publishTarball",
 											registry: options.registry,
-											reason: error.reason,
+											// Surface npm's actual failure (e.g. ENEEDAUTH / 404) instead of the
+											// opaque "Command exited with code 1", so the action's failure log
+											// is actionable without re-reading the streamed npm output.
+											reason: npmErrorSummary(error.stderr) ?? error.reason,
 											cause: error,
 										}),
 								),
