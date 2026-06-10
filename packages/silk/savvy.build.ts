@@ -70,12 +70,12 @@ const config = defineBuild({
 		// `peerDependencies` for the published manifest BEFORE the `dependencies`
 		// block is stripped below.
 		const deps = pkg.dependencies as Record<string, string> | undefined;
-		// const peers = (pkg.peerDependencies as Record<string, string> | undefined) ?? {};
-		// for (const name of ["@savvy-web/cli", "@savvy-web/mcp"]) {
-		// 	const range = deps?.[name];
-		// 	if (range) peers[name] = range;
-		// }
-		// pkg.peerDependencies = peers;
+		const peers = (pkg.peerDependencies as Record<string, string> | undefined) ?? {};
+		for (const name of ["@savvy-web/cli", "@savvy-web/mcp"]) {
+			const range = deps?.[name];
+			if (range) peers[name] = range;
+		}
+		pkg.peerDependencies = peers;
 		// The surviving runtime dependencies are `semver` (externalized in JS, see above),
 		// the two `dtsExternals` packages (externalized in the dts so consumers can resolve
 		// the type imports), and `@savvy-web/silk-effects` (externalized in the BASE ESM
