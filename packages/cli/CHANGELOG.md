@@ -1,5 +1,16 @@
 # @savvy-web/cli
 
+## 0.4.1
+
+### Dependencies
+
+* | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type    | Action | From   | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :----- | :----- | -- |
+  | workspaces-effect                                                                                 | dependency | updated | ^1.1.0 | ^1.2.0 |    |
+  | Dependency                                                                                        | Type       | Action  | From   | To     |    |
+  | -----------------------                                                                           | ---------- | ------- | -----  | -----  |    |
+  | @savvy-web/silk-effects                                                                           | dependency | updated | 1.0.0  | 1.0.1  |    |
+
 ## 0.4.0
 
 ### Build System
