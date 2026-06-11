@@ -732,4 +732,138 @@ describe("buildTargetGroups", () => {
 		// dts pass: union, nothing else (plain leaf branch).
 		expect(captured[1]?.deps).toEqual({ neverBundle: ["typescript", "effect"] });
 	});
+
+	it("emits one extra bundled, no-dts, no-manifest pass per loose file, after the base passes", async () => {
+		const calls: Array<{
+			entry: unknown;
+			format: unknown;
+			fixedExtension: unknown;
+			unbundle: unknown;
+			clean: unknown;
+			dts: unknown;
+			outDir: string;
+			hasManifest: boolean;
+			deps?: unknown;
+		}> = [];
+		const build = (async (cfg: {
+			entry: unknown;
+			format: unknown;
+			fixedExtension: unknown;
+			unbundle: unknown;
+			clean: unknown;
+			dts: unknown;
+			outDir: string;
+			plugins?: Array<{ name?: string }>;
+			deps?: unknown;
+		}) => {
+			calls.push({
+				entry: cfg.entry,
+				format: cfg.format,
+				fixedExtension: cfg.fixedExtension,
+				unbundle: cfg.unbundle,
+				clean: cfg.clean,
+				dts: cfg.dts,
+				outDir: cfg.outDir,
+				hasManifest: (cfg.plugins ?? []).some((p) => p.name === "savvy:emit-manifest"),
+				deps: cfg.deps,
+			});
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			bundleNodeModules: true,
+			looseFiles: [
+				{
+					outFile: "pnpmfile.mjs",
+					entryName: "pnpmfile",
+					source: "./src/pnpmfile.ts",
+					format: "esm",
+					fixedExtension: true,
+				},
+				{
+					outFile: "pnpmfile.cjs",
+					entryName: "pnpmfile",
+					source: "./src/pnpmfile.ts",
+					format: "cjs",
+					fixedExtension: true,
+				},
+			],
+			build,
+		});
+		// base JS + base dts (2) + one pass per loose file (2) = 4 calls.
+		expect(calls.length).toBe(4);
+		const loose = calls.slice(2);
+		// ESM loose file: single entry, bundled, fixed extension, no dts, no manifest, clean:false.
+		const mjs = loose.find((c) => Array.isArray(c.format) && (c.format as string[])[0] === "esm");
+		expect(mjs?.entry).toEqual({ pnpmfile: "./src/pnpmfile.ts" });
+		expect(mjs?.format).toEqual(["esm"]);
+		expect(mjs?.fixedExtension).toBe(true);
+		expect(mjs?.unbundle).toBe(false);
+		expect(mjs?.dts).toBe(false);
+		expect(mjs?.clean).toBe(false);
+		expect(mjs?.hasManifest).toBe(false);
+		expect(mjs?.outDir).toBe("/abs/pkg/dist/dev/pkg");
+		// bundleNodeModules posture is inherited so the loose file is self-contained.
+		expect((mjs?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// CJS loose file present with cjs format.
+		const cjs = loose.find((c) => Array.isArray(c.format) && (c.format as string[])[0] === "cjs");
+		expect(cjs?.format).toEqual(["cjs"]);
+	});
+
+	it("attaches the cjs interop plugins to a cjs loose file but not an esm one", async () => {
+		const passes: Array<{ format: string; plugins: string[] }> = [];
+		const build = (async (cfg: {
+			format: string[];
+			dts: unknown;
+			unbundle: unknown;
+			plugins?: Array<{ name?: string }>;
+		}) => {
+			// Capture ONLY the loose-file passes. They are uniquely identified by unbundle:false
+			// (bundled) AND dts:false: the base JS pass is unbundle:true, and the dts pass has
+			// dts !== false. Filtering on dts:false alone would also match the base ESM JS pass
+			// (deriveTargetGroupOptions emits it with dts:false + format:["esm"]), so `esm` would
+			// resolve to the base pass and the esm assertion would have a blind spot.
+			if (cfg.unbundle === false && cfg.dts === false && Array.isArray(cfg.format) && cfg.format.length === 1) {
+				passes.push({ format: cfg.format[0] as string, plugins: (cfg.plugins ?? []).map((p) => p.name ?? "") });
+			}
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			looseFiles: [
+				{
+					outFile: "pnpmfile.mjs",
+					entryName: "pnpmfile",
+					source: "./src/pnpmfile.ts",
+					format: "esm",
+					fixedExtension: true,
+				},
+				{
+					outFile: "pnpmfile.cjs",
+					entryName: "pnpmfile",
+					source: "./src/pnpmfile.ts",
+					format: "cjs",
+					fixedExtension: true,
+				},
+			],
+			build,
+		});
+		// Exactly the two loose-file passes were captured (the base JS/dts passes are excluded),
+		// so `esm` below is genuinely the ESM loose-file pass, not the base ESM JS pass.
+		expect(passes.length).toBe(2);
+		const esm = passes.find((p) => p.format === "esm");
+		const cjs = passes.find((p) => p.format === "cjs");
+		expect(esm?.plugins).not.toContain("savvy:cjs-default-interop");
+		expect(esm?.plugins).not.toContain("savvy:node-builtin-default-interop");
+		expect(cjs?.plugins).toContain("savvy:cjs-default-interop");
+		expect(cjs?.plugins).toContain("savvy:node-builtin-default-interop");
+	});
 });

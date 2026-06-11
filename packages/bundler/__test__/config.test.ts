@@ -96,6 +96,23 @@ describe("defineBuild", () => {
 		const define = { "process.env.FLAG": JSON.stringify("on") };
 		expect(defineBuild({ define }).define).toEqual(define);
 	});
+
+	it("passes looseFiles through", () => {
+		const c = defineBuild({
+			looseFiles: {
+				"pnpmfile.mjs": "./src/pnpmfile.ts",
+				"pnpmfile.cjs": "./src/pnpmfile.ts",
+			},
+		});
+		expect(c.looseFiles).toEqual({
+			"pnpmfile.mjs": "./src/pnpmfile.ts",
+			"pnpmfile.cjs": "./src/pnpmfile.ts",
+		});
+	});
+
+	it("leaves looseFiles undefined when not provided", () => {
+		expect(defineBuild({}).looseFiles).toBeUndefined();
+	});
 });
 
 describe("parseArgs", () => {

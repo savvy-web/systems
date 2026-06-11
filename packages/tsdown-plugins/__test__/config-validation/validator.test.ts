@@ -57,4 +57,19 @@ describe("ConfigValidator", () => {
 		const exit = await run({ baseName: "pkg", hasExports: false, meta: { localPaths: ["x"] } });
 		expect(Exit.isFailure(exit)).toBe(true);
 	});
+
+	it("passes valid looseFiles", async () => {
+		const exit = await run({ ...ok, looseFiles: { "pnpmfile.mjs": "./src/pnpmfile.ts" } });
+		expect(Exit.isSuccess(exit)).toBe(true);
+	});
+
+	it("fails looseFiles with an ambiguous .js key and no explicit format", async () => {
+		const exit = await run({ ...ok, looseFiles: { "thing.js": "./src/thing.ts" } });
+		expect(Exit.isFailure(exit)).toBe(true);
+	});
+
+	it("fails looseFiles with a format that contradicts the extension", async () => {
+		const exit = await run({ ...ok, looseFiles: { "pnpmfile.mjs": { source: "./s.ts", format: "cjs" } } });
+		expect(Exit.isFailure(exit)).toBe(true);
+	});
 });

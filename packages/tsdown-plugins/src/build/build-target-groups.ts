@@ -6,10 +6,11 @@ import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { DualExports, Json } from "../manifest/transform.js";
 import { cjsDefaultInterop } from "./cjs-default-interop.js";
+import type { NormalizedLooseFile } from "./loose-files.js";
 import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
 import { syncPublicDir } from "./sync-public.js";
 import type { BuildFormat, BuildGroupSpec } from "./target-groups.js";
-import { deriveDtsPassOptions, deriveTargetGroupOptions } from "./target-groups.js";
+import { deriveDtsPassOptions, deriveTargetGroupOptions, outDirFor } from "./target-groups.js";
 
 /** Signature compatible with tsdown's `build(inlineConfig)`. */
 export type TsdownBuild = (config: Record<string, unknown>) => Promise<unknown>;
@@ -103,6 +104,14 @@ export interface BuildTargetGroupsOptions {
 	 * otherwise ESM-only package). The base `entry` must already EXCLUDE these entries.
 	 */
 	readonly overrides?: ReadonlyArray<EntryOverride> | undefined;
+	/**
+	 * Standalone bundled output files emitted at literal paths into each group's pkg/ dir,
+	 * outside the exports/dts/meta graph (e.g. pnpm config-dependency pnpmfiles). Each runs as
+	 * one extra single-entry, bundled (unbundle:false), no-dts, no-manifest pass per group,
+	 * inheriting the group's bundleNodeModules/bundle/externals posture so the file is
+	 * self-contained. Caller passes the normalized form (see normalizeLooseFiles).
+	 */
+	readonly looseFiles?: ReadonlyArray<NormalizedLooseFile> | undefined;
 	/**
 	 * Which export keys get a CJS `require` condition in the emitted manifest. Pass a Set
 	 * when overrides give different entries different formats; omit for the uniform
@@ -294,6 +303,45 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				// the FINAL `.cjs` (this is the chunk that inlines vendor deps like vfile).
 				plugins: [
 					...(dts.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
+					...(options.extraPlugins ?? []),
+				],
+			});
+		}
+
+		// Loose files: one extra single-entry, bundled, no-dts, no-manifest pass each, into the
+		// same pkg/ outDir. They are outside the exports graph (no manifest entry, no dts, no
+		// meta). clean:false always — the base partition already owns/cleaned the outDir.
+		const looseOutDir = outDirFor(options.cwd, group.id);
+		const isProdGroup = group.id !== "dev";
+		const looseDeps = {
+			...(options.externals?.length ? { neverBundle: options.externals } : {}),
+			...(options.bundle?.length ? { alwaysBundle: options.bundle } : {}),
+			...(options.bundleNodeModules ? { skipNodeModulesBundle: false } : {}),
+		};
+		for (const lf of options.looseFiles ?? []) {
+			const hasCjs = lf.format === "cjs";
+			await build({
+				config: false,
+				cwd: options.cwd,
+				entry: { [lf.entryName]: lf.source },
+				outDir: looseOutDir,
+				format: [lf.format],
+				platform: "node",
+				sourcemap: !isProdGroup,
+				minify: isProdGroup && (options.minify ?? false),
+				// Bundle the whole module graph into the single literal output file.
+				unbundle: false,
+				clean: false,
+				fixedExtension: lf.fixedExtension,
+				dts: false,
+				define: {
+					"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
+					...options.define,
+				},
+				...(Object.keys(looseDeps).length > 0 ? { deps: looseDeps } : {}),
+				...(hasCjs ? { cjsDefault: true } : {}),
+				plugins: [
+					...(hasCjs ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
 					...(options.extraPlugins ?? []),
 				],
 			});

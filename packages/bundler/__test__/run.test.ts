@@ -313,6 +313,45 @@ describe("runBuild", () => {
 		expect(spy.mock.calls[0][0].define).toEqual({ "process.env.FLAG": JSON.stringify("on") });
 	});
 
+	it("normalizes looseFiles and forwards them to buildTargetGroups", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{
+				formats: ["esm"],
+				externals: [],
+				devManifest: "preserve",
+				bundleNodeModules: true,
+				looseFiles: {
+					"pnpmfile.mjs": "./src/pnpmfile.ts",
+					"pnpmfile.cjs": "./src/pnpmfile.ts",
+				},
+			},
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect(spy.mock.calls[0][0].looseFiles).toEqual([
+			{
+				outFile: "pnpmfile.mjs",
+				entryName: "pnpmfile",
+				source: "./src/pnpmfile.ts",
+				format: "esm",
+				fixedExtension: true,
+			},
+			{
+				outFile: "pnpmfile.cjs",
+				entryName: "pnpmfile",
+				source: "./src/pnpmfile.ts",
+				format: "cjs",
+				fixedExtension: true,
+			},
+		]);
+	});
+
 	it("threads base export keys into dualExports when the base format includes cjs (base-cjs + override)", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "run-ov-"));
 		await writeFile(
