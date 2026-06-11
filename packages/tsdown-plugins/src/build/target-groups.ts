@@ -29,6 +29,12 @@ export interface DeriveOptions {
 	/** JSX transform settings to forward to rolldown's inputOptions. */
 	readonly jsx?: JsxConfig | undefined;
 	/**
+	 * Compile-time global replacements forwarded to the build `define`. Merged AFTER the
+	 * auto-injected `process.env.__PACKAGE_VERSION__` so a user key of the same name wins.
+	 * Values are inserted verbatim (string literals must already be quoted).
+	 */
+	readonly define?: Record<string, string> | undefined;
+	/**
 	 * External packages whose declarations should be INLINED into the bundled dts
 	 * (the rslib `dtsBundledPackages` equivalent). Maps to tsdown's `deps.onlyBundle`
 	 * in the dts pass, so ONLY these node_modules packages are rolled into the
@@ -159,7 +165,10 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 		fixedExtension: false,
 		entry: options.entry,
 		dts: false,
-		define: { __PACKAGE_VERSION__: JSON.stringify(options.version) },
+		define: {
+			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
+			...options.define,
+		},
 		isProd,
 		// Only enable CJS interop when cjs is actually built; esm-only keeps tsdown's default.
 		...(hasCjs ? { cjsDefault: true } : {}),
@@ -181,7 +190,10 @@ export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOpti
 		fixedExtension: false,
 		entry: options.entry,
 		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true },
-		define: { __PACKAGE_VERSION__: JSON.stringify(options.version) },
+		define: {
+			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
+			...options.define,
+		},
 		isProd,
 		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 		...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),

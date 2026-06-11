@@ -17,6 +17,7 @@ describe("leaf package end-to-end", () => {
 		expect(existsSync(join(LEAF, "dist/dev/pkg/index.d.ts"))).toBe(true);
 		const manifest = JSON.parse(readFileSync(join(LEAF, "dist/dev/pkg/package.json"), "utf-8"));
 		expect(manifest.exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(manifest.exports["./package.json"]).toBe("./package.json");
 	});
 
 	it("npm build emits dist/prod/npm/pkg and injects __PACKAGE_VERSION__", async () => {

@@ -294,6 +294,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		...(config.transform !== undefined ? { transform: config.transform } : {}),
 		...(jsx !== undefined ? { jsx } : {}),
 		...(config.format !== undefined ? { format: config.format } : {}),
+		...(config.define !== undefined ? { define: config.define } : {}),
 		...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
 		...(dualExports !== undefined ? { dualExports } : {}),
 	});

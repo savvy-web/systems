@@ -80,6 +80,15 @@ describe("defineBuild", () => {
 		expect(cfg.overrides).toEqual([{ entries: ["./changesets/markdownlint"], format: ["esm", "cjs"], bundle: ["x"] }]);
 		expect(defineBuild({}).overrides).toBeUndefined();
 	});
+
+	it("defaults define to undefined when not provided", () => {
+		expect(defineBuild({}).define).toBeUndefined();
+	});
+
+	it("carries a user define through unchanged", () => {
+		const define = { "process.env.FLAG": JSON.stringify("on") };
+		expect(defineBuild({ define }).define).toEqual(define);
+	});
 });
 
 describe("parseArgs", () => {

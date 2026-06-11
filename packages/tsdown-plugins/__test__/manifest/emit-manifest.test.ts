@@ -15,7 +15,10 @@ describe("buildEmittedManifest", () => {
 			devManifest: "preserve",
 		});
 		expect(out.dependencies).toEqual({ effect: "catalog:silk" });
-		expect(out.exports).toEqual({ ".": { types: "./index.d.ts", import: "./index.js" } });
+		expect(out.exports).toEqual({
+			".": { types: "./index.d.ts", import: "./index.js" },
+			"./package.json": "./package.json",
+		});
 	});
 
 	it("applies the targetGroup name to package.json.name before the user transform runs", async () => {

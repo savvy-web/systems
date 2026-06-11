@@ -293,6 +293,26 @@ describe("runBuild", () => {
 		expect(spy).not.toHaveBeenCalled();
 	}, 30_000);
 
+	it("forwards config.define to buildTargetGroups", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{
+				formats: ["esm"],
+				externals: [],
+				devManifest: "preserve",
+				define: { "process.env.FLAG": JSON.stringify("on") },
+			},
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect(spy.mock.calls[0][0].define).toEqual({ "process.env.FLAG": JSON.stringify("on") });
+	});
+
 	it("threads base export keys into dualExports when the base format includes cjs (base-cjs + override)", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "run-ov-"));
 		await writeFile(
