@@ -21,7 +21,7 @@ describe("leaf package end-to-end", () => {
 	});
 
 	it("npm build emits dist/prod/npm/pkg and injects __PACKAGE_VERSION__", async () => {
-		await runBuild(defineBuild({ formats: ["esm"] }), { cwd: LEAF, argv: ["--target", "prod"] });
+		await runBuild(defineBuild({ formats: ["esm"], meta: false }), { cwd: LEAF, argv: ["--target", "prod"] });
 		expect(existsSync(join(LEAF, "dist/prod/npm/pkg/index.js"))).toBe(true);
 		const code = readFileSync(join(LEAF, "dist/prod/npm/pkg/index.js"), "utf-8");
 		expect(code).toContain("1.2.3"); // define replaced __PACKAGE_VERSION__

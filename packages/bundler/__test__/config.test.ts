@@ -27,7 +27,14 @@ describe("defineBuild", () => {
 		const c = defineBuild({
 			meta: { localPaths: ["../models"], tsdoc: { tagDefinitions: [{ tagName: "@since", syntaxKind: "block" }] } },
 		});
-		expect(c.meta?.localPaths).toEqual(["../models"]);
+		expect(c.meta).toEqual({
+			localPaths: ["../models"],
+			tsdoc: { tagDefinitions: [{ tagName: "@since", syntaxKind: "block" }] },
+		});
+	});
+
+	it("carries meta:false through (explicit opt-out)", () => {
+		expect(defineBuild({ meta: false }).meta).toBe(false);
 	});
 
 	it("passes exe through", () => {

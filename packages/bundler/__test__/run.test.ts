@@ -28,7 +28,7 @@ describe("runBuild", () => {
 	it("maps target prod -> a single npm group spec (default, no targets)", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
-			{ formats: ["esm"], externals: [], devManifest: "preserve" },
+			{ formats: ["esm"], externals: [], devManifest: "preserve", meta: false },
 			{
 				cwd: "/abs/pkg",
 				argv: ["--target", "prod"],

@@ -87,7 +87,16 @@ With no `targets` map the build falls back to the single-`npm` group above.
 
 ## API Extractor meta
 
-Set the optional `meta` field on `defineBuild` to generate an [API Extractor](https://api-extractor.com/) api-model from a package's type declarations:
+The bundler generates an [API Extractor](https://api-extractor.com/) api-model from a package's type declarations. Two behaviors come online:
+
+- `savvy build --target meta` runs API Extractor over the dev build's `.d.ts` — no tsdown build, so it depends only on a prior `--target dev`. It writes the api-model (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into each `localPaths` directory.
+- `savvy build --target prod` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
+
+The `meta` field on `defineBuild` is tri-state and controls these:
+
+- **Omitted** (or `undefined`) — generation runs with default options. `--target meta` works with no configuration and `--target prod` emits the meta asset. This is the default; you do not need a `meta` field to use `--target meta`.
+- **An object** — override the defaults: `localPaths` (directories the api-model is copied into on `--target meta`) and `tsdoc` (warning suppression and custom tags).
+- **`false`** — opt out entirely; both `--target meta` and the prod meta asset become no-ops.
 
 ```ts
 const config = defineBuild({
@@ -101,14 +110,10 @@ const config = defineBuild({
     },
   },
 });
+
+// Or opt out of api-model generation altogether:
+// const config = defineBuild({ meta: false });
 ```
-
-With `meta` set, two behaviors come online:
-
-- `savvy build --target meta` runs API Extractor over the dev build's `.d.ts` — no tsdown build, so it depends only on a prior `--target dev`. It writes the api-model (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into each `localPaths` directory.
-- `savvy build --target prod` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
-
-`meta` is optional; omit it and neither behavior runs. `--target meta` errors if the config has no `meta` field.
 
 ## Executable binaries
 

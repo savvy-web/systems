@@ -61,6 +61,10 @@ const config = defineBuild({
 		},
 	],
 	devManifest: "preserve",
+	// silk is a collection of thin config-integration shims, not a documented API surface —
+	// opt out of api-model generation so `--target prod` does not run API Extractor or emit a
+	// meta asset.
+	meta: false,
 	transform: ({ pkg }) => {
 		// `@savvy-web/cli` and `@savvy-web/mcp` are declared as regular
 		// `dependencies` in source so changesets versions them in lockstep with

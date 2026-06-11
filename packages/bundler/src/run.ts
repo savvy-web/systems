@@ -164,17 +164,24 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(publishTargets !== undefined ? { targets: publishTargets } : {}),
 				...(config.exe !== undefined ? { exe: config.exe } : {}),
 				osCpu: osCpuForValidate,
-				...(config.meta !== undefined ? { meta: config.meta } : {}),
+				...(config.meta !== undefined && config.meta !== false ? { meta: config.meta } : {}),
 			}),
 		).pipe(Effect.provide(ConfigValidatorLive)),
 	);
 
 	// --target meta: generate the api-model from the dev build's dts into localPaths. No tsdown build.
+	// meta is tri-state: undefined -> default options, object -> overrides, false -> opt out (no-op).
 	if (target === "meta") {
-		if (config.meta === undefined) {
-			throw new Error("`savvy build --target meta` requires a `meta` option in the build config");
+		if (config.meta === false) {
+			const writeMetaOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
+			writeMetaOutput({
+				target: "stdout",
+				contentType: "text/plain",
+				content: `meta: generation disabled (meta: false) for ${packageName}`,
+			});
+			return;
 		}
-		const norm = normalizeMetaOptions(config.meta);
+		const norm = normalizeMetaOptions(config.meta ?? {});
 		// dts basenames mirror the entry source: src/index.ts -> index, src/sub.ts -> sub.
 		const dtsBasenames: Record<string, string> = {};
 		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
@@ -304,11 +311,12 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		writeBinding(cwd, resolution);
 	}
 
-	// --target prod with meta set: emit the meta/ release-asset bundle alongside the canonical group's pkg/.
-	if (target === "prod" && config.meta !== undefined) {
+	// --target prod: emit the meta/ release-asset bundle alongside the canonical group's pkg/ unless
+	// meta is explicitly disabled. undefined -> default options; object -> overrides; false -> skip.
+	if (target === "prod" && config.meta !== false) {
 		const metaGroup = groups.find((g) => g.name === packageName) ?? groups[0];
 		const metaGroupId = metaGroup?.id ?? "npm";
-		const norm = normalizeMetaOptions(config.meta);
+		const norm = normalizeMetaOptions(config.meta ?? {});
 		const dtsBasenames: Record<string, string> = {};
 		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
 		await runGenerateMeta({

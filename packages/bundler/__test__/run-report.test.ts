@@ -6,7 +6,7 @@ describe("runBuild reporting", () => {
 	it("renders a BuildReport using the configured explicit format", async () => {
 		const sink: string[] = [];
 		await runBuild(
-			{ formats: ["esm"], externals: [], devManifest: "preserve", output: { format: "json" } },
+			{ formats: ["esm"], externals: [], devManifest: "preserve", output: { format: "json" }, meta: false },
 			{
 				cwd: "/abs/pkg",
 				argv: ["--target", "prod"],
