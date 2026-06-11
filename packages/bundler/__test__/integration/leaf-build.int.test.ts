@@ -17,12 +17,13 @@ describe("leaf package end-to-end", () => {
 		expect(existsSync(join(LEAF, "dist/dev/pkg/index.d.ts"))).toBe(true);
 		const manifest = JSON.parse(readFileSync(join(LEAF, "dist/dev/pkg/package.json"), "utf-8"));
 		expect(manifest.exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(manifest.exports["./package.json"]).toBe("./package.json");
 	});
 
-	it("npm build emits dist/prod/npm/pkg and injects __PACKAGE_VERSION__", async () => {
-		await runBuild(defineBuild({ formats: ["esm"] }), { cwd: LEAF, argv: ["--target", "prod"] });
+	it("npm build emits dist/prod/npm/pkg and injects process.env.__PACKAGE_VERSION__", async () => {
+		await runBuild(defineBuild({ formats: ["esm"], meta: false }), { cwd: LEAF, argv: ["--target", "prod"] });
 		expect(existsSync(join(LEAF, "dist/prod/npm/pkg/index.js"))).toBe(true);
 		const code = readFileSync(join(LEAF, "dist/prod/npm/pkg/index.js"), "utf-8");
-		expect(code).toContain("1.2.3"); // define replaced __PACKAGE_VERSION__
+		expect(code).toContain("1.2.3"); // define replaced process.env.__PACKAGE_VERSION__
 	});
 });

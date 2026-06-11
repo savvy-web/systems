@@ -14,6 +14,7 @@ describe("SP1 exit gate: @savvy-web/cli parity", () => {
 			defineBuild({
 				formats: ["esm"],
 				externals: ["effect", "@effect/cli", "@effect/platform", "@effect/platform-node"],
+				meta: false,
 			}),
 			{ cwd: CLI, argv: ["--target", "prod"] },
 		);

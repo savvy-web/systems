@@ -9,7 +9,7 @@ const MULTI = join(import.meta.dirname, "fixtures/multi");
 describe("no shared runtime chunk (unbundle)", () => {
 	it("multi-entry build mirrors source files; both entries import successfully", async () => {
 		rmSync(join(MULTI, "dist"), { recursive: true, force: true });
-		await runBuild(defineBuild({ formats: ["esm"] }), { cwd: MULTI, argv: ["--target", "prod"] });
+		await runBuild(defineBuild({ formats: ["esm"], meta: false }), { cwd: MULTI, argv: ["--target", "prod"] });
 		const files = readdirSync(join(MULTI, "dist/prod/npm/pkg"));
 		// unbundle => index.js, other.js, shared.js — no synthesized chunk-*.js shared-runtime file
 		expect(files).toContain("index.js");

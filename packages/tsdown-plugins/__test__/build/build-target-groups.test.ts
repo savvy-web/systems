@@ -687,6 +687,30 @@ describe("buildTargetGroups", () => {
 		expect(calls[0]?.hasManifest).toBe(true);
 	});
 
+	it("threads a user define into the build() define alongside the auto-version", async () => {
+		const defines: Array<Record<string, string>> = [];
+		const fakeBuild = vi.fn(async (cfg: { define?: Record<string, string> }) => {
+			if (cfg.define) defines.push(cfg.define);
+			return [];
+		});
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "2.0.0",
+			entry: { index: "./src/index.ts" },
+			tsconfigPath: "/tmp/t.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			define: { "process.env.FLAG": JSON.stringify("on") },
+			build: fakeBuild as never,
+		});
+		// Both passes (JS + dts) receive the merged define.
+		expect(defines.length).toBe(2);
+		for (const d of defines) {
+			expect(d["process.env.FLAG"]).toBe(JSON.stringify("on"));
+			expect(d["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("2.0.0"));
+		}
+	});
+
 	it("unions dtsExternals into the dts pass neverBundle in the plain branch (no bundle flags)", async () => {
 		const captured: Array<{ deps?: unknown }> = [];
 		const build = (async (cfg: { deps?: unknown }) => {

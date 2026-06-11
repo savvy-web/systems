@@ -71,7 +71,13 @@ export interface BuildConfigInput {
 	 */
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	readonly output?: OutputConfig;
-	readonly meta?: MetaOptions;
+	/**
+	 * API-model (meta) generation. Tri-state: omit it (or `undefined`) to generate with
+	 * DEFAULT options — `savvy build --target meta` always works and `--target prod` emits the
+	 * meta release asset. Pass an object to override the defaults (`localPaths`, `tsdoc`). Pass
+	 * `false` to opt OUT entirely — both `--target meta` and the prod meta asset become no-ops.
+	 */
+	readonly meta?: MetaOptions | false;
 	readonly jsx?: JsxConfig | undefined;
 	readonly exe?: ExeConfig | ReadonlyArray<ExeConfig> | undefined;
 	/**
@@ -86,6 +92,13 @@ export interface BuildConfigInput {
 	 * an otherwise ESM-only package (e.g. silk's `./changesets/markdownlint`).
 	 */
 	readonly overrides?: ReadonlyArray<BuildEntryOverride> | undefined;
+	/**
+	 * Compile-time global replacements forwarded to the tsdown/rolldown build `define`.
+	 * Values are inserted VERBATIM, so string literals must be quoted:
+	 * `{ "process.env.FLAG": JSON.stringify("on") }`. Merged with the auto-injected
+	 * `process.env.__PACKAGE_VERSION__` define; a user key of the same name wins.
+	 */
+	readonly define?: Record<string, string> | undefined;
 }
 
 export interface BuildConfig {
@@ -120,12 +133,14 @@ export interface BuildConfig {
 	readonly devManifest: "preserve" | "resolve";
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
 	readonly output?: OutputConfig | undefined;
-	readonly meta?: MetaOptions | undefined;
+	readonly meta?: MetaOptions | false | undefined;
 	readonly jsx?: JsxConfig | undefined;
 	readonly exe?: ExeConfig | ReadonlyArray<ExeConfig> | undefined;
 	/** Output module formats forwarded to the tsdown build (esm-only by default; add "cjs" for dual-format). */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 	readonly overrides?: ReadonlyArray<BuildEntryOverride> | undefined;
+	/** Compile-time global replacements forwarded to the build `define` (merged with the auto-version). */
+	readonly define?: Record<string, string> | undefined;
 }
 
 /** Normalize + validate a defineBuild config. Pure when imported; self-runs when entry (see run.ts). */
@@ -150,6 +165,7 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 		exe: input.exe,
 		format: input.format,
 		overrides: input.overrides,
+		define: input.define,
 	};
 	// Self-execution: only when this module's importer is the program entry.
 	// run.ts performs the actual import.meta.main gate (it has access to the caller's meta).

@@ -87,7 +87,16 @@ With no `targets` map the build falls back to the single-`npm` group above.
 
 ## API Extractor meta
 
-Set the optional `meta` field on `defineBuild` to generate an [API Extractor](https://api-extractor.com/) api-model from a package's type declarations:
+The bundler generates an [API Extractor](https://api-extractor.com/) api-model from a package's type declarations. Two behaviors come online:
+
+- `savvy build --target meta` runs API Extractor over the dev build's `.d.ts` — no tsdown build, so it depends only on a prior `--target dev`. It writes the api-model (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into each `localPaths` directory.
+- `savvy build --target prod` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
+
+The `meta` field on `defineBuild` is tri-state and controls these:
+
+- **Omitted** (or `undefined`) — generation runs with default options. `--target meta` works with no configuration and `--target prod` emits the meta asset. This is the default; you do not need a `meta` field to use `--target meta`.
+- **An object** — override the defaults: `localPaths` (directories the api-model is copied into on `--target meta`) and `tsdoc` (warning suppression and custom tags).
+- **`false`** — opt out entirely; both `--target meta` and the prod meta asset become no-ops.
 
 ```ts
 const config = defineBuild({
@@ -101,14 +110,10 @@ const config = defineBuild({
     },
   },
 });
+
+// Or opt out of api-model generation altogether:
+// const config = defineBuild({ meta: false });
 ```
-
-With `meta` set, two behaviors come online:
-
-- `savvy build --target meta` runs API Extractor over the dev build's `.d.ts` — no tsdown build, so it depends only on a prior `--target dev`. It writes the api-model (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into each `localPaths` directory.
-- `savvy build --target prod` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
-
-`meta` is optional; omit it and neither behavior runs. `--target meta` errors if the config has no `meta` field.
 
 ## Executable binaries
 
@@ -222,6 +227,28 @@ const config = defineBuild({
 });
 ```
 
+## Build-time constants
+
+The build injects `process.env.__PACKAGE_VERSION__` as a compile-time constant set to the package's version, so source can read its own version without importing `package.json` at runtime:
+
+```ts
+// somewhere in src/
+const version = process.env.__PACKAGE_VERSION__;
+// the reference is replaced at build time with the package's version as a string literal
+```
+
+Add your own compile-time replacements with the `define` field. Values are inserted verbatim, so string literals must be pre-quoted:
+
+```ts
+const config = defineBuild({
+  define: {
+    "process.env.FLAG": JSON.stringify("on"),
+  },
+});
+```
+
+`define` merges with the auto-injected version constant; a key of `process.env.__PACKAGE_VERSION__` in your own `define` wins.
+
 ## Features
 
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
@@ -237,6 +264,7 @@ const config = defineBuild({
 - **Per-entry overrides** — `overrides` pins a subset of export entries to their own format and bundling, so one entry can ship dual-format CJS in an otherwise ESM-only package without changing the rest.
 - **Readable prod output** — prod output is unminified by default to keep stack traces legible and pass security scanners; `minify` opts back in.
 - **Default manifest stripping** — the published `package.json` drops build- and dev-only fields automatically; a custom `transform` replaces the default and can re-apply it via `defaultManifestTransform`.
+- **Build-time constants** — the package version is injected as `process.env.__PACKAGE_VERSION__`, and the `define` field adds your own verbatim compile-time replacements.
 - **Fast-fail config validation** — `runBuild` validates the config (`publishConfig.targets`, `exe`, `meta`) before any build work, raising a typed `ConfigValidationError` on the first violation.
 - **One devDependency** — `tsdown` is a regular dependency, pinned and tested transitively, so you never carry it or its plugin peers in your own tree.
 - **Injectable orchestration** — `runBuild` takes its IO dependencies as options, so the build is testable without spawning a real bundle.
@@ -244,7 +272,7 @@ const config = defineBuild({
 
 ## API
 
-- `defineBuild(input)` — normalizes a build config (`externals`, `bundle`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `minify`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`, `overrides`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). `minify` defaults to false, `transform` defaults to a manifest stripper, and `overrides` pins a subset of entries to their own format and bundling. Pure; it does not run the build.
+- `defineBuild(input)` — normalizes a build config (`externals`, `bundle`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `minify`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`, `overrides`, `define`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). `minify` defaults to false, `transform` defaults to a manifest stripper, and `overrides` pins a subset of entries to their own format and bundling. Pure; it does not run the build.
 - `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.
 

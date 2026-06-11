@@ -16,7 +16,7 @@ export default defineConfig({
 	// Unminified, mirroring the front door's default (Node libraries favor readable output).
 	minify: false,
 	dts: { tsconfig: writeResolvedTsconfig({ cwd }) },
-	define: { __PACKAGE_VERSION__: JSON.stringify("1.2.3") },
+	define: { "process.env.__PACKAGE_VERSION__": JSON.stringify("1.2.3") },
 	plugins: [
 		emitManifest({
 			targetGroup: { id: "npm", name: "@fixture/leaf", isProd: true },

@@ -92,6 +92,12 @@ export interface BuildTargetGroupsOptions {
 	/** JSX transform settings forwarded to rolldown's inputOptions. */
 	readonly jsx?: JsxConfig | undefined;
 	/**
+	 * Compile-time global replacements forwarded to BOTH the JS and dts passes' `define`.
+	 * Build-wide (shared by every entry partition); merged after the auto-injected
+	 * `process.env.__PACKAGE_VERSION__` so a user key of the same name wins.
+	 */
+	readonly define?: Record<string, string> | undefined;
+	/**
 	 * Entry partitions with their own format/bundling, built into the same outDir after
 	 * the base entries. Used for per-entry format overrides (e.g. one CJS entry in an
 	 * otherwise ESM-only package). The base `entry` must already EXCLUDE these entries.
@@ -163,6 +169,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				...(part.format !== undefined ? { format: part.format } : {}),
 				...(options.minify !== undefined ? { minify: options.minify } : {}),
 				...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
+				...(options.define !== undefined ? { define: options.define } : {}),
 			};
 			const js = deriveTargetGroupOptions(deriveInput);
 			const dts = deriveDtsPassOptions(deriveInput);

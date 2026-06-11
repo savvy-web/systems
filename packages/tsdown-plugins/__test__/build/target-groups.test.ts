@@ -12,7 +12,8 @@ describe("deriveTargetGroupOptions (JS pass)", () => {
 		expect(o.minify).toBe(false);
 		expect(o.format).toEqual(["esm"]);
 		expect(o.platform).toBe("node");
-		expect(o.define.__PACKAGE_VERSION__).toBe(JSON.stringify("1.2.3"));
+		expect(o.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("1.2.3"));
+		expect(o.define.__PACKAGE_VERSION__).toBeUndefined();
 	});
 
 	it("JS pass emits per-module JS with no dts (unbundle true, dts false, clean true)", () => {
@@ -145,5 +146,42 @@ describe("deriveDtsPassOptions (dts pass)", () => {
 	it("omits bundledPackages from the dts pass when not provided", () => {
 		const o = deriveDtsPassOptions({ ...base, group: "dev", devManifest: "preserve" });
 		expect(o.bundledPackages).toBeUndefined();
+	});
+});
+
+describe("define merge (auto-version + user define)", () => {
+	const base = { cwd: "/abs/pkg", version: "1.2.3", entry: { index: "./src/index.ts" }, tsconfigPath: "/tmp/t.json" };
+
+	it("JS pass injects process.env.__PACKAGE_VERSION__ and not the bare identifier", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve" });
+		expect(o.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("1.2.3"));
+		expect(o.define.__PACKAGE_VERSION__).toBeUndefined();
+	});
+
+	it("dts pass injects process.env.__PACKAGE_VERSION__ and not the bare identifier", () => {
+		const o = deriveDtsPassOptions({ ...base, group: "dev", devManifest: "preserve" });
+		expect(o.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("1.2.3"));
+		expect(o.define.__PACKAGE_VERSION__).toBeUndefined();
+	});
+
+	it("merges a user define alongside the auto-version", () => {
+		const o = deriveTargetGroupOptions({
+			...base,
+			group: "dev",
+			devManifest: "preserve",
+			define: { "process.env.FLAG": JSON.stringify("on") },
+		});
+		expect(o.define["process.env.FLAG"]).toBe(JSON.stringify("on"));
+		expect(o.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("1.2.3"));
+	});
+
+	it("lets a user define override the auto-version on key collision", () => {
+		const o = deriveTargetGroupOptions({
+			...base,
+			group: "dev",
+			devManifest: "preserve",
+			define: { "process.env.__PACKAGE_VERSION__": JSON.stringify("9.9.9") },
+		});
+		expect(o.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("9.9.9"));
 	});
 });

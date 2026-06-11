@@ -171,3 +171,34 @@ describe("manifest transform", () => {
 		expect(none["./b"].require).toBeUndefined();
 	});
 });
+
+describe("auto ./package.json export injection", () => {
+	it("adds ./package.json to object exports that lack it", () => {
+		const out = transformManifest({ name: "@x/p", version: "1.0.0", exports: { ".": "./src/index.ts" } });
+		const exports = out.exports as Record<string, unknown>;
+		expect(exports["./package.json"]).toBe("./package.json");
+		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+	});
+
+	it("does not duplicate or overwrite an existing ./package.json export", () => {
+		const out = transformManifest({
+			name: "@x/p",
+			version: "1.0.0",
+			exports: { ".": "./src/index.ts", "./package.json": "./package.json" },
+		});
+		const exports = out.exports as Record<string, unknown>;
+		expect(exports["./package.json"]).toBe("./package.json");
+	});
+
+	it("injects ./package.json for a bare-string (root-only) exports, preserving the root under .", () => {
+		const out = transformManifest({ name: "@x/p", version: "1.0.0", exports: "./src/index.ts" });
+		const exports = out.exports as Record<string, unknown>;
+		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(exports["./package.json"]).toBe("./package.json");
+	});
+
+	it("does not add an exports field when the manifest has none", () => {
+		const out = transformManifest({ name: "@x/p", version: "1.0.0" });
+		expect(out.exports).toBeUndefined();
+	});
+});

@@ -29,22 +29,42 @@ describe("runBuild meta target", () => {
 		expect(arg?.localPaths).toEqual(["../models"]);
 	});
 
-	it("throws when --target meta is requested but no meta option is configured", async () => {
+	it("runs generateMeta with default options when no meta is configured (default-on)", async () => {
+		const generateMeta = vi.fn<
+			(o: { localPaths: ReadonlyArray<string> }) => Promise<{ apiJsonPath: string; apiJsonFilename: string }>
+		>(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
+		const build = vi.fn(async () => {});
+		await runBuild(defineBuild({}), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "meta"],
+			buildTargetGroups: build,
+			generateMeta,
+			readPackageName: () => "@scope/fixture",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeTsconfig: () => "/fake/tsconfig.json",
+			writeOutput: () => {},
+		});
+		expect(generateMeta).toHaveBeenCalledTimes(1);
+		// Default meta options: empty localPaths, default tsdoc.
+		expect(generateMeta.mock.calls[0]?.[0].localPaths).toEqual([]);
+		expect(build).not.toHaveBeenCalled();
+	});
+
+	it("no-ops on --target meta when meta is false", async () => {
 		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
 		const build = vi.fn(async () => {});
-		await expect(
-			runBuild(defineBuild({}), {
-				cwd: "/abs/pkg",
-				argv: ["--target", "meta"],
-				buildTargetGroups: build,
-				generateMeta,
-				readPackageName: () => "@scope/fixture",
-				readVersion: () => "1.0.0",
-				readExports: () => ({ ".": "./src/index.ts" }),
-				writeTsconfig: () => "/fake/tsconfig.json",
-				writeOutput: () => {},
-			}),
-		).rejects.toThrow("`savvy build --target meta` requires a `meta` option");
+		await runBuild(defineBuild({ meta: false }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "meta"],
+			buildTargetGroups: build,
+			generateMeta,
+			readPackageName: () => "@scope/fixture",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeTsconfig: () => "/fake/tsconfig.json",
+			writeOutput: () => {},
+		});
 		expect(generateMeta).not.toHaveBeenCalled();
 		expect(build).not.toHaveBeenCalled();
 	});
@@ -75,10 +95,28 @@ describe("runBuild meta target", () => {
 		expect(arg?.outMetaDir).toContain("github");
 	});
 
-	it("does not call generateMeta for --target prod when meta is unset", async () => {
+	it("calls generateMeta for --target prod when meta is unset (default-on)", async () => {
 		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
 		const build = vi.fn(async () => {});
 		await runBuild(defineBuild({}), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: build,
+			generateMeta,
+			readPackageName: () => "@scope/fixture",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeOutput: () => {},
+			writeTargetsBinding: () => "x",
+		});
+		expect(build).toHaveBeenCalledTimes(1);
+		expect(generateMeta).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not call generateMeta for --target prod when meta is false", async () => {
+		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
+		const build = vi.fn(async () => {});
+		await runBuild(defineBuild({ meta: false }), {
 			cwd: "/abs/pkg",
 			argv: ["--target", "prod"],
 			buildTargetGroups: build,

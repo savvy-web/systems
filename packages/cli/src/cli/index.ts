@@ -25,7 +25,7 @@
  *   `Changesets.BranchAnalyzerLive`, which shares the single `ConfigInspectorLive`
  *   instance built once via `provideMerge`.
  *
- * The CLI version is injected at build time via `__PACKAGE_VERSION__`.
+ * The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
  *
  * @internal
  */

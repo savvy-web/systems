@@ -16,7 +16,7 @@ describe("escape-hatch parity", () => {
 	it("raw tsdown.config.ts + plugins produces a pkg/ that diffs equal to the front door", async () => {
 		// front door build into dist/prod/npm/pkg (its own scoped cleanup)
 		rmSync(FRONT_DOOR_OUT, { recursive: true, force: true });
-		await runBuild(defineBuild({ formats: ["esm"] }), { cwd: LEAF, argv: ["--target", "prod"] });
+		await runBuild(defineBuild({ formats: ["esm"], meta: false }), { cwd: LEAF, argv: ["--target", "prod"] });
 		const frontManifest = readFileSync(join(FRONT_DOOR_OUT, "package.json"), "utf-8");
 
 		// escape hatch build into dist/escape/pkg (its own scoped cleanup)

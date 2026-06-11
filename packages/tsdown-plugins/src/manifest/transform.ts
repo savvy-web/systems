@@ -147,7 +147,20 @@ export function transformManifest(pkg: Json, options: TransformManifestOptions =
 	};
 	const isPrivate = !(publishConfig?.access === "public");
 	let result: Json = { ...rest, private: isPrivate };
-	if (result.exports) result.exports = transformExports(result.exports, options.dual ?? false);
+	// Auto-expose the package.json itself — standard npm practice so consumers can
+	// import "name/package.json". Only when an exports field is present (a package with no
+	// exports already exposes everything; injecting a single-key map would REGRESS that to
+	// package.json-only). The wrap decision keys off the ORIGINAL exports type, not the
+	// transformed value: a bare-string exports becomes a single conditions object after
+	// transformExports, indistinguishable from a map, so it must be wrapped under "." here.
+	// Runs before the user transform (next line), so a package can still strip it.
+	if (result.exports !== undefined && result.exports !== null) {
+		const original = result.exports;
+		const transformed = transformExports(original, options.dual ?? false);
+		const asMap: Json = typeof original === "string" ? { ".": transformed } : { ...(transformed as Json) };
+		if (!("./package.json" in asMap)) asMap["./package.json"] = "./package.json";
+		result.exports = asMap;
+	}
 	if (result.bin) result.bin = transformBin(result.bin);
 	if (options.transform) result = options.transform(result);
 	if (result.bin) result.bin = normalizeBinPaths(result.bin);
