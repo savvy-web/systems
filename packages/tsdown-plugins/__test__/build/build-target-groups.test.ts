@@ -816,9 +816,18 @@ describe("buildTargetGroups", () => {
 
 	it("attaches the cjs interop plugins to a cjs loose file but not an esm one", async () => {
 		const passes: Array<{ format: string; plugins: string[] }> = [];
-		const build = (async (cfg: { format: string[]; dts: unknown; plugins?: Array<{ name?: string }> }) => {
-			// Only capture the loose-file passes (dts === false and a single-format array).
-			if (cfg.dts === false && Array.isArray(cfg.format) && cfg.format.length === 1) {
+		const build = (async (cfg: {
+			format: string[];
+			dts: unknown;
+			unbundle: unknown;
+			plugins?: Array<{ name?: string }>;
+		}) => {
+			// Capture ONLY the loose-file passes. They are uniquely identified by unbundle:false
+			// (bundled) AND dts:false: the base JS pass is unbundle:true, and the dts pass has
+			// dts !== false. Filtering on dts:false alone would also match the base ESM JS pass
+			// (deriveTargetGroupOptions emits it with dts:false + format:["esm"]), so `esm` would
+			// resolve to the base pass and the esm assertion would have a blind spot.
+			if (cfg.unbundle === false && cfg.dts === false && Array.isArray(cfg.format) && cfg.format.length === 1) {
 				passes.push({ format: cfg.format[0] as string, plugins: (cfg.plugins ?? []).map((p) => p.name ?? "") });
 			}
 		}) as never;
@@ -847,9 +856,13 @@ describe("buildTargetGroups", () => {
 			],
 			build,
 		});
+		// Exactly the two loose-file passes were captured (the base JS/dts passes are excluded),
+		// so `esm` below is genuinely the ESM loose-file pass, not the base ESM JS pass.
+		expect(passes.length).toBe(2);
 		const esm = passes.find((p) => p.format === "esm");
 		const cjs = passes.find((p) => p.format === "cjs");
 		expect(esm?.plugins).not.toContain("savvy:cjs-default-interop");
+		expect(esm?.plugins).not.toContain("savvy:node-builtin-default-interop");
 		expect(cjs?.plugins).toContain("savvy:cjs-default-interop");
 		expect(cjs?.plugins).toContain("savvy:node-builtin-default-interop");
 	});
