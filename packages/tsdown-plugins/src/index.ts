@@ -3,6 +3,8 @@ export { CatalogAssemblyError, CatalogResolutionError } from "workspaces-effect"
 export type { BuildTargetGroupsOptions, EntryOverride, TsdownBuild } from "./build/build-target-groups.js";
 export { buildTargetGroups } from "./build/build-target-groups.js";
 export { cjsDefaultInterop } from "./build/cjs-default-interop.js";
+export type { LooseFileSpec, LooseFiles, NormalizedLooseFile } from "./build/loose-files.js";
+export { normalizeLooseFiles } from "./build/loose-files.js";
 export { nodeBuiltinDefaultInterop } from "./build/node-builtin-default-interop.js";
 export { removeDeclarationMaps } from "./build/strip-maps.js";
 export { syncPublicDir } from "./build/sync-public.js";

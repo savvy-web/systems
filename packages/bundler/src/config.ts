@@ -1,5 +1,13 @@
 // packages/bundler/src/config.ts
-import type { BuildFormat, ExeConfig, Json, JsxConfig, MetaOptions, TargetGroupRef } from "@savvy-web/tsdown-plugins";
+import type {
+	BuildFormat,
+	ExeConfig,
+	Json,
+	JsxConfig,
+	LooseFiles,
+	MetaOptions,
+	TargetGroupRef,
+} from "@savvy-web/tsdown-plugins";
 import { defaultManifestTransform } from "@savvy-web/tsdown-plugins";
 
 export interface BuildEntryOverride {
@@ -93,6 +101,14 @@ export interface BuildConfigInput {
 	 */
 	readonly overrides?: ReadonlyArray<BuildEntryOverride> | undefined;
 	/**
+	 * Standalone bundled output files emitted at literal paths (e.g. pnpm config-dependency
+	 * pnpmfiles), outside the exports/dts/meta graph. Keys are literal output filenames; values
+	 * are a source path (bare string) or `{ source, format }`. Format is inferred from a
+	 * `.mjs`/`.cjs` key and required for an ambiguous `.js` key. Pair with `bundleNodeModules`
+	 * to make each file self-contained.
+	 */
+	readonly looseFiles?: LooseFiles | undefined;
+	/**
 	 * Compile-time global replacements forwarded to the tsdown/rolldown build `define`.
 	 * Values are inserted VERBATIM, so string literals must be quoted:
 	 * `{ "process.env.FLAG": JSON.stringify("on") }`. Merged with the auto-injected
@@ -139,6 +155,8 @@ export interface BuildConfig {
 	/** Output module formats forwarded to the tsdown build (esm-only by default; add "cjs" for dual-format). */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 	readonly overrides?: ReadonlyArray<BuildEntryOverride> | undefined;
+	/** Standalone bundled output files emitted at literal paths, outside the exports/dts/meta graph. */
+	readonly looseFiles?: LooseFiles | undefined;
 	/** Compile-time global replacements forwarded to the build `define` (merged with the auto-version). */
 	readonly define?: Record<string, string> | undefined;
 }
@@ -165,6 +183,7 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 		exe: input.exe,
 		format: input.format,
 		overrides: input.overrides,
+		looseFiles: input.looseFiles,
 		define: input.define,
 	};
 	// Self-execution: only when this module's importer is the program entry.
@@ -197,6 +216,8 @@ export type {
 	ExeConfig,
 	ExeTarget,
 	JsxConfig,
+	LooseFileSpec,
+	LooseFiles,
 	MetaOptions,
 	NormalizedExe,
 	PublishTargetValue,

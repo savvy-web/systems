@@ -142,7 +142,8 @@ export interface DerivedDtsPassOptions {
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 }
 
-const outDirFor = (cwd: string, group: TargetGroupId): string =>
+/** The output dir for a group: dev -> dist/dev/pkg, prod -> dist/prod/<group>/pkg. */
+export const outDirFor = (cwd: string, group: TargetGroupId): string =>
 	group === "dev" ? join(cwd, "dist/dev/pkg") : join(cwd, "dist/prod", group, "pkg");
 
 /** Derive the JS-pass tsdown options for one TargetGroup (per-module JS, no dts). */

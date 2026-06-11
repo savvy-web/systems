@@ -1,5 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { Effect, Layer } from "effect";
+import { normalizeLooseFiles } from "../build/loose-files.js";
 import { ConfigValidationError } from "../errors.js";
 import { normalizeExeOptions } from "../exe/config.js";
 import { resolveTargets } from "../targets/resolve-targets.js";
@@ -53,6 +54,12 @@ function check(input: ValidationInput): void {
 				throw new ConfigValidationError({ path: "meta.localPaths", reason: `"${p}" exists but is not a directory` });
 			}
 		}
+	}
+
+	// looseFiles — structural validation only (extension/format). normalizeLooseFiles throws
+	// ConfigValidationError on any problem; the Live wrapper surfaces it as a typed failure.
+	if (input.looseFiles !== undefined) {
+		normalizeLooseFiles(input.looseFiles);
 	}
 }
 

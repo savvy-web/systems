@@ -20,6 +20,7 @@ import {
 	ReportPipelineLive,
 	createEntryName,
 	normalizeExeOptions,
+	normalizeLooseFiles,
 	normalizeMetaOptions,
 	packageJsonEntries,
 	readTsconfigJsx,
@@ -165,6 +166,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(config.exe !== undefined ? { exe: config.exe } : {}),
 				osCpu: osCpuForValidate,
 				...(config.meta !== undefined && config.meta !== false ? { meta: config.meta } : {}),
+				...(config.looseFiles !== undefined ? { looseFiles: config.looseFiles } : {}),
 			}),
 		).pipe(Effect.provide(ConfigValidatorLive)),
 	);
@@ -279,6 +281,9 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		dualExports = dualExportKeys;
 	}
 
+	// Normalize after validation (which already surfaced any structural error). Pure; never throws here.
+	const looseFiles = config.looseFiles !== undefined ? normalizeLooseFiles(config.looseFiles) : undefined;
+
 	const startMs = Date.now();
 	// dev: one dev group named after the base; npm: all resolved prod groups (meta already returned above).
 	const { groups, resolution } =
@@ -304,6 +309,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		...(config.define !== undefined ? { define: config.define } : {}),
 		...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
 		...(dualExports !== undefined ? { dualExports } : {}),
+		...(looseFiles !== undefined ? { looseFiles } : {}),
 	});
 
 	// Write the target-to-group binding for the release action (prod only).
