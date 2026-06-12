@@ -82,7 +82,7 @@ blocks instead of JSON).
 ## When to invoke
 
 - **The diff touches any `package.json`'s dep fields.** Look at the
-  `analyze-branch.sh` output: if any of the `files[]` entries are a
+  `changeset_inspect` (`mode: "branch"`) result: if any of the `files[]` entries are a
   workspace `package.json` and have `status: "modified"`, run `regen.sh`.
 - **An existing `.changeset/*.md` has a stale Dependencies table.** The
   `regen.sh` script will detect and replace it.

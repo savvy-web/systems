@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-06-07
-last-synced: 2026-06-07
+updated: 2026-06-12
+last-synced: 2026-06-12
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -125,6 +125,7 @@ Two structural choices matter:
   services *and* re-exposed in the final context for handlers that yield those tags directly. A
   service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by
   `BranchAnalyzer` and the `classify`/`config` handlers) is never constructed twice per run.
+  `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` + `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeContext.layer` already satisfies it. See `../silk-effects/architecture.md`.
 - **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` /
   `WorkspaceDiscovery` / `PackageManagerDetector` trio rather than pulling in the heavier
   `WorkspacesLive`, which would also fork `DependencyGraph` / `PublishabilityDetector` background

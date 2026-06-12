@@ -72,9 +72,12 @@ export { default as changelogFunctions } from "./changelog/index.js";
 
 export type { BranchAnalysis, BranchAnalyzerShape, BranchFileEntry, FileStatus } from "./services/branch-analyzer.js";
 export {
+	BranchAnalysisSchema,
 	BranchAnalyzer,
 	BranchAnalyzerBase,
 	BranchAnalyzerLive,
+	BranchFileEntrySchema,
+	FileStatusSchema,
 	makeBranchAnalyzerTest,
 } from "./services/branch-analyzer.js";
 export type { ChangelogServiceShape } from "./services/changelog.js";
@@ -88,9 +91,14 @@ export type {
 	ResolvedVersionFile,
 } from "./services/config-inspector.js";
 export {
+	ClassificationReasonSchema,
+	ClassificationSchema,
 	ConfigInspector,
 	ConfigInspectorBase,
 	ConfigInspectorLive,
+	InspectedConfigSchema,
+	ResolvedPackageScopeSchema,
+	ResolvedVersionFileSchema,
 	makeConfigInspectorTest,
 } from "./services/config-inspector.js";
 export type { GitHubServiceShape } from "./services/github.js";

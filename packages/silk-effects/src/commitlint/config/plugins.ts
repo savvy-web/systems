@@ -46,8 +46,11 @@ const MARKDOWN_PATTERNS = {
 	codeFences: /```/,
 	/** Markdown inline code (`code`) - only flag if excessive */
 	inlineCode: /`[^`]+`/g,
-	/** Markdown bold (**text** or __text__) */
-	bold: /(\*\*|__)[^*_]+(\*\*|__)/,
+	/** Markdown bold — asterisk form only (**text**). Underscore runs are NOT
+	 * treated as bold, because __SNAKE_CASE__ identifiers (e.g.
+	 * __PACKAGE_VERSION__) are legitimate commit-body prose. Agents emit
+	 * **bold**, not __bold__, so coverage is unchanged. */
+	bold: /\*\*[^*]+\*\*/,
 	/** Markdown italic (*text* or _text_) - be careful not to match normal underscores */
 	italic: /(?<!\w)\*[^*]+\*(?!\w)/,
 	/** Markdown links [text](url) */

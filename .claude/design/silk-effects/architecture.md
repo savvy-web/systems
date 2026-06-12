@@ -6,8 +6,8 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-06-09
-last-synced: 2026-06-09
+updated: 2026-06-12
+last-synced: 2026-06-12
 depends-on: []
 related:
   - ../silk/architecture.md
@@ -100,6 +100,11 @@ same rules). `cli` must not import `silk`, so the shared logic has only one viab
 layer both thin packages import. `@savvy-web/cli` consumes the namespaces as command logic;
 `@savvy-web/silk` re-exports them as config-integration shims. The namespace contents themselves are
 discoverable in each subtree's `index.ts`; this table is the topology, not an inventory.
+
+Two `Changesets` decisions are load-bearing for consumers:
+
+- **The `ConfigInspector` release-surface fallback.** When `.changeset/config.json` declares no explicit `packages` record, `ConfigInspector.inspect` no longer returns empty attribution — it builds package scopes from the discovered workspace packages that are a release surface, determined by calling the pure `SilkPublishability.detect(name, raw, binding)` per package (the same publishConfig-driven rule the analyzer uses, working pre-build with `binding = null`). A package with no publishConfig (e.g. a bare private root) is excluded. The changeset `ignore` list is intentionally NOT consulted — an ignored-but-configured package is still a valid changeset target. This is why `ConfigInspectorLive` gained a `FileSystem` requirement (it reads each package's `package.json` and `dist/prod/targets.json`). It fixes empty-attribution for single-root repos and monorepos with a non-root package dir. See the `buildFallbackScopes` helper in `src/changesets/services/config-inspector.ts`.
+- **The resolved-output result types are Effect `Schema`, not interfaces.** `BranchAnalyzer` and `ConfigInspector` define their result shapes as `Schema.Struct` (`BranchAnalysisSchema`, `BranchFileEntrySchema`, `FileStatusSchema`, `InspectedConfigSchema`, `ResolvedPackageScopeSchema`, `ResolvedVersionFileSchema`, `ClassificationSchema`, `ClassificationReasonSchema`, all exported from the root) with the public TypeScript interfaces derived from them. The single source of truth lets `@savvy-web/mcp` embed these schemas directly in its `changeset_inspect` tool result and round-trip them through the effect→zod bridge. See `../mcp/architecture.md`.
 
 ## Module Architecture
 
@@ -667,6 +672,7 @@ Tagged enums used in this package:
 - `ChangesetConfigReader` / `ChangesetConfigReaderLive`
 - `SilkPublishabilityDetectorLive` (override of `workspaces-effect`'s `PublishabilityDetector`)
 - `PublishabilityDetectorAdaptiveLive` (also requires `ChangesetConfig`)
+- `Changesets.ConfigInspectorLive` (also requires `ChangesetConfigReader` + `WorkspaceDiscovery`; `FileSystem` backs its release-surface fallback — see [Tool Namespaces](#tool-namespaces-changesets-commitlint-lint))
 
 **Modules requiring CommandExecutor + PackageManagerDetector + WorkspaceRoot:**
 

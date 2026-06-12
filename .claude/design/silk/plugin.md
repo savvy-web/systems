@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-05
-last-synced: 2026-06-05
+updated: 2026-06-12
+last-synced: 2026-06-12
 completeness: 88
 related:
   - ./architecture.md
@@ -28,6 +28,7 @@ and adds a read-only Turborepo capability (the `turbo` skill and `turborepo` age
 - [Skill Naming Scheme](#skill-naming-scheme)
 - [MCP Orientation and the docs-search Skill](#mcp-orientation-and-the-docs-search-skill)
 - [Turborepo Capability](#turborepo-capability)
+- [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect)
 - [Hook Merge](#hook-merge)
 - [Rationale](#rationale)
 
@@ -98,13 +99,21 @@ The plugin layers a read-only Turborepo capability over the shared `savvy-mcp` s
 - **The `turborepo` agent** (`agents/turborepo.md`, `model: sonnet`) is the autonomous specialist for heavier work, operating in three modes (cache diagnosis / graph refactor / affected-CI). Its contract is *diagnose first, recommend second*: it pulls actual hash contributors and graph edges via `turbo_inspect` and only edits `turbo.json` once it can cite the contributor that justifies the change. It preloads the `turbo` skill.
 - **Safe-bash allowlist.** `hooks/lib/safe-bash-patterns.txt` auto-allows read-only `turbo … --dry`/`--dry=json` runs. The bare `turbo run <task>` form (which executes the task and mutates the cache) is intentionally **not** allowlisted — the load-bearing safety line that keeps the capability read-only at the bash layer too.
 
+## The config skill drives changeset_inspect
+
+The `config` skill (`skills/config/SKILL.md`, agent-internal, `user-invocable: false`) is the `changeset-manager` agent's window onto changeset attribution. It used to bundle two thin bash wrappers over the `savvy` CLI — `analyze-branch.sh` (`savvy changeset analyze-branch --json`) and `inspect.sh` (`savvy changeset config show --json`). Both scripts were deleted; the skill now calls the shared `savvy-mcp` server's `changeset_inspect` MCP tool directly (`allowed-tools: mcp__savvy-mcp__changeset_inspect`), with `mode: "branch"` as the primary create-mode classification call and `mode: "config"` as the secondary config-only view. The `changeset-manager` agent gained the same tool grant and reads the tool's `structuredContent` (the `BranchAnalysis` / `InspectedConfig` shapes) where it previously parsed script stdout; the `dependencies` skill's "when to invoke" check reads the same `mode: "branch"` result. See `../mcp/architecture.md` for the tool half.
+
+The load-bearing reason for the switch (closes #87): the CLI's `--json` output is prefixed with an `Effect.log` `[…] INFO (#NN):` line that breaks a naive `JSON.parse` of stdout. The structured MCP result has no such framing, removing the stdout-parsing fragility. Error handling also simplifies — the tool surfaces `ConfigurationError` / `GitError` as MCP tool errors (no exit codes, no stderr to parse), and there is no "CLI not installed" branch because the MCP server ships the implementation. The `savvy changeset analyze-branch` / `config show` CLI commands themselves are retained for direct human/script use.
+
 ## Hook Merge
 
 All source hook sets merge into `plugins/silk/hooks/hooks.json`. PreToolUse/PostToolUse matchers combine across the changesets push-guard and the commitlint bash/fs/mcp guards. Every hook script is **repointed** from the legacy `savvy-changesets …` / `savvy-commit …` bins to the unified `savvy changeset …` / `savvy commit hook …` paths; the shared resolver in `hooks/lib/` targets the single `savvy` bin.
 
 The open hygiene concern (carried from the spec) is avoiding double-fires where the changesets and commitlint guards both match `Bash` — check `hooks.json`'s matcher set when adding a new Bash guard.
 
-The same repoint applies to the **skill scripts**: the bundled scripts that shell out to the CLI (`changeset-check`'s `check.sh`/`lint.sh`, `config`'s `analyze-branch.sh`/`inspect.sh`, `dependencies`' `detect.sh`/`regen.sh`) target the unified `savvy changeset …` subcommands rather than the retired `savvy-changesets` standalone bin. Notably `changeset-check` validates via `savvy changeset lint` (the renamed CSH001–CSH005 entry point), not a `check` subcommand. Any plugin caller — hook or skill — that invokes the CLI goes through the single `savvy` bin; no script may assume a per-tool `savvy-*` bin is installed.
+The same repoint applies to the **skill scripts**: the bundled scripts that shell out to the CLI (`changeset-check`'s `check.sh`/`lint.sh`, `dependencies`' `detect.sh`/`regen.sh`) target the unified `savvy changeset …` subcommands rather than the retired `savvy-changesets` standalone bin. Notably `changeset-check` validates via `savvy changeset lint` (the renamed CSH001–CSH005 entry point), not a `check` subcommand. Any plugin caller — hook or skill — that invokes the CLI goes through the single `savvy` bin; no script may assume a per-tool `savvy-*` bin is installed.
+
+The `config` skill is the exception: it no longer shells out at all. Its two former CLI wrapper scripts (`analyze-branch.sh`, `inspect.sh`) were deleted and replaced by direct calls to the shared `savvy-mcp` server's `changeset_inspect` MCP tool (`mode: "branch"` primary, `mode: "config"` secondary) — see [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect). The `changeset-manager` agent and the `dependencies` skill were repointed to read that tool's `structuredContent` instead of the deleted scripts' stdout.
 
 ### SessionStart: two hooks, split by responsibility
 

@@ -188,6 +188,39 @@ describe("silk/body-no-markdown", () => {
 		const [valid] = await runRule(rule, commit);
 		expect(valid).toBe(true);
 	});
+
+	it("allows a dunder identifier with no internal underscore (regression #103)", async () => {
+		const commit = createCommit({
+			body: "Reworked the __proto__ accessor for clarity.",
+		});
+		const [valid] = await runRule(rule, commit);
+		expect(valid).toBe(true);
+	});
+
+	it("allows two dunder tokens with prose between them (regression #103)", async () => {
+		const commit = createCommit({
+			body: "The bundler injects __PACKAGE_VERSION__ and reads process.env.__PACKAGE_VERSION__ at build time.",
+		});
+		const [valid] = await runRule(rule, commit);
+		expect(valid).toBe(true);
+	});
+
+	it("allows a single __PACKAGE_VERSION__ token", async () => {
+		const commit = createCommit({
+			body: "We set __PACKAGE_VERSION__ during the build.",
+		});
+		const [valid] = await runRule(rule, commit);
+		expect(valid).toBe(true);
+	});
+
+	it("still rejects asterisk bold", async () => {
+		const commit = createCommit({
+			body: "This is **still** rejected as bold.",
+		});
+		const [valid, message] = await runRule(rule, commit);
+		expect(valid).toBe(false);
+		expect(message).toContain("bold");
+	});
 });
 
 describe("silk/subject-no-markdown", () => {

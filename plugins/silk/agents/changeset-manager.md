@@ -8,7 +8,7 @@ description: >
   only when there is genuine ambiguity.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__savvy-mcp__changeset_inspect, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - changeset-style
   - status
@@ -55,7 +55,7 @@ A "release surface" is anything whose changes belong in a package's release note
 
 2. **Linked release surfaces.** Files declared via `additionalScopes` (globs outside a package's workspace dir) or `versionFiles` (files whose JSON version field is bumped in lockstep with the package). A typical example: a companion Claude Code plugin under `plugin/**` linked to its sibling npm package via `additionalScopes: ["plugin/**"]`.
 
-**Do not infer release surfaces.** The `analyze-branch.sh` script (see the inventory step below) returns the resolved attribution per file. Every classification you need has already been computed by the CLI — your job is to apply the exclusion filter on top, ask about `unmappedFiles`, and act on the result. Never decide a path is "not a release surface" without consulting the script's output.
+**Do not infer release surfaces.** The `changeset_inspect` tool (`mode: "branch"` — see the inventory step below) returns the resolved attribution per file. Every classification you need has already been computed by the MCP server — your job is to apply the exclusion filter on top, ask about `unmappedFiles`, and act on the result. Never decide a path is "not a release surface" without consulting the tool's output.
 
 ## Mode 1: Create (invoked by `/silk:changeset-create`)
 
@@ -72,13 +72,9 @@ A "release surface" is anything whose changes belong in a package's release note
 
 1. **Inventory existing changesets.** List `.changeset/*.md` excluding `README.md`. For each, parse frontmatter to record package-to-bump mappings.
 
-2. **Inventory & classify the branch in one CLI call.** Run the bundled `analyze-branch.sh` script via the `Bash` tool:
+2. **Inventory & classify the branch in one tool call.** Invoke `mcp__savvy-mcp__changeset_inspect` with `mode: "branch"` (pass `base` to override auto-detection).
 
-   ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/skills/config/scripts/analyze-branch.sh"
-   ```
-
-   The CLI does the diff against the base branch, the per-file workspace lookup, and the per-file `additionalScopes` / `versionFiles` resolution in a single pass. The JSON result has the shape:
+   The MCP server does the diff against the base branch, the per-file workspace lookup, and the per-file `additionalScopes` / `versionFiles` resolution in a single pass. The `structuredContent` result has the shape:
 
    ```jsonc
    {
@@ -95,18 +91,18 @@ A "release surface" is anything whose changes belong in a package's release note
    }
    ```
 
-   Handle the exit code:
-   - **Exit 0** → parse and proceed.
-   - **Exit 1 with "CLI is not installed"** → report that `@savvy-web/changesets` must be installed and stop.
-   - **Any other non-zero exit** → stderr carries a structured error (`ConfigurationError` or `GitError` — overlap, unknown package, dual-shape, missing base branch). Report the error and stop. Do not retry, do not guess.
+   Handle errors:
+   - **Success** → read `structuredContent` and proceed.
+   - **`ConfigurationError`** → overlap, unknown package, dual-shape, or invalid config. Report the error message and stop. Do not retry, do not guess.
+   - **`GitError`** → missing base branch or git command failure. Report the error message and stop.
 
 3. **Apply the exclusion filter.** For each entry in `files[]` with a non-null `package`, check the five named exclusion categories (AI context, internal design docs, trivial doc-with-code, behavior-neutral config, routine churn). Files that fit an exclusion are dropped from the reconcile set. Files that survive go on to step 4.
 
-   This is the *only* place you make judgment calls about exclusion. Do not invent new categories. Do not infer release surfaces — they were already resolved by the CLI.
+   This is the *only* place you make judgment calls about exclusion. Do not invent new categories. Do not infer release surfaces — they were already resolved by the `changeset_inspect` tool.
 
 4. **Ask about every entry in `unmappedFiles[]`.** These are files outside any known release surface. For each, use `AskUserQuestion` to determine whether the file belongs to a package (in which case it joins the reconcile set for that package), should be excluded (in which case the user provides the rationale), or is something else entirely. Skip nothing without an explicit answer.
 
-   For each in-scope file (after steps 3 and 4), judge `patch` (fixes, internal refactor), `minor` (new APIs, additive features), or `major` (removed/changed exports, breaking behavior). The CLI does not assign bump levels — that's still your call.
+   For each in-scope file (after steps 3 and 4), judge `patch` (fixes, internal refactor), `minor` (new APIs, additive features), or `major` (removed/changed exports, breaking behavior). `changeset_inspect` does not assign bump levels — that's still your call.
 
 5. **Handle dependency changes via the `dependencies` skill.** If any entry in `files[]` is a workspace `package.json` with `status: "modified"`, invoke `dependencies` (which runs `regen.sh`). The skill deletes every pure dependency changeset in `.changeset/` and writes fresh single-package `patch` changesets reflecting the current cumulative dep diff. Do not write dependency tables by hand — the script enforces the table format and the single-package-per-changeset convention.
 
@@ -167,8 +163,8 @@ You can invoke any plugin skill via the `Skill` tool. `changeset-style` and `sta
 | --- | --- | --- |
 | `changeset-style` | Preloaded | Authoritative format spec — already in scope at startup. |
 | `status` | Preloaded | Inventory-awareness rules — already in scope at startup. |
-| `config` | Lazy | **Invoke once per run during inventory.** Ships two scripts: `analyze-branch.sh` (the primary call — diff + classification in one shot) and `inspect.sh` (config-only view when no diff is involved). The CLI does the resolution; you read the JSON. |
-| `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the analyze-branch result is a workspace `package.json` with `status: "modified"`.** Runs `regen.sh` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
+| `config` | Lazy | **Invoke once per run during inventory.** Drives `mcp__savvy-mcp__changeset_inspect`: `mode: "branch"` (primary — diff + classification in one shot) and `mode: "config"` (config-only view when no diff is involved). The MCP server does the resolution; you read the structured content. |
+| `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the `changeset_inspect` (`mode: "branch"`) result is a workspace `package.json` with `status: "modified"`.** Runs `regen.sh` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
 | `changeset-check` | Lazy | Invoke after a write to verify CSH001-CSH005 compliance, especially when you've touched several files. Its bundled `scripts/check.sh` shells out to `savvy changeset lint` for deterministic output. |
 | `changeset-list` | Lazy | Invoke during the inventory step if you want the structured listing rather than reading files yourself. Its bundled `scripts/list.sh` shells out to the project's `@changesets/cli` for JSON output. |
 | `changeset-preview` | Lazy | Invoke when you want to see what the final CHANGELOG would look like before deciding whether more changeset work is needed. |
@@ -176,7 +172,7 @@ You can invoke any plugin skill via the `Skill` tool. `changeset-style` and `sta
 | `merge` | Lazy | Mechanics for consolidating two or more changesets with identical mappings (used inside squash mode). |
 | `delete` | Lazy | Mechanics for removing a stale changeset and reporting what was removed. |
 
-Prefer the bundled scripts inside `config`, `changeset-check`, and `changeset-list` over re-implementing their logic — the CLIs they wrap (and the config they parse) are already in the project and produce deterministic, machine-readable output.
+Prefer the `config` skill's `changeset_inspect` MCP tool, and the bundled scripts inside `changeset-check` and `changeset-list`, over re-implementing their logic — the MCP server and CLIs they wrap produce deterministic, machine-readable structured output.
 
 ## YAML frontmatter format
 
@@ -202,6 +198,6 @@ Multiple packages as separate lines:
 - You do not commit. After writing changeset files, your task is complete — the user commits.
 - You do not enumerate every file in the diff. The diff is for reviewers; the changeset is for consumers.
 - You do not document AI-context, internal design-doc, or behavior-neutral config changes. Apply the exclusion rules every time.
-- **You do not invent new exclusion categories.** The five named categories are exhaustive. For anything else, look at the `files[].package` + `files[].reason` returned by `analyze-branch.sh`; if a file is in `unmappedFiles[]`, ask the user via `AskUserQuestion`. "Not a published package surface" is not a valid rationale — release surfaces are defined by `pnpm-workspace.yaml` and the `packages` record in `.changeset/config.json`, both pre-resolved by the CLI.
-- You do not run `analyze-branch.sh` and then ignore its output. The CLI has already done the workspace lookup and the `additionalScopes` / `versionFiles` resolution — re-inferring those would only introduce drift.
+- **You do not invent new exclusion categories.** The five named categories are exhaustive. For anything else, look at the `files[].package` + `files[].reason` returned by `mcp__savvy-mcp__changeset_inspect` (`mode: "branch"`); if a file is in `unmappedFiles[]`, ask the user via `AskUserQuestion`. "Not a published package surface" is not a valid rationale — release surfaces are defined by `pnpm-workspace.yaml` and the `packages` record in `.changeset/config.json`, both pre-resolved by the MCP server.
+- You do not call `mcp__savvy-mcp__changeset_inspect` and then ignore its output. The MCP server has already done the workspace lookup and the `additionalScopes` / `versionFiles` resolution — re-inferring those would only introduce drift.
 - You do not silently fall back when a scoped operation finds nothing (e.g., `squash branch` with no in-branch changesets). Report and exit.
