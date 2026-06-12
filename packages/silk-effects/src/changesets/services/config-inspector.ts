@@ -326,14 +326,33 @@ function buildResolvedScopes(params: {
 }
 
 /**
- * Read a workspace package's raw package.json. Returns null when the file is
- * missing or unparseable so the caller can skip that package rather than
- * failing the whole inspect.
+ * Read a workspace package's raw package.json. A genuinely missing manifest
+ * resolves to `null` so the caller can skip that package — a workspace
+ * directory without a `package.json` is not a release surface. Any OTHER
+ * failure (unreadable file, malformed JSON) is surfaced as a
+ * {@link ConfigurationError} carrying the package path, rather than silently
+ * dropping the package, which would cascade into wrong attribution.
  */
-function readRawPackageJson(fs: FileSystem.FileSystem, pkgDir: string): Effect.Effect<RawPackageJson | null> {
-	return fs.readFileString(join(pkgDir, "package.json")).pipe(
+function readRawPackageJson(
+	fs: FileSystem.FileSystem,
+	pkgDir: string,
+): Effect.Effect<RawPackageJson | null, ConfigurationError> {
+	const pkgJsonPath = join(pkgDir, "package.json");
+	return fs.readFileString(pkgJsonPath).pipe(
 		Effect.flatMap((content) => Effect.try(() => JSON.parse(content) as RawPackageJson)),
-		Effect.catchAll(() => Effect.succeed(null)),
+		Effect.catchAll((err) => {
+			// Effect's FileSystem surfaces a missing file as a SystemError with
+			// `reason: "NotFound"`. Treat only that as skippable.
+			if ((err as { reason?: unknown }).reason === "NotFound") {
+				return Effect.succeed<RawPackageJson | null>(null);
+			}
+			return Effect.fail(
+				new ConfigurationError({
+					field: "workspace",
+					reason: `Failed to read or parse ${pkgJsonPath}: ${err instanceof Error ? err.message : String(err)}`,
+				}),
+			);
+		}),
 	);
 }
 
@@ -348,7 +367,7 @@ function readRawPackageJson(fs: FileSystem.FileSystem, pkgDir: string): Effect.E
 function buildFallbackScopes(
 	fs: FileSystem.FileSystem,
 	workspaces: ReadonlyArray<{ name: string; path: string; version: string }>,
-): Effect.Effect<ReadonlyArray<ResolvedPackageScope>> {
+): Effect.Effect<ReadonlyArray<ResolvedPackageScope>, ConfigurationError> {
 	return Effect.forEach(workspaces, (ws) =>
 		Effect.gen(function* () {
 			const raw = yield* readRawPackageJson(fs, ws.path);

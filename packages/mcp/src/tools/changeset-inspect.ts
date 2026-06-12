@@ -33,47 +33,56 @@ export const ChangesetInspectResult = Schema.Union(ChangesetBranchResult, Change
 
 export type ChangesetInspectResultType = Schema.Schema.Type<typeof ChangesetInspectResult>;
 
+/**
+ * Render a repo/config-derived value as an inert markdown code span. Escapes
+ * backticks and backslashes so a crafted filename or package name cannot inject
+ * markdown structure into the transcript that an agent reads.
+ */
+const mdInline = (value: string): string => `\`${value.replace(/[`\\]/g, "\\$&")}\``;
+
 /** Render the structured result as a markdown transcript. */
 const renderMarkdown = (data: ChangesetInspectResultType): string => {
 	switch (data.mode) {
 		case "branch": {
 			const r = data.result;
 			const lines = [
-				`# changeset branch analysis — base ${r.baseBranch}`,
+				`# changeset branch analysis — base ${mdInline(r.baseBranch)}`,
 				``,
-				`merge base: ${r.mergeBaseSha}`,
+				`merge base: ${mdInline(r.mergeBaseSha)}`,
 				``,
 				`## Packages affected`,
-				r.packagesAffected.map((p) => `- ${p}`).join("\n") || "(none)",
+				r.packagesAffected.map((p) => `- ${mdInline(p)}`).join("\n") || "(none)",
 				``,
 				`## Files`,
 			];
 			for (const f of r.files) {
-				const owner = f.package ?? "<unmapped>";
-				lines.push(`- ${f.status}  ${f.path}  ->  ${owner}`);
+				const owner = f.package ? mdInline(f.package) : "<unmapped>";
+				lines.push(`- ${mdInline(f.status)}  ${mdInline(f.path)}  ->  ${owner}`);
 			}
 			if (r.unmappedFiles.length > 0) {
 				lines.push(``, `## Unmapped (ask the user)`);
-				for (const p of r.unmappedFiles) lines.push(`- ${p}`);
+				for (const p of r.unmappedFiles) lines.push(`- ${mdInline(p)}`);
 			}
 			return lines.join("\n");
 		}
 		case "config": {
 			const r = data.result;
 			const lines = [
-				`# changeset config — ${r.configPath}`,
+				`# changeset config — ${mdInline(r.configPath)}`,
 				``,
-				`base branch: ${r.baseBranch}`,
+				`base branch: ${mdInline(r.baseBranch)}`,
 				`access: ${r.access}`,
-				`changelog: ${r.changelog ?? "(none)"}`,
-				`ignored: ${r.ignore.join(", ") || "(none)"}`,
+				`changelog: ${r.changelog ? mdInline(r.changelog) : "(none)"}`,
+				`ignored: ${r.ignore.map(mdInline).join(", ") || "(none)"}`,
 				``,
 				`## Packages`,
 			];
 			for (const p of r.packages) {
-				lines.push(`### ${p.name} (${p.version})`, `- dir: ${p.workspaceDir}`);
-				if (p.additionalScopes.length > 0) lines.push(`- additionalScopes: ${p.additionalScopes.join(", ")}`);
-				if (p.versionFiles.length > 0) lines.push(`- versionFiles: ${p.versionFiles.map((v) => v.glob).join(", ")}`);
+				lines.push(`### ${mdInline(p.name)} (${mdInline(p.version)})`, `- dir: ${mdInline(p.workspaceDir)}`);
+				if (p.additionalScopes.length > 0)
+					lines.push(`- additionalScopes: ${p.additionalScopes.map(mdInline).join(", ")}`);
+				if (p.versionFiles.length > 0)
+					lines.push(`- versionFiles: ${p.versionFiles.map((v) => mdInline(v.glob)).join(", ")}`);
 			}
 			if (r.packages.length === 0) lines.push("(none resolved)");
 			return lines.join("\n");

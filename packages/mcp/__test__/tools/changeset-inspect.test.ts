@@ -74,6 +74,24 @@ describe("changesetInspect handler", () => {
 	it("forbids encoding markdown back", () => {
 		expect(() => Schema.encodeSync(ChangesetInspectAsMarkdown)("anything")).toThrow();
 	});
+
+	it("escapes repo-derived values as inert code spans (prompt-injection hardening)", () => {
+		const data = {
+			mode: "branch" as const,
+			result: {
+				baseBranch: "main",
+				mergeBaseSha: "abc123",
+				files: [{ path: "evil`whoami`.ts", status: "modified" as const, package: null, reason: null }],
+				packagesAffected: [],
+				unmappedFiles: ["evil`whoami`.ts"],
+			},
+		};
+		const md = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+		// The raw, unescaped backtick form must not survive into the transcript.
+		expect(md).not.toContain("evil`whoami`.ts");
+		// Backticks are escaped inside a code span.
+		expect(md).toContain("evil\\`whoami\\`.ts");
+	});
 });
 
 describe("changeset_inspect effect->zod bridge", () => {
