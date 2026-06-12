@@ -112,8 +112,10 @@ const BaseLive = Layer.mergeAll(
  * The upper services depend on members of `BaseLive`:
  * `ToolDiscoveryLive` needs `WorkspaceRoot`, `PackageManagerDetector`, and
  * `CommandExecutor`; `VersioningStrategyLive` needs `ChangesetConfigReader`;
- * `Changesets.ConfigInspectorLive` needs `ChangesetConfigReader` and
- * `WorkspaceDiscovery`; `Changesets.BranchAnalyzerLive` needs `ConfigInspector`.
+ * `Changesets.ConfigInspectorLive` needs `ChangesetConfigReader`,
+ * `WorkspaceDiscovery`, and `FileSystem` (the last for its release-surface
+ * fallback when no explicit `packages` record is configured);
+ * `Changesets.BranchAnalyzerLive` needs `ConfigInspector`.
  *
  * `ConfigInspectorLive` is built once via {@link Layer.provideMerge}: the merge
  * feeds that single `ConfigInspector` instance into `BranchAnalyzerLive` AND

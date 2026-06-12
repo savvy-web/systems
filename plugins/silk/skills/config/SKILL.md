@@ -2,50 +2,44 @@
 name: config
 description: >
   Surface the project's .changeset/config.json and the branch's
-  diff-with-classification via two thin wrappers around the
-  savvy CLI (@savvy-web/cli). The agent uses these to get reliable
-  package attribution without re-implementing the logic.
+  diff-with-classification via the changeset_inspect MCP tool
+  (savvy-mcp). The agent uses these to get reliable package
+  attribution without re-implementing the logic.
 user-invocable: false
 model: sonnet
-allowed-tools: Bash(bash *)
+allowed-tools: mcp__savvy-mcp__changeset_inspect
 ---
 
 # Inspect Changeset Configuration
 
-This is an agent-internal skill. Two bundled scripts wrap the
-`savvy` CLI (`@savvy-web/cli`):
+This is an agent-internal skill. It calls the `changeset_inspect` MCP tool
+(provided by the shared `savvy-mcp` server) in two modes:
 
-- **`scripts/inspect.sh`** — `savvy changeset config show --json`. Returns
-  the resolved config: changelog formatter, base branch, ignore list, and
-  per-package release surfaces (with `additionalScopes`, `versionFiles`,
-  and the materialized file lists).
-- **`scripts/analyze-branch.sh`** — `savvy changeset analyze-branch --json`.
-  Returns the merge-base SHA, the per-file diff classification, the deduped
-  set of affected packages, and the list of unmapped paths the agent
-  should ask the user about.
+- **`mode: "branch"`** — returns the merge-base SHA, the per-file diff
+  classification, the deduped set of affected packages, and the list of
+  unmapped paths the agent should ask the user about. This is the primary
+  call for create-mode classification.
+- **`mode: "config"`** — returns the resolved config: changelog formatter,
+  base branch, ignore list, and per-package release surfaces (with
+  `additionalScopes`, `versionFiles`, and the materialized file lists).
+  Available for debugging or for commands that don't need a diff (e.g., a
+  release-surface lookup before the user has any diff to analyze).
 
-In 0.9.0+ the **primary** call is `analyze-branch.sh` — one invocation
-gives the agent everything it needs for create-mode classification.
-`inspect.sh` remains available for debugging or for commands that don't
-need a diff (e.g., a release-surface lookup before the user has any
-diff to analyze).
+## Primary path: `mode: "branch"`
 
-## Primary path: `analyze-branch.sh`
+Call the `mcp__savvy-mcp__changeset_inspect` tool with:
 
-Use the Bash tool:
-
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/config/scripts/analyze-branch.sh"
+```json
+{ "mode": "branch" }
 ```
 
-Pass `--base <branch>` (or other CLI flags) as positional args to override
-auto-detection:
+Pass `base` to override auto-detection:
 
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/config/scripts/analyze-branch.sh" --base develop
+```json
+{ "mode": "branch", "base": "develop" }
 ```
 
-Output schema (matches `BranchAnalysis` in the CLI source):
+Output schema (`BranchAnalysis` shape in `structuredContent`):
 
 | Field | Shape | Meaning |
 | --- | --- | --- |
@@ -66,17 +60,17 @@ Output schema (matches `BranchAnalysis` in the CLI source):
 3. **For every entry in `files[]`** — apply the five exclusion categories (AI context, internal design docs, trivial doc-with-code, behavior-neutral config, routine churn). Files that survive the exclusion filter and have a non-null `package` go into the reconcile step.
 4. **For every entry in `unmappedFiles[]`** — invoke `AskUserQuestion` to find out whether the path belongs to a package's release surface. Do not invent a "not a release surface" exclusion.
 
-## Secondary path: `inspect.sh`
+## Secondary path: `mode: "config"`
 
 When the agent needs the config independently of a diff — for example, to
 render a release-surface list for a specific package, or to confirm that
-the config validates after a manual edit — use:
+the config validates after a manual edit — call the tool with:
 
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/config/scripts/inspect.sh"
+```json
+{ "mode": "config" }
 ```
 
-Output schema (matches `InspectedConfig` in the CLI source):
+Output schema (`InspectedConfig` shape in `structuredContent`):
 
 | Field | Meaning |
 | --- | --- |
@@ -87,7 +81,7 @@ Output schema (matches `InspectedConfig` in the CLI source):
 | `access` | npm access level (`"public"` / `"restricted"`). |
 | `ignore[]` | Packages the changeset workflow ignores. |
 | `packages[]` | Per-package release surfaces (see below). |
-| `legacyVersionFilesUsed` | `true` when the deprecated 0.8.x shape is still in use; the CLI emits a one-line deprecation warning to stderr on the same run. |
+| `legacyVersionFilesUsed` | `true` when the deprecated 0.8.x shape is still in use; the MCP server emits a deprecation note alongside the result. |
 
 `packages[]` entry:
 
@@ -102,14 +96,20 @@ Output schema (matches `InspectedConfig` in the CLI source):
 
 ## Error handling
 
-Both scripts propagate the CLI's exit code:
+The tool surfaces errors as MCP tool errors (no exit codes, no stderr to
+parse). Two error types may appear:
 
-- **Exit 0**: JSON document on stdout.
-- **Exit 1, CLI not installed**: stderr says so. The agent should report that `@savvy-web/cli` must be installed in the project (it provides the `savvy` binary) and stop.
-- **Exit non-zero, ConfigurationError or GitError**: stderr has a structured message from the CLI (overlap conflict, unknown package, dual-shape, missing base branch, etc.). The agent should report the message to the user and stop — these are real configuration problems the user must fix.
+- **`ConfigurationError`** — overlap conflict, unknown package, dual-shape,
+  or invalid config. The agent should report the error message to the user
+  and stop — these are real configuration problems the user must fix.
+- **`GitError`** — missing base branch or git command failure. The agent
+  should report the error message and stop.
+
+There is no "CLI not installed" branch — the MCP server ships the
+implementation and is always available when the session is running.
 
 ## What this skill does not do
 
-- It does not classify files. The CLI does that via `ConfigInspector.classify`; this skill is the agent's window onto the result.
+- It does not classify files. The MCP tool does that via `ConfigInspector.classify`; this skill is the agent's window onto the result.
 - It does not infer release surfaces. The trust boundary is the config file: `pnpm-workspace.yaml` defines workspace packages, `.changeset/config.json#packages[*].additionalScopes` defines linked surfaces, and anything outside both gets reported in `unmappedFiles` for the agent to ask about.
 - It does not modify the config. Treat it as read-only — use `/silk:changeset-create` or direct edits to make changes.

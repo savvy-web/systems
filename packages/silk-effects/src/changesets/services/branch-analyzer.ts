@@ -41,60 +41,51 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Schema } from "effect";
 import type { ConfigurationError } from "../errors.js";
 import { GitError } from "../errors.js";
-import type { ClassificationReason } from "./config-inspector.js";
-import { ConfigInspector } from "./config-inspector.js";
+import { ClassificationReasonSchema, ConfigInspector } from "./config-inspector.js";
 
-/**
- * Git diff status as reported by `--name-status`.
- *
- * @public
- */
-export type FileStatus =
-	| "added"
-	| "modified"
-	| "deleted"
-	| "renamed"
-	| "copied"
-	| "typechange"
-	| "unmerged"
-	| "unknown";
+/** Git diff status as reported by `--name-status`. @public */
+export const FileStatusSchema = Schema.Literal(
+	"added",
+	"modified",
+	"deleted",
+	"renamed",
+	"copied",
+	"typechange",
+	"unmerged",
+	"unknown",
+).annotations({ identifier: "FileStatus" });
+/** Git diff status as reported by `--name-status`. @public */
+export type FileStatus = Schema.Schema.Type<typeof FileStatusSchema>;
 
-/**
- * One file entry in the branch analysis output.
- *
- * @public
- */
-export interface BranchFileEntry {
-	/** Repo-relative path (the new path in the case of renames). */
-	readonly path: string;
-	/** Git diff status. */
-	readonly status: FileStatus;
-	/** Owning package, or `null` if the path is outside any known release surface. */
-	readonly package: string | null;
-	/** Reason for the package attribution; mirrors {@link Classification.reason}. */
-	readonly reason: ClassificationReason;
-}
+/** One file entry in the branch analysis output. @public */
+export const BranchFileEntrySchema = Schema.Struct({
+	path: Schema.String.annotations({
+		description: "Repo-relative path (the new path in the case of renames).",
+	}),
+	status: FileStatusSchema,
+	package: Schema.NullOr(Schema.String).annotations({
+		description: "Owning package, or null if outside every known release surface.",
+	}),
+	reason: ClassificationReasonSchema,
+}).annotations({ identifier: "BranchFileEntry" });
+/** One file entry in the branch analysis output. @public */
+export type BranchFileEntry = Schema.Schema.Type<typeof BranchFileEntrySchema>;
 
-/**
- * Structured result of analyzing the current branch against its base.
- *
- * @public
- */
-export interface BranchAnalysis {
-	/** The branch the diff was computed against. */
-	readonly baseBranch: string;
-	/** The merge-base SHA between `HEAD` and `baseBranch`. */
-	readonly mergeBaseSha: string;
-	/** Files changed since the merge base, with classification. */
-	readonly files: ReadonlyArray<BranchFileEntry>;
-	/** Unique package names that own at least one changed file. */
-	readonly packagesAffected: ReadonlyArray<string>;
-	/** Repo-relative paths whose `package` is `null` — candidates for an `AskUserQuestion`. */
-	readonly unmappedFiles: ReadonlyArray<string>;
-}
+/** Structured result of analyzing the current branch against its base. @public */
+export const BranchAnalysisSchema = Schema.Struct({
+	baseBranch: Schema.String,
+	mergeBaseSha: Schema.String,
+	files: Schema.Array(BranchFileEntrySchema),
+	packagesAffected: Schema.Array(Schema.String),
+	unmappedFiles: Schema.Array(Schema.String).annotations({
+		description: "Repo-relative paths whose package is null — candidates for an AskUserQuestion.",
+	}),
+}).annotations({ identifier: "BranchAnalysis" });
+/** Structured result of analyzing the current branch against its base. @public */
+export type BranchAnalysis = Schema.Schema.Type<typeof BranchAnalysisSchema>;
 
 /**
  * Effect service interface for branch analysis.

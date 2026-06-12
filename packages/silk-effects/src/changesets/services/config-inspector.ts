@@ -34,99 +34,75 @@
  */
 
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer, Schema } from "effect";
 import { globSync } from "tinyglobby";
 import { WorkspaceDiscovery } from "workspaces-effect";
 import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";
+import type { RawPackageJson } from "../../services/SilkPublishability.js";
+import { SilkPublishability, readTargetsBinding } from "../../services/SilkPublishability.js";
 
 import { ConfigurationError } from "../errors.js";
 import { ChangesetOptionsSchema } from "../schemas/options.js";
 import type { VersionFileConfig } from "../schemas/version-files.js";
 
-/**
- * A `versionFiles` entry expanded to its absolute target paths.
- *
- * @public
- */
-export interface ResolvedVersionFile {
-	/** The original glob from the config. */
-	readonly glob: string;
-	/** JSONPath expressions to update (defaults to `["$.version"]`). */
-	readonly paths: ReadonlyArray<string>;
-	/** Absolute file paths the glob matched at inspection time. */
-	readonly matchedFiles: ReadonlyArray<string>;
-}
+/** A `versionFiles` entry expanded to its absolute target paths. @public */
+export const ResolvedVersionFileSchema = Schema.Struct({
+	glob: Schema.String,
+	paths: Schema.Array(Schema.String).annotations({
+		description: 'JSONPath expressions to update (defaults to ["$.version"]).',
+	}),
+	matchedFiles: Schema.Array(Schema.String),
+}).annotations({ identifier: "ResolvedVersionFile" });
+/** A `versionFiles` entry expanded to its absolute target paths. @public */
+export type ResolvedVersionFile = Schema.Schema.Type<typeof ResolvedVersionFileSchema>;
 
-/**
- * A package's release surface after the config has been resolved against the
- * workspace and the globs have been materialized.
- *
- * @public
- */
-export interface ResolvedPackageScope {
-	/** Package name (matches the workspace package's `package.json#name`). */
-	readonly name: string;
-	/** Absolute path to the package's workspace directory. */
-	readonly workspaceDir: string;
-	/** Current version from the workspace package's `package.json`. */
-	readonly version: string;
-	/** Globs declared in the config's `additionalScopes`. */
-	readonly additionalScopes: ReadonlyArray<string>;
-	/** Files matched by `additionalScopes` (absolute paths). */
-	readonly additionalScopeFiles: ReadonlyArray<string>;
-	/** Version-file entries, each with their globs materialized. */
-	readonly versionFiles: ReadonlyArray<ResolvedVersionFile>;
-}
+/** A package's resolved release surface. @public */
+export const ResolvedPackageScopeSchema = Schema.Struct({
+	name: Schema.String,
+	workspaceDir: Schema.String,
+	version: Schema.String,
+	additionalScopes: Schema.Array(Schema.String),
+	additionalScopeFiles: Schema.Array(Schema.String),
+	versionFiles: Schema.Array(ResolvedVersionFileSchema),
+}).annotations({ identifier: "ResolvedPackageScope" });
+/** A package's resolved release surface. @public */
+export type ResolvedPackageScope = Schema.Schema.Type<typeof ResolvedPackageScopeSchema>;
 
-/**
- * Structured representation of a resolved `.changeset/config.json` for
- * consumers (CLI commands, agents, tests).
- *
- * @public
- */
-export interface InspectedConfig {
-	/** Absolute path of the resolved `.changeset/config.json`. */
-	readonly configPath: string;
-	/** Absolute path of the project root (the directory containing `.changeset/`). */
-	readonly projectDir: string;
-	/** The changelog formatter ID (e.g., `"@savvy-web/changesets/changelog"`). */
-	readonly changelog: string | null;
-	/** The base branch the workflow diffs against. */
-	readonly baseBranch: string;
-	/** Whether configured packages publish as public or restricted. */
-	readonly access: "public" | "restricted";
-	/** Package names ignored by the changeset workflow. */
-	readonly ignore: ReadonlyArray<string>;
-	/** Per-package release surfaces. */
-	readonly packages: ReadonlyArray<ResolvedPackageScope>;
-	/** True when the inspected config still used the deprecated top-level `versionFiles[]`. */
-	readonly legacyVersionFilesUsed: boolean;
-}
+/** Structured representation of a resolved `.changeset/config.json`. @public */
+export const InspectedConfigSchema = Schema.Struct({
+	configPath: Schema.String,
+	projectDir: Schema.String.annotations({
+		description: "Absolute project root (the directory containing .changeset/).",
+	}),
+	changelog: Schema.NullOr(Schema.String),
+	baseBranch: Schema.String,
+	access: Schema.Literal("public", "restricted"),
+	ignore: Schema.Array(Schema.String),
+	packages: Schema.Array(ResolvedPackageScopeSchema),
+	legacyVersionFilesUsed: Schema.Boolean,
+}).annotations({ identifier: "InspectedConfig" });
+/** Structured representation of a resolved `.changeset/config.json`. @public */
+export type InspectedConfig = Schema.Schema.Type<typeof InspectedConfigSchema>;
 
-/**
- * Reason a path was attributed to a particular package (or left unmapped).
- *
- * @public
- */
-export type ClassificationReason =
-	| "workspace"
-	| { readonly kind: "additionalScope"; readonly glob: string }
-	| { readonly kind: "versionFile"; readonly glob: string }
-	| null;
+/** Reason a path was attributed to a package (or left unmapped). @public */
+export const ClassificationReasonSchema = Schema.Union(
+	Schema.Literal("workspace"),
+	Schema.Struct({ kind: Schema.Literal("additionalScope"), glob: Schema.String }),
+	Schema.Struct({ kind: Schema.Literal("versionFile"), glob: Schema.String }),
+	Schema.Null,
+).annotations({ identifier: "ClassificationReason" });
+/** Reason a path was attributed to a package (or left unmapped). @public */
+export type ClassificationReason = Schema.Schema.Type<typeof ClassificationReasonSchema>;
 
-/**
- * The result of classifying a single path against a resolved config.
- *
- * @public
- */
-export interface Classification {
-	/** Repo-relative path. */
-	readonly path: string;
-	/** Owning package name, or `null` if the path is outside every known release surface. */
-	readonly package: string | null;
-	/** Why this attribution was made. `null` mirrors `package: null`. */
-	readonly reason: ClassificationReason;
-}
+/** The result of classifying a single path against a resolved config. @public */
+export const ClassificationSchema = Schema.Struct({
+	path: Schema.String,
+	package: Schema.NullOr(Schema.String),
+	reason: ClassificationReasonSchema,
+}).annotations({ identifier: "Classification" });
+/** The result of classifying a single path against a resolved config. @public */
+export type Classification = Schema.Schema.Type<typeof ClassificationSchema>;
 
 /**
  * Effect service interface for inspecting a project's changeset config.
@@ -350,6 +326,70 @@ function buildResolvedScopes(params: {
 }
 
 /**
+ * Read a workspace package's raw package.json. A genuinely missing manifest
+ * resolves to `null` so the caller can skip that package — a workspace
+ * directory without a `package.json` is not a release surface. Any OTHER
+ * failure (unreadable file, malformed JSON) is surfaced as a
+ * {@link ConfigurationError} carrying the package path, rather than silently
+ * dropping the package, which would cascade into wrong attribution.
+ */
+function readRawPackageJson(
+	fs: FileSystem.FileSystem,
+	pkgDir: string,
+): Effect.Effect<RawPackageJson | null, ConfigurationError> {
+	const pkgJsonPath = join(pkgDir, "package.json");
+	return fs.readFileString(pkgJsonPath).pipe(
+		Effect.flatMap((content) => Effect.try(() => JSON.parse(content) as RawPackageJson)),
+		Effect.catchAll((err) => {
+			// Effect's FileSystem surfaces a missing file as a SystemError with
+			// `reason: "NotFound"`. Treat only that as skippable.
+			if ((err as { reason?: unknown }).reason === "NotFound") {
+				return Effect.succeed<RawPackageJson | null>(null);
+			}
+			return Effect.fail(
+				new ConfigurationError({
+					field: "workspace",
+					reason: `Failed to read or parse ${pkgJsonPath}: ${err instanceof Error ? err.message : String(err)}`,
+				}),
+			);
+		}),
+	);
+}
+
+/**
+ * Build resolved scopes from the discovered workspace packages, keeping only
+ * those that are a release surface (declare publishConfig that yields at least
+ * one publish target). Used when `.changeset/config.json` declares no explicit
+ * `packages` record. The changeset `ignore` list is intentionally NOT consulted
+ * here — an ignored package still declares publishConfig and remains a valid
+ * changeset target.
+ */
+function buildFallbackScopes(
+	fs: FileSystem.FileSystem,
+	workspaces: ReadonlyArray<{ name: string; path: string; version: string }>,
+): Effect.Effect<ReadonlyArray<ResolvedPackageScope>, ConfigurationError> {
+	return Effect.forEach(workspaces, (ws) =>
+		Effect.gen(function* () {
+			const raw = yield* readRawPackageJson(fs, ws.path);
+			if (raw === null) return [] as ResolvedPackageScope[];
+			const binding = yield* readTargetsBinding(fs, ws.path);
+			const targets = SilkPublishability.detect(ws.name, raw, binding);
+			if (targets.length === 0) return [] as ResolvedPackageScope[];
+			return [
+				{
+					name: ws.name,
+					workspaceDir: ws.path,
+					version: ws.version,
+					additionalScopes: [],
+					additionalScopeFiles: [],
+					versionFiles: [],
+				},
+			] as ResolvedPackageScope[];
+		}),
+	).pipe(Effect.map((nested) => nested.flat()));
+}
+
+/**
  * Cross-package validation: no overlap in `additionalScopes`, no shadowing
  * of another workspace package's directory (regardless of whether that
  * package is itself declared in `config.packages`), and no duplicate
@@ -462,6 +502,7 @@ function configErrorFromParseError(parseError: unknown, configPath: string): Con
 function makeShape(
 	reader: typeof ChangesetConfigReader.Service,
 	discovery: typeof WorkspaceDiscovery.Service,
+	fs: FileSystem.FileSystem,
 ): ConfigInspectorShape {
 	const cache = new Map<string, InspectedConfig>();
 
@@ -535,18 +576,24 @@ function makeShape(
 				version: w.version,
 			}));
 
+			const hasExplicitPackages = Object.keys(decodedOptions.packages ?? {}).length > 0;
+
 			let scopes: ReadonlyArray<ResolvedPackageScope>;
-			try {
-				scopes = buildResolvedScopes({
-					options: decodedOptions,
-					workspaces,
-					projectDir,
-					configPath,
-				});
-				checkConflicts(scopes, workspaces, projectDir, configPath);
-			} catch (e) {
-				if (e instanceof ConfigurationError) return yield* Effect.fail(e);
-				throw e;
+			if (hasExplicitPackages) {
+				try {
+					scopes = buildResolvedScopes({
+						options: decodedOptions,
+						workspaces,
+						projectDir,
+						configPath,
+					});
+					checkConflicts(scopes, workspaces, projectDir, configPath);
+				} catch (e) {
+					if (e instanceof ConfigurationError) return yield* Effect.fail(e);
+					throw e;
+				}
+			} else {
+				scopes = yield* buildFallbackScopes(fs, workspaces);
 			}
 
 			const inspected: InspectedConfig = {
@@ -634,15 +681,19 @@ function classifyOne(inspected: InspectedConfig, path: string): Classification {
  *
  * @public
  */
-export const ConfigInspectorLive: Layer.Layer<ConfigInspector, never, ChangesetConfigReader | WorkspaceDiscovery> =
-	Layer.effect(
-		ConfigInspector,
-		Effect.gen(function* () {
-			const reader = yield* ChangesetConfigReader;
-			const discovery = yield* WorkspaceDiscovery;
-			return makeShape(reader, discovery);
-		}),
-	);
+export const ConfigInspectorLive: Layer.Layer<
+	ConfigInspector,
+	never,
+	ChangesetConfigReader | WorkspaceDiscovery | FileSystem.FileSystem
+> = Layer.effect(
+	ConfigInspector,
+	Effect.gen(function* () {
+		const reader = yield* ChangesetConfigReader;
+		const discovery = yield* WorkspaceDiscovery;
+		const fs = yield* FileSystem.FileSystem;
+		return makeShape(reader, discovery, fs);
+	}),
+);
 
 /**
  * Test factory — build a {@link ConfigInspector} that returns a fixed

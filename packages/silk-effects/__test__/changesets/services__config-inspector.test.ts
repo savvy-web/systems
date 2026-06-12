@@ -9,15 +9,19 @@
  * a pure mock layer would not.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Schema } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspacesLive } from "workspaces-effect";
 import { ConfigurationError } from "../../src/changesets/errors.js";
-import { ConfigInspector, ConfigInspectorLive } from "../../src/changesets/services/config-inspector.js";
+import {
+	ConfigInspector,
+	ConfigInspectorLive,
+	InspectedConfigSchema,
+} from "../../src/changesets/services/config-inspector.js";
 import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
 
 // Compose the dependency chain explicitly so that ConfigInspectorLive's
@@ -36,7 +40,9 @@ interface FixtureOptions {
 		readonly relPath: string;
 		readonly name: string;
 		readonly version: string;
+		readonly publishConfig?: Record<string, unknown>;
 	}>;
+	readonly rootPublishConfig?: Record<string, unknown>;
 	readonly configJson: Record<string, unknown>;
 	readonly extraFiles?: ReadonlyArray<{ readonly path: string; readonly content: string }>;
 }
@@ -52,6 +58,7 @@ function setupFixture(opts: FixtureOptions): string {
 				name: opts.rootName ?? "test-root",
 				version: opts.rootVersion ?? "1.0.0",
 				private: true,
+				...(opts.rootPublishConfig ? { publishConfig: opts.rootPublishConfig } : {}),
 				...(opts.workspacePackages && opts.workspacePackages.length > 0
 					? { workspaces: opts.workspacePackages.map((p) => p.relPath) }
 					: {}),
@@ -74,7 +81,18 @@ function setupFixture(opts: FixtureOptions): string {
 	for (const ws of wsPackages) {
 		const wsDir = join(dir, ws.relPath);
 		mkdirSync(wsDir, { recursive: true });
-		writeFileSync(join(wsDir, "package.json"), JSON.stringify({ name: ws.name, version: ws.version }, null, 2));
+		writeFileSync(
+			join(wsDir, "package.json"),
+			JSON.stringify(
+				{
+					name: ws.name,
+					version: ws.version,
+					...(ws.publishConfig ? { publishConfig: ws.publishConfig } : {}),
+				},
+				null,
+				2,
+			),
+		);
 	}
 
 	// .changeset/config.json
@@ -427,5 +445,124 @@ describe("ConfigInspector.classify", () => {
 
 		const results = await runClassify(dir, ["outside.txt", "packages/foo/b.ts", "packages/foo/a.ts"]);
 		expect(results.map((r) => r.path)).toEqual(["outside.txt", "packages/foo/b.ts", "packages/foo/a.ts"]);
+	});
+});
+
+describe("ConfigInspector.classify — empty-packages release-surface fallback", () => {
+	const dirs: string[] = [];
+
+	beforeEach(() => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	it("attributes a file to a publishable workspace package when packages is empty", async () => {
+		// setupFixture already writes package/package.json (with name +
+		// publishConfig); classify a source file inside the package dir so the
+		// fixture does not clobber that manifest and break WorkspaceDiscovery.
+		const dir = setupFixture({
+			workspacePackages: [
+				{ relPath: "package", name: "@savvy-web/rslib-builder", version: "0.2.0", publishConfig: { access: "public" } },
+			],
+			configJson: makeConfig(),
+			extraFiles: [{ path: "package/src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["package/src/index.ts"]);
+		expect(result.package).toBe("@savvy-web/rslib-builder");
+		expect(result.reason).toBe("workspace");
+	});
+
+	it("does NOT attribute root-level files to a private root that has no publishConfig", async () => {
+		const dir = setupFixture({
+			workspacePackages: [
+				{ relPath: "package", name: "@savvy-web/rslib-builder", version: "0.2.0", publishConfig: { access: "public" } },
+			],
+			configJson: makeConfig(),
+			extraFiles: [{ path: "README.md", content: "# root" }],
+		});
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["README.md"]);
+		expect(result.package).toBeNull();
+		expect(result.reason).toBeNull();
+	});
+
+	it("attributes files to a publishable single-root package", async () => {
+		const dir = setupFixture({
+			rootName: "silk-update-action",
+			rootPublishConfig: { access: "public" },
+			configJson: makeConfig(),
+			extraFiles: [{ path: "src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["src/index.ts"]);
+		expect(result.package).toBe("silk-update-action");
+		expect(result.reason).toBe("workspace");
+	});
+
+	it("leaves files unmapped when a single-root repo's root has no publishConfig", async () => {
+		const dir = setupFixture({
+			rootName: "private-thing",
+			configJson: makeConfig(),
+			extraFiles: [{ path: "src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["src/index.ts"]);
+		expect(result.package).toBeNull();
+	});
+
+	it("includes an ignored-but-configured package as a valid target", async () => {
+		const dir = setupFixture({
+			workspacePackages: [
+				{ relPath: "package", name: "@scope/held", version: "0.1.0", publishConfig: { access: "public" } },
+			],
+			configJson: makeConfig(),
+			extraFiles: [{ path: "package/index.ts", content: "" }],
+		});
+		const cfgPath = join(dir, ".changeset", "config.json");
+		const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
+		cfg.ignore = ["@scope/held"];
+		writeFileSync(cfgPath, `${JSON.stringify(cfg, null, 2)}\n`);
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["package/index.ts"]);
+		expect(result.package).toBe("@scope/held");
+	});
+});
+
+describe("InspectedConfigSchema", () => {
+	it("decodes a resolved config shape", () => {
+		const sample = {
+			configPath: "/repo/.changeset/config.json",
+			projectDir: "/repo",
+			changelog: "@savvy-web/changesets/changelog",
+			baseBranch: "main",
+			access: "public" as const,
+			ignore: [] as string[],
+			packages: [
+				{
+					name: "@scope/foo",
+					workspaceDir: "/repo/packages/foo",
+					version: "1.0.0",
+					additionalScopes: [] as string[],
+					additionalScopeFiles: [] as string[],
+					versionFiles: [] as Array<{ glob: string; paths: string[]; matchedFiles: string[] }>,
+				},
+			],
+			legacyVersionFilesUsed: false,
+		};
+		const decoded = Schema.decodeUnknownSync(InspectedConfigSchema)(sample);
+		expect(decoded.packages[0].name).toBe("@scope/foo");
 	});
 });

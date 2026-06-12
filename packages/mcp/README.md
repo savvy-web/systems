@@ -44,6 +44,7 @@ npx @modelcontextprotocol/inspector savvy-mcp .
 - `workspace_info` — returns a flat, structured projection of the workspace analysis: linked and fixed package groups as name arrays plus resolved registry targets. Backed by the same `silk-effects` analyzer the `savvy` CLI uses.
 - `silk_docs_search` — ranks documents in the corpus against a plain keyword or phrase query and returns hits with a normalized confidence score plus a high/medium/low label. It never returns empty: when nothing matches, it falls back to the priority-ordered top results.
 - `turbo_inspect` — read-only Turborepo inspection over `turbo --dry`: diagnose a task's per-package cache hits, derive the task graph or list the packages affected by recent changes. It never runs a task. Backed by the same `silk-effects` `Turbo` inspector an agent would otherwise drive by hand.
+- `changeset_inspect` — read-only changeset analysis for release work: `mode=branch` diffs the current branch against its base and attributes every changed file to its owning package, `mode=config` surfaces the resolved `.changeset/config.json` with its release surfaces, version files and ignore list. It never writes a changeset. Backed by the same `silk-effects` changeset services the `savvy` CLI uses.
 
 ## Resources
 
