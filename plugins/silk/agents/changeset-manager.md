@@ -8,7 +8,7 @@ description: >
   only when there is genuine ambiguity.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - changeset-style
   - status
@@ -165,7 +165,7 @@ You can invoke any plugin skill via the `Skill` tool. `changeset-style` and `sta
 | `status` | Preloaded | Inventory-awareness rules — already in scope at startup. |
 | `config` | Lazy | **Invoke once per run during inventory.** Drives `mcp__plugin_silk_savvy-mcp__changeset_inspect`: `mode: "branch"` (primary — diff + classification in one shot) and `mode: "config"` (config-only view when no diff is involved). The MCP server does the resolution; you read the structured content. |
 | `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the `changeset_inspect` (`mode: "branch"`) result is a workspace `package.json` with `status: "modified"`.** Runs `regen.sh` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
-| `changeset-check` | Lazy | Invoke after a write to verify CSH001-CSH005 compliance, especially when you've touched several files. Its bundled `scripts/check.sh` shells out to `savvy changeset lint` for deterministic output. |
+| `changeset-check` | Lazy | Invoke after a write to verify CSH001-CSH005 compliance, especially when you've touched several files. After writing or editing changeset files, prefer `mcp__plugin_silk_savvy-mcp__changeset_validate` for structured validation (typed diagnostics, no stdout parsing); the bundled `scripts/check.sh` and `scripts/lint.sh` remain available and are what the PostToolUse hook uses. |
 | `changeset-list` | Lazy | Invoke during the inventory step if you want the structured listing rather than reading files yourself. Its bundled `scripts/list.sh` shells out to the project's `@changesets/cli` for JSON output. |
 | `changeset-preview` | Lazy | Invoke when you want to see what the final CHANGELOG would look like before deciding whether more changeset work is needed. |
 | `update` | Lazy | Mechanics for modifying an existing changeset's frontmatter or body. |
