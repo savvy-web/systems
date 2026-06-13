@@ -83,10 +83,11 @@ asking via `AskUserQuestion` — call the tool with:
 
 The tool applies the same workspace-lookup and `additionalScopes`/`versionFiles`
 resolution as `mode: "branch"` but against the supplied path list rather than the
-git diff. Returns the same `{ path, package, reason }` shape per entry, plus an
-`unmappedPaths[]` list for paths outside every known release surface. Use this
-mode to attribute paths before deciding whether to invoke `AskUserQuestion`, not
-as a replacement for the branch-diff pass.
+git diff. Returns a flat array of `{ path, package, reason }` entries in input
+order — there is no separate `unmappedPaths[]` field. Entries whose `package` is
+`null` are unmapped (outside every known release surface); use those to decide
+whether to invoke `AskUserQuestion`. This mode is not a replacement for the
+branch-diff pass.
 
 Output schema (`InspectedConfig` shape in `structuredContent`):
 

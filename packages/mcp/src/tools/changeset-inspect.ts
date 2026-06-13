@@ -66,7 +66,7 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 				`## Files`,
 			];
 			for (const f of r.files) {
-				const owner = f.package ? mdInline(f.package) : "<unmapped>";
+				const owner = f.package ? mdInline(f.package) : mdInline("<unmapped>");
 				lines.push(`- ${mdInline(f.status)}  ${mdInline(f.path)}  ->  ${owner}`);
 			}
 			if (r.unmappedFiles.length > 0) {
@@ -100,7 +100,7 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 		case "classify": {
 			const lines = [`# changeset classify`, ``];
 			for (const c of data.result) {
-				const owner = c.package ? mdInline(c.package) : "<unmapped>";
+				const owner = c.package ? mdInline(c.package) : mdInline("<unmapped>");
 				lines.push(`- ${mdInline(c.path)}  ->  ${owner}`);
 			}
 			if (data.result.length === 0) lines.push("(no paths)");
