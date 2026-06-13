@@ -14,6 +14,8 @@ import type { McpContext } from "./context.js";
 import { registerAllResources } from "./resources/index.js";
 import { stderrQueryLogger } from "./resources/query-log.js";
 import { effectToZodSchema } from "./schema/effect-to-zod.js";
+import type { BiomeCheckArgs } from "./tools/biome-check.js";
+import { BiomeCheckAsMarkdown, BiomeCheckResult, runBiomeCheck } from "./tools/biome-check.js";
 import type { ChangesetInspectArgs } from "./tools/changeset-inspect.js";
 import { ChangesetInspectAsMarkdown, ChangesetInspectResult, changesetInspect } from "./tools/changeset-inspect.js";
 import { DocsSearchResult, DocsSearchResultAsMarkdown, runDocsSearch } from "./tools/docs-search.js";
@@ -115,6 +117,29 @@ export function buildServer(ctx: McpContext): McpServer {
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetInspect(args as ChangesetInspectArgs, ctx.cwd));
 			const text = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
+		"biome_check",
+		{
+			description:
+				"Run Biome over a path and get structured diagnostics back. mode=check (default; lint + format + organize-imports) or mode=lint. Set write=true to apply safe fixes (--write), unsafe=true for unsafe fixes (--write --unsafe). Prefer this over shelling out to biome; the LSP already covers files you've edited. Returns markdown in content[] and a typed object in structuredContent. NOTE: with write/unsafe this tool MUTATES files (git-reversible).",
+			inputSchema: {
+				paths: z.optional(z.array(z.string())).describe("Paths to check. Defaults to the whole workspace."),
+				mode: z
+					.optional(z.enum(["check", "lint"]))
+					.describe("check = lint+format+imports (default); lint = lint only."),
+				write: z.optional(z.boolean()).describe("Apply safe fixes (--write)."),
+				unsafe: z.optional(z.boolean()).describe("Apply unsafe fixes (--write --unsafe); implies write."),
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(BiomeCheckResult) as never,
+		},
+		async (args) => {
+			const data = await runBiomeCheck(args as BiomeCheckArgs, ctx.cwd);
+			const text = Schema.decodeSync(BiomeCheckAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);

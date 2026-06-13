@@ -16,5 +16,26 @@
 			"command": "sh",
 			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"]
 		}
+	},
+	"lspServers": {
+		"biome": {
+			"command": "sh",
+			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/biome-lsp.sh"],
+			"extensionToLanguage": {
+				".js": "javascript",
+				".mjs": "javascript",
+				".cjs": "javascript",
+				".jsx": "javascriptreact",
+				".ts": "typescript",
+				".mts": "typescript",
+				".cts": "typescript",
+				".tsx": "typescriptreact",
+				".json": "json",
+				".jsonc": "jsonc",
+				".css": "css",
+				".graphql": "graphql",
+				".gql": "graphql"
+			}
+		}
 	}
 }

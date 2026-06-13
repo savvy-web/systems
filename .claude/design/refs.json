@@ -40,7 +40,7 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "c643ef249c4941d0bd175d86db4675eb3b3b551183fe7d894c4bc5e9a0985c27",
+			"hash": "2e19b3089191c5a3d3cc64049055257aa045ded637a388e6e79109e52ec34611",
 			"recordedAt": "2026-06-12"
 		},
 		{
@@ -58,7 +58,7 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "bc14035a9eb453da21f939b5abda182b6240b0679e7fefd40f745d67cc993d5a",
+			"hash": "ddf485ff1d7a770cd036af103bcc6f4f7633a0d9b288285cb49c0798ecad44ec",
 			"recordedAt": "2026-06-12"
 		},
 		{
