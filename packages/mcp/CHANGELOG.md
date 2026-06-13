@@ -1,5 +1,19 @@
 # @savvy-web/mcp
 
+## 0.5.0
+
+### Features
+
+* [`111241c`](https://github.com/savvy-web/systems/commit/111241cefd5d91163871c02d2372a2dfae7cac5c) Adds the `biome_check` MCP tool, a thin proxy that runs Biome over a path and returns structured diagnostics instead of console text. Use `mode: "check"` (the default — lint, format, and organize-imports) or `mode: "lint"`; set `write` to apply safe fixes (`--write`) or `unsafe` to apply unsafe fixes (`--write --unsafe`). The tool parses Biome's gitlab reporter into a typed payload with per-file severity, rule, and message, alongside a markdown summary. Unlike the other savvy-mcp tools, `biome_check` can mutate the working tree when `write` or `unsafe` is set, so it carries no read-only hint.
+
+- [`5242460`](https://github.com/savvy-web/systems/commit/524246022b19465fad0e7a52de021b9804b1c37b) Adds the `changeset_inspect` MCP tool, a read-only changeset analyzer for the changeset-manager workflow. `mode: "branch"` diffs the current branch against its base and classifies every changed file by owning package, returning the affected packages and the unmapped paths to ask the user about; `mode: "config"` surfaces the resolved `.changeset/config.json` (release surfaces, version files, ignore list). Results are returned as typed structured content, replacing the previous bash wrappers that parsed CLI stdout.
+
+### Patch Changes
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 1.0.1 | 1.1.0 |
+
 ## 0.4.2
 
 ### Bug Fixes

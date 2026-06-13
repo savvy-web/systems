@@ -1,5 +1,13 @@
 # @savvy-web/github-action-builder
 
+## 0.7.8
+
+### Dependencies
+
+* | [`2b264af`](https://github.com/savvy-web/systems/commit/2b264af80a44e7bed50f6dcc9daf61c356550b29) | Dependency | Type    | Action  | From    | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :------ | :------ | -- |
+  | @rsbuild/core                                                                                     | dependency | updated | ^2.0.11 | ^2.0.12 |    |
+
 ## 0.7.7
 
 ### Dependencies
