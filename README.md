@@ -81,10 +81,19 @@ claude plugin add marketplace savvy-web/systems
 
 **Available plugins:**
 
+- **silk** -- Companion for `@savvy-web/silk`: changeset, commit, lint and Turborepo conventions, skills and agents, the bundled `savvy-mcp` server and live Biome diagnostics
+- **github-actions** -- Effect-based GitHub Actions conventions served via the shared `savvy-mcp` server
+- **docs** -- Authors and registers docs in the `savvy-mcp` corpus via the `mcp` agent
 - **changesets** -- Companion for `@savvy-web/changesets`: structured changeset files
 - **vitest** -- Companion for `@savvy-web/vitest`: well-structured test files
 - **lint-staged** -- Companion for `@savvy-web/lint-staged`: lint-staged configuration
 - **commitlint** -- Companion for `@savvy-web/commitlint`: commitlint configuration
+
+### Biome in the silk plugin
+
+The silk plugin runs the Biome language server (`biome lsp-proxy`), so Biome lint and format diagnostics surface automatically while you work across JavaScript, TypeScript, JSON, CSS and GraphQL files. Biome must be available for the language server to start: install it globally on PATH (recommended -- `brew install biome` or `npm i -g @biomejs/biome`) or add it as a project devDependency so `node_modules/.bin/biome` resolves. Without Biome the language server exits with an actionable message telling you to install it, surfaced in the `/plugin` Errors tab.
+
+For on-demand checks the bundled `savvy-mcp` server exposes the `biome_check` tool: run Biome over any path and get structured diagnostics back, optionally applying fixes with `write` (safe) or `unsafe`. It complements the always-on LSP, which is read-only. Running Biome through Bash still works and draws a one-time, non-blocking nudge toward `biome_check`.
 
 ## Ecosystem
 

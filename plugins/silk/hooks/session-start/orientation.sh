@@ -147,6 +147,33 @@ dispatch the turborepo agent — it drives turbo_inspect, interprets the hash
 contributors, and recommends concrete changes.
 </turbo_capability>
 
+<biome_capability>
+Biome (the suite's linter/formatter) is wired into this session two ways:
+
+1. LSP (automatic). After you edit a JS/TS/JSON/CSS/GraphQL file, Biome lint and
+   format diagnostics are reported to you automatically. Do NOT run
+   \`biome check <file>\` via Bash just to SEE problems on a file you edited — the
+   diagnostics already arrive. The LSP cannot apply fixes and only sees files you
+   have opened/edited.
+
+2. mcp__savvy-mcp__biome_check (on demand, structured, can fix). Run Biome over
+   any path and get parsed diagnostics back instead of console text:
+     mode:   "check" (default — lint + format + imports) | "lint"
+     write:  true  — apply safe fixes (--write)
+     unsafe: true  — apply unsafe fixes (--write --unsafe)
+   Use it for whole-package or multi-file checks and for applying fixes, instead
+   of shelling out to biome.
+
+<active_hooks>
+  <hook event="PreToolUse" matcher="Bash">
+    When you run Biome via Bash (directly or through a package.json script), a
+    one-time, non-blocking nudge reminds you to prefer biome_check. It never
+    blocks — Bash biome stays a valid escape hatch when the tool lacks a flag you
+    need or the MCP server is misbehaving.
+  </hook>
+</active_hooks>
+</biome_capability>
+
 <changesets_plugin>
 
 <overview>
