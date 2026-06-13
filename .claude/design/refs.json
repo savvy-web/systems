@@ -10,20 +10,20 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "ae3744d7bb02cc28b5c23895a50951b793a037736853e8990b81dadddf796c65",
-			"recordedAt": "2026-06-12"
+			"hash": "4ac89779688c02c18a5fc5f1cbd5c7d335cf2a76cc8d24502a2ebf3e60b5b6b1",
+			"recordedAt": "2026-06-13"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "39e44c25c1a5ba641b2238cb28e542b9d8c999bee69edd864cf8121bba20c6f9",
-			"recordedAt": "2026-06-12"
+			"hash": "0e2dbfe005459133bdaa48c65c6938094de9681b8f231479dfe8ef41efb88efe",
+			"recordedAt": "2026-06-13"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/docs/architecture.md",
-			"hash": "40673ee99c18cd90f1999abb9ca578bf6bb70983cf820767fe8fad8a7f34166b",
-			"recordedAt": "2026-06-12"
+			"hash": "f0be1df9f332bed763d24e70117062290d956ed6d25ed9e2abf8d2801f1de87f",
+			"recordedAt": "2026-06-13"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -40,8 +40,14 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "c6f0b82d8021a85f50d09399a2b6f5a0fe79cfc6c9d0a89259df5b97647b2333",
-			"recordedAt": "2026-06-12"
+			"hash": "27123e3f6736d34fd270cc13bb18481d765cc64cf4938ce7491a508c50d2cec7",
+			"recordedAt": "2026-06-13"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/rspress-builder/architecture.md",
+			"hash": "7fae14b2bf22b8cef19e1a361ff0a1255e9fa6e94fbee4154a19c264fe3a688e",
+			"recordedAt": "2026-06-13"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -58,8 +64,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "9b6042644f2cb197f7075dd136deb09e934416fa2340e74d42affea9e1371cb7",
-			"recordedAt": "2026-06-12"
+			"hash": "a53bd9ad54d555be7fb4f4532f4ef79e9364d08b4dba7d4159ae5f5c49441394",
+			"recordedAt": "2026-06-13"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -70,8 +76,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "8f8c2657510765140d1d3a686061106087af136fdf6d57e96d44242ef0bd5015",
-			"recordedAt": "2026-06-12"
+			"hash": "0dbc6cd9ec054ebf31fb0d067cd79f88da8a9ecf4cbc878823a8253163ef06e4",
+			"recordedAt": "2026-06-13"
 		}
 	]
 }

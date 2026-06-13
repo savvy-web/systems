@@ -3,13 +3,14 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-13
+last-synced: 2026-06-13
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
   - ../cli/architecture.md
   - ../github-action-builder/architecture.md
+  - ../rspress-builder/architecture.md
 dependencies:
   - ../tsdown-plugins/architecture.md
 ---
@@ -138,10 +139,19 @@ The cjs-default-interop footer (rslib `cjsInterop` parity) and the node-builtin 
 
 A package can pin SOME export paths to their own format/bundling while the base build uses a different posture. This is silk's shape: base entries are ESM-only with silk-effects externalized, but `./changesets/markdownlint` must be dual-format CJS force-bundling silk-effects (see `../silk/architecture.md`). The partition machinery lives in `@savvy-web/tsdown-plugins` (`EntryOverride` + the partition loop, the `DualExports` Set); the bundler resolves config into partitions.
 
-- **`defineBuild({ overrides })`** takes `ReadonlyArray<BuildEntryOverride>`. Each override lists `entries` (canonical export paths like `"./changesets/markdownlint"` or `"."`) plus its own optional `format`/`bundle`/`externals`/`bundleNodeModules`/`bundledPackages`/`dtsExternals`.
+- **`defineBuild({ overrides })`** takes `ReadonlyArray<BuildEntryOverride>`. Each override lists `entries` (canonical export paths like `"./changesets/markdownlint"` or `"."`) plus its own optional `format`/`bundle`/`externals`/`bundleNodeModules`/`bundledPackages`/`dtsExternals` and the three web-runtime fields `platform`/`css`/`outSubdir` (see below). See `BuildEntryOverride` in `src/config.ts`.
 - **`runBuild` resolves export paths to entry partitions.** It maps each override `entries` export path through `createEntryName` (re-exported from tsdown-plugins) to the build entry name, partitions the package's full entry map into a base set (everything not overridden) plus one `EntryOverride` per config override, computes the `dualExports` Set (which export keys emit cjs, from the base format and each override's format) and threads `overrides`/`dualExports` into `buildTargetGroups`. The base `entry` passed to the build EXCLUDES the overridden entries.
 - **Override export paths must be canonical** — `runBuild` THROWS if an entry omits the `./` prefix (a non-canonical `"changesets/markdownlint"` would flatten to a valid entry name and build the JS, but its `dualExports` key would not match the manifest's `"./"`-prefixed export key, silently dropping the `require` condition), and throws if an export path is not actually a build entry of the package.
 - **The no-override path is byte-identical to before.** With no `overrides`, `runBuild` passes the full entry map and no partitions, so the build is exactly the prior single-partition two-pass loop.
+
+### The web-runtime override fields (platform, css, outSubdir)
+
+Three additive `BuildEntryOverride` fields let an override partition build a browser sub-bundle, used by `@savvy-web/rspress-builder` for an RSPress `./runtime` (see `../rspress-builder/architecture.md`). The partition mechanics live in `@savvy-web/tsdown-plugins`; the bundler resolves config and threads them.
+
+- **`platform`** (`BuildPlatform` = `"node" | "browser" | "neutral"`, default node) sets the JS-pass platform for that partition; the dts pass stays node. **`css`** (`CssOptions`) enables `@tsdown/css` on the JS pass. Both are additive and backward-compatible — silk's `./changesets/markdownlint` override sets neither.
+- **`outSubdir`** builds BOTH passes of the partition into `<group>/pkg/<outSubdir>/` with the entry renamed to `index`, so the partition cannot collide with the base partition's per-file output and the barrel path (`<outSubdir>/index.js`) is deterministic. `runBuild` THROWS if an `outSubdir` override pins more than one export path (the subdir is a single-export sub-package).
+- **`subdirExports` is derived automatically.** `runBuild` collects the export keys of all `outSubdir` overrides into a `subdirExports` Set and threads it to `buildTargetGroups` so the manifest rewrites those keys to `<subdir>/index.{js,d.ts}` (see `../tsdown-plugins/architecture.md`).
+- **The meta entry is repointed for the subdir.** `applySubdirMetaEntries` (a `run.ts` helper) overwrites the override's meta dts basename to `<outSubdir>/index` (keyed by the stable flattened entry name) so `generateMeta` reads the bundled dts at `pkg/<outSubdir>/index.d.ts` rather than a root-level `<flatName>.d.ts`. This is what feeds a `./runtime` export's API model into the merged `.api.json`.
 
 ## Loose files: standalone bundled outputs
 
@@ -164,11 +174,11 @@ Two `defineBuild` defaults live in the bundler so packages stop carrying boilerp
 
 ## Self-hosting: the bootstrap ladder
 
-The bundler, `tsdown-plugins` and all seven library/host packages build via this stack instead of rslib. The ladder resolves the chicken-and-egg of a builder building itself across three tiers:
+The bundler, `tsdown-plugins` and all eight library/host packages build via this stack instead of rslib. The ladder resolves the chicken-and-egg of a builder building itself across three tiers:
 
 - **Tier 1 — `@savvy-web/tsdown-plugins`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from its **OWN `./src`** (`tsx` compiles the TS on the fly — no built copy exists yet). It cannot use `defineBuild`/`runBuild` because those live in the bundler, which is downstream. This is the **one package whose build scripts still run `tsx savvy.build.ts`**: every other package runs `node savvy.build.ts` (Node 24+ native type-stripping over the erasable-types-only file), but tsdown-plugins cannot type-strip a file that imports its own un-built `./src`.
 - **Tier 2 — `@savvy-web/bundler`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from the **already-built `@savvy-web/tsdown-plugins`** (the workspace link). It cannot use its own `defineBuild`/`runBuild` (that would need an already-built bundler).
-- **Tier 3 — the seven downstream packages** (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`, `cli`, `mcp`, `silk`) build via the normal **front-door** `defineBuild`/`runBuild`, because the bundler is built by the time they run.
+- **Tier 3 — the eight downstream packages** (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`, `cli`, `mcp`, `silk`, `rspress-builder`) build via the normal **front-door** `defineBuild`/`runBuild`, because the bundler is built by the time they run. `rspress-builder` self-hosts through the front door even though it itself wraps `runBuild` — `definePlugin` returns a plain `BuildConfig`, so its own `savvy.build.ts` uses `defineBuild`/`runBuild` directly.
 
 Turbo config is mostly generic: the root `turbo.json` carries the generic `build:dev`/`build:prod`/`build:meta`/`types:check` tasks and its `*.ts` input glob already covers `savvy.build.ts`, so most child `turbo.json`s are just `{"tasks": {}}` (`extends ["//"]`). Two exceptions carry an override: mcp (its corpus pipeline) and the meta-emitting leaves, which override `build:meta` `outputs` to add their cross-package `localPaths` dirs (those cross-package paths can never be turbo-tracked outputs anyway, since they write into *other* packages) and add a `build:meta` SCRIPT.
 
@@ -274,6 +284,7 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 - **The bundling-posture knobs are pure wiring.** `bundleNodeModules`/`bundle`/`bundledPackages`/`dtsExternals` are conditional-spread onto `buildTargetGroups`; the dts-posture mirror, the cjs-default-interop plugin and the node-builtin default-interop plugin live in tsdown-plugins. See [Bundling-posture knobs](#bundling-posture-knobs).
 - **`define` is pure wiring; the version-key fix lives in tsdown-plugins.** `defineBuild({ define })` is conditional-spread onto `buildTargetGroups` and merged after the auto-version key in both passes (a same-named user key wins). See [The orchestrator to tsdown boundary](#the-orchestrator-to-tsdown-boundary).
 - **Per-entry overrides are resolved in `runBuild`, not the build loop.** `runBuild` maps override export paths to entry partitions (throwing on a non-canonical or non-existent export path), computes the `dualExports` Set and threads partitions into `buildTargetGroups`; tsdown-plugins owns the partition loop. A no-override build is byte-identical. See [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides).
+- **The web-runtime override fields are pure wiring derived in `runBuild`.** `platform`/`css` pass through to the partition; `outSubdir` makes `runBuild` enforce one export per subdir, derive `subdirExports` for the manifest and repoint the subdir's meta dts basename to `<subdir>/index` via `applySubdirMetaEntries`. The isolated-subdir output and manifest rewrite live in tsdown-plugins. `@savvy-web/rspress-builder` is the consumer. See [The web-runtime override fields](#the-web-runtime-override-fields-platform-css-outsubdir) and `../rspress-builder/architecture.md`.
 - **Loose files are outside the exports/dts/meta graph.** `defineBuild({ looseFiles })` emits standalone bundled files at literal paths (pnpm config-dependency pnpmfiles being the driver); `runBuild` normalizes via `normalizeLooseFiles`, validates through `ConfigValidator` and forwards descriptors to `buildTargetGroups`. They get no manifest export, no `.d.ts` and no api-model. No collision guard with real export filenames yet. See [Loose files](#loose-files-standalone-bundled-outputs).
 - **`externals` lists only departures; defaults strip and unminify.** tsdown auto-externalizes declared deps, so `externals` names undeclared transitives only. `transform` defaults to `defaultManifestTransform` (a custom transform replaces and re-calls it), `minify` defaults off and applies to prod only, and prod declaration source-maps are stripped after meta generation. See [Manifest strip and unminified prod defaults](#manifest-strip-and-unminified-prod-defaults).
 

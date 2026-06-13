@@ -113,6 +113,21 @@ describe("defineBuild", () => {
 	it("leaves looseFiles undefined when not provided", () => {
 		expect(defineBuild({}).looseFiles).toBeUndefined();
 	});
+
+	it("accepts platform + css on an entry override", () => {
+		const config = defineBuild({
+			overrides: [
+				{
+					entries: ["./runtime"],
+					platform: "browser",
+					css: { modules: { localsConvention: "camelCaseOnly", namedExport: false } },
+					externals: ["react", "@theme"],
+				},
+			],
+		});
+		expect(config.overrides?.[0]?.platform).toBe("browser");
+		expect(config.overrides?.[0]?.css).toEqual({ modules: { localsConvention: "camelCaseOnly", namedExport: false } });
+	});
 });
 
 describe("parseArgs", () => {

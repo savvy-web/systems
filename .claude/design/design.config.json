@@ -135,6 +135,17 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"rspress-builder": {
+			"path": "packages/rspress-builder",
+			"designDocsPath": ".claude/design/rspress-builder",
+			"categories": ["architecture"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/rspress-builder/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"skills": {

@@ -200,7 +200,7 @@ const config = defineBuild({
 });
 ```
 
-Each override carries the same `format`, `bundle`, `externals`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` fields as the base config. An override does not inherit the base `externals` — list what that partition needs. The build errors if an override names an export path the package does not declare.
+Each override carries the same `format`, `bundle`, `externals`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` fields as the base config, plus three partition-only fields: `platform` (the JS-pass target, `"node"` by default or `"browser"` for a client runtime), `css` (forwarded to tsdown's `css` option to enable `@tsdown/css`) and `outSubdir` (builds the partition into an isolated `<group>/pkg/<subdir>/` sub-package, for which exactly one export path may be pinned). An override does not inherit the base `externals` — list what that partition needs. The build errors if an override names an export path the package does not declare. These partition fields are what [`@savvy-web/rspress-builder`](https://www.npmjs.com/package/@savvy-web/rspress-builder) composes to build an RSPress plugin's browser runtime bundle.
 
 ## Loose files
 
@@ -277,7 +277,7 @@ const config = defineBuild({
 - **JSX, config-first** — JSX transform is inherited from `tsconfig.json` and overridable via the `jsx` field, feeding both the dts tsconfig and the tsdown transform.
 - **Dual-format output** — esm-only by default; set `format` to `["esm", "cjs"]` for a require-able CJS output with default-export interop, `.d.cts` declarations and dual `import`/`require` export conditions.
 - **Dependency bundling** — declared dependencies stay external by default; `bundle`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` force-inline specific packages or all node_modules into the output, inline select declarations into the `.d.ts` or hold a package out of the declaration bundle when its types cannot be inlined.
-- **Per-entry overrides** — `overrides` pins a subset of export entries to their own format and bundling, so one entry can ship dual-format CJS in an otherwise ESM-only package without changing the rest.
+- **Per-entry overrides** — `overrides` pins a subset of export entries to their own format and bundling, so one entry can ship dual-format CJS in an otherwise ESM-only package without changing the rest; partition-only `platform`, `css` and `outSubdir` fields also let an entry build for the browser with CSS modules into its own sub-package.
 - **Loose files** — `looseFiles` emits standalone bundled files at literal output paths outside the exports/declaration/api-model graph, with the format inferred from the key extension; pair with `bundleNodeModules` for self-contained pnpm config-dependency pnpmfiles.
 - **Readable prod output** — prod output is unminified by default to keep stack traces legible and pass security scanners; `minify` opts back in.
 - **Default manifest stripping** — the published `package.json` drops build- and dev-only fields automatically; a custom `transform` replaces the default and can re-apply it via `defaultManifestTransform`.

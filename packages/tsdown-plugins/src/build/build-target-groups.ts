@@ -9,11 +9,23 @@ import { cjsDefaultInterop } from "./cjs-default-interop.js";
 import type { NormalizedLooseFile } from "./loose-files.js";
 import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
 import { syncPublicDir } from "./sync-public.js";
-import type { BuildFormat, BuildGroupSpec } from "./target-groups.js";
+import type { BuildFormat, BuildGroupSpec, BuildPlatform } from "./target-groups.js";
 import { deriveDtsPassOptions, deriveTargetGroupOptions, outDirFor } from "./target-groups.js";
 
 /** Signature compatible with tsdown's `build(inlineConfig)`. */
 export type TsdownBuild = (config: Record<string, unknown>) => Promise<unknown>;
+
+/**
+ * CSS handling for a partition's JS pass, forwarded VERBATIM to tsdown's `css` option (consumed
+ * by `@tsdown/css`). Structurally typed so tsdown-plugins takes no dependency on `@tsdown/css`.
+ * The package whose runtime is built must install `@tsdown/css`; tsdown loads it lazily.
+ */
+export interface CssOptions {
+	readonly modules?:
+		| boolean
+		| { readonly localsConvention?: string; readonly namedExport?: boolean; readonly [k: string]: unknown };
+	readonly [k: string]: unknown;
+}
 
 /**
  * One entry partition built with its own format + bundling posture, layered into the
@@ -28,6 +40,17 @@ export interface EntryOverride {
 	readonly bundleNodeModules?: boolean | undefined;
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+	/** JS-pass platform for this partition. Defaults to the base "node". Use "browser" for a web runtime. */
+	readonly platform?: BuildPlatform | undefined;
+	/** CSS handling forwarded to tsdown's `css` option (JS pass only). Enables `@tsdown/css`. */
+	readonly css?: CssOptions | undefined;
+	/**
+	 * Build this partition into `<groupOutDir>/<outSubdir>/` instead of the shared group root.
+	 * Isolates a sub-package (e.g. an RSPress `./runtime`) so its bundleless per-file output cannot
+	 * collide with the base partition's output and its barrel path is deterministic. The partition's
+	 * entry should be `{ index: <barrel source> }` so it emits `<outSubdir>/index.js` + `<outSubdir>/index.d.ts`.
+	 */
+	readonly outSubdir?: string | undefined;
 }
 
 export interface BuildTargetGroupsOptions {
@@ -118,6 +141,8 @@ export interface BuildTargetGroupsOptions {
 	 * `format`-includes-cjs behavior.
 	 */
 	readonly dualExports?: DualExports | undefined;
+	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
+	readonly subdirExports?: ReadonlySet<string> | undefined;
 	/** Injectable for tests; defaults to tsdown's build. */
 	readonly build?: TsdownBuild;
 }
@@ -179,9 +204,11 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				...(options.minify !== undefined ? { minify: options.minify } : {}),
 				...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 				...(options.define !== undefined ? { define: options.define } : {}),
+				...(part.platform !== undefined ? { platform: part.platform } : {}),
 			};
 			const js = deriveTargetGroupOptions(deriveInput);
 			const dts = deriveDtsPassOptions(deriveInput);
+			const partOutDir = part.outSubdir !== undefined ? join(js.outDir, part.outSubdir) : js.outDir;
 			const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: js.isProd };
 
 			// Manifest is emitted ONCE per group, by the base partition's JS pass, covering the
@@ -193,6 +220,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						transform: options.transform,
 						sourceDir: options.cwd,
 						dual: options.dualExports ?? js.format.includes("cjs"),
+						...(options.subdirExports !== undefined ? { subdirExports: options.subdirExports } : {}),
 					})
 				: undefined;
 
@@ -201,7 +229,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				config: false,
 				cwd: options.cwd,
 				entry: js.entry,
-				outDir: js.outDir,
+				outDir: partOutDir,
 				format: js.format,
 				platform: js.platform,
 				sourcemap: js.sourcemap,
@@ -211,6 +239,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				fixedExtension: js.fixedExtension,
 				dts: js.dts,
 				define: js.define,
+				...(part.css !== undefined ? { css: part.css } : {}),
 				...(partExternals?.length || partBundleNodeModules || partBundle?.length
 					? {
 							deps: {
@@ -272,7 +301,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				config: false,
 				cwd: options.cwd,
 				entry: dts.entry,
-				outDir: dts.outDir,
+				outDir: partOutDir,
 				format: dts.format,
 				platform: dts.platform,
 				sourcemap: dts.sourcemap,

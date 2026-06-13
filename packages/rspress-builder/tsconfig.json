@@ -1,0 +1,5 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "@savvy-web/bundler/ecma.json",
+	"include": ["src/**/*.ts", "__test__/**/*.ts", "savvy.build.ts"]
+}

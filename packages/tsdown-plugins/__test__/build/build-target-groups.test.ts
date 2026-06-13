@@ -866,4 +866,88 @@ describe("buildTargetGroups", () => {
 		expect(cjs?.plugins).toContain("savvy:cjs-default-interop");
 		expect(cjs?.plugins).toContain("savvy:node-builtin-default-interop");
 	});
+
+	it("threads an override partition's platform + css into the JS pass only", async () => {
+		const calls: Array<{ platform: unknown; css: unknown; dts: unknown; entry: Record<string, string> }> = [];
+		const fakeBuild = vi.fn(
+			async (cfg: { platform: unknown; css?: unknown; dts: unknown; entry: Record<string, string> }) => {
+				calls.push({ platform: cfg.platform, css: cfg.css, dts: cfg.dts, entry: cfg.entry });
+				return [];
+			},
+		);
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "./src/index.ts" }, // base (plugin) entry
+			tsconfigPath: "/tmp/t.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			overrides: [
+				{
+					entry: { "runtime/index": "./src/runtime/index.tsx" },
+					platform: "browser",
+					css: { modules: { localsConvention: "camelCaseOnly", namedExport: false } },
+					externals: ["react", "@theme"],
+				},
+			],
+			build: fakeBuild as never,
+		});
+
+		// 1 group x (base JS, base dts, override JS, override dts) = 4 calls.
+		expect(fakeBuild).toHaveBeenCalledTimes(4);
+		const [baseJs, baseDts, ovJs, ovDts] = calls;
+
+		// Base partition JS pass: node platform, no css.
+		expect(baseJs?.platform).toBe("node");
+		expect(baseJs?.css).toBeUndefined();
+
+		// Base dts pass: stays node, NO css (types do not carry CSS config).
+		expect(baseDts?.platform).toBe("node");
+		expect(baseDts?.css).toBeUndefined();
+
+		// Override JS pass: browser platform + css forwarded.
+		expect(ovJs?.platform).toBe("browser");
+		expect(ovJs?.css).toEqual({ modules: { localsConvention: "camelCaseOnly", namedExport: false } });
+		expect(ovJs?.dts).toBe(false);
+
+		// Override dts pass: stays node, NO css (types resolve via ambient declarations).
+		expect(ovDts?.platform).toBe("node");
+		expect(ovDts?.css).toBeUndefined();
+	});
+
+	it("routes an override partition with outSubdir into a nested outDir (both passes)", async () => {
+		const calls: Array<{ outDir: string; dts: unknown }> = [];
+		const fakeBuild = vi.fn(async (cfg: { outDir: string; dts: unknown }) => {
+			calls.push({ outDir: cfg.outDir, dts: cfg.dts });
+			return [];
+		});
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "./src/index.ts" },
+			tsconfigPath: "/tmp/t.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			overrides: [
+				{
+					entry: { index: "./src/runtime/index.tsx" },
+					outSubdir: "runtime",
+					platform: "browser",
+					css: { modules: { localsConvention: "camelCaseOnly", namedExport: false }, inject: true },
+					externals: ["react", "@theme"],
+				},
+			],
+			build: fakeBuild as never,
+		});
+
+		// base JS, base dts, runtime JS, runtime dts = 4 calls.
+		expect(fakeBuild).toHaveBeenCalledTimes(4);
+		const [baseJs, baseDts, rtJs, rtDts] = calls;
+		expect(baseJs.outDir).toBe("/abs/pkg/dist/dev/pkg");
+		expect(baseDts.outDir).toBe("/abs/pkg/dist/dev/pkg");
+		expect(rtJs.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
+		expect(rtJs.dts).toBe(false);
+		expect(rtDts.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
+		expect(rtDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
+	});
 });

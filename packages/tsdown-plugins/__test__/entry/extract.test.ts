@@ -39,6 +39,14 @@ describe("extractEntries", () => {
 		expect(r.entries).toEqual({ index: "./src/index.ts" });
 	});
 
+	it("does not treat a .d.ts asset export as a buildable entry", () => {
+		const r = extractEntries({
+			exports: { ".": "./src/index.ts", "./rspress-env.d.ts": "./public/rspress-env.d.ts" },
+		});
+		expect(r.entries).toEqual({ index: "./src/index.ts" });
+		expect(r.exportPaths).toEqual({ index: "." });
+	});
+
 	it("exportsAsIndexes nests under <name>/index instead of flattening", () => {
 		const r = extractEntries({ exports: { "./foo/bar": "./src/foo/bar.ts" } }, { exportsAsIndexes: true });
 		expect(r.entries).toEqual({ "foo/bar/index": "./src/foo/bar.ts" });
