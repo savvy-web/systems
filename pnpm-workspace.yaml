@@ -2,7 +2,7 @@ packages:
   - packages/*
 autoInstallPeers: true
 configDependencies:
-  "@savvy-web/pnpm-plugin-silk": 0.14.5+sha512-bA2uq4Z7cQ2tIUN96J3MjE1arvv1IpDYzwdxlXaaUB0YJud5PlYBjIZ+9dNzvc34KpcfaLIN0AhuIRrg0BFkLA==
+  "@savvy-web/pnpm-plugin-silk": 0.15.0+sha512-GZqCPTPX5tlv8vT77sBFmJc2ddh4bwU83QozT5sr3yqbJDJEjfsLtisR9FizmL3WgnqZA1dCFSiAEpI84kAaRQ==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
