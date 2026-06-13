@@ -62,7 +62,7 @@
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
 		"fast-check": "^4.8.0",
-		"markdownlint": "^0.40.0",
+		"markdownlint": "^0.41.0",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.8"
