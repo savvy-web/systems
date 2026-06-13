@@ -3,9 +3,9 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-05-20
-last-synced: 2026-05-20
-completeness: 95
+updated: 2026-06-12
+last-synced: 2026-06-12
+completeness: 92
 related:
   - ./index.md
   - ./services.md
@@ -17,7 +17,7 @@ dependencies: []
 
 ## Overview
 
-Dependencies, external integrations, and how services compose in
+Dependencies, external integrations and how services compose in
 `@savvy-web/github-action-effects`.
 
 See [index.md](./index.md) for architecture overview.
@@ -27,7 +27,7 @@ See [layers.md](./layers.md) for layer dependency graph.
 
 ## Dependencies
 
-### Required Peers
+### Required peers
 
 **effect** -- Core dependency. Services use `Context.Tag`, `Layer`,
 `Schema`, `Data.TaggedError`, `FiberRef`, `Logger`, `Config`, and
@@ -39,7 +39,7 @@ programs access to `FileSystem`. Several services (ActionOutputs,
 ActionState, ConfigLoader, ChangesetAnalyzer, WorkspaceDetector,
 PackagePublish) depend on `FileSystem` from `@effect/platform`.
 
-### Direct Dependencies
+### Direct dependencies
 
 | Package | Purpose | Used By |
 | --- | --- | --- |
@@ -47,14 +47,15 @@ PackagePublish) depend on `FileSystem` from `@effect/platform`.
 | `@octokit/auth-app` | GitHub App JWT authentication | `OctokitAuthAppLive` |
 | `@azure/storage-blob` | Azure Blob Storage upload/download for cache | `ActionCacheLive` |
 | `@sigstore/sign` | Sigstore DSSE signing (Fulcio + Rekor) | `SigstoreSignerLive` |
+| `@sigstore/bundle` | Sigstore bundle construction/validation | `SigstoreSignerLive` |
 | `@cyclonedx/cyclonedx-library` | CycloneDX 1.5 BOM model + JSON serialization | `SbomLive` |
 | `jsonc-effect` | JSONC parsing with Effect | `ConfigLoaderLive` |
 | `semver-effect` | Semver operations with Effect | `SemverResolver` |
 | `yaml-effect` | YAML parsing with Effect | `ConfigLoaderLive` |
 
-These are direct dependencies (not peers), bundled with the library.
+These are direct dependencies (not peers), bundled with the library. The current set is authoritative in `packages/github-action-effects/package.json`.
 
-### No @actions/* Dependencies
+### No @actions/* dependencies
 
 All `@actions/*` packages have been removed. The library implements the
 GitHub Actions runtime protocol natively:
@@ -78,18 +79,18 @@ GitHub Actions runtime protocol natively:
 
 ---
 
-## GitHub Actions Runtime Protocol
+## GitHub Actions runtime protocol
 
 The library interacts with the GitHub Actions runtime through:
 
-### Workflow Commands (stdout)
+### Workflow commands (stdout)
 
 Format: `::command key=value,key=value::message`
 
-Used for: debug, warning, error, group/endgroup, add-mask, and other
+Used for: debug, warning, error, group/endgroup, add-mask and other
 workflow commands. Implemented in `packages/github-action-effects/src/runtime/WorkflowCommand.ts`.
 
-### Environment Files
+### Environment files
 
 Append key-value pairs to files specified by environment variables:
 
@@ -104,7 +105,7 @@ Append key-value pairs to files specified by environment variables:
 Implemented in `packages/github-action-effects/src/runtime/RuntimeFile.ts`. Supports multiline values
 via the delimiter protocol (`key<<delimiter\nvalue\ndelimiter`).
 
-### Input Variables
+### Input variables
 
 Action inputs are available as `INPUT_*` environment variables with the
 name uppercased and spaces replaced by underscores. Hyphens are preserved.
@@ -112,7 +113,7 @@ name uppercased and spaces replaced by underscores. Hyphens are preserved.
 Implemented in `packages/github-action-effects/src/runtime/ActionsConfigProvider.ts` as an Effect
 `ConfigProvider`.
 
-### Cache Protocol (V2 Twirp)
+### Cache protocol (V2 Twirp)
 
 The V2 cache API at `ACTIONS_RESULTS_URL` with `ACTIONS_RUNTIME_TOKEN`
 authentication. Uses the Twirp RPC service at
@@ -125,96 +126,23 @@ Twirp RPC calls and `@azure/storage-blob` for Azure Blob Storage transfers.
 
 ---
 
-## Service Dependency Graph
+## Service dependency graph
 
-```text
-Tier 0 — No service dependencies:
-  ActionLogger              (uses WorkflowCommand, Effect Logger)
-  ActionEnvironment         (reads process.env)
-  ActionCache               (V2 Twirp RPC + @azure/storage-blob + tar)
-  CommandRunner             (node:child_process spawn)
-  ToolInstaller             (native fetch + spawn + fs)
-  DryRun                    (pure logic)
-  OctokitAuthApp            (imports @octokit/auth-app)
-  GitHubClient              (imports @octokit/rest; fromEnv/fromToken have no
-                             service deps, fromApp composes GitHubApp internally)
+The full tier-by-tier dependency graph (which service consumes which) is maintained once, in [layers.md](./layers.md#service-dependency-graph). The two integration facts that matter for wiring are below.
 
-Tier 0.5 — Depends on FileSystem:
-  ActionOutputs             -> FileSystem
-  ActionState               -> FileSystem
+### ActionsRuntime.Default as the integration point
 
-Tier 1 — Single service dependency:
-  GitHubApp                 -> OctokitAuthApp
-  NpmRegistry               -> CommandRunner
-  ChangesetAnalyzer         -> FileSystem
-  ConfigLoader              -> FileSystem
-  TokenPermissionChecker    -> GitHubApp
+`ActionsRuntime.Default` is the single integration point for wiring the runtime layer into user programs. It provides everything needed for basic action I/O — the `INPUT_*` ConfigProvider, the workflow-command Logger, `ActionLogger`, `ActionOutputs`, `ActionState`, `ActionEnvironment`, `NodeFileSystem.layer` (the `FileSystem` for outputs/state) and `FetchHttpClient.layer` (the `HttpClient` that `OidcTokenIssuer`, `GitHubApp` and `ActionCache` require). See `packages/github-action-effects/src/runtime/ActionsRuntime.ts`.
 
-Tier 2 — GitHubClient dependents:
-  GitHubGraphQL             -> GitHubClient
-  GitBranch                 -> GitHubClient
-  GitCommit                 -> GitHubClient
-  GitTag                    -> GitHubClient
-  GitHubRelease             -> GitHubClient
-  CheckRun                  -> GitHubClient
-  PullRequestComment        -> GitHubClient
-  RateLimiter               -> GitHubClient
-  WorkflowDispatch          -> GitHubClient
-  GitHubIssue               -> GitHubClient + GitHubGraphQL
-  PullRequest               -> GitHubClient + GitHubGraphQL
+### Layer provision for Tier 2+
 
-Tier 2 — Multi-service (non-GitHubClient):
-  PackageManagerAdapter     -> CommandRunner + FileSystem
-  WorkspaceDetector         -> FileSystem + CommandRunner
-
-Tier 3 — Composed dependencies:
-  PackagePublish            -> CommandRunner + NpmRegistry + FileSystem
-  AutoMerge (utility)       -> GitHubGraphQL
-```
-
-### ActionsRuntime.Default as the Integration Point
-
-`ActionsRuntime.Default` is the single integration point for wiring the
-runtime layer into user programs. It provides everything needed for basic
-action I/O:
-
-```text
-ActionsRuntime.Default
-  ├── ConfigProvider        (ActionsConfigProvider → INPUT_* env vars)
-  ├── Logger                (ActionsLogger → workflow commands)
-  ├── ActionLoggerLive      (group + withBuffer)
-  ├── ActionOutputsLive     (outputs, summaries, env vars, PATH, secrets)
-  ├── ActionStateLive       (state persistence across phases)
-  ├── ActionEnvironmentLive (GitHub/runner context)
-  └── NodeFileSystem.layer  (FileSystem for ActionOutputs + ActionState)
-```
-
-### Layer Provision for Tier 2+
-
-```text
-GitHubClientLive.fromEnv   (reads GITHUB_TOKEN from env; .fromToken / .fromApp
-                            select other identities)
-  -> CheckRunLive              (requires GitHubClient in context)
-  -> PullRequestLive           (requires GitHubClient + GitHubGraphQL)
-  -> PullRequestCommentLive    (requires GitHubClient in context)
-  -> GitHubGraphQLLive         (requires GitHubClient in context)
-  -> GitBranchLive             (requires GitHubClient in context)
-  -> GitCommitLive             (requires GitHubClient in context)
-  -> GitTagLive                (requires GitHubClient in context)
-  -> GitHubReleaseLive         (requires GitHubClient in context)
-  -> GitHubIssueLive           (requires GitHubClient + GitHubGraphQL)
-  -> RateLimiterLive           (requires GitHubClient in context)
-  -> WorkflowDispatchLive      (requires GitHubClient in context)
-
-Test layers for all Tier 2 services do NOT depend on GitHubClient --
-they operate entirely in-memory.
-```
+Every GitHub-API service requires a `GitHubClient` in context. Provide one of the three `GitHubClientLive` construction modes (`fromEnv` reads ambient `GITHUB_TOKEN`; `fromToken`/`fromApp` select other identities), then merge the Tier 2 services that consume it. Test layers for these services do not depend on `GitHubClient` — they operate entirely in-memory.
 
 ---
 
-## Consumer Patterns
+## Consumer patterns
 
-### Basic Action (inputs + outputs)
+### Basic action (inputs + outputs)
 
 ```typescript
 import { Effect, Config } from "effect"
@@ -228,7 +156,7 @@ const program = Effect.gen(function* () {
 Action.run(program)
 ```
 
-### Action with GitHub API
+### Action with the GitHub API
 
 ```typescript
 import { Effect, Config, Layer } from "effect"
@@ -246,7 +174,7 @@ Action.run(program, {
 })
 ```
 
-### Manual Layer Composition
+### Manual layer composition
 
 ```typescript
 import { Effect, Layer } from "effect"
@@ -261,7 +189,7 @@ const MyLayer = Layer.mergeAll(
 Effect.runPromise(program.pipe(Effect.provide(MyLayer)))
 ```
 
-### Multi-Phase Action with a GitHub App Token
+### Multi-phase action with a GitHub App token
 
 The `GitHubToken` namespace wires the App installation-token lifecycle across
 the pre/main/post phases — `provision` in `pre.ts`, `client` in `main.ts`,
@@ -294,29 +222,19 @@ Action.run(GitHubToken.dispose(), { layer: GitHubAppLayer })
 
 ---
 
-## Optional Integrations
+## Optional integrations
 
 ### @savvy-web/github-action-builder
 
-Actions built with the builder benefit from this library but it is not
-required. Any Node.js 24 action can use these services. The builder bundles
-with `@vercel/ncc`, which requires static imports (no dynamic `import()`).
+Actions built with the builder benefit from this library but it is not required. Any Node.js 24 action can use these services. The builder bundles each action entry into a single self-contained ESM file with `@rsbuild/core` — see [github-action-builder/architecture.md](../github-action-builder/architecture.md).
 
 ## Current State
 
-All dependencies and service tiers are documented with a complete dependency
-graph. The `@actions/*` packages have been fully replaced with native
-implementations. `ActionsRuntime.Default` is the single integration point
-for wiring the runtime layer. `@octokit/rest`, `@octokit/auth-app`, and
-`@azure/storage-blob` are the only external runtime dependencies (besides
-Effect peers).
+The `@actions/*` packages are fully replaced with native implementations, so the only external runtime dependencies are the ones in the Direct Dependencies table above (plus the Effect peers). `ActionsRuntime.Default` is the single integration point for wiring the runtime layer.
 
 ## Rationale
 
-Removing `@actions/*` packages eliminates CJS dependencies, simplifies the
-layer graph (no platform wrapper tier), and gives the library full control
-over the runtime protocol implementation. The tiered dependency graph makes
-layer composition predictable and testable at each level.
+Removing `@actions/*` packages eliminates CJS dependencies, simplifies the layer graph (no platform wrapper tier) and gives the library full control over the runtime protocol implementation. The tiered dependency graph makes layer composition predictable and testable at each level.
 
 ## Related Documentation
 

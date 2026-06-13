@@ -2,7 +2,7 @@
 name: corpus-authoring
 description: >
   Use when writing or registering a doc in the savvy MCP corpus
-  (packages/mcp/src/resources/content). Covers the front-matter schema, tier
+  (packages/mcp/public/content). Covers the front-matter schema, tier
   assignment, the controlled tag vocabulary with the propose-then-add workflow,
   and related-id rules. Reads the live contract so values never drift.
 disable-model-invocation: false
@@ -11,7 +11,7 @@ allowed-tools: Bash(bash *)
 
 # Authoring a corpus doc
 
-Corpus docs live under `packages/mcp/src/resources/content/{standards,packages,guides}/`
+Corpus docs live under `packages/mcp/public/content/{standards,packages,guides}/`
 in a resolved savvy-web/systems checkout. You author markdown; you never edit the
 schema, compiler, tags source, or the generated `manifest.json`.
 

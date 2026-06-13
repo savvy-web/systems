@@ -53,7 +53,6 @@
 			"designDocsPath": ".claude/design/templates",
 			"categories": ["architecture", "integration"],
 			"maintainer": "C. Spencer Beggs",
-			"status": "planned",
 			"userDocs": {
 				"readme": "packages/templates/README.md",
 				"repoDocs": null,

@@ -10,7 +10,7 @@ allowed-tools: Bash(bash *)
 
 # Verifying a corpus doc
 
-After any write or edit under `packages/mcp/src/resources/content`, run the gate.
+After any write or edit under `packages/mcp/public/content`, run the gate.
 It validates front-matter against the schema, id uniqueness, the tier/directory
 double-check, tag resolution, `related[]` resolution, the dead-name check, and
 per-tier body budgets, then regenerates the gitignored `manifest.json`.

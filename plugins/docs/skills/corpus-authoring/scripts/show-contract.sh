@@ -22,7 +22,7 @@ fi
 
 MCP="$SYSTEMS_DIR/packages/mcp"
 SCHEMA="$MCP/src/resources/schema.ts"
-TAGS="$MCP/src/resources/content/tags.json"
+TAGS="$MCP/public/content/tags.json"
 COMPILE="$MCP/lib/scripts/compile.ts"
 BUILD="$MCP/lib/scripts/build-catalog.ts"
 

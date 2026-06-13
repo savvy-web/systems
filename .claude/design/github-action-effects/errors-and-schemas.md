@@ -3,9 +3,9 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-05-29
-last-synced: 2026-05-29
-completeness: 95
+updated: 2026-06-12
+last-synced: 2026-06-12
+completeness: 90
 related:
   - ./index.md
   - ./services.md
@@ -14,27 +14,21 @@ dependencies: []
 
 # Errors and Schemas
 
-Error types, schema patterns, and data encoding for
-`@savvy-web/github-action-effects`.
+Error and schema conventions for `@savvy-web/github-action-effects`.
 
-See [index.md](./index.md) for architecture overview.
-See [services.md](./services.md) for service interfaces that use these types.
+See [index.md](./index.md) for the architecture overview and [services.md](./services.md) for the service interfaces that produce these types.
 
 ---
 
 ## Overview
 
-This document describes the error handling and schema validation patterns used
-across all services. Errors use inline `Data.TaggedError` class declarations.
-Schemas use `Schema.Struct` with annotations for validated types, covering
-everything from log levels and environment contexts to Git tree entries and
-package metadata.
+Every service has one tagged error type and validates its boundary data with Effect Schema. This doc records the conventions those types follow — the cardinal shapes, the wrapping discipline and the retryability contract — not the per-type inventory. The error definitions live in `packages/github-action-effects/src/errors/`, the schemas in `packages/github-action-effects/src/schemas/` and the service-local interfaces in each `packages/github-action-effects/src/services/<Service>.ts`.
 
 ---
 
-## Error Pattern
+## Error pattern
 
-All errors extend `Data.TaggedError` inline:
+All errors extend `Data.TaggedError` inline, one file per error in `src/errors/`:
 
 ```typescript
 export class FooError extends Data.TaggedError("FooError")<{
@@ -42,339 +36,82 @@ export class FooError extends Data.TaggedError("FooError")<{
 }> {}
 ```
 
-No separate `Base` export is needed.
+There is no shared `Base` error. Tagged errors with structured fields let consumers pattern-match and handle failures programmatically inside Effect pipelines.
 
-### Error Types
+### Error hierarchy
 
-See `packages/github-action-effects/src/errors/` for all tagged error definitions. Key types:
+Services that depend on `GitHubClient` map the underlying `GitHubClientError` to their own domain-specific error type, so a caller catching (for example) `CheckRunError` never has to reason about transport-level failures. Every Tier 2 GitHub-API service follows this pattern — see the dependency graph in [integration-points.md](./integration-points.md).
 
-| Error | Service | Notes |
-| --- | --- | --- |
-| `ActionInputError` | (Config validation) | input name, raw value, schema validation issues |
-| `ActionOutputError` | ActionOutputs | output name, reason |
-| `ActionStateError` | ActionState | key name, reason, optional raw value |
-| `ActionEnvironmentError` | ActionEnvironment | variable name, reason |
-| `ActionCacheError` | ActionCache | key, operation, reason |
-| `RuntimeEnvironmentError` | RuntimeFile | variable name, message |
-| `CommandRunnerError` | CommandRunner | command, exitCode, reason; surfaces tail of long stderr for diagnostics |
-| `ConfigLoaderError` | ConfigLoader | path, operation, reason |
-| `ChangesetError` | ChangesetAnalyzer | operation, reason |
-| `GitHubClientError` | GitHubClient | operation, status (HTTP), reason, retryable |
-| `GitHubGraphQLError` | GitHubGraphQL | operation, reason, errors array |
-| `GitHubAppError` | GitHubApp | operation (`"jwt"` \| `"token"` \| `"revoke"` \| `"identity"`), reason |
-| `GitBranchError` | GitBranch | operation, name, reason |
-| `GitCommitError` | GitCommit | operation, reason |
-| `GitTagError` | GitTag | operation, tag, reason |
-| `GitHubReleaseError` | GitHubRelease | operation, tag, reason, retryable |
-| `GitHubIssueError` | GitHubIssue | operation, issueNumber, reason, retryable |
-| `CheckRunError` | CheckRun | name, operation, reason |
-| `PullRequestCommentError` | PullRequestComment | prNumber, operation, reason |
-| `PullRequestError` | PullRequest | operation, prNumber (optional), reason |
-| `RateLimitError` | RateLimiter | reason |
-| `WorkflowDispatchError` | WorkflowDispatch | operation, workflow, reason |
-| `NpmRegistryError` | NpmRegistry | pkg, operation, reason; carries a `message` getter |
-| `PackagePublishError` | PackagePublish | operation, pkg, registry, reason; carries `message` getter, source `cause`, and stderr tail |
-| `PackageManagerError` | PackageManagerAdapter | operation, reason |
-| `WorkspaceDetectorError` | WorkspaceDetector | operation, reason |
-| `ToolInstallerError` | ToolInstaller | operation, tool, version, reason |
-| `TokenPermissionError` | TokenPermissionChecker | missing permissions array |
-| `SemverResolverError` | SemverResolver | operation, version, reason |
-| `GitHubContentError` | GitHubContent | path, ref, reason |
-| `GitHubCommitError` | GitHubCommit | ref, operation, reason |
-| `GitHubArtifactMetadataError` | GitHubArtifactMetadata | operation, reason |
-| `AttestError` | Attest | operation, reason |
-| `OidcTokenError` | OidcTokenIssuer | audience, reason |
-| `SigstoreSignerError` | SigstoreSigner | reason |
-| `SbomError` | Sbom | operation, reason |
+`GitHubClientError` carries the load-bearing `retryable` contract that the rest of the library keys off:
 
-### RuntimeEnvironmentError
+- `retryable` is `true` for 429 (rate limit), any 5xx and a 403 that carries a server-advised retry signal (a `Retry-After` header, or `x-ratelimit-remaining: 0` plus `x-ratelimit-reset` — a GitHub secondary rate limit).
+- A bare 403 (a genuine permission denial) stays non-retryable.
+- `retryAfterMs` carries the server-advised delay when present.
 
-New error type introduced with the runtime layer. Raised by `RuntimeFile`
-when a required environment variable (e.g., `GITHUB_OUTPUT`, `GITHUB_STATE`)
-is not set. Fields: `variable` (the env var name) and `message`. This error
-is mapped to domain-specific errors by consuming layers (e.g.,
-`ActionOutputsLive` maps it to `ActionOutputError`).
+`RuntimeEnvironmentError` is raised by `RuntimeFile` when a required environment file variable (`GITHUB_OUTPUT`, `GITHUB_STATE`, etc.) is unset. Consuming layers map it to their own domain error — for example `ActionOutputsLive` maps it to `ActionOutputError`.
 
-### Error Hierarchy
-
-Services that depend on `GitHubClient` map underlying `GitHubClientError`
-to their own domain-specific error type:
-
-- `CheckRunError` wraps `GitHubClientError` with check-run-specific context
-- `PullRequestCommentError` wraps with PR-specific context
-- `GitHubReleaseError` wraps with release-specific context
-- `GitHubIssueError` wraps with issue-specific context
-- `GitBranchError` wraps with branch-specific context
-- `GitCommitError` wraps with commit-specific context
-- `GitTagError` wraps with tag-specific context
-- `WorkflowDispatchError` wraps with dispatch-specific context
-- `RateLimitError` wraps with rate-limit context
-- `PullRequestError` wraps with PR-specific context
-- `GitHubContentError` wraps with content-fetch context
-- `GitHubCommitError` wraps with commit-graph context
-- `GitHubArtifactMetadataError` wraps with artifact-metadata context
-- `AttestError` wraps with attestation context
-
-The `retryable` flag on `GitHubClientError` is `true` for 429 (rate limit), any 5xx and a 403 that carries a server-advised retry signal (a `Retry-After` header, or `x-ratelimit-remaining: 0` plus `x-ratelimit-reset` — a GitHub secondary rate limit); a bare 403 (genuine permission denial) stays non-retryable. The accompanying `retryAfterMs` carries the server-advised delay when present. This enables consumers to implement retry logic.
-
-`NpmRegistryError` and `PackagePublishError` both carry a `message` getter so caught errors remain readable at the surface (e.g. in `console.error` or workflow command output) without forcing callers to destructure the tagged error. `PackagePublishError` also carries the source error as `cause` and surfaces the tail of long stderr output to aid diagnostics in CI logs. HTTP errors from `OidcTokenIssuerLive` route through `Effect.logDebug` so they appear in the step's debug buffer (visible on failure) rather than cluttering the success log.
+A few errors carry extra ergonomics worth knowing before editing them: `NpmRegistryError` and `PackagePublishError` expose a `message` getter so a caught error reads cleanly at the surface (e.g. in `console.error` or a workflow command) without destructuring; `PackagePublishError` and `CommandRunnerError` also surface the tail of long stderr to aid CI diagnostics.
 
 ---
 
-## Schema Patterns
+## Schema pattern
 
-Schemas use `Schema.Struct` with annotations for validated types. Types are
-inferred via `typeof X.Type`.
+Schemas use `Schema.Struct` (or `Schema.Class`) with annotations, and types are inferred via `typeof X.Type`. Schema validation at each service boundary catches malformed data early with a clear error rather than letting it propagate. The barrel re-exports each schema alongside an inferred `*Type` alias — see `src/index.ts` for the exact export names.
 
-### Service Interfaces
+Two clusters are worth calling out as topology rather than inventory:
 
-TypeScript interfaces exported from service files:
+- **`schemas/GitTree.ts`** models Git Data API commits as discriminated unions — `FileChange`/`TreeEntry` split into a content variant (add/update) and a deletion variant (`sha: null`). `GitCommit.commitFiles` consumes these.
+- **`schemas/Attestation.ts`** holds the in-toto/Sigstore wire types (`InTotoStatement`, `InTotoSubject`, `SigstoreBundle`, `AttestInput`, `AttestationRecord`) plus the predicate-type URI constants. The `Attest`, `SigstoreSigner` and `Sbom` services share these.
 
-| Interface | Location | Purpose |
-| --- | --- | --- |
-| `AppAuth` | `services/OctokitAuthApp.ts` | Callable auth function for app/installation tokens |
-| `BotIdentity` | `services/GitHubApp.ts` | Bot identity for commit attribution (`name`, `email`) |
-| `PullRequestInfo` | `services/PullRequest.ts` | PR data (number, url, nodeId, title, state, head, base, draft, merged, mergedAt?, body?, mergeCommitSha?, baseSha?) |
-| `PullRequestListOptions` | `services/PullRequest.ts` | PR list filter options |
-| `PullRequestFile` | `services/PullRequest.ts` | File changed in a PR (filename, status) |
-| `ExecOptions` | `services/CommandRunner.ts` | Command execution options (cwd, env, timeout) |
-| `ExecOutput` | `services/CommandRunner.ts` | Command execution result (exitCode, stdout, stderr) |
-| `CommentRecord` | `services/PullRequestComment.ts` | PR comment data (id, body) |
-| `IssueData` | `services/GitHubIssue.ts` | Issue data (number, title, state, labels, htmlUrl?, nodeId?) |
-| `ReleaseData` | `services/GitHubRelease.ts` | Release data |
-| `ReleaseAsset` | `services/GitHubRelease.ts` | Release asset data |
-| `TagRef` | `services/GitTag.ts` | Tag reference (tag, sha) |
-| `PackResult` | `services/PackagePublish.ts` | Pack result: tarballPath, digest (sha512-base64 integrity), sha256Hex (hex SHA-256 for attestation), name, version, packedSize, unpackedSize, fileCount |
-| `RegistryTarget` | `services/PackagePublish.ts` | Registry publishing target |
-| `IdempotentPublishInput` | `services/PackagePublish.ts` | Input for publishIdempotent |
-| `IdempotentPublishResult` | `services/PackagePublish.ts` | Outcome of publishIdempotent (published or skipped) |
-| `DryRunResult` | `services/PackagePublish.ts` | Result of npm publish --dry-run |
-| `InstallOptions` | `services/PackageManagerAdapter.ts` | PM install options |
-| `PollOptions` | `services/WorkflowDispatch.ts` | Workflow dispatch poll options |
-| `WorkflowRunStatus` | `services/WorkflowDispatch.ts` | Workflow run status |
-| `CheckRunData` | `services/CheckRun.ts` | Check run record returned from create/get (id, name, status, conclusion, htmlUrl) |
-| `CommitSummary` | `services/GitHubCommit.ts` | Commit summary (sha, message, author) |
-| `CommitDetail` | `services/GitHubCommit.ts` | Commit with parent SHAs |
-| `CommitFile` | `services/GitHubCommit.ts` | File changed between commits (filename, status) |
-| `CommitComparison` | `services/GitHubCommit.ts` | Compare result (commits, files) |
-| `StorageRecordInput` | `services/GitHubArtifactMetadata.ts` | Input for createStorageRecord |
-| `AttestationListEntry` | `services/Attest.ts` | Entry from listForSubject (attestationUrl, predicateType) |
-| `SbomAttestationInput` | `services/Attest.ts` | Input for Attest.sbom; accepts dependencies or pre-built bomDocument |
-| `ProvenanceAttestationInput` | `services/Attest.ts` | Input for Attest.provenance |
-| `ResolvedDependency` | `services/Sbom.ts` | Dependency for SBOM generation |
-| `InFlightPackage` | `services/Sbom.ts` | In-flight workspace package for SBOM generation |
-| `SbomSupplier` | `services/Sbom.ts` | NTIA supplier metadata |
-| `SbomAuthor` | `services/Sbom.ts` | NTIA author-of-SBOM-data metadata |
-| `SbomContact` | `services/Sbom.ts` | Supplier/author contact info |
-| `SbomInput` | `services/Sbom.ts` | Input for Sbom.generate |
-| `SigstoreSignerConfig` | `services/SigstoreSigner.ts` | Fulcio/Rekor URL overrides |
+Service-specific result and option types (`PullRequestInfo`, `PackResult`, `CommitComparison`, etc.) are plain TypeScript interfaces co-located with their service file, not schemas. They are listed in [services.md](./services.md) where the method that returns them is described.
 
-### Action Run Interfaces
+### Shared internal helpers
 
-| Interface | Location | Purpose |
-| --- | --- | --- |
-| `ActionRunOptions` | `Action.ts` | Options for `Action.run()` (`layer?`) |
-| `CoreServices` | `Action.ts` | Union type of services provided by `Action.run()` |
+A few cross-layer helpers live under `src/layers/internal/` so the Live and Test layers stay in sync:
 
-### Core Schemas
+- `decodeInput.ts` (`decodeInput`, `decodeJsonInput`) — input validation.
+- `decodeState.ts` (`decodeState`, `encodeState`) — shared by `ActionStateLive` and `ActionStateTest`.
+- `environmentMaps.ts` — environment-variable mapping shared by `ActionEnvironmentLive` and `ActionEnvironmentTest`.
 
-| Schema | Location | Purpose |
-| --- | --- | --- |
-| `ActionLogLevel` | `schemas/LogLevel.ts` | Log level enum (`"info"`, `"verbose"`, `"debug"`) |
-| `LogLevelInput` | `schemas/LogLevel.ts` | Log level input with `"auto"` option |
-| `GitHubContext` | `schemas/Environment.ts` | Validated GITHUB_* environment variables |
-| `RunnerContext` | `schemas/Environment.ts` | Validated RUNNER_* environment variables |
-| `Status` | `schemas/GithubMarkdown.ts` | Status values for GFM builders |
-| `ChecklistItem` | `schemas/GithubMarkdown.ts` | Checklist item schema |
-| `CapturedOutput` | `schemas/GithubMarkdown.ts` | Captured command output schema |
-| `BumpType` | `schemas/Changeset.ts` | Bump type (`"major"`, `"minor"`, `"patch"`) |
-| `Changeset` | `schemas/Changeset.ts` | Parsed changeset file |
-| `ChangesetFile` | `schemas/Changeset.ts` | Changeset file with path |
-| `FileChange` | `schemas/GitTree.ts` | File change for Git Data API commits (union) |
-| `FileChangeContent` | `schemas/GitTree.ts` | File change that adds or updates |
-| `FileChangeDeletion` | `schemas/GitTree.ts` | File change that deletes (sha: null) |
-| `TreeEntry` | `schemas/GitTree.ts` | Git tree entry (union) |
-| `TreeEntryContent` | `schemas/GitTree.ts` | Tree entry that adds or updates |
-| `TreeEntryDeletion` | `schemas/GitTree.ts` | Tree entry that deletes (sha: null) |
-| `PackageManagerName` | `schemas/PackageManager.ts` | PM name enum |
-| `PackageManagerInfo` | `schemas/PackageManager.ts` | Detected PM info |
-| `NpmPackageInfo` | `schemas/NpmPackage.ts` | npm registry package metadata |
-| `RateLimitStatus` | `schemas/RateLimit.ts` | GitHub API rate limit status |
-| `PermissionLevel` | `schemas/TokenPermission.ts` | Token permission level |
-| `PermissionGap` | `schemas/TokenPermission.ts` | Missing/insufficient permission |
-| `ExtraPermission` | `schemas/TokenPermission.ts` | Over-scoped permission |
-| `PermissionCheckResult` | `schemas/TokenPermission.ts` | Full permission check result |
-| `WorkspaceType` | `schemas/Workspace.ts` | Workspace type enum |
-| `WorkspaceInfo` | `schemas/Workspace.ts` | Detected workspace metadata |
-| `WorkspacePackage` | `schemas/Workspace.ts` | Individual workspace package |
-| `InstallationToken` | `services/GitHubApp.ts` | GitHub App installation token (Schema.Struct). Required fields: `token`, `expiresAt`, `installationId`. Optional identity fields: `appSlug`, `appUserId`, `appName` — populated by `GitHubToken.provision` when `resolveAppIdentity` succeeds. |
-| `InTotoSubject` | `schemas/Attestation.ts` | Subject of an in-toto statement: `name` (PURL) + `digest` (algorithm → hex map) |
-| `InTotoStatement` | `schemas/Attestation.ts` | In-toto Statement v1: `_type`, `subject[]`, `predicateType`, `predicate` (unknown) |
-| `SigstoreBundle` | `schemas/Attestation.ts` | Sigstore bundle v0.3 wire format: `mediaType`, `verificationMaterial`, `dsseEnvelope` (both unknown) |
-| `AttestInput` | `schemas/Attestation.ts` | Input for Attest.buildStatement: `subjects`, `predicateType`, `predicate` |
-| `AttestationRecord` | `schemas/Attestation.ts` | Full attestation result: `statement`, `bundle`, `attestationId`, `attestationUrl` |
-
-### Shared Decode Helpers
-
-`decodeInput` and `decodeJsonInput` are extracted to
-`layers/internal/decodeInput.ts` and used by internal validation logic.
-
-`decodeState` and `encodeState` are extracted to `layers/internal/decodeState.ts`
-and shared by both `ActionStateLive` and `ActionStateTest`.
-
-`environmentMaps` in `layers/internal/environmentMaps.ts` provides shared
-environment variable mapping logic for `ActionEnvironmentLive` and
-`ActionEnvironmentTest`.
-
-### formatBotIdentity utility
-
-`formatBotIdentity` in `packages/github-action-effects/src/utils/botIdentity.ts` is a pure function that derives a `BotIdentity` from an optional `{ appSlug?, appUserId? }` source. When both fields are present it returns a verified identity (`<appSlug>[bot]` / `<appUserId>+<appSlug>[bot]@users.noreply.github.com`); otherwise it returns the well-known `github-actions[bot]` fallback. Both `GitHubApp.botIdentity` and `GitHubToken.botIdentity` delegate to this function.
+`formatBotIdentity` in `src/utils/botIdentity.ts` is a pure function that derives a `BotIdentity` from an optional `{ appSlug?, appUserId? }` source: a verified `<appSlug>[bot]` identity when both fields are present, otherwise the well-known `github-actions[bot]` fallback. Both `GitHubApp.botIdentity` and `GitHubToken.botIdentity` delegate to it.
 
 ---
 
-## Data Flow
+## Data flow
 
-### Input Reading Flow
+These topology sketches show what crosses each runtime boundary. The internal mechanics live in the named source files.
 
-```text
-action.yml inputs
-  -> GitHub Actions runtime sets INPUT_* env vars
-  -> ActionsConfigProvider reads INPUT_* (Config API)
-  -> Config.string("name") / Config.integer("count")
-  -> typed value | ConfigError
-```
+### Input reading
 
-### Logging Flow
+`action.yml` inputs become `INPUT_*` env vars, which `ActionsConfigProvider` exposes through Effect's `Config` API, so `Config.string("name")` reads `INPUT_NAME` and yields a typed value or a `ConfigError`.
 
-```text
-Effect.log*() calls in user program
-  -> ActionsLogger (Effect Logger)
-  -> maps log levels:
-     Debug/Trace → ::debug::message
-     Info        → plain stdout
-     Warning     → ::warning::message
-     Error/Fatal → ::error::message
-  -> annotations (file, line, col) become command properties
+### Output
 
-ActionLogger.withBuffer(label, effect):
-  -> At Info level: capture verbose entries in a fiber-scoped buffer
-     -> on success: discard buffer
-     -> on failure inside a group: ActionLogger.group flushes the buffer
-        before ::endgroup::, then clears it
-     -> on failure outside any group: withBuffer flushes at its own boundary
-  -> At Debug level: pass through without buffering
-```
+`ActionOutputs.set` appends to `GITHUB_OUTPUT` via `RuntimeFile`; `summary` appends to `$GITHUB_STEP_SUMMARY`; `setFailed` issues `::error::` and sets `process.exitCode = 1`; `setSecret` issues `::add-mask::`.
 
-Each buffered chunk prints exactly once — the innermost failing boundary wins.
+### State serialization
 
-### Output Flow
+`ActionState.save` runs `Schema.encode` then `JSON.stringify` and appends to `GITHUB_STATE`; `get` reads the `STATE_*` env var, `JSON.parse`s it and `Schema.decode`s it, failing with `ActionStateError` when the key is unset or invalid. See `src/layers/internal/decodeState.ts`.
 
-```text
-ActionOutputs.set(name, value)
-  -> RuntimeFile.append("GITHUB_OUTPUT", name, value)
-  -> available to downstream steps
+### Cache (V2 Twirp protocol)
 
-ActionOutputs.summary(gfm)
-  -> fs.writeFileString($GITHUB_STEP_SUMMARY, content, { flag: "a" })
-  -> visible in Actions UI
+`ActionCache` reads `ACTIONS_RESULTS_URL` and `ACTIONS_RUNTIME_TOKEN`, tars the paths, then runs the three-step Twirp save (`CreateCacheEntry` → Azure Blob upload → `FinalizeCacheEntryUpload`) or the `GetCacheEntryDownloadURL`-based restore (Azure Blob download → untar). The version hash is `sha256(paths.join("|") + "|gzip|1.0")`. See [integration-points.md](./integration-points.md#cache-protocol-v2-twirp) and `src/layers/ActionCacheLive.ts`.
 
-ActionOutputs.setFailed(message)
-  -> WorkflowCommand.issue("error", {}, message)
-  -> process.exitCode = 1
+### Attestation
 
-ActionOutputs.setSecret(value)
-  -> WorkflowCommand.issue("add-mask", {}, value)
-```
-
-### State Serialization Flow
-
-```text
-ActionState.save(key, value, schema)
-  -> Schema.encode(schema)(value)
-  -> JSON.stringify(encoded)
-  -> RuntimeFile.append("GITHUB_STATE", key, json)
-  -> persisted across action phases
-
-ActionState.get(key, schema)
-  -> process.env[STATE_*key*]
-  -> empty string? -> ActionStateError (not set)
-  -> JSON.parse(raw)
-  -> Schema.decode(schema)(parsed)
-  -> typed value | ActionStateError
-```
-
-### Cache Flow (V2 Twirp Protocol)
-
-```text
-ActionCache.save(paths, key)
-  -> Read ACTIONS_RESULTS_URL + ACTIONS_RUNTIME_TOKEN from env
-  -> execFileSync("tar", ["czf", archivePath, ...paths])
-  -> Twirp CreateCacheEntry (key, version hash)
-  -> Azure Blob BlockBlobClient.uploadFile() (64 MB chunks, 8 concurrent)
-  -> Twirp FinalizeCacheEntryUpload (key, size, version hash)
-  -> cleanup temp archive
-
-ActionCache.restore(paths, primaryKey, restoreKeys?)
-  -> Twirp GetCacheEntryDownloadURL with keys + version hash
-  -> miss → Option.none()
-  -> Azure Blob BlobClient.downloadToFile() from signed URL
-  -> execFileSync("tar", ["xzf", archivePath])
-  -> cleanup temp archive
-  -> Option.some(matchedKey)
-
-Version hash: sha256(paths.join("|") + "|gzip|1.0")
-Retry: exponential backoff (3s base, 1.5x, 5 attempts) on 5xx/network for Twirp;
-       Azure SDK handles its own retries internally.
-```
-
-### Permission Check Flow
-
-```text
-TokenPermissionChecker.assertSufficient(requirements)
-  -> reads InstallationToken.permissions from GitHubApp
-  -> compares each required scope against granted (hierarchical: admin > write > read)
-  -> returns PermissionCheckResult
-  -> fails with TokenPermissionError if missing permissions
-```
-
-### Attestation Flow
-
-```text
-Attest.attest(input)
-  -> buildStatement(input)           — pure; assembles InTotoStatement
-  -> SigstoreSigner.signStatement()  — fetches OIDC token (audience: "sigstore")
-                                       via OidcTokenIssuer, signs through Fulcio,
-                                       witnesses on Rekor, returns SigstoreBundle
-  -> POST /repos/{owner}/{repo}/attestations
-  -> returns AttestationRecord (statement + bundle + id + url)
-
-Attest.sbom(input)
-  -> if bomDocument provided: use as predicate verbatim
-  -> else: Sbom.generate(input) -> CycloneDXBom -> Sbom.serializeJson() -> predicate
-  -> Attest.attest({ subjects, predicateType: CYCLONEDX_BOM, predicate })
-
-Attest.listForSubject(sha256Hex, options?)
-  -> GET /repos/{owner}/{repo}/attestations/sha256:{hex}  (X-GitHub-Api-Version: 2026-03-10)
-  -> 404 -> return []
-  -> if options.predicateType: pass predicate_type query param, trust server narrowing
-  -> else: fetch each entry's bundle_url, decode its in-toto predicateType, drop undecodable entries
-  -> returns Array<AttestationListEntry>
-```
+`Attest.attest` builds an `InTotoStatement`, hands it to `SigstoreSigner` (which fetches an OIDC token via `OidcTokenIssuer`, signs through Fulcio and witnesses on Rekor) and POSTs the resulting bundle to the repo's attestation endpoint, returning an `AttestationRecord`. `Attest.sbom` and `Attest.listForSubject` build on the same path. See `src/services/Attest.ts` for the full flow.
 
 ---
 
 ## Current State
 
-All error types and schemas are fully defined and in use across the service catalog. The error hierarchy with domain-specific wrapping of `GitHubClientError` is stable. The attestation cluster added `AttestError`, `OidcTokenError`, `SigstoreSignerError` and `SbomError` plus the `schemas/Attestation.ts` cluster (`InTotoSubject`, `InTotoStatement`, `SigstoreBundle`, predicate-type URI constants). `NpmRegistryError` and `PackagePublishError` gained `message` getters for readable error surfaces. `CommandRunnerError` and `PackagePublishError` surface stderr tails. `PackResult` gained `sha256Hex` for attestation API compatibility. `IssueData` gained `htmlUrl` and `nodeId`. `PullRequestInfo` gained `mergedAt`, `body`, `mergeCommitSha` and `baseSha`. `CheckRunData` is now returned from `CheckRun.create` (was just a number).
+The error and schema conventions are stable across the service catalog. The retryability contract on `GitHubClientError` and the domain-wrapping discipline are the parts most likely to matter when adding a new GitHub-API service.
 
 ## Rationale
 
-Tagged errors with structured fields enable pattern matching and programmatic
-error handling in Effect pipelines. Inline `Data.TaggedError` declarations
-keep error definitions concise. Schema validation at service boundaries
-catches invalid data early with clear error messages.
+Inline `Data.TaggedError` keeps error definitions concise while preserving structured fields for pattern matching. Schema validation at service boundaries surfaces invalid data early with actionable messages.
 
 ## Related Documentation
 
-- [index.md](./index.md) -- Architecture overview and design decisions
-- [services.md](./services.md) -- Service interfaces that use these error and schema types
+- [index.md](./index.md) — architecture overview and design decisions
+- [services.md](./services.md) — service interfaces that use these error and schema types
