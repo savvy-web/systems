@@ -58,6 +58,12 @@ fi
 # Fall back to a fixed key when session_id is absent so the once-per invariant
 # still holds rather than nudging on every Biome invocation.
 SESSION_ID=$(echo "$ENVELOPE" | jq -r '.session_id // empty')
+# Sanitize: session_id is untrusted envelope input. A value containing a path
+# separator or `..` could escape ~/.claude/session-env/; fall back to the fixed
+# key in that case so the marker write stays inside the intended directory.
+case "$SESSION_ID" in
+	*/* | *..*) SESSION_ID="" ;;
+esac
 marker_dir="${HOME}/.claude/session-env/${SESSION_ID:-_no-session}"
 marker="${marker_dir}/biome-prefer-mcp.nudged"
 if [ -f "$marker" ]; then

@@ -8,6 +8,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { relative, resolve, sep } from "node:path";
 import { Lint } from "@savvy-web/silk-effects";
 import { ParseResult, Schema } from "effect";
 
@@ -143,8 +144,25 @@ export interface BiomeCheckArgs {
  */
 export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): Promise<BiomeCheckResultType> => {
 	const mode = args.mode ?? "check";
-	const cwd = args.cwd ?? fallbackCwd;
-	const paths = args.paths && args.paths.length > 0 ? [...args.paths] : ["."];
+
+	// Containment: this is a mutating tool, so keep cwd and every target path
+	// inside the workspace root. Resolve against the root and reject anything that
+	// escapes it, so a stray absolute or `../` path can't drive `--write`/`--unsafe`
+	// out of tree.
+	const root = resolve(fallbackCwd);
+	const within = (abs: string): boolean => abs === root || abs.startsWith(`${root}${sep}`);
+	const cwd = resolve(args.cwd ?? fallbackCwd);
+	if (!within(cwd)) {
+		throw new Error(`cwd escapes the workspace root: ${args.cwd}`);
+	}
+	const rawPaths = args.paths && args.paths.length > 0 ? args.paths : ["."];
+	const paths = rawPaths.map((p) => {
+		const abs = resolve(cwd, p);
+		if (!within(abs)) {
+			throw new Error(`path escapes the workspace root: ${p}`);
+		}
+		return relative(cwd, abs) || ".";
+	});
 	const doWrite = Boolean(args.write || args.unsafe);
 
 	const biomeCmd = Lint.Biome.findBiome();
@@ -162,6 +180,11 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const bin = parts[0];
 	const prefix = parts.slice(1);
 	const maxBuffer = 64 * 1024 * 1024;
+	// Hard cap so a hung Biome process (password prompt, deadlock, stalled watcher)
+	// can't block the MCP server; spawnSync sets result.error to ETIMEDOUT, which
+	// the existing `throw *.error` checks surface.
+	const timeout = 120_000;
+	const killSignal = "SIGKILL" as const;
 
 	let wrote = false;
 	if (doWrite) {
@@ -173,7 +196,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 			"--no-errors-on-unmatched",
 			...paths,
 		];
-		const fix = spawnSync(bin, writeArgs, { cwd, encoding: "utf8", maxBuffer });
+		const fix = spawnSync(bin, writeArgs, { cwd, encoding: "utf8", maxBuffer, timeout, killSignal });
 		if (fix.error) throw fix.error;
 		if ((fix.status ?? 0) > 1) {
 			throw new Error(`Biome --write failed (exit ${fix.status}): ${(fix.stderr ?? "").trim() || "unknown error"}`);
@@ -182,7 +205,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	}
 
 	const readArgs = [...prefix, mode, "--reporter=gitlab", "--error-on-warnings", "--no-errors-on-unmatched", ...paths];
-	const read = spawnSync(bin, readArgs, { cwd, encoding: "utf8", maxBuffer });
+	const read = spawnSync(bin, readArgs, { cwd, encoding: "utf8", maxBuffer, timeout, killSignal });
 	if (read.error) throw read.error;
 	if ((read.status ?? 0) > 1) {
 		throw new Error(`Biome failed (exit ${read.status}): ${(read.stderr ?? "").trim() || "unknown error"}`);

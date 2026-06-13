@@ -7,6 +7,7 @@ import {
 	BiomeCheckResult,
 	buildBiomeResult,
 	parseBiomeGitlab,
+	runBiomeCheck,
 } from "../../src/tools/biome-check.js";
 
 const SAMPLE = JSON.stringify([
@@ -82,6 +83,24 @@ describe("BiomeCheckAsMarkdown", () => {
 
 	it("is one-way (encode forbidden)", () => {
 		expect(() => Schema.encodeSync(BiomeCheckAsMarkdown)("anything")).toThrow();
+	});
+});
+
+describe("runBiomeCheck containment", () => {
+	// These reject during path resolution, before any biome binary lookup or
+	// subprocess spawn, so they run without Biome installed.
+	it("rejects a cwd outside the workspace root", async () => {
+		await expect(runBiomeCheck({ cwd: "/etc", write: true }, "/repo")).rejects.toThrow(/escapes the workspace root/);
+	});
+
+	it("rejects a relative path that escapes the workspace root", async () => {
+		await expect(runBiomeCheck({ paths: ["../../etc"], write: true }, "/repo")).rejects.toThrow(
+			/escapes the workspace root/,
+		);
+	});
+
+	it("rejects an absolute path outside the workspace root", async () => {
+		await expect(runBiomeCheck({ paths: ["/etc/passwd"] }, "/repo")).rejects.toThrow(/escapes the workspace root/);
 	});
 });
 
