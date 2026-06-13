@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -101,6 +104,39 @@ describe("runBiomeCheck containment", () => {
 
 	it("rejects an absolute path outside the workspace root", async () => {
 		await expect(runBiomeCheck({ paths: ["/etc/passwd"] }, "/repo")).rejects.toThrow(/escapes the workspace root/);
+	});
+
+	it("rejects a symlinked path whose target escapes the workspace root (write mode)", async () => {
+		const base = realpathSync(mkdtempSync(join(tmpdir(), "biome-cont-")));
+		const root = join(base, "workspace");
+		const outside = join(base, "outside");
+		mkdirSync(root);
+		mkdirSync(outside);
+		writeFileSync(join(outside, "evil.ts"), "const x = 1;\n");
+		symlinkSync(join(outside, "evil.ts"), join(root, "link.ts"));
+		try {
+			await expect(runBiomeCheck({ paths: ["link.ts"], write: true }, root)).rejects.toThrow(
+				/escapes the workspace root/,
+			);
+		} finally {
+			rmSync(base, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects a symlinked cwd whose target escapes the workspace root", async () => {
+		const base = realpathSync(mkdtempSync(join(tmpdir(), "biome-cont-")));
+		const root = join(base, "workspace");
+		const outside = join(base, "outside");
+		mkdirSync(root);
+		mkdirSync(outside);
+		symlinkSync(outside, join(root, "linkdir"));
+		try {
+			await expect(runBiomeCheck({ cwd: join(root, "linkdir"), write: true }, root)).rejects.toThrow(
+				/escapes the workspace root/,
+			);
+		} finally {
+			rmSync(base, { recursive: true, force: true });
+		}
 	});
 });
 

@@ -8,6 +8,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { Lint } from "@savvy-web/silk-effects";
 import { ParseResult, Schema } from "effect";
@@ -146,22 +147,30 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const mode = args.mode ?? "check";
 
 	// Containment: this is a mutating tool, so keep cwd and every target path
-	// inside the workspace root. Resolve against the root and reject anything that
-	// escapes it, so a stray absolute or `../` path can't drive `--write`/`--unsafe`
-	// out of tree.
-	const root = resolve(fallbackCwd);
+	// inside the workspace root. Canonicalize with realpathSync so a symlink whose
+	// target escapes the root can't pass a purely lexical prefix check; fall back
+	// to lexical resolution for paths that don't exist yet (a non-existent target
+	// can't be a symlink pointing out of tree). Reject anything that escapes.
+	const canonicalize = (p: string): string => {
+		try {
+			return realpathSync(p);
+		} catch {
+			return resolve(p);
+		}
+	};
+	const root = canonicalize(fallbackCwd);
 	const within = (abs: string): boolean => abs === root || abs.startsWith(`${root}${sep}`);
-	const cwd = resolve(args.cwd ?? fallbackCwd);
+	const cwd = canonicalize(args.cwd ?? fallbackCwd);
 	if (!within(cwd)) {
 		throw new Error(`cwd escapes the workspace root: ${args.cwd}`);
 	}
 	const rawPaths = args.paths && args.paths.length > 0 ? args.paths : ["."];
 	const paths = rawPaths.map((p) => {
-		const abs = resolve(cwd, p);
-		if (!within(abs)) {
+		const lexical = resolve(cwd, p);
+		if (!within(canonicalize(lexical))) {
 			throw new Error(`path escapes the workspace root: ${p}`);
 		}
-		return relative(cwd, abs) || ".";
+		return relative(cwd, lexical) || ".";
 	});
 	const doWrite = Boolean(args.write || args.unsafe);
 
