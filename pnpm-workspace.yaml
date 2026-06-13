@@ -6,14 +6,4 @@ configDependencies:
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
-minimumReleaseAgeExclude:
-  - tsdown@0.22.2
-  - workspaces-effect@1.2.0
-  - json-schema-effect@0.2.2
-  - "@microsoft/api-extractor@7.58.9"
-  - "@rushstack/ts-command-line@5.3.10"
-publicHoistPattern:
-  - "@vitest/coverage-v8"
-  - vitest
-  - vitest-agent-reporter
 verifyDepsBeforeRun: false
