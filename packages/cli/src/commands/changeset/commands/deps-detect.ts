@@ -8,8 +8,8 @@
  *
  * Defaults:
  * - `--from` → `git merge-base <baseBranch> HEAD`
- * - `--to`   → working tree (i.e., `HEAD` plus staged + unstaged + untracked,
- *   matching `analyze-branch`'s coverage). Passed as the special value
+ * - `--to`   → working tree (i.e., `HEAD` plus staged + unstaged + untracked).
+ *   Passed as the special value
  *   `WORKTREE` to {@link WorkspaceSnapshotReader} — implementations resolve
  *   this against the live working tree rather than `git show`.
  *
@@ -26,7 +26,7 @@
 import { resolve } from "node:path";
 import { Command, Options } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Option } from "effect";
+import { Console, Effect, Option } from "effect";
 import { WorkspaceDiscovery } from "workspaces-effect";
 
 type WorkspaceDependencyDiff = Changesets.WorkspaceDependencyDiff;
@@ -161,7 +161,7 @@ export function runDepsDetect(
 			return;
 		}
 
-		yield* Effect.log(JSON.stringify(diffs, null, 2));
+		yield* Console.log(JSON.stringify(diffs, null, 2));
 	});
 }
 

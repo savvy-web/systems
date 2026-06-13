@@ -24,7 +24,7 @@
 import { resolve } from "node:path";
 import { Args, Command, Options } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
+import { Console, Effect } from "effect";
 
 const { ChangesetLinter } = Changesets;
 
@@ -56,11 +56,11 @@ export function runLint(dir: string, quiet: boolean) {
 		const messages = yield* Effect.try(() => ChangesetLinter.validate(resolved));
 
 		for (const msg of messages) {
-			yield* Effect.log(`${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`);
+			yield* Console.log(`${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`);
 		}
 
 		if (!quiet && messages.length === 0) {
-			yield* Effect.log("No lint errors found.");
+			yield* Console.log("No lint errors found.");
 		}
 
 		if (messages.length > 0) {

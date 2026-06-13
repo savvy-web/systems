@@ -47,7 +47,7 @@ import { existsSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from
 import { join, resolve } from "node:path";
 import { Command, Options } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Option } from "effect";
+import { Console, Effect, Option } from "effect";
 import { WorkspaceDiscovery } from "workspaces-effect";
 
 type WorkspaceDependencyDiff = Changesets.WorkspaceDependencyDiff;
@@ -292,7 +292,7 @@ export function runDepsRegen(
 
 		if (dryRun) {
 			if (json) {
-				yield* Effect.log(JSON.stringify(plan, null, 2));
+				yield* Console.log(JSON.stringify(plan, null, 2));
 			} else {
 				yield* renderHumanPlan(plan);
 			}
@@ -314,7 +314,7 @@ export function runDepsRegen(
 		}
 
 		if (json) {
-			yield* Effect.log(JSON.stringify(plan, null, 2));
+			yield* Console.log(JSON.stringify(plan, null, 2));
 		} else {
 			yield* renderHumanPlan(plan);
 		}
