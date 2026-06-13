@@ -49,9 +49,8 @@ savvy check       orchestrator → runs all three checks
 savvy clean       remove build/cache artifacts across the workspace
 savvy commit      hook(session-start · pre-commit-message ·
                   post-commit-verify · user-prompt-submit)
-savvy changeset   lint · transform · validate-file · version ·
-                  classify · analyze-branch · release-surface ·
-                  config(show · validate) · deps(detect · regen)
+savvy changeset   lint · check · transform · validate-file · version ·
+                  config(validate) · deps(detect · regen)
 savvy lint        fmt(package-json · pnpm-workspace · yaml)
 ```
 
@@ -90,7 +89,7 @@ WorkspaceLive = WorkspaceRoot + PackageManagerDetector
 
 Two structural choices matter:
 
-- **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer` and the `classify`/`config` handlers) is never constructed twice per run. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeContext.layer` already satisfies it. See `../silk-effects/architecture.md`.
+- **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer` and the surviving `config validate` handler — the `classify`/`config show`/`analyze-branch`/`release-surface` CLI commands are gone, so `ConfigInspector` is otherwise consumed by the MCP tools `changeset_inspect`/`changeset_validate`) is never constructed twice per run. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeContext.layer` already satisfies it. See `../silk-effects/architecture.md`.
 - **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio rather than pulling in the heavier `WorkspacesLive`, which would also fork `DependencyGraph` / `PublishabilityDetector` background work the CLI does not need.
 
 The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.

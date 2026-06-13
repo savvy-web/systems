@@ -113,14 +113,14 @@ const BaseLive = Layer.mergeAll(
  * `ToolDiscoveryLive` needs `WorkspaceRoot`, `PackageManagerDetector`, and
  * `CommandExecutor`; `VersioningStrategyLive` needs `ChangesetConfigReader`;
  * `Changesets.ConfigInspectorLive` needs `ChangesetConfigReader`,
- * `WorkspaceDiscovery`, and `FileSystem` (the last for its release-surface
+ * `WorkspaceDiscovery`, and `FileSystem` (the last for its publishConfig-driven
  * fallback when no explicit `packages` record is configured);
  * `Changesets.BranchAnalyzerLive` needs `ConfigInspector`.
  *
  * `ConfigInspectorLive` is built once via {@link Layer.provideMerge}: the merge
  * feeds that single `ConfigInspector` instance into `BranchAnalyzerLive` AND
- * re-exposes it for the `classify` / `config` handlers that yield it directly,
- * so it is never constructed twice per run.
+ * re-exposes it for the surviving `config validate` handler that yields it
+ * directly, so it is never constructed twice per run.
  *
  * `provideMerge(BaseLive)` feeds the remaining deps and re-exposes the base
  * services for handlers that yield them directly. `provideMerge(NodeContext.layer)`
