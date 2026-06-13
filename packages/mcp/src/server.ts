@@ -18,6 +18,8 @@ import type { BiomeCheckArgs } from "./tools/biome-check.js";
 import { BiomeCheckAsMarkdown, BiomeCheckResult, runBiomeCheck } from "./tools/biome-check.js";
 import type { ChangesetInspectArgs } from "./tools/changeset-inspect.js";
 import { ChangesetInspectAsMarkdown, ChangesetInspectResult, changesetInspect } from "./tools/changeset-inspect.js";
+import type { ChangesetValidateArgs } from "./tools/changeset-validate.js";
+import { ChangesetValidateAsMarkdown, ChangesetValidateResult, changesetValidate } from "./tools/changeset-validate.js";
 import { DocsSearchResult, DocsSearchResultAsMarkdown, runDocsSearch } from "./tools/docs-search.js";
 import type { TurboInspectArgs } from "./tools/turbo-inspect.js";
 import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "./tools/turbo-inspect.js";
@@ -117,6 +119,25 @@ export function buildServer(ctx: McpContext): McpServer {
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetInspect(args as ChangesetInspectArgs, ctx.cwd));
 			const text = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
+		"changeset_validate",
+		{
+			description:
+				"Read-only validation of changeset files against the section-aware rules. Pass dir (default .changeset). Returns typed diagnostics (file, rule, line, column, message) plus ok/errorCount in structuredContent. Prefer this over shelling out to savvy changeset lint.",
+			inputSchema: {
+				dir: z.optional(z.string()).describe("Changeset directory to validate (default .changeset)."),
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(ChangesetValidateResult) as never,
+			annotations: { readOnlyHint: true },
+		},
+		async (args) => {
+			const data = await ctx.runtime.runPromise(changesetValidate(args as ChangesetValidateArgs, ctx.cwd));
+			const text = Schema.decodeSync(ChangesetValidateAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
