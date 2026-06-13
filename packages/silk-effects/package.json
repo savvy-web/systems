@@ -34,7 +34,7 @@
 		"jsonc-effect": "^0.2.1",
 		"mdast-util-heading-range": "^4.0.0",
 		"mdast-util-to-string": "^4.0.0",
-		"prettier": "^3.8.3",
+		"prettier": "^3.8.4",
 		"remark-gfm": "^4.0.1",
 		"remark-parse": "^11.0.0",
 		"remark-stringify": "^11.0.0",
@@ -63,7 +63,7 @@
 		"effect": "catalog:silk",
 		"fast-check": "^4.8.0",
 		"markdownlint": "^0.40.0",
-		"tsx": "^4.22.4",
+		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.8"
 	},

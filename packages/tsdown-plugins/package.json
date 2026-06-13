@@ -30,11 +30,11 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:silk",
-		"@microsoft/api-extractor": "^7.58.7",
+		"@microsoft/api-extractor": "^7.58.8",
 		"@microsoft/tsdoc": "^0.16.0",
 		"@microsoft/tsdoc-config": "^0.18.1",
 		"deep-equal": "^2.2.3",
-		"json-schema-effect": "^0.2.1",
+		"json-schema-effect": "^0.2.2",
 		"picocolors": "^1.1.1",
 		"sort-package-json": "^4.0.0",
 		"std-env": "^4.1.0",
@@ -47,9 +47,9 @@
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
-		"rolldown": "^1.1.0",
+		"rolldown": "^1.1.1",
 		"tsdown": "^0.22.2",
-		"tsx": "^4.22.4",
+		"tsx": "catalog:silk",
 		"vitest": "^4.1.8"
 	},
 	"peerDependencies": {

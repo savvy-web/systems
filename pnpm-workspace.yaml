@@ -9,6 +9,7 @@ loglevel: info
 minimumReleaseAgeExclude:
   - tsdown@0.22.2
   - workspaces-effect@1.2.0
+  - json-schema-effect@0.2.2
 publicHoistPattern:
   - "@vitest/coverage-v8"
   - vitest

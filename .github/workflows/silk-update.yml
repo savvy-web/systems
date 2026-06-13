@@ -56,7 +56,13 @@ jobs:
           config-dependencies: |
             @savvy-web/pnpm-plugin-silk
           dependencies: |
+            @microsoft/api-extractor
+            @microsoft/tsdoc
+            @microsoft/tsdoc-config
             @azure/storage-blob
+            @changesets/get-github-info
+            @changesets/types
+            @commitlint/types
             @cyclonedx/cyclonedx-library
             @octokit/auth-app
             @octokit/rest
@@ -64,15 +70,47 @@ jobs:
             @savvy-web/*
             @sigstore/bundle
             @sigstore/sign
+            @types/mdast
+            @types/shell-quote
+            deep-equal
             fast-check
             jiti
             jsonc-effect
+            json-schema-effect
             js-yaml
+            markdownlint
+            mdast-util-heading-range
+            mdast-util-to-string
             picocolors
+            prettier
+            remark-gfm
+            remark-parse
+            remark-stringify
+            rolldown
+            shell-quote
             sort-package-json
             semver-effect
+            std-env
+            tinyglobby
+            tsdown
+            unified
+            unified-lint-rule
+            unist-util-visit
+            vitest
             workspaces-effect
+            yaml
             yaml-effect
+            yaml-lint
+          peer-lock: |
+            @changesets/cli
+            @commitlint/cli
+            @commitlint/config-conventional
+            commitizen
+            husky
+            lint-staged
+            markdownlint-cli2
+            markdownlint-cli2-formatter-codequality
+            turbo
           run: |
             pnpm savvy init
             pnpm lint:fix 2>/dev/null || true
