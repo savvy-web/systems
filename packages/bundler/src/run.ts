@@ -118,6 +118,43 @@ function deriveExportPaths(
 }
 
 /**
+ * Fast-fail validation for `outSubdir` overrides, run on EVERY target path. The dev/prod override-partition
+ * loop already validates these (and all other overrides) before building, but `--target meta` returns early
+ * (before that loop) and remaps meta dts basenames via `applySubdirMetaEntries` — which assumes validated
+ * input. Without this guard, a malformed `outSubdir` override (more than one entry, a non-canonical export
+ * path, or an export path that is not a real build entry) would silently remap a wrong/nonexistent key on the
+ * meta path. Mirrors the override loop's conditions and messages verbatim so every target path fast-fails
+ * identically. No-op when there are no overrides or none set `outSubdir`.
+ */
+function validateSubdirOverrides(
+	overrides: ReadonlyArray<{ entries: ReadonlyArray<string>; outSubdir?: string | undefined }> | undefined,
+	entries: Record<string, string>,
+	packageName: string,
+): void {
+	if (overrides === undefined) return;
+	for (const ov of overrides) {
+		if (ov.outSubdir === undefined) continue;
+		if (ov.entries.length !== 1) {
+			throw new Error(
+				`overrides: outSubdir "${ov.outSubdir}" must pin exactly one export path (got ${ov.entries.length})`,
+			);
+		}
+		const exportPath = ov.entries[0];
+		if (exportPath !== "." && !exportPath.startsWith("./")) {
+			throw new Error(
+				`overrides: entry "${exportPath}" must be a canonical export path — use "." for the root or a "./"-prefixed subpath (e.g. "./changesets/markdownlint")`,
+			);
+		}
+		const flatName = createEntryName(exportPath, false);
+		if (entries[flatName] === undefined) {
+			throw new Error(
+				`overrides: export path "${exportPath}" (entry "${flatName}") is not a build entry of ${packageName}`,
+			);
+		}
+	}
+}
+
+/**
  * For each `outSubdir` override, point its meta entry at the isolated sub-package barrel: the dts lives
  * at `<subdir>/index.d.ts` (not `<flatName>.d.ts`). Keyed by the stable flattened entry name so it
  * overwrites the default `dtsBasenames[flatName] = flatName` set from the full entry map. No-op when no
@@ -194,6 +231,10 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			}),
 		).pipe(Effect.provide(ConfigValidatorLive)),
 	);
+
+	// Fast-fail outSubdir-override validation: run BEFORE the --target meta branch (which returns early,
+	// bypassing the dev/prod override-partition loop) so every target path rejects a bad outSubdir override.
+	validateSubdirOverrides(config.overrides, entries, packageName);
 
 	// --target meta: generate the api-model from the dev build's dts into localPaths. No tsdown build.
 	// meta is tri-state: undefined -> default options, object -> overrides, false -> opt out (no-op).

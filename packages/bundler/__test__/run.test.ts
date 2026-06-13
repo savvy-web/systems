@@ -496,4 +496,38 @@ describe("runBuild", () => {
 		expect(captured?.exportPaths.runtime).toBe("./runtime");
 		expect(captured?.entries.index).toBe("index"); // base entry still present
 	}, 30_000);
+
+	it("rejects a meta build when an outSubdir override pins a non-existent export", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "run-meta-badsubdir-"));
+		await writeFile(
+			join(dir, "package.json"),
+			JSON.stringify({
+				name: "fix",
+				version: "1.0.0",
+				private: true,
+				type: "module",
+				exports: { ".": "./src/index.ts" },
+			}),
+		);
+		const metaSpy = vi.fn(async () => ({}) as never);
+		const config = defineBuild({
+			overrides: [
+				{
+					entries: ["./does-not-exist"],
+					outSubdir: "runtime",
+					platform: "browser",
+					css: { modules: {}, inject: true },
+				},
+			],
+		});
+		await expect(
+			runBuild(config, {
+				cwd: dir,
+				argv: ["--target", "meta"],
+				writeTsconfig: () => "/tmp/t.json",
+				generateMeta: metaSpy,
+			}),
+		).rejects.toThrow(/is not a build entry/);
+		expect(metaSpy).not.toHaveBeenCalled();
+	}, 30_000);
 });
