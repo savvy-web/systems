@@ -1,5 +1,13 @@
 # @savvy-web/tsdown-plugins
 
+## 0.4.2
+
+### Dependencies
+
+* | [`56fc55a`](https://github.com/savvy-web/systems/commit/56fc55aceb389c10ab8da1c962a464c758a936fc) | Dependency | Type    | Action  | From    | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :------ | :------ | -- |
+  | @microsoft/api-extractor                                                                          | dependency | updated | ^7.58.8 | ^7.58.9 |    |
+
 ## 0.4.1
 
 ### Dependencies

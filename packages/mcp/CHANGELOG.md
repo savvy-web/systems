@@ -1,5 +1,39 @@
 # @savvy-web/mcp
 
+## 1.0.0
+
+### Features
+
+* [`eac6587`](https://github.com/savvy-web/systems/commit/eac6587a9db1f2936703699b9d55134f80b8868e) ### changeset\_validate tool
+
+A new `changeset_validate` MCP tool validates changeset files against the section-aware lint rules (CSH001–CSH005). It accepts an optional `dir` path (defaults to `.changeset/`) and returns a structured result with a pass/fail flag, an error count, and per-file diagnostics including file path, rule ID, line, column, and message.
+
+```json
+{
+  "tool": "changeset_validate",
+  "arguments": { "dir": ".changeset" }
+}
+```
+
+Returns `{ dir, ok, errorCount, messages[] }` where each message has `file`, `rule`, `line`, `column`, and `message` fields.
+
+### classify mode for changeset\_inspect
+
+`changeset_inspect` now accepts `mode: "classify"` alongside the existing `branch` and `config` modes. Pass an array of repo-relative file paths and receive the owning package for each, resolved against the workspace configuration.
+
+```json
+{
+  "tool": "changeset_inspect",
+  "arguments": { "mode": "classify", "paths": ["packages/cli/src/index.ts"] }
+}
+```
+
+### Patch Changes
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 1.1.0 | 1.1.0 |
+
 ## 0.5.0
 
 ### Features
