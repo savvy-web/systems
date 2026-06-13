@@ -7,7 +7,7 @@ description: >
   attribution without re-implementing the logic.
 user-invocable: false
 model: sonnet
-allowed-tools: mcp__savvy-mcp__changeset_inspect
+allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_inspect
 ---
 
 # Inspect Changeset Configuration
@@ -27,7 +27,7 @@ This is an agent-internal skill. It calls the `changeset_inspect` MCP tool
 
 ## Primary path: `mode: "branch"`
 
-Call the `mcp__savvy-mcp__changeset_inspect` tool with:
+Call the `mcp__plugin_silk_savvy-mcp__changeset_inspect` tool with:
 
 ```json
 { "mode": "branch" }

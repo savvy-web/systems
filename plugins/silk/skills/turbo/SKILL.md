@@ -20,7 +20,7 @@ cache missed or why a task ran, pull the actual hash contributors and the actual
 
 ## Diagnose cache misses with turbo_inspect (don't hand-parse)
 
-Call the `mcp__savvy-mcp__turbo_inspect` MCP tool instead of hand-running
+Call the `mcp__plugin_silk_savvy-mcp__turbo_inspect` MCP tool instead of hand-running
 `turbo run … --dry`/`--summarize` and parsing the output yourself.
 
 - `mode: "cache"` + a task name — returns, per package, a HIT/MISS verdict plus the
@@ -54,7 +54,7 @@ the tool does not surface.
 
 ### My cache isn't working
 
-1. Run `mcp__savvy-mcp__turbo_inspect` `mode: "cache"` for the task and read the
+1. Run `mcp__plugin_silk_savvy-mcp__turbo_inspect` `mode: "cache"` for the task and read the
    contributors.
 2. A different INPUT file hash → an unexpected file is in the task's input set; tighten
    `inputs`.

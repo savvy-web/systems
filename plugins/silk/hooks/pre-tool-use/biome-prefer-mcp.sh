@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # PreToolUse (matcher: Bash) — when the agent runs Biome via Bash, directly or
-# through a package.json script, nudge it toward mcp__savvy-mcp__biome_check.
+# through a package.json script, nudge it toward mcp__plugin_silk_savvy-mcp__biome_check.
 # NEVER blocks: emits additionalContext only (no permissionDecision), so the
 # command always proceeds and the escape hatch is preserved. Nudges at most once
 # per session.
@@ -73,7 +73,7 @@ fi
 mkdir -p "$marker_dir" 2>/dev/null || true
 : > "$marker" 2>/dev/null || true
 
-NUDGE="You're about to run Biome via Bash. Prefer the mcp__savvy-mcp__biome_check tool: it returns structured diagnostics and can apply fixes (write/unsafe). If you already tried the MCP tool and it failed, or you need a flag it doesn't expose, ignore this and proceed — this is a one-time nudge, not a block."
+NUDGE="You're about to run Biome via Bash. Prefer the mcp__plugin_silk_savvy-mcp__biome_check tool: it returns structured diagnostics and can apply fixes (write/unsafe). If you already tried the MCP tool and it failed, or you need a flag it doesn't expose, ignore this and proceed — this is a one-time nudge, not a block."
 
 emit_context "PreToolUse" "$NUDGE"
 exit 0
