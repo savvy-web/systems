@@ -218,6 +218,15 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
     pass is needed but no slash command has been invoked — the agent owns
     discovery, classification, and the exclusion rules.
   </agent_dispatch>
+
+  <mcp_tools>
+    mcp__plugin_silk_savvy-mcp__changeset_validate
+        — structured CSH001-CSH005 validation for one or more changeset files;
+          returns typed diagnostics. Call after writing or editing changesets.
+    mcp__plugin_silk_savvy-mcp__changeset_inspect mode: "classify"
+        — maps arbitrary repo paths to their owning package. Use when a path
+          does not appear in the branch diff but you need to attribute it.
+  </mcp_tools>
 </available_tools>
 
 <active_hooks>

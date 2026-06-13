@@ -77,7 +77,7 @@ You can invoke any plugin skill via the `Skill` tool. The `turbo` skill is prelo
 
 | Skill | Loaded? | When to invoke |
 | --- | --- | --- |
-| `turbo` | Preloaded | The authoritative decision trees, the anti-pattern catalog with rationale, and the `references/` deep dives (configuration, inputs, CI). Already in scope at startup — consult it before every recommendation. |
+| `turbo` | Preloaded | The authoritative decision trees, the anti-pattern catalog with rationale, and bundled `references/` deep-dive files (caching deep-dive, configuration reference) — read those files for detailed field semantics rather than grepping source. Already in scope at startup — consult it before every recommendation. |
 
 Beyond skills, the `mcp__plugin_silk_savvy-mcp__silk_docs_search` corpus reaches the `silk://standards/turbo/*` documentation when you need standards-level context the skill does not carry. Use `mcp__plugin_silk_savvy-mcp__workspace_info` to resolve the workspace layout (package names, paths) before scoping an inspection.
 
