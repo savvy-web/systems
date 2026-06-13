@@ -107,10 +107,11 @@ export function buildServer(ctx: McpContext): McpServer {
 		"changeset_inspect",
 		{
 			description:
-				"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). Prefer this over shelling out to the savvy CLI.",
+				"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). mode=classify maps arbitrary repo-relative paths to their owning package. Prefer this over shelling out to the savvy CLI.",
 			inputSchema: {
-				mode: z.enum(["branch", "config"]).describe("Which inspection to run."),
+				mode: z.enum(["branch", "config", "classify"]).describe("Which inspection to run."),
 				base: z.optional(z.string()).describe("Override the base branch (branch mode only)."),
+				paths: z.optional(z.array(z.string())).describe("Paths to classify (classify mode only)."),
 				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
 			},
 			outputSchema: effectToZodSchema(ChangesetInspectResult) as never,

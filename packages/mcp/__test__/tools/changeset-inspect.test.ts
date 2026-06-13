@@ -71,6 +71,17 @@ describe("changesetInspect handler", () => {
 		expect(md).toContain("changeset config");
 	});
 
+	it("projects classify mode for arbitrary paths", async () => {
+		const data = await run(changesetInspect({ mode: "classify", paths: ["packages/foo/x.ts"] }, "/repo"));
+		expect(data.mode).toBe("classify");
+		if (data.mode === "classify") {
+			expect(data.result).toHaveLength(1);
+			expect(data.result[0].path).toBe("packages/foo/x.ts");
+		}
+		const md = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+		expect(md).toContain("packages/foo/x.ts");
+	});
+
 	it("forbids encoding markdown back", () => {
 		expect(() => Schema.encodeSync(ChangesetInspectAsMarkdown)("anything")).toThrow();
 	});
