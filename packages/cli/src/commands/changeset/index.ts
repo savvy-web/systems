@@ -1,6 +1,7 @@
 import { Command } from "@effect/cli";
 
 import { analyzeBranchCommand } from "./commands/analyze-branch.js";
+import { checkCommand } from "./commands/check.js";
 import { classifyCommand } from "./commands/classify.js";
 import { configShowCommand } from "./commands/config-show.js";
 import { configValidateCommand } from "./commands/config-validate.js";
@@ -26,6 +27,7 @@ const depsGroup = Command.make("deps").pipe(
 const _changesetCommand = Command.make("changeset").pipe(
 	Command.withSubcommands([
 		lintCommand,
+		checkCommand,
 		transformCommand,
 		validateFileCommand,
 		versionCommand,
