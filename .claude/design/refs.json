@@ -4,73 +4,73 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/api-extractor-llms/architecture.md",
-			"hash": "70791ae20252b6650c6e4dd926eca93313561807480708e5b3e65b0ad5d27862",
+			"hash": "bcea5268066bfe39cfbcc95a72d11dddb9e84ad585452f5eee9a6456303d59df",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "7b9fbb8056302e3d766cb7052bf649cfbb6887933990d5ab2e1703ca0353686b",
+			"hash": "ae3744d7bb02cc28b5c23895a50951b793a037736853e8990b81dadddf796c65",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "8e2ff4e009d7cba21c00810c1dbcdf2690fd6174a3e1200a231795aa27fdda2a",
+			"hash": "39e44c25c1a5ba641b2238cb28e542b9d8c999bee69edd864cf8121bba20c6f9",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/docs/architecture.md",
-			"hash": "080ede8264123dd00c14e58116a2f94b962f2943eba56bbbb13c7be4bf6a3cc1",
+			"hash": "40673ee99c18cd90f1999abb9ca578bf6bb70983cf820767fe8fad8a7f34166b",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/github-action-builder/architecture.md",
-			"hash": "6d99bde8613143a59d497f9550ab203402cc0ed47e3eda2d7353bf5c0dca8bc2",
+			"hash": "ae422f851b4c43956be10c80199eae3de3c62fb568af27f6eedea223923f6c7a",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/github-action-effects/index.md",
-			"hash": "47196db131a59954c2cfb933f7b0f8079707f68df0d6ec905804ff4e780f8697",
+			"hash": "9c6dc0f9abf489a9c22026f8412c4140182b593a28add654dfda0240a413b557",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "2e19b3089191c5a3d3cc64049055257aa045ded637a388e6e79109e52ec34611",
+			"hash": "c6f0b82d8021a85f50d09399a2b6f5a0fe79cfc6c9d0a89259df5b97647b2333",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk-effects/architecture.md",
-			"hash": "65b407300ec7f2ac1a9439e4e2beff6691e74a107137335dd05748883312ab21",
+			"hash": "21c4076238cb5eba759e7df62a8e1a1ee97405d56a8d60cbe988c597b027e1db",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/architecture.md",
-			"hash": "6e0b3ac2dfece1d07fc64c1a4acbb17e451c22d854ec5c2d91761d4bf0a28bae",
+			"hash": "e82045f89e702953036b6fa7bcf794660879d4d171de5ba186b20999bb41443b",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "ddf485ff1d7a770cd036af103bcc6f4f7633a0d9b288285cb49c0798ecad44ec",
+			"hash": "9b6042644f2cb197f7075dd136deb09e934416fa2340e74d42affea9e1371cb7",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/templates/architecture.md",
-			"hash": "033861891cecb896bd1e6def50d8a79af0ab9ee808740acb7d288f71958cbc54",
+			"hash": "90cae4d4ebffc302d96c1cfe84fd610394827e28e5f2c2cff2b6fe3ff5334f7b",
 			"recordedAt": "2026-06-12"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "7db8f5a4d1b45e324c248b8a6f21022c0e56f4f2afcbb8068653b1cd28780036",
+			"hash": "8f8c2657510765140d1d3a686061106087af136fdf6d57e96d44242ef0bd5015",
 			"recordedAt": "2026-06-12"
 		}
 	]

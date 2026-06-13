@@ -3,8 +3,8 @@ status: current
 module: api-extractor-llms
 category: architecture
 created: 2026-06-01
-updated: 2026-06-02
-last-synced: 2026-06-02
+updated: 2026-06-12
+last-synced: 2026-06-12
 completeness: 100
 related:
   - ../mcp/architecture.md
@@ -13,7 +13,7 @@ dependencies: []
 
 # api-extractor-llms (external dependency)
 
-`api-extractor-llms` is an **external npm package** (unscoped, published from `spencerbeggs/api-extractor-llms`) that renders Microsoft API Extractor `.api.json` models into LLM-lean markdown. It was extracted out of this monorepo and no longer lives here. This stub records why this repo depends on it and where its architecture is documented; it is not the source of truth for the library's internals.
+`api-extractor-llms` is an **external npm package** (unscoped, published from `spencerbeggs/api-extractor-llms`) that renders Microsoft API Extractor `.api.json` models into LLM-lean markdown. It was extracted out of this monorepo and no longer lives here. This doc records why this repo depends on it and where its architecture is documented; it is not the source of truth for the library's internals.
 
 ## Table of Contents
 
@@ -34,11 +34,11 @@ Extracted and published as `api-extractor-llms@^0.1.0` (unscoped name). It is no
 
 ## How this repo consumes it
 
-`packages/mcp/scripts/generate-api-docs.ts` imports `loadApiModel` and `renderPackage` from `"api-extractor-llms"` and drives the mcp API-doc generation pipeline. mcp injects a silk-specific `FrontmatterRenderer` and a `silk://packages/<dir>/api/<kind>/<slug>` `RouteFormatter`, then writes the rendered docs into the tracked `content/packages/*/api/` corpus (committed source content, not gitignored — only the upstream `.api.json` models are gitignored). The full pipeline — targets, turbo orchestration, the generated-doc identity contract — is documented in `../mcp/architecture.md` under "The API-doc generation pipeline".
+`packages/mcp/lib/scripts/generate-api-docs.ts` imports `loadApiModel` and `renderPackage` from `"api-extractor-llms"` and drives the mcp API-doc generation pipeline. mcp injects a silk-specific `FrontmatterRenderer` and a `silk://packages/<dir>/api/<kind>/<slug>` `RouteFormatter`, then writes the rendered docs under `packages/mcp/public/content/packages/<dir>/api/`. Both the rendered docs and the upstream `.api.json` models are gitignored, ephemeral build output regenerated deterministically on every build — only the hand-authored corpus and the baseline `manifest.json` are tracked. The full pipeline — targets, turbo orchestration, the gitignored-generated-docs split — is documented in `../mcp/architecture.md` under "The API-doc generation pipeline".
 
 ## Rationale
 
-### Why this is now a stub
+### Why this doc is a pointer, not a full architecture
 
 The package was extracted into its own repo and published to npm, so its detailed internal architecture is documented and versioned there. Duplicating that architecture here would create a second source of truth that drifts as the external library evolves. This repo only needs to record that mcp depends on the external package at build time and where to find the real docs.
 

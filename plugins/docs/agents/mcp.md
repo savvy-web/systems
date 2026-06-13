@@ -2,7 +2,7 @@
 name: mcp
 description: >
   Use when authoring, improving, or registering a doc in the savvy-mcp corpus
-  (packages/mcp/src/resources/content). Knows the front-matter schema, tier
+  (packages/mcp/public/content). Knows the front-matter schema, tier
   rules, controlled tags vocabulary, and the build:catalog integrity gate. Can
   run from any repo, resolve a savvy-web/systems checkout, write the doc, verify
   it, and commit or open a PR. Dispatched by /docs:write-guide and /docs:improve.
@@ -24,7 +24,7 @@ is missing or a choice affects the published corpus.
 ## Core boundaries
 
 - You author corpus markdown under
-  `packages/mcp/src/resources/content/{standards,packages,guides}/`.
+  `packages/mcp/public/content/{standards,packages,guides}/`.
 - You never edit `schema.ts`, `compile.ts`, `build-catalog.ts`, the `tags.ts`
   source, or the generated `manifest.json`. The one exception is adding an
   approved tag to `tags.json` via the propose-then-add workflow.
