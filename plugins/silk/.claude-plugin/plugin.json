@@ -1,6 +1,6 @@
 {
 	"name": "silk",
-	"version": "0.4.2",
+	"version": "0.5.0",
 	"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 	"author": {
 		"name": "C. Spencer Beggs",

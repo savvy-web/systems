@@ -1,5 +1,18 @@
 # @savvy-web/silk
 
+## 0.5.0
+
+### Features
+
+* [`111241c`](https://github.com/savvy-web/systems/commit/111241cefd5d91163871c02d2372a2dfae7cac5c) The silk plugin now integrates Biome two ways. A Biome language server (`biome lsp-proxy`, launched through a global-first resolver that falls back to a project-local install) surfaces lint and format diagnostics automatically after edits across JavaScript, TypeScript, JSON, CSS, and GraphQL files. A new `PreToolUse` hook nudges toward the `biome_check` MCP tool whenever Biome is run via Bash — directly or through a package.json script — without ever blocking the command, so Bash stays a valid escape hatch. A `<biome_capability>` SessionStart block documents the division of labor between the LSP (automatic, read-only), the `biome_check` tool (on-demand, structured, can fix), and Bash.
+
+### Patch Changes
+
+| Dependency     | Type       | Action  | From  | To    |
+| -------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/mcp | dependency | updated | 0.4.2 | 0.5.0 |
+| @savvy-web/cli | dependency | updated | 0.4.2 | 0.5.0 |
+
 ## 0.4.2
 
 ### Patch Changes

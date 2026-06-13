@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/tsdown-plugins",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"private": true,
 	"description": "Interface-only tsdown/rolldown plugin pack powering @savvy-web/bundler",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/tsdown-plugins",

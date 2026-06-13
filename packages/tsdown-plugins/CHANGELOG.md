@@ -1,5 +1,17 @@
 # @savvy-web/tsdown-plugins
 
+## 0.4.1
+
+### Dependencies
+
+* | [`e6e3ee4`](https://github.com/savvy-web/systems/commit/e6e3ee464b9e5ae56e45acbf03b583e1bc11d7c3) | Dependency | Type    | Action  | From    | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :------ | :------ | -- |
+  | @microsoft/api-extractor                                                                          | dependency | updated | ^7.58.8 | ^7.58.9 |    |
+
+### Other
+
+* [`49f5733`](https://github.com/savvy-web/systems/commit/49f5733639fa87562813b2c52c06293970409a43) Lock tsdown peer versioning.
+
 ## 0.4.0
 
 ### Features
