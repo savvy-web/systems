@@ -53,7 +53,7 @@ npx savvy clean --globs dist,.turbo,coverage
 - `savvy check` — orchestrator that runs all three checks and reports every failure (it does not short-circuit).
 - `savvy clean` — removes build and cache artifacts (`dist`, `.turbo`, `coverage`, `node_modules`, `.rslib` by default) from every workspace package (leaves first) and the repo root (last); `--globs` to customize, `--dry-run` to preview.
 - `savvy commit` — the husky/Claude hook handlers (session-start, pre-commit-message, post-commit-verify, user-prompt-submit).
-- `savvy changeset` — changeset lint, transform, version, classify, branch analysis, release-surface and config inspection.
+- `savvy changeset` — changeset lint, check, transform, version, config validation, and dependency changesets.
 - `savvy lint` — formatters for package.json, the pnpm workspace file and YAML.
 
 Run any command with `--help` to see its full surface:

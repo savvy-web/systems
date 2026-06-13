@@ -8,7 +8,7 @@ description: >
   only when there is genuine ambiguity.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__savvy-mcp__changeset_inspect, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - changeset-style
   - status
@@ -72,7 +72,7 @@ A "release surface" is anything whose changes belong in a package's release note
 
 1. **Inventory existing changesets.** List `.changeset/*.md` excluding `README.md`. For each, parse frontmatter to record package-to-bump mappings.
 
-2. **Inventory & classify the branch in one tool call.** Invoke `mcp__savvy-mcp__changeset_inspect` with `mode: "branch"` (pass `base` to override auto-detection).
+2. **Inventory & classify the branch in one tool call.** Invoke `mcp__plugin_silk_savvy-mcp__changeset_inspect` with `mode: "branch"` (pass `base` to override auto-detection).
 
    The MCP server does the diff against the base branch, the per-file workspace lookup, and the per-file `additionalScopes` / `versionFiles` resolution in a single pass. The `structuredContent` result has the shape:
 
@@ -163,9 +163,9 @@ You can invoke any plugin skill via the `Skill` tool. `changeset-style` and `sta
 | --- | --- | --- |
 | `changeset-style` | Preloaded | Authoritative format spec — already in scope at startup. |
 | `status` | Preloaded | Inventory-awareness rules — already in scope at startup. |
-| `config` | Lazy | **Invoke once per run during inventory.** Drives `mcp__savvy-mcp__changeset_inspect`: `mode: "branch"` (primary — diff + classification in one shot) and `mode: "config"` (config-only view when no diff is involved). The MCP server does the resolution; you read the structured content. |
+| `config` | Lazy | **Invoke once per run during inventory.** Drives `mcp__plugin_silk_savvy-mcp__changeset_inspect`: `mode: "branch"` (primary — diff + classification in one shot), `mode: "config"` (config-only view when no diff is involved), and `mode: "classify"` (maps one or more arbitrary repo paths to their owning package — use when a path does not appear in the branch diff but you need to attribute it, e.g. a file the user references directly). The MCP server does the resolution; you read the structured content. |
 | `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the `changeset_inspect` (`mode: "branch"`) result is a workspace `package.json` with `status: "modified"`.** Runs `regen.sh` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
-| `changeset-check` | Lazy | Invoke after a write to verify CSH001-CSH005 compliance, especially when you've touched several files. Its bundled `scripts/check.sh` shells out to `savvy changeset lint` for deterministic output. |
+| `changeset-check` | Lazy | **After writing or editing any changeset file, call `mcp__plugin_silk_savvy-mcp__changeset_validate` as an explicit verification step** — it returns typed CSH001-CSH005 diagnostics with no stdout parsing and surfaces violations before the pre-commit hook does. Invoke this skill to use the bundled `scripts/check.sh` / `scripts/lint.sh` Bash scripts as a fallback when the MCP tool is unavailable or when the PostToolUse hook already covered it. |
 | `changeset-list` | Lazy | Invoke during the inventory step if you want the structured listing rather than reading files yourself. Its bundled `scripts/list.sh` shells out to the project's `@changesets/cli` for JSON output. |
 | `changeset-preview` | Lazy | Invoke when you want to see what the final CHANGELOG would look like before deciding whether more changeset work is needed. |
 | `update` | Lazy | Mechanics for modifying an existing changeset's frontmatter or body. |
@@ -198,6 +198,6 @@ Multiple packages as separate lines:
 - You do not commit. After writing changeset files, your task is complete — the user commits.
 - You do not enumerate every file in the diff. The diff is for reviewers; the changeset is for consumers.
 - You do not document AI-context, internal design-doc, or behavior-neutral config changes. Apply the exclusion rules every time.
-- **You do not invent new exclusion categories.** The five named categories are exhaustive. For anything else, look at the `files[].package` + `files[].reason` returned by `mcp__savvy-mcp__changeset_inspect` (`mode: "branch"`); if a file is in `unmappedFiles[]`, ask the user via `AskUserQuestion`. "Not a published package surface" is not a valid rationale — release surfaces are defined by `pnpm-workspace.yaml` and the `packages` record in `.changeset/config.json`, both pre-resolved by the MCP server.
-- You do not call `mcp__savvy-mcp__changeset_inspect` and then ignore its output. The MCP server has already done the workspace lookup and the `additionalScopes` / `versionFiles` resolution — re-inferring those would only introduce drift.
+- **You do not invent new exclusion categories.** The five named categories are exhaustive. For anything else, look at the `files[].package` + `files[].reason` returned by `mcp__plugin_silk_savvy-mcp__changeset_inspect` (`mode: "branch"`); if a file is in `unmappedFiles[]`, ask the user via `AskUserQuestion`. "Not a published package surface" is not a valid rationale — release surfaces are defined by `pnpm-workspace.yaml` and the `packages` record in `.changeset/config.json`, both pre-resolved by the MCP server.
+- You do not call `mcp__plugin_silk_savvy-mcp__changeset_inspect` and then ignore its output. The MCP server has already done the workspace lookup and the `additionalScopes` / `versionFiles` resolution — re-inferring those would only introduce drift.
 - You do not silently fall back when a scoped operation finds nothing (e.g., `squash branch` with no in-branch changesets). Report and exit.

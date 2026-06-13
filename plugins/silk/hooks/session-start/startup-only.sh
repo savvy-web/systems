@@ -85,62 +85,48 @@ project's code-quality conventions you need from the first edit.
 </silk_system>
 
 <EXTREMELY_IMPORTANT>
-<code_quality_context>
+<code_quality_lint_rules>
 
-This project uses automated code quality tools via @savvy-web/lint-staged.
-These tools run automatically on pre-commit via Husky hooks. Follow these
-conventions to avoid lint failures.
+These Biome and TypeScript rules are enforced at pre-commit and WILL BLOCK a
+commit if violated. Apply them from the first edit — do not defer to the hook.
 
-<biome_formatting>
-Biome handles formatting and linting for TypeScript, JavaScript, JSON, and CSS.
-
-Formatting rules:
-- Indent with tabs, width 2
-- Line width: 120 characters
-- Format-with-errors enabled (formats even if there are syntax issues)
-
-Key linting enforcements:
+Biome lint rules (all Error-level):
 - useImportExtensions: All relative imports MUST use .js extensions (ESM requirement)
-- useImportType: Separate type imports required (import type { Foo } not import { type Foo })
-- useNodejsImportProtocol: Node.js built-ins must use node: protocol (node:fs, node:path)
-- useConsistentTypeDefinitions: Use consistent type definitions (interfaces)
-- noUnusedVariables: Error (rest siblings ignored)
-- noImportCycles: Error — no circular imports
-- organizeImports: Imports auto-sorted lexicographically
+- useImportType: Type-only imports MUST use import type { Foo }, not import { type Foo }
+- useNodejsImportProtocol: Node.js built-ins MUST use node: protocol (node:fs, node:path)
+- noUnusedVariables: Unused variables are an error (rest siblings excepted)
+- noImportCycles: Circular imports are an error — no import cycles
+- organizeImports: Imports are auto-sorted; write them in any order and Biome fixes on save
 
-Overrides:
-- package.json: JSON auto-expanded
-- turbo.json, tsconfig*.json: Keys auto-sorted
+TypeScript strict flags (enabled — violations are compile errors):
+- verbatimModuleSyntax: use import type for type-only imports
+- exactOptionalPropertyTypes: optional properties cannot be explicitly set to undefined
+
+</code_quality_lint_rules>
+</EXTREMELY_IMPORTANT>
+
+<reminder>
+<code_quality_formatting>
+
+Biome auto-formats on pre-commit — you do not need to hand-format. For reference:
+- Indent: tabs, width 2
+- Line width: 120 characters
+- Format-with-errors enabled (formats even if there are parse issues)
+- package.json: JSON auto-expanded; turbo.json, tsconfig*.json: keys auto-sorted
 - Test files (*.test.ts): noUndeclaredDependencies is off
 
-Ignored paths: dist, .turbo, .git, .rslib, .vitest, .coverage, coverage,
-__test__/**/fixtures, __test__/**/snapshots, __fixtures__
-</biome_formatting>
-
-<markdown_linting>
-All markdown files are linted with markdownlint-cli2.
-
-Key rules:
+Markdown files are linted with markdownlint-cli2:
 - No line length limit (MD013 disabled)
 - Duplicate headings allowed only among siblings (MD024)
 - HTML elements restricted to: br, details, summary, img, sup, sub
 - Code fences must have a language identifier (MD040)
 - Tables must use compact style (MD060) — single space around cell content
 - Files must end with a single newline (MD047)
-- All other default markdownlint rules are enabled
 
-Ignored paths: node_modules, dist, CHANGELOG.md, .claude/plans, docs/superpowers
-</markdown_linting>
+TypeScript base config (non-blocking, for reference):
+- Target: ES2023, Module: NodeNext; strict + strictNullChecks; isolatedModules; esModuleInterop
 
-<typescript_config>
-Standard strict TypeScript configuration:
-- Target: ES2023, Module: NodeNext
-- Strict mode enabled with strictNullChecks
-- exactOptionalPropertyTypes: enabled — optional properties cannot be explicitly set to undefined
-- verbatimModuleSyntax: enabled — use import type for type-only imports
-- isolatedModules: enabled
-- esModuleInterop: enabled
-</typescript_config>
+</code_quality_formatting>
 
 <running_tools>
 If you need to check or fix code quality manually:
@@ -155,9 +141,7 @@ If you need to check or fix code quality manually:
 Lint-staged runs automatically on pre-commit via Husky. The hook uses the
 detected package manager (${PM}) and config at lib/configs/lint-staged.config.ts.
 </pre_commit_hook>
-
-</code_quality_context>
-</EXTREMELY_IMPORTANT>
+</reminder>
 CONTEXT
 )
 

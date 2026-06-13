@@ -95,7 +95,7 @@ Env vars are a notorious source of "works on my machine" cache divergence:
 
 ## Diagnose with turbo_inspect
 
-Call `mcp__savvy-mcp__turbo_inspect` with `mode: "cache"` and the task name. It returns a
+Call `mcp__plugin_silk_savvy-mcp__turbo_inspect` with `mode: "cache"` and the task name. It returns a
 per-package HIT/MISS verdict plus the exact hash contributors — input files, env vars,
 external-dep hashes, and the global hash — so you can diff the contributors between a HIT
 run and a MISS run and identify the one that changed, without hand-parsing

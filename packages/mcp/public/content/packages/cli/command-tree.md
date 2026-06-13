@@ -29,9 +29,8 @@ savvy init        orchestrator → changeset · commit · lint init in one pass
 savvy check       orchestrator → runs all three checks
 savvy commit      init · check · hook(session-start · pre-commit-message ·
                   post-commit-verify · user-prompt-submit)
-savvy changeset   init · check · lint · transform · validate-file · version ·
-                  classify · analyze-branch · release-surface ·
-                  config(show · validate) · deps(detect · regen)
+savvy changeset   lint · check · transform · validate-file · version ·
+                  config(validate) · deps(detect · regen)
 savvy lint        init · check · fmt(package-json · pnpm-workspace · yaml)
 ```
 

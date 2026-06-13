@@ -24,11 +24,21 @@ export const ChangesetConfigResult = Schema.Struct({
 	result: Changesets.InspectedConfigSchema,
 }).annotations({ identifier: "ChangesetConfigResult" });
 
+/** Classify variant — arbitrary paths to owning package. */
+export const ChangesetClassifyResult = Schema.Struct({
+	mode: Schema.Literal("classify"),
+	result: Schema.Array(Changesets.ClassificationSchema),
+}).annotations({ identifier: "ChangesetClassifyResult" });
+
 /** The `changeset_inspect` tool result — a discriminated union keyed by `mode`. */
-export const ChangesetInspectResult = Schema.Union(ChangesetBranchResult, ChangesetConfigResult).annotations({
+export const ChangesetInspectResult = Schema.Union(
+	ChangesetBranchResult,
+	ChangesetConfigResult,
+	ChangesetClassifyResult,
+).annotations({
 	identifier: "ChangesetInspectResult",
 	title: "changeset_inspect result",
-	description: "Read-only changeset analysis grouped by mode (branch | config).",
+	description: "Read-only changeset analysis grouped by mode (branch | config | classify).",
 });
 
 export type ChangesetInspectResultType = Schema.Schema.Type<typeof ChangesetInspectResult>;
@@ -56,7 +66,7 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 				`## Files`,
 			];
 			for (const f of r.files) {
-				const owner = f.package ? mdInline(f.package) : "<unmapped>";
+				const owner = f.package ? mdInline(f.package) : mdInline("<unmapped>");
 				lines.push(`- ${mdInline(f.status)}  ${mdInline(f.path)}  ->  ${owner}`);
 			}
 			if (r.unmappedFiles.length > 0) {
@@ -87,6 +97,15 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 			if (r.packages.length === 0) lines.push("(none resolved)");
 			return lines.join("\n");
 		}
+		case "classify": {
+			const lines = [`# changeset classify`, ``];
+			for (const c of data.result) {
+				const owner = c.package ? mdInline(c.package) : mdInline("<unmapped>");
+				lines.push(`- ${mdInline(c.path)}  ->  ${owner}`);
+			}
+			if (data.result.length === 0) lines.push("(no paths)");
+			return lines.join("\n");
+		}
 	}
 };
 
@@ -102,8 +121,9 @@ export const ChangesetInspectAsMarkdown = Schema.transformOrFail(ChangesetInspec
 
 /** Arguments for the {@link changesetInspect} handler. */
 export interface ChangesetInspectArgs {
-	readonly mode: "branch" | "config";
+	readonly mode: "branch" | "config" | "classify";
 	readonly base?: string;
+	readonly paths?: ReadonlyArray<string>;
 	readonly cwd?: string;
 }
 
@@ -132,6 +152,11 @@ export const changesetInspect = (
 				const inspector = yield* Changesets.ConfigInspector;
 				const result = yield* inspector.inspect(root);
 				return { mode: "config", result } as ChangesetInspectResultType;
+			}
+			case "classify": {
+				const inspector = yield* Changesets.ConfigInspector;
+				const result = yield* inspector.classify(root, args.paths ?? []);
+				return { mode: "classify", result } as ChangesetInspectResultType;
 			}
 		}
 	});

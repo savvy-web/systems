@@ -130,7 +130,7 @@ does not surface (and always with --dry in that case).
 <turbo_capability>
 The savvy-mcp server provides a read-only Turborepo inspection tool:
 
-  mcp__savvy-mcp__turbo_inspect
+  mcp__plugin_silk_savvy-mcp__turbo_inspect
     mode: "cache"    — per-package HIT/MISS verdict plus the exact hash
                        contributors (input files, env vars, external-dep hashes,
                        global hash). Use for cache-miss diagnosis.
@@ -156,7 +156,7 @@ Biome (the suite's linter/formatter) is wired into this session two ways:
    diagnostics already arrive. The LSP cannot apply fixes and only sees files you
    have opened/edited.
 
-2. mcp__savvy-mcp__biome_check (on demand, structured, can fix). Run Biome over
+2. mcp__plugin_silk_savvy-mcp__biome_check (on demand, structured, can fix). Run Biome over
    any path and get parsed diagnostics back instead of console text:
      mode:   "check" (default — lint + format + imports) | "lint"
      write:  true  — apply safe fixes (--write)
@@ -218,6 +218,15 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
     pass is needed but no slash command has been invoked — the agent owns
     discovery, classification, and the exclusion rules.
   </agent_dispatch>
+
+  <mcp_tools>
+    mcp__plugin_silk_savvy-mcp__changeset_validate
+        — structured CSH001-CSH005 validation for one or more changeset files;
+          returns typed diagnostics. Call after writing or editing changesets.
+    mcp__plugin_silk_savvy-mcp__changeset_inspect mode: "classify"
+        — maps arbitrary repo paths to their owning package. Use when a path
+          does not appear in the branch diff but you need to attribute it.
+  </mcp_tools>
 </available_tools>
 
 <active_hooks>
@@ -228,7 +237,7 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
     Before git commits, you are reminded to consider whether a changeset is needed.
   </hook>
   <note>
-    turbo_inspect (mcp__savvy-mcp__turbo_inspect) has no hook — it is a
+    turbo_inspect (mcp__plugin_silk_savvy-mcp__turbo_inspect) has no hook — it is a
     read-only MCP tool; call it directly when Turborepo questions arise.
   </note>
 </active_hooks>

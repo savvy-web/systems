@@ -8,7 +8,7 @@ description: >
   it, and commit or open a PR. Dispatched by /docs:write-guide and /docs:improve.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, ListMcpResourcesTool, ReadMcpResourceTool, mcp__savvy-mcp__silk_docs_search, mcp__savvy-mcp__workspace_info, Bash(git *), Bash(gh *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *), Bash(bash *)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, ListMcpResourcesTool, ReadMcpResourceTool, mcp__plugin_docs_savvy-mcp__silk_docs_search, mcp__plugin_docs_savvy-mcp__workspace_info, Bash(git *), Bash(gh *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *), Bash(bash *)
 skills:
   - corpus-authoring
 color: magenta

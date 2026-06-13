@@ -8,7 +8,7 @@ description: >
   the main agent for lighter questions.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, ListMcpResourcesTool, ReadMcpResourceTool, mcp__savvy-mcp__turbo_inspect, mcp__savvy-mcp__workspace_info, mcp__savvy-mcp__silk_docs_search, Bash(turbo *), Bash(pnpm *), Bash(git *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, ListMcpResourcesTool, ReadMcpResourceTool, mcp__plugin_silk_savvy-mcp__turbo_inspect, mcp__plugin_silk_savvy-mcp__workspace_info, mcp__plugin_silk_savvy-mcp__silk_docs_search, Bash(turbo *), Bash(pnpm *), Bash(git *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - turbo
 color: blue
@@ -77,9 +77,9 @@ You can invoke any plugin skill via the `Skill` tool. The `turbo` skill is prelo
 
 | Skill | Loaded? | When to invoke |
 | --- | --- | --- |
-| `turbo` | Preloaded | The authoritative decision trees, the anti-pattern catalog with rationale, and the `references/` deep dives (configuration, inputs, CI). Already in scope at startup — consult it before every recommendation. |
+| `turbo` | Preloaded | The authoritative decision trees, the anti-pattern catalog with rationale, and bundled `references/` deep-dive files (caching deep-dive, configuration reference) — read those files for detailed field semantics rather than grepping source. Already in scope at startup — consult it before every recommendation. |
 
-Beyond skills, the `mcp__savvy-mcp__silk_docs_search` corpus reaches the `silk://standards/turbo/*` documentation when you need standards-level context the skill does not carry. Use `mcp__savvy-mcp__workspace_info` to resolve the workspace layout (package names, paths) before scoping an inspection.
+Beyond skills, the `mcp__plugin_silk_savvy-mcp__silk_docs_search` corpus reaches the `silk://standards/turbo/*` documentation when you need standards-level context the skill does not carry. Use `mcp__plugin_silk_savvy-mcp__workspace_info` to resolve the workspace layout (package names, paths) before scoping an inspection.
 
 Prefer the `turbo_inspect` tool and the bundled `turbo` skill over hand-running `turbo … --dry=json` and parsing it yourself — the tool surfaces the contributors in a structured form, and the skill's `references/` already encode the field semantics.
 

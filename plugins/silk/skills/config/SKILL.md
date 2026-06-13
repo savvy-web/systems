@@ -7,7 +7,7 @@ description: >
   attribution without re-implementing the logic.
 user-invocable: false
 model: sonnet
-allowed-tools: mcp__savvy-mcp__changeset_inspect
+allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_inspect mcp__plugin_silk_savvy-mcp__changeset_validate
 ---
 
 # Inspect Changeset Configuration
@@ -27,7 +27,7 @@ This is an agent-internal skill. It calls the `changeset_inspect` MCP tool
 
 ## Primary path: `mode: "branch"`
 
-Call the `mcp__savvy-mcp__changeset_inspect` tool with:
+Call the `mcp__plugin_silk_savvy-mcp__changeset_inspect` tool with:
 
 ```json
 { "mode": "branch" }
@@ -69,6 +69,25 @@ the config validates after a manual edit — call the tool with:
 ```json
 { "mode": "config" }
 ```
+
+## Tertiary path: `mode: "classify"`
+
+When the agent needs to map one or more arbitrary repo paths to their owning
+package — for example, a path the user references directly that does not appear
+in the branch diff, or a file outside the diff that should be attributed before
+asking via `AskUserQuestion` — call the tool with:
+
+```json
+{ "mode": "classify", "paths": ["path/to/file.ts", "another/path.ts"] }
+```
+
+The tool applies the same workspace-lookup and `additionalScopes`/`versionFiles`
+resolution as `mode: "branch"` but against the supplied path list rather than the
+git diff. Returns a flat array of `{ path, package, reason }` entries in input
+order — there is no separate `unmappedPaths[]` field. Entries whose `package` is
+`null` are unmapped (outside every known release surface); use those to decide
+whether to invoke `AskUserQuestion`. This mode is not a replacement for the
+branch-diff pass.
 
 Output schema (`InspectedConfig` shape in `structuredContent`):
 
