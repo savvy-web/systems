@@ -1,21 +1,17 @@
 import { Command } from "@effect/cli";
 
-import { analyzeBranchCommand } from "./commands/analyze-branch.js";
 import { checkCommand } from "./commands/check.js";
-import { classifyCommand } from "./commands/classify.js";
-import { configShowCommand } from "./commands/config-show.js";
 import { configValidateCommand } from "./commands/config-validate.js";
 import { depsDetectCommand } from "./commands/deps-detect.js";
 import { depsRegenCommand } from "./commands/deps-regen.js";
 import { lintCommand } from "./commands/lint.js";
-import { releaseSurfaceCommand } from "./commands/release-surface.js";
 import { transformCommand } from "./commands/transform.js";
 import { validateFileCommand } from "./commands/validate-file.js";
 import { versionCommand } from "./commands/version.js";
 
 /* v8 ignore start -- CLI registration; each command tested via exported handler */
 const configGroup = Command.make("config").pipe(
-	Command.withSubcommands([configShowCommand, configValidateCommand]),
+	Command.withSubcommands([configValidateCommand]),
 	Command.withDescription("Inspect or validate .changeset/config.json"),
 );
 
@@ -31,9 +27,6 @@ const _changesetCommand = Command.make("changeset").pipe(
 		transformCommand,
 		validateFileCommand,
 		versionCommand,
-		classifyCommand,
-		analyzeBranchCommand,
-		releaseSurfaceCommand,
 		configGroup,
 		depsGroup,
 	]),
