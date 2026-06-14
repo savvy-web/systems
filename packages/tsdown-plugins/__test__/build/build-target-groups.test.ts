@@ -950,4 +950,44 @@ describe("buildTargetGroups", () => {
 		expect(rtDts.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
 		expect(rtDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
 	});
+
+	it("globs the whole source subtree for an outSubdir partition's JS pass, keeps the barrel for dts", async () => {
+		const calls: Array<{ entry: unknown; dts: unknown }> = [];
+		const fakeBuild = vi.fn(async (cfg: { entry: unknown; dts: unknown }) => {
+			calls.push({ entry: cfg.entry, dts: cfg.dts });
+			return [];
+		});
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "./src/index.ts" },
+			tsconfigPath: "/tmp/t.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			overrides: [
+				{
+					entry: { index: "./src/runtime/index.tsx" },
+					outSubdir: "runtime",
+					platform: "browser",
+					externals: ["react"],
+				},
+			],
+			build: fakeBuild as never,
+		});
+
+		// base JS, base dts, runtime JS, runtime dts = 4 calls.
+		expect(fakeBuild).toHaveBeenCalledTimes(4);
+		const [, , rtJs, rtDts] = calls;
+		// JS pass: a glob over the barrel's source dir so the WHOLE bundleless subtree emits
+		// (RSPress references some files only by path via globalUIComponents/resolve.alias), with
+		// test/declaration files excluded.
+		expect(rtJs.entry).toEqual([
+			"./src/runtime/**/*.{ts,tsx,mts,cts}",
+			"!./src/runtime/**/*.test.{ts,tsx,mts,cts}",
+			"!./src/runtime/**/*.d.{ts,cts,mts}",
+		]);
+		expect(rtJs.dts).toBe(false);
+		// dts pass: stays the single named barrel entry so it rolls up one bundled index.d.ts.
+		expect(rtDts.entry).toEqual({ index: "./src/runtime/index.tsx" });
+	});
 });

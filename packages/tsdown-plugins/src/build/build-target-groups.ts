@@ -1,5 +1,5 @@
 // packages/tsdown-plugins/src/build/build-target-groups.ts
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { Plugin } from "rolldown";
 import type { JsxConfig } from "../jsx/config.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
@@ -211,6 +211,28 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			const partOutDir = part.outSubdir !== undefined ? join(js.outDir, part.outSubdir) : js.outDir;
 			const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: js.isProd };
 
+			// For an outSubdir partition (an isolated bundleless sub-package, e.g. an RSPress
+			// `./runtime`), the JS pass must emit the WHOLE source subtree as a per-file glob, NOT
+			// just the modules reachable from the barrel's import graph. Real RSPress plugins
+			// reference some runtime components ONLY by file path — via `globalUIComponents` and
+			// `resolve.alias` — and never import them from the barrel, so a barrel-only (unbundle)
+			// pass would drop those files and the consuming site fails with "Module not found" /
+			// broken alias targets. Globbing over the barrel's source directory ships every file.
+			// The barrel source is the single value in `part.entry` (e.g. `./src/runtime/index.tsx`);
+			// its `dirname` is the sub-package root (`./src/runtime`). The dts pass below keeps the
+			// single named barrel entry so it still rolls up one bundled `<subdir>/index.d.ts`.
+			//
+			// Test/declaration files are excluded so they do not emit into the runtime output.
+			const srcDir = dirname(Object.values(part.entry)[0] ?? "");
+			const jsEntry =
+				part.outSubdir !== undefined
+					? [
+							`${srcDir}/**/*.{ts,tsx,mts,cts}`,
+							`!${srcDir}/**/*.test.{ts,tsx,mts,cts}`,
+							`!${srcDir}/**/*.d.{ts,cts,mts}`,
+						]
+					: js.entry;
+
 			// Manifest is emitted ONCE per group, by the base partition's JS pass, covering the
 			// whole package's exports with per-entry dual conditions.
 			const manifestPlugin = isBase
@@ -228,7 +250,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			await build({
 				config: false,
 				cwd: options.cwd,
-				entry: js.entry,
+				entry: jsEntry,
 				outDir: partOutDir,
 				format: js.format,
 				platform: js.platform,

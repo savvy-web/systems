@@ -39,6 +39,7 @@ describe("rspress dual-bundle integration", () => {
 			join(dir, "types/css.d.ts"),
 			`declare module "*.module.css" { const c: Readonly<Record<string,string>>; export default c; }\ndeclare module "*.css" {}\n`,
 		);
+		await mkdir(join(dir, "src/runtime/components/Orphan"), { recursive: true });
 		await writeFile(join(dir, "src/index.ts"), `export const plugin = () => ({ name: "fixture" });\n`);
 		await writeFile(join(dir, "src/runtime/index.tsx"), `export { Button } from "./components/Button/index.js";\n`);
 		await writeFile(
@@ -46,6 +47,18 @@ describe("rspress dual-bundle integration", () => {
 			`import styles from "./index.module.css";\nexport function Button() { return <button className={styles.primaryButton} />; }\n`,
 		);
 		await writeFile(join(dir, "src/runtime/components/Button/index.module.css"), `.primary-button { color: red; }\n`);
+		// Orphan component: referenced by real RSPress plugins ONLY by file path (globalUIComponents /
+		// resolve.alias), NEVER re-exported by the runtime barrel. The bundleless runtime sub-package
+		// must ship its WHOLE source tree, not just files reachable from the barrel's import graph.
+		await writeFile(
+			join(dir, "src/runtime/components/Orphan/index.tsx"),
+			`import { jsx } from "react/jsx-runtime";\nexport function Orphan() { return jsx("div", {}); }\n`,
+		);
+		// A test file under the runtime tree: must NOT be compiled into the runtime output.
+		await writeFile(
+			join(dir, "src/runtime/components/Orphan/index.test.tsx"),
+			`export const fixtureSentinel = true;\n`,
+		);
 
 		const config = defineBuild({
 			meta: false, // keep this test focused on JS+dts emit; meta is covered elsewhere
@@ -72,6 +85,13 @@ describe("rspress dual-bundle integration", () => {
 		expect(existsSync(join(pkg, "runtime/index.js"))).toBe(true);
 		expect(existsSync(join(pkg, "runtime/index.d.ts"))).toBe(true);
 		expect(existsSync(join(pkg, "runtime/components/Button/index.js"))).toBe(true);
+		// Orphan (non-barrel-exported) component MUST emit: the whole runtime subtree ships, not just
+		// files reachable from the barrel.
+		expect(existsSync(join(pkg, "runtime/components/Orphan/index.js"))).toBe(true);
+		// Test files under the runtime tree must NOT compile into the runtime output.
+		expect(existsSync(join(pkg, "runtime/components/Orphan/index.test.js"))).toBe(false);
+		// dts stayed BUNDLED into a single runtime/index.d.ts — NOT per-file (no per-component .d.ts).
+		expect(existsSync(join(pkg, "runtime/components/Orphan/index.d.ts"))).toBe(false);
 		// CSS module: locals JS + emitted stylesheet, under runtime/.
 		expect(existsSync(join(pkg, "runtime/components/Button/index.module.js"))).toBe(true);
 		const hasCss =
