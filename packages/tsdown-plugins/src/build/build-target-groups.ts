@@ -228,7 +228,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				part.outSubdir !== undefined
 					? [
 							`${srcDir}/**/*.{ts,tsx,mts,cts}`,
-							`!${srcDir}/**/*.test.{ts,tsx,mts,cts}`,
+							`!${srcDir}/**/*.{test,spec}.{ts,tsx,mts,cts}`,
 							`!${srcDir}/**/*.d.{ts,cts,mts}`,
 						]
 					: js.entry;

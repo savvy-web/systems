@@ -983,7 +983,7 @@ describe("buildTargetGroups", () => {
 		// test/declaration files excluded.
 		expect(rtJs.entry).toEqual([
 			"./src/runtime/**/*.{ts,tsx,mts,cts}",
-			"!./src/runtime/**/*.test.{ts,tsx,mts,cts}",
+			"!./src/runtime/**/*.{test,spec}.{ts,tsx,mts,cts}",
 			"!./src/runtime/**/*.d.{ts,cts,mts}",
 		]);
 		expect(rtJs.dts).toBe(false);

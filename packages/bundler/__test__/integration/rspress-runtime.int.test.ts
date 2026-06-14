@@ -54,9 +54,13 @@ describe("rspress dual-bundle integration", () => {
 			join(dir, "src/runtime/components/Orphan/index.tsx"),
 			`import { jsx } from "react/jsx-runtime";\nexport function Orphan() { return jsx("div", {}); }\n`,
 		);
-		// A test file under the runtime tree: must NOT be compiled into the runtime output.
+		// Test/spec files under the runtime tree: must NOT be compiled into the runtime output.
 		await writeFile(
 			join(dir, "src/runtime/components/Orphan/index.test.tsx"),
+			`export const fixtureSentinel = true;\n`,
+		);
+		await writeFile(
+			join(dir, "src/runtime/components/Orphan/index.spec.tsx"),
 			`export const fixtureSentinel = true;\n`,
 		);
 
@@ -88,8 +92,9 @@ describe("rspress dual-bundle integration", () => {
 		// Orphan (non-barrel-exported) component MUST emit: the whole runtime subtree ships, not just
 		// files reachable from the barrel.
 		expect(existsSync(join(pkg, "runtime/components/Orphan/index.js"))).toBe(true);
-		// Test files under the runtime tree must NOT compile into the runtime output.
+		// Test/spec files under the runtime tree must NOT compile into the runtime output.
 		expect(existsSync(join(pkg, "runtime/components/Orphan/index.test.js"))).toBe(false);
+		expect(existsSync(join(pkg, "runtime/components/Orphan/index.spec.js"))).toBe(false);
 		// dts stayed BUNDLED into a single runtime/index.d.ts — NOT per-file (no per-component .d.ts).
 		expect(existsSync(join(pkg, "runtime/components/Orphan/index.d.ts"))).toBe(false);
 		// CSS module: locals JS + emitted stylesheet, under runtime/.
