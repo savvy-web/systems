@@ -107,7 +107,7 @@
 					}
 				}
 			},
-			"includes": ["**/turbo.json", "**/tsconfig.json", "**/tsconfig.*.json"]
+			"includes": ["**/turbo.json", "**/tsconfig.json", "**/tsconfig.*.json", "**/public/tsconfig/**/*.json"]
 		},
 		{
 			"includes": ["**/*.test.ts"],
@@ -138,7 +138,8 @@
 			"!**/.vitest",
 			"!**/.coverage",
 			"!coverage",
-			"!**/__test__/fixtures",
+			"!.claude/worktrees",
+			"!**/__test__/**/fixtures",
 			"!**/__test__/snapshots",
 			"!**/__test__/**/fixtures",
 			"!**/__test__/**/snapshots",

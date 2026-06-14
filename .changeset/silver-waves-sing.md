@@ -32,7 +32,7 @@ The plugin bundle externalizes `@rspress/core`. The runtime bundle externalizes 
 
 ### Shipped consumer tsconfig preset
 
-`@savvy-web/rspress-builder/tsconfig.json` is a ready-to-use TSConfig for RSPress plugin source: extends `@savvy-web/bundler/ecma.json`, sets `jsx: "react-jsx"`, includes `dom` and `dom.iterable` libs, and types `node`/`react`/`react-dom`. Reference it from your package's `tsconfig.json` with `"extends": "@savvy-web/rspress-builder/tsconfig.json"`.
+`@savvy-web/rspress-builder/tsconfig/plugin.json` is a ready-to-use TSConfig for RSPress plugin source: self-contained (extends a colocated `./ecma.json` copy so it resolves even when `@savvy-web/bundler` is only a transitive dependency), sets `jsx: "react-jsx"`, includes the `dom` lib, and types `node`/`react`/`react-dom`. Reference it from your package's `tsconfig.json` with `"extends": "@savvy-web/rspress-builder/tsconfig/plugin.json"`.
 
 ### Ambient CSS and `import.meta.env` typings
 

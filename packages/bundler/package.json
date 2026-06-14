@@ -21,7 +21,8 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./ecma.json": "./public/ecma.json"
+		"./ecma.json": "./public/ecma.json",
+		"./tsconfig/ecma.json": "./public/ecma.json"
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",

@@ -2,8 +2,8 @@
 	"compilerOptions": {
 		"allowJs": true,
 		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
 		"exactOptionalPropertyTypes": true,
+		"forceConsistentCasingInFileNames": true,
 		"lib": ["ES2022"],
 		"module": "ESNext",
 		"moduleResolution": "bundler",

@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 const root = fileURLToPath(new URL("..", import.meta.url));
 
 describe("rspress-builder public assets", () => {
-	it("ships a tsconfig preset extending the bundler base with react-jsx", () => {
-		const p = `${root}public/tsconfig.json`;
+	it("ships a tsconfig/plugin preset extending the local ecma base with react-jsx", () => {
+		const p = `${root}public/tsconfig/plugin.json`;
 		expect(existsSync(p)).toBe(true);
 		const json = JSON.parse(readFileSync(p, "utf-8"));
-		expect(json.extends).toBe("./ecma.json");
+		expect(json.extends).toBe("../ecma.json");
 		expect(json.compilerOptions.jsx).toBe("react-jsx");
 	});
 
