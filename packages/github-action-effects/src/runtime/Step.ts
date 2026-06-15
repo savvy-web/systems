@@ -1,7 +1,7 @@
 import { Cause, Effect, Exit, FiberRef, HashSet } from "effect";
 import { ActionLogger } from "../services/ActionLogger.js";
 import type { BufferedLine, StepBuffer, StepFrame } from "./StepRuntime.js";
-import { StepStack, emitFailure, emitSuccess, indent, makeStepBufferingLogger } from "./StepRuntime.js";
+import { StepStack, emitFailure, emitLine, emitSuccess, indent, makeStepBufferingLogger } from "./StepRuntime.js";
 
 /**
  * Step-buffered logging primitives.
@@ -39,6 +39,12 @@ export interface WithStepOptions<A> {
 	 * `"✅ <name>"` by default).
 	 */
 	readonly defaultSummary?: (result: A) => string;
+	/**
+	 * Custom success-line icon. When set, the step's success summary renders
+	 * with this glyph instead of the default `✅` (e.g. `📦` for a pack step).
+	 * The failure path is unaffected — a failed step always renders `❌`.
+	 */
+	readonly icon?: string;
 }
 
 /**
@@ -123,6 +129,7 @@ export const withStep = <A, E, R>(
 			successLine: null,
 			failureLine: null,
 			buffer,
+			...(options?.icon !== undefined ? { icon: options.icon } : {}),
 		};
 
 		// Install the step's buffering logger as the sole logger for
@@ -234,6 +241,32 @@ export const failure = (line: string): Effect.Effect<void> =>
 		if (innermost !== undefined) {
 			innermost.failureLine = line;
 		}
+	});
+
+/**
+ * Emit a standalone display line under the current step/group.
+ *
+ * The line renders at the depth of a child step — i.e. indented one level
+ * beneath the innermost active {@link withStep}/group — with the given icon and
+ * text, and no `<name>:` prefix. Use it for informational rows that accompany a
+ * step's outcome but are not themselves pass/fail steps, such as a provenance or
+ * SBOM attestation URL printed beneath a publish group. Only emit a line when
+ * the value exists — callers should skip the call rather than print an empty row.
+ *
+ * Unlike {@link success}, the line is written immediately (it does not wait for a
+ * step to resolve) and bypasses the step buffer, so it always appears live.
+ *
+ * @example
+ * ```ts
+ * if (provenanceUrl) yield* Step.line("🔏", `provenance  ${provenanceUrl}`)
+ * ```
+ *
+ * @public
+ */
+export const line = (icon: string, text: string): Effect.Effect<void> =>
+	Effect.gen(function* () {
+		const stack = yield* FiberRef.get(StepStack);
+		emitLine(stack.length, icon, text);
 	});
 
 /**

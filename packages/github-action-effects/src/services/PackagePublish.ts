@@ -124,6 +124,21 @@ export interface DryRunResult {
 }
 
 /**
+ * Outcome of a {@link PackagePublish.publishTarball} call.
+ *
+ * @public
+ */
+export interface PublishTarballResult {
+	/**
+	 * npm's native trusted-publishing provenance URL — the Sigstore transparency-log
+	 * entry npm prints when the tarball publishes with `--provenance`. Present only
+	 * for npm-registry publishes that enabled provenance; absent for GitHub Packages,
+	 * custom registries, or provenance-disabled publishes.
+	 */
+	readonly provenanceUrl?: string;
+}
+
+/**
  * Service for npm package publishing workflow.
  *
  * @public
@@ -196,7 +211,7 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 				 */
 				readonly tokenAuth?: boolean;
 			},
-		) => Effect.Effect<void, PackagePublishError>;
+		) => Effect.Effect<PublishTarballResult, PackagePublishError>;
 
 		/** Verify a published package's integrity hash matches the expected digest. */
 		readonly verifyIntegrity: (

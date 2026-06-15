@@ -43,13 +43,23 @@ const makeMockRunner = (handlers: {
 		args: ReadonlyArray<string>,
 		options?: ExecOptions,
 	) => Effect.Effect<ExecOutput, CommandRunnerError>;
-}) =>
-	Layer.succeed(CommandRunner, {
-		exec: handlers.exec ?? (() => Effect.succeed(0)),
-		execCapture: handlers.execCapture ?? (() => Effect.succeed({ exitCode: 0, stdout: "", stderr: "" })),
+}) => {
+	const execHandler = handlers.exec ?? (() => Effect.succeed(0));
+	// `publishTarball` runs through `execCapture`. When a test supplies only an
+	// `exec` handler (to capture argv / env / failures), derive `execCapture` from
+	// it so the same handler observes the call — mapping the exit code into an
+	// `ExecOutput` with empty captured streams.
+	const execCaptureHandler =
+		handlers.execCapture ??
+		((command: string, args: ReadonlyArray<string>, options?: ExecOptions) =>
+			execHandler(command, args, options).pipe(Effect.map((exitCode) => ({ exitCode, stdout: "", stderr: "" }))));
+	return Layer.succeed(CommandRunner, {
+		exec: execHandler,
+		execCapture: execCaptureHandler,
 		execJson: () => Effect.die("not used"),
 		execLines: () => Effect.die("not used"),
 	} as typeof CommandRunner.Service);
+};
 
 describe("PackagePublishLive", () => {
 	it("setupAuth writes the auth token to .npmrc off-argv and masks it via setSecret (S7)", async () => {
@@ -1385,6 +1395,53 @@ describe("PackagePublishLive", () => {
 			// the opaque "Command exited with code 1".
 			expect(error.reason).toBe("npm error 403 Forbidden");
 			expect((error.cause as CommandRunnerError).stderr).toBe("npm error 403 Forbidden");
+		});
+
+		it("lifts npm's native provenance URL out of the publish notice stream", async () => {
+			const runner = makeMockRunner({
+				execCapture: () =>
+					Effect.succeed({
+						exitCode: 0,
+						stdout:
+							"npm notice publish Signed provenance statement\n" +
+							"npm notice publish Provenance statement published to transparency log: https://search.sigstore.dev/?logIndex=1822519034\n",
+						stderr: "",
+					}),
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+			const result = await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) =>
+						svc.publishTarball("/tmp/pkg.tgz", {
+							registry: "https://registry.npmjs.org/",
+							access: "public",
+							provenance: true,
+						}),
+					),
+					Effect.provide(layer),
+				),
+			);
+
+			expect(result.provenanceUrl).toBe("https://search.sigstore.dev/?logIndex=1822519034");
+		});
+
+		it("returns no provenance URL when the publish output has no transparency-log notice", async () => {
+			const runner = makeMockRunner({
+				execCapture: () => Effect.succeed({ exitCode: 0, stdout: "+ pkg@1.0.0\n", stderr: "" }),
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+			const result = await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) => svc.publishTarball("/tmp/pkg.tgz", { registry: "https://npm.pkg.github.com/" })),
+					Effect.provide(layer),
+				),
+			);
+
+			expect(result.provenanceUrl).toBeUndefined();
 		});
 	});
 });

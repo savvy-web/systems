@@ -25,6 +25,8 @@ export interface PackagePublishTestState {
 	readonly packCalls: Array<{ packageDir: string }>;
 	readonly publishCalls: Array<{ packageDir: string; options?: Record<string, unknown> }>;
 	readonly publishTarballCalls: Array<{ tarballPath: string; options: Record<string, unknown> }>;
+	/** When set, `publishTarball` returns this as the npm-native provenance URL. */
+	readonly publishTarballProvenanceUrl?: string;
 	readonly verifyIntegrityCalls: Array<{ packageName: string; version: string; expectedDigest: string }>;
 	readonly publishToRegistriesCalls: Array<{ packageDir: string; registries: Array<RegistryTarget> }>;
 	readonly publishIdempotentCalls: Array<IdempotentPublishInput>;
@@ -62,6 +64,9 @@ const makeTestClient = (state: PackagePublishTestState): typeof PackagePublish.S
 	publishTarball: (tarballPath, options) =>
 		Effect.sync(() => {
 			state.publishTarballCalls.push({ tarballPath, options: options as Record<string, unknown> });
+			return state.publishTarballProvenanceUrl !== undefined
+				? { provenanceUrl: state.publishTarballProvenanceUrl }
+				: {};
 		}),
 
 	verifyIntegrity: (packageName, version, expectedDigest) =>
@@ -111,13 +116,19 @@ const makeTestClient = (state: PackagePublishTestState): typeof PackagePublish.S
 
 const makeState = (
 	overrides?: Partial<
-		Pick<PackagePublishTestState, "packResult" | "integrityMatch" | "publishedVersions" | "dryRunOk">
+		Pick<
+			PackagePublishTestState,
+			"packResult" | "integrityMatch" | "publishedVersions" | "dryRunOk" | "publishTarballProvenanceUrl"
+		>
 	>,
 ): PackagePublishTestState => ({
 	packResult: overrides?.packResult ?? defaultPackResult,
 	integrityMatch: overrides?.integrityMatch ?? true,
 	publishedVersions: overrides?.publishedVersions ?? [],
 	dryRunOk: overrides?.dryRunOk ?? true,
+	...(overrides?.publishTarballProvenanceUrl !== undefined
+		? { publishTarballProvenanceUrl: overrides.publishTarballProvenanceUrl }
+		: {}),
 	setupAuthCalls: [],
 	packCalls: [],
 	publishCalls: [],
@@ -143,7 +154,10 @@ export const PackagePublishTest = {
 	/** Create a test layer with custom state overrides. */
 	layer: (
 		overrides?: Partial<
-			Pick<PackagePublishTestState, "packResult" | "integrityMatch" | "publishedVersions" | "dryRunOk">
+			Pick<
+				PackagePublishTestState,
+				"packResult" | "integrityMatch" | "publishedVersions" | "dryRunOk" | "publishTarballProvenanceUrl"
+			>
 		>,
 	): { state: PackagePublishTestState; layer: Layer.Layer<PackagePublish> } => {
 		const state = makeState(overrides);

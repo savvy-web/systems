@@ -110,6 +110,9 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		expect(targets.map((t) => t.registry)).toEqual(["https://registry.npmjs.org", "https://npm.pkg.github.com"]);
 		expect(targets.every((t) => t.access === "public")).toBe(true);
 		expect(targets.every((t) => t.name === "@scope/x")).toBe(true);
+		// npm + GitHub Packages both opt into provenance — this is what gates the release
+		// action's attestation step. A false here leaves the publish-summary Provenance column empty.
+		expect(targets.every((t) => t.provenance === true)).toBe(true);
 	});
 
 	it("object-form targets, no binding (pre-build) → one placeholder per declared key", async () => {
@@ -126,6 +129,29 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		);
 		expect(targets.length).toBe(2);
 		expect(targets.map((t) => t.registry).sort()).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
+		// Provenance defaults must hold pre-build too, so Phase-2 validation reports it correctly.
+		expect(targets.every((t) => t.provenance === true)).toBe(true);
+	});
+
+	it("custom (non-npm/github) registry target → provenance defaults to false", async () => {
+		// Only the npm public registry and GitHub Packages participate in npm-style
+		// provenance; a custom registry target must not be marked provenance-ready.
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { corp: { registry: "https://npm.corp.example.com" } } },
+		});
+		writeBinding(tmpDir, {
+			groups: [{ id: "corp", name: "@scope/x", dir: "dist/prod/corp/pkg" }],
+			targets: [{ id: "corp", group: "corp", name: "@scope/x", registry: "https://npm.corp.example.com" }],
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].registry).toBe("https://npm.corp.example.com");
+		expect(targets[0].provenance).toBe(false);
 	});
 
 	it("object-form targets make a private package publishable (targets-first)", async () => {

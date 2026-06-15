@@ -78,6 +78,47 @@ describe("Step", () => {
 			);
 			expect(result).toBe(7);
 		});
+
+		it("renders a custom success icon when options.icon is set; failure still uses ❌", async () => {
+			await run(
+				Step.withStep("pack", Effect.succeed(0).pipe(Effect.tap(() => Step.success("13.1 kB · 6 files"))), {
+					icon: "📦",
+				}),
+			);
+			const out = output();
+			expect(out).toContain("📦 pack: 13.1 kB · 6 files");
+			expect(out).not.toContain("✅ pack");
+		});
+
+		it("a step with a custom icon still renders ❌ on failure", async () => {
+			const exit = await runExit(Step.withStep("provenance", Effect.fail(new Error("attest failed")), { icon: "🔏" }));
+			expect(Exit.isFailure(exit)).toBe(true);
+			const out = output();
+			expect(out).toContain("❌ provenance: attest failed");
+			expect(out).not.toContain("🔏 provenance");
+		});
+	});
+
+	// -----------------------------------------------------------------
+	// line — standalone display row
+	// -----------------------------------------------------------------
+
+	describe("line — standalone display row", () => {
+		it("emits an icon + text row indented under the enclosing step, with no name/colon", async () => {
+			await run(
+				Step.withStep(
+					"Publish · @scope/pkg",
+					Effect.gen(function* () {
+						yield* Step.line("🔏", "provenance  https://search.sigstore.dev/?logIndex=1822519034");
+						yield* Step.success("1 target");
+					}),
+				),
+			);
+			const out = output();
+			// Rendered one level under the depth-0 group → two-space indent, no `:` prefix.
+			expect(out).toContain("  🔏 provenance  https://search.sigstore.dev/?logIndex=1822519034");
+			expect(out).not.toContain("🔏 provenance:");
+		});
 	});
 
 	// -----------------------------------------------------------------

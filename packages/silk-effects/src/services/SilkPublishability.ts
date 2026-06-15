@@ -106,6 +106,21 @@ const DEFAULT_REGISTRIES: Record<string, string> = {
 };
 
 /**
+ * Whether a registry endpoint participates in npm-style SLSA provenance.
+ *
+ * @remarks
+ * The npm public registry and GitHub Packages both accept provenance attestations through the
+ * Sigstore/OIDC trusted-publishing flow, so a {@link PublishTarget} bound to either is marked
+ * `provenance: true` by default — this is what gates the release action's attestation step. JSR
+ * and custom registries do not participate and resolve to `false`. Matching is endpoint-based
+ * (not target-key based) so a custom key pointed at one of these registries still opts in.
+ */
+const provenanceForRegistry = (registry: string): boolean => {
+	const r = registry.toLowerCase();
+	return r.includes("registry.npmjs.org") || r.includes("npm.pkg.github.com");
+};
+
+/**
  * Silk publishability rules over `workspaces-effect`'s {@link PublishTarget}.
  *
  * @remarks
@@ -157,41 +172,47 @@ export class SilkPublishability {
 							registry: t.registry,
 							directory: dirByGroup.get(t.group) ?? `dist/prod/${t.group}/pkg`,
 							access,
+							provenance: provenanceForRegistry(t.registry),
 						}),
 				);
 			}
 			// Pre-build: no binding yet. Emit one placeholder per declared key so publishability
 			// and target counts are correct; the directory is best-effort (group collapsing is
 			// only known from the binding) and unused until the prod build writes it.
-			return Object.keys(targets).map(
-				(id) =>
-					new PublishTarget({
-						name: pkgName,
-						registry: DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT,
-						directory: `dist/prod/${id}/pkg`,
-						access,
-					}),
-			);
+			return Object.keys(targets).map((id) => {
+				const registry = DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT;
+				return new PublishTarget({
+					name: pkgName,
+					registry,
+					directory: `dist/prod/${id}/pkg`,
+					access,
+					provenance: provenanceForRegistry(registry),
+				});
+			});
 		}
 
 		if (pc && (pc.access === "public" || pc.access === "restricted")) {
+			const registry = pc.registry ?? NPM_DEFAULT;
 			return [
 				new PublishTarget({
 					name: pkgName,
-					registry: pc.registry ?? NPM_DEFAULT,
+					registry,
 					directory: pc.directory ?? ".",
 					access: pc.access,
+					provenance: provenanceForRegistry(registry),
 				}),
 			];
 		}
 
 		if (raw.private !== true) {
+			const registry = pc?.registry ?? NPM_DEFAULT;
 			return [
 				new PublishTarget({
 					name: pkgName,
-					registry: pc?.registry ?? NPM_DEFAULT,
+					registry,
 					directory: pc?.directory ?? ".",
 					access: pc?.access ?? "public",
+					provenance: provenanceForRegistry(registry),
 				}),
 			];
 		}

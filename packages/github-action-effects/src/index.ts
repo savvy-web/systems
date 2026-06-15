@@ -286,6 +286,7 @@ export type {
 	IdempotentPublishInput,
 	IdempotentPublishResult,
 	PackResult,
+	PublishTarballResult,
 	RegistryTarget,
 } from "./services/PackagePublish.js";
 export { PackagePublish } from "./services/PackagePublish.js";
