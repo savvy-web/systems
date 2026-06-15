@@ -3,8 +3,8 @@ status: current
 module: rspress-builder
 category: architecture
 created: 2026-06-13
-updated: 2026-06-13
-last-synced: 2026-06-13
+updated: 2026-06-14
+last-synced: 2026-06-14
 completeness: 90
 related:
   - ../bundler/architecture.md
@@ -41,7 +41,7 @@ The reference consumer is `spencerbeggs/rspress-plugin-api-extractor`, whose mig
 
 ## Current State
 
-`definePlugin` and the three additive partition fields it rides (`platform`/`css`/`outSubdir`, all in `tsdown-plugins`' `EntryOverride`) are implemented and threaded end to end. The package ships its consumer presets (`./tsconfig.json`, `./rspress-env.d.ts`, `./ecma.json`) and a merged API model covering both entries. The runtime partition's browser/bundleless/CSS-module emit, externals, `import.meta.env` preservation and the bundled-dts-plus-merged-api-model are covered by bundler integration fixtures plus this package's unit tests. The reference-consumer migration and link-and-build validation against a real RSPress site are the outstanding proof, tracked outside this repo.
+`definePlugin` and the three additive partition fields it rides (`platform`/`css`/`outSubdir`, all in `tsdown-plugins`' `EntryOverride`) are implemented and threaded end to end. The package ships its consumer presets under the `tsconfig/` namespace (`./tsconfig/plugin.json`, `./tsconfig/ecma.json`, plus the ambient `./rspress-env.d.ts`) and a merged API model covering both entries. The runtime partition's browser/bundleless/CSS-module emit, externals, `import.meta.env` preservation and the bundled-dts-plus-merged-api-model are covered by bundler integration fixtures plus this package's unit tests. The reference-consumer migration and link-and-build validation against a real RSPress site are the outstanding proof, tracked outside this repo.
 
 The option surface is deliberately small and defined in `src/index.ts` (the `RspressPluginOptions`/`RspressBundleOptions` types); that file is authoritative for the exact shape — this doc documents intent, not the field list.
 
@@ -82,11 +82,11 @@ The React/CSS/RSPress contract is kept entirely out of the core Node-library bun
 
 ## The shipped consumer presets
 
-The package ships three consumer-facing assets under top-level `public/` (mirrored into the published `pkg/` and exported):
+The package ships three consumer-facing assets under top-level `public/` (mirrored into the published `pkg/` and exported), all under the `tsconfig/` export namespace except the ambient declaration:
 
-- **`./tsconfig.json`** — a self-contained consumer tsconfig preset (JSX automatic, `dom`/`dom.iterable` lib, `react`/`react-dom` types) that **extends a SYNCED LOCAL `./ecma.json`**, NOT `@savvy-web/bundler/ecma.json`. An external consumer has the bundler only transitively, and tsdown's JS-pass tsconfig loader cannot resolve a package-extends into a transitive dependency — so this package keeps a byte-identical copy of the bundler's `public/ecma.json` and exports its own `./ecma.json`. A sync test guards the copy against drift (mirroring the same pattern `tsdown-plugins` uses — see `../bundler/architecture.md`).
+- **`./tsconfig/plugin.json`** — the RSPress plugin SOURCE preset for the plugin package itself (JSX automatic, `es2025`+`dom` lib, `react`/`react-dom` types). Self-contained: it **extends the colocated synced `../ecma.json`** (a relative `./` file), NOT `@savvy-web/bundler/ecma.json`. An external consumer has the bundler only transitively, and tsdown's tsconfig-`extends` loader cannot resolve a package-extends into a transitive dependency — so this package keeps a byte-identical copy of the bundler's `public/ecma.json` and exports its own `./tsconfig/ecma.json`. An `ecma-sync.test.ts` guards the copy against drift (the same pattern `tsdown-plugins` uses — see `../bundler/architecture.md`). It was renamed this branch from the former bare `./tsconfig.json`; unreleased, so no alias.
+- **`./tsconfig/ecma.json`** — the synced byte-identical copy of the bundler's `public/ecma.json` (resolved from its own `public/ecma.json`, deliberately outside the auto-formatted `public/tsconfig/` so Biome key-sorting cannot break the byte-identity guard).
 - **`./rspress-env.d.ts`** — ambient `*.module.css`/`*.css` module declarations plus the `ImportMetaEnv`/`ImportMeta` typings (replacing the rslib-era `@rslib/core/types` reference).
-- **`./ecma.json`** — the synced TS base above.
 
 ## API model covers options and components
 
@@ -98,7 +98,7 @@ The meta pipeline merges API models across entries, so the plugin (`.`) entry co
 - **The runtime is an isolated subdir, not a shared-outDir partition.** `outSubdir: "runtime"` makes plugin↔runtime collisions structurally impossible and the `./runtime` manifest path deterministic. See [Why the runtime is an isolated subdir](#why-the-runtime-is-an-isolated-subdir).
 - **`runtime` is explicit, not filesystem-detected.** A plugin with no runtime must pass `runtime: false`.
 - **The React/CSS/RSPress contract is peer-only.** `@rspress/core`/`react`/`react-dom`/`@tsdown/css` are peers of this package and never reach the core bundler; `@tsdown/css` is lazily loaded by tsdown.
-- **The tsconfig preset extends the synced LOCAL `./ecma.json`, not the bundler specifier.** A transitive bundler dependency cannot be resolved by tsdown's tsconfig loader; the local copy is guarded by a sync test.
+- **The shipped presets are self-contained — they extend the synced LOCAL `../ecma.json`, not the bundler specifier.** A transitive bundler dependency cannot be resolved by tsdown's tsconfig loader; the byte-identical local copy is guarded by `ecma-sync.test.ts`. See the taxonomy in `../bundler/architecture.md`.
 - **The runtime's API model is enabled.** Both entries merge into one `.api.json`, so plugin options and runtime components are both documented.
 - **No sass.** lightningcss-backed `@tsdown/css` is sufficient for the reference consumer; sass is a non-goal until a real consumer needs it.
 

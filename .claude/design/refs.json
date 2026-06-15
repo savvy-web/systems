@@ -10,8 +10,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "4ac89779688c02c18a5fc5f1cbd5c7d335cf2a76cc8d24502a2ebf3e60b5b6b1",
-			"recordedAt": "2026-06-13"
+			"hash": "6366ed13f51fe3ddf3397b6efec695456c029dcad753015ca08b6d81f08e9620",
+			"recordedAt": "2026-06-14"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -46,8 +46,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/rspress-builder/architecture.md",
-			"hash": "7fae14b2bf22b8cef19e1a361ff0a1255e9fa6e94fbee4154a19c264fe3a688e",
-			"recordedAt": "2026-06-13"
+			"hash": "da9d2515f614ce815b7449caeec0605545b655a181389c093dcd715cb986722b",
+			"recordedAt": "2026-06-14"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -58,8 +58,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/architecture.md",
-			"hash": "e82045f89e702953036b6fa7bcf794660879d4d171de5ba186b20999bb41443b",
-			"recordedAt": "2026-06-12"
+			"hash": "f7d2941c6ae2869210c9d41dd529db0695e0b6192e6123b2938da48f2c8746af",
+			"recordedAt": "2026-06-14"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -76,8 +76,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "0dbc6cd9ec054ebf31fb0d067cd79f88da8a9ecf4cbc878823a8253163ef06e4",
-			"recordedAt": "2026-06-13"
+			"hash": "e687ef05c7310ba06a67ce7110c4c7eac89a1971333c8942aec5ec10d7d22456",
+			"recordedAt": "2026-06-14"
 		}
 	]
 }

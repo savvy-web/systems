@@ -3,14 +3,15 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-13
-last-synced: 2026-06-13
+updated: 2026-06-14
+last-synced: 2026-06-14
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
   - ../cli/architecture.md
   - ../github-action-builder/architecture.md
   - ../rspress-builder/architecture.md
+  - ../silk/architecture.md
 dependencies:
   - ../tsdown-plugins/architecture.md
 ---
@@ -190,11 +191,23 @@ Package-specific concerns of note: `cli` uses the `dist/dev/pkg` + `dist/prod/np
 
 ## The shipped ecma.json tsconfig preset
 
-The bundler ships its own shared TS base preset (replacing the `@savvy-web/rslib-builder/tsconfig/ecma/lib.json` base that downstream packages used to extend):
+The bundler is the **canonical build base** in the ecosystem-wide TSConfig preset taxonomy. The organizing principle: build tools own the lib/build base (self-contained, shipped with the tool); silk owns the convention roots + framework configs (see `../silk/architecture.md`). The bundler ships its own shared TS base preset (replacing the `@savvy-web/rslib-builder/tsconfig/ecma/lib.json` base that downstream packages used to extend):
 
-- **`packages/bundler/public/ecma.json`** is published via the top-level `public/` copy convention and exported as `"./ecma.json": "./public/ecma.json"`. Every downstream package extends `@savvy-web/bundler/ecma.json` (package specifier).
+- **`packages/bundler/public/ecma.json`** is the tsdown library build base — `target: es2025` (Node 24), `module`/`moduleResolution: nodenext`, `strict`, `verbatimModuleSyntax`, `isolatedModules`, composite/declaration. It is published via the top-level `public/` copy convention. See the file for the authoritative compilerOptions.
+- **Exported under the `tsconfig/` namespace** as `"./tsconfig/ecma.json"` (matching the convention `@savvy-web/bun-builder` uses). The legacy bare `"./ecma.json"` export is RETAINED as a **deprecated alias** pointing at the same file, to be removed in the next major. Every downstream package extends the package specifier.
 - **The bundler extends its OWN copy by relative path** (`./public/ecma.json`) rather than the package specifier, to avoid a build-before-typecheck cycle (the package specifier resolves only after the `public/` copy lands in `dist`).
-- **`@savvy-web/tsdown-plugins` is upstream of the bundler**, so it cannot consume the package specifier. It keeps a byte-identical **synced local copy** at `packages/tsdown-plugins/ecma.json`, guarded by a unit test that fails if the two files drift.
+- **It lives at `public/ecma.json`, NOT `public/tsconfig/`.** The byte-identity guards below depend on the file's exact bytes; placing it outside the auto-formatted `public/tsconfig/**` directory keeps Biome's tsconfig key-sorting from reordering keys and breaking the sync tests.
+
+### Self-containment: shipped presets extend only relative files
+
+A shipped preset must be **self-contained** — it extends only RELATIVE `./` files inside its own package, never a package specifier. The reason is load-bearing: a consumer may carry the build tool only as a TRANSITIVE dependency, and tsdown's tsconfig-`extends` loader resolves package specifiers from the project root and cannot reach a transitive dep. So the upstream-and-sibling packages keep their own byte-identical copy rather than extending `@savvy-web/bundler`:
+
+- **`@savvy-web/tsdown-plugins`** is upstream of the bundler and cannot consume the package specifier. It keeps a byte-identical **synced local copy** at `packages/tsdown-plugins/ecma.json`, guarded by `__test__/ecma-sync.test.ts`.
+- **`@savvy-web/rspress-builder`** ships consumer presets a transitive consumer must resolve, so it keeps the same byte-identical copy at `packages/rspress-builder/public/ecma.json` (exported as its own `./tsconfig/ecma.json`), guarded by its own `__test__/ecma-sync.test.ts`. See `../rspress-builder/architecture.md`.
+
+### The TS6 baseline
+
+The shipped presets (and the silk convention presets) target TypeScript 6: they set `types` explicitly (TS6's default flipped to `[]`), use `module: nodenext`/`node20`/`esnext` rather than the deprecated `node`/`node10`, and drop a redundant `dom.iterable` (TS6's `dom` lib subsumes it). `es2025`/`es2023`/`node20`/`node18` are all valid TS 6.0.x values.
 
 ## Dist layout
 

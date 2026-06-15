@@ -3,8 +3,8 @@ status: current
 module: tsdown-plugins
 category: architecture
 created: 2026-06-05
-updated: 2026-06-13
-last-synced: 2026-06-13
+updated: 2026-06-14
+last-synced: 2026-06-14
 completeness: 90
 related:
   - ../bundler/architecture.md
@@ -347,7 +347,7 @@ Four guarantees hold this together: **parity** (the plugins *are* the front door
 - **tsdown auto-externalizes declared deps, so `externals` lists only the departures.** The default externalizes `dependencies`+`peerDependencies`+`optionalDependencies`; `externals` is for undeclared transitives that must stay external, and `bundle`/`bundleNodeModules` are for the inverse force-inline postures.
 - **`defaultManifestTransform` is the strip default; `removeDeclarationMaps` strips prod dts maps.** The bundler applies the strip when no `transform` is supplied (a custom transform replaces and re-calls it) and strips declaration source-maps from each prod group after meta generation; dev keeps the maps.
 - **Prod output is unminified by default.** `minify` applies to prod groups only and defaults off — this builder targets Node libraries where readable output is preferred over bundle size.
-- **This package self-builds.** It builds via an escape-hatch `savvy.build.ts` importing `buildTargetGroups` from its OWN `./src` (tsx-compiled, tier 1 of the bootstrap ladder). Its `ecma.json` tsconfig base is a synced local copy of the bundler's `public/ecma.json`, guarded by `__test__/ecma-sync.test.ts`. All ten in-repo packages build via the bundler. See `../bundler/architecture.md`.
+- **This package self-builds.** It builds via an escape-hatch `savvy.build.ts` importing `buildTargetGroups` from its OWN `./src` (tsx-compiled, tier 1 of the bootstrap ladder). Its `ecma.json` tsconfig base is a byte-identical synced local copy of the bundler's `public/ecma.json` (it is upstream of the bundler so it cannot extend the package specifier — one of the two synced copies in the TSConfig preset taxonomy, the other being `@savvy-web/rspress-builder`), guarded by `__test__/ecma-sync.test.ts`. All ten in-repo packages build via the bundler. See `../bundler/architecture.md`.
 - **`src/index.ts` is the semver'd contract.** It is what the escape hatch and the bundler both depend on.
 
 ## Rationale
