@@ -35,8 +35,11 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
+		"@effect/cluster": "catalog:silk",
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
+		"@effect/rpc": "catalog:silk",
+		"@effect/sql": "catalog:silk",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",

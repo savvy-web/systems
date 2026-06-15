@@ -151,6 +151,7 @@ export {
 	LegacySavvyLintHygieneDef,
 	MARKDOWNLINT_CONFIG_PATH,
 	POST_CHECKOUT_HOOK_PATH,
+	POST_COMMIT_HOOK_PATH,
 	POST_MERGE_HOOK_PATH,
 	SavvyLintSectionDef,
 	generateManagedContent,

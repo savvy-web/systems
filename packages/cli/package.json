@@ -33,8 +33,11 @@
 	},
 	"dependencies": {
 		"@effect/cli": "catalog:silk",
+		"@effect/cluster": "catalog:silk",
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
+		"@effect/rpc": "catalog:silk",
+		"@effect/sql": "catalog:silk",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",
 		"jsonc-effect": "^0.2.1",

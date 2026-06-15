@@ -18,3 +18,6 @@ export const POST_CHECKOUT_HOOK_PATH = ".husky/post-checkout";
 
 /** Husky post-merge hook path (savvy-hooks hygiene). */
 export const POST_MERGE_HOOK_PATH = ".husky/post-merge";
+
+/** Husky post-commit hook path (savvy-hooks hygiene). */
+export const POST_COMMIT_HOOK_PATH = ".husky/post-commit";

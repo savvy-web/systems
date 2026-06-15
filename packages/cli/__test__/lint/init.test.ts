@@ -98,7 +98,7 @@ describe("initCommand Effect program", () => {
 		expect(preCommit).toContain(END_LINT);
 		expect(preCommit).toContain("#!/usr/bin/env sh");
 
-		for (const hook of [".husky/post-checkout", ".husky/post-merge"]) {
+		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
 			const content = readFileSync(join(testDir, hook), "utf8");
 			expect(content).toContain(BEGIN_HOOKS);
 			expect(content).toContain(END_HOOKS);
@@ -197,7 +197,7 @@ ${END_LINT}
 		});
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
-		for (const hook of [".husky/post-checkout", ".husky/post-merge"]) {
+		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
 			const content = readFileSync(join(testDir, hook), "utf8");
 			expect(content).toContain(BEGIN_HOOKS);
 			expect(content).toContain(END_HOOKS);
@@ -267,6 +267,7 @@ ${END_LINT}
 			preCommit: readFileSync(join(testDir, ".husky/pre-commit"), "utf8"),
 			postCheckout: readFileSync(join(testDir, ".husky/post-checkout"), "utf8"),
 			postMerge: readFileSync(join(testDir, ".husky/post-merge"), "utf8"),
+			postCommit: readFileSync(join(testDir, ".husky/post-commit"), "utf8"),
 		};
 
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
@@ -274,11 +275,13 @@ ${END_LINT}
 			preCommit: readFileSync(join(testDir, ".husky/pre-commit"), "utf8"),
 			postCheckout: readFileSync(join(testDir, ".husky/post-checkout"), "utf8"),
 			postMerge: readFileSync(join(testDir, ".husky/post-merge"), "utf8"),
+			postCommit: readFileSync(join(testDir, ".husky/post-commit"), "utf8"),
 		};
 
 		expect(second.preCommit).toBe(first.preCommit);
 		expect(second.postCheckout).toBe(first.postCheckout);
 		expect(second.postMerge).toBe(first.postMerge);
+		expect(second.postCommit).toBe(first.postCommit);
 	});
 
 	it("skips hygiene hooks for minimal preset", async () => {
@@ -293,6 +296,7 @@ ${END_LINT}
 		expect(preCommit).toContain(BEGIN_LINT);
 		expect(() => readFileSync(join(testDir, ".husky/post-checkout"), "utf8")).toThrow();
 		expect(() => readFileSync(join(testDir, ".husky/post-merge"), "utf8")).toThrow();
+		expect(() => readFileSync(join(testDir, ".husky/post-commit"), "utf8")).toThrow();
 	});
 
 	it("rejects absolute config paths", async () => {

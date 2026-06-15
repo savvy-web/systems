@@ -17,6 +17,9 @@ export const POST_CHECKOUT_HOOK_PATH = ".husky/post-checkout";
 /** Path for the husky post-merge hook. */
 export const POST_MERGE_HOOK_PATH = ".husky/post-merge";
 
+/** Path for the husky post-commit hook. */
+export const POST_COMMIT_HOOK_PATH = ".husky/post-commit";
+
 /** Default path for the lint-staged config file. */
 export const DEFAULT_CONFIG_PATH = "lib/configs/lint-staged.config.ts";
 

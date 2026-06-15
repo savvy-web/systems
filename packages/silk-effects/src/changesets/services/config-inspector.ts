@@ -359,10 +359,12 @@ function readRawPackageJson(
 /**
  * Build resolved scopes from the discovered workspace packages, keeping only
  * those that are a release surface (declare publishConfig that yields at least
- * one publish target). Used when `.changeset/config.json` declares no explicit
- * `packages` record. The changeset `ignore` list is intentionally NOT consulted
- * here — an ignored package still declares publishConfig and remains a valid
- * changeset target.
+ * one publish target). Used both when `.changeset/config.json` declares no
+ * explicit `packages` record AND to augment an explicit record with the
+ * remaining workspace packages it does not list (so the record annotates the
+ * listed packages without shrinking the release surface). The changeset
+ * `ignore` list is intentionally NOT consulted here — an ignored package still
+ * declares publishConfig and remains a valid changeset target.
  */
 function buildFallbackScopes(
 	fs: FileSystem.FileSystem,
@@ -580,18 +582,31 @@ function makeShape(
 
 			let scopes: ReadonlyArray<ResolvedPackageScope>;
 			if (hasExplicitPackages) {
+				let explicitScopes: ReadonlyArray<ResolvedPackageScope>;
 				try {
-					scopes = buildResolvedScopes({
+					explicitScopes = buildResolvedScopes({
 						options: decodedOptions,
 						workspaces,
 						projectDir,
 						configPath,
 					});
-					checkConflicts(scopes, workspaces, projectDir, configPath);
+					checkConflicts(explicitScopes, workspaces, projectDir, configPath);
 				} catch (e) {
 					if (e instanceof ConfigurationError) return yield* Effect.fail(e);
 					throw e;
 				}
+
+				// A `packages` record annotates the listed packages (their
+				// additionalScopes / versionFiles); it must NOT shrink the release
+				// surface to just those packages. Discover the remaining
+				// release-surface workspace packages — the same fallback used when
+				// no `packages` record is present — and append them so attribution
+				// still covers the whole monorepo. The annotated packages keep
+				// their richer explicit scopes and are excluded from the fallback.
+				const explicitNames = new Set(explicitScopes.map((s) => s.name));
+				const remaining = workspaces.filter((w) => !explicitNames.has(w.name));
+				const discoveredScopes = yield* buildFallbackScopes(fs, remaining);
+				scopes = [...explicitScopes, ...discoveredScopes];
 			} else {
 				scopes = yield* buildFallbackScopes(fs, workspaces);
 			}

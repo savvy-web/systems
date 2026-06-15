@@ -27,7 +27,7 @@ import { getWorkspaceRoot } from "../utils/Workspace.js";
  *
  * @example
  * ```typescript
- * import { Yaml } from '\@savvy-web/lint-staged';
+ * import { Yaml } from '\@savvy-web/silk/lint';
  *
  * export default {
  *   [Yaml.glob]: Yaml.create({

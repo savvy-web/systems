@@ -42,7 +42,7 @@ type PresetType = "minimal" | "standard" | "silk";
 const PRE_COMMIT_HEADER =
 	"#!/usr/bin/env sh\n# Pre-commit hook with savvy managed sections\n# Custom hooks can go above, below, or between the managed sections\n\n";
 
-/** Header written when creating a fresh hygiene hook (post-checkout / post-merge). */
+/** Header written when creating a fresh hygiene hook (post-checkout / post-merge / post-commit). */
 const HYGIENE_HEADER =
 	"#!/usr/bin/env sh\n# Managed by savvy-hooks\n# Custom hooks can go above or below the managed section\n\n";
 
@@ -184,7 +184,7 @@ function syncBiomeSchemas() {
 const forceOption = Options.boolean("force").pipe(
 	Options.withAlias("f"),
 	Options.withDescription(
-		"Overwrite the pre-commit hook and config file entirely (managed sections in post-checkout/post-merge are never force-reset)",
+		"Overwrite the pre-commit hook and config file entirely (managed sections in post-checkout/post-merge/post-commit are never force-reset)",
 	),
 	Options.withDefault(false),
 );
@@ -271,9 +271,9 @@ export function runLintInit(opts: {
 				.join(", ")})`,
 		);
 
-		// post-checkout / post-merge: co-owned savvy-hooks hygiene (when preset enables it).
+		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene (when preset enables it).
 		if (presetIncludesShellScripts(preset)) {
-			for (const hookPath of [Lint.POST_CHECKOUT_HOOK_PATH, Lint.POST_MERGE_HOOK_PATH]) {
+			for (const hookPath of [Lint.POST_CHECKOUT_HOOK_PATH, Lint.POST_MERGE_HOOK_PATH, Lint.POST_COMMIT_HOOK_PATH]) {
 				yield* ensureHookFile(hookPath, HYGIENE_HEADER);
 				// Migrate legacy SAVVY-LINT hygiene section if present.
 				yield* ms.remove(hookPath, Lint.LegacySavvyLintHygieneDef);
@@ -318,9 +318,9 @@ export function runLintInit(opts: {
  * Writes:
  * - `.husky/pre-commit` — `savvy-base` preamble + `savvy-lint` tool section, in order
  *   (via `ManagedSection.syncMany`).
- * - `.husky/post-checkout` and `.husky/post-merge` — co-owned `savvy-hooks` hygiene
- *   (idempotent, shared with `@savvy-web/commitlint`). Migrates legacy `SAVVY-LINT`
- *   hygiene blocks by removing them before writing the new section.
+ * - `.husky/post-checkout`, `.husky/post-merge`, and `.husky/post-commit` — co-owned
+ *   `savvy-hooks` hygiene (idempotent, shared with `@savvy-web/commitlint`). Migrates
+ *   legacy `SAVVY-LINT` hygiene blocks by removing them before writing the new section.
  * - `lib/configs/.markdownlint-cli2.jsonc` config (when preset includes Markdown).
  * - lint-staged config at the specified path.
  *

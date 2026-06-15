@@ -5,7 +5,7 @@
  *
  * @example
  * ```typescript
- * import { Biome } from '@savvy-web/lint-staged';
+ * import { Biome } from '@savvy-web/silk/lint';
  *
  * // Use default handler
  * export default {

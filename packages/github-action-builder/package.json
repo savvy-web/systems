@@ -49,10 +49,13 @@
 	},
 	"dependencies": {
 		"@effect/cli": "catalog:silk",
+		"@effect/cluster": "catalog:silk",
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
 		"@effect/printer": "catalog:silk",
 		"@effect/printer-ansi": "catalog:silk",
+		"@effect/rpc": "catalog:silk",
+		"@effect/sql": "catalog:silk",
 		"@effect/typeclass": "catalog:silk",
 		"@rsbuild/core": "^2.0.12",
 		"effect": "catalog:silk",

@@ -139,9 +139,10 @@ describe("checkCommand", () => {
 	it("passes with a clean verdict under the minimal preset (no hygiene hooks installed)", async () => {
 		await runInit("minimal");
 
-		// Minimal preset writes pre-commit only — no post-checkout or post-merge.
+		// Minimal preset writes pre-commit only — no post-checkout, post-merge, or post-commit.
 		expect(() => readFileSync(join(testDir, ".husky/post-checkout"), "utf8")).toThrow();
 		expect(() => readFileSync(join(testDir, ".husky/post-merge"), "utf8")).toThrow();
+		expect(() => readFileSync(join(testDir, ".husky/post-commit"), "utf8")).toThrow();
 
 		await runCheck(false);
 

@@ -20,7 +20,7 @@ set -euo pipefail
 # shellcheck source=../lib/source-session-env.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/source-session-env.sh"
 
-_HOOK="pre-tool-use-push-guard"
+_HOOK="pre-tool-use/changeset-push-guard"
 
 if ! command -v jq &>/dev/null; then
 	hook_error "$_HOOK" "jq not found; skipping"
@@ -75,6 +75,31 @@ if [[ ! "$trimmed" =~ ^git[[:space:]]+push([[:space:]]|$) ]]; then
 	emit_noop
 	exit 0
 fi
+
+# Exempt push forms that cannot introduce unreleased branch commits:
+#   --tags          pushes tags only (MUST NOT match --follow-tags)
+#   --delete / -d   deletes a remote ref
+#   :<ref>          refspec-deletion form (colon-prefixed token, e.g. :branch)
+# Parse tokens that follow "git push" and short-circuit before the heavier
+# changeset checks. `read -ra` splits on whitespace; we index from 2 to skip
+# "git" and "push". The length-guarded while avoids the bash-3.2 set -u
+# empty-array-expansion trap on macOS's stock bash.
+read -ra _push_toks <<< "$trimmed"
+_ti=2
+while [ "$_ti" -lt "${#_push_toks[@]}" ]; do
+	case "${_push_toks[$_ti]}" in
+		--tags|--delete|-d)
+			emit_noop
+			exit 0
+			;;
+		:*)
+			emit_noop
+			exit 0
+			;;
+	esac
+	_ti=$((_ti + 1))
+done
+unset _push_toks _ti
 
 # Session-level override: a developer can `export SILK_SKIP_PUSH_CHECK=1`
 # before launching Claude Code to disable the guard for the whole session.

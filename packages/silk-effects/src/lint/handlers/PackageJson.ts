@@ -18,7 +18,7 @@ import { isWorkspacePackagePath } from "../utils/Workspace.js";
  *
  * @example
  * ```typescript
- * import { PackageJson } from '@savvy-web/lint-staged';
+ * import { PackageJson } from '@savvy-web/silk/lint';
  *
  * export default {
  *   // Use defaults

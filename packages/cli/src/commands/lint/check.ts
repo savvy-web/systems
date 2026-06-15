@@ -249,7 +249,11 @@ export function runLintCheck(opts: {
 		}
 
 		// Hygiene hooks: co-owned savvy-hooks section.
-		const shellHookPaths = [Lint.POST_CHECKOUT_HOOK_PATH, Lint.POST_MERGE_HOOK_PATH] as const;
+		const shellHookPaths = [
+			Lint.POST_CHECKOUT_HOOK_PATH,
+			Lint.POST_MERGE_HOOK_PATH,
+			Lint.POST_COMMIT_HOOK_PATH,
+		] as const;
 		const shellHookStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
 
 		for (const hookPath of shellHookPaths) {

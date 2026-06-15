@@ -162,11 +162,11 @@ describe("initCommand Effect program", () => {
 		expect(hookContent).toContain("pm_exec commitlint --config");
 	});
 
-	it("creates savvy-hooks hygiene in post-checkout and post-merge", async () => {
+	it("creates savvy-hooks hygiene in post-checkout, post-merge, and post-commit", async () => {
 		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
-		for (const hook of [".husky/post-checkout", ".husky/post-merge"]) {
+		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
 			const content = readFileSync(join(testDir, hook), "utf8");
 			expect(content).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
 			expect(content).toContain("git config core.fileMode false");

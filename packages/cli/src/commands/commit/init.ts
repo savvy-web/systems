@@ -19,7 +19,14 @@ import {
 	savvyToolSection,
 } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { CHECK_MARK, HUSKY_HOOK_PATH, POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH, WARNING } from "./constants.js";
+import {
+	CHECK_MARK,
+	HUSKY_HOOK_PATH,
+	POST_CHECKOUT_HOOK_PATH,
+	POST_COMMIT_HOOK_PATH,
+	POST_MERGE_HOOK_PATH,
+	WARNING,
+} from "./constants.js";
 
 /** Executable file permission mode. */
 const EXECUTABLE_MODE = 0o755;
@@ -34,7 +41,7 @@ export const SECTION_DEF = SectionDefinition.make({ toolName: "savvy-commit" });
 const COMMIT_MSG_HEADER =
 	"#!/usr/bin/env sh\n# Commit-msg hook with savvy managed sections\n# Custom hooks can go above, below, or between the managed sections\n\n";
 
-/** Header written when creating a fresh hygiene hook (post-checkout / post-merge). */
+/** Header written when creating a fresh hygiene hook (post-checkout / post-merge / post-commit). */
 const HYGIENE_HEADER =
 	"#!/usr/bin/env sh\n# Managed by savvy-hooks\n# Custom hooks can go above or below the managed section\n\n";
 
@@ -88,7 +95,7 @@ function ensureHookFile(path: string, header: string) {
 const forceOption = Options.boolean("force").pipe(
 	Options.withAlias("f"),
 	Options.withDescription(
-		"Overwrite the commit-msg hook and config file entirely (managed sections in post-checkout/post-merge are never force-reset)",
+		"Overwrite the commit-msg hook and config file entirely (managed sections in post-checkout/post-merge/post-commit are never force-reset)",
 	),
 	Options.withDefault(false),
 );
@@ -157,8 +164,8 @@ export function runCommitInit(opts: {
 			`${CHECK_MARK} ${force ? "Replaced" : "Synced"} ${HUSKY_HOOK_PATH} (${commitResults.map((r) => r._tag).join(", ")})`,
 		);
 
-		// post-checkout / post-merge: co-owned savvy-hooks hygiene.
-		for (const hookPath of [POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH]) {
+		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene.
+		for (const hookPath of [POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH, POST_COMMIT_HOOK_PATH]) {
 			yield* ensureHookFile(hookPath, HYGIENE_HEADER);
 			yield* ms.sync(hookPath, SavvyHooksSection.block(savvyHooksHygiene()));
 			yield* makeExecutable(hookPath);
@@ -188,8 +195,8 @@ export function runCommitInit(opts: {
  * @remarks
  * Writes:
  * - `.husky/commit-msg` — savvy-base preamble + savvy-commit tool section.
- * - `.husky/post-checkout` and `.husky/post-merge` — savvy-hooks hygiene
- *   (co-owned with `@savvy-web/lint-staged`; idempotent).
+ * - `.husky/post-checkout`, `.husky/post-merge`, and `.husky/post-commit` —
+ *   savvy-hooks hygiene (co-owned; idempotent).
  * - The commitlint config file.
  *
  * Users may add custom commands above, below, or between the managed sections.

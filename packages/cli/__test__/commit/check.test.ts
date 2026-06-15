@@ -143,7 +143,9 @@ describe("checkCommand Effect program", () => {
 		const commitMsg = fs.readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
 		expect(commitMsg).toContain("# --- BEGIN SAVVY-BASE MANAGED SECTION ---");
 		expect(commitMsg).toContain("# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---");
-		const postCheckout = fs.readFileSync(join(testDir, ".husky/post-checkout"), "utf8");
-		expect(postCheckout).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
+		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
+			const hygiene = fs.readFileSync(join(testDir, hook), "utf8");
+			expect(hygiene).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
+		}
 	});
 });

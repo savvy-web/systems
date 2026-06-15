@@ -16,7 +16,7 @@ export type PresetExtendOptions = CreateConfigOptions;
  *
  * @example
  * ```typescript
- * import { Preset } from '@savvy-web/lint-staged';
+ * import { Preset } from '@savvy-web/silk/lint';
  *
  * // Use a preset directly
  * export default Preset.standard();
@@ -43,7 +43,7 @@ export class Preset {
 	 *
 	 * @example
 	 * ```typescript
-	 * import { Preset } from '@savvy-web/lint-staged';
+	 * import { Preset } from '@savvy-web/silk/lint';
 	 *
 	 * export default Preset.minimal();
 	 * ```
@@ -86,7 +86,7 @@ export class Preset {
 	 *
 	 * @example
 	 * ```typescript
-	 * import { Preset } from '@savvy-web/lint-staged';
+	 * import { Preset } from '@savvy-web/silk/lint';
 	 *
 	 * export default Preset.standard({
 	 *   biome: { exclude: ['legacy/'] },
@@ -132,7 +132,7 @@ export class Preset {
 	 *
 	 * @example
 	 * ```typescript
-	 * import { Preset } from '@savvy-web/lint-staged';
+	 * import { Preset } from '@savvy-web/silk/lint';
 	 *
 	 * export default Preset.silk({
 	 *   typescript: { skipTypecheck: true },
@@ -168,7 +168,7 @@ export class Preset {
 	 *
 	 * @example
 	 * ```typescript
-	 * import { Preset } from '@savvy-web/lint-staged';
+	 * import { Preset } from '@savvy-web/silk/lint';
 	 *
 	 * const presetName = process.env.LINT_PRESET || 'standard';
 	 * export default Preset.get(presetName);

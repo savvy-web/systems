@@ -1,7 +1,9 @@
 /**
- * Auto-generated markdownlint template data.
+ * Markdownlint template data.
  *
- * DO NOT EDIT — regenerate with: pnpm generate:templates
+ * Originally generated in the now-deprecated `@savvy-web/lint-staged` package;
+ * the generator does not live in this repo, so this file is maintained by hand.
+ * Edit the `MARKDOWNLINT_TEMPLATE` / `MARKDOWNLINT_CONFIG` objects directly.
  *
  * @internal
  */
@@ -23,6 +25,8 @@ export const MARKDOWNLINT_TEMPLATE = {
 		"**/CHANGELOG.md",
 		"**/.claude/plans",
 		"**/docs/superpowers",
+		"**/__test__/**/fixtures/**",
+		"**/__fixtures__/**",
 	],
 	customRules: ["@savvy-web/silk/changesets/markdownlint"],
 	config: {
@@ -53,7 +57,9 @@ export const MARKDOWNLINT_TEMPLATE = {
 		MD024: {
 			siblings_only: true,
 		},
-		MD025: true,
+		MD025: {
+			front_matter_title: "",
+		},
 		MD026: true,
 		MD027: true,
 		MD028: true,
@@ -134,7 +140,9 @@ export const MARKDOWNLINT_CONFIG = {
 	MD024: {
 		siblings_only: true,
 	},
-	MD025: true,
+	MD025: {
+		front_matter_title: "",
+	},
 	MD026: true,
 	MD027: true,
 	MD028: true,
