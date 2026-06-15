@@ -4,7 +4,7 @@ import { NodeFileSystem } from "@effect/platform-node";
 import { ManagedSectionLive, savvyBasePreamble } from "@savvy-web/silk-effects";
 import { Effect, Layer, LogLevel, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { generateManagedContent, initCommand } from "../../src/commands/commit/init.js";
+import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
 
 /** Test layer combining NodeFileSystem and ManagedSectionLive, with logs silenced. */
 const TestLayer = Layer.provideMerge(ManagedSectionLive, NodeFileSystem.layer).pipe(
@@ -45,7 +45,7 @@ describe("savvyBasePreamble (shared, re-exported from silk-effects)", () => {
 	});
 });
 
-describe("initCommand Effect program", () => {
+describe("runCommitInit Effect program", () => {
 	const testDir = "/tmp/commitlint-init-test";
 	let originalCwd: string;
 
@@ -62,7 +62,7 @@ describe("initCommand Effect program", () => {
 	});
 
 	it("creates hook and config files from scratch", async () => {
-		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const hookContent = readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
@@ -78,7 +78,7 @@ describe("initCommand Effect program", () => {
 		mkdirSync(join(testDir, ".husky"), { recursive: true });
 		writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\n# my custom hook\n");
 
-		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const hookContent = readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
@@ -92,7 +92,7 @@ describe("initCommand Effect program", () => {
 		const oldContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\nold content\n${END_MARKER}\n`;
 		writeFileSync(join(testDir, ".husky/commit-msg"), oldContent);
 
-		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const hookContent = readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
@@ -105,7 +105,7 @@ describe("initCommand Effect program", () => {
 		mkdirSync(join(testDir, ".husky"), { recursive: true });
 		writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\n# custom\n");
 
-		const handler = initCommand.handler({ force: true, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: true, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const hookContent = readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
@@ -118,7 +118,7 @@ describe("initCommand Effect program", () => {
 	it("does not overwrite existing config without force", async () => {
 		writeFileSync(join(testDir, "commitlint.config.ts"), "// existing config");
 
-		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const configContent = readFileSync(join(testDir, "commitlint.config.ts"), "utf8");
@@ -128,7 +128,7 @@ describe("initCommand Effect program", () => {
 	it("overwrites existing config with force", async () => {
 		writeFileSync(join(testDir, "commitlint.config.ts"), "// existing config");
 
-		const handler = initCommand.handler({ force: true, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: true, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const configContent = readFileSync(join(testDir, "commitlint.config.ts"), "utf8");
@@ -136,7 +136,7 @@ describe("initCommand Effect program", () => {
 	});
 
 	it("creates nested config directories", async () => {
-		const handler = initCommand.handler({ force: false, config: "lib/configs/commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "lib/configs/commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const configContent = readFileSync(join(testDir, "lib/configs/commitlint.config.ts"), "utf8");
@@ -144,13 +144,13 @@ describe("initCommand Effect program", () => {
 	});
 
 	it("rejects absolute config paths", async () => {
-		const handler = initCommand.handler({ force: false, config: "/absolute/path/config.ts" });
+		const handler = runCommitInit({ force: false, config: "/absolute/path/config.ts" });
 		const result = await Effect.runPromiseExit(Effect.provide(handler, TestLayer));
 		expect(result._tag).toBe("Failure");
 	});
 
 	it("writes savvy-base before savvy-commit in commit-msg", async () => {
-		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		const hookContent = readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
@@ -163,7 +163,7 @@ describe("initCommand Effect program", () => {
 	});
 
 	it("creates savvy-hooks hygiene in post-checkout, post-merge, and post-commit", async () => {
-		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
@@ -175,7 +175,7 @@ describe("initCommand Effect program", () => {
 	});
 
 	it("is idempotent across repeated runs", async () => {
-		const handler = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 		const first = readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
 

@@ -23,8 +23,7 @@
  *
  * @remarks
  * `runChangesetInit` backs the changeset step of the unified `savvy init`
- * orchestrator; there is no standalone `savvy changeset init` subcommand. The
- * exported `initCommand` is retained only as a direct test entry point.
+ * orchestrator; there is no standalone `savvy changeset init` subcommand.
  *
  * @example
  * ```bash
@@ -38,7 +37,6 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Command, Options } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Data, Effect, Schema } from "effect";
 import type { JsoncFormattingOptions } from "jsonc-effect";
@@ -115,26 +113,6 @@ export class InitError extends InitErrorBase<{
 		return `Init failed at ${this.step}: ${this.reason}`;
 	}
 }
-
-/* v8 ignore start -- CLI option definitions; handler functions tested individually */
-const forceOption = Options.boolean("force").pipe(
-	Options.withAlias("f"),
-	Options.withDescription("Overwrite existing config files"),
-);
-
-const quietOption = Options.boolean("quiet").pipe(
-	Options.withAlias("q"),
-	Options.withDescription("Silence warnings, always exit 0"),
-);
-
-const skipMarkdownlintOption = Options.boolean("skip-markdownlint").pipe(
-	Options.withDescription("Skip registering rules in base markdownlint config"),
-);
-
-const checkOption = Options.boolean("check").pipe(
-	Options.withDescription("Check configuration without writing (for postinstall scripts)"),
-);
-/* v8 ignore stop */
 
 /**
  * Detect the `owner/repo` slug from the git remote origin URL.
@@ -808,11 +786,3 @@ export function runChangesetInit(opts: {
 		),
 	);
 }
-
-/* v8 ignore start -- CLI orchestration; individual functions tested separately */
-export const initCommand = Command.make(
-	"init",
-	{ force: forceOption, quiet: quietOption, skipMarkdownlint: skipMarkdownlintOption, check: checkOption },
-	(opts) => runChangesetInit(opts),
-).pipe(Command.withDescription("Bootstrap a repo for @savvy-web/changesets"));
-/* v8 ignore stop */

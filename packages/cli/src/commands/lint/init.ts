@@ -6,7 +6,6 @@
 import { chmod } from "node:fs/promises";
 import { dirname } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { Command, Options } from "@effect/cli";
 import { FileSystem } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import type { SectionWriteError } from "@savvy-web/silk-effects";
@@ -180,28 +179,6 @@ function syncBiomeSchemas() {
 	});
 }
 
-/* v8 ignore start -- CLI option definitions; handler tested individually */
-const forceOption = Options.boolean("force").pipe(
-	Options.withAlias("f"),
-	Options.withDescription(
-		"Overwrite the pre-commit hook and config file entirely (managed sections in post-checkout/post-merge/post-commit are never force-reset)",
-	),
-	Options.withDefault(false),
-);
-
-const configOption = Options.text("config").pipe(
-	Options.withAlias("c"),
-	Options.withDescription("Relative path for the lint-staged config file (from repo root)"),
-	Options.withDefault(Lint.DEFAULT_CONFIG_PATH),
-);
-
-const presetOption = Options.choice("preset", ["minimal", "standard", "silk"]).pipe(
-	Options.withAlias("p"),
-	Options.withDescription("Preset to use: minimal, standard, or silk"),
-	Options.withDefault("silk" as const),
-);
-/* v8 ignore stop */
-
 /** Make a file executable. */
 function makeExecutable(path: string) {
 	return Effect.tryPromise({
@@ -310,27 +287,3 @@ export function runLintInit(opts: {
 		yield* Effect.log("\nDone! Lint-staged is ready to use.");
 	});
 }
-
-/**
- * Init command implementation.
- *
- * @remarks
- * Writes:
- * - `.husky/pre-commit` — `savvy-base` preamble + `savvy-lint` tool section, in order
- *   (via `ManagedSection.syncMany`).
- * - `.husky/post-checkout`, `.husky/post-merge`, and `.husky/post-commit` — co-owned
- *   `savvy-hooks` hygiene (idempotent, shared with `@savvy-web/commitlint`). Migrates
- *   legacy `SAVVY-LINT` hygiene blocks by removing them before writing the new section.
- * - `lib/configs/.markdownlint-cli2.jsonc` config (when preset includes Markdown).
- * - lint-staged config at the specified path.
- *
- * Users may add custom commands above, below, or between the managed sections.
- * `--force` resets only the pre-commit hook and the config file; the hygiene sections
- * are always reconciled with `sync`.
- */
-/* v8 ignore next 3 -- CLI registration; handler tested via runLintInit */
-export const initCommand = Command.make(
-	"init",
-	{ force: forceOption, config: configOption, preset: presetOption },
-	(opts) => runLintInit(opts),
-).pipe(Command.withDescription("Initialize lint-staged configuration and husky hooks"));

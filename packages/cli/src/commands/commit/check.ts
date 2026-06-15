@@ -3,7 +3,6 @@
  *
  * @internal
  */
-import { Command } from "@effect/cli";
 import { FileSystem } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import type { SectionParseError } from "@savvy-web/silk-effects";
@@ -237,8 +236,3 @@ export function runCommitCheck(): Effect.Effect<
 		}
 	});
 }
-
-/* v8 ignore next 3 -- CLI registration; handler tested via runCommitCheck */
-export const checkCommand = Command.make("check", {}, () => runCommitCheck()).pipe(
-	Command.withDescription("Check current commitlint configuration and detected settings"),
-);

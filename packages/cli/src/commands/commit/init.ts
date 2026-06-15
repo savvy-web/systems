@@ -5,7 +5,6 @@
  */
 import { chmod } from "node:fs/promises";
 import { dirname } from "node:path";
-import { Command, Options } from "@effect/cli";
 import { FileSystem } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import type { SectionBlock, SectionWriteError } from "@savvy-web/silk-effects";
@@ -30,9 +29,6 @@ import {
 
 /** Executable file permission mode. */
 const EXECUTABLE_MODE = 0o755;
-
-/** Default path for the commitlint config file. */
-const DEFAULT_CONFIG_PATH = "lib/configs/commitlint.config.ts";
 
 /** Section definition for the savvy-commit tool section (identity for read/check/remove). */
 export const SECTION_DEF = SectionDefinition.make({ toolName: "savvy-commit" });
@@ -90,22 +86,6 @@ function ensureHookFile(path: string, header: string) {
 		}
 	});
 }
-
-/* v8 ignore start -- CLI option definitions; handler tested individually */
-const forceOption = Options.boolean("force").pipe(
-	Options.withAlias("f"),
-	Options.withDescription(
-		"Overwrite the commit-msg hook and config file entirely (managed sections in post-checkout/post-merge/post-commit are never force-reset)",
-	),
-	Options.withDefault(false),
-);
-
-const configOption = Options.text("config").pipe(
-	Options.withAlias("c"),
-	Options.withDescription("Relative path for the commitlint config file (from repo root)"),
-	Options.withDefault(DEFAULT_CONFIG_PATH),
-);
-/* v8 ignore stop */
 
 /** Content for the commitlint config file. */
 const CONFIG_CONTENT = `import { CommitlintConfig } from "@savvy-web/silk/commitlint";
@@ -188,20 +168,3 @@ export function runCommitInit(opts: {
 		yield* Effect.log("\nDone! Install @commitlint/cli if not already installed.");
 	});
 }
-
-/**
- * Init command implementation.
- *
- * @remarks
- * Writes:
- * - `.husky/commit-msg` — savvy-base preamble + savvy-commit tool section.
- * - `.husky/post-checkout`, `.husky/post-merge`, and `.husky/post-commit` —
- *   savvy-hooks hygiene (co-owned; idempotent).
- * - The commitlint config file.
- *
- * Users may add custom commands above, below, or between the managed sections.
- */
-/* v8 ignore next 3 -- CLI registration; handler tested via runCommitInit */
-export const initCommand = Command.make("init", { force: forceOption, config: configOption }, (opts) =>
-	runCommitInit(opts),
-).pipe(Command.withDescription("Initialize commitlint configuration and husky hooks"));

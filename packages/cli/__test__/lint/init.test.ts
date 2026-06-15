@@ -5,7 +5,7 @@ import { NodeFileSystem } from "@effect/platform-node";
 import { BiomeSchemaSyncLive, Lint, ManagedSectionLive, savvyBasePreamble } from "@savvy-web/silk-effects";
 import { Effect, Layer, LogLevel, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { initCommand } from "../../src/commands/lint/init.js";
+import { runLintInit } from "../../src/commands/lint/init.js";
 
 const TestLayer = Layer.provideMerge(Layer.merge(ManagedSectionLive, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
 	Layer.provide(Logger.minimumLogLevel(LogLevel.None)),
@@ -64,7 +64,7 @@ describe("savvyBasePreamble (shared, re-exported from silk-effects)", () => {
 	});
 });
 
-describe("initCommand Effect program", () => {
+describe("runLintInit Effect program", () => {
 	let testDir: string;
 	let originalCwd: string;
 
@@ -84,7 +84,7 @@ describe("initCommand Effect program", () => {
 	});
 
 	it("creates pre-commit, hygiene hooks, and config file from scratch", async () => {
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "lint-staged.config.ts",
 			preset: "silk",
@@ -111,7 +111,7 @@ describe("initCommand Effect program", () => {
 	});
 
 	it("writes savvy-base before savvy-lint in pre-commit", async () => {
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "lint-staged.config.ts",
 			preset: "silk",
@@ -131,7 +131,7 @@ describe("initCommand Effect program", () => {
 		mkdirSync(join(testDir, ".husky"), { recursive: true });
 		writeFileSync(join(testDir, ".husky/pre-commit"), "#!/usr/bin/env sh\n# my custom hook\necho 'before'\n");
 
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "lint-staged.config.ts",
 			preset: "silk",
@@ -154,7 +154,7 @@ describe("initCommand Effect program", () => {
 			"#!/usr/bin/env sh\n# user hygiene preamble\necho 'keep me'\n",
 		);
 
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: true,
 			config: "lint-staged.config.ts",
 			preset: "silk",
@@ -190,7 +190,7 @@ ${END_LINT}
 		writeFileSync(join(testDir, ".husky/post-checkout"), legacyHygiene);
 		writeFileSync(join(testDir, ".husky/post-merge"), legacyHygiene);
 
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "lint-staged.config.ts",
 			preset: "silk",
@@ -235,7 +235,7 @@ ${END_LINT}
 `;
 		writeFileSync(join(testDir, ".husky/pre-commit"), legacyPreCommit);
 
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "lint-staged.config.ts",
 			preset: "silk",
@@ -257,7 +257,7 @@ ${END_LINT}
 	});
 
 	it("is idempotent across repeated runs", async () => {
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "lint-staged.config.ts",
 			preset: "silk",
@@ -285,7 +285,7 @@ ${END_LINT}
 	});
 
 	it("skips hygiene hooks for minimal preset", async () => {
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "lint-staged.config.ts",
 			preset: "minimal",
@@ -300,7 +300,7 @@ ${END_LINT}
 	});
 
 	it("rejects absolute config paths", async () => {
-		const handler = initCommand.handler({
+		const handler = runLintInit({
 			force: false,
 			config: "/absolute/path/lint-staged.config.ts",
 			preset: "silk",
