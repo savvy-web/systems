@@ -202,6 +202,20 @@ function bundleEntry(
 							// makes rspack derive them from `import.meta.url`.
 							rspack: {
 								node: { __dirname: "node-module", __filename: "node-module" },
+								// Leave `import.meta.url` as a runtime expression. rspack's
+								// default `import.meta` parsing freezes each module's
+								// `import.meta.url` to its absolute *source* path as a `file://`
+								// literal during scope hoisting — e.g. `@azure/storage-common`'s
+								// crc64 ESM-compat shim calls `createRequire(import.meta.url)` /
+								// `fileURLToPath(import.meta.url)` at module top-level. That baked
+								// build-machine path is a structurally valid POSIX file-URL on
+								// macOS/Linux (so `createRequire` accepts it and the library's
+								// native-addon load fails over to its JS fallback), but `createRequire`
+								// rejects a POSIX file-URL on Windows and throws at module load,
+								// before any fallback — crashing the action. Disabling the parse
+								// leaves `import.meta.url` resolving to the emitted ESM bundle's own
+								// URL at runtime on every platform. See silk-runtime-action#137.
+								module: { parser: { javascript: { importMeta: false } } },
 								// A committed GitHub Action is cleaner as one file per entry.
 								// `asyncChunks: false` folds dynamically-imported code into the
 								// parent chunk, so a dynamic `import()` in the source no longer
