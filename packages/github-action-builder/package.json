@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/github-action-builder",
-	"version": "0.7.9",
+	"version": "0.7.10",
 	"private": true,
 	"description": "A zero-config build tool for creating GitHub Actions from TypeScript. Bundles with rsbuild, validates action.yml against GitHub's schema, and outputs production-ready Node.js 24 actions.",
 	"keywords": [
