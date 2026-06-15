@@ -541,6 +541,64 @@ describe("ConfigInspector.classify — empty-packages release-surface fallback",
 	});
 });
 
+describe("ConfigInspector — explicit `packages` augments release-surface discovery (#127)", () => {
+	const dirs: string[] = [];
+
+	beforeEach(() => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	// A `packages` record that exists only to annotate ONE package's
+	// versionFiles must not shrink the release surface to that package. The
+	// remaining publishable workspace packages must still be discovered.
+	function setupSingleAnnotatedFixture(): string {
+		return setupFixture({
+			workspacePackages: [
+				{ relPath: "packages/silk", name: "@scope/silk", version: "1.0.0", publishConfig: { access: "public" } },
+				{ relPath: "packages/bundler", name: "@scope/bundler", version: "0.4.2", publishConfig: { access: "public" } },
+			],
+			configJson: makeConfig({
+				packages: {
+					"@scope/silk": { versionFiles: [{ glob: "plugins/p/plugin.json", paths: ["$.version"] }] },
+				},
+			}),
+			extraFiles: [
+				{ path: "plugins/p/plugin.json", content: JSON.stringify({ version: "0.0.0" }) },
+				{ path: "packages/bundler/src/index.ts", content: "" },
+			],
+		});
+	}
+
+	it("classifies a file in a publishable package that the `packages` record does not list", async () => {
+		const dir = setupSingleAnnotatedFixture();
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["packages/bundler/src/index.ts"]);
+		expect(result.package).toBe("@scope/bundler");
+		expect(result.reason).toBe("workspace");
+	});
+
+	it("inspect() lists both the annotated package and the discovered release-surface packages", async () => {
+		const dir = setupSingleAnnotatedFixture();
+		dirs.push(dir);
+
+		const result = await runInspect(dir);
+		expect(result.packages.map((p) => p.name).sort()).toEqual(["@scope/bundler", "@scope/silk"]);
+		// The annotated package keeps its versionFiles richness.
+		expect(result.packages.find((p) => p.name === "@scope/silk")?.versionFiles).toHaveLength(1);
+		// The discovered package carries no versionFiles/additionalScopes.
+		expect(result.packages.find((p) => p.name === "@scope/bundler")?.versionFiles).toEqual([]);
+	});
+});
+
 describe("InspectedConfigSchema", () => {
 	it("decodes a resolved config shape", () => {
 		const sample = {

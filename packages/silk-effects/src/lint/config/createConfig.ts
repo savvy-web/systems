@@ -19,7 +19,7 @@ import type { CreateConfigOptions, LintStagedConfig } from "../types.js";
  *
  * @example
  * ```typescript
- * import { createConfig } from '@savvy-web/lint-staged';
+ * import { createConfig } from '@savvy-web/silk/lint';
  *
  * // Use all defaults
  * export default createConfig();

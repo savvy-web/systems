@@ -27,7 +27,7 @@ export type TypeScriptCompiler = "tsgo" | "tsc";
  *
  * @example
  * ```typescript
- * import { TypeScript } from '\@savvy-web/lint-staged';
+ * import { TypeScript } from '\@savvy-web/silk/lint';
  *
  * export default {
  *   // Auto-detects compiler and runs type checking

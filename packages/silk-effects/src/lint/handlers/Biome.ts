@@ -30,7 +30,7 @@ import { getWorkspacePackagePaths, getWorkspaceRoot } from "../utils/Workspace.j
  *
  * @example
  * ```typescript
- * import { Biome } from '@savvy-web/lint-staged';
+ * import { Biome } from '@savvy-web/silk/lint';
  *
  * export default {
  *   // Auto-discovers biome command and config file

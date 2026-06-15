@@ -20,7 +20,7 @@ set -euo pipefail
 # shellcheck source=../lib/source-session-env.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/source-session-env.sh"
 
-_HOOK="pre-tool-use-push-guard"
+_HOOK="pre-tool-use/changeset-push-guard"
 
 if ! command -v jq &>/dev/null; then
 	hook_error "$_HOOK" "jq not found; skipping"
@@ -75,6 +75,47 @@ if [[ ! "$trimmed" =~ ^git[[:space:]]+push([[:space:]]|$) ]]; then
 	emit_noop
 	exit 0
 fi
+
+# Exempt push forms that cannot introduce unreleased branch commits — but ONLY
+# when no branch refspec is also being pushed. `git push origin main --tags` and
+# `git push origin main :old` push branch commits IN ADDITION to the tag/deletion,
+# so a bare `--tags`/`:ref` token is not sufficient to exempt:
+#   --delete / -d   deletion mode — every refspec becomes a delete, no commits
+#   --tags          push tags only (MUST NOT match --follow-tags)
+#   :<ref>          refspec-deletion form (colon-prefixed token, e.g. :branch)
+# The first non-option positional after "git push" is the remote; any further
+# non-option, non-colon positional is a branch ref that disqualifies the
+# tags/deletion exemptions. `read -ra` splits on whitespace; we index from 2 to
+# skip "git" and "push". The length-guarded while avoids the bash-3.2 set -u
+# empty-array-expansion trap on macOS's stock bash.
+read -ra _push_toks <<< "$trimmed"
+_saw_delete=0
+_saw_tags=0
+_saw_colon=0
+_has_branch_ref=0
+_seen_remote=0
+_ti=2
+while [ "$_ti" -lt "${#_push_toks[@]}" ]; do
+	case "${_push_toks[$_ti]}" in
+		--delete | -d) _saw_delete=1 ;;
+		--tags) _saw_tags=1 ;;
+		-*) ;;
+		:*) _saw_colon=1 ;;
+		*)
+			if [ "$_seen_remote" -eq 0 ]; then
+				_seen_remote=1
+			else
+				_has_branch_ref=1
+			fi
+			;;
+	esac
+	_ti=$((_ti + 1))
+done
+if [ "$_saw_delete" -eq 1 ] || { [ "$_has_branch_ref" -eq 0 ] && { [ "$_saw_tags" -eq 1 ] || [ "$_saw_colon" -eq 1 ]; }; }; then
+	emit_noop
+	exit 0
+fi
+unset _push_toks _ti _saw_delete _saw_tags _saw_colon _has_branch_ref _seen_remote
 
 # Session-level override: a developer can `export SILK_SKIP_PUSH_CHECK=1`
 # before launching Claude Code to disable the guard for the whole session.

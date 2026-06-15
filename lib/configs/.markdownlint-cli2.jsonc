@@ -12,7 +12,9 @@
 		"**/dist",
 		"**/CHANGELOG.md",
 		"**/.claude/plans",
-		"**/docs/superpowers"
+		"**/docs/superpowers",
+		"**/__test__/**/fixtures/**",
+		"**/__fixtures__/**"
 	],
 	"customRules": ["@savvy-web/silk/changesets/markdownlint"],
 	"config": {
@@ -40,7 +42,9 @@
 		"MD021": true,
 		"MD022": true,
 		"MD023": true,
-		"MD024": false,
+		"MD024": {
+			"siblings_only": true
+		},
 		"MD025": {
 			"front_matter_title": ""
 		},

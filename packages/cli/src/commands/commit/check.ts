@@ -3,7 +3,6 @@
  *
  * @internal
  */
-import { Command } from "@effect/cli";
 import { FileSystem } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import type { SectionParseError } from "@savvy-web/silk-effects";
@@ -19,7 +18,14 @@ import {
 } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { WorkspaceDiscovery } from "workspaces-effect";
-import { CHECK_MARK, HUSKY_HOOK_PATH, POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH, WARNING } from "./constants.js";
+import {
+	CHECK_MARK,
+	HUSKY_HOOK_PATH,
+	POST_CHECKOUT_HOOK_PATH,
+	POST_COMMIT_HOOK_PATH,
+	POST_MERGE_HOOK_PATH,
+	WARNING,
+} from "./constants.js";
 import { SECTION_DEF, savvyCommitBlock } from "./init.js";
 
 /** Unicode cross symbol. */
@@ -185,7 +191,7 @@ export function runCommitCheck(): Effect.Effect<
 		}
 
 		// Hygiene hooks status (co-owned savvy-hooks section)
-		for (const hookPath of [POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH]) {
+		for (const hookPath of [POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH, POST_COMMIT_HOOK_PATH]) {
 			const hygieneExists = yield* fs.exists(hookPath);
 			if (!hygieneExists) {
 				sectionsHealthy = false;
@@ -230,8 +236,3 @@ export function runCommitCheck(): Effect.Effect<
 		}
 	});
 }
-
-/* v8 ignore next 3 -- CLI registration; handler tested via runCommitCheck */
-export const checkCommand = Command.make("check", {}, () => runCommitCheck()).pipe(
-	Command.withDescription("Check current commitlint configuration and detected settings"),
-);

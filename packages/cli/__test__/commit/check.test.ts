@@ -6,8 +6,8 @@ import { ChangesetConfigReaderLive, ManagedSectionLive, VersioningStrategyLive }
 import { Effect, Layer, LogLevel, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WorkspaceDiscovery, WorkspaceRootLive } from "workspaces-effect";
-import { checkCommand } from "../../src/commands/commit/check.js";
-import { generateManagedContent, initCommand } from "../../src/commands/commit/init.js";
+import { runCommitCheck } from "../../src/commands/commit/check.js";
+import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
 
 /** Marker format used by silk-effects ManagedSection for "savvy-commit" tool. */
 const BEGIN_MARKER = "# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---";
@@ -32,9 +32,9 @@ const TestLayer = Layer.mergeAll(
 	WorkspaceRootLive,
 ).pipe(Layer.provideMerge(NodeContext.layer), Layer.provide(Logger.minimumLogLevel(LogLevel.None)));
 
-describe("checkCommand", () => {
+describe("runCommitCheck", () => {
 	it("is a valid Effect CLI command", () => {
-		expect(checkCommand).toBeDefined();
+		expect(runCommitCheck).toBeDefined();
 	});
 });
 
@@ -57,7 +57,7 @@ describe("check helpers via init re-exports", () => {
 	});
 });
 
-describe("checkCommand Effect program", () => {
+describe("runCommitCheck Effect program", () => {
 	const testDir = "/tmp/commitlint-check-test";
 	let originalCwd: string;
 
@@ -76,14 +76,14 @@ describe("checkCommand Effect program", () => {
 	});
 
 	it("runs without errors when no config exists", async () => {
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 	});
 
 	it("runs when config file exists", async () => {
 		writeFileSync(join(testDir, "commitlint.config.ts"), "export default {};");
 
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 	});
 
@@ -91,7 +91,7 @@ describe("checkCommand Effect program", () => {
 		mkdirSync(join(testDir, ".husky"), { recursive: true });
 		writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\necho test\n");
 
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 	});
 
@@ -101,7 +101,7 @@ describe("checkCommand Effect program", () => {
 		const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\n${generateManagedContent(configPath)}\n${END_MARKER}\n`;
 		writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
 
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 	});
 
@@ -110,7 +110,7 @@ describe("checkCommand Effect program", () => {
 		const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\nold outdated content\n${END_MARKER}\n`;
 		writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
 
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 	});
 
@@ -120,22 +120,22 @@ describe("checkCommand Effect program", () => {
 		mkdirSync(join(testDir, ".husky"), { recursive: true });
 		writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\n");
 
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 	});
 
 	it("detects various config file types", async () => {
 		writeFileSync(join(testDir, ".commitlintrc.json"), "{}");
 
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 	});
 
 	it("validates cleanly when fully initialized via init", async () => {
-		const init = initCommand.handler({ force: false, config: "commitlint.config.ts" });
+		const init = runCommitInit({ force: false, config: "commitlint.config.ts" });
 		await Effect.runPromise(Effect.provide(init, TestLayer));
 
-		const handler = checkCommand.handler({});
+		const handler = runCommitCheck();
 		await Effect.runPromise(Effect.provide(handler, TestLayer));
 
 		// init wrote all three hooks; check should find the base, commit, and hygiene sections present.
@@ -143,7 +143,9 @@ describe("checkCommand Effect program", () => {
 		const commitMsg = fs.readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
 		expect(commitMsg).toContain("# --- BEGIN SAVVY-BASE MANAGED SECTION ---");
 		expect(commitMsg).toContain("# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---");
-		const postCheckout = fs.readFileSync(join(testDir, ".husky/post-checkout"), "utf8");
-		expect(postCheckout).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
+		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
+			const hygiene = fs.readFileSync(join(testDir, hook), "utf8");
+			expect(hygiene).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
+		}
 	});
 });

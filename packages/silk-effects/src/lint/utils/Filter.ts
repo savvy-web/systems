@@ -3,7 +3,7 @@
  *
  * @example
  * ```typescript
- * import { Filter } from '@savvy-web/lint-staged';
+ * import { Filter } from '@savvy-web/silk/lint';
  *
  * const handler = (filenames: readonly string[]) => {
  *   const filtered = Filter.exclude(filenames, ['dist/', '__fixtures__']);

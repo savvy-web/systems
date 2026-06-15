@@ -11,8 +11,8 @@ import {
 import { Effect, Layer, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WorkspacesLive } from "workspaces-effect";
-import { checkCommand } from "../../src/commands/lint/check.js";
-import { initCommand } from "../../src/commands/lint/init.js";
+import { runLintCheck } from "../../src/commands/lint/check.js";
+import { runLintInit } from "../../src/commands/lint/init.js";
 
 const SilkLive = Layer.mergeAll(ManagedSectionLive, BiomeSchemaSyncLive, ConfigDiscoveryLive, ToolDiscoveryLive);
 const BaseAppLayer = SilkLive.pipe(Layer.provideMerge(WorkspacesLive), Layer.provideMerge(NodeContext.layer));
@@ -60,7 +60,7 @@ fi
 ${END_LINT}
 `;
 
-describe("checkCommand", () => {
+describe("runLintCheck", () => {
 	let testDir: string;
 	let originalCwd: string;
 	let logs: string[];
@@ -83,12 +83,12 @@ describe("checkCommand", () => {
 	});
 
 	async function runCheck(quiet: boolean) {
-		const handler = checkCommand.handler({ quiet });
+		const handler = runLintCheck({ quiet });
 		await Effect.runPromise(Effect.provide(handler, captureLayer(logs)));
 	}
 
 	async function runInit(preset: "minimal" | "standard" | "silk", config = "lint-staged.config.ts") {
-		const handler = initCommand.handler({ force: false, config, preset });
+		const handler = runLintInit({ force: false, config, preset });
 		await Effect.runPromise(Effect.provide(handler, captureLayer([])));
 	}
 
@@ -139,9 +139,10 @@ describe("checkCommand", () => {
 	it("passes with a clean verdict under the minimal preset (no hygiene hooks installed)", async () => {
 		await runInit("minimal");
 
-		// Minimal preset writes pre-commit only — no post-checkout or post-merge.
+		// Minimal preset writes pre-commit only — no post-checkout, post-merge, or post-commit.
 		expect(() => readFileSync(join(testDir, ".husky/post-checkout"), "utf8")).toThrow();
 		expect(() => readFileSync(join(testDir, ".husky/post-merge"), "utf8")).toThrow();
+		expect(() => readFileSync(join(testDir, ".husky/post-commit"), "utf8")).toThrow();
 
 		await runCheck(false);
 

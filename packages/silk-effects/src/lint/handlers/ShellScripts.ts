@@ -18,7 +18,7 @@ import { Filter } from "../utils/Filter.js";
  *
  * @example
  * ```typescript
- * import { ShellScripts } from '@savvy-web/lint-staged';
+ * import { ShellScripts } from '@savvy-web/silk/lint';
  *
  * export default {
  *   [ShellScripts.glob]: ShellScripts.create({

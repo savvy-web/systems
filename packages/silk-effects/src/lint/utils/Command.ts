@@ -3,7 +3,7 @@
  *
  * @example
  * ```typescript
- * import { Command } from '@savvy-web/lint-staged';
+ * import { Command } from '@savvy-web/silk/lint';
  *
  * if (Command.isAvailable('yq')) {
  *   // yq is installed globally

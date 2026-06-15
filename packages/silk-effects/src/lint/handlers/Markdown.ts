@@ -30,7 +30,7 @@ import { getWorkspaceRoot } from "../utils/Workspace.js";
  *
  * @example
  * ```typescript
- * import { Markdown } from '@savvy-web/lint-staged';
+ * import { Markdown } from '@savvy-web/silk/lint';
  *
  * export default {
  *   // Auto-discovers command and config file

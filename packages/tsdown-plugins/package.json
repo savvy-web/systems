@@ -34,7 +34,7 @@
 		"@microsoft/tsdoc": "^0.16.0",
 		"@microsoft/tsdoc-config": "^0.18.1",
 		"deep-equal": "^2.2.3",
-		"json-schema-effect": "^0.2.2",
+		"json-schema-effect": "^0.2.4",
 		"picocolors": "^1.1.1",
 		"sort-package-json": "^4.0.0",
 		"std-env": "^4.1.0",

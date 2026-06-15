@@ -4,7 +4,6 @@
  * @internal
  */
 import { isDeepStrictEqual } from "node:util";
-import { Command, Options } from "@effect/cli";
 import { FileSystem } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import type { SectionParseError } from "@savvy-web/silk-effects";
@@ -156,14 +155,6 @@ function checkBiomeSchemas() {
 	});
 }
 
-/* v8 ignore start -- CLI option definition; handler tested individually */
-const quietOption = Options.boolean("quiet").pipe(
-	Options.withAlias("q"),
-	Options.withDescription("Only output warnings (for postinstall usage)"),
-	Options.withDefault(false),
-);
-/* v8 ignore stop */
-
 /**
  * Run the lint check validation pipeline.
  *
@@ -249,7 +240,11 @@ export function runLintCheck(opts: {
 		}
 
 		// Hygiene hooks: co-owned savvy-hooks section.
-		const shellHookPaths = [Lint.POST_CHECKOUT_HOOK_PATH, Lint.POST_MERGE_HOOK_PATH] as const;
+		const shellHookPaths = [
+			Lint.POST_CHECKOUT_HOOK_PATH,
+			Lint.POST_MERGE_HOOK_PATH,
+			Lint.POST_COMMIT_HOOK_PATH,
+		] as const;
 		const shellHookStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
 
 		for (const hookPath of shellHookPaths) {
@@ -447,8 +442,3 @@ export function runLintCheck(opts: {
 		}
 	});
 }
-
-/* v8 ignore next 3 -- CLI registration; handler tested via runLintCheck */
-export const checkCommand = Command.make("check", { quiet: quietOption }, (opts) => runLintCheck(opts)).pipe(
-	Command.withDescription("Check current lint-staged configuration and tool availability"),
-);

@@ -43,7 +43,7 @@ const DEFAULT_STRINGIFY_OPTIONS = {
  *
  * @example
  * ```typescript
- * import { PnpmWorkspace } from '\@savvy-web/lint-staged';
+ * import { PnpmWorkspace } from '\@savvy-web/silk/lint';
  *
  * export default {
  *   [PnpmWorkspace.glob]: PnpmWorkspace.create({
