@@ -1,5 +1,13 @@
 # @savvy-web/github-action-builder
 
+## 0.7.9
+
+### Bug Fixes
+
+* [`71e4948`](https://github.com/savvy-web/systems/commit/71e4948f861424345b0bb44844f7acc0b3d31a80) ### Missing `@effect/*` peers no longer crash at load (#126)
+
+`@savvy-web/github-action-builder` now declares `@effect/cluster`, `@effect/rpc`, and `@effect/sql` as direct dependencies (via `catalog:silk`). The `@effect/platform-node` root barrel eagerly links these clustering submodules, so without this declaration an install tree that did not already provide them would fail with `ERR_MODULE_NOT_FOUND` at startup.
+
 ## 0.7.8
 
 ### Dependencies

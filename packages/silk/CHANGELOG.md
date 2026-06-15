@@ -1,5 +1,47 @@
 # @savvy-web/silk
 
+## 1.1.0
+
+### Features
+
+* [`71e4948`](https://github.com/savvy-web/systems/commit/71e4948f861424345b0bb44844f7acc0b3d31a80) ### `savvy lint init` and `savvy commit init` manage a post-commit hook (#122)
+
+`savvy lint init` and `savvy commit init` now create and manage a `.husky/post-commit` hook that restores the executable bit on shell scripts after each commit. This mirrors the existing post-checkout and post-merge hygiene hooks, closing the gap where a commit could strip the execute permission from the very hooks that `post-checkout`/`post-merge` maintained.
+
+* [`db4bc25`](https://github.com/savvy-web/systems/commit/db4bc2580ac9c42d0174763b3343b10a308657a4) ### Shipped TSConfig presets
+
+`@savvy-web/silk` now ships two ready-to-use TSConfig presets under the `tsconfig/` export namespace, for projects that follow Silk conventions but do not depend on a Silk build tool at the relevant package:
+
+* `@savvy-web/silk/tsconfig/node/root.json` — a monorepo root that runs under Node.js (`module: nodenext`, `target: es2025`, composite/declaration, `types: ["node"]`). Use it where `@savvy-web/bundler` is not a dependency of the root `package.json`.
+* `@savvy-web/silk/tsconfig/rspress/website.json` — a standard RSPress site, aligned with RSPress's official website config (`module: esnext`, `moduleResolution: bundler`, `jsx: react-jsx`, `noEmit`, `isolatedModules`, `verbatimModuleSyntax`, `allowImportingTsExtensions`, `noUnusedLocals`/`noUnusedParameters`, `mdx.checkMdx`, `lib: ["dom", "es2023"]`, react/react-dom types), targeting the browser rather than Node.
+
+Reference either from a package's `tsconfig.json` via `"extends": "@savvy-web/silk/tsconfig/node/root.json"`.
+
+### Bug Fixes
+
+* [`71e4948`](https://github.com/savvy-web/systems/commit/71e4948f861424345b0bb44844f7acc0b3d31a80) ### Missing `@effect/*` peers no longer crash the `savvy` CLI or `savvy-mcp` server at load (#126)
+
+`@savvy-web/cli` and `@savvy-web/mcp` now declare `@effect/cluster`, `@effect/rpc`, and `@effect/sql` as direct dependencies. The `@effect/platform-node` root barrel eagerly links these clustering submodules at import time. Without these declarations, a fresh install that did not already provide them indirectly would fail with `ERR_MODULE_NOT_FOUND` before any command could run.
+
+### Build System
+
+* [`db4bc25`](https://github.com/savvy-web/systems/commit/db4bc2580ac9c42d0174763b3343b10a308657a4) The shipped Biome config (`@savvy-web/silk/biome`) now:
+
+- Excludes `.claude/worktrees` from linting, so nested Claude Code worktrees that carry their own root config no longer trigger Biome's nested-root abort and break the pre-commit hook. Every consumer inherits this automatically rather than re-discovering it.
+- Broadens the test-fixtures exclusion to `**/__test__/**/fixtures` (any nesting depth).
+- Formats shipped TSConfig presets under `**/public/tsconfig/**/*.json` with the standard tsconfig key-sorting rules.
+
+### Changeset push-guard no longer blocks tag and delete pushes (#124)
+
+The `changeset-push-guard` plugin hook no longer triggers on `git push --tags`, `git push --delete`/`-d`, or refspec-deletion pushes (`git push origin :branch`). These push forms cannot introduce unreleased commits, so blocking them on an unreleased-changeset check was a false positive.
+
+### Patch Changes
+
+| Dependency     | Type       | Action  | From  | To    |
+| -------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/cli | dependency | updated | 1.0.0 | 1.1.0 |
+| @savvy-web/mcp | dependency | updated | 1.0.0 | 1.1.0 |
+
 ## 1.0.0
 
 ### Patch Changes
