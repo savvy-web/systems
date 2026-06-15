@@ -28,7 +28,7 @@
 		"build:meta": {
 			"cache": true,
 			"dependsOn": ["build:dev"],
-			"inputs": ["$TURBO_DEFAULT$", "dist/dev/meta/**"],
+			"inputs": ["$TURBO_DEFAULT$", "dist/dev/pkg/**"],
 			"outputs": ["dist/dev/meta/**"]
 		},
 		"build:prod": {
