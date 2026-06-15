@@ -3,12 +3,13 @@ status: current
 module: tsdown-plugins
 category: architecture
 created: 2026-06-05
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-14
+last-synced: 2026-06-14
 completeness: 90
 related:
   - ../bundler/architecture.md
   - ../cli/architecture.md
+  - ../rspress-builder/architecture.md
 dependencies:
   - ../bundler/architecture.md
 ---
@@ -32,6 +33,7 @@ The interface-only plugin pack that holds every build behavior `@savvy-web/bundl
 - [Bundled dts: the two-pass split](#bundled-dts-the-two-pass-split)
 - [Bundling posture: bundleNodeModules, bundle, bundledPackages, dtsExternals](#bundling-posture-bundlenodemodules-bundle-bundledpackages-dtsexternals)
 - [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides)
+- [Web-runtime partitions](#web-runtime-partitions-platform-css-outsubdir)
 - [Loose files](#loose-files)
 - [Dual-format esm plus cjs](#dual-format-esm-plus-cjs)
 - [The cjs-default-interop plugin](#the-cjs-default-interop-plugin)
@@ -102,6 +104,8 @@ The surface divides into pure helpers, one rolldown plugin, one async catalog wr
 
 **The slash-to-dash flatten is not injective, so `extractEntries` throws on collision.** Two distinct export keys can flatten to the same entry name (`./a-b/c` and `./a/b-c` both → `a-b-c`); a silent overwrite would corrupt one entry and its manifest target, so the extractor fails loudly with both colliding keys named. This guard is what makes silk's nested subpath exports (`./changesets/markdownlint` etc.) safe under the flat-manifest scheme below.
 
+**Declaration files are pass-through assets, not buildable entries.** A package may export a hand-written `.d.ts`/`.d.cts`/`.d.mts` (e.g. rspress-builder's `./rspress-env.d.ts` ambient typings). The `isTypeScriptFile` guard in `extract.ts` and the matching `isTs` guard in `manifest/transform.ts` both exclude declaration files (a `.d.ts` ends in `.ts` but must not be fed to the TypeScript build or rewritten to a `.js`/`.d.ts` conditions object), so such an export is copied verbatim via the `public/` mirror and keeps its literal manifest target.
+
 ## Manifest emission and catalog delegation
 
 `emitManifest` is the one rolldown plugin: in `generateBundle` it reads the source `package.json`, builds the transformed manifest via `buildEmittedManifest`, emits it as `package.json` into the output `pkg/` and copies `LICENSE`/`README.md`. The transform pipeline: resolve catalogs (prod, or dev when `devManifest: "resolve"`) → **apply the declarative rename** (`base.name = targetGroup.name`) → strip `publishConfig`/`scripts` → set `private` from `publishConfig.access` → rewrite `exports`/`bin`/`types` to built `.js`/`.d.ts` (and a `require: .cjs` condition for the dual-format exports, which can be ALL exports or a per-entry subset — see [Dual-format esm plus cjs](#dual-format-esm-plus-cjs) and [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides)) → **inject the `./package.json` self-export** → run the user `transform({ pkg, targetGroup })` → **strip leading `./` from bin paths as the final guard** (npm 11.x silently drops `./`-prefixed bins) → `sort-package-json`. The `process.env.__PACKAGE_VERSION__` define is injected by the build loop, not here.
@@ -124,7 +128,7 @@ The cardinal decision: **tsdown native dts on the tsc path, NOT isolatedDeclarat
 
 Each TargetGroup runs **two** `tsdown.build()` calls to the same outDir: a JS pass then a dts pass (see [Bundled dts: the two-pass split](#bundled-dts-the-two-pass-split) for why). Both derive from the same `DeriveOptions`:
 
-- **`deriveTargetGroupOptions` (pure, the JS pass)** maps a `TargetGroupId` to the JS-pass options: `outDir` (`dev → dist/dev/pkg`, prod → `dist/prod/<group>/pkg`), `sourcemap`/`minify` (dev lenient, prod minified), `format` (`options.format ?? ["esm"]`), `unbundle: true`, `dts: false`, `clean: true`, `platform: "node"`, `fixedExtension: false` and the auto-version + user `define` map (see [The define map and the version-key fix](#the-define-map-and-the-version-key-fix)).
+- **`deriveTargetGroupOptions` (pure, the JS pass)** maps a `TargetGroupId` to the JS-pass options: `outDir` (`dev → dist/dev/pkg`, prod → `dist/prod/<group>/pkg`), `sourcemap`/`minify` (dev lenient, prod minified), `format` (`options.format ?? ["esm"]`), `unbundle: true`, `dts: false`, `clean: true`, `platform` (`options.platform ?? "node"` — a `BuildPlatform`; only the JS pass varies, the dts pass stays node), `fixedExtension: false` and the auto-version + user `define` map (see [The define map and the version-key fix](#the-define-map-and-the-version-key-fix)).
 - **`deriveDtsPassOptions` (pure, the dts pass)** maps the same input to the dts-only options: same `outDir`, `unbundle: false`, `clean: false` (load-bearing — it must not wipe the JS pass output), `dts: { tsconfig, emitDtsOnly: true }`, no sourcemap.
 
 `TargetGroupId` is any `string` — a prod group id is an arbitrary `publishConfig.targets` key (`npm`, `github`, a custom key) — and the loop input is `ReadonlyArray<BuildGroupSpec>` (`{ id, name }`), so each group threads `group.id` into both derive functions and the output dir and `group.name` into its `TargetGroupRef` for the declarative rename. `buildTargetGroups` runs the two `tsdown.build()` passes per group with `config: false`; only the JS pass wires in the per-group `emitManifest` plugin (the dts pass emits no manifest, no sourcemap), `public/` is mirrored once via `syncPublicDir` after the JS pass owns the outDir (see [The public/ sync](#the-public-sync)), and both passes carry `deps.neverBundle` externals.
@@ -173,11 +177,19 @@ Four knobs control which dependencies get bundled into the JS vs the dts, coveri
 
 The per-group build body is a PARTITION loop so DIFFERENT entries of one package can build with different formats and bundling postures into the SAME outDir. The driver is silk: its base entries are ESM-only with silk-effects externalized, but its `./changesets/markdownlint` entry must be dual-format CJS that force-bundles silk-effects (markdownlint-cli2 `require()`s it and cannot require ESM-only silk-effects). See [How silk builds](../silk/architecture.md).
 
-- **`EntryOverride`** (`build-target-groups.ts`) is an entry subset (entryName → source) plus its own optional `format`/`externals`/`bundle`/`bundleNodeModules`/`bundledPackages`/`dtsExternals`. Anything omitted falls back to the base partition's value.
+- **`EntryOverride`** (`build-target-groups.ts`) is an entry subset (entryName → source) plus its own optional `format`/`externals`/`bundle`/`bundleNodeModules`/`bundledPackages`/`dtsExternals` and the three web-runtime fields `platform`/`css`/`outSubdir` (see [Web-runtime partitions](#web-runtime-partitions-platform-css-outsubdir)). Anything omitted falls back to the base partition's value.
 - **The partition loop.** For each group, partition 0 is the base (the options-level config over `options.entry`); `options.overrides` are partitions 1..n. They are layered into the same outDir: `clean: true` only on the base partition's JS pass (it owns the outDir), every later partition is `clean: false`. The base `entry` must already EXCLUDE the overridden entries — the bundler's `runBuild` does that partitioning (see `../bundler/architecture.md`).
 - **The manifest is emitted ONCE per group**, by the base partition's JS pass, covering the whole package with per-entry dual conditions.
 - **`DualExports = boolean | ReadonlySet<string>`** (`manifest/transform.ts`) is how per-entry formats reach the manifest. `true`/`false` apply the `require` condition uniformly to every TS export; a Set marks ONLY the listed export keys (e.g. `"./changesets/markdownlint"`) as dual, so some exports get a `require` condition and others stay import-only. It threads `buildTargetGroups` (`dualExports`) → `emitManifest` → `transformManifest` → `transformExports`. The bundler computes the Set from which overrides (and which base entries) emit cjs.
 - **A no-override build is byte-identical to a single-partition build** — with no `overrides`, the loop is a single base partition running the two-pass JS+dts build.
+
+### Web-runtime partitions (platform, css, outSubdir)
+
+Three additive `EntryOverride` fields let one partition build a browser sub-bundle into an isolated subdir — the mechanism `@savvy-web/rspress-builder` uses for an RSPress `./runtime` (see `../rspress-builder/architecture.md`). `BuildPlatform` (`"node" | "browser" | "neutral"`) and `CssOptions` are exported from `src/index.ts`.
+
+- **`platform`** threads through `DeriveOptions` into `deriveTargetGroupOptions`' JS-pass `platform` (default `"node"`); the dts pass is unaffected and always compiles as node. **`css`** is forwarded VERBATIM to the JS pass's tsdown `css` option, enabling `@tsdown/css` (which tsdown lazily loads); `CssOptions` is structurally typed so this package takes no dependency on `@tsdown/css`. Both are backward-compatible — an override that sets neither (silk's `./changesets/markdownlint`) builds exactly as before.
+- **`outSubdir`** makes `buildTargetGroups` compute the partition's outDir as `join(groupOutDir, outSubdir)`, so BOTH passes of the partition write into `<group>/pkg/<outSubdir>/`. The partition's entry should be `{ index: <barrel source> }`, so the JS pass emits `<outSubdir>/index.js` plus the reachable per-file modules under `<outSubdir>/` and the dts pass emits a bundled `<outSubdir>/index.d.ts`. This isolates a bundleless browser sub-package so its per-file output cannot collide with the base partition's root-level output, and the barrel path is deterministic. The bundler constructs this partition and enforces the one-export-per-`outSubdir` rule (see `../bundler/architecture.md`).
+- **`subdirExports` rewrites the manifest path.** `BuildTargetGroupsOptions.subdirExports` (a `ReadonlySet<string>` of export keys) threads `buildTargetGroups` → `emitManifest` → `transformManifest` → `transformExports`/`tsConditions`, where a key in the set emits `<key-entry-name>/index.{js,d.ts}` instead of the default `<key-entry-name>.js`. So a `./runtime` subdir export's manifest conditions become `{ types: "./runtime/index.d.ts", import: "./runtime/index.js" }`.
 
 ## Loose files
 
@@ -329,11 +341,13 @@ Four guarantees hold this together: **parity** (the plugins *are* the front door
 - **`cjsDefaultInterop` is gated to cjs default+named ENTRY chunks** and runs in both build passes for dual-format builds (the dts pass re-emits the `.cjs`), but is a no-op everywhere else.
 - **`nodeBuiltinDefaultInterop` rewrites default imports of node builtins to namespace form** before codegen (a rolldown CJS-codegen defect fix). It is cjs-only, runs in both passes for dual-format builds and is a no-op for esm. See [The node-builtin default-interop plugin](#the-node-builtin-default-interop-plugin).
 - **Per-entry overrides layer extra partitions into one outDir.** The base partition owns the outDir (`clean: true`); each override is `clean: false` and the base `entry` must exclude the overridden entries. The manifest is emitted once (base partition) with a `DualExports` Set when entries differ in format. A no-override build is byte-identical to a single-partition build. See [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides).
+- **A web-runtime partition is JS-pass-only for platform/css and outDir-isolated for outSubdir.** `platform`/`css` change only the JS pass (the dts pass stays node); `outSubdir` redirects BOTH passes into `join(groupOutDir, outSubdir)` so a bundleless browser sub-package cannot collide with the base partition. `subdirExports` rewrites the affected manifest keys to `<subdir>/index.{js,d.ts}`. `CssOptions`/`BuildPlatform` are exported; this package takes no dependency on `@tsdown/css`. See [Web-runtime partitions](#web-runtime-partitions-platform-css-outsubdir).
+- **Declaration-file exports are pass-through assets.** Both `isTypeScriptFile` (entry extraction) and `isTs` (manifest transform) exclude `.d.ts`/`.d.cts`/`.d.mts`, so a hand-written `.d.ts` export is never built or path-rewritten. See [Entry detection](#entry-detection).
 - **Loose files are bundled outputs outside the exports graph.** `normalizeLooseFiles` validates the `LooseFiles` map (throwing `ConfigValidationError` on bad keys/formats; `.js`+cjs deferred), and `buildTargetGroups` emits each as one extra single-entry, bundled, dts-free, manifest-free `clean: false` pass into the group's `pkg/` outDir, inheriting the group's deps posture. No manifest export, no `.d.ts`, no api-model; no collision guard with real export filenames yet. The driver is pnpm config-dependency pnpmfiles. See [Loose files](#loose-files).
 - **tsdown auto-externalizes declared deps, so `externals` lists only the departures.** The default externalizes `dependencies`+`peerDependencies`+`optionalDependencies`; `externals` is for undeclared transitives that must stay external, and `bundle`/`bundleNodeModules` are for the inverse force-inline postures.
 - **`defaultManifestTransform` is the strip default; `removeDeclarationMaps` strips prod dts maps.** The bundler applies the strip when no `transform` is supplied (a custom transform replaces and re-calls it) and strips declaration source-maps from each prod group after meta generation; dev keeps the maps.
 - **Prod output is unminified by default.** `minify` applies to prod groups only and defaults off — this builder targets Node libraries where readable output is preferred over bundle size.
-- **This package self-builds.** It builds via an escape-hatch `savvy.build.ts` importing `buildTargetGroups` from its OWN `./src` (tsx-compiled, tier 1 of the bootstrap ladder). Its `ecma.json` tsconfig base is a synced local copy of the bundler's `public/ecma.json`, guarded by `__test__/ecma-sync.test.ts`. All nine in-repo packages build via the bundler. See `../bundler/architecture.md`.
+- **This package self-builds.** It builds via an escape-hatch `savvy.build.ts` importing `buildTargetGroups` from its OWN `./src` (tsx-compiled, tier 1 of the bootstrap ladder). Its `ecma.json` tsconfig base is a byte-identical synced local copy of the bundler's `public/ecma.json` (it is upstream of the bundler so it cannot extend the package specifier — one of the two synced copies in the TSConfig preset taxonomy, the other being `@savvy-web/rspress-builder`), guarded by `__test__/ecma-sync.test.ts`. All ten in-repo packages build via the bundler. See `../bundler/architecture.md`.
 - **`src/index.ts` is the semver'd contract.** It is what the escape hatch and the bundler both depend on.
 
 ## Rationale

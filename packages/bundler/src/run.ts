@@ -117,6 +117,67 @@ function deriveExportPaths(
 	return out;
 }
 
+/**
+ * Fast-fail validation for `outSubdir` overrides, run on EVERY target path. The dev/prod override-partition
+ * loop already validates these (and all other overrides) before building, but `--target meta` returns early
+ * (before that loop) and remaps meta dts basenames via `applySubdirMetaEntries` — which assumes validated
+ * input. Without this guard, a malformed `outSubdir` override (more than one entry, a non-canonical export
+ * path, or an export path that is not a real build entry) would silently remap a wrong/nonexistent key on the
+ * meta path. Mirrors the override loop's conditions and messages verbatim so every target path fast-fails
+ * identically. No-op when there are no overrides or none set `outSubdir`.
+ */
+function validateSubdirOverrides(
+	overrides: ReadonlyArray<{ entries: ReadonlyArray<string>; outSubdir?: string | undefined }> | undefined,
+	entries: Record<string, string>,
+	packageName: string,
+): void {
+	if (overrides === undefined) return;
+	for (const ov of overrides) {
+		if (ov.outSubdir === undefined) continue;
+		if (ov.entries.length !== 1) {
+			throw new Error(
+				`overrides: outSubdir "${ov.outSubdir}" must pin exactly one export path (got ${ov.entries.length})`,
+			);
+		}
+		const exportPath = ov.entries[0];
+		if (exportPath !== "." && !exportPath.startsWith("./")) {
+			throw new Error(
+				`overrides: entry "${exportPath}" must be a canonical export path — use "." for the root or a "./"-prefixed subpath (e.g. "./changesets/markdownlint")`,
+			);
+		}
+		const flatName = createEntryName(exportPath, false);
+		if (entries[flatName] === undefined) {
+			throw new Error(
+				`overrides: export path "${exportPath}" (entry "${flatName}") is not a build entry of ${packageName}`,
+			);
+		}
+	}
+}
+
+/**
+ * For each `outSubdir` override, point its meta entry at the isolated sub-package barrel: the dts lives
+ * at `<subdir>/index.d.ts` (not `<flatName>.d.ts`). Keyed by the stable flattened entry name so it
+ * overwrites the default `dtsBasenames[flatName] = flatName` set from the full entry map. No-op when no
+ * override sets `outSubdir`.
+ */
+function applySubdirMetaEntries(
+	overrides: ReadonlyArray<{ entries: ReadonlyArray<string>; outSubdir?: string | undefined }> | undefined,
+	dtsBasenames: Record<string, string>,
+	exportPaths: Record<string, string>,
+): void {
+	// Assumes ov.entries paths are validated by the override-partition loop in runBuild; here we only map the meta dts basename.
+	if (overrides === undefined) return;
+	for (const ov of overrides) {
+		if (ov.outSubdir === undefined) continue;
+		const exportPath = ov.entries[0];
+		if (exportPath === undefined) continue;
+		const flatName = createEntryName(exportPath, false);
+		dtsBasenames[flatName] = `${ov.outSubdir}/index`;
+		// Safety net: ensure the canonical export path is set even if deriveExportPaths could not recover it from the source map.
+		exportPaths[flatName] = exportPath;
+	}
+}
+
 /** Run a build from a normalized config. Pure orchestration; all IO injectable. */
 export async function runBuild(config: BuildConfig, options: RunOptions): Promise<void> {
 	const { target } = parseArgs(options.argv);
@@ -171,6 +232,10 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		).pipe(Effect.provide(ConfigValidatorLive)),
 	);
 
+	// Fast-fail outSubdir-override validation: run BEFORE the --target meta branch (which returns early,
+	// bypassing the dev/prod override-partition loop) so every target path rejects a bad outSubdir override.
+	validateSubdirOverrides(config.overrides, entries, packageName);
+
 	// --target meta: generate the api-model from the dev build's dts into localPaths. No tsdown build.
 	// meta is tri-state: undefined -> default options, object -> overrides, false -> opt out (no-op).
 	if (target === "meta") {
@@ -187,13 +252,17 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		// dts basenames mirror the entry source: src/index.ts -> index, src/sub.ts -> sub.
 		const dtsBasenames: Record<string, string> = {};
 		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
+		const exportPaths = deriveExportPaths(entries, exportsMap);
+		// An outSubdir override builds its dts at `<subdir>/index.d.ts`, not `<flatName>.d.ts`. Point its
+		// meta entry (keyed by the stable flattened name) at the subdir barrel so generateMeta reads it there.
+		applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
 		await runGenerateMeta({
 			cwd,
 			packageName,
 			tsconfigPath,
 			dtsDir: join(cwd, "dist", "dev", "pkg"),
 			entries: dtsBasenames,
-			exportPaths: deriveExportPaths(entries, exportsMap),
+			exportPaths,
 			outMetaDir: join(cwd, "dist", "dev", "meta"),
 			localPaths: norm.localPaths,
 			tsdoc: norm.tsdoc,
@@ -231,6 +300,9 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	let overridePartitions: EntryOverride[] = [];
 	let baseEntries: Record<string, string> = entries;
 	let dualExports: ReadonlySet<string> | undefined;
+	// Export paths of overrides that build into an isolated `<group>/pkg/<outSubdir>/` sub-package.
+	// Threaded to buildTargetGroups so the manifest maps each to `<subdir>/index.*`.
+	const subdirExports = new Set<string>();
 	if (config.overrides) {
 		const partitions: EntryOverride[] = [];
 		const overriddenEntryNames = new Set<string>();
@@ -238,6 +310,12 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		const dualExportKeys = new Set<string>();
 		const exportPathByEntry = deriveExportPaths(entries, exportsMap); // entryName -> export key
 		for (const ov of config.overrides) {
+			// An outSubdir partition is an isolated single-export sub-package — pin exactly one export.
+			if (ov.outSubdir !== undefined && ov.entries.length !== 1) {
+				throw new Error(
+					`overrides: outSubdir "${ov.outSubdir}" must pin exactly one export path (got ${ov.entries.length})`,
+				);
+			}
 			const partEntry: Record<string, string> = {};
 			for (const exportPath of ov.entries) {
 				// Require the canonical package.json exports-key form. A non-canonical value like
@@ -249,15 +327,19 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 						`overrides: entry "${exportPath}" must be a canonical export path — use "." for the root or a "./"-prefixed subpath (e.g. "./changesets/markdownlint")`,
 					);
 				}
-				const entryName = createEntryName(exportPath, false);
-				const src = entries[entryName];
+				const flatName = createEntryName(exportPath, false);
+				const src = entries[flatName];
 				if (src === undefined) {
 					throw new Error(
-						`overrides: export path "${exportPath}" (entry "${entryName}") is not a build entry of ${packageName}`,
+						`overrides: export path "${exportPath}" (entry "${flatName}") is not a build entry of ${packageName}`,
 					);
 				}
+				// An outSubdir partition emits a barrel at `<subdir>/index.*`, so its output entry KEY
+				// must be "index". The source lookup still uses the flattened name (the base entry key).
+				const entryName = ov.outSubdir !== undefined ? "index" : flatName;
 				partEntry[entryName] = src;
-				overriddenEntryNames.add(entryName);
+				overriddenEntryNames.add(flatName);
+				if (ov.outSubdir !== undefined) subdirExports.add(exportPath);
 				if ((ov.format ?? config.format ?? ["esm"]).includes("cjs")) dualExportKeys.add(exportPath);
 			}
 			partitions.push({
@@ -268,6 +350,9 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(ov.bundleNodeModules !== undefined ? { bundleNodeModules: ov.bundleNodeModules } : {}),
 				...(ov.bundledPackages !== undefined ? { bundledPackages: ov.bundledPackages } : {}),
 				...(ov.dtsExternals !== undefined ? { dtsExternals: ov.dtsExternals } : {}),
+				...(ov.platform !== undefined ? { platform: ov.platform } : {}),
+				...(ov.css !== undefined ? { css: ov.css } : {}),
+				...(ov.outSubdir !== undefined ? { outSubdir: ov.outSubdir } : {}),
 			});
 		}
 		const onlyBase: Record<string, string> = {};
@@ -309,6 +394,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		...(config.define !== undefined ? { define: config.define } : {}),
 		...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
 		...(dualExports !== undefined ? { dualExports } : {}),
+		...(subdirExports.size > 0 ? { subdirExports } : {}),
 		...(looseFiles !== undefined ? { looseFiles } : {}),
 	});
 
@@ -325,13 +411,15 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		const norm = normalizeMetaOptions(config.meta ?? {});
 		const dtsBasenames: Record<string, string> = {};
 		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
+		const exportPaths = deriveExportPaths(entries, exportsMap);
+		applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
 		await runGenerateMeta({
 			cwd,
 			packageName,
 			tsconfigPath,
 			dtsDir: join(cwd, "dist", "prod", metaGroupId, "pkg"),
 			entries: dtsBasenames,
-			exportPaths: deriveExportPaths(entries, exportsMap),
+			exportPaths,
 			outMetaDir: join(cwd, "dist", "prod", metaGroupId, "meta"),
 			localPaths: [],
 			tsdoc: norm.tsdoc,

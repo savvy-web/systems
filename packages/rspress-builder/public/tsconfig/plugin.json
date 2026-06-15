@@ -1,0 +1,11 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"lib": ["es2025", "dom"],
+		"types": ["node", "react", "react-dom"]
+	},
+	"exclude": ["${configDir}/node_modules", "${configDir}/dist"],
+	"extends": "../ecma.json",
+	"include": ["${configDir}/types/*.d.ts", "${configDir}/src/**/*.ts", "${configDir}/src/**/*.tsx"]
+}

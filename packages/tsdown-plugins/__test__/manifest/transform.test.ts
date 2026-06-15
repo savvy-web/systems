@@ -129,6 +129,13 @@ describe("manifest transform", () => {
 		});
 	});
 
+	it("passes a .d.ts asset export through unchanged (not rewritten to built conditions)", () => {
+		const exports = { ".": "./src/index.ts", "./rspress-env.d.ts": "./public/rspress-env.d.ts" };
+		const out = transformExports(exports, false) as Record<string, unknown>;
+		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(out["./rspress-env.d.ts"]).toBe("./public/rspress-env.d.ts");
+	});
+
 	it("rewrites TS bins to bin/<name>.js and strips leading ./", () => {
 		expect(transformBin({ savvy: "./src/bin/cli.ts" })).toEqual({ savvy: "bin/savvy.js" });
 		expect(transformBin("./src/bin/cli.ts")).toBe("bin/cli.js");
@@ -159,6 +166,16 @@ describe("manifest transform", () => {
 		// commitlint is NOT in the set -> import only, no require
 		expect(out["./commitlint"].require).toBeUndefined();
 		expect(out["./commitlint"].import).toBe("./commitlint.js");
+	});
+
+	it("maps a subdirExports key to <subdir>/index.* conditions", () => {
+		const exports = { ".": "./src/index.ts", "./runtime": "./src/runtime/index.tsx" };
+		const out = transformExports(exports, false, new Set(["./runtime"])) as Record<
+			string,
+			{ types: string; import: string }
+		>;
+		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(out["./runtime"]).toEqual({ types: "./runtime/index.d.ts", import: "./runtime/index.js" });
 	});
 
 	it("treats dual:true as every TS export dual (back-compat) and dual:false as none", () => {

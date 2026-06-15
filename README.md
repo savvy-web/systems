@@ -67,6 +67,12 @@ The interface-only tsdown/rolldown plugin pack behind `@savvy-web/bundler`: entr
 
 See the [tsdown-plugins README](./packages/tsdown-plugins/README.md) for the helper surface.
 
+### @savvy-web/rspress-builder
+
+Builds RSPress plugin packages on top of `@savvy-web/bundler`. One `definePlugin` call produces the dual-bundle shape an RSPress plugin needs: a Node plugin entry plus a browser, bundleless, CSS-module React runtime entry.
+
+See the [rspress-builder README](./packages/rspress-builder/README.md) for the `definePlugin` surface and `savvy.build.ts` wiring.
+
 ### Planned
 
 - **@savvy-web/templates** -- Effect-based project scaffolding (replacing Yeoman generators)

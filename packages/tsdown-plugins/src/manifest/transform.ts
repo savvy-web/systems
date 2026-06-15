@@ -64,17 +64,23 @@ const stripLeadingDotSlash = (p: string): string => (p.startsWith("./") ? p.slic
  * always matches the file tsdown emits. The build never sets exportsAsIndexes, so the
  * manifest mirrors the flat (false) naming here.
  */
-const toBuiltJs = (exportKey: string): string => `./${createEntryName(exportKey, false)}.js`;
-const toBuiltDts = (exportKey: string): string => toBuiltJs(exportKey).replace(/\.js$/, ".d.ts");
-const toBuiltCjs = (exportKey: string): string => toBuiltJs(exportKey).replace(/\.js$/, ".cjs");
+const toBuiltJs = (exportKey: string, subdirExports?: ReadonlySet<string>): string =>
+	subdirExports?.has(exportKey)
+		? `./${createEntryName(exportKey, false)}/index.js`
+		: `./${createEntryName(exportKey, false)}.js`;
+const toBuiltDts = (exportKey: string, subdirExports?: ReadonlySet<string>): string =>
+	toBuiltJs(exportKey, subdirExports).replace(/\.js$/, ".d.ts");
+const toBuiltCjs = (exportKey: string, subdirExports?: ReadonlySet<string>): string =>
+	toBuiltJs(exportKey, subdirExports).replace(/\.js$/, ".cjs");
 
-const isTs = (p: string): boolean => p.endsWith(".ts") || p.endsWith(".tsx");
+const isDeclarationFile = (p: string): boolean => p.endsWith(".d.ts") || p.endsWith(".d.cts") || p.endsWith(".d.mts");
+const isTs = (p: string): boolean => !isDeclarationFile(p) && (p.endsWith(".ts") || p.endsWith(".tsx"));
 
 /** Build the conditions object for a TS export target (adds require when dual-format). */
-const tsConditions = (exportKey: string, dual: boolean): Json => ({
-	types: toBuiltDts(exportKey),
-	import: toBuiltJs(exportKey),
-	...(dual ? { require: toBuiltCjs(exportKey) } : {}),
+const tsConditions = (exportKey: string, dual: boolean, subdirExports?: ReadonlySet<string>): Json => ({
+	types: toBuiltDts(exportKey, subdirExports),
+	import: toBuiltJs(exportKey, subdirExports),
+	...(dual ? { require: toBuiltCjs(exportKey, subdirExports) } : {}),
 });
 
 /**
@@ -84,11 +90,18 @@ const tsConditions = (exportKey: string, dual: boolean): Json => ({
  *
  * The output path is derived from the export KEY via the shared entry-name function,
  * never from the source path, so the manifest target always matches the emitted file.
+ *
+ * Export keys in `subdirExports` are built into an isolated `<key>/index.*` subdir (e.g. an
+ * RSPress `./runtime`), so their conditions gain an `/index` segment.
  */
-export function transformExports(exports: unknown, dual: DualExports = false): unknown {
+export function transformExports(
+	exports: unknown,
+	dual: DualExports = false,
+	subdirExports?: ReadonlySet<string>,
+): unknown {
 	// A bare string export is the root (`.`) target.
 	if (typeof exports === "string") {
-		return isTs(exports) ? tsConditions(".", isDualKey(dual, ".")) : exports;
+		return isTs(exports) ? tsConditions(".", isDualKey(dual, "."), subdirExports) : exports;
 	}
 	if (exports && typeof exports === "object") {
 		const out: Json = {};
@@ -98,9 +111,9 @@ export function transformExports(exports: unknown, dual: DualExports = false): u
 				continue;
 			}
 			if (typeof value === "string" && isTs(value)) {
-				out[key] = tsConditions(key, isDualKey(dual, key));
+				out[key] = tsConditions(key, isDualKey(dual, key), subdirExports);
 			} else {
-				out[key] = transformExports(value, dual);
+				out[key] = transformExports(value, dual, subdirExports);
 			}
 		}
 		return out;
@@ -137,6 +150,8 @@ export interface TransformManifestOptions {
 	readonly transform?: ((pkg: Json) => Json) | undefined;
 	/** Which exports emit dual import/require conditions. boolean = uniform; Set = per-export-key. */
 	readonly dual?: DualExports | undefined;
+	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
+	readonly subdirExports?: ReadonlySet<string> | undefined;
 }
 
 /** Apply the full standard manifest transform (excluding catalog resolution, done upstream). */
@@ -156,7 +171,7 @@ export function transformManifest(pkg: Json, options: TransformManifestOptions =
 	// Runs before the user transform (next line), so a package can still strip it.
 	if (result.exports !== undefined && result.exports !== null) {
 		const original = result.exports;
-		const transformed = transformExports(original, options.dual ?? false);
+		const transformed = transformExports(original, options.dual ?? false, options.subdirExports);
 		const asMap: Json = typeof original === "string" ? { ".": transformed } : { ...(transformed as Json) };
 		if (!("./package.json" in asMap)) asMap["./package.json"] = "./package.json";
 		result.exports = asMap;

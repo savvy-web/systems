@@ -8,6 +8,9 @@ export type TargetGroupId = string;
 /** An output module format the build can emit. */
 export type BuildFormat = "esm" | "cjs";
 
+/** Bundling platform for the JS pass. Defaults to "node". Use "browser" for web runtime partitions. */
+export type BuildPlatform = "node" | "browser" | "neutral";
+
 /** A prod/dev group to build: its folder id and the resolved package name its manifest carries. */
 export interface BuildGroupSpec {
 	readonly id: TargetGroupId;
@@ -22,6 +25,8 @@ export interface DeriveOptions {
 	readonly tsconfigPath: string;
 	readonly devManifest: "preserve" | "resolve";
 	readonly externals?: ReadonlyArray<string>;
+	/** JS-pass platform. Defaults to "node"; set "browser" for an RSPress runtime partition. */
+	readonly platform?: BuildPlatform | undefined;
 	/** Output formats to emit. Defaults to esm-only when unset. */
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 	/** Minify prod output (prod groups only; dev is never minified). Defaults to false. */
@@ -69,7 +74,7 @@ export interface DerivedTsdownOptions {
 	readonly unbundle: true;
 	/** JS pass starts fresh; it owns the outDir before the dts pass appends to it. */
 	readonly clean: true;
-	readonly platform: "node";
+	readonly platform: BuildPlatform;
 	/**
 	 * Controls output file extensions. Always false for this builder.
 	 *
@@ -160,7 +165,7 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 		format,
 		unbundle: true,
 		clean: true,
-		platform: "node",
+		platform: options.platform ?? "node",
 		// Always false: tsdown derives ESM .js plus CJS .cjs for a type:module package, the
 		// scheme we want. fixedExtension: true would yield .mjs and break the manifest parity.
 		fixedExtension: false,

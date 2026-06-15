@@ -16,7 +16,8 @@ export interface ExtractResult {
 	readonly exportPaths: Record<string, string>;
 }
 
-const isTypeScriptFile = (p: string): boolean => p.endsWith(".ts") || p.endsWith(".tsx");
+const isDeclarationFile = (p: string): boolean => p.endsWith(".d.ts") || p.endsWith(".d.cts") || p.endsWith(".d.mts");
+const isTypeScriptFile = (p: string): boolean => !isDeclarationFile(p) && (p.endsWith(".ts") || p.endsWith(".tsx"));
 
 /** /dist/*.js to /src/*.ts; otherwise unchanged. */
 const resolveToTypeScript = (p: string): string =>

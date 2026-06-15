@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-14
+last-synced: 2026-06-14
 completeness: 92
 related:
   - ../cli/architecture.md
@@ -26,6 +26,7 @@ The single package a consumer installs to get the whole Silk Suite dev-tooling s
 - [How silk builds: ESM-only base, two CJS overrides that inline the runtime](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime)
 - [The shim contract](#the-shim-contract)
 - [Export map](#export-map)
+- [The shipped TSConfig convention presets](#the-shipped-tsconfig-convention-presets)
 - [Boundaries and invariants](#boundaries-and-invariants)
 - [The type-portability invariant](#the-type-portability-invariant)
 - [Consumer model](#consumer-model)
@@ -84,15 +85,30 @@ The shim files are the single source of truth for the exact reshaping; the contr
 ./commitlint/formatter    ← custom error formatter
 ./lint                    ← handlers / Preset / createConfig / utils / section data
 ./biome                   ← static silk.jsonc asset (copied, not a shim)
+./tsconfig/node/root.json ← Node monorepo ROOT preset (convention, no Silk build tool)
+./tsconfig/rspress/website.json ← standard RSPress SITE preset (browser/SSG)
 ```
 
 The mapping from each old package's subpaths into this tree is the load-bearing decision; see the `exports` field in `package.json` for the authoritative wiring.
+
+## The shipped TSConfig convention presets
+
+In the ecosystem-wide TSConfig preset taxonomy, **silk owns the convention presets — roots plus framework configs**, while the build tools own the lib/build base (see the canonical taxonomy in `../bundler/architecture.md`). silk's presets are for repos that FOLLOW Silk conventions but do not have a Silk build tool at the relevant package, so the lib base lives elsewhere. They ship under top-level `public/tsconfig/**` and export under the `tsconfig/` namespace:
+
+- **`./tsconfig/node/root.json`** — a Node monorepo ROOT preset for a root where `@savvy-web/bundler` is not a dependency of the root `package.json` (so it cannot extend the bundler base). Self-contained: it inlines the Node-24 root settings (`module: nodenext`, `target: es2025`, composite/declaration, `types: ["node"]`) rather than extending.
+- **`./tsconfig/rspress/website.json`** — a standard RSPress SITE preset, aligned with RSPress's official website tsconfig. The load-bearing decision is the **es2023/browser split**: a website runs in the browser plus SSG, NOT on Node 24, so it targets `es2023` (not the build base's `es2025`), sets `noEmit`, `module: esnext` + `moduleResolution: bundler`, `jsx: react-jsx` and `mdx: { checkMdx: true }`. See the file for the full compilerOptions and `include` set.
+
+The es2025-vs-es2023 split is the reason these are silk's job, not the bundler's: the bundler base is a Node-24 LIBRARY base (`es2025`, emit), which is wrong for a browser/SSG site. The TS6 baseline (explicit `types`, no deprecated `node`/`node10`, `dom` subsuming `dom.iterable`) applies to both — see `../bundler/architecture.md`.
+
+The Biome preset (`./biome`) now also formats these presets under `public/tsconfig/**` and excludes `.claude/worktrees` so a nested Claude Code worktree does not trip Biome's nested-root abort in any consumer.
 
 ## Boundaries and invariants
 
 - **`@savvy-web/silk` never imports `@savvy-web/cli`.** Within the repo it depends only on `@savvy-web/silk-effects`. This is grep-guarded.
 - **`peerDependencies` declares the install-wiring and real-tool peers.** It carries the merged real-tool peers of the three source packages (Biome, husky, the commitlint packages, commitizen, the changesets CLI, lint-staged, markdownlint-cli2, the codequality formatter, turbo) plus the toolchain peers via `catalog:silkPeers`; the transform additionally promotes `@savvy-web/cli` and `@savvy-web/mcp` into this list. Installing `silk` pulls the `savvy` bin and all the tools its configs reference. See the `peerDependencies` field in `package.json` for the authoritative set.
 - **CJS is required for two entries, not the whole package.** The Changesets CLI `require()`s `./changesets/changelog` and markdownlint-cli2 `require()`s `./changesets/markdownlint`. silk's base entries are ESM-only (externalizing silk-effects); two per-entry overrides pin those two entries to `format: ["esm", "cjs"]` and force-bundle silk-effects (`bundleNodeModules`) so the `require` resolves from each entry's self-contained bytes rather than chasing an ESM-only transitive dep. The dual-format build activates the cjs-default-interop footer and the node-builtin default-interop rewrite. See [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime).
+- **silk owns convention presets (roots + framework), not the lib base.** The `./tsconfig/node/root.json` and `./tsconfig/rspress/website.json` presets are for repos following Silk conventions without a Silk build tool at that package; the lib/build base is the build tools' job (`@savvy-web/bundler`). The website preset is browser/SSG-targeted (`es2023`, `noEmit`), deliberately diverging from the Node-24 build base. See [The shipped TSConfig convention presets](#the-shipped-tsconfig-convention-presets) and the taxonomy in `../bundler/architecture.md`.
+- **The Biome asset excludes `.claude/worktrees` and formats `public/tsconfig/**`.** The exclusion keeps a consumer's nested Claude Code worktrees from tripping Biome's nested-root abort; the include adds the shipped tsconfig presets to the formatted set.
 
 ## The type-portability invariant
 

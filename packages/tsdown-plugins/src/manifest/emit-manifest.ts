@@ -21,6 +21,8 @@ export interface BuildEmittedManifestOptions {
 	readonly transform?: ((args: { pkg: Json; targetGroup: TargetGroupRef }) => Json) | undefined;
 	/** Which exports emit dual import/require conditions. boolean (uniform) or a Set of export keys (per-entry). */
 	readonly dual?: DualExports | undefined;
+	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
+	readonly subdirExports?: ReadonlySet<string> | undefined;
 }
 
 /** Compute the final manifest bytes for a TargetGroup (catalog resolution + standard transforms). */
@@ -39,6 +41,7 @@ export async function buildEmittedManifest(options: BuildEmittedManifestOptions)
 	return transformManifest(base, {
 		transform: transform ? (p) => transform({ pkg: p, targetGroup }) : undefined,
 		dual: options.dual ?? false,
+		subdirExports: options.subdirExports,
 	});
 }
 
@@ -50,6 +53,8 @@ export interface EmitManifestOptions {
 	readonly sourceDir: string;
 	/** Which exports emit dual import/require conditions. boolean (uniform) or a Set of export keys (per-entry). */
 	readonly dual?: DualExports | undefined;
+	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
+	readonly subdirExports?: ReadonlySet<string> | undefined;
 }
 
 /** Rolldown plugin: emit the transformed package.json + LICENSE/README into the output pkg/ root. */
@@ -65,6 +70,7 @@ export function emitManifest(options: EmitManifestOptions): Plugin {
 				devManifest: options.devManifest ?? "preserve",
 				transform: options.transform,
 				dual: options.dual,
+				subdirExports: options.subdirExports,
 			});
 			this.emitFile({
 				type: "asset",

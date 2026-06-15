@@ -1,16 +1,16 @@
 {
-	"name": "@savvy-web/bundler",
-	"version": "0.4.2",
+	"name": "@savvy-web/rspress-builder",
+	"version": "0.0.0",
 	"private": true,
-	"description": "Zero-config tsdown-based bundler for Silk Suite TypeScript packages",
-	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/bundler",
+	"description": "RSPress plugin builder for the Silk Suite, built on @savvy-web/bundler",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/rspress-builder",
 	"bugs": {
 		"url": "https://github.com/savvy-web/systems/issues"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/savvy-web/systems.git",
-		"directory": "packages/bundler"
+		"directory": "packages/rspress-builder"
 	},
 	"license": "MIT",
 	"author": {
@@ -21,8 +21,9 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./ecma.json": "./public/ecma.json",
-		"./tsconfig/ecma.json": "./public/ecma.json"
+		"./rspress-env.d.ts": "./public/rspress-env.d.ts",
+		"./tsconfig/ecma.json": "./public/ecma.json",
+		"./tsconfig/plugin.json": "./public/tsconfig/plugin.json"
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
@@ -30,27 +31,23 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
-		"@savvy-web/tsdown-plugins": "workspace:*",
-		"@tsdown/exe": "^0.22.1",
-		"tsdown": "^0.22.2"
+		"@savvy-web/bundler": "workspace:*",
+		"@savvy-web/tsdown-plugins": "workspace:*"
 	},
 	"devDependencies": {
-		"@effect/platform": "catalog:silk",
-		"@effect/platform-node": "catalog:silk",
 		"@tsdown/css": "^0.22.2",
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
-		"effect": "catalog:silk",
 		"react": "catalog:silk",
-		"rolldown": "^1.1.1",
-		"tinyrainbow": "^3.1.0",
-		"tsx": "^4.22.4",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.8"
 	},
 	"peerDependencies": {
-		"effect": "catalog:silkPeers"
+		"@rspress/core": "^2.0.0",
+		"@tsdown/css": "^0.22.2",
+		"react": "catalog:silkPeers",
+		"react-dom": "catalog:silkPeers"
 	},
 	"publishConfig": {
 		"access": "public",

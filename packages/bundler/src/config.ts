@@ -1,6 +1,8 @@
 // packages/bundler/src/config.ts
 import type {
 	BuildFormat,
+	BuildPlatform,
+	CssOptions,
 	ExeConfig,
 	Json,
 	JsxConfig,
@@ -19,6 +21,16 @@ export interface BuildEntryOverride {
 	readonly bundleNodeModules?: boolean | undefined;
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+	/** JS-pass platform for this partition (default "node"). Use "browser" for an RSPress runtime. */
+	readonly platform?: BuildPlatform | undefined;
+	/** CSS handling forwarded to tsdown's `css` option (JS pass only). Enables `@tsdown/css`. */
+	readonly css?: CssOptions | undefined;
+	/**
+	 * Build this entry's partition into a `<group>/pkg/<outSubdir>/` subdir as an isolated sub-package
+	 * (e.g. an RSPress `./runtime`). The export's built path becomes `./<outSubdir>/index.{js,d.ts}`.
+	 * Exactly ONE export path may be pinned per `outSubdir` override.
+	 */
+	readonly outSubdir?: string | undefined;
 }
 
 export interface OutputConfig {

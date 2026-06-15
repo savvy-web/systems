@@ -1,12 +1,5 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
 	"extends": ["@savvy-web/silk/biome"],
-	"files": {
-		// Exclude directories that carry their own nested root biome configs, so biome does
-		// not treat them as conflicting nested roots during discovery:
-		//  - .claude/worktrees/: nested git worktrees that extend the same `root: true` preset.
-		//  - silk-effects lint fixtures: standalone mini-projects the lint integration test
-		//    runs a spawned biome inside (their cwd), never part of this repo's own lint scope.
-		"includes": ["!.claude/worktrees", "!packages/silk-effects/__test__/lint/integration/fixtures"]
-	}
+	"root": true
 }

@@ -185,3 +185,17 @@ describe("define merge (auto-version + user define)", () => {
 		expect(o.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("9.9.9"));
 	});
 });
+
+describe("deriveTargetGroupOptions platform override", () => {
+	const base = { cwd: "/abs/pkg", version: "1.2.3", entry: { index: "./src/index.ts" }, tsconfigPath: "/tmp/t.json" };
+
+	it("defaults platform to node", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve" });
+		expect(o.platform).toBe("node");
+	});
+
+	it("honors an explicit browser platform (JS pass only)", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve", platform: "browser" });
+		expect(o.platform).toBe("browser");
+	});
+});

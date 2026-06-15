@@ -25,7 +25,7 @@
 		"sourceMap": false,
 		"strict": true,
 		"strictNullChecks": true,
-		"target": "es2023",
+		"target": "es2025",
 		"tsBuildInfoFile": "${configDir}/dist/.tsbuildinfo.lib",
 		"typeRoots": ["${configDir}/node_modules/@types", "${configDir}/types"],
 		"verbatimModuleSyntax": true,

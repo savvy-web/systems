@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { BuildTargetGroupsOptions } from "@savvy-web/tsdown-plugins";
 import { describe, expect, it, vi } from "vitest";
+import { defineBuild } from "../src/config.js";
 import { runBuild } from "../src/run.js";
 
 describe("runBuild", () => {
@@ -387,5 +388,146 @@ describe("runBuild", () => {
 		// the override entry is still partitioned out of the base set
 		expect(arg.entry).toEqual({ index: "./src/index.ts", commitlint: "./src/commitlint/index.ts" });
 		expect(arg.overrides?.[0]?.entry).toEqual({ "changesets-markdownlint": "./src/changesets/markdownlint.ts" });
+	}, 30_000);
+
+	it("forwards an override's platform + css into the partition passed to buildTargetGroups", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "run-ov-"));
+		await writeFile(
+			join(dir, "package.json"),
+			JSON.stringify({
+				name: "rspress-plugin-fixture",
+				version: "1.0.0",
+				exports: { ".": "./src/index.ts", "./runtime": "./src/runtime/index.tsx" },
+			}),
+		);
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		const config = defineBuild({
+			overrides: [
+				{
+					entries: ["./runtime"],
+					platform: "browser",
+					css: { modules: { localsConvention: "camelCaseOnly", namedExport: false } },
+					externals: ["react", "@theme"],
+				},
+			],
+		});
+		await runBuild(config, {
+			cwd: dir,
+			argv: ["--target", "dev"],
+			buildTargetGroups: spy,
+			writeTsconfig: () => "/tmp/fake-tsconfig.json",
+		});
+		const arg = spy.mock.calls[0]?.[0] as BuildTargetGroupsOptions;
+		const ov = arg.overrides?.[0];
+		expect(ov?.platform).toBe("browser");
+		expect(ov?.css).toEqual({ modules: { localsConvention: "camelCaseOnly", namedExport: false } });
+		expect(ov?.entry).toEqual({ runtime: "./src/runtime/index.tsx" });
+	}, 30_000);
+
+	it("constructs an outSubdir runtime partition with entry index + subdirExports", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		const dir = await mkdtemp(join(tmpdir(), "run-outsubdir-"));
+		await writeFile(
+			join(dir, "package.json"),
+			JSON.stringify({
+				name: "rspress-plugin-fixture",
+				version: "1.0.0",
+				private: true,
+				type: "module",
+				exports: { ".": "./src/index.ts", "./runtime": "./src/runtime/index.tsx" },
+			}),
+		);
+		const config = defineBuild({
+			meta: false,
+			overrides: [
+				{
+					entries: ["./runtime"],
+					outSubdir: "runtime",
+					platform: "browser",
+					css: { modules: { localsConvention: "camelCaseOnly", namedExport: false }, inject: true },
+					externals: ["react", "@theme"],
+				},
+			],
+		});
+		await runBuild(config, {
+			cwd: dir,
+			argv: ["--target", "dev"],
+			buildTargetGroups: spy,
+			writeTsconfig: () => "/tmp/t.json",
+		});
+		const arg = spy.mock.calls[0]?.[0] as BuildTargetGroupsOptions;
+		const ov = arg.overrides?.[0];
+		expect(ov?.outSubdir).toBe("runtime");
+		expect(ov?.entry).toEqual({ index: "./src/runtime/index.tsx" });
+		expect(ov?.platform).toBe("browser");
+		expect(arg.entry).toEqual({ index: "./src/index.ts" });
+		expect(arg.entry).not.toHaveProperty("runtime");
+		expect(arg.subdirExports && [...arg.subdirExports]).toEqual(["./runtime"]);
+	}, 30_000);
+
+	it("adds the outSubdir export to the meta inputs with a <subdir>/index dts basename", async () => {
+		let captured: { entries: Record<string, string>; exportPaths: Record<string, string> } | undefined;
+		const dir = await mkdtemp(join(tmpdir(), "run-meta-subdir-"));
+		await writeFile(
+			join(dir, "package.json"),
+			JSON.stringify({
+				name: "rspress-plugin-fixture",
+				version: "1.0.0",
+				private: true,
+				type: "module",
+				exports: { ".": "./src/index.ts", "./runtime": "./src/runtime/index.tsx" },
+			}),
+		);
+		const config = defineBuild({
+			overrides: [
+				{ entries: ["./runtime"], outSubdir: "runtime", platform: "browser", css: { modules: {}, inject: true } },
+			],
+		});
+		await runBuild(config, {
+			cwd: dir,
+			argv: ["--target", "meta"],
+			writeTsconfig: () => "/tmp/t.json",
+			generateMeta: async (o) => {
+				captured = o as typeof captured;
+				return { apiJsonPath: "x", apiJsonFilename: "x" } as never;
+			},
+		});
+		expect(captured?.entries.runtime).toBe("runtime/index");
+		expect(captured?.exportPaths.runtime).toBe("./runtime");
+		expect(captured?.entries.index).toBe("index"); // base entry still present
+	}, 30_000);
+
+	it("rejects a meta build when an outSubdir override pins a non-existent export", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "run-meta-badsubdir-"));
+		await writeFile(
+			join(dir, "package.json"),
+			JSON.stringify({
+				name: "fix",
+				version: "1.0.0",
+				private: true,
+				type: "module",
+				exports: { ".": "./src/index.ts" },
+			}),
+		);
+		const metaSpy = vi.fn(async () => ({}) as never);
+		const config = defineBuild({
+			overrides: [
+				{
+					entries: ["./does-not-exist"],
+					outSubdir: "runtime",
+					platform: "browser",
+					css: { modules: {}, inject: true },
+				},
+			],
+		});
+		await expect(
+			runBuild(config, {
+				cwd: dir,
+				argv: ["--target", "meta"],
+				writeTsconfig: () => "/tmp/t.json",
+				generateMeta: metaSpy,
+			}),
+		).rejects.toThrow(/is not a build entry/);
+		expect(metaSpy).not.toHaveBeenCalled();
 	}, 30_000);
 });
