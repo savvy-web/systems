@@ -6,7 +6,4 @@ configDependencies:
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
-minimumReleaseAgeExclude:
-  - "@microsoft/api-extractor@7.58.9"
-  - "@rushstack/ts-command-line@5.3.10"
 verifyDepsBeforeRun: false
