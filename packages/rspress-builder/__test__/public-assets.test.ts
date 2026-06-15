@@ -11,6 +11,7 @@ describe("rspress-builder public assets", () => {
 		const json = JSON.parse(readFileSync(p, "utf-8"));
 		expect(json.extends).toBe("../ecma.json");
 		expect(json.compilerOptions.jsx).toBe("react-jsx");
+		expect(json.compilerOptions.lib).toEqual(["es2025", "dom"]);
 	});
 
 	it("ships ambient CSS-module + import.meta.env declarations", () => {

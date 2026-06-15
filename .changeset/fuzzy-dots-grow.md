@@ -34,3 +34,5 @@ Two new types are exported from the package root: `BuildPlatform` and `CssOption
 ## Bug Fixes
 
 Declaration file inputs (`.d.ts`, `.d.cts`, `.d.mts`) are now treated as pass-through assets rather than TypeScript source files to build. Previously, a `.d.ts` export target was misclassified as a buildable TypeScript entry, producing a spurious `.d.ts.js` output and a crash when the dts pass tried to compile it. The fix affects both the entry extractor (`src/entry/extract.ts`) and the manifest transform (`src/manifest/transform.ts`).
+
+The portable tsconfig resolver now maps `ScriptTarget.ES2025` to `"es2025"`. Previously the resolver's target table stopped at ES2024, so a package targeting `es2025` emitted an invalid `"es12"` numeric fallback in its generated meta tsconfig.

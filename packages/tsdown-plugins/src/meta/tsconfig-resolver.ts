@@ -135,6 +135,7 @@ export class TsconfigResolver {
 		[ScriptTarget.ES2022, "es2022"],
 		[ScriptTarget.ES2023, "es2023"],
 		[ScriptTarget.ES2024, "es2024"],
+		[ScriptTarget.ES2025, "es2025"],
 		[ScriptTarget.ESNext, "esnext"],
 		[ScriptTarget.JSON, "json"],
 	]);

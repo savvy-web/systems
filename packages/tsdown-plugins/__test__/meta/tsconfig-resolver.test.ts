@@ -34,6 +34,7 @@ describe("TsconfigResolver", () => {
 			expect(TsconfigResolver.convertScriptTarget(ScriptTarget.ES2015)).toBe("es2015");
 			expect(TsconfigResolver.convertScriptTarget(ScriptTarget.ES2020)).toBe("es2020");
 			expect(TsconfigResolver.convertScriptTarget(ScriptTarget.ES2024)).toBe("es2024");
+			expect(TsconfigResolver.convertScriptTarget(ScriptTarget.ES2025)).toBe("es2025");
 		});
 
 		it("falls back for unknown future targets", () => {
@@ -299,7 +300,7 @@ describe("resolvePortableTsconfig", () => {
 		const result = resolvePortableTsconfig(cwd);
 		expect(result.$schema).toBe("https://json.schemastore.org/tsconfig");
 		// Full effective options inherited from @savvy-web/bundler/ecma.json.
-		expect(result.compilerOptions.target).toBe("es2023");
+		expect(result.compilerOptions.target).toBe("es2025");
 		expect(result.compilerOptions.module).toBe("nodenext");
 		expect(result.compilerOptions.moduleResolution).toBe("nodenext");
 		expect(result.compilerOptions.strict).toBe(true);
