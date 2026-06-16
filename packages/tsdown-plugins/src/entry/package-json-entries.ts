@@ -16,5 +16,6 @@ export function packageJsonEntries(options: PackageJsonEntriesOptions = {}): Rec
 	const pkg =
 		options.pkg ??
 		(JSON.parse(readFileSync(resolve(options.cwd ?? process.cwd(), "package.json"), "utf-8")) as PackageJsonLike);
-	return extractEntries(pkg, { exportsAsIndexes: options.exportsAsIndexes }).entries;
+	return extractEntries(pkg, { exportsAsIndexes: options.exportsAsIndexes, excludeSources: options.excludeSources })
+		.entries;
 }

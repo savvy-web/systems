@@ -5,6 +5,5 @@
 	"private": true,
 	"os": ["darwin"],
 	"cpu": ["arm64"],
-	"bin": { "exe-fixture": "./bin/exe-fixture" },
-	"exports": { ".": "./src/bin.ts" }
+	"exports": { ".": "./src/bin.ts", "./package.json": "./package.json" }
 }

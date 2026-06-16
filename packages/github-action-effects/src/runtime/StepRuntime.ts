@@ -63,6 +63,13 @@ export interface StepFrame {
 	successLine: string | null;
 	failureLine: string | null;
 	readonly buffer: StepBuffer;
+	/**
+	 * Custom success icon. When set, {@link emitSuccess} renders this glyph in
+	 * place of the default `✅`. The failure path is unaffected — a failed step
+	 * always renders `❌`. Used to give a step's success line a domain glyph
+	 * (e.g. `📦` for a pack step, `🔏` for a provenance line).
+	 */
+	readonly icon?: string;
 }
 
 /**
@@ -169,11 +176,26 @@ export const indent = (depth: number): string => "  ".repeat(depth);
  */
 export const emitSuccess = (frame: StepFrame, line: string | null): void => {
 	const prefix = indent(frame.depth);
+	const icon = frame.icon ?? "✅";
 	if (line !== null && line.length > 0) {
-		process.stdout.write(`${prefix}✅ ${frame.name}: ${line}\n`);
+		process.stdout.write(`${prefix}${icon} ${frame.name}: ${line}\n`);
 	} else {
-		process.stdout.write(`${prefix}✅ ${frame.name}\n`);
+		process.stdout.write(`${prefix}${icon} ${frame.name}\n`);
 	}
+};
+
+/**
+ * Emit a standalone display line at a given depth.
+ *
+ * Unlike {@link emitSuccess}, this carries no step name or `:` separator — the
+ * caller owns everything after the icon. Used by {@link "./Step.js".line} for
+ * informational rows under a step or group (e.g. a provenance/SBOM URL) that are
+ * not themselves pass/fail steps.
+ *
+ * @internal
+ */
+export const emitLine = (depth: number, icon: string, text: string): void => {
+	process.stdout.write(`${indent(depth)}${icon} ${text}\n`);
 };
 
 /**

@@ -175,6 +175,22 @@ const npmErrorSummary = (stderr: string | undefined): string | undefined => {
 };
 
 /**
+ * Lift npm's native trusted-publishing provenance URL out of `npm publish` output.
+ *
+ * When a publish runs with `--provenance` (npm's Sigstore OIDC flow), npm prints
+ * `npm notice publish Provenance statement published to transparency log: <url>`.
+ * We capture that URL so the release surfaces npm's own provenance alongside the
+ * action's separate attestation. Returns undefined when no such line is present
+ * (provenance disabled, or a non-npm registry).
+ *
+ * @param output - Combined stdout + stderr from the publish command.
+ */
+const parseProvenanceUrl = (output: string): string | undefined => {
+	const match = output.match(/Provenance statement published to transparency log:\s*(\S+)/i);
+	return match?.[1];
+};
+
+/**
  * Live PackagePublish layer using CommandRunner and NpmRegistry.
  *
  * @public
@@ -365,8 +381,10 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							const execOptions = options.tokenAuth
 								? { streaming: true as const, env: tokenAuthEnv() }
 								: { streaming: true as const };
-							yield* runner.exec(cmd, args, execOptions).pipe(
-								Effect.asVoid,
+							// `execCapture` streams npm's output live (verbose notices stay visible
+							// in the runner log) AND returns the captured text, so we can lift npm's
+							// native trusted-publishing provenance URL out of the notice stream.
+							const output = yield* runner.execCapture(cmd, args, execOptions).pipe(
 								Effect.mapError(
 									(error) =>
 										new PackagePublishError({
@@ -380,7 +398,11 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 										}),
 								),
 							);
-							yield* Effect.logInfo(`publishTarball: ${tarballPath} → ${options.registry} success`);
+							const provenanceUrl = parseProvenanceUrl(`${output.stdout}\n${output.stderr}`);
+							yield* Effect.logInfo(
+								`publishTarball: ${tarballPath} → ${options.registry} success${provenanceUrl ? ` (provenance ${provenanceUrl})` : ""}`,
+							);
+							return provenanceUrl !== undefined ? { provenanceUrl } : {};
 						}),
 
 					verifyIntegrity: (packageName: string, version: string, expectedDigest: string) =>

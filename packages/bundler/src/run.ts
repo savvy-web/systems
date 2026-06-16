@@ -1,5 +1,5 @@
 // packages/bundler/src/run.ts
-import { readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
 	BuildGroupSpec,
@@ -18,6 +18,8 @@ import {
 	ConfigValidator,
 	ConfigValidatorLive,
 	ReportPipelineLive,
+	buildEmittedManifest,
+	computeExeFileName,
 	createEntryName,
 	normalizeExeOptions,
 	normalizeLooseFiles,
@@ -180,7 +182,7 @@ function applySubdirMetaEntries(
 
 /** Run a build from a normalized config. Pure orchestration; all IO injectable. */
 export async function runBuild(config: BuildConfig, options: RunOptions): Promise<void> {
-	const { target } = parseArgs(options.argv);
+	const { target, noExe } = parseArgs(options.argv);
 	const build = options.buildTargetGroups ?? realBuildTargetGroups;
 	const cwd = options.cwd;
 	const pkg = readPackageJson(cwd);
@@ -199,7 +201,6 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(jsx?.runtime === "classic" ? { jsx: "react" } : {}),
 			}));
 	const tsconfigPath = writeTsconfig(cwd);
-	const entries = packageJsonEntries({ pkg, cwd });
 	const exportsMap = options.readExports ? options.readExports() : (pkg.exports as Record<string, string> | undefined);
 	const runGenerateMeta = options.generateMeta ?? realGenerateMeta;
 	const readPublishTargets =
@@ -231,6 +232,35 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			}),
 		).pipe(Effect.provide(ConfigValidatorLive)),
 	);
+
+	// Resolve the SEA spec once (per-platform package = one spec, one target). The emitted filename is
+	// computed (not read from disk) so `--no-exe` can program the same manifest without a build, and the
+	// exe entry source is excluded from the JS pass so a pure-binary package emits no dead JS.
+	const exeSpecs = config.exe !== undefined ? normalizeExeOptions(config.exe, osCpuForValidate) : [];
+	// A package's exports["."] resolves to exactly one SEA, so the manifest rewrite and source
+	// exclusion below read exeSpecs[0]/targets[0]. Enforce that singleton here rather than let a
+	// multi-spec/multi-target config silently program the manifest for only the first binary while
+	// runExeBuild compiles them all. Cross-platform binaries ship as separate per-platform packages.
+	if (config.exe !== undefined && (exeSpecs.length !== 1 || (exeSpecs[0]?.targets.length ?? 0) !== 1)) {
+		throw new Error(
+			`exe build requires exactly one binary with one target (got ${exeSpecs.length} spec(s), ${exeSpecs[0]?.targets.length ?? 0} target(s) on the first). A package's exports["."] resolves to a single SEA — cross-platform binaries must each ship as their own per-platform package.`,
+		);
+	}
+	const exeSpec = exeSpecs[0];
+	const exeTarget = exeSpec?.targets[0];
+	const exeFileName = exeSpec && exeTarget ? computeExeFileName(exeSpec.fileName, exeTarget) : undefined;
+	const exeEntrySource = exeSpec?.entry ?? "./src/bin.ts";
+	const exeRewrite =
+		config.exe !== undefined && exeFileName !== undefined
+			? { source: exeEntrySource, fileName: exeFileName, dir: "bin" }
+			: undefined;
+
+	const entries = packageJsonEntries({
+		pkg,
+		cwd,
+		...(config.exe !== undefined ? { excludeSources: [exeEntrySource] } : {}),
+	});
+	const hasJsEntries = Object.keys(entries).length > 0;
 
 	// Fast-fail outSubdir-override validation: run BEFORE the --target meta branch (which returns early,
 	// bypassing the dev/prod override-partition loop) so every target path rejects a bad outSubdir override.
@@ -281,14 +311,13 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		if (config.exe === undefined) {
 			throw new Error("`savvy build --target exe` requires an `exe` option in the build config");
 		}
-		const specs = normalizeExeOptions(config.exe, osCpuForValidate);
 		const exe = options.runExeBuild ?? realRunExeBuild;
-		await exe({ cwd, outDir: join(cwd, "dist", "dev", "pkg", "bin"), specs });
+		await exe({ cwd, outDir: join(cwd, "dist", "dev", "pkg", "bin"), specs: exeSpecs });
 		const writeExeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
 		writeExeOutput({
 			target: "stdout",
 			contentType: "text/plain",
-			content: `exe: compiled ${specs.length} binary/binaries for ${packageName}`,
+			content: `exe: compiled ${exeSpecs.length} binary/binaries for ${packageName}`,
 		});
 		return;
 	}
@@ -375,28 +404,33 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		target === "dev"
 			? { groups: [{ id: "dev", name: packageName }] as ReadonlyArray<BuildGroupSpec>, resolution: undefined }
 			: deriveProdGroups(publishTargets, packageName);
-	await build({
-		cwd,
-		version,
-		entry: config.overrides !== undefined ? baseEntries : entries,
-		tsconfigPath,
-		groups,
-		devManifest: config.devManifest,
-		externals: config.externals,
-		...(config.bundledPackages !== undefined ? { bundledPackages: config.bundledPackages } : {}),
-		...(config.dtsExternals !== undefined ? { dtsExternals: config.dtsExternals } : {}),
-		...(config.bundleNodeModules !== undefined ? { bundleNodeModules: config.bundleNodeModules } : {}),
-		...(config.bundle !== undefined ? { bundle: config.bundle } : {}),
-		...(config.minify !== undefined ? { minify: config.minify } : {}),
-		...(config.transform !== undefined ? { transform: config.transform } : {}),
-		...(jsx !== undefined ? { jsx } : {}),
-		...(config.format !== undefined ? { format: config.format } : {}),
-		...(config.define !== undefined ? { define: config.define } : {}),
-		...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
-		...(dualExports !== undefined ? { dualExports } : {}),
-		...(subdirExports.size > 0 ? { subdirExports } : {}),
-		...(looseFiles !== undefined ? { looseFiles } : {}),
-	});
+	// A pure-binary (exe-only) package has no JS entries; running tsdown would throw "No input files".
+	// Skip the library build — the manifest is emitted standalone in the exe step below.
+	if (hasJsEntries || config.exe === undefined) {
+		await build({
+			cwd,
+			version,
+			entry: config.overrides !== undefined ? baseEntries : entries,
+			tsconfigPath,
+			groups,
+			devManifest: config.devManifest,
+			externals: config.externals,
+			...(config.bundledPackages !== undefined ? { bundledPackages: config.bundledPackages } : {}),
+			...(config.dtsExternals !== undefined ? { dtsExternals: config.dtsExternals } : {}),
+			...(config.bundleNodeModules !== undefined ? { bundleNodeModules: config.bundleNodeModules } : {}),
+			...(config.bundle !== undefined ? { bundle: config.bundle } : {}),
+			...(config.minify !== undefined ? { minify: config.minify } : {}),
+			...(config.transform !== undefined ? { transform: config.transform } : {}),
+			...(jsx !== undefined ? { jsx } : {}),
+			...(config.format !== undefined ? { format: config.format } : {}),
+			...(config.define !== undefined ? { define: config.define } : {}),
+			...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
+			...(dualExports !== undefined ? { dualExports } : {}),
+			...(subdirExports.size > 0 ? { subdirExports } : {}),
+			...(looseFiles !== undefined ? { looseFiles } : {}),
+			...(exeRewrite !== undefined ? { exeRewrite } : {}),
+		});
+	}
 
 	// Write the target-to-group binding for the release action (prod only).
 	if (target === "prod" && resolution !== undefined) {
@@ -405,7 +439,8 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 
 	// --target prod: emit the meta/ release-asset bundle alongside the canonical group's pkg/ unless
 	// meta is explicitly disabled. undefined -> default options; object -> overrides; false -> skip.
-	if (target === "prod" && config.meta !== false) {
+	// An exe-only package has no JS entries (no dts), so there is nothing for API Extractor to read.
+	if (target === "prod" && config.meta !== false && (config.exe === undefined || hasJsEntries)) {
 		const metaGroup = groups.find((g) => g.name === packageName) ?? groups[0];
 		const metaGroupId = metaGroup?.id ?? "npm";
 		const norm = normalizeMetaOptions(config.meta ?? {});
@@ -432,6 +467,49 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	// local paths. Done after meta so prod meta still sees them; dev keeps them for `--target meta`.
 	if (target === "prod") {
 		for (const g of groups) removeDeclarationMaps(join(cwd, "dist", "prod", g.id, "pkg"));
+	}
+
+	// SEA step: compile the binary into each built group's pkg/bin and program its manifest. Runs AFTER
+	// the library build so the dev `clean` cannot wipe the binary. For an exe-only package (no JS pass)
+	// the manifest is emitted standalone here, since the emitManifest plugin only runs inside the JS pass.
+	if (config.exe !== undefined && exeSpec !== undefined && exeRewrite !== undefined && exeFileName !== undefined) {
+		const runExe = options.runExeBuild ?? realRunExeBuild;
+		const groupOutDir = (g: BuildGroupSpec): string =>
+			target === "dev" ? join(cwd, "dist", "dev", "pkg") : join(cwd, "dist", "prod", g.id, "pkg");
+		for (const g of groups) {
+			const outDir = groupOutDir(g);
+			if (!hasJsEntries) {
+				// No JS pass ran, so emit the manifest + LICENSE/README ourselves.
+				const manifest = await buildEmittedManifest({
+					pkg,
+					targetGroup: { id: g.id, name: g.name, isProd: target === "prod" },
+					devManifest: config.devManifest,
+					...(config.transform !== undefined ? { transform: config.transform } : {}),
+					exeRewrite,
+				});
+				mkdirSync(outDir, { recursive: true });
+				writeFileSync(join(outDir, "package.json"), `${JSON.stringify(manifest, null, "\t")}\n`);
+				for (const file of ["LICENSE", "README.md"]) {
+					try {
+						copyFileSync(join(cwd, file), join(outDir, file));
+					} catch {
+						// optional file absent — skip
+					}
+				}
+			}
+			if (!noExe) {
+				const binDir = join(outDir, "bin");
+				await runExe({ cwd, outDir: binDir, specs: exeSpecs });
+				// Drift guard: the manifest points at the computed name; assert the compiler emitted it.
+				// Skipped when a fake runExeBuild is injected (tests), which writes nothing.
+				if (options.runExeBuild === undefined && !existsSync(join(binDir, exeFileName))) {
+					throw new Error(
+						`exe: expected compiled binary at ${join(binDir, exeFileName)} but it is missing — ` +
+							`tsdown's emitted name may have drifted from computeExeFileName`,
+					);
+				}
+			}
+		}
 	}
 
 	const totalMs = Date.now() - startMs;

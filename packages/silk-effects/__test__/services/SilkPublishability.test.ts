@@ -110,6 +110,9 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		expect(targets.map((t) => t.registry)).toEqual(["https://registry.npmjs.org", "https://npm.pkg.github.com"]);
 		expect(targets.every((t) => t.access === "public")).toBe(true);
 		expect(targets.every((t) => t.name === "@scope/x")).toBe(true);
+		// npm + GitHub Packages both opt into provenance — this is what gates the release
+		// action's attestation step. A false here leaves the publish-summary Provenance column empty.
+		expect(targets.every((t) => t.provenance === true)).toBe(true);
 	});
 
 	it("object-form targets, no binding (pre-build) → one placeholder per declared key", async () => {
@@ -126,6 +129,74 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		);
 		expect(targets.length).toBe(2);
 		expect(targets.map((t) => t.registry).sort()).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
+		// Provenance defaults must hold pre-build too, so Phase-2 validation reports it correctly.
+		expect(targets.every((t) => t.provenance === true)).toBe(true);
+	});
+
+	it("custom (non-npm/github) registry target → provenance defaults to false", async () => {
+		// Only the npm public registry and GitHub Packages participate in npm-style
+		// provenance; a custom registry target must not be marked provenance-ready.
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { corp: { registry: "https://npm.corp.example.com" } } },
+		});
+		writeBinding(tmpDir, {
+			groups: [{ id: "corp", name: "@scope/x", dir: "dist/prod/corp/pkg" }],
+			targets: [{ id: "corp", group: "corp", name: "@scope/x", registry: "https://npm.corp.example.com" }],
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].registry).toBe("https://npm.corp.example.com");
+		expect(targets[0].provenance).toBe(false);
+	});
+
+	it("custom registry target, no binding (pre-build) → placeholder keeps the custom registry, provenance false", async () => {
+		// The pre-build placeholder must read the object-form target's own registry, not fall back to
+		// the npm default — otherwise a custom-registry target reports the wrong registry (and provenance)
+		// before targets.json exists.
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { corp: { registry: "https://npm.corp.example.com" } } },
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].registry).toBe("https://npm.corp.example.com");
+		expect(targets[0].provenance).toBe(false);
+	});
+
+	it("a registry that only contains a well-known host as a substring does not opt into provenance (CWE-20 guard)", async () => {
+		// A substring check would wrongly mark these provenance-capable; matching is by exact hostname.
+		// A crafted URL with the well-known host in its path, or as a subdomain prefix, must stay false —
+		// otherwise the provenance gate (which drives the release action's attestation) is bypassable.
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { a: true, b: true } },
+		});
+		writeBinding(tmpDir, {
+			groups: [
+				{ id: "a", name: "@scope/x", dir: "dist/prod/a/pkg" },
+				{ id: "b", name: "@scope/x", dir: "dist/prod/b/pkg" },
+			],
+			targets: [
+				{ id: "a", group: "a", name: "@scope/x", registry: "https://evil.example/registry.npmjs.org" },
+				{ id: "b", group: "b", name: "@scope/x", registry: "https://registry.npmjs.org.attacker.com" },
+			],
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(2);
+		expect(targets.every((t) => t.provenance === false)).toBe(true);
 	});
 
 	it("object-form targets make a private package publishable (targets-first)", async () => {

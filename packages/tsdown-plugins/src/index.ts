@@ -32,11 +32,12 @@ export type { ExeBuild, RunExeBuildOptions } from "./exe/build.js";
 export { runExeBuild } from "./exe/build.js";
 export type { ExeConfig, ExeSeaConfig, ExeTarget, ExeTargetInput, NormalizedExe, PkgOsCpu } from "./exe/config.js";
 export { DEFAULT_EXE_NODE_VERSION, normalizeExeOptions } from "./exe/config.js";
+export { computeExeFileName } from "./exe/filename.js";
 export type { JsxConfig, TsconfigJsx } from "./jsx/config.js";
 export { readTsconfigJsx, resolveJsxConfig } from "./jsx/config.js";
 export type { BuildEmittedManifestOptions, EmitManifestOptions, TargetGroupRef } from "./manifest/emit-manifest.js";
 export { buildEmittedManifest, emitManifest } from "./manifest/emit-manifest.js";
-export type { DualExports, Json, TransformManifestOptions } from "./manifest/transform.js";
+export type { DualExports, ExeRewrite, Json, TransformManifestOptions } from "./manifest/transform.js";
 export {
 	defaultManifestTransform,
 	normalizeBinPaths,

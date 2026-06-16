@@ -4,7 +4,7 @@ import type { Plugin } from "rolldown";
 import type { JsxConfig } from "../jsx/config.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
-import type { DualExports, Json } from "../manifest/transform.js";
+import type { DualExports, ExeRewrite, Json } from "../manifest/transform.js";
 import { cjsDefaultInterop } from "./cjs-default-interop.js";
 import type { NormalizedLooseFile } from "./loose-files.js";
 import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
@@ -143,6 +143,8 @@ export interface BuildTargetGroupsOptions {
 	readonly dualExports?: DualExports | undefined;
 	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
 	readonly subdirExports?: ReadonlySet<string> | undefined;
+	/** When set, rewrite the emitted manifest's exports/bin values equal to the exe source to the SEA path and add it to `files`. */
+	readonly exeRewrite?: ExeRewrite | undefined;
 	/** Injectable for tests; defaults to tsdown's build. */
 	readonly build?: TsdownBuild;
 }
@@ -243,6 +245,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						sourceDir: options.cwd,
 						dual: options.dualExports ?? js.format.includes("cjs"),
 						...(options.subdirExports !== undefined ? { subdirExports: options.subdirExports } : {}),
+						...(options.exeRewrite !== undefined ? { exeRewrite: options.exeRewrite } : {}),
 					})
 				: undefined;
 
