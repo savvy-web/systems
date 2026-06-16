@@ -209,9 +209,17 @@ export function transformManifest(pkg: Json, options: TransformManifestOptions =
 		if (result.exports !== undefined && result.exports !== null) {
 			result.exports = rewriteExeExports(result.exports, r);
 		}
-		if (result.bin && typeof result.bin === "object") {
-			const bin = result.bin as Record<string, string>;
-			for (const [cmd, val] of Object.entries(bin)) if (sameSource(val, r.source)) bin[cmd] = exportPath;
+		// Mirror rewriteExeExports: rewrite without mutating the caller's nested object (after the shallow
+		// `...rest` spread, result.bin is the same reference as pkg.bin). Handle string-form bin too —
+		// otherwise a `"bin": "./src/bin.ts"` declaration misses the rewrite and falls through to a JS path.
+		if (typeof result.bin === "string") {
+			if (sameSource(result.bin, r.source)) result.bin = exportPath;
+		} else if (result.bin && typeof result.bin === "object") {
+			const nextBin: Record<string, string> = {};
+			for (const [cmd, val] of Object.entries(result.bin as Record<string, string>)) {
+				nextBin[cmd] = sameSource(val, r.source) ? exportPath : val;
+			}
+			result.bin = nextBin;
 		}
 		const files = Array.isArray(result.files) ? (result.files as string[]).slice() : [];
 		if (!files.includes(filesEntry)) files.push(filesEntry);

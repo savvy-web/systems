@@ -237,6 +237,15 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	// computed (not read from disk) so `--no-exe` can program the same manifest without a build, and the
 	// exe entry source is excluded from the JS pass so a pure-binary package emits no dead JS.
 	const exeSpecs = config.exe !== undefined ? normalizeExeOptions(config.exe, osCpuForValidate) : [];
+	// A package's exports["."] resolves to exactly one SEA, so the manifest rewrite and source
+	// exclusion below read exeSpecs[0]/targets[0]. Enforce that singleton here rather than let a
+	// multi-spec/multi-target config silently program the manifest for only the first binary while
+	// runExeBuild compiles them all. Cross-platform binaries ship as separate per-platform packages.
+	if (config.exe !== undefined && (exeSpecs.length !== 1 || (exeSpecs[0]?.targets.length ?? 0) !== 1)) {
+		throw new Error(
+			`exe build requires exactly one binary with one target (got ${exeSpecs.length} spec(s), ${exeSpecs[0]?.targets.length ?? 0} target(s) on the first). A package's exports["."] resolves to a single SEA — cross-platform binaries must each ship as their own per-platform package.`,
+		);
+	}
 	const exeSpec = exeSpecs[0];
 	const exeTarget = exeSpec?.targets[0];
 	const exeFileName = exeSpec && exeTarget ? computeExeFileName(exeSpec.fileName, exeTarget) : undefined;

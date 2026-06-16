@@ -154,6 +154,51 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		expect(targets[0].provenance).toBe(false);
 	});
 
+	it("custom registry target, no binding (pre-build) → placeholder keeps the custom registry, provenance false", async () => {
+		// The pre-build placeholder must read the object-form target's own registry, not fall back to
+		// the npm default — otherwise a custom-registry target reports the wrong registry (and provenance)
+		// before targets.json exists.
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { corp: { registry: "https://npm.corp.example.com" } } },
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(1);
+		expect(targets[0].registry).toBe("https://npm.corp.example.com");
+		expect(targets[0].provenance).toBe(false);
+	});
+
+	it("a registry that only contains a well-known host as a substring does not opt into provenance (CWE-20 guard)", async () => {
+		// A substring check would wrongly mark these provenance-capable; matching is by exact hostname.
+		// A crafted URL with the well-known host in its path, or as a subdomain prefix, must stay false —
+		// otherwise the provenance gate (which drives the release action's attestation) is bypassable.
+		writePkg(tmpDir, {
+			name: "@scope/x",
+			version: "1.0.0",
+			private: true,
+			publishConfig: { access: "public", targets: { a: true, b: true } },
+		});
+		writeBinding(tmpDir, {
+			groups: [
+				{ id: "a", name: "@scope/x", dir: "dist/prod/a/pkg" },
+				{ id: "b", name: "@scope/x", dir: "dist/prod/b/pkg" },
+			],
+			targets: [
+				{ id: "a", group: "a", name: "@scope/x", registry: "https://evil.example/registry.npmjs.org" },
+				{ id: "b", group: "b", name: "@scope/x", registry: "https://registry.npmjs.org.attacker.com" },
+			],
+		});
+		const targets = await runSilk(
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+		);
+		expect(targets.length).toBe(2);
+		expect(targets.every((t) => t.provenance === false)).toBe(true);
+	});
+
 	it("object-form targets make a private package publishable (targets-first)", async () => {
 		writePkg(tmpDir, {
 			name: "@scope/x",

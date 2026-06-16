@@ -116,8 +116,17 @@ const DEFAULT_REGISTRIES: Record<string, string> = {
  * (not target-key based) so a custom key pointed at one of these registries still opts in.
  */
 const provenanceForRegistry = (registry: string): boolean => {
-	const r = registry.toLowerCase();
-	return r.includes("registry.npmjs.org") || r.includes("npm.pkg.github.com");
+	// Exact hostname match, never substring: `.includes("registry.npmjs.org")` would also accept a
+	// crafted URL like `https://evil.example/registry.npmjs.org` and wrongly opt it into attestation
+	// (CWE-20). A bare hostname (no scheme) is normalized so a `registry.npmjs.org` value still resolves.
+	const normalized = /^[a-z]+:\/\//i.test(registry) ? registry : `https://${registry}`;
+	let hostname: string;
+	try {
+		hostname = new URL(normalized).hostname.toLowerCase();
+	} catch {
+		return false;
+	}
+	return hostname === "registry.npmjs.org" || hostname === "npm.pkg.github.com";
 };
 
 /**
@@ -179,8 +188,14 @@ export class SilkPublishability {
 			// Pre-build: no binding yet. Emit one placeholder per declared key so publishability
 			// and target counts are correct; the directory is best-effort (group collapsing is
 			// only known from the binding) and unused until the prod build writes it.
-			return Object.keys(targets).map((id) => {
-				const registry = DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT;
+			return Object.entries(targets).map(([id, target]) => {
+				// An object-form target carries its own registry; honor it pre-build so a custom-registry
+				// target reports the right registry (and provenance) before targets.json exists, instead
+				// of falling back to the npm default.
+				const registry =
+					typeof target === "object" && target !== null && typeof target.registry === "string"
+						? target.registry
+						: (DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT);
 				return new PublishTarget({
 					name: pkgName,
 					registry,
