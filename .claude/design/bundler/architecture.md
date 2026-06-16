@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-14
-last-synced: 2026-06-14
+updated: 2026-06-16
+last-synced: 2026-06-16
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -257,11 +257,16 @@ A `.tsx` package builds with the right JSX runtime with zero extra config. The m
 
 ## Exe compilation wiring
 
-`--target exe` builds packages that ship a single-executable (SEA) binary. All the behavior lives in `@savvy-web/tsdown-plugins`' `src/exe/` (`normalizeExeOptions`/`runExeBuild`); the bundler wires the branch.
+A package that ships a single-executable (SEA) binary configures `defineBuild({ exe })`. SEA compilation is a **step of every `--target dev`/`--target prod` build**, not only the standalone `--target exe` target: a normal build emits the binary AND programs the manifest to point at it, so an author never hand-writes the platform-suffixed filename. All the behavior lives in `@savvy-web/tsdown-plugins`' `src/exe/`, `src/entry/`, and `src/manifest/`; the bundler wires it.
 
-- **The branch** sits after the meta short-circuit, before the main library build. It normalizes `config.exe` via `normalizeExeOptions` (passing the package `os`/`cpu`, injectable as `readOsCpu`) and delegates to the injectable `runExeBuild`, emitting binaries into `dist/dev/pkg/bin`. It throws if no `exe` is configured.
+- **The SEA filename is computed, never guessed.** `computeExeFileName(fileName, target)` (`src/exe/filename.ts`) mirrors `@tsdown/exe`'s output naming — `fileName + getTargetSuffix(target) + (win ? ".exe" : "")`, where the platform token is `win` (not `win32`). It is the single source of truth so the manifest value cannot drift from the on-disk file. The dev/prod path asserts the emitted file exists at the computed name after a real compile (skipped when a fake `runExeBuild` is injected).
+- **The exe entry is excluded from the JS pass.** `extractEntries({ excludeSources })` drops any `exports`/`bin` value equal to the resolved `exe.entry` (default `./src/bin.ts`), so a pure-binary package yields ZERO JS entries — no dead `bin/<cmd>.js` stub, no `No input files`. A library-plus-binary package still compiles its other exports.
+- **The manifest is programmed by `transformManifest({ exeRewrite })`** (`src/manifest/transform.ts`): every `exports`/`bin` value equal to the exe source is rewritten to the emitted SEA path (a plain string, NOT TS conditions — a SEA has no `.d.ts`), and the binary is added to `files` so it ships in the tarball (the NAPI-RS/rspack invariant — option 2: a per-platform package exposes its suffixed binary at `exports["."]`, and a consumer resolves it with `require.resolve(packageName)`). `exeRewrite` threads through `buildEmittedManifest`/`emitManifest` and `buildTargetGroups`.
+- **Two emit paths, one ordering rule — the SEA is compiled LAST.** The SEA step runs in `run.ts` AFTER `buildTargetGroups`, into each built group's `pkg/bin` (`dist/dev/pkg/bin`; `dist/prod/<group>/pkg/bin` for prod), so the dev `clean` cannot wipe it. The manifest is emitted by the `emitManifest` rolldown plugin INSIDE the JS pass — so a pure-binary package, whose JS pass is skipped, has its manifest (`package.json` + LICENSE/README) emitted standalone in the exe step via `buildEmittedManifest`. The prod meta block is skipped for an exe-only package (no dts to extract).
+- **`--no-exe` keeps `prepare` SEA-free.** `parseArgs` parses `--no-exe`; a `--target dev --no-exe` build programs the manifest (with the computed name) but skips the compile, so `prepare` and frozen-lockfile installs never cross-compile a SEA — important on Linux install steps where a win SEA's tar-extract fails. `build:dev`/`build:prod` do the actual cross-compile (the CI build runner is macOS, which cross-compiles every target in one job).
+- **The standalone `--target exe`** is retained as a manual escape hatch (compile into `dist/dev/pkg/bin`, throws if no `exe`).
 - **`@tsdown/exe` is a RUNTIME dependency of the bundler** (not of tsdown-plugins) — tsdown lazily imports it only when the exe option is used. This keeps tsdown-plugins interface-only while letting the bundler ship the SEA toolchain.
-- Real binary compilation is a CI/mac-runner manual step, out of the hermetic test suite; the in-repo tests inject a fake `runExeBuild` and assert the wiring.
+- Real binary compilation runs in the hermetic suite via a darwin-arm64-gated integration test (`exe-dev-build.int.test.ts`) that compiles a real SEA and asserts the programmed manifest; the unit tests inject a fake `runExeBuild` and assert the wiring.
 
 ## The config-validation gate
 

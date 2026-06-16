@@ -57,6 +57,42 @@ export function defaultManifestTransform({ pkg }: { pkg: Json }): Json {
 const stripLeadingDotSlash = (p: string): string => (p.startsWith("./") ? p.slice(2) : p);
 
 /**
+ * Describes a SEA binary the bundler compiled for this package. When present,
+ * {@link transformManifest} rewrites every `exports`/`bin` value equal to `source`
+ * to the emitted binary path and adds it to `files` so it ships in the tarball.
+ */
+export interface ExeRewrite {
+	/** The exe entry source path (matches exports/bin values to rewrite). */
+	readonly source: string;
+	/** The emitted SEA filename (already suffixed, incl. .exe on win). */
+	readonly fileName: string;
+	/** Relative dir the binary is emitted into (e.g. "bin"). */
+	readonly dir: string;
+}
+
+const sameSource = (a: string, b: string): boolean => stripLeadingDotSlash(a) === stripLeadingDotSlash(b);
+
+/** The export-path ("./bin/<file>") and files-entry ("bin/<file>") forms for a SEA. */
+const exeRelPath = (r: ExeRewrite): { exportPath: string; filesEntry: string } => {
+	const filesEntry = `${r.dir}/${r.fileName}`;
+	return { exportPath: `./${filesEntry}`, filesEntry };
+};
+
+/** Rewrite exports values that equal the exe source to a plain SEA-path string. */
+const rewriteExeExports = (exports: unknown, r: ExeRewrite): unknown => {
+	const { exportPath } = exeRelPath(r);
+	if (typeof exports === "string") return sameSource(exports, r.source) ? exportPath : exports;
+	if (exports && typeof exports === "object") {
+		const out: Json = {};
+		for (const [key, value] of Object.entries(exports as Json)) {
+			out[key] = typeof value === "string" && sameSource(value, r.source) ? exportPath : value;
+		}
+		return out;
+	}
+	return exports;
+};
+
+/**
  * Built .js output basename for an export, derived from the entry NAME (the basename
  * the build actually emits) rather than the source path. The entry namer flattens
  * nested subpaths to a dash-joined basename (e.g. `./commitlint` to `commitlint.js`,
@@ -152,6 +188,8 @@ export interface TransformManifestOptions {
 	readonly dual?: DualExports | undefined;
 	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
 	readonly subdirExports?: ReadonlySet<string> | undefined;
+	/** When set, rewrite exports/bin values equal to `source` to the SEA path and add it to `files`. */
+	readonly exeRewrite?: ExeRewrite | undefined;
 }
 
 /** Apply the full standard manifest transform (excluding catalog resolution, done upstream). */
@@ -162,6 +200,23 @@ export function transformManifest(pkg: Json, options: TransformManifestOptions =
 	};
 	const isPrivate = !(publishConfig?.access === "public");
 	let result: Json = { ...rest, private: isPrivate };
+	// Exe rewrite runs FIRST so the matched exports/bin values become plain SEA-path strings
+	// (not `.ts` sources), which the standard transforms below then leave untouched. Also adds
+	// the binary to `files` so it ships in the tarball (the NAPI-RS/rspack invariant).
+	if (options.exeRewrite) {
+		const r = options.exeRewrite;
+		const { exportPath, filesEntry } = exeRelPath(r);
+		if (result.exports !== undefined && result.exports !== null) {
+			result.exports = rewriteExeExports(result.exports, r);
+		}
+		if (result.bin && typeof result.bin === "object") {
+			const bin = result.bin as Record<string, string>;
+			for (const [cmd, val] of Object.entries(bin)) if (sameSource(val, r.source)) bin[cmd] = exportPath;
+		}
+		const files = Array.isArray(result.files) ? (result.files as string[]).slice() : [];
+		if (!files.includes(filesEntry)) files.push(filesEntry);
+		result.files = files;
+	}
 	// Auto-expose the package.json itself — standard npm practice so consumers can
 	// import "name/package.json". Only when an exports field is present (a package with no
 	// exports already exposes everything; injecting a single-key map would REGRESS that to

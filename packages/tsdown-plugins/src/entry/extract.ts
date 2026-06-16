@@ -7,6 +7,8 @@ export interface PackageJsonLike {
 
 export interface ExtractOptions {
 	readonly exportsAsIndexes?: boolean | undefined;
+	/** Source paths to NOT turn into JS build entries (e.g. an exe entry compiled as a SEA). */
+	readonly excludeSources?: ReadonlyArray<string> | undefined;
 }
 
 export interface ExtractResult {
@@ -54,10 +56,16 @@ export function extractEntries(pkg: PackageJsonLike, options: ExtractOptions = {
 	const exportPaths: Record<string, string> = {};
 	const exportsAsIndexes = options.exportsAsIndexes ?? false;
 
+	// Source paths excluded from the JS pass (e.g. an exe entry built as a SEA, not JS).
+	// Compared with the leading "./" normalized away on both sides.
+	const stripDot = (p: string): string => p.replace(/^\.\//, "");
+	const excluded = new Set((options.excludeSources ?? []).map(stripDot));
+	const isExcluded = (src: string): boolean => excluded.has(stripDot(src));
+
 	// --- exports ---
 	const exports = pkg.exports;
 	if (typeof exports === "string") {
-		if (isTypeScriptFile(exports)) {
+		if (isTypeScriptFile(exports) && !isExcluded(exports)) {
 			entries.index = exports;
 			exportPaths.index = ".";
 		}
@@ -68,6 +76,7 @@ export function extractEntries(pkg: PackageJsonLike, options: ExtractOptions = {
 			if (!sourcePath) continue;
 			const resolved = resolveToTypeScript(sourcePath);
 			if (!isTypeScriptFile(resolved)) continue;
+			if (isExcluded(sourcePath) || isExcluded(resolved)) continue;
 			const name = createEntryName(key, exportsAsIndexes);
 			// The slash-to-dash flattening is not injective (e.g. "./a-b/c" and "./a/b-c"
 			// both flatten to "a-b-c"). A collision would silently overwrite one entry and
@@ -88,11 +97,12 @@ export function extractEntries(pkg: PackageJsonLike, options: ExtractOptions = {
 	const bin = pkg.bin;
 	if (typeof bin === "string") {
 		const resolved = resolveToTypeScript(bin);
-		if (isTypeScriptFile(resolved)) entries["bin/cli"] = resolved;
+		if (isTypeScriptFile(resolved) && !isExcluded(bin) && !isExcluded(resolved)) entries["bin/cli"] = resolved;
 	} else if (bin && typeof bin === "object") {
 		for (const [command, p] of Object.entries(bin as Record<string, unknown>)) {
 			if (typeof p !== "string") continue;
 			const resolved = resolveToTypeScript(p);
+			if (isExcluded(p) || isExcluded(resolved)) continue;
 			if (isTypeScriptFile(resolved)) entries[`bin/${command}`] = resolved;
 		}
 	}

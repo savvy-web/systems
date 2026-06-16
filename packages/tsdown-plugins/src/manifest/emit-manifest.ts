@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { Plugin } from "rolldown";
 import type { ManifestLike } from "../catalog/resolve-catalogs.js";
 import { resolveManifest } from "../catalog/resolve-catalogs.js";
-import type { DualExports, Json } from "./transform.js";
+import type { DualExports, ExeRewrite, Json } from "./transform.js";
 import { transformManifest } from "./transform.js";
 
 export interface TargetGroupRef {
@@ -23,6 +23,8 @@ export interface BuildEmittedManifestOptions {
 	readonly dual?: DualExports | undefined;
 	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
 	readonly subdirExports?: ReadonlySet<string> | undefined;
+	/** When set, rewrite exports/bin values equal to the exe source to the SEA path and add it to `files`. */
+	readonly exeRewrite?: ExeRewrite | undefined;
 }
 
 /** Compute the final manifest bytes for a TargetGroup (catalog resolution + standard transforms). */
@@ -42,6 +44,7 @@ export async function buildEmittedManifest(options: BuildEmittedManifestOptions)
 		transform: transform ? (p) => transform({ pkg: p, targetGroup }) : undefined,
 		dual: options.dual ?? false,
 		subdirExports: options.subdirExports,
+		exeRewrite: options.exeRewrite,
 	});
 }
 
@@ -55,6 +58,8 @@ export interface EmitManifestOptions {
 	readonly dual?: DualExports | undefined;
 	/** Export keys built into a `<key>/index.*` subdir (e.g. an RSPress `./runtime`). */
 	readonly subdirExports?: ReadonlySet<string> | undefined;
+	/** When set, rewrite exports/bin values equal to the exe source to the SEA path and add it to `files`. */
+	readonly exeRewrite?: ExeRewrite | undefined;
 }
 
 /** Rolldown plugin: emit the transformed package.json + LICENSE/README into the output pkg/ root. */
@@ -71,6 +76,7 @@ export function emitManifest(options: EmitManifestOptions): Plugin {
 				transform: options.transform,
 				dual: options.dual,
 				subdirExports: options.subdirExports,
+				exeRewrite: options.exeRewrite,
 			});
 			this.emitFile({
 				type: "asset",

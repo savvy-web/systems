@@ -206,11 +206,14 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 export interface ParsedArgs {
 	readonly target: "dev" | "prod" | "meta" | "exe";
 	readonly watch: boolean;
+	/** Skip the SEA compile step of a dev/prod build (the manifest is still programmed). Used by `prepare`. */
+	readonly noExe: boolean;
 }
 
 export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 	let target: "dev" | "prod" | "meta" | "exe" = "dev";
 	let watch = false;
+	let noExe = false;
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--target") {
 			const v = argv[i + 1];
@@ -218,9 +221,11 @@ export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 			i++;
 		} else if (argv[i] === "--watch") {
 			watch = true;
+		} else if (argv[i] === "--no-exe") {
+			noExe = true;
 		}
 	}
-	return { target, watch };
+	return { target, watch, noExe };
 }
 
 export type {
