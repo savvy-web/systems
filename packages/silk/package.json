@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/silk",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"private": true,
 	"description": "The single Silk Suite dev-tooling package — changeset, commitlint, lint, and biome conventions",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk",
