@@ -8,6 +8,7 @@ import { PackagePublishError } from "../errors/PackagePublishError.js";
 import type { ExecOptions, ExecOutput } from "../services/CommandRunner.js";
 import { CommandRunner } from "../services/CommandRunner.js";
 import { PackagePublish } from "../services/PackagePublish.js";
+import { npmCacheArgs } from "../utils/npm-cache.js";
 import { ActionOutputsTest } from "./ActionOutputsTest.js";
 import { NpmRegistryTest } from "./NpmRegistryTest.js";
 import { PackagePublishLive } from "./PackagePublishLive.js";
@@ -165,6 +166,7 @@ describe("PackagePublishLive", () => {
 			"--provenance",
 			"--loglevel",
 			"verbose",
+			...npmCacheArgs(),
 		]);
 	});
 
@@ -241,7 +243,7 @@ describe("PackagePublishLive", () => {
 		);
 
 		expect(calls).toHaveLength(1);
-		expect(calls[0]?.args).toEqual(["publish", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual(["publish", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish includes only registry flag when only registry is set", async () => {
@@ -262,7 +264,14 @@ describe("PackagePublishLive", () => {
 			),
 		);
 
-		expect(calls[0]?.args).toEqual(["publish", "--registry", "https://registry.npmjs.org", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual([
+			"publish",
+			"--registry",
+			"https://registry.npmjs.org",
+			"--loglevel",
+			"verbose",
+			...npmCacheArgs(),
+		]);
 	});
 
 	it("publish includes only tag flag when only tag is set", async () => {
@@ -283,7 +292,7 @@ describe("PackagePublishLive", () => {
 			),
 		);
 
-		expect(calls[0]?.args).toEqual(["publish", "--tag", "beta", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual(["publish", "--tag", "beta", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish includes only access flag when only access is set", async () => {
@@ -304,7 +313,7 @@ describe("PackagePublishLive", () => {
 			),
 		);
 
-		expect(calls[0]?.args).toEqual(["publish", "--access", "restricted", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual(["publish", "--access", "restricted", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish includes only provenance flag when only provenance is set", async () => {
@@ -325,7 +334,7 @@ describe("PackagePublishLive", () => {
 			),
 		);
 
-		expect(calls[0]?.args).toEqual(["publish", "--provenance", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual(["publish", "--provenance", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish does not include provenance flag when provenance is false", async () => {
@@ -346,7 +355,7 @@ describe("PackagePublishLive", () => {
 			),
 		);
 
-		expect(calls[0]?.args).toEqual(["publish", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual(["publish", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish dispatches through `pnpm dlx npm` when packageManager is pnpm", async () => {
@@ -392,6 +401,7 @@ describe("PackagePublishLive", () => {
 			"--provenance",
 			"--loglevel",
 			"verbose",
+			...npmCacheArgs(),
 		]);
 	});
 
@@ -414,7 +424,7 @@ describe("PackagePublishLive", () => {
 		);
 
 		expect(calls[0]?.command).toBe("yarn");
-		expect(calls[0]?.args).toEqual(["npm", "publish", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual(["npm", "publish", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish dispatches through `bun x npm` when packageManager is bun", async () => {
@@ -436,7 +446,7 @@ describe("PackagePublishLive", () => {
 		);
 
 		expect(calls[0]?.command).toBe("bun");
-		expect(calls[0]?.args).toEqual(["x", "npm", "publish", "--loglevel", "verbose"]);
+		expect(calls[0]?.args).toEqual(["x", "npm", "publish", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish keeps the bare `npm` dispatch when packageManager is unset or 'npm'", async () => {
@@ -710,11 +720,19 @@ describe("PackagePublishLive", () => {
 			"public",
 			"--loglevel",
 			"verbose",
+			...npmCacheArgs(),
 		]);
 		expect(calls[0]?.cwd).toBe("/pkg");
 
 		// Second registry: publish without tag/access.
-		expect(calls[1]?.args).toEqual(["publish", "--registry", "https://npm.pkg.github.com", "--loglevel", "verbose"]);
+		expect(calls[1]?.args).toEqual([
+			"publish",
+			"--registry",
+			"https://npm.pkg.github.com",
+			"--loglevel",
+			"verbose",
+			...npmCacheArgs(),
+		]);
 		expect(calls[1]?.cwd).toBe("/pkg");
 	});
 
@@ -751,6 +769,7 @@ describe("PackagePublishLive", () => {
 			"https://registry.npmjs.org",
 			"--loglevel",
 			"verbose",
+			...npmCacheArgs(),
 		]);
 	});
 
@@ -858,8 +877,38 @@ describe("PackagePublishLive", () => {
 			expect(calls).toHaveLength(1);
 			expect(calls[0]?.command).toBe("npm");
 			// Sizing uses `npm pack --dry-run --json`; publish-only options are not forwarded.
-			expect(calls[0]?.args).toEqual(["pack", "--dry-run", "--json"]);
+			expect(calls[0]?.args).toEqual(["pack", "--dry-run", "--json", ...npmCacheArgs()]);
 			expect(calls[0]?.cwd).toBe("/pkg");
+		});
+
+		it("dispatches through `pnpm dlx npm` when packageManager is pnpm", async () => {
+			// The dry-run must run through the SAME npm executor as the live publish
+			// so it validates against the exact npm (fresh dlx-fetched 11.5+) the
+			// publish will use — `cmd` flips to "pnpm" and "dlx", "npm" is prepended.
+			const calls: Array<{ command: string; args: ReadonlyArray<string> }> = [];
+			const runner = makeMockRunner({
+				execCapture: (command, args) => {
+					calls.push({ command, args });
+					return Effect.succeed({
+						exitCode: 0,
+						stdout: JSON.stringify({ size: 1, unpackedSize: 2, entryCount: 3 }),
+						stderr: "",
+					});
+				},
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+			await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) => svc.dryRun("/pkg", { packageManager: "pnpm" })),
+					Effect.provide(layer),
+				),
+			);
+
+			expect(calls).toHaveLength(1);
+			expect(calls[0]?.command).toBe("pnpm");
+			expect(calls[0]?.args).toEqual(["dlx", "npm", "pack", "--dry-run", "--json", ...npmCacheArgs()]);
 		});
 
 		it("returns size fields when npm emits the array form (npm pack shape)", async () => {
@@ -1168,6 +1217,7 @@ describe("PackagePublishLive", () => {
 				"next",
 				"--loglevel",
 				"verbose",
+				...npmCacheArgs(),
 			]);
 			// publishTarball does NOT set cwd — the tarball path is absolute.
 			expect(calls[0]?.cwd).toBeUndefined();
@@ -1198,6 +1248,7 @@ describe("PackagePublishLive", () => {
 				"https://registry.npmjs.org/",
 				"--loglevel",
 				"verbose",
+				...npmCacheArgs(),
 			]);
 		});
 
@@ -1234,6 +1285,7 @@ describe("PackagePublishLive", () => {
 				"https://registry.npmjs.org/",
 				"--loglevel",
 				"verbose",
+				...npmCacheArgs(),
 			]);
 		});
 
@@ -1272,6 +1324,7 @@ describe("PackagePublishLive", () => {
 				"public",
 				"--loglevel",
 				"verbose",
+				...npmCacheArgs(),
 			]);
 		});
 

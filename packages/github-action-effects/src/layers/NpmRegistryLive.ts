@@ -3,6 +3,7 @@ import type { CommandRunnerError } from "../errors/CommandRunnerError.js";
 import { NpmRegistryError } from "../errors/NpmRegistryError.js";
 import { CommandRunner } from "../services/CommandRunner.js";
 import { NpmRegistry } from "../services/NpmRegistry.js";
+import { npmCacheArgs } from "../utils/npm-cache.js";
 
 const parseJson = (
 	pkg: string,
@@ -50,7 +51,8 @@ export const NpmRegistryLive: Layer.Layer<NpmRegistry, never, CommandRunner> = L
 	NpmRegistry,
 	Effect.map(CommandRunner, (runner) => ({
 		getLatestVersion: (pkg: string) =>
-			runner.execCapture("npm", ["view", pkg, "dist-tags.latest", "--json"]).pipe(
+			// `--cache` dodges the runner's root-owned `~/.npm` (see `npmCacheArgs`).
+			runner.execCapture("npm", ["view", pkg, "dist-tags.latest", "--json", ...npmCacheArgs()]).pipe(
 				Effect.mapError(
 					(error) =>
 						new NpmRegistryError({
@@ -68,7 +70,7 @@ export const NpmRegistryLive: Layer.Layer<NpmRegistry, never, CommandRunner> = L
 			),
 
 		getDistTags: (pkg: string) =>
-			runner.execCapture("npm", ["view", pkg, "dist-tags", "--json"]).pipe(
+			runner.execCapture("npm", ["view", pkg, "dist-tags", "--json", ...npmCacheArgs()]).pipe(
 				Effect.mapError(
 					(error) =>
 						new NpmRegistryError({
@@ -87,7 +89,7 @@ export const NpmRegistryLive: Layer.Layer<NpmRegistry, never, CommandRunner> = L
 				["view", target, "name", "version", "dist-tags", "dist.integrity", "dist.tarball", "--json"],
 				options,
 			);
-			return runner.execCapture("npm", args).pipe(
+			return runner.execCapture("npm", [...args, ...npmCacheArgs()]).pipe(
 				Effect.mapError(
 					(error) =>
 						new NpmRegistryError({
@@ -112,7 +114,7 @@ export const NpmRegistryLive: Layer.Layer<NpmRegistry, never, CommandRunner> = L
 
 		getVersions: (pkg: string, options?: { readonly registry?: string }) => {
 			const args = withRegistry(["view", pkg, "versions", "--json"], options);
-			return runner.execCapture("npm", args).pipe(
+			return runner.execCapture("npm", [...args, ...npmCacheArgs()]).pipe(
 				Effect.mapError(
 					(error) =>
 						new NpmRegistryError({
@@ -141,7 +143,7 @@ export const NpmRegistryLive: Layer.Layer<NpmRegistry, never, CommandRunner> = L
 				// this registry`. Treat that exact signal as `Option.none()`.
 				// Any other CommandRunnerError (network, auth, server 5xx)
 				// propagates as an NpmRegistryError.
-				const captured = yield* runner.execCapture("npm", args).pipe(
+				const captured = yield* runner.execCapture("npm", [...args, ...npmCacheArgs()]).pipe(
 					Effect.map(Option.some),
 					Effect.catchTag("CommandRunnerError", (error) =>
 						isE404(error)

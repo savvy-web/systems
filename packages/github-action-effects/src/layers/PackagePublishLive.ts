@@ -9,6 +9,7 @@ import { CommandRunner } from "../services/CommandRunner.js";
 import { NpmRegistry } from "../services/NpmRegistry.js";
 import type { DryRunResult, IdempotentPublishInput, PackResult } from "../services/PackagePublish.js";
 import { PackagePublish } from "../services/PackagePublish.js";
+import { npmCacheArgs } from "../utils/npm-cache.js";
 import { isNpmRegistry } from "../utils/RegistryClassifier.js";
 
 /**
@@ -214,19 +215,25 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							),
 						),
 
-					pack: (packageDir: string) =>
+					pack: (packageDir: string, options?: { readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun" }) =>
 						Effect.gen(function* () {
 							yield* Effect.logInfo(`pack: ${packageDir} start`);
-							const output = yield* runner.execCapture("npm", ["pack", "--json"], { cwd: packageDir }).pipe(
-								Effect.mapError(
-									(error) =>
-										new PackagePublishError({
-											operation: "pack",
-											reason: error.reason,
-											cause: error,
-										}),
-								),
-							);
+							// Route through the active manager's npm executor — same dispatch as
+							// `publish`/`dryRun` so every phase packs with the SAME npm. `--cache`
+							// dodges the runner's root-owned `~/.npm` (see `npmCacheArgs`).
+							const { cmd, baseArgs } = getNpmCommand(options?.packageManager);
+							const output = yield* runner
+								.execCapture(cmd, [...baseArgs, "pack", "--json", ...npmCacheArgs()], { cwd: packageDir })
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new PackagePublishError({
+												operation: "pack",
+												reason: error.reason,
+												cause: error,
+											}),
+									),
+								);
 							const entries = yield* Effect.try({
 								try: () => JSON.parse(output.stdout) as ReadonlyArray<NpmPackJsonEntry>,
 								catch: (error) =>
@@ -318,6 +325,8 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 						// Verbose only affects publish (not validation/dry-run);
 						// safe to enable unconditionally.
 						args.push("--loglevel", "verbose");
+						// Dodge the runner's root-owned `~/.npm` cache (see `npmCacheArgs`).
+						args.push(...npmCacheArgs());
 
 						// `streaming: true` tees npm's stdout and stderr to the
 						// host process's stdout/stderr so the GitHub Actions runner
@@ -376,6 +385,8 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							// `cwd` is intentionally absent — the tarball path is
 							// absolute, so npm resolves it without help.
 							args.push("--loglevel", "verbose");
+							// Dodge the runner's root-owned `~/.npm` cache (see `npmCacheArgs`).
+							args.push(...npmCacheArgs());
 							// In tokenAuth mode, run npm with the OIDC env stripped so it uses the
 							// configured `_authToken` instead of attempting trusted publishing.
 							const execOptions = options.tokenAuth
@@ -450,6 +461,8 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 											if (target.tag) args.push("--tag", target.tag);
 											if (target.access) args.push("--access", target.access);
 											args.push("--loglevel", "verbose");
+											// Dodge the runner's root-owned `~/.npm` cache (see `npmCacheArgs`).
+											args.push(...npmCacheArgs());
 											// See the `publish` method above — stream npm output
 											// to the runner log so failures are diagnosable, and
 											// verbose surfaces npm's OIDC exchange and HTTP requests.
@@ -478,6 +491,7 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 							readonly tag?: string;
 							readonly access?: "public" | "restricted";
 							readonly provenance?: boolean;
+							readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
 						},
 					) => {
 						// Size the package via `npm pack --dry-run --json`, not `npm publish
@@ -488,10 +502,17 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 						// tarball. The tarball is identical across registries, so the publish-only
 						// options (registry/tag/access/provenance) do not affect pack output and
 						// are intentionally not forwarded.
-						void options;
-						const args = ["pack", "--dry-run", "--json"];
+						//
+						// `packageManager` IS forwarded: the dry-run must dispatch through the
+						// SAME npm executor as the live publish (`pnpm dlx npm`, `yarn npm`,
+						// `bun x npm`, or bare `npm`) so it validates against the exact npm the
+						// publish will use — a fresh dlx-fetched npm behaves differently from the
+						// runner's bundled one. `--cache` dodges the root-owned `~/.npm` cache
+						// (see `npmCacheArgs`); without it current npm hard-fails EACCES here.
+						const { cmd, baseArgs } = getNpmCommand(options?.packageManager);
+						const args = [...baseArgs, "pack", "--dry-run", "--json", ...npmCacheArgs()];
 
-						return runner.execCapture("npm", args, { cwd: packageDir }).pipe(
+						return runner.execCapture(cmd, args, { cwd: packageDir }).pipe(
 							Effect.flatMap((output) =>
 								Effect.try({
 									try: () => {
