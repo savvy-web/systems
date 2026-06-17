@@ -1177,6 +1177,49 @@ describe("PackagePublishLive", () => {
 		});
 	});
 
+	describe("pack (package-manager dispatch)", () => {
+		// `pack` routes through the same npm executor as publish/dryRun (getNpmCommand),
+		// so a pack runs through the identical npm the live publish will. The execCapture
+		// call is recorded before pack reads the tarball, so the dispatch is observable
+		// even though pack then fails hashing the (absent) tarball — Effect.either keeps
+		// the run from rejecting so the captured argv can be asserted.
+		const cases = [
+			{ pm: "pnpm" as const, command: "pnpm", head: ["dlx", "npm", "pack", "--json"] },
+			{ pm: "yarn" as const, command: "yarn", head: ["npm", "pack", "--json"] },
+			{ pm: "bun" as const, command: "bun", head: ["x", "npm", "pack", "--json"] },
+		];
+		for (const { pm, command, head } of cases) {
+			it(`dispatches through \`${command}\` when packageManager is ${pm}`, async () => {
+				const calls: Array<{ command: string; args: ReadonlyArray<string> }> = [];
+				const runner = makeMockRunner({
+					execCapture: (cmd, args) => {
+						calls.push({ command: cmd, args });
+						return Effect.succeed({
+							exitCode: 0,
+							stdout: JSON.stringify([{ name: "p", version: "1.0.0", filename: "p-1.0.0.tgz", integrity: "sha512-x" }]),
+							stderr: "",
+						});
+					},
+				});
+				const registry = NpmRegistryTest.empty();
+				const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+
+				await Effect.runPromise(
+					PackagePublish.pipe(
+						Effect.flatMap((svc) => svc.pack("/pkg", { packageManager: pm })),
+						// pack fails hashing the nonexistent tarball; only the dispatch matters here.
+						Effect.either,
+						Effect.provide(layer),
+					),
+				);
+
+				expect(calls).toHaveLength(1);
+				expect(calls[0]?.command).toBe(command);
+				expect(calls[0]?.args).toEqual([...head, ...npmCacheArgs()]);
+			});
+		}
+	});
+
 	describe("publishTarball", () => {
 		it("invokes npm publish <tarballPath> --registry <url> with no cwd", async () => {
 			const calls: Array<{ command: string; args: ReadonlyArray<string>; cwd: string | undefined }> = [];

@@ -533,7 +533,7 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 									catch: (error) =>
 										new PackagePublishError({
 											operation: "dryRun",
-											reason: `Failed to parse npm publish --dry-run --json output: ${output.stdout.slice(0, 200)}`,
+											reason: `Failed to parse npm pack --dry-run --json output: ${output.stdout.slice(0, 200)}`,
 											cause: error,
 										}),
 								}),
