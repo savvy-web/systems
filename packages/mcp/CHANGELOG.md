@@ -1,5 +1,25 @@
 # @savvy-web/mcp
 
+## 1.2.0
+
+### Features
+
+* [`ec206d3`](https://github.com/savvy-web/systems/commit/ec206d3cb8b0c1687b6e89f0b2a49c866a53fb7f) Adds a changeset\_preview tool that previews the next release using the real
+  changeset engine, and refactors savvy changeset version onto the native
+  ReleasePlanner apply so it no longer shells out to an installed changeset
+  binary. The silk plugin changeset-preview skill renders from the new tool.
+
+This bumps the cli and silk packages in lockstep through the fixed changeset
+group. Note a behavior change to savvy changeset version: the dry-run flag is
+now a true no-write report of the planned release, where it previously delegated
+to the changeset binary.
+
+### Patch Changes
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 1.3.1 | 1.4.0 |
+
 ## 1.1.2
 
 ### Documentation

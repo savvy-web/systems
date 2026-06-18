@@ -1,5 +1,13 @@
 # @savvy-web/cli
 
+## 1.2.0
+
+### Patch Changes
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 1.3.1 | 1.4.0 |
+
 ## 1.1.2
 
 ### Bug Fixes

@@ -1,5 +1,14 @@
 # @savvy-web/silk-effects
 
+## 1.4.0
+
+### Features
+
+* [`ec206d3`](https://github.com/savvy-web/systems/commit/ec206d3cb8b0c1687b6e89f0b2a49c866a53fb7f) Adds a Changesets.ReleasePlanner service that drives the genuine changesets
+  engine to compute a release plan, render a non-destructive preview of the next
+  release, or natively apply a release. Preview runs the real formatter in a
+  throwaway directory and reads the result back, so its output matches what ships.
+
 ## 1.3.1
 
 ### Bug Fixes
