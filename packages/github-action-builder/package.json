@@ -57,7 +57,7 @@
 		"@effect/rpc": "catalog:silk",
 		"@effect/sql": "catalog:silk",
 		"@effect/typeclass": "catalog:silk",
-		"@rsbuild/core": "^2.0.12",
+		"@rsbuild/core": "^2.0.15",
 		"effect": "catalog:silk",
 		"jiti": "^2.7.0",
 		"picocolors": "^1.1.1",
@@ -69,7 +69,7 @@
 		"@typescript/native-preview": "catalog:silk",
 		"tsx": "^4.22.4",
 		"typescript": "catalog:silk",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.9"
 	},
 	"peerDependencies": {
 		"@types/node": "catalog:silkPeers",

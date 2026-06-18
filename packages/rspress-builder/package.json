@@ -41,7 +41,7 @@
 		"@typescript/native-preview": "catalog:silk",
 		"react": "catalog:silk",
 		"typescript": "catalog:silk",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.9"
 	},
 	"peerDependencies": {
 		"@rspress/core": "^2.0.0",

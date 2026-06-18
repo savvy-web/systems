@@ -48,9 +48,9 @@
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
 		"rolldown": "^1.1.1",
-		"tsdown": "^0.22.2",
+		"tsdown": "^0.22.3",
 		"tsx": "catalog:silk",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.9"
 	},
 	"peerDependencies": {
 		"effect": "catalog:silkPeers"

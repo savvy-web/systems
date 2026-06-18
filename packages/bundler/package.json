@@ -32,7 +32,7 @@
 	"dependencies": {
 		"@savvy-web/tsdown-plugins": "workspace:*",
 		"@tsdown/exe": "^0.22.1",
-		"tsdown": "^0.22.2"
+		"tsdown": "^0.22.3"
 	},
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",
@@ -47,7 +47,7 @@
 		"tinyrainbow": "^3.1.0",
 		"tsx": "^4.22.4",
 		"typescript": "catalog:silk",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.9"
 	},
 	"peerDependencies": {
 		"effect": "catalog:silkPeers"

@@ -65,7 +65,7 @@
 		"markdownlint": "^0.41.0",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.9"
 	},
 	"peerDependencies": {
 		"@effect/platform": "catalog:silkPeers",
