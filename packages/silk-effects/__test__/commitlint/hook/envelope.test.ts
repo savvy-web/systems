@@ -4,7 +4,6 @@ import {
 	PostToolUseEnvelope,
 	PreToolUseEnvelope,
 	SessionStartEnvelope,
-	UserPromptSubmitEnvelope,
 } from "../../../src/commitlint/hook/envelope.js";
 
 describe("PreToolUseEnvelope", () => {
@@ -46,16 +45,6 @@ describe("PostToolUseEnvelope", () => {
 			tool_response: { interrupted: false, exit_code: 0, stdout: "", stderr: "" },
 		});
 		expect(decoded.tool_response.exit_code).toBe(0);
-	});
-});
-
-describe("UserPromptSubmitEnvelope", () => {
-	it("decodes", () => {
-		const decoded = Schema.decodeUnknownSync(UserPromptSubmitEnvelope)({
-			hook_event_name: "UserPromptSubmit",
-			prompt: "please commit this",
-		});
-		expect(decoded.prompt).toBe("please commit this");
 	});
 });
 

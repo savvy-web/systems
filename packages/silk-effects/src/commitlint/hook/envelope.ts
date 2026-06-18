@@ -30,12 +30,6 @@ export const PostToolUseEnvelope = Schema.Struct({
 });
 export type PostToolUseEnvelope = Schema.Schema.Type<typeof PostToolUseEnvelope>;
 
-export const UserPromptSubmitEnvelope = Schema.Struct({
-	hook_event_name: Schema.Literal("UserPromptSubmit"),
-	prompt: Schema.String,
-});
-export type UserPromptSubmitEnvelope = Schema.Schema.Type<typeof UserPromptSubmitEnvelope>;
-
 export const SessionStartEnvelope = Schema.Struct({
 	hook_event_name: Schema.Literal("SessionStart"),
 	source: Schema.optional(Schema.String),

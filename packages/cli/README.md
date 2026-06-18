@@ -52,7 +52,7 @@ npx savvy clean --globs dist,.turbo,coverage
 - `savvy init` — orchestrator that runs changeset, commit and lint setup in one pass.
 - `savvy check` — orchestrator that runs all three checks and reports every failure (it does not short-circuit).
 - `savvy clean` — removes build and cache artifacts (`dist`, `.turbo`, `coverage`, `node_modules`, `.rslib` by default) from every workspace package (leaves first) and the repo root (last); `--globs` to customize, `--dry-run` to preview.
-- `savvy commit` — the husky/Claude hook handlers (session-start, pre-commit-message, post-commit-verify, user-prompt-submit).
+- `savvy commit` — the husky/Claude hook handlers (session-start, pre-commit-message, post-commit-verify).
 - `savvy changeset` — changeset lint, check, transform, version, config validation, and dependency changesets.
 - `savvy lint` — formatters for package.json, the pnpm workspace file and YAML.
 

@@ -56,12 +56,3 @@ export function postToolUseAdvise(message: string): HookOutput {
 		},
 	};
 }
-
-export function userPromptSubmitContext(message: string): HookOutput {
-	return {
-		hookSpecificOutput: {
-			hookEventName: "UserPromptSubmit",
-			additionalContext: message,
-		},
-	};
-}
