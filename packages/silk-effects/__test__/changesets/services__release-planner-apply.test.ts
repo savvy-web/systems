@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
@@ -90,7 +90,7 @@ describe("ReleasePlanner.apply (versionFiles)", () => {
 		// Write a plugin.json alongside the package that versionFiles will update.
 		const pkgDir = join(root, "packages/a");
 		const pluginJsonPath = join(pkgDir, "plugin.json");
-		writeFileSync(pluginJsonPath, JSON.stringify({ version: "1.0.0" }, null, 2) + "\n", "utf-8");
+		writeFileSync(pluginJsonPath, `${JSON.stringify({ version: "1.0.0" }, null, 2)}\n`, "utf-8");
 
 		const planner = await getPlannerWithVersionFiles({
 			projectDir: root,
@@ -123,7 +123,7 @@ describe("ReleasePlanner.apply (versionFiles)", () => {
 
 		const pkgDir = join(root, "packages/a");
 		const pluginJsonPath = join(pkgDir, "plugin.json");
-		writeFileSync(pluginJsonPath, JSON.stringify({ version: "1.0.0" }, null, 2) + "\n", "utf-8");
+		writeFileSync(pluginJsonPath, `${JSON.stringify({ version: "1.0.0" }, null, 2)}\n`, "utf-8");
 
 		const planner = await getPlannerWithVersionFiles({
 			projectDir: root,

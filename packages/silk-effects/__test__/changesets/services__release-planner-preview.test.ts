@@ -63,7 +63,7 @@ describe("ReleasePlanner.preview", () => {
 		const root = makeReleaseFixture(spec);
 		roots.push(root);
 		// symlink the monorepo node_modules so @changesets/cli/changelog resolves from this fixture root
-		symlinkSync(repoNodeModules, join(root, "node_modules"));
+		symlinkSync(repoNodeModules, join(root, "node_modules"), "dir");
 
 		// snapshot the changeset dir + manifests before preview
 		const before = {

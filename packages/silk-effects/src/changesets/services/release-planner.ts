@@ -257,7 +257,14 @@ function applyEffect(
 					});
 				return scopes.length > 0 ? VersionFiles.processResolvedVersionFiles(scopes, dryRun) : [];
 			}),
-			Effect.catchAll(() => Effect.succeed([] as Array<{ filePath: string; version: string }>)),
+			// Degrade gracefully when the config can't be resolved (e.g. no
+			// .changeset/config.json), but log the reason rather than swallowing
+			// it silently so a real config failure stays visible.
+			Effect.catchAll((error) =>
+				Effect.logWarning(`Skipping versionFiles update: ${errMsg(error)}`).pipe(
+					Effect.as([] as Array<{ filePath: string; version: string }>),
+				),
+			),
 		);
 
 		return { dryRun, touchedFiles, releases, versionFileUpdates };

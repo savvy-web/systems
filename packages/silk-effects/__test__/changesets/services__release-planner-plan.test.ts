@@ -9,11 +9,6 @@ afterEach(() => {
 	for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true });
 });
 
-const _run = <A>(eff: Effect.Effect<A, unknown, Changesets.ReleasePlanner>) =>
-	Effect.runPromise(
-		eff.pipe(Effect.provide(Changesets.ReleasePlannerLive), Effect.provide(InspectorStub)) as Effect.Effect<A>,
-	);
-
 // plan() does not use ConfigInspector, but the Live layer requires it.
 const InspectorStub = Changesets.makeConfigInspectorTest({
 	configPath: "/x/.changeset/config.json",
@@ -39,9 +34,7 @@ describe("ReleasePlanner.plan", () => {
 				Effect.provide(InspectorStub),
 			) as Effect.Effect<Changesets.ReleasePlannerShape>,
 		);
-		const plan = await Effect.runPromise(
-			planner.plan(root) as unknown as Effect.Effect<{ releases: ReadonlyArray<{ name: string; newVersion: string }> }>,
-		);
+		const plan = await Effect.runPromise(planner.plan(root));
 		expect(plan.releases.map((r) => [r.name, r.newVersion])).toEqual([["@scope/a", "1.1.0"]]);
 	});
 });
