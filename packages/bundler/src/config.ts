@@ -92,10 +92,11 @@ export interface BuildConfigInput {
 	readonly transform?: (args: { pkg: Json; targetGroup: TargetGroupRef }) => Json;
 	readonly output?: OutputConfig;
 	/**
-	 * API-model (meta) generation. Tri-state: omit it (or `undefined`) to generate with
-	 * DEFAULT options — `savvy build --target meta` always works and `--target prod` emits the
-	 * meta release asset. Pass an object to override the defaults (`localPaths`, `tsdoc`). Pass
-	 * `false` to opt OUT entirely — both `--target meta` and the prod meta asset become no-ops.
+	 * API-model (meta) generation. Tri-state: omit it (or `undefined`) to generate with DEFAULT
+	 * options; `--target prod` emits the meta release asset for every prod group and copies the
+	 * canonical group's bundle into `localPaths`. Pass an object to override defaults (`localPaths`,
+	 * `tsdoc`, `optimistic`). Pass `false` to opt OUT (the prod meta asset becomes a no-op).
+	 * NOTE: `--target meta` is deprecated and now a no-op; meta is a function of `--target prod`.
 	 */
 	readonly meta?: MetaOptions | false;
 	readonly jsx?: JsxConfig | undefined;
