@@ -19,7 +19,7 @@ export interface TsdocOptions {
 
 /** The `meta` field on defineBuild. Absent means no api-model generation. */
 export interface MetaOptions {
-	/** Directories to copy the api-model into on `savvy build --target meta`. */
+	/** Directories to copy the canonical group's api-model into after `savvy build --target prod`. */
 	readonly localPaths?: ReadonlyArray<string> | undefined;
 	/**
 	 * Forward-look the meta bundle's own `version` and workspace-sibling dep versions to their
