@@ -1,5 +1,14 @@
 # @savvy-web/silk
 
+## 1.1.2
+
+### Patch Changes
+
+| Dependency     | Type       | Action  | From  | To    |
+| -------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/cli | dependency | updated | 1.1.1 | 1.1.2 |
+| @savvy-web/mcp | dependency | updated | 1.1.1 | 1.1.2 |
+
 ## 1.1.1
 
 ### Patch Changes

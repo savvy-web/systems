@@ -1,5 +1,17 @@
 # @savvy-web/mcp
 
+## 1.1.2
+
+### Documentation
+
+* [`df6e04a`](https://github.com/savvy-web/systems/commit/df6e04a39768dc0829a9359c439773d9216847e4) ### Corrected the `savvy` command-tree corpus doc
+
+The `silk://packages/cli/command-tree` corpus doc that ships in the tarball listed the `savvy commit hook(...)` group with a `user-prompt-submit` handler that no longer exists, and prefixed the `savvy commit` and `savvy lint` groups with per-tool `init`/`check` subcommands that were removed earlier. The command tree now matches the shipped CLI: `savvy commit hook(session-start · pre-commit-message · post-commit-verify)` and `savvy lint fmt(...)` with no per-tool `init`/`check`.
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 1.3.0 | 1.3.1 |
+
 ## 1.1.1
 
 ### Patch Changes
