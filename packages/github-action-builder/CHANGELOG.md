@@ -1,5 +1,15 @@
 # @savvy-web/github-action-builder
 
+## 0.7.11
+
+### Dependencies
+
+* | [`c0ae4b9`](https://github.com/savvy-web/systems/commit/c0ae4b95ef2a581445c51b3a78e17590be612951) | Dependency    | Type    | Action               | From                 | To |
+  | :------------------------------------------------------------------------------------------------ | :------------ | :------ | :------------------- | :------------------- | -- |
+  | @rsbuild/core                                                                                     | dependency    | updated | ^2.0.12              | ^2.0.15              |    |
+  | @typescript/native-preview                                                                        | devDependency | updated | 7.0.0-dev.20260614.1 | 7.0.0-dev.20260618.1 |    |
+  | vitest                                                                                            | devDependency | updated | ^4.1.8               | ^4.1.9               |    |
+
 ## 0.7.10
 
 ### Bug Fixes
