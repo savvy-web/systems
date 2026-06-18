@@ -4,6 +4,7 @@ import { CommandRunnerError } from "../errors/CommandRunnerError.js";
 import type { ExecOutput } from "../services/CommandRunner.js";
 import { CommandRunner } from "../services/CommandRunner.js";
 import { NpmRegistry } from "../services/NpmRegistry.js";
+import { npmCacheArgs } from "../utils/npm-cache.js";
 import { NpmRegistryLive } from "./NpmRegistryLive.js";
 
 const makeMockRunner = (responses: Map<string, string>) =>
@@ -177,6 +178,7 @@ describe("NpmRegistryLive", () => {
 			"--json",
 			"--registry",
 			"https://npm.pkg.github.com/",
+			...npmCacheArgs(),
 		]);
 	});
 
@@ -191,7 +193,7 @@ describe("NpmRegistryLive", () => {
 				Effect.provide(layer),
 			),
 		);
-		expect(calls[0]?.args).toEqual(["view", "my-pkg", "versions", "--json"]);
+		expect(calls[0]?.args).toEqual(["view", "my-pkg", "versions", "--json", ...npmCacheArgs()]);
 		expect(calls[0]?.args).not.toContain("--registry");
 	});
 
@@ -267,6 +269,7 @@ describe("NpmRegistryLive", () => {
 			"--json",
 			"--registry",
 			"https://registry.npmjs.org/",
+			...npmCacheArgs(),
 		]);
 	});
 
@@ -357,6 +360,7 @@ describe("NpmRegistryLive", () => {
 				"--json",
 				"--registry",
 				"https://registry.npmjs.org/",
+				...npmCacheArgs(),
 			]);
 		});
 

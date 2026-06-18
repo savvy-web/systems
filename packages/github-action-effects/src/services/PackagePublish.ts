@@ -152,8 +152,20 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 			token: Redacted.Redacted<string>,
 		) => Effect.Effect<void, PackagePublishError>;
 
-		/** Pack a package directory into a tarball and capture its size, file count, and integrity digest. */
-		readonly pack: (packageDir: string) => Effect.Effect<PackResult, PackagePublishError>;
+		/**
+		 * Pack a package directory into a tarball and capture its size, file count, and integrity digest.
+		 *
+		 * @remarks
+		 * `packageManager` selects the npm executor — same dispatch as {@link publish}
+		 * (`pnpm dlx npm` etc.) so the pack runs through the identical npm the publish
+		 * will. Defaults to bare `npm`.
+		 */
+		readonly pack: (
+			packageDir: string,
+			options?: {
+				readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+			},
+		) => Effect.Effect<PackResult, PackagePublishError>;
 
 		/** Publish a package to a registry. */
 		readonly publish: (
@@ -253,16 +265,26 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 		) => Effect.Effect<IdempotentPublishResult, PackagePublishError>;
 
 		/**
-		 * Simulate publishing a package via `npm publish --dry-run` — confirms the
-		 * registry would accept it (auth, reachability, version conflict) without
-		 * publishing anything.
+		 * Validate that a package can be packed for publishing via
+		 * `npm pack --dry-run`, reporting the resulting tarball size and file count
+		 * without writing the tarball or publishing anything.
 		 *
 		 * @remarks
-		 * A non-zero `npm` exit (bad auth, unreachable registry, version conflict)
-		 * is reported as `ok: false` in the result, not as an error — a failed
-		 * dry-run is a valid outcome. The error channel is reserved for a
-		 * structural failure (npm could not be spawned, or its `--json` output
-		 * could not be parsed).
+		 * This validates PACKABILITY and SIZING only. `npm pack --dry-run` does not
+		 * contact the registry, so it does NOT verify auth, reachability, or
+		 * version conflicts — `ok: true` means the package packs cleanly, not that
+		 * a registry would accept the publish. A non-zero `npm` exit (e.g. an
+		 * invalid `package.json` or `files` glob) is reported as `ok: false` in the
+		 * result, not as an error — a failed dry-run is a valid outcome. The error
+		 * channel is reserved for a structural failure (npm could not be spawned,
+		 * or its `--json` output could not be parsed).
+		 *
+		 * `packageManager` selects the npm executor and should match the value
+		 * passed to {@link publish}, so the dry-run packs with the same npm the
+		 * live publish will run (`pnpm dlx npm` fetches a fresh npm that can
+		 * behave differently from the runner's bundled one). The other options do
+		 * not affect the underlying `npm pack --dry-run` and are accepted only for
+		 * call-site symmetry with {@link publish}.
 		 */
 		readonly dryRun: (
 			packageDir: string,
@@ -271,6 +293,7 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 				readonly tag?: string;
 				readonly access?: "public" | "restricted";
 				readonly provenance?: boolean;
+				readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
 			},
 		) => Effect.Effect<DryRunResult, PackagePublishError>;
 	}
