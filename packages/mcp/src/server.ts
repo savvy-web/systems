@@ -18,6 +18,8 @@ import type { BiomeCheckArgs } from "./tools/biome-check.js";
 import { BiomeCheckAsMarkdown, BiomeCheckResult, runBiomeCheck } from "./tools/biome-check.js";
 import type { ChangesetInspectArgs } from "./tools/changeset-inspect.js";
 import { ChangesetInspectAsMarkdown, ChangesetInspectResult, changesetInspect } from "./tools/changeset-inspect.js";
+import type { ChangesetPreviewArgs } from "./tools/changeset-preview.js";
+import { ChangesetPreviewAsMarkdown, ChangesetPreviewResult, changesetPreview } from "./tools/changeset-preview.js";
 import type { ChangesetValidateArgs } from "./tools/changeset-validate.js";
 import { ChangesetValidateAsMarkdown, ChangesetValidateResult, changesetValidate } from "./tools/changeset-validate.js";
 import { DocsSearchResult, DocsSearchResultAsMarkdown, runDocsSearch } from "./tools/docs-search.js";
@@ -139,6 +141,24 @@ export function buildServer(ctx: McpContext): McpServer {
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetValidate(args as ChangesetValidateArgs, ctx.cwd));
 			const text = Schema.decodeSync(ChangesetValidateAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
+		"changeset_preview",
+		{
+			description:
+				"Read-only preview of the next release. Runs the genuine changesets engine over the pending changesets and returns each package's version bump (old -> new) plus the rendered CHANGELOG block (dependency tables included), exactly as it would ship. Does not modify the repo. Prefer this over hand-merging changeset files.",
+			inputSchema: {
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(ChangesetPreviewResult) as never,
+			annotations: { readOnlyHint: true },
+		},
+		async (args) => {
+			const data = await ctx.runtime.runPromise(changesetPreview(args as ChangesetPreviewArgs, ctx.cwd));
+			const text = Schema.decodeSync(ChangesetPreviewAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);

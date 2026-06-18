@@ -2,101 +2,53 @@
 name: changeset-preview
 description: >
   Preview what the combined CHANGELOG output would look like with all
-  pending changesets. Shows the rendered release notes grouped by package,
-  with sections merged and ordered by priority. Use to review before merging.
+  pending changesets. Shows each package's version bump and the rendered
+  release notes, produced by the real changeset formatter. Use to review
+  before merging.
 when_to_use: >
   "preview the changelog", "what will the release notes look like",
   "preview the release", "show me what the CHANGELOG would say",
   "render the pending release notes", "what would users see if I shipped now"
+allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_preview
 model: sonnet
 ---
 
 # Preview Pending Changeset Output
 
-Render a preview of what the CHANGELOG entries would look like if all pending changesets were released now.
+Render a preview of what the next release would produce — version bumps and
+CHANGELOG entries — using the genuine changeset engine. This is read-only;
+nothing is written.
 
-## Step 1: Load Style Rules
+## Step 1: Call the preview tool
 
-Load the `changeset-style` skill via the Skill tool to get the authoritative list of the 13 section categories and their priority order. Use the priority table from that skill for all ordering decisions in the steps below.
+Call the `mcp__plugin_silk_savvy-mcp__changeset_preview` tool. Pass `cwd` only
+if you need to target a workspace other than the current directory.
 
-## Step 2: Find Changeset Files
+The tool runs the real changesets release engine against the pending
+`.changeset/` files in a throwaway directory and returns:
 
-List all `.md` files in the `.changeset/` directory:
+- `releases[]` — per package: `name`, `type` (major/minor/patch), `oldVersion`,
+  `newVersion`, `changesetIds`, and `changelogEntry` (the rendered, transformed
+  CHANGELOG block, dependency tables included).
+- `changesets[]` — the parsed pending changesets.
+- `preMode` — the pre-release mode, if active.
 
-- Exclude any file named `README.md`
-- If no files are found, report "No pending changesets" and stop
+## Step 2: Render the preview
 
-## Step 3: Read and Parse Each File
+The tool already returns a formatted markdown transcript in its text content:
+a "Version bumps" table followed by each package's release notes. Present that
+to the user as-is. If they ask for detail on a specific package, read that
+package's `changelogEntry` from the structured content.
 
-For each discovered file, read its full contents and extract:
-
-1. **Frontmatter** — parse all package-to-bump-type mappings from the YAML block between the `---` delimiters (e.g., `"@savvy-web/foo": minor`)
-2. **Sections** — parse the body content into a map of `## Heading` → content blocks (paragraphs, lists, sub-headings, code fences, etc.)
-
-If a file cannot be read or its frontmatter cannot be parsed, skip it and note it in the output as `(unreadable)`.
-
-## Step 4: Group by Package
-
-Build a per-package index. For each package that appears in any changeset frontmatter:
-
-- Collect all bump types listed for that package across all changesets
-- Collect all section content contributed by each changeset that includes that package
-
-## Step 5: Generate Per-Package Preview
-
-For each package, compute its preview entry:
-
-### 5a: Determine Bump Type
-
-Select the highest bump level listed for that package across all changesets, using the precedence: `major` > `minor` > `patch`.
-
-### 5b: Merge Sections
-
-Gather all content contributed under each section heading across all changesets for this package. For each of the 13 known section categories that has any content:
-
-- Collect all list items contributed under that heading from every changeset
-- Collect all paragraphs, sub-headings, and code fences contributed under that heading from every changeset
-- Deduplicate identical list items (exact string match, trimmed)
-- Preserve non-list content (paragraphs, sub-headings, code blocks) in the order they appear across changesets, without deduplication
-
-### 5c: Order Sections
-
-Sort the merged sections by their priority number from the `style` category table (Breaking Changes = 1 first, Other = 13 last). Omit any category that has no content.
-
-## Step 6: Render the Preview
-
-Output the preview in markdown, one block per package. Sort packages alphabetically by package name.
-
-```markdown
-## @savvy-web/package-name (minor)
-
-### Features
-
-- item from changeset 1
-- item from changeset 2
-
-### Bug Fixes
-
-- item from changeset 3
-```
-
-Format rules for the rendered output:
-
-- Package header uses `##` with the package name and bump type in parentheses
-- Section headings use `###`
-- List items are rendered as `- item`
-- Non-list content (paragraphs, sub-headings, code blocks) is reproduced as-is beneath the section heading, before any list items from the same section
-- If a package has no parseable body content at all, note `(no content)` under its header
-
-## Step 7: Add Preview Notice
-
-After all package blocks, append this note:
-
-> **Preview only.** The actual CHANGELOG is generated by the `@savvy-web/changesets` formatter, which performs additional processing: contributor footnotes, issue and PR link refs, dependency table rendering, and remark post-transforms. Content and ordering may differ slightly from the final output.
+If `releases` is empty, report "No pending changesets" and stop.
 
 ## Output Guidance
 
-- Do not validate changeset format or report rule violations — use `/silk:changeset-check` for that
-- Do not modify any files — this is a read-only preview
-- If only one changeset exists for a package, the preview is effectively that changeset's content rendered in section order
-- If a section heading in a changeset does not match any of the 13 known categories, include it at the end under its original heading text, as if it had priority 13
+- Do not validate changeset format or report rule violations — use
+  `/silk:changeset-check` for that.
+- Do not modify any files — this is a read-only preview.
+
+> **Preview reflects the working tree.** Changeset files are not yet committed,
+> so author, PR, and commit links won't resolve until release. `savvy changeset
+> version` run at this same point has the identical gap, so content and ordering
+> match what ships.

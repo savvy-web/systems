@@ -126,7 +126,7 @@ importers:
         specifier: catalog:silk
         version: 0.107.0(@effect/cluster@0.59.0(@effect/platform@0.96.1(effect@3.21.3))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/workflow@0.18.2(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(effect@3.21.3)
       '@tsdown/css':
-        specifier: ^0.22.2
+        specifier: ^0.22.3
         version: 0.22.3(jiti@2.7.0)(postcss@8.5.15)(tsdown@0.22.3)(tsx@4.22.4)(yaml@2.9.0)
       '@types/node':
         specifier: catalog:silk
@@ -430,7 +430,7 @@ importers:
         version: 19.2.7(react@19.2.7)
     devDependencies:
       '@tsdown/css':
-        specifier: ^0.22.2
+        specifier: ^0.22.3
         version: 0.22.3(jiti@2.7.0)(postcss@8.5.15)(tsdown@0.22.3)(tsx@4.22.4)(yaml@2.9.0)
       '@types/node':
         specifier: catalog:silk
@@ -528,9 +528,21 @@ importers:
 
   packages/silk-effects:
     dependencies:
+      '@changesets/apply-release-plan':
+        specifier: ^7.1.1
+        version: 7.1.1
+      '@changesets/config':
+        specifier: ^3.1.4
+        version: 3.1.4
       '@changesets/get-github-info':
         specifier: ^0.8.0
         version: 0.8.0
+      '@changesets/get-release-plan':
+        specifier: ^4.0.16
+        version: 4.0.16
+      '@manypkg/get-packages':
+        specifier: ^1.1.3
+        version: 1.1.3
       jsonc-effect:
         specifier: ^0.2.1
         version: 0.2.1(effect@3.21.3)

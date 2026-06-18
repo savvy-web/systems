@@ -361,3 +361,34 @@ export class GitError extends GitErrorBase<{
 		return `git command failed in ${this.cwd}: ${this.command}\n${this.reason}`;
 	}
 }
+
+/**
+ * Base class for {@link ReleasePlanError}.
+ *
+ * @privateRemarks
+ * Required export for api-extractor (anonymous Data.TaggedError base). Do not delete.
+ *
+ * @internal
+ */
+export const ReleasePlanErrorBase = Data.TaggedError("ReleasePlanError");
+
+/**
+ * Release planning, preview, or apply failure.
+ *
+ * @remarks
+ * Wraps any failure from the underlying `@changesets/*` machinery
+ * (`getReleasePlan`, `applyReleasePlan`, config resolution) into a typed
+ * Effect error, tagged with the phase that failed.
+ *
+ * @public
+ */
+export class ReleasePlanError extends ReleasePlanErrorBase<{
+	/** The phase that failed. */
+	readonly phase: "plan" | "preview" | "apply";
+	/** Human-readable failure reason. */
+	readonly reason: string;
+}> {
+	get message() {
+		return `Release plan error (${this.phase}): ${this.reason}`;
+	}
+}
