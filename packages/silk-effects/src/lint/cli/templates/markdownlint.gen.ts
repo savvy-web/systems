@@ -17,6 +17,7 @@ export const MARKDOWNLINT_TEMPLATE = {
 	gitignore: true,
 	noBanner: true,
 	ignores: [
+		"**/.git",
 		"**/node_modules",
 		"**/.cache",
 		"**/coverage",

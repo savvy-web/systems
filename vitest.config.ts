@@ -23,7 +23,6 @@ export default VitestConfig.create({
 		// coverage:none. These hooks integrate with external processes (Claude API,
 		// git, gpg) and require live runtime calls to exercise all branches.
 		"packages/cli/src/commands/commit/hooks/session-start.ts",
-		"packages/cli/src/commands/commit/hooks/user-prompt-submit.ts",
 		"packages/cli/src/commands/commit/hooks/post-commit-verify.ts",
 		"packages/cli/src/commands/commit/hooks/pre-commit-message.ts",
 

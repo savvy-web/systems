@@ -284,6 +284,35 @@ ${END_LINT}
 		expect(second.postCommit).toBe(first.postCommit);
 	});
 
+	it("union-merges missing template ignores into an existing markdownlint config without force", async () => {
+		// Pre-existing config: missing several default ignores (incl. **/.git),
+		// carries a user-added ignore, and has a drifted config rule.
+		const existing = {
+			...Lint.MARKDOWNLINT_TEMPLATE,
+			ignores: ["**/node_modules", "**/my-vendor"],
+			config: { ...Lint.MARKDOWNLINT_CONFIG, MD013: true },
+		};
+		mkdirSync(join(testDir, "lib/configs"), { recursive: true });
+		writeFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), `${JSON.stringify(existing, null, "\t")}\n`);
+
+		const handler = runLintInit({
+			force: false,
+			config: "lint-staged.config.ts",
+			preset: "silk",
+		});
+		await Effect.runPromise(Effect.provide(handler, TestLayer));
+
+		const merged = JSON.parse(readFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), "utf8"));
+		// The new default exclude is appended.
+		expect(merged.ignores).toContain("**/.git");
+		// The user-added entry survives.
+		expect(merged.ignores).toContain("**/my-vendor");
+		// Pre-existing default is not duplicated.
+		expect(merged.ignores.filter((g: string) => g === "**/node_modules")).toHaveLength(1);
+		// Drifted config rules are left as-is (warn-only, never auto-overwritten).
+		expect(merged.config.MD013).toBe(true);
+	});
+
 	it("skips hygiene hooks for minimal preset", async () => {
 		const handler = runLintInit({
 			force: false,

@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-18
+last-synced: 2026-06-18
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -48,7 +48,7 @@ savvy init        orchestrator → changeset · commit · lint init in one pass
 savvy check       orchestrator → runs all three checks
 savvy clean       remove build/cache artifacts across the workspace
 savvy commit      hook(session-start · pre-commit-message ·
-                  post-commit-verify · user-prompt-submit)
+                  post-commit-verify)
 savvy changeset   lint · check · transform · validate-file · version ·
                   config(validate) · deps(detect · regen)
 savvy lint        fmt(package-json · pnpm-workspace · yaml)

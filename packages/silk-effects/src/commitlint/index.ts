@@ -63,8 +63,8 @@
 //     No equivalent in silk-effects.
 //
 //   hook/envelope.ts — COPIED
-//     Effect Schema for the four Claude Code hook event envelopes
-//     (PreToolUse, PostToolUse, UserPromptSubmit, SessionStart).
+//     Effect Schema for the Claude Code hook event envelopes
+//     (PreToolUse, PostToolUse, SessionStart).
 //     No equivalent in silk-effects.
 //
 //   hook/output.ts — COPIED
@@ -211,14 +211,8 @@ export type {
 	PostToolUseEnvelope as PostToolUseEnvelopeType,
 	PreToolUseEnvelope as PreToolUseEnvelopeType,
 	SessionStartEnvelope as SessionStartEnvelopeType,
-	UserPromptSubmitEnvelope as UserPromptSubmitEnvelopeType,
 } from "./hook/envelope.js";
-export {
-	PostToolUseEnvelope,
-	PreToolUseEnvelope,
-	SessionStartEnvelope,
-	UserPromptSubmitEnvelope,
-} from "./hook/envelope.js";
+export { PostToolUseEnvelope, PreToolUseEnvelope, SessionStartEnvelope } from "./hook/envelope.js";
 
 // === Hook — Output builders ===
 
@@ -230,7 +224,6 @@ export {
 	preToolUseDeny,
 	preToolUseSilent,
 	sessionStartContext,
-	userPromptSubmitContext,
 } from "./hook/output.js";
 
 // === Hook — Bash command parser ===

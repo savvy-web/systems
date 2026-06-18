@@ -27,11 +27,10 @@ sets it up).
 ```text
 savvy init        orchestrator → changeset · commit · lint init in one pass
 savvy check       orchestrator → runs all three checks
-savvy commit      init · check · hook(session-start · pre-commit-message ·
-                  post-commit-verify · user-prompt-submit)
+savvy commit      hook(session-start · pre-commit-message · post-commit-verify)
 savvy changeset   lint · check · transform · validate-file · version ·
                   config(validate) · deps(detect · regen)
-savvy lint        init · check · fmt(package-json · pnpm-workspace · yaml)
+savvy lint        fmt(package-json · pnpm-workspace · yaml)
 ```
 
 Each group lives under `src/commands/{commit,changeset,lint}/` and exports its

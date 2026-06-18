@@ -16,8 +16,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "0e2dbfe005459133bdaa48c65c6938094de9681b8f231479dfe8ef41efb88efe",
-			"recordedAt": "2026-06-13"
+			"hash": "625cfe5f9b46f694cef6c6ba944cee41318b7fd83d8f1622880b9c1ed8dd6eb3",
+			"recordedAt": "2026-06-18"
 		},
 		{
 			"source": "CLAUDE.md",

@@ -90,16 +90,6 @@
 					}
 				]
 			}
-		],
-		"UserPromptSubmit": [
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/commit-main.sh\""
-					}
-				]
-			}
 		]
 	}
 }

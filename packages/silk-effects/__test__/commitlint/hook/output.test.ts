@@ -6,7 +6,6 @@ import {
 	preToolUseDeny,
 	preToolUseSilent,
 	sessionStartContext,
-	userPromptSubmitContext,
 } from "../../../src/commitlint/hook/output.js";
 
 describe("preToolUseAllow", () => {
@@ -62,14 +61,6 @@ describe("postToolUseAdvise", () => {
 	it("wraps as additionalContext for PostToolUse", () => {
 		expect(postToolUseAdvise("ctx")).toEqual({
 			hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: "ctx" },
-		});
-	});
-});
-
-describe("userPromptSubmitContext", () => {
-	it("wraps as additionalContext for UserPromptSubmit", () => {
-		expect(userPromptSubmitContext("ctx")).toEqual({
-			hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: "ctx" },
 		});
 	});
 });

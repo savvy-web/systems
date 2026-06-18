@@ -116,12 +116,14 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 			return;
 		}
 
-		// Silk preset, no force: surgical management of $schema + config
+		// Silk preset, no force: surgical management of $schema + ignores; config
+		// is compared but only warned on (it may carry intentional local rule
+		// overrides). $schema and ignores are safe to apply automatically.
 		const existingText = yield* fs.readFileString(Lint.MARKDOWNLINT_CONFIG_PATH);
 		const existingParsed = (yield* parse(existingText)) as Record<string, unknown>;
 
 		let updatedText = existingText;
-		let schemaUpdated = false;
+		const applied: string[] = [];
 
 		// Always update $schema silently
 		if (existingParsed.$schema !== Lint.MARKDOWNLINT_SCHEMA) {
@@ -129,29 +131,37 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 				formattingOptions: JSONC_FORMAT,
 			});
 			updatedText = yield* applyEdits(updatedText, edits);
-			schemaUpdated = true;
+			applied.push("$schema");
 		}
 
-		// Compare config with isDeepStrictEqual
+		// Non-destructively union-merge template ignores into the existing list.
+		// ignores are additive safety-excludes — appending the defaults a repo is
+		// missing can't flip any lint verdict — so unlike config rules we apply
+		// them automatically while preserving any user-added entries and order.
+		const existingIgnores = Array.isArray(existingParsed.ignores) ? (existingParsed.ignores as string[]) : [];
+		const missingIgnores = Lint.MARKDOWNLINT_TEMPLATE.ignores.filter((glob) => !existingIgnores.includes(glob));
+		if (missingIgnores.length > 0) {
+			const mergedIgnores = [...existingIgnores, ...missingIgnores];
+			const edits = yield* modify(updatedText, ["ignores"], mergedIgnores, {
+				formattingOptions: JSONC_FORMAT,
+			});
+			updatedText = yield* applyEdits(updatedText, edits);
+			applied.push(`ignores (+${missingIgnores.length})`);
+		}
+
+		// Compare config with isDeepStrictEqual (warn-only — never auto-written)
 		const existingConfig = existingParsed.config as Record<string, unknown> | undefined;
 		const configMatches = existingConfig !== undefined && isDeepStrictEqual(existingConfig, Lint.MARKDOWNLINT_CONFIG);
-
 		if (!configMatches) {
 			yield* Effect.log(
 				`${WARNING} ${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template (use --force to overwrite)`,
 			);
-			// Still write schema update if it changed
-			if (schemaUpdated) {
-				yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, updatedText);
-				yield* Effect.log(`${CHECK_MARK} Updated $schema in ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
-			}
-			return;
 		}
 
-		if (schemaUpdated) {
+		if (applied.length > 0) {
 			yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, updatedText);
-			yield* Effect.log(`${CHECK_MARK} Updated $schema in ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
-		} else {
+			yield* Effect.log(`${CHECK_MARK} Updated ${applied.join(", ")} in ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
+		} else if (configMatches) {
 			yield* Effect.log(`${CHECK_MARK} ${Lint.MARKDOWNLINT_CONFIG_PATH}: up-to-date`);
 		}
 	});
