@@ -14,7 +14,7 @@
 
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import applyReleasePlan from "@changesets/apply-release-plan";
 import { read as readChangesetConfig } from "@changesets/config";
 import getReleasePlan from "@changesets/get-release-plan";
@@ -148,7 +148,16 @@ async function previewImpl(root: string): Promise<ChangesetPreview> {
 
 	const tempRoot = mkdtempSync(join(tmpdir(), "silk-preview-"));
 	try {
-		const mapDir = (dir: string) => join(tempRoot, relative(packages.root.dir, dir));
+		const mapDir = (dir: string) => {
+			const rel = relative(packages.root.dir, dir);
+			// Guard the non-destructive invariant: a package dir outside the
+			// workspace root would make `relative` yield `..`/an absolute path and
+			// `join` escape `tempRoot`. Refuse rather than write outside temp.
+			if (rel.startsWith("..") || isAbsolute(rel)) {
+				throw new Error(`Package directory is outside the workspace root: ${dir}`);
+			}
+			return join(tempRoot, rel);
+		};
 		const tempPackages: Packages = {
 			tool: packages.tool,
 			root: { ...packages.root, dir: tempRoot, packageJson: structuredClone(packages.root.packageJson) },
@@ -245,27 +254,36 @@ function applyEffect(
 			});
 		}
 
-		// versionFiles via the resolved config inspector (skips silently if no config)
+		// versionFiles via the resolved config inspector. A missing/invalid config
+		// (inspect failing) degrades gracefully to no updates, logged so it stays
+		// visible. A genuine versionFile write failure is surfaced as a typed error
+		// rather than thrown inside `Effect.map` — where it would become an uncaught
+		// defect and crash `apply()`.
 		const newVersionByName = new Map(plan.releases.map((r) => [r.name, r.newVersion]));
-		const versionFileUpdates = yield* inspector.inspect(root).pipe(
-			Effect.map((inspected) => {
-				const scopes = inspected.packages
-					.filter((p) => p.versionFiles.length > 0)
-					.map((p) => {
-						const fresh = dryRun ? (newVersionByName.get(p.name) ?? p.version) : diskVersion(p.workspaceDir, p.version);
-						return fresh !== p.version ? { ...p, version: fresh } : p;
-					});
-				return scopes.length > 0 ? VersionFiles.processResolvedVersionFiles(scopes, dryRun) : [];
-			}),
-			// Degrade gracefully when the config can't be resolved (e.g. no
-			// .changeset/config.json), but log the reason rather than swallowing
-			// it silently so a real config failure stays visible.
-			Effect.catchAll((error) =>
-				Effect.logWarning(`Skipping versionFiles update: ${errMsg(error)}`).pipe(
-					Effect.as([] as Array<{ filePath: string; version: string }>),
+		const inspected = yield* inspector
+			.inspect(root)
+			.pipe(
+				Effect.catchAll((error) =>
+					Effect.logWarning(`Skipping versionFiles update: ${errMsg(error)}`).pipe(Effect.as(null)),
 				),
-			),
-		);
+			);
+		let versionFileUpdates: Array<{ filePath: string; version: string }> = [];
+		if (inspected) {
+			versionFileUpdates = yield* Effect.try({
+				try: () => {
+					const scopes = inspected.packages
+						.filter((p) => p.versionFiles.length > 0)
+						.map((p) => {
+							const fresh = dryRun
+								? (newVersionByName.get(p.name) ?? p.version)
+								: diskVersion(p.workspaceDir, p.version);
+							return fresh !== p.version ? { ...p, version: fresh } : p;
+						});
+					return scopes.length > 0 ? VersionFiles.processResolvedVersionFiles(scopes, dryRun) : [];
+				},
+				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
+			});
+		}
 
 		return { dryRun, touchedFiles, releases, versionFileUpdates };
 	});

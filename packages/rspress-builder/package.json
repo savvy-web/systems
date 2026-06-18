@@ -45,7 +45,7 @@
 	},
 	"peerDependencies": {
 		"@rspress/core": "^2.0.0",
-		"@tsdown/css": "^0.22.2",
+		"@tsdown/css": "^0.22.3",
 		"react": "catalog:silkPeers",
 		"react-dom": "catalog:silkPeers"
 	},

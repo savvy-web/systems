@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Effect } from "effect";
+import { Cause, Effect, Exit } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
 import { makeReleaseFixture } from "./fixtures/release-fixture.js";
@@ -143,6 +143,37 @@ describe("ReleasePlanner.apply (versionFiles)", () => {
 		// (b) non-dry: the file on disk is updated to 1.1.0
 		const diskContent = JSON.parse(readFileSync(pluginJsonPath, "utf-8")) as { version: string };
 		expect(diskContent.version).toBe("1.1.0");
+	});
+
+	it("surfaces a versionFile write failure as a typed error, not an uncaught defect", async () => {
+		const root = makeReleaseFixture({
+			packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+			changesets: [{ id: "brave-lions-sing", releases: { "@scope/a": "minor" }, summary: "feat: vf test" }],
+		});
+		roots.push(root);
+
+		// versionFiles points at a file that does not exist, so
+		// processResolvedVersionFiles throws synchronously. That throw must surface
+		// as a typed ReleasePlanError rather than an uncaught defect (which would
+		// otherwise bypass the inspector catchAll and crash apply()).
+		const planner = await getPlannerWithVersionFiles({
+			projectDir: root,
+			pkgName: "@scope/a",
+			pkgVersion: "1.0.0",
+			pkgWorkspaceDir: join(root, "packages/a"),
+			targetFile: join(root, "packages/a", "missing.json"),
+		});
+
+		const exit = await Effect.runPromiseExit(planner.apply(root, { dryRun: true }));
+		expect(Exit.isFailure(exit)).toBe(true);
+		if (Exit.isFailure(exit)) {
+			expect(Cause.isDie(exit.cause)).toBe(false);
+			const failure = Cause.failureOption(exit.cause);
+			expect(failure._tag).toBe("Some");
+			if (failure._tag === "Some") {
+				expect((failure.value as { _tag: string })._tag).toBe("ReleasePlanError");
+			}
+		}
 	});
 });
 

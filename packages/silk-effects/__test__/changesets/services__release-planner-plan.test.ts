@@ -29,10 +29,7 @@ describe("ReleasePlanner.plan", () => {
 		});
 		roots.push(root);
 		const planner = await Effect.runPromise(
-			Changesets.ReleasePlanner.pipe(
-				Effect.provide(Changesets.ReleasePlannerLive),
-				Effect.provide(InspectorStub),
-			) as Effect.Effect<Changesets.ReleasePlannerShape>,
+			Changesets.ReleasePlanner.pipe(Effect.provide(Changesets.ReleasePlannerLive), Effect.provide(InspectorStub)),
 		);
 		const plan = await Effect.runPromise(planner.plan(root));
 		expect(plan.releases.map((r) => [r.name, r.newVersion])).toEqual([["@scope/a", "1.1.0"]]);

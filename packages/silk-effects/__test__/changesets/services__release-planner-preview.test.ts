@@ -82,7 +82,12 @@ describe("ReleasePlanner.preview", () => {
 		const real = mkdtempSync(join(tmpdir(), "silk-relfix-real-"));
 		roots.push(real);
 		cpSync(root, real, { recursive: true, force: true }); // identical starting state
-		execFileSync("pnpm", ["exec", "changeset", "version"], { cwd: real, stdio: "pipe" });
+		execFileSync("pnpm", ["exec", "changeset", "version"], {
+			cwd: real,
+			stdio: "pipe",
+			timeout: 120_000,
+			killSignal: "SIGKILL",
+		});
 		for (const rel of ["packages/a", "packages/b"]) {
 			const cl = join(real, rel, "CHANGELOG.md");
 			Changesets.ChangelogTransformer.transformFile(cl);
