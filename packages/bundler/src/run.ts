@@ -8,6 +8,7 @@ import type {
 	GenerateMetaOptions,
 	JsxConfig,
 	MetaResult,
+	NextVersions,
 	PublishTargets,
 	RenderedOutput,
 	RunExeBuildOptions,
@@ -28,12 +29,14 @@ import {
 	readTsconfigJsx,
 	buildTargetGroups as realBuildTargetGroups,
 	generateMeta as realGenerateMeta,
+	resolveNextVersions as realResolveNextVersions,
 	runExeBuild as realRunExeBuild,
 	writeTargetsBinding as realWriteTargetsBinding,
 	removeDeclarationMaps,
 	renderReport,
 	resolveJsxConfig,
 	resolveTargets,
+	rewriteMetaVersions,
 	writeResolvedTsconfig,
 } from "@savvy-web/tsdown-plugins";
 import { Effect } from "effect";
@@ -67,6 +70,8 @@ export interface RunOptions {
 	readonly runExeBuild?: ((o: RunExeBuildOptions) => Promise<void>) | undefined;
 	/** Injectable for tests: returns the package os/cpu arrays. */
 	readonly readOsCpu?: (() => { os: ReadonlyArray<string>; cpu: ReadonlyArray<string> }) | undefined;
+	/** Injectable for tests: resolves next release versions for the optimistic meta rewrite. */
+	readonly resolveNextVersions?: ((cwd: string) => Promise<NextVersions>) | undefined;
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
@@ -262,46 +267,20 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	});
 	const hasJsEntries = Object.keys(entries).length > 0;
 
-	// Fast-fail outSubdir-override validation: run BEFORE the --target meta branch (which returns early,
-	// bypassing the dev/prod override-partition loop) so every target path rejects a bad outSubdir override.
+	// Fast-fail outSubdir-override validation: run before any early-return branch so every target
+	// path rejects a bad outSubdir override consistently.
 	validateSubdirOverrides(config.overrides, entries, packageName);
 
-	// --target meta: generate the api-model from the dev build's dts into localPaths. No tsdown build.
-	// meta is tri-state: undefined -> default options, object -> overrides, false -> opt out (no-op).
+	// --target meta is SOFT-DEPRECATED: meta is now emitted by --target prod (per group, with
+	// resolved + optionally optimistic deps). Warn and no-op so external escape-hatch scripts that
+	// still pass --target meta do not hard-fail. Full removal (flag + build:meta task/scripts) lands
+	// in a follow-up branch.
 	if (target === "meta") {
-		if (config.meta === false) {
-			const writeMetaOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
-			writeMetaOutput({
-				target: "stdout",
-				contentType: "text/plain",
-				content: `meta: generation disabled (meta: false) for ${packageName}`,
-			});
-			return;
-		}
-		const norm = normalizeMetaOptions(config.meta ?? {});
-		// dts basenames mirror the entry source: src/index.ts -> index, src/sub.ts -> sub.
-		const dtsBasenames: Record<string, string> = {};
-		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
-		const exportPaths = deriveExportPaths(entries, exportsMap);
-		// An outSubdir override builds its dts at `<subdir>/index.d.ts`, not `<flatName>.d.ts`. Point its
-		// meta entry (keyed by the stable flattened name) at the subdir barrel so generateMeta reads it there.
-		applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
-		await runGenerateMeta({
-			cwd,
-			packageName,
-			tsconfigPath,
-			dtsDir: join(cwd, "dist", "dev", "pkg"),
-			entries: dtsBasenames,
-			exportPaths,
-			outMetaDir: join(cwd, "dist", "dev", "meta"),
-			localPaths: norm.localPaths,
-			tsdoc: norm.tsdoc,
-		});
 		const writeMetaOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
 		writeMetaOutput({
 			target: "stdout",
 			contentType: "text/plain",
-			content: `meta: wrote api-model for ${packageName} to ${norm.localPaths.length} localPath(s)`,
+			content: `meta: --target meta is deprecated and now a no-op; meta is emitted by --target prod (${packageName}).`,
 		});
 		return;
 	}
@@ -437,28 +416,41 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		writeBinding(cwd, resolution);
 	}
 
-	// --target prod: emit the meta/ release-asset bundle alongside the canonical group's pkg/ unless
-	// meta is explicitly disabled. undefined -> default options; object -> overrides; false -> skip.
+	// --target prod: emit the meta/ bundle for EVERY prod group (consumers read non-canonical groups,
+	// e.g. GitHub Actions), each against its own dist/prod/<group>/pkg so the .api.json carries that
+	// group's package name. Copy the canonical group's bundle into meta.localPaths. Optionally rewrite
+	// versions optimistically. undefined -> default options; object -> overrides; false -> skip.
 	// An exe-only package has no JS entries (no dts), so there is nothing for API Extractor to read.
 	if (target === "prod" && config.meta !== false && (config.exe === undefined || hasJsEntries)) {
-		const metaGroup = groups.find((g) => g.name === packageName) ?? groups[0];
-		const metaGroupId = metaGroup?.id ?? "npm";
 		const norm = normalizeMetaOptions(config.meta ?? {});
+		const canonical = groups.find((g) => g.name === packageName) ?? groups[0];
+		const canonicalId = canonical?.id ?? "npm";
 		const dtsBasenames: Record<string, string> = {};
 		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
 		const exportPaths = deriveExportPaths(entries, exportsMap);
 		applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
-		await runGenerateMeta({
-			cwd,
-			packageName,
-			tsconfigPath,
-			dtsDir: join(cwd, "dist", "prod", metaGroupId, "pkg"),
-			entries: dtsBasenames,
-			exportPaths,
-			outMetaDir: join(cwd, "dist", "prod", metaGroupId, "meta"),
-			localPaths: [],
-			tsdoc: norm.tsdoc,
-		});
+
+		// Resolve next versions once (shared across groups) only when optimistic is on.
+		const resolveNext = options.resolveNextVersions ?? realResolveNextVersions;
+		const nextVersions = norm.optimistic ? await resolveNext(cwd) : undefined;
+		const manifestTransform = nextVersions
+			? (m: Record<string, unknown>) => rewriteMetaVersions(m, nextVersions.versions, packageName)
+			: undefined;
+
+		for (const g of groups) {
+			await runGenerateMeta({
+				cwd,
+				packageName,
+				tsconfigPath,
+				dtsDir: join(cwd, "dist", "prod", g.id, "pkg"),
+				entries: dtsBasenames,
+				exportPaths,
+				outMetaDir: join(cwd, "dist", "prod", g.id, "meta"),
+				localPaths: g.id === canonicalId ? norm.localPaths : [],
+				tsdoc: norm.tsdoc,
+				...(manifestTransform !== undefined ? { manifestTransform } : {}),
+			});
+		}
 	}
 
 	// Strip declaration source-maps from the PUBLISHED prod pkg/ dirs. They are emitted for

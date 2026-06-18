@@ -55,6 +55,11 @@ docs/superpowers
 packages/mcp/lib/models/*/
 packages/mcp/public/content/packages/*/api/
 
+# bundler meta-prod integration fixture build artifacts
+packages/bundler/__test__/integration/fixtures/meta-prod/dist/
+packages/bundler/__test__/integration/fixtures/meta-prod/models/
+packages/bundler/__test__/integration/fixtures/meta-prod/tsdoc.json
+
 # bundler multi-meta integration fixture build artifacts
 packages/bundler/__test__/integration/fixtures/multi-meta/dist/
 packages/bundler/__test__/integration/fixtures/multi-meta/models/

@@ -10,10 +10,10 @@
 		"generate:api-docs": {
 			"cache": true,
 			"dependsOn": [
-				"@savvy-web/silk-effects#build:meta",
-				"@savvy-web/templates#build:meta",
-				"@savvy-web/github-action-effects#build:meta",
-				"@savvy-web/github-action-builder#build:meta"
+				"@savvy-web/silk-effects#build:prod",
+				"@savvy-web/templates#build:prod",
+				"@savvy-web/github-action-effects#build:prod",
+				"@savvy-web/github-action-builder#build:prod"
 			],
 			"inputs": ["$TURBO_DEFAULT$", "lib/models/*/**"],
 			"outputs": ["public/content/packages/*/api/**"]

@@ -3,8 +3,8 @@ status: current
 module: rspress-builder
 category: architecture
 created: 2026-06-13
-updated: 2026-06-14
-last-synced: 2026-06-14
+updated: 2026-06-18
+last-synced: 2026-06-18
 completeness: 90
 related:
   - ../bundler/architecture.md
@@ -63,7 +63,7 @@ An RSPress plugin package is a dual-bundle package the general-purpose Node-libr
 - presets the plugin externals (`@rspress/core` plus any `plugin.externals`);
 - builds the runtime `EntryOverride` partition when `runtime !== false` (`true`/`{ externals }` enables it; `false` disables it — it does NOT auto-detect the filesystem, so a runtime-less plugin must pass `false`);
 - sets the `define` identity map `{ "import.meta.env": "import.meta.env" }` (merged before user `define`) so RSPress resolves `SSG_MD` per site build;
-- forwards `apiModel` → bundler `meta`, `dtsBundledPackages` → `bundledPackages`, plus `transform`/`jsx`.
+- forwards `apiModel` → bundler `meta` (so the per-prod-group meta emission and the `optimistic` next-version rewrite apply to an RSPress plugin unchanged), `dtsBundledPackages` → `bundledPackages`, plus `transform`/`jsx`.
 
 `define` is build-wide (the bundler has no per-bundle define); the user merge happens after the identity map. See `src/index.ts` for the exact options and defaults.
 

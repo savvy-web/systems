@@ -465,38 +465,6 @@ describe("runBuild", () => {
 		expect(arg.subdirExports && [...arg.subdirExports]).toEqual(["./runtime"]);
 	}, 30_000);
 
-	it("adds the outSubdir export to the meta inputs with a <subdir>/index dts basename", async () => {
-		let captured: { entries: Record<string, string>; exportPaths: Record<string, string> } | undefined;
-		const dir = await mkdtemp(join(tmpdir(), "run-meta-subdir-"));
-		await writeFile(
-			join(dir, "package.json"),
-			JSON.stringify({
-				name: "rspress-plugin-fixture",
-				version: "1.0.0",
-				private: true,
-				type: "module",
-				exports: { ".": "./src/index.ts", "./runtime": "./src/runtime/index.tsx" },
-			}),
-		);
-		const config = defineBuild({
-			overrides: [
-				{ entries: ["./runtime"], outSubdir: "runtime", platform: "browser", css: { modules: {}, inject: true } },
-			],
-		});
-		await runBuild(config, {
-			cwd: dir,
-			argv: ["--target", "meta"],
-			writeTsconfig: () => "/tmp/t.json",
-			generateMeta: async (o) => {
-				captured = o as typeof captured;
-				return { apiJsonPath: "x", apiJsonFilename: "x" } as never;
-			},
-		});
-		expect(captured?.entries.runtime).toBe("runtime/index");
-		expect(captured?.exportPaths.runtime).toBe("./runtime");
-		expect(captured?.entries.index).toBe("index"); // base entry still present
-	}, 30_000);
-
 	it("rejects a meta build when an outSubdir override pins a non-existent export", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "run-meta-badsubdir-"));
 		await writeFile(

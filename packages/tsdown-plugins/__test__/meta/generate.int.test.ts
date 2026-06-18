@@ -36,6 +36,32 @@ function scaffold(): { cwd: string; dtsDir: string; localPath: string } {
 }
 
 describe("generateMeta", () => {
+	it("applies manifestTransform to the bundle and localPaths package.json", async () => {
+		const { cwd, dtsDir } = scaffold();
+		// Extend the fixture package.json to include a dependencies field for a fuller assertion.
+		writeFileSync(
+			join(dtsDir, "package.json"),
+			JSON.stringify({ name: "@scope/fixture", version: "0.0.0", dependencies: { "@scope/sdk": "0.0.0" } }),
+		);
+		const outMetaDir = join(cwd, "dist", "prod", "npm", "meta");
+		await generateMeta({
+			cwd,
+			packageName: "@scope/fixture",
+			tsconfigPath: join(cwd, "tsconfig.json"),
+			dtsDir,
+			entries: { index: "index" },
+			exportPaths: { index: "." },
+			outMetaDir,
+			localPaths: ["models"],
+			tsdoc: { suppressWarnings: [], tagDefinitions: [] },
+			manifestTransform: (p) => ({ ...p, version: "9.9.9" }),
+		});
+		const bundle = JSON.parse(readFileSync(join(outMetaDir, "package.json"), "utf-8")) as { version: string };
+		expect(bundle.version).toBe("9.9.9");
+		const copied = JSON.parse(readFileSync(join(cwd, "models", "package.json"), "utf-8")) as { version: string };
+		expect(copied.version).toBe("9.9.9");
+	});
+
 	it("writes the virtual-TS-env trio to outMetaDir and copies it to localPaths", async () => {
 		const { cwd, dtsDir, localPath } = scaffold();
 		const outMetaDir = join(cwd, "dist", "prod", "npm", "meta");

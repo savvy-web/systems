@@ -27,6 +27,12 @@ export interface GenerateMetaOptions {
 	/** Directories (relative to cwd) to copy the meta bundle into. */
 	readonly localPaths: ReadonlyArray<string>;
 	readonly tsdoc: NormalizedMeta["tsdoc"];
+	/**
+	 * Optional transform applied to the bundle `package.json` (read from `dtsDir`) before it is
+	 * written to `outMetaDir` and copied into `localPaths`. Used for the optimistic next-version
+	 * rewrite. When omitted, the package.json is copied verbatim.
+	 */
+	readonly manifestTransform?: ((pkg: Record<string, unknown>) => Record<string, unknown>) | undefined;
 }
 
 export interface MetaResult {
@@ -42,7 +48,18 @@ export interface MetaResult {
  * published-package artifact and is written into `dtsDir` (the built pkg/), not the meta bundle.
  */
 export async function generateMeta(options: GenerateMetaOptions): Promise<MetaResult> {
-	const { cwd, packageName, tsconfigPath, dtsDir, entries, exportPaths, outMetaDir, localPaths, tsdoc } = options;
+	const {
+		cwd,
+		packageName,
+		tsconfigPath,
+		dtsDir,
+		entries,
+		exportPaths,
+		outMetaDir,
+		localPaths,
+		tsdoc,
+		manifestTransform,
+	} = options;
 	const tsdocConfigPath = writeTsdocConfig(cwd, tsdoc);
 	const packageJsonPath = join(cwd, "package.json");
 
@@ -92,13 +109,17 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 	// Remove the per-entry working files now that the final merged model is written.
 	for (const intermediate of intermediateApiJsons) rmSync(intermediate, { force: true });
 
-	// The meta bundle is a self-contained virtual TS env for shiki/Twoslash. Beside the api-model
-	// it carries the FINAL transformed package.json (from the built pkg dir, not the source
-	// manifest) and a portable, derived tsconfig (compilerOptions-only, no absolute paths or emit
-	// settings). The portable config is derived from the package's own tsconfig; `tsconfigPath` (the
-	// build's resolved api-extractor compile config) is the fallback when there is no own tsconfig.
+	// The meta bundle is a self-contained virtual TS env for shiki/Twoslash. It carries a portable,
+	// derived tsconfig (compilerOptions-only, no absolute paths or emit settings). The portable config
+	// is derived from the package's own tsconfig; `tsconfigPath` (the build's resolved api-extractor
+	// compile config) is the fallback when there is no own tsconfig.
+	// The meta bundle carries the FINAL transformed package.json (from the built pkg dir, not the
+	// source manifest). When a manifestTransform is supplied (optimistic next-version rewrite), apply
+	// it here so both the bundle and the localPaths copies below see the rewritten manifest.
 	const bundlePackageJson = join(outMetaDir, "package.json");
-	copyFileSync(join(dtsDir, "package.json"), bundlePackageJson);
+	const builtPkg = JSON.parse(readFileSync(join(dtsDir, "package.json"), "utf-8")) as Record<string, unknown>;
+	const finalPkg = manifestTransform ? manifestTransform(builtPkg) : builtPkg;
+	writeFileSync(bundlePackageJson, `${JSON.stringify(finalPkg, null, 2)}\n`, "utf-8");
 
 	const bundleTsconfig = join(outMetaDir, "tsconfig.json");
 	const portableTsconfig = resolvePortableTsconfig(cwd, tsconfigPath);

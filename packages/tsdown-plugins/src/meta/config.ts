@@ -19,24 +19,44 @@ export interface TsdocOptions {
 
 /** The `meta` field on defineBuild. Absent means no api-model generation. */
 export interface MetaOptions {
-	/** Directories to copy the api-model into on `savvy build --target meta`. */
+	/** Directories to copy the canonical group's api-model into after `savvy build --target prod`. */
 	readonly localPaths?: ReadonlyArray<string> | undefined;
+	/**
+	 * Forward-look the meta bundle's own `version` and workspace-sibling dep versions to their
+	 * NEXT release version from pending changesets. `"auto"` (default) is `false` under CI
+	 * (`CI`/`GITHUB_ACTIONS` set) and `true` locally, so a local bundle matches the CI release build.
+	 */
+	readonly optimistic?: "auto" | boolean | undefined;
 	readonly tsdoc?: TsdocOptions | undefined;
 }
 
 /** Fully-resolved meta options (no optionals). */
 export interface NormalizedMeta {
 	readonly localPaths: ReadonlyArray<string>;
+	readonly optimistic: boolean;
 	readonly tsdoc: {
 		readonly suppressWarnings: ReadonlyArray<WarningSuppressionRule>;
 		readonly tagDefinitions: ReadonlyArray<TsdocTagDefinition>;
 	};
 }
 
+/** Resolve `"auto"` against the environment; explicit booleans pass through. */
+function resolveOptimistic(
+	value: MetaOptions["optimistic"],
+	env: { CI?: string | undefined; GITHUB_ACTIONS?: string | undefined },
+): boolean {
+	if (value === true || value === false) return value;
+	return !(env.CI || env.GITHUB_ACTIONS);
+}
+
 /** Fill defaults so downstream code never branches on undefined. */
-export function normalizeMetaOptions(meta: MetaOptions): NormalizedMeta {
+export function normalizeMetaOptions(
+	meta: MetaOptions,
+	env: { CI?: string | undefined; GITHUB_ACTIONS?: string | undefined } = process.env,
+): NormalizedMeta {
 	return {
 		localPaths: meta.localPaths ?? [],
+		optimistic: resolveOptimistic(meta.optimistic, env),
 		tsdoc: {
 			suppressWarnings: meta.tsdoc?.suppressWarnings ?? [],
 			tagDefinitions: meta.tsdoc?.tagDefinitions ?? [],

@@ -49,7 +49,7 @@ npm run build:prod
 # writes dist/prod/npm/pkg — the tarball root, with a resolved manifest and built code
 ```
 
-`--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target prod` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish. Two further targets, `--target meta` and `--target exe`, are covered below.
+`--target dev` writes `dist/dev/pkg`, the local-link target with `catalog:`/`workspace:` specifiers preserved. `--target prod` writes `dist/prod/npm/pkg` with those specifiers resolved to concrete ranges, ready to publish — and emits the API Extractor api-model alongside it. A third target, `--target exe`, compiles SEA binaries and is covered below.
 
 Every build emits per-module JavaScript alongside a single rolled-up, self-contained `.d.ts` per public entry. Each entry's declaration file pulls in every re-exported type, so a consumer that infers a type from your public API never has to reach into a deep sibling module that no export subpath addresses.
 
@@ -87,22 +87,19 @@ With no `targets` map the build falls back to the single-`npm` group above.
 
 ## API Extractor meta
 
-The bundler generates an [API Extractor](https://api-extractor.com/) api-model from a package's type declarations. Two behaviors come online:
+`savvy build --target prod` generates an [API Extractor](https://api-extractor.com/) api-model from each prod group's resolved `.d.ts`. For every group it writes the bundle (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into `dist/prod/<group>/meta` as a release asset alongside `pkg/`, and copies the canonical group's bundle into any `localPaths` directories. Because it reads the prod build, the meta `package.json` carries concrete dependency versions rather than `catalog:`/`workspace:` specifiers.
 
-- `savvy build --target meta` runs API Extractor over the dev build's `.d.ts` — no tsdown build, so it depends only on a prior `--target dev`. It writes the api-model (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into each `localPaths` directory.
-- `savvy build --target prod` additionally emits the same bundle into `dist/prod/npm/meta` as a release asset alongside `pkg/`.
+The `meta` field on `defineBuild` is tri-state:
 
-The `meta` field on `defineBuild` is tri-state and controls these:
-
-- **Omitted** (or `undefined`) — generation runs with default options. `--target meta` works with no configuration and `--target prod` emits the meta asset. This is the default; you do not need a `meta` field to use `--target meta`.
-- **An object** — override the defaults: `localPaths` (directories the api-model is copied into on `--target meta`) and `tsdoc` (warning suppression and custom tags).
-- **`false`** — opt out entirely; both `--target meta` and the prod meta asset become no-ops.
+- **Omitted** (or `undefined`) — generation runs with default options. This is the default; you do not need a `meta` field for `--target prod` to emit the api-model.
+- **An object** — override the defaults: `localPaths` (directories the canonical api-model is copied into), `tsdoc` (warning suppression and custom tags) and `optimistic` (see below).
+- **`false`** — opt out entirely; the prod meta asset becomes a no-op.
 
 ```ts
 const config = defineBuild({
   format: ["esm"],
   meta: {
-    // directories the generated api-model is copied into on `--target meta`
+    // directories the generated api-model is copied into
     localPaths: ["../mcp/models/@savvy-web/bundler"],
     tsdoc: {
       suppressWarnings: [{ messageId: "ae-undocumented" }],
@@ -114,6 +111,16 @@ const config = defineBuild({
 // Or opt out of api-model generation altogether:
 // const config = defineBuild({ meta: false });
 ```
+
+`optimistic` (`"auto"`, the default, or a boolean) forward-looks the meta bundle's own `version` and its workspace-sibling dependency versions to their next release version from pending changesets. `"auto"` is off under CI (`CI` or `GITHUB_ACTIONS` set) and on locally, so a locally generated bundle matches what the CI release build would emit. Set it to `true` or `false` to pin the behavior:
+
+```ts
+const config = defineBuild({
+  meta: { optimistic: false }, // always use the current package.json versions
+});
+```
+
+`--target meta` is deprecated: it warns and no-ops. Generate the api-model with `--target prod` instead.
 
 ## Executable binaries
 
@@ -268,7 +275,7 @@ const config = defineBuild({
 ## Features
 
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
-- **Four build targets** — `dev` for local linking, `npm` for a resolved publishable manifest, `meta` for an API Extractor api-model and `exe` for SEA binaries, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
+- **Build targets** — `dev` for local linking, `prod` for a resolved publishable manifest (which also emits an API Extractor api-model) and `exe` for SEA binaries, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
 - **Bundled declarations** — per-module JavaScript with a single rolled-up `.d.ts` per public entry, so re-exported types stay reachable through your published export subpaths.
 - **Shared tsconfig base** — extend `@savvy-web/bundler/ecma.json` for the ESNext/NodeNext/strict settings the build expects.
 - **Manifest resolution** — `catalog:` and `workspace:` specifiers are resolved against the workspace for the published target, and preserved for the linked dev target.
@@ -295,7 +302,7 @@ const config = defineBuild({
 
 ## Turbo tasks
 
-`pnpm turbo run build:meta` regenerates api-models into the `localPaths` configured in each package's `savvy.build.ts`, reading the dev build's `dist/dev/pkg` dts; it depends on `build:dev` and is intentionally uncached because it writes outside the package's own cache scope.
+`pnpm turbo run build:prod` produces the publishable output and the api-model bundle in one pass, writing the canonical group's api-model into the `localPaths` configured in each package's `savvy.build.ts`. The standalone `build:meta` task is deprecated — its `--target meta` now warns and no-ops.
 
 ## License
 

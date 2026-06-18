@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-16
-last-synced: 2026-06-16
+updated: 2026-06-18
+last-synced: 2026-06-18
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -81,8 +81,8 @@ export default defineBuild({
 
 - **No bin.** `package.json` scripts run the file directly: `"build:dev": "node savvy.build.ts --target dev"`, `"build:prod": "node savvy.build.ts --target prod"`.
 - **Self-execution** is gated on `import.meta.main` at the *file* (so `run.ts` performs the gate with access to the caller's `import.meta`; `defineBuild` in `config.ts` stays pure). Imported by the silk plugin or the cli for introspection, it returns a side-effect-free config object. Run directly, it parses `process.argv` and builds.
-- **Arg surface:** `--target <dev|prod|meta|exe>` (default `dev`) and `--watch` — the build *mode*, not a publish-target name. See `parseArgs` in `src/config.ts`.
-- **Meta config:** a tri-state `meta?: MetaOptions | false` (the `MetaOptions` type is re-exported from `@savvy-web/tsdown-plugins`). Omitted/`undefined` → meta generation runs with DEFAULT options (`--target meta` always works, `--target prod` emits the `meta/` bundle); an object → overrides; `false` → opt out (both targets no-op).
+- **Arg surface:** `--target <dev|prod|meta|exe>` (default `dev`) and `--watch` — the build *mode*, not a publish-target name. See `parseArgs` in `src/config.ts`. `--target meta` is **soft-deprecated** (a warn-and-no-op — see [Meta generation wiring](#meta-generation-wiring)); the flag, the `build:meta` turbo task and the package `build:meta` scripts are retained for now, full removal is a later branch.
+- **Meta config:** a tri-state `meta?: MetaOptions | false` (the `MetaOptions` type is re-exported from `@savvy-web/tsdown-plugins`). Omitted/`undefined` → meta generation runs with DEFAULT options during `--target prod`; an object → overrides (including `optimistic`, the next-version rewrite — see [Meta generation wiring](#meta-generation-wiring)); `false` → opt out (meta no-op).
 - **Exe and JSX config:** `defineBuild` also takes optional `exe?: ExeConfig | ExeConfig[]` (required by `--target exe`) and `jsx?: JsxConfig` (an explicit override; otherwise inferred from the package tsconfig). Both types are re-exported from `@savvy-web/tsdown-plugins`. See [Exe compilation wiring](#exe-compilation-wiring) and [JSX wiring](#jsx-wiring).
 - **Node baseline:** native TS type-stripping (Node 24.11+). No tsx fallback.
 
@@ -181,7 +181,7 @@ The bundler, `tsdown-plugins` and all eight library/host packages build via this
 - **Tier 2 — `@savvy-web/bundler`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from the **already-built `@savvy-web/tsdown-plugins`** (the workspace link). It cannot use its own `defineBuild`/`runBuild` (that would need an already-built bundler).
 - **Tier 3 — the eight downstream packages** (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`, `cli`, `mcp`, `silk`, `rspress-builder`) build via the normal **front-door** `defineBuild`/`runBuild`, because the bundler is built by the time they run. `rspress-builder` self-hosts through the front door even though it itself wraps `runBuild` — `definePlugin` returns a plain `BuildConfig`, so its own `savvy.build.ts` uses `defineBuild`/`runBuild` directly.
 
-Turbo config is mostly generic: the root `turbo.json` carries the generic `build:dev`/`build:prod`/`build:meta`/`types:check` tasks and its `*.ts` input glob already covers `savvy.build.ts`, so most child `turbo.json`s are just `{"tasks": {}}` (`extends ["//"]`). Two exceptions carry an override: mcp (its corpus pipeline) and the meta-emitting leaves, which override `build:meta` `outputs` to add their cross-package `localPaths` dirs (those cross-package paths can never be turbo-tracked outputs anyway, since they write into *other* packages) and add a `build:meta` SCRIPT.
+Turbo config is mostly generic: the root `turbo.json` carries the generic `build:dev`/`build:prod`/`build:meta`/`types:check` tasks and its `*.ts` input glob already covers `savvy.build.ts`, so most child `turbo.json`s are just `{"tasks": {}}` (`extends ["//"]`). `build:prod` `dependsOn` `["types:check", "build:dev"]` (meta now runs inside `--target prod`, so the old `build:meta` edge is gone), and its `inputs` include `$TURBO_ROOT$/.changeset/**` so a local changeset edit invalidates the cached prod build and recomputes the optimistic next-version meta. The retained `build:meta` task and the meta-emitting leaves' `build:meta` SCRIPT are now no-ops (the soft-deprecation); they survive only until a follow-up branch removes them.
 
 The two escape-hatch (tier 1/2) `savvy.build.ts` files port the externals and prod-strip transform that the package needs; they call `buildTargetGroups` with no `meta`, so API Extractor never runs in a self-build. On `--target prod` both also emit the `dist/prod/targets.json` binding via `writeTargetsBinding(cwd, resolveTargets({ targets: { npm: true, github: true }, baseName: pkg.name }))` — one npm-named group, npm+github collapsed onto it — so a release consumer can resolve their publish targets the same way front-door packages do. The front-door tier-3 files use the corresponding `defineBuild` options.
 
@@ -215,14 +215,14 @@ The shipped presets (and the silk convention presets) target TypeScript 6: they 
 dist/
   dev/                  # the dev TargetGroup (registry-less, local-link only)
     pkg/                # ← pnpm linkDirectory points HERE; clean publishable bytes
-    meta/               # staging outMetaDir for --target meta before copy into localPaths
   prod/
     targets.json        # the TargetResolution binding for the release action
     npm/                # one folder per distinct byte-variant group; npm is the single-target default
       pkg/              # the tarball root — transformed manifest + built code
-      meta/             # meta bundle (release assets) into the canonical group only, when config.meta is set
+      meta/             # meta bundle (release assets) — emitted per group; canonical group also copies into localPaths
     github/             # a second byte-variant — e.g. a rescoped @scope/name manifest
       pkg/
+      meta/             # each prod group gets its own meta bundle, carrying that group's package name
 ```
 
 - **`pkg/` *is* the tarball** — nothing to ignore. This retires rslib's "mix meta files into `dist/npm` and exclude them via package.json ignore patterns" hack.
@@ -234,19 +234,20 @@ dist/
 
 ## Meta generation wiring
 
-The bundler is pure wiring over `generateMeta` from `@savvy-web/tsdown-plugins` (all the behavior lives there — see `../tsdown-plugins/architecture.md`); the bundler decides *when* and *where*.
+The bundler is pure wiring over `generateMeta` from `@savvy-web/tsdown-plugins` (all the behavior lives there — see `../tsdown-plugins/architecture.md`); the bundler decides *when* and *where*. **Meta generation now runs inside `--target prod`**, reading each prod group's own emitted `.d.ts` and `package.json` — it still does **not** re-run the tsdown bundle, but it is no longer a standalone decoupled target.
 
-- **`--target meta`** runs `generateMeta` over the already-built `dist/dev/pkg` dts (API Extractor over the emitted dev `.d.ts`; there is **no** tsdown build), stages the bundle in `dist/dev/meta` and copies the resulting api-model into the `localPaths` configured in `config.meta`. This is why the `build:meta` turbo task depends only on `build:dev`. It resolves `normalizeMetaOptions(config.meta ?? {})` so an omitted `meta` uses defaults; `meta: false` makes it a graceful no-op.
-- **`--target prod`** additionally emits a `meta/` release-asset bundle (empty `localPaths`) unless `config.meta` is `false` — so by default meta ships as a publish asset, not mixed into `pkg/`. With multiple prod groups, meta is emitted **once into the canonical group's dir** — the group whose resolved name matches the package name, else the first group. Renamed variants share the canonical group's api-model.
+- **Why prod, not dev (the load-bearing reason this branch exists).** The dev build keeps `catalog:`/`workspace:*` specifiers (`devManifest: "preserve"`), so the old `--target meta` copied an UNRESOLVED `package.json` into `localPaths`, breaking Twoslash/mcp API docs. The prod manifest is catalog-resolved, so generating meta against the prod `pkg/package.json` ships the consumer a working virtual TS env.
+- **`--target meta` is soft-deprecated** to a warn-and-no-op (`run.ts` writes a deprecation line and returns). External escape-hatch scripts that still pass it do not hard-fail; the flag, the `build:meta` turbo task and the package `build:meta` scripts are retained until a follow-up branch removes them.
+- **`--target prod` emits a `meta/` bundle for EVERY prod group**, each generated against its own `dist/prod/<group>/pkg` so the `.api.json` and bundle `package.json` carry that group's package name (non-canonical groups like a GitHub-rescoped variant are read by downstream consumers too). Only the **canonical** group — the one whose resolved name matches the package, else the first group — copies its bundle into `config.meta.localPaths`; the rest emit into their `meta/` dir only. It resolves `normalizeMetaOptions(config.meta ?? {})` so an omitted `meta` uses defaults; `meta: false` skips meta; an exe-only package (no dts) is skipped.
 - **The meta bundle is a self-contained "virtual TS env" trio.** Each `meta/` dir (and each mirrored `localPaths` copy) carries `<unscoped>.api.json` + the final transformed `package.json` + a PORTABLE derived `tsconfig.json` (compilerOptions-only, no absolute paths or emit settings) — everything a downstream shiki/Twoslash or API-doc consumer needs to rehydrate the package's types. The `tsdoc-metadata.json` is a published-package artifact and ships in `pkg/`, NOT in the meta bundle. The trio assembly lives in `@savvy-web/tsdown-plugins`' `src/meta/`.
-- **Decoupling:** meta is split from the prod build on purpose. `build:prod` emits the `meta/` asset; `savvy build --target meta` emits the api-model into other packages' `localPaths` and depends only on `build:dev`. Neither path re-runs the bundle.
+- **Optimistic next-version rewrite.** When `meta.optimistic` resolves true, the bundler resolves every workspace package's NEXT release version from pending changesets once (`resolveNextVersions`, injectable via `RunOptions.resolveNextVersions`) and threads a `manifestTransform` into `generateMeta` that forward-looks the bundle's own `version` and any workspace-sibling dep version to their next value. It rewrites the META bundle ONLY — never the published `dist/prod/<group>/pkg/package.json`. `optimistic: "auto"` (the default) resolves to `false` under CI (`CI`/`GITHUB_ACTIONS` set) and `true` locally, so a local bundle matches the CI release build. The resolver/transform live in `@savvy-web/tsdown-plugins` (see `../tsdown-plugins/architecture.md`).
 - **`deriveExportPaths`** (a `run.ts` helper) recovers export keys from the package `exports` map to drive the per-entry extraction.
 
 **Known limitation:** `deriveExportPaths` handles only plain string exports. *Conditional* exports (object-valued entries) and nested subpaths like `./foo/bar` fall through to a heuristic. Every current Silk package uses plain string exports, so nothing triggers it today, but a package with conditional exports would need this hardened first.
 
-### The build:meta turbo task
+### The build graph after meta moved into prod
 
-`turbo.json` defines `build:meta` with `dependsOn: ["build:dev"]`, `cache: false`, `outputs: []`. It is **intentionally uncached** because it writes into *other* packages' `localPaths` — outputs outside its own cache scope — so turbo cannot track or restore them correctly. See `README.md` for the consumer-facing description.
+Because the `localPaths` copy now happens during `--target prod`, mcp's `generate:api-docs` `dependsOn` the four leaves' `#build:prod` (was `#build:meta`), and the root `build:prod` `dependsOn` `["types:check", "build:dev"]` (the dead `build:meta` edge dropped). `build:prod` `inputs` add `$TURBO_ROOT$/.changeset/**` so editing a changeset busts the cached prod build and recomputes the optimistic meta. The `build:meta` task definition + package scripts remain as no-ops (the soft-deprecation). See `../mcp/architecture.md` for the api-docs pipeline.
 
 ## JSX wiring
 
@@ -291,8 +292,8 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 
 ## Boundaries and Invariants
 
-- **The bundler owns no build behavior.** Every behavior is a helper in `@savvy-web/tsdown-plugins`; the bundler only wires them. Anything the front door does, a hand-written `tsdown.config.ts` can do by importing the same helper. This includes meta: `generateMeta` lives in tsdown-plugins; the bundler only decides when (`--target meta`/`--target prod`) and where (`localPaths`/`dist/prod/npm/meta`).
-- **Meta is decoupled from the bundle.** Neither `--target meta` nor the npm meta-asset path re-runs the tsdown build — they run API Extractor over the already-emitted dev `.d.ts`. `build:meta` is uncached and depends only on `build:dev`.
+- **The bundler owns no build behavior.** Every behavior is a helper in `@savvy-web/tsdown-plugins`; the bundler only wires them. Anything the front door does, a hand-written `tsdown.config.ts` can do by importing the same helper. This includes meta: `generateMeta`/`resolveNextVersions`/`rewriteMetaVersions` live in tsdown-plugins; the bundler only decides when (inside `--target prod`) and where (per group into `dist/prod/<group>/meta`, the canonical group also into `localPaths`), and whether to apply the optimistic rewrite.
+- **Meta runs over already-emitted `.d.ts`, never re-bundles.** `--target prod` runs API Extractor over each prod group's emitted `.d.ts` and reads its catalog-resolved `package.json` — no tsdown build re-runs. It generates meta against the PROD output (not dev) so the bundle `package.json` carries resolved specifiers. `--target meta` is a soft-deprecated no-op; the optimistic next-version rewrite touches the meta bundle only, never the published `pkg/package.json`.
 - **The bundler's responsibility ends at `dist/{group}/pkg` plus `dist/prod/targets.json`.** Registry upload + attestation (Targets) are the release action's job; it consumes the binding to learn which built group each Target deploys. `resolveTargets` is the single source of truth for the derivation — the bundler never reimplements it.
 - **Multi-target derivation is live; the legacy-array path is effectively dead in-repo.** Every in-repo package — including the two self-hosting builders — declares the Record-map `publishConfig.targets`, so `--target prod` derives prod groups from it and every package emits a `dist/prod/targets.json` binding (the front door via `runBuild`, the self-hosting builders via their escape-hatch `writeTargetsBinding` call). The array-valued `targets` fallback (the old rslib-builder shape) still reads as `undefined` and falls back to the single-`npm` default, but no in-repo package exercises it.
 - **Dual-format is opt-in.** `format` defaults to esm-only. The bundler surfaces `defineBuild({ format })` and forwards it; the actual format/interop/manifest behavior is `tsdown-plugins`'.

@@ -109,14 +109,14 @@ Generated docs are `source: generated` entries in the corpus. They are produced 
 
 **Targets.** `lib/scripts/api-targets.ts` declares the four in-monorepo library packages that are generation targets: `silk-effects`, `templates`, `github-action-effects` and `github-action-builder`. `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle; excluding mcp keeps the build subgraph acyclic.
 
-**Generator.** `lib/scripts/generate-api-docs.ts` reads each target's `.api.json` model from `lib/models/<pkg>/` (where the bundler's `--target meta` copies it via each leaf's `meta.localPaths`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `public/content/packages/<dir>/api/` (gitignored). The two injected services are a `FrontmatterRenderer` that builds silk YAML front-matter (`source: generated`, `tier: packages`, empty `related`) and a `RouteFormatter` that maps item refs to `silk://packages/<dir>/api/<kind>/<slug>` URIs.
+**Generator.** `lib/scripts/generate-api-docs.ts` reads each target's `.api.json` model from `lib/models/<pkg>/` (where the bundler's `--target prod` copies it from the canonical group's meta bundle via each leaf's `meta.localPaths`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `public/content/packages/<dir>/api/` (gitignored). The two injected services are a `FrontmatterRenderer` that builds silk YAML front-matter (`source: generated`, `tier: packages`, empty `related`) and a `RouteFormatter` that maps item refs to `silk://packages/<dir>/api/<kind>/<slug>` URIs.
 
 Generated docs carry empty `related` by design: no committed hand-authored doc may reference a generated `packages/*/api/*` id, because a bare install skips generation and would leave dangling references in `build:catalog`. The related-graph boost (see [Search index](#search-index)) therefore operates only on hand-authored links. The generator is **skip-tolerant**: if a target's model is absent it logs `SKIP` and exits 0, so a bare `pnpm install` never fails on a missing model. The body-budget guard in `lib/scripts/compile.ts` exempts `source: generated` docs from the per-tier byte-size warning — generated pages are split per API item, not editorially constrained.
 
 **Turbo orchestration.** `packages/mcp/turbo.json` (extends `//`) declares the task graph:
 
 ```text
-@savvy-web/{silk-effects,templates,github-action-effects,github-action-builder}#build:meta
+@savvy-web/{silk-effects,templates,github-action-effects,github-action-builder}#build:prod
       ↓ (copy *.api.json into mcp/lib/models/<pkg>/ via meta.localPaths)
 @savvy-web/mcp#generate:api-docs
       ↓ (write public/content/packages/*/api/** — gitignored)
@@ -125,7 +125,7 @@ Generated docs carry empty `related` by design: no committed hand-authored doc m
 @savvy-web/mcp#build:dev / build:prod
 ```
 
-Under the bundler the four leaves emit their API Extractor model only via a separate `savvy build --target meta` step, **not** during `build:prod`, so `generate:api-docs` `dependsOn` the four leaves' explicit `#build:meta` tasks (not `^build:meta`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). It has **no** workspace edge for the renderer itself: `api-extractor-llms` is an external npm package the generator pulls from `node_modules`. `build:catalog` depends on `generate:api-docs`; mcp's own `build:dev`/`build:prod` depend on `build:catalog`. `build:catalog`'s only declared output is the tracked `public/content/manifest.json`, and its inputs exclude that manifest so a manifest rewrite does not re-trigger it. See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
+Under the bundler the four leaves now emit their API Extractor model **during `build:prod`** (meta moved into `--target prod`; the old standalone `build:meta` is a soft-deprecated no-op), so `generate:api-docs` `dependsOn` the four leaves' explicit `#build:prod` tasks (not `^build:prod`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). It has **no** workspace edge for the renderer itself: `api-extractor-llms` is an external npm package the generator pulls from `node_modules`. `build:catalog` depends on `generate:api-docs`; mcp's own `build:dev`/`build:prod` depend on `build:catalog`. `build:catalog`'s only declared output is the tracked `public/content/manifest.json`, and its inputs exclude that manifest so a manifest rewrite does not re-trigger it. See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
 
 ### The build-time compiler
 

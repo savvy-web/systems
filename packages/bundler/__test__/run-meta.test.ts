@@ -3,14 +3,10 @@ import { defineBuild } from "../src/config.js";
 import { runBuild } from "../src/run.js";
 
 describe("runBuild meta target", () => {
-	it("runs generateMeta (not a tsdown build) for --target meta", async () => {
-		const generateMeta = vi.fn<
-			(o: {
-				dtsDir: string;
-				localPaths: ReadonlyArray<string>;
-			}) => Promise<{ apiJsonPath: string; apiJsonFilename: string }>
-		>(async () => ({ apiJsonPath: "/x/fixture.api.json", apiJsonFilename: "fixture.api.json" }));
+	it("--target meta is a deprecated no-op (does not run generateMeta or a build)", async () => {
+		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
 		const build = vi.fn(async () => {});
+		const out: string[] = [];
 		await runBuild(defineBuild({ meta: { localPaths: ["../models"] } }), {
 			cwd: "/abs/pkg",
 			argv: ["--target", "meta"],
@@ -20,40 +16,17 @@ describe("runBuild meta target", () => {
 			readVersion: () => "1.0.0",
 			readExports: () => ({ ".": "./src/index.ts" }),
 			writeTsconfig: () => "/fake/tsconfig.json",
-			writeOutput: () => {},
+			writeOutput: (o) => out.push(o.content),
 		});
+		expect(generateMeta).not.toHaveBeenCalled();
 		expect(build).not.toHaveBeenCalled();
-		expect(generateMeta).toHaveBeenCalledTimes(1);
-		const arg = generateMeta.mock.calls[0]?.[0];
-		expect(arg?.dtsDir).toContain("dist/dev");
-		expect(arg?.localPaths).toEqual(["../models"]);
+		expect(out.join("\n")).toMatch(/deprecated/i);
 	});
 
-	it("runs generateMeta with default options when no meta is configured (default-on)", async () => {
-		const generateMeta = vi.fn<
-			(o: { localPaths: ReadonlyArray<string> }) => Promise<{ apiJsonPath: string; apiJsonFilename: string }>
-		>(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
-		const build = vi.fn(async () => {});
-		await runBuild(defineBuild({}), {
-			cwd: "/abs/pkg",
-			argv: ["--target", "meta"],
-			buildTargetGroups: build,
-			generateMeta,
-			readPackageName: () => "@scope/fixture",
-			readVersion: () => "1.0.0",
-			readExports: () => ({ ".": "./src/index.ts" }),
-			writeTsconfig: () => "/fake/tsconfig.json",
-			writeOutput: () => {},
-		});
-		expect(generateMeta).toHaveBeenCalledTimes(1);
-		// Default meta options: empty localPaths, default tsdoc.
-		expect(generateMeta.mock.calls[0]?.[0].localPaths).toEqual([]);
-		expect(build).not.toHaveBeenCalled();
-	});
-
-	it("no-ops on --target meta when meta is false", async () => {
+	it("--target meta is a no-op even when meta: false (unified deprecation path)", async () => {
 		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
 		const build = vi.fn(async () => {});
+		const out: string[] = [];
 		await runBuild(defineBuild({ meta: false }), {
 			cwd: "/abs/pkg",
 			argv: ["--target", "meta"],
@@ -63,10 +36,11 @@ describe("runBuild meta target", () => {
 			readVersion: () => "1.0.0",
 			readExports: () => ({ ".": "./src/index.ts" }),
 			writeTsconfig: () => "/fake/tsconfig.json",
-			writeOutput: () => {},
+			writeOutput: (o) => out.push(o.content),
 		});
 		expect(generateMeta).not.toHaveBeenCalled();
 		expect(build).not.toHaveBeenCalled();
+		expect(out.join("\n")).toMatch(/deprecated/i);
 	});
 
 	it("falls back to the first group's dir for meta when no group is named after the package", async () => {
@@ -129,5 +103,80 @@ describe("runBuild meta target", () => {
 		});
 		expect(build).toHaveBeenCalledTimes(1);
 		expect(generateMeta).not.toHaveBeenCalled();
+	});
+
+	it("--target prod runs generateMeta once per prod group, canonical group gets localPaths", async () => {
+		const calls: Array<{ dtsDir: string; outMetaDir: string; localPaths: ReadonlyArray<string> }> = [];
+		const generateMeta = vi.fn(async (o: { dtsDir: string; outMetaDir: string; localPaths: ReadonlyArray<string> }) => {
+			calls.push({ dtsDir: o.dtsDir, outMetaDir: o.outMetaDir, localPaths: o.localPaths });
+			return { apiJsonPath: "x", apiJsonFilename: "x" };
+		});
+		const build = vi.fn(async () => {});
+		await runBuild(defineBuild({ meta: { localPaths: ["../models"] } }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: build,
+			generateMeta,
+			readPackageName: () => "@scope/pkg",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeTsconfig: () => "/fake/tsconfig.json",
+			writeOutput: () => {},
+			writeTargetsBinding: () => "binding",
+			// npm (true, name=@scope/pkg) + github (renamed) => two groups.
+			readPublishTargets: () => ({ npm: true, github: "@scope/pkg-gh" }),
+			resolveNextVersions: async () => ({ root: "/abs", versions: new Map() }),
+		});
+		expect(generateMeta).toHaveBeenCalledTimes(2);
+		const npm = calls.find((c) => c.outMetaDir.includes("/npm/"));
+		const gh = calls.find((c) => c.outMetaDir.includes("/github/"));
+		expect(npm?.localPaths).toEqual(["../models"]); // canonical (name matches @scope/pkg)
+		expect(gh?.localPaths).toEqual([]); // non-canonical: no localPaths copy
+	});
+
+	it("--target prod passes a manifestTransform when optimistic resolves true", async () => {
+		let transformApplied: Record<string, unknown> | undefined;
+		const generateMeta = vi.fn(
+			async (o: { manifestTransform?: ((p: Record<string, unknown>) => Record<string, unknown>) | undefined }) => {
+				transformApplied = o.manifestTransform?.({ name: "@scope/pkg", version: "0.0.0" });
+				return { apiJsonPath: "x", apiJsonFilename: "x" };
+			},
+		);
+		await runBuild(defineBuild({ meta: { optimistic: true } }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: vi.fn(async () => {}),
+			generateMeta,
+			readPackageName: () => "@scope/pkg",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeTsconfig: () => "/fake/tsconfig.json",
+			writeOutput: () => {},
+			writeTargetsBinding: () => "binding",
+			resolveNextVersions: async () => ({ root: "/abs", versions: new Map([["@scope/pkg", "1.0.0"]]) }),
+		});
+		expect(transformApplied?.version).toBe("1.0.0");
+	});
+
+	it("--target prod does not resolve next versions when optimistic is false", async () => {
+		const resolveNextVersions = vi.fn(async () => ({ root: "/abs", versions: new Map() }));
+		const generateMeta = vi.fn(async (o: { manifestTransform?: unknown }) => {
+			expect(o.manifestTransform).toBeUndefined();
+			return { apiJsonPath: "x", apiJsonFilename: "x" };
+		});
+		await runBuild(defineBuild({ meta: { optimistic: false } }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: vi.fn(async () => {}),
+			generateMeta,
+			readPackageName: () => "@scope/pkg",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeTsconfig: () => "/fake/tsconfig.json",
+			writeOutput: () => {},
+			writeTargetsBinding: () => "binding",
+			resolveNextVersions,
+		});
+		expect(resolveNextVersions).not.toHaveBeenCalled();
 	});
 });

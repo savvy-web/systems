@@ -18,6 +18,8 @@ export type {
 } from "./build/target-groups.js";
 export { deriveTargetGroupOptions } from "./build/target-groups.js";
 export { resolveManifest } from "./catalog/resolve-catalogs.js";
+export type { NextVersions } from "./changesets/next-versions.js";
+export { resolveNextVersions } from "./changesets/next-versions.js";
 export type { ValidationInput } from "./config-validation/ConfigValidator.js";
 export { ConfigValidator } from "./config-validation/ConfigValidator.js";
 export { ConfigValidatorLive } from "./config-validation/ConfigValidatorLive.js";
@@ -55,6 +57,7 @@ export type {
 export { normalizeMetaOptions } from "./meta/config.js";
 export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
 export { generateMeta } from "./meta/generate.js";
+export { rewriteMetaVersions } from "./meta/optimistic.js";
 export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
 export { TsconfigResolver, resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
 export type { Formatter, FormatterContext, RenderedOutput } from "./report/formatters/index.js";
