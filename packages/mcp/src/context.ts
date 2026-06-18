@@ -18,7 +18,8 @@ export interface McpContext {
 		| WorkspaceRoot
 		| Turbo.TurboInspector
 		| Changesets.BranchAnalyzer
-		| Changesets.ConfigInspector,
+		| Changesets.ConfigInspector
+		| Changesets.ReleasePlanner,
 		WorkspaceDiscoveryError
 	>;
 	readonly cwd: string;

@@ -4,8 +4,8 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-18
+last-synced: 2026-06-18
 related:
   - ../silk/architecture.md
   - ../cli/architecture.md
@@ -69,6 +69,7 @@ Two `Changesets` decisions are load-bearing for consumers:
 
 - **The `ConfigInspector` release-surface fallback.** When `.changeset/config.json` declares no explicit `packages` record, `ConfigInspector.inspect` does not return empty attribution — it builds package scopes from the discovered workspace packages that are a release surface, determined by calling the pure `SilkPublishability.detect` per package (the same publishConfig-driven rule the analyzer uses). A package with no publishConfig (e.g. a bare private root) is excluded. The changeset `ignore` list is intentionally NOT consulted — an ignored-but-configured package is still a valid changeset target. This is why `ConfigInspectorLive` carries a `FileSystem` requirement (it reads each package's `package.json` and `dist/prod/targets.json`). See the `buildFallbackScopes` helper in `src/changesets/services/config-inspector.ts`.
 - **The resolved-output result types are Effect `Schema`, not interfaces.** `BranchAnalyzer` and `ConfigInspector` define their result shapes as `Schema.Struct` (all exported from the root) with the public TypeScript interfaces derived from them. The single source of truth lets `@savvy-web/mcp` embed these schemas directly in its `changeset_inspect` tool result and round-trip them through the effect→zod bridge. See `../mcp/architecture.md`.
+- **`ReleasePlanner` drives the genuine `@changesets` engine, not hand-rolled logic.** `ReleasePlanner` (`src/changesets/services/release-planner.ts`, closes #125) backs changeset preview and apply with the real `@changesets/get-release-plan` + `@changesets/apply-release-plan` machinery, so all formatting — dependency tables included — comes from the engine and no changesets internals are re-implemented. Its `preview(root)` is non-destructive: it runs the real `applyReleasePlan` against a throwaway temp directory and reads the rendered CHANGELOG blocks back, never mutating the repo. Its `apply(root, { dryRun })` is the destructive native release that the `savvy changeset version` CLI command now calls instead of shelling out to a `changeset` binary — it bumps versions, transforms each touched CHANGELOG via `ChangelogTransformer` and updates configured versionFiles through `ConfigInspector` + `VersionFiles`. Workspace discovery sits behind one `buildPackages` seam over `@manypkg/get-packages`, the deliberate boundary for a later swap to an Effect-native stack. `ReleasePlannerLive` requires `ConfigInspector`; its result schemas live in `src/changesets/schemas/release-plan.ts`. `apply` is intentionally NOT exposed over MCP — only the read-only `preview` is (see `../mcp/architecture.md` and `../cli/architecture.md`).
 
 ## Module Architecture
 
@@ -285,7 +286,7 @@ This pattern is used for `ManagedSection` results (`SectionDiff`, `SyncResult`, 
   └── yaml-effect (direct)
 ```
 
-`effect` and `@effect/platform` are peers (consumers already depend on them); the four foundation Effect libraries are direct dependencies. See `package.json` for the complete dependency list.
+`effect` and `@effect/platform` are peers (consumers already depend on them); the four foundation Effect libraries are direct dependencies. The `Changesets` namespace also depends on the genuine changesets engine at runtime — `@changesets/get-release-plan`, `@changesets/apply-release-plan`, `@changesets/config` and `@manypkg/get-packages` back `ReleasePlanner` (see the third load-bearing bullet in [Tool Namespaces](#tool-namespaces-changesets-commitlint-lint)). See `package.json` for the complete dependency list.
 
 **Runtime requirement:** Consumers must provide a platform layer (`NodeContext.layer`, `BunContext.layer`, etc.) for modules that use `FileSystem` or `CommandExecutor`.
 

@@ -105,6 +105,13 @@ export type { GitHubServiceShape } from "./services/github.js";
 export { GitHubService, GitHubServiceBase } from "./services/github.js";
 export type { MarkdownServiceShape } from "./services/markdown.js";
 export { MarkdownService, MarkdownServiceBase } from "./services/markdown.js";
+export type { ReleasePlannerShape } from "./services/release-planner.js";
+export {
+	ReleasePlanner,
+	ReleasePlannerBase,
+	ReleasePlannerLive,
+	makeReleasePlannerTest,
+} from "./services/release-planner.js";
 export type { WorkspaceSnapshot, WorkspaceSnapshotReaderShape } from "./services/workspace-snapshot.js";
 export {
 	WorkspaceSnapshotReader,
@@ -130,6 +137,8 @@ export {
 	GitHubApiErrorBase,
 	MarkdownParseError,
 	MarkdownParseErrorBase,
+	ReleasePlanError,
+	ReleasePlanErrorBase,
 	VersionFileError,
 	VersionFileErrorBase,
 } from "./errors.js";
@@ -166,6 +175,22 @@ export { ChangesetOptionsSchema, RepoSchema } from "./schemas/options.js";
 export type { PackageScope } from "./schemas/package-scope.js";
 export { GlobSchema, PackageScopeSchema, PackagesRecordSchema } from "./schemas/package-scope.js";
 export { NonEmptyString, PositiveInteger } from "./schemas/primitives.js";
+export type {
+	AppliedRelease,
+	BumpType,
+	ChangesetPreview,
+	PendingChangeset,
+	PreviewRelease,
+} from "./schemas/release-plan.js";
+export {
+	AppliedReleaseEntrySchema,
+	AppliedReleaseSchema,
+	BumpTypeSchema,
+	ChangesetPreviewSchema,
+	PendingChangesetSchema,
+	PreviewReleaseSchema,
+	VersionFileUpdateRecordSchema,
+} from "./schemas/release-plan.js";
 export type { LegacyVersionFileConfig, VersionFileConfig } from "./schemas/version-files.js";
 export {
 	JsonPathSchema,

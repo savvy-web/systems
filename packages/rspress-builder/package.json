@@ -35,7 +35,7 @@
 		"@savvy-web/tsdown-plugins": "workspace:*"
 	},
 	"devDependencies": {
-		"@tsdown/css": "^0.22.2",
+		"@tsdown/css": "^0.22.3",
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
@@ -45,7 +45,7 @@
 	},
 	"peerDependencies": {
 		"@rspress/core": "^2.0.0",
-		"@tsdown/css": "^0.22.2",
+		"@tsdown/css": "^0.22.3",
 		"react": "catalog:silkPeers",
 		"react-dom": "catalog:silkPeers"
 	},

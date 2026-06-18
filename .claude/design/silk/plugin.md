@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-18
+last-synced: 2026-06-18
 completeness: 88
 related:
   - ./architecture.md
@@ -89,6 +89,8 @@ The plugin gives the agent three channels onto Biome — the suite's linter/form
 The `config` skill (`skills/config/SKILL.md`, agent-internal, `user-invocable: false`) is the `changeset-manager` agent's window onto changeset attribution. It calls the shared `savvy-mcp` server's `changeset_inspect` MCP tool directly (`allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_inspect`), with `mode: "branch"` as the primary create-mode classification call and `mode: "config"` as the secondary config-only view (a third `mode: "classify"` resolves an arbitrary path to its owning package). The `changeset-manager` agent holds the same tool grant plus `mcp__plugin_silk_savvy-mcp__changeset_validate` (structured changeset-file validation), and reads the tool's `structuredContent` (the `BranchAnalysis` / `InspectedConfig` shapes); the `dependencies` skill's "when to invoke" check reads the same `mode: "branch"` result. See `../mcp/architecture.md` for the tool half.
 
 The load-bearing reason it uses the MCP tool rather than the CLI: the CLI's `--json` output is prefixed with an `Effect.log` `[…] INFO (#NN):` line that breaks a naive `JSON.parse` of stdout. The structured MCP result has no such framing, removing the stdout-parsing fragility. Error handling also simplifies — the tool surfaces `ConfigurationError` / `GitError` as MCP tool errors (no exit codes, no stderr to parse), and there is no "CLI not installed" branch because the MCP server ships the implementation. The `savvy changeset analyze-branch` / `config show` / `classify` / `release-surface` inspection commands have been **removed** from the CLI; the `changeset_inspect` / `changeset_validate` MCP tools are the inspection surface. The CLI keeps only `lint` / `validate-file` (used by the bash PostToolUse hook) plus `check` / `transform` / `version` / `config validate` / `deps`.
+
+The model-invocable `changeset-preview` skill (`skills/changeset-preview/SKILL.md`) is the read-only release-preview front door: it renders directly from the `changeset_preview` MCP tool (`allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_preview`), which runs the genuine changesets engine and returns the version bumps plus rendered CHANGELOG blocks. The skill's previous hand-rolled multi-step CHANGELOG-merge algorithm is gone — it now presents the tool's structured result and markdown transcript, with the only caveat narrowed to the inherent commit-metadata gap. See `../mcp/architecture.md` for the tool.
 
 ## Hook merge
 

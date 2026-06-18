@@ -37,7 +37,7 @@
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
-		"@tsdown/css": "^0.22.2",
+		"@tsdown/css": "^0.22.3",
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",

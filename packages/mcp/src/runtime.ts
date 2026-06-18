@@ -36,13 +36,17 @@ const DepsLive = Layer.mergeAll(
 	VersioningStrategyLive.pipe(Layer.provide(ChangesetConfigReaderLive)),
 );
 
-const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(Layer.provideMerge(Changesets.ConfigInspectorLive));
+const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
+	Layer.provideMerge(Changesets.ReleasePlannerLive),
+	Layer.provideMerge(Changesets.ConfigInspectorLive),
+);
 
 /**
  * The MCP runtime layer. Provides `SilkWorkspaceAnalyzer`, `WorkspaceRoot`,
- * `Turbo.TurboInspector`, `Changesets.BranchAnalyzer`, and
- * `Changesets.ConfigInspector`; requires `CommandExecutor` + `FileSystem` +
- * `Path` from the host's platform layer (`NodeContext.layer` in bin.ts).
+ * `Turbo.TurboInspector`, `Changesets.BranchAnalyzer`,
+ * `Changesets.ConfigInspector`, and `Changesets.ReleasePlanner`; requires
+ * `CommandExecutor` + `FileSystem` + `Path` from the host's platform layer
+ * (`NodeContext.layer` in bin.ts).
  *
  * `TurboInspectorLive` is fed its own `ToolDiscoveryLive`, whose
  * `PackageManagerDetector` + `WorkspaceRoot` requirements are satisfied by

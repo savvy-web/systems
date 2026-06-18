@@ -10,13 +10,13 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "6366ed13f51fe3ddf3397b6efec695456c029dcad753015ca08b6d81f08e9620",
-			"recordedAt": "2026-06-14"
+			"hash": "2e840fc0e4007e4625bdf5ff05c647334dcdf99ba1151153cb005070a67744ac",
+			"recordedAt": "2026-06-18"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "625cfe5f9b46f694cef6c6ba944cee41318b7fd83d8f1622880b9c1ed8dd6eb3",
+			"hash": "e4096417f495829b68a0bd5a0a7e77196c7962f2bcc0009d2c2f6caa93fba6cb",
 			"recordedAt": "2026-06-18"
 		},
 		{
@@ -40,8 +40,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "27123e3f6736d34fd270cc13bb18481d765cc64cf4938ce7491a508c50d2cec7",
-			"recordedAt": "2026-06-13"
+			"hash": "53fb035c578d0cb242349b0da72368e1015af980acec496f1d5ce60a2a784fcf",
+			"recordedAt": "2026-06-18"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -52,8 +52,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk-effects/architecture.md",
-			"hash": "21c4076238cb5eba759e7df62a8e1a1ee97405d56a8d60cbe988c597b027e1db",
-			"recordedAt": "2026-06-12"
+			"hash": "3d3c2618c0f97b3d03b17191b75965ea2863385328a2a54036c7cfeee87f7a31",
+			"recordedAt": "2026-06-18"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -64,8 +64,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "a53bd9ad54d555be7fb4f4532f4ef79e9364d08b4dba7d4159ae5f5c49441394",
-			"recordedAt": "2026-06-13"
+			"hash": "c483d1b6de31f69936d77ff1f583192123d739dd00576d283c04f1d864ae4b46",
+			"recordedAt": "2026-06-18"
 		},
 		{
 			"source": "CLAUDE.md",

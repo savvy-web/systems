@@ -21,7 +21,8 @@
  *   `ConfigDiscoveryLive`, `ToolDiscoveryLive`, and `VersioningStrategyLive`
  *   (provided `ChangesetConfigReaderLive`).
  * - Changesets-namespace services — `Changesets.ConfigInspectorLive` (provided
- *   `ChangesetConfigReaderLive`), `Changesets.WorkspaceSnapshotReaderLive`, and
+ *   `ChangesetConfigReaderLive`), `Changesets.WorkspaceSnapshotReaderLive`,
+ *   `Changesets.ReleasePlannerLive` (provided `ConfigInspectorLive`), and
  *   `Changesets.BranchAnalyzerLive`, which shares the single `ConfigInspectorLive`
  *   instance built once via `provideMerge`.
  *
@@ -115,18 +116,22 @@ const BaseLive = Layer.mergeAll(
  * `Changesets.ConfigInspectorLive` needs `ChangesetConfigReader`,
  * `WorkspaceDiscovery`, and `FileSystem` (the last for its publishConfig-driven
  * fallback when no explicit `packages` record is configured);
- * `Changesets.BranchAnalyzerLive` needs `ConfigInspector`.
+ * `Changesets.BranchAnalyzerLive` needs `ConfigInspector`;
+ * `Changesets.ReleasePlannerLive` needs `ConfigInspector`.
  *
  * `ConfigInspectorLive` is built once via {@link Layer.provideMerge}: the merge
- * feeds that single `ConfigInspector` instance into `BranchAnalyzerLive` AND
- * re-exposes it for the surviving `config validate` handler that yields it
- * directly, so it is never constructed twice per run.
+ * feeds that single `ConfigInspector` instance into `ReleasePlannerLive` and
+ * `BranchAnalyzerLive` AND re-exposes it for the surviving `config validate`
+ * handler that yields it directly, so it is never constructed twice per run.
  *
  * `provideMerge(BaseLive)` feeds the remaining deps and re-exposes the base
  * services for handlers that yield them directly. `provideMerge(NodeContext.layer)`
  * supplies `FileSystem`, `Path`, and `CommandExecutor` to everything underneath.
  */
-const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(Layer.provideMerge(Changesets.ConfigInspectorLive));
+const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
+	Layer.provideMerge(Changesets.ReleasePlannerLive),
+	Layer.provideMerge(Changesets.ConfigInspectorLive),
+);
 
 const AppLive = Layer.mergeAll(ToolDiscoveryLive, VersioningStrategyLive, InspectorAndAnalyzerLive).pipe(
 	Layer.provideMerge(BaseLive),

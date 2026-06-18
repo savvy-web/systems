@@ -126,7 +126,7 @@ importers:
         specifier: catalog:silk
         version: 0.107.0(@effect/cluster@0.59.0(@effect/platform@0.96.1(effect@3.21.3))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/workflow@0.18.2(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(@effect/platform@0.96.1(effect@3.21.3))(effect@3.21.3))(effect@3.21.3)
       '@tsdown/css':
-        specifier: ^0.22.2
+        specifier: ^0.22.3
         version: 0.22.3(jiti@2.7.0)(postcss@8.5.15)(tsdown@0.22.3)(tsx@4.22.4)(yaml@2.9.0)
       '@types/node':
         specifier: catalog:silk
@@ -430,7 +430,7 @@ importers:
         version: 19.2.7(react@19.2.7)
     devDependencies:
       '@tsdown/css':
-        specifier: ^0.22.2
+        specifier: ^0.22.3
         version: 0.22.3(jiti@2.7.0)(postcss@8.5.15)(tsdown@0.22.3)(tsx@4.22.4)(yaml@2.9.0)
       '@types/node':
         specifier: catalog:silk
@@ -528,9 +528,21 @@ importers:
 
   packages/silk-effects:
     dependencies:
+      '@changesets/apply-release-plan':
+        specifier: ^7.1.1
+        version: 7.1.1
+      '@changesets/config':
+        specifier: ^3.1.4
+        version: 3.1.4
       '@changesets/get-github-info':
         specifier: ^0.8.0
         version: 0.8.0
+      '@changesets/get-release-plan':
+        specifier: ^4.0.16
+        version: 4.0.16
+      '@manypkg/get-packages':
+        specifier: ^1.1.3
+        version: 1.1.3
       jsonc-effect:
         specifier: ^0.2.1
         version: 0.2.1(effect@3.21.3)
@@ -5195,8 +5207,8 @@ packages:
   rehype-recma@1.0.0:
     resolution: {integrity: sha512-lqA4rGUf1JmacCNWWZx0Wv1dHqMwxzsDWYMTowuplHF3xH0N/MmrZ/G3BDZnzAkRmxDadujCjaKM2hqYdCBOGw==}
 
-  remark-cjk-friendly-gfm-strikethrough@2.1.0:
-    resolution: {integrity: sha512-3Kyq2hjY7V7eU8MbVbWW6QQLN81pjJcIvKHvPxr8hZZmcq/9wqm3MJ3iUG34Ch9QTM4WHN+a1JVAVC1fSi5mig==}
+  remark-cjk-friendly-gfm-strikethrough@2.2.0:
+    resolution: {integrity: sha512-sj+Jobl4pUmaE539dxuEBntTgkafi/Adl816dBdbpzyPe3n3DceTYokXFGtwX2vjfR4wv8yFJSZac5VUDzjocw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@types/mdast': ^4.0.0
@@ -5205,8 +5217,8 @@ packages:
       '@types/mdast':
         optional: true
 
-  remark-cjk-friendly@2.1.0:
-    resolution: {integrity: sha512-ZWGDfTJNLEZ1gap+pd33K13ZhRAWgVDqxKA7JIlBs5IDu+qvbiWl/pEbeuxzRrWyrrkeFFoTnvNw00iW9mBcow==}
+  remark-cjk-friendly@2.2.0:
+    resolution: {integrity: sha512-tJ+FkYnE6I+rl6DIQEarJLwvATHPmIE88ac0NWZjB24WR7hdwowvnystZK+df4mC53x0OJEtiexlKbFn9Zz0hA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@types/mdast': ^4.0.0
@@ -7960,8 +7972,8 @@ snapshots:
       react-router-dom: 7.18.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       rehype-external-links: 3.0.0
       rehype-raw: 7.0.0
-      remark-cjk-friendly: 2.1.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
-      remark-cjk-friendly-gfm-strikethrough: 2.1.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
+      remark-cjk-friendly: 2.2.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
+      remark-cjk-friendly-gfm-strikethrough: 2.2.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
       remark-gfm: 4.0.1
       remark-mdx: 3.1.1
       remark-parse: 11.0.0
@@ -11149,7 +11161,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  remark-cjk-friendly-gfm-strikethrough@2.1.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5):
+  remark-cjk-friendly-gfm-strikethrough@2.2.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5):
     dependencies:
       mdast-util-to-markdown-cjk-friendly-gfm-strikethrough: 1.0.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)
       micromark-extension-cjk-friendly-gfm-strikethrough: 2.0.1(micromark-util-types@2.0.2)(micromark@4.0.2)
@@ -11161,7 +11173,7 @@ snapshots:
       - micromark-util-types
       - supports-color
 
-  remark-cjk-friendly@2.1.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5):
+  remark-cjk-friendly@2.2.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5):
     dependencies:
       mdast-util-to-markdown-cjk-friendly: 1.0.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)
       micromark-extension-cjk-friendly: 2.0.1(micromark-util-types@2.0.2)(micromark@4.0.2)
