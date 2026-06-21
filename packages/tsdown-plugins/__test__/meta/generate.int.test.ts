@@ -110,4 +110,29 @@ describe("generateMeta", () => {
 		// tsdoc.json at package root (deterministic)
 		expect(existsSync(join(cwd, "tsdoc.json"))).toBe(true);
 	});
+
+	it("forwards suppressed api-extractor messages to onSuppressed", async () => {
+		const { cwd, dtsDir } = scaffold();
+		// A genuine forgotten export (Bar referenced by exported getBar, not itself exported), with a
+		// suppression rule for it, so the message must reach onSuppressed rather than onMessage.
+		writeFileSync(
+			join(dtsDir, "index.d.ts"),
+			`interface Bar { bar: number }\n/** @public */\ndeclare function getBar(): Bar;\nexport { getBar };\n`,
+		);
+		const outMetaDir = join(cwd, "dist", "prod", "npm", "meta");
+		const suppressed: string[] = [];
+		await generateMeta({
+			cwd,
+			packageName: "@scope/fixture",
+			tsconfigPath: join(cwd, "tsconfig.json"),
+			dtsDir,
+			entries: { index: "index" },
+			exportPaths: { index: "." },
+			outMetaDir,
+			localPaths: [],
+			tsdoc: { suppressWarnings: [{ messageId: "ae-forgotten-export" }], tagDefinitions: [] },
+			onSuppressed: (e) => suppressed.push(e.code ?? ""),
+		});
+		expect(suppressed).toContain("ae-forgotten-export");
+	});
 });

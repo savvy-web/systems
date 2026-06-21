@@ -15,6 +15,7 @@ const report: BuildReport = {
 			timings: { totalMs: 5 },
 			warnings: [],
 			errors: [],
+			suppressed: [],
 		},
 	],
 };

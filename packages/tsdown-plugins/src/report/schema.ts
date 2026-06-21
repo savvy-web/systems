@@ -10,6 +10,10 @@ export class DiagnosticEntry extends Schema.Class<DiagnosticEntry>("DiagnosticEn
 	source: Schema.Literal("tsdown", "rolldown", "api-extractor"),
 	level: Schema.Literal("warn", "error"),
 	text: Schema.String,
+	/** API Extractor messageId (e.g. "ae-forgotten-export"); used to group suppressed messages by type. */
+	code: Schema.optional(Schema.String),
+	/** True when shown as `warn` locally but a hard error in CI (drives the "[fails CI]" nudge). */
+	ciFatal: Schema.optional(Schema.Boolean),
 	file: Schema.optional(Schema.String),
 	line: Schema.optional(Schema.Number),
 	column: Schema.optional(Schema.Number),
@@ -35,6 +39,8 @@ export class TargetGroupReport extends Schema.Class<TargetGroupReport>("TargetGr
 	passes: Schema.Array(PassReport),
 	warnings: Schema.Array(DiagnosticEntry),
 	errors: Schema.Array(DiagnosticEntry),
+	/** Messages matched by `suppressWarnings`, kept for accounting and `--verbose` expansion. */
+	suppressed: Schema.Array(DiagnosticEntry),
 	timings: ReportTimings,
 }) {}
 

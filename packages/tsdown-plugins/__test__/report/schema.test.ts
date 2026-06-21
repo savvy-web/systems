@@ -17,6 +17,7 @@ describe("BuildReport schema", () => {
 					],
 					warnings: [{ source: "tsdown", level: "warn", text: "heads up" }],
 					errors: [],
+					suppressed: [],
 					timings: { totalMs: 936 },
 				},
 			],
