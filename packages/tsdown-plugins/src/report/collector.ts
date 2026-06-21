@@ -25,6 +25,8 @@ interface MutableGroup {
 	errors: DiagnosticEntry[];
 	/** Tracks output paths already recorded for this group (first-write-wins dedup). */
 	seenPaths: Set<string>;
+	/** Tracks diagnostic keys already recorded for this group (first-write-wins dedup). */
+	seenDiagnostics: Set<string>;
 }
 
 /**
@@ -38,7 +40,15 @@ export class BuildCollector {
 	private group(groupId: string): MutableGroup {
 		let g = this.groups.get(groupId);
 		if (g === undefined) {
-			g = { id: groupId, entries: [], passes: new Map(), warnings: [], errors: [], seenPaths: new Set() };
+			g = {
+				id: groupId,
+				entries: [],
+				passes: new Map(),
+				warnings: [],
+				errors: [],
+				seenPaths: new Set(),
+				seenDiagnostics: new Set(),
+			};
 			this.groups.set(groupId, g);
 		}
 		return g;
@@ -72,11 +82,19 @@ export class BuildCollector {
 	}
 
 	recordWarning(groupId: string, entry: DiagnosticInput): void {
-		this.group(groupId).warnings.push(toEntry(entry));
+		const g = this.group(groupId);
+		const key = diagnosticKey(entry);
+		if (g.seenDiagnostics.has(key)) return;
+		g.seenDiagnostics.add(key);
+		g.warnings.push(toEntry(entry));
 	}
 
 	recordError(groupId: string, entry: DiagnosticInput): void {
-		this.group(groupId).errors.push(toEntry(entry));
+		const g = this.group(groupId);
+		const key = diagnosticKey(entry);
+		if (g.seenDiagnostics.has(key)) return;
+		g.seenDiagnostics.add(key);
+		g.errors.push(toEntry(entry));
 	}
 
 	snapshot(packageName: string): ReadonlyArray<BuildReport> {
@@ -99,6 +117,17 @@ export class BuildCollector {
 		}
 		return [{ package: packageName, targetGroups }];
 	}
+}
+
+function diagnosticKey(input: DiagnosticInput): string {
+	return [
+		input.source,
+		input.level,
+		input.text,
+		input.file ?? "",
+		String(input.line ?? ""),
+		String(input.column ?? ""),
+	].join("\x00");
 }
 
 function toEntry(input: DiagnosticInput): DiagnosticEntry {

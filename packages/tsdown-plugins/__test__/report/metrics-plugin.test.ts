@@ -13,7 +13,22 @@ function callWriteBundle(plugin: { writeBundle?: unknown }, b: Record<string, un
 	fn({ dir: "/out" }, b);
 }
 
+function callOnLog(plugin: { onLog?: unknown }, level: string, log: unknown): unknown {
+	const fn = plugin.onLog as (level: string, log: unknown) => unknown;
+	return fn(level, log);
+}
+
 describe("buildMetricsPlugin", () => {
+	it("onLog records and returns false to suppress the leak", () => {
+		const c = new BuildCollector();
+		const plugin = buildMetricsPlugin(c, "npm", "js", false);
+		const result = callOnLog(plugin, "warn", { message: "boom", code: "X" });
+		expect(result).toBe(false);
+		const [report] = c.snapshot("@x/p");
+		expect(report?.targetGroups[0]?.warnings).toHaveLength(1);
+		expect(report?.targetGroups[0]?.warnings[0]?.text).toBe("boom");
+	});
+
 	it("records emitted files with byte sizes (no gzip when not verbose)", () => {
 		const c = new BuildCollector();
 		const plugin = buildMetricsPlugin(c, "npm", "js", false);

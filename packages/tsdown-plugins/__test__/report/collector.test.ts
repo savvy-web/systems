@@ -42,6 +42,25 @@ describe("BuildCollector", () => {
 		expect(report?.targetGroups[0]?.id).toBe("dev");
 	});
 
+	it("dedupes identical diagnostics within a group", () => {
+		const c = new BuildCollector();
+		c.registerGroup("npm", []);
+		// First recording
+		c.recordWarning("npm", { source: "rolldown", level: "warn", text: "X", file: "a.ts", line: 1, column: 2 });
+		// Duplicate — should be dropped
+		c.recordWarning("npm", { source: "rolldown", level: "warn", text: "X", file: "a.ts", line: 1, column: 2 });
+		const [report1] = c.snapshot("@x/p");
+		expect(report1?.targetGroups[0]?.warnings).toHaveLength(1);
+		// Different text — should be recorded
+		c.recordWarning("npm", { source: "rolldown", level: "warn", text: "Y", file: "a.ts", line: 1, column: 2 });
+		const [report2] = c.snapshot("@x/p");
+		expect(report2?.targetGroups[0]?.warnings).toHaveLength(2);
+		// Same text as warning but as an error — level differs, so recorded separately
+		c.recordError("npm", { source: "rolldown", level: "error", text: "X", file: "a.ts", line: 1, column: 2 });
+		const [report3] = c.snapshot("@x/p");
+		expect(report3?.targetGroups[0]?.errors).toHaveLength(1);
+	});
+
 	it("counts a re-emitted output path once (first pass wins)", () => {
 		const c = new BuildCollector();
 		c.recordEmitted("npm", "js", { path: "index.cjs", bytes: 100 });

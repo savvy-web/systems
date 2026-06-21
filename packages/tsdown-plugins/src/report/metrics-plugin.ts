@@ -40,7 +40,7 @@ export function buildMetricsPlugin(
 				});
 			}
 		},
-		onLog(level: string, log: unknown): void {
+		onLog(level: string, log: unknown): false {
 			const l = log as { message?: string; id?: string; loc?: { line?: number; column?: number } };
 			const text = l.message ?? String(log);
 			const entry = {
@@ -51,6 +51,7 @@ export function buildMetricsPlugin(
 			};
 			if (level === "warn") collector.recordWarning(groupId, { source: "rolldown", level: "warn", ...entry });
 			else if (level === "error") collector.recordError(groupId, { source: "rolldown", level: "error", ...entry });
+			return false;
 		},
 	};
 }
