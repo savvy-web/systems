@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-18
-last-synced: 2026-06-18
+updated: 2026-06-21
+last-synced: 2026-06-21
 completeness: 88
 related:
   - ./architecture.md
@@ -26,6 +26,7 @@ The `silk@savvy-web-systems` Claude Code plugin. Merges the skills, agents and h
 - [MCP orientation and the docs-search skill](#mcp-orientation-and-the-docs-search-skill)
 - [Turborepo capability](#turborepo-capability)
 - [Biome capability](#biome-capability)
+- [TSDoc capability](#tsdoc-capability)
 - [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect)
 - [Hook merge](#hook-merge)
 - [Rationale](#rationale)
@@ -42,8 +43,9 @@ The `silk@savvy-web-systems` Claude Code plugin. Merges the skills, agents and h
 Implemented. Contents:
 
 - **Skills** (`plugins/silk/skills/`): the merged set — tool-prefixed user-facing skills plus unprefixed internal mechanics. See the directory listing for the authoritative set and [Skill naming scheme](#skill-naming-scheme).
-- **Agents** (`plugins/silk/agents/`): `changeset-manager.md`, the only caller of the unprefixed internal skills; and `turborepo.md`, the Turborepo domain agent that drives the MCP `turbo_inspect` tool for multi-step cache diagnosis, `turbo.json` refactors and CI cache setup. See [Turborepo capability](#turborepo-capability).
+- **Agents** (`plugins/silk/agents/`): `changeset-manager.md`, the only caller of the unprefixed internal skills; `turborepo.md`, the Turborepo domain agent that drives the MCP `turbo_inspect` tool for multi-step cache diagnosis, `turbo.json` refactors and CI cache setup; and `tsdoctor.md`, the TSDoc agent that drives a package's `ae-*`/`tsdoc-*` diagnostics to zero off the build's `issues.json` artifact. See [Turborepo capability](#turborepo-capability) and [TSDoc capability](#tsdoc-capability).
 - **Turbo skill** (`plugins/silk/skills/turbo/`): the model-invocable `turbo` front-door skill plus bundled `references/`. See [Turborepo capability](#turborepo-capability).
+- **TSDoc capability** (`plugins/silk/skills/tsdoc/`, `agents/tsdoctor.md`, `plugins/silk/monitors/`): the skill, the `tsdoctor` agent and a background monitor over the build's `issues.json` artifact. See [TSDoc capability](#tsdoc-capability).
 - **Hooks** (`plugins/silk/hooks/`): all three source hook sets merged into one `hooks.json` plus per-event script dirs and a shared `lib/`. See [Hook merge](#hook-merge).
 - **MCP wiring**: an `mcpServers` block in `.claude-plugin/plugin.json` spawns the shared `savvy-mcp` server via `bin/start-mcp.sh`, the always-on `session-start/orientation.sh` hook directs the agent to the corpus, and a model-invocable `docs-search` skill carries detailed query technique. This is the "direction" half of the information-vs-direction split — see `../mcp/architecture.md` and [MCP orientation and the docs-search skill](#mcp-orientation-and-the-docs-search-skill). The sibling `plugins/github-actions` reuses the identical launcher and server declaration; the separate `plugins/docs` plugin owns the corpus *write* side — see `../docs/architecture.md`.
 - **Biome LSP wiring**: an `lspServers.biome` block in `.claude-plugin/plugin.json` (sibling to `mcpServers`) launches `biome lsp-proxy` via `bin/biome-lsp.sh`, surfacing automatic Biome lint/format diagnostics after edits. See [Biome capability](#biome-capability).
@@ -83,6 +85,15 @@ The plugin gives the agent three channels onto Biome — the suite's linter/form
 - **`biome_check` MCP tool — structured execution with fixes.** The shared `savvy-mcp` server exposes a `biome_check` tool that runs Biome over a path and returns parsed diagnostics, supporting read-only check plus safe (`write`) and unsafe (`unsafe`) fixes. This is the "I want a structured result or want to apply fixes" channel the LSP cannot provide. See `../mcp/architecture.md` for the tool (it is the first mutating savvy-mcp tool, an intentional read-only-convention exception).
 - **The `biome-prefer-mcp` PreToolUse hook — nudge, never block.** `hooks/pre-tool-use/biome-prefer-mcp.sh` (a third `matcher: "Bash"` PreToolUse entry in `hooks.json`) detects when the agent runs Biome through Bash — either directly or indirectly via a package-manager/turbo script whose nearest `package.json` body mentions `biome` — and emits a one-time-per-session `additionalContext` nudge toward `biome_check`. It is **purely additive**: it emits **no** `permissionDecision`, so the command always proceeds and Bash Biome stays a valid escape hatch. The once-per-session marker keys on the envelope `session_id` under `~/.claude/session-env/`, falling back to a fixed `_no-session` key when no session id is present. It fails open without `jq` and is best-effort on the indirect case (only the nearest root `package.json` is consulted). The MCP proxy and the LSP both run Biome in their own processes (not the Bash tool), so neither self-triggers the hook.
 - **The `<biome_capability>` orientation block.** `hooks/session-start/orientation.sh` carries a moderate-tier block (not `EXTREMELY_IMPORTANT`) teaching the division of labor: the LSP shows problems automatically but cannot fix; `biome_check` checks or fixes any path with a structured result; Bash Biome is the raw escape hatch. It records the `biome-prefer-mcp` hook so the agent knows a Bash Biome call draws a one-time nudge, not a block.
+
+## TSDoc capability
+
+The plugin's TSDoc capability mirrors the Turborepo shape — a reference skill, a domain agent and an always-on surface — all built on the structured `dist/<target>/issues.json` artifact `@savvy-web/tsdown-plugins` emits (see `../tsdown-plugins/architecture.md`). It is the agent-facing half of the binary `@public`/`@internal` release-tag and API-Extractor-diagnostic policy that package enforces in code; the policy it teaches is the same one `runApiExtractor` routes and escalates (which fails CI on forgotten exports).
+
+- **The `tsdoc` skill** (`skills/tsdoc/SKILL.md`) is the model-invocable authoring reference (`/silk:tsdoc`, also `paths`-triggered on `**/savvy.build.ts` and `**/dist/*/issues.json`) plus bundled `references/`. It teaches toolchain-correct TSDoc and the binary release-tag recipe. Its "Verify your work" step now reads `dist/prod/issues.json` (a `jq` filter on `ae-*`/`tsdoc-*` codes) rather than grepping build stdout — keying off the artifact's contract that a present-but-empty file means clean and an absent file means not-built.
+- **The `tsdoctor` agent** (`agents/tsdoctor.md`) drives a package's diagnostics to zero end to end: build (prod, because `ae-*`/`tsdoc-*` come from the prod-only meta pass) → read `dist/prod/issues.json` → fix each `ae-*`/`tsdoc-*` per the skill's binary release-tag policy → rebuild to confirm clean. It preloads the `tsdoc` skill and edits only source TSDoc and the export/release-tag surface. Its load-bearing boundary: it **never adds `suppressWarnings` entries** — suppression is a human escape hatch — and it surfaces a genuine `@beta`/`@alpha` maturity call to the user rather than guessing.
+- **The background monitor** (`monitors/monitors.json` + `monitors/watch-issues.mjs`) is a Node poller that surfaces new `ae-*`/`tsdoc-*` counts from `dist/*/issues.json` as agent notifications. It is low-noise: it notifies only when a package's count becomes non-zero or changes, never on a clean artifact. This is the plugin's first background monitor.
+- **Why a monitor, not a hook.** A `FileChanged` hook was rejected: its matcher is literal-filename only (no glob across packages) and it injects no context, so it cannot tell the agent *which* package regressed. A background poller is the primitive that can both watch every package's artifact and emit an actionable notification naming the package and pointing at the `tsdoctor` agent / `/silk:tsdoc`.
 
 ## The config skill drives changeset_inspect
 

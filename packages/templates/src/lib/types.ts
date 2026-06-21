@@ -3,6 +3,8 @@
  *
  * Templates produce content with a logical name and suggested filename.
  * The consumer decides where (and whether) to write the content.
+ *
+ * @public
  */
 export interface TemplateEntry {
 	/** Logical name for this entry (e.g., "tsconfig", "biome", "vscode-settings") */
@@ -13,8 +15,16 @@ export interface TemplateEntry {
 	readonly content: string;
 }
 
-/** A template: typed options in, content entries out. */
+/**
+ * A template: typed options in, content entries out.
+ *
+ * @public
+ */
 export type Template<O> = (options: O) => TemplateEntry[];
 
-/** An update template: existing content + partial options in, content entries out. */
+/**
+ * An update template: existing content + partial options in, content entries out.
+ *
+ * @public
+ */
 export type UpdateTemplate<O> = (existing: string, options: Partial<O>) => TemplateEntry[];

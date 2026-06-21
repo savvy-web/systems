@@ -10,7 +10,7 @@
 - `--target exe` SEA-compiles via `runExeBuild` (`@tsdown/exe` is a runtime dep).
 - `defineBuild` options include `format` (`BuildFormat`, default esm-only), `jsx`, `bundle`, `overrides` (per-entry format+bundling partitions), `define`, `looseFiles`, and `bundleNodeModules`. `defaultManifestTransform` is the default `transform`; `minify` defaults false and prod-only.
 - Bundled, self-contained `.d.ts` per public entry is the default; JS stays per-module.
-- `runBuild` threads a `BuildCollector` through the build/meta/exe phases and renders ONE unified build log from its snapshot — quiet by default (one line per target group), `--verbose` for a per-file table — surfacing collected diagnostics before a failure rethrows.
+- `runBuild` threads a `BuildCollector` through the build/meta/exe phases and renders ONE unified build log from its snapshot — quiet by default (one line per target group), `--verbose` for a per-file table — surfacing collected diagnostics before a failure rethrows. On dev/prod it also writes `dist/<target>/issues.json` via the injectable `writeIssues` hook (defaults to tsdown-plugins' `writeIssuesArtifact`), the structured counterpart of the rendered log.
 - Ships `@savvy-web/bundler/ecma.json`, the shared TS base config.
 - Self-hosts (built by its own escape-hatch `savvy.build.ts`); versions independently from `tsdown-plugins`.
 

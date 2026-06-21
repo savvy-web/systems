@@ -18,6 +18,11 @@ const Features = Schema.Struct({
 	vscode: Schema.optional(Schema.Boolean),
 });
 
+/**
+ * Options for generating a complete workspace scaffold.
+ *
+ * @public
+ */
 export const WorkspaceOptions = Schema.Struct({
 	name: Schema.String,
 	packageManager: Schema.Literal("pnpm", "npm", "bun"),
@@ -27,8 +32,20 @@ export const WorkspaceOptions = Schema.Struct({
 	features: Schema.optional(Features),
 });
 
+/**
+ * The decoded type of {@link WorkspaceOptions}.
+ *
+ * @public
+ */
 export type WorkspaceOptionsType = typeof WorkspaceOptions.Type;
 
+/**
+ * Generates all file entries for a new workspace scaffold.
+ *
+ * @param options - the workspace configuration options
+ * @returns an array of template entries for the complete workspace
+ * @public
+ */
 export function createWorkspace(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(WorkspaceOptions)(options);
 	const features = opts.features ?? {};

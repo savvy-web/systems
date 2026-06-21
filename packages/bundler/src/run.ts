@@ -3,6 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join } from "node:path";
 import type {
 	BuildGroupSpec,
+	BuildReport,
 	BuildTargetGroupsOptions,
 	EntryOverride,
 	GenerateMetaOptions,
@@ -38,6 +39,7 @@ import {
 	resolveJsxConfig,
 	resolveTargets,
 	rewriteMetaVersions,
+	writeIssuesArtifact,
 	writeResolvedTsconfig,
 } from "@savvy-web/tsdown-plugins";
 import { Effect } from "effect";
@@ -73,6 +75,13 @@ export interface RunOptions {
 	readonly readOsCpu?: (() => { os: ReadonlyArray<string>; cpu: ReadonlyArray<string> }) | undefined;
 	/** Injectable for tests: resolves next release versions for the optimistic meta rewrite. */
 	readonly resolveNextVersions?: ((cwd: string) => Promise<NextVersions>) | undefined;
+	/** Injectable issues-artifact writer (defaults to writeIssuesArtifact). */
+	readonly writeIssues?: (opts: {
+		cwd: string;
+		target: "dev" | "prod";
+		reports: ReadonlyArray<BuildReport>;
+		now?: () => Date;
+	}) => string | undefined;
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
@@ -547,4 +556,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	}
 
 	await renderAndWrite();
+	if (target === "dev" || target === "prod") {
+		(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
+	}
 }

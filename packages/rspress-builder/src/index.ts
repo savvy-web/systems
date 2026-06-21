@@ -8,23 +8,31 @@ export type { RunOptions } from "@savvy-web/bundler";
 // bundler's runBuild consumes it unchanged.
 export { runBuild } from "@savvy-web/bundler";
 
-/** Per-bundle externals tuning for a single partition (plugin or runtime). */
+/**
+ * Per-bundle externals tuning for a single partition (plugin or runtime).
+ *
+ * @public
+ */
 export interface RspressBundleOptions {
 	/** Additional externals merged with the built-ins for that bundle. */
 	readonly externals?: ReadonlyArray<string>;
 }
 
-/** Options for {@link definePlugin}. Deliberately small — RSPress plugins have a fixed shape. */
+/**
+ * Options for `definePlugin`. Deliberately small — RSPress plugins have a fixed shape.
+ *
+ * @public
+ */
 export interface RspressPluginOptions {
 	/**
-	 * Enable the `./runtime` bundle (browser, bundleless, CSS modules, React/@theme external).
+	 * Enable the `./runtime` bundle (browser, bundleless, CSS modules, React/`@theme` external).
 	 * `true` (default) builds it; `false` disables it; an object tunes its externals.
 	 * This does not auto-detect the filesystem — pass `false` for a plugin with no runtime.
 	 */
 	readonly runtime?: boolean | RspressBundleOptions;
 	/** Tuning for the plugin (`.`) bundle (node, bundled). */
 	readonly plugin?: RspressBundleOptions;
-	/** Packages whose declarations are inlined into the bundled dts (e.g. ["@rspress/core"]). */
+	/** Packages whose declarations are inlined into the bundled dts (e.g. [`@rspress/core`]). */
 	readonly dtsBundledPackages?: ReadonlyArray<string>;
 	/** API-model generation. Defaults to on (documents plugin options AND runtime components). `false` opts out. */
 	readonly apiModel?: BuildConfigInput["meta"];
@@ -48,8 +56,10 @@ const RUNTIME_EXTERNALS = ["react", "react/jsx-runtime", "react/jsx-dev-runtime"
 
 /**
  * Build an RSPress plugin package: a Node plugin entry (`.`) plus a browser, bundleless,
- * CSS-module React runtime entry (`./runtime`). Returns a standard {@link BuildConfig};
- * hand it to {@link runBuild} from a self-executing `savvy.build.ts`.
+ * CSS-module React runtime entry (`./runtime`). Returns a standard `BuildConfig`;
+ * hand it to `runBuild` from a self-executing `savvy.build.ts`.
+ *
+ * @public
  */
 export function definePlugin(options: RspressPluginOptions = {}): BuildConfig {
 	const runtimeOpt = options.runtime ?? true;

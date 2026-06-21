@@ -7,13 +7,30 @@ const Settings = Schema.Struct({
 	vitest: Schema.optional(Schema.Boolean),
 });
 
+/**
+ * Options for generating VS Code configuration files.
+ *
+ * @public
+ */
 export const VsCodeOptions = Schema.Struct({
 	settings: Schema.optional(Settings),
 	extensions: Schema.optional(Schema.Array(Schema.String)),
 });
 
+/**
+ * The decoded type of {@link VsCodeOptions}.
+ *
+ * @public
+ */
 export type VsCodeOptionsType = typeof VsCodeOptions.Type;
 
+/**
+ * Generates `.vscode/settings.json` and `.vscode/extensions.json` file entries.
+ *
+ * @param options - the VS Code configuration options
+ * @returns an array containing the generated VS Code configuration entries
+ * @public
+ */
 export function createVsCode(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(VsCodeOptions)(options);
 	const features = opts.settings ?? {};

@@ -72,7 +72,7 @@ Design docs live in `.claude/design/` (tracked). Per-package design pointers liv
 
 **`plugins/silk` — the merged Claude Code plugin:**
 → `@./.claude/design/silk/plugin.md`
-Load when working on `plugins/silk` (skills, agents, hooks, MCP wiring).
+Load when working on `plugins/silk` (skills, agents, monitors, hooks, MCP wiring).
 
 **`plugins/docs` — the corpus-documentation Claude Code plugin:**
 → `@./.claude/design/docs/architecture.md`

@@ -25,6 +25,11 @@ const PublishConfig = Schema.Struct({
 	targets: Schema.optional(Schema.Unknown),
 });
 
+/**
+ * Options for generating a `package.json` file.
+ *
+ * @public
+ */
 export const PackageJsonOptions = Schema.Struct({
 	name: Schema.String,
 	version: Schema.optionalWith(Schema.String, { default: () => "0.0.0" }),
@@ -54,8 +59,20 @@ export const PackageJsonOptions = Schema.Struct({
 	keywords: Schema.optional(Schema.Array(Schema.String)),
 });
 
+/**
+ * The decoded type of {@link PackageJsonOptions}.
+ *
+ * @public
+ */
 export type PackageJsonOptionsType = typeof PackageJsonOptions.Type;
 
+/**
+ * Generates a sorted `package.json` file entry.
+ *
+ * @param options - the package.json configuration options
+ * @returns an array containing the generated `package.json` entry
+ * @public
+ */
 export function createPackageJson(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(PackageJsonOptions)(options);
 

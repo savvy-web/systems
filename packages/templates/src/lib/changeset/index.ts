@@ -3,6 +3,11 @@ import type { TemplateEntry } from "../types.js";
 
 const RepoPattern = Schema.String.pipe(Schema.pattern(/^[^/\s]+\/[^/\s]+$/));
 
+/**
+ * Options for generating a Changesets configuration file.
+ *
+ * @public
+ */
 export const ChangesetOptions = Schema.Struct({
 	access: Schema.optionalWith(Schema.Literal("public", "restricted"), { default: () => "restricted" as const }),
 	baseBranch: Schema.optionalWith(Schema.String, { default: () => "main" }),
@@ -10,8 +15,20 @@ export const ChangesetOptions = Schema.Struct({
 	repo: Schema.optional(RepoPattern),
 });
 
+/**
+ * The decoded type of {@link ChangesetOptions}.
+ *
+ * @public
+ */
 export type ChangesetOptionsType = typeof ChangesetOptions.Type;
 
+/**
+ * Generates a `.changeset/config.json` configuration file entry.
+ *
+ * @param options - the Changesets configuration options
+ * @returns an array containing the generated changeset config entry
+ * @public
+ */
 export function createChangeset(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(ChangesetOptions)(options);
 

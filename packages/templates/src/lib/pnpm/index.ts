@@ -2,6 +2,11 @@ import { Schema } from "effect";
 import yaml from "js-yaml";
 import type { TemplateEntry } from "../types.js";
 
+/**
+ * Options for generating a `pnpm-workspace.yaml` file.
+ *
+ * @public
+ */
 export const PnpmWorkspaceOptions = Schema.Struct({
 	packages: Schema.Array(Schema.String),
 	autoInstallPeers: Schema.optional(Schema.Boolean),
@@ -9,8 +14,20 @@ export const PnpmWorkspaceOptions = Schema.Struct({
 	catalog: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
 });
 
+/**
+ * The decoded type of {@link PnpmWorkspaceOptions}.
+ *
+ * @public
+ */
 export type PnpmWorkspaceOptionsType = typeof PnpmWorkspaceOptions.Type;
 
+/**
+ * Generates a `pnpm-workspace.yaml` file entry.
+ *
+ * @param options - the pnpm workspace configuration options
+ * @returns an array containing the generated `pnpm-workspace.yaml` entry
+ * @public
+ */
 export function createPnpmWorkspace(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(PnpmWorkspaceOptions)(options);
 

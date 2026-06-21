@@ -84,6 +84,9 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			messages: {
 				extractorMessageReporting: {
 					default: { logLevel: "warning" },
+					// The underscore-prefix convention for `@internal` exports is not used in this
+					// monorepo, so silence `ae-internal-missing-underscore` rather than nag on it.
+					"ae-internal-missing-underscore": { logLevel: "none" },
 					// In CI the CI-fatal messageIds are hard errors: a forgotten export silently drops the
 					// symbol from the .api.json, corrupting downstream doc generation. Derived from the same
 					// CI_FATAL_MESSAGE_IDS set that drives the local `ciFatal` tag, so the nudge and the real
