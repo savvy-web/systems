@@ -5,7 +5,7 @@
 ## Key surface
 
 - Entry detection; manifest transforms (`emitManifest`, `defaultManifestTransform`, the `"./package.json"` self-export inject); `resolveManifest` over `workspaces-effect`'s `CatalogResolver`.
-- `buildTargetGroups`: name-aware two-pass per-TargetGroup loop (per-module JS pass + bundled `emitDtsOnly` dts pass), configurable `BuildFormat`, per-entry `overrides` (`EntryOverride`/`DualExports`), and `bundle`/`bundleNodeModules`/`dtsExternals` bundling posture.
+- `buildTargetGroups`: name-aware two-pass per-TargetGroup loop (per-module JS pass + bundled `emitDtsOnly` dts pass — `bin/` executable entries are dropped from the dts pass, so bin-only partitions skip it), configurable `BuildFormat`, per-entry `overrides` (`EntryOverride`/`DualExports`), and `bundle`/`bundleNodeModules`/`dtsExternals` bundling posture.
 - `src/meta/`: `generateMeta` over `@microsoft/api-extractor` + multi-entry api-model merge, the portable-tsconfig resolver (`typescript` is a runtime dep), `syncPublicDir`.
 - `src/targets/`: `resolveTargets`/`writeTargetsBinding` deriving byte-variant groups from `publishConfig.targets`; throws `ConfigValidationError`.
 - `src/jsx/` (tsconfig→rolldown JSX), `src/exe/` (`normalizeExeOptions`/`runExeBuild`).

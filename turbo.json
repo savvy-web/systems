@@ -22,7 +22,7 @@
 				"lib/**/*",
 				"src/**/*"
 			],
-			"outputLogs": "full",
+			"outputLogs": "errors-only",
 			"outputs": ["dist/dev/pkg/**"]
 		},
 		"build:meta": {

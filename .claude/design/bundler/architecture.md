@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-20
-last-synced: 2026-06-20
+updated: 2026-06-21
+last-synced: 2026-06-21
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -244,6 +244,7 @@ The bundler is pure wiring over `generateMeta` from `@savvy-web/tsdown-plugins` 
 - **The meta bundle is a self-contained "virtual TS env" trio.** Each `meta/` dir (and each mirrored `localPaths` copy) carries `<unscoped>.api.json` + the final transformed `package.json` + a PORTABLE derived `tsconfig.json` (compilerOptions-only, no absolute paths or emit settings) — everything a downstream shiki/Twoslash or API-doc consumer needs to rehydrate the package's types. The `tsdoc-metadata.json` is a published-package artifact and ships in `pkg/`, NOT in the meta bundle. The trio assembly lives in `@savvy-web/tsdown-plugins`' `src/meta/`.
 - **Optimistic next-version rewrite.** When `meta.optimistic` resolves true, the bundler resolves every workspace package's NEXT release version from pending changesets once (`resolveNextVersions`, injectable via `RunOptions.resolveNextVersions`) and threads a `manifestTransform` into `generateMeta` that forward-looks the bundle's own `version` and any workspace-sibling dep version to their next value. It rewrites the META bundle ONLY — never the published `dist/prod/<group>/pkg/package.json`. `optimistic: "auto"` (the default) resolves to `false` under CI (`CI`/`GITHUB_ACTIONS` set) and `true` locally, so a local bundle matches the CI release build. The resolver/transform live in `@savvy-web/tsdown-plugins` (see `../tsdown-plugins/architecture.md`).
 - **`deriveExportPaths`** (a `run.ts` helper) recovers export keys from the package `exports` map to drive the per-entry extraction.
+- **`bin/` entries are excluded from the dts basenames meta reads.** The meta step collects the `dtsBasenames` it feeds to `generateMeta` from the build entries, skipping any `bin/`-prefixed entry — the dts pass no longer emits a `.d.ts` for a side-effect-only bin (see `../tsdown-plugins/architecture.md`), so meta must not try to read a declaration that was never written.
 
 **Known limitation:** `deriveExportPaths` handles only plain string exports. *Conditional* exports (object-valued entries) and nested subpaths like `./foo/bar` fall through to a heuristic. Every current Silk package uses plain string exports, so nothing triggers it today, but a package with conditional exports would need this hardened first.
 
