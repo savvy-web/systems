@@ -16,6 +16,7 @@ import type {
 	TsconfigJsx,
 } from "@savvy-web/tsdown-plugins";
 import {
+	BuildCollector,
 	ConfigValidator,
 	ConfigValidatorLive,
 	ReportPipelineLive,
@@ -187,13 +188,14 @@ function applySubdirMetaEntries(
 
 /** Run a build from a normalized config. Pure orchestration; all IO injectable. */
 export async function runBuild(config: BuildConfig, options: RunOptions): Promise<void> {
-	const { target, noExe } = parseArgs(options.argv);
+	const { target, noExe, verbose } = parseArgs(options.argv);
 	const build = options.buildTargetGroups ?? realBuildTargetGroups;
 	const cwd = options.cwd;
 	const pkg = readPackageJson(cwd);
 
 	const version = options.readVersion ? options.readVersion() : (pkg.version ?? "0.0.0");
 	const packageName = options.readPackageName ? options.readPackageName() : (pkg.name ?? "unknown");
+	const collector = new BuildCollector();
 
 	const readJsx = options.readTsconfigJsx ?? ((): TsconfigJsx => readTsconfigJsx(cwd));
 	const jsx: JsxConfig | undefined = resolveJsxConfig(readJsx(), config.jsx);
@@ -291,7 +293,14 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			throw new Error("`savvy build --target exe` requires an `exe` option in the build config");
 		}
 		const exe = options.runExeBuild ?? realRunExeBuild;
-		await exe({ cwd, outDir: join(cwd, "dist", "dev", "pkg", "bin"), specs: exeSpecs });
+		await exe({
+			cwd,
+			outDir: join(cwd, "dist", "dev", "pkg", "bin"),
+			specs: exeSpecs,
+			collector,
+			groupId: "dev",
+			verbose,
+		});
 		const writeExeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
 		writeExeOutput({
 			target: "stdout",
@@ -377,159 +386,157 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	// Normalize after validation (which already surfaced any structural error). Pure; never throws here.
 	const looseFiles = config.looseFiles !== undefined ? normalizeLooseFiles(config.looseFiles) : undefined;
 
-	const startMs = Date.now();
 	// dev: one dev group named after the base; npm: all resolved prod groups (meta already returned above).
 	const { groups, resolution } =
 		target === "dev"
 			? { groups: [{ id: "dev", name: packageName }] as ReadonlyArray<BuildGroupSpec>, resolution: undefined }
 			: deriveProdGroups(publishTargets, packageName);
-	// A pure-binary (exe-only) package has no JS entries; running tsdown would throw "No input files".
-	// Skip the library build — the manifest is emitted standalone in the exe step below.
-	if (hasJsEntries || config.exe === undefined) {
-		await build({
-			cwd,
-			version,
-			entry: config.overrides !== undefined ? baseEntries : entries,
-			tsconfigPath,
-			groups,
-			devManifest: config.devManifest,
-			externals: config.externals,
-			...(config.bundledPackages !== undefined ? { bundledPackages: config.bundledPackages } : {}),
-			...(config.dtsExternals !== undefined ? { dtsExternals: config.dtsExternals } : {}),
-			...(config.bundleNodeModules !== undefined ? { bundleNodeModules: config.bundleNodeModules } : {}),
-			...(config.bundle !== undefined ? { bundle: config.bundle } : {}),
-			...(config.minify !== undefined ? { minify: config.minify } : {}),
-			...(config.transform !== undefined ? { transform: config.transform } : {}),
-			...(jsx !== undefined ? { jsx } : {}),
-			...(config.format !== undefined ? { format: config.format } : {}),
-			...(config.define !== undefined ? { define: config.define } : {}),
-			...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
-			...(dualExports !== undefined ? { dualExports } : {}),
-			...(subdirExports.size > 0 ? { subdirExports } : {}),
-			...(looseFiles !== undefined ? { looseFiles } : {}),
-			...(exeRewrite !== undefined ? { exeRewrite } : {}),
-		});
-	}
 
-	// Write the target-to-group binding for the release action (prod only).
-	if (target === "prod" && resolution !== undefined) {
-		writeBinding(cwd, resolution);
-	}
+	const explicitFormat = config.output?.format;
+	const writeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
+	const renderAndWrite = async (): Promise<void> => {
+		const rendered = await Effect.runPromise(
+			renderReport(collector.snapshot(packageName), {
+				...(explicitFormat !== undefined ? { explicitFormat } : {}),
+				verbose,
+				noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
+			}).pipe(Effect.provide(ReportPipelineLive)),
+		);
+		for (const output of rendered) writeOutput(output);
+	};
 
-	// --target prod: emit the meta/ bundle for EVERY prod group (consumers read non-canonical groups,
-	// e.g. GitHub Actions), each against its own dist/prod/<group>/pkg so the .api.json carries that
-	// group's package name. Copy the canonical group's bundle into meta.localPaths. Optionally rewrite
-	// versions optimistically. undefined -> default options; object -> overrides; false -> skip.
-	// An exe-only package has no JS entries (no dts), so there is nothing for API Extractor to read.
-	if (target === "prod" && config.meta !== false && (config.exe === undefined || hasJsEntries)) {
-		const norm = normalizeMetaOptions(config.meta ?? {});
-		const canonical = groups.find((g) => g.name === packageName) ?? groups[0];
-		const canonicalId = canonical?.id ?? "npm";
-		const dtsBasenames: Record<string, string> = {};
-		for (const name of Object.keys(entries)) dtsBasenames[name] = name;
-		const exportPaths = deriveExportPaths(entries, exportsMap);
-		applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
-
-		// Resolve next versions once (shared across groups) only when optimistic is on.
-		const resolveNext = options.resolveNextVersions ?? realResolveNextVersions;
-		const nextVersions = norm.optimistic ? await resolveNext(cwd) : undefined;
-		const manifestTransform = nextVersions
-			? (m: Record<string, unknown>) => rewriteMetaVersions(m, nextVersions.versions, packageName)
-			: undefined;
-
-		for (const g of groups) {
-			await runGenerateMeta({
+	try {
+		// A pure-binary (exe-only) package has no JS entries; running tsdown would throw "No input files".
+		// Skip the library build — the manifest is emitted standalone in the exe step below.
+		if (hasJsEntries || config.exe === undefined) {
+			await build({
 				cwd,
-				packageName,
+				version,
+				entry: config.overrides !== undefined ? baseEntries : entries,
 				tsconfigPath,
-				dtsDir: join(cwd, "dist", "prod", g.id, "pkg"),
-				entries: dtsBasenames,
-				exportPaths,
-				outMetaDir: join(cwd, "dist", "prod", g.id, "meta"),
-				localPaths: g.id === canonicalId ? norm.localPaths : [],
-				tsdoc: norm.tsdoc,
-				...(manifestTransform !== undefined ? { manifestTransform } : {}),
+				groups,
+				devManifest: config.devManifest,
+				externals: config.externals,
+				...(config.bundledPackages !== undefined ? { bundledPackages: config.bundledPackages } : {}),
+				...(config.dtsExternals !== undefined ? { dtsExternals: config.dtsExternals } : {}),
+				...(config.bundleNodeModules !== undefined ? { bundleNodeModules: config.bundleNodeModules } : {}),
+				...(config.bundle !== undefined ? { bundle: config.bundle } : {}),
+				...(config.minify !== undefined ? { minify: config.minify } : {}),
+				...(config.transform !== undefined ? { transform: config.transform } : {}),
+				...(jsx !== undefined ? { jsx } : {}),
+				...(config.format !== undefined ? { format: config.format } : {}),
+				...(config.define !== undefined ? { define: config.define } : {}),
+				...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),
+				...(dualExports !== undefined ? { dualExports } : {}),
+				...(subdirExports.size > 0 ? { subdirExports } : {}),
+				...(looseFiles !== undefined ? { looseFiles } : {}),
+				...(exeRewrite !== undefined ? { exeRewrite } : {}),
+				collector,
+				verbose,
 			});
 		}
-	}
 
-	// Strip declaration source-maps from the PUBLISHED prod pkg/ dirs. They are emitted for
-	// meta generation (API Extractor reads them for original-source positions, consumed in the
-	// block above), but reference .ts sources the tarball does not ship — dead weight that leaks
-	// local paths. Done after meta so prod meta still sees them; dev keeps them for `--target meta`.
-	if (target === "prod") {
-		for (const g of groups) removeDeclarationMaps(join(cwd, "dist", "prod", g.id, "pkg"));
-	}
+		// Write the target-to-group binding for the release action (prod only).
+		if (target === "prod" && resolution !== undefined) {
+			writeBinding(cwd, resolution);
+		}
 
-	// SEA step: compile the binary into each built group's pkg/bin and program its manifest. Runs AFTER
-	// the library build so the dev `clean` cannot wipe the binary. For an exe-only package (no JS pass)
-	// the manifest is emitted standalone here, since the emitManifest plugin only runs inside the JS pass.
-	if (config.exe !== undefined && exeSpec !== undefined && exeRewrite !== undefined && exeFileName !== undefined) {
-		const runExe = options.runExeBuild ?? realRunExeBuild;
-		const groupOutDir = (g: BuildGroupSpec): string =>
-			target === "dev" ? join(cwd, "dist", "dev", "pkg") : join(cwd, "dist", "prod", g.id, "pkg");
-		for (const g of groups) {
-			const outDir = groupOutDir(g);
-			if (!hasJsEntries) {
-				// No JS pass ran, so emit the manifest + LICENSE/README ourselves.
-				const manifest = await buildEmittedManifest({
-					pkg,
-					targetGroup: { id: g.id, name: g.name, isProd: target === "prod" },
-					devManifest: config.devManifest,
-					...(config.transform !== undefined ? { transform: config.transform } : {}),
-					exeRewrite,
+		// --target prod: emit the meta/ bundle for EVERY prod group (consumers read non-canonical groups,
+		// e.g. GitHub Actions), each against its own dist/prod/<group>/pkg so the .api.json carries that
+		// group's package name. Copy the canonical group's bundle into meta.localPaths. Optionally rewrite
+		// versions optimistically. undefined -> default options; object -> overrides; false -> skip.
+		// An exe-only package has no JS entries (no dts), so there is nothing for API Extractor to read.
+		if (target === "prod" && config.meta !== false && (config.exe === undefined || hasJsEntries)) {
+			const norm = normalizeMetaOptions(config.meta ?? {});
+			const canonical = groups.find((g) => g.name === packageName) ?? groups[0];
+			const canonicalId = canonical?.id ?? "npm";
+			const dtsBasenames: Record<string, string> = {};
+			for (const name of Object.keys(entries)) dtsBasenames[name] = name;
+			const exportPaths = deriveExportPaths(entries, exportsMap);
+			applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
+
+			// Resolve next versions once (shared across groups) only when optimistic is on.
+			const resolveNext = options.resolveNextVersions ?? realResolveNextVersions;
+			const nextVersions = norm.optimistic ? await resolveNext(cwd) : undefined;
+			const manifestTransform = nextVersions
+				? (m: Record<string, unknown>) => rewriteMetaVersions(m, nextVersions.versions, packageName)
+				: undefined;
+
+			for (const g of groups) {
+				await runGenerateMeta({
+					cwd,
+					packageName,
+					tsconfigPath,
+					dtsDir: join(cwd, "dist", "prod", g.id, "pkg"),
+					entries: dtsBasenames,
+					exportPaths,
+					outMetaDir: join(cwd, "dist", "prod", g.id, "meta"),
+					localPaths: g.id === canonicalId ? norm.localPaths : [],
+					tsdoc: norm.tsdoc,
+					...(manifestTransform !== undefined ? { manifestTransform } : {}),
+					onMessage: (e) => {
+						if (e.level === "error") collector.recordError(g.id, e);
+						else collector.recordWarning(g.id, e);
+					},
 				});
-				mkdirSync(outDir, { recursive: true });
-				writeFileSync(join(outDir, "package.json"), `${JSON.stringify(manifest, null, "\t")}\n`);
-				for (const file of ["LICENSE", "README.md"]) {
-					try {
-						copyFileSync(join(cwd, file), join(outDir, file));
-					} catch {
-						// optional file absent — skip
+			}
+		}
+
+		// Strip declaration source-maps from the PUBLISHED prod pkg/ dirs. They are emitted for
+		// meta generation (API Extractor reads them for original-source positions, consumed in the
+		// block above), but reference .ts sources the tarball does not ship — dead weight that leaks
+		// local paths. Done after meta so prod meta still sees them; dev keeps them for `--target meta`.
+		if (target === "prod") {
+			for (const g of groups) removeDeclarationMaps(join(cwd, "dist", "prod", g.id, "pkg"));
+		}
+
+		// SEA step: compile the binary into each built group's pkg/bin and program its manifest. Runs AFTER
+		// the library build so the dev `clean` cannot wipe the binary. For an exe-only package (no JS pass)
+		// the manifest is emitted standalone here, since the emitManifest plugin only runs inside the JS pass.
+		if (config.exe !== undefined && exeSpec !== undefined && exeRewrite !== undefined && exeFileName !== undefined) {
+			const runExe = options.runExeBuild ?? realRunExeBuild;
+			const groupOutDir = (g: BuildGroupSpec): string =>
+				target === "dev" ? join(cwd, "dist", "dev", "pkg") : join(cwd, "dist", "prod", g.id, "pkg");
+			for (const g of groups) {
+				const outDir = groupOutDir(g);
+				if (!hasJsEntries) {
+					// No JS pass ran, so emit the manifest + LICENSE/README ourselves.
+					const manifest = await buildEmittedManifest({
+						pkg,
+						targetGroup: { id: g.id, name: g.name, isProd: target === "prod" },
+						devManifest: config.devManifest,
+						...(config.transform !== undefined ? { transform: config.transform } : {}),
+						exeRewrite,
+					});
+					mkdirSync(outDir, { recursive: true });
+					writeFileSync(join(outDir, "package.json"), `${JSON.stringify(manifest, null, "\t")}\n`);
+					for (const file of ["LICENSE", "README.md"]) {
+						try {
+							copyFileSync(join(cwd, file), join(outDir, file));
+						} catch {
+							// optional file absent — skip
+						}
+					}
+				}
+				if (!noExe) {
+					const binDir = join(outDir, "bin");
+					await runExe({ cwd, outDir: binDir, specs: exeSpecs, collector, groupId: g.id, verbose });
+					// Drift guard: the manifest points at the computed name; assert the compiler emitted it.
+					// Skipped when a fake runExeBuild is injected (tests), which writes nothing.
+					if (options.runExeBuild === undefined && !existsSync(join(binDir, exeFileName))) {
+						throw new Error(
+							`exe: expected compiled binary at ${join(binDir, exeFileName)} but it is missing — ` +
+								`tsdown's emitted name may have drifted from computeExeFileName`,
+						);
 					}
 				}
 			}
-			if (!noExe) {
-				const binDir = join(outDir, "bin");
-				await runExe({ cwd, outDir: binDir, specs: exeSpecs });
-				// Drift guard: the manifest points at the computed name; assert the compiler emitted it.
-				// Skipped when a fake runExeBuild is injected (tests), which writes nothing.
-				if (options.runExeBuild === undefined && !existsSync(join(binDir, exeFileName))) {
-					throw new Error(
-						`exe: expected compiled binary at ${join(binDir, exeFileName)} but it is missing — ` +
-							`tsdown's emitted name may have drifted from computeExeFileName`,
-					);
-				}
-			}
 		}
+	} catch (err) {
+		// Surface whatever diagnostics were captured before the failure, then rethrow.
+		await renderAndWrite();
+		throw err;
 	}
 
-	const totalMs = Date.now() - startMs;
-
-	// Build a minimal BuildReport from the completed build
-	const reportEntries = Object.keys(entries);
-	const report = {
-		package: packageName,
-		targetGroups: groups.map((g) => ({
-			id: g.id,
-			entries: reportEntries,
-			emittedFiles: [],
-			timings: { totalMs },
-			warnings: [],
-			errors: [],
-		})),
-	};
-
-	const explicitFormat = config.output?.format;
-	const rendered = await Effect.runPromise(
-		renderReport([report], {
-			...(explicitFormat !== undefined ? { explicitFormat } : {}),
-			noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
-		}).pipe(Effect.provide(ReportPipelineLive)),
-	);
-
-	const writeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
-	for (const output of rendered) {
-		writeOutput(output);
-	}
+	await renderAndWrite();
 }

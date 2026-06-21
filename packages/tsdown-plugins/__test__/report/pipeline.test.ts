@@ -11,7 +11,7 @@ const report: BuildReport = {
 		{
 			id: "npm",
 			entries: ["index"],
-			emittedFiles: ["index.js"],
+			passes: [{ id: "js", files: [{ path: "index.js", bytes: 120 }], ms: 5 }],
 			timings: { totalMs: 5 },
 			warnings: [],
 			errors: [],

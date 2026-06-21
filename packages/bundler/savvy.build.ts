@@ -14,15 +14,20 @@
 // in rslib.config.ts is therefore not carried over (no check fires here).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { RenderedOutput } from "@savvy-web/tsdown-plugins";
 import {
+	BuildCollector,
+	ReportPipelineLive,
 	buildTargetGroups,
 	defaultManifestTransform,
 	packageJsonEntries,
 	removeDeclarationMaps,
+	renderReport,
 	resolveTargets,
 	writeResolvedTsconfig,
 	writeTargetsBinding,
 } from "@savvy-web/tsdown-plugins";
+import { Effect } from "effect";
 
 const cwd = import.meta.dirname;
 const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8")) as { name: string; version: string };
@@ -32,6 +37,9 @@ if (rawTarget !== undefined && rawTarget !== "dev" && rawTarget !== "prod") {
 	throw new Error(`Unknown --target: ${rawTarget}`);
 }
 const target = rawTarget ?? "dev";
+
+const collector = new BuildCollector();
+const verbose = process.argv.includes("--verbose");
 
 await buildTargetGroups({
 	cwd,
@@ -46,6 +54,8 @@ await buildTargetGroups({
 	externals: ["effect", "tsdown", "@savvy-web/tsdown-plugins"],
 	// Reproduce the rslib config's prod strip.
 	transform: defaultManifestTransform,
+	collector,
+	verbose,
 });
 
 // Strip declaration source-maps from the published prod pkg/ (the front door does this in
@@ -57,3 +67,11 @@ if (target === "prod") {
 	// to the dist/dev directory. npm+github collapse into the single built npm group.
 	writeTargetsBinding(cwd, resolveTargets({ targets: { npm: true, github: true }, baseName: pkg.name }));
 }
+
+const rendered = await Effect.runPromise(
+	renderReport(collector.snapshot(pkg.name), {
+		verbose,
+		noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
+	}).pipe(Effect.provide(ReportPipelineLive)),
+);
+for (const out of rendered as ReadonlyArray<RenderedOutput>) process.stdout.write(`${out.content}\n`);

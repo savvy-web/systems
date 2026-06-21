@@ -15,11 +15,16 @@
 // in rslib.config.ts's `apiModel` is therefore not carried over (no check fires).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { Effect } from "effect";
+import type { RenderedOutput } from "./src/index.js";
 import {
+	BuildCollector,
+	ReportPipelineLive,
 	buildTargetGroups,
 	defaultManifestTransform,
 	packageJsonEntries,
 	removeDeclarationMaps,
+	renderReport,
 	resolveTargets,
 	writeResolvedTsconfig,
 	writeTargetsBinding,
@@ -34,6 +39,9 @@ if (rawTarget !== undefined && rawTarget !== "dev" && rawTarget !== "prod") {
 }
 const target = rawTarget ?? "dev";
 
+const collector = new BuildCollector();
+const verbose = process.argv.includes("--verbose");
+
 await buildTargetGroups({
 	cwd,
 	version: pkg.version,
@@ -47,6 +55,8 @@ await buildTargetGroups({
 	externals: ["effect", "tsdown", "rolldown", "typescript"],
 	// Reproduce the rslib config's prod strip.
 	transform: defaultManifestTransform,
+	collector,
+	verbose,
 });
 
 // Strip declaration source-maps from the published prod pkg/ (the front door does this in
@@ -58,3 +68,11 @@ if (target === "prod") {
 	// to a phantom/dev target. npm+github collapse into the single built npm group.
 	writeTargetsBinding(cwd, resolveTargets({ targets: { npm: true, github: true }, baseName: pkg.name }));
 }
+
+const rendered = await Effect.runPromise(
+	renderReport(collector.snapshot(pkg.name), {
+		verbose,
+		noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
+	}).pipe(Effect.provide(ReportPipelineLive)),
+);
+for (const out of rendered as ReadonlyArray<RenderedOutput>) process.stdout.write(`${out.content}\n`);

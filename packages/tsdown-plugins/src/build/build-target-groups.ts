@@ -5,6 +5,10 @@ import type { JsxConfig } from "../jsx/config.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { DualExports, ExeRewrite, Json } from "../manifest/transform.js";
+import type { BuildCollector, PassKind } from "../report/collector.js";
+import { buildMetricsPlugin } from "../report/metrics-plugin.js";
+import { createTimer } from "../report/timer.js";
+import { createTsdownLogger } from "../report/tsdown-logger.js";
 import { cjsDefaultInterop } from "./cjs-default-interop.js";
 import type { NormalizedLooseFile } from "./loose-files.js";
 import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
@@ -147,6 +151,10 @@ export interface BuildTargetGroupsOptions {
 	readonly exeRewrite?: ExeRewrite | undefined;
 	/** Injectable for tests; defaults to tsdown's build. */
 	readonly build?: TsdownBuild;
+	/** When set, muzzle tsdown (silent + customLogger) and capture metrics/timing into this collector. */
+	readonly collector?: BuildCollector | undefined;
+	/** Compute gzip sizes for emitted files (verbose render). Forwarded to the metrics plugin. */
+	readonly verbose?: boolean | undefined;
 }
 
 /**
@@ -168,7 +176,30 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 	const build: TsdownBuild = options.build ?? ((await import("tsdown")).build as unknown as TsdownBuild);
 	const publicDir = join(options.cwd, "public");
 
+	const collector = options.collector;
+	const verbose = options.verbose ?? false;
+
+	// Build a partial config that muzzles tsdown and records into the collector for one pass.
+	// Returns {} when there is no collector, preserving the raw-tsdown path.
+	const instrument = (groupId: string): Record<string, unknown> =>
+		collector === undefined ? {} : { logLevel: "silent", customLogger: createTsdownLogger(collector, groupId) };
+
+	const metricsPlugins = (groupId: string, pass: PassKind): Plugin[] =>
+		collector === undefined ? [] : [buildMetricsPlugin(collector, groupId, pass, verbose)];
+
+	// Run a build pass under a timer, recording elapsed into the collector.
+	const timed = async (groupId: string, pass: PassKind, run: () => Promise<unknown>): Promise<void> => {
+		const timer = createTimer();
+		try {
+			await run();
+		} finally {
+			if (collector !== undefined) collector.recordPassTiming(groupId, pass, timer.elapsed());
+		}
+	};
+
 	for (const group of options.groups) {
+		if (collector !== undefined) collector.registerGroup(group.id, Object.keys(options.entry));
+
 		// Partition 0 is the base (options-level config); the rest come from options.overrides.
 		const partitions: ReadonlyArray<EntryOverride> = [
 			{
@@ -250,46 +281,50 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				: undefined;
 
 			// Pass 1: per-module JS. clean only on the very first partition (it owns the outDir).
-			await build({
-				config: false,
-				cwd: options.cwd,
-				entry: jsEntry,
-				outDir: partOutDir,
-				format: js.format,
-				platform: js.platform,
-				sourcemap: js.sourcemap,
-				minify: js.minify,
-				unbundle: js.unbundle,
-				clean: isBase ? js.clean : false,
-				fixedExtension: js.fixedExtension,
-				dts: js.dts,
-				define: js.define,
-				...(part.css !== undefined ? { css: part.css } : {}),
-				...(partExternals?.length || partBundleNodeModules || partBundle?.length
-					? {
-							deps: {
-								...(partExternals?.length ? { neverBundle: partExternals } : {}),
-								// alwaysBundle force-inlines these packages (inverse of neverBundle), even
-								// declared deps tsdown would auto-externalize. Allowed alongside
-								// skipNodeModulesBundle:false (the throw only fires when it is true).
-								...(partBundle?.length ? { alwaysBundle: partBundle } : {}),
-								...(partBundleNodeModules ? { skipNodeModulesBundle: false } : {}),
-							},
-						}
-					: {}),
-				...(js.cjsDefault !== undefined ? { cjsDefault: js.cjsDefault } : {}),
-				...(js.jsx !== undefined ? { inputOptions: { jsx: js.jsx } } : {}),
-				// nodeBuiltinDefaultInterop rewrites default imports of node: builtins to namespace
-				// form so rolldown's CJS codegen emits correct interop (it otherwise accesses
-				// `.default` on a bare `require("node:x")`, which is undefined). cjsDefaultInterop
-				// promotes a default+named CJS entry chunk to module.exports = <default> (rslib
-				// cjsInterop parity). Both are cjs-only and no-ops for esm.
-				plugins: [
-					...(manifestPlugin ? [manifestPlugin] : []),
-					...(js.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
-					...(options.extraPlugins ?? []),
-				],
-			});
+			await timed(group.id, "js", () =>
+				build({
+					config: false,
+					cwd: options.cwd,
+					entry: jsEntry,
+					outDir: partOutDir,
+					format: js.format,
+					platform: js.platform,
+					sourcemap: js.sourcemap,
+					minify: js.minify,
+					unbundle: js.unbundle,
+					clean: isBase ? js.clean : false,
+					fixedExtension: js.fixedExtension,
+					dts: js.dts,
+					define: js.define,
+					...instrument(group.id),
+					...(part.css !== undefined ? { css: part.css } : {}),
+					...(partExternals?.length || partBundleNodeModules || partBundle?.length
+						? {
+								deps: {
+									...(partExternals?.length ? { neverBundle: partExternals } : {}),
+									// alwaysBundle force-inlines these packages (inverse of neverBundle), even
+									// declared deps tsdown would auto-externalize. Allowed alongside
+									// skipNodeModulesBundle:false (the throw only fires when it is true).
+									...(partBundle?.length ? { alwaysBundle: partBundle } : {}),
+									...(partBundleNodeModules ? { skipNodeModulesBundle: false } : {}),
+								},
+							}
+						: {}),
+					...(js.cjsDefault !== undefined ? { cjsDefault: js.cjsDefault } : {}),
+					...(js.jsx !== undefined ? { inputOptions: { jsx: js.jsx } } : {}),
+					// nodeBuiltinDefaultInterop rewrites default imports of node: builtins to namespace
+					// form so rolldown's CJS codegen emits correct interop (it otherwise accesses
+					// `.default` on a bare `require("node:x")`, which is undefined). cjsDefaultInterop
+					// promotes a default+named CJS entry chunk to module.exports = <default> (rslib
+					// cjsInterop parity). Both are cjs-only and no-ops for esm.
+					plugins: [
+						...(manifestPlugin ? [manifestPlugin] : []),
+						...(js.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
+						...(options.extraPlugins ?? []),
+						...metricsPlugins(group.id, "js"),
+					],
+				}),
+			);
 
 			// Mirror public/ once, after the base partition's JS pass owns the outDir.
 			if (isBase) syncPublicDir(publicDir, join(js.outDir, "public"));
@@ -322,44 +357,48 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// and `dtsExternals`: dtsExternals are externalized in the dts pass only (emitted as
 			// import references in the .d.ts) while the JS pass still bundles them. The JS pass
 			// neverBundle (above) carries `externals` only — never dtsExternals.
-			await build({
-				config: false,
-				cwd: options.cwd,
-				entry: dts.entry,
-				outDir: partOutDir,
-				format: dts.format,
-				platform: dts.platform,
-				sourcemap: dts.sourcemap,
-				unbundle: dts.unbundle,
-				clean: false,
-				fixedExtension: dts.fixedExtension,
-				dts: dts.dts,
-				define: dts.define,
-				...(dtsNeverBundle.length > 0 || partBundleNodeModules || dts.bundledPackages
-					? {
-							deps: {
-								...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
-								...(partBundleNodeModules
-									? {
-											skipNodeModulesBundle: false,
-											...(dts.bundledPackages ? { dts: { alwaysBundle: dts.bundledPackages } } : {}),
-										}
-									: dts.bundledPackages
-										? { skipNodeModulesBundle: true, dts: { alwaysBundle: dts.bundledPackages } }
-										: {}),
-							},
-						}
-					: {}),
-				...(dts.jsx !== undefined ? { inputOptions: { jsx: dts.jsx } } : {}),
-				// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
-				// `.cjs` JS chunk in this pass, overwriting the JS pass's footer'd `.cjs` with a
-				// footer-less one (verified). Re-attach the interop plugins here so the footer lands on
-				// the FINAL `.cjs` (this is the chunk that inlines vendor deps like vfile).
-				plugins: [
-					...(dts.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
-					...(options.extraPlugins ?? []),
-				],
-			});
+			await timed(group.id, "dts", () =>
+				build({
+					config: false,
+					cwd: options.cwd,
+					entry: dts.entry,
+					outDir: partOutDir,
+					format: dts.format,
+					platform: dts.platform,
+					sourcemap: dts.sourcemap,
+					unbundle: dts.unbundle,
+					clean: false,
+					fixedExtension: dts.fixedExtension,
+					dts: dts.dts,
+					define: dts.define,
+					...instrument(group.id),
+					...(dtsNeverBundle.length > 0 || partBundleNodeModules || dts.bundledPackages
+						? {
+								deps: {
+									...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
+									...(partBundleNodeModules
+										? {
+												skipNodeModulesBundle: false,
+												...(dts.bundledPackages ? { dts: { alwaysBundle: dts.bundledPackages } } : {}),
+											}
+										: dts.bundledPackages
+											? { skipNodeModulesBundle: true, dts: { alwaysBundle: dts.bundledPackages } }
+											: {}),
+								},
+							}
+						: {}),
+					...(dts.jsx !== undefined ? { inputOptions: { jsx: dts.jsx } } : {}),
+					// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
+					// `.cjs` JS chunk in this pass, overwriting the JS pass's footer'd `.cjs` with a
+					// footer-less one (verified). Re-attach the interop plugins here so the footer lands on
+					// the FINAL `.cjs` (this is the chunk that inlines vendor deps like vfile).
+					plugins: [
+						...(dts.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
+						...(options.extraPlugins ?? []),
+						...metricsPlugins(group.id, "dts"),
+					],
+				}),
+			);
 		}
 
 		// Loose files: one extra single-entry, bundled, no-dts, no-manifest pass each, into the
@@ -374,31 +413,35 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 		};
 		for (const lf of options.looseFiles ?? []) {
 			const hasCjs = lf.format === "cjs";
-			await build({
-				config: false,
-				cwd: options.cwd,
-				entry: { [lf.entryName]: lf.source },
-				outDir: looseOutDir,
-				format: [lf.format],
-				platform: "node",
-				sourcemap: !isProdGroup,
-				minify: isProdGroup && (options.minify ?? false),
-				// Bundle the whole module graph into the single literal output file.
-				unbundle: false,
-				clean: false,
-				fixedExtension: lf.fixedExtension,
-				dts: false,
-				define: {
-					"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
-					...options.define,
-				},
-				...(Object.keys(looseDeps).length > 0 ? { deps: looseDeps } : {}),
-				...(hasCjs ? { cjsDefault: true } : {}),
-				plugins: [
-					...(hasCjs ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
-					...(options.extraPlugins ?? []),
-				],
-			});
+			await timed(group.id, "loose", () =>
+				build({
+					config: false,
+					cwd: options.cwd,
+					entry: { [lf.entryName]: lf.source },
+					outDir: looseOutDir,
+					format: [lf.format],
+					platform: "node",
+					sourcemap: !isProdGroup,
+					minify: isProdGroup && (options.minify ?? false),
+					// Bundle the whole module graph into the single literal output file.
+					unbundle: false,
+					clean: false,
+					fixedExtension: lf.fixedExtension,
+					dts: false,
+					define: {
+						"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
+						...options.define,
+					},
+					...instrument(group.id),
+					...(Object.keys(looseDeps).length > 0 ? { deps: looseDeps } : {}),
+					...(hasCjs ? { cjsDefault: true } : {}),
+					plugins: [
+						...(hasCjs ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
+						...(options.extraPlugins ?? []),
+						...metricsPlugins(group.id, "loose"),
+					],
+				}),
+			);
 		}
 	}
 }

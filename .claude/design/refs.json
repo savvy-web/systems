@@ -10,8 +10,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "ecbfc101933ff75bc60ec1cf5fc24555fe9bb516ab98a6da2d5d6ea1bdcaee6f",
-			"recordedAt": "2026-06-18"
+			"hash": "4872e89f0c11bb05f255283b612137070f513e2008532b3aef369435f06a15ad",
+			"recordedAt": "2026-06-20"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -76,8 +76,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "b48cf62305a893e469a812097fa6c154a7855bc0503e9887474966c6ea85d659",
-			"recordedAt": "2026-06-18"
+			"hash": "b99b5549471c4bf2c4c8afefabb9f578e04895da1d398989b922186795871577",
+			"recordedAt": "2026-06-20"
 		}
 	]
 }
