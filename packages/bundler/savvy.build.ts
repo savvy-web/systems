@@ -14,7 +14,7 @@
 // in rslib.config.ts is therefore not carried over (no check fires here).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { RenderedOutput } from "@savvy-web/tsdown-plugins";
+import type { PublishTargets, RenderedOutput } from "@savvy-web/tsdown-plugins";
 import {
 	BuildCollector,
 	ReportPipelineLive,
@@ -30,7 +30,11 @@ import {
 import { Effect } from "effect";
 
 const cwd = import.meta.dirname;
-const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8")) as { name: string; version: string };
+const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8")) as {
+	name: string;
+	version: string;
+	publishConfig?: { targets?: PublishTargets };
+};
 const i = process.argv.indexOf("--target");
 const rawTarget = i >= 0 ? process.argv[i + 1] : undefined;
 if (rawTarget !== undefined && rawTarget !== "dev" && rawTarget !== "prod") {
@@ -65,8 +69,13 @@ try {
 		removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
 		// Emit the dist/prod/targets.json binding the release action consumes — the front
 		// door (runBuild) writes this; the escape hatch must too, or the action falls back
-		// to the dist/dev directory. npm+github collapse into the single built npm group.
-		writeTargetsBinding(cwd, resolveTargets({ targets: { npm: true, github: true }, baseName: pkg.name }));
+		// to the dist/dev directory. Derive the targets from publishConfig.targets (not a
+		// hardcoded map) so the binding tracks the manifest.
+		const targets = pkg.publishConfig?.targets;
+		if (targets === undefined) {
+			throw new Error("Missing package.json publishConfig.targets for --target prod");
+		}
+		writeTargetsBinding(cwd, resolveTargets({ targets, baseName: pkg.name }));
 	}
 } finally {
 	// Always render the report — even if the build threw — so captured diagnostics are surfaced
