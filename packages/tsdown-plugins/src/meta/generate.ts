@@ -33,6 +33,8 @@ export interface GenerateMetaOptions {
 	 * rewrite. When omitted, the package.json is copied verbatim.
 	 */
 	readonly manifestTransform?: ((pkg: Record<string, unknown>) => Record<string, unknown>) | undefined;
+	/** When set, API Extractor warnings/errors are routed here (and suppressed from console). */
+	readonly onMessage?: ((entry: import("../report/collector.js").DiagnosticInput) => void) | undefined;
 }
 
 export interface MetaResult {
@@ -59,6 +61,7 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		localPaths,
 		tsdoc,
 		manifestTransform,
+		onMessage,
 	} = options;
 	const tsdocConfigPath = writeTsdocConfig(cwd, tsdoc);
 	const packageJsonPath = join(cwd, "package.json");
@@ -92,6 +95,7 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 			// Only the main entry emits tsdoc-metadata.json.
 			...(isMain && !mainEntryDidTsdocMetadata ? { tsdocMetadataPath } : {}),
 			suppressWarnings: tsdoc.suppressWarnings,
+			...(onMessage !== undefined ? { onMessage } : {}),
 		});
 		if (isMain) mainEntryDidTsdocMetadata = true;
 		perEntryModels.set(entryName, JSON.parse(readFileSync(perEntryApiJson, "utf-8")) as Record<string, unknown>);

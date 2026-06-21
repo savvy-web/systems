@@ -60,6 +60,8 @@ export { generateMeta } from "./meta/generate.js";
 export { rewriteMetaVersions } from "./meta/optimistic.js";
 export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
 export { TsconfigResolver, resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
+export type { DiagnosticInput, PassKind } from "./report/collector.js";
+export { BuildCollector, BuildCollectorTag } from "./report/collector.js";
 export type { Formatter, FormatterContext, RenderedOutput } from "./report/formatters/index.js";
 export {
 	CiAnnotationsFormatter,
@@ -72,10 +74,11 @@ export { EnvironmentDetectorLive } from "./report/layers/EnvironmentDetectorLive
 export { ExecutorResolverLive } from "./report/layers/ExecutorResolverLive.js";
 export { FormatSelectorLive } from "./report/layers/FormatSelectorLive.js";
 export { OutputRendererLive } from "./report/layers/OutputRendererLive.js";
+export { buildMetricsPlugin } from "./report/metrics-plugin.js";
 export type { RenderReportOptions } from "./report/pipeline.js";
 export { ReportPipelineLive, renderReport } from "./report/pipeline.js";
 // report surface
-export type { BuildReport, TargetGroupReport } from "./report/schema.js";
+export type { BuildReport, DiagnosticEntry, EmittedFile, PassReport, TargetGroupReport } from "./report/schema.js";
 export {
 	BuildReport as BuildReportSchema,
 	ReportTimings,
@@ -91,6 +94,8 @@ export { FormatSelector } from "./report/services/FormatSelector.js";
 export { OutputRenderer } from "./report/services/OutputRenderer.js";
 export type { Timer } from "./report/timer.js";
 export { createTimer, formatTime } from "./report/timer.js";
+export type { TsdownLogger } from "./report/tsdown-logger.js";
+export { createTsdownLogger } from "./report/tsdown-logger.js";
 export { writeTargetsBinding } from "./targets/binding.js";
 export type {
 	PublishTargetObject,

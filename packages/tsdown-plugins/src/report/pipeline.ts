@@ -25,6 +25,7 @@ export interface RenderReportOptions {
 	/** Override env detection (mainly for tests). */
 	readonly env?: Environment;
 	readonly noColor: boolean;
+	readonly verbose?: boolean;
 }
 
 export const renderReport = (
@@ -43,5 +44,5 @@ export const renderReport = (
 		const env = options.env ?? (yield* detector.detect());
 		const executor = yield* executorResolver.resolve(env);
 		const format = yield* formatSelector.select(executor, options.explicitFormat, env);
-		return yield* renderer.render(reports, format, { noColor: options.noColor });
+		return yield* renderer.render(reports, format, { noColor: options.noColor, verbose: options.verbose ?? false });
 	});

@@ -32,10 +32,10 @@
 	},
 	"dependencies": {
 		"@savvy-web/bundler": "workspace:*",
-		"@savvy-web/tsdown-plugins": "workspace:*"
+		"@savvy-web/tsdown-plugins": "workspace:*",
+		"@tsdown/css": "^0.22.3"
 	},
 	"devDependencies": {
-		"@tsdown/css": "^0.22.3",
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
@@ -45,9 +45,13 @@
 	},
 	"peerDependencies": {
 		"@rspress/core": "^2.0.0",
-		"@tsdown/css": "^0.22.3",
+		"@types/node": "catalog:silkPeers",
+		"@types/react": "catalog:silkPeers",
+		"@types/react-dom": "catalog:silkPeers",
+		"@typescript/native-preview": "catalog:silkPeers",
 		"react": "catalog:silkPeers",
-		"react-dom": "catalog:silkPeers"
+		"react-dom": "catalog:silkPeers",
+		"typescript": "catalog:silkPeers"
 	},
 	"publishConfig": {
 		"access": "public",

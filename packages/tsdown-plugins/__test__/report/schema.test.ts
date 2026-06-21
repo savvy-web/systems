@@ -1,30 +1,42 @@
 // packages/tsdown-plugins/__test__/report/schema.test.ts
-
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { BuildReport } from "../../src/report/schema.js";
+import { BuildReport, DiagnosticEntry } from "../../src/report/schema.js";
 
 describe("BuildReport schema", () => {
-	it("decodes a minimal valid report", () => {
-		const decode = Schema.decodeUnknownSync(BuildReport);
-		const report = decode({
+	it("decodes a report with passes, files, and structured diagnostics", () => {
+		const decoded = Schema.decodeUnknownSync(BuildReport)({
 			package: "@x/p",
 			targetGroups: [
 				{
 					id: "npm",
 					entries: ["index"],
-					emittedFiles: ["index.js", "index.d.ts"],
-					timings: { totalMs: 12 },
-					warnings: [],
+					passes: [
+						{ id: "js", files: [{ path: "index.js", bytes: 60 }], ms: 731 },
+						{ id: "dts", files: [{ path: "index.d.ts", bytes: 2400, gzip: 890 }], ms: 205 },
+					],
+					warnings: [{ source: "tsdown", level: "warn", text: "heads up" }],
 					errors: [],
+					timings: { totalMs: 936 },
 				},
 			],
 		});
-		expect(report.package).toBe("@x/p");
-		expect(report.targetGroups[0].emittedFiles).toContain("index.d.ts");
+		expect(decoded.targetGroups[0]?.passes).toHaveLength(2);
+		expect(decoded.targetGroups[0]?.passes[0]?.files[0]?.bytes).toBe(60);
 	});
 
-	it("rejects a report missing required fields", () => {
-		expect(() => Schema.decodeUnknownSync(BuildReport)({ package: "@x/p" })).toThrow();
+	it("rejects an unknown diagnostic source and decodes a structured entry", () => {
+		// An out-of-enum source is rejected by the DiagnosticEntry schema.
+		expect(() => Schema.decodeUnknownSync(DiagnosticEntry)({ source: "nope", level: "warn", text: "x" })).toThrow();
+		// A full entry with file/line/column round-trips.
+		const entry: DiagnosticEntry = Schema.decodeUnknownSync(DiagnosticEntry)({
+			source: "api-extractor",
+			level: "error",
+			text: "boom",
+			file: "a.ts",
+			line: 3,
+			column: 1,
+		});
+		expect(entry.file).toBe("a.ts");
 	});
 });

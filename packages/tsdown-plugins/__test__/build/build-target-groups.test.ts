@@ -951,6 +951,29 @@ describe("buildTargetGroups", () => {
 		expect(rtDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
 	});
 
+	it("skips the dts pass when all entries are bin/ (empty dts entry after bin filter)", async () => {
+		// A partition whose only entry is a bin/ executable gets no .d.ts. deriveDtsPassOptions
+		// strips all bin/-prefixed keys, leaving an empty entry map. The guard in buildTargetGroups
+		// skips the dts build() call so tsdown never receives "No input files".
+		const calls: Array<{ dts: unknown }> = [];
+		const fakeBuild = vi.fn(async (cfg: { dts: unknown }) => {
+			calls.push({ dts: cfg.dts });
+			return [];
+		});
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { "bin/cli": "./src/bin/cli.ts" },
+			tsconfigPath: "/tmp/t.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build: fakeBuild as never,
+		});
+		// Only the JS pass runs (dts:false). No dts build() call.
+		expect(calls.length).toBe(1);
+		expect(calls[0]?.dts).toBe(false);
+	});
+
 	it("globs the whole source subtree for an outSubdir partition's JS pass, keeps the barrel for dts", async () => {
 		const calls: Array<{ entry: unknown; dts: unknown }> = [];
 		const fakeBuild = vi.fn(async (cfg: { entry: unknown; dts: unknown }) => {

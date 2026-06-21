@@ -186,6 +186,11 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOptions {
 	const isProd = options.group !== "dev";
 	const format = options.format ?? ["esm"];
+	// Bin entries are side-effect-only executables with no exports. Generating a `.d.ts` for them
+	// produces an empty `export {};` chunk that makes rolldown-plugin-dts:fake-js emit a spurious
+	// SOURCEMAP_BROKEN warning. Excluding them from the dts pass eliminates the warning without
+	// affecting the JS pass (bin/cli.js still builds — only declarations are skipped).
+	const entry = Object.fromEntries(Object.entries(options.entry).filter(([name]) => !name.startsWith("bin/")));
 	return {
 		outDir: outDirFor(options.cwd, options.group),
 		sourcemap: false,
@@ -194,7 +199,7 @@ export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOpti
 		clean: false,
 		platform: "node",
 		fixedExtension: false,
-		entry: options.entry,
+		entry,
 		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true },
 		define: {
 			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),

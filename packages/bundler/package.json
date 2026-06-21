@@ -32,6 +32,7 @@
 	"dependencies": {
 		"@savvy-web/tsdown-plugins": "workspace:*",
 		"@tsdown/exe": "^0.22.1",
+		"effect": "catalog:silk",
 		"tsdown": "^0.22.3"
 	},
 	"devDependencies": {
@@ -40,17 +41,37 @@
 		"@tsdown/css": "^0.22.3",
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",
+		"@types/react-dom": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
-		"effect": "catalog:silk",
 		"react": "catalog:silk",
-		"rolldown": "^1.1.1",
+		"react-dom": "catalog:silk",
+		"rolldown": "^1.1.2",
 		"tinyrainbow": "^3.1.0",
-		"tsx": "^4.22.4",
 		"typescript": "catalog:silk",
 		"vitest": "^4.1.9"
 	},
 	"peerDependencies": {
-		"effect": "catalog:silkPeers"
+		"@types/node": "catalog:silkPeers",
+		"@types/react": "catalog:silkPeers",
+		"@types/react-dom": "catalog:silkPeers",
+		"@typescript/native-preview": "catalog:silkPeers",
+		"react": "catalog:silkPeers",
+		"react-dom": "catalog:silkPeers",
+		"typescript": "catalog:silkPeers"
+	},
+	"peerDependenciesMeta": {
+		"@types/react": {
+			"optional": true
+		},
+		"@types/react-dom": {
+			"optional": true
+		},
+		"react": {
+			"optional": true
+		},
+		"react-dom": {
+			"optional": true
+		}
 	},
 	"publishConfig": {
 		"access": "public",

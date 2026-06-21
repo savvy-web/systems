@@ -11,7 +11,7 @@ export const MarkdownFormatter: Formatter = {
 				lines.push(`## ❌ ${r.package}`);
 				for (const g of failing) {
 					lines.push(`- **${g.id}**`);
-					for (const e of g.errors) lines.push(`  - ${e}`);
+					for (const e of g.errors) lines.push(`  - ${e.text}`);
 				}
 			} else {
 				lines.push(`## ✅ ${r.package}`);

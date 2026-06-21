@@ -209,12 +209,14 @@ export interface ParsedArgs {
 	readonly watch: boolean;
 	/** Skip the SEA compile step of a dev/prod build (the manifest is still programmed). Used by `prepare`. */
 	readonly noExe: boolean;
+	readonly verbose: boolean;
 }
 
 export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 	let target: "dev" | "prod" | "meta" | "exe" = "dev";
 	let watch = false;
 	let noExe = false;
+	let verbose = false;
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--target") {
 			const v = argv[i + 1];
@@ -224,9 +226,11 @@ export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 			watch = true;
 		} else if (argv[i] === "--no-exe") {
 			noExe = true;
+		} else if (argv[i] === "--verbose") {
+			verbose = true;
 		}
 	}
-	return { target, watch, noExe };
+	return { target, watch, noExe, verbose };
 }
 
 export type {

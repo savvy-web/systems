@@ -132,10 +132,15 @@ describe("defineBuild", () => {
 
 describe("parseArgs", () => {
 	it("defaults target to dev", () => {
-		expect(parseArgs([])).toEqual({ target: "dev", watch: false, noExe: false });
+		expect(parseArgs([])).toEqual({ target: "dev", watch: false, noExe: false, verbose: false });
 	});
 	it("parses --target prod and --watch", () => {
-		expect(parseArgs(["--target", "prod", "--watch"])).toEqual({ target: "prod", watch: true, noExe: false });
+		expect(parseArgs(["--target", "prod", "--watch"])).toEqual({
+			target: "prod",
+			watch: true,
+			noExe: false,
+			verbose: false,
+		});
 	});
 	it("defaults noExe to false", () => {
 		expect(parseArgs(["--target", "dev"]).noExe).toBe(false);

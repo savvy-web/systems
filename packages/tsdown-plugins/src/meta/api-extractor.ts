@@ -4,6 +4,7 @@ import type { ExtractorMessage } from "@microsoft/api-extractor";
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from "@microsoft/api-extractor";
 import { TSDocConfigFile } from "@microsoft/tsdoc-config";
 import { MetaGenerationError } from "../errors.js";
+import type { DiagnosticInput } from "../report/collector.js";
 import type { WarningSuppressionRule } from "./config.js";
 import { createMessageSuppressor } from "./message-suppressor.js";
 
@@ -23,6 +24,23 @@ export interface RunApiExtractorOptions {
 	/** Where to write tsdoc-metadata.json (only the main entry needs it). */
 	readonly tsdocMetadataPath?: string | undefined;
 	readonly suppressWarnings: ReadonlyArray<WarningSuppressionRule>;
+	/** When set, non-suppressed warnings/errors are routed here and marked handled (no console output). */
+	readonly onMessage?: ((entry: DiagnosticInput) => void) | undefined;
+}
+
+/** Map an API Extractor message to a collector DiagnosticInput, or undefined if not warn/error. */
+export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput | undefined {
+	const isError = message.logLevel === ExtractorLogLevel.Error;
+	const isWarning = message.logLevel === ExtractorLogLevel.Warning;
+	if (!isError && !isWarning) return undefined;
+	return {
+		source: "api-extractor",
+		level: isError ? "error" : "warn",
+		text: message.text,
+		...(message.sourceFilePath !== undefined ? { file: message.sourceFilePath } : {}),
+		...(message.sourceFileLine !== undefined ? { line: message.sourceFileLine } : {}),
+		...(message.sourceFileColumn !== undefined ? { column: message.sourceFileColumn } : {}),
+	};
 }
 
 /** Run API Extractor over a single entry's .d.ts, writing the .api.json (and optionally tsdoc-metadata.json). Throws on failure. */
@@ -66,6 +84,15 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			if (message.messageId === "console-compiler-version-notice" || message.messageId === "console-preamble") {
 				message.logLevel = ExtractorLogLevel.None;
 				message.handled = true;
+			}
+			// Route remaining warnings/errors to the collector and suppress API Extractor's own
+			// console output for them, so they surface only in the unified build log.
+			if (options.onMessage !== undefined) {
+				const entry = mapExtractorMessage(message);
+				if (entry !== undefined) {
+					options.onMessage(entry);
+					message.handled = true;
+				}
 			}
 		},
 	});

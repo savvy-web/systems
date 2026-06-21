@@ -297,7 +297,7 @@ const config = defineBuild({
 ## API
 
 - `defineBuild(input)` — normalizes a build config (`externals`, `bundle`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `minify`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`, `overrides`, `looseFiles`, `define`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). `minify` defaults to false, `transform` defaults to a manifest stripper, and `overrides` pins a subset of entries to their own format and bundling. Pure; it does not run the build.
-- `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. Every IO dependency on `options` is injectable for tests.
+- `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch`/`--verbose` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. `--verbose` expands the report to a per-file table; the report is quiet by default. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.
 
 ## Turbo tasks

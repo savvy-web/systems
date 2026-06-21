@@ -9,6 +9,7 @@ export interface RenderedOutput {
 
 export interface FormatterContext {
 	readonly noColor: boolean;
+	readonly verbose: boolean;
 }
 
 export interface Formatter {
