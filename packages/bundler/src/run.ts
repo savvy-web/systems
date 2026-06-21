@@ -465,6 +465,9 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				? (m: Record<string, unknown>) => rewriteMetaVersions(m, nextVersions.versions, packageName)
 				: undefined;
 
+			// In CI, forgotten exports are escalated to hard errors that fail the build (they corrupt the
+			// generated API model). Locally they stay warnings, flagged so the build log can nudge.
+			const ci = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 			for (const g of groups) {
 				await runGenerateMeta({
 					cwd,
@@ -477,10 +480,12 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 					localPaths: g.id === canonicalId ? norm.localPaths : [],
 					tsdoc: norm.tsdoc,
 					...(manifestTransform !== undefined ? { manifestTransform } : {}),
+					ci,
 					onMessage: (e) => {
 						if (e.level === "error") collector.recordError(g.id, e);
 						else collector.recordWarning(g.id, e);
 					},
+					onSuppressed: (e) => collector.recordSuppressed(g.id, e),
 				});
 			}
 		}

@@ -7,6 +7,8 @@ export interface DiagnosticInput {
 	readonly source: DiagnosticEntry["source"];
 	readonly level: DiagnosticEntry["level"];
 	readonly text: string;
+	readonly code?: string;
+	readonly ciFatal?: boolean;
 	readonly file?: string;
 	readonly line?: number;
 	readonly column?: number;
@@ -30,10 +32,13 @@ interface MutableGroup {
 	passes: Map<PassKind, MutablePass>;
 	warnings: DiagnosticEntry[];
 	errors: DiagnosticEntry[];
+	suppressed: DiagnosticEntry[];
 	/** Tracks output paths already recorded for this group (first-write-wins dedup). */
 	seenPaths: Set<string>;
 	/** Tracks diagnostic keys already recorded for this group (first-write-wins dedup). */
 	seenDiagnostics: Set<string>;
+	/** Tracks suppressed diagnostic keys already recorded for this group (first-write-wins dedup). */
+	seenSuppressed: Set<string>;
 }
 
 /**
@@ -53,8 +58,10 @@ export class BuildCollector {
 				passes: new Map(),
 				warnings: [],
 				errors: [],
+				suppressed: [],
 				seenPaths: new Set(),
 				seenDiagnostics: new Set(),
+				seenSuppressed: new Set(),
 			};
 			this.groups.set(groupId, g);
 		}
@@ -108,6 +115,14 @@ export class BuildCollector {
 		g.errors.push(toEntry(entry));
 	}
 
+	recordSuppressed(groupId: string, entry: DiagnosticInput): void {
+		const g = this.group(groupId);
+		const key = diagnosticKey(entry);
+		if (g.seenSuppressed.has(key)) return;
+		g.seenSuppressed.add(key);
+		g.suppressed.push(toEntry(entry));
+	}
+
 	snapshot(packageName: string): ReadonlyArray<BuildReport> {
 		const targetGroups: TargetGroupReport[] = [];
 		for (const g of this.groups.values()) {
@@ -129,6 +144,7 @@ export class BuildCollector {
 					passes,
 					warnings: [...g.warnings],
 					errors: [...g.errors],
+					suppressed: [...g.suppressed],
 					timings: new ReportTimings({ totalMs }),
 				}),
 			);
@@ -141,6 +157,7 @@ function diagnosticKey(input: DiagnosticInput): string {
 	return [
 		input.source,
 		input.level,
+		input.code ?? "",
 		input.text,
 		input.file ?? "",
 		String(input.line ?? ""),
@@ -153,6 +170,8 @@ function toEntry(input: DiagnosticInput): DiagnosticEntry {
 		source: input.source,
 		level: input.level,
 		text: input.text,
+		...(input.code !== undefined ? { code: input.code } : {}),
+		...(input.ciFatal !== undefined ? { ciFatal: input.ciFatal } : {}),
 		...(input.file !== undefined ? { file: input.file } : {}),
 		...(input.line !== undefined ? { line: input.line } : {}),
 		...(input.column !== undefined ? { column: input.column } : {}),

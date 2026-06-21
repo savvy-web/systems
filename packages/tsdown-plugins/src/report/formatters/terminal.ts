@@ -2,6 +2,7 @@
 import pc from "picocolors";
 import type { DiagnosticEntry, TargetGroupReport } from "../schema.js";
 import { formatTime } from "../timer.js";
+import { ciFatalCallout, ciFatalCountForPackage, suppressedSummary } from "./diagnostics.js";
 import type { Formatter } from "./types.js";
 
 const fmtBytes = (n: number): string => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(2)} kB`);
@@ -35,8 +36,21 @@ export const TerminalFormatter: Formatter = {
 					}
 				}
 				for (const e of g.errors) lines.push(`    ${color(pc.red, "error")} ${diagLine(e)}`);
-				for (const w of g.warnings) lines.push(`    ${color(pc.yellow, "warn")} ${diagLine(w)}`);
+				for (const w of g.warnings) {
+					const tag = w.ciFatal === true ? color(pc.red, " [fails CI]") : "";
+					lines.push(`    ${color(pc.yellow, "warn")} ${diagLine(w)}${tag}`);
+				}
+				if (g.suppressed.length > 0) {
+					if (ctx.verbose) {
+						for (const s of g.suppressed)
+							lines.push(`    ${color(pc.dim, `suppressed ${s.code ?? "?"}`)} ${diagLine(s)}`);
+					} else {
+						lines.push(`    ${color(pc.dim, `suppressed ${g.suppressed.length}: ${suppressedSummary(g.suppressed)}`)}`);
+					}
+				}
 			}
+			const fatal = ciFatalCountForPackage(r);
+			if (fatal > 0) lines.push(`  ${color(pc.red, ciFatalCallout(fatal))}`);
 		}
 		const pkgs = reports.length;
 		if (pkgs > 0) {

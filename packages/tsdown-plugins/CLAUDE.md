@@ -9,7 +9,7 @@
 - `src/meta/`: `generateMeta` over `@microsoft/api-extractor` + multi-entry api-model merge, the portable-tsconfig resolver (`typescript` is a runtime dep), `syncPublicDir`.
 - `src/targets/`: `resolveTargets`/`writeTargetsBinding` deriving byte-variant groups from `publishConfig.targets`; throws `ConfigValidationError`.
 - `src/jsx/` (tsconfig→rolldown JSX), `src/exe/` (`normalizeExeOptions`/`runExeBuild`).
-- `src/report/`: `BuildCollector`/`BuildCollectorTag`, `createTsdownLogger`, `buildMetricsPlugin`, and the `BuildReport` schema (`passes: PassReport[]` with `EmittedFile` + `DiagnosticEntry[]`) that the bundler renders into one unified log.
+- `src/report/`: `BuildCollector`/`BuildCollectorTag`, `createTsdownLogger`, `buildMetricsPlugin`, and the `BuildReport` schema (`passes: PassReport[]` with `EmittedFile` + `DiagnosticEntry[]`) that the bundler renders into one unified log. API Extractor analyzer messages (`ae-forgotten-export`, `ae-missing-release-tag`, `tsdoc-*`) surface as warnings; forgotten exports escalate to a hard build error under CI.
 - Rolldown transforms: `nodeBuiltinDefaultInterop` (cjs default-import interop), `removeDeclarationMaps`, `cjsDefaultInterop`.
 - `ConfigValidator`/`ConfigValidatorLive` rule set; ships a synced local `ecma.json` copy guarded by a unit test.
 - Self-hosts (bootstraps via `tsx`); versions independently from the bundler.

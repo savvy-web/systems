@@ -26,7 +26,14 @@ export interface RunApiExtractorOptions {
 	readonly suppressWarnings: ReadonlyArray<WarningSuppressionRule>;
 	/** When set, non-suppressed warnings/errors are routed here and marked handled (no console output). */
 	readonly onMessage?: ((entry: DiagnosticInput) => void) | undefined;
+	/** When true (CI), ae-forgotten-export is escalated to a hard error that fails the build. */
+	readonly ci?: boolean | undefined;
+	/** Receives messages matched by `suppressWarnings` (for accounting / --verbose). */
+	readonly onSuppressed?: ((entry: DiagnosticInput) => void) | undefined;
 }
+
+/** messageIds that become a hard build error in CI (they corrupt the .api.json). */
+const CI_FATAL_MESSAGE_IDS = new Set<string>(["ae-forgotten-export"]);
 
 /** Map an API Extractor message to a collector DiagnosticInput, or undefined if not warn/error. */
 export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput | undefined {
@@ -37,6 +44,7 @@ export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput 
 		source: "api-extractor",
 		level: isError ? "error" : "warn",
 		text: message.text,
+		...(message.messageId !== undefined ? { code: message.messageId } : {}),
 		...(message.sourceFilePath !== undefined ? { file: message.sourceFilePath } : {}),
 		...(message.sourceFileLine !== undefined ? { line: message.sourceFileLine } : {}),
 		...(message.sourceFileColumn !== undefined ? { column: message.sourceFileColumn } : {}),
@@ -63,6 +71,26 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			// We do not want api-extractor to write a rollup .d.ts (tsdown already emitted the dts).
 			dtsRollup: { enabled: false },
 			apiReport: { enabled: false },
+			// Without an api-extractor.json, the MessageRouter's compiler/extractor/tsdoc default rules
+			// are all `logLevel: "none"`, so analyzer messages (ae-forgotten-export, ae-missing-release-tag,
+			// tsdoc-*) reach messageCallback already silenced and mapExtractorMessage drops them. Route the
+			// two actionable categories to "warning" so the diagnostics flow to the collector. Per-package
+			// noise is filtered ahead of this via `suppressWarnings`.
+			//
+			// `compilerMessageReporting` is deliberately left at the "none" default: api-extractor analyzes
+			// already-emitted, already-typechecked .d.ts with its own BUNDLED TypeScript, which lags the
+			// project's compiler. That skew makes it emit spurious diagnostics against third-party lib types
+			// (e.g. "Cannot find name 'Float16Array'" from @types/node) that are noise, not the user's code.
+			messages: {
+				extractorMessageReporting: {
+					default: { logLevel: "warning" },
+					// In CI a forgotten export is a hard error: it silently drops the symbol from the
+					// .api.json, corrupting downstream doc generation. Suppression still wins — a suppressed
+					// message is set to None in the callback before it can count toward errorCount.
+					...(options.ci === true ? { "ae-forgotten-export": { logLevel: "error" } } : {}),
+				},
+				tsdocMessageReporting: { default: { logLevel: "warning" } },
+			},
 		},
 		packageJsonFullPath: options.packageJsonPath,
 		configObjectFullPath: undefined,
@@ -74,8 +102,13 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 		localBuild: true,
 		showVerboseMessages: false,
 		messageCallback: (message: ExtractorMessage): void => {
-			// Apply user suppressions first.
+			// Apply user suppressions first — a suppressed message must not fail CI or warn. Map it
+			// BEFORE setting None so the pre-suppression level is captured for the accounting.
 			if (suppressor.matches(message.messageId, message.text)) {
+				if (options.onSuppressed !== undefined) {
+					const entry = mapExtractorMessage(message);
+					if (entry !== undefined) options.onSuppressed(entry);
+				}
 				message.logLevel = ExtractorLogLevel.None;
 				message.handled = true;
 				return;
@@ -90,7 +123,13 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			if (options.onMessage !== undefined) {
 				const entry = mapExtractorMessage(message);
 				if (entry !== undefined) {
-					options.onMessage(entry);
+					// Locally a CI-fatal message is shown as a warning; tag it so the formatter can nudge.
+					const ciFatal =
+						options.ci !== true &&
+						entry.level === "warn" &&
+						entry.code !== undefined &&
+						CI_FATAL_MESSAGE_IDS.has(entry.code);
+					options.onMessage(ciFatal ? { ...entry, ciFatal: true } : entry);
 					message.handled = true;
 				}
 			}

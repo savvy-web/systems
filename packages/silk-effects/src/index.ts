@@ -12,8 +12,19 @@
 // ── Changesets namespace ───────────────────────────────────────
 export * as Changesets from "./changesets/index.js";
 // Flat re-export so a generated commitlint.config.ts can name the inferred
-// default-export type (CommitlintConfig.silk()) for declaration emit.
-export type { CommitlintUserConfig } from "./commitlint/index.js";
+// default-export type (CommitlintConfig.silk()) for declaration emit. The three
+// nested types are reachable from CommitlintUserConfig's fields, so the entry must
+// expose them flat too or api-extractor reports them as forgotten exports.
+export type {
+	CommitlintPlugin,
+	CommitlintUserConfig,
+	PromptConfig,
+	PromptSettings,
+	RuleApplicability,
+	RuleConfigTuple,
+	RuleSeverity,
+	RulesConfig,
+} from "./commitlint/index.js";
 // ── Commitlint namespace ──────────────────────────────────────
 export * as Commitlint from "./commitlint/index.js";
 // ── Errors ─────────────────────────────────────────────────────

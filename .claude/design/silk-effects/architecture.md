@@ -4,8 +4,8 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-06-18
-last-synced: 2026-06-18
+updated: 2026-06-21
+last-synced: 2026-06-21
 related:
   - ../silk/architecture.md
   - ../cli/architecture.md
@@ -44,6 +44,8 @@ A fourth namespace export, `Turbo`, adds read-only Turborepo inspection built on
 **Package:** `@savvy-web/silk-effects`, in `packages/silk-effects`. Platform-agnostic via `@effect/platform` — consumers provide their own platform layer. Built dual-format (esm + cjs) so config-integration consumers can `require()` it — see [Why dual-format](#why-dual-format-cjs--esm).
 
 **Single root export:** all public API ships from the package root (`"."`); there are no sub-path exports. The three tool namespaces plus `Turbo` are re-exported from the root as `export * as Changesets` / `Commitlint` / `Lint` / `Turbo`. See `src/index.ts` for the full export surface, and the per-area source directories (`errors/`, `schemas/`, `services/`, `utils/`) for the implementation — each error is one `Data.TaggedError`, each value object a `Schema.TaggedClass`/`Schema.Class`, each service a `Context.Tag` with a Live layer.
+
+A type that is flat-exported from the entry must carry its full type closure flat alongside it, not only inside a namespace. `CommitlintUserConfig` is flat-exported so a generated `commitlint.config.ts` can name it for declaration emit, but its fields reference `CommitlintPlugin`/`RulesConfig`/`PromptConfig` and their nested types — when those were reachable only via the `Commitlint` namespace, the bundler's API Extractor pass (now that forgotten-export diagnostics surface and fail CI — see `../tsdown-plugins/architecture.md`) flagged them as forgotten exports. `src/index.ts` flat-exports the whole reachable closure to keep the entry self-contained.
 
 ## Current State
 

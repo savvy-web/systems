@@ -86,6 +86,50 @@ describe("BuildCollector", () => {
 		expect(group2?.passes.find((p) => p.id === "js")?.files.map((f) => f.path)).toEqual(["index.js"]);
 	});
 
+	it("records suppressed diagnostics with code, deduped, and surfaces them in snapshot", () => {
+		const c = new BuildCollector();
+		c.registerGroup("npm", []);
+		c.recordSuppressed("npm", {
+			source: "api-extractor",
+			level: "warn",
+			text: "Bar needs export",
+			code: "ae-forgotten-export",
+		});
+		// duplicate — dropped
+		c.recordSuppressed("npm", {
+			source: "api-extractor",
+			level: "warn",
+			text: "Bar needs export",
+			code: "ae-forgotten-export",
+		});
+		c.recordSuppressed("npm", {
+			source: "api-extractor",
+			level: "warn",
+			text: "Foo undocumented",
+			code: "tsdoc-undefined-tag",
+		});
+		const [report] = c.snapshot("@x/p");
+		const group = report?.targetGroups[0];
+		expect(group?.suppressed).toHaveLength(2);
+		expect(group?.suppressed.map((s) => s.code)).toEqual(["ae-forgotten-export", "tsdoc-undefined-tag"]);
+	});
+
+	it("round-trips code and ciFatal on warnings", () => {
+		const c = new BuildCollector();
+		c.registerGroup("npm", []);
+		c.recordWarning("npm", {
+			source: "api-extractor",
+			level: "warn",
+			text: "Bar needs export",
+			code: "ae-forgotten-export",
+			ciFatal: true,
+		});
+		const [report] = c.snapshot("@x/p");
+		const w = report?.targetGroups[0]?.warnings[0];
+		expect(w?.code).toBe("ae-forgotten-export");
+		expect(w?.ciFatal).toBe(true);
+	});
+
 	it("counts a re-emitted output path once (first pass wins)", () => {
 		const c = new BuildCollector();
 		c.recordEmitted("npm", "js", { path: "index.cjs", bytes: 100 });

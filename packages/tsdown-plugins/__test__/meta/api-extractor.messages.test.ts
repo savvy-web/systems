@@ -6,6 +6,7 @@ describe("mapExtractorMessage", () => {
 	it("maps a warning message to an api-extractor DiagnosticInput", () => {
 		const entry = mapExtractorMessage({
 			logLevel: ExtractorLogLevel.Warning,
+			messageId: "ae-forgotten-export",
 			text: "ae-forgotten-export",
 			sourceFilePath: "src/index.ts",
 			sourceFileLine: 12,
@@ -14,6 +15,7 @@ describe("mapExtractorMessage", () => {
 		expect(entry).toEqual({
 			source: "api-extractor",
 			level: "warn",
+			code: "ae-forgotten-export",
 			text: "ae-forgotten-export",
 			file: "src/index.ts",
 			line: 12,

@@ -89,6 +89,8 @@ With no `targets` map the build falls back to the single-`npm` group above.
 
 `savvy build --target prod` generates an [API Extractor](https://api-extractor.com/) api-model from each prod group's resolved `.d.ts`. For every group it writes the bundle (`<unscoped>.api.json`, `tsdoc-metadata.json` and a resolved `tsconfig.json`) into `dist/prod/<group>/meta` as a release asset alongside `pkg/`, and copies the canonical group's bundle into any `localPaths` directories. Because it reads the prod build, the meta `package.json` carries concrete dependency versions rather than `catalog:`/`workspace:` specifiers.
 
+API Extractor's analyzer messages — forgotten exports, missing release tags and TSDoc issues — surface in the build log rather than being dropped. A forgotten export (a type reachable from your public API but not itself exported) fails the build under CI (`CI` or `GITHUB_ACTIONS` set); locally it stays a warning so an incremental build is not blocked. Listing the message in `tsdoc.suppressWarnings` suppresses both the local warning and the CI failure, and the build log accounts for what it suppressed.
+
 The `meta` field on `defineBuild` is tri-state:
 
 - **Omitted** (or `undefined`) — generation runs with default options. This is the default; you do not need a `meta` field for `--target prod` to emit the api-model.
