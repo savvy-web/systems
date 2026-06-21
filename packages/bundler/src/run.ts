@@ -451,7 +451,10 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			const canonical = groups.find((g) => g.name === packageName) ?? groups[0];
 			const canonicalId = canonical?.id ?? "npm";
 			const dtsBasenames: Record<string, string> = {};
-			for (const name of Object.keys(entries)) dtsBasenames[name] = name;
+			// Bin entries are side-effect-only executables, not API surface. They have no `.d.ts`
+			// (excluded from the dts pass by deriveDtsPassOptions); skip them so API Extractor does
+			// not try to read a bin declaration file that was never emitted.
+			for (const name of Object.keys(entries)) if (!name.startsWith("bin/")) dtsBasenames[name] = name;
 			const exportPaths = deriveExportPaths(entries, exportsMap);
 			applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
 

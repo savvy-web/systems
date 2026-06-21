@@ -74,3 +74,11 @@ New exported types: `DiagnosticEntry`, `DiagnosticInput`, `EmittedFile`, `PassKi
 ### Quiet terminal output with optional verbose detail
 
 The terminal formatter is now quiet by default: one summary line per target group showing file count and elapsed time. Pass `verbose: true` (via the collector options or the `--verbose` CLI flag on the bundler) to emit the full per-file listing. Markdown and CI-annotation formatters consume the structured `DiagnosticEntry` objects directly.
+
+### Bin entries excluded from declaration output
+
+The dts pass now skips `bin/` (executable) entries. A bin file is a side-effect-only executable with no exports and no consumer importing its types, so its declaration is never useful — and its empty `export {}` chunk made `rolldown-plugin-dts` emit a spurious `SOURCEMAP_BROKEN` warning on every build of a package that ships a bin. The bin executable's JavaScript still builds as before; only its empty declaration file is no longer emitted. A package whose only entry is a bin produces no dts pass at all.
+
+### Deduplicated captured warnings
+
+Identical diagnostics captured from more than one build pass (for example a warning that fires in both the JS and dts passes of a dual-format entry) are now reported once per target group instead of repeated, and captured rolldown warnings no longer leak to the console alongside the unified report.

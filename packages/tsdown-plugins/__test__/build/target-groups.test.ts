@@ -113,6 +113,24 @@ describe("deriveDtsPassOptions (dts pass)", () => {
 		expect(o.entry).toEqual({ index: "./src/index.ts" });
 	});
 
+	it("dts pass strips bin/ entries (bin executables have no declarations)", () => {
+		// A bin entry produces an empty `export {};` .d.ts chunk that triggers a spurious
+		// rolldown-plugin-dts:fake-js SOURCEMAP_BROKEN warning. The dts pass excludes them;
+		// the JS pass (deriveTargetGroupOptions) still includes bin/cli for the executable.
+		const withBin = {
+			cwd: "/abs/pkg",
+			version: "1.2.3",
+			entry: { index: "./src/index.ts", "bin/cli": "./src/bin/cli.ts" },
+			tsconfigPath: "/tmp/t.json",
+		};
+		const dts = deriveDtsPassOptions({ ...withBin, group: "dev", devManifest: "preserve" });
+		expect(dts.entry).toEqual({ index: "./src/index.ts" });
+		expect(dts.entry).not.toHaveProperty("bin/cli");
+		// JS pass must still include bin/cli (it builds the executable).
+		const js = deriveTargetGroupOptions({ ...withBin, group: "dev", devManifest: "preserve" });
+		expect(js.entry).toEqual({ index: "./src/index.ts", "bin/cli": "./src/bin/cli.ts" });
+	});
+
 	it("dts pass uses the same outDir for a prod group", () => {
 		const o = deriveDtsPassOptions({ ...base, group: "npm", devManifest: "preserve" });
 		expect(o.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");

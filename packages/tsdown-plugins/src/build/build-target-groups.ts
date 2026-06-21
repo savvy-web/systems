@@ -333,6 +333,11 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 
 			// Pass 2: bundled dts for this partition's entries. Always clean:false.
 			//
+			// Skip entirely when every entry was filtered out by deriveDtsPassOptions (e.g. a
+			// hypothetical bin-only partition with no export entries). An empty entry map would
+			// cause tsdown to throw "No input files". The JS pass above is unaffected.
+			if (Object.keys(dts.entry).length === 0) continue;
+
 			// The dts pass's bundling posture tracks the JS pass's. There are three cases:
 			//
 			//  1. bundleNodeModules — the JS pass force-bundles all node_modules (rslib
