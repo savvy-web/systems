@@ -29,6 +29,20 @@ describe("buildMetricsPlugin", () => {
 		expect(report?.targetGroups[0]?.warnings[0]?.text).toBe("boom");
 	});
 
+	it("onLog records an error and does not suppress it (returns undefined)", () => {
+		const c = new BuildCollector();
+		const plugin = buildMetricsPlugin(c, "npm", "js", false);
+		const result = callOnLog(plugin, "error", { message: "hard-fail", code: "E" });
+		// Errors must not be swallowed: rolldown's default error reporting still fires.
+		expect(result).toBeUndefined();
+		const [report] = c.snapshot("@x/p");
+		const group = report?.targetGroups[0];
+		expect(group?.errors).toHaveLength(1);
+		expect(group?.errors[0]?.text).toBe("hard-fail");
+		// Warn is still suppressed (returns false) while error is not.
+		expect(callOnLog(plugin, "warn", { message: "soft", code: "W" })).toBe(false);
+	});
+
 	it("records emitted files with byte sizes (no gzip when not verbose)", () => {
 		const c = new BuildCollector();
 		const plugin = buildMetricsPlugin(c, "npm", "js", false);

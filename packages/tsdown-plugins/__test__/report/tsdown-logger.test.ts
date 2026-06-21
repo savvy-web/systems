@@ -7,7 +7,7 @@ describe("createTsdownLogger", () => {
 		const c = new BuildCollector();
 		c.registerGroup("npm", []);
 		const log = createTsdownLogger(c, "npm");
-		log.info("entry:", "[34msrc/index.ts[39m");
+		log.info("entry:", "\x1b[34msrc/index.ts\x1b[39m");
 		log.success("Build complete");
 		log.warn("circular dependency");
 		log.error("oops");
@@ -22,7 +22,7 @@ describe("createTsdownLogger", () => {
 	it("strips ANSI escape codes from captured text", () => {
 		const c = new BuildCollector();
 		const log = createTsdownLogger(c, "npm");
-		log.warn("[33mheads up[39m");
+		log.warn("\x1b[33mheads up\x1b[39m");
 		const [report] = c.snapshot("@x/p");
 		expect(report?.targetGroups[0]?.warnings[0]?.text).toBe("heads up");
 	});

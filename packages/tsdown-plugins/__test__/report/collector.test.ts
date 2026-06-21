@@ -61,6 +61,31 @@ describe("BuildCollector", () => {
 		expect(report3?.targetGroups[0]?.errors).toHaveLength(1);
 	});
 
+	it("snapshot does not leak mutable internal state", () => {
+		const c = new BuildCollector();
+		c.registerGroup("npm", ["index"]);
+		c.recordEmitted("npm", "js", { path: "index.js", bytes: 10 });
+		c.recordWarning("npm", { source: "tsdown", level: "warn", text: "first" });
+
+		const [first] = c.snapshot("@x/p");
+		const group = first?.targetGroups[0];
+		// Mutate the returned snapshot's arrays — this must not reach back into collector state. The
+		// schema types the arrays readonly, so cast to mutable to attempt the (forbidden) mutation.
+		(group?.warnings as Array<{ source: string; level: string; text: string }> | undefined)?.push({
+			source: "tsdown",
+			level: "warn",
+			text: "injected",
+		});
+		const jsPass = group?.passes.find((p) => p.id === "js");
+		(jsPass?.files as Array<{ path: string; bytes: number }> | undefined)?.push({ path: "injected.js", bytes: 999 });
+
+		const [second] = c.snapshot("@x/p");
+		const group2 = second?.targetGroups[0];
+		expect(group2?.warnings).toHaveLength(1);
+		expect(group2?.warnings[0]?.text).toBe("first");
+		expect(group2?.passes.find((p) => p.id === "js")?.files.map((f) => f.path)).toEqual(["index.js"]);
+	});
+
 	it("counts a re-emitted output path once (first pass wins)", () => {
 		const c = new BuildCollector();
 		c.recordEmitted("npm", "js", { path: "index.cjs", bytes: 100 });

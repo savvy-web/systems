@@ -41,37 +41,41 @@ const target = rawTarget ?? "dev";
 const collector = new BuildCollector();
 const verbose = process.argv.includes("--verbose");
 
-await buildTargetGroups({
-	cwd,
-	version: pkg.version,
-	entry: packageJsonEntries({ cwd }),
-	tsconfigPath: writeResolvedTsconfig({ cwd }),
-	groups: target === "prod" ? [{ id: "npm", name: pkg.name }] : [{ id: "dev", name: pkg.name }],
-	devManifest: "preserve",
-	// Port the exact externals from rslib.config.ts. @tsdown/exe is a runtime dep
-	// lazily required by tsdown only when an exe build runs; it is not in the import
-	// graph and was not bundled by rslib, so it stays out of externals.
-	externals: ["effect", "tsdown", "@savvy-web/tsdown-plugins"],
-	// Reproduce the rslib config's prod strip.
-	transform: defaultManifestTransform,
-	collector,
-	verbose,
-});
-
-// Strip declaration source-maps from the published prod pkg/ (the front door does this in
-// runBuild; the escape hatch must do it itself). dev keeps them.
-if (target === "prod") {
-	removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
-	// Emit the dist/prod/targets.json binding the release action consumes — the front
-	// door (runBuild) writes this; the escape hatch must too, or the action falls back
-	// to the dist/dev directory. npm+github collapse into the single built npm group.
-	writeTargetsBinding(cwd, resolveTargets({ targets: { npm: true, github: true }, baseName: pkg.name }));
-}
-
-const rendered = await Effect.runPromise(
-	renderReport(collector.snapshot(pkg.name), {
+try {
+	await buildTargetGroups({
+		cwd,
+		version: pkg.version,
+		entry: packageJsonEntries({ cwd }),
+		tsconfigPath: writeResolvedTsconfig({ cwd }),
+		groups: target === "prod" ? [{ id: "npm", name: pkg.name }] : [{ id: "dev", name: pkg.name }],
+		devManifest: "preserve",
+		// Port the exact externals from rslib.config.ts. @tsdown/exe is a runtime dep
+		// lazily required by tsdown only when an exe build runs; it is not in the import
+		// graph and was not bundled by rslib, so it stays out of externals.
+		externals: ["effect", "tsdown", "@savvy-web/tsdown-plugins"],
+		// Reproduce the rslib config's prod strip.
+		transform: defaultManifestTransform,
+		collector,
 		verbose,
-		noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
-	}).pipe(Effect.provide(ReportPipelineLive)),
-);
-for (const out of rendered as ReadonlyArray<RenderedOutput>) process.stdout.write(`${out.content}\n`);
+	});
+
+	// Strip declaration source-maps from the published prod pkg/ (the front door does this in
+	// runBuild; the escape hatch must do it itself). dev keeps them.
+	if (target === "prod") {
+		removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
+		// Emit the dist/prod/targets.json binding the release action consumes — the front
+		// door (runBuild) writes this; the escape hatch must too, or the action falls back
+		// to the dist/dev directory. npm+github collapse into the single built npm group.
+		writeTargetsBinding(cwd, resolveTargets({ targets: { npm: true, github: true }, baseName: pkg.name }));
+	}
+} finally {
+	// Always render the report — even if the build threw — so captured diagnostics are surfaced
+	// before the error propagates (parity with the front-door runBuild).
+	const rendered = await Effect.runPromise(
+		renderReport(collector.snapshot(pkg.name), {
+			verbose,
+			noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
+		}).pipe(Effect.provide(ReportPipelineLive)),
+	);
+	for (const out of rendered as ReadonlyArray<RenderedOutput>) process.stdout.write(`${out.content}\n`);
+}

@@ -40,7 +40,7 @@ export function buildMetricsPlugin(
 				});
 			}
 		},
-		onLog(level: string, log: unknown): false {
+		onLog(level: string, log: unknown): boolean | undefined {
 			const l = log as { message?: string; id?: string; loc?: { line?: number; column?: number } };
 			const text = l.message ?? String(log);
 			const entry = {
@@ -49,8 +49,14 @@ export function buildMetricsPlugin(
 				...(l.loc?.line !== undefined ? { line: l.loc.line } : {}),
 				...(l.loc?.column !== undefined ? { column: l.loc.column } : {}),
 			};
+			if (level === "error") {
+				// Record the error but do NOT suppress: returning undefined lets rolldown's default error
+				// reporting fire, so a build error is never silently swallowed.
+				collector.recordError(groupId, { source: "rolldown", level: "error", ...entry });
+				return undefined;
+			}
+			// Non-error (warn and anything else): record warn-level diagnostics, then suppress the console leak.
 			if (level === "warn") collector.recordWarning(groupId, { source: "rolldown", level: "warn", ...entry });
-			else if (level === "error") collector.recordError(groupId, { source: "rolldown", level: "error", ...entry });
 			return false;
 		},
 	};

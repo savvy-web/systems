@@ -1,5 +1,5 @@
 import { Context } from "effect";
-import type { BuildReport, DiagnosticEntry, EmittedFile, PassReport, TargetGroupReport } from "./schema.js";
+import { BuildReport, DiagnosticEntry, EmittedFile, PassReport, ReportTimings, TargetGroupReport } from "./schema.js";
 
 export type PassKind = PassReport["id"];
 
@@ -12,8 +12,15 @@ export interface DiagnosticInput {
 	readonly column?: number;
 }
 
+/** Mutable internal mirror of an emitted file, kept as a plain shape until snapshot constructs the class. */
+interface MutableFile {
+	path: string;
+	bytes: number;
+	gzip?: number;
+}
+
 interface MutablePass {
-	files: EmittedFile[];
+	files: MutableFile[];
 	ms: number;
 }
 
@@ -74,7 +81,11 @@ export class BuildCollector {
 		// footer). Count each output path once per group, attributed to the first pass that emits it.
 		if (g.seenPaths.has(file.path)) return;
 		g.seenPaths.add(file.path);
-		this.pass(groupId, pass).files.push(file);
+		this.pass(groupId, pass).files.push({
+			path: file.path,
+			bytes: file.bytes,
+			...(file.gzip !== undefined ? { gzip: file.gzip } : {}),
+		});
 	}
 
 	recordPassTiming(groupId: string, pass: PassKind, ms: number): void {
@@ -103,19 +114,26 @@ export class BuildCollector {
 			const passes: PassReport[] = [];
 			let totalMs = 0;
 			for (const [id, p] of g.passes) {
-				passes.push({ id, files: p.files, ms: p.ms });
+				// Copy every internal array so a caller mutating the snapshot cannot reach back into
+				// collector state (each file becomes a fresh EmittedFile instance).
+				const files = p.files.map(
+					(f) => new EmittedFile({ path: f.path, bytes: f.bytes, ...(f.gzip !== undefined ? { gzip: f.gzip } : {}) }),
+				);
+				passes.push(new PassReport({ id, files, ms: p.ms }));
 				totalMs += p.ms;
 			}
-			targetGroups.push({
-				id: g.id,
-				entries: g.entries,
-				passes,
-				warnings: g.warnings,
-				errors: g.errors,
-				timings: { totalMs },
-			});
+			targetGroups.push(
+				new TargetGroupReport({
+					id: g.id,
+					entries: [...g.entries],
+					passes,
+					warnings: [...g.warnings],
+					errors: [...g.errors],
+					timings: new ReportTimings({ totalMs }),
+				}),
+			);
 		}
-		return [{ package: packageName, targetGroups }];
+		return [new BuildReport({ package: packageName, targetGroups })];
 	}
 }
 
@@ -131,14 +149,14 @@ function diagnosticKey(input: DiagnosticInput): string {
 }
 
 function toEntry(input: DiagnosticInput): DiagnosticEntry {
-	return {
+	return new DiagnosticEntry({
 		source: input.source,
 		level: input.level,
 		text: input.text,
 		...(input.file !== undefined ? { file: input.file } : {}),
 		...(input.line !== undefined ? { line: input.line } : {}),
 		...(input.column !== undefined ? { column: input.column } : {}),
-	};
+	});
 }
 
 export class BuildCollectorTag extends Context.Tag("@savvy-web/tsdown-plugins/BuildCollector")<

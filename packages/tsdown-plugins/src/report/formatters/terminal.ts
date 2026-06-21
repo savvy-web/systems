@@ -40,8 +40,12 @@ export const TerminalFormatter: Formatter = {
 		}
 		const pkgs = reports.length;
 		if (pkgs > 0) {
+			const pkgLabel = `${pkgs} package${pkgs === 1 ? "" : "s"}`;
+			const hasErrors = reports.some((r) => r.targetGroups.some((g) => g.errors.length > 0));
 			lines.push(
-				`${color(pc.green, "✔")} build complete · ${pkgs} package${pkgs === 1 ? "" : "s"} · ${formatTime(totalMs)}`,
+				hasErrors
+					? `${color(pc.red, "✗")} build failed · ${pkgLabel} · ${formatTime(totalMs)}`
+					: `${color(pc.green, "✔")} build complete · ${pkgLabel} · ${formatTime(totalMs)}`,
 			);
 		}
 		const content = lines.join("\n");
