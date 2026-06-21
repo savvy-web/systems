@@ -84,10 +84,14 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			messages: {
 				extractorMessageReporting: {
 					default: { logLevel: "warning" },
-					// In CI a forgotten export is a hard error: it silently drops the symbol from the
-					// .api.json, corrupting downstream doc generation. Suppression still wins — a suppressed
-					// message is set to None in the callback before it can count toward errorCount.
-					...(options.ci === true ? { "ae-forgotten-export": { logLevel: "error" } } : {}),
+					// In CI the CI-fatal messageIds are hard errors: a forgotten export silently drops the
+					// symbol from the .api.json, corrupting downstream doc generation. Derived from the same
+					// CI_FATAL_MESSAGE_IDS set that drives the local `ciFatal` tag, so the nudge and the real
+					// escalation cannot drift. Suppression still wins — a suppressed message is set to None in
+					// the callback before it can count toward errorCount.
+					...(options.ci === true
+						? Object.fromEntries([...CI_FATAL_MESSAGE_IDS].map((id) => [id, { logLevel: "error" }]))
+						: {}),
 				},
 				tsdocMessageReporting: { default: { logLevel: "warning" } },
 			},
