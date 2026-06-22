@@ -29,6 +29,34 @@ describe("buildMetricsPlugin", () => {
 		expect(report?.targetGroups[0]?.warnings[0]?.text).toBe("boom");
 	});
 
+	it("onLog drops @tsdown/css SOURCEMAP_BROKEN noise without recording it", () => {
+		const c = new BuildCollector();
+		c.registerGroup("npm", ["index"]);
+		const plugin = buildMetricsPlugin(c, "npm", "js", false);
+		// Both @tsdown/css and its :collect sibling emit this benign, unfixable warning.
+		for (const cssPlugin of ["@tsdown/css", "@tsdown/css:collect"]) {
+			const result = callOnLog(plugin, "warn", {
+				message: "[SOURCEMAP_BROKEN] Sourcemap is likely to be incorrect",
+				code: "SOURCEMAP_BROKEN",
+				plugin: cssPlugin,
+				id: "/src/runtime/components/Foo/index.module.css",
+			});
+			// Still returns false so the console leak is suppressed, but nothing is recorded.
+			expect(result).toBe(false);
+		}
+		const [report] = c.snapshot("@x/p");
+		expect(report?.targetGroups[0]?.warnings).toHaveLength(0);
+	});
+
+	it("onLog still records SOURCEMAP_BROKEN from non-css plugins", () => {
+		const c = new BuildCollector();
+		const plugin = buildMetricsPlugin(c, "npm", "js", false);
+		const result = callOnLog(plugin, "warn", { message: "real map issue", code: "SOURCEMAP_BROKEN", plugin: "other" });
+		expect(result).toBe(false);
+		const [report] = c.snapshot("@x/p");
+		expect(report?.targetGroups[0]?.warnings).toHaveLength(1);
+	});
+
 	it("onLog records an error and does not suppress it (returns undefined)", () => {
 		const c = new BuildCollector();
 		const plugin = buildMetricsPlugin(c, "npm", "js", false);
