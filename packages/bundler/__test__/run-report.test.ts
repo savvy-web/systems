@@ -43,4 +43,26 @@ describe("runBuild reporting", () => {
 		expect(calls[0]?.target).toBe("prod");
 		expect(Array.isArray(calls[0]?.reports)).toBe(true);
 	});
+
+	it("still writes issues.json when the build throws, before rethrowing", async () => {
+		const calls: Array<{ target: string }> = [];
+		await expect(
+			runBuild(
+				{ formats: ["esm"], externals: [], devManifest: "preserve", output: { format: "json" }, meta: false },
+				{
+					...baseOptions,
+					argv: ["--target", "prod"],
+					buildTargetGroups: (async () => {
+						throw new Error("boom");
+					}) as never,
+					writeIssues: ({ target }) => {
+						calls.push({ target });
+						return "/abs/pkg/dist/prod/issues.json";
+					},
+				},
+			),
+		).rejects.toThrow("boom");
+		expect(calls).toHaveLength(1);
+		expect(calls[0]?.target).toBe("prod");
+	});
 });

@@ -414,6 +414,19 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		for (const output of rendered) writeOutput(output);
 	};
 
+	// Persist the structured diagnostics artifact on every terminal path — success AND failure.
+	// A failed build is exactly when an agent wants to read why, so write it before rethrowing too.
+	// Best-effort: a write failure (read-only fs, missing parent, permissions) must never compound
+	// or mask the build outcome — the dist build product (on success) is already emitted by here.
+	const writeIssuesBestEffort = (): void => {
+		if (target !== "dev" && target !== "prod") return;
+		try {
+			(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
+		} catch {
+			// intentionally swallowed — see above
+		}
+	};
+
 	try {
 		// A pure-binary (exe-only) package has no JS entries; running tsdown would throw "No input files".
 		// Skip the library build — the manifest is emitted standalone in the exe step below.
@@ -552,18 +565,10 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	} catch (err) {
 		// Surface whatever diagnostics were captured before the failure, then rethrow.
 		await renderAndWrite();
+		writeIssuesBestEffort();
 		throw err;
 	}
 
 	await renderAndWrite();
-	if (target === "dev" || target === "prod") {
-		// Best-effort: the issues.json artifact is auxiliary diagnostics. A write failure
-		// (read-only fs, missing parent, permissions) must never fail an otherwise-successful
-		// build — the build product under dist/ is already emitted at this point.
-		try {
-			(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
-		} catch {
-			// intentionally swallowed — see above
-		}
-	}
+	writeIssuesBestEffort();
 }
