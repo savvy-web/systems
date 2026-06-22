@@ -11,6 +11,7 @@
 			"cache": true,
 			"dependsOn": [
 				"@savvy-web/bundler#build:prod",
+				"@savvy-web/rspress-builder#build:prod",
 				"@savvy-web/tsdown-plugins#build:prod",
 				"@savvy-web/silk-effects#build:prod",
 				"@savvy-web/templates#build:prod",
