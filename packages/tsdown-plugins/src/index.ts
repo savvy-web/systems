@@ -58,6 +58,7 @@ export { normalizeMetaOptions } from "./meta/config.js";
 export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
 export { generateMeta } from "./meta/generate.js";
 export { rewriteMetaVersions } from "./meta/optimistic.js";
+export { applySubdirMetaEntries, deriveExportPaths } from "./meta/run-pass.js";
 export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
 export { TsconfigResolver, resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
 export type { DiagnosticInput, PassKind } from "./report/collector.js";
