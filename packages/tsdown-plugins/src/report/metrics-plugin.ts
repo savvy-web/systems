@@ -42,7 +42,20 @@ export function buildMetricsPlugin(
 			}
 		},
 		onLog(level: string, log: unknown): boolean | undefined {
-			const l = log as { message?: string; id?: string; loc?: { line?: number; column?: number } };
+			const l = log as {
+				message?: string;
+				id?: string;
+				code?: string;
+				plugin?: string;
+				loc?: { line?: number; column?: number };
+			};
+			// @tsdown/css (and its `:collect` sibling) compile a `.module.css` into a synthesized ESM
+			// locals module — a class-name map plus a side-effect `import` of the extracted css — whose
+			// transform hook returns no sourcemap, so rolldown emits SOURCEMAP_BROKEN. That map is empty
+			// by construction (synthesized code has no original source positions) and the css builds
+			// correctly, so the warning is pure noise. Drop it entirely (no record, no console leak)
+			// without masking any genuine diagnostic from other plugins.
+			if (l.code === "SOURCEMAP_BROKEN" && l.plugin?.startsWith("@tsdown/css")) return false;
 			const text = l.message ?? String(log);
 			const entry = {
 				text,
