@@ -1,5 +1,42 @@
 # @savvy-web/tsdown-plugins
 
+## 0.9.0
+
+### Breaking Changes
+
+* [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) Forgotten exports now fail the build in CI. A forgotten export silently drops the symbol from the generated API model, so in CI (`CI` or `GITHUB_ACTIONS` set) an unsuppressed `ae-forgotten-export` is a hard error. Locally it stays a warning, tagged so the build log can warn that it will fail CI.
+
+### Breaking Changes
+
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
+
+### Features
+
+* [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) API Extractor diagnostics now surface in the unified build log. Forgotten exports, missing release tags, and TSDoc issues were previously dropped because API Extractor's default message routing silenced them; they are now reported as warnings during the meta-generation pass.
+* Suppressed messages are now accounted for. The build log summarizes how many messages each `suppressWarnings` rule hid, grouped by message id, and `--verbose` lists them in full.
+
+- [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) The self-hosting build libraries now generate their own API model on the prod build. The meta-generation orchestration is unified into a single runMetaPass, exported from @savvy-web/tsdown-plugins and used by both the front-door runBuild and the two escape-hatch self-host builds. @savvy-web/bundler and @savvy-web/tsdown-plugins now emit a dist/prod/issues.json, are API Extractor validated, and publish their API model into the documentation corpus.
+
+* [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) ### Issues artifact
+
+- [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
+
+Three new exports — `flattenIssues`, `serializeIssues`, and `writeIssuesArtifact` — write an aggregated `dist/<target>/issues.json` file at the end of every dev/prod build. The artifact collects all warnings, errors, and suppressed diagnostics from the full build report in a stable, de-duplicated JSON format that downstream tooling (agents, CI scripts) can read without parsing terminal output.
+
+```ts
+import { writeIssuesArtifact } from "@savvy-web/tsdown-plugins";
+
+// Called automatically by runBuild; also available directly for custom pipelines.
+const outPath = writeIssuesArtifact({ cwd, target: "prod", reports });
+// → "path/to/dist/prod/issues.json"
+```
+
+Two supporting types are also exported: `BuildIssues` (the artifact schema) and `PlainDiagnostic` (a single flattened diagnostic entry).
+
+### Build System
+
+* [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) Suppressed the `ae-internal-missing-underscore` API Extractor diagnostic. The underscore-prefix convention for `@internal` exports is not used in this monorepo, so the warning was noise; it is now silenced by default in the extracted message configuration.
+
 ## 0.8.0
 
 ### Features

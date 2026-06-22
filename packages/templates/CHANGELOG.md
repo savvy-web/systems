@@ -1,5 +1,11 @@
 # @savvy-web/templates
 
+## 0.1.4
+
+### Documentation
+
+* [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) Added `@public` release tags to all public-surface exports across the templates library (`BiomeOptions`, `ChangesetOptions`, `GitignoreOptions`, `PackageJsonOptions`, `PnpmOptions`, `ReadmeOptions`, `TsconfigOptions`, `TurboOptions`, `VscodeOptions`, `WorkspaceOptions`, and supporting types). Clears 36 `ae-missing-release-tag` diagnostics from the API Extractor pass without changing any runtime behavior.
+
 ## 0.1.3
 
 ### Dependencies

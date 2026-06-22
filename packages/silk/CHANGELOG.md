@@ -1,5 +1,45 @@
 # @savvy-web/silk
 
+## 1.3.0
+
+### Features
+
+* [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) ### `/silk:tsdoc` skill
+
+A new `silk:tsdoc` skill is available in the Silk plugin. It provides toolchain-accurate TSDoc authoring guidance tuned for the `@savvy-web/bundler` API Extractor pass, which fails CI on forgotten exports and undefined tags.
+
+The skill covers:
+
+* A quick-fix map for the common `ae-*` and `tsdoc-*` diagnostic codes (`ae-missing-release-tag`, `ae-forgotten-export`, `ae-incompatible-release-tags`, `ae-unresolved-link`, `tsdoc-undefined-tag`, and others)
+* Release-tag policy: when to choose `@public`, `@internal`, `@beta`, or `@alpha`
+* How to register a custom TSDoc tag in `savvy.build.ts`
+* The complete set of supported standard tags
+* Common JSDoc habits that break the TSDoc parser (brace-typed `@param`, missing hyphens, `@class`/`@module`)
+* Documentation-depth guidance: structuring `@remarks`, `@example`, and prose for the RSPress API Extractor renderer so generated docs display rich narrative sections rather than bare type signatures
+
+The skill auto-loads when editing `savvy.build.ts` and is user-invokable on demand via `/silk:tsdoc`.
+
+### Dependencies
+
+* | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency    | Type    | Action                | From                  | To |
+  | :------------------------------------------------------------------------------------------------ | :------------ | :------ | :-------------------- | :-------------------- | -- |
+  | @effect/platform                                                                                  | dependency    | updated | ^0.96.1               | ^0.96.2               |    |
+  | effect                                                                                            | dependency    | updated | ^3.21.3               | ^3.21.4               |    |
+  | @typescript/native-preview                                                                        | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |    |
+  | @types/node                                                                                       | devDependency | updated | ^25.9.0               | ^26.0.0               |    |
+  | Dependency                                                                                        | Type          | Action  | From                  | To                    |    |
+  | --------------                                                                                    | ----------    | ------- | -----                 | -----                 |    |
+  | @savvy-web/mcp                                                                                    | dependency    | updated | 1.2.0                 | 1.3.0                 |    |
+  | @savvy-web/cli                                                                                    | dependency    | updated | 1.2.0                 | 1.3.0                 |    |
+
+### `tsdoctor` agent
+
+A new `tsdoctor` agent drives TSDoc diagnostics to zero end-to-end. It builds the target package (prod), reads `dist/prod/issues.json`, applies the `tsdoc` skill's fix recipes for every `ae-*` and `tsdoc-*` diagnostic, and rebuilds to confirm the artifact is clean. The agent does not add `suppressWarnings` entries — suppression is a human escape hatch. Invoke via `/tsdoctor` or by asking Claude to fix TSDoc issues for a package.
+
+### Issues monitor
+
+A new background monitor (`watch-issues`) surfaces `ae-*` and `tsdoc-*` diagnostics from `dist/*/issues.json` as Claude Code notifications during development. The monitor watches for `issues.json` changes written by the build and reports new warnings or errors without requiring a manual log scan.
+
 ## 1.2.0
 
 ### Patch Changes

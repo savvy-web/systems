@@ -1,5 +1,23 @@
 # @savvy-web/mcp
 
+## 1.3.0
+
+### Features
+
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) The MCP corpus now includes API documentation for `@savvy-web/bundler`, `@savvy-web/tsdown-plugins`, and `@savvy-web/rspress-builder`. These three packages are generated into the corpus on prod build alongside silk-effects, templates, and the GitHub Action packages. The `silk_docs_search` tool can now answer questions about the bundler API (`defineBuild`, `runBuild`, `RunOptions`), tsdown-plugins exports (`runMetaPass`, `writeIssuesArtifact`, and all plugin functions), and rspress-builder options.
+  | Dependency              | Type       | Action  | From  | To    |
+  | ----------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/silk-effects | dependency | updated | 1.4.0 | 1.5.0 |
+
+### Dependencies
+
+* | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency    | Type    | Action                | From                  | To |
+  | :------------------------------------------------------------------------------------------------ | :------------ | :------ | :-------------------- | :-------------------- | -- |
+  | @effect/platform                                                                                  | dependency    | updated | ^0.96.1               | ^0.96.2               |    |
+  | effect                                                                                            | dependency    | updated | ^3.21.3               | ^3.21.4               |    |
+  | @typescript/native-preview                                                                        | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |    |
+  | @types/node                                                                                       | devDependency | updated | ^25.9.0               | ^26.0.0               |    |
+
 ## 1.2.0
 
 ### Features

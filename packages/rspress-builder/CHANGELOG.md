@@ -1,5 +1,24 @@
 # @savvy-web/rspress-builder
 
+## 0.9.0
+
+### Documentation
+
+* [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) Added `@public` release tags to `RspressBundleOptions`, `RspressPluginOptions`, and `definePlugin` so they register correctly in the generated API model and pass the `ae-missing-release-tag` check. Fixed TSDoc syntax warnings: `{@link}` references replaced with backtick code spans, and bare scoped package names in prose escaped to satisfy the TSDoc parser.
+  | Dependency                | Type       | Action  | From  | To    |
+  | ------------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/tsdown-plugins | dependency | updated | 0.8.0 | 0.9.0 |
+  | @savvy-web/bundler        | dependency | updated | 0.8.0 | 0.9.0 |
+
+### Dependencies
+
+* | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency    | Type    | Action                | From                  | To |
+  | :------------------------------------------------------------------------------------------------ | :------------ | :------ | :-------------------- | :-------------------- | -- |
+  | @types/react-dom                                                                                  | dependency    | added   | —                     | ^19.2.0               |    |
+  | react-dom                                                                                         | dependency    | added   | —                     | ^19.2.0               |    |
+  | @typescript/native-preview                                                                        | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |    |
+  | @types/node                                                                                       | devDependency | updated | ^25.9.0               | ^26.0.0               |    |
+
 ## 0.8.0
 
 ### Patch Changes

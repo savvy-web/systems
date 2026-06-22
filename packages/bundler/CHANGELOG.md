@@ -1,5 +1,64 @@
 # @savvy-web/bundler
 
+## 0.9.0
+
+### Breaking Changes
+
+* [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) Forgotten exports now fail the build in CI. When `CI` or `GITHUB_ACTIONS` is set, an unsuppressed `ae-forgotten-export` diagnostic is a hard error that aborts the build. Locally it stays a warning, tagged in the build log to indicate it will fail CI.
+
+To suppress the error (and its local warning), add the rule to `tsdoc.suppressWarnings` in your `defineBuild` config:
+
+```ts
+const config = defineBuild({
+  meta: {
+    tsdoc: {
+      suppressWarnings: [{ messageId: "ae-forgotten-export" }],
+    },
+  },
+});
+```
+
+### Features
+
+* [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) API Extractor diagnostics now surface in the build log when you run `runBuild`. Forgotten exports, missing release tags, and TSDoc issues that were previously dropped by API Extractor's default message routing are now reported as warnings during the meta-generation pass. Suppressed messages are accounted for: the build log summarizes how many messages each `suppressWarnings` rule hid, grouped by message id, with `--verbose` listing them in full.
+
+- [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) ### Issues artifact written on every build
+
+`runBuild` now writes `dist/<target>/issues.json` at the end of every dev and prod build. The file contains all warnings, errors, and suppressed diagnostics from the build in a stable, de-duplicated JSON format.
+
+```ts
+// No config change required — the artifact is written automatically.
+await runBuild(config, options);
+// → dist/dev/issues.json and dist/prod/issues.json are created alongside the bundle.
+```
+
+A new injectable `writeIssues` option on `RunOptions` lets tests or custom pipelines swap the writer without touching the filesystem:
+
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
+
+```ts
+await runBuild(config, {
+  writeIssues: ({ cwd, target, reports }) => {
+    // custom writer — return the path written
+    return myWriter(cwd, target, reports);
+  },
+});
+```
+
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) The self-hosting build libraries now generate their own API model on the prod build. The meta-generation orchestration is unified into a single runMetaPass, exported from @savvy-web/tsdown-plugins and used by both the front-door runBuild and the two escape-hatch self-host builds. @savvy-web/bundler and @savvy-web/tsdown-plugins now emit a dist/prod/issues.json, are API Extractor validated, and publish their API model into the documentation corpus.
+
+### Dependencies
+
+* | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency    | Type    | Action                | From                  | To |
+  | :------------------------------------------------------------------------------------------------ | :------------ | :------ | :-------------------- | :-------------------- | -- |
+  | effect                                                                                            | dependency    | updated | ^3.21.3               | ^3.21.4               |    |
+  | @effect/platform                                                                                  | devDependency | updated | ^0.96.1               | ^0.96.2               |    |
+  | @typescript/native-preview                                                                        | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |    |
+  | @types/node                                                                                       | devDependency | updated | ^25.9.0               | ^26.0.0               |    |
+  | Dependency                                                                                        | Type          | Action  | From                  | To                    |    |
+  | -------------------------                                                                         | ----------    | ------- | -----                 | -----                 |    |
+  | @savvy-web/tsdown-plugins                                                                         | dependency    | updated | 0.8.0                 | 0.9.0                 |    |
+
 ## 0.8.0
 
 ### Features
