@@ -1,6 +1,11 @@
 import { Schema } from "effect";
 import type { TemplateEntry } from "../types.js";
 
+/**
+ * Options for generating a `.gitignore` file.
+ *
+ * @public
+ */
 export const GitignoreOptions = Schema.Struct({
 	sections: Schema.optional(
 		Schema.Struct({
@@ -14,8 +19,20 @@ export const GitignoreOptions = Schema.Struct({
 	additional: Schema.optional(Schema.Array(Schema.String)),
 });
 
+/**
+ * The decoded type of {@link GitignoreOptions}.
+ *
+ * @public
+ */
 export type GitignoreOptionsType = typeof GitignoreOptions.Type;
 
+/**
+ * Generates a `.gitignore` file entry.
+ *
+ * @param options - the gitignore configuration options
+ * @returns an array containing the generated `.gitignore` entry
+ * @public
+ */
 export function createGitignore(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(GitignoreOptions)(options);
 	const sections = {

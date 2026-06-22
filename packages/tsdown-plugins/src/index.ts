@@ -70,6 +70,9 @@ export {
 	SilentFormatter,
 	TerminalFormatter,
 } from "./report/formatters/index.js";
+export type { BuildIssues, PlainDiagnostic } from "./report/issues-artifact.js";
+// report surface
+export { flattenIssues, serializeIssues, writeIssuesArtifact } from "./report/issues-artifact.js";
 export { EnvironmentDetectorLive } from "./report/layers/EnvironmentDetectorLive.js";
 export { ExecutorResolverLive } from "./report/layers/ExecutorResolverLive.js";
 export { FormatSelectorLive } from "./report/layers/FormatSelectorLive.js";
@@ -77,7 +80,6 @@ export { OutputRendererLive } from "./report/layers/OutputRendererLive.js";
 export { buildMetricsPlugin } from "./report/metrics-plugin.js";
 export type { RenderReportOptions } from "./report/pipeline.js";
 export { ReportPipelineLive, renderReport } from "./report/pipeline.js";
-// report surface
 export type { BuildReport, DiagnosticEntry, EmittedFile, PassReport, TargetGroupReport } from "./report/schema.js";
 export {
 	BuildReport as BuildReportSchema,

@@ -52,6 +52,7 @@ export default defineConfig({
 - **Bundled declarations** — each target runs two `tsdown` passes: a JavaScript pass that preserves per-module output, then a declaration-only pass that rolls every re-exported type into a single `.d.ts` per public entry (`deriveDtsPassOptions`). Per-module JavaScript stays intact while consumers keep reaching re-exported types through your published subpaths.
 - **API Extractor meta** — `generateMeta` runs [API Extractor](https://api-extractor.com/) over a package's emitted `.d.ts` to write an api-model bundle (`.api.json`, `tsdoc-metadata.json`, resolved `tsconfig.json`); `normalizeMetaOptions` fills the `MetaOptions` defaults that drive it.
 - **Output reporter** — `renderReport` plus the `BuildReport` schema and a set of formatters (terminal, JSON, markdown, CI annotations, silent) render a build report for humans, agents or CI.
+- **Issues artifact** — `writeIssuesArtifact` (with the pure `flattenIssues` and `serializeIssues` behind it) writes a deduplicated `dist/<target>/issues.json` on every build, collecting the build's warnings, errors and suppressed diagnostics in a stable JSON shape (`BuildIssues`/`PlainDiagnostic`) so an agent or CI script reads the diagnostics straight from disk instead of parsing terminal output.
 
 ## Effect
 

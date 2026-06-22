@@ -1,6 +1,11 @@
 import { Schema } from "effect";
 import type { TemplateEntry } from "../types.js";
 
+/**
+ * Options for generating a `tsconfig.json` file.
+ *
+ * @public
+ */
 export const TsConfigOptions = Schema.Struct({
 	extends: Schema.optional(Schema.Union(Schema.String, Schema.Array(Schema.String))),
 	composite: Schema.optional(Schema.Boolean),
@@ -9,8 +14,20 @@ export const TsConfigOptions = Schema.Struct({
 	references: Schema.optional(Schema.Array(Schema.Struct({ path: Schema.String }))),
 });
 
+/**
+ * The decoded type of {@link TsConfigOptions}.
+ *
+ * @public
+ */
 export type TsConfigOptionsType = typeof TsConfigOptions.Type;
 
+/**
+ * Generates a `tsconfig.json` file entry.
+ *
+ * @param options - the TypeScript configuration options
+ * @returns an array containing the generated `tsconfig.json` entry
+ * @public
+ */
 export function createTsConfig(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(TsConfigOptions)(options);
 

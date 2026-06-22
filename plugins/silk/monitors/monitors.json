@@ -1,0 +1,7 @@
+[
+	{
+		"name": "tsdoc-diagnostics",
+		"command": "node \"${CLAUDE_PLUGIN_ROOT}/monitors/watch-issues.mjs\"",
+		"description": "Surfaces ae-*/tsdoc- diagnostics from dist/<target>/issues.json as builds change them"
+	}
+]

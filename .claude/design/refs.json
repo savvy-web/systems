@@ -16,13 +16,13 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "c483d1b6de31f69936d77ff1f583192123d739dd00576d283c04f1d864ae4b46",
-			"recordedAt": "2026-06-18"
+			"hash": "b348c08f881d3d5b8eb8e8779091ecdb4bcba3a4656aed12cd727b965f649a84",
+			"recordedAt": "2026-06-21"
 		},
 		{
 			"source": "packages/bundler/CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "992fbfd977ae4b329b5df73df3820acf9d4521dac8330091bf21724e455a8170",
+			"hash": "37652bb45ba2f6fe3356e9d487b7f77d1fcddbdc439d780d3ecd26df386d21f1",
 			"recordedAt": "2026-06-21"
 		},
 		{
@@ -76,7 +76,7 @@
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "c8cb615a7adfd3cba2e004f91c2918a7ca829b2af50135c9395cac90cc171d09",
+			"hash": "7ab4a11d870576c6f31c239fa2994c544f5936bb8196ad059732a86da4392e7a",
 			"recordedAt": "2026-06-21"
 		}
 	]

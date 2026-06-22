@@ -23,7 +23,7 @@
 				"src/**/*"
 			],
 			"outputLogs": "errors-only",
-			"outputs": ["dist/dev/pkg/**"]
+			"outputs": ["dist/dev/pkg/**", "dist/dev/issues.json"]
 		},
 		"build:meta": {
 			"cache": true,

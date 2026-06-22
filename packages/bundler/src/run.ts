@@ -3,6 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join } from "node:path";
 import type {
 	BuildGroupSpec,
+	BuildReport,
 	BuildTargetGroupsOptions,
 	EntryOverride,
 	GenerateMetaOptions,
@@ -38,6 +39,7 @@ import {
 	resolveJsxConfig,
 	resolveTargets,
 	rewriteMetaVersions,
+	writeIssuesArtifact,
 	writeResolvedTsconfig,
 } from "@savvy-web/tsdown-plugins";
 import { Effect } from "effect";
@@ -73,6 +75,13 @@ export interface RunOptions {
 	readonly readOsCpu?: (() => { os: ReadonlyArray<string>; cpu: ReadonlyArray<string> }) | undefined;
 	/** Injectable for tests: resolves next release versions for the optimistic meta rewrite. */
 	readonly resolveNextVersions?: ((cwd: string) => Promise<NextVersions>) | undefined;
+	/** Injectable issues-artifact writer (defaults to writeIssuesArtifact). */
+	readonly writeIssues?: (opts: {
+		cwd: string;
+		target: "dev" | "prod";
+		reports: ReadonlyArray<BuildReport>;
+		now?: () => Date;
+	}) => string | undefined;
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
@@ -405,6 +414,19 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		for (const output of rendered) writeOutput(output);
 	};
 
+	// Persist the structured diagnostics artifact on every terminal path — success AND failure.
+	// A failed build is exactly when an agent wants to read why, so write it before rethrowing too.
+	// Best-effort: a write failure (read-only fs, missing parent, permissions) must never compound
+	// or mask the build outcome — the dist build product (on success) is already emitted by here.
+	const writeIssuesBestEffort = (): void => {
+		if (target !== "dev" && target !== "prod") return;
+		try {
+			(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
+		} catch {
+			// intentionally swallowed — see above
+		}
+	};
+
 	try {
 		// A pure-binary (exe-only) package has no JS entries; running tsdown would throw "No input files".
 		// Skip the library build — the manifest is emitted standalone in the exe step below.
@@ -543,8 +565,10 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	} catch (err) {
 		// Surface whatever diagnostics were captured before the failure, then rethrow.
 		await renderAndWrite();
+		writeIssuesBestEffort();
 		throw err;
 	}
 
 	await renderAndWrite();
+	writeIssuesBestEffort();
 }
