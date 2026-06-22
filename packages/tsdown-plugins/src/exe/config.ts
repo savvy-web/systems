@@ -1,27 +1,47 @@
-/** Default Node runtime embedded in the SEA (parity with the vitest-agent reference). */
+/**
+ * Default Node runtime embedded in the SEA (parity with the vitest-agent reference).
+ *
+ * @public
+ */
 export const DEFAULT_EXE_NODE_VERSION = "25.9.0";
 
-/** A resolved per-platform SEA target. `platform` uses the tsdown/\@tsdown/exe token (win, not win32). */
+/**
+ * A resolved per-platform SEA target. `platform` uses the tsdown/\@tsdown/exe token (win, not win32).
+ *
+ * @public
+ */
 export interface ExeTarget {
 	readonly platform: "darwin" | "linux" | "win";
 	readonly arch: "arm64" | "x64";
 	readonly nodeVersion: string;
 }
 
-/** A target before nodeVersion defaulting (platform/arch only). */
+/**
+ * A target before nodeVersion defaulting (platform/arch only).
+ *
+ * @public
+ */
 export interface ExeTargetInput {
 	readonly platform: "darwin" | "linux" | "win";
 	readonly arch: "arm64" | "x64";
 }
 
-/** SEA seaConfig overrides (subset; the rest are defaulted). */
+/**
+ * SEA seaConfig overrides (subset; the rest are defaulted).
+ *
+ * @public
+ */
 export interface ExeSeaConfig {
 	readonly disableExperimentalSEAWarning?: boolean | undefined;
 	readonly useCodeCache?: boolean | undefined;
 	readonly useSnapshot?: boolean | undefined;
 }
 
-/** One SEA binary to compile. */
+/**
+ * One SEA binary to compile.
+ *
+ * @public
+ */
 export interface ExeConfig {
 	/** Output binary basename (no extension/suffix). */
 	readonly fileName: string;
@@ -35,7 +55,11 @@ export interface ExeConfig {
 	readonly targets?: ReadonlyArray<ExeTargetInput> | undefined;
 }
 
-/** Fully-resolved SEA binary spec (no optionals). */
+/**
+ * Fully-resolved SEA binary spec (no optionals).
+ *
+ * @public
+ */
 export interface NormalizedExe {
 	readonly fileName: string;
 	readonly entry: string;
@@ -47,7 +71,11 @@ export interface NormalizedExe {
 	};
 }
 
-/** The package's own os/cpu fields, used to infer a single platform target. */
+/**
+ * The package's own os/cpu fields, used to infer a single platform target.
+ *
+ * @public
+ */
 export interface PkgOsCpu {
 	readonly os: ReadonlyArray<string>;
 	readonly cpu: ReadonlyArray<string>;
@@ -76,6 +104,7 @@ function inferTargets(pkg: PkgOsCpu): ReadonlyArray<ExeTargetInput> {
  *
  * Pure function; structural validation (missing fileName, empty targets) lives in the
  * config-validation layer.
+ * @public
  */
 export function normalizeExeOptions(
 	exe: ExeConfig | ReadonlyArray<ExeConfig>,

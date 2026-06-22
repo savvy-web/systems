@@ -44,6 +44,7 @@ import { Effect } from "effect";
 import type { BuildConfig } from "./config.js";
 import { parseArgs } from "./config.js";
 
+/** @public */
 export interface RunOptions {
 	readonly cwd: string;
 	readonly argv: ReadonlyArray<string>;
@@ -154,7 +155,7 @@ function validateSubdirOverrides(
 	}
 }
 
-/** Run a build from a normalized config. Pure orchestration; all IO injectable. */
+/** Run a build from a normalized config. Pure orchestration; all IO injectable. @public */
 export async function runBuild(config: BuildConfig, options: RunOptions): Promise<void> {
 	const { target, noExe, verbose } = parseArgs(options.argv);
 	const build = options.buildTargetGroups ?? realBuildTargetGroups;

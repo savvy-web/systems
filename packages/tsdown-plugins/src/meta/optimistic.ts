@@ -6,6 +6,7 @@ const DEP_FIELDS = ["dependencies", "peerDependencies", "optionalDependencies"] 
  * dependency version reflect their NEXT release version from `versions`. Pure: returns a new
  * object, never mutates the input. External/catalog-resolved deps (names absent from `versions`)
  * are left as-is.
+ * @public
  */
 export function rewriteMetaVersions(
 	pkg: Record<string, unknown>,

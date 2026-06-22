@@ -6,7 +6,11 @@ import type { ExeConfig } from "../exe/config.js";
 import type { MetaOptions } from "../meta/config.js";
 import type { PublishTargets } from "../targets/config.js";
 
-/** The normalized facts the validator checks, assembled by the bundler before any build work. */
+/**
+ * The normalized facts the validator checks, assembled by the bundler before any build work.
+ *
+ * @public
+ */
 export interface ValidationInput {
 	readonly baseName: string;
 	/** Whether the package declares an exports map (for the model-without-exports cross-field rule). */
@@ -19,7 +23,11 @@ export interface ValidationInput {
 	readonly looseFiles?: LooseFiles | undefined;
 }
 
-/** Fast-fail config validator; runs first in the bundler over the resolved config. */
+/**
+ * Fast-fail config validator; runs first in the bundler over the resolved config.
+ *
+ * @public
+ */
 export class ConfigValidator extends Context.Tag("@savvy-web/tsdown-plugins/ConfigValidator")<
 	ConfigValidator,
 	{ readonly validate: (input: ValidationInput) => Effect.Effect<void, ConfigValidationError> }

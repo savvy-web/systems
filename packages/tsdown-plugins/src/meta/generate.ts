@@ -11,6 +11,7 @@ function unscopedName(name: string): string {
 	return slash >= 0 ? name.slice(slash + 1) : name;
 }
 
+/** @public */
 export interface GenerateMetaOptions {
 	readonly cwd: string;
 	readonly packageName: string;
@@ -41,6 +42,7 @@ export interface GenerateMetaOptions {
 	readonly onSuppressed?: ((entry: import("../report/collector.js").DiagnosticInput) => void) | undefined;
 }
 
+/** @public */
 export interface MetaResult {
 	readonly apiJsonPath: string;
 	readonly apiJsonFilename: string;
@@ -52,6 +54,7 @@ export interface MetaResult {
  * outMetaDir (`<unscoped>.api.json` + the final `package.json` + a portable `tsconfig.json`),
  * copying that trio into each localPaths dir. The api-extractor `tsdoc-metadata.json` is a
  * published-package artifact and is written into `dtsDir` (the built pkg/), not the meta bundle.
+ * @public
  */
 export async function generateMeta(options: GenerateMetaOptions): Promise<MetaResult> {
 	const {

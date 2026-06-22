@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type { ExtractOptions, PackageJsonLike } from "./extract.js";
 import { extractEntries } from "./extract.js";
 
+/** @public */
 export interface PackageJsonEntriesOptions extends ExtractOptions {
 	/** In-memory package.json. If omitted, reads `<cwd>/package.json`. */
 	readonly pkg?: PackageJsonLike;
@@ -11,7 +12,11 @@ export interface PackageJsonEntriesOptions extends ExtractOptions {
 	readonly cwd?: string;
 }
 
-/** Derive a tsdown `entry` record (name to source path) from a package.json. */
+/**
+ * Derive a tsdown `entry` record (name to source path) from a package.json.
+ *
+ * @public
+ */
 export function packageJsonEntries(options: PackageJsonEntriesOptions = {}): Record<string, string> {
 	const pkg =
 		options.pkg ??

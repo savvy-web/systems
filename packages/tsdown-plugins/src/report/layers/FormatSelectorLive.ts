@@ -3,6 +3,7 @@ import { Effect, Layer } from "effect";
 import type { OutputFormat } from "../services/FormatSelector.js";
 import { FormatSelector } from "../services/FormatSelector.js";
 
+/** @public */
 export const FormatSelectorLive = Layer.succeed(FormatSelector, {
 	select: (executor, explicit, env) =>
 		Effect.succeed<OutputFormat>(

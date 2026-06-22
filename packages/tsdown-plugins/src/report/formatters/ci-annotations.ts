@@ -3,6 +3,7 @@ import type { Formatter } from "./types.js";
 
 const esc = (s: string) => s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
 
+/** @public */
 export const CiAnnotationsFormatter: Formatter = {
 	format: "ci-annotations",
 	render: (reports) => {

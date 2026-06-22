@@ -2,21 +2,38 @@
 import { join } from "node:path";
 import type { JsxConfig } from "../jsx/config.js";
 
-/** A build group id: "dev" or any prod byte-variant id (e.g. "npm", "github", a custom key). */
+/**
+ * A build group id: "dev" or any prod byte-variant id (e.g. "npm", "github", a custom key).
+ *
+ * @public
+ */
 export type TargetGroupId = string;
 
-/** An output module format the build can emit. */
+/**
+ * An output module format the build can emit.
+ *
+ * @public
+ */
 export type BuildFormat = "esm" | "cjs";
 
-/** Bundling platform for the JS pass. Defaults to "node". Use "browser" for web runtime partitions. */
+/**
+ * Bundling platform for the JS pass. Defaults to "node". Use "browser" for web runtime partitions.
+ *
+ * @public
+ */
 export type BuildPlatform = "node" | "browser" | "neutral";
 
-/** A prod/dev group to build: its folder id and the resolved package name its manifest carries. */
+/**
+ * A prod/dev group to build: its folder id and the resolved package name its manifest carries.
+ *
+ * @public
+ */
 export interface BuildGroupSpec {
 	readonly id: TargetGroupId;
 	readonly name: string;
 }
 
+/** @public */
 export interface DeriveOptions {
 	readonly group: TargetGroupId;
 	readonly cwd: string;
@@ -65,6 +82,7 @@ export interface DeriveOptions {
  * the JS re-bundles workspace consumers (e.g. silk re-bundling silk-effects crashes at
  * runtime). The split keeps per-module JS (no re-bundle hazard) AND bundled, self-contained
  * declarations (no TS2883).
+ * @public
  */
 export interface DerivedTsdownOptions {
 	readonly outDir: string;
@@ -151,7 +169,11 @@ export interface DerivedDtsPassOptions {
 export const outDirFor = (cwd: string, group: TargetGroupId): string =>
 	group === "dev" ? join(cwd, "dist/dev/pkg") : join(cwd, "dist/prod", group, "pkg");
 
-/** Derive the JS-pass tsdown options for one TargetGroup (per-module JS, no dts). */
+/**
+ * Derive the JS-pass tsdown options for one TargetGroup (per-module JS, no dts).
+ *
+ * @public
+ */
 export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownOptions {
 	const isProd = options.group !== "dev";
 	const format = options.format ?? ["esm"];

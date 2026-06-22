@@ -8,7 +8,11 @@ import type { GenerateMetaOptions, MetaResult } from "./generate.js";
 import { generateMeta as realGenerateMeta } from "./generate.js";
 import { rewriteMetaVersions } from "./optimistic.js";
 
-/** Options for the meta-pass orchestrator. */
+/**
+ * Options for the meta-pass orchestrator.
+ *
+ * @public
+ */
 export interface RunMetaPassOptions {
 	readonly cwd: string;
 	readonly packageName: string;
@@ -29,6 +33,7 @@ export interface RunMetaPassOptions {
 /**
  * Meta-pass orchestrator: derives export paths, filters bin/ entries, resolves optimistic
  * next-versions, and calls generateMeta once per publish group.
+ * @public
  */
 export async function runMetaPass(o: RunMetaPassOptions): Promise<void> {
 	const gen = o.generateMeta ?? realGenerateMeta;
@@ -71,7 +76,11 @@ export async function runMetaPass(o: RunMetaPassOptions): Promise<void> {
 	}
 }
 
-/** Map entry names to export paths using the package exports map. index maps to ".". */
+/**
+ * Map entry names to export paths using the package exports map. index maps to ".".
+ *
+ * @public
+ */
 export function deriveExportPaths(
 	entries: Record<string, string>,
 	exportsMap: Record<string, string> | undefined,
@@ -85,7 +94,11 @@ export function deriveExportPaths(
 	return out;
 }
 
-/** For each `outSubdir` override, point its meta entry at the isolated sub-package barrel. */
+/**
+ * For each `outSubdir` override, point its meta entry at the isolated sub-package barrel.
+ *
+ * @public
+ */
 export function applySubdirMetaEntries(
 	overrides: ReadonlyArray<{ entries: ReadonlyArray<string>; outSubdir?: string | undefined }> | undefined,
 	dtsBasenames: Record<string, string>,

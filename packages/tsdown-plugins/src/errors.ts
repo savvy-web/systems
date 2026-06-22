@@ -28,7 +28,11 @@ export class BuildFailed extends Data.TaggedError("BuildFailed")<{
 	}
 }
 
-/** API Extractor meta generation failed for an entry. */
+/**
+ * API Extractor meta generation failed for an entry.
+ *
+ * @public
+ */
 export class MetaGenerationError extends Data.TaggedError("MetaGenerationError")<{
 	readonly entry: string;
 	readonly reason: string;
@@ -38,7 +42,11 @@ export class MetaGenerationError extends Data.TaggedError("MetaGenerationError")
 	}
 }
 
-/** A savvy.build.ts or publishConfig.targets config is structurally invalid; raised before any build work. */
+/**
+ * A savvy.build.ts or publishConfig.targets config is structurally invalid; raised before any build work.
+ *
+ * @public
+ */
 export class ConfigValidationError extends Data.TaggedError("ConfigValidationError")<{
 	readonly path: string;
 	readonly reason: string;

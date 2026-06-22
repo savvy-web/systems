@@ -1,11 +1,16 @@
 // packages/tsdown-plugins/src/report/schema.ts
 import { Schema } from "effect";
 
+/** @public */
 export class ReportTimings extends Schema.Class<ReportTimings>("ReportTimings")({
 	totalMs: Schema.Number,
 }) {}
 
-/** A captured warning or error, from tsdown's logger, rolldown's onLog, or API Extractor. */
+/**
+ * A captured warning or error, from tsdown's logger, rolldown's onLog, or API Extractor.
+ *
+ * @public
+ */
 export class DiagnosticEntry extends Schema.Class<DiagnosticEntry>("DiagnosticEntry")({
 	source: Schema.Literal("tsdown", "rolldown", "api-extractor"),
 	level: Schema.Literal("warn", "error"),
@@ -19,20 +24,29 @@ export class DiagnosticEntry extends Schema.Class<DiagnosticEntry>("DiagnosticEn
 	column: Schema.optional(Schema.Number),
 }) {}
 
-/** One emitted output file with its in-memory byte size (gzip only when --verbose). */
+/**
+ * One emitted output file with its in-memory byte size (gzip only when --verbose).
+ *
+ * @public
+ */
 export class EmittedFile extends Schema.Class<EmittedFile>("EmittedFile")({
 	path: Schema.String,
 	bytes: Schema.Number,
 	gzip: Schema.optional(Schema.Number),
 }) {}
 
-/** One build pass within a target group (js / dts / loose / exe / meta). */
+/**
+ * One build pass within a target group (js / dts / loose / exe / meta).
+ *
+ * @public
+ */
 export class PassReport extends Schema.Class<PassReport>("PassReport")({
 	id: Schema.Literal("js", "dts", "loose", "exe", "meta"),
 	files: Schema.Array(EmittedFile),
 	ms: Schema.Number,
 }) {}
 
+/** @public */
 export class TargetGroupReport extends Schema.Class<TargetGroupReport>("TargetGroupReport")({
 	id: Schema.String,
 	entries: Schema.Array(Schema.String),
@@ -44,6 +58,7 @@ export class TargetGroupReport extends Schema.Class<TargetGroupReport>("TargetGr
 	timings: ReportTimings,
 }) {}
 
+/** @public */
 export class BuildReport extends Schema.Class<BuildReport>("BuildReport")({
 	package: Schema.String,
 	targetGroups: Schema.Array(TargetGroupReport),

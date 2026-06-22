@@ -9,10 +9,18 @@ import { createTsdownLogger } from "../report/tsdown-logger.js";
 import type { NormalizedExe } from "./config.js";
 
 // Looser than TsdownBuild on purpose: the exe path passes an object literal, so the config stays unknown.
-/** A minimal structural type for tsdown's build, kept loose so this package keeps no tsdown runtime dep (interface-only). */
+/**
+ * A minimal structural type for tsdown's build, kept loose so this package keeps no tsdown runtime dep (interface-only).
+ *
+ * @public
+ */
 export type ExeBuild = (config: unknown) => Promise<unknown>;
 
-/** Options for compiling SEA binaries. */
+/**
+ * Options for compiling SEA binaries.
+ *
+ * @public
+ */
 export interface RunExeBuildOptions {
 	readonly cwd: string;
 	/** Directory the binaries are emitted into (e.g. dist/dev/pkg/bin). */
@@ -29,7 +37,11 @@ export interface RunExeBuildOptions {
 	readonly verbose?: boolean | undefined;
 }
 
-/** Compile each SEA binary via tsdown's exe mode. One tsdown build per spec. */
+/**
+ * Compile each SEA binary via tsdown's exe mode. One tsdown build per spec.
+ *
+ * @public
+ */
 export async function runExeBuild(options: RunExeBuildOptions): Promise<void> {
 	const build: ExeBuild = options.build ?? ((await import("tsdown")).build as unknown as ExeBuild);
 	for (const spec of options.specs) {

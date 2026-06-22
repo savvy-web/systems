@@ -2,7 +2,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { BuildReport, DiagnosticEntry } from "./schema.js";
 
-/** A diagnostic flattened to a plain JSON object (only defined fields are present). */
+/**
+ * A diagnostic flattened to a plain JSON object (only defined fields are present).
+ *
+ * @public
+ */
 export interface PlainDiagnostic {
 	source: DiagnosticEntry["source"];
 	level: DiagnosticEntry["level"];
@@ -14,7 +18,11 @@ export interface PlainDiagnostic {
 	column?: number;
 }
 
-/** The aggregated build-issues artifact written to `dist/<target>/issues.json`. */
+/**
+ * The aggregated build-issues artifact written to `dist/<target>/issues.json`.
+ *
+ * @public
+ */
 export interface BuildIssues {
 	generatedAt: string;
 	package: string;
@@ -48,7 +56,11 @@ function dedupe(entries: PlainDiagnostic[]): PlainDiagnostic[] {
 	return out;
 }
 
-/** Flatten a build snapshot into the aggregated, de-duplicated issues artifact. Pure. */
+/**
+ * Flatten a build snapshot into the aggregated, de-duplicated issues artifact. Pure.
+ *
+ * @public
+ */
 export function flattenIssues(
 	reports: ReadonlyArray<BuildReport>,
 	opts: { target: "dev" | "prod"; generatedAt: string },
@@ -73,12 +85,20 @@ export function flattenIssues(
 	};
 }
 
-/** Serialize the issues artifact to pretty JSON with a trailing newline. */
+/**
+ * Serialize the issues artifact to pretty JSON with a trailing newline.
+ *
+ * @public
+ */
 export function serializeIssues(issues: BuildIssues): string {
 	return `${JSON.stringify(issues, null, 2)}\n`;
 }
 
-/** Write the aggregated issues artifact to `<cwd>/dist/<target>/issues.json`. Returns the path written. */
+/**
+ * Write the aggregated issues artifact to `<cwd>/dist/<target>/issues.json`. Returns the path written.
+ *
+ * @public
+ */
 export function writeIssuesArtifact(opts: {
 	cwd: string;
 	target: "dev" | "prod";

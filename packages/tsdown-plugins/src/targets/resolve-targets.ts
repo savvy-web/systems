@@ -8,7 +8,11 @@ const DEFAULT_REGISTRIES: Record<string, string> = {
 	github: "https://npm.pkg.github.com",
 };
 
-/** Resolve a `publishConfig.targets` map into the distinct groups to build and every target bound to one. Pure; throws ConfigValidationError on structurally-invalid config. */
+/**
+ * Resolve a `publishConfig.targets` map into the distinct groups to build and every target bound to one. Pure; throws ConfigValidationError on structurally-invalid config.
+ *
+ * @public
+ */
 export function resolveTargets(options: { targets: PublishTargets; baseName: string }): TargetResolution {
 	const { targets, baseName } = options;
 	const ids = Object.keys(targets);

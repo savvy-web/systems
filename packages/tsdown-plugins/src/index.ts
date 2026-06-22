@@ -88,7 +88,6 @@ export {
 	ReportTimings,
 	TargetGroupReport as TargetGroupReportSchema,
 } from "./report/schema.js";
-export { generateBuildReportSchema } from "./report/schema-export.js";
 export type { Environment } from "./report/services/EnvironmentDetector.js";
 export { EnvironmentDetector } from "./report/services/EnvironmentDetector.js";
 export type { Executor } from "./report/services/ExecutorResolver.js";

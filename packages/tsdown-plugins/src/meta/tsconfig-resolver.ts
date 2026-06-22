@@ -185,7 +185,7 @@ export class TsconfigResolver {
 		[NewLineKind.LineFeed, "lf"],
 	]);
 
-	/** Converts a {@link ScriptTarget} enum value to its string form (e.g. `es2023`). */
+	/** Converts a `ScriptTarget` enum value to its string form (e.g. `es2023`). */
 	static convertScriptTarget(target: ScriptTarget | undefined): string | undefined {
 		if (target === undefined) return undefined;
 		const mapped = TsconfigResolver.SCRIPT_TARGET_MAP.get(target);
@@ -193,7 +193,7 @@ export class TsconfigResolver {
 		return `es${target}`;
 	}
 
-	/** Converts a {@link ModuleKind} enum value to its string form (e.g. `nodenext`). */
+	/** Converts a `ModuleKind` enum value to its string form (e.g. `nodenext`). */
 	static convertModuleKind(module: ModuleKind | undefined): string | undefined {
 		if (module === undefined) return undefined;
 		const mapped = TsconfigResolver.MODULE_KIND_MAP.get(module);
@@ -201,7 +201,7 @@ export class TsconfigResolver {
 		return String(module);
 	}
 
-	/** Converts a {@link ModuleResolutionKind} enum value to its string form (e.g. `nodenext`). */
+	/** Converts a `ModuleResolutionKind` enum value to its string form (e.g. `nodenext`). */
 	static convertModuleResolution(resolution: ModuleResolutionKind | undefined): string | undefined {
 		if (resolution === undefined) return undefined;
 		const mapped = TsconfigResolver.MODULE_RESOLUTION_MAP.get(resolution);
@@ -209,7 +209,7 @@ export class TsconfigResolver {
 		return String(resolution);
 	}
 
-	/** Converts a {@link JsxEmit} enum value to its string form (e.g. `preserve`, `react-jsx`). */
+	/** Converts a `JsxEmit` enum value to its string form (e.g. `preserve`, `react-jsx`). */
 	static convertJsxEmit(jsx: JsxEmit | undefined): string | undefined {
 		if (jsx === undefined) return undefined;
 		const mapped = TsconfigResolver.JSX_EMIT_MAP.get(jsx);
@@ -217,7 +217,7 @@ export class TsconfigResolver {
 		return String(jsx);
 	}
 
-	/** Converts a {@link ModuleDetectionKind} enum value to its string form (e.g. `force`). */
+	/** Converts a `ModuleDetectionKind` enum value to its string form (e.g. `force`). */
 	static convertModuleDetection(detection: ModuleDetectionKind | undefined): string | undefined {
 		if (detection === undefined) return undefined;
 		const mapped = TsconfigResolver.MODULE_DETECTION_MAP.get(detection);
@@ -225,7 +225,7 @@ export class TsconfigResolver {
 		return String(detection);
 	}
 
-	/** Converts a {@link NewLineKind} enum value to its string form (`lf` or `crlf`). */
+	/** Converts a `NewLineKind` enum value to its string form (`lf` or `crlf`). */
 	static convertNewLine(newLine: NewLineKind | undefined): string | undefined {
 		if (newLine === undefined) return undefined;
 		const mapped = TsconfigResolver.NEW_LINE_MAP.get(newLine);

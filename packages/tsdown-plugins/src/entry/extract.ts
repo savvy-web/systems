@@ -1,16 +1,19 @@
 // packages/tsdown-plugins/src/entry/extract.ts
 
+/** @public */
 export interface PackageJsonLike {
 	readonly exports?: unknown;
 	readonly bin?: unknown;
 }
 
+/** @public */
 export interface ExtractOptions {
 	readonly exportsAsIndexes?: boolean | undefined;
 	/** Source paths to NOT turn into JS build entries (e.g. an exe entry compiled as a SEA). */
 	readonly excludeSources?: ReadonlyArray<string> | undefined;
 }
 
+/** @public */
 export interface ExtractResult {
 	/** entry name to TS source path */
 	readonly entries: Record<string, string>;
@@ -51,6 +54,7 @@ export const createEntryName = (exportKey: string, exportsAsIndexes: boolean): s
 	return exportsAsIndexes ? `${withoutPrefix}/index` : withoutPrefix.replace(/\//g, "-");
 };
 
+/** @public */
 export function extractEntries(pkg: PackageJsonLike, options: ExtractOptions = {}): ExtractResult {
 	const entries: Record<string, string> = {};
 	const exportPaths: Record<string, string> = {};

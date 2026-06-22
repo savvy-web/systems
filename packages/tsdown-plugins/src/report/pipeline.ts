@@ -13,6 +13,7 @@ import type { OutputFormat } from "./services/FormatSelector.js";
 import { FormatSelector } from "./services/FormatSelector.js";
 import { OutputRenderer } from "./services/OutputRenderer.js";
 
+/** @public */
 export const ReportPipelineLive = Layer.mergeAll(
 	EnvironmentDetectorLive,
 	ExecutorResolverLive,
@@ -20,6 +21,7 @@ export const ReportPipelineLive = Layer.mergeAll(
 	OutputRendererLive,
 );
 
+/** @public */
 export interface RenderReportOptions {
 	readonly explicitFormat?: OutputFormat;
 	/** Override env detection (mainly for tests). */
@@ -28,6 +30,7 @@ export interface RenderReportOptions {
 	readonly verbose?: boolean;
 }
 
+/** @public */
 export const renderReport = (
 	reports: ReadonlyArray<BuildReport>,
 	options: RenderReportOptions,

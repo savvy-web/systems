@@ -3,7 +3,11 @@ import { basename, extname } from "node:path";
 import { ConfigValidationError } from "../errors.js";
 import type { BuildFormat } from "./target-groups.js";
 
-/** One standalone bundled output file, declared by its literal output filename. */
+/**
+ * One standalone bundled output file, declared by its literal output filename.
+ *
+ * @public
+ */
 export interface LooseFileSpec {
 	/** Source module to bundle into the file. */
 	readonly source: string;
@@ -11,10 +15,18 @@ export interface LooseFileSpec {
 	readonly format?: BuildFormat | undefined;
 }
 
-/** Map of literal output filename to its source (bare string) or a `{ source, format }` spec. */
+/**
+ * Map of literal output filename to its source (bare string) or a `{ source, format }` spec.
+ *
+ * @public
+ */
 export type LooseFiles = Record<string, string | LooseFileSpec>;
 
-/** A loose file resolved to a concrete build descriptor. */
+/**
+ * A loose file resolved to a concrete build descriptor.
+ *
+ * @public
+ */
 export interface NormalizedLooseFile {
 	/** Literal output filename written into the package dir, e.g. `pnpmfile.mjs`. */
 	readonly outFile: string;
@@ -43,6 +55,7 @@ const EXT_FORMAT: Readonly<Record<string, BuildFormat | undefined>> = {
  * a missing `source` is surfaced later by tsdown's entry resolution. Throws
  * {@link ConfigValidationError} on any structural problem so the bundler's ConfigValidator
  * surfaces it as a typed, fast-fail config error.
+ * @public
  */
 export function normalizeLooseFiles(files: LooseFiles): ReadonlyArray<NormalizedLooseFile> {
 	const out: NormalizedLooseFile[] = [];
