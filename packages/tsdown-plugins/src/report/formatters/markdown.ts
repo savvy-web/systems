@@ -2,6 +2,7 @@
 import { ciFatalCallout, ciFatalCountForPackage, suppressedSummary } from "./diagnostics.js";
 import type { Formatter } from "./types.js";
 
+/** @public */
 export const MarkdownFormatter: Formatter = {
 	format: "markdown",
 	render: (reports, ctx) => {

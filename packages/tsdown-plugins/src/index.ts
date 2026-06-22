@@ -58,6 +58,8 @@ export { normalizeMetaOptions } from "./meta/config.js";
 export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
 export { generateMeta } from "./meta/generate.js";
 export { rewriteMetaVersions } from "./meta/optimistic.js";
+export type { RunMetaPassOptions } from "./meta/run-pass.js";
+export { applySubdirMetaEntries, deriveExportPaths, runMetaPass } from "./meta/run-pass.js";
 export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
 export { TsconfigResolver, resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
 export type { DiagnosticInput, PassKind } from "./report/collector.js";
@@ -86,7 +88,6 @@ export {
 	ReportTimings,
 	TargetGroupReport as TargetGroupReportSchema,
 } from "./report/schema.js";
-export { generateBuildReportSchema } from "./report/schema-export.js";
 export type { Environment } from "./report/services/EnvironmentDetector.js";
 export { EnvironmentDetector } from "./report/services/EnvironmentDetector.js";
 export type { Executor } from "./report/services/ExecutorResolver.js";

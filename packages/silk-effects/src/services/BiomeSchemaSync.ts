@@ -11,6 +11,7 @@ import type { BiomeSyncResult } from "../schemas/BiomeConfig.js";
  * @returns The bare semver string (e.g. `"1.9.3"`).
  *
  * @since 0.1.0
+ * @public
  */
 export function extractSemver(version: string): string {
 	return version.replace(/^[\^~>=<v]+/, "");
@@ -23,6 +24,7 @@ export function extractSemver(version: string): string {
  * @returns The canonical `biomejs.dev` schema URL for that version.
  *
  * @since 0.1.0
+ * @public
  */
 export function buildSchemaUrl(version: string): string {
 	return `https://biomejs.dev/schemas/${version}/schema.json`;
@@ -67,6 +69,7 @@ function findBiomeConfigs(cwd: string, fs: FileSystem.FileSystem): Effect.Effect
  * ```
  *
  * @since 0.1.0
+ * @public
  */
 export class BiomeSchemaSync extends Context.Tag("@savvy-web/silk-effects/BiomeSchemaSync")<
 	BiomeSchemaSync,
@@ -110,6 +113,7 @@ export class BiomeSchemaSync extends Context.Tag("@savvy-web/silk-effects/BiomeS
  * `BunContext.layer` to satisfy this dependency.
  *
  * @since 0.1.0
+ * @public
  */
 export const BiomeSchemaSyncLive: Layer.Layer<BiomeSchemaSync, never, FileSystem.FileSystem> = Layer.effect(
 	BiomeSchemaSync,

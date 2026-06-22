@@ -35,6 +35,7 @@ interface OctokitGit {
 
 const asGit = (octokit: unknown): OctokitGit => octokit as OctokitGit;
 
+/** @public */
 export const GitBranchLive: Layer.Layer<GitBranch, never, GitHubClient> = Layer.effect(
 	GitBranch,
 	Effect.map(GitHubClient, (client) => ({

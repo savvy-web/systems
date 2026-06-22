@@ -25,7 +25,6 @@
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
-		"build:meta": "node savvy.build.ts --target meta",
 		"build:prod": "node savvy.build.ts --target prod",
 		"types:check": "tsgo --noEmit"
 	},
@@ -39,9 +38,9 @@
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
-		"tsx": "^4.22.4",
+		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
-		"vitest": "^4.1.9"
+		"vitest": "catalog:silk"
 	},
 	"peerDependencies": {
 		"effect": "catalog:silkPeers"

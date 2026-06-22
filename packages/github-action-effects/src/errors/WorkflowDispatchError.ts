@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from workflow dispatch operations.
+ * @public
  */
 export class WorkflowDispatchError extends Data.TaggedError("WorkflowDispatchError")<{
 	/** The workflow file or ID. */

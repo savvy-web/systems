@@ -39,6 +39,7 @@ const snapshotToStatus = (snapshot: RateLimitSnapshot): RateLimitStatus => ({
  * responses (cached in a shared `RateLimitState` `Ref` written by the
  * GitHubClient), rather than issuing a pre-flight `GET /rate_limit` before every
  * guarded call. Probes only on a cache miss.
+ * @public
  */
 export const RateLimiterLive: Layer.Layer<RateLimiter, never, GitHubClient> = Layer.effect(
 	RateLimiter,

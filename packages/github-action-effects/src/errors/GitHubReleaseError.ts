@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from GitHub Release operations.
+ * @public
  */
 export class GitHubReleaseError extends Data.TaggedError("GitHubReleaseError")<{
 	/** The operation that failed. */

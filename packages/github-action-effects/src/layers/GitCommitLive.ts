@@ -23,6 +23,7 @@ interface OctokitGitData {
 
 const asGit = (octokit: unknown): OctokitGitData => octokit as OctokitGitData;
 
+/** @public */
 export const GitCommitLive: Layer.Layer<GitCommit, never, GitHubClient> = Layer.effect(
 	GitCommit,
 	Effect.map(GitHubClient, (client) => ({

@@ -48,6 +48,7 @@ const formatOutput = (output: CheckRunOutput) => ({
 		: {}),
 });
 
+/** @public */
 export const CheckRunLive: Layer.Layer<CheckRun, never, GitHubClient> = Layer.effect(
 	CheckRun,
 	Effect.map(GitHubClient, (client) => {

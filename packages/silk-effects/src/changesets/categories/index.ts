@@ -24,7 +24,6 @@
  * @see {@link SectionCategory} for the category type definition
  * @see {@link SectionCategorySchema} for runtime validation
  *
- * @packageDocumentation
  */
 
 import type { SectionCategory } from "./types.js";

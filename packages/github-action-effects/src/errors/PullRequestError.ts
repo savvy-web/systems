@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from pull request operations.
+ * @public
  */
 export class PullRequestError extends Data.TaggedError("PullRequestError")<{
 	/** The operation that failed. */

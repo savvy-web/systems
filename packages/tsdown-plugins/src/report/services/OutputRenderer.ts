@@ -5,6 +5,7 @@ import type { FormatterContext, RenderedOutput } from "../formatters/types.js";
 import type { BuildReport } from "../schema.js";
 import type { OutputFormat } from "./FormatSelector.js";
 
+/** @public */
 export class OutputRenderer extends Context.Tag("@savvy-web/tsdown-plugins/OutputRenderer")<
 	OutputRenderer,
 	{

@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error when a GitHub Action input is missing or fails schema validation.
+ * @public
  */
 export class ActionInputError extends Data.TaggedError("ActionInputError")<{
 	/** The input name from action.yml. */

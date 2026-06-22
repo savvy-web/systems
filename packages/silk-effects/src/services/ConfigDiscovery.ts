@@ -26,6 +26,7 @@ import type { ConfigLocation } from "../schemas/ConfigDiscoverySchemas.js";
  * ```
  *
  * @since 0.1.0
+ * @public
  */
 export class ConfigDiscovery extends Context.Tag("@savvy-web/silk-effects/ConfigDiscovery")<
 	ConfigDiscovery,
@@ -71,6 +72,7 @@ function safeExists(fs: FileSystem.FileSystem, path: string): Effect.Effect<bool
  * `BunContext.layer` to satisfy this dependency.
  *
  * @since 0.1.0
+ * @public
  */
 export const ConfigDiscoveryLive: Layer.Layer<ConfigDiscovery, never, FileSystem.FileSystem> = Layer.effect(
 	ConfigDiscovery,

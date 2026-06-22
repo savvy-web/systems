@@ -78,6 +78,7 @@ const INTEROP_FOOTER = [
  *
  * The emitted footer is also self-guarded (`module.exports.default !== void 0`), so it is a
  * runtime no-op whenever the static gate is ever too generous.
+ * @public
  */
 export function cjsDefaultInterop(): Plugin {
 	return {

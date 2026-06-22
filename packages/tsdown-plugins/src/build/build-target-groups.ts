@@ -16,13 +16,18 @@ import { syncPublicDir } from "./sync-public.js";
 import type { BuildFormat, BuildGroupSpec, BuildPlatform } from "./target-groups.js";
 import { deriveDtsPassOptions, deriveTargetGroupOptions, outDirFor } from "./target-groups.js";
 
-/** Signature compatible with tsdown's `build(inlineConfig)`. */
+/**
+ * Signature compatible with tsdown's `build(inlineConfig)`.
+ *
+ * @public
+ */
 export type TsdownBuild = (config: Record<string, unknown>) => Promise<unknown>;
 
 /**
  * CSS handling for a partition's JS pass, forwarded VERBATIM to tsdown's `css` option (consumed
  * by `@tsdown/css`). Structurally typed so tsdown-plugins takes no dependency on `@tsdown/css`.
  * The package whose runtime is built must install `@tsdown/css`; tsdown loads it lazily.
+ * @public
  */
 export interface CssOptions {
 	readonly modules?:
@@ -34,7 +39,8 @@ export interface CssOptions {
 /**
  * One entry partition built with its own format + bundling posture, layered into the
  * SAME outDir as the base build (clean:false). Anything omitted falls back to the base
- * build's value. `entry` is a subset of the package's entries (entryName -> source path).
+ * build's value. `entry` is a subset of the package's entries (`entryName -> source path`).
+ * @public
  */
 export interface EntryOverride {
 	readonly entry: Record<string, string>;
@@ -57,6 +63,7 @@ export interface EntryOverride {
 	readonly outSubdir?: string | undefined;
 }
 
+/** @public */
 export interface BuildTargetGroupsOptions {
 	readonly cwd: string;
 	readonly version: string;
@@ -94,8 +101,8 @@ export interface BuildTargetGroupsOptions {
 	/**
 	 * Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`),
 	 * even declared deps that would otherwise be auto-externalized. The inverse of
-	 * `externals`. JS pass only; `alwaysBundle` is allowed alongside our `skipNodeModulesBundle:
-	 * false` (the throw only fires when skipNodeModulesBundle is true).
+	 * `externals`. JS pass only; `alwaysBundle` is allowed alongside our
+	 * `skipNodeModulesBundle: false` (the throw only fires when skipNodeModulesBundle is true).
 	 */
 	readonly bundle?: ReadonlyArray<string> | undefined;
 	/** Output formats to emit. Defaults to esm-only when unset. */
@@ -171,6 +178,7 @@ export interface BuildTargetGroupsOptions {
  * build (JS and the dts plugin share it), so a single pass cannot give per-module JS + bundled
  * dts. Per-module dts breaks type portability (TS2883); bundling the JS re-bundles workspace
  * consumers. The split keeps per-module JS AND rolled-up, self-contained declarations.
+ * @public
  */
 export async function buildTargetGroups(options: BuildTargetGroupsOptions): Promise<void> {
 	const build: TsdownBuild = options.build ?? ((await import("tsdown")).build as unknown as TsdownBuild);

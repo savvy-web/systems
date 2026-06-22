@@ -22,10 +22,14 @@ import { Schema } from "effect";
  * every statement we emit.
  *
  * @see https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md
+ * @public
  */
 export const IN_TOTO_STATEMENT_V1 = "https://in-toto.io/Statement/v1" as const;
 
-/** Subject of an in-toto statement: a content-addressed artifact. */
+/**
+ * Subject of an in-toto statement: a content-addressed artifact.
+ * @public
+ */
 export class InTotoSubject extends Schema.Class<InTotoSubject>("InTotoSubject")({
 	/**
 	 * Name of the subject. Conventionally a PURL for npm packages
@@ -45,6 +49,7 @@ export class InTotoSubject extends Schema.Class<InTotoSubject>("InTotoSubject")(
  * `unknown` — different predicate types (SLSA provenance, CycloneDX SBOM,
  * SPDX, etc.) carry different shapes, and the statement layer doesn't
  * need to introspect them.
+ * @public
  */
 export class InTotoStatement extends Schema.Class<InTotoStatement>("InTotoStatement")({
 	_type: Schema.Literal(IN_TOTO_STATEMENT_V1),
@@ -57,11 +62,20 @@ export class InTotoStatement extends Schema.Class<InTotoStatement>("InTotoStatem
 // Predicate type URIs we support out of the box
 // ---------------------------------------------------------------------------
 
-/** SLSA Provenance v1.0 predicate URI. */
+/**
+ * SLSA Provenance v1.0 predicate URI.
+ * @public
+ */
 export const SLSA_PROVENANCE_V1 = "https://slsa.dev/provenance/v1" as const;
-/** CycloneDX BOM predicate URI. Used for SBOM attestations. */
+/**
+ * CycloneDX BOM predicate URI. Used for SBOM attestations.
+ * @public
+ */
 export const CYCLONEDX_BOM = "https://cyclonedx.org/bom" as const;
-/** SPDX SBOM predicate URI. */
+/**
+ * SPDX SBOM predicate URI.
+ * @public
+ */
 export const SPDX_V2_3 = "https://spdx.dev/Document/v2.3" as const;
 
 // ---------------------------------------------------------------------------
@@ -71,6 +85,7 @@ export const SPDX_V2_3 = "https://spdx.dev/Document/v2.3" as const;
 /**
  * Sigstore Bundle media type, v0.3. GitHub's `POST /repos/.../attestations`
  * endpoint expects bundles in this shape.
+ * @public
  */
 export const SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE = "application/vnd.dev.sigstore.bundle.v0.3+json" as const;
 
@@ -82,6 +97,7 @@ export const SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE = "application/vnd.dev.sigstore.bun
  * callers that just want to upload it.
  *
  * @see https://github.com/sigstore/protobuf-specs/blob/main/protos/sigstore_bundle.proto
+ * @public
  */
 export class SigstoreBundle extends Schema.Class<SigstoreBundle>("SigstoreBundle")({
 	mediaType: Schema.Literal(SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE),
@@ -100,6 +116,7 @@ export class SigstoreBundle extends Schema.Class<SigstoreBundle>("SigstoreBundle
  * Either a list of pre-built {@link InTotoSubject} entries or a
  * single subject (name + digest) — matching `@actions/attest`'s
  * convenience overload.
+ * @public
  */
 export interface AttestInput {
 	readonly subjects: ReadonlyArray<InTotoSubject>;
@@ -110,6 +127,7 @@ export interface AttestInput {
 /**
  * Result of a successful end-to-end attestation: the statement,
  * the signed Sigstore bundle, and the GitHub attestation record.
+ * @public
  */
 export interface AttestationRecord {
 	readonly statement: InTotoStatement;

@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error when a required environment variable is missing or invalid.
+ * @public
  */
 export class ActionEnvironmentError extends Data.TaggedError("ActionEnvironmentError")<{
 	/** The environment variable name. */

@@ -7,6 +7,7 @@ import { resolveManifest } from "../catalog/resolve-catalogs.js";
 import type { DualExports, ExeRewrite, Json } from "./transform.js";
 import { transformManifest } from "./transform.js";
 
+/** @public */
 export interface TargetGroupRef {
 	readonly id: string; // "dev", "npm", "github", or any custom prod variant id
 	/** The package.json name this group's manifest carries (the declarative rename). */
@@ -14,6 +15,7 @@ export interface TargetGroupRef {
 	readonly isProd: boolean;
 }
 
+/** @public */
 export interface BuildEmittedManifestOptions {
 	readonly pkg: Json;
 	readonly targetGroup: TargetGroupRef;
@@ -27,7 +29,11 @@ export interface BuildEmittedManifestOptions {
 	readonly exeRewrite?: ExeRewrite | undefined;
 }
 
-/** Compute the final manifest bytes for a TargetGroup (catalog resolution + standard transforms). */
+/**
+ * Compute the final manifest bytes for a TargetGroup (catalog resolution + standard transforms).
+ *
+ * @public
+ */
 export async function buildEmittedManifest(options: BuildEmittedManifestOptions): Promise<Json> {
 	const { pkg, targetGroup, devManifest, transform } = options;
 	const shouldResolve = targetGroup.isProd || devManifest === "resolve";
@@ -48,6 +54,7 @@ export async function buildEmittedManifest(options: BuildEmittedManifestOptions)
 	});
 }
 
+/** @public */
 export interface EmitManifestOptions {
 	readonly targetGroup: TargetGroupRef;
 	readonly devManifest?: "preserve" | "resolve" | undefined;
@@ -62,7 +69,11 @@ export interface EmitManifestOptions {
 	readonly exeRewrite?: ExeRewrite | undefined;
 }
 
-/** Rolldown plugin: emit the transformed package.json + LICENSE/README into the output pkg/ root. */
+/**
+ * Rolldown plugin: emit the transformed package.json + LICENSE/README into the output pkg/ root.
+ *
+ * @public
+ */
 export function emitManifest(options: EmitManifestOptions): Plugin {
 	const sourceDir = options.sourceDir;
 	return {

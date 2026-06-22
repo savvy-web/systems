@@ -27,6 +27,7 @@ const mapClientError =
 	(error: GitHubClientError): GitHubContentError =>
 		new GitHubContentError({ operation: "getFile", path, reason: error.reason });
 
+/** @public */
 export const GitHubContentLive: Layer.Layer<GitHubContent, never, GitHubClient> = Layer.effect(
 	GitHubContent,
 	Effect.map(GitHubClient, (client): typeof GitHubContent.Service => ({

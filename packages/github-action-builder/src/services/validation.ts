@@ -20,7 +20,7 @@ import { OptionalPathLikeSchema } from "../schemas/path.js";
 
 /**
  * Options for validation.
- * @internal
+ * @public
  */
 export const ValidateOptionsSchema = Schema.Struct({
 	/** Working directory for file operations. Accepts string, Buffer, or URL. */
@@ -37,7 +37,7 @@ export type ValidateOptions = typeof ValidateOptionsSchema.Type;
 
 /**
  * A validation error item.
- * @internal
+ * @public
  */
 export const ValidationErrorSchema = Schema.Struct({
 	/** Error code for categorization. */
@@ -58,7 +58,7 @@ export type ValidationErrorItem = typeof ValidationErrorSchema.Type;
 
 /**
  * A validation warning.
- * @internal
+ * @public
  */
 export const ValidationWarningSchema = Schema.Struct({
 	/** Warning code for categorization. */
@@ -79,7 +79,7 @@ export type ValidationWarning = typeof ValidationWarningSchema.Type;
 
 /**
  * Validation result with errors and warnings.
- * @internal
+ * @public
  */
 export const ValidationResultSchema = Schema.Struct({
 	/** Whether validation passed (no errors, or only warnings in non-strict mode). */
@@ -98,7 +98,7 @@ export type ValidationResult = typeof ValidationResultSchema.Type;
 
 /**
  * Result of action.yml validation.
- * @internal
+ * @public
  */
 export const ActionYmlResultSchema = Schema.Struct({
 	/** Whether the action.yml is valid. */

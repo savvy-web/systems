@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from package manager operations.
+ * @public
  */
 export class PackageManagerError extends Data.TaggedError("PackageManagerError")<{
 	/** The package manager involved, if known. */

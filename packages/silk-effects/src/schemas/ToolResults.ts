@@ -1,11 +1,24 @@
 import { Data, Schema } from "effect";
 
-/** Where a tool was resolved from. @since 0.2.0 */
+/**
+ * Where a tool was resolved from.
+ *
+ * @since 0.2.0
+ * @public
+ */
 export const ToolSource = Schema.Literal("global", "local");
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export type ToolSource = typeof ToolSource.Type;
 
-/** How to extract a version string from a CLI tool. @since 0.2.0 */
+/**
+ * How to extract a version string from a CLI tool.
+ *
+ * @since 0.2.0
+ * @public
+ */
 // biome-ignore lint/style/useConsistentTypeDefinitions: Data.TaggedEnum requires type alias
 export type VersionExtractorDefinition = {
 	readonly Flag: {
@@ -19,12 +32,23 @@ export type VersionExtractorDefinition = {
 	// biome-ignore lint/complexity/noBannedTypes: Data.TaggedEnum requires {} for empty variants
 	readonly None: {};
 };
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export type VersionExtractor = Data.TaggedEnum<VersionExtractorDefinition>;
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export const VersionExtractor = Data.taggedEnum<VersionExtractor>();
 
-/** What to do when both global and local versions differ. @since 0.2.0 */
+/**
+ * What to do when both global and local versions differ.
+ *
+ * @since 0.2.0
+ * @public
+ */
 // biome-ignore lint/style/useConsistentTypeDefinitions: Data.TaggedEnum requires type alias
 export type ResolutionPolicyDefinition = {
 	// biome-ignore lint/complexity/noBannedTypes: Data.TaggedEnum requires {} for empty variants
@@ -36,12 +60,23 @@ export type ResolutionPolicyDefinition = {
 	// biome-ignore lint/complexity/noBannedTypes: Data.TaggedEnum requires {} for empty variants
 	readonly RequireMatch: {};
 };
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export type ResolutionPolicy = Data.TaggedEnum<ResolutionPolicyDefinition>;
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export const ResolutionPolicy = Data.taggedEnum<ResolutionPolicy>();
 
-/** Where the tool must be found. @since 0.2.0 */
+/**
+ * Where the tool must be found.
+ *
+ * @since 0.2.0
+ * @public
+ */
 // biome-ignore lint/style/useConsistentTypeDefinitions: Data.TaggedEnum requires type alias
 export type SourceRequirementDefinition = {
 	// biome-ignore lint/complexity/noBannedTypes: Data.TaggedEnum requires {} for empty variants
@@ -53,7 +88,13 @@ export type SourceRequirementDefinition = {
 	// biome-ignore lint/complexity/noBannedTypes: Data.TaggedEnum requires {} for empty variants
 	readonly Both: {};
 };
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export type SourceRequirement = Data.TaggedEnum<SourceRequirementDefinition>;
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export const SourceRequirement = Data.taggedEnum<SourceRequirement>();

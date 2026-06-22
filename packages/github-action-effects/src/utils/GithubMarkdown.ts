@@ -43,7 +43,7 @@ export const GithubMarkdown = {
 	rule: (): string => "---",
 
 	/**
-	 * Map a {@link Status} to its emoji indicator.
+	 * Map a `Status` to its emoji indicator.
 	 */
 	statusIcon: (status: Status): string => {
 		switch (status) {

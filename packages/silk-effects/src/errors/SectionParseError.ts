@@ -4,6 +4,7 @@ import { Data } from "effect";
  * Raised when a managed section cannot be parsed from a file.
  *
  * @since 0.2.0
+ * @public
  */
 export class SectionParseError extends Data.TaggedError("SectionParseError")<{
 	readonly path: string;

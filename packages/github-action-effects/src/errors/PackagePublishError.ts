@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from package publishing operations.
+ * @public
  */
 export class PackagePublishError extends Data.TaggedError("PackagePublishError")<{
 	/** The operation that failed. */

@@ -4,11 +4,12 @@ import type { PlatformError } from "@effect/platform/Error";
 import type { Effect, Stream } from "effect";
 
 /**
- * Wraps `@effect/platform` {@link Command.Command} with instance method ergonomics.
+ * Wraps `@effect/platform` `Command.Command` with instance method ergonomics.
  *
  * Use `yield* cmd.string()` instead of `yield* Command.string(cmd)`.
  *
  * @since 0.2.0
+ * @public
  */
 export class ToolCommand {
 	readonly command: Command.Command;

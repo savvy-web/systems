@@ -35,4 +35,7 @@ export const API_TARGETS: ReadonlyArray<ApiTarget> = [
 	target("templates", "templates"),
 	target("github-action-effects", "github-action-effects"),
 	target("github-action-builder", "github-action-builder"),
+	target("bundler", "bundler"),
+	target("tsdown-plugins", "tsdown-plugins"),
+	target("rspress-builder", "rspress-builder"),
 ];

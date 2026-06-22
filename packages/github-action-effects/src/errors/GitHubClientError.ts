@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from GitHub API operations.
+ * @public
  */
 export class GitHubClientError extends Data.TaggedError("GitHubClientError")<{
 	/** The operation that failed (e.g., "rest.repos.get", "graphql"). */

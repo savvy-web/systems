@@ -18,6 +18,7 @@ const formatters = new Map<string, Formatter>([
 	["silent", SilentFormatter],
 ]);
 
+/** @public */
 export const OutputRendererLive = Layer.succeed(OutputRenderer, {
 	render: (reports, format, ctx) =>
 		Effect.sync(() => {

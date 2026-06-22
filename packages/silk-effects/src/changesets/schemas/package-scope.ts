@@ -36,7 +36,6 @@
  * @see {@link VersionFileConfigSchema} for the version-file entry shape
  * @see {@link https://effect.website/docs/schema/introduction | Effect Schema documentation}
  *
- * @packageDocumentation
  */
 
 import { Schema } from "effect";

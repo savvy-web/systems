@@ -10,7 +10,10 @@ import {
 } from "workspaces-effect";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 
-/** A single object-form publish target in the `publishConfig.targets` map (mirrors the bundler's `PublishTargetObject`). */
+/**
+ * A single object-form publish target in the `publishConfig.targets` map (mirrors the bundler's `PublishTargetObject`).
+ * @public
+ */
 export interface RawTargetObject {
 	/** Registry endpoint. Defaulted for the well-known `npm`/`github` keys. */
 	readonly registry?: string;
@@ -20,7 +23,10 @@ export interface RawTargetObject {
 	readonly from?: string;
 }
 
-/** A `publishConfig.targets` value: `true` (well-known registry, base name), a string (name override), or an object. */
+/**
+ * A `publishConfig.targets` value: `true` (well-known registry, base name), a string (name override), or an object.
+ * @public
+ */
 export type RawTargetValue = true | string | RawTargetObject;
 
 /**
@@ -30,10 +36,14 @@ export type RawTargetValue = true | string | RawTargetObject;
  * This is the bundler's Record-map form. The legacy array form is no longer supported
  * (removed in the 1.0 breaking change) — declare targets as a keyed map and let the
  * bundler emit the {@link TargetsBinding} that silk publishability resolves against.
+ * @public
  */
 export type RawPublishTargets = Record<string, RawTargetValue>;
 
-/** Raw `publishConfig` shape (the unschematized fields silk rules consult). */
+/**
+ * Raw `publishConfig` shape (the unschematized fields silk rules consult).
+ * @public
+ */
 export interface RawPublishConfig {
 	readonly access?: "public" | "restricted";
 	readonly registry?: string;
@@ -41,9 +51,12 @@ export interface RawPublishConfig {
 	readonly targets?: RawPublishTargets;
 }
 
-/** A resolved byte-variant group from the bundler's `dist/prod/targets.json` binding. */
+/**
+ * A resolved byte-variant group from the bundler's `dist/prod/targets.json` binding.
+ * @public
+ */
 export interface TargetGroupBinding {
-	/** Group folder id; the group's bytes live at {@link dir}. */
+	/** Group folder id; the group's bytes live at `dir`. */
 	readonly id: string;
 	/** The `package.json.name` this group's manifest carries. */
 	readonly name: string;
@@ -51,7 +64,10 @@ export interface TargetGroupBinding {
 	readonly dir: string;
 }
 
-/** A resolved registry target from the bundler's `dist/prod/targets.json` binding (one per `publishConfig.targets` key). */
+/**
+ * A resolved registry target from the bundler's `dist/prod/targets.json` binding (one per `publishConfig.targets` key).
+ * @public
+ */
 export interface TargetBinding {
 	/** The `publishConfig.targets` key (`npm`, `github`, …). */
 	readonly id: string;
@@ -71,13 +87,17 @@ export interface TargetBinding {
  * byte-variant build set; `targets` binds every declared registry target to one group.
  * `npm: true` + `github: true` collapse into one scoped-name group deployed to two
  * registries (one group, two targets).
+ * @public
  */
 export interface TargetsBinding {
 	readonly groups: ReadonlyArray<TargetGroupBinding>;
 	readonly targets: ReadonlyArray<TargetBinding>;
 }
 
-/** Raw `package.json` shape consumed by {@link SilkPublishability.detect}. */
+/**
+ * Raw `package.json` shape consumed by `SilkPublishability.detect`.
+ * @public
+ */
 export interface RawPackageJson {
 	readonly name?: string;
 	readonly version?: string;
@@ -85,7 +105,10 @@ export interface RawPackageJson {
 	readonly publishConfig?: RawPublishConfig;
 }
 
-/** A publishable workspace package and the count of its resolved publish targets. */
+/**
+ * A publishable workspace package and the count of its resolved publish targets.
+ * @public
+ */
 export interface PublishablePackage {
 	readonly name: string;
 	readonly version: string;
@@ -110,7 +133,7 @@ const DEFAULT_REGISTRIES: Record<string, string> = {
  *
  * @remarks
  * The npm public registry and GitHub Packages both accept provenance attestations through the
- * Sigstore/OIDC trusted-publishing flow, so a {@link PublishTarget} bound to either is marked
+ * Sigstore/OIDC trusted-publishing flow, so a `PublishTarget` bound to either is marked
  * `provenance: true` by default — this is what gates the release action's attestation step. JSR
  * and custom registries do not participate and resolve to `false`. Matching is endpoint-based
  * (not target-key based) so a custom key pointed at one of these registries still opts in.
@@ -130,7 +153,7 @@ const provenanceForRegistry = (registry: string): boolean => {
 };
 
 /**
- * Silk publishability rules over `workspaces-effect`'s {@link PublishTarget}.
+ * Silk publishability rules over `workspaces-effect`'s `PublishTarget`.
  *
  * @remarks
  * In silk mode `private: true` is the norm on workspace `package.json`; publishability is
@@ -138,6 +161,7 @@ const provenanceForRegistry = (registry: string): boolean => {
  * default. All helpers are static so a consumer sees the full rule surface in one place.
  *
  * @since 0.4.0
+ * @public
  */
 export class SilkPublishability {
 	/**
@@ -146,7 +170,7 @@ export class SilkPublishability {
 	 *
 	 * - A non-empty `publishConfig.targets` map (the bundler's Record-map form) makes the
 	 *   package publishable regardless of `private`. With a `binding` (post-prod-build), one
-	 *   {@link PublishTarget} is emitted per resolved registry target, its `directory` set to
+	 *   `PublishTarget` is emitted per resolved registry target, its `directory` set to
 	 *   the bound group's `dist/prod/<group>/pkg` dir. Without a binding (pre-build), one
 	 *   placeholder target is emitted per declared key so publishability and target counts
 	 *   are correct; the directory is best-effort and unused until the build writes the
@@ -236,7 +260,7 @@ export class SilkPublishability {
 	}
 
 	/**
-	 * Resolve a package's publish targets via {@link PublishabilityDetector}, then drop any
+	 * Resolve a package's publish targets via {@link SilkPublishability}, then drop any
 	 * whose built `directory` package.json is `private: true`. Returned targets keep the
 	 * detector's original (possibly package-relative) `directory`.
 	 */
@@ -259,7 +283,7 @@ export class SilkPublishability {
 
 	/**
 	 * The publishable, non-ignored packages, resolved through the single
-	 * {@link PublishabilityDetector} (which already honors changeset ignore in adaptive mode).
+	 * {@link SilkPublishability} (which already honors changeset ignore in adaptive mode).
 	 */
 	static listPublishable(
 		root: string,
@@ -312,12 +336,13 @@ const readRaw = (fs: FileSystem.FileSystem, packageJsonPath: string): Effect.Eff
  *
  * @remarks
  * Returns `null` when the file is missing/unreadable/malformed — i.e. before the prod build
- * has run. {@link SilkPublishability.detect} falls back to declared-key placeholders in that
- * case. Used by the silk {@link PublishabilityDetector} layers and the workspace analyzer.
+ * has run. `SilkPublishability.detect` falls back to declared-key placeholders in that
+ * case. Used by the silk {@link SilkPublishability} layers and the workspace analyzer.
  *
  * @param fs - The FileSystem service.
  * @param pkgPath - Absolute path to the package directory.
  * @since 1.0.0
+ * @public
  */
 export const readTargetsBinding = (fs: FileSystem.FileSystem, pkgPath: string): Effect.Effect<TargetsBinding | null> =>
 	fs.readFileString(join(pkgPath, "dist", "prod", "targets.json")).pipe(
@@ -331,12 +356,13 @@ export const readTargetsBinding = (fs: FileSystem.FileSystem, pkgPath: string): 
 	);
 
 /**
- * Override of `workspaces-effect`'s {@link PublishabilityDetector} Tag with pure silk rules.
+ * Override of `workspaces-effect`'s {@link SilkPublishability} Tag with pure silk rules.
  *
  * @remarks Requires `FileSystem` (captured at layer build); `detect` reads the raw
- * `package.json` from `pkg.packageJsonPath` and applies {@link SilkPublishability.detect}.
+ * `package.json` from `pkg.packageJsonPath` and applies `SilkPublishability.detect`.
  *
  * @since 0.4.0
+ * @public
  */
 export const SilkPublishabilityDetectorLive: Layer.Layer<PublishabilityDetector, never, FileSystem.FileSystem> =
 	Layer.effect(
@@ -356,13 +382,14 @@ export const SilkPublishabilityDetectorLive: Layer.Layer<PublishabilityDetector,
 	);
 
 /**
- * Ignore-aware override of {@link PublishabilityDetector}. `detect` short-circuits to `[]`
- * for changeset-ignored packages, then dispatches on {@link ChangesetConfig.mode}:
- * `none` → `[]`; `silk` → {@link SilkPublishability.detect}; `vanilla` → the library default.
+ * Ignore-aware override of {@link SilkPublishability}. `detect` short-circuits to `[]`
+ * for changeset-ignored packages, then dispatches on `ChangesetConfig.mode`:
+ * `none` → `[]`; `silk` → `SilkPublishability.detect`; `vanilla` → the library default.
  *
  * @remarks Requires `FileSystem` + {@link ChangesetConfig} at build.
  *
  * @since 0.4.0
+ * @public
  */
 export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
 	PublishabilityDetector,

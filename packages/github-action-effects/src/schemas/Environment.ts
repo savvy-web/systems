@@ -24,7 +24,10 @@ export const GitHubContext = Schema.Struct({
 	workflow: Schema.String,
 }).annotations({ identifier: "GitHubContext" });
 
-/** Inferred type for GitHubContext. */
+/**
+ * Inferred type for GitHubContext.
+ * @public
+ */
 export type GitHubContext = typeof GitHubContext.Type;
 
 /**
@@ -41,5 +44,8 @@ export const RunnerContext = Schema.Struct({
 	debug: Schema.Boolean,
 }).annotations({ identifier: "RunnerContext" });
 
-/** Inferred type for RunnerContext. */
+/**
+ * Inferred type for RunnerContext.
+ * @public
+ */
 export type RunnerContext = typeof RunnerContext.Type;

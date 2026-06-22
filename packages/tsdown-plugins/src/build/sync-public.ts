@@ -41,6 +41,7 @@ function pruneEmptyDirs(dir: string): void {
  *
  * The byte-diff keeps unchanged files (and their timestamps) untouched, so a large copied asset
  * tree — e.g. the mcp markdown corpus — is not rewritten on every build.
+ * @public
  */
 export function syncPublicDir(sourceDir: string, targetDir: string): void {
 	if (!existsSync(sourceDir)) return;

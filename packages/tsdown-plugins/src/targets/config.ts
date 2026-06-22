@@ -1,4 +1,8 @@
-/** A single object-form publish target. Uses `from` XOR `name` (never both). */
+/**
+ * A single object-form publish target. Uses `from` XOR `name` (never both).
+ *
+ * @public
+ */
 export interface PublishTargetObject {
 	/** Registry endpoint. Required for custom keys; defaulted for `npm`/`github`. */
 	readonly registry?: string | undefined;
@@ -8,13 +12,25 @@ export interface PublishTargetObject {
 	readonly from?: string | undefined;
 }
 
-/** A `publishConfig.targets` value: `true` (well-known registry, base name), a string (name override), or an object. */
+/**
+ * A `publishConfig.targets` value: `true` (well-known registry, base name), a string (name override), or an object.
+ *
+ * @public
+ */
 export type PublishTargetValue = true | string | PublishTargetObject;
 
-/** The `publishConfig.targets` map, keyed by target id (`npm`, `github`, or a custom key). */
+/**
+ * The `publishConfig.targets` map, keyed by target id (`npm`, `github`, or a custom key).
+ *
+ * @public
+ */
 export type PublishTargets = Record<string, PublishTargetValue>;
 
-/** A distinct byte-variant build group (one per distinct resolved name). */
+/**
+ * A distinct byte-variant build group (one per distinct resolved name).
+ *
+ * @public
+ */
 export interface ResolvedGroup {
 	/** Folder id; the group's output dir nests this id under dist/prod, with a pkg subfolder. */
 	readonly id: string;
@@ -24,7 +40,11 @@ export interface ResolvedGroup {
 	readonly dir: string;
 }
 
-/** A resolved registry target (one per `publishConfig.targets` key). */
+/**
+ * A resolved registry target (one per `publishConfig.targets` key).
+ *
+ * @public
+ */
 export interface ResolvedTarget {
 	/** The `publishConfig.targets` key. */
 	readonly id: string;
@@ -36,13 +56,21 @@ export interface ResolvedTarget {
 	readonly registry: string;
 }
 
-/** The full resolution of `publishConfig.targets`: the distinct groups to build, and every target bound to one. */
+/**
+ * The full resolution of `publishConfig.targets`: the distinct groups to build, and every target bound to one.
+ *
+ * @public
+ */
 export interface TargetResolution {
 	readonly groups: ReadonlyArray<ResolvedGroup>;
 	readonly targets: ReadonlyArray<ResolvedTarget>;
 }
 
-/** True when a target value is the object form (carries registry/name/from). */
+/**
+ * True when a target value is the object form (carries registry/name/from).
+ *
+ * @public
+ */
 export function isTargetObject(value: PublishTargetValue): value is PublishTargetObject {
 	return typeof value === "object" && value !== null;
 }

@@ -63,7 +63,11 @@ function check(input: ValidationInput): void {
 	}
 }
 
-/** Live ConfigValidator: wraps the synchronous rule set, surfacing ConfigValidationError as a typed Effect failure. */
+/**
+ * Live ConfigValidator: wraps the synchronous rule set, surfacing ConfigValidationError as a typed Effect failure.
+ *
+ * @public
+ */
 export const ConfigValidatorLive = Layer.succeed(ConfigValidator, {
 	validate: (input) =>
 		Effect.try({

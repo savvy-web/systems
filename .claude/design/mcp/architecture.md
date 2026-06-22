@@ -3,8 +3,8 @@ status: current
 module: mcp
 category: architecture
 created: 2026-05-31
-updated: 2026-06-18
-last-synced: 2026-06-18
+updated: 2026-06-22
+last-synced: 2026-06-22
 completeness: 95
 related:
   - ../silk-effects/architecture.md
@@ -107,7 +107,7 @@ Tags are drawn from a controlled vocabulary in `content/tags.json` (canonical ta
 
 Generated docs are `source: generated` entries in the corpus. They are produced by a turbo-orchestrated pipeline and are **gitignored, ephemeral build output** (`public/content/packages/*/api/`), regenerated deterministically from each package's `.api.json` model on every build. The upstream API Extractor `.api.json` model files are also gitignored (`packages/mcp/lib/models/*/`). The committed `manifest.json` is the hand-authored baseline ONLY (no `source: generated` entries); `build:catalog` inflates it in place with the generated entries on a local build, but the deep-equality write guard keeps the committed baseline unchanged on a clean run. The generator is skip-tolerant, so a bare install with no models never fails. Because the generated docs are gitignored, `git log` has no commit for them and the compiler stamps their `lastModified` with the epoch fallback — only hand-authored docs get a real commit date.
 
-**Targets.** `lib/scripts/api-targets.ts` declares the four in-monorepo library packages that are generation targets: `silk-effects`, `templates`, `github-action-effects` and `github-action-builder`. `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle; excluding mcp keeps the build subgraph acyclic.
+**Targets.** `lib/scripts/api-targets.ts` declares the four in-monorepo library packages that are generation (render) targets: `silk-effects`, `templates`, `github-action-effects` and `github-action-builder`. `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle; excluding mcp keeps the build subgraph acyclic. Note `API_TARGETS` is narrower than the `generate:api-docs` turbo dependency set: `bundler`/`tsdown-plugins`/`rspress-builder` stage their models into `lib/models/` (so the edges exist) but are not in `API_TARGETS`, so the generator does not render them yet (see the **Turbo orchestration** note below).
 
 **Generator.** `lib/scripts/generate-api-docs.ts` reads each target's `.api.json` model from `lib/models/<pkg>/` (where the bundler's `--target prod` copies it from the canonical group's meta bundle via each leaf's `meta.localPaths`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting docs under `public/content/packages/<dir>/api/` (gitignored). The two injected services are a `FrontmatterRenderer` that builds silk YAML front-matter (`source: generated`, `tier: packages`, empty `related`) and a `RouteFormatter` that maps item refs to `silk://packages/<dir>/api/<kind>/<slug>` URIs.
 
@@ -116,16 +116,17 @@ Generated docs carry empty `related` by design: no committed hand-authored doc m
 **Turbo orchestration.** `packages/mcp/turbo.json` (extends `//`) declares the task graph:
 
 ```text
-@savvy-web/{silk-effects,templates,github-action-effects,github-action-builder}#build:prod
+@savvy-web/{silk-effects,templates,github-action-effects,github-action-builder,
+            bundler,rspress-builder,tsdown-plugins}#build:prod
       ↓ (copy *.api.json into mcp/lib/models/<pkg>/ via meta.localPaths)
 @savvy-web/mcp#generate:api-docs
-      ↓ (write public/content/packages/*/api/** — gitignored)
+      ↓ (write public/content/packages/*/api/** — gitignored, for API_TARGETS only)
 @savvy-web/mcp#build:catalog
       ↓ (compile manifest.json)
 @savvy-web/mcp#build:dev / build:prod
 ```
 
-Under the bundler the four leaves now emit their API Extractor model **during `build:prod`** (meta moved into `--target prod`; the old standalone `build:meta` is a soft-deprecated no-op), so `generate:api-docs` `dependsOn` the four leaves' explicit `#build:prod` tasks (not `^build:prod`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). It has **no** workspace edge for the renderer itself: `api-extractor-llms` is an external npm package the generator pulls from `node_modules`. `build:catalog` depends on `generate:api-docs`; mcp's own `build:dev`/`build:prod` depend on `build:catalog`. `build:catalog`'s only declared output is the tracked `public/content/manifest.json`, and its inputs exclude that manifest so a manifest rewrite does not re-trigger it. See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
+Under the bundler every leaf emits its API Extractor model **during `build:prod`** (meta moved into `--target prod`; the old standalone `build:meta` is a soft-deprecated no-op), so `generate:api-docs` `dependsOn` the leaves' explicit `#build:prod` tasks (not `^build:prod`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). The dependency set was widened this branch from four to **seven**: the three build libraries `bundler`, `tsdown-plugins` and `rspress-builder` now self-generate api-models and stage them into `mcp/lib/models/<pkg>/` via their `meta.localPaths`. **Important — staged, not yet rendered:** those three are dependency edges (and staged model files) only; `API_TARGETS` (the render list) was NOT extended, so the rendered corpus still contains pages for the original four libraries alone. The three builders' models sit in `lib/models/` available for a future render-target expansion. It has **no** workspace edge for the renderer itself: `api-extractor-llms` is an external npm package the generator pulls from `node_modules`. `build:catalog` depends on `generate:api-docs`; mcp's own `build:dev`/`build:prod` depend on `build:catalog`. `build:catalog`'s only declared output is the tracked `public/content/manifest.json`, and its inputs exclude that manifest so a manifest rewrite does not re-trigger it. See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
 
 ### The build-time compiler
 

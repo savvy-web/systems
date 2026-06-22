@@ -2,12 +2,14 @@
 import sortPackageJson from "sort-package-json";
 import { createEntryName } from "../entry/extract.js";
 
+/** @public */
 export type Json = Record<string, unknown>;
 
 /**
  * Which exports get a CJS `require` condition. `true`/`false` apply uniformly to every
  * TS export; a Set marks ONLY the listed export keys (e.g. "./changesets/markdownlint")
  * as dual — used by per-entry format overrides.
+ * @public
  */
 export type DualExports = boolean | ReadonlySet<string>;
 
@@ -33,7 +35,7 @@ const NON_PUBLISHED_FIELDS = [
 /**
  * The default `transform` applied to every package's manifest when its
  * `savvy.build.ts` does not provide one of its own. Strips the build/dev-only
- * fields in {@link NON_PUBLISHED_FIELDS} from the emitted package.json.
+ * fields in `NON_PUBLISHED_FIELDS` from the emitted package.json.
  *
  * This is the pattern nearly every package repeated by hand (inherited from
  * rslib-builder); `defineBuild` now applies it automatically so a package needs a
@@ -47,6 +49,7 @@ const NON_PUBLISHED_FIELDS = [
  * Pure: the supplied `pkg` is NOT mutated — a shallow copy with the fields removed
  * is returned, so external callers invoking this from a custom transform keep their
  * input intact.
+ * @public
  */
 export function defaultManifestTransform({ pkg }: { pkg: Json }): Json {
 	const out: Json = { ...pkg };
@@ -60,6 +63,7 @@ const stripLeadingDotSlash = (p: string): string => (p.startsWith("./") ? p.slic
  * Describes a SEA binary the bundler compiled for this package. When present,
  * {@link transformManifest} rewrites every `exports`/`bin` value equal to `source`
  * to the emitted binary path and adds it to `files` so it ships in the tarball.
+ * @public
  */
 export interface ExeRewrite {
 	/** The exe entry source path (matches exports/bin values to rewrite). */
@@ -129,6 +133,7 @@ const tsConditions = (exportKey: string, dual: boolean, subdirExports?: Readonly
  *
  * Export keys in `subdirExports` are built into an isolated `<key>/index.*` subdir (e.g. an
  * RSPress `./runtime`), so their conditions gain an `/index` segment.
+ * @public
  */
 export function transformExports(
 	exports: unknown,
@@ -157,7 +162,11 @@ export function transformExports(
 	return exports;
 }
 
-/** Rewrite bin: TS targets to bin/[command].js (string to bin/cli.js); strip leading ./ otherwise. */
+/**
+ * Rewrite bin: TS targets to bin/[command].js (string to bin/cli.js); strip leading ./ otherwise.
+ *
+ * @public
+ */
 export function transformBin(bin: unknown): unknown {
 	if (typeof bin === "string") return isTs(bin) ? "bin/cli.js" : stripLeadingDotSlash(bin);
 	if (bin && typeof bin === "object") {
@@ -170,7 +179,11 @@ export function transformBin(bin: unknown): unknown {
 	return bin;
 }
 
-/** FINAL guard: strip leading ./ from bin paths (npm 11.x drops ./-prefixed bins). */
+/**
+ * FINAL guard: strip leading ./ from bin paths (npm 11.x drops ./-prefixed bins).
+ *
+ * @public
+ */
 export function normalizeBinPaths(bin: unknown): unknown {
 	if (typeof bin === "string") return stripLeadingDotSlash(bin);
 	if (bin && typeof bin === "object") {
@@ -181,6 +194,7 @@ export function normalizeBinPaths(bin: unknown): unknown {
 	return bin;
 }
 
+/** @public */
 export interface TransformManifestOptions {
 	/** Run after the standard transforms, before the bin final-guard + sort. */
 	readonly transform?: ((pkg: Json) => Json) | undefined;
@@ -192,7 +206,11 @@ export interface TransformManifestOptions {
 	readonly exeRewrite?: ExeRewrite | undefined;
 }
 
-/** Apply the full standard manifest transform (excluding catalog resolution, done upstream). */
+/**
+ * Apply the full standard manifest transform (excluding catalog resolution, done upstream).
+ *
+ * @public
+ */
 export function transformManifest(pkg: Json, options: TransformManifestOptions = {}): Json {
 	const { publishConfig, scripts, ...rest } = pkg as Json & {
 		publishConfig?: { access?: string };

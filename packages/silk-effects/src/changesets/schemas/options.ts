@@ -15,7 +15,6 @@
  * @see {@link https://github.com/changesets/changesets/blob/main/docs/config-file-options.md | Changesets config docs}
  * @see {@link https://effect.website/docs/schema/introduction | Effect Schema documentation}
  *
- * @packageDocumentation
  */
 
 import { Effect, Schema } from "effect";

@@ -8,9 +8,10 @@ const PackageManager = Schema.Literal("npm", "pnpm", "yarn", "bun");
 /**
  * Result of resolving a {@link ToolDefinition}.
  *
- * Provides {@link exec} and {@link dlx} to build commands for the resolved tool.
+ * Provides `exec` and `dlx` to build commands for the resolved tool.
  *
  * @since 0.2.0
+ * @public
  */
 export class ResolvedTool extends Schema.TaggedClass<ResolvedTool>()("ResolvedTool", {
 	name: Schema.String,

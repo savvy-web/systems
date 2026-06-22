@@ -17,7 +17,6 @@
  * @see {@link WorkspaceSnapshotReader} for the service tag
  * @see {@link WorkspaceSnapshotReaderLive} for the production layer
  *
- * @packageDocumentation
  */
 
 import { execFileSync } from "node:child_process";

@@ -2,7 +2,7 @@
  * Live implementation of the {@link Attest} service.
  *
  * @remarks
- * Composes the pure in-toto builder ({@link buildStatement}), the
+ * Composes the pure in-toto builder (`buildStatement`), the
  * {@link SigstoreSigner} (Fulcio + Rekor), and the upstream
  * `GitHubClient` to provide a single `attest()` entry point for signed
  * provenance + SBOM attestations.

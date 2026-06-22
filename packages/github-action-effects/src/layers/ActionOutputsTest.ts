@@ -5,6 +5,7 @@ import { ActionOutputs } from "../services/ActionOutputs.js";
 
 /**
  * In-memory state captured by the test output layer.
+ * @public
  */
 export interface ActionOutputsTestState {
 	readonly outputs: Array<CapturedOutput>;
@@ -23,6 +24,7 @@ export interface ActionOutputsTestState {
  * const state = ActionOutputsTest.empty();
  * const layer = ActionOutputsTest.layer(state);
  * ```
+ * @public
  */
 export const ActionOutputsTest = {
 	/**

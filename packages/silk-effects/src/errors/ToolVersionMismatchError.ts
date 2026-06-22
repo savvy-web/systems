@@ -1,5 +1,6 @@
 import { Data } from "effect";
 
+/** @public */
 export class ToolVersionMismatchError extends Data.TaggedError("ToolVersionMismatchError")<{
 	readonly name: string;
 	readonly globalVersion: string;

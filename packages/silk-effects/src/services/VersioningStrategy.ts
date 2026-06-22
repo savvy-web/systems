@@ -26,6 +26,7 @@ import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
  * ```
  *
  * @since 0.1.0
+ * @public
  */
 export class VersioningStrategy extends Context.Tag("@savvy-web/silk-effects/VersioningStrategy")<
 	VersioningStrategy,
@@ -35,7 +36,7 @@ export class VersioningStrategy extends Context.Tag("@savvy-web/silk-effects/Ver
 		 *
 		 * @param publishablePackages - Package names (e.g. `"@my-org/pkg"`) that will be published.
 		 * @param root - Workspace root directory to read changeset config from.
-		 * @returns An `Effect` resolving to a {@link VersioningStrategyResult}, or failing with
+		 * @returns An `Effect` resolving to a {@link (VersioningStrategyResult:type)}, or failing with
 		 *   {@link VersioningDetectionError} on unexpected errors.
 		 *
 		 * @since 0.1.0
@@ -55,6 +56,7 @@ export class VersioningStrategy extends Context.Tag("@savvy-web/silk-effects/Ver
  * If the config file is absent, an empty `fixed` groups array is assumed.
  *
  * @since 0.1.0
+ * @public
  */
 export const VersioningStrategyLive: Layer.Layer<VersioningStrategy, never, ChangesetConfigReader> = Layer.effect(
 	VersioningStrategy,

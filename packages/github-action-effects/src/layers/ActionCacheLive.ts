@@ -189,7 +189,7 @@ interface FinalizeCacheEntryResponse {
  * Live implementation of ActionCache using the V2 Twirp cache protocol
  * and Azure Blob Storage for uploads/downloads.
  *
- * Requires {@link HttpClient.HttpClient} for the Twirp RPCs; the
+ * Requires `HttpClient.HttpClient` for the Twirp RPCs; the
  * `ActionsRuntime.Default` / `Action.run` path provides it via
  * `FetchHttpClient.layer`. Manual-wiring consumers must provide it themselves.
  *

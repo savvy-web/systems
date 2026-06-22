@@ -14,6 +14,7 @@ export type { ManifestLike } from "workspaces-effect";
  *
  * Rejects with `CatalogResolutionError` on an unresolvable reference, or
  * `CatalogAssemblyError` if the workspace catalog set cannot be assembled.
+ * @public
  */
 export function resolveManifest(pkg: ManifestLike): Promise<ManifestLike> {
 	const program = Effect.gen(function* () {

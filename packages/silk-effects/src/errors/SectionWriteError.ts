@@ -4,6 +4,7 @@ import { Data } from "effect";
  * Raised when a managed section cannot be written to a file.
  *
  * @since 0.2.0
+ * @public
  */
 export class SectionWriteError extends Data.TaggedError("SectionWriteError")<{
 	readonly path: string;

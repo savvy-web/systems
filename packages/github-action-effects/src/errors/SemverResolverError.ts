@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error when a semver operation fails due to invalid input.
+ * @public
  */
 export class SemverResolverError extends Data.TaggedError("SemverResolverError")<{
 	/** The operation that failed. */

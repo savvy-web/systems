@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from config loading operations.
+ * @public
  */
 export class ConfigLoaderError extends Data.TaggedError("ConfigLoaderError")<{
 	/** The file path that caused the error. */

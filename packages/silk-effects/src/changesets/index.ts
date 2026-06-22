@@ -10,7 +10,6 @@
  * const { Categories, ChangelogTransformer, ChangesetLinter } = Changesets;
  * ```
  *
- * @packageDocumentation
  */
 
 // =============================================================================

@@ -3,12 +3,11 @@
  *
  * @remarks
  * Provides `listPublishablePackageNames`, a convenience wrapper around
- * {@link PublishabilityDetector} that returns a `Set<string>` of
+ * {@link SilkPublishability} that returns a `Set<string>` of
  * publishable package names. Used by the `deps detect` and `deps regen`
  * commands to filter out workspace packages whose dependency changes
  * would never reach a release.
  *
- * @packageDocumentation
  */
 
 import { Effect } from "effect";
@@ -19,7 +18,7 @@ import { PublishabilityDetector } from "workspaces-effect";
  * Compute the set of currently-publishable workspace package names.
  *
  * @remarks
- * Uses the currently-active {@link PublishabilityDetector} — wire the
+ * Uses the currently-active {@link SilkPublishability} — wire the
  * {@link SilkPublishabilityDetectorLive} layer to get silk semantics.
  *
  * @param packages - The workspace packages to evaluate

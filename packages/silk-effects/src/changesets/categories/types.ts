@@ -13,7 +13,6 @@
  * @see {@link resolveCommitType} for mapping commit types to categories
  * @see {@link https://effect.website/docs/schema/introduction | Effect Schema documentation}
  *
- * @packageDocumentation
  */
 
 import { Schema } from "effect";

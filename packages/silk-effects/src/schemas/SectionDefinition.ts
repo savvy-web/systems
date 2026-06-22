@@ -9,11 +9,12 @@ import { SectionDiff as SectionDiffEnum } from "./SectionResults.js";
 /**
  * Identity envelope for a managed section type.
  *
- * {@link Equal} compares on `toolName` + `commentStyle`.
+ * `Equal` compares on `toolName` + `commentStyle`.
  * Use {@link SectionDefinition.block | block()} to create a {@link SectionBlock},
- * or {@link SectionDefinition.generate | generate()} for a typed factory.
+ * or `generate()` for a typed factory.
  *
  * @since 0.2.0
+ * @public
  */
 export class SectionDefinition extends Schema.TaggedClass<SectionDefinition>()("SectionDefinition", {
 	toolName: Schema.String,
@@ -149,6 +150,7 @@ export class SectionDefinition extends Schema.TaggedClass<SectionDefinition>()("
  * `commentStyle` is always `"#"` — only `toolName` is required.
  *
  * @since 0.2.0
+ * @public
  */
 export class ShellSectionDefinition extends Schema.TaggedClass<ShellSectionDefinition>()("ShellSectionDefinition", {
 	toolName: Schema.String,

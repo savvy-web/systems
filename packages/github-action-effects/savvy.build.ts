@@ -9,7 +9,15 @@ const config = defineBuild({
 	devManifest: "preserve",
 	meta: {
 		localPaths: ["../mcp/lib/models/github-action-effects", "../../website/lib/models/github-action-effects"],
-		tsdoc: { suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }] },
+		tsdoc: {
+			suppressWarnings: [
+				{ messageId: "ae-forgotten-export", pattern: "_base" },
+				// rolldown's dts-gen synthesizes a `declare namespace <mod>_d_exports` for the
+				// `export * as Step` re-export and drops the release-tag comment, so api-extractor
+				// cannot see the @public we put on the source statement. Known bundler limitation.
+				{ messageId: "ae-missing-release-tag", pattern: "_d_exports" },
+			],
+		},
 	},
 });
 

@@ -1,5 +1,6 @@
 import { Data } from "effect";
 
+/** @public */
 export class ToolResolutionError extends Data.TaggedError("ToolResolutionError")<{
 	readonly name: string;
 	readonly reason: string;
