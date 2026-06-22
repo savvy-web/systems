@@ -24,21 +24,19 @@ import {
 	buildEmittedManifest,
 	computeExeFileName,
 	createEntryName,
+	deriveExportPaths,
 	normalizeExeOptions,
 	normalizeLooseFiles,
-	normalizeMetaOptions,
 	packageJsonEntries,
 	readTsconfigJsx,
 	buildTargetGroups as realBuildTargetGroups,
-	generateMeta as realGenerateMeta,
-	resolveNextVersions as realResolveNextVersions,
 	runExeBuild as realRunExeBuild,
 	writeTargetsBinding as realWriteTargetsBinding,
 	removeDeclarationMaps,
 	renderReport,
 	resolveJsxConfig,
 	resolveTargets,
-	rewriteMetaVersions,
+	runMetaPass,
 	writeIssuesArtifact,
 	writeResolvedTsconfig,
 } from "@savvy-web/tsdown-plugins";
@@ -119,21 +117,6 @@ function deriveProdGroups(
 	return { groups: resolution.groups.map((g) => ({ id: g.id, name: g.name })), resolution };
 }
 
-/** Map entry names to export paths using the package exports map. index maps to ".". */
-function deriveExportPaths(
-	entries: Record<string, string>,
-	exportsMap: Record<string, string> | undefined,
-): Record<string, string> {
-	const out: Record<string, string> = {};
-	// entries keys are derived from exports keys by packageJsonEntries; recover the export key by matching the source path.
-	const sourceToKey = new Map<string, string>();
-	if (exportsMap) for (const [key, src] of Object.entries(exportsMap)) sourceToKey.set(src, key);
-	for (const [entryName, src] of Object.entries(entries)) {
-		out[entryName] = sourceToKey.get(src) ?? (entryName === "index" ? "." : `./${entryName}`);
-	}
-	return out;
-}
-
 /**
  * Fast-fail validation for `outSubdir` overrides, run on EVERY target path. The dev/prod override-partition
  * loop already validates these (and all other overrides) before building, but `--target meta` returns early
@@ -171,30 +154,6 @@ function validateSubdirOverrides(
 	}
 }
 
-/**
- * For each `outSubdir` override, point its meta entry at the isolated sub-package barrel: the dts lives
- * at `<subdir>/index.d.ts` (not `<flatName>.d.ts`). Keyed by the stable flattened entry name so it
- * overwrites the default `dtsBasenames[flatName] = flatName` set from the full entry map. No-op when no
- * override sets `outSubdir`.
- */
-function applySubdirMetaEntries(
-	overrides: ReadonlyArray<{ entries: ReadonlyArray<string>; outSubdir?: string | undefined }> | undefined,
-	dtsBasenames: Record<string, string>,
-	exportPaths: Record<string, string>,
-): void {
-	// Assumes ov.entries paths are validated by the override-partition loop in runBuild; here we only map the meta dts basename.
-	if (overrides === undefined) return;
-	for (const ov of overrides) {
-		if (ov.outSubdir === undefined) continue;
-		const exportPath = ov.entries[0];
-		if (exportPath === undefined) continue;
-		const flatName = createEntryName(exportPath, false);
-		dtsBasenames[flatName] = `${ov.outSubdir}/index`;
-		// Safety net: ensure the canonical export path is set even if deriveExportPaths could not recover it from the source map.
-		exportPaths[flatName] = exportPath;
-	}
-}
-
 /** Run a build from a normalized config. Pure orchestration; all IO injectable. */
 export async function runBuild(config: BuildConfig, options: RunOptions): Promise<void> {
 	const { target, noExe, verbose } = parseArgs(options.argv);
@@ -218,7 +177,6 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			}));
 	const tsconfigPath = writeTsconfig(cwd);
 	const exportsMap = options.readExports ? options.readExports() : (pkg.exports as Record<string, string> | undefined);
-	const runGenerateMeta = options.generateMeta ?? realGenerateMeta;
 	const readPublishTargets =
 		options.readPublishTargets ??
 		(() => {
@@ -469,47 +427,21 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		// versions optimistically. undefined -> default options; object -> overrides; false -> skip.
 		// An exe-only package has no JS entries (no dts), so there is nothing for API Extractor to read.
 		if (target === "prod" && config.meta !== false && (config.exe === undefined || hasJsEntries)) {
-			const norm = normalizeMetaOptions(config.meta ?? {});
-			const canonical = groups.find((g) => g.name === packageName) ?? groups[0];
-			const canonicalId = canonical?.id ?? "npm";
-			const dtsBasenames: Record<string, string> = {};
-			// Bin entries are side-effect-only executables, not API surface. They have no `.d.ts`
-			// (excluded from the dts pass by deriveDtsPassOptions); skip them so API Extractor does
-			// not try to read a bin declaration file that was never emitted.
-			for (const name of Object.keys(entries)) if (!name.startsWith("bin/")) dtsBasenames[name] = name;
-			const exportPaths = deriveExportPaths(entries, exportsMap);
-			applySubdirMetaEntries(config.overrides, dtsBasenames, exportPaths);
-
-			// Resolve next versions once (shared across groups) only when optimistic is on.
-			const resolveNext = options.resolveNextVersions ?? realResolveNextVersions;
-			const nextVersions = norm.optimistic ? await resolveNext(cwd) : undefined;
-			const manifestTransform = nextVersions
-				? (m: Record<string, unknown>) => rewriteMetaVersions(m, nextVersions.versions, packageName)
-				: undefined;
-
-			// In CI, forgotten exports are escalated to hard errors that fail the build (they corrupt the
-			// generated API model). Locally they stay warnings, flagged so the build log can nudge.
 			const ci = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
-			for (const g of groups) {
-				await runGenerateMeta({
-					cwd,
-					packageName,
-					tsconfigPath,
-					dtsDir: join(cwd, "dist", "prod", g.id, "pkg"),
-					entries: dtsBasenames,
-					exportPaths,
-					outMetaDir: join(cwd, "dist", "prod", g.id, "meta"),
-					localPaths: g.id === canonicalId ? norm.localPaths : [],
-					tsdoc: norm.tsdoc,
-					...(manifestTransform !== undefined ? { manifestTransform } : {}),
-					ci,
-					onMessage: (e) => {
-						if (e.level === "error") collector.recordError(g.id, e);
-						else collector.recordWarning(g.id, e);
-					},
-					onSuppressed: (e) => collector.recordSuppressed(g.id, e),
-				});
-			}
+			await runMetaPass({
+				cwd,
+				packageName,
+				tsconfigPath,
+				groups,
+				entries,
+				exportsMap,
+				overrides: config.overrides,
+				meta: config.meta ?? {},
+				collector,
+				ci,
+				...(options.generateMeta !== undefined ? { generateMeta: options.generateMeta } : {}),
+				...(options.resolveNextVersions !== undefined ? { resolveNextVersions: options.resolveNextVersions } : {}),
+			});
 		}
 
 		// Strip declaration source-maps from the PUBLISHED prod pkg/ dirs. They are emitted for
