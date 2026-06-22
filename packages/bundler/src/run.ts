@@ -557,6 +557,13 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 
 	await renderAndWrite();
 	if (target === "dev" || target === "prod") {
-		(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
+		// Best-effort: the issues.json artifact is auxiliary diagnostics. A write failure
+		// (read-only fs, missing parent, permissions) must never fail an otherwise-successful
+		// build — the build product under dist/ is already emitted at this point.
+		try {
+			(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
+		} catch {
+			// intentionally swallowed — see above
+		}
 	}
 }
