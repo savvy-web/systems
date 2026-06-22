@@ -82,10 +82,7 @@ try {
 		verbose,
 	});
 
-	// Strip declaration source-maps from the published prod pkg/ (the front door does this in
-	// runBuild; the escape hatch must do it itself). dev keeps them.
 	if (target === "prod") {
-		removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
 		// Emit the dist/prod/targets.json binding the release action consumes — the front
 		// door (runBuild) writes this; the escape hatch must too, or the action falls back
 		// to a phantom/dev target. Derive the targets from publishConfig.targets (not a
@@ -97,6 +94,8 @@ try {
 		writeTargetsBinding(cwd, resolveTargets({ targets, baseName: pkg.name }));
 		// Emit the api-model meta bundle and copy it into the local consumer paths.
 		// Mirrors what runBuild does for --target prod when meta is configured.
+		// Must run BEFORE removeDeclarationMaps: api-extractor needs .d.ts.map files to
+		// resolve original-source positions in the api model.
 		const ci = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 		await runMetaPass({
 			cwd,
@@ -109,6 +108,11 @@ try {
 			collector,
 			ci,
 		});
+		// Strip declaration source-maps from the published prod pkg/ AFTER meta. They are
+		// emitted for meta generation (api-extractor reads them for original-source positions),
+		// but reference .ts sources the tarball does not ship — dead weight that leaks local
+		// paths. dev keeps them.
+		removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
 	}
 } finally {
 	// Always render the report — even if the build threw — so captured diagnostics are surfaced

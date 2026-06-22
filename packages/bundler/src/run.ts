@@ -121,11 +121,11 @@ function deriveProdGroups(
 /**
  * Fast-fail validation for `outSubdir` overrides, run on EVERY target path. The dev/prod override-partition
  * loop already validates these (and all other overrides) before building, but `--target meta` returns early
- * (before that loop) and remaps meta dts basenames via `applySubdirMetaEntries` — which assumes validated
- * input. Without this guard, a malformed `outSubdir` override (more than one entry, a non-canonical export
- * path, or an export path that is not a real build entry) would silently remap a wrong/nonexistent key on the
- * meta path. Mirrors the override loop's conditions and messages verbatim so every target path fast-fails
- * identically. No-op when there are no overrides or none set `outSubdir`.
+ * (before that loop) and remaps meta dts basenames (logic now in @savvy-web/tsdown-plugins) — which assumes
+ * validated input. Without this guard, a malformed `outSubdir` override (more than one entry, a non-canonical
+ * export path, or an export path that is not a real build entry) would silently remap a wrong/nonexistent key
+ * on the meta path. Mirrors the override loop's conditions and messages verbatim so every target path
+ * fast-fails identically. No-op when there are no overrides or none set `outSubdir`.
  */
 function validateSubdirOverrides(
 	overrides: ReadonlyArray<{ entries: ReadonlyArray<string>; outSubdir?: string | undefined }> | undefined,
