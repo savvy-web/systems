@@ -32,8 +32,8 @@ function isSilkChangelog(changelog: unknown): boolean {
  *
  * @remarks
  * Automatically detects whether the config uses the Silk changelog adapter
- * (`@savvy-web/changesets`) and decodes as {@link SilkChangesetConfigFile} or the
- * standard {@link ChangesetConfigFile} accordingly.
+ * (`@savvy-web/changesets`) and decodes as {@link (SilkChangesetConfigFile:type)} or the
+ * standard {@link (ChangesetConfigFile:type)} accordingly.
  *
  * @example
  * ```typescript
@@ -49,6 +49,7 @@ function isSilkChangelog(changelog: unknown): boolean {
  * ```
  *
  * @since 0.1.0
+ * @public
  */
 export class ChangesetConfigReader extends Context.Tag("@savvy-web/silk-effects/ChangesetConfigReader")<
 	ChangesetConfigReader,
@@ -73,6 +74,7 @@ export class ChangesetConfigReader extends Context.Tag("@savvy-web/silk-effects/
  * `BunContext.layer` to satisfy this dependency.
  *
  * @since 0.1.0
+ * @public
  */
 export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never, FileSystem.FileSystem> = Layer.effect(
 	ChangesetConfigReader,

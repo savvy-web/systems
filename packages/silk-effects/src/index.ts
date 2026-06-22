@@ -9,7 +9,12 @@
  * @packageDocumentation
  */
 
-// ── Changesets namespace ───────────────────────────────────────
+/**
+ * Section-aware changesets business logic — config inspection, branch analysis,
+ * changeset linting, and release planning over the genuine `@changesets` engine.
+ *
+ * @public
+ */
 export * as Changesets from "./changesets/index.js";
 // Flat re-export so a generated commitlint.config.ts can name the inferred
 // default-export type (CommitlintConfig.silk()) for declaration emit. The three
@@ -25,7 +30,12 @@ export type {
 	RuleSeverity,
 	RulesConfig,
 } from "./commitlint/index.js";
-// ── Commitlint namespace ──────────────────────────────────────
+/**
+ * Commitlint rules and config for Silk conventional commits, including the
+ * `silk/body-no-markdown` rule.
+ *
+ * @public
+ */
 export * as Commitlint from "./commitlint/index.js";
 // ── Errors ─────────────────────────────────────────────────────
 export { BiomeSyncError } from "./errors/BiomeSyncError.js";
@@ -40,7 +50,12 @@ export { ToolResolutionError } from "./errors/ToolResolutionError.js";
 export { ToolVersionMismatchError } from "./errors/ToolVersionMismatchError.js";
 export { VersioningDetectionError } from "./errors/VersioningDetectionError.js";
 export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
-// ── Lint namespace ─────────────────────────────────────────────
+/**
+ * Lint orchestration business logic — Biome and markdownlint configuration and
+ * workspace-aware execution.
+ *
+ * @public
+ */
 export * as Lint from "./lint/index.js";
 // ── Schemas ────────────────────────────────────────────────────
 export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
@@ -102,7 +117,12 @@ export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/Sil
 export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";
 export { ToolDiscovery, ToolDiscoveryLive } from "./services/ToolDiscovery.js";
 export { VersioningStrategy, VersioningStrategyLive } from "./services/VersioningStrategy.js";
-// ── Turbo namespace ────────────────────────────────────────────
+/**
+ * Read-only Turborepo inspection — cache diagnosis, task-graph, and affected-set
+ * analysis. All operations are `--dry`; tasks are never executed.
+ *
+ * @public
+ */
 export * as Turbo from "./turbo/index.js";
 // ── Utils ─────────────────────────────────────────────────────
 export { ToolCommand } from "./utils/ToolCommand.js";

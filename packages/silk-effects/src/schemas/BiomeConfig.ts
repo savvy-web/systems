@@ -9,13 +9,17 @@ import { Schema } from "effect";
  * - `current` — paths of config files already pointing to the expected schema URL.
  *
  * @since 0.1.0
+ * @public
  */
 export const BiomeSyncResult = Schema.Struct({
 	updated: Schema.Array(Schema.String),
 	skipped: Schema.Array(Schema.String),
 	current: Schema.Array(Schema.String),
 });
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type BiomeSyncResult = typeof BiomeSyncResult.Type;
 
 /**
@@ -26,10 +30,14 @@ export type BiomeSyncResult = typeof BiomeSyncResult.Type;
  * `gitignore` is reserved for future use to skip gitignored config files (defaults to `true`).
  *
  * @since 0.1.0
+ * @public
  */
 export const BiomeSyncOptions = Schema.Struct({
 	cwd: Schema.optional(Schema.String),
 	gitignore: Schema.optionalWith(Schema.Boolean, { default: () => true }),
 });
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type BiomeSyncOptions = typeof BiomeSyncOptions.Type;

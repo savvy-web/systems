@@ -3,34 +3,46 @@
 	"noStandardTags": false,
 	"reportUnsupportedHtmlElements": true,
 	"supportForTags": {
+		"@alpha": true,
+		"@beta": true,
+		"@defaultValue": true,
+		"@decorator": true,
 		"@deprecated": true,
+		"@eventProperty": true,
+		"@example": true,
+		"@experimental": true,
+		"@inheritDoc": true,
+		"@internal": true,
 		"@label": true,
 		"@link": true,
+		"@override": true,
 		"@packageDocumentation": true,
 		"@param": true,
 		"@privateRemarks": true,
+		"@public": true,
+		"@readonly": true,
 		"@remarks": true,
 		"@returns": true,
-		"@typeParam": true,
-		"@defaultValue": true,
-		"@decorator": true,
-		"@eventProperty": true,
-		"@example": true,
-		"@inheritDoc": true,
-		"@override": true,
-		"@readonly": true,
 		"@sealed": true,
 		"@see": true,
 		"@throws": true,
+		"@typeParam": true,
 		"@virtual": true,
 		"@jsx": true,
 		"@jsxRuntime": true,
 		"@jsxFrag": true,
 		"@jsxImportSource": true,
-		"@alpha": true,
-		"@beta": true,
-		"@experimental": true,
-		"@internal": true,
-		"@public": true
-	}
+		"@since": true,
+		"@category": true
+	},
+	"tagDefinitions": [
+		{
+			"tagName": "@since",
+			"syntaxKind": "block"
+		},
+		{
+			"tagName": "@category",
+			"syntaxKind": "block"
+		}
+	]
 }

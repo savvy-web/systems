@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+/** @public */
 export interface ResolvedTsconfigOptions {
 	/** Absolute package root. */
 	readonly cwd: string;
@@ -14,13 +15,18 @@ export interface ResolvedTsconfigOptions {
 	readonly jsxImportSource?: string | undefined;
 }
 
+/** @public */
 export interface ResolvedTsconfig {
 	readonly compilerOptions: Record<string, unknown>;
 	readonly include: ReadonlyArray<string>;
 	readonly exclude: ReadonlyArray<string>;
 }
 
-/** Build the portable absolute-path tsconfig object (ported from rslib writeBundleTempConfig). */
+/**
+ * Build the portable absolute-path tsconfig object (ported from rslib writeBundleTempConfig).
+ *
+ * @public
+ */
 export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): ResolvedTsconfig {
 	const cwd = options.cwd;
 	return {
@@ -53,7 +59,11 @@ export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): Resolve
 	};
 }
 
-/** Write the resolved tsconfig to a temp file and return its absolute path. */
+/**
+ * Write the resolved tsconfig to a temp file and return its absolute path.
+ *
+ * @public
+ */
 export function writeResolvedTsconfig(options: ResolvedTsconfigOptions): string {
 	const cfg = buildResolvedTsconfig(options);
 	const path = join(tmpdir(), `tsconfig-bundle-${process.pid}-${options.cwd.replace(/[^\w]/g, "_")}.json`);

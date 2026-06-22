@@ -35,7 +35,7 @@ import { Data } from "effect";
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ConfigNotFoundBase = Data.TaggedError("ConfigNotFound");
 
@@ -64,7 +64,7 @@ export class ConfigNotFound extends ConfigNotFoundBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ConfigInvalidBase = Data.TaggedError("ConfigInvalid");
 
@@ -93,7 +93,7 @@ export class ConfigInvalid extends ConfigInvalidBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ConfigLoadFailedBase = Data.TaggedError("ConfigLoadFailed");
 
@@ -133,7 +133,7 @@ export type ConfigError = ConfigNotFound | ConfigInvalid | ConfigLoadFailed;
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const MainEntryMissingBase = Data.TaggedError("MainEntryMissing");
 
@@ -162,7 +162,7 @@ export class MainEntryMissing extends MainEntryMissingBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const EntryFileMissingBase = Data.TaggedError("EntryFileMissing");
 
@@ -191,7 +191,7 @@ export class EntryFileMissing extends EntryFileMissingBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ActionYmlMissingBase = Data.TaggedError("ActionYmlMissing");
 
@@ -215,7 +215,7 @@ export class ActionYmlMissing extends ActionYmlMissingBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ActionYmlSyntaxErrorBase = Data.TaggedError("ActionYmlSyntaxError");
 
@@ -254,7 +254,7 @@ export class ActionYmlSyntaxError extends ActionYmlSyntaxErrorBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ActionYmlSchemaErrorBase = Data.TaggedError("ActionYmlSchemaError");
 
@@ -286,7 +286,7 @@ export class ActionYmlSchemaError extends ActionYmlSchemaErrorBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ValidationFailedBase = Data.TaggedError("ValidationFailed");
 
@@ -337,7 +337,7 @@ export type ValidationError =
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const BundleFailedBase = Data.TaggedError("BundleFailed");
 
@@ -366,7 +366,7 @@ export class BundleFailed extends BundleFailedBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const WriteErrorBase = Data.TaggedError("WriteError");
 
@@ -395,7 +395,7 @@ export class WriteError extends WriteErrorBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const CleanErrorBase = Data.TaggedError("CleanError");
 
@@ -424,7 +424,7 @@ export class CleanError extends CleanErrorBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const BuildFailedBase = Data.TaggedError("BuildFailed");
 
@@ -464,7 +464,7 @@ export type BuildError = BundleFailed | WriteError | CleanError | BuildFailed;
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const PersistLocalErrorBase = Data.TaggedError("PersistLocalError");
 
@@ -493,7 +493,7 @@ export class PersistLocalError extends PersistLocalErrorBase<{
  * Effect's Data.TaggedError creates an anonymous base class that must be
  * explicitly exported to avoid "forgotten export" warnings. Do not delete.
  *
- * @internal
+ * @public
  */
 export const ActionYmlPathErrorBase = Data.TaggedError("ActionYmlPathError");
 

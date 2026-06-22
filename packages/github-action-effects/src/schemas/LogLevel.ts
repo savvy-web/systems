@@ -6,6 +6,7 @@ import { Schema } from "effect";
  * - `info` — Buffered. Shows only outcome summaries. Flushes verbose buffer on failure.
  * - `verbose` — Unbuffered milestones. Start/finish markers for operations.
  * - `debug` — Everything. Full command output, input/output values, internal state.
+ * @public
  */
 export const ActionLogLevel = Schema.Literal("info", "verbose", "debug").annotations({
 	identifier: "ActionLogLevel",
@@ -13,11 +14,13 @@ export const ActionLogLevel = Schema.Literal("info", "verbose", "debug").annotat
 	description: "Logging verbosity for GitHub Action output",
 });
 
+/** @public */
 export type ActionLogLevel = typeof ActionLogLevel.Type;
 
 /**
  * Log level input values accepted by the standardized `log-level` action input.
  * Includes `auto` which resolves based on the GitHub Actions environment.
+ * @public
  */
 export const LogLevelInput = Schema.Literal("info", "verbose", "debug", "auto").annotations({
 	identifier: "LogLevelInput",
@@ -29,6 +32,7 @@ export const LogLevelInput = Schema.Literal("info", "verbose", "debug", "auto").
 	}),
 });
 
+/** @public */
 export type LogLevelInput = typeof LogLevelInput.Type;
 
 /**

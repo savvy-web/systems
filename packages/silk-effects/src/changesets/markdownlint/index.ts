@@ -20,7 +20,6 @@
  * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH004.md | CSH004 docs}
  * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH005.md | CSH005 docs}
  *
- * @packageDocumentation
  */
 
 import type { Rule } from "markdownlint";

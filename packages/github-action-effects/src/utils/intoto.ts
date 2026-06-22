@@ -61,5 +61,8 @@ export const subject = (name: string, sha256: string): InTotoSubject =>
  */
 export const serializeStatement = (statement: InTotoStatement): string => JSON.stringify(statement, null, 2);
 
-/** PURL helper for npm packages. */
+/**
+ * PURL helper for npm packages.
+ * @public
+ */
 export const npmPurl = (name: string, version: string): string => `pkg:npm/${name}@${version}`;

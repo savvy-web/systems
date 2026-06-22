@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from GitHub Packages artifact-metadata operations.
+ * @public
  */
 export class GitHubArtifactMetadataError extends Data.TaggedError("GitHubArtifactMetadataError")<{
 	/** The operation that failed. */

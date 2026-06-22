@@ -16,6 +16,7 @@ import { join } from "node:path";
  *
  * Recurses, but skips `node_modules` so it does not traverse a self-contained bundle's
  * vendored tree — only the package's own emitted declarations carry maps worth stripping.
+ * @public
  */
 export function removeDeclarationMaps(pkgDir: string): string[] {
 	const removed: string[] = [];

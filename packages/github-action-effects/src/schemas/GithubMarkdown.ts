@@ -1,7 +1,8 @@
 import { Schema } from "effect";
 
 /**
- * Status values for {@link statusIcon}.
+ * Status values for `statusIcon`.
+ * @public
  */
 export const Status = Schema.Literal("pass", "fail", "skip", "warn").annotations({
 	identifier: "Status",
@@ -9,10 +10,12 @@ export const Status = Schema.Literal("pass", "fail", "skip", "warn").annotations
 	description: "Status indicator for check run outcomes",
 });
 
+/** @public */
 export type Status = typeof Status.Type;
 
 /**
  * A single item in a checklist.
+ * @public
  */
 export const ChecklistItem = Schema.Struct({
 	label: Schema.String,
@@ -22,10 +25,12 @@ export const ChecklistItem = Schema.Struct({
 	title: "Checklist Item",
 });
 
+/** @public */
 export type ChecklistItem = typeof ChecklistItem.Type;
 
 /**
  * A captured output entry.
+ * @public
  */
 export const CapturedOutput = Schema.Struct({
 	name: Schema.String,
@@ -35,4 +40,5 @@ export const CapturedOutput = Schema.Struct({
 	title: "Captured Output",
 });
 
+/** @public */
 export type CapturedOutput = typeof CapturedOutput.Type;

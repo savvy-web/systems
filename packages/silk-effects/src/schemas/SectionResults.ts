@@ -4,6 +4,7 @@ import { Data } from "effect";
  * Result of comparing two section contents.
  *
  * @since 0.2.0
+ * @public
  */
 // biome-ignore lint/style/useConsistentTypeDefinitions: Data.TaggedEnum requires type alias, not interface
 export type SectionDiffDefinition = {
@@ -15,16 +16,23 @@ export type SectionDiffDefinition = {
 	};
 };
 
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export type SectionDiff = Data.TaggedEnum<SectionDiffDefinition>;
 
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export const SectionDiff = Data.taggedEnum<SectionDiff>();
 
 /**
  * Result of a sync operation.
  *
  * @since 0.2.0
+ * @public
  */
 // biome-ignore lint/style/useConsistentTypeDefinitions: Data.TaggedEnum requires type alias, not interface
 export type SyncResultDefinition = {
@@ -35,16 +43,23 @@ export type SyncResultDefinition = {
 	readonly Unchanged: {};
 };
 
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export type SyncResult = Data.TaggedEnum<SyncResultDefinition>;
 
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export const SyncResult = Data.taggedEnum<SyncResult>();
 
 /**
  * Result of a check operation.
  *
  * @since 0.2.0
+ * @public
  */
 // biome-ignore lint/style/useConsistentTypeDefinitions: Data.TaggedEnum requires type alias, not interface
 export type CheckResultDefinition = {
@@ -53,8 +68,14 @@ export type CheckResultDefinition = {
 	readonly NotFound: {};
 };
 
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export type CheckResult = Data.TaggedEnum<CheckResultDefinition>;
 
-/** @since 0.2.0 */
+/**
+ * @since 0.2.0
+ * @public
+ */
 export const CheckResult = Data.taggedEnum<CheckResult>();

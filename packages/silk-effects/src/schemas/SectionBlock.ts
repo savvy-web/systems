@@ -6,10 +6,11 @@ import { SectionDiff as SectionDiffEnum } from "./SectionResults.js";
 /**
  * The content between managed section markers.
  *
- * {@link Equal} compares normalized content only (trimmed, whitespace-collapsed).
- * Use {@link SectionBlock.diff | diff} to compute line-level differences.
+ * `Equal` compares normalized content only (trimmed, whitespace-collapsed).
+ * Use `diff` to compute line-level differences.
  *
  * @since 0.2.0
+ * @public
  */
 export class SectionBlock extends Schema.TaggedClass<SectionBlock>()("SectionBlock", {
 	toolName: Schema.String,

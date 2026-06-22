@@ -11,7 +11,6 @@
  * @see {@link https://github.com/changesets/changesets | Changesets documentation}
  * @see {@link https://effect.website/docs/schema/introduction | Effect Schema documentation}
  *
- * @packageDocumentation
  */
 
 import { Schema } from "effect";

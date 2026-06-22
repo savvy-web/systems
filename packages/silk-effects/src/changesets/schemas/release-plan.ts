@@ -2,7 +2,6 @@
  * Result schemas for the {@link ReleasePlanner} service — the structured
  * preview of pending releases and the result of a native apply.
  *
- * @packageDocumentation
  */
 
 import { Schema } from "effect";

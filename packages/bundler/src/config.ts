@@ -12,6 +12,7 @@ import type {
 } from "@savvy-web/tsdown-plugins";
 import { defaultManifestTransform } from "@savvy-web/tsdown-plugins";
 
+/** @public */
 export interface BuildEntryOverride {
 	/** Export paths to pin to this partition, e.g. "./changesets/markdownlint" (or "." for root). */
 	readonly entries: ReadonlyArray<string>;
@@ -33,11 +34,13 @@ export interface BuildEntryOverride {
 	readonly outSubdir?: string | undefined;
 }
 
+/** @public */
 export interface OutputConfig {
 	readonly console?: { readonly human?: boolean; readonly agent?: boolean; readonly ci?: boolean };
 	readonly format?: "terminal" | "json" | "markdown" | "ci-annotations" | "silent";
 }
 
+/** @public */
 export interface BuildConfigInput {
 	readonly formats?: ReadonlyArray<"esm">;
 	readonly externals?: ReadonlyArray<string>;
@@ -59,8 +62,8 @@ export interface BuildConfigInput {
 	/**
 	 * Force-bundle node_modules (and workspace) JS dependencies that are not
 	 * externalized into the package output, restoring the self-contained bundle
-	 * the rslib builder produced. Threads tsdown `deps.skipNodeModulesBundle:
-	 * false` into BOTH the JS output and the bundled declarations: the dts posture
+	 * the rslib builder produced. Threads tsdown `deps.skipNodeModulesBundle: false`
+	 * into BOTH the JS output and the bundled declarations: the dts posture
 	 * tracks the JS posture, so node_modules types are inlined into the `.d.ts`
 	 * and the published package needs no extra declared deps for them. Defaults to false.
 	 */
@@ -84,7 +87,7 @@ export interface BuildConfigInput {
 	readonly devManifest?: "preserve" | "resolve";
 	/**
 	 * Final mutation of the emitted package.json, run after the declarative
-	 * `publishConfig.targets` rename. Defaults to {@link defaultManifestTransform},
+	 * `publishConfig.targets` rename. Defaults to `defaultManifestTransform`,
 	 * which strips build/dev-only fields (devDependencies, scripts, publishConfig,
 	 * etc.). Supplying your own REPLACES that default — import and call
 	 * `defaultManifestTransform` from it if you still want the stripping.
@@ -130,6 +133,7 @@ export interface BuildConfigInput {
 	readonly define?: Record<string, string> | undefined;
 }
 
+/** @public */
 export interface BuildConfig {
 	readonly formats: ReadonlyArray<"esm">;
 	readonly externals: ReadonlyArray<string>;
@@ -174,7 +178,11 @@ export interface BuildConfig {
 	readonly define?: Record<string, string> | undefined;
 }
 
-/** Normalize + validate a defineBuild config. Pure when imported; self-runs when entry (see run.ts). */
+/**
+ * Normalize + validate a defineBuild config. Pure when imported; self-runs when entry (see run.ts).
+ *
+ * @public
+ */
 export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 	const config: BuildConfig = {
 		formats: input.formats ?? ["esm"],
@@ -204,6 +212,7 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 	return config;
 }
 
+/** @public */
 export interface ParsedArgs {
 	readonly target: "dev" | "prod" | "meta" | "exe";
 	readonly watch: boolean;
@@ -212,6 +221,7 @@ export interface ParsedArgs {
 	readonly verbose: boolean;
 }
 
+/** Parse the build CLI argv into the normalized target/flags shape. @public */
 export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 	let target: "dev" | "prod" | "meta" | "exe" = "dev";
 	let watch = false;

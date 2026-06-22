@@ -50,7 +50,6 @@
  * transformer.use(remarkStringify);
  * ```
  *
- * @packageDocumentation
  */
 
 // === Transform Plugins ===

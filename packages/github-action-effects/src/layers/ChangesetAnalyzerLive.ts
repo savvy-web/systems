@@ -100,6 +100,7 @@ const generateContent = (packages: Array<{ name: string; bump: BumpType }>, summ
 	return `---\n${frontmatter}\n---\n\n${summary}\n`;
 };
 
+/** @public */
 export const ChangesetAnalyzerLive: Layer.Layer<ChangesetAnalyzer, never, FileSystem.FileSystem> = Layer.effect(
 	ChangesetAnalyzer,
 	Effect.map(FileSystem.FileSystem, (fs) => {

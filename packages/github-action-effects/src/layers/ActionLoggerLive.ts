@@ -38,6 +38,7 @@ const flushBuffer = (state: BufferState): void => {
  *
  * Has no external dependencies — uses WorkflowCommand to write group markers
  * directly to stdout and Effect's Logger API for buffering.
+ * @public
  */
 export const ActionLoggerLive: Layer.Layer<ActionLogger> = Layer.succeed(ActionLogger, {
 	group: <A, E, R>(name: string, effect: Effect.Effect<A, E, R>) =>

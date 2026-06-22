@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error when GitHub API rate limit is exhausted or nearly exhausted.
+ * @public
  */
 export class RateLimitError extends Data.TaggedError("RateLimitError")<{
 	/** Which API is rate limited. */

@@ -38,12 +38,13 @@ const SnapshotConfig = Schema.Struct({
  *
  * @remarks
  * Represents the parsed `.changeset/config.json` file. All fields are optional
- * to allow partial configs. Use {@link SilkChangesetConfigFile} when the Silk changelog
+ * to allow partial configs. Use {@link (SilkChangesetConfigFile:type)} when the Silk changelog
  * adapter is detected.
  *
  * @since 0.1.0
  */
 // Standard changesets config (matches @changesets/config@3.1.1 upstream spec)
+/** @public */
 export const ChangesetConfigFile = Schema.Struct({
 	changelog: Schema.optional(Schema.Union(Schema.String, Schema.Array(Schema.Unknown), Schema.Literal(false))),
 	commit: Schema.optional(Schema.Union(Schema.Boolean, Schema.String, Schema.Array(Schema.Unknown))),
@@ -59,27 +60,34 @@ export const ChangesetConfigFile = Schema.Struct({
 	bumpVersionsWithWorkspaceProtocolOnly: Schema.optional(Schema.Boolean),
 	snapshot: Schema.optional(SnapshotConfig),
 });
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type ChangesetConfigFile = typeof ChangesetConfigFile.Type;
 
 /**
  * Extended changeset config for repos using the `@savvy-web/changesets` changelog adapter.
  *
  * @remarks
- * Extends {@link ChangesetConfigFile} with a `_isSilk` marker flag that is automatically
+ * Extends {@link (ChangesetConfigFile:type)} with a `_isSilk` marker flag that is automatically
  * set to `true`. Detected by {@link ChangesetConfigReader} when the `changelog` field
  * references `@savvy-web/changesets`.
  *
  * @since 0.1.0
  */
 // Silk extension — detected by checking changelog field
+/** @public */
 export const SilkChangesetConfigFile = Schema.extend(
 	ChangesetConfigFile,
 	Schema.Struct({
 		_isSilk: Schema.optionalWith(Schema.Boolean, { default: () => true }),
 	}),
 );
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type SilkChangesetConfigFile = typeof SilkChangesetConfigFile.Type;
 
 /**
@@ -91,24 +99,32 @@ export type SilkChangesetConfigFile = typeof SilkChangesetConfigFile.Type;
  * - `"independent"` — multiple publishable packages with independent version bumps.
  *
  * @since 0.1.0
+ * @public
  */
 export const VersioningStrategyType = Schema.Literal("single", "fixed-group", "independent");
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type VersioningStrategyType = typeof VersioningStrategyType.Type;
 
 /**
  * Output of the versioning strategy detection, combining the strategy type with group metadata.
  *
  * @remarks
- * Produced by {@link VersioningStrategy.detect} and consumed by {@link TagStrategy.determine}
+ * Produced by `VersioningStrategy.detect` and consumed by `TagStrategy.determine`
  * to decide on the appropriate git-tag format.
  *
  * @since 0.1.0
+ * @public
  */
 export const VersioningStrategyResult = Schema.Struct({
 	type: VersioningStrategyType,
 	fixedGroups: Schema.Array(Schema.Array(Schema.String)),
 	publishablePackages: Schema.Array(Schema.String),
 });
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type VersioningStrategyResult = typeof VersioningStrategyResult.Type;

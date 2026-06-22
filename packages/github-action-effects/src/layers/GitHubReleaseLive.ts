@@ -65,6 +65,7 @@ const mapError =
 			retryable: error.retryable,
 		});
 
+/** @public */
 export const GitHubReleaseLive: Layer.Layer<GitHubRelease, never, GitHubClient> = Layer.effect(
 	GitHubRelease,
 	Effect.map(GitHubClient, (client) => ({

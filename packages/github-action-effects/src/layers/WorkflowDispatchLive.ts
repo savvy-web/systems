@@ -40,6 +40,7 @@ interface OctokitActions {
 
 const asActions = (octokit: unknown): OctokitActions => octokit as OctokitActions;
 
+/** @public */
 export const WorkflowDispatchLive: Layer.Layer<WorkflowDispatch, never, GitHubClient> = Layer.effect(
 	WorkflowDispatch,
 	Effect.map(GitHubClient, (client) => {

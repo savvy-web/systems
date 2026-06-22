@@ -57,5 +57,8 @@ export const WebhookPayload = Schema.Struct({
 	after: Schema.optional(Schema.String),
 }).annotations({ identifier: "WebhookPayload" });
 
-/** Inferred type for {@link WebhookPayload}. */
+/**
+ * Inferred type for `WebhookPayload`.
+ * @public
+ */
 export type WebhookPayload = typeof WebhookPayload.Type;

@@ -27,6 +27,7 @@ const PublishTargetObject = Schema.Struct({
  * Silk `targets` extension for multi-registry publishing.
  *
  * @since 0.2.0
+ * @public
  */
 export class SilkPublishConfig extends PublishConfig.extend<SilkPublishConfig>("SilkPublishConfig")({
 	targets: Schema.optional(Schema.Array(Schema.Union(PublishTargetShorthand, PublishTargetObject))),
@@ -59,6 +60,7 @@ const WorkspaceVersion = Schema.Struct({
  * and release group membership.
  *
  * @since 0.2.0
+ * @public
  */
 export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("AnalyzedWorkspace", {
 	name: Schema.String,
@@ -179,6 +181,7 @@ const PackageManagerInfo = Schema.Struct({
  * and project-level configuration.
  *
  * @since 0.2.0
+ * @public
  */
 export class WorkspaceAnalysis extends Schema.TaggedClass<WorkspaceAnalysis>()("WorkspaceAnalysis", {
 	root: Schema.String,

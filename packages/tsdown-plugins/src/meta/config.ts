@@ -1,23 +1,39 @@
-/** A single TSDoc tag definition (parity with api-extractor's TSDoc config). */
+/**
+ * A single TSDoc tag definition (parity with api-extractor's TSDoc config).
+ *
+ * @public
+ */
 export interface TsdocTagDefinition {
 	readonly tagName: string;
 	readonly syntaxKind: "block" | "inline" | "modifier";
 	readonly allowMultiple?: boolean | undefined;
 }
 
-/** An api-extractor message-suppression rule. messageId is exact-matched; pattern (regex or substring) is AND-matched against the text. */
+/**
+ * An api-extractor message-suppression rule. messageId is exact-matched; pattern (regex or substring) is AND-matched against the text.
+ *
+ * @public
+ */
 export interface WarningSuppressionRule {
 	readonly messageId: string;
 	readonly pattern?: string | undefined;
 }
 
-/** TSDoc / doc-warning configuration. suppressWarnings is doc functionality, so it lives here. */
+/**
+ * TSDoc / doc-warning configuration. suppressWarnings is doc functionality, so it lives here.
+ *
+ * @public
+ */
 export interface TsdocOptions {
 	readonly suppressWarnings?: ReadonlyArray<WarningSuppressionRule> | undefined;
 	readonly tagDefinitions?: ReadonlyArray<TsdocTagDefinition> | undefined;
 }
 
-/** The `meta` field on defineBuild. Absent means no api-model generation. */
+/**
+ * The `meta` field on defineBuild. Absent means no api-model generation.
+ *
+ * @public
+ */
 export interface MetaOptions {
 	/** Directories to copy the canonical group's api-model into after `savvy build --target prod`. */
 	readonly localPaths?: ReadonlyArray<string> | undefined;
@@ -30,7 +46,11 @@ export interface MetaOptions {
 	readonly tsdoc?: TsdocOptions | undefined;
 }
 
-/** Fully-resolved meta options (no optionals). */
+/**
+ * Fully-resolved meta options (no optionals).
+ *
+ * @public
+ */
 export interface NormalizedMeta {
 	readonly localPaths: ReadonlyArray<string>;
 	readonly optimistic: boolean;
@@ -49,7 +69,11 @@ function resolveOptimistic(
 	return !(env.CI || env.GITHUB_ACTIONS);
 }
 
-/** Fill defaults so downstream code never branches on undefined. */
+/**
+ * Fill defaults so downstream code never branches on undefined.
+ *
+ * @public
+ */
 export function normalizeMetaOptions(
 	meta: MetaOptions,
 	env: { CI?: string | undefined; GITHUB_ACTIONS?: string | undefined } = process.env,

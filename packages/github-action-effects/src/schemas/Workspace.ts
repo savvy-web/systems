@@ -6,6 +6,7 @@ import { Schema } from "effect";
  * @public
  */
 export const WorkspaceType = Schema.Literal("single", "pnpm", "yarn", "npm", "bun");
+/** @public */
 export type WorkspaceType = typeof WorkspaceType.Type;
 
 /**
@@ -18,6 +19,7 @@ export const WorkspaceInfo = Schema.Struct({
 	type: WorkspaceType,
 	patterns: Schema.Array(Schema.String),
 });
+/** @public */
 export type WorkspaceInfo = typeof WorkspaceInfo.Type;
 
 /**
@@ -32,4 +34,5 @@ export const WorkspacePackage = Schema.Struct({
 	private: Schema.Boolean,
 	dependencies: Schema.Record({ key: Schema.String, value: Schema.String }),
 });
+/** @public */
 export type WorkspacePackage = typeof WorkspacePackage.Type;

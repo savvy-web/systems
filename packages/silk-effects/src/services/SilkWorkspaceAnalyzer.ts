@@ -19,7 +19,7 @@ import { VersioningStrategy } from "./VersioningStrategy.js";
  * wiring up fixed/linked release groups.
  *
  * @remarks
- * Orchestrates {@link WorkspaceDiscovery}, {@link PackageManagerDetector},
+ * Orchestrates `WorkspaceDiscovery`, `PackageManagerDetector`,
  * {@link ChangesetConfigReader}, {@link VersioningStrategy}, and
  * {@link TagStrategy} to produce a complete {@link WorkspaceAnalysis} for a
  * given workspace root.
@@ -38,6 +38,7 @@ import { VersioningStrategy } from "./VersioningStrategy.js";
  * ```
  *
  * @since 0.2.0
+ * @public
  */
 export class SilkWorkspaceAnalyzer extends Context.Tag("@savvy-web/silk-effects/SilkWorkspaceAnalyzer")<
 	SilkWorkspaceAnalyzer,
@@ -152,10 +153,11 @@ function computeReleaseStatus(
  * Live implementation of {@link SilkWorkspaceAnalyzer}.
  *
  * @remarks
- * Requires {@link WorkspaceDiscovery}, {@link PackageManagerDetector},
+ * Requires `WorkspaceDiscovery`, `PackageManagerDetector`,
  * {@link ChangesetConfigReader}, {@link VersioningStrategy}, and {@link TagStrategy}.
  *
  * @since 0.2.0
+ * @public
  */
 export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 	SilkWorkspaceAnalyzer,

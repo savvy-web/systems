@@ -4,6 +4,7 @@ import { Data } from "effect";
  * Raised when a {@link SectionBlock} fails validation at creation time.
  *
  * @since 0.2.0
+ * @public
  */
 export class SectionValidationError extends Data.TaggedError("SectionValidationError")<{
 	readonly toolName: string;

@@ -1,8 +1,10 @@
 import { Context } from "effect";
 import { BuildReport, DiagnosticEntry, EmittedFile, PassReport, ReportTimings, TargetGroupReport } from "./schema.js";
 
+/** @public */
 export type PassKind = PassReport["id"];
 
+/** @public */
 export interface DiagnosticInput {
 	readonly source: DiagnosticEntry["source"];
 	readonly level: DiagnosticEntry["level"];
@@ -45,6 +47,7 @@ interface MutableGroup {
  * Stateful build-event accumulator. The write surface is synchronous so it can be called directly
  * from tsdown's customLogger and API Extractor's messageCallback (both invoked synchronously).
  * `snapshot` builds the immutable BuildReport the Effect render pipeline consumes.
+ * @public
  */
 export class BuildCollector {
 	private readonly groups = new Map<string, MutableGroup>();
@@ -178,6 +181,7 @@ function toEntry(input: DiagnosticInput): DiagnosticEntry {
 	});
 }
 
+/** @public */
 export class BuildCollectorTag extends Context.Tag("@savvy-web/tsdown-plugins/BuildCollector")<
 	BuildCollectorTag,
 	BuildCollector

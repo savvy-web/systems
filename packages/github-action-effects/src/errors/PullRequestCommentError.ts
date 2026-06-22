@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from PR comment operations.
+ * @public
  */
 export class PullRequestCommentError extends Data.TaggedError("PullRequestCommentError")<{
 	/** The PR number. */

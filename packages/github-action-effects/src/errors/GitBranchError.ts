@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from branch management operations.
+ * @public
  */
 export class GitBranchError extends Data.TaggedError("GitBranchError")<{
 	/** The branch name. */

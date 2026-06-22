@@ -12,6 +12,7 @@ import { ShellSectionDefinition } from "./SectionDefinition.js";
  * ```
  *
  * @since 0.5.0
+ * @public
  */
 export const SavvyBaseSection: ShellSectionDefinition = ShellSectionDefinition.make({
 	toolName: "savvy-base",
@@ -23,6 +24,7 @@ export const SavvyBaseSection: ShellSectionDefinition = ShellSectionDefinition.m
  * `toolName` is `"savvy-hooks"`; pair with {@link savvyHooksHygiene}.
  *
  * @since 0.5.0
+ * @public
  */
 export const SavvyHooksSection: ShellSectionDefinition = ShellSectionDefinition.make({
 	toolName: "savvy-hooks",
@@ -40,6 +42,7 @@ export const SavvyHooksSection: ShellSectionDefinition = ShellSectionDefinition.
  * @returns The preamble shell, with no surrounding markers or trailing newline.
  *
  * @since 0.5.0
+ * @public
  */
 export function savvyBasePreamble(): string {
 	return `ROOT=$(git rev-parse --show-toplevel)
@@ -78,6 +81,7 @@ pm_exec() {
  * @returns The hygiene shell, with no surrounding markers or trailing newline.
  *
  * @since 0.5.0
+ * @public
  */
 export function savvyHooksHygiene(): string {
 	return `if ! { [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; }; then
@@ -97,7 +101,7 @@ fi`;
  *
  * **Precondition:** a {@link SavvyBaseSection} block must precede this section in the same
  * hook file so `in_ci` and `pm_exec` are defined. Consumers guarantee this by passing both
- * to {@link ManagedSection.syncMany | ManagedSection.syncMany} in order:
+ * to `ManagedSection.syncMany` in order:
  *
  * @example
  * ```ts
@@ -112,6 +116,7 @@ fi`;
  * @returns A shell {@link SectionBlock} (`commentStyle: "#"`) for `toolName`.
  *
  * @since 0.5.0
+ * @public
  */
 export function savvyToolSection(toolName: string, command: string): SectionBlock {
 	return ShellSectionDefinition.make({ toolName }).block(`in_ci || pm_exec ${command}`);

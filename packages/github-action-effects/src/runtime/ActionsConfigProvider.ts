@@ -20,6 +20,7 @@ import { Array as Arr, ConfigError, ConfigProvider, ConfigProviderPathPatch, Eff
  *   Effect.config(Config.string("my-input"))
  * )
  * ```
+ * @public
  */
 export const ActionsConfigProvider: ConfigProvider.ConfigProvider = ConfigProvider.fromFlat(
 	ConfigProvider.makeFlat({

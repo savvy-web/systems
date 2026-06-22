@@ -30,7 +30,6 @@
  * @see {@link ConfigInspector} for the Effect service tag
  * @see {@link ConfigInspectorLive} for the production layer
  *
- * @packageDocumentation
  */
 
 import { isAbsolute, join, relative, resolve } from "node:path";
@@ -691,7 +690,7 @@ function classifyOne(inspected: InspectedConfig, path: string): Classification {
 /**
  * Live layer for {@link ConfigInspector}.
  *
- * Requires {@link ChangesetConfigReader} and {@link WorkspaceDiscovery}
+ * Requires {@link ChangesetConfigReader} and `WorkspaceDiscovery`
  * in the environment.
  *
  * @public

@@ -21,13 +21,15 @@ function isNodeBuiltin(spec: string): boolean {
  * Why this exists — a rolldown 1.1.0 codegen defect (verified against the latest
  * published rolldown 1.1.0 / tsdown 0.22.2, with no newer release to upgrade to):
  *
- *   // SOURCE (e.g. vfile's lib/minproc.js)
- *   export {default as minproc} from 'node:process'
- *   // ...consumed as minproc.cwd()
+ * ```ts
+ * // SOURCE (e.g. vfile's lib/minproc.js)
+ * export {default as minproc} from 'node:process'
+ * // ...consumed as minproc.cwd()
  *
- *   // rolldown CJS OUTPUT (BROKEN)
- *   let node_process = require("node:process");
- *   node_process.default.cwd()           // <- require("node:process").default is undefined
+ * // rolldown CJS OUTPUT (BROKEN)
+ * let node_process = require("node:process");
+ * node_process.default.cwd()           // <- require("node:process").default is undefined
+ * ```
  *
  * For a default import of an EXTERNAL Node builtin, rolldown emits a bare
  * `require("node:x")` WITHOUT its `__toESM` interop wrapper, yet still accesses
@@ -44,14 +46,18 @@ function isNodeBuiltin(spec: string): boolean {
  * layer, which is why the correction happens here on the source.
  *
  * Rewrites (the two static forms that occur in practice, anchored to statement start):
- *  - `import NAME from "node:x"`            -> `import * as NAME from "node:x"`
- *  - `export { default as NAME } from "node:x"` -> `export * as NAME from "node:x"`
- *  - `import NAME, { a, b } from "node:x"`  -> `import * as NAME from "node:x"; import { a, b } from "node:x"`
+ *
+ * ```ts
+ * import NAME from "node:x"            -> import * as NAME from "node:x"
+ * export { default as NAME } from "node:x" -> export * as NAME from "node:x"
+ * import NAME, { a, b } from "node:x"  -> import * as NAME from "node:x"; import { a, b } from "node:x"
+ * ```
  *
  * The namespace binding NAME carries the builtin's named exports (`NAME.cwd`,
  * `NAME.join`, ...), which is exactly how a default import of a builtin is consumed
  * in practice. ESM output is unaffected at runtime (a namespace import of a builtin
  * resolves to the same members), so the plugin is safe to attach to dual builds.
+ * @public
  */
 export function nodeBuiltinDefaultInterop(): Plugin {
 	// statement-start anchored (multiline): the leading group captures indentation/line-start

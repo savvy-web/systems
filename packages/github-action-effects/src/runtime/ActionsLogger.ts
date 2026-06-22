@@ -11,6 +11,7 @@ import * as WorkflowCommand from "./WorkflowCommand.js";
  *
  * Annotations `file`, `line`, and `col` are forwarded as workflow command
  * properties when present (e.g. `::error file=a.ts,line=1::message`).
+ * @public
  */
 export const ActionsLogger: Logger.Logger<unknown, void> = Logger.make((options) => {
 	// options.message is an Array of unknown values; join them into a single string

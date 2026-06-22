@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from changeset operations.
+ * @public
  */
 export class ChangesetError extends Data.TaggedError("ChangesetError")<{
 	/** The operation that failed. */

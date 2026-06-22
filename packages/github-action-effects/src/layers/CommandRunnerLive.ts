@@ -127,6 +127,7 @@ const failOnNonZero = (
 				}),
 			);
 
+/** @public */
 export const CommandRunnerLive: Layer.Layer<CommandRunner> = Layer.succeed(
 	CommandRunner,
 	CommandRunner.of({

@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from check run operations.
+ * @public
  */
 export class CheckRunError extends Data.TaggedError("CheckRunError")<{
 	/** The check run name. */

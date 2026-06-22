@@ -22,7 +22,7 @@ import { Schema } from "effect";
  * - `pre`: Runs before the main action (optional)
  * - `post`: Runs after the main action for cleanup (optional)
  *
- * @internal
+ * @public
  */
 export const EntriesSchema = Schema.Struct({
 	/** Path to the main action entry point. Defaults to "src/main.ts". */
@@ -51,7 +51,7 @@ export type Entries = typeof EntriesSchema.Type;
  * Build options control how the TypeScript source is bundled using rsbuild.
  * The bundler creates a single JavaScript file with all dependencies inlined.
  *
- * @internal
+ * @public
  */
 export const BuildOptionsSchema = Schema.Struct({
 	/** Enable minification to reduce bundle size. Defaults to true. */
@@ -82,7 +82,7 @@ export type BuildOptions = typeof BuildOptionsSchema.Type;
  * Validation options control how strictly the build process validates
  * the project structure and configuration before building.
  *
- * @internal
+ * @public
  */
 export const ValidationOptionsSchema = Schema.Struct({
 	/** Require action.yml to exist and be valid. Defaults to true. */
@@ -111,7 +111,7 @@ export type ValidationOptions = typeof ValidationOptionsSchema.Type;
  * Controls automatic copying of build output to a local action directory
  * for testing with nektos/act.
  *
- * @internal
+ * @public
  */
 export const PersistLocalOptionsSchema = Schema.Struct({
 	/** Enable persisting build output locally. Defaults to true. */
@@ -140,7 +140,7 @@ export type PersistLocalOptions = typeof PersistLocalOptionsSchema.Type;
  * This schema is used for parsing user-provided configuration.
  * All sections are optional; defaults are applied via {@link defineConfig}.
  *
- * @internal
+ * @public
  */
 export const ConfigInputSchema = Schema.Struct({
 	entries: Schema.optional(
@@ -192,7 +192,7 @@ export type ConfigInput = typeof ConfigInputSchema.Type;
 /**
  * Fully resolved configuration with all defaults applied.
  *
- * @internal
+ * @public
  */
 export const ConfigSchema = Schema.Struct({
 	entries: EntriesSchema,

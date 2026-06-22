@@ -8,7 +8,11 @@ import { Schema } from "effect";
  * - `"//"` — C-style, suitable for JavaScript/TypeScript files.
  *
  * @since 0.1.0
+ * @public
  */
 export const CommentStyle = Schema.Literal("#", "//");
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type CommentStyle = typeof CommentStyle.Type;

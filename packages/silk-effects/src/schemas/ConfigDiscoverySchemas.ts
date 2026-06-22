@@ -9,25 +9,33 @@ import { Schema } from "effect";
  * - `"cosmiconfig"` — reserved for future cosmiconfig-based discovery.
  *
  * @since 0.1.0
+ * @public
  */
 export const ConfigSource = Schema.Literal("lib", "root", "cosmiconfig");
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type ConfigSource = typeof ConfigSource.Type;
 
 /**
  * The resolved location of a discovered config file.
  *
  * @remarks
- * Produced by {@link ConfigDiscovery.find} and {@link ConfigDiscovery.findAll}.
+ * Produced by `ConfigDiscovery.find` and `ConfigDiscovery.findAll`.
  * `path` is the absolute file path; `source` indicates how it was discovered.
  *
  * @since 0.1.0
+ * @public
  */
 export const ConfigLocation = Schema.Struct({
 	path: Schema.String,
 	source: ConfigSource,
 });
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type ConfigLocation = typeof ConfigLocation.Type;
 
 /**
@@ -38,10 +46,14 @@ export type ConfigLocation = typeof ConfigLocation.Type;
  * `tool` is reserved for future use as a tool-specific discovery hint.
  *
  * @since 0.1.0
+ * @public
  */
 export const ConfigDiscoveryOptions = Schema.Struct({
 	cwd: Schema.optional(Schema.String),
 	tool: Schema.optional(Schema.String),
 });
-/** @since 0.1.0 */
+/**
+ * @since 0.1.0
+ * @public
+ */
 export type ConfigDiscoveryOptions = typeof ConfigDiscoveryOptions.Type;

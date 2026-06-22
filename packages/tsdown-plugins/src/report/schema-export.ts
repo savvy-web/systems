@@ -7,7 +7,16 @@ import { BuildReport } from "./schema.js";
 
 const SCHEMA_ID = "https://savvyweb.systems/schemas/build-report.schema.json";
 
-/** Generate the SchemaStore-compatible JSON Schema document for BuildReport. */
+/**
+ * Generate the SchemaStore-compatible JSON Schema document for BuildReport.
+ *
+ * @remarks
+ * Build-time tooling helper: its return type depends on `@effect/platform`'s
+ * `FileSystem` service (a devDependency, not part of this package's public
+ * contract), so it is internal rather than part of the consumer surface.
+ *
+ * @internal
+ */
 export const generateBuildReportSchema = (): Effect.Effect<JsonSchemaOutput, JsonSchemaError, FileSystem.FileSystem> =>
 	Effect.gen(function* () {
 		const exporter = yield* JsonSchemaExporter;

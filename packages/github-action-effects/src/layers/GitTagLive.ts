@@ -46,6 +46,7 @@ const mapError =
 			reason: error.reason,
 		});
 
+/** @public */
 export const GitTagLive: Layer.Layer<GitTag, never, GitHubClient> = Layer.effect(
 	GitTag,
 	Effect.map(GitHubClient, (client): typeof GitTag.Service => {

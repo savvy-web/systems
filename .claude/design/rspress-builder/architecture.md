@@ -90,7 +90,7 @@ The package ships three consumer-facing assets under top-level `public/` (mirror
 
 ## API model covers options and components
 
-The meta pipeline merges API models across entries, so the plugin (`.`) entry contributes the plugin-factory/options model and `./runtime` contributes the component/prop-type model; they merge into one `.api.json` that flows to the mcp/website API-doc tier like every other package. The only meta wiring is that the runtime dts lives at the subdir path `runtime/index.d.ts`, so the bundler's `runBuild` points the `./runtime` meta entry at the `runtime/index` dts basename (see `applySubdirMetaEntries` in `../bundler/architecture.md`). The single divergence from the rslib builder: the runtime's API model is NOT disabled (rslib set `apiModel: false` for it), which is what makes plugin options AND components both documentable.
+The meta pipeline merges API models across entries, so the plugin (`.`) entry contributes the plugin-factory/options model and `./runtime` contributes the component/prop-type model; they merge into one `.api.json` that flows to the mcp/website API-doc tier like every other package. The only meta wiring is that the runtime dts lives at the subdir path `runtime/index.d.ts`, so the meta pass points the `./runtime` meta entry at the `runtime/index` dts basename (see `applySubdirMetaEntries`, now in `@savvy-web/tsdown-plugins`' `runMetaPass` — `../tsdown-plugins/architecture.md`). The single divergence from the rslib builder: the runtime's API model is NOT disabled (rslib set `apiModel: false` for it), which is what makes plugin options AND components both documentable.
 
 ## Boundaries and Invariants
 

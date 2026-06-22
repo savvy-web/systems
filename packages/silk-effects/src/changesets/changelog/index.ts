@@ -48,8 +48,6 @@
  *
  * @see {@link getReleaseLine} in `./getReleaseLine.ts` for individual changeset formatting
  * @see {@link getDependencyReleaseLine} in `./getDependencyReleaseLine.ts` for dependency table formatting
- *
- * @packageDocumentation
  */
 
 import { Effect, Layer } from "effect";

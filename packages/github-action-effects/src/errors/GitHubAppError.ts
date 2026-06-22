@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from GitHub App authentication operations.
+ * @public
  */
 export class GitHubAppError extends Data.TaggedError("GitHubAppError")<{
 	/** The operation that failed. */

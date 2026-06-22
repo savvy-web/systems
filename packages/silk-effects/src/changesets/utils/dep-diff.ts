@@ -19,7 +19,6 @@
  * @see {@link DependencyTableRow} for the row schema
  * @see {@link WorkspaceSnapshot} for the input shape
  *
- * @packageDocumentation
  */
 
 import type { DependencyTableRow, DependencyTableType } from "../schemas/dependency-table.js";

@@ -1,7 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** Resolved JSX transform settings, mirroring the subset of rolldown's JsxOptions the bundler forwards. */
+/**
+ * Resolved JSX transform settings, mirroring the subset of rolldown's JsxOptions the bundler forwards.
+ *
+ * @public
+ */
 export interface JsxConfig {
 	/** "automatic" auto-imports the JSX factories (react-jsx); "classic" does not (React.createElement). */
 	readonly runtime?: "classic" | "automatic" | undefined;
@@ -9,7 +13,11 @@ export interface JsxConfig {
 	readonly importSource?: string | undefined;
 }
 
-/** The jsx-relevant slice of a tsconfig's compilerOptions. */
+/**
+ * The jsx-relevant slice of a tsconfig's compilerOptions.
+ *
+ * @public
+ */
 export interface TsconfigJsx {
 	readonly jsx?: string | undefined;
 	readonly jsxImportSource?: string | undefined;
@@ -18,6 +26,7 @@ export interface TsconfigJsx {
 /**
  * Resolve the effective JSX config: an explicit override wins; otherwise infer from the tsconfig
  * values. Returns undefined when no JSX transform is needed (preserve/none).
+ * @public
  */
 export function resolveJsxConfig(tsconfig: TsconfigJsx, override: JsxConfig | undefined): JsxConfig | undefined {
 	if (override !== undefined) {
@@ -39,6 +48,7 @@ export function resolveJsxConfig(tsconfig: TsconfigJsx, override: JsxConfig | un
 /**
  * Read the jsx-relevant compilerOptions from a package's own tsconfig.json (best-effort;
  * returns empty on absence or parse error).
+ * @public
  */
 export function readTsconfigJsx(cwd: string): TsconfigJsx {
 	const path = join(cwd, "tsconfig.json");

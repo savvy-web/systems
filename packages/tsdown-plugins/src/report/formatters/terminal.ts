@@ -14,6 +14,7 @@ const diagLine = (d: DiagnosticEntry): string => {
 	return `${loc} ${d.text}`.trim();
 };
 
+/** @public */
 export const TerminalFormatter: Formatter = {
 	format: "terminal",
 	render: (reports, ctx) => {

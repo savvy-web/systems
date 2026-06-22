@@ -7,7 +7,7 @@ import type { VersioningStrategyResult } from "../schemas/VersioningSchemas.js";
  * Service that determines and applies the git-tag naming strategy for a release.
  *
  * @remarks
- * Consumes a {@link VersioningStrategyResult} to pick between `"single"` and `"scoped"`
+ * Consumes a {@link (VersioningStrategyResult:type)} to pick between `"single"` and `"scoped"`
  * tag formats, then formats tag strings accordingly. Independent versioning always
  * produces scoped tags; single and fixed-group versioning produces a single shared tag.
  *
@@ -24,6 +24,7 @@ import type { VersioningStrategyResult } from "../schemas/VersioningSchemas.js";
  * ```
  *
  * @since 0.1.0
+ * @public
  */
 export class TagStrategy extends Context.Tag("@savvy-web/silk-effects/TagStrategy")<
 	TagStrategy,
@@ -31,7 +32,7 @@ export class TagStrategy extends Context.Tag("@savvy-web/silk-effects/TagStrateg
 		/**
 		 * Determine the appropriate tag strategy type from a versioning strategy result.
 		 *
-		 * @param versioningResult - The result of {@link VersioningStrategy.detect}.
+		 * @param versioningResult - The result of `VersioningStrategy.detect`.
 		 * @returns An `Effect` that always succeeds with a {@link TagStrategyType}.
 		 *
 		 * @since 0.1.0
@@ -64,6 +65,7 @@ export class TagStrategy extends Context.Tag("@savvy-web/silk-effects/TagStrateg
  * All logic is pure: strategy determination and tag formatting involve no I/O.
  *
  * @since 0.1.0
+ * @public
  */
 export const TagStrategyLive: Layer.Layer<TagStrategy> = Layer.succeed(
 	TagStrategy,

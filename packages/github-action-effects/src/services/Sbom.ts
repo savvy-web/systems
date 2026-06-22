@@ -60,7 +60,7 @@ export interface SbomSupplier {
 /**
  * An author of the SBOM document itself. Maps to a CycloneDX
  * `metadata.authors` entry — the NTIA "author of SBOM data" element,
- * distinct from the {@link SbomInput.rootAuthor} that describes the
+ * distinct from the `SbomInput.rootAuthor` that describes the
  * author of the root *component*.
  *
  * @public
@@ -72,7 +72,7 @@ export interface SbomAuthor {
 }
 
 /**
- * Input for {@link Sbom.generate}.
+ * Input for `Sbom.generate`.
  *
  * @public
  */
@@ -93,7 +93,7 @@ export interface SbomInput {
 	/**
 	 * Authors of the SBOM document. Threaded onto `metadata.authors` of
 	 * the emitted BOM — the NTIA "author of SBOM data" element. This is
-	 * distinct from {@link rootAuthor}, which describes the author of
+	 * distinct from `rootAuthor`, which describes the author of
 	 * the root component rather than of the SBOM itself.
 	 */
 	readonly authors?: ReadonlyArray<SbomAuthor>;
@@ -106,7 +106,7 @@ export interface SbomInput {
 	/**
 	 * Packages being released alongside the root that aren't on the
 	 * registry yet. If any of these names also appear in
-	 * {@link dependencies}, the in-flight version wins.
+	 * `dependencies`, the in-flight version wins.
 	 */
 	readonly inFlightPackages?: ReadonlyArray<InFlightPackage>;
 }

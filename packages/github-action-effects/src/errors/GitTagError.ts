@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from tag management operations.
+ * @public
  */
 export class GitTagError extends Data.TaggedError("GitTagError")<{
 	/** The operation that failed. */

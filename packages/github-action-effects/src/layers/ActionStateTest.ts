@@ -6,6 +6,7 @@ import { decodeState, encodeState } from "./internal/decodeState.js";
 
 /**
  * In-memory state captured by the test state layer.
+ * @public
  */
 export interface ActionStateTestState {
 	/** Stored state entries (key to JSON string). */
@@ -20,6 +21,7 @@ export interface ActionStateTestState {
  * const state = ActionStateTest.empty();
  * const layer = ActionStateTest.layer(state);
  * ```
+ * @public
  */
 export const ActionStateTest = {
 	/**

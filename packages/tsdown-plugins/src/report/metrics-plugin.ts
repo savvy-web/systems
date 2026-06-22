@@ -19,6 +19,7 @@ function byteLength(content: string | Uint8Array): number {
  * defensive onLog for rolldown-level diagnostics that bypass tsdown's logger. Append it to each
  * build pass's `plugins` array. `bytes` is taken from the in-memory chunk/asset content (no fs);
  * `gzip` is computed only when `verbose`.
+ * @public
  */
 export function buildMetricsPlugin(
 	collector: BuildCollector,

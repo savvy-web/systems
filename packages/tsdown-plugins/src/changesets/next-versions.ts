@@ -1,11 +1,15 @@
 import getReleasePlan from "@changesets/get-release-plan";
 import { getPackages } from "@manypkg/get-packages";
 
-/** Result of resolving next release versions for a workspace. */
+/**
+ * Result of resolving next release versions for a workspace.
+ *
+ * @public
+ */
 export interface NextVersions {
 	/** Monorepo root containing `.changeset/` (or `cwd` when no workspace was found). */
 	readonly root: string;
-	/** Canonical package name -> next release version (current version when unbumped). */
+	/** Canonical package name `->` next release version (current version when unbumped). */
 	readonly versions: ReadonlyMap<string, string>;
 }
 
@@ -16,6 +20,7 @@ export interface NextVersions {
  * each package's CURRENT version, then overlays `newVersion` for changeset-affected packages
  * via `@changesets/get-release-plan`. Never rejects: any failure (not a workspace, missing
  * `.changeset/config.json`, parse error) degrades to current versions (or an empty map).
+ * @public
  */
 export async function resolveNextVersions(cwd: string): Promise<NextVersions> {
 	try {

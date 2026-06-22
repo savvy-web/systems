@@ -9,7 +9,6 @@
  * then reads the generated CHANGELOG blocks back. No changesets-internal logic
  * (e.g. `getChangelogEntry`) is re-implemented.
  *
- * @packageDocumentation
  */
 
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
