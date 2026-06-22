@@ -16,7 +16,7 @@
  * value is unwrapped only at the point where it crosses the wire to Fulcio or
  * Rekor.
  *
- * The implementation depends on {@link HttpClient.HttpClient} so the service
+ * The implementation depends on `HttpClient.HttpClient` so the service
  * composes with `FetchHttpClient.layer` in production and an in-memory mock
  * layer in tests — no `node:fetch` import means no undici in the bundle.
  */
@@ -54,7 +54,7 @@ const readEnv = (name: string): Effect.Effect<string, OidcTokenError> =>
 	);
 
 /**
- * Live {@link OidcTokenIssuer} layer. Requires {@link HttpClient.HttpClient}.
+ * Live {@link OidcTokenIssuer} layer. Requires `HttpClient.HttpClient`.
  *
  * @public
  */

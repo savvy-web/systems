@@ -7,7 +7,7 @@ import type { AnnotationProperties } from "../runtime/WorkflowCommand.js";
  *
  * @remarks
  * The core log-level routing is handled by the Effect Logger installed
- * via {@link ActionLoggerLayer}. This service provides additional
+ * via `ActionLoggerLayer`. This service provides additional
  * GitHub Actions-specific operations like log groups and buffering.
  *
  * @public

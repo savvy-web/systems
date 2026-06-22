@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error when GitHub Action state reading/writing fails.
+ * @public
  */
 export class ActionStateError extends Data.TaggedError("ActionStateError")<{
 	/** The state key name. */

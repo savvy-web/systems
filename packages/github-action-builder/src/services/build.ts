@@ -21,7 +21,7 @@ import type { DetectedEntry } from "./config.js";
 
 /**
  * Options for the build process.
- * @internal
+ * @public
  */
 export const BuildRunnerOptionsSchema = Schema.Struct({
 	/** Working directory for the build. Accepts string, Buffer, or URL. */
@@ -38,7 +38,7 @@ export type BuildRunnerOptions = typeof BuildRunnerOptionsSchema.Type;
 
 /**
  * Statistics for a single bundled entry.
- * @internal
+ * @public
  */
 export const BundleStatsSchema = Schema.Struct({
 	/** Entry type (main, pre, or post). */
@@ -59,7 +59,7 @@ export type BundleStats = typeof BundleStatsSchema.Type;
 
 /**
  * Result of bundling a single entry.
- * @internal
+ * @public
  */
 export const BundleResultSchema = Schema.Struct({
 	/** Whether bundling succeeded. */
@@ -78,7 +78,7 @@ export type BundleResult = typeof BundleResultSchema.Type;
 
 /**
  * Result of the complete build process.
- * @internal
+ * @public
  */
 export const BuildResultSchema = Schema.Struct({
 	/** Whether the overall build succeeded. */

@@ -43,7 +43,7 @@ export interface GlobOptions {
 }
 
 /**
- * Options for {@link Glob.hashFiles}.
+ * Options for `Glob.hashFiles`.
  *
  * @public
  */

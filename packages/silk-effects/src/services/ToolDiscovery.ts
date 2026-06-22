@@ -28,6 +28,7 @@ import type { VersionExtractor } from "../schemas/ToolResults.js";
  * ```
  *
  * @since 0.2.0
+ * @public
  */
 export class ToolDiscovery extends Context.Tag("@savvy-web/silk-effects/ToolDiscovery")<
 	ToolDiscovery,
@@ -147,6 +148,7 @@ function extractVersion(output: Option.Option<string>, extractor: VersionExtract
  * and `WorkspaceRoot` from `workspaces-effect`.
  *
  * @since 0.2.0
+ * @public
  */
 export const ToolDiscoveryLive: Layer.Layer<
 	ToolDiscovery,

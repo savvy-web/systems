@@ -19,26 +19,26 @@ import { SigstoreSignerTest } from "./SigstoreSignerTest.js";
  * @public
  */
 export interface AttestTestState {
-	/** Inputs passed to every {@link Attest.buildStatement} call. */
+	/** Inputs passed to every `Attest.buildStatement` call. */
 	readonly buildStatementCalls: AttestInput[];
-	/** Inputs passed to every {@link Attest.buildBundle} call. */
+	/** Inputs passed to every `Attest.buildBundle` call. */
 	readonly buildBundleCalls: AttestInput[];
-	/** Inputs passed to every {@link Attest.attest} call. */
+	/** Inputs passed to every `Attest.attest` call. */
 	readonly attestCalls: AttestInput[];
-	/** Inputs passed to every {@link Attest.sbom} call. */
+	/** Inputs passed to every `Attest.sbom` call. */
 	readonly sbomCalls: SbomAttestationInput[];
-	/** Inputs passed to every {@link Attest.provenance} call. */
+	/** Inputs passed to every `Attest.provenance` call. */
 	readonly provenanceCalls: ProvenanceAttestationInput[];
-	/** Inputs passed to every {@link Attest.listForSubject} call. */
+	/** Inputs passed to every `Attest.listForSubject` call. */
 	readonly listForSubjectCalls: Array<{
 		readonly subjectSha256: string;
 		readonly predicateType: string | undefined;
 	}>;
-	/** Path → data captured by {@link Attest.save}. */
+	/** Path → data captured by `Attest.save`. */
 	readonly saves: Map<string, InTotoStatement | SigstoreBundle>;
 	/**
 	 * Pre-seeded attestation entries indexed by tarball sha256-hex. The
-	 * {@link Attest.listForSubject} test implementation returns the
+	 * `Attest.listForSubject` test implementation returns the
 	 * matching entry list (filtered by `predicateType` when requested);
 	 * an unseeded subject returns the empty array.
 	 */

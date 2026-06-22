@@ -20,7 +20,10 @@
 import { Effect } from "effect";
 import { SlsaError } from "../errors/SlsaError.js";
 
-/** GitHub Actions `workflow/v1` build type. */
+/**
+ * GitHub Actions `workflow/v1` build type.
+ * @public
+ */
 export const GITHUB_BUILD_TYPE = "https://actions.github.io/buildtypes/workflow/v1" as const;
 
 /**

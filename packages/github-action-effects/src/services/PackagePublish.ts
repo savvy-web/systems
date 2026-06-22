@@ -8,7 +8,7 @@ import type { PackagePublishError } from "../errors/PackagePublishError.js";
  * @remarks
  * `digest` is in the integrity format `sha512-<base64>` — the same shape
  * the registry stores as `dist.integrity` — so a direct string compare
- * against the value returned by {@link NpmRegistry.getPublishedIntegrity}
+ * against the value returned by `NpmRegistry.getPublishedIntegrity`
  * tells the orchestrator whether the local tarball matches the
  * already-published one.
  *
@@ -26,9 +26,9 @@ export interface PackResult {
 	readonly digest: string;
 	/**
 	 * SHA-256 of the tarball, as a lowercase hex string (no `sha256:`
-	 * prefix). Computed locally from {@link tarballPath}. This is the
+	 * prefix). Computed locally from `tarballPath`. This is the
 	 * digest format the GitHub artifact-metadata and attestation APIs
-	 * accept as the subject. It is NOT interchangeable with {@link digest}:
+	 * accept as the subject. It is NOT interchangeable with `digest`:
 	 * different algorithm, different encoding.
 	 */
 	readonly sha256Hex: string;
@@ -56,7 +56,7 @@ export interface RegistryTarget {
 	readonly access?: "public" | "restricted";
 	/**
 	 * Package manager whose bundled `npm` executor runs the publish. Matches the
-	 * `packageManager` option on {@link PackagePublish.publish} — non-`npm`
+	 * `packageManager` option on `PackagePublish.publish` — non-`npm`
 	 * dispatchers (`pnpm dlx npm`, `yarn npm`, `bun x npm`) fetch a fresh npm so
 	 * the OIDC trusted-publisher exchange works on runners pinned to an older
 	 * bundled npm. Defaults to bare `npm`.
@@ -65,7 +65,7 @@ export interface RegistryTarget {
 }
 
 /**
- * Input for {@link PackagePublish.publishIdempotent}.
+ * Input for `PackagePublish.publishIdempotent`.
  *
  * @public
  */
@@ -77,11 +77,11 @@ export interface IdempotentPublishInput {
 	/** Version being published. */
 	readonly version: string;
 	/**
-	 * Content digest of the package tarball, from a prior {@link PackagePublish.pack}
+	 * Content digest of the package tarball, from a prior `PackagePublish.pack`
 	 * call. Compared against the registry's published integrity hash.
 	 */
 	readonly digest: string;
-	/** Publish options forwarded to {@link PackagePublish.publish}. */
+	/** Publish options forwarded to `PackagePublish.publish`. */
 	readonly options?: {
 		readonly registry?: string;
 		readonly tag?: string;
@@ -92,7 +92,7 @@ export interface IdempotentPublishInput {
 }
 
 /**
- * Outcome of {@link PackagePublish.publishIdempotent}.
+ * Outcome of `PackagePublish.publishIdempotent`.
  *
  * @public
  */
@@ -124,7 +124,7 @@ export interface DryRunResult {
 }
 
 /**
- * Outcome of a {@link PackagePublish.publishTarball} call.
+ * Outcome of a `PackagePublish.publishTarball` call.
  *
  * @public
  */
@@ -156,7 +156,7 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 		 * Pack a package directory into a tarball and capture its size, file count, and integrity digest.
 		 *
 		 * @remarks
-		 * `packageManager` selects the npm executor — same dispatch as {@link publish}
+		 * `packageManager` selects the npm executor — same dispatch as `publish`
 		 * (`pnpm dlx npm` etc.) so the pack runs through the identical npm the publish
 		 * will. Defaults to bare `npm`.
 		 */
@@ -193,9 +193,9 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 		 * Publish a previously-packed tarball to a registry.
 		 *
 		 * @remarks
-		 * Unlike {@link publish}, which takes a directory and lets `npm`
+		 * Unlike `publish`, which takes a directory and lets `npm`
 		 * pack it implicitly, `publishTarball` accepts the absolute path
-		 * to a `.tgz` from a prior {@link pack} call and uploads its
+		 * to a `.tgz` from a prior `pack` call and uploads its
 		 * bytes directly — no second pack happens. Two targets pointing
 		 * at the same tarball upload byte-identical content, which is
 		 * what makes the integrity-compare branch of a recovery run
@@ -246,7 +246,7 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 		 * Skips when an identical version is already published (the registry
 		 * integrity hash matches `input.digest`); fails with a content-mismatch
 		 * {@link PackagePublishError} when the published version differs.
-		 * Authentication is the caller's responsibility, as for {@link publish}.
+		 * Authentication is the caller's responsibility, as for `publish`.
 		 *
 		 * Assumes the package name already exists on the registry: the version
 		 * lookup errors for a name that has never been published, so a brand-new
@@ -256,8 +256,8 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 		 * @deprecated The fused probe-then-publish dispatch hardcoded the
 		 *   wrong registry (the npm default) and could not recover from a
 		 *   partial publish across multiple registries. New callers should
-		 *   compose {@link pack}, {@link NpmRegistry.getPublishedIntegrity},
-		 *   and {@link publishTarball} themselves. This method is kept for
+		 *   compose `pack`, `NpmRegistry.getPublishedIntegrity`,
+		 *   and `publishTarball` themselves. This method is kept for
 		 *   the migration window; removal lands in a follow-up.
 		 */
 		readonly publishIdempotent: (
@@ -280,11 +280,11 @@ export class PackagePublish extends Context.Tag("github-action-effects/PackagePu
 		 * or its `--json` output could not be parsed).
 		 *
 		 * `packageManager` selects the npm executor and should match the value
-		 * passed to {@link publish}, so the dry-run packs with the same npm the
+		 * passed to `publish`, so the dry-run packs with the same npm the
 		 * live publish will run (`pnpm dlx npm` fetches a fresh npm that can
 		 * behave differently from the runner's bundled one). The other options do
 		 * not affect the underlying `npm pack --dry-run` and are accepted only for
-		 * call-site symmetry with {@link publish}.
+		 * call-site symmetry with `publish`.
 		 */
 		readonly dryRun: (
 			packageDir: string,

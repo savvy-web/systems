@@ -19,7 +19,7 @@ import type { Config } from "../schemas/config.js";
 
 /**
  * Options for the persist operation.
- * @internal
+ * @public
  */
 export const PersistLocalRunnerOptionsSchema = Schema.Struct({
 	/** Working directory. Accepts string. */
@@ -34,7 +34,7 @@ export type PersistLocalRunnerOptions = typeof PersistLocalRunnerOptionsSchema.T
 
 /**
  * Result of the persist-local operation.
- * @internal
+ * @public
  */
 export const PersistLocalResultSchema = Schema.Struct({
 	/** Whether the operation completed successfully. */

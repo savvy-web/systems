@@ -5,6 +5,7 @@ import { ActionLogger } from "../services/ActionLogger.js";
 
 /**
  * In-memory state captured by the test logger.
+ * @public
  */
 export interface ActionLoggerTestState {
 	readonly entries: Array<{ readonly level: string; readonly message: string }>;
@@ -30,6 +31,7 @@ export interface ActionLoggerTestState {
  * const state = ActionLoggerTest.empty();
  * const layer = ActionLoggerTest.layer(state);
  * ```
+ * @public
  */
 export const ActionLoggerTest = {
 	/**

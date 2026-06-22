@@ -120,6 +120,7 @@ type SectionItem =
  * Content operations (`write`, `sync`, `check`) take a {@link SectionBlock}.
  *
  * @since 0.2.0
+ * @public
  */
 export class ManagedSection extends Context.Tag("@savvy-web/silk-effects/ManagedSection")<
 	ManagedSection,
@@ -169,6 +170,7 @@ export class ManagedSection extends Context.Tag("@savvy-web/silk-effects/Managed
  * Live implementation of {@link ManagedSection} backed by `@effect/platform` FileSystem.
  *
  * @since 0.2.0
+ * @public
  */
 export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.FileSystem> = Layer.effect(
 	ManagedSection,

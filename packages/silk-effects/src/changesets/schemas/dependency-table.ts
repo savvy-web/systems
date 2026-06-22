@@ -17,7 +17,6 @@
  * @see {@link DependencyUpdateSchema} for the simpler Changesets API format
  * @see {@link https://effect.website/docs/schema/introduction | Effect Schema documentation}
  *
- * @packageDocumentation
  */
 
 import { Schema } from "effect";

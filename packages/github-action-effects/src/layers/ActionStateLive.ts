@@ -6,6 +6,7 @@ import * as RuntimeFile from "../runtime/RuntimeFile.js";
 import { ActionState } from "../services/ActionState.js";
 import { decodeState, encodeState } from "./internal/decodeState.js";
 
+/** @public */
 export const ActionStateLive: Layer.Layer<ActionState, never, FileSystem.FileSystem> = Layer.effect(
 	ActionState,
 	Effect.gen(function* () {

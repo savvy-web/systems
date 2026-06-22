@@ -37,6 +37,7 @@ const mapError =
 	(error: GitHubClientError): PullRequestCommentError =>
 		new PullRequestCommentError({ prNumber, operation, reason: error.reason });
 
+/** @public */
 export const PullRequestCommentLive: Layer.Layer<PullRequestComment, never, GitHubClient> = Layer.effect(
 	PullRequestComment,
 	Effect.map(GitHubClient, (client) => ({

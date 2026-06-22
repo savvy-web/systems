@@ -18,7 +18,10 @@ import { toRedacted } from "./utils/unwrapRedacted.js";
 /** Internal ActionState key for the persisted installation-token envelope. */
 const STATE_KEY = "github-action-effects/installation-token";
 
-/** Options for {@link GitHubToken.provision}. */
+/**
+ * Options for {@link GitHubToken.provision}.
+ * @public
+ */
 export interface ProvisionOptions {
 	/** App client ID. Defaults to the `app-client-id` action input. */
 	readonly clientId?: string;

@@ -272,7 +272,7 @@ const findByName = (artifacts: ReadonlyArray<ArtifactItem>, name: string): Optio
  * and Azure Blob Storage for uploads/downloads.
  *
  * @remarks
- * Requires {@link HttpClient.HttpClient} for the Twirp RPCs; the
+ * Requires `HttpClient.HttpClient` for the Twirp RPCs; the
  * `ActionsRuntime.Default` / `Action.run` path provides it via
  * `FetchHttpClient.layer`. The `findBy` (cross-run/cross-repo REST) path is not
  * yet implemented and fails with a clear `ArtifactError`.

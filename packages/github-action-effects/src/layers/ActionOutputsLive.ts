@@ -7,6 +7,7 @@ import * as RuntimeFile from "../runtime/RuntimeFile.js";
 import * as WorkflowCommand from "../runtime/WorkflowCommand.js";
 import { ActionOutputs } from "../services/ActionOutputs.js";
 
+/** @public */
 export const ActionOutputsLive: Layer.Layer<ActionOutputs, never, FileSystem.FileSystem> = Layer.effect(
 	ActionOutputs,
 	Effect.gen(function* () {

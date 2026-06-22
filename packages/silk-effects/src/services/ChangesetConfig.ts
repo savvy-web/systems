@@ -2,7 +2,10 @@ import { Context, Effect, Layer, Option } from "effect";
 import type { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
 import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
 
-/** Changeset operating mode for a workspace root. */
+/**
+ * Changeset operating mode for a workspace root.
+ * @public
+ */
 export type ChangesetMode = "silk" | "vanilla" | "none";
 
 /**
@@ -14,6 +17,7 @@ export type ChangesetMode = "silk" | "vanilla" | "none";
  * to `mode: "none"` and empty/false defaults.
  *
  * @since 0.4.0
+ * @public
  */
 export class ChangesetConfig extends Context.Tag("@savvy-web/silk-effects/ChangesetConfig")<
 	ChangesetConfig,
@@ -51,6 +55,7 @@ const isSilk = (cfg: ChangesetConfigFile | SilkChangesetConfigFile): boolean =>
  * `ChangesetConfigReaderLive` + a platform layer (`NodeContext.layer`).
  *
  * @since 0.4.0
+ * @public
  */
 export const ChangesetConfigLive: Layer.Layer<ChangesetConfig, never, ChangesetConfigReader> = Layer.effect(
 	ChangesetConfig,

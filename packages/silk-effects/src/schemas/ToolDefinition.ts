@@ -11,9 +11,10 @@ const NameSchema = Schema.Struct({ name: Schema.String });
 /**
  * Declares a CLI tool's identity and resolution constraints.
  *
- * {@link Equal} compares on `name` only (identity).
+ * `Equal` compares on `name` only (identity).
  *
  * @since 0.2.0
+ * @public
  */
 export class ToolDefinition implements Equal.Equal {
 	readonly _tag = "ToolDefinition" as const;

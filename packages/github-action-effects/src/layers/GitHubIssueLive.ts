@@ -68,6 +68,7 @@ const mapClientError =
 			retryable: error.retryable,
 		});
 
+/** @public */
 export const GitHubIssueLive: Layer.Layer<GitHubIssue, never, GitHubClient | GitHubGraphQL> = Layer.effect(
 	GitHubIssue,
 	Effect.all([GitHubClient, GitHubGraphQL]).pipe(

@@ -148,6 +148,7 @@ const buildIssue: Effect.Effect<
 	),
 );
 
+/** @public */
 export const ActionEnvironmentLive: Layer.Layer<ActionEnvironment> = Layer.succeed(ActionEnvironment, {
 	get: (name) => readEnv(name),
 	getOptional: (name) => readOptionalEnv(name),

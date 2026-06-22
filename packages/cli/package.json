@@ -48,9 +48,9 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
-		"tsx": "^4.22.4",
+		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
-		"vitest": "^4.1.9"
+		"vitest": "catalog:silk"
 	},
 	"publishConfig": {
 		"access": "public",

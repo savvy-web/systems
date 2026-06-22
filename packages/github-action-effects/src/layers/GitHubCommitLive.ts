@@ -67,6 +67,7 @@ const mapClientError =
 			reason: error.reason,
 		});
 
+/** @public */
 export const GitHubCommitLive: Layer.Layer<GitHubCommit, never, GitHubClient> = Layer.effect(
 	GitHubCommit,
 	Effect.map(GitHubClient, (client) => ({

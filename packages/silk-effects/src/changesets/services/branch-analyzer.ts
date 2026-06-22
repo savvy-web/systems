@@ -37,7 +37,6 @@
  * @see {@link BranchAnalyzerLive} for the production layer
  * @see {@link ConfigInspector} for the underlying classification service
  *
- * @packageDocumentation
  */
 
 import { execFileSync } from "node:child_process";

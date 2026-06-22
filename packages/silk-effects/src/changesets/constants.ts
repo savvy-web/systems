@@ -15,7 +15,6 @@
  * - `CSH005` -- Frontmatter validation
  *
  * @internal
- * @packageDocumentation
  */
 
 /** Base URL for rule documentation on GitHub. */

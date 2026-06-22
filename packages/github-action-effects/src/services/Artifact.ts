@@ -15,7 +15,7 @@ export interface ArtifactItem {
 }
 
 /**
- * Options for {@link Artifact.uploadArtifact}.
+ * Options for `Artifact.uploadArtifact`.
  *
  * @public
  */
@@ -34,7 +34,7 @@ export interface UploadOptions {
 }
 
 /**
- * Result of a successful {@link Artifact.uploadArtifact}.
+ * Result of a successful `Artifact.uploadArtifact`.
  *
  * @public
  */
@@ -44,7 +44,7 @@ export interface UploadResult {
 }
 
 /**
- * Options for {@link Artifact.downloadArtifact}.
+ * Options for `Artifact.downloadArtifact`.
  *
  * @public
  */

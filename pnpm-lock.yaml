@@ -78,6 +78,9 @@ catalogs:
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
+    vitest:
+      specifier: ^4.1.9
+      version: 4.1.9
   silkPeers:
     '@types/react-dom':
       specifier: ^19.2.0
@@ -166,7 +169,7 @@ importers:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -216,13 +219,13 @@ importers:
         specifier: catalog:silk
         version: 7.0.0-dev.20260621.1
       tsx:
-        specifier: ^4.22.4
+        specifier: catalog:silk
         version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -281,13 +284,13 @@ importers:
         specifier: catalog:silk
         version: 7.0.0-dev.20260621.1
       tsx:
-        specifier: ^4.22.4
+        specifier: catalog:silk
         version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -349,13 +352,13 @@ importers:
         specifier: catalog:silk
         version: 3.21.4
       tsx:
-        specifier: ^4.22.4
+        specifier: catalog:silk
         version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -414,13 +417,13 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       tsx:
-        specifier: ^4.22.4
+        specifier: catalog:silk
         version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -461,7 +464,7 @@ importers:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -535,7 +538,7 @@ importers:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -654,7 +657,7 @@ importers:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -683,13 +686,13 @@ importers:
         specifier: catalog:silk
         version: 3.21.4
       tsx:
-        specifier: ^4.22.4
+        specifier: catalog:silk
         version: 4.22.4
       typescript:
         specifier: catalog:silk
         version: 6.0.3
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -760,7 +763,7 @@ importers:
         specifier: catalog:silk
         version: 4.22.4
       vitest:
-        specifier: ^4.1.9
+        specifier: catalog:silk
         version: 4.1.9(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 

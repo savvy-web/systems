@@ -33,6 +33,7 @@ export const TreeEntryDeletion = Schema.Struct({
 export const TreeEntry = Schema.Union(TreeEntryContent, TreeEntryDeletion).annotations({
 	identifier: "TreeEntry",
 });
+/** @public */
 export type TreeEntry = typeof TreeEntry.Type;
 
 /**
@@ -64,4 +65,5 @@ export const FileChangeDeletion = Schema.Struct({
 export const FileChange = Schema.Union(FileChangeContent, FileChangeDeletion).annotations({
 	identifier: "FileChange",
 });
+/** @public */
 export type FileChange = typeof FileChange.Type;

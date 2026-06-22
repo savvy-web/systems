@@ -12,7 +12,7 @@ import type { Sbom, SbomInput } from "./Sbom.js";
 import type { SigstoreSigner } from "./SigstoreSigner.js";
 
 /**
- * Input for {@link Attest.sbom}.
+ * Input for `Attest.sbom`.
  *
  * @remarks
  * Callers supply EITHER `dependencies` (the existing path — the
@@ -44,21 +44,21 @@ export interface SbomAttestationInput extends Omit<SbomInput, "dependencies"> {
 	/**
 	 * Resolved direct dependencies of the root package. When provided,
 	 * the live implementation builds a CycloneDX BOM from the list and
-	 * attests it. Mutually exclusive with {@link bomDocument}.
+	 * attests it. Mutually exclusive with `bomDocument`.
 	 */
 	readonly dependencies?: SbomInput["dependencies"];
 	/**
 	 * Pre-built CycloneDX BOM document to attest verbatim. Used when the
 	 * caller (e.g. a publish orchestrator) has already generated the BOM
-	 * with full NTIA / supplier metadata via {@link Sbom.generate} and
+	 * with full NTIA / supplier metadata via `Sbom.generate` and
 	 * just wants this service to wrap it in an in-toto envelope, sign it,
-	 * and POST it. Mutually exclusive with {@link dependencies}.
+	 * and POST it. Mutually exclusive with `dependencies`.
 	 */
 	readonly bomDocument?: Record<string, unknown>;
 }
 
 /**
- * One entry in the {@link Attest.listForSubject} result.
+ * One entry in the `Attest.listForSubject` result.
  *
  * @public
  */
@@ -70,7 +70,7 @@ export interface AttestationListEntry {
 }
 
 /**
- * Input for {@link Attest.provenance}.
+ * Input for `Attest.provenance`.
  *
  * @public
  */
@@ -84,7 +84,7 @@ export interface ProvenanceAttestationInput {
 }
 
 /**
- * Attest service surface. Implementation lives in {@link "./live.ts"}.
+ * Attest service surface. Implementation lives in `AttestLive`.
  *
  * @remarks
  * The Effect signatures land incrementally; for step 1 only
@@ -149,7 +149,7 @@ export class Attest extends Context.Tag("github-action-effects/Attest")<
 		 * the predicate ({@link CYCLONEDX_BOM} predicateType).
 		 *
 		 * @remarks
-		 * Composes {@link Sbom} (BOM generation) with {@link attest}
+		 * Composes {@link Sbom} (BOM generation) with `attest`
 		 * (sign + upload). The artifact subject is derived from
 		 * `rootName` + `rootVersion` + `subjectSha256` — that's the
 		 * identity GitHub records against the attestation.
@@ -204,7 +204,7 @@ export class Attest extends Context.Tag("github-action-effects/Attest")<
 		 *
 		 * The orchestrator uses presence to decide whether to skip a
 		 * write — reuse the existing URL when found, otherwise call
-		 * {@link provenance} or {@link sbom} to write a fresh one. This
+		 * `provenance` or `sbom` to write a fresh one. This
 		 * keeps recovery runs idempotent against the artifact attestation
 		 * store.
 		 *

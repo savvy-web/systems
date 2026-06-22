@@ -67,6 +67,7 @@ export const scrubAuthArgs = (args: ReadonlyArray<string>): ReadonlyArray<string
 
 /**
  * Error when a shell command fails or produces unexpected output.
+ * @public
  */
 export class CommandRunnerError extends Data.TaggedError("CommandRunnerError")<{
 	/** The command that was executed. */

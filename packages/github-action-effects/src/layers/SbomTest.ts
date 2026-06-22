@@ -11,13 +11,13 @@ import { Sbom } from "../services/Sbom.js";
  * @public
  */
 export interface SbomTestState {
-	/** Inputs passed to every {@link Sbom.generate} call. */
+	/** Inputs passed to every `Sbom.generate` call. */
 	readonly generateCalls: SbomInput[];
-	/** Path → BOM captured by {@link Sbom.save}. */
+	/** Path → BOM captured by `Sbom.save`. */
 	readonly saves: Map<string, CycloneDXBom>;
-	/** Override the BOM returned from {@link Sbom.generate}. */
+	/** Override the BOM returned from `Sbom.generate`. */
 	readonly bomResponse?: CycloneDXBom;
-	/** Override the JSON returned from {@link Sbom.serializeJson}. */
+	/** Override the JSON returned from `Sbom.serializeJson`. */
 	readonly jsonResponse?: string;
 }
 

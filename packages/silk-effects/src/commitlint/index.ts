@@ -10,7 +10,6 @@
  * const config = Commitlint.CommitlintConfig.silk();
  * ```
  *
- * @packageDocumentation
  */
 
 // =============================================================================

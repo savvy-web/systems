@@ -1,5 +1,6 @@
 import { Data } from "effect";
 
+/** @public */
 export class ToolNotFoundError extends Data.TaggedError("ToolNotFoundError")<{
 	readonly name: string;
 	readonly reason: string;

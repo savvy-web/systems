@@ -13,7 +13,6 @@
  *
  * @see {@link https://effect.website/docs/data-types/data#taggerror | Effect TaggedError documentation}
  *
- * @packageDocumentation
  */
 
 import { Data } from "effect";

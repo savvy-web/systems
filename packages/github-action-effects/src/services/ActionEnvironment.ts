@@ -32,7 +32,7 @@ export class ActionEnvironment extends Context.Tag("github-action-effects/Action
 
 		/**
 		 * Parsed `GITHUB_EVENT_PATH` payload, schema-decoded into a
-		 * {@link WebhookPayload} (common fields typed, unknown keys preserved).
+		 * `WebhookPayload` (common fields typed, unknown keys preserved).
 		 *
 		 * @remarks
 		 * Succeeds with an empty payload when `GITHUB_EVENT_PATH` is unset or the

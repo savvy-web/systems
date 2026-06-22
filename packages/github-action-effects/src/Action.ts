@@ -8,11 +8,14 @@ import { ActionLogger } from "./services/ActionLogger.js";
 import type { ActionOutputs } from "./services/ActionOutputs.js";
 import type { ActionState } from "./services/ActionState.js";
 
-/** Core services provided automatically by {@link Action.run}. */
+/**
+ * Core services provided automatically by `Action.run`.
+ * @public
+ */
 export type CoreServices = ActionLoggerType | ActionOutputs | ActionEnvironment | ActionState;
 
 /**
- * Options for {@link Action.run}.
+ * Options for `Action.run`.
  *
  * @public
  */

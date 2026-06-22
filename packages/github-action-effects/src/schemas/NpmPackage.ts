@@ -12,4 +12,5 @@ export const NpmPackageInfo = Schema.Struct({
 	integrity: Schema.UndefinedOr(Schema.String),
 	tarball: Schema.UndefinedOr(Schema.String),
 });
+/** @public */
 export type NpmPackageInfo = typeof NpmPackageInfo.Type;

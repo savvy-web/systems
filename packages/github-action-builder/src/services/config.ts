@@ -21,7 +21,7 @@ import { OptionalPathLikeSchema } from "../schemas/path.js";
 
 /**
  * Options for loading configuration.
- * @internal
+ * @public
  */
 export const LoadConfigOptionsSchema = Schema.Struct({
 	/** Working directory to search for config. Accepts string, Buffer, or URL. */
@@ -50,7 +50,7 @@ export type EntryType = typeof EntryTypeSchema.Type;
 
 /**
  * Detected entry point information.
- * @internal
+ * @public
  */
 export const DetectedEntrySchema = Schema.Struct({
 	/** Entry type (main, pre, or post). */
@@ -69,7 +69,7 @@ export type DetectedEntry = typeof DetectedEntrySchema.Type;
 
 /**
  * Result of entry detection.
- * @internal
+ * @public
  */
 export const DetectEntriesResultSchema = Schema.Struct({
 	/** Whether detection was successful. */

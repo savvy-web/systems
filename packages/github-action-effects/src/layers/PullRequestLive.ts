@@ -90,6 +90,7 @@ const mapGraphQLError =
 			reason: error.reason,
 		});
 
+/** @public */
 export const PullRequestLive: Layer.Layer<PullRequest, never, GitHubClient | GitHubGraphQL> = Layer.effect(
 	PullRequest,
 	Effect.all([GitHubClient, GitHubGraphQL]).pipe(

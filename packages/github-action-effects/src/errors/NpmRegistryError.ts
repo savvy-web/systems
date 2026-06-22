@@ -2,6 +2,7 @@ import { Data } from "effect";
 
 /**
  * Error from npm registry operations.
+ * @public
  */
 export class NpmRegistryError extends Data.TaggedError("NpmRegistryError")<{
 	readonly pkg: string;
