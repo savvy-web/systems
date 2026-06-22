@@ -1,5 +1,17 @@
 # @savvy-web/silk-effects
 
+## 1.5.0
+
+### Features
+
+* [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) The commitlint config types reachable from `CommitlintUserConfig` are now exported flat from the package entry, in addition to the `Commitlint` namespace: `CommitlintPlugin`, `PromptConfig`, `PromptSettings`, `RuleApplicability`, `RuleConfigTuple`, `RuleSeverity`, and `RulesConfig`. This lets a generated `commitlint.config.ts` name them directly for declaration emit.
+
+### Documentation
+
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) Added `@public` release tags across the public surface of all three packages so every exported symbol registers in the generated API model and passes the `ae-missing-release-tag` check. In `github-action-builder`, promoted the `Data.TaggedError` base classes and the `Schema`-derived type sources to `@public` to clear `ae-incompatible-release-tags`. Fixed TSDoc link warnings: unresolvable `{@link}` references (Effect `Context.Tag` service methods, which live in the tag's type argument rather than as class members, plus external symbols) were replaced with backtick code spans, ambiguous references were given member-reference selectors, and the stale `PublishabilityDetector` reference was retargeted to `SilkPublishability`. Removed stray `@packageDocumentation` tags from non-entry modules so only each package entry carries one.
+
+This is a documentation-surface change only — every retagged symbol was already exported, and the build performs no `@internal` trimming, so the shipped type declarations are unchanged.
+
 ## 1.4.0
 
 ### Features
