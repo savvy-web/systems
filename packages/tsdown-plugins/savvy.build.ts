@@ -2,21 +2,16 @@
 // Escape-hatch self-build: imports buildTargetGroups from this package's OWN ./src
 // (no built copy exists yet). tsx compiles the TS on the fly. See spec 3.1.
 //
-// Forgotten-export / TSDoc (ae-forgotten-export) check: under the bundler, the
-// api-extractor pass only runs through generateMeta, which is invoked by
-// `runBuild` for `--target meta` and for `--target prod` WHEN a `meta` option is
-// configured (see packages/bundler/src/run.ts). The escape hatch calls
-// buildTargetGroups directly with no `meta`, so api-extractor never runs here and
-// there is nothing to suppress. This differs from the old rslib build, whose
-// NodeLibraryBuilder ran api-extractor (with the `_base` suppression) during both
-// build:dev and build:prod. tsdown-plugins has no `localPaths`, so it does not
-// participate in the meta release-asset pipeline; the forgotten-export check is
-// not part of its self-host build. The `_base` Context.Tag suppression that lived
-// in rslib.config.ts's `apiModel` is therefore not carried over (no check fires).
+// Meta / forgotten-export check: --target prod calls runMetaPass (api-extractor) via
+// the shared helper, mirroring what runBuild does for packages that set meta. This
+// emits dist/prod/npm/meta/tsdown-plugins.api.json and copies the model into
+// meta.localPaths. ae-*/tsdoc-* warnings that are not yet suppressed appear in the
+// rendered report and issues.json but do not fail a local build (only hard errors
+// crash; CI escalates ae-forgotten-export to a hard error).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Effect } from "effect";
-import type { PublishTargets, RenderedOutput } from "./src/index.js";
+import type { MetaOptions, PublishTargets, RenderedOutput } from "./src/index.js";
 import {
 	BuildCollector,
 	ReportPipelineLive,
@@ -26,6 +21,8 @@ import {
 	removeDeclarationMaps,
 	renderReport,
 	resolveTargets,
+	runMetaPass,
+	writeIssuesArtifact,
 	writeResolvedTsconfig,
 	writeTargetsBinding,
 } from "./src/index.js";
@@ -35,6 +32,7 @@ const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8")) as {
 	name: string;
 	version: string;
 	publishConfig?: { targets?: PublishTargets };
+	exports?: Record<string, string>;
 };
 const i = process.argv.indexOf("--target");
 const rawTarget = i >= 0 ? process.argv[i + 1] : undefined;
@@ -46,12 +44,20 @@ const target = rawTarget ?? "dev";
 const collector = new BuildCollector();
 const verbose = process.argv.includes("--verbose");
 
+const meta: MetaOptions = {
+	localPaths: ["../mcp/lib/models/tsdown-plugins", "../../website/lib/models/tsdown-plugins"],
+	// tsdoc filled by Task 6 once diagnostics are known; start empty.
+	tsdoc: {},
+};
+
+const tsconfigPath = writeResolvedTsconfig({ cwd });
+
 try {
 	await buildTargetGroups({
 		cwd,
 		version: pkg.version,
 		entry: packageJsonEntries({ cwd }),
-		tsconfigPath: writeResolvedTsconfig({ cwd }),
+		tsconfigPath,
 		groups: target === "prod" ? [{ id: "npm", name: pkg.name }] : [{ id: "dev", name: pkg.name }],
 		devManifest: "preserve",
 		// tsdown/rolldown are type-only imports; keep effect external like the rslib config did.
@@ -77,6 +83,20 @@ try {
 			throw new Error("Missing package.json publishConfig.targets for --target prod");
 		}
 		writeTargetsBinding(cwd, resolveTargets({ targets, baseName: pkg.name }));
+		// Emit the api-model meta bundle and copy it into the local consumer paths.
+		// Mirrors what runBuild does for --target prod when meta is configured.
+		const ci = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+		await runMetaPass({
+			cwd,
+			packageName: pkg.name,
+			tsconfigPath,
+			groups: [{ id: "npm", name: pkg.name }],
+			entries: packageJsonEntries({ cwd }),
+			exportsMap: pkg.exports,
+			meta,
+			collector,
+			ci,
+		});
 	}
 } finally {
 	// Always render the report — even if the build threw — so captured diagnostics are surfaced
@@ -88,4 +108,11 @@ try {
 		}).pipe(Effect.provide(ReportPipelineLive)),
 	);
 	for (const out of rendered as ReadonlyArray<RenderedOutput>) process.stdout.write(`${out.content}\n`);
+	// Persist the structured diagnostics artifact for every target — matches run.ts:500/505.
+	// Best-effort: a write failure must never mask the build outcome.
+	try {
+		writeIssuesArtifact({ cwd, target, reports: collector.snapshot(pkg.name) });
+	} catch {
+		// intentionally swallowed
+	}
 }
