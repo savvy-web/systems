@@ -1,14 +1,18 @@
 # @savvy-web/tsdown-plugins
 
+## 0.9.1
+
+### Bug Fixes
+
+* [`d7d2c38`](https://github.com/savvy-web/systems/commit/d7d2c381043db29bb952ad162630e8669f048545) Stopped surfacing `@tsdown/css`'s spurious `SOURCEMAP_BROKEN` warnings during dev builds of CSS-module packages (e.g. RSPress plugin runtimes built via `@savvy-web/rspress-builder`). `@tsdown/css` compiles each `.module.css` into a synthesized ESM locals module — a class-name map plus a side-effect import of the extracted CSS — whose transform emits no sourcemap, so rolldown warns that the (empty, meaningless) map "is likely to be incorrect". The build is correct and the warning is unfixable upstream, so `buildMetricsPlugin`'s rolldown `onLog` handler now drops that specific diagnostic (`code === "SOURCEMAP_BROKEN"` from a `@tsdown/css*` plugin) without recording or printing it. All other rolldown warnings — including genuine `SOURCEMAP_BROKEN` from non-CSS plugins — are still reported.
+
 ## 0.9.0
 
 ### Breaking Changes
 
 * [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) Forgotten exports now fail the build in CI. A forgotten export silently drops the symbol from the generated API model, so in CI (`CI` or `GITHUB_ACTIONS` set) an unsuppressed `ae-forgotten-export` is a hard error. Locally it stays a warning, tagged so the build log can warn that it will fail CI.
 
-### Breaking Changes
-
-* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
+- [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
 
 ### Features
 
