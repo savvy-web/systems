@@ -7,7 +7,14 @@ import { resolve } from "node:path";
 import { Effect, Layer } from "effect";
 import { createJiti } from "jiti";
 
-import { ConfigInvalid, ConfigLoadFailed, ConfigNotFound, MainEntryMissing } from "../errors.js";
+import {
+	ConfigInvalid,
+	ConfigLoadFailed,
+	ConfigNotFound,
+	MainEntryMissing,
+	WorkerEntryInvalidName,
+	WorkerEntryMissing,
+} from "../errors.js";
 import type { ConfigInput } from "../schemas/config.js";
 import { defineConfig } from "../schemas/config.js";
 import type { DetectedEntry, LoadConfigOptions } from "./config.js";
@@ -23,6 +30,9 @@ const DEFAULT_ENTRIES = {
 	pre: "src/pre.ts",
 	post: "src/post.ts",
 } as const;
+
+/** Lifecycle bundle names a worker entry must not reuse — they own `dist/main.js` etc. */
+const RESERVED_ENTRY_NAMES: ReadonlySet<string> = new Set(["main", "pre", "post"]);
 
 // =============================================================================
 // Helpers
@@ -138,7 +148,10 @@ export const ConfigServiceLive = Layer.succeed(ConfigService, {
 
 	resolve: (input: Partial<ConfigInput> = {}) => Effect.succeed(defineConfig(input)),
 
-	detectEntries: (cwd: string, entries?: { main?: string; pre?: string; post?: string }) =>
+	detectEntries: (
+		cwd: string,
+		entries?: { main?: string; pre?: string; post?: string; workers?: Record<string, string> },
+	) =>
 		Effect.gen(function* () {
 			const detected: DetectedEntry[] = [];
 
@@ -170,6 +183,33 @@ export const ConfigServiceLive = Layer.succeed(ConfigService, {
 			const postEntry = detectOptionalEntry(cwd, "post", entries?.post);
 			if (postEntry) {
 				detected.push(postEntry);
+			}
+
+			// Worker entries (extra non-lifecycle bundles). The name becomes both the rsbuild
+			// entry key and the emitted filename (dist/<name>.js), so reject names that would
+			// collide with a lifecycle bundle or escape dist/ before deriving the output path.
+			for (const [name, workerPath] of Object.entries(entries?.workers ?? {})) {
+				if (RESERVED_ENTRY_NAMES.has(name)) {
+					return yield* Effect.fail(
+						new WorkerEntryInvalidName({
+							workerName: name,
+							reason: `"${name}" is a reserved lifecycle bundle name (main/pre/post)`,
+						}),
+					);
+				}
+				if (name.length === 0 || name.includes("/") || name.includes("\\") || name.includes("..")) {
+					return yield* Effect.fail(
+						new WorkerEntryInvalidName({
+							workerName: name,
+							reason: "worker names must be non-empty and free of path separators",
+						}),
+					);
+				}
+				const absoluteWorkerPath = resolve(cwd, workerPath);
+				if (!existsSync(absoluteWorkerPath)) {
+					return yield* Effect.fail(new WorkerEntryMissing({ workerName: name, expectedPath: workerPath, cwd }));
+				}
+				detected.push({ type: name, path: absoluteWorkerPath, output: `dist/${name}.js` });
 			}
 
 			return {

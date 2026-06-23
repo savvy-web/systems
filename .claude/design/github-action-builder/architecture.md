@@ -6,8 +6,8 @@ category: architecture
 type: architecture
 completeness: 95
 created: 2026-01-29
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-23
+last-synced: 2026-06-23
 related:
   - ../github-action-effects/index.md
 dependencies: []
@@ -48,7 +48,7 @@ The pipeline runs load config → detect entries → validate → build → pers
 
 Each service is one definition file plus one `*-live.ts` implementation under `src/services/`. The single-responsibility split is load-bearing: persist is a standalone service, not embedded in build.
 
-- **ConfigService** (`config.ts`) — loads `action.config.ts` from cwd, resolves partial input against schema defaults and detects entry points. Only `src/main.ts` is required; `src/pre.ts` and `src/post.ts` are auto-detected via `existsSync`.
+- **ConfigService** (`config.ts`) — loads `action.config.ts` from cwd, resolves partial input against schema defaults and detects entry points. Only `src/main.ts` is required; `src/pre.ts` and `src/post.ts` are auto-detected via `existsSync`. Beyond the three lifecycle entries, `entries.workers` (a name → source-path map) declares extra non-lifecycle bundles, each emitted as `dist/<name>.js`; a missing worker source fails with `WorkerEntryMissing`. Because the worker name becomes both the rsbuild entry key and the emitted filename, `detectEntries` rejects names that collide with a lifecycle bundle (`main`/`pre`/`post`) or contain path separators that would escape `dist/`, failing with `WorkerEntryInvalidName`. A `DetectedEntry.type` is therefore an arbitrary (validated) worker name, not just the `main`/`pre`/`post` literals.
 - **ValidationService** (`validation.ts`) — validates project structure and `action.yml` against the schema, and resolves strict mode. In CI (`CI` or `GITHUB_ACTIONS` truthy) warnings become errors and the build fails; locally they are warnings and the build continues.
 - **BuildService** (`build-live.ts`) — bundles each detected entry with `@rsbuild/core`, writes `dist/package.json` (`{ "type": "module" }`) and cleans `dist/` first by default. This file holds all the rsbuild interop decisions documented below.
 - **PersistLocalService** (`persist-local-live.ts`) — syncs build output to a local action directory using SHA-256 comparison (copies only changed files, removes stale ones), validates that `action.yml` `runs.main/pre/post` paths resolve in the destination and generates `act` boilerplate (`.actrc`, `act-test.yml`) only when absent. It has no service dependencies.
@@ -68,7 +68,7 @@ Two `build` knobs control what leaves the bundle, and `ignore` takes precedence 
 
 ## Build pipeline and rsbuild interop
 
-Each entry is bundled by `bundleEntry` in `src/services/build-live.ts`. The output is enforced single-file: `chunkSplit: { strategy: "all-in-one" }` plus `tools.rspack.output.asyncChunks: false`, so dynamic `import()` calls fold back into the parent chunk rather than emitting separate numbered chunks. Tree-shaking is unaffected. The result is always exactly one `.js` per detected entry (`dist/main.js`, `dist/pre.js`, `dist/post.js`).
+Each entry is bundled by `bundleEntry` in `src/services/build-live.ts`. The output is enforced single-file: `chunkSplit: { strategy: "all-in-one" }` plus `tools.rspack.output.asyncChunks: false`, so dynamic `import()` calls fold back into the parent chunk rather than emitting separate numbered chunks. Tree-shaking is unaffected. The result is always exactly one `.js` per detected entry — `dist/main.js`, `dist/pre.js`, `dist/post.js` and one `dist/<name>.js` per declared worker.
 
 The non-obvious interop decisions, all in `build-live.ts`, are the reason rsbuild was chosen over the unmaintained ncc:
 
@@ -90,7 +90,7 @@ The CLI (`src/cli/`) is built with `@effect/cli` and exposes `build`, `validate`
 
 ## Error handling
 
-All errors use `Data.TaggedError` for type-safe pattern matching via `Effect.catchTags`. The tagged union groups are defined in `src/errors.ts`: `ConfigError`, `ValidationError`, `BuildError` and `PersistError` (aggregated as `AppError`). Each error carries contextual data (paths, causes, expected-vs-specified paths) — read the file for the exact field shapes.
+All errors use `Data.TaggedError` for type-safe pattern matching via `Effect.catchTags`. The tagged union groups are defined in `src/errors.ts`: `ConfigError`, `ValidationError` (which includes `WorkerEntryMissing` and `WorkerEntryInvalidName`), `BuildError` and `PersistError` (aggregated as `AppError`). Each error carries contextual data (paths, causes, expected-vs-specified paths) — read the file for the exact field shapes.
 
 ## Testing
 

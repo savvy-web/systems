@@ -51,11 +51,11 @@ Types come from TypeScript, not from doc comments. Never restate a type in a tag
 
 ## The one rule that matters most
 
-Every exported declaration needs **exactly one release tag**. Default binary policy: consumer-facing API → `@public`; a type that only leaks into the rollup → `@internal`. `@beta`/`@alpha` are a deliberate human choice, not an agent default. Full decision tree: `references/release-tags.md`.
+Every exported declaration needs **exactly one release tag plus a one-line summary** describing its purpose — a bare tag with no description is only half the fix, for `@public` and `@internal` alike. Default binary policy: consumer-facing API → `@public`; a type that only leaks into the rollup → `@internal`. `@beta`/`@alpha` are a deliberate human choice, not an agent default. (`@packageDocumentation` is the exception to tagging every export: it documents an entry as a whole and belongs only in an entry-point file — one per `exports` entry, e.g. both `src/index.ts` and `src/testing.ts` for a two-entry package — never on a non-entry leaf file.) Full decision tree: `references/release-tags.md`.
 
 ## Document the whole public surface
 
-Public exports are rendered into cross-linked API reference sites by `rspress-plugin-api-extractor`, so passing the build is the floor, not the goal. For every `@public` symbol: write a one-line summary on the export **and on each property/member** (they render as individual rows), push depth into `@remarks`, keep maintainer-only notes in `@privateRemarks`, and add an `@example` that is a complete, compilable program (separate `import type` for types) with any output shown in a `// =>` comment. Full guidance: `references/doc-quality.md`.
+Public exports are rendered into cross-linked API reference sites by `rspress-plugin-api-extractor`, so passing the build is the floor, not the goal. For every `@public` symbol — and the `@internal` ones maintainers and agents read — write a one-line summary on the export **and on each property/member** (they render as individual rows), push depth into `@remarks`, keep maintainer-only notes in `@privateRemarks`, and add an `@example` that is a complete, compilable program (separate `import type` for types) with any output shown in a `// =>` comment. Re-exporting through barrel files (`export { X } from "./x.js"`) detaches a symbol from its declaration and is a doc-generation footgun — prefer explicit per-module exports, and flag a barrel to the user before refactoring it rather than reshaping exports yourself. Full guidance: `references/doc-quality.md`.
 
 ## A complete example
 
@@ -90,3 +90,5 @@ jq '{warnings: [.warnings[] | select((.code // "") | test("^(ae-|tsdoc-)"))],
 ```
 
 A present file with empty `warnings`/`errors` (after the filter) means clean. An absent file means the package was not built. `generatedAt` is the artifact's timestamp — rebuild before trusting it after an edit. Reach for `suppressWarnings` (`references/custom-tags.md`) only for genuine false positives.
+
+**Locate the symbol by name, never by `file`/`line`.** `ae-*`/`tsdoc-*` entries carry no `file`/`line` fields — they are deliberately omitted. API Extractor analyzes the bundled `.d.ts` and maps positions back through its source map, which anchors every message to the start of an adjacent declaration rather than the real symbol, so the location was misleading and is dropped. The authoritative locator is the symbol name quoted in the entry's `text` (e.g. `The symbol "S3BlobStoreConfig" ...`) — grep the source for that name to find the declaration to fix.

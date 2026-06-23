@@ -17,10 +17,13 @@ import { Schema } from "effect";
  * Schema for entry point paths.
  *
  * @remarks
- * GitHub Actions support three entry points:
+ * GitHub Actions support three lifecycle entry points:
  * - `main`: The primary action entry point (required)
  * - `pre`: Runs before the main action (optional)
  * - `post`: Runs after the main action for cleanup (optional)
+ *
+ * Additional non-lifecycle bundles can be declared via `workers` (name → source path),
+ * each emitted as `dist/<name>.js`.
  *
  * @public
  */
@@ -31,6 +34,8 @@ export const EntriesSchema = Schema.Struct({
 	pre: Schema.optional(Schema.String),
 	/** Path to the post-action hook entry point. */
 	post: Schema.optional(Schema.String),
+	/** Extra non-lifecycle worker bundles (name -> source path), each emitted as dist/<name>.js. */
+	workers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
 });
 
 /**
@@ -148,6 +153,7 @@ export const ConfigInputSchema = Schema.Struct({
 			main: Schema.optional(Schema.String),
 			pre: Schema.optional(Schema.String),
 			post: Schema.optional(Schema.String),
+			workers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
 		}),
 	),
 	build: Schema.optional(

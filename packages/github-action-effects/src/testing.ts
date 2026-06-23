@@ -16,6 +16,7 @@ export { ActionOutputError } from "./errors/ActionOutputError.js";
 export { ActionStateError } from "./errors/ActionStateError.js";
 export { ArtifactError } from "./errors/ArtifactError.js";
 export { AttestError } from "./errors/AttestError.js";
+export { BlobStoreError } from "./errors/BlobStoreError.js";
 export { ChangesetError } from "./errors/ChangesetError.js";
 export { CheckRunError } from "./errors/CheckRunError.js";
 export { CommandRunnerError } from "./errors/CommandRunnerError.js";
@@ -70,6 +71,8 @@ export { ArtifactTest } from "./layers/ArtifactTest.js";
 export { AttestLive } from "./layers/AttestLive.js";
 export type { AttestTestState } from "./layers/AttestTest.js";
 export { AttestTest, AttestTestFullLayer, makeAttestTestState } from "./layers/AttestTest.js";
+export type { BlobStoreTestState } from "./layers/BlobStoreTest.js";
+export { BlobStoreTest } from "./layers/BlobStoreTest.js";
 export { ChangesetAnalyzerLive } from "./layers/ChangesetAnalyzerLive.js";
 export type { ChangesetAnalyzerTestState } from "./layers/ChangesetAnalyzerTest.js";
 export { ChangesetAnalyzerTest } from "./layers/ChangesetAnalyzerTest.js";
@@ -236,6 +239,7 @@ export type {
 export { Artifact } from "./services/Artifact.js";
 export type { AttestationListEntry, ProvenanceAttestationInput, SbomAttestationInput } from "./services/Attest.js";
 export { Attest } from "./services/Attest.js";
+export { BlobStore } from "./services/BlobStore.js";
 export { ChangesetAnalyzer } from "./services/ChangesetAnalyzer.js";
 export type {
 	AnnotationLevel,

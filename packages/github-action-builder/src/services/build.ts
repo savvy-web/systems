@@ -10,7 +10,7 @@
 import type { Effect } from "effect";
 import { Context, Schema } from "effect";
 
-import type { BuildError, MainEntryMissing } from "../errors.js";
+import type { BuildError, MainEntryMissing, WorkerEntryInvalidName, WorkerEntryMissing } from "../errors.js";
 import type { Config } from "../schemas/config.js";
 import { OptionalPathLikeSchema } from "../schemas/path.js";
 import type { DetectedEntry } from "./config.js";
@@ -144,7 +144,7 @@ export interface BuildService {
 	readonly build: (
 		config: Config,
 		options?: BuildRunnerOptions,
-	) => Effect.Effect<BuildResult, BuildError | MainEntryMissing>;
+	) => Effect.Effect<BuildResult, BuildError | MainEntryMissing | WorkerEntryMissing | WorkerEntryInvalidName>;
 
 	/**
 	 * Bundle a single entry point.

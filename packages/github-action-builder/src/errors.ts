@@ -155,6 +155,61 @@ export class MainEntryMissing extends MainEntryMissingBase<{
 }> {}
 
 /**
+ * Base class for WorkerEntryMissing error.
+ *
+ * @privateRemarks
+ * This export is required for api-extractor documentation generation.
+ * Effect's Data.TaggedError creates an anonymous base class that must be
+ * explicitly exported to avoid "forgotten export" warnings. Do not delete.
+ *
+ * @public
+ */
+export const WorkerEntryMissingBase = Data.TaggedError("WorkerEntryMissing");
+
+/**
+ * Error when a worker entry source file is not found.
+ *
+ * @public
+ */
+export class WorkerEntryMissing extends WorkerEntryMissingBase<{
+	/** The worker name (config key). */
+	readonly workerName: string;
+	/** The expected path for the worker entry. */
+	readonly expectedPath: string;
+	/** The working directory that was searched. */
+	readonly cwd: string;
+}> {}
+
+/**
+ * Base class for WorkerEntryInvalidName error.
+ *
+ * @privateRemarks
+ * This export is required for api-extractor documentation generation.
+ * Effect's Data.TaggedError creates an anonymous base class that must be
+ * explicitly exported to avoid "forgotten export" warnings. Do not delete.
+ *
+ * @public
+ */
+export const WorkerEntryInvalidNameBase = Data.TaggedError("WorkerEntryInvalidName");
+
+/**
+ * Error when a worker entry name is reserved or path-unsafe.
+ *
+ * @remarks
+ * A worker name becomes both an rsbuild entry key and the emitted filename
+ * (`dist/<name>.js`), so it must not collide with a lifecycle bundle
+ * (`main`/`pre`/`post`) or contain path separators that would escape `dist/`.
+ *
+ * @public
+ */
+export class WorkerEntryInvalidName extends WorkerEntryInvalidNameBase<{
+	/** The offending worker name (config key). */
+	readonly workerName: string;
+	/** Why the name was rejected. */
+	readonly reason: string;
+}> {}
+
+/**
  * Base class for EntryFileMissing error.
  *
  * @privateRemarks
@@ -319,6 +374,8 @@ export class ValidationFailed extends ValidationFailedBase<{
  */
 export type ValidationError =
 	| MainEntryMissing
+	| WorkerEntryMissing
+	| WorkerEntryInvalidName
 	| EntryFileMissing
 	| ActionYmlMissing
 	| ActionYmlSyntaxError

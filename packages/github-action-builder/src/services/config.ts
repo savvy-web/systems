@@ -10,7 +10,7 @@
 import type { Effect } from "effect";
 import { Context, Schema } from "effect";
 
-import type { ConfigError, MainEntryMissing } from "../errors.js";
+import type { ConfigError, MainEntryMissing, WorkerEntryInvalidName, WorkerEntryMissing } from "../errors.js";
 import type { Config, ConfigInput } from "../schemas/config.js";
 import { ConfigSchema } from "../schemas/config.js";
 import { OptionalPathLikeSchema } from "../schemas/path.js";
@@ -53,8 +53,8 @@ export type EntryType = typeof EntryTypeSchema.Type;
  * @public
  */
 export const DetectedEntrySchema = Schema.Struct({
-	/** Entry type (main, pre, or post). */
-	type: EntryTypeSchema,
+	/** Entry type: "main"|"pre"|"post" for lifecycle entries, or the worker name. */
+	type: Schema.String,
 	/** Absolute path to the entry file. */
 	path: Schema.String,
 	/** Output path for the bundled file. */
@@ -165,8 +165,8 @@ export interface ConfigService {
 	 */
 	readonly detectEntries: (
 		cwd: string,
-		entries?: { main?: string; pre?: string; post?: string },
-	) => Effect.Effect<DetectEntriesResult, MainEntryMissing>;
+		entries?: { main?: string; pre?: string; post?: string; workers?: Record<string, string> },
+	) => Effect.Effect<DetectEntriesResult, MainEntryMissing | WorkerEntryMissing | WorkerEntryInvalidName>;
 }
 
 /**

@@ -39,6 +39,8 @@ See `release-tags.md` for policy. `@public`, `@beta`, `@alpha`, `@internal`, `@e
 | [`@override`](https://tsdoc.org/pages/tags/override/) | Overrides an inherited member. |
 | [`@eventProperty`](https://tsdoc.org/pages/tags/eventproperty/) | Property is an event. |
 | [`@decorator`](https://tsdoc.org/pages/tags/decorator/) | Embed a decorator in the doc. |
-| [`@packageDocumentation`](https://tsdoc.org/pages/tags/packagedocumentation/) | Marks the package-level doc comment (top of the entry file). |
+| [`@packageDocumentation`](https://tsdoc.org/pages/tags/packagedocumentation/) | Marks the entry-level doc comment — **entry files only** (see below). |
+
+`@packageDocumentation` goes **only** in an entry-point file — a module listed in the package `exports`/`main` (e.g. `src/index.ts`). One per entry, not one per package: each `exports` entry is a separate bundle and API-model run, so a multi-entry package like `exports: { ".": "./src/index.ts", "./testing": "./src/testing.ts" }` carries a `@packageDocumentation` block in **both** `index.ts` and `testing.ts`. It does **not** belong on leaf/implementation files that are not themselves entries; those get ordinary symbol-level TSDoc. A `@packageDocumentation` block on a non-entry file is a mistake — move it to the entry that pulls the file in.
 
 The `@jsx*` family (`@jsx`, `@jsxRuntime`, `@jsxFrag`, `@jsxImportSource`) is also enabled but rarely relevant outside JSX runtime config.

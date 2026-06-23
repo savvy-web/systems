@@ -4,11 +4,19 @@ Public exports in this monorepo are rendered into cross-linked API reference sit
 
 ## Cover the whole public surface
 
+A release tag is not documentation. **Every exported declaration that carries `@public` or `@internal` needs a one-line summary describing its purpose** — adding the tag to clear `ae-missing-release-tag` but leaving the block otherwise empty is only half the fix. `@public` symbols render as blank reference rows; `@internal` symbols read as undocumented to the maintainers and agents who work on them. Describe both.
+
 When a symbol is `@public` (see `release-tags.md`), document it fully:
 
 - **Every exported value and type** gets a TSDoc block — functions, classes, interfaces, type aliases, enums, and constants.
 - **Every member of an exported type** gets its own description — each interface property, each method, each enum member, each function parameter. These render individually; an undocumented property is a blank row in the generated docs.
 - Document the *purpose and meaning*, not the type. The type is already shown. Say what the value is for, what a non-obvious default implies, what invariant a property upholds.
+
+## Export from the source, not through barrels
+
+Re-exporting values and types through barrel files (`export { X } from "./x.js"`, `export * from "./x.js"`) is almost always a footgun. It detaches a symbol from its declaration, so the API model has to chase the re-export to find the doc comment and release tag — which makes doc generation harder and is a frequent source of `ae-*` diagnostics. Prefer source that imports and exports each value and type **explicitly from the module that declares it**.
+
+Fixing this is a source refactor, not a TSDoc edit, so it is outside the mechanical diagnostic-clearing loop. When a barrel re-export is the root of a diagnostic, **flag it and ask the user before refactoring** rather than reshaping the export structure unilaterally. In the meantime, put the release tag and summary on the original declaration, never on the `export { ... }` line.
 
 ## Description, `@remarks`, `@privateRemarks`
 

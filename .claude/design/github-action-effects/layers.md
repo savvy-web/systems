@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-23
+last-synced: 2026-06-23
 completeness: 90
 related:
   - ./index.md
@@ -43,7 +43,7 @@ A handful of Live layers import a runtime package at the top of the file; everyt
 
 - `GitHubClientLive` → `@octokit/rest`
 - `OctokitAuthAppLive` → `@octokit/auth-app`
-- `ActionCacheLive` and `ArtifactLive` → `@azure/storage-blob`
+- `ActionCacheLive`, `ArtifactLive` and `GitHubBlobStoreLive` → `@azure/storage-blob`
 - `SigstoreSignerLive` → `@sigstore/sign` (+ `@sigstore/bundle`)
 - `SbomLive` → `@cyclonedx/cyclonedx-library`
 
@@ -79,6 +79,16 @@ The `repo` accessor resolves `GITHUB_REPOSITORY` at call time regardless of cons
 
 ---
 
+## BlobStore backends
+
+`BlobStore` (see [services.md](./services.md)) ships two production backends and one test layer. Both Live backends require `HttpClient` and map every transport failure to `BlobStoreError`. Pick the backend that matches where the cache lives; the service interface is identical.
+
+- **`GitHubBlobStoreLive`** (`src/layers/GitHubBlobStoreLive.ts`) — stores one cache entry per blob key on the GitHub Actions V2 cache protocol (Twirp + Azure Blob), reusing the shared `src/layers/internal/twirp.ts` client that also backs `ActionCacheLive`. Its version hash is a fixed marker (not path-derived like `ActionCacheLive`) because the key is already content-addressed by the caller. Only usable inside a GitHub Actions runner (needs `ACTIONS_RESULTS_URL` / `ACTIONS_RUNTIME_TOKEN`).
+- **`S3BlobStoreLive`** (`src/layers/S3BlobStoreLive.ts`) — stores each blob as one S3 object via path-style addressing against any S3-compatible endpoint (AWS S3, R2, MinIO, Spaces). It carries no aws-sdk: requests are signed by a hand-rolled AWS SigV4 signer in `src/layers/internal/sigv4.ts` (its single consumer) over `node:crypto`, so the only runtime import is `@effect/platform` `HttpClient`. Configured via `S3BlobStoreConfig`; secret material (`secretAccessKey`, `sessionToken`) is held as `Redacted` and unwrapped only inside the signer. A 404 on `get` maps to `Option.none()` rather than an error.
+- **`BlobStoreTest`** (`src/layers/BlobStoreTest.ts`) — in-memory `Map`-backed layer with an observable `BlobStoreTestState`, following the `.empty()` / `.layer(state)` namespace-object pattern.
+
+---
+
 ## Service dependency graph
 
 This is the canonical graph; [integration-points.md](./integration-points.md) points here. `FileSystem` and `HttpClient` come from `@effect/platform` / `ActionsRuntime.Default`.
@@ -101,6 +111,8 @@ Tier 0.5 — Depends on FileSystem (and/or HttpClient):
   ActionState               <- FileSystem
   Sbom                      <- FileSystem (for save)
   Artifact                  <- HttpClient (Twirp); imports @azure/storage-blob
+  GitHubBlobStore           <- HttpClient (Twirp); imports @azure/storage-blob
+  S3BlobStore               <- HttpClient (SigV4 over node:crypto, no aws-sdk)
 
 Tier 1 — Single service dependency:
   GitHubApp                 <- OctokitAuthApp (+ HttpClient)
