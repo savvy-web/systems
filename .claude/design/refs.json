@@ -34,8 +34,8 @@
 		{
 			"source": "packages/github-action-builder/CLAUDE.md",
 			"target": ".claude/design/github-action-builder/architecture.md",
-			"hash": "ae422f851b4c43956be10c80199eae3de3c62fb568af27f6eedea223923f6c7a",
-			"recordedAt": "2026-06-20"
+			"hash": "5262fb6d795aad71add129596e37c7966eace993ef439aefa426b9cb14f328eb",
+			"recordedAt": "2026-06-23"
 		},
 		{
 			"source": "packages/github-action-effects/CLAUDE.md",
@@ -76,8 +76,8 @@
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "c818e5af170bfc845f7e7af82d2f4a7c2fa86af243de44630e44da41024edb35",
-			"recordedAt": "2026-06-22"
+			"hash": "48e19d24047a82c254b908aa0e01387ed080d8ea8083ac8d614d49d8ba093474",
+			"recordedAt": "2026-06-23"
 		}
 	]
 }

@@ -155,6 +155,32 @@ export class MainEntryMissing extends MainEntryMissingBase<{
 }> {}
 
 /**
+ * Base class for WorkerEntryMissing error.
+ *
+ * @privateRemarks
+ * This export is required for api-extractor documentation generation.
+ * Effect's Data.TaggedError creates an anonymous base class that must be
+ * explicitly exported to avoid "forgotten export" warnings. Do not delete.
+ *
+ * @public
+ */
+export const WorkerEntryMissingBase = Data.TaggedError("WorkerEntryMissing");
+
+/**
+ * Error when a worker entry source file is not found.
+ *
+ * @public
+ */
+export class WorkerEntryMissing extends WorkerEntryMissingBase<{
+	/** The worker name (config key). */
+	readonly workerName: string;
+	/** The expected path for the worker entry. */
+	readonly expectedPath: string;
+	/** The working directory that was searched. */
+	readonly cwd: string;
+}> {}
+
+/**
  * Base class for EntryFileMissing error.
  *
  * @privateRemarks
@@ -319,6 +345,7 @@ export class ValidationFailed extends ValidationFailedBase<{
  */
 export type ValidationError =
 	| MainEntryMissing
+	| WorkerEntryMissing
 	| EntryFileMissing
 	| ActionYmlMissing
 	| ActionYmlSyntaxError

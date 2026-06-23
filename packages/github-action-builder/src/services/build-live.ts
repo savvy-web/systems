@@ -300,11 +300,12 @@ export const BuildServiceLive = Layer.effect(
 					const startTime = Date.now();
 
 					// Detect entries
-					const entriesConfig: { main?: string; pre?: string; post?: string } = {
+					const entriesConfig: { main?: string; pre?: string; post?: string; workers?: Record<string, string> } = {
 						main: config.entries.main,
 					};
 					if (config.entries.pre) entriesConfig.pre = config.entries.pre;
 					if (config.entries.post) entriesConfig.post = config.entries.post;
+					if (config.entries.workers) entriesConfig.workers = config.entries.workers;
 					const entriesResult = yield* configService.detectEntries(cwd, entriesConfig);
 
 					// Clean output directory if requested

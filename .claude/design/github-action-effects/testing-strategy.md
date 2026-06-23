@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: testing
 created: 2026-03-06
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-23
+last-synced: 2026-06-23
 completeness: 88
 related:
   - ./index.md
@@ -31,7 +31,7 @@ Every service is tested in-memory through its `Test` layer, so the suite needs n
 
 **Import path:** `@savvy-web/github-action-effects/testing`.
 
-The `./testing` subpath re-exports everything from the main entry point **except** the symbols whose import graph pulls in heavyweight runtime-only dependencies. The omitted set is the head of `packages/github-action-effects/src/testing.ts` — currently the Octokit-importing layers (`GitHubClientLive`, `OctokitAuthAppLive`), the `GitHubToken` namespace, the `Action` namespace and the `Step` module. This lets test files import every Test layer, schema and error without triggering `@octokit/rest` or `@octokit/auth-app` imports in environments that may not have them installed.
+The `./testing` subpath re-exports everything from the main entry point **except** a small omitted set, so test files can import every Test layer, schema and error without dragging in runtime-only dependencies (notably `@octokit/rest` / `@octokit/auth-app`, which a test environment may not have installed). `packages/github-action-effects/src/testing.ts` is the authoritative omission list — read its diff against `src/index.ts` rather than trusting a transcribed set here. As of this writing it drops the Octokit-importing layers, the `GitHubToken` and `Action` namespaces, the `Step` module, the `RegistryClassifier` util and both blob-store Live backends (`GitHubBlobStoreLive`, `S3BlobStoreLive`); the `BlobStore` service, `BlobStoreTest` and `BlobStoreError` stay available for tests.
 
 ---
 

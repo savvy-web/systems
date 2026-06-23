@@ -10,11 +10,12 @@
 ## Features
 
 - **Zero CJS dependencies** — native ESM implementations of the GitHub Actions runtime protocol replace all `@actions/*` packages
-- **37 composable services** — action I/O, GitHub API calls, git operations, package publishing and software attestation, each with its own `Context.Tag`
+- **39 composable services** — action I/O, GitHub API calls, git operations, package publishing and software attestation, each with its own `Context.Tag`
 - **Schema-validated inputs** — read action inputs via Effect's `Config` API with built-in parsing and defaults
 - **Structured logging** — Effect Logger maps to workflow commands with collapsible groups; buffered verbose output flushes inside its group when a step fails
 - **Step-buffered execution** — `Step.withStep` buffers debug output per logical step, emits one success line on pass and spills the full buffer prefixed with the step name on failure
 - **Software attestation** — sign and upload SLSA provenance and CycloneDX SBOMs to GitHub's attestation store via the `Attest`, `SigstoreSigner`, `OidcTokenIssuer` and `Sbom` services
+- **Pluggable blob storage** — the `BlobStore` service stores raw bytes under a key, with backends for the GitHub Actions cache (`GitHubBlobStoreLive`) and any S3-compatible endpoint (`S3BlobStoreLive`)
 - **In-memory test layers** — every service ships a test layer for fast, deterministic unit tests
 
 ## Install
@@ -118,6 +119,73 @@ Two additional accessors are available in any phase after `provision`:
 
 - `GitHubToken.read()` — an `Effect<InstallationToken, ActionStateError, ActionState>` that reads the full persisted token envelope, including the optional `appSlug`, `appUserId` and `appName` fields resolved during `provision`.
 - `GitHubToken.botIdentity()` — an `Effect<BotIdentity, ActionStateError, ActionState>` that derives a commit-attribution identity from the persisted token. When the App's slug and user ID were resolved, the returned email uses the `<userId>+<slug>[bot]@users.noreply.github.com` format that GitHub recognises for verified attribution; otherwise it falls back to the well-known `github-actions[bot]` identity.
+
+## Blob storage
+
+`BlobStore` stores raw bytes under a string key. It is the building block for caching binary artifacts across workflow steps — a compiled bundle, a downloaded toolchain, a serialized state file. The interface is three operations:
+
+- `get(key)` — returns `Option<Uint8Array>`, `Option.none()` on a miss
+- `put(key, bytes)` — stores the bytes, overwriting any existing value
+- `has(key)` — reports whether the key exists without downloading its bytes
+
+Two backends implement the service. `GitHubBlobStoreLive` rides the GitHub Actions cache protocol, the same transport `ActionCache` uses, with one cache entry per key. `S3BlobStoreLive` targets any S3-compatible endpoint (AWS S3, Cloudflare R2, MinIO, DigitalOcean Spaces) and signs requests with a built-in SigV4 signer, so there is no `aws-sdk` in the dependency tree. Both require `HttpClient`, which `Action.run` provides.
+
+```typescript
+import { Effect, Option } from "effect";
+import { Action, BlobStore, GitHubBlobStoreLive } from "@savvy-web/github-action-effects";
+
+const program = Effect.gen(function* () {
+  const store = yield* BlobStore;
+  const cached = yield* store.get("bundle.tar");
+  if (Option.isNone(cached)) {
+    yield* store.put("bundle.tar", new Uint8Array([1, 2, 3]));
+  }
+}).pipe(Effect.provide(GitHubBlobStoreLive));
+
+Action.run(program);
+```
+
+The S3 backend is a function — call it with an `S3BlobStoreConfig`. Secret material is held as `Redacted`, so wrap `secretAccessKey` and `sessionToken` with `Redacted.make(...)`; `bucket`, `region`, `accessKeyId`, `endpoint` and `prefix` are plain strings.
+
+```typescript
+import { Effect, Redacted } from "effect";
+import { Action, BlobStore, S3BlobStoreLive } from "@savvy-web/github-action-effects";
+
+const r2 = S3BlobStoreLive({
+  bucket: "my-cache",
+  region: "auto",
+  endpoint: "https://<account>.r2.cloudflarestorage.com",
+  accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
+  secretAccessKey: Redacted.make(process.env.S3_SECRET_ACCESS_KEY ?? ""),
+  prefix: "actions/",
+});
+
+const program = Effect.gen(function* () {
+  const store = yield* BlobStore;
+  yield* store.put("bundle.tar", new Uint8Array([1, 2, 3]));
+}).pipe(Effect.provide(r2));
+
+Action.run(program);
+```
+
+`BlobStoreTest` is an in-memory backend for unit tests. `BlobStoreTest.empty()` creates a fresh `BlobStoreTestState` whose `entries` map you can assert against, and `BlobStoreTest.layer(state)` builds the layer.
+
+```typescript
+import { Effect } from "effect";
+import { BlobStore, BlobStoreTest } from "@savvy-web/github-action-effects";
+
+const state = BlobStoreTest.empty();
+
+const program = Effect.gen(function* () {
+  const store = yield* BlobStore;
+  yield* store.put("k", new Uint8Array([42]));
+  return yield* store.get("k");
+}).pipe(Effect.provide(BlobStoreTest.layer(state)));
+
+const result = await Effect.runPromise(program);
+// result is Option.some wrapping the stored bytes
+// state.entries.has("k") is true
+```
 
 ## Documentation
 

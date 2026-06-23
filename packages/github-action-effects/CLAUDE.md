@@ -4,7 +4,7 @@
 
 ## Key surface
 
-- 37 schema-validated Effect services covering the GitHub Actions runtime surface.
+- 39 schema-validated Effect services covering the GitHub Actions runtime surface.
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
 
 ## Design

@@ -35,7 +35,16 @@ export interface RunApiExtractorOptions {
 /** messageIds that become a hard build error in CI (they corrupt the .api.json). */
 const CI_FATAL_MESSAGE_IDS = new Set<string>(["ae-forgotten-export"]);
 
-/** Map an API Extractor message to a collector DiagnosticInput, or undefined if not warn/error. */
+/**
+ * Map an API Extractor message to a collector DiagnosticInput, or undefined if not warn/error.
+ *
+ * The location (`file`/`line`/`column`) is deliberately dropped. API Extractor analyzes the
+ * bundled `.d.ts` and maps positions back through its `.d.ts.map` source map, which anchors
+ * every message to the start of an adjacent declaration rather than the symbol's true source
+ * position — wrong for release-tag codes, unresolved links, and the rest alike. A misleading
+ * `file:line` is worse than none, so it is omitted; the authoritative locator is the symbol
+ * name quoted in `text`. See systems#154.
+ */
 export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput | undefined {
 	const isError = message.logLevel === ExtractorLogLevel.Error;
 	const isWarning = message.logLevel === ExtractorLogLevel.Warning;
@@ -45,9 +54,6 @@ export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput 
 		level: isError ? "error" : "warn",
 		text: message.text,
 		...(message.messageId !== undefined ? { code: message.messageId } : {}),
-		...(message.sourceFilePath !== undefined ? { file: message.sourceFilePath } : {}),
-		...(message.sourceFileLine !== undefined ? { line: message.sourceFileLine } : {}),
-		...(message.sourceFileColumn !== undefined ? { column: message.sourceFileColumn } : {}),
 	};
 }
 

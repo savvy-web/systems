@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-06-23
+last-synced: 2026-06-23
 completeness: 92
 related:
   - ./index.md
@@ -44,7 +44,8 @@ Each service is an independently usable Effect module under `packages/github-act
 │   ├── ActionOutputs         — Typed output setting and step summaries
 │   ├── ActionState           — Schema-serialized state for multi-phase actions
 │   ├── ActionEnvironment     — Schema-validated GitHub/Runner context variables
-│   └── ActionCache           — Cache save/restore via V2 Twirp protocol
+│   ├── ActionCache           — Cache save/restore via V2 Twirp protocol
+│   └── BlobStore             — key→bytes store (get/put/has); GitHub-cache or S3 backend
 │
 ├── Git Operations (Git Data API)
 │   ├── GitBranch             — Branch management
@@ -129,6 +130,7 @@ Most service methods are self-explanatory from their file. The behaviors below a
 - **`OidcTokenIssuer`** requires `id-token: write` in the workflow permissions and returns a `Redacted<string>`.
 - **`Sbom.generate`** carries the NTIA-required metadata (`supplier`, `authors`) and an `inFlightPackages` escape hatch for workspace packages not yet on a registry.
 - **`Artifact`** uploads/downloads workflow artifacts over the same V2 Twirp + Azure Blob path as `ActionCache`; the cross-run/cross-repo REST `findBy` path is the documented exception.
+- **`BlobStore`** is a generic key→bytes store (`get`/`put`/`has`) — one byte buffer per caller-supplied key, unlike `ActionCache` which tars a path-set under one key. It is the abstraction for per-artifact remote caching; pick a backend layer rather than the service directly. See [layers.md](./layers.md#blobstore-backends) for the GitHub-cache and S3 backends and their tradeoffs.
 - **`Glob`** wraps `node:fs.globSync`; several `@actions/glob` options are accepted for parity but are documented no-ops because `globSync` has no equivalent — see the `GlobOptions` doc comments in `src/services/Glob.ts`.
 - **`GitHubApp.resolveAppIdentity`** makes two requests (`GET /app` with the App JWT, then `GET /users/<slug>[bot]`); passing an installation token runs the public `GET /users` lookup authenticated (5000 req/hr) instead of unauthenticated (60 req/hr). `botIdentity` delegates to `formatBotIdentity` — see [errors-and-schemas.md](./errors-and-schemas.md#shared-internal-helpers).
 

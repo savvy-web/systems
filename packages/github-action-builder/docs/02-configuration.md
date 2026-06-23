@@ -29,6 +29,7 @@ Configure entry point paths for your action.
 | `main` | `string` | `"src/main.ts"` | Main action entry point (required) |
 | `pre` | `string` | `undefined` | Pre-action hook (runs before main) |
 | `post` | `string` | `undefined` | Post-action hook (runs after main) |
+| `workers` | `Record<string, string>` | `undefined` | Extra non-lifecycle bundles, each emitted as `dist/<name>.js` |
 
 #### Custom entry points
 
@@ -65,6 +66,26 @@ If you do not specify `pre` or `post` in your config, the builder automatically 
 * `src/post.ts` - included if exists
 
 The `main` entry point (`src/main.ts` by default) is always required.
+
+#### Worker bundles
+
+Use `workers` to build extra bundles that are not part of the `main`/`pre`/`post` lifecycle. It is a map from a bundle name to a source path; each entry is emitted as `dist/<name>.js`. Reach for it when your action spawns its own scripts — a Node.js worker thread, or a child process invoked with `node dist/<name>.js` — rather than entry points GitHub runs directly.
+
+```typescript
+import { GitHubAction } from "@savvy-web/github-action-builder";
+
+export default GitHubAction.create({
+  entries: {
+    main: "src/main.ts",
+    workers: {
+      cleanup: "src/workers/cleanup.ts",
+      report: "src/workers/report.ts",
+    },
+  },
+});
+```
+
+The build above writes `dist/main.js`, `dist/cleanup.js` and `dist/report.js`. If a declared worker source file does not exist, the build fails with a `WorkerEntryMissing` error naming the worker and the path it looked for.
 
 ### build
 

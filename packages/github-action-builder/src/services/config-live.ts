@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { Effect, Layer } from "effect";
 import { createJiti } from "jiti";
 
-import { ConfigInvalid, ConfigLoadFailed, ConfigNotFound, MainEntryMissing } from "../errors.js";
+import { ConfigInvalid, ConfigLoadFailed, ConfigNotFound, MainEntryMissing, WorkerEntryMissing } from "../errors.js";
 import type { ConfigInput } from "../schemas/config.js";
 import { defineConfig } from "../schemas/config.js";
 import type { DetectedEntry, LoadConfigOptions } from "./config.js";
@@ -138,7 +138,10 @@ export const ConfigServiceLive = Layer.succeed(ConfigService, {
 
 	resolve: (input: Partial<ConfigInput> = {}) => Effect.succeed(defineConfig(input)),
 
-	detectEntries: (cwd: string, entries?: { main?: string; pre?: string; post?: string }) =>
+	detectEntries: (
+		cwd: string,
+		entries?: { main?: string; pre?: string; post?: string; workers?: Record<string, string> },
+	) =>
 		Effect.gen(function* () {
 			const detected: DetectedEntry[] = [];
 
@@ -170,6 +173,15 @@ export const ConfigServiceLive = Layer.succeed(ConfigService, {
 			const postEntry = detectOptionalEntry(cwd, "post", entries?.post);
 			if (postEntry) {
 				detected.push(postEntry);
+			}
+
+			// Worker entries (extra non-lifecycle bundles)
+			for (const [name, workerPath] of Object.entries(entries?.workers ?? {})) {
+				const absoluteWorkerPath = resolve(cwd, workerPath);
+				if (!existsSync(absoluteWorkerPath)) {
+					return yield* Effect.fail(new WorkerEntryMissing({ workerName: name, expectedPath: workerPath, cwd }));
+				}
+				detected.push({ type: name, path: absoluteWorkerPath, output: `dist/${name}.js` });
 			}
 
 			return {

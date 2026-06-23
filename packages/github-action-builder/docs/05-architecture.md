@@ -227,6 +227,7 @@ Effect.gen(function* () {
 **Validation Errors:**
 
 * `MainEntryMissing` - Required main.ts not found
+* `WorkerEntryMissing` - A declared `entries.workers` source file not found
 * `EntryFileMissing` - Configured entry file not found
 * `ActionYmlMissing` - action.yml not found
 * `ActionYmlSyntaxError` - Invalid YAML syntax

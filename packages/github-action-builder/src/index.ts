@@ -111,6 +111,8 @@ export {
 	PersistLocalErrorBase,
 	ValidationFailed,
 	ValidationFailedBase,
+	WorkerEntryMissing,
+	WorkerEntryMissingBase,
 	WriteError,
 	WriteErrorBase,
 } from "./errors.js";
