@@ -111,6 +111,8 @@ export {
 	PersistLocalErrorBase,
 	ValidationFailed,
 	ValidationFailedBase,
+	WorkerEntryInvalidName,
+	WorkerEntryInvalidNameBase,
 	WorkerEntryMissing,
 	WorkerEntryMissingBase,
 	WriteError,

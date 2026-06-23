@@ -47,4 +47,32 @@ describe("S3BlobStoreLive", () => {
 		);
 		expect(Option.isNone(result)).toBe(true);
 	});
+
+	it("has returns false on 404", async () => {
+		const mockHttp = Layer.succeed(
+			HttpClient.HttpClient,
+			HttpClient.make((req) => Effect.succeed(HttpClientResponse.fromWeb(req, new Response(null, { status: 404 })))),
+		);
+		const result = await Effect.runPromise(
+			Effect.gen(function* () {
+				const s = yield* BlobStore;
+				return yield* s.has("missing");
+			}).pipe(Effect.provide(S3BlobStoreLive(config)), Effect.provide(mockHttp)),
+		);
+		expect(result).toBe(false);
+	});
+
+	it("has fails (not false) on a 5xx server error", async () => {
+		const mockHttp = Layer.succeed(
+			HttpClient.HttpClient,
+			HttpClient.make((req) => Effect.succeed(HttpClientResponse.fromWeb(req, new Response(null, { status: 503 })))),
+		);
+		const exit = await Effect.runPromise(
+			Effect.gen(function* () {
+				const s = yield* BlobStore;
+				return yield* s.has("key");
+			}).pipe(Effect.provide(S3BlobStoreLive(config)), Effect.provide(mockHttp), Effect.exit),
+		);
+		expect(exit._tag).toBe("Failure");
+	});
 });

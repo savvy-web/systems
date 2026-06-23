@@ -96,7 +96,13 @@ export const S3BlobStoreLive = (config: S3BlobStoreConfig): Layer.Layer<BlobStor
 						const { url, headers } = sign("HEAD", key, EMPTY_SHA256);
 						const req = HttpClientRequest.head(url).pipe(HttpClientRequest.setHeaders(headers));
 						const res = yield* http.execute(req);
-						return res.status < 300;
+						if (res.status === 404) return false;
+						if (res.status >= 300) {
+							return yield* Effect.fail(
+								new BlobStoreError({ key, operation: "has", reason: `S3 HEAD returned ${res.status}` }),
+							);
+						}
+						return true;
 					}).pipe(
 						Effect.catchAll((e) =>
 							e instanceof BlobStoreError

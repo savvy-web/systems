@@ -228,6 +228,7 @@ Effect.gen(function* () {
 
 * `MainEntryMissing` - Required main.ts not found
 * `WorkerEntryMissing` - A declared `entries.workers` source file not found
+* `WorkerEntryInvalidName` - A worker name is reserved (`main`/`pre`/`post`) or contains path separators
 * `EntryFileMissing` - Configured entry file not found
 * `ActionYmlMissing` - action.yml not found
 * `ActionYmlSyntaxError` - Invalid YAML syntax

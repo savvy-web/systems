@@ -10,7 +10,7 @@
 import type { Effect } from "effect";
 import { Context, Schema } from "effect";
 
-import type { ConfigError, MainEntryMissing, WorkerEntryMissing } from "../errors.js";
+import type { ConfigError, MainEntryMissing, WorkerEntryInvalidName, WorkerEntryMissing } from "../errors.js";
 import type { Config, ConfigInput } from "../schemas/config.js";
 import { ConfigSchema } from "../schemas/config.js";
 import { OptionalPathLikeSchema } from "../schemas/path.js";
@@ -166,7 +166,7 @@ export interface ConfigService {
 	readonly detectEntries: (
 		cwd: string,
 		entries?: { main?: string; pre?: string; post?: string; workers?: Record<string, string> },
-	) => Effect.Effect<DetectEntriesResult, MainEntryMissing | WorkerEntryMissing>;
+	) => Effect.Effect<DetectEntriesResult, MainEntryMissing | WorkerEntryMissing | WorkerEntryInvalidName>;
 }
 
 /**

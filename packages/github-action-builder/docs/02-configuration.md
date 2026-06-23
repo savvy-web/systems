@@ -87,6 +87,8 @@ export default GitHubAction.create({
 
 The build above writes `dist/main.js`, `dist/cleanup.js` and `dist/report.js`. If a declared worker source file does not exist, the build fails with a `WorkerEntryMissing` error naming the worker and the path it looked for.
 
+A worker name becomes both the bundle entry key and its output filename, so it must be a simple name: it cannot reuse a lifecycle name (`main`, `pre`, `post`) or contain path separators (`/`, `\`, `..`). A name that breaks either rule fails the build with a `WorkerEntryInvalidName` error rather than silently overwriting `dist/main.js` or writing outside `dist/`.
+
 ### build
 
 Configure how your action is bundled.

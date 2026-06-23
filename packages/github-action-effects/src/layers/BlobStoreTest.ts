@@ -10,11 +10,17 @@ export interface BlobStoreTestState {
 }
 
 const makeTestStore = (state: BlobStoreTestState): typeof BlobStore.Service => ({
+	// Copy on store and on read so a caller mutating its buffer cannot reach into store state
+	// (and vice versa) — the live backends serialize over the wire, so they are copy-like.
 	put: (key, bytes) =>
 		Effect.sync(() => {
-			state.entries.set(key, bytes);
+			state.entries.set(key, new Uint8Array(bytes));
 		}),
-	get: (key) => Effect.sync((): Option.Option<Uint8Array> => Option.fromNullable(state.entries.get(key))),
+	get: (key) =>
+		Effect.sync(
+			(): Option.Option<Uint8Array> =>
+				Option.fromNullable(state.entries.get(key)).pipe(Option.map((bytes) => new Uint8Array(bytes))),
+		),
 	has: (key) => Effect.sync(() => state.entries.has(key)),
 });
 

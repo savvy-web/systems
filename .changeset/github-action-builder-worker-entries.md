@@ -11,3 +11,4 @@ Adds `entries.workers` to the action config schema — a `Record<string, string>
 - `entries.workers` — optional `Record<string, string>` in both `ActionConfig.entries` and the individual environment config blocks
 - `WorkerEntryMissing` — new `@public` tagged error raised when a declared worker source file cannot be found on disk
 - `WorkerEntryMissingBase` — exported base class for `WorkerEntryMissing` (follows the existing `*Base` pattern for tagged errors)
+- `WorkerEntryInvalidName` (+ `WorkerEntryInvalidNameBase`) — new `@public` tagged error raised when a worker name is reserved (`main`/`pre`/`post`) or contains path separators, since the name is used directly as the `dist/<name>.js` output path; this prevents a worker from silently overwriting a lifecycle bundle or writing outside `dist/`

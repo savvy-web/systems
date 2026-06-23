@@ -107,6 +107,9 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	// Clear any env stubs a test set so a test that throws before its own unstub cannot leak
+	// ACTIONS_RESULTS_URL / ACTIONS_RUNTIME_TOKEN into the next test.
+	vi.unstubAllEnvs();
 });
 
 // ---------------------------------------------------------------------------
@@ -151,6 +154,10 @@ describe("GitHubBlobStoreLive", () => {
 	});
 
 	it("fails with BlobStoreError when env vars are missing", async () => {
+		// Force the vars absent regardless of the ambient environment (these can be set on a
+		// real Actions runner); afterEach's unstubAllEnvs restores them.
+		vi.stubEnv("ACTIONS_RESULTS_URL", undefined);
+		vi.stubEnv("ACTIONS_RUNTIME_TOKEN", undefined);
 		const program = Effect.flatMap(BlobStore, (s) => s.put("k", new Uint8Array([1])));
 		const exit = await Effect.runPromise(Effect.exit(program.pipe(Effect.provide(liveLayer))));
 		expect(Exit.isFailure(exit)).toBe(true);

@@ -166,6 +166,43 @@ export default {
 				expect((result.left as { workerName: string }).workerName).toBe("turbo-server");
 			}
 		});
+
+		it("fails with WorkerEntryInvalidName for a reserved lifecycle worker name", async () => {
+			writeFileSync(resolve(testDir, "src/main-worker.ts"), "export {};");
+
+			const program = Effect.gen(function* () {
+				const configService = yield* ConfigService;
+				const result = yield* configService.detectEntries(testDir, {
+					workers: { main: "src/main-worker.ts" },
+				});
+				return result;
+			}).pipe(Effect.either);
+
+			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+
+			expect(result._tag).toBe("Left");
+			if (result._tag === "Left") {
+				expect(result.left._tag).toBe("WorkerEntryInvalidName");
+				expect((result.left as { workerName: string }).workerName).toBe("main");
+			}
+		});
+
+		it("fails with WorkerEntryInvalidName for a path-unsafe worker name", async () => {
+			const program = Effect.gen(function* () {
+				const configService = yield* ConfigService;
+				const result = yield* configService.detectEntries(testDir, {
+					workers: { "../escape": "src/escape.ts" },
+				});
+				return result;
+			}).pipe(Effect.either);
+
+			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+
+			expect(result._tag).toBe("Left");
+			if (result._tag === "Left") {
+				expect(result.left._tag).toBe("WorkerEntryInvalidName");
+			}
+		});
 	});
 
 	describe("ValidationService", () => {
