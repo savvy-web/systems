@@ -66,6 +66,11 @@ try {
 		// lazily required by tsdown only when an exe build runs; it is not in the import
 		// graph and was not bundled by rslib, so it stays out of externals.
 		externals: ["effect", "tsdown", "@savvy-web/tsdown-plugins"],
+		// `rolldown` is a declared dependency (it provides the `Plugin` type the public `plugins` option
+		// uses and `index.ts` re-exports), so its type tree stays an external `import("rolldown")` reference
+		// in the emitted .d.ts instead of being inlined. Inlining would drag in rolldown-internal symbols the
+		// entry point does not export → ae-forgotten-export, a hard error under CI. Do NOT add rolldown to
+		// `bundledPackages`/`bundleNodeModules` here.
 		// Reproduce the rslib config's prod strip.
 		transform: defaultManifestTransform,
 		...(target === "prod" ? { emitDeclarations: true } : {}),

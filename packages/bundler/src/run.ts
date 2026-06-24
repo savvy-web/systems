@@ -411,6 +411,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(dualExports !== undefined ? { dualExports } : {}),
 				...(subdirExports.size > 0 ? { subdirExports } : {}),
 				...(looseFiles !== undefined ? { looseFiles } : {}),
+				...(config.plugins !== undefined ? { extraPlugins: config.plugins } : {}),
 				...(exeRewrite !== undefined ? { exeRewrite } : {}),
 				...(target === "prod" ? { emitDeclarations: true } : {}),
 				collector,

@@ -353,6 +353,39 @@ describe("runBuild", () => {
 		]);
 	});
 
+	it("forwards config.plugins to buildTargetGroups as extraPlugins", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		const plugin = { name: "virtual-module" };
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve", plugins: [plugin] },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect(spy.mock.calls[0][0].extraPlugins).toEqual([plugin]);
+		expect(spy.mock.calls[0][0].extraPlugins?.[0]).toBe(plugin);
+	});
+
+	it("omits extraPlugins from the build call when the config has no plugins", async () => {
+		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(
+			{ formats: ["esm"], externals: [], devManifest: "preserve" },
+			{
+				cwd: "/abs/pkg",
+				argv: ["--target", "dev"],
+				buildTargetGroups: spy,
+				writeTsconfig: () => "/tmp/fake-tsconfig.json",
+				readPackageName: () => "base",
+			},
+		);
+		expect("extraPlugins" in spy.mock.calls[0][0]).toBe(false);
+		expect(spy.mock.calls[0][0].extraPlugins).toBeUndefined();
+	});
+
 	it("threads base export keys into dualExports when the base format includes cjs (base-cjs + override)", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "run-ov-"));
 		await writeFile(

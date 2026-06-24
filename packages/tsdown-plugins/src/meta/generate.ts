@@ -95,6 +95,20 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 	// Intermediate per-entry models are working files; they must not leak into the meta bundle (outMetaDir ships for the npm target).
 	const intermediateApiJsons: string[] = [];
 	let mainEntryDidTsdocMetadata = false;
+	// Identity key for the rollup-only-fatal dedup: code + text. Keyed on both so a same-text but
+	// different-category message cannot collide, and only CI-fatal Run B entries are recorded (see below).
+	const diagnosticKey = (e: import("../report/collector.js").DiagnosticInput): string => `${e.code ?? ""}\0${e.text}`;
+	// A copy with the unreliable rollup `file`/`line`/`column` dropped — the bundled-rollup run's positions
+	// point into the rolled-up .d.ts, not the source, so they are worse than no location.
+	const stripLocation = (
+		e: import("../report/collector.js").DiagnosticInput,
+	): import("../report/collector.js").DiagnosticInput => ({
+		source: e.source,
+		level: e.level,
+		text: e.text,
+		...(e.code !== undefined ? { code: e.code } : {}),
+		...(e.ciFatal !== undefined ? { ciFatal: e.ciFatal } : {}),
+	});
 	for (const entryName of entryNames) {
 		const modelEntryDts = join(dtsDir, `${entries[entryName]}.d.ts`);
 		// Entry names can contain path separators (e.g. "foo/index", "bin/cli"); flatten so the
@@ -104,9 +118,35 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		intermediateApiJsons.push(perEntryApiJson);
 		const isMain = (exportPaths[entryName] ?? (entryName === "index" ? "." : `./${entryName}`)) === ".";
 		// Run A — the model. Reads the bundled dts so the shipped .api.json is unchanged. When we will
-		// re-run for diagnostics, silence this run's (wrong-location) diagnostics with a no-op onMessage
-		// (which also marks them handled, so API Extractor prints nothing). CI-fatal escalation stays
-		// here: a forgotten export corrupts THIS run's model, so it must fail the build on CI.
+		// re-run for diagnostics, this run's (wrong-location) diagnostics are normally silenced, since
+		// Run B re-derives accurate locations. CI-fatal escalation stays here: a forgotten export corrupts
+		// THIS run's model, so it must fail the build on CI.
+		//
+		// The rollup-only nudge: a CI-fatal message (ae-forgotten-export) can exist ONLY in the bundled
+		// rollup — an external type inlined into the bundled .d.ts can drag in symbols the entry point does
+		// not export, while the per-module dts (Run B's input) keeps that package an external import and
+		// never sees it. That makes a local build look clean while CI fails hard. Locally (ci !== true)
+		// capture Run A's CI-fatal messages and, after Run B, surface the ones Run B did not also report —
+		// location stripped, since the rollup line is wrong — so the local build nudges instead of passing.
+		const captureRollupOnlyFatal = splitDiagnostics && onMessage !== undefined && ci !== true;
+		const rollupFatal: import("../report/collector.js").DiagnosticInput[] = [];
+		const runBReported = new Set<string>();
+		// Run A's split-mode message sink. Three shapes:
+		//  - non-CI (captureRollupOnlyFatal): buffer ciFatal entries for the post-Run-B dedup + flush.
+		//  - CI (ci === true): a rollup-only CI-fatal escalates `ae-forgotten-export` to ERROR here, so Run A
+		//    THROWS and Run B never runs — the buffer/flush path cannot fire. Forward error-level diagnostics
+		//    straight to the collector (location stripped) BEFORE the throw, otherwise the no-op sink drops
+		//    them and the build fails with only an opaque "API Extractor reported N error(s)" and no symbol.
+		//  - otherwise: silence (a no-op also marks the message handled so API Extractor prints nothing).
+		const runAOnMessage: (entry: import("../report/collector.js").DiagnosticInput) => void = captureRollupOnlyFatal
+			? (entry): void => {
+					if (entry.ciFatal === true) rollupFatal.push(entry);
+				}
+			: ci === true && onMessage !== undefined
+				? (entry): void => {
+						if (entry.level === "error") onMessage(stripLocation(entry));
+					}
+				: (): void => {};
 		runApiExtractor({
 			cwd,
 			packageJsonPath,
@@ -119,7 +159,7 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 			suppressWarnings: tsdoc.suppressWarnings,
 			...(ci !== undefined ? { ci } : {}),
 			...(splitDiagnostics
-				? { onMessage: () => {} }
+				? { onMessage: runAOnMessage }
 				: {
 						...(onMessage !== undefined ? { onMessage } : {}),
 						...(onSuppressed !== undefined ? { onSuppressed } : {}),
@@ -129,6 +169,17 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		// source declaration. No model emitted (emitDocModel:false). Not a CI gate (Run A is); wrapped so
 		// a diagnostics-run failure never breaks a build whose model already succeeded.
 		if (splitDiagnostics) {
+			// When harvesting rollup-only fatals, observe which messages Run B reports so a fatal present in
+			// BOTH runs is reported once (with Run B's accurate location), not duplicated by the flush below.
+			const runBOnMessage =
+				captureRollupOnlyFatal && onMessage !== undefined
+					? (entry: import("../report/collector.js").DiagnosticInput): void => {
+							// Record only CI-fatal Run B diagnostics for the dedup, so a non-fatal Run B message
+							// that happens to share a text cannot suppress a captured Run A CI-fatal.
+							if (entry.ciFatal === true) runBReported.add(diagnosticKey(entry));
+							onMessage(entry);
+						}
+					: onMessage;
 			try {
 				runApiExtractor({
 					cwd,
@@ -139,7 +190,7 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 					apiJsonPath: perEntryApiJson,
 					emitDocModel: false,
 					suppressWarnings: tsdoc.suppressWarnings,
-					...(onMessage !== undefined ? { onMessage } : {}),
+					...(runBOnMessage !== undefined ? { onMessage: runBOnMessage } : {}),
 					...(onSuppressed !== undefined ? { onSuppressed } : {}),
 				});
 			} catch (err) {
@@ -149,6 +200,14 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 						level: "warn",
 						text: `Could not harvest per-module source locations for "${entryName}": ${String(err)}`,
 					});
+				}
+			}
+			// Surface CI-fatal messages that exist ONLY in the bundled rollup (Run B never saw them), so a
+			// local build nudges about an issue that would fail CI. Strip the unreliable rollup location.
+			if (captureRollupOnlyFatal && onMessage !== undefined) {
+				for (const entry of rollupFatal) {
+					if (runBReported.has(diagnosticKey(entry))) continue;
+					onMessage(stripLocation(entry));
 				}
 			}
 		}
