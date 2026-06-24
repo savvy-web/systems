@@ -54,8 +54,8 @@ describe("meta build (real API Extractor, prod-sourced, optimistic rewrite)", ()
 
 		// The optimistic rewrite must have applied: own version and the workspace sibling dep version
 		// both reflect the next-release versions injected via the resolveNextVersions seam.
-		expect(metaPkg["version"]).toBe("2.0.0");
-		const deps = metaPkg["dependencies"] as Record<string, string>;
+		expect(metaPkg.version).toBe("2.0.0");
+		const deps = metaPkg.dependencies as Record<string, string>;
 		expect(deps["@savvy-web/tsdown-plugins"]).toBe("2.0.0");
 	}, 120_000);
 });

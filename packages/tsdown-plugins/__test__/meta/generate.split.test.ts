@@ -98,23 +98,23 @@ describe("generateMeta — two-input split wiring", () => {
 		// Run A — model from bundled dts.
 		const runAArgs = calls[0][0] as Record<string, unknown>;
 		// entryDtsPath must come from dtsDir (bundled), not aeInputDir.
-		expect(runAArgs["entryDtsPath"]).toBe(join(dtsDir, "index.d.ts"));
+		expect(runAArgs.entryDtsPath).toBe(join(dtsDir, "index.d.ts"));
 		// emitDocModel must NOT be false (the model run must emit).
-		expect(runAArgs["emitDocModel"]).not.toBe(false);
+		expect(runAArgs.emitDocModel).not.toBe(false);
 		// onMessage must be a no-op (silencing), NOT the caller's onMessage.
-		expect(typeof runAArgs["onMessage"]).toBe("function");
-		expect(runAArgs["onMessage"]).not.toBe(callerOnMessage);
+		expect(typeof runAArgs.onMessage).toBe("function");
+		expect(runAArgs.onMessage).not.toBe(callerOnMessage);
 		// onSuppressed must be absent in Run A (exactOptionalPropertyTypes: no key present).
 		expect("onSuppressed" in runAArgs).toBe(false);
 
 		// Run B — diagnostics-only from per-module declarations.
 		const runBArgs = calls[1][0] as Record<string, unknown>;
 		// entryDtsPath must come from aeInputDir.
-		expect(runBArgs["entryDtsPath"]).toBe(join(aeInputDir, "index.d.ts"));
+		expect(runBArgs.entryDtsPath).toBe(join(aeInputDir, "index.d.ts"));
 		// Must set emitDocModel: false (no model emitted from Run B).
-		expect(runBArgs["emitDocModel"]).toBe(false);
+		expect(runBArgs.emitDocModel).toBe(false);
 		// onMessage must be the CALLER's onMessage.
-		expect(runBArgs["onMessage"]).toBe(callerOnMessage);
+		expect(runBArgs.onMessage).toBe(callerOnMessage);
 	});
 
 	it("calls runApiExtractor ONCE with caller's onMessage when aeInputDir is omitted (back-compat)", async () => {
@@ -140,11 +140,11 @@ describe("generateMeta — two-input split wiring", () => {
 
 		const singleArgs = mockRunApiExtractor.mock.calls[0][0] as Record<string, unknown>;
 		// Single run uses dtsDir.
-		expect(singleArgs["entryDtsPath"]).toBe(join(dtsDir, "index.d.ts"));
+		expect(singleArgs.entryDtsPath).toBe(join(dtsDir, "index.d.ts"));
 		// Caller's onMessage is routed directly.
-		expect(singleArgs["onMessage"]).toBe(callerOnMessage);
+		expect(singleArgs.onMessage).toBe(callerOnMessage);
 		// No emitDocModel: false in back-compat mode.
-		expect(singleArgs["emitDocModel"]).not.toBe(false);
+		expect(singleArgs.emitDocModel).not.toBe(false);
 	});
 
 	it("calls runApiExtractor ONCE with no onMessage when neither aeInputDir nor caller onMessage provided", async () => {
