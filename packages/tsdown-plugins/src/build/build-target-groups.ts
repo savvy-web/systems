@@ -431,39 +431,55 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// published, kept for inspection). Deliberately NOT instrumented/timed — internal artifact,
 			// not part of the build report. Mirrors the dts pass's deps posture; logLevel:silent keeps
 			// this internal pass out of the unified build output.
+			//
+			// Best-effort: pkg/ (the published artifact) and the api-model (built from the bundled dts in
+			// the meta pass's Run A) do NOT depend on this pass, so a failure must not abort the build —
+			// it only costs accurate diagnostic locations for this group, and the meta pass's Run B then
+			// fails soft on the missing/partial declarations. Record a warning when a collector is present.
 			if (options.emitDeclarations === true && Object.keys(decl.entry).length > 0) {
 				const partDeclDir = part.outSubdir !== undefined ? join(decl.outDir, part.outSubdir) : decl.outDir;
-				await build({
-					config: false,
-					cwd: options.cwd,
-					entry: decl.entry,
-					outDir: partDeclDir,
-					format: decl.format,
-					platform: decl.platform,
-					sourcemap: decl.sourcemap,
-					unbundle: decl.unbundle,
-					clean: isBase,
-					fixedExtension: decl.fixedExtension,
-					dts: decl.dts,
-					define: decl.define,
-					logLevel: "silent",
-					...(dtsNeverBundle.length > 0 || partBundleNodeModules || decl.bundledPackages
-						? {
-								deps: {
-									...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
-									...(partBundleNodeModules
-										? {
-												skipNodeModulesBundle: false,
-												...(decl.bundledPackages ? { dts: { alwaysBundle: decl.bundledPackages } } : {}),
-											}
-										: decl.bundledPackages
-											? { skipNodeModulesBundle: true, dts: { alwaysBundle: decl.bundledPackages } }
-											: {}),
-								},
-							}
-						: {}),
-					...(decl.jsx !== undefined ? { inputOptions: { jsx: decl.jsx } } : {}),
-				});
+				try {
+					await build({
+						config: false,
+						cwd: options.cwd,
+						entry: decl.entry,
+						outDir: partDeclDir,
+						format: decl.format,
+						platform: decl.platform,
+						sourcemap: decl.sourcemap,
+						unbundle: decl.unbundle,
+						clean: isBase,
+						fixedExtension: decl.fixedExtension,
+						dts: decl.dts,
+						define: decl.define,
+						logLevel: "silent",
+						...(dtsNeverBundle.length > 0 || partBundleNodeModules || decl.bundledPackages
+							? {
+									deps: {
+										...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
+										...(partBundleNodeModules
+											? {
+													skipNodeModulesBundle: false,
+													...(decl.bundledPackages ? { dts: { alwaysBundle: decl.bundledPackages } } : {}),
+												}
+											: decl.bundledPackages
+												? { skipNodeModulesBundle: true, dts: { alwaysBundle: decl.bundledPackages } }
+												: {}),
+									},
+								}
+							: {}),
+						...(decl.jsx !== undefined ? { inputOptions: { jsx: decl.jsx } } : {}),
+						// Forward the user's plugins for type-resolution parity with the JS and dts passes,
+						// so the per-module declarations resolve the same types API Extractor reads.
+						...(options.extraPlugins !== undefined ? { plugins: [...options.extraPlugins] } : {}),
+					});
+				} catch (err) {
+					collector?.recordWarning(group.id, {
+						source: "tsdown",
+						level: "warn",
+						text: `Could not emit per-module declarations for API Extractor diagnostics: ${String(err)}`,
+					});
+				}
 			}
 		}
 

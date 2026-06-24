@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { buildTargetGroups } from "../../src/build/build-target-groups.js";
+import { BuildCollector } from "../../src/report/collector.js";
 
 describe("buildTargetGroups", () => {
 	it("runs a JS pass + a dts pass per group (two passes to the same outDir)", async () => {
@@ -993,6 +994,29 @@ describe("buildTargetGroups", () => {
 		expect(decl).toBeDefined();
 		expect(decl?.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true });
 		expect(decl?.clean).toBe(true);
+	});
+
+	it("declarations pass is best-effort: a failure does not abort the build and is recorded", async () => {
+		const collector = new BuildCollector();
+		const build = async (cfg: Record<string, unknown>) => {
+			// Only the per-module declarations pass throws; the published JS + dts passes succeed.
+			if (String(cfg.outDir).endsWith("/declarations")) throw new Error("decl boom");
+		};
+		await expect(
+			buildTargetGroups({
+				cwd: "/repo/pkg",
+				version: "1.0.0",
+				entry: { index: "/repo/pkg/src/index.ts" },
+				tsconfigPath: "/tmp/tsconfig.json",
+				groups: [{ id: "npm", name: "pkg" }],
+				devManifest: "preserve",
+				emitDeclarations: true,
+				build,
+				collector,
+			}),
+		).resolves.toBeUndefined();
+		// pkg/ (JS+dts) still emitted; only the diagnostics-input pass failed, surfaced as a warning.
+		expect(JSON.stringify(collector.snapshot("pkg"))).toContain("Could not emit per-module declarations");
 	});
 
 	it("does NOT run a declarations pass when emitDeclarations is absent (byte-identical default)", async () => {
