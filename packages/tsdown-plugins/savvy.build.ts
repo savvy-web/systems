@@ -78,6 +78,7 @@ try {
 		externals: ["effect", "tsdown", "rolldown", "typescript"],
 		// Reproduce the rslib config's prod strip.
 		transform: defaultManifestTransform,
+		...(target === "prod" ? { emitDeclarations: true } : {}),
 		collector,
 		verbose,
 	});

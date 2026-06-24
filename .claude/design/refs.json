@@ -22,8 +22,8 @@
 		{
 			"source": "packages/bundler/CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "c7dd5c2aa0196c282148f23bfb3dc7400c0d01cb87fd40d48c591ebfc1f67de4",
-			"recordedAt": "2026-06-22"
+			"hash": "fbafe4fe1f789af0f980aeb932623b6c2bcecf1ef3b8feaf62c0c3b34b8a0524",
+			"recordedAt": "2026-06-24"
 		},
 		{
 			"source": "packages/cli/CLAUDE.md",
@@ -76,8 +76,8 @@
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "48e19d24047a82c254b908aa0e01387ed080d8ea8083ac8d614d49d8ba093474",
-			"recordedAt": "2026-06-23"
+			"hash": "19c4e66a00f98d1362a388b22b62a9dc375f5b9fe4384a133bc5439597c5d85d",
+			"recordedAt": "2026-06-24"
 		}
 	]
 }

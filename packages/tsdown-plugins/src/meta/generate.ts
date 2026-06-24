@@ -19,6 +19,13 @@ export interface GenerateMetaOptions {
 	readonly tsconfigPath: string;
 	/** Directory holding the tsdown-emitted per-file .d.ts (e.g. dist/dev/pkg). */
 	readonly dtsDir: string;
+	/**
+	 * Per-module declarations dir used ONLY for a second, diagnostics-only API Extractor run that
+	 * resolves accurate per-file source locations. The shipped api-model is still produced from
+	 * `dtsDir` (the bundled dts), so it is unchanged. When omitted or equal to `dtsDir`, a single
+	 * run over `dtsDir` produces both model and diagnostics (legacy behavior).
+	 */
+	readonly aeInputDir?: string | undefined;
 	/** Map of entry name to the .d.ts basename (without extension) inside dtsDir. */
 	readonly entries: Record<string, string>;
 	/** Map of entry name to its export path (".", "./sub"). */
@@ -72,6 +79,8 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		ci,
 		onSuppressed,
 	} = options;
+	const aeInputDir = options.aeInputDir ?? dtsDir;
+	const splitDiagnostics = aeInputDir !== dtsDir;
 	const tsdocConfigPath = writeTsdocConfig(cwd, tsdoc);
 	const packageJsonPath = join(cwd, "package.json");
 
@@ -87,17 +96,21 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 	const intermediateApiJsons: string[] = [];
 	let mainEntryDidTsdocMetadata = false;
 	for (const entryName of entryNames) {
-		const entryDtsPath = join(dtsDir, `${entries[entryName]}.d.ts`);
+		const modelEntryDts = join(dtsDir, `${entries[entryName]}.d.ts`);
 		// Entry names can contain path separators (e.g. "foo/index", "bin/cli"); flatten so the
 		// intermediate working file stays directly under outMetaDir rather than a missing subdir.
 		const safeEntry = entryName.replace(/[\\/]/g, "__");
 		const perEntryApiJson = join(outMetaDir, `${safeEntry}.entry.api.json`);
 		intermediateApiJsons.push(perEntryApiJson);
 		const isMain = (exportPaths[entryName] ?? (entryName === "index" ? "." : `./${entryName}`)) === ".";
+		// Run A — the model. Reads the bundled dts so the shipped .api.json is unchanged. When we will
+		// re-run for diagnostics, silence this run's (wrong-location) diagnostics with a no-op onMessage
+		// (which also marks them handled, so API Extractor prints nothing). CI-fatal escalation stays
+		// here: a forgotten export corrupts THIS run's model, so it must fail the build on CI.
 		runApiExtractor({
 			cwd,
 			packageJsonPath,
-			entryDtsPath,
+			entryDtsPath: modelEntryDts,
 			tsconfigPath,
 			tsdocConfigPath,
 			apiJsonPath: perEntryApiJson,
@@ -105,9 +118,40 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 			...(isMain && !mainEntryDidTsdocMetadata ? { tsdocMetadataPath } : {}),
 			suppressWarnings: tsdoc.suppressWarnings,
 			...(ci !== undefined ? { ci } : {}),
-			...(onMessage !== undefined ? { onMessage } : {}),
-			...(onSuppressed !== undefined ? { onSuppressed } : {}),
+			...(splitDiagnostics
+				? { onMessage: () => {} }
+				: {
+						...(onMessage !== undefined ? { onMessage } : {}),
+						...(onSuppressed !== undefined ? { onSuppressed } : {}),
+					}),
 		});
+		// Run B — diagnostics only. Reads the per-module declarations so locations resolve to the true
+		// source declaration. No model emitted (emitDocModel:false). Not a CI gate (Run A is); wrapped so
+		// a diagnostics-run failure never breaks a build whose model already succeeded.
+		if (splitDiagnostics) {
+			try {
+				runApiExtractor({
+					cwd,
+					packageJsonPath,
+					entryDtsPath: join(aeInputDir, `${entries[entryName]}.d.ts`),
+					tsconfigPath,
+					tsdocConfigPath,
+					apiJsonPath: perEntryApiJson,
+					emitDocModel: false,
+					suppressWarnings: tsdoc.suppressWarnings,
+					...(onMessage !== undefined ? { onMessage } : {}),
+					...(onSuppressed !== undefined ? { onSuppressed } : {}),
+				});
+			} catch (err) {
+				if (onMessage !== undefined) {
+					onMessage({
+						source: "api-extractor",
+						level: "warn",
+						text: `Could not harvest per-module source locations for "${entryName}": ${String(err)}`,
+					});
+				}
+			}
+		}
 		if (isMain) mainEntryDidTsdocMetadata = true;
 		perEntryModels.set(entryName, JSON.parse(readFileSync(perEntryApiJson, "utf-8")) as Record<string, unknown>);
 	}

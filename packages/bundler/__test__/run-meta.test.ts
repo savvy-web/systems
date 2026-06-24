@@ -1,3 +1,4 @@
+import type { BuildTargetGroupsOptions } from "@savvy-web/tsdown-plugins";
 import { describe, expect, it, vi } from "vitest";
 import { defineBuild } from "../src/config.js";
 import { runBuild } from "../src/run.js";
@@ -178,5 +179,40 @@ describe("runBuild meta target", () => {
 			resolveNextVersions,
 		});
 		expect(resolveNextVersions).not.toHaveBeenCalled();
+	});
+
+	it("--target prod sets emitDeclarations: true on the buildTargetGroups call", async () => {
+		const build = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(defineBuild({}), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: build,
+			generateMeta: vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" })),
+			readPackageName: () => "@scope/fixture",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeOutput: () => {},
+			writeTargetsBinding: () => "binding",
+		});
+		expect(build).toHaveBeenCalledTimes(1);
+		const buildOpts = build.mock.calls[0]?.[0];
+		expect(buildOpts.emitDeclarations).toBe(true);
+	});
+
+	it("--target dev does NOT set emitDeclarations on the buildTargetGroups call", async () => {
+		const build = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
+		await runBuild(defineBuild({}), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "dev"],
+			buildTargetGroups: build,
+			generateMeta: vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" })),
+			readPackageName: () => "@scope/fixture",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeOutput: () => {},
+		});
+		expect(build).toHaveBeenCalledTimes(1);
+		const buildOpts = build.mock.calls[0]?.[0];
+		expect(buildOpts.emitDeclarations).toBeUndefined();
 	});
 });

@@ -150,4 +150,24 @@ describe("runApiExtractor", () => {
 		});
 		expect(suppressed.some((s) => s.code === "ae-forgotten-export")).toBe(true);
 	});
+
+	it("emitDocModel:false reports diagnostics but writes no .api.json", () => {
+		const f = scaffoldForgotten();
+		const tsdocConfigPath = writeTsdocConfig(f.dir, { suppressWarnings: [], tagDefinitions: [] });
+		const apiJsonPath = join(f.dir, "should-not-exist.api.json");
+		const seen: Array<string | undefined> = [];
+		runApiExtractor({
+			cwd: f.dir,
+			packageJsonPath: f.packageJsonPath,
+			entryDtsPath: f.entryDtsPath,
+			tsconfigPath: f.tsconfigPath,
+			tsdocConfigPath,
+			apiJsonPath,
+			suppressWarnings: [],
+			emitDocModel: false,
+			onMessage: (e) => seen.push(e.code),
+		});
+		expect(existsSync(apiJsonPath)).toBe(false);
+		expect(seen).toContain("ae-forgotten-export");
+	});
 });

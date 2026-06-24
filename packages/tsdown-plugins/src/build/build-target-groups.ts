@@ -14,7 +14,12 @@ import type { NormalizedLooseFile } from "./loose-files.js";
 import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
 import { syncPublicDir } from "./sync-public.js";
 import type { BuildFormat, BuildGroupSpec, BuildPlatform } from "./target-groups.js";
-import { deriveDtsPassOptions, deriveTargetGroupOptions, outDirFor } from "./target-groups.js";
+import {
+	deriveDeclarationsPassOptions,
+	deriveDtsPassOptions,
+	deriveTargetGroupOptions,
+	outDirFor,
+} from "./target-groups.js";
 
 /**
  * Signature compatible with tsdown's `build(inlineConfig)`.
@@ -162,6 +167,13 @@ export interface BuildTargetGroupsOptions {
 	readonly collector?: BuildCollector | undefined;
 	/** Compute gzip sizes for emitted files (verbose render). Forwarded to the metrics plugin. */
 	readonly verbose?: boolean | undefined;
+	/**
+	 * Emit a per-module (`unbundle: true`) declaration tree into `dist/prod/<id>/declarations/` per
+	 * group, in addition to the bundled dts in `pkg/`. API Extractor's diagnostics-run input for the
+	 * meta pass. Prod-only; the bundler sets it for `--target prod`. Absent → no third pass
+	 * (byte-identical to the two-pass default). Not captured by the collector.
+	 */
+	readonly emitDeclarations?: boolean | undefined;
 }
 
 /**
@@ -249,6 +261,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			};
 			const js = deriveTargetGroupOptions(deriveInput);
 			const dts = deriveDtsPassOptions(deriveInput);
+			const decl = deriveDeclarationsPassOptions(deriveInput);
 			const partOutDir = part.outSubdir !== undefined ? join(js.outDir, part.outSubdir) : js.outDir;
 			const targetGroup: TargetGroupRef = { id: group.id, name: group.name, isProd: js.isProd };
 
@@ -412,6 +425,65 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 					],
 				}),
 			);
+
+			// Pass 3 (prod-only, opt-in): per-module declarations for API Extractor's diagnostics run.
+			// unbundle:true gives 1:1 source positions. Into the declarations/ sibling of pkg/ (never
+			// published, kept for inspection). Deliberately NOT instrumented/timed — internal artifact,
+			// not part of the build report. Mirrors the dts pass's deps posture; logLevel:silent keeps
+			// this internal pass out of the unified build output.
+			//
+			// Best-effort: pkg/ (the published artifact) and the api-model (built from the bundled dts in
+			// the meta pass's Run A) do NOT depend on this pass, so a failure must not abort the build —
+			// it only costs accurate diagnostic locations for this group, and the meta pass's Run B then
+			// fails soft on the missing/partial declarations. Record a warning when a collector is present.
+			// Prod-only: `emitDeclarations` is a build-level option, but the declarations tree (and the
+			// meta diagnostics run that reads it) only exists for prod targets. Gate on `js.isProd` so a
+			// caller that sets the flag alongside a dev group cannot emit a dev `declarations/` tree.
+			if (js.isProd && options.emitDeclarations === true && Object.keys(decl.entry).length > 0) {
+				const partDeclDir = part.outSubdir !== undefined ? join(decl.outDir, part.outSubdir) : decl.outDir;
+				try {
+					await build({
+						config: false,
+						cwd: options.cwd,
+						entry: decl.entry,
+						outDir: partDeclDir,
+						format: decl.format,
+						platform: decl.platform,
+						sourcemap: decl.sourcemap,
+						unbundle: decl.unbundle,
+						clean: isBase,
+						fixedExtension: decl.fixedExtension,
+						dts: decl.dts,
+						define: decl.define,
+						logLevel: "silent",
+						...(dtsNeverBundle.length > 0 || partBundleNodeModules || decl.bundledPackages
+							? {
+									deps: {
+										...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
+										...(partBundleNodeModules
+											? {
+													skipNodeModulesBundle: false,
+													...(decl.bundledPackages ? { dts: { alwaysBundle: decl.bundledPackages } } : {}),
+												}
+											: decl.bundledPackages
+												? { skipNodeModulesBundle: true, dts: { alwaysBundle: decl.bundledPackages } }
+												: {}),
+									},
+								}
+							: {}),
+						...(decl.jsx !== undefined ? { inputOptions: { jsx: decl.jsx } } : {}),
+						// Forward the user's plugins for type-resolution parity with the JS and dts passes,
+						// so the per-module declarations resolve the same types API Extractor reads.
+						...(options.extraPlugins !== undefined ? { plugins: [...options.extraPlugins] } : {}),
+					});
+				} catch (err) {
+					collector?.recordWarning(group.id, {
+						source: "tsdown",
+						level: "warn",
+						text: `Could not emit per-module declarations for API Extractor diagnostics: ${String(err)}`,
+					});
+				}
+			}
 		}
 
 		// Loose files: one extra single-entry, bundled, no-dts, no-manifest pass each, into the

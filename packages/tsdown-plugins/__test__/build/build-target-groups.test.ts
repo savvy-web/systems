@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { buildTargetGroups } from "../../src/build/build-target-groups.js";
+import { BuildCollector } from "../../src/report/collector.js";
 
 describe("buildTargetGroups", () => {
 	it("runs a JS pass + a dts pass per group (two passes to the same outDir)", async () => {
@@ -972,6 +973,85 @@ describe("buildTargetGroups", () => {
 		// Only the JS pass runs (dts:false). No dts build() call.
 		expect(calls.length).toBe(1);
 		expect(calls[0]?.dts).toBe(false);
+	});
+
+	it("runs a third per-module declarations pass into declarations/ when emitDeclarations is set", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "npm", name: "pkg" }],
+			devManifest: "preserve",
+			emitDeclarations: true,
+			build,
+		});
+		const decl = calls.find((c) => c.unbundle === true && String(c.outDir).endsWith("/dist/prod/npm/declarations"));
+		expect(decl).toBeDefined();
+		expect(decl?.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true });
+		expect(decl?.clean).toBe(true);
+	});
+
+	it("declarations pass is best-effort: a failure does not abort the build and is recorded", async () => {
+		const collector = new BuildCollector();
+		const build = async (cfg: Record<string, unknown>) => {
+			// Only the per-module declarations pass throws; the published JS + dts passes succeed.
+			if (String(cfg.outDir).endsWith("/declarations")) throw new Error("decl boom");
+		};
+		await expect(
+			buildTargetGroups({
+				cwd: "/repo/pkg",
+				version: "1.0.0",
+				entry: { index: "/repo/pkg/src/index.ts" },
+				tsconfigPath: "/tmp/tsconfig.json",
+				groups: [{ id: "npm", name: "pkg" }],
+				devManifest: "preserve",
+				emitDeclarations: true,
+				build,
+				collector,
+			}),
+		).resolves.toBeUndefined();
+		// pkg/ (JS+dts) still emitted; only the diagnostics-input pass failed, surfaced as a warning.
+		expect(JSON.stringify(collector.snapshot("pkg"))).toContain("Could not emit per-module declarations");
+	});
+
+	it("does NOT run a declarations pass when emitDeclarations is absent (byte-identical default)", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "npm", name: "pkg" }],
+			devManifest: "preserve",
+			build,
+		});
+		expect(calls.some((c) => String(c.outDir).endsWith("/declarations"))).toBe(false);
+	});
+
+	it("does NOT run a declarations pass for a dev group even when emitDeclarations is set (prod-only)", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "dev", name: "pkg" }],
+			devManifest: "preserve",
+			emitDeclarations: true,
+			build,
+		});
+		expect(calls.some((c) => String(c.outDir).endsWith("/declarations"))).toBe(false);
 	});
 
 	it("globs the whole source subtree for an outSubdir partition's JS pass, keeps the barrel for dts", async () => {
