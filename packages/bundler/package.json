@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/bundler",
-	"version": "0.10.0",
+	"version": "0.11.0",
 	"private": true,
 	"description": "Zero-config tsdown-based bundler for Silk Suite TypeScript packages",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/bundler",
