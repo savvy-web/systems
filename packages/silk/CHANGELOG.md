@@ -1,5 +1,18 @@
 # @savvy-web/silk
 
+## 1.3.2
+
+### Documentation
+
+* [`d7fd974`](https://github.com/savvy-web/systems/commit/d7fd9740ee58347e0c2c92af66edb8289016dd80) The `/silk:tsdoc` skill's guidance on locating `ae-*` and `tsdoc-*` diagnostics has been updated to reflect that `file`/`line`/`column` fields in `issues.json` are now accurate.
+
+- The previous guidance (systems#154) advised locating diagnostics by the symbol name quoted in `text`, because location fields were suppressed as misleading. That guidance is reverted.
+- The current guidance: navigate to the `file:line` reported in the diagnostic. Most entries resolve to `src/*.ts` (accurate). The exception is Effect `Data.TaggedError` / service classes whose synthesized `_base` declaration is not source-mapped by rolldown-plugin-dts — those may report a path inside `dist/prod/<id>/declarations/*.d.ts`. In that case, use the symbol name in `text` to find the matching `src/*.ts` declaration.
+  | Dependency     | Type       | Action  | From  | To    |
+  | -------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/cli | dependency | updated | 1.3.1 | 1.3.2 |
+  | @savvy-web/mcp | dependency | updated | 1.3.1 | 1.3.2 |
+
 ## 1.3.1
 
 ### Documentation

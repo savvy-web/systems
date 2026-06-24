@@ -1,5 +1,17 @@
 # @savvy-web/bundler
 
+## 0.10.0
+
+### Features
+
+* [`d7fd974`](https://github.com/savvy-web/systems/commit/d7fd9740ee58347e0c2c92af66edb8289016dd80) `--target prod` builds now emit a per-module declaration tree (`dist/prod/<id>/declarations/`) so that the `@savvy-web/tsdown-plugins` meta pass can recover accurate `file`/`line`/`column` on API Extractor diagnostics. The bundler passes `emitDeclarations: true` to the build loop automatically when running a prod target; no `savvy.build.ts` changes are required.
+
+### Patch Changes
+
+| Dependency                | Type       | Action  | From  | To     |
+| ------------------------- | ---------- | ------- | ----- | ------ |
+| @savvy-web/tsdown-plugins | dependency | updated | 0.9.2 | 0.10.0 |
+
 ## 0.9.2
 
 ### Patch Changes
