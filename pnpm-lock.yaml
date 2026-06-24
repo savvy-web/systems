@@ -128,6 +128,9 @@ importers:
       effect:
         specifier: catalog:silk
         version: 3.21.4
+      rolldown:
+        specifier: ^1.1.2
+        version: 1.1.2
       tsdown:
         specifier: ^0.22.3
         version: 0.22.3(@tsdown/css@0.22.3)(@tsdown/exe@0.22.3)(@typescript/native-preview@7.0.0-dev.20260624.1)(tsx@4.22.4)(typescript@6.0.3)
@@ -159,9 +162,6 @@ importers:
       react-dom:
         specifier: catalog:silk
         version: 19.2.7(react@19.2.7)
-      rolldown:
-        specifier: ^1.1.2
-        version: 1.1.2
       tinyrainbow:
         specifier: ^3.1.0
         version: 3.1.0
