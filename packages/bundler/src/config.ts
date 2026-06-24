@@ -11,6 +11,7 @@ import type {
 	TargetGroupRef,
 } from "@savvy-web/tsdown-plugins";
 import { defaultManifestTransform } from "@savvy-web/tsdown-plugins";
+import type { Plugin } from "rolldown";
 
 /** @public */
 export interface BuildEntryOverride {
@@ -131,6 +132,14 @@ export interface BuildConfigInput {
 	 * `process.env.__PACKAGE_VERSION__` define; a user key of the same name wins.
 	 */
 	readonly define?: Record<string, string> | undefined;
+	/**
+	 * Custom tsdown/rolldown plugins forwarded to EVERY tsdown run the build
+	 * performs — the JS pass, the dts pass, the per-module declarations pass, and
+	 * each looseFiles pass. Use for build-time codegen / virtual modules (e.g. a
+	 * pnpm config-dependency plugin). Plugins run after the builder's internal
+	 * interop plugins and before its metrics instrumentation.
+	 */
+	readonly plugins?: ReadonlyArray<Plugin> | undefined;
 }
 
 /** @public */
@@ -176,6 +185,8 @@ export interface BuildConfig {
 	readonly looseFiles?: LooseFiles | undefined;
 	/** Compile-time global replacements forwarded to the build `define` (merged with the auto-version). */
 	readonly define?: Record<string, string> | undefined;
+	/** Custom tsdown/rolldown plugins forwarded to every tsdown run (JS, dts, per-module declarations, looseFiles). */
+	readonly plugins?: ReadonlyArray<Plugin> | undefined;
 }
 
 /**
@@ -206,6 +217,7 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 		overrides: input.overrides,
 		looseFiles: input.looseFiles,
 		define: input.define,
+		plugins: input.plugins,
 	};
 	// Self-execution: only when this module's importer is the program entry.
 	// run.ts performs the actual import.meta.main gate (it has access to the caller's meta).
@@ -258,3 +270,4 @@ export type {
 	ResolvedTarget,
 	TargetResolution,
 } from "@savvy-web/tsdown-plugins";
+export type { Plugin } from "rolldown";

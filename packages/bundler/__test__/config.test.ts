@@ -114,6 +114,14 @@ describe("defineBuild", () => {
 		expect(defineBuild({}).looseFiles).toBeUndefined();
 	});
 
+	it("passes plugins through and leaves them undefined when not provided", () => {
+		const p = { name: "virtual-module" };
+		const cfg = defineBuild({ plugins: [p] });
+		expect(cfg.plugins).toEqual([p]);
+		expect(cfg.plugins?.[0]).toBe(p);
+		expect(defineBuild({}).plugins).toBeUndefined();
+	});
+
 	it("accepts platform + css on an entry override", () => {
 		const config = defineBuild({
 			overrides: [

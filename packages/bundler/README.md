@@ -228,6 +228,26 @@ const config = defineBuild({
 
 Each key is the literal output filename written into the package root; each value is a source path (a bare string) or a `{ source, format }` object. The format is inferred from the key extension — `.mjs` is ESM, `.cjs` is CJS — so the example above bundles the one source into both an ESM and a CJS file from a single config. A `.js` key is format-ambiguous and needs an explicit `format`. Pair `looseFiles` with `bundleNodeModules` so each file is self-contained, since a config dependency cannot resolve runtime `dependencies` of its own.
 
+## Plugins
+
+Pass your own tsdown/rolldown plugins with the `plugins` field. They are forwarded to every tsdown pass the build performs — the JavaScript pass, the bundled-declaration pass, the per-module declarations pass and each `looseFiles` pass — so a plugin's `resolveId`/`load` hooks are available everywhere your source is compiled. The use case is build-time codegen and virtual modules: a plugin can serve a module that exists only at build time, and any of your sources can `import` it.
+
+```ts
+import { defineBuild } from "@savvy-web/bundler";
+import { PnpmConfigPlugin } from "pnpm-config-builder";
+
+const config = defineBuild({
+  plugins: [PnpmConfigPlugin()],
+  bundleNodeModules: true,
+  looseFiles: {
+    "pnpmfile.mjs": "./src/pnpmfile.ts",
+    "pnpmfile.cjs": "./src/pnpmfile.ts",
+  },
+});
+```
+
+Because the plugins run on the `looseFiles` pass too, a `pnpmfile` source can `import` a virtual module the plugin resolves — here a config-dependency plugin serves the module the pnpmfile needs, and the pnpmfile lands at the package root as a self-contained bundle. Plugins are a rolldown concept; the supplied plugin objects are passed through to tsdown untouched.
+
 ## Minified output
 
 Prod output is not minified by default. This builder targets Node libraries, where readable output matters more than bundle size — minified code degrades stack traces and trips some security scanners. Set `minify` to opt back in:
@@ -289,6 +309,7 @@ const config = defineBuild({
 - **Dependency bundling** — declared dependencies stay external by default; `bundle`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` force-inline specific packages or all node_modules into the output, inline select declarations into the `.d.ts` or hold a package out of the declaration bundle when its types cannot be inlined.
 - **Per-entry overrides** — `overrides` pins a subset of export entries to their own format and bundling, so one entry can ship dual-format CJS in an otherwise ESM-only package without changing the rest; partition-only `platform`, `css` and `outSubdir` fields also let an entry build for the browser with CSS modules into its own sub-package.
 - **Loose files** — `looseFiles` emits standalone bundled files at literal output paths outside the exports/declaration/api-model graph, with the format inferred from the key extension; pair with `bundleNodeModules` for self-contained pnpm config-dependency pnpmfiles.
+- **Custom plugins** — `plugins` forwards your own rolldown plugins to every tsdown pass, including the `looseFiles` pass, so build-time codegen and virtual modules resolve everywhere your source is compiled.
 - **Readable prod output** — prod output is unminified by default to keep stack traces legible and pass security scanners; `minify` opts back in.
 - **Default manifest stripping** — the published `package.json` drops build- and dev-only fields automatically; a custom `transform` replaces the default and can re-apply it via `defaultManifestTransform`.
 - **Build-time constants** — the package version is injected as `process.env.__PACKAGE_VERSION__`, and the `define` field adds your own verbatim compile-time replacements.
@@ -299,7 +320,7 @@ const config = defineBuild({
 
 ## API
 
-- `defineBuild(input)` — normalizes a build config (`externals`, `bundle`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `minify`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`, `overrides`, `looseFiles`, `define`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). `minify` defaults to false, `transform` defaults to a manifest stripper, and `overrides` pins a subset of entries to their own format and bundling. Pure; it does not run the build.
+- `defineBuild(input)` — normalizes a build config (`externals`, `bundle`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `minify`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`, `overrides`, `looseFiles`, `define`, `plugins`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). `minify` defaults to false, `transform` defaults to a manifest stripper, and `overrides` pins a subset of entries to their own format and bundling. Pure; it does not run the build.
 - `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch`/`--verbose` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. `--verbose` expands the report to a per-file table; the report is quiet by default. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.
 
