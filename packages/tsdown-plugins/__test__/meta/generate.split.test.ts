@@ -12,7 +12,8 @@
  *      Run B: entryDtsPath from aeInputDir, emitDocModel === false, onMessage is a wrapper forwarding to caller
  *  - When aeInputDir is omitted (back-compat): single run, caller's onMessage, emitDocModel not set
  *  - Rollup-only CI-fatal handling: a fatal only in Run A is surfaced (location stripped); a fatal in both
- *    runs is reported once with Run B's location; under ci=true Run A is a pure no-op (no nudge)
+ *    runs is reported once with Run B's location; under ci=true Run A's error-level fatal is forwarded to
+ *    the caller before the hard failure (non-fatal Run A diagnostics stay suppressed)
  */
 
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -258,12 +259,29 @@ describe("generateMeta — two-input split wiring", () => {
 		expect("file" in (rollupOnly[0] as object)).toBe(false);
 	});
 
-	it("does NOT harvest rollup-only fatals under CI (Run A is the hard gate there)", async () => {
+	it("under CI forwards Run A's error-level fatal to the caller before the hard failure", async () => {
 		const { cwd, dtsDir, aeInputDir } = scaffold();
 		const outMetaDir = join(cwd, "dist", "prod", "npm", "meta");
 		const callerOnMessage = vi.fn();
-		// Run A would report a rollup-only fatal, but under ci=true Run A's onMessage is a pure no-op.
-		emitFromRuns(dtsDir, [forgotten("RollupOnly", { file: "index.d.ts", line: 4210, column: 1 })], []);
+		// Under CI, `ae-forgotten-export` is escalated to ERROR (and NOT tagged ciFatal — that tag is local
+		// only). Run A would throw, so its diagnostics must reach the collector here or the build fails with
+		// an opaque "N error(s)" and no symbol. A non-fatal Run A warning stays suppressed.
+		emitFromRuns(
+			dtsDir,
+			[
+				{
+					source: "api-extractor",
+					level: "error",
+					code: "ae-forgotten-export",
+					text: 'The symbol "OutputPlugin" needs to be exported by the entry point index.d.ts',
+					file: "index.d.ts",
+					line: 4210,
+					column: 1,
+				},
+				{ source: "api-extractor", level: "warn", code: "ae-missing-release-tag", text: "non-fatal noise" },
+			],
+			[],
+		);
 
 		await generateMeta({
 			cwd,
@@ -280,8 +298,14 @@ describe("generateMeta — two-input split wiring", () => {
 			ci: true,
 		});
 
-		// Nothing surfaced from Run A; CI failure comes from the real extractor throwing, not from a nudge.
-		expect(callerOnMessage).not.toHaveBeenCalled();
+		const calls = callerOnMessage.mock.calls.map((c) => c[0] as Record<string, unknown>);
+		const fatal = calls.filter((m) => String(m.text).includes("OutputPlugin"));
+		// The error-level fatal reaches the caller, location stripped (the rollup line is wrong).
+		expect(fatal).toHaveLength(1);
+		expect(fatal[0].level).toBe("error");
+		expect("file" in (fatal[0] as object)).toBe(false);
+		// The non-fatal Run A warning stays suppressed (only errors are forwarded under CI).
+		expect(calls.some((m) => String(m.text).includes("non-fatal noise"))).toBe(false);
 	});
 
 	it("calls runApiExtractor ONCE with no onMessage when neither aeInputDir nor caller onMessage provided", async () => {
