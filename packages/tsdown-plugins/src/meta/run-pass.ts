@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { declarationsDirFor } from "../build/target-groups.js";
 import { resolveNextVersions as realResolveNextVersions } from "../changesets/next-versions.js";
 import { createEntryName } from "../entry/extract.js";
 import type { BuildCollector } from "../report/collector.js";
@@ -63,6 +64,7 @@ export async function runMetaPass(o: RunMetaPassOptions): Promise<void> {
 			packageName: o.packageName,
 			tsconfigPath: o.tsconfigPath,
 			dtsDir: join(o.cwd, "dist", "prod", g.id, "pkg"),
+			aeInputDir: declarationsDirFor(o.cwd, g.id),
 			entries: dtsBasenames,
 			exportPaths,
 			outMetaDir: join(o.cwd, "dist", "prod", g.id, "meta"),

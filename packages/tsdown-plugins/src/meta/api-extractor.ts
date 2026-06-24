@@ -30,6 +30,8 @@ export interface RunApiExtractorOptions {
 	readonly ci?: boolean | undefined;
 	/** Receives messages matched by `suppressWarnings` (for accounting / --verbose). */
 	readonly onSuppressed?: ((entry: DiagnosticInput) => void) | undefined;
+	/** When false, the run analyzes + reports diagnostics but writes no api-model (the diagnostics run). Default true. */
+	readonly emitDocModel?: boolean | undefined;
 }
 
 /** messageIds that become a hard build error in CI (they corrupt the .api.json). */
@@ -38,12 +40,9 @@ const CI_FATAL_MESSAGE_IDS = new Set<string>(["ae-forgotten-export"]);
 /**
  * Map an API Extractor message to a collector DiagnosticInput, or undefined if not warn/error.
  *
- * The location (`file`/`line`/`column`) is deliberately dropped. API Extractor analyzes the
- * bundled `.d.ts` and maps positions back through its `.d.ts.map` source map, which anchors
- * every message to the start of an adjacent declaration rather than the symbol's true source
- * position — wrong for release-tag codes, unresolved links, and the rest alike. A misleading
- * `file:line` is worse than none, so it is omitted; the authoritative locator is the symbol
- * name quoted in `text`. See systems#154.
+ * Location (`file`/`line`/`column`) is preserved: diagnostics now come from a per-module declaration
+ * run (see generateMeta's two-input split), where each `.d.ts.map` references only its own source, so
+ * positions resolve to the true source declaration. Reverts the systems#154 mitigation. See systems#162.
  */
 export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput | undefined {
 	const isError = message.logLevel === ExtractorLogLevel.Error;
@@ -54,6 +53,9 @@ export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput 
 		level: isError ? "error" : "warn",
 		text: message.text,
 		...(message.messageId !== undefined ? { code: message.messageId } : {}),
+		...(message.sourceFilePath !== undefined ? { file: message.sourceFilePath } : {}),
+		...(message.sourceFileLine !== undefined ? { line: message.sourceFileLine } : {}),
+		...(message.sourceFileColumn !== undefined ? { column: message.sourceFileColumn } : {}),
 	};
 }
 
@@ -70,7 +72,8 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			mainEntryPointFilePath: options.entryDtsPath,
 			enumMemberOrder: "preserve",
 			compiler: { tsconfigFilePath: options.tsconfigPath },
-			docModel: { enabled: true, apiJsonFilePath: options.apiJsonPath },
+			docModel:
+				options.emitDocModel === false ? { enabled: false } : { enabled: true, apiJsonFilePath: options.apiJsonPath },
 			...(options.tsdocMetadataPath !== undefined
 				? { tsdocMetadata: { enabled: true, tsdocMetadataFilePath: options.tsdocMetadataPath } }
 				: {}),

@@ -170,6 +170,14 @@ export const outDirFor = (cwd: string, group: TargetGroupId): string =>
 	group === "dev" ? join(cwd, "dist/dev/pkg") : join(cwd, "dist/prod", group, "pkg");
 
 /**
+ * Per-module declarations dir for a prod group: a sibling of `pkg/`, NOT published, used only as
+ * API Extractor's diagnostics-run input so locations resolve to per-file source. Kept (not stripped)
+ * as a cacheable, inspectable build artifact (issue #162).
+ */
+export const declarationsDirFor = (cwd: string, group: TargetGroupId): string =>
+	join(cwd, "dist/prod", group, "declarations");
+
+/**
  * Derive the JS-pass tsdown options for one TargetGroup (per-module JS, no dts).
  *
  * @public
@@ -230,5 +238,47 @@ export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOpti
 		isProd,
 		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 		...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),
+	};
+}
+
+/** @internal */
+export interface DerivedDeclarationsPassOptions {
+	readonly outDir: string;
+	readonly sourcemap: false;
+	readonly format: ReadonlyArray<BuildFormat>;
+	readonly unbundle: true;
+	readonly platform: "node";
+	readonly fixedExtension: false;
+	readonly entry: Record<string, string>;
+	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true };
+	readonly define: Record<string, string>;
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	readonly jsx?: JsxConfig | undefined;
+}
+
+/**
+ * Derive the per-module declarations pass (API Extractor diagnostics input). Mirrors
+ * {@link deriveDtsPassOptions} but `unbundle: true` (preserveModules → 1:1 source positions),
+ * esm-only (AE reads the `.d.ts` entry only), into the `declarations/` sibling dir. Bin entries
+ * are dropped (no exports).
+ * @internal
+ */
+export function deriveDeclarationsPassOptions(options: DeriveOptions): DerivedDeclarationsPassOptions {
+	const entry = Object.fromEntries(Object.entries(options.entry).filter(([name]) => !name.startsWith("bin/")));
+	return {
+		outDir: declarationsDirFor(options.cwd, options.group),
+		sourcemap: false,
+		format: ["esm"],
+		unbundle: true,
+		platform: "node",
+		fixedExtension: false,
+		entry,
+		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true },
+		define: {
+			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
+			...options.define,
+		},
+		...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),
+		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 	};
 }

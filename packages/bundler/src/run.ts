@@ -412,6 +412,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(subdirExports.size > 0 ? { subdirExports } : {}),
 				...(looseFiles !== undefined ? { looseFiles } : {}),
 				...(exeRewrite !== undefined ? { exeRewrite } : {}),
+				...(target === "prod" ? { emitDeclarations: true } : {}),
 				collector,
 				verbose,
 			});

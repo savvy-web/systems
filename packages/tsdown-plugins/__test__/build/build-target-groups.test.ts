@@ -974,6 +974,44 @@ describe("buildTargetGroups", () => {
 		expect(calls[0]?.dts).toBe(false);
 	});
 
+	it("runs a third per-module declarations pass into declarations/ when emitDeclarations is set", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "npm", name: "pkg" }],
+			devManifest: "preserve",
+			emitDeclarations: true,
+			build,
+		});
+		const decl = calls.find((c) => c.unbundle === true && String(c.outDir).endsWith("/dist/prod/npm/declarations"));
+		expect(decl).toBeDefined();
+		expect(decl?.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true });
+		expect(decl?.clean).toBe(true);
+	});
+
+	it("does NOT run a declarations pass when emitDeclarations is absent (byte-identical default)", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "npm", name: "pkg" }],
+			devManifest: "preserve",
+			build,
+		});
+		expect(calls.some((c) => String(c.outDir).endsWith("/declarations"))).toBe(false);
+	});
+
 	it("globs the whole source subtree for an outSubdir partition's JS pass, keeps the barrel for dts", async () => {
 		const calls: Array<{ entry: unknown; dts: unknown }> = [];
 		const fakeBuild = vi.fn(async (cfg: { entry: unknown; dts: unknown }) => {

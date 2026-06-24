@@ -68,6 +68,7 @@ try {
 		externals: ["effect", "tsdown", "@savvy-web/tsdown-plugins"],
 		// Reproduce the rslib config's prod strip.
 		transform: defaultManifestTransform,
+		...(target === "prod" ? { emitDeclarations: true } : {}),
 		collector,
 		verbose,
 	});

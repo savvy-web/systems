@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BuildCollector, runMetaPass } from "../../src/index.js";
 import { applySubdirMetaEntries, deriveExportPaths } from "../../src/meta/run-pass.js";
@@ -37,11 +38,17 @@ describe("applySubdirMetaEntries", () => {
 
 describe("runMetaPass", () => {
 	it("calls generateMeta once per group with derived exportPaths and bin/ excluded", async () => {
-		const calls: Array<{ outMetaDir: string; entries: Record<string, string>; exportPaths: Record<string, string> }> =
-			[];
+		const cwd = "/pkg";
+		const calls: Array<{
+			outMetaDir: string;
+			entries: Record<string, string>;
+			exportPaths: Record<string, string>;
+			dtsDir: string;
+			aeInputDir: string | undefined;
+		}> = [];
 		const collector = new BuildCollector();
 		await runMetaPass({
-			cwd: "/pkg",
+			cwd,
 			packageName: "@scope/pkg",
 			tsconfigPath: "/pkg/tsconfig.json",
 			groups: [{ id: "npm", name: "@scope/pkg" }],
@@ -51,7 +58,13 @@ describe("runMetaPass", () => {
 			collector,
 			ci: false,
 			generateMeta: async (opts) => {
-				calls.push({ outMetaDir: opts.outMetaDir, entries: opts.entries, exportPaths: opts.exportPaths });
+				calls.push({
+					outMetaDir: opts.outMetaDir,
+					entries: opts.entries,
+					exportPaths: opts.exportPaths,
+					dtsDir: opts.dtsDir,
+					aeInputDir: opts.aeInputDir,
+				});
 				return { apiJsonPath: "/x", apiJsonFilename: "pkg.api.json" };
 			},
 		});
@@ -59,5 +72,7 @@ describe("runMetaPass", () => {
 		expect(calls[0]?.entries).toEqual({ index: "index" }); // bin/cli excluded
 		expect(calls[0]?.exportPaths).toEqual({ index: "." });
 		expect(calls[0]?.outMetaDir).toContain("/pkg/dist/prod/npm/meta");
+		expect(calls[0]?.dtsDir).toBe(join(cwd, "dist", "prod", "npm", "pkg"));
+		expect(calls[0]?.aeInputDir).toBe(join(cwd, "dist", "prod", "npm", "declarations"));
 	});
 });

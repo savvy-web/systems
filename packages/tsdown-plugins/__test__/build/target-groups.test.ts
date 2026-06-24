@@ -217,3 +217,37 @@ describe("deriveTargetGroupOptions platform override", () => {
 		expect(o.platform).toBe("browser");
 	});
 });
+
+import { declarationsDirFor, deriveDeclarationsPassOptions } from "../../src/build/target-groups.js";
+
+describe("deriveDeclarationsPassOptions", () => {
+	const base = {
+		group: "npm",
+		cwd: "/repo/pkg",
+		version: "1.2.3",
+		entry: { index: "/repo/pkg/src/index.ts", "bin/cli": "/repo/pkg/src/bin.ts" },
+		tsconfigPath: "/tmp/tsconfig.json",
+		devManifest: "preserve" as const,
+	};
+
+	it("emits per-module (unbundle) declarations into the prod declarations dir, bin excluded", () => {
+		const d = deriveDeclarationsPassOptions(base);
+		expect(d.unbundle).toBe(true);
+		expect(d.outDir).toBe("/repo/pkg/dist/prod/npm/declarations");
+		expect(d.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true });
+		expect(d.format).toEqual(["esm"]);
+		expect(d.platform).toBe("node");
+		expect(Object.keys(d.entry)).toEqual(["index"]);
+		expect(d.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("1.2.3"));
+	});
+
+	it("forwards bundledPackages and jsx when present", () => {
+		const d = deriveDeclarationsPassOptions({ ...base, bundledPackages: ["zod"], jsx: { runtime: "automatic" } });
+		expect(d.bundledPackages).toEqual(["zod"]);
+		expect(d.jsx).toEqual({ runtime: "automatic" });
+	});
+
+	it("declarationsDirFor points at the prod declarations sibling of pkg", () => {
+		expect(declarationsDirFor("/repo/pkg", "github")).toBe("/repo/pkg/dist/prod/github/declarations");
+	});
+});
