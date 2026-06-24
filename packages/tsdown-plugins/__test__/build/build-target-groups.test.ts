@@ -1036,6 +1036,24 @@ describe("buildTargetGroups", () => {
 		expect(calls.some((c) => String(c.outDir).endsWith("/declarations"))).toBe(false);
 	});
 
+	it("does NOT run a declarations pass for a dev group even when emitDeclarations is set (prod-only)", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "dev", name: "pkg" }],
+			devManifest: "preserve",
+			emitDeclarations: true,
+			build,
+		});
+		expect(calls.some((c) => String(c.outDir).endsWith("/declarations"))).toBe(false);
+	});
+
 	it("globs the whole source subtree for an outSubdir partition's JS pass, keeps the barrel for dts", async () => {
 		const calls: Array<{ entry: unknown; dts: unknown }> = [];
 		const fakeBuild = vi.fn(async (cfg: { entry: unknown; dts: unknown }) => {

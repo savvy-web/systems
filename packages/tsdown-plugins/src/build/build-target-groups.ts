@@ -436,7 +436,10 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// the meta pass's Run A) do NOT depend on this pass, so a failure must not abort the build —
 			// it only costs accurate diagnostic locations for this group, and the meta pass's Run B then
 			// fails soft on the missing/partial declarations. Record a warning when a collector is present.
-			if (options.emitDeclarations === true && Object.keys(decl.entry).length > 0) {
+			// Prod-only: `emitDeclarations` is a build-level option, but the declarations tree (and the
+			// meta diagnostics run that reads it) only exists for prod targets. Gate on `js.isProd` so a
+			// caller that sets the flag alongside a dev group cannot emit a dev `declarations/` tree.
+			if (js.isProd && options.emitDeclarations === true && Object.keys(decl.entry).length > 0) {
 				const partDeclDir = part.outSubdir !== undefined ? join(decl.outDir, part.outSubdir) : decl.outDir;
 				try {
 					await build({
