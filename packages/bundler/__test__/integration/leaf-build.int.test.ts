@@ -12,7 +12,7 @@ describe("leaf package end-to-end", () => {
 	});
 
 	it("dev build emits dist/dev/pkg with index.js + index.d.ts + package.json", async () => {
-		await runBuild(defineBuild({ formats: ["esm"] }), { cwd: LEAF, argv: ["--target", "dev"] });
+		await runBuild(defineBuild({ formats: ["esm"] }), { cwd: LEAF, argv: ["--target", "dev"], writeOutput: () => {} });
 		expect(existsSync(join(LEAF, "dist/dev/pkg/index.js"))).toBe(true);
 		expect(existsSync(join(LEAF, "dist/dev/pkg/index.d.ts"))).toBe(true);
 		const manifest = JSON.parse(readFileSync(join(LEAF, "dist/dev/pkg/package.json"), "utf-8"));
@@ -21,7 +21,11 @@ describe("leaf package end-to-end", () => {
 	});
 
 	it("npm build emits dist/prod/npm/pkg and injects process.env.__PACKAGE_VERSION__", async () => {
-		await runBuild(defineBuild({ formats: ["esm"], meta: false }), { cwd: LEAF, argv: ["--target", "prod"] });
+		await runBuild(defineBuild({ formats: ["esm"], meta: false }), {
+			cwd: LEAF,
+			argv: ["--target", "prod"],
+			writeOutput: () => {},
+		});
 		expect(existsSync(join(LEAF, "dist/prod/npm/pkg/index.js"))).toBe(true);
 		const code = readFileSync(join(LEAF, "dist/prod/npm/pkg/index.js"), "utf-8");
 		expect(code).toContain("1.2.3"); // define replaced process.env.__PACKAGE_VERSION__

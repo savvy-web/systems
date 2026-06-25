@@ -16,7 +16,11 @@ describe("escape-hatch parity", () => {
 	it("raw tsdown.config.ts + plugins produces a pkg/ that diffs equal to the front door", async () => {
 		// front door build into dist/prod/npm/pkg (its own scoped cleanup)
 		rmSync(FRONT_DOOR_OUT, { recursive: true, force: true });
-		await runBuild(defineBuild({ formats: ["esm"], meta: false }), { cwd: LEAF, argv: ["--target", "prod"] });
+		await runBuild(defineBuild({ formats: ["esm"], meta: false }), {
+			cwd: LEAF,
+			argv: ["--target", "prod"],
+			writeOutput: () => {},
+		});
 		const frontManifest = readFileSync(join(FRONT_DOOR_OUT, "package.json"), "utf-8");
 
 		// escape hatch build into dist/escape/pkg (its own scoped cleanup)
@@ -25,7 +29,9 @@ describe("escape-hatch parity", () => {
 		const configModule = await import(`${LEAF}/tsdown.config.ts`);
 		// The imported config is a single UserConfig object; cast to InlineConfig to pass config:false.
 		const escapeConfig = configModule.default as InlineConfig;
-		await build({ ...escapeConfig, config: false });
+		// logLevel: "silent" muzzles tsdown's native build report (mirrors the front door); it does
+		// not change emitted output, so the package.json parity assertion below is unaffected.
+		await build({ ...escapeConfig, config: false, logLevel: "silent" });
 
 		const hatchManifest = readFileSync(join(ESCAPE_OUT, "package.json"), "utf-8");
 

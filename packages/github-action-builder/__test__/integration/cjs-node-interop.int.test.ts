@@ -11,6 +11,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { logger } from "@rsbuild/core";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { GitHubAction } from "../../src/index.js";
@@ -29,7 +30,16 @@ describe("issue #79: CJS node: builtin interop", () => {
 				persistLocal: { enabled: false },
 			},
 		});
-		const result = await action.build();
+		// Silence rsbuild's reporter (build banners + file-size table) so the
+		// in-process build leaks no stray output into the test run.
+		const previousLogLevel = logger.level;
+		logger.level = "silent";
+		let result: Awaited<ReturnType<typeof action.build>>;
+		try {
+			result = await action.build();
+		} finally {
+			logger.level = previousLogLevel;
+		}
 		if (!result.success) {
 			throw new Error(`fixture build failed: ${result.error ?? "unknown error"}`);
 		}

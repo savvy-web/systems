@@ -22,6 +22,7 @@ import {
 import { Effect } from "effect";
 import type { JsoncParseError } from "jsonc-effect";
 import { parse } from "jsonc-effect";
+import { BIOME_VERSION } from "./biome-version.js";
 
 /** Unicode checkmark symbol. */
 const CHECK_MARK = "✓";
@@ -116,7 +117,7 @@ function checkMarkdownlintConfig(content: string) {
 }
 
 /**
- * Check biome config `$schema` URLs against the expected peer dependency version.
+ * Check biome config `$schema` URLs against the pinned {@link BIOME_VERSION}.
  *
  * @remarks
  * Uses `Lint.Biome.findAllConfigs()` for workspace-aware discovery, then validates
@@ -126,14 +127,10 @@ function checkMarkdownlintConfig(content: string) {
  */
 function checkBiomeSchemas() {
 	return Effect.gen(function* () {
-		const version = process.env.__BIOME_PEER_VERSION__;
 		const statuses: { path: string; matches: boolean }[] = [];
-
-		if (!version) return { statuses, warnings: [] as string[] };
-
 		const fs = yield* FileSystem.FileSystem;
 		const warnings: string[] = [];
-		const expectedSchema = `https://biomejs.dev/schemas/${version}/schema.json`;
+		const expectedSchema = `https://biomejs.dev/schemas/${BIOME_VERSION}/schema.json`;
 
 		// Use Lint.Biome.findAllConfigs() for workspace-aware discovery
 		const configPaths = Lint.Biome.findAllConfigs();

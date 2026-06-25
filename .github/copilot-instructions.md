@@ -36,7 +36,7 @@ This repo will contain three packages (currently in design phase):
 
 * **Formatter:** Biome -- tabs, no trailing commas
 * **TypeScript:** Strict mode, ES modules with `.js` extensions required
-* **Testing:** Vitest via `@savvy-web/vitest`
+* **Testing:** Vitest via `@vitest-agent/plugin`
 * **Commits:** Conventional Commits with DCO signoff via `@savvy-web/commitlint`
 * **Imports:** Use `node:` protocol for Node.js built-ins; separate type imports
 

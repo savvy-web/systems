@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Logger } from "effect";
 import { parse as parseJsonc } from "jsonc-effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceRoot } from "workspaces-effect";
@@ -1175,7 +1175,11 @@ describe("warnIfLegacyVersionFiles", () => {
 		// that the Effect resolves to void without throwing, which means the
 		// detection branch ran and emitted a warning. We've already covered
 		// the message shape via `legacyVersionFilesWarning`.
-		await expect(Effect.runPromise(warnIfLegacyVersionFiles(changesetDir))).resolves.toBeUndefined();
+		await expect(
+			Effect.runPromise(
+				warnIfLegacyVersionFiles(changesetDir).pipe(Effect.provide(Logger.replace(Logger.defaultLogger, Logger.none))),
+			),
+		).resolves.toBeUndefined();
 	});
 });
 

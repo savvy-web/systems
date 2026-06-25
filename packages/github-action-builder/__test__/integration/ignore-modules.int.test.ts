@@ -10,6 +10,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { logger } from "@rsbuild/core";
 import { describe, expect, it } from "vitest";
 
 import { GitHubAction } from "../../src/index.js";
@@ -28,7 +29,16 @@ describe("issue #81: build.ignore option", () => {
 				persistLocal: { enabled: false },
 			},
 		});
-		const result = await action.build();
+		// Silence rsbuild's reporter (build banners + file-size table) so the
+		// in-process build leaks no stray output into the test run.
+		const previousLogLevel = logger.level;
+		logger.level = "silent";
+		let result: Awaited<ReturnType<typeof action.build>>;
+		try {
+			result = await action.build();
+		} finally {
+			logger.level = previousLogLevel;
+		}
 
 		expect(result.success).toBe(true);
 		expect(existsSync(mainJs)).toBe(true);

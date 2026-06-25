@@ -25,7 +25,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/docs`, `plu
 - **Package Manager:** pnpm 11.5.1 with `@savvy-web/pnpm-plugin-silk` config dependency
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all ten packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other eight via the front-door `defineBuild`/`runBuild`); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
 - **Linting:** Biome, markdownlint
-- **Testing:** Vitest via `@savvy-web/vitest`
+- **Testing:** Vitest via `@vitest-agent/plugin`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
 - **Releases:** `@savvy-web/changesets`
 
@@ -43,6 +43,8 @@ pnpm lint:md        # Markdown lint
 ## Install & Build Orchestration
 
 Build runs on install. A single root `prepare: husky && turbo run build:dev` builds the dev outputs during `pnpm install` (husky runs first so git hooks install even if the build is slow). There are no per-package `prepare` scripts. A fresh clone gets a working `savvy` bin on PATH and functional git hooks immediately. `pnpm build` (turbo `build:dev` + `build:prod`) produces the prod outputs.
+
+The vitest `globalSetup` runs `pnpm turbo run build:dev`, so when a test run needs to rebuild a package its `dist/dev` (and the `node_modules/@savvy-web/*` `link:` symlinks pointing into it) can momentarily appear missing mid-run. This is transient — do not "fix" it; let the run finish, then re-check. The outputs and links are back once the build completes.
 
 Required `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`. The plugin is pinned in `pnpm-workspace.yaml` WITH its `+sha512-...` integrity hash (turbo/reproducibility need it); `pnpm add --config` omits the hash, so add it by hand. Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts`: injection hard-links each package's `dist/dev` at link time, which is absent before the `prepare` build runs, so a frozen install aborts with `ENOENT`. Plain `link:` symlinks (publishConfig `directory: dist/dev/pkg` for the ten bundler-built packages, + `linkDirectory: true`) tolerate the not-yet-built dir, which the `prepare` build then populates. `@savvy-web/cli` and `@savvy-web/mcp` are direct root devDependencies so they link to `dist/dev`. The `savvy` bin resolves at `dist/dev/pkg/bin/savvy.js`, on PATH after the `prepare` build.
 

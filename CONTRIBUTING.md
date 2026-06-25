@@ -32,7 +32,7 @@ pnpm install
 - **Formatter:** Biome -- tabs, no trailing commas
 - **Linting:** Biome with strict rules including `useNodejsImportProtocol`
 - **TypeScript:** Strict mode, ES modules with `.js` extensions required
-- **Testing:** Vitest via `@savvy-web/vitest`
+- **Testing:** Vitest via `@vitest-agent/plugin`
 - **Imports:** Use `node:` protocol for Node.js built-ins; separate type imports
 
 ## Pre-commit Hooks

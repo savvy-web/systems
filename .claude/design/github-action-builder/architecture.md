@@ -6,8 +6,8 @@ category: architecture
 type: architecture
 completeness: 95
 created: 2026-01-29
-updated: 2026-06-23
-last-synced: 2026-06-23
+updated: 2026-06-25
+last-synced: 2026-06-25
 related:
   - ../github-action-effects/index.md
 dependencies: []
@@ -94,7 +94,7 @@ All errors use `Data.TaggedError` for type-safe pattern matching via `Effect.cat
 
 ## Testing
 
-Unit tests sit next to their sources (`*.test.ts`). Integration tests under `__test__/integration/` (`*.int.test.ts`, auto-discovered by `@savvy-web/vitest` as a `:int` project) build a fixture via `GitHubAction.create()` then run the emitted `dist/main.js` with Node to assert runtime behavior — covering the `node-commonjs` interop, user externals not being bundled, the throwing ignore stub, inline license comments and idempotent (reproducible) output. See the fixtures under `__test__/integration/fixtures/` for the exact scenarios.
+Unit tests live under a sibling `__test__/` directory mirroring `src/` (`*.test.ts`). Integration tests under `__test__/integration/` (`*.int.test.ts`, discovered and classified as an `:int` project by the root `@vitest-agent/plugin`) build a fixture via `GitHubAction.create()` then run the emitted `dist/main.js` with Node to assert runtime behavior — covering the `node-commonjs` interop, user externals not being bundled, the throwing ignore stub, inline license comments and idempotent (reproducible) output. See the fixtures under `__test__/integration/fixtures/` for the exact scenarios.
 
 ## Rationale
 

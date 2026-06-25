@@ -6,4 +6,16 @@ configDependencies:
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
+minimumReleaseAgeExclude:
+  - "@vitest-agent/cli@1.0.0"
+  - "@vitest-agent/mcp@1.0.0"
+  - "@vitest-agent/plugin@1.0.0"
+  - "@vitest-agent/reporter@1.0.0"
+  - "@vitest-agent/sdk@1.0.0"
+  - "@vitest-agent/sidecar-darwin-arm64@1.0.0"
+  - "@vitest-agent/sidecar-linux-arm64@1.0.0"
+  - "@vitest-agent/sidecar-linux-x64@1.0.0"
+  - "@vitest-agent/sidecar-win32-x64@1.0.0"
+  - "@vitest-agent/sidecar@1.0.0"
+  - "@vitest-agent/ui@1.0.0"
 verifyDepsBeforeRun: false

@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: testing
 created: 2026-03-06
-updated: 2026-06-23
-last-synced: 2026-06-23
+updated: 2026-06-25
+last-synced: 2026-06-25
 completeness: 88
 related:
   - ./index.md
@@ -37,26 +37,26 @@ The `./testing` subpath re-exports everything from the main entry point **except
 
 ## Test layout
 
-Test files are co-located with their implementation, the canonical pattern being a service-interface test through the Test layer plus a Live-layer test with mocked Node.js dependencies:
+Test files live under a sibling `__test__/` directory that mirrors the `src/` tree, the canonical pattern being a service-interface test through the Test layer plus a Live-layer test with mocked Node.js dependencies:
 
 ```text
-src/services/ActionOutputs.ts         — service interface
-src/services/ActionOutputs.test.ts    — tests via the Test layer
-src/layers/ActionOutputsLive.ts       — live layer
-src/layers/ActionOutputsLive.test.ts  — live layer tests with mocked deps
-src/layers/ActionOutputsTest.ts       — test layer (no test file needed)
-src/runtime/WorkflowCommand.test.ts   — pure-function tests
+src/services/ActionOutputs.ts              — service interface
+__test__/services/ActionOutputs.test.ts    — tests via the Test layer
+src/layers/ActionOutputsLive.ts            — live layer
+__test__/layers/ActionOutputsLive.test.ts  — live layer tests with mocked deps
+src/layers/ActionOutputsTest.ts            — test layer (no test file needed)
+__test__/runtime/WorkflowCommand.test.ts   — pure-function tests
 ```
 
 Each service has a Test layer with in-memory backing, exercised through the Effect runtime so no real GitHub API or workflow command is touched. Test layers use the namespace-object pattern (`.empty()` / `.layer(state)`) for ergonomic setup.
 
-**Framework:** Vitest with the forks pool (required for Effect-TS runtime compatibility), v8 coverage provider, 80% threshold for lines, functions, statements and branches.
+**Framework:** Vitest driven by the root `@vitest-agent/plugin` (`AgentPlugin`), which discovers and classifies these `__test__/*.test.ts` files. Tests run in the forks pool (required for Effect-TS runtime compatibility), v8 coverage provider, 80% threshold for lines, functions, statements and branches.
 
 ---
 
 ## What gets tested
 
-Coverage spans every service, the runtime modules, the namespace and utility objects and the schemas. The exact assertions live in the co-located `*.test.ts` files; the regression-prone areas worth knowing about are:
+Coverage spans every service, the runtime modules, the namespace and utility objects and the schemas. The exact assertions live in the `*.test.ts` files under `__test__/`; the regression-prone areas worth knowing about are:
 
 - **`ActionLogger`** — the per-group flush regression: a failure inside a group flushes within that group, with no double-flush across nested groups or the outer `withBuffer` boundary (see [layers.md](./layers.md#load-bearing-layer-notes)).
 - **`GitHubClient`** — the three construction modes, pagination termination and the retryable classification (429/5xx/secondary-rate-limit 403 vs a bare 403).
@@ -77,7 +77,7 @@ Unit tests cover the service catalog, the runtime modules, the namespace/utility
 
 ## Rationale
 
-In-memory test layers give fast, deterministic tests without GitHub credentials or runner infrastructure. Co-locating test files keeps them discoverable beside their implementation, and the forks pool satisfies Effect-TS runtime requirements. With all `@actions/*` packages removed, the suite has no dependency on the GitHub Actions runner environment.
+In-memory test layers give fast, deterministic tests without GitHub credentials or runner infrastructure. Mirroring the `src/` tree under `__test__/` keeps tests discoverable per the suite-wide convention while leaving `src/` free of test files, and the forks pool satisfies Effect-TS runtime requirements. With all `@actions/*` packages removed, the suite has no dependency on the GitHub Actions runner environment.
 
 ## Related Documentation
 

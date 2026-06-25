@@ -9,6 +9,7 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { logger } from "@rsbuild/core";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { GitHubAction } from "../../src/index.js";
@@ -31,7 +32,16 @@ describe("issue #94: no license sidecar files", () => {
 				persistLocal: { enabled: false },
 			},
 		});
-		const result = await action.build();
+		// Silence rsbuild's reporter (build banners + file-size table) so the
+		// in-process build leaks no stray output into the test run.
+		const previousLogLevel = logger.level;
+		logger.level = "silent";
+		let result: Awaited<ReturnType<typeof action.build>>;
+		try {
+			result = await action.build();
+		} finally {
+			logger.level = previousLogLevel;
+		}
 		if (!result.success) {
 			throw new Error(`build failed: ${result.error ?? "unknown error"}`);
 		}

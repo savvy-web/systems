@@ -55,6 +55,9 @@ describe("generateMeta", () => {
 			localPaths: ["models"],
 			tsdoc: { suppressWarnings: [], tagDefinitions: [] },
 			manifestTransform: (p) => ({ ...p, version: "9.9.9" }),
+			// Route the ae-missing-release-tag warning to a no-op so API Extractor marks it handled and
+			// does not print to the console; this test asserts on the emitted manifests, not diagnostics.
+			onMessage: () => {},
 		});
 		const bundle = JSON.parse(readFileSync(join(outMetaDir, "package.json"), "utf-8")) as { version: string };
 		expect(bundle.version).toBe("9.9.9");
@@ -75,6 +78,9 @@ describe("generateMeta", () => {
 			outMetaDir,
 			localPaths: ["models"],
 			tsdoc: { suppressWarnings: [], tagDefinitions: [] },
+			// Route the ae-missing-release-tag warning to a no-op so API Extractor marks it handled and
+			// does not print to the console; this test asserts on the emitted trio, not diagnostics.
+			onMessage: () => {},
 		});
 		// release-asset bundle: the trio (api.json + package.json + tsconfig.json)
 		expect(existsSync(join(outMetaDir, "fixture.api.json"))).toBe(true);

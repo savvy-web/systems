@@ -16,6 +16,7 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { logger } from "@rsbuild/core";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubAction } from "../../src/index.js";
@@ -68,18 +69,26 @@ describe("issue #94: idempotent builds", () => {
 		cpSync(sourceFixture, work, { recursive: true });
 		const mainJs = join(work, "dist", "main.js");
 
-		const r1 = await buildOnce(work);
-		if (!r1.success) {
-			throw new Error(`build 1 failed: ${r1.error ?? "unknown error"}`);
-		}
-		first = readFileSync(mainJs, "utf8");
-		licenseFiles = readdirSync(join(work, "dist")).filter((f) => f.endsWith(".LICENSE.txt"));
+		// Silence rsbuild's reporter (build banners + file-size table) so the
+		// in-process builds leak no stray output into the test run.
+		const previousLogLevel = logger.level;
+		logger.level = "silent";
+		try {
+			const r1 = await buildOnce(work);
+			if (!r1.success) {
+				throw new Error(`build 1 failed: ${r1.error ?? "unknown error"}`);
+			}
+			first = readFileSync(mainJs, "utf8");
+			licenseFiles = readdirSync(join(work, "dist")).filter((f) => f.endsWith(".LICENSE.txt"));
 
-		const r2 = await buildOnce(work);
-		if (!r2.success) {
-			throw new Error(`build 2 failed: ${r2.error ?? "unknown error"}`);
+			const r2 = await buildOnce(work);
+			if (!r2.success) {
+				throw new Error(`build 2 failed: ${r2.error ?? "unknown error"}`);
+			}
+			second = readFileSync(mainJs, "utf8");
+		} finally {
+			logger.level = previousLogLevel;
 		}
-		second = readFileSync(mainJs, "utf8");
 	}, 240_000);
 
 	it("produces byte-identical output across builds", () => {
