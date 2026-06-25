@@ -1,12 +1,15 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WorkspaceDiscovery, WorkspacePackage } from "workspaces-effect";
 import { collectTargets, removeTargets, runClean } from "../src/commands/clean.js";
 
 const run = <A, E>(eff: Effect.Effect<A, E>): Promise<A> => Effect.runPromise(eff);
+
+/** Suppresses the command's INFO logging so test output stays clean. */
+const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
 
 describe("collectTargets", () => {
 	let dir: string;
@@ -190,7 +193,10 @@ describe("runClean", () => {
 		const rootPkg = makePkg(root, true);
 		const leafPkg = makePkg(leaf, false);
 		await run(
-			runClean({ globs: "dist,.turbo", dryRun: true }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
+			runClean({ globs: "dist,.turbo", dryRun: true }).pipe(
+				Effect.provide(discoveryLayer([leafPkg, rootPkg])),
+				Effect.provide(silentLogger),
+			),
 		);
 		expect(existsSync(join(leaf, "dist"))).toBe(true);
 		expect(existsSync(join(root, ".turbo"))).toBe(true);
@@ -200,7 +206,10 @@ describe("runClean", () => {
 		const rootPkg = makePkg(root, true);
 		const leafPkg = makePkg(leaf, false);
 		await run(
-			runClean({ globs: "dist,.turbo", dryRun: false }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
+			runClean({ globs: "dist,.turbo", dryRun: false }).pipe(
+				Effect.provide(discoveryLayer([leafPkg, rootPkg])),
+				Effect.provide(silentLogger),
+			),
 		);
 		expect(existsSync(join(leaf, "dist"))).toBe(false);
 		expect(existsSync(join(root, ".turbo"))).toBe(false);
@@ -208,7 +217,12 @@ describe("runClean", () => {
 
 	it("applies DEFAULT globs when the string is empty/whitespace", async () => {
 		const rootPkg = makePkg(root, true);
-		await run(runClean({ globs: "  ", dryRun: false }).pipe(Effect.provide(discoveryLayer([rootPkg]))));
+		await run(
+			runClean({ globs: "  ", dryRun: false }).pipe(
+				Effect.provide(discoveryLayer([rootPkg])),
+				Effect.provide(silentLogger),
+			),
+		);
 		expect(existsSync(join(root, ".turbo"))).toBe(false); // .turbo is a default
 	});
 });
