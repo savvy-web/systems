@@ -21,6 +21,7 @@ import {
 import { Effect } from "effect";
 import type { JsoncFormattingOptions } from "jsonc-effect";
 import { applyEdits, modify, parse } from "jsonc-effect";
+import { BIOME_VERSION } from "./biome-version.js";
 
 /** Unicode checkmark symbol. */
 const CHECK_MARK = "✓";
@@ -168,17 +169,14 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 }
 
 /**
- * Find and sync biome config `$schema` URLs to match the peer dependency version.
+ * Find and sync biome config `$schema` URLs to match the pinned {@link BIOME_VERSION}.
  *
  * @returns Effect that syncs biome schemas and logs results
  */
 function syncBiomeSchemas() {
 	return Effect.gen(function* () {
-		const version = process.env.__BIOME_PEER_VERSION__;
-		if (!version) return;
-
 		const syncer = yield* BiomeSchemaSync;
-		const result = yield* syncer.sync(version);
+		const result = yield* syncer.sync(BIOME_VERSION);
 
 		for (const configPath of result.current) {
 			yield* Effect.log(`${CHECK_MARK} ${configPath}: biome $schema up-to-date`);

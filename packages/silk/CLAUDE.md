@@ -11,6 +11,14 @@
 - Depends only on `@savvy-web/silk-effects` within the repo; must NOT import `@savvy-web/cli` or `@savvy-web/mcp`.
 - The Biome asset lives under top-level `public/`.
 
+## Biome version upgrade
+
+Biome's version is hand-pinned in three coupled spots — bump all three together when upgrading:
+
+1. `public/biome/silk.jsonc` `$schema` URL → the exact new release (e.g. `2.5.1`).
+2. `package.json` `peerDependencies["@biomejs/biome"]` → the new minor line (e.g. `~2.5.0`), kept optional.
+3. `@savvy-web/cli`'s `BIOME_VERSION` const (`packages/cli/src/commands/lint/biome-version.ts`) → the exact new release; `savvy init`/`savvy check` sync consumer `biome.json(c)` `$schema` URLs to it.
+
 ## Design
 
 Load for the shim contract, export map, peerDep wiring, and the type-portability invariant:
