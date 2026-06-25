@@ -1,22 +1,16 @@
 /**
- * Global Vitest setup
- * Runs once before all test files
+ * Vitest setup file for effect-type-registry tests
  *
- * Loads .act.secrets into process.env for integration tests.
- * The file uses dotenv format with multiline values in double quotes.
+ * Note: Logging is automatically suppressed by src/Logger.ts which detects
+ * the test environment via globalThis.vitest or NODE_ENV=test.
+ *
+ * No additional configuration needed!
  */
-import { existsSync, readFileSync } from "node:fs";
 
-const SECRETS_FILE = ".act.secrets";
+// This file exists to be referenced in vitest.config.ts but doesn't need
+// to do anything - the Logger module handles test mode detection automatically.
+import { AgentPlugin } from "@vitest-agent/plugin";
 
-if (existsSync(SECRETS_FILE)) {
-	const content = readFileSync(SECRETS_FILE, "utf-8");
-	const regex = /^([A-Z_]+)="([\s\S]*?)"\s*$|^([A-Z_]+)=(.*)$/gm;
-	for (const match of content.matchAll(regex)) {
-		const key = match[1] ?? match[3];
-		const value = match[2] ?? match[4];
-		if (key && value && !process.env[key]) {
-			process.env[key] = value;
-		}
-	}
+export function setup() {
+	AgentPlugin.runScript("pnpm turbo run build:dev");
 }
