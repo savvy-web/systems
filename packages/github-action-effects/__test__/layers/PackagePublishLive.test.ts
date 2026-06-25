@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Effect, Exit, Layer, Redacted } from "effect";
+import { Effect, Exit, Layer, Logger, Redacted } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CommandRunnerError } from "../../src/errors/CommandRunnerError.js";
 import { PackagePublishError } from "../../src/errors/PackagePublishError.js";
@@ -32,6 +32,9 @@ afterEach(() => {
 
 const outputsState = ActionOutputsTest.empty();
 const outputsLayer = ActionOutputsTest.layer(outputsState);
+
+/** Suppresses the publish flow's INFO logging so test output stays clean. */
+const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
 
 const makeMockRunner = (handlers: {
 	exec?: (
@@ -72,7 +75,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -96,7 +102,10 @@ describe("PackagePublishLive", () => {
 	it("setupAuth strips the URL scheme when given a full registry URL", async () => {
 		const runner = makeMockRunner({});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -113,7 +122,10 @@ describe("PackagePublishLive", () => {
 	it("setupAuth normalizes a registry URL WITHOUT a trailing slash to the slash key (bundler binding regression)", async () => {
 		const runner = makeMockRunner({});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		// The bundler's dist/prod/targets.json binding emits registries with no trailing
 		// slash. npm's nerf-dart always has one, so the key must still carry it.
@@ -138,7 +150,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -185,7 +200,10 @@ describe("PackagePublishLive", () => {
 				],
 			]),
 		});
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const result = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -212,7 +230,10 @@ describe("PackagePublishLive", () => {
 				],
 			]),
 		});
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const result = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -233,7 +254,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -255,7 +279,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -283,7 +310,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -304,7 +334,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -325,7 +358,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -346,7 +382,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -372,7 +411,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -414,7 +456,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -436,7 +481,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -460,7 +508,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -487,7 +538,10 @@ describe("PackagePublishLive", () => {
 				),
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -515,7 +569,10 @@ describe("PackagePublishLive", () => {
 			exec: () => Effect.fail(sourceError),
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -546,7 +603,10 @@ describe("PackagePublishLive", () => {
 				),
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -564,7 +624,10 @@ describe("PackagePublishLive", () => {
 	it("setupAuth surfaces a PackagePublishError when the .npmrc write fails", async () => {
 		const runner = makeMockRunner({});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		// Point the userconfig at a path whose parent is a regular file so the
 		// append fails (ENOTDIR/EEXIST), exercising the error mapping.
@@ -591,7 +654,10 @@ describe("PackagePublishLive", () => {
 			execCapture: () => Effect.succeed({ exitCode: 0, stdout: "not json", stderr: "" }),
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -611,7 +677,10 @@ describe("PackagePublishLive", () => {
 			execCapture: () => Effect.succeed({ exitCode: 0, stdout: "[]", stderr: "" }),
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -640,7 +709,10 @@ describe("PackagePublishLive", () => {
 				),
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -658,7 +730,10 @@ describe("PackagePublishLive", () => {
 	it("verifyIntegrity wraps NpmRegistryError into PackagePublishError", async () => {
 		const runner = makeMockRunner({});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -683,7 +758,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -745,7 +823,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		await Effect.runPromise(
 			PackagePublish.pipe(
@@ -791,7 +872,10 @@ describe("PackagePublishLive", () => {
 			},
 		});
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -821,7 +905,10 @@ describe("PackagePublishLive", () => {
 			execLines: () => Effect.die("not used"),
 		} as unknown as typeof CommandRunner.Service);
 		const registry = NpmRegistryTest.empty();
-		const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
 
 		const error = await Effect.runPromise(
 			PackagePublish.pipe(
@@ -854,7 +941,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -897,7 +987,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			await Effect.runPromise(
 				PackagePublish.pipe(
@@ -921,7 +1014,10 @@ describe("PackagePublishLive", () => {
 					}),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -950,7 +1046,10 @@ describe("PackagePublishLive", () => {
 					),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -968,7 +1067,10 @@ describe("PackagePublishLive", () => {
 				execCapture: () => Effect.succeed({ exitCode: 0, stdout: "not valid json", stderr: "" }),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const error = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -995,7 +1097,10 @@ describe("PackagePublishLive", () => {
 			const registry = NpmRegistryTest.layer({
 				packages: new Map([["my-pkg", { versions: [], latest: "", distTags: {} }]]),
 			});
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1032,7 +1137,10 @@ describe("PackagePublishLive", () => {
 					],
 				]),
 			});
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1067,7 +1175,10 @@ describe("PackagePublishLive", () => {
 					],
 				]),
 			});
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const exit = await Effect.runPromiseExit(
 				PackagePublish.pipe(
@@ -1123,7 +1234,10 @@ describe("PackagePublishLive", () => {
 				execCapture: () => Effect.succeed({ exitCode: 0, stdout: fixture, stderr: "" }),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1162,7 +1276,10 @@ describe("PackagePublishLive", () => {
 				execCapture: () => Effect.succeed({ exitCode: 0, stdout: fixture, stderr: "" }),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const error = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1202,7 +1319,10 @@ describe("PackagePublishLive", () => {
 					},
 				});
 				const registry = NpmRegistryTest.empty();
-				const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+				const layer = Layer.merge(
+					silentLogger,
+					PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+				);
 
 				await Effect.runPromise(
 					PackagePublish.pipe(
@@ -1230,7 +1350,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1275,7 +1398,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1304,7 +1430,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1341,7 +1470,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1380,7 +1512,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1412,7 +1547,10 @@ describe("PackagePublishLive", () => {
 					},
 				});
 				const registry = NpmRegistryTest.empty();
-				const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+				const layer = Layer.merge(
+					silentLogger,
+					PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+				);
 
 				await Effect.runPromise(
 					PackagePublish.pipe(
@@ -1448,7 +1586,10 @@ describe("PackagePublishLive", () => {
 				},
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1474,7 +1615,10 @@ describe("PackagePublishLive", () => {
 					),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const error = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1505,7 +1649,10 @@ describe("PackagePublishLive", () => {
 					}),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(
@@ -1528,7 +1675,10 @@ describe("PackagePublishLive", () => {
 				execCapture: () => Effect.succeed({ exitCode: 0, stdout: "+ pkg@1.0.0\n", stderr: "" }),
 			});
 			const registry = NpmRegistryTest.empty();
-			const layer = PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer)));
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
 
 			const result = await Effect.runPromise(
 				PackagePublish.pipe(

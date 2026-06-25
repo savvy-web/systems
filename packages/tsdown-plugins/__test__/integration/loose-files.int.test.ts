@@ -2,9 +2,16 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { build as tsdownBuild } from "tsdown";
 import { describe, expect, it } from "vitest";
+import type { TsdownBuild } from "../../src/build/build-target-groups.js";
 import { buildTargetGroups } from "../../src/build/build-target-groups.js";
 import { normalizeLooseFiles } from "../../src/build/loose-files.js";
+
+// Without a collector, buildTargetGroups leaves tsdown at its default logLevel, which prints the
+// build reporter (entry table, "Build complete", file sizes) to stdout. Inject a build that forces
+// logLevel:"silent" so the real build still runs but stays quiet. Mirrors the in-source muzzle.
+const silentBuild: TsdownBuild = (config) => (tsdownBuild as unknown as TsdownBuild)({ ...config, logLevel: "silent" });
 
 describe("looseFiles integration", () => {
 	it("emits a self-contained loose file at its literal path alongside the main entry", async () => {
@@ -29,6 +36,7 @@ describe("looseFiles integration", () => {
 		);
 
 		await buildTargetGroups({
+			build: silentBuild,
 			cwd: dir,
 			version: "1.0.0",
 			entry: { index: "src/index.ts" },

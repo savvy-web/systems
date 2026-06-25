@@ -86,6 +86,10 @@ describe("runApiExtractor", () => {
 			apiJsonPath,
 			tsdocMetadataPath: join(dir, "tsdoc-metadata.json"),
 			suppressWarnings: [{ messageId: "ae-forgotten-export", pattern: "_base" }],
+			// Route the remaining (unsuppressed) ae-missing-release-tag warnings to a no-op so API
+			// Extractor marks them handled and does not print them to the console; this test only
+			// asserts on the emitted .api.json, not on diagnostic text.
+			onMessage: () => {},
 		});
 		expect(existsSync(apiJsonPath)).toBe(true);
 		const model = JSON.parse(readFileSync(apiJsonPath, "utf-8")) as { kind: string };
@@ -129,6 +133,10 @@ describe("runApiExtractor", () => {
 				apiJsonPath: join(f.dir, "out.api.json"),
 				suppressWarnings: [],
 				ci: true,
+				// Route the (CI-fatal) ae-forgotten-export diagnostic to a no-op so it is not printed to
+				// the console. This only suppresses the message's own output via `handled`; the build still
+				// fails on result.errorCount, so the throw assertion below is unaffected.
+				onMessage: () => {},
 			}),
 		).toThrow(/API Extractor/);
 	});

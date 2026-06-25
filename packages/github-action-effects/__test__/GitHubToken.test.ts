@@ -1,4 +1,4 @@
-import { ConfigProvider, Effect, Layer, Redacted } from "effect";
+import { ConfigProvider, Effect, Layer, Logger, Redacted } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubToken } from "../src/GitHubToken.js";
 import { ActionOutputsTest } from "../src/layers/ActionOutputsTest.js";
@@ -24,6 +24,9 @@ vi.mock("@octokit/rest", async (importOriginal) => {
 
 const STATE_KEY = "github-action-effects/installation-token";
 
+/** Suppresses provision's INFO/WARN logging so test output stays clean. */
+const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
+
 /** Build a GitHubApp test state that returns the given installation token. */
 const appStateWith = (
 	token: InstallationToken,
@@ -40,7 +43,13 @@ const provisionLayer = (
 	state: ReturnType<typeof ActionStateTest.empty>,
 	appState: GitHubAppTestState,
 	outputs: ReturnType<typeof ActionOutputsTest.empty>,
-) => Layer.mergeAll(ActionStateTest.layer(state), GitHubAppTest.layer(appState), ActionOutputsTest.layer(outputs));
+) =>
+	Layer.mergeAll(
+		ActionStateTest.layer(state),
+		GitHubAppTest.layer(appState),
+		ActionOutputsTest.layer(outputs),
+		silentLogger,
+	);
 
 beforeEach(() => {
 	octokitAuthCalls.length = 0;
