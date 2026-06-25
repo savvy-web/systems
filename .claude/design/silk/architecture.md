@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-14
-last-synced: 2026-06-14
+updated: 2026-06-25
+last-synced: 2026-06-25
 completeness: 92
 related:
   - ../cli/architecture.md
@@ -109,6 +109,8 @@ The Biome preset (`./biome`) now also formats these presets under `public/tsconf
 - **CJS is required for two entries, not the whole package.** The Changesets CLI `require()`s `./changesets/changelog` and markdownlint-cli2 `require()`s `./changesets/markdownlint`. silk's base entries are ESM-only (externalizing silk-effects); two per-entry overrides pin those two entries to `format: ["esm", "cjs"]` and force-bundle silk-effects (`bundleNodeModules`) so the `require` resolves from each entry's self-contained bytes rather than chasing an ESM-only transitive dep. The dual-format build activates the cjs-default-interop footer and the node-builtin default-interop rewrite. See [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime).
 - **silk owns convention presets (roots + framework), not the lib base.** The `./tsconfig/node/root.json` and `./tsconfig/rspress/website.json` presets are for repos following Silk conventions without a Silk build tool at that package; the lib/build base is the build tools' job (`@savvy-web/bundler`). The website preset is browser/SSG-targeted (`es2023`, `noEmit`), deliberately diverging from the Node-24 build base. See [The shipped TSConfig convention presets](#the-shipped-tsconfig-convention-presets) and the taxonomy in `../bundler/architecture.md`.
 - **The Biome asset excludes `.claude/worktrees` and formats `public/tsconfig/**`.** The exclusion keeps a consumer's nested Claude Code worktrees from tripping Biome's nested-root abort; the include adds the shipped tsconfig presets to the formatted set.
+- **The shipped Biome asset is pinned to a Biome version in three coupled hand-update spots that must move together.** The asset (`public/biome/silk.jsonc`) carries an exact `$schema` URL, `package.json` declares the matching `@biomejs/biome` optional peer (a `~`-pinned minor line), and `@savvy-web/cli`'s `BIOME_VERSION` const (`packages/cli/src/commands/lint/biome-version.ts`) is the exact release `savvy lint`/`savvy check` sync consumer `biome.json(c)` `$schema` URLs to. Bump all three on a Biome upgrade — see `packages/silk/CLAUDE.md` for the checklist and `../cli/architecture.md` for the sync path. The asset stays on stable, broadly-supported keys: 2.5-only keys (e.g. `javascript.resolver.experimentalPnpmCatalogs`, dogfooded in the repo root `biome.jsonc`) are deliberately kept OUT of `silk.jsonc` so consumers still on an older Biome do not break. Promoting 2.5-only config into the asset is tracked in savvy-web/systems#169.
+- **The asset's `noUndeclaredDependencies: off` override targets the test surface broadly.** It covers `__test__/` trees, `*.test`/`*.spec` files and the common `vitest.*`/`vite.config.*` config filenames, so test and tooling files can import devDependency-only packages without the rule firing. See the `overrides` block in `public/biome/silk.jsonc` for the authoritative glob set; it tracks the suite-wide `__test__/` convention.
 
 ## The type-portability invariant
 

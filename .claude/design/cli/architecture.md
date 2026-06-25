@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-06-18
-last-synced: 2026-06-18
+updated: 2026-06-25
+last-synced: 2026-06-25
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -108,6 +108,7 @@ The consequence: because the R-channel is `any`, the type-checker cannot prove t
 
 - **`@savvy-web/cli` never imports `@savvy-web/silk`.** All logic comes from `silk-effects`. This is grep-guarded.
 - The real tools (`@biomejs/biome`, `husky`, `@commitlint/*`, `@changesets/cli`, `lint-staged`, `markdownlint-cli2`) are not direct deps; `silk` co-installs them as peers and pnpm's public-hoist-pattern makes them resolvable when `savvy` shells out.
+- **`savvy lint`/`savvy check` sync each consumer `biome.json(c)` `$schema` URL to a hardcoded `BIOME_VERSION` const** (`src/commands/lint/biome-version.ts`), via `silk-effects`' `BiomeSchemaSync` service (`check` reports drift, `lint`/`init` writes it). The version source is a plain compiled-in constant, not the never-populated `__BIOME_PEER_VERSION__` env var the path previously read — that env var was always empty, so the sync was a dead no-op until the const replaced it; the path is now active. `BIOME_VERSION` is one of the three coupled Biome-version spots that move together on an upgrade (alongside `@savvy-web/silk`'s Biome asset `$schema` and its `@biomejs/biome` peer range) — see `../silk/architecture.md` and `packages/silk/CLAUDE.md`.
 - `silk` peerDeps `cli` (install-target wiring), so installing `silk` pulls the `savvy` bin. That arrow points at install topology only — `silk`'s code never imports `cli`.
 
 ## Rationale

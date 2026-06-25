@@ -25,7 +25,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/docs`, `plu
 - **Package Manager:** pnpm 11.5.1 with `@savvy-web/pnpm-plugin-silk` config dependency
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all ten packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other eight via the front-door `defineBuild`/`runBuild`); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
 - **Linting:** Biome, markdownlint
-- **Testing:** Vitest via `@savvy-web/vitest`
+- **Testing:** Vitest via `@vitest-agent/plugin`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
 - **Releases:** `@savvy-web/changesets`
 

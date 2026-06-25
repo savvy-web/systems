@@ -28,14 +28,14 @@
 		{
 			"source": "packages/cli/CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "e4096417f495829b68a0bd5a0a7e77196c7962f2bcc0009d2c2f6caa93fba6cb",
-			"recordedAt": "2026-06-20"
+			"hash": "8555ce633df139319020fc6e032223fe62410af2063e70dd947cca85773516ce",
+			"recordedAt": "2026-06-25"
 		},
 		{
 			"source": "packages/github-action-builder/CLAUDE.md",
 			"target": ".claude/design/github-action-builder/architecture.md",
-			"hash": "5262fb6d795aad71add129596e37c7966eace993ef439aefa426b9cb14f328eb",
-			"recordedAt": "2026-06-23"
+			"hash": "381c1e4665ce315b0f28869edcf95b7f3177c783e977771234c36c2677e45afa",
+			"recordedAt": "2026-06-25"
 		},
 		{
 			"source": "packages/github-action-effects/CLAUDE.md",
@@ -64,8 +64,8 @@
 		{
 			"source": "packages/silk/CLAUDE.md",
 			"target": ".claude/design/silk/architecture.md",
-			"hash": "f7d2941c6ae2869210c9d41dd529db0695e0b6192e6123b2938da48f2c8746af",
-			"recordedAt": "2026-06-20"
+			"hash": "83ec52a614fdda5ee7045fa2c30ee315ef395704dd7eb096818edfc29927ee6c",
+			"recordedAt": "2026-06-25"
 		},
 		{
 			"source": "packages/templates/CLAUDE.md",
