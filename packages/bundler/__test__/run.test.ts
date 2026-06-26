@@ -1,4 +1,5 @@
 // packages/bundler/__test__/run.test.ts
+import { readFileSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -54,7 +55,13 @@ describe("runBuild", () => {
 		expect(spy.mock.calls[0][0].tsconfigPath).toBe("/tmp/injected-tsconfig.json");
 	});
 
-	it("infers automatic jsx from tsconfig and forwards it to buildTargetGroups", async () => {
+	// JSX reaches the build through the generated tsconfig (compilerOptions.jsx), never as a
+	// top-level `jsx` forwarded into rolldown's inputOptions — see issue #170. These assert the
+	// resolved JSX is written into the tsconfig the default writeTsconfig emits.
+	const readWrittenTsconfig = (path: string) =>
+		(JSON.parse(readFileSync(path, "utf-8")) as { compilerOptions: Record<string, unknown> }).compilerOptions;
+
+	it("infers automatic jsx from tsconfig and writes it into the generated tsconfig", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
 			{ formats: ["esm"], externals: [], devManifest: "preserve" },
@@ -62,15 +69,16 @@ describe("runBuild", () => {
 				cwd: "/abs/pkg",
 				argv: ["--target", "dev"],
 				buildTargetGroups: spy,
-				writeTsconfig: () => "/tmp/fake-tsconfig.json",
 				readPackageName: () => "base",
 				readTsconfigJsx: () => ({ jsx: "react-jsx", jsxImportSource: "preact" }),
 			},
 		);
-		expect(spy.mock.calls[0][0].jsx).toEqual({ runtime: "automatic", importSource: "preact" });
+		const co = readWrittenTsconfig(spy.mock.calls[0][0].tsconfigPath);
+		expect(co.jsx).toBe("react-jsx");
+		expect(co.jsxImportSource).toBe("preact");
 	});
 
-	it("lets an explicit jsx override win over tsconfig inference", async () => {
+	it("lets an explicit classic jsx override win over tsconfig inference", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
 			{ formats: ["esm"], externals: [], devManifest: "preserve", jsx: { runtime: "classic" } },
@@ -78,15 +86,16 @@ describe("runBuild", () => {
 				cwd: "/abs/pkg",
 				argv: ["--target", "dev"],
 				buildTargetGroups: spy,
-				writeTsconfig: () => "/tmp/fake-tsconfig.json",
 				readPackageName: () => "base",
 				readTsconfigJsx: () => ({ jsx: "react-jsx", jsxImportSource: "react" }),
 			},
 		);
-		expect(spy.mock.calls[0][0].jsx).toEqual({ runtime: "classic" });
+		const co = readWrittenTsconfig(spy.mock.calls[0][0].tsconfigPath);
+		expect(co.jsx).toBe("react");
+		expect(co.jsxImportSource).toBeUndefined();
 	});
 
-	it("omits jsx from the build call when neither tsconfig nor config request it", async () => {
+	it("writes no jsx into the tsconfig when neither tsconfig nor config request it", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(
 			{ formats: ["esm"], externals: [], devManifest: "preserve" },
@@ -94,12 +103,12 @@ describe("runBuild", () => {
 				cwd: "/abs/pkg",
 				argv: ["--target", "dev"],
 				buildTargetGroups: spy,
-				writeTsconfig: () => "/tmp/fake-tsconfig.json",
 				readPackageName: () => "base",
 				readTsconfigJsx: () => ({}),
 			},
 		);
-		expect(spy.mock.calls[0][0].jsx).toBeUndefined();
+		const co = readWrittenTsconfig(spy.mock.calls[0][0].tsconfigPath);
+		expect(co.jsx).toBeUndefined();
 	});
 
 	it("forwards format to the build", async () => {

@@ -2,7 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Resolved JSX transform settings, mirroring the subset of rolldown's JsxOptions the bundler forwards.
+ * Resolved JSX transform settings. The shape mirrors the subset of rolldown's JsxOptions, but the
+ * bundler consumes it to populate the generated dts tsconfig's `jsx`/`jsxImportSource`, not by
+ * forwarding it into rolldown's input options.
  *
  * @public
  */

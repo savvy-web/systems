@@ -154,7 +154,7 @@ const config = defineBuild({
 });
 ```
 
-The resolved JSX settings feed both the dts tsconfig and the tsdown transform. Omit `jsx` to inherit the tsconfig value.
+The resolved JSX settings are written into the generated tsconfig, which both the JS and declaration passes read, so the transform and the `.d.ts` emit share one runtime. Omit `jsx` to inherit the tsconfig value.
 
 ## Dual-format output
 

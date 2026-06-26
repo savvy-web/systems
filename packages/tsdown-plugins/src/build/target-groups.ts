@@ -1,6 +1,5 @@
 // packages/tsdown-plugins/src/build/target-groups.ts
 import { join } from "node:path";
-import type { JsxConfig } from "../jsx/config.js";
 
 /**
  * A build group id: "dev" or any prod byte-variant id (e.g. "npm", "github", a custom key).
@@ -48,8 +47,6 @@ export interface DeriveOptions {
 	readonly format?: ReadonlyArray<BuildFormat> | undefined;
 	/** Minify prod output (prod groups only; dev is never minified). Defaults to false. */
 	readonly minify?: boolean | undefined;
-	/** JSX transform settings to forward to rolldown's inputOptions. */
-	readonly jsx?: JsxConfig | undefined;
 	/**
 	 * Compile-time global replacements forwarded to the build `define`. Merged AFTER the
 	 * auto-injected `process.env.__PACKAGE_VERSION__` so a user key of the same name wins.
@@ -131,8 +128,6 @@ export interface DerivedTsdownOptions {
 	 *   default untouched and stay byte-identical to before.
 	 */
 	readonly cjsDefault?: boolean | undefined;
-	/** JSX transform settings to forward to rolldown's inputOptions. */
-	readonly jsx?: JsxConfig | undefined;
 }
 
 /**
@@ -159,8 +154,6 @@ export interface DerivedDtsPassOptions {
 	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true };
 	readonly define: Record<string, string>;
 	readonly isProd: boolean;
-	/** JSX transform settings to forward to rolldown's inputOptions (dts compile honors JSX). */
-	readonly jsx?: JsxConfig | undefined;
 	/** External packages to inline into the bundled dts (tsdown `deps.onlyBundle`). */
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 }
@@ -208,7 +201,6 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 		isProd,
 		// Only enable CJS interop when cjs is actually built; esm-only keeps tsdown's default.
 		...(hasCjs ? { cjsDefault: true } : {}),
-		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 	};
 }
 
@@ -236,7 +228,6 @@ export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOpti
 			...options.define,
 		},
 		isProd,
-		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 		...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),
 	};
 }
@@ -253,7 +244,6 @@ export interface DerivedDeclarationsPassOptions {
 	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true };
 	readonly define: Record<string, string>;
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
-	readonly jsx?: JsxConfig | undefined;
 }
 
 /**
@@ -279,6 +269,5 @@ export function deriveDeclarationsPassOptions(options: DeriveOptions): DerivedDe
 			...options.define,
 		},
 		...(options.bundledPackages !== undefined ? { bundledPackages: options.bundledPackages } : {}),
-		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 	};
 }

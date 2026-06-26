@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defineBuild } from "../../src/config.js";
 import { runBuild } from "../../src/run.js";
 
@@ -78,7 +78,18 @@ describe("rspress dual-bundle integration", () => {
 			define: { "import.meta.env": "import.meta.env" },
 		});
 
-		await runBuild(config, { cwd: dir, argv: ["--target", "dev"], writeOutput: () => {} });
+		// Regression (issue #170): a JSX runtime build must not emit rolldown's "Invalid input options"
+		// warning (on console.warn) from a redundant `jsx` forward into tsdown's inputOptions.
+		let warned = "";
+		const spy = vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
+			warned += `${args.join(" ")}\n`;
+		});
+		try {
+			await runBuild(config, { cwd: dir, argv: ["--target", "dev"], writeOutput: () => {} });
+		} finally {
+			spy.mockRestore();
+		}
+		expect(warned).not.toMatch(/Invalid input options/);
 
 		const pkg = join(dir, "dist/dev/pkg");
 

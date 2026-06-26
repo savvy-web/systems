@@ -3,8 +3,8 @@ status: current
 module: tsdown-plugins
 category: architecture
 created: 2026-06-05
-updated: 2026-06-24
-last-synced: 2026-06-24
+updated: 2026-06-26
+last-synced: 2026-06-26
 completeness: 90
 related:
   - ../bundler/architecture.md
@@ -16,7 +16,7 @@ dependencies:
 
 # @savvy-web/tsdown-plugins architecture
 
-The interface-only plugin pack that holds every build behavior `@savvy-web/bundler` drives — entry detection, manifest emission, catalog resolution, the dts tsconfig port, the two-pass per-TargetGroup build loop, the configurable esm/cjs output format, the per-entry format/bundling partitions, the configurable bundling posture (force-bundle node_modules, force-inline named packages, selective dts inlining, dts-only externals), the cjs-default-interop plugin, the node-builtin default-interop plugin, the declaration source-map stripper, the build collector and its three capture seams, the quiet/verbose Effect output reporter, the API Extractor meta-generation pipeline, the `publishConfig.targets` derivation, the JSX tsconfig→rolldown mapping, the SEA exe-compile wrapper and the fast-fail config validator. Authored against rolldown's plugin *type* only, so it imports no tsdown runtime and carries no tsdown peer dependency.
+The interface-only plugin pack that holds every build behavior `@savvy-web/bundler` drives — entry detection, manifest emission, catalog resolution, the dts tsconfig port, the two-pass per-TargetGroup build loop, the configurable esm/cjs output format, the per-entry format/bundling partitions, the configurable bundling posture (force-bundle node_modules, force-inline named packages, selective dts inlining, dts-only externals), the cjs-default-interop plugin, the node-builtin default-interop plugin, the declaration source-map stripper, the build collector and its three capture seams, the quiet/verbose Effect output reporter, the API Extractor meta-generation pipeline, the `publishConfig.targets` derivation, the JSX runtime resolution, the SEA exe-compile wrapper and the fast-fail config validator. Authored against rolldown's plugin *type* only, so it imports no tsdown runtime and carries no tsdown peer dependency.
 
 ## Table of Contents
 
@@ -93,7 +93,7 @@ The surface divides into pure helpers, one rolldown plugin, one async catalog wr
 - **Loose files:** the pure `normalizeLooseFiles` (`src/build/loose-files.ts`) resolving a `LooseFiles` map into `NormalizedLooseFile` descriptors. See [Loose files](#loose-files).
 - **Public-dir sync:** `syncPublicDir` (`src/build/sync-public.ts`) — the idempotent `public/` mirror that replaces tsdown's built-in `copy`. See [The public/ sync](#the-public-sync).
 - **Targets:** the pure `src/targets/` module — `resolveTargets`/`isTargetObject` + the public/resolved types (`config.ts`, `resolve-targets.ts`) and `writeTargetsBinding` (`binding.ts`). See [The targets derivation](#the-targets-derivation).
-- **JSX:** the pure `src/jsx/config.ts` — `resolveJsxConfig` (tsconfig→rolldown mapping) and `readTsconfigJsx` (best-effort source-tsconfig read). See [JSX resolution](#jsx-resolution).
+- **JSX:** the pure `src/jsx/config.ts` — `resolveJsxConfig` (resolves the effective JSX runtime from the source tsconfig + override) and `readTsconfigJsx` (best-effort source-tsconfig read). See [JSX resolution](#jsx-resolution).
 - **Exe:** the `src/exe/` module — `normalizeExeOptions` + its config types (`config.ts`) and `runExeBuild` (`build.ts`, the interface-only tsdown-exe wrapper). See [The SEA exe-compile wrapper](#the-sea-exe-compile-wrapper).
 - **Config validation:** the `src/config-validation/` module — the `ConfigValidator` `Context.Tag` service + `ValidationInput` (`ConfigValidator.ts`) and `ConfigValidatorLive` (`ConfigValidatorLive.ts`). See [The config-validation service](#the-config-validation-service).
 - **Reporter:** four `Context.Tag` services `EnvironmentDetector → ExecutorResolver → FormatSelector → OutputRenderer` each with a sibling `*Live` layer, composed into `ReportPipelineLive`; the `renderReport` program; five formatters; the `BuildReport` `Schema` and its SchemaStore export. See [The output reporter](#the-output-reporter).
@@ -139,7 +139,7 @@ Each TargetGroup runs **two** `tsdown.build()` calls to the same outDir: a JS pa
 
 **Pass 3 (prod-only, opt-in): per-module declarations for API Extractor diagnostics.** When `BuildTargetGroupsOptions.emitDeclarations: true` (set by the bundler for `--target prod`), `buildTargetGroups` runs a third pass after the dts pass, driven by `deriveDeclarationsPassOptions`. It mirrors the dts-pass deps posture but with `unbundle: true` (preserveModules → 1:1 source positions) and emits into `dist/prod/<id>/declarations/` — a sibling of `pkg/`, never published, kept as a cacheable/inspectable artifact. Bin entries are dropped (no exports). This pass is deliberately NOT instrumented or timed by the collector; it is an internal artifact that does not appear in the `BuildReport`. The bundler sets `emitDeclarations: true` when running the meta pass. Dev groups always stay two-pass.
 
-Several optional knobs thread through `DeriveOptions`/`BuildTargetGroupsOptions` into each pass: `jsx?: JsxConfig` into `inputOptions.jsx` (the dts compile honors JSX too); `format?: ReadonlyArray<BuildFormat>` (see [Dual-format esm plus cjs](#dual-format-esm-plus-cjs)); `define?: Record<string, string>` into both passes' `define` map (see [The define map and the version-key fix](#the-define-map-and-the-version-key-fix)); and `bundleNodeModules`/`bundle`/`bundledPackages`/`dtsExternals` into the per-pass `deps` shapes (see [Bundling posture](#bundling-posture-bundlenodemodules-bundle-bundledpackages-dtsexternals)), which also conditionally attach `cjsDefaultInterop` and `nodeBuiltinDefaultInterop` to whichever passes emit a `.cjs`. The per-group body is a PARTITION loop (base partition + `options.overrides`) so different entries build with different formats into the same outDir; see [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides). After the partition passes, each `options.looseFiles` descriptor runs one extra single-entry pass into the same outDir; see [Loose files](#loose-files).
+Several optional knobs thread through `DeriveOptions`/`BuildTargetGroupsOptions` into each pass: `format?: ReadonlyArray<BuildFormat>` (see [Dual-format esm plus cjs](#dual-format-esm-plus-cjs)); `define?: Record<string, string>` into both passes' `define` map (see [The define map and the version-key fix](#the-define-map-and-the-version-key-fix)); and `bundleNodeModules`/`bundle`/`bundledPackages`/`dtsExternals` into the per-pass `deps` shapes (see [Bundling posture](#bundling-posture-bundlenodemodules-bundle-bundledpackages-dtsexternals)), which also conditionally attach `cjsDefaultInterop` and `nodeBuiltinDefaultInterop` to whichever passes emit a `.cjs`. The per-group body is a PARTITION loop (base partition + `options.overrides`) so different entries build with different formats into the same outDir; see [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides). After the partition passes, each `options.looseFiles` descriptor runs one extra single-entry pass into the same outDir; see [Loose files](#loose-files).
 
 Two facts cross into tsdown here: `unbundle: true` (JS pass) maps to rolldown `preserveModules` (no shared runtime chunk), and `fixedExtension: false` forces package-`type`-ambient extensions over tsdown's node default. The loop is exposed as a composable helper — **not** locked inside the bundler — so the escape hatch gets multi-group builds too. `tsdown.build` is injectable on the options for tests, the only place tsdown's runtime is touched.
 
@@ -319,12 +319,12 @@ The module is a set of separately-tested units; each file is the source of truth
 
 ## JSX resolution
 
-`src/jsx/config.ts` is the **tsconfig→rolldown JSX mapping** so a `.tsx` package builds with the right runtime without per-package wiring. Two pure functions:
+`src/jsx/config.ts` is the **JSX runtime resolution** so a `.tsx` package builds with the right runtime without per-package wiring. The resolved `JsxConfig` is shaped like rolldown's JsxOptions but is now consumed by the generated dts tsconfig, not forwarded to rolldown (see below). Two pure functions:
 
-- **`resolveJsxConfig(tsconfig, override)`** maps a TS `compilerOptions.jsx` to the rolldown `JsxConfig` the build forwards: `react-jsx`/`react-jsxdev` → `{ runtime: "automatic", importSource: jsxImportSource ?? "react" }`, `react` → `{ runtime: "classic" }`, `preserve`/`react-native`/absent → `undefined` (nothing to configure). An explicit `override` wins (and the automatic-runtime importSource still defaults to `"react"`).
+- **`resolveJsxConfig(tsconfig, override)`** maps a TS `compilerOptions.jsx` to the effective `JsxConfig`: `react-jsx`/`react-jsxdev` → `{ runtime: "automatic", importSource: jsxImportSource ?? "react" }`, `react` → `{ runtime: "classic" }`, `preserve`/`react-native`/absent → `undefined` (nothing to configure). An explicit `override` wins (and the automatic-runtime importSource still defaults to `"react"`).
 - **`readTsconfigJsx(cwd)`** is the best-effort inference source: it reads `<cwd>/tsconfig.json` `compilerOptions.jsx`/`jsxImportSource`, returning `{}` on absence or parse error.
 
-The resolved `JsxConfig` flows two ways from the bundler: into the dts tsconfig (the `jsx`/`jsxImportSource` fields above) and into the build loop's `inputOptions.jsx`. Keeping the mapping here means the bundler only resolves *effective* jsx (override ?? inference) once and threads the result; see `../bundler/architecture.md`.
+The resolved `JsxConfig` flows **one way** from the bundler: into the generated dts tsconfig (the `jsx`/`jsxImportSource` `compilerOptions`), which both the JS and dts passes consume via `dts: { tsconfig }`. It is **not** forwarded into rolldown's `inputOptions` — tsdown rejects a top-level `jsx` input-options key ("Expected never"), and the tsconfig already carries the runtime, so the forward was redundant and emitted a per-pass warning (issue #170, removed). Keeping the mapping here means the bundler only resolves *effective* jsx (override ?? inference) once; see `../bundler/architecture.md`.
 
 ## The SEA exe-compile wrapper
 
