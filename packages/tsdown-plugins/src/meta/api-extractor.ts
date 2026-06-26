@@ -72,8 +72,18 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			mainEntryPointFilePath: options.entryDtsPath,
 			enumMemberOrder: "preserve",
 			compiler: { tsconfigFilePath: options.tsconfigPath },
+			// includeForgottenExports keeps "forgotten" declarations (referenced but not exported) IN the
+			// doc model instead of dropping them (api-extractor's default). Without it the synthetic base
+			// class TypeScript hoists for Effect class mixins (Schema.Class/Data.TaggedError/Context.Tag/
+			// Effect.Service emit `declare const X_base = ...; class X extends X_base {}`) is dropped — its
+			// name is not exportable from source, so it is always a forgotten export — leaving the model with
+			// a dangling `extends X_base` and an empty class body. Downstream .d.ts reconstruction then loses
+			// every field. Inclusion is always on so the model stays complete and reconstructable; the
+			// diagnostic severity below is what stays configurable. See rspress-plugin-api-extractor#56.
 			docModel:
-				options.emitDocModel === false ? { enabled: false } : { enabled: true, apiJsonFilePath: options.apiJsonPath },
+				options.emitDocModel === false
+					? { enabled: false }
+					: { enabled: true, apiJsonFilePath: options.apiJsonPath, includeForgottenExports: true },
 			...(options.tsdocMetadataPath !== undefined
 				? { tsdocMetadata: { enabled: true, tsdocMetadataFilePath: options.tsdocMetadataPath } }
 				: {}),
@@ -96,11 +106,13 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 					// The underscore-prefix convention for `@internal` exports is not used in this
 					// monorepo, so silence `ae-internal-missing-underscore` rather than nag on it.
 					"ae-internal-missing-underscore": { logLevel: "none" },
-					// In CI the CI-fatal messageIds are hard errors: a forgotten export silently drops the
-					// symbol from the .api.json, corrupting downstream doc generation. Derived from the same
+					// In CI the CI-fatal messageIds are hard errors. With includeForgottenExports the symbol is
+					// no longer dropped from the .api.json, so this escalation is no longer about model
+					// corruption — it flags a developer who genuinely forgot to export one of their OWN public
+					// symbols, a real API-surface mistake worth failing CI over. Derived from the same
 					// CI_FATAL_MESSAGE_IDS set that drives the local `ciFatal` tag, so the nudge and the real
-					// escalation cannot drift. Suppression still wins — a suppressed message is set to None in
-					// the callback before it can count toward errorCount.
+					// escalation cannot drift. Suppression still wins (per-package opt-out) — a suppressed
+					// message is set to None in the callback before it can count toward errorCount.
 					...(options.ci === true
 						? Object.fromEntries([...CI_FATAL_MESSAGE_IDS].map((id) => [id, { logLevel: "error" }]))
 						: {}),

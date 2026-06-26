@@ -96,6 +96,37 @@ describe("runApiExtractor", () => {
 		expect(model.kind).toBe("Package");
 	});
 
+	it("includes forgotten exports in the emitted .api.json so the model stays reconstructable", () => {
+		// rspress-plugin-api-extractor#56: a forgotten export (here `Bar`, referenced by `getBar` but not
+		// exported) must be INCLUDED in the doc model, not dropped — otherwise downstream .d.ts
+		// reconstruction loses the referenced type (the synthetic `*_base` of Effect class mixins is the
+		// real-world offender). includeForgottenExports: true keeps the model complete.
+		const f = scaffoldForgotten();
+		const tsdocConfigPath = writeTsdocConfig(f.dir, { suppressWarnings: [], tagDefinitions: [] });
+		const apiJsonPath = join(f.dir, "out.api.json");
+		runApiExtractor({
+			cwd: f.dir,
+			packageJsonPath: f.packageJsonPath,
+			entryDtsPath: f.entryDtsPath,
+			tsconfigPath: f.tsconfigPath,
+			tsdocConfigPath,
+			apiJsonPath,
+			suppressWarnings: [],
+			onMessage: () => {},
+		});
+		const model = JSON.parse(readFileSync(apiJsonPath, "utf-8")) as { members?: unknown[] };
+		const names: string[] = [];
+		const walk = (node: unknown): void => {
+			if (node === null || typeof node !== "object") return;
+			const n = node as { name?: unknown; members?: unknown[] };
+			if (typeof n.name === "string" && n.name.length > 0) names.push(n.name);
+			if (Array.isArray(n.members)) for (const m of n.members) walk(m);
+		};
+		walk(model);
+		expect(names).toContain("getBar");
+		expect(names).toContain("Bar"); // the forgotten export, now retained in the model
+	});
+
 	it("routes an unsuppressed ae-forgotten-export to onMessage as a warn diagnostic (non-CI)", () => {
 		// api-extractor's default message routing is logLevel "none"; without the configObject `messages`
 		// override these analyzer messages reach messageCallback already silenced and never surface. This
