@@ -15,7 +15,6 @@ describe("buildTargetGroups", () => {
 			dts: unknown;
 			unbundle: unknown;
 			clean: unknown;
-			inputOptions: { jsx?: unknown } | undefined;
 		}> = [];
 		const fakeBuild = vi.fn(
 			async (cfg: {
@@ -24,7 +23,6 @@ describe("buildTargetGroups", () => {
 				dts: unknown;
 				unbundle: unknown;
 				clean: unknown;
-				inputOptions?: { jsx?: unknown };
 			}) => {
 				calls.push({
 					outDir: cfg.outDir,
@@ -33,7 +31,6 @@ describe("buildTargetGroups", () => {
 					dts: cfg.dts,
 					unbundle: cfg.unbundle,
 					clean: cfg.clean,
-					inputOptions: cfg.inputOptions,
 				});
 				return [];
 			},
@@ -71,8 +68,6 @@ describe("buildTargetGroups", () => {
 		expect(devDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
 		expect(devDts.unbundle).toBe(false);
 		expect(devDts.clean).toBe(false);
-
-		expect(devJs.inputOptions?.jsx).toBeUndefined(); // no jsx configured -> inputOptions omitted
 	});
 
 	it("builds once per group spec, threading the spec's name into the manifest pipeline", async () => {
@@ -118,9 +113,9 @@ describe("buildTargetGroups", () => {
 		expect(seenNames.sort()).toEqual(["@scope/base", "base"]);
 	}, 30_000); // real fs (mkdtemp + manifest read) can starve past the 5s default under full-suite load
 
-	it("passes jsx through to the tsdown build inputOptions when configured", async () => {
-		const captured: Array<{ inputOptions: { jsx?: unknown } | undefined }> = [];
-		const build = (async (cfg: { inputOptions?: { jsx?: unknown } }) => {
+	it("never sets rolldown inputOptions on any pass (JSX is applied via the tsconfig, issue #170)", async () => {
+		const captured: Array<{ inputOptions: unknown }> = [];
+		const build = (async (cfg: { inputOptions?: unknown }) => {
 			captured.push({ inputOptions: cfg.inputOptions });
 		}) as never;
 		await buildTargetGroups({
@@ -130,10 +125,12 @@ describe("buildTargetGroups", () => {
 			tsconfigPath: "/abs/pkg/tsconfig.json",
 			groups: [{ id: "dev", name: "base" }],
 			devManifest: "preserve",
-			jsx: { runtime: "automatic", importSource: "react" },
 			build,
 		});
-		expect(captured[0]?.inputOptions?.jsx).toEqual({ runtime: "automatic", importSource: "react" });
+		// A top-level `jsx` in rolldown inputOptions is invalid ("Expected never"); the build must
+		// never forward one — every pass leaves inputOptions undefined.
+		expect(captured.length).toBeGreaterThan(0);
+		for (const c of captured) expect(c.inputOptions).toBeUndefined();
 	});
 
 	it("attaches the cjs-default-interop plugin to BOTH the JS and dts passes only when format includes cjs", async () => {

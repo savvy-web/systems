@@ -1,7 +1,6 @@
 // packages/tsdown-plugins/src/build/build-target-groups.ts
 import { dirname, join } from "node:path";
 import type { Plugin } from "rolldown";
-import type { JsxConfig } from "../jsx/config.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { DualExports, ExeRewrite, Json } from "../manifest/transform.js";
@@ -129,8 +128,6 @@ export interface BuildTargetGroupsOptions {
 	 * firing exactly once should guard the second invocation.
 	 */
 	readonly extraPlugins?: ReadonlyArray<Plugin>;
-	/** JSX transform settings forwarded to rolldown's inputOptions. */
-	readonly jsx?: JsxConfig | undefined;
 	/**
 	 * Compile-time global replacements forwarded to BOTH the JS and dts passes' `define`.
 	 * Build-wide (shared by every entry partition); merged after the auto-injected
@@ -255,7 +252,6 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				...(partBundledPackages !== undefined ? { bundledPackages: partBundledPackages } : {}),
 				...(part.format !== undefined ? { format: part.format } : {}),
 				...(options.minify !== undefined ? { minify: options.minify } : {}),
-				...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 				...(options.define !== undefined ? { define: options.define } : {}),
 				...(part.platform !== undefined ? { platform: part.platform } : {}),
 			};
@@ -332,7 +328,6 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 							}
 						: {}),
 					...(js.cjsDefault !== undefined ? { cjsDefault: js.cjsDefault } : {}),
-					...(js.jsx !== undefined ? { inputOptions: { jsx: js.jsx } } : {}),
 					// nodeBuiltinDefaultInterop rewrites default imports of node: builtins to namespace
 					// form so rolldown's CJS codegen emits correct interop (it otherwise accesses
 					// `.default` on a bare `require("node:x")`, which is undefined). cjsDefaultInterop
@@ -413,7 +408,6 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 								},
 							}
 						: {}),
-					...(dts.jsx !== undefined ? { inputOptions: { jsx: dts.jsx } } : {}),
 					// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
 					// `.cjs` JS chunk in this pass, overwriting the JS pass's footer'd `.cjs` with a
 					// footer-less one (verified). Re-attach the interop plugins here so the footer lands on
@@ -471,7 +465,6 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 									},
 								}
 							: {}),
-						...(decl.jsx !== undefined ? { inputOptions: { jsx: decl.jsx } } : {}),
 						// Forward the user's plugins for type-resolution parity with the JS and dts passes,
 						// so the per-module declarations resolve the same types API Extractor reads.
 						...(options.extraPlugins !== undefined ? { plugins: [...options.extraPlugins] } : {}),

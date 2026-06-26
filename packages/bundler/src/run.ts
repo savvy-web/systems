@@ -404,7 +404,6 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(config.bundle !== undefined ? { bundle: config.bundle } : {}),
 				...(config.minify !== undefined ? { minify: config.minify } : {}),
 				...(config.transform !== undefined ? { transform: config.transform } : {}),
-				...(jsx !== undefined ? { jsx } : {}),
 				...(config.format !== undefined ? { format: config.format } : {}),
 				...(config.define !== undefined ? { define: config.define } : {}),
 				...(overridePartitions.length > 0 ? { overrides: overridePartitions } : {}),

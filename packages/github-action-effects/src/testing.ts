@@ -279,9 +279,11 @@ export { OidcTokenIssuer } from "./services/OidcTokenIssuer.js";
 export type { InstallOptions } from "./services/PackageManagerAdapter.js";
 export { PackageManagerAdapter } from "./services/PackageManagerAdapter.js";
 export type {
+	DryRunResult,
 	IdempotentPublishInput,
 	IdempotentPublishResult,
 	PackResult,
+	PublishTarballResult,
 	RegistryTarget,
 } from "./services/PackagePublish.js";
 export { PackagePublish } from "./services/PackagePublish.js";

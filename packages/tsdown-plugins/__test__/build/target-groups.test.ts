@@ -54,21 +54,6 @@ describe("deriveTargetGroupOptions (JS pass)", () => {
 		expect(derived.isProd).toBe(true);
 	});
 
-	it("threads jsx through to DerivedTsdownOptions when provided", () => {
-		const o = deriveTargetGroupOptions({
-			...base,
-			group: "dev",
-			devManifest: "preserve",
-			jsx: { runtime: "automatic", importSource: "react" },
-		});
-		expect(o.jsx).toEqual({ runtime: "automatic", importSource: "react" });
-	});
-
-	it("omits jsx from DerivedTsdownOptions when not provided", () => {
-		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve" });
-		expect(o.jsx).toBeUndefined();
-	});
-
 	it("forwards an explicit esm+cjs format", () => {
 		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve", format: ["esm", "cjs"] });
 		expect(o.format).toEqual(["esm", "cjs"]);
@@ -139,16 +124,6 @@ describe("deriveDtsPassOptions (dts pass)", () => {
 	it("dts pass keeps esm+cjs format so both .d.ts and .d.cts emit", () => {
 		const o = deriveDtsPassOptions({ ...base, group: "dev", devManifest: "preserve", format: ["esm", "cjs"] });
 		expect(o.format).toEqual(["esm", "cjs"]);
-	});
-
-	it("dts pass threads jsx into rolldown inputOptions when provided", () => {
-		const o = deriveDtsPassOptions({
-			...base,
-			group: "dev",
-			devManifest: "preserve",
-			jsx: { runtime: "automatic", importSource: "react" },
-		});
-		expect(o.jsx).toEqual({ runtime: "automatic", importSource: "react" });
 	});
 
 	it("threads bundledPackages into the dts pass when provided", () => {
@@ -241,10 +216,9 @@ describe("deriveDeclarationsPassOptions", () => {
 		expect(d.define["process.env.__PACKAGE_VERSION__"]).toBe(JSON.stringify("1.2.3"));
 	});
 
-	it("forwards bundledPackages and jsx when present", () => {
-		const d = deriveDeclarationsPassOptions({ ...base, bundledPackages: ["zod"], jsx: { runtime: "automatic" } });
+	it("forwards bundledPackages when present", () => {
+		const d = deriveDeclarationsPassOptions({ ...base, bundledPackages: ["zod"] });
 		expect(d.bundledPackages).toEqual(["zod"]);
-		expect(d.jsx).toEqual({ runtime: "automatic" });
 	});
 
 	it("declarationsDirFor points at the prod declarations sibling of pkg", () => {
