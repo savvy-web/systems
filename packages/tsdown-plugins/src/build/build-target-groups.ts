@@ -1,6 +1,9 @@
 // packages/tsdown-plugins/src/build/build-target-groups.ts
-import { dirname, join } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join } from "node:path";
 import type { Plugin } from "rolldown";
+import { analyzeReexportBarrel, collectExportNames, renderReexportStub } from "../dts/reexport-stub.js";
+import { writeDtsEmitTsconfig } from "../dts/resolved-tsconfig.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { DualExports, ExeRewrite, Json } from "../manifest/transform.js";
@@ -174,6 +177,13 @@ export interface BuildTargetGroupsOptions {
 }
 
 /**
+ * Entry name of the conventional primary (".") export, which `createEntryName` maps to "index". It is
+ * the re-export-stub base: a secondary entry that re-exports a subset of it gets a thin stub pointing
+ * here instead of a self-contained rollup.
+ */
+const STUB_BASE_ENTRY = "index";
+
+/**
  * Run tsdown.build() per TargetGroup. Composable so the escape hatch gets multi-group too.
  *
  * Each group runs TWO passes to the SAME outDir:
@@ -192,6 +202,13 @@ export interface BuildTargetGroupsOptions {
 export async function buildTargetGroups(options: BuildTargetGroupsOptions): Promise<void> {
 	const build: TsdownBuild = options.build ?? ((await import("tsdown")).build as unknown as TsdownBuild);
 	const publicDir = join(options.cwd, "public");
+
+	// The dts/declarations EMIT passes run on TS6 and use a `stableTypeOrdering` variant of the
+	// resolved tsconfig so union/type member ordering is deterministic across builds (#156). This is
+	// SEPARATE from the api-extractor tsconfig (`options.tsconfigPath`, consumed by the later
+	// runMetaPass), which stays on TS5.9 and would hard-error on the unknown flag. Derived once;
+	// falls back to the original path when it cannot be read (synthetic test paths).
+	const dtsEmitTsconfigPath = writeDtsEmitTsconfig(options.tsconfigPath);
 
 	const collector = options.collector;
 	const verbose = options.verbose ?? false;
@@ -246,7 +263,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				cwd: options.cwd,
 				version: options.version,
 				entry: part.entry,
-				tsconfigPath: options.tsconfigPath,
+				tsconfigPath: dtsEmitTsconfigPath,
 				devManifest: options.devManifest,
 				...(partExternals !== undefined ? { externals: partExternals } : {}),
 				...(partBundledPackages !== undefined ? { bundledPackages: partBundledPackages } : {}),
@@ -378,47 +395,119 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// and `dtsExternals`: dtsExternals are externalized in the dts pass only (emitted as
 			// import references in the .d.ts) while the JS pass still bundles them. The JS pass
 			// neverBundle (above) carries `externals` only — never dtsExternals.
-			await timed(group.id, "dts", () =>
-				build({
-					config: false,
-					cwd: options.cwd,
-					entry: dts.entry,
-					outDir: partOutDir,
-					format: dts.format,
-					platform: dts.platform,
-					sourcemap: dts.sourcemap,
-					unbundle: dts.unbundle,
-					clean: false,
-					fixedExtension: dts.fixedExtension,
-					dts: dts.dts,
-					define: dts.define,
-					...instrument(group.id),
-					...(dtsNeverBundle.length > 0 || partBundleNodeModules || dts.bundledPackages
-						? {
-								deps: {
-									...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
-									...(partBundleNodeModules
-										? {
-												skipNodeModulesBundle: false,
-												...(dts.bundledPackages ? { dts: { alwaysBundle: dts.bundledPackages } } : {}),
-											}
-										: dts.bundledPackages
-											? { skipNodeModulesBundle: true, dts: { alwaysBundle: dts.bundledPackages } }
-											: {}),
-								},
-							}
-						: {}),
-					// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
-					// `.cjs` JS chunk in this pass, overwriting the JS pass's footer'd `.cjs` with a
-					// footer-less one (verified). Re-attach the interop plugins here so the footer lands on
-					// the FINAL `.cjs` (this is the chunk that inlines vendor deps like vfile).
-					plugins: [
-						...(dts.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
-						...(options.extraPlugins ?? []),
-						...metricsPlugins(group.id, "dts"),
-					],
-				}),
-			);
+			// Per-entry dts rollups (#185): run one SINGLE-entry dts build per entry, NOT one bundled
+			// pass over all of `dts.entry`. A multi-entry rollup makes rolldown code-split the
+			// declarations shared between entries into a content-hashed sibling chunk
+			// (`<name>-<hash>.d.ts`) whose constituent-module naming AND split layout are
+			// non-deterministic across builds, so the emitted `.d.ts` (and the `.api.json` that follows
+			// it) flip bytes between otherwise-identical builds (#156). A single-entry rollup has no
+			// shared chunk and is byte-stable by construction (proven: single-entry packages build
+			// 4/4 byte-identical). Each per-entry build appends to the shared outDir (clean:false); the
+			// JS pass already emitted per-module JS for every entry. The bundling posture (neverBundle /
+			// bundleNodeModules / bundledPackages) is identical for every entry, so compute it once.
+			const dtsDeps =
+				dtsNeverBundle.length > 0 || partBundleNodeModules || dts.bundledPackages
+					? {
+							deps: {
+								...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
+								...(partBundleNodeModules
+									? {
+											skipNodeModulesBundle: false,
+											...(dts.bundledPackages ? { dts: { alwaysBundle: dts.bundledPackages } } : {}),
+										}
+									: dts.bundledPackages
+										? { skipNodeModulesBundle: true, dts: { alwaysBundle: dts.bundledPackages } }
+										: {}),
+							},
+						}
+					: {};
+			// Re-export-stub optimization (#185): a SECONDARY entry that is a pure named re-export
+			// barrel whose every re-exported name is also exported by the primary `index` entry is
+			// emitted as a thin `export { … } from "./index.js"` stub instead of a second self-contained
+			// rollup that re-inlines the shared surface. This keeps a re-export-heavy multi-entry package
+			// (e.g. `.` + a curated `./testing` subset) compact without reintroducing a shared chunk —
+			// API Extractor follows the stub's cross-entry re-export to resolve the symbols from index's
+			// already-self-contained `.d.ts`. Gated to FLAT entry names (so the specifier is a sibling
+			// `./index.js`) and to packages exposing the conventional `index` (".") entry whose full
+			// export-name set is statically enumerable (no `export * from`). A non-eligible entry
+			// (distinct surface, local declarations, star re-export, or a name not in index) falls
+			// through to a self-contained per-entry rollup.
+			const stubEntries = new Map<string, { valueNames: ReadonlyArray<string>; typeNames: ReadonlyArray<string> }>();
+			const readSource = (src: string): string | undefined => {
+				try {
+					return readFileSync(isAbsolute(src) ? src : join(options.cwd, src), "utf-8");
+				} catch {
+					return undefined;
+				}
+			};
+			const baseSrc = dts.entry[STUB_BASE_ENTRY];
+			if (baseSrc !== undefined && Object.keys(dts.entry).length > 1) {
+				const baseSource = readSource(baseSrc);
+				const base = baseSource !== undefined ? collectExportNames(baseSource) : undefined;
+				if (base?.complete === true) {
+					for (const [entryName, entrySource] of Object.entries(dts.entry)) {
+						if (entryName === STUB_BASE_ENTRY || entryName.includes("/")) continue;
+						const source = readSource(entrySource);
+						if (source === undefined) continue;
+						const analysis = analyzeReexportBarrel(source);
+						if (!analysis.isPureNamedReexportBarrel) continue;
+						const all = [...analysis.valueNames, ...analysis.typeNames];
+						if (all.length === 0 || !all.every((n) => base.names.has(n))) continue;
+						stubEntries.set(entryName, { valueNames: analysis.valueNames, typeNames: analysis.typeNames });
+					}
+				}
+			}
+
+			await timed(group.id, "dts", async () => {
+				for (const [entryName, entrySource] of Object.entries(dts.entry)) {
+					const stub = stubEntries.get(entryName);
+					if (stub !== undefined) {
+						// Thin re-export stub instead of a self-contained rollup. The ESM `.d.ts` points at the
+						// base's published `./index.js`; for dual format the CJS `.d.cts` points at `./index.cjs`.
+						// Each appends to the shared outDir like the per-entry builds do.
+						const variants = [{ file: `${entryName}.d.ts`, spec: `./${STUB_BASE_ENTRY}.js` }];
+						if (dts.format.includes("cjs")) {
+							variants.push({ file: `${entryName}.d.cts`, spec: `./${STUB_BASE_ENTRY}.cjs` });
+						}
+						for (const variant of variants) {
+							const content = renderReexportStub({
+								valueNames: stub.valueNames,
+								typeNames: stub.typeNames,
+								baseSpecifier: variant.spec,
+							});
+							writeFileSync(join(partOutDir, variant.file), content, "utf-8");
+							collector?.recordEmitted(group.id, "dts", { path: variant.file, bytes: Buffer.byteLength(content) });
+						}
+						continue;
+					}
+					await build({
+						config: false,
+						cwd: options.cwd,
+						entry: { [entryName]: entrySource },
+						outDir: partOutDir,
+						format: dts.format,
+						platform: dts.platform,
+						sourcemap: dts.sourcemap,
+						unbundle: dts.unbundle,
+						clean: false,
+						fixedExtension: dts.fixedExtension,
+						dts: dts.dts,
+						define: dts.define,
+						...instrument(group.id),
+						...dtsDeps,
+						// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
+						// `.cjs` JS chunk in this pass, overwriting the JS pass's footer'd `.cjs` with a
+						// footer-less one (verified). Re-attach the interop plugins here so the footer lands on
+						// the FINAL `.cjs` (this is the chunk that inlines vendor deps like vfile). Fresh plugin
+						// instances per entry-build — rolldown plugin factories are not safe to reuse across builds.
+						plugins: [
+							...(dts.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
+							...(options.extraPlugins ?? []),
+							...metricsPlugins(group.id, "dts"),
+						],
+					});
+				}
+			});
 
 			// Pass 3 (prod-only, opt-in): per-module declarations for API Extractor's diagnostics run.
 			// unbundle:true gives 1:1 source positions. Into the declarations/ sibling of pkg/ (never

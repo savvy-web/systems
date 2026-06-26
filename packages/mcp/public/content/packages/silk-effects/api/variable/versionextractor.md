@@ -13,19 +13,6 @@ related: []
 
 ```ts
 VersionExtractor: {
-  readonly Flag: Data.Case.Constructor<{
-    readonly _tag: "Flag";
-    readonly flag: string;
-    readonly parse?: ((output: string) => string) | undefined | undefined;
-  }, "_tag">;
-  readonly Json: Data.Case.Constructor<{
-    readonly _tag: "Json";
-    readonly flag: string;
-    readonly path: string;
-  }, "_tag">;
-  readonly None: Data.Case.Constructor<{
-    readonly _tag: "None";
-  }, "_tag">;
   readonly $is: <Tag extends "Flag" | "Json" | "None">(tag: Tag) => (u: unknown) => u is Extract<{
     readonly _tag: "Flag";
     readonly flag: string;
@@ -95,5 +82,18 @@ VersionExtractor: {
       readonly _tag: "None";
     }, cases: Cases & { [K in Exclude<keyof Cases, "Flag" | "Json" | "None">]: never }): import("effect/Unify").Unify<ReturnType<Cases["Flag" | "Json" | "None"]>>;
   };
+  readonly Flag: Data.Case.Constructor<{
+    readonly _tag: "Flag";
+    readonly flag: string;
+    readonly parse?: ((output: string) => string) | undefined | undefined;
+  }, "_tag">;
+  readonly Json: Data.Case.Constructor<{
+    readonly _tag: "Json";
+    readonly flag: string;
+    readonly path: string;
+  }, "_tag">;
+  readonly None: Data.Case.Constructor<{
+    readonly _tag: "None";
+  }, "_tag">;
 }
 ```

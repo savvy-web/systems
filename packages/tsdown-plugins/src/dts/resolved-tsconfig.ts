@@ -1,7 +1,7 @@
 // packages/tsdown-plugins/src/dts/resolved-tsconfig.ts
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 /** @public */
 export interface ResolvedTsconfigOptions {
@@ -67,6 +67,37 @@ export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): Resolve
 export function writeResolvedTsconfig(options: ResolvedTsconfigOptions): string {
 	const cfg = buildResolvedTsconfig(options);
 	const path = join(tmpdir(), `tsconfig-bundle-${process.pid}-${options.cwd.replace(/[^\w]/g, "_")}.json`);
+	writeFileSync(path, `${JSON.stringify(cfg, null, "\t")}\n`, "utf-8");
+	return path;
+}
+
+/**
+ * Derive a dts-EMIT variant of an already-written resolved tsconfig that adds
+ * `stableTypeOrdering: true`, and return its path. This makes the TypeScript declaration emitter
+ * (rolldown-plugin-dts on `typescript@6`) order union/type members deterministically, so a
+ * multi-union `.d.ts` (e.g. an Effect `Layer.Layer<…>` requirement channel) does not flip member
+ * order across otherwise-identical builds (#156). It is kept in a SEPARATE file from the
+ * api-extractor tsconfig on purpose: `@microsoft/api-extractor` pins `typescript ~5.9`, which
+ * predates the flag and hard-errors on the unknown compiler option — so only the emit passes
+ * (which run on TS6) ever see it, while the api-extractor compile reads the original clean config.
+ *
+ * Best-effort: if the base tsconfig cannot be read or parsed (e.g. a synthetic test path that was
+ * never written), the original path is returned unchanged — the emit then simply keeps TS's
+ * default ordering rather than aborting the build at this layer.
+ *
+ * @public
+ */
+export function writeDtsEmitTsconfig(resolvedTsconfigPath: string): string {
+	const absBase = isAbsolute(resolvedTsconfigPath) ? resolvedTsconfigPath : resolve(resolvedTsconfigPath);
+	// Best-effort: a base that does not exist (e.g. a synthetic test path) gets no variant — return it
+	// unchanged so the emit keeps TS's default ordering rather than aborting at this layer.
+	if (!existsSync(absBase)) return resolvedTsconfigPath;
+	// A thin wrapper that `extends` the base by ABSOLUTE path and adds only `stableTypeOrdering`. Written
+	// to the OS temp dir (NOT next to the base) so it never pollutes the source tree when the base is an
+	// in-tree `tsconfig.json`, and the absolute `extends` keeps the base's own relative `extends`/paths
+	// resolving from the base's location.
+	const cfg = { extends: absBase, compilerOptions: { stableTypeOrdering: true } };
+	const path = join(tmpdir(), `tsconfig-dts-emit-${process.pid}-${absBase.replace(/[^\w]/g, "_")}.json`);
 	writeFileSync(path, `${JSON.stringify(cfg, null, "\t")}\n`, "utf-8");
 	return path;
 }

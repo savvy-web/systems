@@ -15,8 +15,8 @@ A single convenience layer that wires all core services together for a GitHub Ac
 
 ```ts
 ActionsRuntime: {
-  readonly Default: Layer.Layer<ActionLogger | ActionOutputs |
-  ActionEnvironment | ActionState | import("@effect/platform/HttpClient").HttpClient | import("@effect/platform/FileSystem").FileSystem, never, never>;
+  readonly Default: Layer.Layer<ActionEnvironment | ActionLogger |
+  ActionOutputs | ActionState | import("@effect/platform/FileSystem").FileSystem | import("@effect/platform/HttpClient").HttpClient, never, never>;
 }
 ```
 

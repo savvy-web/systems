@@ -13,20 +13,8 @@ related: []
 
 ```ts
 ResolutionPolicy: {
-  readonly Report: Data.Case.Constructor<{
-    readonly _tag: "Report";
-  }, "_tag">;
-  readonly PreferLocal: Data.Case.Constructor<{
-    readonly _tag: "PreferLocal";
-  }, "_tag">;
-  readonly PreferGlobal: Data.Case.Constructor<{
+  readonly $is: <Tag extends "PreferGlobal" | "PreferLocal" | "Report" | "RequireMatch">(tag: Tag) => (u: unknown) => u is Extract<{
     readonly _tag: "PreferGlobal";
-  }, "_tag">;
-  readonly RequireMatch: Data.Case.Constructor<{
-    readonly _tag: "RequireMatch";
-  }, "_tag">;
-  readonly $is: <Tag extends "Report" | "PreferLocal" | "PreferGlobal" | "RequireMatch">(tag: Tag) => (u: unknown) => u is Extract<{
-    readonly _tag: "Report";
   }, {
     readonly _tag: Tag;
   }> | Extract<{
@@ -34,7 +22,7 @@ ResolutionPolicy: {
   }, {
     readonly _tag: Tag;
   }> | Extract<{
-    readonly _tag: "PreferGlobal";
+    readonly _tag: "Report";
   }, {
     readonly _tag: Tag;
   }> | Extract<{
@@ -44,49 +32,61 @@ ResolutionPolicy: {
   }>;
   readonly $match: {
     <const Cases extends {
-      readonly Report: (args: {
-        readonly _tag: "Report";
+      readonly PreferGlobal: (args: {
+        readonly _tag: "PreferGlobal";
       }) => any;
       readonly PreferLocal: (args: {
         readonly _tag: "PreferLocal";
       }) => any;
-      readonly PreferGlobal: (args: {
-        readonly _tag: "PreferGlobal";
+      readonly Report: (args: {
+        readonly _tag: "Report";
       }) => any;
       readonly RequireMatch: (args: {
         readonly _tag: "RequireMatch";
       }) => any;
-    }>(cases: Cases & { [K in Exclude<keyof Cases, "Report" | "PreferLocal" | "PreferGlobal" | "RequireMatch">]: never }): (value: {
-      readonly _tag: "Report";
+    }>(cases: Cases & { [K in Exclude<keyof Cases, "PreferGlobal" | "PreferLocal" | "Report" | "RequireMatch">]: never }): (value: {
+      readonly _tag: "PreferGlobal";
     } | {
       readonly _tag: "PreferLocal";
     } | {
-      readonly _tag: "PreferGlobal";
+      readonly _tag: "Report";
     } | {
       readonly _tag: "RequireMatch";
-    }) => import("effect/Unify").Unify<ReturnType<Cases["Report" | "PreferLocal" | "PreferGlobal" | "RequireMatch"]>>;
+    }) => import("effect/Unify").Unify<ReturnType<Cases["PreferGlobal" | "PreferLocal" | "Report" | "RequireMatch"]>>;
     <const Cases extends {
-      readonly Report: (args: {
-        readonly _tag: "Report";
+      readonly PreferGlobal: (args: {
+        readonly _tag: "PreferGlobal";
       }) => any;
       readonly PreferLocal: (args: {
         readonly _tag: "PreferLocal";
       }) => any;
-      readonly PreferGlobal: (args: {
-        readonly _tag: "PreferGlobal";
+      readonly Report: (args: {
+        readonly _tag: "Report";
       }) => any;
       readonly RequireMatch: (args: {
         readonly _tag: "RequireMatch";
       }) => any;
     }>(value: {
-      readonly _tag: "Report";
+      readonly _tag: "PreferGlobal";
     } | {
       readonly _tag: "PreferLocal";
     } | {
-      readonly _tag: "PreferGlobal";
+      readonly _tag: "Report";
     } | {
       readonly _tag: "RequireMatch";
-    }, cases: Cases & { [K in Exclude<keyof Cases, "Report" | "PreferLocal" | "PreferGlobal" | "RequireMatch">]: never }): import("effect/Unify").Unify<ReturnType<Cases["Report" | "PreferLocal" | "PreferGlobal" | "RequireMatch"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "PreferGlobal" | "PreferLocal" | "Report" | "RequireMatch">]: never }): import("effect/Unify").Unify<ReturnType<Cases["PreferGlobal" | "PreferLocal" | "Report" | "RequireMatch"]>>;
   };
+  readonly PreferGlobal: Data.Case.Constructor<{
+    readonly _tag: "PreferGlobal";
+  }, "_tag">;
+  readonly PreferLocal: Data.Case.Constructor<{
+    readonly _tag: "PreferLocal";
+  }, "_tag">;
+  readonly Report: Data.Case.Constructor<{
+    readonly _tag: "Report";
+  }, "_tag">;
+  readonly RequireMatch: Data.Case.Constructor<{
+    readonly _tag: "RequireMatch";
+  }, "_tag">;
 }
 ```

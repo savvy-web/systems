@@ -13,27 +13,17 @@ related: []
 
 ```ts
 SyncResult: {
-  readonly Created: Data.Case.Constructor<{
+  readonly $is: <Tag extends "Created" | "Unchanged" | "Updated">(tag: Tag) => (u: unknown) => u is Extract<{
     readonly _tag: "Created";
-  }, "_tag">;
-  readonly Updated: Data.Case.Constructor<{
-    readonly _tag: "Updated";
-    readonly diff: SectionDiff;
-  }, "_tag">;
-  readonly Unchanged: Data.Case.Constructor<{
+  }, {
+    readonly _tag: Tag;
+  }> | Extract<{
     readonly _tag: "Unchanged";
-  }, "_tag">;
-  readonly $is: <Tag extends "Created" | "Updated" | "Unchanged">(tag: Tag) => (u: unknown) => u is Extract<{
-    readonly _tag: "Created";
   }, {
     readonly _tag: Tag;
   }> | Extract<{
     readonly _tag: "Updated";
     readonly diff: SectionDiff;
-  }, {
-    readonly _tag: Tag;
-  }> | Extract<{
-    readonly _tag: "Unchanged";
   }, {
     readonly _tag: Tag;
   }>;
@@ -42,40 +32,50 @@ SyncResult: {
       readonly Created: (args: {
         readonly _tag: "Created";
       }) => any;
+      readonly Unchanged: (args: {
+        readonly _tag: "Unchanged";
+      }) => any;
       readonly Updated: (args: {
         readonly _tag: "Updated";
         readonly diff: SectionDiff;
       }) => any;
-      readonly Unchanged: (args: {
-        readonly _tag: "Unchanged";
-      }) => any;
-    }>(cases: Cases & { [K in Exclude<keyof Cases, "Created" | "Updated" | "Unchanged">]: never }): (value: {
+    }>(cases: Cases & { [K in Exclude<keyof Cases, "Created" | "Unchanged" | "Updated">]: never }): (value: {
       readonly _tag: "Created";
+    } | {
+      readonly _tag: "Unchanged";
     } | {
       readonly _tag: "Updated";
       readonly diff: SectionDiff;
-    } | {
-      readonly _tag: "Unchanged";
-    }) => import("effect/Unify").Unify<ReturnType<Cases["Created" | "Updated" | "Unchanged"]>>;
+    }) => import("effect/Unify").Unify<ReturnType<Cases["Created" | "Unchanged" | "Updated"]>>;
     <const Cases extends {
       readonly Created: (args: {
         readonly _tag: "Created";
       }) => any;
+      readonly Unchanged: (args: {
+        readonly _tag: "Unchanged";
+      }) => any;
       readonly Updated: (args: {
         readonly _tag: "Updated";
         readonly diff: SectionDiff;
       }) => any;
-      readonly Unchanged: (args: {
-        readonly _tag: "Unchanged";
-      }) => any;
     }>(value: {
       readonly _tag: "Created";
     } | {
+      readonly _tag: "Unchanged";
+    } | {
       readonly _tag: "Updated";
       readonly diff: SectionDiff;
-    } | {
-      readonly _tag: "Unchanged";
-    }, cases: Cases & { [K in Exclude<keyof Cases, "Created" | "Updated" | "Unchanged">]: never }): import("effect/Unify").Unify<ReturnType<Cases["Created" | "Updated" | "Unchanged"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "Created" | "Unchanged" | "Updated">]: never }): import("effect/Unify").Unify<ReturnType<Cases["Created" | "Unchanged" | "Updated"]>>;
   };
+  readonly Created: Data.Case.Constructor<{
+    readonly _tag: "Created";
+  }, "_tag">;
+  readonly Unchanged: Data.Case.Constructor<{
+    readonly _tag: "Unchanged";
+  }, "_tag">;
+  readonly Updated: Data.Case.Constructor<{
+    readonly _tag: "Updated";
+    readonly diff: SectionDiff;
+  }, "_tag">;
 }
 ```
