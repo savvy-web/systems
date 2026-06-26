@@ -95,7 +95,9 @@ export function writeDtsEmitTsconfig(resolvedTsconfigPath: string): string {
 	// A thin wrapper that `extends` the base by ABSOLUTE path and adds only `stableTypeOrdering`. Written
 	// to the OS temp dir (NOT next to the base) so it never pollutes the source tree when the base is an
 	// in-tree `tsconfig.json`, and the absolute `extends` keeps the base's own relative `extends`/paths
-	// resolving from the base's location.
+	// resolving from the base's location. The filename is deterministic per (pid, base), so repeated calls
+	// within a process overwrite the same file rather than accumulating; cross-process temp files are left
+	// for the OS to reap, intentionally consistent with `writeResolvedTsconfig`'s pid-scoped temp pattern.
 	const cfg = { extends: absBase, compilerOptions: { stableTypeOrdering: true } };
 	const path = join(tmpdir(), `tsconfig-dts-emit-${process.pid}-${absBase.replace(/[^\w]/g, "_")}.json`);
 	writeFileSync(path, `${JSON.stringify(cfg, null, "\t")}\n`, "utf-8");
