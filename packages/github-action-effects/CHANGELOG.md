@@ -1,5 +1,13 @@
 # @savvy-web/github-action-effects
 
+## 2.3.1
+
+### Dependencies
+
+* | [`689a1aa`](https://github.com/savvy-web/systems/commit/689a1aa25f72a4521ff8e21c3fd610862247a0ce) | Dependency | Type    | Action   | From     | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :------- | :------- | -- |
+  | @azure/storage-blob                                                                               | dependency | updated | ^12.32.0 | ^12.33.0 |    |
+
 ## 2.3.0
 
 ### Features

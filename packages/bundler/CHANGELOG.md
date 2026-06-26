@@ -1,5 +1,13 @@
 # @savvy-web/bundler
 
+## 0.11.1
+
+### Dependencies
+
+* | [`689a1aa`](https://github.com/savvy-web/systems/commit/689a1aa25f72a4521ff8e21c3fd610862247a0ce) | Dependency | Type    | Action | From   | To |
+  | :------------------------------------------------------------------------------------------------ | :--------- | :------ | :----- | :----- | -- |
+  | rolldown                                                                                          | dependency | updated | ^1.1.2 | ^1.1.3 |    |
+
 ## 0.11.0
 
 ### Features
