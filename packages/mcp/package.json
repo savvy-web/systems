@@ -52,7 +52,7 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
-		"api-extractor-llms": "^0.1.0",
+		"api-extractor-llms": "^0.2.0",
 		"gray-matter": "^4.0.3",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
