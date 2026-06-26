@@ -1,5 +1,15 @@
 # @savvy-web/tsdown-plugins
 
+## 0.11.2
+
+### Bug Fixes
+
+* [`577d242`](https://github.com/savvy-web/systems/commit/577d242edd260dc75a04d6b95e3ffc33a3e040c0) The API Extractor doc model now sets `includeForgottenExports: true`, so declarations that are referenced but not exported are retained in the emitted `.api.json` instead of being dropped. The motivating case is the synthetic `*_base` class TypeScript hoists when emitting declarations for Effect class mixins (`Schema.Class`, `Data.TaggedError`, `Context.Tag`, `Effect.Service`): its name is not exportable from source, so it was always a forgotten export and the model lost it — leaving a dangling `extends *_base` over an empty class body and corrupting downstream `.d.ts` reconstruction. The `ae-forgotten-export` diagnostic is unchanged (a warning locally, CI-fatal by default, suppressible per package); it now flags a genuinely forgotten public export rather than guarding against model corruption.
+
+- [`577d242`](https://github.com/savvy-web/systems/commit/577d242edd260dc75a04d6b95e3ffc33a3e040c0) Removed the non-functional `jsx` field from `BuildTargetGroupsOptions`, `DeriveOptions`, and the three derived pass-option interfaces. The field was being forwarded into rolldown's `inputOptions`, which rejected it on every JSX build pass with an "Invalid input options ... Expected never but received "jsx"" warning. JSX compilation was already applied correctly via the generated tsconfig, so the forward had no effect on emitted output.
+
+* `JsxConfig`, `resolveJsxConfig`, and `readTsconfigJsx` remain exported and unchanged
+
 ## 0.11.0
 
 ### Features
