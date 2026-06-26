@@ -12,6 +12,6 @@ related: []
 # ReportPipelineLive
 
 ```ts
-ReportPipelineLive: Layer.Layer<EnvironmentDetector | ExecutorResolver | FormatSelector |
+ReportPipelineLive: Layer.Layer<ExecutorResolver | FormatSelector | EnvironmentDetector |
   OutputRenderer, never, never>
 ```

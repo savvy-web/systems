@@ -14,7 +14,7 @@ related: []
 Combined layer providing all services.
 
 ```ts
-AppLayer: Layer.Layer<BuildService | ValidationService | PersistLocalService | ConfigService, never, never>
+AppLayer: Layer.Layer<ConfigService | ValidationService | BuildService | PersistLocalService, never, never>
 ```
 
 ## Examples
