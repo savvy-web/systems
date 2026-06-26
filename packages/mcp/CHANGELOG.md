@@ -1,5 +1,18 @@
 # @savvy-web/mcp
 
+## 1.3.4
+
+### Bug Fixes
+
+* [`055e4bc`](https://github.com/savvy-web/systems/commit/055e4bc60546e5f1147ff99f07cedc88d2be2613) The generated `silk://packages/<pkg>/api/**` reference docs and inflated manifest are now shipped in the published package. Previously they were gitignored and never committed, so every `silk://packages/<pkg>/api/...` read failed with `ENOENT` on a clean release machine and `silk_docs_search` could not surface any API symbol.
+* Each documented package now serves an API index page at the bare `silk://packages/<pkg>/api` URI, listing every documented symbol with a link to its page.
+* A missing `silk://` resource now returns a clean not-found error referencing the requested URI instead of a raw `ENOENT` that leaked the server's absolute install path.
+* `silk_docs_search` now returns an empty result set for a real query that matches nothing, instead of a fallback package listing with `confidence: 0` and `matchedOn: []` that read like real hits. A keyword-free browse (only stop-words) still returns the low-confidence priority listing.
+* The bundled documentation corpus no longer describes the defunct `@savvy-web/rslib-builder`; the builder overview, "choosing a builder," and API-model-pipeline docs now cover `@savvy-web/bundler` (the `defineBuild`/`runBuild` front door).
+  | Dependency              | Type       | Action  | From  | To    |
+  | ----------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/silk-effects | dependency | updated | 1.5.0 | 1.5.1 |
+
 ## 1.3.3
 
 ## 1.3.2

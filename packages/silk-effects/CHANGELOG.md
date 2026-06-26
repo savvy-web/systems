@@ -1,5 +1,14 @@
 # @savvy-web/silk-effects
 
+## 1.5.1
+
+### Dependencies
+
+* | [`689a1aa`](https://github.com/savvy-web/systems/commit/689a1aa25f72a4521ff8e21c3fd610862247a0ce) | Dependency    | Type    | Action  | From    | To |
+  | :------------------------------------------------------------------------------------------------ | :------------ | :------ | :------ | :------ | -- |
+  | shell-quote                                                                                       | dependency    | updated | ^1.8.4  | ^1.9.0  |    |
+  | @commitlint/types                                                                                 | devDependency | updated | ^21.0.1 | ^21.1.0 |    |
+
 ## 1.5.0
 
 ### Features
