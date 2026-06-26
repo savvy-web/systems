@@ -41,7 +41,7 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
-		"@azure/storage-blob": "^12.32.0",
+		"@azure/storage-blob": "^12.33.0",
 		"@cyclonedx/cyclonedx-library": "^10.1.0",
 		"@octokit/auth-app": "^8.2.0",
 		"@octokit/rest": "^22.0.1",

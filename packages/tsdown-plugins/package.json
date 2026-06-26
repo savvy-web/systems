@@ -49,7 +49,7 @@
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
-		"rolldown": "^1.1.2",
+		"rolldown": "^1.1.3",
 		"tsdown": "^0.22.3",
 		"tsx": "catalog:silk",
 		"vitest": "catalog:silk"

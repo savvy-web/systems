@@ -18,4 +18,5 @@ minimumReleaseAgeExclude:
   - "@vitest-agent/sidecar-win32-x64@1.0.0"
   - "@vitest-agent/sidecar@1.0.0"
   - "@vitest-agent/ui@1.0.0"
+  - shell-quote@1.9.0
 verifyDepsBeforeRun: false
