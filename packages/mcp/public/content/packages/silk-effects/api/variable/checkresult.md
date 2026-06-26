@@ -13,14 +13,6 @@ related: []
 
 ```ts
 CheckResult: {
-  readonly Found: Data.Case.Constructor<{
-    readonly _tag: "Found";
-    readonly isUpToDate: boolean;
-    readonly diff: SectionDiff;
-  }, "_tag">;
-  readonly NotFound: Data.Case.Constructor<{
-    readonly _tag: "NotFound";
-  }, "_tag">;
   readonly $is: <Tag extends "Found" | "NotFound">(tag: Tag) => (u: unknown) => u is Extract<{
     readonly _tag: "Found";
     readonly isUpToDate: boolean;
@@ -66,5 +58,13 @@ CheckResult: {
       readonly _tag: "NotFound";
     }, cases: Cases & { [K in Exclude<keyof Cases, "Found" | "NotFound">]: never }): import("effect/Unify").Unify<ReturnType<Cases["Found" | "NotFound"]>>;
   };
+  readonly Found: Data.Case.Constructor<{
+    readonly _tag: "Found";
+    readonly isUpToDate: boolean;
+    readonly diff: SectionDiff;
+  }, "_tag">;
+  readonly NotFound: Data.Case.Constructor<{
+    readonly _tag: "NotFound";
+  }, "_tag">;
 }
 ```

@@ -1,7 +1,7 @@
 ---
 id: packages/tsdown-plugins/api/interface/jsxconfig
 title: "JsxConfig — tsdown-plugins interface"
-summary: "Resolved JSX transform settings, mirroring the subset of rolldown's JsxOptions the bundler forwards."
+summary: "Resolved JSX transform settings. The shape mirrors the subset of rolldown's JsxOptions, but the bundler consumes it to populate the generated dts tsconfig's `j…"
 tier: packages
 source: generated
 tags: [tsdown-plugins, api]
@@ -11,7 +11,7 @@ related: []
 
 # JsxConfig
 
-Resolved JSX transform settings, mirroring the subset of rolldown's JsxOptions the bundler forwards.
+Resolved JSX transform settings. The shape mirrors the subset of rolldown's JsxOptions, but the bundler consumes it to populate the generated dts tsconfig's `jsx`/`jsxImportSource`, not by forwarding it into rolldown's input options.
 
 ```ts
 interface JsxConfig

@@ -14,6 +14,6 @@ related: []
 Composed layer that provides `Attest` plus every dependency it declares (`SigstoreSigner`, `OidcTokenIssuer`, `Sbom`, and `GitHubClient`). Use this when you just want to call into `Attest` from a test without wiring four layers by hand.
 
 ```ts
-AttestTestFullLayer: (state?: AttestTestState) => Layer.Layer<Attest | SigstoreSigner |
-  OidcTokenIssuer | GitHubClient | Sbom, never, never>
+AttestTestFullLayer: (state?: AttestTestState) => Layer.Layer<Attest | GitHubClient |
+  OidcTokenIssuer | Sbom | SigstoreSigner, never, never>
 ```

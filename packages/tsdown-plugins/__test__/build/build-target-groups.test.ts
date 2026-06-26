@@ -1,5 +1,5 @@
 // packages/tsdown-plugins/__test__/build/build-target-groups.test.ts
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -69,6 +69,99 @@ describe("buildTargetGroups", () => {
 		expect(devDts.unbundle).toBe(false);
 		expect(devDts.clean).toBe(false);
 	});
+
+	it("runs one dts build PER entry for a multi-entry partition (single-entry rollups, no shared chunk)", async () => {
+		// The determinism fix (#185): a multi-entry partition must NOT roll all entries through one
+		// dts pass — rolldown then code-splits the shared declarations into a content-hashed sibling
+		// chunk whose name/layout is non-deterministic. One single-entry rollup per entry is
+		// deterministic by construction and self-contained. The JS pass stays a single per-module pass
+		// over all entries; only the dts pass splits.
+		const passes: Array<{ kind: "js" | "dts"; entry: Record<string, string> }> = [];
+		const build = (async (cfg: { dts: unknown; entry: Record<string, string> }) => {
+			passes.push({ kind: cfg.dts === false ? "js" : "dts", entry: cfg.entry });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "./src/index.ts", testing: "./src/testing.ts" },
+			tsconfigPath: "/tmp/t.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build,
+		});
+		const js = passes.filter((p) => p.kind === "js");
+		const dts = passes.filter((p) => p.kind === "dts");
+		// One JS pass over all entries (per-module).
+		expect(js.length).toBe(1);
+		expect(js[0]?.entry).toEqual({ index: "./src/index.ts", testing: "./src/testing.ts" });
+		// One dts pass per entry, each a single-entry map (the deterministic property).
+		expect(dts.length).toBe(2);
+		for (const d of dts) expect(Object.keys(d.entry)).toHaveLength(1);
+		expect(dts.map((d) => d.entry).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))).toEqual([
+			{ index: "./src/index.ts" },
+			{ testing: "./src/testing.ts" },
+		]);
+	});
+
+	it("emits a re-export STUB for a pure-barrel secondary entry instead of a second dts rollup (#185)", async () => {
+		// A `./testing`-style entry that purely re-exports a subset of the primary `index` entry is
+		// emitted as a thin `export { … } from "./index.js"` stub — index is the only entry that gets a
+		// self-contained dts rollup, keeping the package compact without a shared chunk.
+		const dir = await mkdtemp(join(tmpdir(), "btg-stub-"));
+		await mkdir(join(dir, "src"), { recursive: true });
+		await writeFile(join(dir, "src/index.ts"), "export const A = 1;\nexport const B = 2;\nexport type T = string;\n");
+		await writeFile(
+			join(dir, "src/testing.ts"),
+			'export { A } from "./index.js";\nexport type { T } from "./index.js";\n',
+		);
+
+		const dtsEntries: Array<Record<string, string>> = [];
+		const build = (async (cfg: { dts: unknown; entry: Record<string, string>; outDir: string }) => {
+			if (cfg.dts !== false) dtsEntries.push(cfg.entry);
+			// The real JS pass creates/owns the outDir; mirror that so the stub writeFileSync has a dir.
+			await mkdir(cfg.outDir, { recursive: true });
+		}) as never;
+		await buildTargetGroups({
+			cwd: dir,
+			version: "1.0.0",
+			entry: { index: "./src/index.ts", testing: "./src/testing.ts" },
+			tsconfigPath: join(dir, "tsconfig.json"),
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build,
+		});
+		// Only the base `index` entry is rolled up; `testing` is a stub, not a dts build.
+		expect(dtsEntries).toEqual([{ index: "./src/index.ts" }]);
+		const stub = await readFile(join(dir, "dist/dev/pkg/testing.d.ts"), "utf-8");
+		expect(stub).toBe('export { A } from "./index.js";\nexport type { T } from "./index.js";\n');
+	}, 30_000);
+
+	it("does NOT stub a secondary entry that is not a pure re-export barrel (keeps it self-contained)", async () => {
+		// `testing` here declares a local symbol, so it is NOT expressible as a stub of index — it must
+		// get its own self-contained dts rollup (two dts builds, no stub file written).
+		const dir = await mkdtemp(join(tmpdir(), "btg-nostub-"));
+		await mkdir(join(dir, "src"), { recursive: true });
+		await writeFile(join(dir, "src/index.ts"), "export const A = 1;\n");
+		await writeFile(join(dir, "src/testing.ts"), 'export { A } from "./index.js";\nexport const own = 2;\n');
+
+		const dtsEntries: Array<Record<string, string>> = [];
+		const build = (async (cfg: { dts: unknown; entry: Record<string, string>; outDir: string }) => {
+			if (cfg.dts !== false) dtsEntries.push(cfg.entry);
+			await mkdir(cfg.outDir, { recursive: true });
+		}) as never;
+		await buildTargetGroups({
+			cwd: dir,
+			version: "1.0.0",
+			entry: { index: "./src/index.ts", testing: "./src/testing.ts" },
+			tsconfigPath: join(dir, "tsconfig.json"),
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build,
+		});
+		// Both entries get a self-contained rollup; no stub short-circuit.
+		expect(dtsEntries).toHaveLength(2);
+		expect(dtsEntries.map((e) => Object.keys(e)[0]).sort()).toEqual(["index", "testing"]);
+	}, 30_000);
 
 	it("builds once per group spec, threading the spec's name into the manifest pipeline", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "btg-"));

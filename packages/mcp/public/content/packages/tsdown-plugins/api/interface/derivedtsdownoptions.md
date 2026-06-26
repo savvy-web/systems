@@ -75,14 +75,6 @@ readonly format: ReadonlyArray<BuildFormat>;
 readonly isProd: boolean;
 ```
 
-### jsx
-
-```ts
-readonly jsx?: JsxConfig | undefined;
-```
-
-JSX transform settings to forward to rolldown's inputOptions.
-
 ### minify
 
 ```ts

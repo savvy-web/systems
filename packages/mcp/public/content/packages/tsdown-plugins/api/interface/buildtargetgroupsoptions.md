@@ -143,14 +143,6 @@ Output formats to emit. Defaults to esm-only when unset.
 readonly groups: ReadonlyArray<BuildGroupSpec>;
 ```
 
-### jsx
-
-```ts
-readonly jsx?: JsxConfig | undefined;
-```
-
-JSX transform settings forwarded to rolldown's inputOptions.
-
 ### looseFiles
 
 ```ts

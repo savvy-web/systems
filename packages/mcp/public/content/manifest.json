@@ -8468,6 +8468,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/class/tsconfigresolver"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/function/analyzereexportbarrel",
+			"title": "analyzeReexportBarrel — tsdown-plugins function",
+			"summary": "Analyze an entry source as a candidate pure re-export barrel: classify its re-exported names into value vs type-only and report whether it is expressible as a…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/analyzereexportbarrel"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/function/applysubdirmetaentries",
 			"title": "applySubdirMetaEntries — tsdown-plugins function",
 			"summary": "For each `outSubdir` override, point its meta entry at the isolated sub-package barrel.",
@@ -8544,6 +8557,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/function/cjsdefaultinterop"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/function/collectexportnames",
+			"title": "collectExportNames — tsdown-plugins function",
+			"summary": "Collect every name a module exports (named re-exports, namespace re-exports, and local `export` declarations). Used to test whether a barrel's re-exports are a…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/collectexportnames"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/function/computeexefilename",
@@ -8806,6 +8832,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/function/removedeclarationmaps"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/function/renderreexportstub",
+			"title": "renderReexportStub — tsdown-plugins function",
+			"summary": "Render a thin re-export-stub `.d.ts`/`.d.cts` body: named re-exports of `valueNames` and `typeNames` from `baseSpecifier` (the published file of the base entry…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/renderreexportstub"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/function/renderreport",
 			"title": "renderReport — tsdown-plugins function",
 			"summary": "function renderReport from @savvy-web/tsdown-plugins.",
@@ -8986,6 +9025,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/function/transformmanifest"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/function/writedtsemittsconfig",
+			"title": "writeDtsEmitTsconfig — tsdown-plugins function",
+			"summary": "Derive a dts-EMIT variant of an already-written resolved tsconfig that adds `stableTypeOrdering: true`, and return its path. This makes the TypeScript declarat…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/writedtsemittsconfig"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/function/writeissuesartifact",
@@ -9289,7 +9341,7 @@
 		{
 			"id": "packages/tsdown-plugins/api/interface/jsxconfig",
 			"title": "JsxConfig — tsdown-plugins interface",
-			"summary": "Resolved JSX transform settings, mirroring the subset of rolldown's JsxOptions the bundler forwards.",
+			"summary": "Resolved JSX transform settings. The shape mirrors the subset of rolldown's JsxOptions, but the bundler consumes it to populate the generated dts tsconfig's `j…",
 			"tier": "packages",
 			"source": "generated",
 			"status": "stable",
@@ -9337,6 +9389,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/interface/metaresult"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/interface/moduleexportnames",
+			"title": "ModuleExportNames — tsdown-plugins interface",
+			"summary": "The set of names a module exports, plus whether that set is fully known.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/interface/moduleexportnames"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/interface/nextversions",
@@ -9467,6 +9532,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/interface/publishtargetobject"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/interface/reexportbarrelanalysis",
+			"title": "ReexportBarrelAnalysis — tsdown-plugins interface",
+			"summary": "The analysis of an entry source treated as a candidate re-export barrel.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/interface/reexportbarrelanalysis"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/interface/renderedoutput",
@@ -10056,7 +10134,7 @@
 		{
 			"id": "packages/tsdown-plugins/api",
 			"title": "@savvy-web/tsdown-plugins — API reference",
-			"summary": "@savvy-web/tsdown-plugins API reference: 138 documented symbols.",
+			"summary": "@savvy-web/tsdown-plugins API reference: 144 documented symbols.",
 			"tier": "packages",
 			"source": "generated",
 			"status": "stable",

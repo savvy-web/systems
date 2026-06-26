@@ -71,14 +71,6 @@ Output formats to emit. Defaults to esm-only when unset.
 readonly group: TargetGroupId;
 ```
 
-### jsx
-
-```ts
-readonly jsx?: JsxConfig | undefined;
-```
-
-JSX transform settings to forward to rolldown's inputOptions.
-
 ### minify
 
 ```ts
