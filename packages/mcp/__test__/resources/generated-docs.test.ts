@@ -15,7 +15,9 @@ describe("generated docs", () => {
 		// Skip-tolerant: if generation was skipped (no models), this is a no-op
 		// rather than a false failure. The verification recipe always builds first.
 		if (generated.length === 0) return;
-		expect(generated.every((e) => e.id.includes("/api/"))).toBe(true);
+		// Symbol pages live at <pkg>/api/<kind>/<slug>; the per-package index page
+		// (#179) lives at the bare <pkg>/api. Both are under the api namespace.
+		expect(generated.every((e) => /\/api(\/|$)/.test(e.id))).toBe(true);
 		expect(generated.every((e) => e.tags.includes("api"))).toBe(true);
 	});
 });

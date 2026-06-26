@@ -15,7 +15,7 @@ export interface RawDoc {
 	readonly relPath: string; // e.g. "standards/changeset-discipline.md"
 	readonly frontMatter: unknown; // decoded against DocFrontMatter
 	readonly body: string;
-	readonly lastModified: string;
+	readonly lastModified?: string; // optional freshness hint; omitted keeps the manifest deterministic
 }
 
 export interface CompileOptions {
@@ -84,7 +84,7 @@ export function compileCorpus(docs: ReadonlyArray<RawDoc>, registry: TagRegistry
 		}
 
 		const uri = `silk://${fm.id}`;
-		entries.push({ ...fm, tags, uri, lastModified: doc.lastModified });
+		entries.push({ ...fm, tags, uri, ...(doc.lastModified !== undefined ? { lastModified: doc.lastModified } : {}) });
 		bodies[uri] = fm.source === "generated" ? PROVENANCE + doc.body : doc.body;
 	}
 

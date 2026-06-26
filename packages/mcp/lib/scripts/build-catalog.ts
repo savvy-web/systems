@@ -4,7 +4,6 @@
  *
  * @internal
  */
-import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,15 +27,6 @@ function walk(dir: string): string[] {
 	});
 }
 
-function gitLastModified(file: string): string {
-	try {
-		const out = execFileSync("git", ["log", "-1", "--format=%cI", "--", file], { encoding: "utf8" }).trim();
-		return out.length > 0 ? out : new Date(0).toISOString();
-	} catch {
-		return new Date(0).toISOString();
-	}
-}
-
 const files = walk(contentRoot);
 const docs: RawDoc[] = files.map((file) => {
 	const parsed = matter(readFileSync(file, "utf8"));
@@ -44,7 +34,9 @@ const docs: RawDoc[] = files.map((file) => {
 		relPath: relative(contentRoot, file).split("\\").join("/"),
 		frontMatter: parsed.data,
 		body: parsed.content.trim(),
-		lastModified: gitLastModified(file),
+		// No lastModified: a git-derived timestamp can never be stable in the commit
+		// that introduces a doc (the commit time is unknown at build time), so the
+		// committed manifest would churn on every build. Git history is the record.
 	};
 });
 

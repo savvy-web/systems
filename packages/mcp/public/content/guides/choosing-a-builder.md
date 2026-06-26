@@ -1,140 +1,93 @@
 ---
 id: guides/choosing-a-builder
-title: Choosing a builder (rslib vs bun)
-summary: When to reach for @savvy-web/rslib-builder vs @savvy-web/bun-builder for a Silk package.
+title: Choosing a builder
+summary: When to reach for @savvy-web/bundler, @savvy-web/rspress-builder, or @savvy-web/github-action-builder for a Silk package.
 tier: guides
 source: hand
 tags: [build]
 priority: 0.5
-related: [packages/rslib-builder/overview]
+related: [packages/bundler/overview, guides/building-a-github-action]
 ---
 
 ## Overview
 
-The Silk Suite has two zero-config build tools for TypeScript libraries:
+The Silk Suite has three zero-config build tools, each targeting a different
+output shape. Pick by what the package produces, not by personal preference.
 
-| Package | Bundler core | Primary target |
+| Package | Builds | Output |
 | --- | --- | --- |
-| `@savvy-web/rslib-builder` | rsbuild / rspack | Node.js (pnpm monorepos) |
-| `@savvy-web/bun-builder` | Bun.build() | Bun monorepos |
+| `@savvy-web/bundler` | TypeScript libraries | npm-published `dist/dev` + `dist/prod` |
+| `@savvy-web/rspress-builder` | RSPress doc-site plugins | npm-published plugin package |
+| `@savvy-web/github-action-builder` | Node.js 24 GitHub Actions | committed single-file ESM bundles |
 
-Both tools auto-detect entry points from `package.json` `exports`, emit `dist/dev/`
-and `dist/npm/` build modes, generate rolled-up `.d.ts` declarations via API
-Extractor, resolve `catalog:` and `workspace:` protocol references for publishing,
-and transform the output `package.json` for publish readiness.
+All three auto-detect their inputs, emit a transformed publish-ready
+`package.json` where applicable, and resolve `catalog:` and `workspace:` protocol
+references. They differ in what they emit and how it is consumed.
 
-## `@savvy-web/rslib-builder`
+## `@savvy-web/bundler`
 
-The **ecosystem default** for packages inside the `savvy-web/systems` monorepo and
-any pnpm-managed Silk Suite package.
+The **default** for any TypeScript library inside `savvy-web/systems` (or any
+pnpm-managed Silk Suite package). It is the tsdown-based build orchestrator: it
+reads `exports` to discover entry points, builds `dist/dev/` and per-target
+`dist/prod/<target>/`, emits a bundled self-contained `.d.ts` per public entry,
+and on `--target prod` emits an API Extractor model for MCP and website doc
+generation.
 
-### What it does
-
-- Zero-config builds via `NodeLibraryBuilder.create({})` in `rslib.config.ts`
-- Reads `exports` to discover entry points; builds `dist/dev/` and `dist/npm/`
-- Generates type declarations and emits a Microsoft API Extractor model
-  (`<unscoped>.api.json`) on the npm build
-- Transforms the output `package.json`: resolves `pnpm catalog:` references,
-  flips `private: true` to publish-ready based on `publishConfig.access`, rewrites
-  export paths from `.ts` to `.js`, adds type conditions
-- Supports dual-format ESM+CJS builds when needed (e.g. `@savvy-web/silk` for CJS
-  consumers)
-- Peer dependencies: `@rslib/core`, `@typescript/native-preview`
-
-### Configuration
-
-```typescript
-import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
-
-export default NodeLibraryBuilder.create({
-  externals: ["effect", "@effect/platform"],
-  apiModel: {
-    tsdoc: {
-      tagDefinitions: [{ tagName: "@since", syntaxKind: "block" }],
-    },
-  },
-});
-```
-
-Pass `apiModel: true` (or an options object) to enable API Extractor model
-emission. See `silk://packages/rslib-builder/overview` for full details.
+A package opts in with a self-executing `savvy.build.ts` that calls `defineBuild`
+and `runBuild`, with `node savvy.build.ts --target dev` / `--target prod` build
+scripts. See `silk://packages/bundler/overview` for the full surface.
 
 ### When to use it
 
-- You are building a package inside `savvy-web/systems` (or a pnpm-based Silk repo)
-- You need dual-format ESM+CJS output
+- You are building a library inside `savvy-web/systems` (or a pnpm-based Silk repo)
+- You publish to npm and want bundled type declarations
 - You want API Extractor model emission for MCP doc generation
 - The package uses `pnpm catalog:` or `workspace:` protocol in its dependencies
 
-## `@savvy-web/bun-builder`
+## `@savvy-web/rspress-builder`
 
-For **Bun-managed monorepos** where Bun.build() is the preferred bundler.
+A thin sibling to the bundler for **RSPress documentation-site plugins**. It
+applies the same entry-point discovery and publish transform, tuned for the
+shape an RSPress plugin package ships. Reach for it only when the package is an
+RSPress plugin; for every other library, use the bundler.
 
-### What it does
+## `@savvy-web/github-action-builder`
 
-- Zero-config builds via `BunLibraryBuilder.create({})` in `bun.config.ts`
-- Auto-detects entry points from `package.json` `exports`
-- Bundled or bundleless output (`bundle: false` preserves source structure)
-- Rolled-up `.d.ts` in bundled mode; raw `.d.ts` in bundleless mode
-- API Extractor model generation on npm builds (enabled by default)
-- TSDoc warnings reported with source locations; severity configurable per
-  environment (`"fail"` in CI, `"log"` locally)
-- Resolves Bun `catalog:` and `workspace:` protocol references for publishing
-- Peer dependencies: `@microsoft/api-extractor`, `@typescript/native-preview`,
-  `typescript`, `@types/bun`
-
-### Configuration
-
-```typescript
-import { BunLibraryBuilder } from "@savvy-web/bun-builder";
-
-export default BunLibraryBuilder.create({
-  bundle: true,       // default; set false for bundleless
-  apiModel: true,     // default; emits model on npm build
-});
-```
-
-Build via:
-
-```bash
-bun run bun.config.ts              # all modes
-bun run bun.config.ts --env-mode dev
-bun run bun.config.ts --env-mode npm
-```
+For **Node.js 24 GitHub Actions**, whose output is a different shape entirely:
+self-contained ESM bundles committed to the repository (not an npm package) so a
+runner can execute them directly. It bundles `src/main.ts` (plus optional
+`pre.ts`/`post.ts`) into flat `dist/*.js` files and validates `action.yml`. See
+`silk://guides/building-a-github-action`.
 
 ### When to use it
 
-- You are in a Bun-managed workspace (`bun.lock`, Bun catalog protocol)
-- You want sub-second build iteration times
-- You do not need rspack's CJS-to-ESM interop (which is important for certain
-  bundled GitHub Actions scenarios)
+- You are building a GitHub Action, not a published library
+- The output must be a committed single-file bundle referenced from `action.yml`
 
 ## Decision guide
 
 ```text
-Is this a package in savvy-web/systems (pnpm monorepo)?
-  Yes → rslib-builder
+Is the package a GitHub Action (committed Node.js 24 bundle)?
+  Yes → github-action-builder
 
-Does the package need dual-format ESM+CJS output?
-  Yes → rslib-builder
+Is the package an RSPress doc-site plugin?
+  Yes → rspress-builder
 
-Is this a Bun-managed workspace?
-  Yes → bun-builder
-
-Are you building a GitHub Action (bundled Node.js 24 binary)?
-  Use @savvy-web/github-action-builder instead — see silk://guides/building-a-github-action
+Otherwise (any npm-published TypeScript library)
+  → bundler
 ```
 
 ## Common pitfalls
 
-**rslib-builder:** Relative imports inside source must use `.js` extensions
-(ESM requirement). The build will report "cannot find module" on missing extensions.
+**bundler / rspress-builder:** Relative imports inside source must use `.js`
+extensions (the ESM requirement). The build reports "cannot find module" on a
+missing extension.
 
-**bun-builder:** The Bun catalog protocol uses `workspaces.catalog` in the root
-`package.json`, distinct from pnpm's catalog. Do not mix the two in the same
-workspace.
+**github-action-builder:** The `dist/` bundle must be committed so GitHub runners
+can execute it; `action.yml` must declare `runs.using: "node24"`.
 
 ## See also
 
-- `silk://packages/rslib-builder/overview` — full rslib-builder reference
+- `silk://packages/bundler/overview` — the library build front door in full
 - `silk://guides/building-a-github-action` — GitHub Actions use a separate builder
+- `silk://standards/api-model-pipeline` — how the bundler's prod API model becomes docs

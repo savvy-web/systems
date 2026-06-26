@@ -15,7 +15,9 @@
 		"**/.claude/plans",
 		"**/docs/superpowers",
 		"**/__test__/**/fixtures/**",
-		"**/__fixtures__/**"
+		"**/__fixtures__/**",
+		"**/public/content/packages/*/api/**",
+		"**/public/content/packages/*/api.md"
 	],
 	"customRules": ["@savvy-web/silk/changesets/markdownlint"],
 	"config": {

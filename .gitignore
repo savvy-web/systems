@@ -52,8 +52,11 @@ docs/superpowers
 docs/superpowers
 
 # Local development files
+# The raw API Extractor models are gitignored, but the rendered api markdown
+# they produce (under public/content/packages/*/api/) IS committed: a clean
+# release machine never runs generate:api-docs, so an uncommitted corpus would
+# ship nothing and every silk://packages/<pkg>/api read would 404 (#178/#179).
 packages/mcp/lib/models/*/
-packages/mcp/public/content/packages/*/api/
 
 # bundler meta-prod integration fixture build artifacts
 packages/bundler/__test__/integration/fixtures/meta-prod/dist/

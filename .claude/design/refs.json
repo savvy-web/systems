@@ -46,8 +46,8 @@
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "d6abebc9e0c68cef5aa6ca89f52bd6ff06bac5de4dc06a1a9e4e02ae1ac688a1",
-			"recordedAt": "2026-06-22"
+			"hash": "ee5fe5f26ad6916f3b4214d57977abed37e575ac2b7022cf36f59b91e12f9a41",
+			"recordedAt": "2026-06-26"
 		},
 		{
 			"source": "packages/rspress-builder/CLAUDE.md",

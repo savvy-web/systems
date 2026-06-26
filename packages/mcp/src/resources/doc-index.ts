@@ -1,8 +1,8 @@
 /**
  * In-memory document index backing the `silk_docs_search` tool. Loads the
  * manifest + bodies and builds a Fuse index. Search takes a plain query
- * (no operator DSL), broadens multi-word queries with OR, never returns empty,
- * and breaks ties by curated `priority`.
+ * (no operator DSL), broadens multi-word queries with OR, returns empty for a
+ * real query that matches nothing, and breaks ties by curated `priority`.
  *
  * @packageDocumentation
  */
@@ -94,10 +94,16 @@ export class DocIndex {
 		const raw = tokens.length > 0 ? this.fuse.search(tokens.map((t) => `'${t}`).join(" | ")) : [];
 		const filteredByTier = opts.tier ? raw.filter((r) => r.item.tier === opts.tier) : raw;
 
+		// A real query that matches nothing returns empty, so a caller can tell
+		// "no docs match" from "here are some docs". Fall back to a priority-ordered
+		// listing only for a browse with no meaningful tokens (all stop-words / too
+		// short), where a low-confidence listing is useful rather than misleading.
 		const ranked: RankedResult[] =
 			filteredByTier.length > 0
 				? filteredByTier.map((r) => toRanked(r.item, r.score, r.matches ?? []))
-				: this.fallback(opts.tier);
+				: tokens.length === 0
+					? this.fallback(opts.tier)
+					: [];
 
 		ranked.sort((a, b) => b.confidence - a.confidence || (b.item.priority ?? 0.5) - (a.item.priority ?? 0.5));
 
@@ -130,7 +136,7 @@ export class DocIndex {
 		}));
 	}
 
-	/** Never return empty: surface the top entries (by priority) as low-confidence. */
+	/** Browse fallback: surface the top entries (by priority) as low-confidence. */
 	private fallback(tier?: SearchOptions["tier"]): RankedResult[] {
 		return this.entries
 			.filter((e) => (tier ? e.tier === tier : true))

@@ -17,7 +17,8 @@ the next build.
 
 ### Pipeline
 
-1. A library package sets `apiModel` in its rslib config.
+1. A library package built by `@savvy-web/bundler` emits a model by default; the
+   `meta` option in its `savvy.build.ts` controls it (`false` opts out).
 2. `build:prod` emits `<unscoped>.api.json` (a Microsoft API Extractor model file).
 3. The `api-extractor-llms` library renders that model into LLM-lean
    markdown.
@@ -43,8 +44,8 @@ management, making the pipeline compatible with upstream tooling.
 
 ## Examples
 
-A package `@savvy-web/silk-effects` with `apiModel` in its rslib config builds
-`silk-effects.api.json`. The renderer produces entries such as:
+A package `@savvy-web/silk-effects` built by `@savvy-web/bundler` emits
+`silk-effects.api.json` on its prod build. The renderer produces entries such as:
 
 ```text
 silk://packages/silk-effects/api/class/SilkPublishability
@@ -59,5 +60,5 @@ docs.
 
 The resource taxonomy that governs where generated and hand-authored docs live is at
 `silk://packages/mcp/resource-taxonomy`. The `api-extractor-llms` library
-is the renderer; the `@savvy-web/rslib-builder` build tool exposes the `apiModel`
-config option.
+is the renderer; the `@savvy-web/bundler` build tool emits the model via its
+`meta` option.

@@ -24,8 +24,8 @@ Neither package depends on the other at build time. The builder bundles whatever
 action code you write; the effects library provides the services that code uses.
 
 For choosing the right builder, see `silk://guides/choosing-a-builder`. The
-github-action-builder is separate from rslib-builder and bun-builder — it targets
-a different output shape (single-file committed ESM bundles, not npm-published
+github-action-builder is separate from the library bundler — it targets a
+different output shape (single-file committed ESM bundles, not npm-published
 libraries).
 
 ## Step 1 — Project structure
