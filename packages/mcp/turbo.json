@@ -7,6 +7,9 @@
 			"inputs": ["$TURBO_DEFAULT$", "public/content/**", "!public/content/manifest.json"],
 			"outputs": ["public/content/manifest.json"]
 		},
+		"build:prod": {
+			"dependsOn": ["types:check", "build:dev", "build:catalog"]
+		},
 		"generate:api-docs": {
 			"cache": true,
 			"dependsOn": [
@@ -19,7 +22,7 @@
 				"@savvy-web/github-action-builder#build:prod"
 			],
 			"inputs": ["$TURBO_DEFAULT$", "lib/models/*/**"],
-			"outputs": ["public/content/packages/*/api/**"]
+			"outputs": ["public/content/packages/*/api/**", "public/content/packages/*/api.md"]
 		},
 		"inspect": {
 			"cache": false,

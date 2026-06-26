@@ -1,0 +1,386 @@
+---
+id: packages/github-action-effects/api
+title: "@savvy-web/github-action-effects — API reference"
+summary: "@savvy-web/github-action-effects API reference: 356 documented symbols."
+tier: packages
+source: generated
+tags: [github-action-effects, api]
+priority: 0.4
+related: []
+---
+
+# @savvy-web/github-action-effects — API reference
+
+## class
+
+- [`ActionCache`](silk://packages/github-action-effects/api/class/actioncache) — Service for GitHub Actions cache operations. Uses the V2 Twirp cache protocol at ACTIONS_RESULTS_URL with Azure Blob Storage for uploads/downloads. No dependency on `@actions/cache`.
+- [`ActionCacheError`](silk://packages/github-action-effects/api/class/actioncacheerror) — Error when a cache operation (save or restore) fails.
+- [`ActionEnvironment`](silk://packages/github-action-effects/api/class/actionenvironment) — Service for reading GitHub Actions environment variables.
+- [`ActionEnvironmentError`](silk://packages/github-action-effects/api/class/actionenvironmenterror) — Error when a required environment variable is missing or invalid.
+- [`ActionInputError`](silk://packages/github-action-effects/api/class/actioninputerror) — Error when a GitHub Action input is missing or fails schema validation.
+- [`ActionLogger`](silk://packages/github-action-effects/api/class/actionlogger) — Service for action-specific logging operations beyond the Effect Logger.
+- [`ActionOutputError`](silk://packages/github-action-effects/api/class/actionoutputerror) — Error when a GitHub Action output fails schema validation or writing.
+- [`ActionOutputs`](silk://packages/github-action-effects/api/class/actionoutputs) — Service for setting GitHub Action outputs with schema validation.
+- [`ActionState`](silk://packages/github-action-effects/api/class/actionstate) — Service for reading and writing GitHub Action state with schema-based serialization across action phases (pre/main/post).
+- [`ActionStateError`](silk://packages/github-action-effects/api/class/actionstateerror) — Error when GitHub Action state reading/writing fails.
+- [`Artifact`](silk://packages/github-action-effects/api/class/artifact) — Service for uploading, listing, downloading, and deleting GitHub Actions artifacts (`@actions/artifact` v2 parity).
+- [`ArtifactError`](silk://packages/github-action-effects/api/class/artifacterror) — Error when an artifact operation (upload, download, list, get, delete) fails.
+- [`Attest`](silk://packages/github-action-effects/api/class/attest) — Attest service surface. Implementation lives in `AttestLive`.
+- [`AttestError`](silk://packages/github-action-effects/api/class/attesterror) — Errors raised by Attest operations.
+- [`BlobStore`](silk://packages/github-action-effects/api/class/blobstore) — A generic content-addressable key/value blob store. Backends store raw bytes under an arbitrary string key. Unlike ActionCache (which tars a path-set under one key), this stores a single byte buffer per key, suitable for per-artifact remote caching.
+- [`BlobStoreError`](silk://packages/github-action-effects/api/class/blobstoreerror) — Error when a blob store operation (get, put, or has) fails.
+- [`ChangesetAnalyzer`](silk://packages/github-action-effects/api/class/changesetanalyzer) — Service for changeset file operations.
+- [`ChangesetError`](silk://packages/github-action-effects/api/class/changeseterror) — Error from changeset operations.
+- [`CheckRun`](silk://packages/github-action-effects/api/class/checkrun) — Service for GitHub check run operations.
+- [`CheckRunError`](silk://packages/github-action-effects/api/class/checkrunerror) — Error from check run operations.
+- [`CommandRunner`](silk://packages/github-action-effects/api/class/commandrunner) — Service for structured shell command execution.
+- [`CommandRunnerError`](silk://packages/github-action-effects/api/class/commandrunnererror) — Error when a shell command fails or produces unexpected output.
+- [`ConfigLoader`](silk://packages/github-action-effects/api/class/configloader) — Service for loading and validating config files. Supports JSON, JSONC, and YAML formats with Effect Schema validation.
+- [`ConfigLoaderError`](silk://packages/github-action-effects/api/class/configloadererror) — Error from config loading operations.
+- [`DryRun`](silk://packages/github-action-effects/api/class/dryrun) — Service for dry-run mutation interception.
+- [`GitBranch`](silk://packages/github-action-effects/api/class/gitbranch) — Service for GitHub branch management via Git Data API.
+- [`GitBranchError`](silk://packages/github-action-effects/api/class/gitbrancherror) — Error from branch management operations.
+- [`GitCommit`](silk://packages/github-action-effects/api/class/gitcommit) — Service for creating verified commits via Git Data API.
+- [`GitCommitError`](silk://packages/github-action-effects/api/class/gitcommiterror) — Error from git commit operations via Git Data API.
+- [`GitHubApp`](silk://packages/github-action-effects/api/class/githubapp) — Service for GitHub App authentication lifecycle.
+- [`GitHubAppError`](silk://packages/github-action-effects/api/class/githubapperror) — Error from GitHub App authentication operations.
+- [`GitHubArtifactMetadata`](silk://packages/github-action-effects/api/class/githubartifactmetadata) — Service for GitHub Packages artifact-metadata operations.
+- [`GitHubArtifactMetadataError`](silk://packages/github-action-effects/api/class/githubartifactmetadataerror) — Error from GitHub Packages artifact-metadata operations.
+- [`GitHubClient`](silk://packages/github-action-effects/api/class/githubclient) — Service for GitHub API operations via Octokit.
+- [`GitHubClientError`](silk://packages/github-action-effects/api/class/githubclienterror) — Error from GitHub API operations.
+- [`GitHubCommit`](silk://packages/github-action-effects/api/class/githubcommit) — Service for reading the GitHub commit graph.
+- [`GitHubCommitError`](silk://packages/github-action-effects/api/class/githubcommiterror) — Error from GitHub commit operations.
+- [`GitHubContent`](silk://packages/github-action-effects/api/class/githubcontent) — Service for reading repository file contents.
+- [`GitHubContentError`](silk://packages/github-action-effects/api/class/githubcontenterror) — Error from GitHub repository-content operations.
+- [`GitHubGraphQL`](silk://packages/github-action-effects/api/class/githubgraphql) — Service for GitHub GraphQL API operations.
+- [`GitHubGraphQLError`](silk://packages/github-action-effects/api/class/githubgraphqlerror) — Error from GitHub GraphQL operations.
+- [`GitHubIssue`](silk://packages/github-action-effects/api/class/githubissue) — Service for GitHub Issue operations.
+- [`GitHubIssueError`](silk://packages/github-action-effects/api/class/githubissueerror) — Error from GitHub Issue operations.
+- [`GitHubRelease`](silk://packages/github-action-effects/api/class/githubrelease) — Service for GitHub Release operations.
+- [`GitHubReleaseError`](silk://packages/github-action-effects/api/class/githubreleaseerror) — Error from GitHub Release operations.
+- [`GitTag`](silk://packages/github-action-effects/api/class/gittag) — Service for GitHub tag management via Git Data API.
+- [`GitTagError`](silk://packages/github-action-effects/api/class/gittagerror) — Error from tag management operations.
+- [`Glob`](silk://packages/github-action-effects/api/class/glob) — Service for resolving glob patterns and computing `@actions/glob`-compatible file hashes.
+- [`GlobError`](silk://packages/github-action-effects/api/class/globerror) — Error when a glob operation (pattern resolution or hashFiles) fails.
+- [`InTotoStatement`](silk://packages/github-action-effects/api/class/intotostatement) — In-toto Statement v1. The `predicate` body is intentionally typed as `unknown` — different predicate types (SLSA provenance, CycloneDX SBOM, SPDX, etc.) carry different shapes, and the statement layer doesn't need to introspect them.
+- [`InTotoSubject`](silk://packages/github-action-effects/api/class/intotosubject) — Subject of an in-toto statement: a content-addressed artifact.
+- [`IoError`](silk://packages/github-action-effects/api/class/ioerror) — Error when a filesystem I/O lookup (`which` / `findInPath`) fails.
+- [`NpmRegistry`](silk://packages/github-action-effects/api/class/npmregistry) — Service for npm registry queries.
+- [`NpmRegistryError`](silk://packages/github-action-effects/api/class/npmregistryerror) — Error from npm registry operations.
+- [`OctokitAuthApp`](silk://packages/github-action-effects/api/class/octokitauthapp) — Wrapper service for `@octokit/auth-app`.
+- [`OidcTokenError`](silk://packages/github-action-effects/api/class/oidctokenerror) — Errors raised by OidcTokenIssuer. - `"env"` — required `ACTIONS_ID_TOKEN_REQUEST_*` env var missing - `"http"` — non-2xx response or transport error from the token service - `"decode"` — token service returned a payload without a `value` field - `"save"` — failure writing the redacted token to disk
+- [`OidcTokenIssuer`](silk://packages/github-action-effects/api/class/oidctokenissuer) — OIDC token issuer service surface.
+- [`PackageManagerAdapter`](silk://packages/github-action-effects/api/class/packagemanageradapter) — Service for unified package manager operations. Supports npm, pnpm, yarn, bun, and deno with automatic detection.
+- [`PackageManagerError`](silk://packages/github-action-effects/api/class/packagemanagererror) — Error from package manager operations.
+- [`PackagePublish`](silk://packages/github-action-effects/api/class/packagepublish) — Service for npm package publishing workflow.
+- [`PackagePublishError`](silk://packages/github-action-effects/api/class/packagepublisherror) — Error from package publishing operations.
+- [`PullRequest`](silk://packages/github-action-effects/api/class/pullrequest) — Service for pull request lifecycle management.
+- [`PullRequestComment`](silk://packages/github-action-effects/api/class/pullrequestcomment) — Service for PR comment operations.
+- [`PullRequestCommentError`](silk://packages/github-action-effects/api/class/pullrequestcommenterror) — Error from PR comment operations.
+- [`PullRequestError`](silk://packages/github-action-effects/api/class/pullrequesterror) — Error from pull request operations.
+- [`RateLimiter`](silk://packages/github-action-effects/api/class/ratelimiter) — Service for GitHub API rate limit awareness.
+- [`RateLimitError`](silk://packages/github-action-effects/api/class/ratelimiterror) — Error when GitHub API rate limit is exhausted or nearly exhausted.
+- [`RuntimeEnvironmentError`](silk://packages/github-action-effects/api/class/runtimeenvironmenterror) — Error when a required runtime environment variable (e.g. GITHUB_OUTPUT) is missing.
+- [`Sbom`](silk://packages/github-action-effects/api/class/sbom) — Sbom service surface.
+- [`SbomError`](silk://packages/github-action-effects/api/class/sbomerror) — Errors raised by Sbom operations. - `"build"` — failed to construct the Bom model (bad input) - `"serialize"` — failed to serialize to JSON - `"save"` — failed to write the BOM file to disk
+- [`SemverResolverError`](silk://packages/github-action-effects/api/class/semverresolvererror) — Error when a semver operation fails due to invalid input.
+- [`SigstoreBundle`](silk://packages/github-action-effects/api/class/sigstorebundle) — A Sigstore bundle — the wire format for attestations. The exact `verificationMaterial` and `dsseEnvelope` shapes are defined by the sigstore protobuf-specs; we model them as `unknown` at this layer and delegate construction to `@sigstore/sign`. The bundle is opaque to callers that just want to upload it.
+- [`SigstoreSigner`](silk://packages/github-action-effects/api/class/sigstoresigner) — Sigstore signer service surface.
+- [`SigstoreSignerError`](silk://packages/github-action-effects/api/class/sigstoresignererror) — Errors raised by SigstoreSigner. - `"sign"` — Fulcio / FulcioSigner failed to produce a signature - `"witness"` — Rekor failed to issue a transparency-log entry - `"bundle"` — bundle JSON could not be produced from the protobuf
+- [`SlsaError`](silk://packages/github-action-effects/api/class/slsaerror) — Error raised by SLSA helpers. - `"decode"` — JWT payload could not be decoded - `"claims"` — decoded JWT is missing required claims - `"env"` — predicate could not be assembled from the runner environment
+- [`TokenPermissionChecker`](silk://packages/github-action-effects/api/class/tokenpermissionchecker) — Service for checking GitHub token permissions. Provides three enforcement modes: - `check`: Compare granted vs required, return result - `assertSufficient`: Fail if any required permissions are missing - `assertExact`: Fail if any missing OR extra permissions - `warnOverPermissioned`: Log warnings for extras, never fail
+- [`TokenPermissionError`](silk://packages/github-action-effects/api/class/tokenpermissionerror) — Error when token permissions are insufficient or over-scoped.
+- [`ToolInstaller`](silk://packages/github-action-effects/api/class/toolinstaller) — Low-level service for downloading, extracting, and caching tool binaries. Provides primitives for tool cache management without opinionated installation workflows. Consumers compose these primitives as needed.
+- [`ToolInstallerError`](silk://packages/github-action-effects/api/class/toolinstallererror) — Error from tool installation operations.
+- [`WorkflowDispatch`](silk://packages/github-action-effects/api/class/workflowdispatch) — Service for triggering and monitoring GitHub Actions workflow runs.
+- [`WorkflowDispatchError`](silk://packages/github-action-effects/api/class/workflowdispatcherror) — Error from workflow dispatch operations.
+- [`WorkspaceDetector`](silk://packages/github-action-effects/api/class/workspacedetector) — Service for workspace/monorepo detection.
+- [`WorkspaceDetectorError`](silk://packages/github-action-effects/api/class/workspacedetectorerror) — Error from workspace detection operations.
+
+## function
+
+- [`AttestTestFullLayer`](silk://packages/github-action-effects/api/function/attesttestfulllayer) — Composed layer that provides `Attest` plus every dependency it declares (`SigstoreSigner`, `OidcTokenIssuer`, `Sbom`, and `GitHubClient`). Use this when you just want to call into `Attest` from a test without wiring four layers by hand.
+- [`buildSLSAProvenancePredicate`](silk://packages/github-action-effects/api/function/buildslsaprovenancepredicate) — Build a SLSA Provenance v1 predicate from OIDC claims + the current runner environment.
+- [`buildStatement`](silk://packages/github-action-effects/api/function/buildstatement) — Build a InTotoStatement from a list of subjects and a typed predicate.
+- [`decodeJwtClaims`](silk://packages/github-action-effects/api/function/decodejwtclaims) — Decode a JWT payload without verifying its signature.
+- [`DryRunLive`](silk://packages/github-action-effects/api/function/dryrunlive) — Live DryRun layer.
+- [`generatePackageViewUrl`](silk://packages/github-action-effects/api/function/generatepackageviewurl) — Generate a URL to view the published package on its registry
+- [`getRegistryDisplayName`](silk://packages/github-action-effects/api/function/getregistrydisplayname) — Get a human-readable display name for a registry URL.
+- [`getRegistryType`](silk://packages/github-action-effects/api/function/getregistrytype) — Detect the type of a registry from its URL
+- [`isCustomRegistry`](silk://packages/github-action-effects/api/function/iscustomregistry) — Check if a registry URL is a custom (non-standard) registry
+- [`isGitHubPackagesRegistry`](silk://packages/github-action-effects/api/function/isgithubpackagesregistry) — Check if a registry URL is GitHub Packages
+- [`isJsrRegistry`](silk://packages/github-action-effects/api/function/isjsrregistry) — Check if a registry URL is JSR
+- [`isNpmRegistry`](silk://packages/github-action-effects/api/function/isnpmregistry) — Check if a registry URL is the npm public registry
+- [`makeAttestTestState`](silk://packages/github-action-effects/api/function/makeattestteststate) — Build a fresh, empty AttestTestState.
+- [`makeSbomTestState`](silk://packages/github-action-effects/api/function/makesbomteststate) — Build a fresh, empty SbomTestState.
+- [`makeSigstoreSignerLive`](silk://packages/github-action-effects/api/function/makesigstoresignerlive) — Build a configured Live SigstoreSigner layer.
+- [`npmPurl`](silk://packages/github-action-effects/api/function/npmpurl) — PURL helper for npm packages.
+- [`resilienceSchedule`](silk://packages/github-action-effects/api/function/resilienceschedule) — Backoff schedule for retryable GitHubClient errors: exponential, jittered, each interval capped at `maxDelay`, bounded by `maxRetries`, and gated so that only `retryable` errors recur. Non-retryable errors stop the schedule immediately. Exported for reuse by tracing spans and any future layer transformer. It is pure (depends only on `effect` and the error type) so it is safe to import from the octokit-free testing entry point. Note this differs from the internal `withResilience` (which wraps every `GitHubClient` call) in two ways: it does NOT consult a `GitHubClientError.retryAfterMs` server-advised delay, and it jitters with `Schedule.jittered` (multiplicative) rather than `withResilience`'s uniform full-jitter in `[0, capped]`. Use `Effect.retry(resilienceSchedule(...))` for a standalone backoff; reach for `withResilience` directly when server-advised `Retry-After` / `x-ratelimit-reset` delays must be honored. The per-interval cap is expressed with `Schedule.map((d) => Duration.min(d, cap))` rather than `Schedule.either(Schedule.spaced(cap))`: `Duration.min` caps each computed delay deterministically, which the cap test pins directly.
+- [`S3BlobStoreLive`](silk://packages/github-action-effects/api/function/s3blobstorelive) — An S3-backed BlobStore using path-style addressing and SigV4. Works with AWS S3 and S3-compatible stores (R2, MinIO, Spaces) via `endpoint`.
+- [`saveToken`](silk://packages/github-action-effects/api/function/savetoken) — Save the redacted OIDC token to disk for local inspection.
+- [`serializeStatement`](silk://packages/github-action-effects/api/function/serializestatement) — Serialize a statement to canonical JSON for hashing / DSSE-wrapping.
+- [`subject`](silk://packages/github-action-effects/api/function/subject) — Build a single-subject InTotoSubject from a name and sha256 digest. Convenience for the common case of attesting one artifact.
+- [`TokenPermissionCheckerLive`](silk://packages/github-action-effects/api/function/tokenpermissioncheckerlive) — Live implementation of TokenPermissionChecker. Constructed with a granted permissions record (typically from InstallationToken.permissions).
+
+## interface
+
+- [`AccumulateResult`](silk://packages/github-action-effects/api/interface/accumulateresult) — Result of an accumulate operation.
+- [`ActionCacheTestState`](silk://packages/github-action-effects/api/interface/actioncacheteststate) — In-memory cache state for testing.
+- [`ActionLoggerTestState`](silk://packages/github-action-effects/api/interface/actionloggerteststate) — In-memory state captured by the test logger.
+- [`ActionOutputsTestState`](silk://packages/github-action-effects/api/interface/actionoutputsteststate) — In-memory state captured by the test output layer.
+- [`ActionRunOptions`](silk://packages/github-action-effects/api/interface/actionrunoptions) — Options for `Action.run`.
+- [`ActionStateTestState`](silk://packages/github-action-effects/api/interface/actionstateteststate) — In-memory state captured by the test state layer.
+- [`AnnotationProperties`](silk://packages/github-action-effects/api/interface/annotationproperties) — GitHub annotation properties shared by `::notice::`, `::warning::`, and `::error::` commands. Matches `@actions/core` `AnnotationProperties`.
+- [`AppAuth`](silk://packages/github-action-effects/api/interface/appauth) — Auth function returned by `createAppAuth`.
+- [`ArtifactItem`](silk://packages/github-action-effects/api/interface/artifactitem) — Metadata for a single artifact returned by the backend.
+- [`ArtifactTestState`](silk://packages/github-action-effects/api/interface/artifactteststate) — In-memory artifact state for testing.
+- [`AttestationListEntry`](silk://packages/github-action-effects/api/interface/attestationlistentry) — One entry in the `Attest.listForSubject` result.
+- [`AttestationRecord`](silk://packages/github-action-effects/api/interface/attestationrecord) — Result of a successful end-to-end attestation: the statement, the signed Sigstore bundle, and the GitHub attestation record.
+- [`AttestInput`](silk://packages/github-action-effects/api/interface/attestinput) — Common input for any attestation operation.
+- [`AttestTestState`](silk://packages/github-action-effects/api/interface/attestteststate) — Mutable state recorded by AttestTest.
+- [`BlobStoreTestState`](silk://packages/github-action-effects/api/interface/blobstoreteststate) — In-memory blob store state for testing.
+- [`BotIdentity`](silk://packages/github-action-effects/api/interface/botidentity) — Bot identity for commit attribution.
+- [`ChangesetAnalyzerTestState`](silk://packages/github-action-effects/api/interface/changesetanalyzerteststate) — Test state for ChangesetAnalyzer.
+- [`CheckRunAnnotation`](silk://packages/github-action-effects/api/interface/checkrunannotation) — A single annotation on a check run.
+- [`CheckRunData`](silk://packages/github-action-effects/api/interface/checkrundata) — Data describing a check run.
+- [`CheckRunOutput`](silk://packages/github-action-effects/api/interface/checkrunoutput) — Output content for a check run.
+- [`CheckRunRecord`](silk://packages/github-action-effects/api/interface/checkrunrecord) — Recorded check run for testing.
+- [`CheckRunTestState`](silk://packages/github-action-effects/api/interface/checkrunteststate) — Test state for CheckRun.
+- [`CommandResponse`](silk://packages/github-action-effects/api/interface/commandresponse) — Recorded command response for testing.
+- [`CommentRecord`](silk://packages/github-action-effects/api/interface/commentrecord) — A PR comment record.
+- [`CommitComparison`](silk://packages/github-action-effects/api/interface/commitcomparison) — Result of comparing two commits/refs (base...head).
+- [`CommitDetail`](silk://packages/github-action-effects/api/interface/commitdetail) — A single commit with its parent SHAs.
+- [`CommitFile`](silk://packages/github-action-effects/api/interface/commitfile) — A file changed between two commits/refs.
+- [`CommitSummary`](silk://packages/github-action-effects/api/interface/commitsummary) — A commit summary as returned by list and compare.
+- [`ConfigLoaderTestState`](silk://packages/github-action-effects/api/interface/configloaderteststate) — Test state for ConfigLoader.
+- [`DispatchRecord`](silk://packages/github-action-effects/api/interface/dispatchrecord) — Recorded dispatch for testing.
+- [`DownloadOptions`](silk://packages/github-action-effects/api/interface/downloadoptions) — Options for `Artifact.downloadArtifact`.
+- [`DryRunResult`](silk://packages/github-action-effects/api/interface/dryrunresult) — Outcome of a `npm publish --dry-run`.
+- [`DryRunTestState`](silk://packages/github-action-effects/api/interface/dryrunteststate) — Test state for DryRun.
+- [`ExecOptions`](silk://packages/github-action-effects/api/interface/execoptions) — Options for command execution.
+- [`ExecOutput`](silk://packages/github-action-effects/api/interface/execoutput) — Result of a captured command execution.
+- [`FindBy`](silk://packages/github-action-effects/api/interface/findby) — Cross-run / cross-repo lookup parameters.
+- [`GitBranchTestState`](silk://packages/github-action-effects/api/interface/gitbranchteststate) — Test state for GitBranch.
+- [`GitCommitTestState`](silk://packages/github-action-effects/api/interface/gitcommitteststate) — Test state for GitCommit.
+- [`GitHubAppTestState`](silk://packages/github-action-effects/api/interface/githubappteststate) — Test state for GitHubApp.
+- [`GitHubArtifactMetadataTestState`](silk://packages/github-action-effects/api/interface/githubartifactmetadatateststate) — Test state for `GitHubArtifactMetadata`.
+- [`GitHubClientTestState`](silk://packages/github-action-effects/api/interface/githubclientteststate) — Test state for GitHubClient.
+- [`GitHubCommitTestState`](silk://packages/github-action-effects/api/interface/githubcommitteststate) — Test state for GitHubCommit.
+- [`GitHubContentTestState`](silk://packages/github-action-effects/api/interface/githubcontentteststate) — Test state for GitHubContent.
+- [`GitHubGraphQLTestState`](silk://packages/github-action-effects/api/interface/githubgraphqlteststate) — Test state for GitHubGraphQL.
+- [`GitHubIssueTestState`](silk://packages/github-action-effects/api/interface/githubissueteststate) — Test state for GitHubIssue.
+- [`GitHubReleaseTestState`](silk://packages/github-action-effects/api/interface/githubreleaseteststate) — Test state for GitHubRelease.
+- [`GitTagTestState`](silk://packages/github-action-effects/api/interface/gittagteststate) — Test state for GitTag.
+- [`GlobOptions`](silk://packages/github-action-effects/api/interface/globoptions) — Options mirroring `@actions/glob`'s `GlobOptions` (the documented subset).
+- [`GlobTestState`](silk://packages/github-action-effects/api/interface/globteststate) — In-memory glob state for testing. Maps a patterns string to its matched paths and to a precomputed hash, so a test can pre-seed results without touching disk.
+- [`HashFilesOptions`](silk://packages/github-action-effects/api/interface/hashfilesoptions) — Options for `Glob.hashFiles`.
+- [`IdempotentPublishInput`](silk://packages/github-action-effects/api/interface/idempotentpublishinput) — Input for `PackagePublish.publishIdempotent`.
+- [`IdempotentPublishResult`](silk://packages/github-action-effects/api/interface/idempotentpublishresult) — Outcome of `PackagePublish.publishIdempotent`.
+- [`InFlightPackage`](silk://packages/github-action-effects/api/interface/inflightpackage) — A sibling package being released in the same wave as the root — not yet on the registry, so any registry-based dependency resolver cannot see it. The Sbom service uses this list to synthesize the component entry the registry would otherwise provide.
+- [`InstallOptions`](silk://packages/github-action-effects/api/interface/installoptions) — Options for package installation.
+- [`IssueData`](silk://packages/github-action-effects/api/interface/issuedata) — Data returned from a GitHub issue.
+- [`NpmRegistryTestState`](silk://packages/github-action-effects/api/interface/npmregistryteststate) — Test state for NpmRegistry.
+- [`OidcClaims`](silk://packages/github-action-effects/api/interface/oidcclaims) — Subset of GitHub Actions OIDC claims used to construct an SLSA provenance predicate.
+- [`PackageManagerAdapterTestState`](silk://packages/github-action-effects/api/interface/packagemanageradapterteststate) — Test state for PackageManagerAdapter.
+- [`PackagePublishTestState`](silk://packages/github-action-effects/api/interface/packagepublishteststate) — Test state for PackagePublish.
+- [`PackResult`](silk://packages/github-action-effects/api/interface/packresult) — Result of packing a package directory into a tarball.
+- [`PollOptions`](silk://packages/github-action-effects/api/interface/polloptions) — Options for polling a dispatched workflow run.
+- [`ProvenanceAttestationInput`](silk://packages/github-action-effects/api/interface/provenanceattestationinput) — Input for `Attest.provenance`.
+- [`ProvisionOptions`](silk://packages/github-action-effects/api/interface/provisionoptions) — Options for GitHubToken.
+- [`PublishTarballResult`](silk://packages/github-action-effects/api/interface/publishtarballresult) — Outcome of a `PackagePublish.publishTarball` call.
+- [`PullRequestCommentTestState`](silk://packages/github-action-effects/api/interface/pullrequestcommentteststate) — In-memory comment storage for testing.
+- [`PullRequestFile`](silk://packages/github-action-effects/api/interface/pullrequestfile) — A file changed in a pull request.
+- [`PullRequestInfo`](silk://packages/github-action-effects/api/interface/pullrequestinfo) — Information about a pull request.
+- [`PullRequestListOptions`](silk://packages/github-action-effects/api/interface/pullrequestlistoptions) — Options for listing pull requests.
+- [`PullRequestRecord`](silk://packages/github-action-effects/api/interface/pullrequestrecord) — Recorded pull request for testing.
+- [`PullRequestTestState`](silk://packages/github-action-effects/api/interface/pullrequestteststate) — Test state for PullRequest.
+- [`RateLimiterTestState`](silk://packages/github-action-effects/api/interface/ratelimiterteststate) — Test state for RateLimiter.
+- [`RegistryTarget`](silk://packages/github-action-effects/api/interface/registrytarget) — Target registry for publishing.
+- [`ReleaseAsset`](silk://packages/github-action-effects/api/interface/releaseasset) — Data returned from an uploaded release asset.
+- [`ReleaseData`](silk://packages/github-action-effects/api/interface/releasedata) — Data returned from a GitHub release.
+- [`Report_2`](silk://packages/github-action-effects/api/interface/report_2) — An immutable report that accumulates content and renders to markdown.
+- [`ResilienceOptions`](silk://packages/github-action-effects/api/interface/resilienceoptions) — Tuning for the resilient retry/backoff applied to every GitHubClient call. Resilience is on by default; pass `{ enabled: false }` for bare, retry-free behavior. `maxRetries`, `baseDelay`, and `maxDelay` tune the exponential, jittered, capped backoff schedule used for retryable (429 / 5xx) errors.
+- [`ResolvedDependency`](silk://packages/github-action-effects/api/interface/resolveddependency) — A dependency that should appear as a component in the BOM.
+- [`RestResponse`](silk://packages/github-action-effects/api/interface/restresponse) — Recorded REST response for testing.
+- [`S3BlobStoreConfig`](silk://packages/github-action-effects/api/interface/s3blobstoreconfig) — Configuration for an S3-backed BlobStore. Secret material is held as `Redacted` so it cannot be accidentally logged; it is unwrapped only inside the request signer.
+- [`SbomAttestationInput`](silk://packages/github-action-effects/api/interface/sbomattestationinput) — Input for `Attest.sbom`.
+- [`SbomAuthor`](silk://packages/github-action-effects/api/interface/sbomauthor) — An author of the SBOM document itself. Maps to a CycloneDX `metadata.authors` entry — the NTIA "author of SBOM data" element, distinct from the `SbomInput.rootAuthor` that describes the author of the root *component*.
+- [`SbomContact`](silk://packages/github-action-effects/api/interface/sbomcontact) — A point of contact for a supplier organization.
+- [`SbomInput`](silk://packages/github-action-effects/api/interface/sbominput) — Input for `Sbom.generate`.
+- [`SbomSupplier`](silk://packages/github-action-effects/api/interface/sbomsupplier) — The organization that supplied the root component. Maps to the CycloneDX `metadata.supplier` field, which the NTIA SBOM "minimum elements" require for compliance.
+- [`SbomTestState`](silk://packages/github-action-effects/api/interface/sbomteststate) — Mutable state recorded by SbomTest.
+- [`SigstoreSignerConfig`](silk://packages/github-action-effects/api/interface/sigstoresignerconfig) — Configuration knobs for the Live SigstoreSigner.
+- [`StorageRecordInput`](silk://packages/github-action-effects/api/interface/storagerecordinput) — Input for creating a GitHub Packages artifact-metadata storage record.
+- [`TagRef`](silk://packages/github-action-effects/api/interface/tagref) — A tag name and the commit SHA it resolves to.
+- [`TokenPermissionCheckerTestState`](silk://packages/github-action-effects/api/interface/tokenpermissioncheckerteststate) — Test state for TokenPermissionChecker.
+- [`ToolInstallerTestState`](silk://packages/github-action-effects/api/interface/toolinstallerteststate) — Test state for ToolInstaller.
+- [`UploadOptions`](silk://packages/github-action-effects/api/interface/uploadoptions) — Options for `Artifact.uploadArtifact`.
+- [`UploadResult`](silk://packages/github-action-effects/api/interface/uploadresult) — Result of a successful `Artifact.uploadArtifact`.
+- [`WorkflowDispatchTestState`](silk://packages/github-action-effects/api/interface/workflowdispatchteststate) — Test state for WorkflowDispatch.
+- [`WorkflowRunStatus`](silk://packages/github-action-effects/api/interface/workflowrunstatus) — Status of a workflow run.
+- [`WorkspaceDetectorTestState`](silk://packages/github-action-effects/api/interface/workspacedetectorteststate) — Test state for WorkspaceDetector.
+
+## namespace
+
+- [`Step`](silk://packages/github-action-effects/api/namespace/step)
+
+## type
+
+- [`ActionLogLevel`](silk://packages/github-action-effects/api/type/actionloglevel)
+- [`AnnotationLevel`](silk://packages/github-action-effects/api/type/annotationlevel) — Check run annotation level.
+- [`BumpType`](silk://packages/github-action-effects/api/type/bumptype)
+- [`CapturedOutput`](silk://packages/github-action-effects/api/type/capturedoutput)
+- [`Changeset`](silk://packages/github-action-effects/api/type/changeset)
+- [`ChangesetFile`](silk://packages/github-action-effects/api/type/changesetfile)
+- [`ChecklistItem`](silk://packages/github-action-effects/api/type/checklistitem)
+- [`CheckRunConclusion`](silk://packages/github-action-effects/api/type/checkrunconclusion) — Check run conclusion.
+- [`CoreServices`](silk://packages/github-action-effects/api/type/coreservices) — Core services provided automatically by `Action.run`.
+- [`CycloneDXBom`](silk://packages/github-action-effects/api/type/cyclonedxbom) — CycloneDX BOM model. Re-exported so callers don't need to depend on `@cyclonedx/cyclonedx-library` directly.
+- [`ExtraPermission`](silk://packages/github-action-effects/api/type/extrapermission) — Decoded type for ExtraPermission.
+- [`FileChange`](silk://packages/github-action-effects/api/type/filechange)
+- [`GitHubContext`](silk://packages/github-action-effects/api/type/githubcontext) — Inferred type for GitHubContext.
+- [`InstallationToken`](silk://packages/github-action-effects/api/type/installationtoken) — Decoded type for InstallationToken.
+- [`LogLevelInput`](silk://packages/github-action-effects/api/type/loglevelinput)
+- [`NpmPackageInfo`](silk://packages/github-action-effects/api/type/npmpackageinfo)
+- [`PackageManagerInfo`](silk://packages/github-action-effects/api/type/packagemanagerinfo) — Type for package manager info.
+- [`PackageManagerName`](silk://packages/github-action-effects/api/type/packagemanagername) — Type for supported package manager names.
+- [`PermissionCheckResult`](silk://packages/github-action-effects/api/type/permissioncheckresult) — Decoded type for PermissionCheckResult.
+- [`PermissionGap`](silk://packages/github-action-effects/api/type/permissiongap) — Decoded type for PermissionGap.
+- [`PermissionLevel`](silk://packages/github-action-effects/api/type/permissionlevel) — Decoded type for PermissionLevel.
+- [`RateLimitStatus`](silk://packages/github-action-effects/api/type/ratelimitstatus) — Decoded type for RateLimitStatus.
+- [`RegistryType`](silk://packages/github-action-effects/api/type/registrytype) — Known registry types
+- [`RunnerContext`](silk://packages/github-action-effects/api/type/runnercontext) — Inferred type for RunnerContext.
+- [`Status`](silk://packages/github-action-effects/api/type/status)
+- [`TreeEntry`](silk://packages/github-action-effects/api/type/treeentry)
+- [`WebhookPayload`](silk://packages/github-action-effects/api/type/webhookpayload) — Inferred type for `WebhookPayload`.
+- [`WorkspaceInfo`](silk://packages/github-action-effects/api/type/workspaceinfo)
+- [`WorkspacePackage`](silk://packages/github-action-effects/api/type/workspacepackage)
+- [`WorkspaceType`](silk://packages/github-action-effects/api/type/workspacetype)
+
+## variable
+
+- [`Action`](silk://packages/github-action-effects/api/variable/action) — Namespace for top-level GitHub Action helpers.
+- [`ActionCacheLive`](silk://packages/github-action-effects/api/variable/actioncachelive) — Live implementation of ActionCache using the V2 Twirp cache protocol and Azure Blob Storage for uploads/downloads. Requires `HttpClient.HttpClient` for the Twirp RPCs; the `ActionsRuntime.Default` / `Action.run` path provides it via `FetchHttpClient.layer`. Manual-wiring consumers must provide it themselves.
+- [`ActionCacheTest`](silk://packages/github-action-effects/api/variable/actioncachetest) — Test implementation for ActionCache.
+- [`ActionEnvironmentLive`](silk://packages/github-action-effects/api/variable/actionenvironmentlive)
+- [`ActionEnvironmentTest`](silk://packages/github-action-effects/api/variable/actionenvironmenttest) — Test implementation for ActionEnvironment.
+- [`ActionInput`](silk://packages/github-action-effects/api/variable/actioninput) — GitHub-faithful action input helpers expressed as Effect `Config` combinators.
+- [`ActionLoggerLive`](silk://packages/github-action-effects/api/variable/actionloggerlive) — Live implementation of the ActionLogger service. Has no external dependencies — uses WorkflowCommand to write group markers directly to stdout and Effect's Logger API for buffering.
+- [`ActionLoggerTest`](silk://packages/github-action-effects/api/variable/actionloggertest) — Test implementation that captures log operations in memory.
+- [`ActionLogLevel`](silk://packages/github-action-effects/api/variable/actionloglevel) — The three log levels supported by the action logger. - `info` — Buffered. Shows only outcome summaries. Flushes verbose buffer on failure. - `verbose` — Unbuffered milestones. Start/finish markers for operations. - `debug` — Everything. Full command output, input/output values, internal state.
+- [`ActionOutputsLive`](silk://packages/github-action-effects/api/variable/actionoutputslive)
+- [`ActionOutputsTest`](silk://packages/github-action-effects/api/variable/actionoutputstest) — Test implementation that captures outputs in memory.
+- [`ActionsConfigProvider`](silk://packages/github-action-effects/api/variable/actionsconfigprovider) — A `ConfigProvider` that reads GitHub Actions inputs from the process environment. GitHub Actions populates action inputs as environment variables with the prefix `INPUT_`, with spaces replaced by underscores and the name uppercased. Hyphens are preserved (not converted to underscores), matching GitHub Actions behavior. For example: - `Config.string("name")` reads `INPUT_NAME` - `Config.string("retry-count")` reads `INPUT_RETRY-COUNT` - `Config.string("my input")` reads `INPUT_MY_INPUT` Empty string values are treated as missing and produce a `ConfigError`.
+- [`ActionsLogger`](silk://packages/github-action-effects/api/variable/actionslogger) — An Effect `Logger` that maps log levels to GitHub Actions workflow commands. - Debug / Trace → `::debug::message` - Info → plain text to stdout (no command prefix) - Warning → `::warning::message` - Error / Fatal → `::error::message` Annotations `file`, `line`, and `col` are forwarded as workflow command properties when present (e.g. `::error file=a.ts,line=1::message`).
+- [`ActionsRuntime`](silk://packages/github-action-effects/api/variable/actionsruntime) — A single convenience layer that wires all core services together for a GitHub Actions environment. Provides: - `ConfigProvider` backed by GitHub Actions `INPUT_*` environment variables - `Logger` that emits GitHub Actions workflow commands (`::debug::`, `::warning::`, etc.) - `ActionOutputs` for setting outputs and writing step summaries - `ActionState` for reading and writing action state across phases - `ActionLogger` for group markers and buffered logging - `ActionEnvironment` for reading GitHub/runner context variables - `FileSystem` (Node.js) required by `ActionOutputs` and `ActionState` - `HttpClient` (fetch-backed) required by `OidcTokenIssuerLive`, `GitHubAppLive`, and `ActionCacheLive`
+- [`ActionStateLive`](silk://packages/github-action-effects/api/variable/actionstatelive)
+- [`ActionStateTest`](silk://packages/github-action-effects/api/variable/actionstatetest) — Test implementation that captures state in memory.
+- [`ArtifactLive`](silk://packages/github-action-effects/api/variable/artifactlive) — Live implementation of Artifact using the V2 Twirp artifact protocol and Azure Blob Storage for uploads/downloads.
+- [`ArtifactTest`](silk://packages/github-action-effects/api/variable/artifacttest) — Test implementation for Artifact.
+- [`AttestLive`](silk://packages/github-action-effects/api/variable/attestlive) — Live Attest layer.
+- [`AttestTest`](silk://packages/github-action-effects/api/variable/attesttest) — Test layer factories for Attest.
+- [`AutoMerge`](silk://packages/github-action-effects/api/variable/automerge) — Namespace for PR auto-merge operations via GitHub GraphQL API.
+- [`BlobStoreTest`](silk://packages/github-action-effects/api/variable/blobstoretest) — Test implementation for BlobStore.
+- [`BumpType`](silk://packages/github-action-effects/api/variable/bumptype) — Bump type for a changeset entry.
+- [`CapturedOutput`](silk://packages/github-action-effects/api/variable/capturedoutput) — A captured output entry.
+- [`Changeset`](silk://packages/github-action-effects/api/variable/changeset) — A parsed changeset with package bump mappings and summary.
+- [`ChangesetAnalyzerLive`](silk://packages/github-action-effects/api/variable/changesetanalyzerlive)
+- [`ChangesetAnalyzerTest`](silk://packages/github-action-effects/api/variable/changesetanalyzertest) — Test implementation for ChangesetAnalyzer.
+- [`ChangesetFile`](silk://packages/github-action-effects/api/variable/changesetfile) — A changeset file with path and content.
+- [`ChecklistItem`](silk://packages/github-action-effects/api/variable/checklistitem) — A single item in a checklist.
+- [`CheckRunLive`](silk://packages/github-action-effects/api/variable/checkrunlive)
+- [`CheckRunTest`](silk://packages/github-action-effects/api/variable/checkruntest) — Test implementation for CheckRun.
+- [`CommandRunnerLive`](silk://packages/github-action-effects/api/variable/commandrunnerlive)
+- [`CommandRunnerTest`](silk://packages/github-action-effects/api/variable/commandrunnertest) — Test implementation for CommandRunner.
+- [`ConfigLoaderLive`](silk://packages/github-action-effects/api/variable/configloaderlive) — Live implementation of ConfigLoader using `@effect/platform` FileSystem.
+- [`ConfigLoaderTest`](silk://packages/github-action-effects/api/variable/configloadertest) — Test implementation for ConfigLoader.
+- [`CYCLONEDX_BOM`](silk://packages/github-action-effects/api/variable/cyclonedx_bom) — CycloneDX BOM predicate URI. Used for SBOM attestations.
+- [`DryRunTest`](silk://packages/github-action-effects/api/variable/dryruntest) — Test implementation for DryRun.
+- [`ErrorAccumulator`](silk://packages/github-action-effects/api/variable/erroraccumulator) — Namespace for error-accumulating operations. Processes all items and collects both successes and failures without short-circuiting on first error.
+- [`ExtraPermission`](silk://packages/github-action-effects/api/variable/extrapermission) — A permission granted but not required.
+- [`FileChange`](silk://packages/github-action-effects/api/variable/filechange) — A file change for the commitFiles convenience method. Either a content change (add/update) or a deletion (sha: null).
+- [`FileChangeContent`](silk://packages/github-action-effects/api/variable/filechangecontent) — A file change that adds or updates a file.
+- [`FileChangeDeletion`](silk://packages/github-action-effects/api/variable/filechangedeletion) — A file change that deletes a file (sha: null).
+- [`GitBranchLive`](silk://packages/github-action-effects/api/variable/gitbranchlive)
+- [`GitBranchTest`](silk://packages/github-action-effects/api/variable/gitbranchtest) — Test implementation for GitBranch.
+- [`GitCommitLive`](silk://packages/github-action-effects/api/variable/gitcommitlive)
+- [`GitCommitTest`](silk://packages/github-action-effects/api/variable/gitcommittest) — Test implementation for GitCommit.
+- [`GITHUB_BUILD_TYPE`](silk://packages/github-action-effects/api/variable/github_build_type) — GitHub Actions `workflow/v1` build type.
+- [`GitHubAppLive`](silk://packages/github-action-effects/api/variable/githubapplive) — Live implementation of GitHubApp using octokit auth-app and the `@effect/platform` `HttpClient`.
+- [`GitHubAppTest`](silk://packages/github-action-effects/api/variable/githubapptest) — Test implementation for GitHubApp.
+- [`GitHubArtifactMetadataLive`](silk://packages/github-action-effects/api/variable/githubartifactmetadatalive) — Live `GitHubArtifactMetadata` layer.
+- [`GitHubArtifactMetadataTest`](silk://packages/github-action-effects/api/variable/githubartifactmetadatatest) — Test implementation for `GitHubArtifactMetadata`.
+- [`GitHubBlobStoreLive`](silk://packages/github-action-effects/api/variable/githubblobstorelive) — Live implementation of BlobStore backed by the GitHub Actions V2 Twirp cache protocol and Azure Blob Storage. Unlike ActionCacheLive (which tars a path-set before uploading), this layer uploads/downloads raw in-memory byte buffers — one key per blob. The version hash is a constant (`BLOB_VERSION`) rather than being derived from paths, so any caller-supplied key maps to a unique, reproducible slot. Requires `HttpClient.HttpClient` for the Twirp RPCs; `ActionsRuntime.Default` / `Action.run` provides it via `FetchHttpClient.layer`. Manual-wiring consumers must provide it themselves.
+- [`GitHubClientLive`](silk://packages/github-action-effects/api/variable/githubclientlive) — Live `GitHubClient` layer constructors.
+- [`GitHubClientTest`](silk://packages/github-action-effects/api/variable/githubclienttest) — Test implementation for GitHubClient.
+- [`GitHubCommitLive`](silk://packages/github-action-effects/api/variable/githubcommitlive)
+- [`GitHubCommitTest`](silk://packages/github-action-effects/api/variable/githubcommittest) — Test implementation for GitHubCommit.
+- [`GitHubContentLive`](silk://packages/github-action-effects/api/variable/githubcontentlive)
+- [`GitHubContentTest`](silk://packages/github-action-effects/api/variable/githubcontenttest) — Test implementation for GitHubContent.
+- [`GitHubContext`](silk://packages/github-action-effects/api/variable/githubcontext) — GitHub Actions context derived from GITHUB_* environment variables.
+- [`GitHubGraphQLLive`](silk://packages/github-action-effects/api/variable/githubgraphqllive) — Live implementation of GitHubGraphQL using GitHubClient.
+- [`GitHubGraphQLTest`](silk://packages/github-action-effects/api/variable/githubgraphqltest) — Test implementation for GitHubGraphQL.
+- [`GitHubIssueLive`](silk://packages/github-action-effects/api/variable/githubissuelive)
+- [`GitHubIssueTest`](silk://packages/github-action-effects/api/variable/githubissuetest) — Test implementation for GitHubIssue.
+- [`GithubMarkdown`](silk://packages/github-action-effects/api/variable/githubmarkdown) — Namespace for GitHub-Flavored Markdown builder functions.
+- [`GitHubReleaseLive`](silk://packages/github-action-effects/api/variable/githubreleaselive)
+- [`GitHubReleaseTest`](silk://packages/github-action-effects/api/variable/githubreleasetest) — Test implementation for GitHubRelease.
+- [`GitHubToken`](silk://packages/github-action-effects/api/variable/githubtoken) — Phase-oriented helpers for the GitHub App installation-token lifecycle: `provision` in `pre`, `client` in `main`, `dispose` in `post`. `read` and `botIdentity` surface the persisted token (and a verified commit identity) to any phase after `provision`. `provision` and `dispose` require a `GitHubApp` layer in context — provide `GitHubAppLive` (composed with `OctokitAuthAppLive`) in production, or `GitHubAppTest` in tests. `client`, `read`, and `botIdentity` require `ActionState`.
+- [`GitTagLive`](silk://packages/github-action-effects/api/variable/gittaglive)
+- [`GitTagTest`](silk://packages/github-action-effects/api/variable/gittagtest) — Test implementation for GitTag.
+- [`GlobLive`](silk://packages/github-action-effects/api/variable/globlive) — Live implementation of Glob using `node:fs.globSync`, `node:crypto` and `node:fs.createReadStream`. No dependency on `@actions/glob`.
+- [`GlobTest`](silk://packages/github-action-effects/api/variable/globtest) — Test implementation for Glob.
+- [`IN_TOTO_PAYLOAD_TYPE`](silk://packages/github-action-effects/api/variable/in_toto_payload_type) — DSSE payload type for in-toto statements per the GitHub attestations spec.
+- [`IN_TOTO_STATEMENT_V1`](silk://packages/github-action-effects/api/variable/in_toto_statement_v1) — Type URI for in-toto Statement v1. Stored verbatim as the `_type` field of every statement we emit.
+- [`InstallationToken`](silk://packages/github-action-effects/api/variable/installationtoken) — An installation token generated from a GitHub App.
+- [`IoUtil`](silk://packages/github-action-effects/api/variable/ioutil) — Filesystem I/O lookup helpers — `@actions/io` `which` / `findInPath` parity.
+- [`LogLevelInput`](silk://packages/github-action-effects/api/variable/loglevelinput) — Log level input values accepted by the standardized `log-level` action input. Includes `auto` which resolves based on the GitHub Actions environment.
+- [`NpmPackageInfo`](silk://packages/github-action-effects/api/variable/npmpackageinfo) — Schema for npm package metadata.
+- [`NpmRegistryLive`](silk://packages/github-action-effects/api/variable/npmregistrylive) — Live NpmRegistry layer using CommandRunner.
+- [`NpmRegistryTest`](silk://packages/github-action-effects/api/variable/npmregistrytest) — Test implementation for NpmRegistry.
+- [`OctokitAuthAppLive`](silk://packages/github-action-effects/api/variable/octokitauthapplive) — Live implementation of OctokitAuthApp using `@octokit/auth-app`.
+- [`OidcTokenIssuerLive`](silk://packages/github-action-effects/api/variable/oidctokenissuerlive) — Live OidcTokenIssuer layer. Requires `HttpClient.HttpClient`.
+- [`OidcTokenIssuerTest`](silk://packages/github-action-effects/api/variable/oidctokenissuertest) — Noop OidcTokenIssuer test layer — returns a fixed dummy JWT.
+- [`PackageManagerAdapterLive`](silk://packages/github-action-effects/api/variable/packagemanageradapterlive) — Live implementation of PackageManagerAdapter. Depends on CommandRunner for executing commands and FileSystem for reading package.json and checking lockfiles.
+- [`PackageManagerAdapterTest`](silk://packages/github-action-effects/api/variable/packagemanageradaptertest) — Test implementation for PackageManagerAdapter.
+- [`PackageManagerInfo`](silk://packages/github-action-effects/api/variable/packagemanagerinfo) — Information about a detected package manager.
+- [`PackageManagerName`](silk://packages/github-action-effects/api/variable/packagemanagername) — Supported package manager names.
+- [`PackagePublishLive`](silk://packages/github-action-effects/api/variable/packagepublishlive) — Live PackagePublish layer using CommandRunner and NpmRegistry.
+- [`PackagePublishTest`](silk://packages/github-action-effects/api/variable/packagepublishtest) — Test implementation for PackagePublish.
+- [`PathUtils`](silk://packages/github-action-effects/api/variable/pathutils) — Pure path-normalization helpers, matching `@actions/core` path utilities.
+- [`PermissionCheckResult`](silk://packages/github-action-effects/api/variable/permissioncheckresult) — Result of a permission check comparing granted vs required.
+- [`PermissionGap`](silk://packages/github-action-effects/api/variable/permissiongap) — A missing or insufficient permission.
+- [`PermissionLevel`](silk://packages/github-action-effects/api/variable/permissionlevel) — Permission level for a GitHub token scope.
+- [`PullRequestCommentLive`](silk://packages/github-action-effects/api/variable/pullrequestcommentlive)
+- [`PullRequestCommentTest`](silk://packages/github-action-effects/api/variable/pullrequestcommenttest) — Test implementation for PullRequestComment.
+- [`PullRequestLive`](silk://packages/github-action-effects/api/variable/pullrequestlive)
+- [`PullRequestTest`](silk://packages/github-action-effects/api/variable/pullrequesttest) — Test implementation for PullRequest.
+- [`RateLimiterLive`](silk://packages/github-action-effects/api/variable/ratelimiterlive) — Rate limiter that reads the `x-ratelimit-*` headers observed on real responses (cached in a shared `RateLimitState` `Ref` written by the GitHubClient), rather than issuing a pre-flight `GET /rate_limit` before every guarded call. Probes only on a cache miss.
+- [`RateLimiterTest`](silk://packages/github-action-effects/api/variable/ratelimitertest) — Test implementation for RateLimiter.
+- [`RateLimitStatus`](silk://packages/github-action-effects/api/variable/ratelimitstatus) — Schema for GitHub API rate limit status.
+- [`ReportBuilder`](silk://packages/github-action-effects/api/variable/reportbuilder) — Namespace for composing markdown reports with a fluent builder API.
+- [`RunnerContext`](silk://packages/github-action-effects/api/variable/runnercontext) — Runner context derived from RUNNER_* environment variables.
+- [`SbomLive`](silk://packages/github-action-effects/api/variable/sbomlive) — Live Sbom layer.
+- [`SbomTest`](silk://packages/github-action-effects/api/variable/sbomtest) — Test layer factories for Sbom.
+- [`SemverResolver`](silk://packages/github-action-effects/api/variable/semverresolver) — Namespace for semver resolution operations. Wraps `semver-effect` with unified SemverResolverError error handling.
+- [`SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE`](silk://packages/github-action-effects/api/variable/sigstore_bundle_v0_3_media_type) — Sigstore Bundle media type, v0.3. GitHub's `POST /repos/.../attestations` endpoint expects bundles in this shape.
+- [`SIGSTORE_OIDC_AUDIENCE`](silk://packages/github-action-effects/api/variable/sigstore_oidc_audience) — OIDC audience expected by the Sigstore public-good Fulcio instance.
+- [`SigstoreSignerLive`](silk://packages/github-action-effects/api/variable/sigstoresignerlive) — Live SigstoreSigner layer using the public-good Sigstore instance (Fulcio + Rekor). Requires OidcTokenIssuer to be provided downstream.
+- [`SigstoreSignerTest`](silk://packages/github-action-effects/api/variable/sigstoresignertest) — Noop SigstoreSigner test layer — returns a synthetic SigstoreBundle without any signing or witnessing.
+- [`SLSA_PROVENANCE_V1`](silk://packages/github-action-effects/api/variable/slsa_provenance_v1) — SLSA Provenance v1.0 predicate URI.
+- [`SPDX_V2_3`](silk://packages/github-action-effects/api/variable/spdx_v2_3) — SPDX SBOM predicate URI.
+- [`Status`](silk://packages/github-action-effects/api/variable/status) — Status values for `statusIcon`.
+- [`TokenPermissionCheckerTest`](silk://packages/github-action-effects/api/variable/tokenpermissioncheckertest) — Test implementation for TokenPermissionChecker.
+- [`ToolInstallerLive`](silk://packages/github-action-effects/api/variable/toolinstallerlive) — Live implementation of ToolInstaller using `node:https`/`node:http`, `node:child_process`, and `node:fs/promises`. No `@actions/tool-cache` dependency.
+- [`ToolInstallerTest`](silk://packages/github-action-effects/api/variable/toolinstallertest) — Test implementation for ToolInstaller.
+- [`TreeEntry`](silk://packages/github-action-effects/api/variable/treeentry) — A single entry in a Git tree object. Either a content entry (add/update) or a deletion entry (sha: null).
+- [`TreeEntryContent`](silk://packages/github-action-effects/api/variable/treeentrycontent) — A tree entry that adds or updates a file.
+- [`TreeEntryDeletion`](silk://packages/github-action-effects/api/variable/treeentrydeletion) — A tree entry that deletes a file (sha: null).
+- [`WebhookPayload`](silk://packages/github-action-effects/api/variable/webhookpayload) — Common GitHub webhook event payload fields.
+- [`WorkflowDispatchLive`](silk://packages/github-action-effects/api/variable/workflowdispatchlive)
+- [`WorkflowDispatchTest`](silk://packages/github-action-effects/api/variable/workflowdispatchtest) — Test implementation for WorkflowDispatch.
+- [`WorkspaceDetectorLive`](silk://packages/github-action-effects/api/variable/workspacedetectorlive) — Live WorkspaceDetector layer using effect/platform FileSystem.
+- [`WorkspaceDetectorTest`](silk://packages/github-action-effects/api/variable/workspacedetectortest) — Test implementation for WorkspaceDetector.
+- [`WorkspaceInfo`](silk://packages/github-action-effects/api/variable/workspaceinfo) — Workspace root information.
+- [`WorkspacePackage`](silk://packages/github-action-effects/api/variable/workspacepackage) — A workspace package entry.
+- [`WorkspaceType`](silk://packages/github-action-effects/api/variable/workspacetype) — Type of workspace/monorepo tool detected.

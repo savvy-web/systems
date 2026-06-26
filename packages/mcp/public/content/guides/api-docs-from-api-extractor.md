@@ -1,12 +1,12 @@
 ---
 id: guides/api-docs-from-api-extractor
 title: Generating API docs from API Extractor
-summary: Configure apiModel, build the model, and render LLM-lean markdown with api-extractor-llms.
+summary: Configure the meta option, build the model, and render LLM-lean markdown with api-extractor-llms.
 tier: guides
 source: hand
 tags: [api, build]
 priority: 0.5
-related: [standards/api-model-pipeline, packages/rslib-builder/overview]
+related: [standards/api-model-pipeline, packages/bundler/overview]
 ---
 
 ## Overview
@@ -19,30 +19,38 @@ This guide walks through each stage as implemented in this repo.
 For the policy contract (what is generated, what must not be edited, where docs
 land), see `silk://standards/api-model-pipeline`.
 
-## Step 1 — Enable the API model in `rslib.config.ts`
+## Step 1 — Emit the API model from the build
 
-A library package opts in by passing an `apiModel` option to `NodeLibraryBuilder.create()`:
+A library built by `@savvy-web/bundler` emits an API Extractor model on its
+production build by default — there is nothing to enable. The model is controlled
+by the `meta` option in `savvy.build.ts`:
 
 ```typescript
-import { NodeLibraryBuilder } from "@savvy-web/rslib-builder";
+import { defineBuild, runBuild } from "@savvy-web/bundler";
 
-export default NodeLibraryBuilder.create({
-  apiModel: {
+const config = defineBuild({
+  // meta omitted → API model is generated with default options on --target prod.
+  // Pass an object only to override defaults, e.g. to register custom TSDoc tags:
+  meta: {
     tsdoc: {
       tagDefinitions: [{ tagName: "@since", syntaxKind: "block" }],
     },
   },
 });
+
+export default config;
+
+if (import.meta.main) {
+  await runBuild(config, { cwd: import.meta.dirname, argv: process.argv.slice(2) });
+}
 ```
 
-Passing any truthy value for `apiModel` enables model emission. Options under
-`apiModel` are forwarded to the API Extractor TSDoc runner. A plain `apiModel: true`
-works when no custom tag definitions are needed.
+Omitting `meta` generates the model with defaults; pass `false` to opt out
+entirely (the MCP server itself does this — it is an executable host, not a
+documented API). The entry point and package name are derived from `exports`.
+Only public surfaces are captured; members annotated `@internal` are excluded.
 
-The entry point and package name are derived from the package's `exports` field.
-Only public API surfaces are captured; members annotated `@internal` are excluded.
-
-See `silk://packages/rslib-builder/overview` for full builder configuration.
+See `silk://packages/bundler/overview` for the full builder surface.
 
 ## Step 2 — Build the model
 
@@ -50,12 +58,12 @@ See `silk://packages/rslib-builder/overview` for full builder configuration.
 pnpm --filter @savvy-web/your-package run build:prod
 ```
 
-The production build writes `dist/npm/<unscoped-name>.api.json`. For example,
-`@savvy-web/silk-effects` emits `dist/npm/silk-effects.api.json`. The filename
-is the unscoped package name with an `.api.json` suffix.
-
-`dist/dev/` may also contain a model depending on the build configuration.
-The generator script probes `dist/dev/` first, then `dist/npm/`.
+The production build writes `dist/prod/npm/meta/<unscoped-name>.api.json` and
+stages a copy into each consumer declared in `meta.localPaths` — for the MCP
+corpus that is `packages/mcp/lib/models/<dir>/<unscoped-name>.api.json`. For
+example, `@savvy-web/silk-effects` emits `silk-effects.api.json`. The generator
+reads the staged copy under `lib/models/`, so its inputs stay inside the mcp
+package and Turborepo can cache it.
 
 ## Step 3 — Render with `api-extractor-llms`
 
@@ -103,11 +111,13 @@ across all consumers.
 
 ## Step 4 — The MCP generator script
 
-`packages/mcp/scripts/generate-api-docs.ts` is the reference implementation of
+`packages/mcp/lib/scripts/generate-api-docs.ts` is the reference implementation of
 steps 3 and 4 for the MCP resource corpus. It iterates `API_TARGETS` (defined in
-`packages/mcp/scripts/api-targets.ts`), loads each model, injects silk-specific
-frontmatter and `silk://` crosslink routes, and writes output under
-`content/packages/<dir>/api/<kind>/<slug>.md` (gitignored).
+`packages/mcp/lib/scripts/api-targets.ts`), loads each model, injects silk-specific
+frontmatter and `silk://` crosslink routes, writes one page per symbol under
+`public/content/packages/<dir>/api/<kind>/<slug>.md`, and writes a per-package
+index page at `public/content/packages/<dir>/api.md` (served at the bare
+`silk://packages/<dir>/api` URI).
 
 ```typescript
 // The silk crosslink scheme
@@ -125,20 +135,24 @@ const docs = renderPackage(pkg, {
 ```
 
 Current targets (from `api-targets.ts`): `silk-effects`, `templates`,
-`github-action-effects`, `github-action-builder`. The MCP package itself and `cli`/`silk`
-are excluded (a generate→mcp build dependency would create a Turborepo cycle; cli
-and silk are not library APIs).
+`github-action-effects`, `github-action-builder`, `bundler`, `tsdown-plugins`,
+`rspress-builder`. The MCP package itself and `cli`/`silk` are excluded (a
+generate→mcp build dependency would create a Turborepo cycle; cli and silk are
+not library APIs).
 
 ## Step 5 — Compile into the corpus
 
 After `generate-api-docs.ts` writes the markdown files, `build:catalog` picks them
 up along with hand-authored docs and compiles the unified manifest. Generated docs
-appear in `silk://catalog` marked `(generated)`.
+appear in `silk://catalog` marked `(generated)`. The rendered markdown and the
+inflated manifest are committed tracked source — only the raw `.api.json` models
+under `lib/models/` are gitignored — so the published package ships the corpus
+even though a release machine does not regenerate it.
 
 In Turborepo the pipeline is:
 
 ```text
-build:prod (each library) → generate-api-docs → build:catalog
+build:prod (each library) → generate-api-docs → build:catalog → mcp build:prod
 ```
 
 ## Authoring notes
@@ -149,12 +163,12 @@ build:prod (each library) → generate-api-docs → build:catalog
   `silk://packages/foo/api/class/myservice`.
 - Cross-links in prose (`{@link OtherClass}`) resolve only if `OtherClass` is in
   the same package's rendered set.
-- Do not edit generated files under `content/packages/*/api/` — changes are
-  overwritten on the next `generate-api-docs` run.
+- Do not hand-edit files under `public/content/packages/*/api/` (or the `api.md`
+  index) — they are overwritten on the next `generate-api-docs` run; change the
+  source TSDoc instead.
 
 ## See also
 
 - `silk://standards/api-model-pipeline` — policy: what is generated, provenance
   markers, coverage scope
-- `silk://packages/rslib-builder/overview` — configuring the builder that emits
-  the model
+- `silk://packages/bundler/overview` — configuring the builder that emits the model

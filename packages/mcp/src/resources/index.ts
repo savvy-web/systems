@@ -9,6 +9,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 
 import { renderCatalogMarkdown } from "./catalog.js";
 import { readDocBody } from "./load.js";
@@ -46,8 +47,20 @@ export function registerAllResources(server: McpServer, deps: ResourceDeps): voi
 	);
 
 	const byUri = new Map(manifest.entries.map((e) => [e.uri, e]));
-	const readBody = (uri: string, relPath: string): string =>
-		bodies ? (bodies[uri] ?? "") : readDocBody(contentRoot, relPath);
+	const readBody = (uri: string, relPath: string): string => {
+		if (bodies) return bodies[uri] ?? "";
+		try {
+			return readDocBody(contentRoot, relPath);
+		} catch (err) {
+			// Map a missing doc to a clean JSON-RPC not-found referencing the silk://
+			// URI. The raw fs ENOENT leaks the absolute install path (#178); rethrow
+			// anything else (e.g. a path-traversal rejection) as an internal error.
+			if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
+				throw new McpError(ErrorCode.InvalidParams, `Resource not found: ${uri}`);
+			}
+			throw new McpError(ErrorCode.InternalError, `Failed to read resource: ${uri}`);
+		}
+	};
 
 	server.registerResource(
 		"silk_doc",

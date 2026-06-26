@@ -48,8 +48,20 @@ describe("DocIndex", () => {
 		expect(results[0].confidenceLabel).toBe("high");
 	});
 
-	it("never returns empty: a no-match query yields top-N below threshold", () => {
+	it("returns empty for a real query that matches nothing (#177)", () => {
 		const results = index.search("zzzznomatch");
+		expect(results).toEqual([]);
+	});
+
+	it("returns empty for a tier-scoped query with no match in that tier (#177)", () => {
+		const results = index.search("zzzznomatch", { tier: "packages" });
+		expect(results).toEqual([]);
+	});
+
+	it("falls back to a priority listing only for a browse with no query tokens", () => {
+		// All stop-words / too-short tokens → no real query → a low-confidence
+		// priority listing is a useful browse, not a misleading zero-match result.
+		const results = index.search("the");
 		expect(results.length).toBeGreaterThan(0);
 		expect(results.every((r) => r.confidenceLabel === "low")).toBe(true);
 	});

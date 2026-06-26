@@ -2,7 +2,7 @@
  * The `silk_docs_search` MCP tool: a read-only Fuse-backed search over the
  * resource corpus. Takes a plain keyword/phrase query (no operator DSL),
  * returns ranked results with normalized higher-is-better confidence, and
- * never returns empty.
+ * returns an empty result set for a real query that matches nothing.
  *
  * @packageDocumentation
  */

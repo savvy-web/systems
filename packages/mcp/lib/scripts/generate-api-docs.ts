@@ -55,6 +55,54 @@ export function frontMatterFor(
 	};
 }
 
+/**
+ * Front-matter for a package's API index page, served at the bare
+ * `silk://<idPrefix>/api` URI. Names the package in the title so a
+ * package-level query (e.g. "bundler") matches it, and ranks above the
+ * per-symbol pages.
+ */
+export function indexFrontMatterFor(target: ApiTarget, symbolCount: number): GeneratedFrontMatter {
+	return {
+		id: `${target.idPrefix}/api`,
+		title: `${target.packageName} — API reference`,
+		summary: truncate(`${target.packageName} API reference: ${symbolCount} documented symbols.`),
+		tier: "packages",
+		source: "generated",
+		tags: [target.dir, "api"],
+		priority: 0.4,
+		related: [],
+	};
+}
+
+/** A symbol shown on a package's API index page. */
+export interface ApiIndexItem {
+	readonly name: string;
+	readonly kind: string;
+	readonly slug: string;
+	readonly summary: string;
+}
+
+/** Render the index body: symbols grouped by kind, each linking to its silk:// page. */
+export function renderApiIndexBody(target: ApiTarget, items: ReadonlyArray<ApiIndexItem>): string {
+	const byKind = new Map<string, ApiIndexItem[]>();
+	for (const item of items) {
+		const bucket = byKind.get(item.kind) ?? [];
+		bucket.push(item);
+		byKind.set(item.kind, bucket);
+	}
+	const lines: string[] = [`# ${target.packageName} — API reference`, ""];
+	for (const kind of [...byKind.keys()].sort()) {
+		lines.push(`## ${kind}`, "");
+		for (const item of (byKind.get(kind) ?? []).slice().sort((a, b) => a.name.localeCompare(b.name))) {
+			const uri = `silk://${target.idPrefix}/api/${item.kind}/${item.slug}`;
+			const summary = item.summary.trim();
+			lines.push(`- [\`${item.name}\`](${uri})${summary ? ` — ${summary}` : ""}`);
+		}
+		lines.push("");
+	}
+	return `${lines.join("\n").trimEnd()}\n`;
+}
+
 /** Serialize the structured front-matter to a YAML block (incl. trailing blank line). */
 const toYaml = (fm: GeneratedFrontMatter): string =>
 	[
@@ -108,6 +156,12 @@ async function generateTarget(target: ApiTarget): Promise<number> {
 		mkdirSync(fileDir, { recursive: true });
 		writeFileSync(join(fileDir, `${doc.slug}.md`), doc.markdown);
 	}
+	// Index page served at the bare `silk://<idPrefix>/api` URI (#179). Lives next
+	// to the api/ dir as api.md so paths.ts resolves the bare path to it, and gives
+	// search a package-level entry point that names the package. The loop above
+	// already created `packages/<dir>/` via the per-kind mkdir.
+	const indexBody = renderApiIndexBody(target, docs);
+	writeFileSync(`${outDir}.md`, toYaml(indexFrontMatterFor(target, docs.length)) + indexBody);
 	process.stderr.write(`[generate-api-docs] ${target.packageName}: ${docs.length} docs\n`);
 	return docs.length;
 }
