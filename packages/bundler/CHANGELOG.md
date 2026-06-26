@@ -1,5 +1,14 @@
 # @savvy-web/bundler
 
+## 0.11.2
+
+### Bug Fixes
+
+* [`577d242`](https://github.com/savvy-web/systems/commit/577d242edd260dc75a04d6b95e3ffc33a3e040c0) Removed the `jsx` forward from `run.ts` into the `buildTargetGroups` call. JSX builds — including RSPress runtime builds via `@savvy-web/rspress-builder` — no longer emit a spurious rolldown "Invalid input options" warning. Emitted JS and `.d.ts` output is unchanged.
+  | Dependency                | Type       | Action  | From   | To     |
+  | ------------------------- | ---------- | ------- | ------ | ------ |
+  | @savvy-web/tsdown-plugins | dependency | updated | 0.11.1 | 0.11.2 |
+
 ## 0.11.1
 
 ### Dependencies
