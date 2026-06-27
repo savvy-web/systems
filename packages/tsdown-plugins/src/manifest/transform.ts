@@ -141,10 +141,9 @@ export function transformExports(
 	dual: DualExports = false,
 	subdirExports?: ReadonlySet<string>,
 ): unknown {
-	// A bare string export is the root (`.`) target.
+	// A bare string export is the root (`.`) target. Root ambient is unsupported — a whole-exports
+	// bare .d.ts string is returned verbatim; only subpath ambient exports are rewritten.
 	if (typeof exports === "string") {
-		const cls = classifyDtsExport(exports);
-		if (cls.kind === "ambient") return { types: `./${ambientOutName(".", cls.source)}` };
 		return isTs(exports) ? tsConditions(".", isDualKey(dual, "."), subdirExports) : exports;
 	}
 	if (exports && typeof exports === "object") {

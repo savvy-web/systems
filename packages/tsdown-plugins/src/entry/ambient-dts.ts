@@ -10,8 +10,6 @@ export function declarationExt(p: string): ".d.ts" | ".d.cts" | ".d.mts" | undef
 	return DECLARATION_EXTS.find((e) => p.endsWith(e));
 }
 
-const isTsSource = (p: string): boolean => declarationExt(p) === undefined && (p.endsWith(".ts") || p.endsWith(".tsx"));
-
 /** Classification of a single export value for ambient-.d.ts handling. @public */
 export type DtsExportClass =
 	| { readonly kind: "ambient"; readonly source: string }
@@ -33,7 +31,12 @@ export function classifyDtsExport(value: unknown): DtsExportClass {
 		const o = value as Record<string, unknown>;
 		const typesVal = typeof o.types === "string" ? o.types : undefined;
 		const typesIsDecl = typesVal !== undefined && declarationExt(typesVal) !== undefined;
-		const hasRuntime = [o.import, o.require, o.default].some((v) => typeof v === "string" && isTsSource(v));
+		// Any non-`types` condition whose value is a string that is NOT itself a declaration file is a
+		// runtime path (import/require/default, but also node/browser/.mts/.cts/.js branches): the export
+		// carries runtime, so it is mixed, not ambient.
+		const hasRuntime = Object.entries(o).some(
+			([k, v]) => k !== "types" && typeof v === "string" && declarationExt(v) === undefined,
+		);
 		if (typesIsDecl) return hasRuntime ? { kind: "mixed" } : { kind: "ambient", source: typesVal };
 	}
 	return { kind: "none" };

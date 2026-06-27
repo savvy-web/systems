@@ -20,6 +20,9 @@ describe("findRelativeSpecifiers", () => {
 	it("flags a relative triple-slash reference path", () => {
 		expect(findRelativeSpecifiers(`/// <reference path="./other.d.ts" />\nexport {};\n`)).toEqual(["./other.d.ts"]);
 	});
+	it("flags a relative import-equals-require", () => {
+		expect(findRelativeSpecifiers(`import foo = require("./bar.js");\nexport = foo;\n`)).toEqual(["./bar.js"]);
+	});
 	it("deduplicates repeated specifiers", () => {
 		const src = `import type { A } from "./a.js";\nimport type { B } from "./a.js";\n`;
 		expect(findRelativeSpecifiers(src)).toEqual(["./a.js"]);

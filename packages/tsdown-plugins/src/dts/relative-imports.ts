@@ -28,6 +28,12 @@ export function findRelativeSpecifiers(source: string, fileName = "ambient.d.ts"
 			ts.isStringLiteral(node.argument.literal)
 		) {
 			if (isRelative(node.argument.literal.text)) found.add(node.argument.literal.text);
+		} else if (
+			ts.isImportEqualsDeclaration(node) &&
+			ts.isExternalModuleReference(node.moduleReference) &&
+			ts.isStringLiteral(node.moduleReference.expression)
+		) {
+			if (isRelative(node.moduleReference.expression.text)) found.add(node.moduleReference.expression.text);
 		}
 		ts.forEachChild(node, visit);
 	};

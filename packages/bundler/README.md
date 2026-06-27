@@ -185,6 +185,8 @@ The build copies each declaration file verbatim into every built target dir and 
 
 Two constraints keep the copy sound. The declaration must be self-contained — a relative `import` or `export` inside it fails the build, since nothing pulls the referenced file into the output. And an export that pairs a hand-authored `types` with a runtime source (`import`/`require`/`default`) fails too: the bundler generates types from a runtime source, so the two cannot be mixed on one entry.
 
+One further limit on scope: ambient declarations are supported only as named subpath exports (such as `"./globals"` or `"./env"`); a package must ship at least one JS or exe entry alongside its ambient declarations (a purely types-only package with no JS entries is not supported).
+
 ## Bundling dependencies
 
 Dependencies you declare in `package.json` are externalized automatically — they stay `import`ed from the published `.js` and referenced from the `.d.ts`, and the consumer resolves them from their own `node_modules`. You don't list declared deps anywhere; `externals` exists only to externalize a package tsdown would otherwise bundle (a transitive dep you reference but don't declare). Four fields change the bundling posture, for the cases where a dependency cannot be left external:

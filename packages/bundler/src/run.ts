@@ -19,6 +19,7 @@ import type {
 } from "@savvy-web/tsdown-plugins";
 import {
 	BuildCollector,
+	ConfigValidationError,
 	ConfigValidator,
 	ConfigValidatorLive,
 	ReportPipelineLive,
@@ -252,6 +253,16 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	// copied into each built pkg dir on dev/prod below. exportsAsIndexes is never set by the build.
 	const ambient = extractAmbientDts({ exports: exportsMap ?? pkg.exports, bin: pkg.bin }, {});
 	assertNoEntryCollisions(Object.keys(entries), ambient);
+	// A types-only package (only ambient .d.ts exports, no JS entries, no SEA) has nothing for the
+	// JS pass to build — tsdown would throw an opaque "No input files". Fail loud with an actionable
+	// error instead; a package must ship at least one JS or exe entry alongside its ambient declarations.
+	if (ambient.length > 0 && !hasJsEntries && config.exe === undefined) {
+		throw new ConfigValidationError({
+			path: "exports",
+			reason:
+				"a types-only package with only ambient .d.ts exports is not supported — add at least one JS entry (or an exe) alongside the ambient declarations",
+		});
+	}
 
 	// --target meta is SOFT-DEPRECATED: meta is now emitted by --target prod (per group, with
 	// resolved + optionally optimistic deps). Warn and no-op so external escape-hatch scripts that

@@ -213,8 +213,8 @@ describe("transformExports — ambient .d.ts exports", () => {
 			/cannot also hand-author its `types`/,
 		);
 	});
-	it("rewrites a bare-string root .d.ts export to { types: './index.d.ts' }", () => {
-		expect(transformExports("./src/globals.d.ts")).toEqual({ types: "./index.d.ts" });
+	it("leaves a bare-string root .d.ts export verbatim (root ambient is unsupported)", () => {
+		expect(transformExports("./src/globals.d.ts")).toBe("./src/globals.d.ts");
 	});
 	it("leaves a .d.ts-keyed asset re-export verbatim (not treated as ambient)", () => {
 		const out = transformExports({

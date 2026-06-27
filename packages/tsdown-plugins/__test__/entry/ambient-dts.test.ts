@@ -22,6 +22,12 @@ describe("classifyDtsExport", () => {
 		expect(classifyDtsExport("./src/index.ts").kind).toBe("none");
 		expect(classifyDtsExport({ types: "./src/index.ts", import: "./src/index.ts" }).kind).toBe("none");
 	});
+	it("classifies a node runtime condition alongside types-.d.ts as mixed", () => {
+		expect(classifyDtsExport({ types: "./src/x.d.ts", node: "./src/x.ts" })).toEqual({ kind: "mixed" });
+	});
+	it("classifies a .mts runtime branch alongside types-.d.ts as mixed", () => {
+		expect(classifyDtsExport({ types: "./src/x.d.ts", import: "./src/x.mts" })).toEqual({ kind: "mixed" });
+	});
 });
 
 describe("ambientOutName / declarationExt", () => {
@@ -37,6 +43,9 @@ describe("ambientOutName / declarationExt", () => {
 });
 
 describe("extractAmbientDts", () => {
+	it("returns [] for a bare-string root export (root ambient is unsupported)", () => {
+		expect(extractAmbientDts({ exports: "./src/globals.d.ts" })).toEqual([]);
+	});
 	it("extracts string and { types } forms, ignoring runtime and json exports", () => {
 		const r = extractAmbientDts({
 			exports: {
