@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-26
-last-synced: 2026-06-26
+updated: 2026-06-27
+last-synced: 2026-06-27
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -39,6 +39,7 @@ The all-in-one, tsdown-based replacement for the retired `@savvy-web/rslib-build
 - [Meta generation wiring](#meta-generation-wiring)
 - [JSX wiring](#jsx-wiring)
 - [Exe compilation wiring](#exe-compilation-wiring)
+- [Ambient .d.ts export wiring](#ambient-dts-export-wiring)
 - [The config-validation gate](#the-config-validation-gate)
 - [The orchestrator to tsdown boundary](#the-orchestrator-to-tsdown-boundary)
 - [Catalog resolution and the process.cwd() constraint](#catalog-resolution-and-the-processcwd-constraint)
@@ -279,6 +280,16 @@ A package that ships a single-executable (SEA) binary configures `defineBuild({ 
 - **`@tsdown/exe` is a RUNTIME dependency of the bundler** (not of tsdown-plugins) — tsdown lazily imports it only when the exe option is used. This keeps tsdown-plugins interface-only while letting the bundler ship the SEA toolchain.
 - Real binary compilation runs in the hermetic suite via a darwin-arm64-gated integration test (`exe-dev-build.int.test.ts`) that compiles a real SEA and asserts the programmed manifest; the unit tests inject a fake `runExeBuild` and assert the wiring.
 
+## Ambient .d.ts export wiring
+
+A package can declare a types-only export whose source is a hand-authored declaration file (a bare `.d.ts` string or `{ types: "*.d.ts" }`) and the build rewrites the manifest pointer plus copies the file verbatim — NO custom `transform`, NO post-build copy script, replacing ~40 lines of manifest surgery + a copy loop consumers used to hand-write. The classification, manifest rewrite and verbatim copy all live in `@savvy-web/tsdown-plugins` (see `../tsdown-plugins/architecture.md`); the bundler computes the ambient set early and drives the copy per built dir.
+
+- **Validated early, before every build branch.** `runBuild` calls `extractAmbientDts(...)` (which throws on a mixed export) and `assertNoEntryCollisions(entries, ambient)` right after entry derivation, so a bad ambient export fast-fails on the dev/prod/meta/exe paths alike alongside the other structural gates.
+- **Copied after the build, per target dir, via an injectable seam.** On `--target dev`/`prod`, after `buildTargetGroups`, `runBuild` calls `copyAmbientDts` once per built group — into `dist/dev/pkg`, or each `dist/prod/<group>/pkg`. The manifest already points at `./<outName>` (the tsdown-plugins `transformExports` rewrite), so the copy just lands the verbatim file beside it. The copier is injectable on `RunOptions.copyAmbientDts` so the wiring is unit-testable without disk.
+- **`entries` now derive from the injectable `exportsMap`.** `runBuild` reads both the entry map and the ambient set from `exportsMap ?? pkg.exports` — a single source of truth so a test can fake exports without a real `package.json`. In production `exportsMap === pkg.exports`, so it is behavior-preserving. `extractAmbientDts` and the `AmbientDtsEntry` type are re-exported from `src/index.ts`.
+
+**Known follow-up:** when a package sets a `files` allowlist, the ambient `outName` should be added to it (mirroring `exeRewrite` adding the SEA binary). Inert today — no in-repo package sets `files` — so it is a deferred one-liner, not yet implemented.
+
 ## The config-validation gate
 
 A fast-fail validator runs FIRST in `runBuild`, after the publishTargets/exports facts are computed but before any build branch, so a structurally-bad config fails immediately across the dev/prod/meta/exe paths rather than partway through a build. The rule set lives in `@savvy-web/tsdown-plugins`' `ConfigValidator`/`ConfigValidatorLive`; the bundler assembles the `ValidationInput` (baseName, `hasExports`, and the optional `targets`/`exe`/`osCpu`/`meta`/`looseFiles`) and runs `ConfigValidator.validate(...)` via `Effect.runPromise` over `ConfigValidatorLive`. A failure surfaces as a typed `ConfigValidationError`. This validates structural config shape only, not prod-build viability.
@@ -317,6 +328,7 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 - **`plugins` is pure wiring; the four-pass spread lives in tsdown-plugins.** `defineBuild({ plugins })` is conditional-spread onto `buildTargetGroups` as `extraPlugins` (public `plugins` → internal `extraPlugins`); tsdown-plugins owns spreading it into all four `build(...)` passes including looseFiles. Surfacing it required no tsdown-plugins change. See [The orchestrator to tsdown boundary](#the-orchestrator-to-tsdown-boundary).
 - **Per-entry overrides are resolved in `runBuild`, not the build loop.** `runBuild` maps override export paths to entry partitions (throwing on a non-canonical or non-existent export path), computes the `dualExports` Set and threads partitions into `buildTargetGroups`; tsdown-plugins owns the partition loop. A no-override build is byte-identical. See [Per-entry format and bundling overrides](#per-entry-format-and-bundling-overrides).
 - **The web-runtime override fields are pure wiring derived in `runBuild`.** `platform`/`css` pass through to the partition; `outSubdir` makes `runBuild` enforce one export per subdir and derive `subdirExports` for the manifest, and the subdir's meta dts basename is repointed to `<subdir>/index` by `applySubdirMetaEntries` inside `runMetaPass` (in tsdown-plugins). The isolated-subdir output and manifest rewrite live in tsdown-plugins. `@savvy-web/rspress-builder` is the consumer. See [The web-runtime override fields](#the-web-runtime-override-fields-platform-css-outsubdir) and `../rspress-builder/architecture.md`.
+- **Ambient .d.ts exports are pure wiring; classification and copy live in tsdown-plugins.** `runBuild` validates the ambient set early (`extractAmbientDts` + `assertNoEntryCollisions`, throwing on a mixed export or a name collision) and copies it per built group after the build via the injectable `RunOptions.copyAmbientDts`; the classifier, the `transformExports` manifest rewrite and the verbatim copier are tsdown-plugins'. The entry and ambient sets both derive from the injectable `exportsMap` (`=== pkg.exports` in production). Deferred: adding the ambient `outName` to a `files` allowlist (mirroring `exeRewrite`) — inert today. See [Ambient .d.ts export wiring](#ambient-dts-export-wiring).
 - **Loose files are outside the exports/dts/meta graph.** `defineBuild({ looseFiles })` emits standalone bundled files at literal paths (pnpm config-dependency pnpmfiles being the driver); `runBuild` normalizes via `normalizeLooseFiles`, validates through `ConfigValidator` and forwards descriptors to `buildTargetGroups`. They get no manifest export, no `.d.ts` and no api-model. No collision guard with real export filenames yet. See [Loose files](#loose-files-standalone-bundled-outputs).
 - **`externals` lists only departures; defaults strip and unminify.** tsdown auto-externalizes declared deps, so `externals` names undeclared transitives only. `transform` defaults to `defaultManifestTransform` (a custom transform replaces and re-calls it), `minify` defaults off and applies to prod only, and prod declaration source-maps are stripped after meta generation. See [Manifest strip and unminified prod defaults](#manifest-strip-and-unminified-prod-defaults).
 

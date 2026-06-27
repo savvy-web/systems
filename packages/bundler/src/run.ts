@@ -5,6 +5,7 @@ import type {
 	BuildGroupSpec,
 	BuildReport,
 	BuildTargetGroupsOptions,
+	CopyAmbientDtsOptions,
 	EntryOverride,
 	GenerateMetaOptions,
 	JsxConfig,
@@ -18,18 +19,22 @@ import type {
 } from "@savvy-web/tsdown-plugins";
 import {
 	BuildCollector,
+	ConfigValidationError,
 	ConfigValidator,
 	ConfigValidatorLive,
 	ReportPipelineLive,
+	assertNoEntryCollisions,
 	buildEmittedManifest,
 	computeExeFileName,
 	createEntryName,
 	deriveExportPaths,
+	extractAmbientDts,
 	normalizeExeOptions,
 	normalizeLooseFiles,
 	packageJsonEntries,
 	readTsconfigJsx,
 	buildTargetGroups as realBuildTargetGroups,
+	copyAmbientDts as realCopyAmbientDts,
 	runExeBuild as realRunExeBuild,
 	writeTargetsBinding as realWriteTargetsBinding,
 	removeDeclarationMaps,
@@ -81,6 +86,8 @@ export interface RunOptions {
 		reports: ReadonlyArray<BuildReport>;
 		now?: () => Date;
 	}) => string | undefined;
+	/** Injectable ambient-.d.ts copier (defaults to copyAmbientDts). */
+	readonly copyAmbientDts?: ((o: CopyAmbientDtsOptions) => void) | undefined;
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
@@ -230,9 +237,10 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			? { source: exeEntrySource, fileName: exeFileName, dir: "bin" }
 			: undefined;
 
+	// Use the (potentially injectable) exportsMap so tests can fake exports without a real package.json.
+	// In production exportsMap === pkg.exports; the injectable unifies the source of truth for all callers.
 	const entries = packageJsonEntries({
-		pkg,
-		cwd,
+		pkg: { exports: exportsMap ?? pkg.exports, bin: pkg.bin },
 		...(config.exe !== undefined ? { excludeSources: [exeEntrySource] } : {}),
 	});
 	const hasJsEntries = Object.keys(entries).length > 0;
@@ -240,6 +248,21 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	// Fast-fail outSubdir-override validation: run before any early-return branch so every target
 	// path rejects a bad outSubdir override consistently.
 	validateSubdirOverrides(config.overrides, entries, packageName);
+
+	// Ambient types-only .d.ts exports: validated on every target path (mixed-export + collision),
+	// copied into each built pkg dir on dev/prod below. exportsAsIndexes is never set by the build.
+	const ambient = extractAmbientDts({ exports: exportsMap ?? pkg.exports, bin: pkg.bin }, {});
+	assertNoEntryCollisions(Object.keys(entries), ambient);
+	// A types-only package (only ambient .d.ts exports, no JS entries, no SEA) has nothing for the
+	// JS pass to build — tsdown would throw an opaque "No input files". Fail loud with an actionable
+	// error instead; a package must ship at least one JS or exe entry alongside its ambient declarations.
+	if (ambient.length > 0 && !hasJsEntries && config.exe === undefined) {
+		throw new ConfigValidationError({
+			path: "exports",
+			reason:
+				"a types-only package with only ambient .d.ts exports is not supported — add at least one JS entry (or an exe) alongside the ambient declarations",
+		});
+	}
 
 	// --target meta is SOFT-DEPRECATED: meta is now emitted by --target prod (per group, with
 	// resolved + optionally optimistic deps). Warn and no-op so external escape-hatch scripts that
@@ -452,6 +475,16 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		// local paths. Done after meta so prod meta still sees them; dev keeps them for `--target meta`.
 		if (target === "prod") {
 			for (const g of groups) removeDeclarationMaps(join(cwd, "dist", "prod", g.id, "pkg"));
+		}
+
+		// Copy ambient .d.ts exports into each built group's pkg dir. dev → dist/dev/pkg; prod →
+		// dist/prod/<group>/pkg. The manifest already points at "./<outName>" (transformExports).
+		if (ambient.length > 0 && (target === "dev" || target === "prod")) {
+			const copyAmbient = options.copyAmbientDts ?? realCopyAmbientDts;
+			for (const g of groups) {
+				const outDir = target === "dev" ? join(cwd, "dist", "dev", "pkg") : join(cwd, "dist", "prod", g.id, "pkg");
+				copyAmbient({ ambient, srcCwd: cwd, outDir });
+			}
 		}
 
 		// SEA step: compile the binary into each built group's pkg/bin and program its manifest. Runs AFTER

@@ -168,6 +168,25 @@ const config = defineBuild({
 
 A dual-format build emits an ESM `.js` and a require-able CJS `.cjs` plus matching `.d.ts` and `.d.cts` declarations, and writes a manifest carrying both `import` and `require` export conditions. The CJS output uses default-export interop — `module.exports` is the module's default export, so a `require()` of the package yields that value directly. Omit `format`, or pass `["esm"]`, for an ESM-only build.
 
+## Ambient type exports
+
+Most declarations are generated from your source. For a types-only export backed by a hand-authored declaration file — global augmentations, module shims, ambient `declare` blocks — point the `exports` entry straight at a `.d.ts`, either as a bare string or under a `types` key:
+
+```json
+{
+  "exports": {
+    "./globals": "./src/globals.d.ts",
+    "./env": { "types": "./src/env.d.ts" }
+  }
+}
+```
+
+The build copies each declaration file verbatim into every built target dir and rewrites its published manifest pointer to a key-derived `{ types: "./<name>.d.ts" }`, preserving the source's `.d.ts`/`.d.cts`/`.d.mts` extension. No `transform` and no post-build copy step are involved.
+
+Two constraints keep the copy sound. The declaration must be self-contained — a relative `import` or `export` inside it fails the build, since nothing pulls the referenced file into the output. And an export that pairs a hand-authored `types` with a runtime source (`import`/`require`/`default`) fails too: the bundler generates types from a runtime source, so the two cannot be mixed on one entry.
+
+One further limit on scope: ambient declarations are supported only as named subpath exports (such as `"./globals"` or `"./env"`); a package must ship at least one JS or exe entry alongside its ambient declarations (a purely types-only package with no JS entries is not supported).
+
 ## Bundling dependencies
 
 Dependencies you declare in `package.json` are externalized automatically — they stay `import`ed from the published `.js` and referenced from the `.d.ts`, and the consumer resolves them from their own `node_modules`. You don't list declared deps anywhere; `externals` exists only to externalize a package tsdown would otherwise bundle (a transitive dep you reference but don't declare). Four fields change the bundling posture, for the cases where a dependency cannot be left external:
@@ -300,6 +319,7 @@ const config = defineBuild({
 - **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
 - **Build targets** — `dev` for local linking, `prod` for a resolved publishable manifest (which also emits an API Extractor api-model) and `exe` for SEA binaries, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
 - **Bundled declarations** — per-module JavaScript with a single rolled-up `.d.ts` per public entry, so re-exported types stay reachable through your published export subpaths.
+- **Ambient type exports** — a types-only `exports` entry backed by a hand-authored `.d.ts` (a bare string or `{ types }`) is copied verbatim into every target dir with its manifest pointer rewritten to a key-derived path, no custom `transform` or post-build copy needed; the declaration must be self-contained and may not be mixed with a runtime source.
 - **Shared tsconfig base** — extend `@savvy-web/bundler/ecma.json` for the ESNext/NodeNext/strict settings the build expects.
 - **Manifest resolution** — `catalog:` and `workspace:` specifiers are resolved against the workspace for the published target, and preserved for the linked dev target.
 - **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target prod` builds the distinct byte variants and writes a `targets.json` binding for the release step.

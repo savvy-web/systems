@@ -7,7 +7,8 @@ export type { LooseFileSpec, LooseFiles, NormalizedLooseFile } from "./build/loo
 export { normalizeLooseFiles } from "./build/loose-files.js";
 export { nodeBuiltinDefaultInterop } from "./build/node-builtin-default-interop.js";
 export { removeDeclarationMaps } from "./build/strip-maps.js";
-export { syncPublicDir } from "./build/sync-public.js";
+export type { CopyAmbientDtsOptions } from "./build/sync-public.js";
+export { copyAmbientDts, syncPublicDir } from "./build/sync-public.js";
 export type {
 	BuildFormat,
 	BuildGroupSpec,
@@ -25,8 +26,18 @@ export { ConfigValidator } from "./config-validation/ConfigValidator.js";
 export { ConfigValidatorLive } from "./config-validation/ConfigValidatorLive.js";
 export type { ModuleExportNames, ReexportBarrelAnalysis } from "./dts/reexport-stub.js";
 export { analyzeReexportBarrel, collectExportNames, renderReexportStub } from "./dts/reexport-stub.js";
+export { findRelativeSpecifiers } from "./dts/relative-imports.js";
 export type { ResolvedTsconfig, ResolvedTsconfigOptions } from "./dts/resolved-tsconfig.js";
 export { buildResolvedTsconfig, writeDtsEmitTsconfig, writeResolvedTsconfig } from "./dts/resolved-tsconfig.js";
+export type { AmbientDtsEntry, DtsExportClass, ExtractAmbientOptions } from "./entry/ambient-dts.js";
+export {
+	ambientOutName,
+	assertNoEntryCollisions,
+	classifyDtsExport,
+	declarationExt,
+	extractAmbientDts,
+	mixedDtsExportError,
+} from "./entry/ambient-dts.js";
 export type { ExtractOptions, ExtractResult, PackageJsonLike } from "./entry/extract.js";
 export { createEntryName, extractEntries } from "./entry/extract.js";
 export type { PackageJsonEntriesOptions } from "./entry/package-json-entries.js";

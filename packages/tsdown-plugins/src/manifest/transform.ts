@@ -1,5 +1,6 @@
 // packages/tsdown-plugins/src/manifest/transform.ts
 import sortPackageJson from "sort-package-json";
+import { ambientOutName, classifyDtsExport, mixedDtsExportError } from "../entry/ambient-dts.js";
 import { createEntryName } from "../entry/extract.js";
 
 /** @public */
@@ -140,15 +141,22 @@ export function transformExports(
 	dual: DualExports = false,
 	subdirExports?: ReadonlySet<string>,
 ): unknown {
-	// A bare string export is the root (`.`) target.
+	// A bare string export is the root (`.`) target. Root ambient is unsupported — a whole-exports
+	// bare .d.ts string is returned verbatim; only subpath ambient exports are rewritten.
 	if (typeof exports === "string") {
 		return isTs(exports) ? tsConditions(".", isDualKey(dual, "."), subdirExports) : exports;
 	}
 	if (exports && typeof exports === "object") {
 		const out: Json = {};
 		for (const [key, value] of Object.entries(exports as Json)) {
-			if (key === "./package.json" || key.endsWith(".json")) {
+			if (key === "./package.json" || key.endsWith(".json") || isDeclarationFile(key)) {
 				out[key] = value;
+				continue;
+			}
+			const cls = classifyDtsExport(value);
+			if (cls.kind === "mixed") throw mixedDtsExportError(key);
+			if (cls.kind === "ambient") {
+				out[key] = { types: `./${ambientOutName(key, cls.source)}` };
 				continue;
 			}
 			if (typeof value === "string" && isTs(value)) {
