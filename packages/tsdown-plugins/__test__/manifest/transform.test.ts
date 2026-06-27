@@ -189,6 +189,42 @@ describe("manifest transform", () => {
 	});
 });
 
+describe("transformExports — ambient .d.ts exports", () => {
+	it("rewrites a { types: '*.d.ts' } export to the export-key-derived dist pointer", () => {
+		const out = transformExports({
+			".": "./src/index.ts",
+			"./virtual": { types: "./src/long/path/input-file.d.ts" },
+			"./package.json": "./package.json",
+		}) as Record<string, unknown>;
+		expect(out["./virtual"]).toEqual({ types: "./virtual.d.ts" });
+		// the normal runtime export is untouched
+		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+	});
+	it("rewrites a bare .d.ts string export and preserves the declaration extension", () => {
+		const out = transformExports({ "./globals": "./src/g.d.cts" }) as Record<string, unknown>;
+		expect(out["./globals"]).toEqual({ types: "./globals.d.cts" });
+	});
+	it("never adds import/require to an ambient export even when dual is true", () => {
+		const out = transformExports({ "./virtual": { types: "./src/v.d.ts" } }, true) as Record<string, unknown>;
+		expect(out["./virtual"]).toEqual({ types: "./virtual.d.ts" });
+	});
+	it("throws on a mixed export (hand types + runtime source)", () => {
+		expect(() => transformExports({ "./x": { types: "./src/x.d.ts", import: "./src/x.ts" } })).toThrow(
+			/cannot also hand-author its `types`/,
+		);
+	});
+	it("rewrites a bare-string root .d.ts export to { types: './index.d.ts' }", () => {
+		expect(transformExports("./src/globals.d.ts")).toEqual({ types: "./index.d.ts" });
+	});
+	it("leaves a .d.ts-keyed asset re-export verbatim (not treated as ambient)", () => {
+		const out = transformExports({
+			".": "./src/index.ts",
+			"./rspress-env.d.ts": "./public/rspress-env.d.ts",
+		}) as Record<string, unknown>;
+		expect(out["./rspress-env.d.ts"]).toBe("./public/rspress-env.d.ts");
+	});
+});
+
 describe("auto ./package.json export injection", () => {
 	it("adds ./package.json to object exports that lack it", () => {
 		const out = transformManifest({ name: "@x/p", version: "1.0.0", exports: { ".": "./src/index.ts" } });
