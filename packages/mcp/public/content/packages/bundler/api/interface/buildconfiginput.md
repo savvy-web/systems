@@ -47,7 +47,7 @@ Force-bundle node_modules (and workspace) JS dependencies that are not externali
 readonly define?: Record<string, string> | undefined;
 ```
 
-Compile-time global replacements forwarded to the tsdown/rolldown build `define`. Values are inserted VERBATIM, so string literals must be quoted: `{ "process.env.FLAG": JSON.stringify("on") }`. Merged with the auto-injected `process.env.__PACKAGE_VERSION__` define; a user key of the same name wins.
+Compile-time global replacements forwarded to the tsdown/rolldown [build](silk://packages/bundler/api/function/build) `define`. Values are inserted VERBATIM, so string literals must be quoted: `{ "process.env.FLAG": JSON.stringify("on") }`. Merged with the auto-injected `process.env.__PACKAGE_VERSION__` define; a user key of the same name wins.
 
 ### devManifest
 
@@ -81,7 +81,7 @@ readonly externals?: ReadonlyArray<string>;
 readonly format?: ReadonlyArray<BuildFormat> | undefined;
 ```
 
-Output module formats forwarded to the tsdown build. Defaults to esm-only; add "cjs" for a dual-format esm plus cjs build. This is the live field; the legacy "formats" field above is not consumed by the build.
+Output module formats forwarded to the tsdown [build](silk://packages/bundler/api/function/build). Defaults to esm-only; add "cjs" for a dual-format esm plus cjs [build](silk://packages/bundler/api/function/build). This is the live field; the legacy "formats" field above is not consumed by the [build](silk://packages/bundler/api/function/build).
 
 ### formats
 
@@ -117,7 +117,7 @@ API-model (meta) generation. Tri-state: omit it (or `undefined`) to generate wit
 readonly minify?: boolean | undefined;
 ```
 
-Minify the prod build output. Applies ONLY to prod target groups (dev is never minified) and defaults to false: this builder targets Node libraries, where readable output matters more than bundle size — minified/obfuscated code trips security/SCA scanners and degrades stack traces. Set true to opt back in.
+Minify the prod [build](silk://packages/bundler/api/function/build) output. Applies ONLY to prod target groups (dev is never minified) and defaults to false: this builder targets Node libraries, where readable output matters more than bundle size — minified/obfuscated code trips security/SCA scanners and degrades stack traces. Set true to opt back in.
 
 ### output
 
@@ -131,7 +131,7 @@ readonly output?: OutputConfig;
 readonly overrides?: ReadonlyArray<BuildEntryOverride> | undefined;
 ```
 
-Per-entry format/bundling overrides. Each group pins its `entries` (export paths) to its own format and bundling, layered onto the base build. Use to keep one entry CJS in an otherwise ESM-only package (e.g. silk's `./changesets/markdownlint`).
+Per-entry format/bundling overrides. Each group pins its `entries` (export paths) to its own format and bundling, layered onto the base [build](silk://packages/bundler/api/function/build). Use to keep one entry CJS in an otherwise ESM-only package (e.g. silk's `./changesets/markdownlint`).
 
 ### plugins
 
@@ -139,7 +139,7 @@ Per-entry format/bundling overrides. Each group pins its `entries` (export paths
 readonly plugins?: ReadonlyArray<Plugin$1> | undefined;
 ```
 
-Custom tsdown/rolldown plugins forwarded to EVERY tsdown run the build performs — the JS pass, the dts pass, the per-module declarations pass, and each looseFiles pass. Use for build-time codegen / virtual modules (e.g. a pnpm config-dependency plugin). Plugins run after the builder's internal interop plugins and before its metrics instrumentation.
+Custom tsdown/rolldown plugins forwarded to EVERY tsdown run the [build](silk://packages/bundler/api/function/build) performs — the JS pass, the dts pass, the per-module declarations pass, and each looseFiles pass. Use for [build](silk://packages/bundler/api/function/build)-time codegen / virtual modules (e.g. a pnpm config-dependency plugin). Plugins run after the builder's internal interop plugins and before its metrics instrumentation.
 
 ### transform
 
@@ -150,4 +150,4 @@ readonly transform?: (args: {
   }) => Json;
 ```
 
-Final mutation of the emitted package.json, run after the declarative `publishConfig.targets` rename. Defaults to `defaultManifestTransform`, which strips build/dev-only fields (devDependencies, scripts, publishConfig, etc.). Supplying your own REPLACES that default — import and call `defaultManifestTransform` from it if you still want the stripping.
+Final mutation of the emitted package.json, run after the declarative `publishConfig.targets` rename. Defaults to `defaultManifestTransform`, which strips [build](silk://packages/bundler/api/function/build)/dev-only fields (devDependencies, scripts, publishConfig, etc.). Supplying your own REPLACES that default — import and call `defaultManifestTransform` from it if you still want the stripping.

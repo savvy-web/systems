@@ -31,6 +31,14 @@ readonly buildTargetGroups?: (o: BuildTargetGroupsOptions) => Promise<void>;
 
 Injectable for tests.
 
+### copyAmbientDts
+
+```ts
+readonly copyAmbientDts?: ((o: CopyAmbientDtsOptions) => void) | undefined;
+```
+
+Injectable ambient-.d.ts copier (defaults to copyAmbientDts).
+
 ### cwd
 
 ```ts

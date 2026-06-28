@@ -23,7 +23,7 @@ interface ParsedArgs
 readonly noExe: boolean;
 ```
 
-Skip the SEA compile step of a dev/prod build (the manifest is still programmed). Used by `prepare`.
+Skip the SEA compile step of a dev/prod [build](silk://packages/bundler/api/function/build) (the manifest is still programmed). Used by `prepare`.
 
 ### target
 

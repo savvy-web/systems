@@ -11,7 +11,7 @@ related: []
 
 # runBuild
 
-Run a build from a normalized config. Pure orchestration; all IO injectable.
+Run a [build](silk://packages/bundler/api/function/build) from a normalized config. Pure orchestration; all IO injectable.
 
 ```ts
 function runBuild(config: BuildConfig, options: RunOptions): Promise<void>;
