@@ -15,22 +15,16 @@ pnpm add -D @savvy-web/bundler
 
 ## Quick start
 
-Add a `savvy.build.ts` to the package root. It both exports a config object and runs the build when invoked directly:
+Add a `savvy.build.ts` to the package root:
 
 ```ts
 // savvy.build.ts
-import { defineBuild, runBuild } from "@savvy-web/bundler";
+import { build } from "@savvy-web/bundler";
 
-const config = defineBuild({
+await build({
   format: ["esm"],
   devManifest: "preserve",
 });
-
-export default config;
-
-if (import.meta.main) {
-  await runBuild(config, { cwd: import.meta.dirname, argv: process.argv.slice(2) });
-}
 ```
 
 Wire the two targets into `package.json` scripts and run them with Node's native TypeScript support (Node 24.11+):
@@ -316,7 +310,7 @@ const config = defineBuild({
 
 ## Features
 
-- **One self-executing config** — `savvy.build.ts` exports a `defineBuild` object for tooling to introspect and runs the build when invoked directly. No factory-notation config file.
+- **One self-executing config** — `savvy.build.ts` is a top-level `await build({...})` call that derives `cwd` and `argv` from process globals. No main guard, no `export default`, no factory-notation config file.
 - **Build targets** — `dev` for local linking, `prod` for a resolved publishable manifest (which also emits an API Extractor api-model) and `exe` for SEA binaries, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
 - **Bundled declarations** — per-module JavaScript with a single rolled-up `.d.ts` per public entry, so re-exported types stay reachable through your published export subpaths.
 - **Ambient type exports** — a types-only `exports` entry backed by a hand-authored `.d.ts` (a bare string or `{ types }`) is copied verbatim into every target dir with its manifest pointer rewritten to a key-derived path, no custom `transform` or post-build copy needed; the declaration must be self-contained and may not be mixed with a runtime source.
@@ -340,6 +334,7 @@ const config = defineBuild({
 
 ## API
 
+- `build(input?, overrides?)` — the front door: calls `defineBuild(input)` then `runBuild`, deriving `cwd` from the entry script's directory (`process.argv[1]`) and `argv` from `process.argv.slice(2)`. Pass `overrides` (any `RunOptions` key) as the test IO seam.
 - `defineBuild(input)` — normalizes a build config (`externals`, `bundle`, `bundleNodeModules`, `bundledPackages`, `dtsExternals`, `minify`, `devManifest`, `transform`, `output`, `meta`, `jsx`, `exe`, `format`, `overrides`, `looseFiles`, `define`, `plugins`), applying defaults. The `format` field controls the output module formats forwarded to tsdown (esm-only by default; add `"cjs"` for a dual-format esm+cjs build). `minify` defaults to false, `transform` defaults to a manifest stripper, and `overrides` pins a subset of entries to their own format and bundling. Pure; it does not run the build.
 - `runBuild(config, options)` — the orchestrator. Parses `--target`/`--watch`/`--verbose` from `options.argv`, reads `package.json` at `options.cwd`, derives entries, drives the build for the selected target and renders a report. `--verbose` expands the report to a per-file table; the report is quiet by default. Every IO dependency on `options` is injectable for tests.
 - `parseArgs(argv)` — the argument parser behind `runBuild`, exported for embedding.

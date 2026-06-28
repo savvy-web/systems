@@ -4,6 +4,7 @@
 
 ## Key surface
 
+- `build(input?, overrides?)` — canonical `savvy.build.ts` front door; calls `defineBuild(input)` then `runBuild`, deriving `cwd` from `dirname(process.argv[1])` and `argv` from `process.argv.slice(2)`. `defineBuild`/`runBuild` remain exported as primitives.
 - `defineBuild`/`runBuild` orchestrator; `runBuild` runs the `ConfigValidator` service first to fast-fail on bad config across dev/prod/exe.
 - Catalog/`workspace:` resolution delegated to `workspaces-effect`'s `CatalogResolver`.
 - `--target prod` derives byte-variant groups from the Record-map `publishConfig.targets`, writes the `dist/prod/targets.json` binding, and calls tsdown-plugins' `runMetaPass` — the single meta-generation orchestrator — per group (emitting a `meta/` release asset + `meta.localPaths`, with `meta.optimistic` next-version forward-looking). `runBuild` no longer carries an inline meta block; `runMetaPass` is shared with both self-hosting escape hatches.
