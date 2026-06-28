@@ -25,7 +25,7 @@ function sameBytes(a: string, b: string): boolean {
  * Flatten `sourceDir` into `outDir`, additively.
  *
  * `sourceDir/<rel>` copies to `outDir/<rel>` — the `public/` directory segment is dropped, so a
- * package's staged assets land at the package root (`public/ecma.json` -> `<pkg>/ecma.json`). This
+ * package's staged assets land at the package root (`public/ecma.json` becomes `<pkg>/ecma.json`). This
  * function NEVER deletes: `outDir` is the shared package root that the JS/dts passes
  * own, so deleting "files not in source" would wipe the build product. Stale-asset pruning on a
  * non-clean rebuild is therefore out of scope (a full build's `clean: true` handles it).
