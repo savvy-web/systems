@@ -17,19 +17,20 @@ pnpm add -D @savvy-web/rspress-builder
 
 ## Quick start
 
-Add a `savvy.build.ts` to the plugin package root. `definePlugin` returns a standard bundler config, which the re-exported `runBuild` consumes unchanged:
+Add a `savvy.build.ts` to the plugin package root and call `build()` — it derives `cwd` and `argv` from `process` and applies the `definePlugin` preset automatically:
 
 ```ts
 // savvy.build.ts
-import { definePlugin, runBuild } from "@savvy-web/rspress-builder";
+import { build } from "@savvy-web/rspress-builder";
 
-const config = definePlugin({ runtime: true, dtsBundledPackages: ["@rspress/core"] });
+await build();
+```
 
-export default config;
+Pass options to tune the preset — for example, to bundle `@rspress/core` declarations into the output types or disable the runtime bundle for a plugin with no browser component:
 
-if (import.meta.main) {
-  await runBuild(config, { cwd: import.meta.dirname, argv: process.argv.slice(2) });
-}
+```ts
+await build({ dtsBundledPackages: ["@rspress/core"] });
+await build({ runtime: false });
 ```
 
 Wire the build targets into `package.json` scripts and run them with Node's native TypeScript support:
@@ -44,6 +45,8 @@ Wire the build targets into `package.json` scripts and run them with Node's nati
 ```
 
 The plugin entry (`.`) builds for Node with `@rspress/core` externalized. The runtime entry (`./runtime`) builds for the browser, bundleless, with CSS modules enabled and React, `@rspress/core` and `@theme` externalized so RSPress provides them at site build time.
+
+For advanced use, `definePlugin` and `runBuild` remain exported as primitives.
 
 ## Configuration
 

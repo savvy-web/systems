@@ -4,7 +4,8 @@
 
 ## Key surface
 
-- `definePlugin(options?)` presets a dual-bundle `BuildConfig` (a Node plugin entry `.` plus an isolated, browser-target, bundleless CSS-module React runtime entry `./runtime` in a `runtime/` subdir); re-exports the bundler's `runBuild`. Owns no build logic of its own.
+- `build(options?, overrides?)` — canonical front door; applies the `definePlugin` preset and calls `runBuild`, deriving `cwd` from `dirname(process.argv[1])` and `argv` from `process.argv.slice(2)`. Mirrors the bundler's own `build()` DX.
+- `definePlugin(options?)` presets a dual-bundle `BuildConfig` (a Node plugin entry `.` plus an isolated, browser-target, bundleless CSS-module React runtime entry `./runtime` in a `runtime/` subdir); `runBuild` (re-exported from the bundler) consumes it unchanged. Owns no build logic of its own.
 - Depends on `@savvy-web/bundler` + `@savvy-web/tsdown-plugins`; peer deps `@rspress/core`/`react`/`react-dom`/`@tsdown/css`.
 - CSS auto-loads via `@tsdown/css`'s `inject: true`.
 - Ships consumer presets: `./tsconfig.json`, a synced local `ecma.json`, and ambient `./rspress-env.d.ts`.
