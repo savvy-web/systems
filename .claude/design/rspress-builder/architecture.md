@@ -3,8 +3,8 @@ status: current
 module: rspress-builder
 category: architecture
 created: 2026-06-13
-updated: 2026-06-18
-last-synced: 2026-06-18
+updated: 2026-06-28
+last-synced: 2026-06-28
 completeness: 90
 related:
   - ../bundler/architecture.md
@@ -24,6 +24,7 @@ A thin sibling to `@savvy-web/bundler` that builds RSPress plugin packages — t
 - [Current State](#current-state)
 - [The dual-bundle model](#the-dual-bundle-model)
 - [definePlugin](#defineplugin)
+- [build](#build)
 - [Why the runtime is an isolated subdir](#why-the-runtime-is-an-isolated-subdir)
 - [The peer-dependency contract](#the-peer-dependency-contract)
 - [The shipped consumer presets](#the-shipped-consumer-presets)
@@ -33,9 +34,9 @@ A thin sibling to `@savvy-web/bundler` that builds RSPress plugin packages — t
 
 ## Overview
 
-`@savvy-web/rspress-builder` owns no build logic. `definePlugin(options?)` assembles a standard `BuildConfig` (the bundler's `defineBuild` shape) with the RSPress runtime baked in as an `EntryOverride` partition, and the package re-exports the bundler's `runBuild` so a consumer imports both from one source. The shared machinery — the `EntryOverride` partition loop, the two-pass build, the meta pipeline, the targets derivation — lives in `@savvy-web/bundler` and `@savvy-web/tsdown-plugins`; this package only presets the rspress-specific knobs and points there.
+`@savvy-web/rspress-builder` owns no build logic. `definePlugin(options?)` assembles a standard `BuildConfig` (the bundler's `defineBuild` shape) with the RSPress runtime baked in as an `EntryOverride` partition. `build(options?, overrides?)` is the consumer front door — it applies `definePlugin` internally and calls the bundler's `runBuild`; `definePlugin` and `runBuild` remain exported as underlying primitives for advanced use. The shared machinery — the `EntryOverride` partition loop, the two-pass build, the meta pipeline, the targets derivation — lives in `@savvy-web/bundler` and `@savvy-web/tsdown-plugins`; this package only presets the rspress-specific knobs and points there.
 
-**Package:** `@savvy-web/rspress-builder`, at `packages/rspress-builder` in `savvy-web/systems`. **Source:** `src/index.ts` (the whole public surface). It self-hosts via its own front-door `savvy.build.ts` (`defineBuild`/`runBuild`, tier 3 of the bundler bootstrap ladder — see `../bundler/architecture.md`).
+**Package:** `@savvy-web/rspress-builder`, at `packages/rspress-builder` in `savvy-web/systems`. **Source:** `src/index.ts` (the whole public surface). It self-hosts via its own `savvy.build.ts` using the bundler's `build()` function (tier 3 of the bundler bootstrap ladder — see `../bundler/architecture.md`).
 
 The reference consumer is `spencerbeggs/rspress-plugin-api-extractor`, whose migration off rslib is the proof but lives outside this repo.
 
@@ -58,7 +59,7 @@ An RSPress plugin package is a dual-bundle package the general-purpose Node-libr
 
 ## definePlugin
 
-`definePlugin(options)` returns a `BuildConfig`, so `runBuild` consumes it with no change to its invocation contract. The consumer's `savvy.build.ts` is the standard self-executing shape (`definePlugin(...)` → default export → `import.meta.main` gate calling the re-exported `runBuild`). Internally `definePlugin`:
+`definePlugin(options)` returns a `BuildConfig`, so `runBuild` consumes it with no change to its invocation contract. A plugin author's `savvy.build.ts` is a single awaited call — `import { build } from "@savvy-web/rspress-builder"; await build()` — with no default export or `import.meta.main` gate; the `build()` front door applies `definePlugin` internally before delegating to the bundler's `runBuild`. Internally `definePlugin`:
 
 - presets the plugin externals (`@rspress/core` plus any `plugin.externals`);
 - builds the runtime `EntryOverride` partition when `runtime !== false` (`true`/`{ externals }` enables it; `false` disables it — it does NOT auto-detect the filesystem, so a runtime-less plugin must pass `false`);
@@ -66,6 +67,10 @@ An RSPress plugin package is a dual-bundle package the general-purpose Node-libr
 - forwards `apiModel` → bundler `meta` (so the per-prod-group meta emission and the `optimistic` next-version rewrite apply to an RSPress plugin unchanged), `dtsBundledPackages` → `bundledPackages`, plus `transform`/`jsx`.
 
 `define` is build-wide (the bundler has no per-bundle define); the user merge happens after the identity map. See `src/index.ts` for the exact options and defaults.
+
+## build
+
+`build(options?, overrides?)` is the consumer front door exported from `@savvy-web/rspress-builder`. It calls `runBuild(definePlugin(options), { cwd: dirname(process.argv[1]), argv: process.argv.slice(2) })`, so a plugin author's `savvy.build.ts` is a single awaited call with no boilerplate. `definePlugin` and `runBuild` are still exported as underlying primitives for callers that need to compose them directly.
 
 ## Why the runtime is an isolated subdir
 
@@ -94,7 +99,7 @@ The meta pipeline merges API models across entries, so the plugin (`.`) entry co
 
 ## Boundaries and Invariants
 
-- **The builder owns no build behavior.** `definePlugin` only presets knobs on a standard `BuildConfig`; every behavior is a `@savvy-web/bundler`/`@savvy-web/tsdown-plugins` helper. `runBuild` is re-exported unchanged.
+- **The builder owns no build behavior.** `definePlugin` only presets knobs on a standard `BuildConfig`; every behavior is a `@savvy-web/bundler`/`@savvy-web/tsdown-plugins` helper. `build()` is a thin convenience wrapper that applies `definePlugin` and delegates to the bundler's `runBuild`; both `definePlugin` and `runBuild` are re-exported as underlying primitives.
 - **The runtime is an isolated subdir, not a shared-outDir partition.** `outSubdir: "runtime"` makes plugin↔runtime collisions structurally impossible and the `./runtime` manifest path deterministic. See [Why the runtime is an isolated subdir](#why-the-runtime-is-an-isolated-subdir).
 - **`runtime` is explicit, not filesystem-detected.** A plugin with no runtime must pass `runtime: false`.
 - **The React/CSS/RSPress contract is peer-only.** `@rspress/core`/`react`/`react-dom`/`@tsdown/css` are peers of this package and never reach the core bundler; `@tsdown/css` is lazily loaded by tsdown.
@@ -110,4 +115,4 @@ The RSPress dual-bundle contract pulls in React, `@tsdown/css` and `@rspress/cor
 
 ### Why reuse runBuild verbatim
 
-Because `definePlugin` returns a normal `BuildConfig` with the runtime baked in as an override partition, the `node savvy.build.ts --target {dev|prod|meta|exe}` semantics, the dev/prod/meta contract and the publishing outputs are inherited unchanged — so the Silk release pipeline builds and ships an RSPress plugin exactly like every other Silk package, with no special-casing.
+`build()` calls `runBuild(definePlugin(options), ...)` so the `node savvy.build.ts --target {dev|prod|meta|exe}` semantics, the dev/prod/meta contract and the publishing outputs are inherited unchanged — the Silk release pipeline builds and ships an RSPress plugin exactly like every other Silk package, with no special-casing.
