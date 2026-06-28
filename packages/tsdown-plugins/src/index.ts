@@ -8,7 +8,7 @@ export { normalizeLooseFiles } from "./build/loose-files.js";
 export { nodeBuiltinDefaultInterop } from "./build/node-builtin-default-interop.js";
 export { removeDeclarationMaps } from "./build/strip-maps.js";
 export type { CopyAmbientDtsOptions } from "./build/sync-public.js";
-export { copyAmbientDts, syncPublicDir } from "./build/sync-public.js";
+export { copyAmbientDts, copyPublicDir, syncPublicDir } from "./build/sync-public.js";
 export type {
 	BuildFormat,
 	BuildGroupSpec,

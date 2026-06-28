@@ -73,6 +73,37 @@ export function syncPublicDir(sourceDir: string, targetDir: string): void {
 	pruneEmptyDirs(targetDir);
 }
 
+/**
+ * Flatten `sourceDir` into `outDir`, additively.
+ *
+ * `sourceDir/<rel>` copies to `outDir/<rel>` — the `public/` directory segment is dropped, so a
+ * package's staged assets land at the package root (`public/ecma.json` -> `<pkg>/ecma.json`). Unlike
+ * {@link syncPublicDir} this NEVER deletes: `outDir` is the shared package root that the JS/dts passes
+ * own, so deleting "files not in source" would wipe the build product. Stale-asset pruning on a
+ * non-clean rebuild is therefore out of scope (a full build's `clean: true` handles it).
+ *
+ * Collision guard: when a destination already exists, identical bytes mean a prior copy of the same
+ * asset (skipped); differing bytes mean a built output occupies that path — throws
+ * {@link ConfigValidationError} rather than clobbering it.
+ * @public
+ */
+export function copyPublicDir(sourceDir: string, outDir: string): void {
+	if (!existsSync(sourceDir)) return;
+	for (const rel of listFilesRel(sourceDir)) {
+		const src = join(sourceDir, rel);
+		const dst = join(outDir, rel);
+		if (existsSync(dst)) {
+			if (sameBytes(src, dst)) continue;
+			throw new ConfigValidationError({
+				path: `public/${rel}`,
+				reason: `public asset "${rel}" collides with a built output at the package root — rename or remove it`,
+			});
+		}
+		mkdirSync(dirname(dst), { recursive: true });
+		copyFileSync(src, dst);
+	}
+}
+
 /** @public */
 export interface CopyAmbientDtsOptions {
 	/** The ambient exports to copy (from `extractAmbientDts`). */
