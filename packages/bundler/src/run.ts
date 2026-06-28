@@ -553,7 +553,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
  */
 export async function build(input: BuildConfigInput = {}, overrides: Partial<RunOptions> = {}): Promise<void> {
 	return runBuild(defineBuild(input), {
-		cwd: dirname(process.argv[1] ?? process.cwd()),
+		cwd: process.argv[1] ? dirname(process.argv[1]) : process.cwd(),
 		argv: process.argv.slice(2),
 		...overrides,
 	});

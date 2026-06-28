@@ -110,7 +110,7 @@ export function definePlugin(options: RspressPluginOptions = {}): BuildConfig {
  */
 export async function build(options: RspressPluginOptions = {}, overrides: Partial<RunOptions> = {}): Promise<void> {
 	return runBuild(definePlugin(options), {
-		cwd: dirname(process.argv[1] ?? process.cwd()),
+		cwd: process.argv[1] ? dirname(process.argv[1]) : process.cwd(),
 		argv: process.argv.slice(2),
 		...overrides,
 	});
