@@ -104,7 +104,7 @@ export function definePlugin(options: RspressPluginOptions = {}): BuildConfig {
 /**
  * Front door for building an RSPress plugin. Applies the {@link definePlugin} preset
  * and runs the build, deriving `cwd` and `argv` from `process.argv`. For advanced use,
- * {@link definePlugin} and {@link runBuild} remain exported.
+ * {@link definePlugin} and `runBuild` remain exported.
  *
  * @public
  */

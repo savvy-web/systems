@@ -6176,6 +6176,19 @@
 			"uri": "silk://packages/mcp/resource-taxonomy"
 		},
 		{
+			"id": "packages/rspress-builder/api/function/build",
+			"title": "build — rspress-builder function",
+			"summary": "Front door for building an RSPress plugin. Applies the definePlugin preset and runs the build, deriving `cwd` and `argv` from `process.argv`. For advanced use,…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["rspress-builder", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/rspress-builder/api/function/build"
+		},
+		{
 			"id": "packages/rspress-builder/api/function/defineplugin",
 			"title": "definePlugin — rspress-builder function",
 			"summary": "Build an RSPress plugin package: a Node plugin entry (`.`) plus a browser, bundleless, CSS-module React runtime entry (`./runtime`). Returns a standard `BuildC…",
@@ -6217,7 +6230,7 @@
 		{
 			"id": "packages/rspress-builder/api",
 			"title": "@savvy-web/rspress-builder — API reference",
-			"summary": "@savvy-web/rspress-builder API reference: 3 documented symbols.",
+			"summary": "@savvy-web/rspress-builder API reference: 4 documented symbols.",
 			"tier": "packages",
 			"source": "generated",
 			"status": "stable",
