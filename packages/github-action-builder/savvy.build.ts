@@ -1,6 +1,6 @@
-import { defineBuild, runBuild } from "@savvy-web/bundler";
+import { build } from "@savvy-web/bundler";
 
-const config = defineBuild({
+await build({
 	devManifest: "preserve",
 	meta: {
 		localPaths: ["../mcp/lib/models/github-action-builder", "../../website/lib/models/github-action-builder"],
@@ -14,9 +14,3 @@ const config = defineBuild({
 		},
 	},
 });
-
-export default config;
-
-if (import.meta.main) {
-	await runBuild(config, { cwd: import.meta.dirname, argv: process.argv.slice(2) });
-}

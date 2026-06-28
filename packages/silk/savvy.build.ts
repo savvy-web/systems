@@ -1,6 +1,6 @@
-import { defaultManifestTransform, defineBuild, runBuild } from "@savvy-web/bundler";
+import { build, defaultManifestTransform } from "@savvy-web/bundler";
 
-const config = defineBuild({
+await build({
 	// `source-map-support` is referenced transitively but not declared, so tsdown would
 	// otherwise bundle it. `typescript` (peer dep) and `semver` (runtime dep) are
 	// auto-externalized by tsdown from the manifest; `semver` MUST stay external because
@@ -103,9 +103,3 @@ const config = defineBuild({
 		return defaultManifestTransform({ pkg });
 	},
 });
-
-export default config;
-
-if (import.meta.main) {
-	await runBuild(config, { cwd: import.meta.dirname, argv: process.argv.slice(2) });
-}
