@@ -109,16 +109,16 @@ describe("published tarball (issue #97)", () => {
 	// silk://packages/<pkg>/api read 404s (#178, #179).
 	it("ships the generated api corpus for every library target", () => {
 		const targets = ["bundler", "silk-effects", "templates", "tsdown-plugins", "rspress-builder"];
-		const missing = targets.filter((t) => ![...packed].some((p) => p.startsWith(`public/content/packages/${t}/api/`)));
+		const missing = targets.filter((t) => ![...packed].some((p) => p.startsWith(`content/packages/${t}/api/`)));
 		expect(missing, `library targets with no api docs in the tarball`).toEqual([]);
 	});
 
 	it("ships a per-package api index page at the bare api path (#179)", () => {
-		expect(packed.has("public/content/packages/bundler/api.md")).toBe(true);
+		expect(packed.has("content/packages/bundler/api.md")).toBe(true);
 	});
 
 	it("ships an inflated manifest that indexes the generated api docs (#177)", () => {
-		const corpusManifest = JSON.parse(readFileSync(join(dir, "public/content/manifest.json"), "utf8")) as {
+		const corpusManifest = JSON.parse(readFileSync(join(dir, "content/manifest.json"), "utf8")) as {
 			entries: Array<{ id: string }>;
 		};
 		const apiEntries = corpusManifest.entries.filter((e) => /^packages\/.+\/api(\/|$)/.test(e.id));

@@ -8650,6 +8650,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/function/copyambientdts"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/function/copypublicdir",
+			"title": "copyPublicDir — tsdown-plugins function",
+			"summary": "Flatten `sourceDir` into `outDir`, additively. `sourceDir/<rel>` copies to `outDir/<rel>` — the `public/` directory segment is dropped, so a package's staged a…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/copypublicdir"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/function/createtimer",
 			"title": "createTimer — tsdown-plugins function",
 			"summary": "Create a wall-clock timer. (Date.now is fine in runtime build code.)",
@@ -9090,19 +9103,6 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/function/serializeissues"
-		},
-		{
-			"id": "packages/tsdown-plugins/api/function/syncpublicdir",
-			"title": "syncPublicDir — tsdown-plugins function",
-			"summary": "Mirror `sourceDir` into `targetDir`, idempotently. Replaces tsdown's built-in `copy`, whose non-recursive mkdir throws `EEXIST` when the target already exists…",
-			"tier": "packages",
-			"source": "generated",
-			"status": "stable",
-			"tags": ["tsdown-plugins", "api"],
-			"audience": ["assistant"],
-			"priority": 0.3,
-			"related": [],
-			"uri": "silk://packages/tsdown-plugins/api/function/syncpublicdir"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/function/transformbin",

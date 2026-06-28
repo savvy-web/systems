@@ -14,7 +14,7 @@ import { createTsdownLogger } from "../report/tsdown-logger.js";
 import { cjsDefaultInterop } from "./cjs-default-interop.js";
 import type { NormalizedLooseFile } from "./loose-files.js";
 import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
-import { syncPublicDir } from "./sync-public.js";
+import { copyPublicDir } from "./sync-public.js";
 import type { BuildFormat, BuildGroupSpec, BuildPlatform } from "./target-groups.js";
 import {
 	deriveDeclarationsPassOptions,
@@ -359,9 +359,6 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				}),
 			);
 
-			// Mirror public/ once, after the base partition's JS pass owns the outDir.
-			if (isBase) syncPublicDir(publicDir, join(js.outDir, "public"));
-
 			const dtsNeverBundle = [...(partExternals ?? []), ...(partDtsExternals ?? [])];
 
 			// Pass 2: bundled dts for this partition's entries. Always clean:false.
@@ -610,5 +607,9 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				}),
 			);
 		}
+
+		// Flatten public/ into the group's package root, after every pass (JS, dts, declarations,
+		// looseFiles) has written its outputs. Additive with a byte-collision guard — see copyPublicDir.
+		copyPublicDir(publicDir, outDirFor(options.cwd, group.id));
 	}
 }
