@@ -115,25 +115,34 @@ describe("manifest transform", () => {
 		});
 	});
 
-	it("leaves a non-TS (e.g. .jsonc/.json) export untouched in both modes", () => {
+	it("leaves a non-TS, non-public export untouched but strips the public/ segment from a public asset", () => {
+		// A non-public path is passed through verbatim.
 		expect(transformExports({ "./asset": "./src/asset.jsonc" }, true)).toEqual({ "./asset": "./src/asset.jsonc" });
+		// A `./public/...` value points into the staged public dir, whose CONTENTS copyPublicDir copies
+		// into the package root — so the published value drops the public/ segment (substructure kept).
 		expect(transformExports({ "./biome": "./public/biome/silk.jsonc" }, true)).toEqual({
-			"./biome": "./public/biome/silk.jsonc",
+			"./biome": "./biome/silk.jsonc",
 		});
 	});
 
-	it("preserves a representative flat leaf export map byte-identically (regression)", () => {
-		expect(transformExports({ ".": "./src/index.ts", "./asset": "./public/ecma.json" }, false)).toEqual({
+	it("strips the public/ segment from a flat leaf public asset, keeping any substructure", () => {
+		expect(
+			transformExports(
+				{ ".": "./src/index.ts", "./asset": "./public/ecma.json", "./nested": "./public/tsconfig/ecma.json" },
+				false,
+			),
+		).toEqual({
 			".": { types: "./index.d.ts", import: "./index.js" },
-			"./asset": "./public/ecma.json",
+			"./asset": "./ecma.json",
+			"./nested": "./tsconfig/ecma.json",
 		});
 	});
 
-	it("passes a .d.ts asset export through unchanged (not rewritten to built conditions)", () => {
+	it("passes a .d.ts asset export through as a leaf but strips its public/ segment", () => {
 		const exports = { ".": "./src/index.ts", "./rspress-env.d.ts": "./public/rspress-env.d.ts" };
 		const out = transformExports(exports, false) as Record<string, unknown>;
 		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
-		expect(out["./rspress-env.d.ts"]).toBe("./public/rspress-env.d.ts");
+		expect(out["./rspress-env.d.ts"]).toBe("./rspress-env.d.ts");
 	});
 
 	it("rewrites TS bins to bin/<name>.js and strips leading ./", () => {
@@ -216,12 +225,13 @@ describe("transformExports — ambient .d.ts exports", () => {
 	it("leaves a bare-string root .d.ts export verbatim (root ambient is unsupported)", () => {
 		expect(transformExports("./src/globals.d.ts")).toBe("./src/globals.d.ts");
 	});
-	it("leaves a .d.ts-keyed asset re-export verbatim (not treated as ambient)", () => {
+	it("strips public/ from a .d.ts-keyed asset re-export (not treated as ambient)", () => {
 		const out = transformExports({
 			".": "./src/index.ts",
 			"./rspress-env.d.ts": "./public/rspress-env.d.ts",
 		}) as Record<string, unknown>;
-		expect(out["./rspress-env.d.ts"]).toBe("./public/rspress-env.d.ts");
+		// Not rewritten to an ambient `{ types }` object; passes through as a leaf, with public/ stripped.
+		expect(out["./rspress-env.d.ts"]).toBe("./rspress-env.d.ts");
 	});
 });
 

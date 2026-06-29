@@ -1,5 +1,13 @@
 # @savvy-web/github-action-builder
 
+## 1.0.0
+
+### Breaking Changes
+
+* ### Stable 1.0.0
+
+`@savvy-web/github-action-builder` graduates to 1.0.0. It is built on `@savvy-web/bundler` 1.0, whose `public/` assets are copied into the package with the `public/` segment dropped and substructure preserved — so the published `./tsconfig/action.json` export resolves to `./tsconfig/action.json` at the package root. The export key is unchanged, so consumers importing `@savvy-web/github-action-builder/tsconfig/action.json` need no changes. Dependency ranges were refreshed.
+
 ## 0.8.0
 
 ### Features

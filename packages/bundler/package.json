@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/bundler",
-	"version": "0.12.0",
+	"version": "1.0.0",
 	"private": true,
 	"description": "Zero-config tsdown-based bundler for Silk Suite TypeScript packages",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/bundler",
@@ -21,8 +21,7 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./ecma.json": "./ecma.json",
-		"./tsconfig/ecma.json": "./ecma.json"
+		"./tsconfig/ecma.json": "./public/tsconfig/ecma.json"
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",

@@ -1,5 +1,28 @@
 # @savvy-web/rspress-builder
 
+## 1.0.0
+
+### Features
+
+* [`ceeca34`](https://github.com/savvy-web/systems/commit/ceeca34f4ac4b7fdca7321c5016321f5be084768) ### `build()` front door
+
+`@savvy-web/rspress-builder` now exposes a `build()` front door matching `@savvy-web/bundler`'s. It applies the `definePlugin` preset internally and runs the build, deriving `cwd` from the entry script directory and `argv` from `process.argv`, so an RSPress plugin's `savvy.build.ts` is a single call:
+
+```ts
+import { build } from "@savvy-web/rspress-builder";
+
+await build();
+```
+
+Options pass straight through to `definePlugin` — `await build({ runtime: false })` builds a plugin with no runtime bundle. `definePlugin` and the re-exported `runBuild` remain available for advanced or escape-hatch use.
+
+### Patch Changes
+
+| Dependency                | Type       | Action  | From   | To    |
+| ------------------------- | ---------- | ------- | ------ | ----- |
+| @savvy-web/tsdown-plugins | dependency | updated | 0.12.0 | 1.0.0 |
+| @savvy-web/bundler        | dependency | updated | 0.12.0 | 1.0.0 |
+
 ## 0.12.0
 
 ### Patch Changes

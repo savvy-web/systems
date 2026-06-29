@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/github-action-builder",
-	"version": "0.8.0",
+	"version": "1.0.0",
 	"private": true,
 	"description": "A zero-config build tool for creating GitHub Actions from TypeScript. Bundles with rsbuild, validates action.yml against GitHub's schema, and outputs production-ready Node.js 24 actions.",
 	"keywords": [
@@ -36,7 +36,7 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./tsconfig/action.json": "./tsconfig/action.json"
+		"./tsconfig/action.json": "./public/tsconfig/action.json"
 	},
 	"bin": {
 		"github-action-builder": "./src/cli/index.ts"
@@ -56,7 +56,7 @@
 		"@effect/rpc": "catalog:silk",
 		"@effect/sql": "catalog:silk",
 		"@effect/typeclass": "catalog:silk",
-		"@rsbuild/core": "^2.0.15",
+		"@rsbuild/core": "^2.1.1",
 		"effect": "catalog:silk",
 		"jiti": "^2.7.0",
 		"picocolors": "^1.1.1",

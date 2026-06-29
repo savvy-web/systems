@@ -8665,7 +8665,7 @@
 		{
 			"id": "packages/tsdown-plugins/api/function/copypublicdir",
 			"title": "copyPublicDir — tsdown-plugins function",
-			"summary": "Flatten `sourceDir` into `outDir`, additively. `sourceDir/<rel>` copies to `outDir/<rel>` — the `public/` directory segment is dropped, so a package's staged a…",
+			"summary": "Copy the CONTENTS of `sourceDir` into `outDir`, additively. Each `sourceDir/<rel>` copies to `outDir/<rel>` — only the `public/` directory itself is dropped; t…",
 			"tier": "packages",
 			"source": "generated",
 			"status": "stable",

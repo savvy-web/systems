@@ -8,12 +8,12 @@
 		"declarationMap": false,
 		"emitDeclarationOnly": false,
 		"esModuleInterop": true,
+		"exactOptionalPropertyTypes": true,
 		"explainFiles": false,
 		"forceConsistentCasingInFileNames": true,
 		"incremental": true,
 		"isolatedDeclarations": false,
 		"isolatedModules": true,
-		"exactOptionalPropertyTypes": true,
 		"jsx": "preserve",
 		"lib": ["esnext"],
 		"module": "nodenext",
@@ -28,8 +28,8 @@
 		"target": "es2025",
 		"tsBuildInfoFile": "${configDir}/dist/.tsbuildinfo.lib",
 		"typeRoots": ["${configDir}/node_modules/@types", "${configDir}/types"],
-		"verbatimModuleSyntax": true,
-		"types": ["node"]
+		"types": ["node"],
+		"verbatimModuleSyntax": true
 	},
 	"exclude": ["${configDir}/node_modules", "${configDir}/dist/**/*"],
 	"include": [
