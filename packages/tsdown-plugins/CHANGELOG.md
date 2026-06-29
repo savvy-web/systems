@@ -4,7 +4,7 @@
 
 ### Breaking Changes
 
-* [`ceeca34`](https://github.com/savvy-web/systems/commit/ceeca34f4ac4b7fdca7321c5016321f5be084768) ### `syncPublicDir` removed; public assets flatten to the package root
+* [`ceeca34`](https://github.com/savvy-web/systems/commit/ceeca34f4ac4b7fdca7321c5016321f5be084768) ### `syncPublicDir` removed; public asset contents are copied into the package
 
 `syncPublicDir` has been removed from the public API. Replace it with `copyPublicDir`:
 
@@ -18,7 +18,7 @@ import { copyPublicDir } from "@savvy-web/tsdown-plugins";
 copyPublicDir(sourceDir, outDir);
 ```
 
-`copyPublicDir` flattens `sourceDir` into `outDir` additively — the `public/` directory segment is stripped, so a file at `sourceDir/<rel>` lands at `outDir/<rel>`. A `public/ecma.json` asset therefore publishes at the package root (`<pkg>/ecma.json`) instead of a `public/` subdirectory (`<pkg>/public/ecma.json`).
+`copyPublicDir` copies the CONTENTS of `sourceDir` into `outDir` additively — only the `public/` directory segment is dropped, so a file at `sourceDir/<rel>` lands at `outDir/<rel>` with its substructure preserved. A `public/tsconfig/ecma.json` asset therefore publishes at `<pkg>/tsconfig/ecma.json` instead of `<pkg>/public/tsconfig/ecma.json`.
 
 Behavioral differences from `syncPublicDir`:
 

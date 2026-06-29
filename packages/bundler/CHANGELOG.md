@@ -4,26 +4,26 @@
 
 ### Breaking Changes
 
-* [`ceeca34`](https://github.com/savvy-web/systems/commit/ceeca34f4ac4b7fdca7321c5016321f5be084768) ### Public asset output flattens to the package root
+* [`ceeca34`](https://github.com/savvy-web/systems/commit/ceeca34f4ac4b7fdca7321c5016321f5be084768) ### Public asset contents are copied into the package
 
-Packages built with `@savvy-web/bundler` that have a `public/` directory now see their assets copied directly to the package root in the built output — the `public/` directory segment is dropped. An asset at `public/ecma.json` previously landed at `dist/dev/pkg/public/ecma.json`; it now lands at `dist/dev/pkg/ecma.json`.
+Packages built with `@savvy-web/bundler` that have a `public/` directory now have its CONTENTS copied into the built package — only the `public/` directory segment is dropped; the substructure under it is preserved. An asset at `public/tsconfig/ecma.json` previously landed at `dist/dev/pkg/public/tsconfig/ecma.json`; it now lands at `dist/dev/pkg/tsconfig/ecma.json`.
 
-Update your `package.json` `exports` values to reflect the new paths:
+Keep your `package.json` `exports` values pointing into `./public/` — the build strips the `public/` segment from each value when it emits the published manifest, so the copied file still resolves. A source export of:
 
 ```json
 {
   "exports": {
-    "./ecma.json": "./ecma.json"
+    "./tsconfig/ecma.json": "./public/tsconfig/ecma.json"
   }
 }
 ```
 
-Previously:
+publishes as:
 
 ```json
 {
   "exports": {
-    "./ecma.json": "./public/ecma.json"
+    "./tsconfig/ecma.json": "./tsconfig/ecma.json"
   }
 }
 ```
