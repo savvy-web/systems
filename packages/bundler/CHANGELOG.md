@@ -1,5 +1,68 @@
 # @savvy-web/bundler
 
+## 1.0.0
+
+### Breaking Changes
+
+* [`ceeca34`](https://github.com/savvy-web/systems/commit/ceeca34f4ac4b7fdca7321c5016321f5be084768) ### Public asset output flattens to the package root
+
+Packages built with `@savvy-web/bundler` that have a `public/` directory now see their assets copied directly to the package root in the built output — the `public/` directory segment is dropped. An asset at `public/ecma.json` previously landed at `dist/dev/pkg/public/ecma.json`; it now lands at `dist/dev/pkg/ecma.json`.
+
+Update your `package.json` `exports` values to reflect the new paths:
+
+```json
+{
+  "exports": {
+    "./ecma.json": "./ecma.json"
+  }
+}
+```
+
+Previously:
+
+```json
+{
+  "exports": {
+    "./ecma.json": "./public/ecma.json"
+  }
+}
+```
+
+### Features
+
+* [`ceeca34`](https://github.com/savvy-web/systems/commit/ceeca34f4ac4b7fdca7321c5016321f5be084768) ### `build()` front door
+
+`build(input?, overrides?)` is the new canonical form for `savvy.build.ts` files. It combines `defineBuild` and `runBuild` in a single call, deriving `cwd` from the entry script directory (`process.argv[1]`) and `argv` from `process.argv.slice(2)` — the faithful equivalent of `import.meta.dirname` without requiring ESM module metadata.
+
+```ts
+import { build } from "@savvy-web/bundler";
+
+await build({
+  /* BuildConfigInput options */
+});
+```
+
+`defineBuild` and `runBuild` remain exported. The second argument of `build()` accepts `Partial<RunOptions>` for injectables useful in tests or custom IO.
+
+* [`8078799`](https://github.com/savvy-web/systems/commit/8078799b0261729efe897f1084ed532348f3a1b6) ### Ambient `.d.ts` exports
+
+`runBuild` now validates types-only hand-authored declaration exports early — on every target path, before any build step runs — and copies each source verbatim into every built package dir (`dist/dev/pkg` on `--target dev`; `dist/prod/<group>/pkg` per prod group on `--target prod`).
+
+New injectable on `RunOptions`:
+
+```ts
+/** Injectable ambient-.d.ts copier (defaults to copyAmbientDts from @savvy-web/tsdown-plugins). */
+readonly copyAmbientDts?: (o: CopyAmbientDtsOptions) => void;
+```
+
+`extractAmbientDts` and `AmbientDtsEntry` are re-exported from `@savvy-web/bundler` for use in a custom `transform` that needs to inspect the ambient entry list without a direct `@savvy-web/tsdown-plugins` import.
+
+### Patch Changes
+
+| Dependency                | Type       | Action  | From   | To    |
+| ------------------------- | ---------- | ------- | ------ | ----- |
+| @savvy-web/tsdown-plugins | dependency | updated | 0.12.0 | 1.0.0 |
+
 ## 0.12.0
 
 ### Features
