@@ -259,7 +259,7 @@ importers:
         specifier: catalog:silk
         version: 0.40.0(effect@3.21.4)
       '@rsbuild/core':
-        specifier: ^2.0.15
+        specifier: ^2.1.1
         version: 2.1.1
       effect:
         specifier: catalog:silk
