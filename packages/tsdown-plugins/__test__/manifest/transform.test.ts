@@ -225,12 +225,13 @@ describe("transformExports — ambient .d.ts exports", () => {
 	it("leaves a bare-string root .d.ts export verbatim (root ambient is unsupported)", () => {
 		expect(transformExports("./src/globals.d.ts")).toBe("./src/globals.d.ts");
 	});
-	it("leaves a .d.ts-keyed asset re-export verbatim (not treated as ambient)", () => {
+	it("strips public/ from a .d.ts-keyed asset re-export (not treated as ambient)", () => {
 		const out = transformExports({
 			".": "./src/index.ts",
 			"./rspress-env.d.ts": "./public/rspress-env.d.ts",
 		}) as Record<string, unknown>;
-		expect(out["./rspress-env.d.ts"]).toBe("./public/rspress-env.d.ts");
+		// Not rewritten to an ambient `{ types }` object; passes through as a leaf, with public/ stripped.
+		expect(out["./rspress-env.d.ts"]).toBe("./rspress-env.d.ts");
 	});
 });
 
