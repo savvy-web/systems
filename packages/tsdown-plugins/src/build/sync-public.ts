@@ -21,6 +21,14 @@ function sameBytes(a: string, b: string): boolean {
 	return readFileSync(a).equals(readFileSync(b));
 }
 
+/** Throw the standard public-asset collision error for a destination-relative path. */
+function throwPublicCollision(rel: string): never {
+	throw new ConfigValidationError({
+		path: `public/${rel}`,
+		reason: `public asset "${rel}" collides with a built output at the package root — rename or remove it`,
+	});
+}
+
 /**
  * Flatten `sourceDir` into `outDir`, additively.
  *
@@ -36,13 +44,6 @@ function sameBytes(a: string, b: string): boolean {
  * {@link ConfigValidationError} rather than clobbering it or surfacing a raw fs error.
  * @public
  */
-function throwPublicCollision(rel: string): never {
-	throw new ConfigValidationError({
-		path: `public/${rel}`,
-		reason: `public asset "${rel}" collides with a built output at the package root — rename or remove it`,
-	});
-}
-
 export function copyPublicDir(sourceDir: string, outDir: string): void {
 	if (!existsSync(sourceDir)) return;
 	for (const rel of listFilesRel(sourceDir)) {
