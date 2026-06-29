@@ -13,7 +13,7 @@ related: []
 
 ## function
 
-- [`build`](silk://packages/rspress-builder/api/function/build) — Front door for building an RSPress plugin. Applies the definePlugin preset and runs the build, deriving `cwd` and `argv` from `process.argv`. For advanced use, definePlugin and runBuild remain exported.
+- [`build`](silk://packages/rspress-builder/api/function/build) — Front door for building an RSPress plugin. Applies the definePlugin preset and runs the build, deriving `cwd` and `argv` from `process.argv`. For advanced use, definePlugin and `runBuild` remain exported.
 - [`definePlugin`](silk://packages/rspress-builder/api/function/defineplugin) — Build an RSPress plugin package: a Node plugin entry (`.`) plus a browser, bundleless, CSS-module React runtime entry (`./runtime`). Returns a standard `BuildConfig`; hand it to `runBuild` from a self-executing `savvy.build.ts`.
 
 ## interface

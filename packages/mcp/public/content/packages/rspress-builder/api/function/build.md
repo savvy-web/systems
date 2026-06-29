@@ -11,7 +11,7 @@ related: []
 
 # build
 
-Front door for building an RSPress plugin. Applies the [definePlugin](silk://packages/rspress-builder/api/function/defineplugin) preset and runs the [build](silk://packages/rspress-builder/api/function/build), deriving `cwd` and `argv` from `process.argv`. For advanced use, [definePlugin](silk://packages/rspress-builder/api/function/defineplugin) and runBuild remain exported.
+Front door for building an RSPress plugin. Applies the [definePlugin](silk://packages/rspress-builder/api/function/defineplugin) preset and runs the [build](silk://packages/rspress-builder/api/function/build), deriving `cwd` and `argv` from `process.argv`. For advanced use, [definePlugin](silk://packages/rspress-builder/api/function/defineplugin) and `runBuild` remain exported.
 
 ```ts
 function build(options?: RspressPluginOptions, overrides?: Partial<RunOptions>): Promise<void>;

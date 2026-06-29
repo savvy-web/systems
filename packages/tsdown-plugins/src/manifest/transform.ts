@@ -125,6 +125,17 @@ const tsConditions = (exportKey: string, dual: boolean, subdirExports?: Readonly
 });
 
 /**
+ * A `./public/<path>` export value points into the staged `public/` dir, whose CONTENTS `copyPublicDir`
+ * copies into the package root (only the `public/` segment is dropped; substructure is kept). So the
+ * published manifest value drops that same `public/` segment: `./public/tsconfig/ecma.json` becomes
+ * `./tsconfig/ecma.json`, resolving the file copyPublicDir placed at `<pkg>/tsconfig/ecma.json`.
+ * Non-strings and non-public values pass through unchanged.
+ */
+function stripPublicPrefix(value: unknown): unknown {
+	return typeof value === "string" && value.startsWith("./public/") ? `./${value.slice("./public/".length)}` : value;
+}
+
+/**
  * Rewrite an exports map: TS string targets become a types/import conditions object.
  * Each TS condition also gets a `require` entry when `dual` is `true` (uniform) or when
  * the export key is in the `dual` Set (per-entry).
@@ -144,13 +155,13 @@ export function transformExports(
 	// A bare string export is the root (`.`) target. Root ambient is unsupported — a whole-exports
 	// bare .d.ts string is returned verbatim; only subpath ambient exports are rewritten.
 	if (typeof exports === "string") {
-		return isTs(exports) ? tsConditions(".", isDualKey(dual, "."), subdirExports) : exports;
+		return isTs(exports) ? tsConditions(".", isDualKey(dual, "."), subdirExports) : stripPublicPrefix(exports);
 	}
 	if (exports && typeof exports === "object") {
 		const out: Json = {};
 		for (const [key, value] of Object.entries(exports as Json)) {
 			if (key === "./package.json" || key.endsWith(".json") || isDeclarationFile(key)) {
-				out[key] = value;
+				out[key] = stripPublicPrefix(value);
 				continue;
 			}
 			const cls = classifyDtsExport(value);

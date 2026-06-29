@@ -2,21 +2,8 @@ packages:
   - packages/*
 autoInstallPeers: true
 configDependencies:
-  "@savvy-web/pnpm-plugin-silk": 0.16.1+sha512-ezIsMs06mTSjPqip8fcXJCx0KXVzRd3vSyjHr2YvTiqksY3Q+l9yd+YZg7Yo4CMwnyndZAolaqXX2WrN0XEWAw==
+  "@savvy-web/pnpm-plugin-silk": 0.17.0+sha512-lF6dqB2ELmR0twce/jQJZwcSSjuCTAzz7P+AIQnQFhmPaXeBRkz5cDskGRiqCG9DzEEsgH9NMPJJpvAwaeUqKA==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
-minimumReleaseAgeExclude:
-  - "@vitest-agent/cli@1.0.0"
-  - "@vitest-agent/mcp@1.0.0"
-  - "@vitest-agent/plugin@1.0.0"
-  - "@vitest-agent/reporter@1.0.0"
-  - "@vitest-agent/sdk@1.0.0"
-  - "@vitest-agent/sidecar-darwin-arm64@1.0.0"
-  - "@vitest-agent/sidecar-linux-arm64@1.0.0"
-  - "@vitest-agent/sidecar-linux-x64@1.0.0"
-  - "@vitest-agent/sidecar-win32-x64@1.0.0"
-  - "@vitest-agent/sidecar@1.0.0"
-  - "@vitest-agent/ui@1.0.0"
-  - shell-quote@1.9.0
 verifyDepsBeforeRun: false

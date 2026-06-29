@@ -36,7 +36,7 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./tsconfig/action.json": "./tsconfig/action.json"
+		"./tsconfig/action.json": "./public/tsconfig/action.json"
 	},
 	"bin": {
 		"github-action-builder": "./src/cli/index.ts"

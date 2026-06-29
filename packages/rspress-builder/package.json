@@ -21,9 +21,9 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./rspress-env.d.ts": "./rspress-env.d.ts",
-		"./tsconfig/ecma.json": "./ecma.json",
-		"./tsconfig/plugin.json": "./tsconfig/plugin.json"
+		"./rspress-env.d.ts": "./public/rspress-env.d.ts",
+		"./tsconfig/ecma.json": "./public/ecma.json",
+		"./tsconfig/plugin.json": "./public/tsconfig/plugin.json"
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
