@@ -1,6 +1,6 @@
 import type { BuildTargetGroupsOptions } from "@savvy-web/tsdown-plugins";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { build } from "../src/run.js";
+import { build } from "../src/index.js";
 
 let savedArgv: string[];
 

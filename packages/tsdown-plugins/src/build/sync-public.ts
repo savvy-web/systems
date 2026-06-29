@@ -31,24 +31,40 @@ function sameBytes(a: string, b: string): boolean {
  * non-clean rebuild is therefore out of scope (a full build's `clean: true` handles it).
  *
  * Collision guard: when a destination already exists, identical bytes mean a prior copy of the same
- * asset (skipped); differing bytes mean a built output occupies that path — throws
- * {@link ConfigValidationError} rather than clobbering it.
+ * asset (skipped); anything else — differing bytes, a directory where a file is needed, or a file
+ * where a parent directory is needed — means a built output occupies that path, so it throws
+ * {@link ConfigValidationError} rather than clobbering it or surfacing a raw fs error.
  * @public
  */
+function throwPublicCollision(rel: string): never {
+	throw new ConfigValidationError({
+		path: `public/${rel}`,
+		reason: `public asset "${rel}" collides with a built output at the package root — rename or remove it`,
+	});
+}
+
 export function copyPublicDir(sourceDir: string, outDir: string): void {
 	if (!existsSync(sourceDir)) return;
 	for (const rel of listFilesRel(sourceDir)) {
 		const src = join(sourceDir, rel);
 		const dst = join(outDir, rel);
 		if (existsSync(dst)) {
-			if (sameBytes(src, dst)) continue;
-			throw new ConfigValidationError({
-				path: `public/${rel}`,
-				reason: `public asset "${rel}" collides with a built output at the package root — rename or remove it`,
-			});
+			// A built output occupies this path. Only an identical FILE is a prior copy to skip; a
+			// directory at dst is a collision — and statSync(dst) on a directory would make sameBytes
+			// throw EISDIR, so gate on isFile() before the byte compare.
+			if (statSync(dst).isFile() && sameBytes(src, dst)) continue;
+			throwPublicCollision(rel);
 		}
-		mkdirSync(dirname(dst), { recursive: true });
-		copyFileSync(src, dst);
+		// A parent segment of dst may itself be an existing built FILE (e.g. public/foo/bar against a
+		// built `foo` file), which makes mkdir/copy throw a raw ENOTDIR/EEXIST. Normalize into the guard.
+		try {
+			mkdirSync(dirname(dst), { recursive: true });
+			copyFileSync(src, dst);
+		} catch (err) {
+			const code = (err as NodeJS.ErrnoException).code;
+			if (code === "ENOTDIR" || code === "EEXIST" || code === "EISDIR") throwPublicCollision(rel);
+			throw err;
+		}
 	}
 }
 

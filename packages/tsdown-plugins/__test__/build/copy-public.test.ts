@@ -57,4 +57,16 @@ describe("copyPublicDir", () => {
 		write(out, "index.js", "// built output");
 		expect(() => copyPublicDir(src, out)).toThrow(ConfigValidationError);
 	});
+
+	it("throws ConfigValidationError when a public file collides with a built directory", () => {
+		write(src, "foo", "public file");
+		mkdirSync(join(out, "foo"), { recursive: true });
+		expect(() => copyPublicDir(src, out)).toThrow(ConfigValidationError);
+	});
+
+	it("throws ConfigValidationError when a nested public file collides with a built file at a parent path", () => {
+		write(src, "foo/bar", "public nested");
+		write(out, "foo", "built file");
+		expect(() => copyPublicDir(src, out)).toThrow(ConfigValidationError);
+	});
 });
