@@ -53,6 +53,19 @@
 			"uri": "silk://guides/llm-friendly-json-schemas"
 		},
 		{
+			"id": "packages/bundler/api/function/build",
+			"title": "build — bundler function",
+			"summary": "Sugar front door: define + run in one call, deriving `cwd`/`argv` from process globals. `cwd` is the directory of the entry script (`process.argv[1]`) — the fa…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["bundler", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/bundler/api/function/build"
+		},
+		{
 			"id": "packages/bundler/api/function/definebuild",
 			"title": "defineBuild — bundler function",
 			"summary": "Normalize + validate a defineBuild config. Pure when imported; self-runs when entry (see run.ts).",
@@ -172,7 +185,7 @@
 		{
 			"id": "packages/bundler/api",
 			"title": "@savvy-web/bundler — API reference",
-			"summary": "@savvy-web/bundler API reference: 9 documented symbols.",
+			"summary": "@savvy-web/bundler API reference: 10 documented symbols.",
 			"tier": "packages",
 			"source": "generated",
 			"status": "stable",
@@ -6163,6 +6176,19 @@
 			"uri": "silk://packages/mcp/resource-taxonomy"
 		},
 		{
+			"id": "packages/rspress-builder/api/function/build",
+			"title": "build — rspress-builder function",
+			"summary": "Front door for building an RSPress plugin. Applies the definePlugin preset and runs the build, deriving `cwd` and `argv` from `process.argv`. For advanced use,…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["rspress-builder", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/rspress-builder/api/function/build"
+		},
+		{
 			"id": "packages/rspress-builder/api/function/defineplugin",
 			"title": "definePlugin — rspress-builder function",
 			"summary": "Build an RSPress plugin package: a Node plugin entry (`.`) plus a browser, bundleless, CSS-module React runtime entry (`./runtime`). Returns a standard `BuildC…",
@@ -6204,7 +6230,7 @@
 		{
 			"id": "packages/rspress-builder/api",
 			"title": "@savvy-web/rspress-builder — API reference",
-			"summary": "@savvy-web/rspress-builder API reference: 3 documented symbols.",
+			"summary": "@savvy-web/rspress-builder API reference: 4 documented symbols.",
 			"tier": "packages",
 			"source": "generated",
 			"status": "stable",
@@ -8468,6 +8494,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/class/tsconfigresolver"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/function/ambientoutname",
+			"title": "ambientOutName — tsdown-plugins function",
+			"summary": "Output basename (including the preserved declaration extension) for an ambient export, derived from the export KEY — consistent with how JS entries are named.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/ambientoutname"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/function/analyzereexportbarrel",
 			"title": "analyzeReexportBarrel — tsdown-plugins function",
 			"summary": "Analyze an entry source as a candidate pure re-export barrel: classify its re-exported names into value vs type-only and report whether it is expressible as a…",
@@ -8492,6 +8531,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/function/applysubdirmetaentries"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/function/assertnoentrycollisions",
+			"title": "assertNoEntryCollisions — tsdown-plugins function",
+			"summary": "Throw ConfigValidationError if any ambient output name collides with a JS build-entry name. The JS entry names carry no extension, so each ambient `outName` is…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/assertnoentrycollisions"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/function/buildemittedmanifest",
@@ -8559,6 +8611,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/function/cjsdefaultinterop"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/function/classifydtsexport",
+			"title": "classifyDtsExport — tsdown-plugins function",
+			"summary": "Classify an export value: - `ambient` — a types-only declaration source (bare `.d.ts` string, or `{ types: \"*.d.ts\" }` with no runtime source). - `mixed` — a d…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/classifydtsexport"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/function/collectexportnames",
 			"title": "collectExportNames — tsdown-plugins function",
 			"summary": "Collect every name a module exports (named re-exports, namespace re-exports, and local `export` declarations). Used to test whether a barrel's re-exports are a…",
@@ -8585,6 +8650,32 @@
 			"uri": "silk://packages/tsdown-plugins/api/function/computeexefilename"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/function/copyambientdts",
+			"title": "copyAmbientDts — tsdown-plugins function",
+			"summary": "Copy each ambient `.d.ts` export's source verbatim into `outDir/<outName>`, byte-stable (an unchanged file keeps its timestamp). The copy is NOT compiled or bu…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/copyambientdts"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/function/copypublicdir",
+			"title": "copyPublicDir — tsdown-plugins function",
+			"summary": "Flatten `sourceDir` into `outDir`, additively. `sourceDir/<rel>` copies to `outDir/<rel>` — the `public/` directory segment is dropped, so a package's staged a…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/copypublicdir"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/function/createtimer",
 			"title": "createTimer — tsdown-plugins function",
 			"summary": "Create a wall-clock timer. (Date.now is fine in runtime build code.)",
@@ -8609,6 +8700,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/function/createtsdownlogger"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/function/declarationext",
+			"title": "declarationExt — tsdown-plugins function",
+			"summary": "The declaration-file extension of a path, or undefined when it is not a declaration file.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/declarationext"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/function/defaultmanifesttransform",
@@ -8663,6 +8767,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/function/emitmanifest"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/function/extractambientdts",
+			"title": "extractAmbientDts — tsdown-plugins function",
+			"summary": "Extract the types-only `.d.ts` exports from a package's `exports` map. Pure. Throws ConfigValidationError on a mixed export (Decision 2) or an ambient-vs-ambie…",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/extractambientdts"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/function/extractentries",
 			"title": "extractEntries — tsdown-plugins function",
 			"summary": "function extractEntries from @savvy-web/tsdown-plugins.",
@@ -8674,6 +8791,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/function/extractentries"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/function/findrelativespecifiers",
+			"title": "findRelativeSpecifiers — tsdown-plugins function",
+			"summary": "function findRelativeSpecifiers from @savvy-web/tsdown-plugins.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/findrelativespecifiers"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/function/flattenissues",
@@ -8726,6 +8856,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/function/istargetobject"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/function/mixeddtsexporterror",
+			"title": "mixedDtsExportError — tsdown-plugins function",
+			"summary": "The shared mixed-export error (Decision 2), used by both the extractor and the manifest transform.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/function/mixeddtsexporterror"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/function/nodebuiltindefaultinterop",
@@ -8975,19 +9118,6 @@
 			"uri": "silk://packages/tsdown-plugins/api/function/serializeissues"
 		},
 		{
-			"id": "packages/tsdown-plugins/api/function/syncpublicdir",
-			"title": "syncPublicDir — tsdown-plugins function",
-			"summary": "Mirror `sourceDir` into `targetDir`, idempotently. Replaces tsdown's built-in `copy`, whose non-recursive mkdir throws `EEXIST` when the target already exists…",
-			"tier": "packages",
-			"source": "generated",
-			"status": "stable",
-			"tags": ["tsdown-plugins", "api"],
-			"audience": ["assistant"],
-			"priority": 0.3,
-			"related": [],
-			"uri": "silk://packages/tsdown-plugins/api/function/syncpublicdir"
-		},
-		{
 			"id": "packages/tsdown-plugins/api/function/transformbin",
 			"title": "transformBin — tsdown-plugins function",
 			"summary": "Rewrite bin: TS targets to bin/[command].js (string to bin/cli.js); strip leading ./ otherwise.",
@@ -9079,6 +9209,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/function/writetargetsbinding"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/interface/ambientdtsentry",
+			"title": "AmbientDtsEntry — tsdown-plugins interface",
+			"summary": "One ambient `.d.ts` export resolved for copy + manifest.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/interface/ambientdtsentry"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/interface/buildemittedmanifestoptions",
 			"title": "BuildEmittedManifestOptions — tsdown-plugins interface",
 			"summary": "interface BuildEmittedManifestOptions from @savvy-web/tsdown-plugins.",
@@ -9129,6 +9272,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/interface/buildtargetgroupsoptions"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/interface/copyambientdtsoptions",
+			"title": "CopyAmbientDtsOptions — tsdown-plugins interface",
+			"summary": "interface CopyAmbientDtsOptions from @savvy-web/tsdown-plugins.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/interface/copyambientdtsoptions"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/interface/cssoptions",
@@ -9272,6 +9428,19 @@
 			"priority": 0.3,
 			"related": [],
 			"uri": "silk://packages/tsdown-plugins/api/interface/exetargetinput"
+		},
+		{
+			"id": "packages/tsdown-plugins/api/interface/extractambientoptions",
+			"title": "ExtractAmbientOptions — tsdown-plugins interface",
+			"summary": "interface ExtractAmbientOptions from @savvy-web/tsdown-plugins.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/interface/extractambientoptions"
 		},
 		{
 			"id": "packages/tsdown-plugins/api/interface/extractoptions",
@@ -9820,6 +9989,19 @@
 			"uri": "silk://packages/tsdown-plugins/api/type/buildplatform"
 		},
 		{
+			"id": "packages/tsdown-plugins/api/type/dtsexportclass",
+			"title": "DtsExportClass — tsdown-plugins type",
+			"summary": "Classification of a single export value for ambient-.d.ts handling.",
+			"tier": "packages",
+			"source": "generated",
+			"status": "stable",
+			"tags": ["tsdown-plugins", "api"],
+			"audience": ["assistant"],
+			"priority": 0.3,
+			"related": [],
+			"uri": "silk://packages/tsdown-plugins/api/type/dtsexportclass"
+		},
+		{
 			"id": "packages/tsdown-plugins/api/type/dualexports",
 			"title": "DualExports — tsdown-plugins type",
 			"summary": "Which exports get a CJS `require` condition. `true`/`false` apply uniformly to every TS export; a Set marks ONLY the listed export keys (e.g. \"./changesets/mar…",
@@ -10134,7 +10316,7 @@
 		{
 			"id": "packages/tsdown-plugins/api",
 			"title": "@savvy-web/tsdown-plugins — API reference",
-			"summary": "@savvy-web/tsdown-plugins API reference: 144 documented symbols.",
+			"summary": "@savvy-web/tsdown-plugins API reference: 156 documented symbols.",
 			"tier": "packages",
 			"source": "generated",
 			"status": "stable",

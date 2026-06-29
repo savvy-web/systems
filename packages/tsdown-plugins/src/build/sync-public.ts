@@ -1,4 +1,4 @@
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { findRelativeSpecifiers } from "../dts/relative-imports.js";
 import type { AmbientDtsEntry } from "../entry/ambient-dts.js";
@@ -21,56 +21,51 @@ function sameBytes(a: string, b: string): boolean {
 	return readFileSync(a).equals(readFileSync(b));
 }
 
-/** Remove empty directories under `dir` (deepest-first); `dir` itself is left in place. */
-function pruneEmptyDirs(dir: string): void {
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		if (!entry.isDirectory()) continue;
-		const sub = join(dir, entry.name);
-		pruneEmptyDirs(sub);
-		if (readdirSync(sub).length === 0) rmSync(sub, { recursive: true, force: true });
-	}
-}
-
 /**
- * Mirror `sourceDir` into `targetDir`, idempotently.
+ * Flatten `sourceDir` into `outDir`, additively.
  *
- * Replaces tsdown's built-in `copy`, whose non-recursive mkdir throws `EEXIST` when the target
- * already exists (re-builds, `prepare`-on-install, concurrent turbo invocations). Behavior:
+ * `sourceDir/<rel>` copies to `outDir/<rel>` — the `public/` directory segment is dropped, so a
+ * package's staged assets land at the package root (`public/ecma.json` becomes `<pkg>/ecma.json`). This
+ * function NEVER deletes: `outDir` is the shared package root that the JS/dts passes
+ * own, so deleting "files not in source" would wipe the build product. Stale-asset pruning on a
+ * non-clean rebuild is therefore out of scope (a full build's `clean: true` handles it).
  *
- * - source absent: no-op.
- * - target absent: copy `sourceDir` wholesale.
- * - target present: copy only files that are new or whose bytes differ, then delete target files
- *   that no longer exist in the source and prune the directories left empty.
- *
- * The byte-diff keeps unchanged files (and their timestamps) untouched, so a large copied asset
- * tree — e.g. the mcp markdown corpus — is not rewritten on every build.
+ * Collision guard: when a destination already exists, identical bytes mean a prior copy of the same
+ * asset (skipped); anything else — differing bytes, a directory where a file is needed, or a file
+ * where a parent directory is needed — means a built output occupies that path, so it throws
+ * {@link ConfigValidationError} rather than clobbering it or surfacing a raw fs error.
  * @public
  */
-export function syncPublicDir(sourceDir: string, targetDir: string): void {
+function throwPublicCollision(rel: string): never {
+	throw new ConfigValidationError({
+		path: `public/${rel}`,
+		reason: `public asset "${rel}" collides with a built output at the package root — rename or remove it`,
+	});
+}
+
+export function copyPublicDir(sourceDir: string, outDir: string): void {
 	if (!existsSync(sourceDir)) return;
-	if (!existsSync(targetDir)) {
-		cpSync(sourceDir, targetDir, { recursive: true });
-		return;
-	}
-
-	const sourceFiles = listFilesRel(sourceDir);
-	const sourceSet = new Set(sourceFiles);
-
-	// (a) copy new or byte-changed files.
-	for (const rel of sourceFiles) {
+	for (const rel of listFilesRel(sourceDir)) {
 		const src = join(sourceDir, rel);
-		const dst = join(targetDir, rel);
-		if (!existsSync(dst) || !sameBytes(src, dst)) {
+		const dst = join(outDir, rel);
+		if (existsSync(dst)) {
+			// A built output occupies this path. Only an identical FILE is a prior copy to skip; a
+			// directory at dst is a collision — and statSync(dst) on a directory would make sameBytes
+			// throw EISDIR, so gate on isFile() before the byte compare.
+			if (statSync(dst).isFile() && sameBytes(src, dst)) continue;
+			throwPublicCollision(rel);
+		}
+		// A parent segment of dst may itself be an existing built FILE (e.g. public/foo/bar against a
+		// built `foo` file), which makes mkdir/copy throw a raw ENOTDIR/EEXIST. Normalize into the guard.
+		try {
 			mkdirSync(dirname(dst), { recursive: true });
 			copyFileSync(src, dst);
+		} catch (err) {
+			const code = (err as NodeJS.ErrnoException).code;
+			if (code === "ENOTDIR" || code === "EEXIST" || code === "EISDIR") throwPublicCollision(rel);
+			throw err;
 		}
 	}
-
-	// (b) delete target files that are no longer in the source, then drop empty dirs.
-	for (const rel of listFilesRel(targetDir)) {
-		if (!sourceSet.has(rel)) rmSync(join(targetDir, rel), { force: true });
-	}
-	pruneEmptyDirs(targetDir);
 }
 
 /** @public */

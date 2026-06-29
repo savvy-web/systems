@@ -47,7 +47,7 @@ Force-bundle node_modules (and workspace) JS dependencies that are not externali
 readonly define?: Record<string, string> | undefined;
 ```
 
-Compile-time global replacements forwarded to the build `define` (merged with the auto-version).
+Compile-time global replacements forwarded to the [build](silk://packages/bundler/api/function/build) `define` (merged with the auto-version).
 
 ### devManifest
 
@@ -81,7 +81,7 @@ readonly externals: ReadonlyArray<string>;
 readonly format?: ReadonlyArray<BuildFormat> | undefined;
 ```
 
-Output module formats forwarded to the tsdown build (esm-only by default; add "cjs" for dual-format).
+Output module formats forwarded to the tsdown [build](silk://packages/bundler/api/function/build) (esm-only by default; add "cjs" for dual-format).
 
 ### formats
 

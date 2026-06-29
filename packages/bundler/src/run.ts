@@ -1,6 +1,6 @@
 // packages/bundler/src/run.ts
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type {
 	BuildGroupSpec,
 	BuildReport,
@@ -46,8 +46,8 @@ import {
 	writeResolvedTsconfig,
 } from "@savvy-web/tsdown-plugins";
 import { Effect } from "effect";
-import type { BuildConfig } from "./config.js";
-import { parseArgs } from "./config.js";
+import type { BuildConfig, BuildConfigInput } from "./config.js";
+import { defineBuild, parseArgs } from "./config.js";
 
 /** @public */
 export interface RunOptions {
@@ -538,4 +538,23 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 
 	await renderAndWrite();
 	writeIssuesBestEffort();
+}
+
+/**
+ * Sugar front door: define + run in one call, deriving `cwd`/`argv` from process globals.
+ *
+ * `cwd` is the directory of the entry script (`process.argv[1]`) — the faithful equivalent of the
+ * old `import.meta.dirname`, correct even when invoked by an explicit path from another directory.
+ * `argv` is `process.argv.slice(2)`, so `--target` and friends are read internally; the package.json
+ * build scripts stay `node savvy.build.ts --target <t>`. `overrides` merges last as the test/advanced
+ * IO seam (the same injectables as {@link RunOptions}).
+ *
+ * @public
+ */
+export async function build(input: BuildConfigInput = {}, overrides: Partial<RunOptions> = {}): Promise<void> {
+	return runBuild(defineBuild(input), {
+		cwd: process.argv[1] ? dirname(process.argv[1]) : process.cwd(),
+		argv: process.argv.slice(2),
+		...overrides,
+	});
 }

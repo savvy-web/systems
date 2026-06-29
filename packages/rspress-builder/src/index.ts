@@ -1,12 +1,13 @@
 // packages/rspress-builder/src/index.ts
-import type { BuildConfig, BuildConfigInput, BuildEntryOverride } from "@savvy-web/bundler";
-import { defineBuild } from "@savvy-web/bundler";
+import { dirname } from "node:path";
+import type { BuildConfig, BuildConfigInput, BuildEntryOverride, RunOptions } from "@savvy-web/bundler";
+import { defineBuild, runBuild } from "@savvy-web/bundler";
 
-export type { RunOptions } from "@savvy-web/bundler";
+export type { RunOptions };
 // Re-export the orchestrator so a consumer imports both from one source. definePlugin
 // returns a standard BuildConfig with the runtime baked in as an override partition, so the
 // bundler's runBuild consumes it unchanged.
-export { runBuild } from "@savvy-web/bundler";
+export { runBuild };
 
 /**
  * Per-bundle externals tuning for a single partition (plugin or runtime).
@@ -98,4 +99,19 @@ export function definePlugin(options: RspressPluginOptions = {}): BuildConfig {
 	};
 
 	return defineBuild(input);
+}
+
+/**
+ * Front door for building an RSPress plugin. Applies the {@link definePlugin} preset
+ * and runs the build, deriving `cwd` and `argv` from `process.argv`. For advanced use,
+ * {@link definePlugin} and `runBuild` remain exported.
+ *
+ * @public
+ */
+export async function build(options: RspressPluginOptions = {}, overrides: Partial<RunOptions> = {}): Promise<void> {
+	return runBuild(definePlugin(options), {
+		cwd: process.argv[1] ? dirname(process.argv[1]) : process.cwd(),
+		argv: process.argv.slice(2),
+		...overrides,
+	});
 }

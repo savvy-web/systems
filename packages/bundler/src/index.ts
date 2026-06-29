@@ -5,4 +5,4 @@ export { defaultManifestTransform, extractAmbientDts } from "@savvy-web/tsdown-p
 export type { BuildConfig, BuildConfigInput, BuildEntryOverride, OutputConfig, ParsedArgs, Plugin } from "./config.js";
 export { defineBuild, parseArgs } from "./config.js";
 export type { RunOptions } from "./run.js";
-export { runBuild } from "./run.js";
+export { build, runBuild } from "./run.js";

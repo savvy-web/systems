@@ -11,7 +11,7 @@ related: []
 
 # parseArgs
 
-Parse the build CLI argv into the normalized target/flags shape.
+Parse the [build](silk://packages/bundler/api/function/build) CLI argv into the normalized target/flags shape.
 
 ```ts
 function parseArgs(argv: ReadonlyArray<string>): ParsedArgs;

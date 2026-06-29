@@ -33,7 +33,7 @@ API-model generation. Defaults to on (documents plugin options AND runtime compo
 readonly define?: Record<string, string>;
 ```
 
-Build-wide compile-time global replacements forwarded to every partition (the bundler's `define` is build-wide; there is no per-bundle define). Merged AFTER the `import.meta.env` identity map, so a user key may override it intentionally. Values are inserted verbatim (string literals must be quoted).
+Build-wide compile-time global replacements forwarded to every partition (the bundler's `define` is [build](silk://packages/rspress-builder/api/function/build)-wide; there is no per-bundle define). Merged AFTER the `import.meta.env` identity map, so a user key may override it intentionally. Values are inserted verbatim (string literals must be quoted).
 
 ### dtsBundledPackages
 
