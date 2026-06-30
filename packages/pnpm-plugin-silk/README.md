@@ -5,18 +5,18 @@
 [![TypeScript 6.0](https://img.shields.io/badge/TypeScript-6.0-3178c6.svg)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-%3E%3D11-orange)](https://pnpm.io/)
 
-Centralized dependency version management for the Silk ecosystem via pnpm config dependencies. Share curated dependency catalogs, security overrides and build configurations across multiple repositories from a single source of truth.
+Centralized dependency-version management for the Silk ecosystem, delivered as a pnpm config dependency. Define dependency catalogs, security overrides and build settings once, then share them across every repository in the ecosystem.
 
 ## Features
 
-- **Dual catalog strategy** — Current versions for direct dependencies (`catalog:silk`), permissive ranges for peer dependencies (`catalog:silkPeers`)
-- **Security overrides** — Centralized CVE fixes via `overrides` that propagate to all consuming repositories
-- **Build allowlist** — `allowBuilds` map (pnpm 11) controls which packages may run install scripts; local repos can extend it per-key
-- **Security defaults** — `strictDepBuilds`, `blockExoticSubdeps` and `minimumReleaseAge` are enforced by default; weakening them triggers a prominent warning
-- **Workspace settings inheritance** — `publicHoistPattern`, `packageExtensions`, `allowedDeprecatedVersions`, `supportedArchitectures` and `auditConfig` all merge into child workspaces
-- **Peer dependency rules** — Syncs `peerDependencyRules` (allowedVersions, ignoreMissing, allowAny) to suppress common peer warnings
-- **Effect ecosystem management** — 26 coordinated `@effect/*` packages across eight functional groups with compatible version resolution
-- **Non-destructive merging** — Local definitions always take precedence, with clear warnings for divergences
+- **Dual catalog strategy** — current versions for direct dependencies (`catalog:silk`) and permissive ranges for peer dependencies (`catalog:silkPeers`)
+- **Security overrides** — centralized CVE fixes via `overrides` that propagate to every consuming repository
+- **Build allowlist** — an `allowBuilds` map controls which packages may run install scripts; consuming repos extend it per key
+- **Security defaults** — `strictDepBuilds`, `blockExoticSubdeps` and `minimumReleaseAge` are enforced by default; weakening one triggers a warning
+- **Workspace settings inheritance** — `publicHoistPattern` and `allowedDeprecatedVersions` merge into consuming workspaces
+- **Peer dependency rules** — `peerDependencyRules.allowedVersions` suppresses common peer-dependency warnings
+- **Effect ecosystem coordination** — the full `@effect/*` package family and `effect` itself, pinned to mutually compatible versions
+- **Non-destructive merging** — local definitions always win, with warnings when they diverge from the shared defaults
 
 ## Install
 
@@ -49,8 +49,7 @@ Reference Silk catalogs in your `package.json`:
 }
 ```
 
-The `silk` catalog provides current/latest versions for direct dependencies, while `silkPeers` provides permissive ranges for peer dependencies. Security overrides, build script allowlists and hoist patterns are automatically merged during `pnpm install`.
-
+The `silk` catalog supplies current versions for direct dependencies and `silkPeers` supplies permissive ranges for peers. Security overrides, build allowlists and hoist patterns merge automatically during `pnpm install`.
 
 ## License
 
