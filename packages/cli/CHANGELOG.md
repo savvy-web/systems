@@ -1,5 +1,14 @@
 # @savvy-web/cli
 
+## 1.3.5
+
+### Maintenance
+
+* [`8941f4c`](https://github.com/savvy-web/systems/commit/8941f4c8c54f2020d00689269fb16ea05ea94fcb) Coordinated re-release alongside the `@savvy-web/pnpm-plugin-silk` monorepo migration so these packages pick up the refreshed `catalog:silkPeers` peer-dependency ranges. Also adds `LICENSE` files and applies minor manifest and `tsconfig.json` corrections across the three packages in the fixed release group, including moving `@savvy-web/silk-effects` to `devDependencies` in `@savvy-web/silk` (it is build-time only). No runtime behavior changes.
+  | Dependency              | Type       | Action  | From  | To    |
+  | ----------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/silk-effects | dependency | updated | 1.5.1 | 1.5.2 |
+
 ## 1.3.4
 
 ### Patch Changes
