@@ -1,5 +1,14 @@
 # @savvy-web/bundler
 
+## 1.0.1
+
+### Maintenance
+
+* [`8941f4c`](https://github.com/savvy-web/systems/commit/8941f4c8c54f2020d00689269fb16ea05ea94fcb) Coordinated re-release alongside the `@savvy-web/pnpm-plugin-silk` monorepo migration so the package picks up the refreshed `catalog:silkPeers` peer-dependency ranges. Also adds a `LICENSE` file and minor `tsconfig.json` corrections. No runtime behavior changes.
+  | Dependency                | Type       | Action  | From  | To    |
+  | ------------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/tsdown-plugins | dependency | updated | 1.0.0 | 1.0.1 |
+
 ## 1.0.0
 
 ### Breaking Changes
@@ -37,9 +46,7 @@ publishes as:
 ```ts
 import { build } from "@savvy-web/bundler";
 
-await build({
-  /* BuildConfigInput options */
-});
+await build({/* BuildConfigInput options */});
 ```
 
 `defineBuild` and `runBuild` remain exported. The second argument of `build()` accepts `Partial<RunOptions>` for injectables useful in tests or custom IO.
