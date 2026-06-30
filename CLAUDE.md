@@ -16,6 +16,7 @@ Each package has its own `CLAUDE.md` (auto-loaded when you work in its subtree) 
 - **templates** (`@savvy-web/templates`) — pure-function TypeScript project scaffolding. See `packages/templates/CLAUDE.md`.
 - **github-action-builder** (`@savvy-web/github-action-builder`) — zero-config rsbuild build tool for Node.js 24 GitHub Actions. See `packages/github-action-builder/CLAUDE.md`.
 - **github-action-effects** (`@savvy-web/github-action-effects`) — Effect services replacing `@actions/*`. See `packages/github-action-effects/CLAUDE.md`.
+- **pnpm-plugin-silk** (`@savvy-web/pnpm-plugin-silk`) — the unified pnpm config dependency distributing the `silk`/`silkPeers` catalogs and install-time policy across the ecosystem. See `packages/pnpm-plugin-silk/CLAUDE.md`.
 
 Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/docs`, `plugins/github-actions`), the placeholder docs site (`docs/`), cross-repo planning, and the plugin marketplace entry point (`.claude-plugin/`).
 
@@ -23,7 +24,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/docs`, `plu
 
 - **Runtime:** Node.js 24.11.0+
 - **Package Manager:** pnpm 11.5.1 with `@savvy-web/pnpm-plugin-silk` config dependency
-- **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all ten packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other eight via the front-door `defineBuild`/`runBuild`); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
+- **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all eleven packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other nine via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
 - **Linting:** Biome, markdownlint
 - **Testing:** Vitest via `@vitest-agent/plugin`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
@@ -46,7 +47,7 @@ Build runs on install. A single root `prepare: husky && turbo run build:dev` bui
 
 The vitest `globalSetup` runs `pnpm turbo run build:dev`, so when a test run needs to rebuild a package its `dist/dev` (and the `node_modules/@savvy-web/*` `link:` symlinks pointing into it) can momentarily appear missing mid-run. This is transient — do not "fix" it; let the run finish, then re-check. The outputs and links are back once the build completes.
 
-Required `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`. The plugin is pinned in `pnpm-workspace.yaml` WITH its `+sha512-...` integrity hash (turbo/reproducibility need it); `pnpm add --config` omits the hash, so add it by hand. Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts`: injection hard-links each package's `dist/dev` at link time, which is absent before the `prepare` build runs, so a frozen install aborts with `ENOENT`. Plain `link:` symlinks (publishConfig `directory: dist/dev/pkg` for the ten bundler-built packages, + `linkDirectory: true`) tolerate the not-yet-built dir, which the `prepare` build then populates. `@savvy-web/cli` and `@savvy-web/mcp` are direct root devDependencies so they link to `dist/dev`. The `savvy` bin resolves at `dist/dev/pkg/bin/savvy.js`, on PATH after the `prepare` build.
+Required `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`. The plugin is pinned in `pnpm-workspace.yaml` WITH its `+sha512-...` integrity hash (turbo/reproducibility need it); `pnpm add --config` omits the hash, so add it by hand. Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts`: injection hard-links each package's `dist/dev` at link time, which is absent before the `prepare` build runs, so a frozen install aborts with `ENOENT`. Plain `link:` symlinks (publishConfig `directory: dist/dev/pkg` for the eleven bundler-built packages, + `linkDirectory: true`) tolerate the not-yet-built dir, which the `prepare` build then populates. `@savvy-web/cli` and `@savvy-web/mcp` are direct root devDependencies so they link to `dist/dev`. The `savvy` bin resolves at `dist/dev/pkg/bin/savvy.js`, on PATH after the `prepare` build.
 
 ## Ecosystem Context
 
@@ -66,7 +67,8 @@ Key coordination points:
 - README.md is for external users; `.claude/design/` for package architecture docs.
 - The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — all three depend only on `@savvy-web/silk-effects` within the repo. (`mcp` also consumes the external `api-extractor-llms` npm package as a build-time devDependency for its API-doc pipeline.)
 - `@savvy-web/silk`, `@savvy-web/cli`, and `@savvy-web/mcp` are a `fixed` changeset group (versioned and released together); silk's changeset config carries a `versionFiles` glob that bumps the `plugins/*` manifests in lockstep.
-- `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` version independently (changesets auto-bumps the bundler when tsdown-plugins changes; not a fixed group); both self-host while the other eight packages build via the bundler front door.
+- `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` version independently (changesets auto-bumps the bundler when tsdown-plugins changes; not a fixed group); both self-host while the other nine packages build via the bundler front door.
+- `@savvy-web/pnpm-plugin-silk` versions independently — not in the `fixed` (`silk`/`cli`/`mcp`) or `linked` (`bundler`/`rspress-builder`/`tsdown-plugins`) changeset groups; it is npm-registry-only (the one package not also on GitHub Packages).
 
 ## Design Documentation
 

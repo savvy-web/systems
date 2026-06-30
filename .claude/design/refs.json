@@ -50,6 +50,12 @@
 			"recordedAt": "2026-06-26"
 		},
 		{
+			"source": "packages/pnpm-plugin-silk/CLAUDE.md",
+			"target": ".claude/design/pnpm-plugin-silk/architecture.md",
+			"hash": "f8e717ced4ec71493c9f35d7555b98f57ae10d92a19e2bc7bee6391c03d20d68",
+			"recordedAt": "2026-06-30"
+		},
+		{
 			"source": "packages/rspress-builder/CLAUDE.md",
 			"target": ".claude/design/rspress-builder/architecture.md",
 			"hash": "ac8e8ceafc00ec3a25add9acbbb17bc968e89af76eb7319c34d498f97783e95d",
