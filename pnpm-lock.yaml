@@ -100,7 +100,7 @@ importers:
         specifier: workspace:*
         version: link:../tsdown-plugins/dist/dev/pkg
       '@tsdown/exe':
-        specifier: ^0.22.1
+        specifier: ^0.22.3
         version: 0.22.3(tsdown@0.22.3)
       effect:
         specifier: catalog:silk
@@ -482,20 +482,20 @@ importers:
         specifier: catalog:silk
         version: 3.21.4
       prettier:
-        specifier: ^3.8.4
+        specifier: ^3.9.3
         version: 3.9.3
       semver:
-        specifier: ^7.8.4
+        specifier: ^7.8.5
         version: 7.8.5
     devDependencies:
       '@changesets/cli':
         specifier: ^2.31.0
         version: 2.31.0(@types/node@26.0.1)
       '@commitlint/cli':
-        specifier: ^21.0.2
+        specifier: ^21.1.0
         version: 21.1.0(@types/node@26.0.1)(conventional-commits-parser@6.4.0)(typescript@6.0.3)
       '@commitlint/config-conventional':
-        specifier: ^21.0.2
+        specifier: ^21.1.0
         version: 21.1.0
       '@savvy-web/bundler':
         specifier: workspace:*
@@ -510,13 +510,13 @@ importers:
         specifier: catalog:silk
         version: 7.0.0-dev.20260630.1
       commitizen:
-        specifier: ^4.3.1
+        specifier: ^4.3.2
         version: 4.3.2(@types/node@26.0.1)(typescript@6.0.3)
       husky:
         specifier: ^9.1.7
         version: 9.1.7
       lint-staged:
-        specifier: ^17.0.7
+        specifier: ^17.0.8
         version: 17.0.8
       markdownlint-cli2:
         specifier: ^0.22.1
@@ -528,7 +528,7 @@ importers:
         specifier: catalog:silk
         version: 4.22.4
       turbo:
-        specifier: ^2.9.18
+        specifier: ^2.10.0
         version: 2.10.0
       typescript:
         specifier: catalog:silk
