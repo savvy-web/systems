@@ -105,6 +105,9 @@ importers:
       '@types/node':
         specifier: ^26.0.0
         version: 26.0.1
+      tsdown:
+        specifier: ^0.22.3
+        version: 0.22.3(@tsdown/css@0.22.3)(@tsdown/exe@0.22.3)(@typescript/native-preview@7.0.0-dev.20260630.1)(tsx@4.22.4)(typescript@6.0.3)
       typescript:
         specifier: catalog:silk
         version: 6.0.3
