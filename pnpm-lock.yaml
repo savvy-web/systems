@@ -472,6 +472,12 @@ importers:
       '@effect/platform':
         specifier: catalog:silk
         version: 0.96.2(effect@3.21.4)
+      '@savvy-web/cli':
+        specifier: workspace:*
+        version: link:../cli/dist/dev/pkg
+      '@savvy-web/mcp':
+        specifier: workspace:*
+        version: link:../mcp/dist/dev/pkg
       effect:
         specifier: catalog:silk
         version: 3.21.4
@@ -494,12 +500,6 @@ importers:
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
-      '@savvy-web/cli':
-        specifier: workspace:*
-        version: link:../cli/dist/dev/pkg
-      '@savvy-web/mcp':
-        specifier: workspace:*
-        version: link:../mcp/dist/dev/pkg
       '@savvy-web/silk-effects':
         specifier: workspace:*
         version: link:../silk-effects/dist/dev/pkg
