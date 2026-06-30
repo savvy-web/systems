@@ -7,7 +7,7 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"@savvy-web/tsdown-plugins": "workspace:*"
+		"@fixture/tsdown-plugins": "workspace:*"
 	},
 	"publishConfig": {
 		"access": "public",
