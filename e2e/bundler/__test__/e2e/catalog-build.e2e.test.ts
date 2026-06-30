@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { fixtureDir } from "./helpers.js";
@@ -14,7 +14,7 @@ describe("e2e: catalog: and workspace: resolve through a real build", () => {
 		const serialized = JSON.stringify(manifest);
 		expect(serialized).not.toContain("catalog:");
 		expect(serialized).not.toContain("workspace:");
-		expect(manifest.dependencies.effect).toMatch(/^\^?\d/);
+		expect(manifest.dependencies.effect).toBe("^3.21.4");
 		expect(manifest.dependencies["@fixture/sibling"]).toMatch(/3\.4\.5/);
 	}, 60_000);
 });
@@ -35,5 +35,6 @@ describe("e2e: meta build resolves + optimistic rewrite (real API Extractor)", (
 		expect(serialized).not.toMatch(/catalog:/);
 		expect(metaPkg.version).toBe("2.0.0");
 		expect(metaPkg.dependencies["@fixture/tsdown-plugins"]).toBe("2.0.0");
+		expect(existsSync(join(meta, "models/meta-prod.api.json"))).toBe(true);
 	}, 120_000);
 });
