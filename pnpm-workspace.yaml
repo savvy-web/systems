@@ -1,9 +1,189 @@
-packages:
-  - packages/*
+allowBuilds:
+  "@parcel/watcher": true
+  "@savvy-web/github-action-builder": true
+  "@savvy-web/vitest": true
+  better-sqlite3: true
+  core-js: true
+  esbuild: true
+  msgpackr-extract: true
+allowedDeprecatedVersions:
+  "@types/acorn": "*"
+  git-raw-commits: "*"
+  glob: "*"
+  inflight: "*"
+  node-domexception: "*"
+  prebuild-install: "*"
 autoInstallPeers: true
-configDependencies:
-  "@savvy-web/pnpm-plugin-silk": 0.17.0+sha512-lF6dqB2ELmR0twce/jQJZwcSSjuCTAzz7P+AIQnQFhmPaXeBRkz5cDskGRiqCG9DzEEsgH9NMPJJpvAwaeUqKA==
+blockExoticSubdeps: true
+catalogs:
+  silk:
+    "@effect/ai": ^0.36.0
+    "@effect/ai-amazon-bedrock": ^0.16.1
+    "@effect/ai-anthropic": ^0.26.0
+    "@effect/ai-google": ^0.15.0
+    "@effect/ai-openai": ^0.40.1
+    "@effect/cli": ^0.75.2
+    "@effect/cluster": ^0.59.0
+    "@effect/experimental": ^0.60.0
+    "@effect/language-service": ^0.86.2
+    "@effect/opentelemetry": ^0.63.0
+    "@effect/platform": ^0.96.2
+    "@effect/platform-browser": ^0.76.0
+    "@effect/platform-bun": ^0.90.0
+    "@effect/platform-node": ^0.107.0
+    "@effect/platform-node-shared": ^0.60.0
+    "@effect/printer": ^0.49.0
+    "@effect/printer-ansi": ^0.49.0
+    "@effect/rpc": ^0.75.1
+    "@effect/sql": ^0.51.1
+    "@effect/sql-clickhouse": ^0.49.0
+    "@effect/sql-d1": ^0.49.0
+    "@effect/sql-drizzle": ^0.50.0
+    "@effect/sql-kysely": ^0.47.0
+    "@effect/sql-libsql": ^0.41.0
+    "@effect/sql-mssql": ^0.52.0
+    "@effect/sql-mysql2": ^0.52.0
+    "@effect/sql-pg": ^0.52.1
+    "@effect/sql-sqlite-bun": ^0.52.0
+    "@effect/sql-sqlite-do": ^0.29.0
+    "@effect/sql-sqlite-node": ^0.52.0
+    "@effect/sql-sqlite-react-native": ^0.54.0
+    "@effect/sql-sqlite-wasm": ^0.52.0
+    "@effect/tsgo": ^0.14.5
+    "@effect/typeclass": ^0.40.0
+    "@effect/vitest": ^0.29.0
+    "@effect/workflow": ^0.18.2
+    "@types/node": ^26.0.0
+    "@types/react": ^19.2.17
+    "@types/react-dom": ^19.2.3
+    "@typescript/native-preview": ^7.0.0-dev.20260621.1
+    "@vitest/coverage-istanbul": ^4.1.9
+    "@vitest/coverage-v8": ^4.1.9
+    effect: ^3.21.4
+    react: ^19.2.7
+    react-dom: ^19.2.7
+    tsx: ^4.22.4
+    typescript: ^6.0.3
+    vitest: ^4.1.9
+  silkPeers:
+    "@effect/ai": ">=0.36.0"
+    "@effect/ai-amazon-bedrock": ">=0.16.1"
+    "@effect/ai-anthropic": ">=0.26.0"
+    "@effect/ai-google": ">=0.15.0"
+    "@effect/ai-openai": ">=0.40.1"
+    "@effect/cli": ">=0.75.2"
+    "@effect/cluster": ">=0.59.0"
+    "@effect/experimental": ">=0.60.0"
+    "@effect/language-service": ">=0.86.2"
+    "@effect/opentelemetry": ">=0.63.0"
+    "@effect/platform": ">=0.96.0"
+    "@effect/platform-browser": ">=0.76.0"
+    "@effect/platform-bun": ">=0.90.0"
+    "@effect/platform-node": ">=0.107.0"
+    "@effect/platform-node-shared": ">=0.60.0"
+    "@effect/printer": ">=0.49.0"
+    "@effect/printer-ansi": ">=0.49.0"
+    "@effect/rpc": ">=0.75.1"
+    "@effect/sql": ">=0.51.0"
+    "@effect/sql-clickhouse": ">=0.49.0"
+    "@effect/sql-d1": ">=0.49.0"
+    "@effect/sql-drizzle": ">=0.50.0"
+    "@effect/sql-kysely": ">=0.47.0"
+    "@effect/sql-libsql": ">=0.41.0"
+    "@effect/sql-mssql": ">=0.52.0"
+    "@effect/sql-mysql2": ">=0.52.0"
+    "@effect/sql-pg": ">=0.52.1"
+    "@effect/sql-sqlite-bun": ">=0.52.0"
+    "@effect/sql-sqlite-do": ">=0.29.0"
+    "@effect/sql-sqlite-node": ">=0.52.0"
+    "@effect/sql-sqlite-react-native": ">=0.54.0"
+    "@effect/sql-sqlite-wasm": ">=0.52.0"
+    "@effect/tsgo": ">=0.14.5"
+    "@effect/typeclass": ">=0.40.0"
+    "@effect/vitest": ">=0.29.0"
+    "@effect/workflow": ">=0.18.2"
+    "@types/node": ^26.0.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
+    "@typescript/native-preview": ^7.0.0-dev.20260612.1
+    "@vitest/coverage-istanbul": ^4.1.0
+    "@vitest/coverage-v8": ^4.1.0
+    effect: ">=3.21.0"
+    react: ^19.2.0
+    react-dom: ^19.2.0
+    tsx: ^4.22.0
+    typescript: ^6.0.0
+    vitest: ^4.1.0
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@savvy-web/*"
+  - "@spencerbeggs/*"
+  - "@typescript/native-preview*"
+  - "@vitest-agent/*"
+  - api-extractor-llms
+  - config-file-effect
+  - json-schema-effect
+  - jsonc-effect
+  - package-json-effect
+  - reposets
+  - rolldown-pnpm-config
+  - rspress-plugin-api-extractor
+  - runtime-resolver
+  - semver-effect
+  - std-osc8
+  - type-registry-effect
+  - vitest-bats
+  - workspaces-effect
+  - xdg-effect
+  - yaml-effect
+overrides:
+  "@isaacs/brace-expansion": ^5.0.1
+  "@types/node": ^26.0.0
+  lodash: ^4.17.23
+  markdown-it: ^14.1.1
+  minimatch: ">=10.2.3"
+  rolldown-pnpm-config: file:/Users/spencer/workspaces/spencerbeggs/rolldown-pnpm-config/package/dist/prod/npm/pkg
+  smol-toml: ">=1.6.1"
+  tmp: ^0.2.7
+packages:
+  - packages/*
+peerDependencyRules:
+  allowedVersions:
+    "@effect/vitest>vitest": ^4.1.0
+    "@typescript-eslint/project-service>typescript": ^6.0.0
+    "@typescript-eslint/tsconfig-utils>typescript": ^6.0.0
+    "@typescript-eslint/typescript-estree>typescript": ^6.0.0
+    "@typescript-eslint/util>typescript": ^6.0.0
+    "@typescript-eslint/utils>typescript": ^6.0.0
+    eslint-plugin-tsdoc>typescript: ^6.0.0
+    ink-tab>ink: ^7.0.0
+publicHoistPattern:
+  - "@changesets/cli"
+  - "@commitlint/cli"
+  - "@commitlint/config-conventional"
+  - "@commitlint/cz-commitlint"
+  - "@rslib/core"
+  - "@types/bun"
+  - "@types/node"
+  - "@types/react"
+  - "@types/react-dom"
+  - "@typescript/native-preview"
+  - "@vitest-agent/cli"
+  - "@vitest-agent/mcp"
+  - "@vitest/coverage-istanbul"
+  - "@vitest/coverage-v8"
+  - commitizen
+  - husky
+  - lint-staged
+  - markdownlint-cli2
+  - markdownlint-cli2-formatter-codequality
+  - tsx
+  - turbo
+  - typescript
+  - vitest
+  - vitest-agent-reporter
+strictDepBuilds: true
 verifyDepsBeforeRun: false

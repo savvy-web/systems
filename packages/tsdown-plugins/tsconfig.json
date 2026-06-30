@@ -1,3 +1,4 @@
 {
-	"extends": ["./ecma.json"]
+	"$schema": "https://json.schemastore.org/tsconfig.json",
+	"extends": "../bundler/public/tsconfig/ecma.json"
 }
