@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { fixtureDir } from "./helpers.js";
 
-const LEAF = fixtureDir("leaf");
+const LEAF = fixtureDir("leaf-escape");
 
 describe("e2e: escape-hatch parity", () => {
 	it("raw tsdown.config.ts produces a pkg/ manifest identical to the front door", () => {

@@ -1,0 +1,5 @@
+packages:
+  - packages/*
+catalogs:
+  silk:
+    effect: ^3.21.4

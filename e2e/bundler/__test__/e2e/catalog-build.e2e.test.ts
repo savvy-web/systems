@@ -4,6 +4,25 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { fixtureDir } from "./helpers.js";
 
+describe("e2e: catalog: unknown name rejects the build", () => {
+	it("a dependency referencing catalog:does-not-exist causes a non-zero exit", () => {
+		const cwd = fixtureDir("catalog-unknown");
+		rmSync(join(cwd, "dist"), { recursive: true, force: true });
+		let stderr = "";
+		expect(() => {
+			try {
+				execFileSync("node", ["savvy.build.ts", "--target", "prod"], { cwd, stdio: "pipe" });
+			} catch (err: unknown) {
+				const e = err as { stderr?: Buffer };
+				stderr = e.stderr?.toString() ?? "";
+				throw err;
+			}
+		}).toThrow();
+		// Confirm the failure is catalog-related, not an unrelated error.
+		expect(stderr).toMatch(/catalog|resolution|does-not-exist/i);
+	}, 60_000);
+});
+
 const FIX = fixtureDir("catalog-consumer");
 
 describe("e2e: catalog: and workspace: resolve through a real build", () => {
