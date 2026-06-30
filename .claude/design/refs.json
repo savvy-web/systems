@@ -20,6 +20,12 @@
 			"recordedAt": "2026-06-21"
 		},
 		{
+			"source": "e2e/CLAUDE.md",
+			"target": ".claude/design/e2e/architecture.md",
+			"hash": "cff000e733868130ae543bc7be93c0454a73143955f6ef03193c76d942754abb",
+			"recordedAt": "2026-06-30"
+		},
+		{
 			"source": "packages/bundler/CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
 			"hash": "4e8bb6a9e789e6a084c021c8909d0698ca927ec8d3deaa2080323a21c566a2ca",

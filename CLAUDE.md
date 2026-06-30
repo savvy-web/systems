@@ -18,6 +18,8 @@ Each package has its own `CLAUDE.md` (auto-loaded when you work in its subtree) 
 - **github-action-effects** (`@savvy-web/github-action-effects`) — Effect services replacing `@actions/*`. See `packages/github-action-effects/CLAUDE.md`.
 - **pnpm-plugin-silk** (`@savvy-web/pnpm-plugin-silk`) — the unified pnpm config dependency distributing the `silk`/`silkPeers` catalogs and install-time policy across the ecosystem. See `packages/pnpm-plugin-silk/CLAUDE.md`.
 
+`e2e/*` is a separate harness area of PRIVATE, test-only packages (`@e2e/bundler`, `@e2e/pnpm-plugin-silk`) — distinct from the published `packages/*` — that exercise built `dist/dev` artifacts against isolated fixtures. See `e2e/CLAUDE.md`.
+
 Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/docs`, `plugins/github-actions`), the placeholder docs site (`docs/`), cross-repo planning, and the plugin marketplace entry point (`.claude-plugin/`).
 
 ## Tech Stack
@@ -26,7 +28,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/docs`, `plu
 - **Package Manager:** pnpm 11.5.1 with `@savvy-web/pnpm-plugin-silk` config dependency
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all eleven packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other nine via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
 - **Linting:** Biome, markdownlint
-- **Testing:** Vitest via `@vitest-agent/plugin`
+- **Testing:** Vitest via `@vitest-agent/plugin`; built-artifact e2e harness in `e2e/*`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
 - **Releases:** `@savvy-web/changesets`
 
@@ -67,6 +69,7 @@ Key coordination points:
 - README.md is for external users; `.claude/design/` for package architecture docs.
 - The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — all three depend only on `@savvy-web/silk-effects` within the repo. (`mcp` also consumes the external `api-extractor-llms` npm package as a build-time devDependency for its API-doc pipeline.)
 - `@savvy-web/silk`, `@savvy-web/cli`, and `@savvy-web/mcp` are a `fixed` changeset group (versioned and released together); silk's changeset config carries a `versionFiles` glob that bumps the `plugins/*` manifests in lockstep.
+- Integration/e2e tests must NOT resolve `catalog:`/`workspace:` against the host workspace — catalog-resolution coverage lives in `e2e/` via subprocess builds against isolated fixtures (`CatalogResolver` reads `process.cwd()`). See `e2e/CLAUDE.md`.
 - `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` version independently (changesets auto-bumps the bundler when tsdown-plugins changes; not a fixed group); both self-host while the other nine packages build via the bundler front door.
 - `@savvy-web/pnpm-plugin-silk` versions independently — not in the `fixed` (`silk`/`cli`/`mcp`) or `linked` (`bundler`/`rspress-builder`/`tsdown-plugins`) changeset groups; it is npm-registry-only (the one package not also on GitHub Packages).
 

@@ -157,6 +157,17 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"e2e": {
+			"path": "e2e",
+			"designDocsPath": ".claude/design/e2e",
+			"categories": ["testing", "architecture"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": null,
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"skills": {
