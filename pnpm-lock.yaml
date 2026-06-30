@@ -94,6 +94,36 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1(b50b2b7aae32f88e42abc589b9d91f07)
 
+  e2e/bundler:
+    devDependencies:
+      '@savvy-web/bundler':
+        specifier: workspace:*
+        version: link:../../packages/bundler/dist/dev/pkg
+      '@savvy-web/tsdown-plugins':
+        specifier: workspace:*
+        version: link:../../packages/tsdown-plugins/dist/dev/pkg
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.0.1
+      typescript:
+        specifier: catalog:silk
+        version: 6.0.3
+
+  e2e/pnpm-plugin-silk:
+    devDependencies:
+      '@savvy-web/pnpm-plugin-silk':
+        specifier: workspace:*
+        version: link:../../packages/pnpm-plugin-silk/dist/dev/pkg
+      '@savvy-web/tsdown-plugins':
+        specifier: workspace:*
+        version: link:../../packages/tsdown-plugins/dist/dev/pkg
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.0.1
+      typescript:
+        specifier: catalog:silk
+        version: 6.0.3
+
   packages/bundler:
     dependencies:
       '@savvy-web/tsdown-plugins':
