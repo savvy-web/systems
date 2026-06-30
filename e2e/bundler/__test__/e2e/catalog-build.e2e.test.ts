@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { fixtureDir } from "./helpers.js";
+import { SPAWN_ENV, fixtureDir } from "./helpers.js";
 
 describe("e2e: catalog: unknown name rejects the build", () => {
 	it("a dependency referencing catalog:does-not-exist causes a non-zero exit", () => {
@@ -11,7 +11,7 @@ describe("e2e: catalog: unknown name rejects the build", () => {
 		let stderr = "";
 		expect(() => {
 			try {
-				execFileSync("node", ["savvy.build.ts", "--target", "prod"], { cwd, stdio: "pipe" });
+				execFileSync("node", ["savvy.build.ts", "--target", "prod"], { cwd, stdio: "pipe", env: SPAWN_ENV });
 			} catch (err: unknown) {
 				const e = err as { stderr?: Buffer };
 				stderr = e.stderr?.toString() ?? "";
@@ -28,7 +28,7 @@ const FIX = fixtureDir("catalog-consumer");
 describe("e2e: catalog: and workspace: resolve through a real build", () => {
 	it("rewrites catalog:silk and workspace:* to concrete specs in the emitted manifest", () => {
 		rmSync(join(FIX, "dist"), { recursive: true, force: true });
-		execFileSync("node", ["savvy.build.ts", "--target", "prod"], { cwd: FIX, stdio: "pipe" });
+		execFileSync("node", ["savvy.build.ts", "--target", "prod"], { cwd: FIX, stdio: "pipe", env: SPAWN_ENV });
 		const manifest = JSON.parse(readFileSync(join(FIX, "dist/prod/npm/pkg/package.json"), "utf-8"));
 		const serialized = JSON.stringify(manifest);
 		expect(serialized).not.toContain("catalog:");
@@ -47,7 +47,7 @@ describe("e2e: meta build resolves + optimistic rewrite (real API Extractor)", (
 			join(meta, "next-versions.json"),
 			JSON.stringify({ "@fixture/meta-prod": "2.0.0", "@fixture/tsdown-plugins": "2.0.0" }),
 		);
-		execFileSync("node", ["savvy.build.ts", "--target", "prod"], { cwd: meta, stdio: "pipe" });
+		execFileSync("node", ["savvy.build.ts", "--target", "prod"], { cwd: meta, stdio: "pipe", env: SPAWN_ENV });
 		const metaPkg = JSON.parse(readFileSync(join(meta, "models/package.json"), "utf-8"));
 		const serialized = JSON.stringify(metaPkg);
 		expect(serialized).not.toMatch(/workspace:/);
