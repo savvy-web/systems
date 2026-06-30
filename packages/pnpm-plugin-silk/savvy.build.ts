@@ -169,8 +169,8 @@ await build({
 							strategy: "interop",
 						},
 						"@effect/tsgo": {
-							range: "^0.14.6",
-							peer: "^0.14.6",
+							range: "^0.15.0",
+							peer: "^0.15.0",
 							strategy: "interop",
 						},
 						"@effect/typeclass": {
@@ -204,7 +204,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@typescript/native-preview": {
-							range: "^7.0.0-dev.20260621.1",
+							range: "^7.0.0-dev.20260630.1",
 							peer: "^7.0.0-dev.20260612.1",
 						},
 						"@vitest/coverage-istanbul": {

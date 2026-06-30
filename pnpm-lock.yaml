@@ -40,7 +40,7 @@ catalogs:
       specifier: ^19.2.3
       version: 19.2.3
     '@typescript/native-preview':
-      specifier: ^7.0.0-dev.20260621.1
+      specifier: ^7.0.0-dev.20260630.1
       version: 7.0.0-dev.20260630.1
     effect:
       specifier: ^3.21.4
