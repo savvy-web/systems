@@ -18,5 +18,5 @@ describe("e2e: escape-hatch parity", () => {
 
 		expect(hatchManifest).toBe(frontManifest);
 		expect(existsSync(join(LEAF, "dist/escape/pkg/index.js"))).toBe(true);
-	}, 60_000);
+	}, 120_000);
 });

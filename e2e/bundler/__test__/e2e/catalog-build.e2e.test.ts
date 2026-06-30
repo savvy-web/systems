@@ -20,7 +20,7 @@ describe("e2e: catalog: unknown name rejects the build", () => {
 		}).toThrow();
 		// Confirm the failure is catalog-related, not an unrelated error.
 		expect(stderr).toMatch(/catalog|resolution|does-not-exist/i);
-	}, 60_000);
+	}, 120_000);
 });
 
 const FIX = fixtureDir("catalog-consumer");
@@ -35,7 +35,7 @@ describe("e2e: catalog: and workspace: resolve through a real build", () => {
 		expect(serialized).not.toContain("workspace:");
 		expect(manifest.dependencies.effect).toBe("^3.21.4");
 		expect(manifest.dependencies["@fixture/sibling"]).toMatch(/3\.4\.5/);
-	}, 60_000);
+	}, 120_000);
 });
 
 describe("e2e: meta build resolves + optimistic rewrite (real API Extractor)", () => {

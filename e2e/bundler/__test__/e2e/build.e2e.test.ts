@@ -12,13 +12,13 @@ describe("e2e: leaf package build", () => {
 		const manifest = JSON.parse(readFileSync(join(out, "package.json"), "utf-8"));
 		expect(manifest.exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
 		expect(manifest.exports["./package.json"]).toBe("./package.json");
-	}, 60_000);
+	}, 120_000);
 
 	it("prod build injects process.env.__PACKAGE_VERSION__", () => {
 		runFixtureBuild("leaf", ["--target", "prod"]);
 		const code = readFileSync(join(fixtureDir("leaf"), "dist/prod/npm/pkg/index.js"), "utf-8");
 		expect(code).toContain("1.2.3");
-	}, 60_000);
+	}, 120_000);
 });
 
 describe("e2e: multi-entry build has no shared runtime chunk", () => {
@@ -33,7 +33,7 @@ describe("e2e: multi-entry build has no shared runtime chunk", () => {
 		const oth = await import(join(out, "other.js"));
 		expect(idx.a()).toBe(2);
 		expect(oth.b()).toBe(4);
-	}, 60_000);
+	}, 120_000);
 });
 
 describe("e2e: multi-target build", () => {
@@ -51,5 +51,5 @@ describe("e2e: multi-target build", () => {
 		expect(binding.targets.find((t: { id: string }) => t.id === "mirror")?.group).toBe("npm");
 		expect(binding.targets.find((t: { id: string }) => t.id === "mirror")?.registry).toBe("https://mirror.test");
 		expect(npmPkg.publishConfig).toBeUndefined();
-	}, 60_000);
+	}, 120_000);
 });

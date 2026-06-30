@@ -3,6 +3,9 @@ import { defineConfig } from "vitest/config";
 
 export default async () => {
 	const { projects, tags } = await AgentPlugin.discover();
+	const e2eSerialized = (projects ?? []).map((p) =>
+		String(p?.test?.name ?? "").startsWith("@e2e/") ? { ...p, test: { ...p.test, fileParallelism: false } } : p,
+	);
 	return defineConfig({
 		plugins: [
 			AgentPlugin({
@@ -14,7 +17,7 @@ export default async () => {
 			}),
 		],
 		test: {
-			...(projects ? { projects } : {}),
+			...(e2eSerialized.length ? { projects: e2eSerialized } : {}),
 			tags,
 			pool: "forks",
 			globalSetup: ["vitest.setup.ts"],
