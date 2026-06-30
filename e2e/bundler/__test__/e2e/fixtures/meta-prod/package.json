@@ -1,0 +1,18 @@
+{
+	"name": "@fixture/meta-prod",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@fixture/tsdown-plugins": "workspace:*"
+	},
+	"publishConfig": {
+		"access": "public",
+		"targets": {
+			"npm": true
+		}
+	}
+}

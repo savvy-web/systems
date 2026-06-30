@@ -1,0 +1,54 @@
+{
+	"name": "@savvy-web/pnpm-plugin-silk",
+	"version": "0.17.0",
+	"private": true,
+	"description": "pnpm config dependency for centralized catalog management across the Silk ecosystem.",
+	"keywords": ["pnpm", "pnpm-plugin", "config-dependency", "catalog", "monorepo", "silk"],
+	"homepage": "https://github.com/savvy-web/systems/packages/pnpm-plugin-silk#readme",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/pnpm-plugin-silk"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./package.json": "./package.json"
+	},
+	"scripts": {
+		"build:dev": "node savvy.build.ts --target dev",
+		"build:prod": "node savvy.build.ts --target prod",
+		"pnpm:up": "rolldown-pnpm-config upgrade savvy.build.ts",
+		"pnpm:export": "rolldown-pnpm-config export",
+		"pnpm:preview": "rolldown-pnpm-config preview",
+		"prepare": "turbo run build:dev",
+		"types:check": "tsgo --noEmit"
+	},
+	"devDependencies": {
+		"@savvy-web/bundler": "workspace:*",
+		"@types/node": "catalog:silk",
+		"@typescript/native-preview": "catalog:silk",
+		"rolldown-pnpm-config": "^0.1.0",
+		"typescript": "catalog:silk"
+	},
+	"engines": {
+		"node": ">=24.11.0"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev/pkg",
+		"linkDirectory": true,
+		"targets": {
+			"npm": true
+		}
+	}
+}

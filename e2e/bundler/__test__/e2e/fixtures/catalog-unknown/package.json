@@ -1,0 +1,11 @@
+{
+	"name": "@fixture/catalog-unknown",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"exports": { ".": "./src/index.ts" },
+	"dependencies": {
+		"some-dep": "catalog:does-not-exist"
+	},
+	"publishConfig": { "access": "public", "targets": { "npm": true } }
+}

@@ -166,6 +166,9 @@ describe("buildTargetGroups", () => {
 	it("builds once per group spec, threading the spec's name into the manifest pipeline", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "btg-"));
 		await writeFile(join(dir, "package.json"), JSON.stringify({ name: "base", version: "1.0.0" }));
+		// Make the temp dir its own workspace root so resolveManifest assembles an empty catalog
+		// set instead of walking up to the host workspace (90-entry catalogs + large lockfile).
+		await writeFile(join(dir, "pnpm-workspace.yaml"), "packages: []\n");
 
 		const calls: Array<{ outDir: string }> = [];
 		// Drive each group's emitManifest plugin so the injected transform fires with the
@@ -180,22 +183,28 @@ describe("buildTargetGroups", () => {
 		}) as never;
 
 		const seenNames: string[] = [];
-		await buildTargetGroups({
-			cwd: dir,
-			version: "1.0.0",
-			entry: { index: "src/index.ts" },
-			tsconfigPath: join(dir, "tsconfig.json"),
-			groups: [
-				{ id: "npm", name: "base" },
-				{ id: "github", name: "@scope/base" },
-			],
-			devManifest: "preserve",
-			transform: ({ pkg, targetGroup }) => {
-				seenNames.push(targetGroup.name);
-				return pkg;
-			},
-			build,
-		});
+		const prevCwd = process.cwd();
+		process.chdir(dir);
+		try {
+			await buildTargetGroups({
+				cwd: dir,
+				version: "1.0.0",
+				entry: { index: "src/index.ts" },
+				tsconfigPath: join(dir, "tsconfig.json"),
+				groups: [
+					{ id: "npm", name: "base" },
+					{ id: "github", name: "@scope/base" },
+				],
+				devManifest: "preserve",
+				transform: ({ pkg, targetGroup }) => {
+					seenNames.push(targetGroup.name);
+					return pkg;
+				},
+				build,
+			});
+		} finally {
+			process.chdir(prevCwd);
+		}
 
 		// Two passes per group share an outDir, so dedup before comparing.
 		expect([...new Set(calls.map((c) => c.outDir))].sort()).toEqual([

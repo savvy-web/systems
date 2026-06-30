@@ -1,0 +1,16 @@
+{
+	"name": "@e2e/bundler",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"types:check": "tsgo --noEmit"
+	},
+	"devDependencies": {
+		"@savvy-web/bundler": "workspace:*",
+		"@savvy-web/tsdown-plugins": "workspace:*",
+		"@types/node": "catalog:silk",
+		"tsdown": "^0.22.3",
+		"typescript": "catalog:silk"
+	}
+}
