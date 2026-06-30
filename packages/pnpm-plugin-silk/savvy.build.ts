@@ -314,7 +314,6 @@ await build({
 					"turbo",
 					"typescript",
 					"vitest",
-					"vitest-agent-reporter",
 				],
 			},
 			allowBuilds: {

@@ -183,6 +183,5 @@ publicHoistPattern:
   - turbo
   - typescript
   - vitest
-  - vitest-agent-reporter
 strictDepBuilds: true
 verifyDepsBeforeRun: false

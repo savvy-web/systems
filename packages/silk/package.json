@@ -42,7 +42,6 @@
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:silk",
-		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",
 		"prettier": "^3.8.4",
 		"semver": "^7.8.4"
@@ -54,6 +53,7 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
+		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"commitizen": "^4.3.1",
