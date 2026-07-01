@@ -10,7 +10,7 @@ export default async () => {
 		plugins: [
 			AgentPlugin({
 				console: {
-					human: "stream",
+					human: "passthrough",
 					agent: "agent",
 				},
 				coverageTargets: AgentPlugin.COVERAGE_LEVELS.strict.coverageTargets,
@@ -26,6 +26,12 @@ export default async () => {
 				provider: "v8",
 				thresholds: AgentPlugin.COVERAGE_LEVELS.standard.thresholds,
 				exclude: [
+					// Built artifacts are never source-coverage material. The e2e harness imports
+					// dist/dev outputs (e.g. the ~69k-line bundled changesets-markdownlint.cjs)
+					// in-process to exercise real published behavior; V8 would otherwise instrument
+					// those bundles at near-zero coverage and crater the global average.
+					"**/dist/**",
+
 					// CLI bootstrap and root wiring — cannot be unit tested (matches source-repo pattern
 					// where lint-staged / changesets excluded src/bin/** and src/cli/**)
 					"packages/cli/src/bin/**",
