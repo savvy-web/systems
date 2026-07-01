@@ -43,8 +43,8 @@ const isCatalogOrWorkspaceSpec = (spec: unknown): boolean =>
  */
 export function manifestNeedsCatalogResolution(pkg: Json): boolean {
 	return DEPENDENCY_FIELDS.some((field) => {
-		const deps = pkg[field] as Record<string, unknown> | undefined;
-		return deps !== undefined && Object.values(deps).some(isCatalogOrWorkspaceSpec);
+		const deps = pkg[field];
+		return typeof deps === "object" && deps !== null && Object.values(deps).some(isCatalogOrWorkspaceSpec);
 	});
 }
 

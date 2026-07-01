@@ -19,6 +19,12 @@ describe("manifestNeedsCatalogResolution", () => {
 		).toBe(false);
 		expect(manifestNeedsCatalogResolution({ name: "@x/p", version: "1.0.0" })).toBe(false);
 	});
+
+	it('should not throw on a null or non-object dependency field (valid JSON like "dependencies": null)', () => {
+		expect(() => manifestNeedsCatalogResolution({ dependencies: null })).not.toThrow();
+		expect(manifestNeedsCatalogResolution({ dependencies: null })).toBe(false);
+		expect(manifestNeedsCatalogResolution({ devDependencies: "not-an-object" })).toBe(false);
+	});
 });
 
 describe("buildEmittedManifest", () => {

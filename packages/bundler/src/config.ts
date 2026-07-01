@@ -141,9 +141,10 @@ export interface BuildConfigInput {
 	 */
 	readonly plugins?: ReadonlyArray<Plugin> | undefined;
 	/**
-	 * Emit the prod `.d.ts` bundling pass (and, downstream, the meta/API-Extractor pass that reads
-	 * those declarations). Defaults to `true` — bundled, self-contained declarations per public entry
-	 * are the default posture. Set `false` to skip BOTH the dts pass and the meta pass while still
+	 * Emit the bundled `.d.ts` pass for BOTH dev and prod builds (and, downstream on prod, the
+	 * meta/API-Extractor pass that reads those declarations). Defaults to `true` — bundled,
+	 * self-contained declarations per public entry are the default posture. Set `false` to skip the
+	 * dts pass (dev and prod) and the prod meta pass while still
 	 * emitting JS output, byte-variant target folders, catalog/workspace resolution, and the
 	 * transformed `package.json`. Orthogonal to `meta: false`, which disables ONLY the API-model
 	 * generation and still runs the dts pass; `emitDts: false` disables the dts pass itself (and
@@ -201,7 +202,8 @@ export interface BuildConfig {
 	/** Custom tsdown/rolldown plugins forwarded to every tsdown run (JS, dts, per-module declarations, looseFiles). */
 	readonly plugins?: ReadonlyArray<Plugin> | undefined;
 	/**
-	 * Emit the prod `.d.ts` bundling pass (and, downstream, the meta pass). Defaults to `true`. See
+	 * Emit the bundled `.d.ts` pass for dev and prod builds (and, downstream on prod, the meta pass).
+	 * Defaults to `true`. See
 	 * {@link BuildConfigInput.emitDts}. Typed optional (like `minify`) even though `defineBuild`
 	 * always resolves a concrete boolean — a hand-authored `BuildConfig` literal (bypassing
 	 * `defineBuild`, as several `runBuild` unit tests do) need not supply it; `runBuild` treats
