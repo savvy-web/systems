@@ -80,7 +80,7 @@ These rules are enforced by the remark-lint pre-validation layer. Violating them
 | **CSH002** | All `##` headings must exactly match one of the 13 valid categories. |
 | **CSH003** | No empty sections. Code fences must include a language identifier. No empty list items. |
 | **CSH004** | No content before the first `##` heading (the YAML frontmatter is not "content"). |
-| **CSH005** | A `## Dependencies` section that contains a Markdown table must follow the 5-column schema below. |
+| **CSH005** | A `## Dependencies` section **must** contain a Markdown table in the 5-column schema below — prose or a bullet list is invalid, not an alternative form. |
 
 ### CSH005 dependency table schema
 
@@ -95,6 +95,12 @@ These rules are enforced by the remark-lint pre-validation layer. Violating them
 - **Action** — one of: `added`, `updated`, `removed`
 - **From** — previous version, or `—` (em dash) for additions
 - **To** — new version, or `—` (em dash) for removals
+
+A `## Dependencies` section written as prose or a bullet list — instead of
+this table — is a CSH005 violation, not a stylistic alternative. This is
+enforced uniformly across every path a changeset passes through:
+`savvy changeset check`, the `changeset_validate` MCP tool, and the
+pre-commit hook.
 
 ## Content Depth Tiers
 

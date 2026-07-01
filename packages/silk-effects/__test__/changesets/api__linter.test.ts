@@ -131,3 +131,24 @@ describe("ChangesetLinter.validate", () => {
 		expect(files.size).toBe(2);
 	});
 });
+
+describe("ChangesetLinter enforces the dependency-table format", () => {
+	it("rejects a prose Dependencies section", () => {
+		const md = ["## Dependencies", "", "Bumped effect from 3.18.0 to 3.19.0.", ""].join("\n");
+		const messages = ChangesetLinter.validateContent(md);
+		expect(messages.some((m) => m.rule.includes("dependency-table-format"))).toBe(true);
+	});
+
+	it("accepts a well-formed Dependencies table", () => {
+		const md = [
+			"## Dependencies",
+			"",
+			"| Dependency | Type | Action | From | To |",
+			"| --- | --- | --- | --- | --- |",
+			"| effect | dependency | updated | 3.18.0 | 3.19.0 |",
+			"",
+		].join("\n");
+		const messages = ChangesetLinter.validateContent(md);
+		expect(messages.filter((m) => m.rule.includes("dependency-table-format"))).toHaveLength(0);
+	});
+});

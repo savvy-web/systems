@@ -4,8 +4,8 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-06-21
-last-synced: 2026-06-21
+updated: 2026-07-01
+last-synced: 2026-07-01
 related:
   - ../silk/architecture.md
   - ../cli/architecture.md
@@ -67,11 +67,14 @@ This table is the topology, not an inventory — each subtree's `index.ts` is th
 
 Why these three live here rather than in `silk`: in each source package the CLI commands and the config-export modules share the tool's own internal logic (the changeset `transform` command and the `./remark` export run the same plugins; the `lint` command and the `./markdownlint` export run the same rules). `cli` must not import `silk`, so the shared logic has only one viable home — the library layer both thin packages import. `@savvy-web/cli` consumes the namespaces as command logic; `@savvy-web/silk` re-exports them as config-integration shims.
 
-Two `Changesets` decisions are load-bearing for consumers:
+`ChangesetLinter.validateContent` (`src/changesets/api/linter.ts`) now enforces the dependency-table format: its remark pipeline runs `DependencyTableFormatRule` (plus `remark-gfm`, needed to parse GFM tables) alongside the existing structure rules, so a prose `## Dependencies` section is rejected by the same code path the CLI's `savvy changeset check`/`lint` and the MCP `changeset_validate` tool use — closing the split-brain where only the pre-commit markdownlint CSH005 rule enforced the table shape. Both rule engines share one version pattern: `VERSION_RE`, exported from `src/changesets/schemas/dependency-table.ts` and consumed by `VersionOrEmptySchema` and the markdownlint rule (which previously carried a hand-synced copy). It is widened to accept `catalog:`/`workspace:`/`npm:` (and other pnpm protocol) specifiers in addition to the em-dash sentinel and bare/`~`/`^` semver, so a `DepsRegen`-emitted raw protocol-string fallback (see below) is never rejected.
+
+Four `Changesets` decisions are load-bearing for consumers:
 
 - **The `ConfigInspector` release-surface fallback.** When `.changeset/config.json` declares no explicit `packages` record, `ConfigInspector.inspect` does not return empty attribution — it builds package scopes from the discovered workspace packages that are a release surface, determined by calling the pure `SilkPublishability.detect` per package (the same publishConfig-driven rule the analyzer uses). A package with no publishConfig (e.g. a bare private root) is excluded. The changeset `ignore` list is intentionally NOT consulted — an ignored-but-configured package is still a valid changeset target. This is why `ConfigInspectorLive` carries a `FileSystem` requirement (it reads each package's `package.json` and `dist/prod/targets.json`). See the `buildFallbackScopes` helper in `src/changesets/services/config-inspector.ts`.
 - **The resolved-output result types are Effect `Schema`, not interfaces.** `BranchAnalyzer` and `ConfigInspector` define their result shapes as `Schema.Struct` (all exported from the root) with the public TypeScript interfaces derived from them. The single source of truth lets `@savvy-web/mcp` embed these schemas directly in its `changeset_inspect` tool result and round-trip them through the effect→zod bridge. See `../mcp/architecture.md`.
 - **`ReleasePlanner` drives the genuine `@changesets` engine, not hand-rolled logic.** `ReleasePlanner` (`src/changesets/services/release-planner.ts`, closes #125) backs changeset preview and apply with the real `@changesets/get-release-plan` + `@changesets/apply-release-plan` machinery, so all formatting — dependency tables included — comes from the engine and no changesets internals are re-implemented. Its `preview(root)` is non-destructive: it runs the real `applyReleasePlan` against a throwaway temp directory and reads the rendered CHANGELOG blocks back, never mutating the repo. Its `apply(root, { dryRun })` is the destructive native release that the `savvy changeset version` CLI command now calls instead of shelling out to a `changeset` binary — it bumps versions, transforms each touched CHANGELOG via `ChangelogTransformer` and updates configured versionFiles through `ConfigInspector` + `VersionFiles`. Workspace discovery sits behind one `buildPackages` seam over `@manypkg/get-packages`, the deliberate boundary for a later swap to an Effect-native stack. `ReleasePlannerLive` requires `ConfigInspector`; its result schemas live in `src/changesets/schemas/release-plan.ts`. `apply` is intentionally NOT exposed over MCP — only the read-only `preview` is (see `../mcp/architecture.md` and `../cli/architecture.md`).
+- **`DepsRegen` splits `plan()` from `execute()` so detect and regen share one code path.** `Changesets.DepsRegen` (`src/changesets/services/deps-regen.ts`) lifts the `deps regen`/`deps detect` orchestration out of the CLI into a `Context.Tag` service. `plan(options)` computes the cumulative dependency diff (merge-base→worktree by default, or explicit `from`/`to`) and returns a complete, side-effect-free `RegenPlan` — target filenames chosen up front, each row's From/To resolved, stale pure-dependency changesets marked for deletion; `execute(plan)` only applies the deletes and writes the plan already describes, so dry-run is exactly `plan()` plus rendering. Row resolution (`resolveDiffRows`, exported) resolves `catalog:`/`workspace:` specifiers to concrete versions via `CatalogResolver.resolveSpecifier` — `None` or a resolver error falls back to the raw protocol string rather than blocking the changeset — and unconditionally drops `devDependency` rows unless `includeDevDeps` is set (the `deps detect` read path sets it to show the full diff; `deps regen` does not, since a dependency's devDeps never reach a consumer). `isPureDependencyChangeset` (also exported) is the ported strict-detection rule: single-package frontmatter, exactly one `## Dependencies` heading, no other body content — mixed changesets are never touched. `DepsRegenLive` requires `WorkspaceSnapshotReader | ConfigInspector | WorkspaceDiscovery | CatalogResolver | PublishabilityDetector` (the last two from `workspaces-effect`); the CLI and MCP tools are thin adapters over this service (see `../cli/architecture.md` and `../mcp/architecture.md`).
 
 ## Module Architecture
 
@@ -320,6 +323,9 @@ This pattern is used for `ManagedSection` results (`SectionDiff`, `SyncResult`, 
 - `SilkWorkspaceAnalyzer` / `SilkWorkspaceAnalyzerLive`
   Depends on: `FileSystem`, `WorkspaceDiscovery`, `TopologicalSorter`, `PackageManagerDetector`,
   `ChangesetConfigReader`, `VersioningStrategy`, `TagStrategy`
+- `Changesets.DepsRegen` / `Changesets.DepsRegenLive`
+  Depends on: `WorkspaceSnapshotReader`, `ConfigInspector`, `WorkspaceDiscovery`, `CatalogResolver`,
+  `PublishabilityDetector` (the last two from `workspaces-effect`; file reads/writes go through `node:fs` directly, not the `FileSystem` Tag)
 
 **Pure modules (no platform requirements):**
 

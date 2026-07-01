@@ -1,0 +1,109 @@
+/**
+ * The `changeset_deps_detect` MCP tool: a read-only preview of the cumulative
+ * dependency diff (merge-base → working tree) over silk-effects'
+ * `Changesets.DepsRegen.plan`. Returns one entry per affected workspace package
+ * — its resolved dependency-table rows (devDependencies retained) — plus a
+ * one-way markdown transform. Read-only: no changeset file is written or
+ * deleted.
+ *
+ * @packageDocumentation
+ */
+
+import { Changesets } from "@savvy-web/silk-effects";
+import { Effect, ParseResult, Schema } from "effect";
+import type { WorkspaceRootNotFoundError } from "workspaces-effect";
+import { WorkspaceRoot } from "workspaces-effect";
+
+/** One affected workspace package's resolved dependency diff. */
+export const ChangesetDepsDetectPackage = Schema.Struct({
+	package: Schema.String,
+	relativePath: Schema.String,
+	rows: Schema.Array(Changesets.DependencyTableRowSchema),
+}).annotations({ identifier: "ChangesetDepsDetectPackage" });
+
+/** The `changeset_deps_detect` tool result. */
+export const ChangesetDepsDetectResult = Schema.Struct({
+	root: Schema.String,
+	packages: Schema.Array(ChangesetDepsDetectPackage),
+}).annotations({
+	identifier: "ChangesetDepsDetectResult",
+	title: "changeset_deps_detect result",
+	description: "Read-only per-package dependency diff (devDependencies retained). No files are written.",
+});
+
+export type ChangesetDepsDetectResultType = Schema.Schema.Type<typeof ChangesetDepsDetectResult>;
+
+/**
+ * Render a repo-derived value as an inert markdown code span. Escapes backticks
+ * and backslashes so a crafted path, package, or dependency name cannot inject
+ * markdown structure into the transcript an agent reads.
+ */
+const mdInline = (value: string): string => `\`${value.replace(/[`\\]/g, "\\$&")}\``;
+
+/** Render the structured result as a markdown transcript. */
+const renderMarkdown = (data: ChangesetDepsDetectResultType): string => {
+	if (data.packages.length === 0) {
+		return `# changeset deps detect — ${mdInline(data.root)}\n\nNo dependency changes detected.`;
+	}
+	const lines = [`# changeset deps detect — ${mdInline(data.root)}`, ``];
+	for (const pkg of data.packages) {
+		lines.push(`## ${mdInline(pkg.package)} — ${mdInline(pkg.relativePath)}`, ``);
+		lines.push(`| Dependency | Type | Action | From | To |`, `| --- | --- | --- | --- | --- |`);
+		for (const r of pkg.rows) {
+			lines.push(`| ${mdInline(r.dependency)} | ${r.type} | ${r.action} | ${mdInline(r.from)} | ${mdInline(r.to)} |`);
+		}
+		lines.push(``);
+	}
+	return lines.join("\n").trimEnd();
+};
+
+/** One-way transform: result to markdown. Encoding back is forbidden. */
+export const ChangesetDepsDetectAsMarkdown = Schema.transformOrFail(ChangesetDepsDetectResult, Schema.String, {
+	strict: true,
+	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
+	encode: (text, _options, ast) =>
+		ParseResult.fail(
+			new ParseResult.Forbidden(ast, text, "ChangesetDepsDetectAsMarkdown is one-way: markdown cannot be parsed back."),
+		),
+});
+
+/** Arguments for the {@link changesetDepsDetect} handler. */
+export interface ChangesetDepsDetectArgs {
+	readonly cwd?: string;
+	readonly base?: string;
+	readonly package?: string;
+}
+
+/**
+ * Effect handler: resolve the workspace root, then compute the cumulative
+ * dependency diff via {@link Changesets.DepsRegen.plan} with `includeDevDeps`
+ * so devDependency rows are retained. Maps `plan.toWrite` into the structured
+ * result. No filesystem mutation happens (no `execute`).
+ */
+export const changesetDepsDetect = (
+	args: ChangesetDepsDetectArgs,
+	fallbackCwd: string,
+): Effect.Effect<
+	ChangesetDepsDetectResultType,
+	Changesets.GitError | WorkspaceRootNotFoundError,
+	WorkspaceRoot | Changesets.DepsRegen
+> =>
+	Effect.gen(function* () {
+		const workspaceRoot = yield* WorkspaceRoot;
+		const root = yield* workspaceRoot.find(args.cwd ?? fallbackCwd);
+		const service = yield* Changesets.DepsRegen;
+		const plan = yield* service.plan({
+			cwd: root,
+			includeDevDeps: true,
+			...(args.base ? { base: args.base } : {}),
+			...(args.package ? { package: args.package } : {}),
+		});
+		return {
+			root,
+			packages: plan.toWrite.map((entry) => ({
+				package: entry.diff.package,
+				relativePath: entry.diff.relativePath,
+				rows: entry.diff.rows,
+			})),
+		} as ChangesetDepsDetectResultType;
+	});

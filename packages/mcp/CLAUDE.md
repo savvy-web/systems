@@ -4,7 +4,7 @@
 
 ## Key surface
 
-- Tools (six): five read-only — `workspace_info` (structured workspace analysis: linked/fixed package groups + resolved registry targets), `turbo_inspect` (mode cache|graph|affected over `turbo --dry`), `changeset_inspect` (mode branch|config|classify), `changeset_validate` (validates `.changeset/` files), `changeset_preview` (non-destructive release render over `Changesets.ReleasePlanner.preview`) — plus the one mutating tool `biome_check` (runs Biome with `--reporter=gitlab`, mode check|lint, `write`/`unsafe` to apply fixes; the intentional exception to the read-only convention).
+- Tools (eight): six read-only — `workspace_info` (structured workspace analysis: linked/fixed package groups + resolved registry targets), `turbo_inspect` (mode cache|graph|affected over `turbo --dry`), `changeset_inspect` (mode branch|config|classify), `changeset_validate` (validates `.changeset/` files), `changeset_preview` (non-destructive release render over `Changesets.ReleasePlanner.preview`), `changeset_deps_detect` (detects dependency drift over `Changesets.DepsRegen`) — plus two mutating tools, the sanctioned exceptions to the read-only convention: `biome_check` (runs Biome with `--reporter=gitlab`, mode check|lint, `write`/`unsafe` to apply fixes) and `changeset_deps_regen` (regenerates dependency changesets over `Changesets.DepsRegen`).
 - All tools are backed by the same `silk-effects` services the `savvy` CLI uses.
 - Depends only on `@savvy-web/silk-effects` within the repo; must NOT import `@savvy-web/cli` or `@savvy-web/silk`.
 

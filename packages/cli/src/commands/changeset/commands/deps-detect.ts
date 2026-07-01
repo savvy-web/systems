@@ -2,16 +2,15 @@
  * `deps detect` command — read-only dependency-diff inspection.
  *
  * @remarks
- * Computes the per-workspace-package dependency changes between two git
- * refs and renders them either as structured JSON (one row per change)
- * or as ready-to-paste CSH005 markdown. No file writes.
+ * A thin adapter over {@link Changesets.DepsRegen}: this command calls
+ * `plan({ includeDevDeps: true, ... })` — the read-only path, so devDeps
+ * stay in the diff and no file is written or deleted — then renders
+ * `plan.toWrite`'s diffs either as structured JSON (one row per change) or
+ * as ready-to-paste CSH005 markdown. No file writes.
  *
  * Defaults:
  * - `--from` → `git merge-base <baseBranch> HEAD`
  * - `--to`   → working tree (i.e., `HEAD` plus staged + unstaged + untracked).
- *   Passed as the special value
- *   `WORKTREE` to {@link WorkspaceSnapshotReader} — implementations resolve
- *   this against the live working tree rather than `git show`.
  *
  * @example
  * ```bash
@@ -23,22 +22,12 @@
  * @internal
  */
 
-import { resolve } from "node:path";
 import { Command, Options } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
-import { WorkspaceDiscovery } from "workspaces-effect";
 
 type WorkspaceDependencyDiff = Changesets.WorkspaceDependencyDiff;
-const {
-	ConfigInspector,
-	WorkspaceSnapshotReader,
-	computeWorkspaceDependencyDiffs,
-	gitMergeBase,
-	listPublishablePackageNames,
-	serializeDependencyTableToMarkdown,
-	snapshotFromWorktree,
-} = Changesets;
+const { DepsRegen, serializeDependencyTableToMarkdown } = Changesets;
 
 /* v8 ignore start -- CLI option definitions */
 const fromOption = Options.text("from").pipe(
@@ -98,60 +87,24 @@ export function runDepsDetect(
 	markdown: boolean,
 ) {
 	return Effect.gen(function* () {
-		const reader = yield* WorkspaceSnapshotReader;
-		const resolvedCwd = resolve(cwd);
+		const service = yield* DepsRegen;
 
-		// Resolve `--from` (default: merge-base with config's baseBranch)
-		let fromRef = Option.getOrUndefined(from);
-		if (!fromRef) {
-			const inspector = yield* ConfigInspector;
-			const inspected = yield* inspector
-				.inspect(resolvedCwd)
-				.pipe(
-					Effect.catchTag("ConfigurationError", () => Effect.succeed({ baseBranch: "main" } as { baseBranch: string })),
-				);
-			fromRef = yield* gitMergeBase(resolvedCwd, inspected.baseBranch).pipe(
+		const plan = yield* service
+			.plan({
+				cwd,
+				includeDevDeps: true,
+				...(Option.isSome(pkg) ? { package: pkg.value } : {}),
+				...(Option.isSome(from) ? { from: from.value } : {}),
+				...(Option.isSome(to) ? { to: to.value } : {}),
+			})
+			.pipe(
 				Effect.catchTag("GitError", (err) => {
 					process.exitCode = 1;
 					return Effect.fail(err);
 				}),
 			);
-		}
 
-		// Resolve --to (default: working tree)
-		const toRef = Option.getOrUndefined(to);
-
-		const beforeSnaps = yield* reader.snapshotAt(resolvedCwd, fromRef).pipe(
-			Effect.catchTag("GitError", (err) => {
-				process.exitCode = 1;
-				return Effect.fail(err);
-			}),
-		);
-
-		const afterSnaps = toRef
-			? yield* reader.snapshotAt(resolvedCwd, toRef).pipe(
-					Effect.catchTag("GitError", (err) => {
-						process.exitCode = 1;
-						return Effect.fail(err);
-					}),
-				)
-			: snapshotFromWorktree(resolvedCwd);
-
-		let diffs = computeWorkspaceDependencyDiffs(beforeSnaps, afterSnaps);
-		const targetPkg = Option.getOrUndefined(pkg);
-		if (targetPkg) {
-			// Explicit --package overrides the publishability filter; users
-			// asking for a specific package by name get an answer regardless.
-			diffs = diffs.filter((d) => d.package === targetPkg);
-		} else {
-			// Default: filter out workspace packages that cannot publish.
-			// Their dep changes never reach a release, so a changeset for
-			// them would mislead anyone reading the CHANGELOG.
-			const discovery = yield* WorkspaceDiscovery;
-			const livePackages = yield* discovery.listPackages(resolvedCwd).pipe(Effect.catchAll(() => Effect.succeed([])));
-			const publishable = yield* listPublishablePackageNames(livePackages);
-			diffs = diffs.filter((d) => publishable.has(d.package));
-		}
+		const diffs = plan.toWrite.map((entry) => entry.diff);
 
 		// Default to JSON when neither flag is set.
 		const emitMarkdown = markdown && !json;

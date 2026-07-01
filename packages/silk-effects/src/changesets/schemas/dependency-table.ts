@@ -98,6 +98,18 @@ export const DependencyTableTypeSchema = Schema.Literal(
 export type DependencyTableType = typeof DependencyTableTypeSchema.Type;
 
 /**
+ * The canonical accepted-value pattern for a dependency-table From/To cell:
+ * the em-dash sentinel (U+2014), a bare/`~`/`^` semver, or — as a last-resort
+ * fallback when a `catalog:`/`workspace:` specifier could not be resolved to a
+ * concrete version — a pnpm protocol string. Non-overlapping alternatives keep
+ * this free of polynomial backtracking (CodeQL).
+ *
+ * @public
+ */
+export const VERSION_RE =
+	/^(\u2014|[~^]?\d+\.\d+\.\d+(?:[-+.][\w.+-]*)?|(?:catalog|workspace|npm|jsr|file|link|portal):[^\s|]*)$/;
+
+/**
  * Version string or em dash (U+2014) sentinel for added/removed entries.
  *
  * @remarks
@@ -123,9 +135,7 @@ export type DependencyTableType = typeof DependencyTableTypeSchema.Type;
  *
  * @public
  */
-export const VersionOrEmptySchema = Schema.String.pipe(
-	Schema.pattern(/^(\u2014|[~^]?\d+\.\d+\.\d+(?:[-+.][\w.+-]*)?)$/),
-);
+export const VersionOrEmptySchema = Schema.String.pipe(Schema.pattern(VERSION_RE));
 
 /**
  * Schema for a single dependency table row.

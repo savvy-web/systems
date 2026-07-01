@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-06-30
-last-synced: 2026-06-30
+updated: 2026-07-01
+last-synced: 2026-07-01
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -50,7 +50,8 @@ savvy clean       remove build/cache artifacts across the workspace
 savvy commit      hook(session-start · pre-commit-message ·
                   post-commit-verify)
 savvy changeset   lint · check · transform · validate-file · version ·
-                  config(validate) · deps(detect · regen)
+                  config(validate) · deps(detect · regen — thin adapters
+                  over silk-effects' Changesets.DepsRegen)
 savvy lint        fmt(package-json · pnpm-workspace · yaml)
 ```
 
@@ -75,13 +76,18 @@ Three safety properties are load-bearing and must survive any edit. Containment:
 This is the load-bearing part of the package. The whole runtime layer stack is assembled once in `runCli()` (`src/cli/index.ts`) and is the union of the three source CLIs' stacks with every inter-layer dependency wired. Read that file before touching layer wiring; the structure below is the topology, not a re-listing of every service.
 
 ```text
-AppLive = mergeAll(ToolDiscovery, VersioningStrategy, Inspector+Analyzer)
+AppLive = mergeAll(ToolDiscovery, VersioningStrategy, Inspector+Analyzer, DepsRegenGroup)
             provideMerge(BaseLive)
             provideMerge(NodeContext.layer)
 
 Inspector+Analyzer = BranchAnalyzer
                        provideMerge(ReleasePlanner)
                        provideMerge(ConfigInspector)
+
+DepsRegenGroup = Changesets.DepsRegen
+                   provide(Inspector+Analyzer)         ← shares the one ConfigInspector instance
+                   provide(CatalogResolver over LockfileReader)
+                   provide(PublishabilityDetector)
 
 BaseLive  = WorkspaceLive + ChangesetConfigReader + leaf silk-effects services
             (ManagedSection, BiomeSchemaSync, ConfigDiscovery,
@@ -93,8 +99,8 @@ WorkspaceLive = WorkspaceRoot + PackageManagerDetector
 
 Two structural choices matter:
 
-- **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer`, the surviving `config validate` handler and `ReleasePlanner` — the `classify`/`config show`/`analyze-branch`/`release-surface` CLI commands are gone, so `ConfigInspector` is otherwise consumed by the MCP tools `changeset_inspect`/`changeset_validate`) is never constructed twice per run. `Changesets.ReleasePlanner` backs `savvy changeset version`, which now natively applies the release — bumping versions, transforming CHANGELOGs and updating versionFiles via `ReleasePlanner.apply` — rather than shelling out to a `changeset` binary or detecting the package manager; `--dry-run` is a true no-write report. See `../silk-effects/architecture.md`. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeContext.layer` already satisfies it. See `../silk-effects/architecture.md`.
-- **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio rather than pulling in the heavier `WorkspacesLive`, which would also fork `DependencyGraph` / `PublishabilityDetector` background work the CLI does not need.
+- **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer`, the surviving `config validate` handler, `ReleasePlanner` and now `Changesets.DepsRegen` — the `classify`/`config show`/`analyze-branch`/`release-surface` CLI commands are gone, so `ConfigInspector` is otherwise consumed by the MCP tools `changeset_inspect`/`changeset_validate`) is never constructed twice per run. `Changesets.ReleasePlanner` backs `savvy changeset version`, which now natively applies the release — bumping versions, transforming CHANGELOGs and updating versionFiles via `ReleasePlanner.apply` — rather than shelling out to a `changeset` binary or detecting the package manager; `--dry-run` is a true no-write report. See `../silk-effects/architecture.md`. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeContext.layer` already satisfies it. See `../silk-effects/architecture.md`.
+- **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio rather than pulling in the heavier `WorkspacesLive`, which would also fork `DependencyGraph` / `PublishabilityDetector` background work the CLI does not need. `savvy changeset deps regen`/`deps detect` are the one exception that needs `CatalogResolver` and `PublishabilityDetector` from `workspaces-effect` (for `Changesets.DepsRegen` — see `../silk-effects/architecture.md`), so those two are composed by hand into `DepsRegenGroupLive` alongside a `CatalogResolverLive` built over `LockfileReaderLive`, rather than pulling in `WorkspacesLive` for every command.
 
 The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
 

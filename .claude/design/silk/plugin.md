@@ -104,9 +104,9 @@ All source hook sets merge into `plugins/silk/hooks/hooks.json`. PreToolUse/Post
 
 A standing hygiene concern is avoiding double-fires where the changesets and commitlint guards both match `Bash` — check `hooks.json`'s matcher set when adding a new Bash guard.
 
-The same applies to the **skill scripts**: the bundled scripts that shell out to the CLI (`changeset-check`'s `check.sh`/`lint.sh`, `dependencies`' `detect.sh`/`regen.sh`) target the unified `savvy changeset …` subcommands. Notably `changeset-check` validates via `savvy changeset lint`, not a `check` subcommand. Any plugin caller — hook or skill — that invokes the CLI goes through the single `savvy` bin; no script may assume a per-tool `savvy-*` bin is installed.
+The same applies to the **skill scripts**: the bundled scripts that shell out to the CLI (`changeset-check`'s `check.sh`/`lint.sh`) target the unified `savvy changeset …` subcommands. Notably `changeset-check` validates via `savvy changeset lint`, not a `check` subcommand. Any plugin caller — hook or skill — that invokes the CLI goes through the single `savvy` bin; no script may assume a per-tool `savvy-*` bin is installed.
 
-The `config` skill is the exception: it does not shell out at all, calling the `changeset_inspect` MCP tool directly — see [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect).
+The `config` and `dependencies` skills are the exceptions: neither shells out — `config` calls the `changeset_inspect` MCP tool directly (see [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect)), and `dependencies` calls the `changeset_deps_regen`/`changeset_deps_detect` MCP tools directly (its former `detect.sh`/`regen.sh` scripts are retired). Both are thin adapters over `Changesets.DepsRegen` — see `../mcp/architecture.md` and `../silk-effects/architecture.md`.
 
 ### SessionStart: two hooks, split by responsibility
 

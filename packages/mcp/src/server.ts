@@ -14,6 +14,18 @@ import type { McpContext } from "./context.js";
 import { effectToZodSchema } from "./schema/effect-to-zod.js";
 import type { BiomeCheckArgs } from "./tools/biome-check.js";
 import { BiomeCheckAsMarkdown, BiomeCheckResult, runBiomeCheck } from "./tools/biome-check.js";
+import type { ChangesetDepsDetectArgs } from "./tools/changeset-deps-detect.js";
+import {
+	ChangesetDepsDetectAsMarkdown,
+	ChangesetDepsDetectResult,
+	changesetDepsDetect,
+} from "./tools/changeset-deps-detect.js";
+import type { ChangesetDepsRegenArgs } from "./tools/changeset-deps-regen.js";
+import {
+	ChangesetDepsRegenAsMarkdown,
+	ChangesetDepsRegenResult,
+	changesetDepsRegen,
+} from "./tools/changeset-deps-regen.js";
 import type { ChangesetInspectArgs } from "./tools/changeset-inspect.js";
 import { ChangesetInspectAsMarkdown, ChangesetInspectResult, changesetInspect } from "./tools/changeset-inspect.js";
 import type { ChangesetPreviewArgs } from "./tools/changeset-preview.js";
@@ -115,6 +127,26 @@ export function buildServer(ctx: McpContext): McpServer {
 	);
 
 	server.registerTool(
+		"changeset_deps_detect",
+		{
+			description:
+				"Read-only preview of the cumulative dependency diff (merge-base -> working tree) per workspace package. Returns each affected package's resolved dependency-table rows (catalog:/workspace: specifiers resolved to concrete versions; devDependencies retained) as the exact rows a pure-dependency changeset would carry. Does NOT write or delete any file. Prefer this over shelling out to savvy changeset deps detect.",
+			inputSchema: {
+				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
+				package: z.optional(z.string()).describe("Restrict output to a single workspace package."),
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(ChangesetDepsDetectResult) as never,
+			annotations: { readOnlyHint: true },
+		},
+		async (args) => {
+			const data = await ctx.runtime.runPromise(changesetDepsDetect(args as ChangesetDepsDetectArgs, ctx.cwd));
+			const text = Schema.decodeSync(ChangesetDepsDetectAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
 		"changeset_preview",
 		{
 			description:
@@ -128,6 +160,26 @@ export function buildServer(ctx: McpContext): McpServer {
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetPreview(args as ChangesetPreviewArgs, ctx.cwd));
 			const text = Schema.decodeSync(ChangesetPreviewAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
+		"changeset_deps_regen",
+		{
+			description:
+				"Regenerate pure-dependency changesets: delete stale single-package Dependencies-only changesets and write fresh single-package, patch-bump changesets from the cumulative dependency diff (catalog:/workspace: resolved; devDependencies dropped). Mixed changesets (Dependencies plus other content) are left untouched. Set dryRun=true to preview the plan without touching the filesystem. NOTE: without dryRun this tool MUTATES .changeset/*.md (git-reversible). Prefer this over shelling out to savvy changeset deps regen.",
+			inputSchema: {
+				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
+				package: z.optional(z.string()).describe("Restrict regeneration to a single workspace package."),
+				dryRun: z.optional(z.boolean()).describe("Compute the plan without writing or deleting any file."),
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(ChangesetDepsRegenResult) as never,
+		},
+		async (args) => {
+			const data = await ctx.runtime.runPromise(changesetDepsRegen(args as ChangesetDepsRegenArgs, ctx.cwd));
+			const text = Schema.decodeSync(ChangesetDepsRegenAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
