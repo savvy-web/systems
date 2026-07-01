@@ -1,7 +1,7 @@
 /**
  * Class-based API wrapper for changeset linting.
  *
- * Provides a static class interface that runs all remark-lint rules
+ * Provides a static class interface that runs all five remark-lint rules
  * against changeset markdown files and returns structured diagnostics.
  *
  * @internal
@@ -9,11 +9,13 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
 
 import { ContentStructureRule } from "../remark/rules/content-structure.js";
+import { DependencyTableFormatRule } from "../remark/rules/dependency-table-format.js";
 import { HeadingHierarchyRule } from "../remark/rules/heading-hierarchy.js";
 import { RequiredSectionsRule } from "../remark/rules/required-sections.js";
 import { UncategorizedContentRule } from "../remark/rules/uncategorized-content.js";
@@ -28,11 +30,12 @@ import { stripFrontmatter } from "../utils/strip-frontmatter.js";
  * (file, line, column) for integration with editors, CI reporters, and
  * the Effect CLI's `lint` and `check` commands.
  *
- * The four rules that produce lint messages are:
+ * The five rules that produce lint messages are:
  *
  * - **heading-hierarchy** -- ensures headings follow a valid nesting order
  * - **required-sections** -- checks that mandatory sections are present
  * - **content-structure** -- validates the structure of section content
+ * - **dependency-table-format** -- enforces the machine-generated dependency-table format for `## Dependencies` sections
  * - **uncategorized-content** -- flags content outside recognized section headings
  *
  * @public
@@ -52,9 +55,10 @@ export interface LintMessage {
 	 * Identifier of the remark-lint rule that produced this message.
 	 *
 	 * @remarks
-	 * Corresponds to one of the four built-in rules: `"heading-hierarchy"`,
-	 * `"required-sections"`, `"content-structure"`, or `"uncategorized-content"`.
-	 * Falls back to `"unknown"` if the underlying vfile message has no rule ID.
+	 * Corresponds to one of the five built-in rules: `"heading-hierarchy"`,
+	 * `"required-sections"`, `"content-structure"`, `"dependency-table-format"`,
+	 * or `"uncategorized-content"`. Falls back to `"unknown"` if the underlying
+	 * vfile message has no rule ID.
 	 */
 	rule: string;
 
@@ -91,9 +95,9 @@ export interface LintMessage {
 /**
  * Static class for linting changeset markdown files.
  *
- * Runs the four remark-lint rules (heading-hierarchy, required-sections,
- * content-structure, uncategorized-content) against changeset markdown
- * and returns structured {@link LintMessage} diagnostics.
+ * Runs the five remark-lint rules (heading-hierarchy, required-sections,
+ * content-structure, dependency-table-format, uncategorized-content) against
+ * changeset markdown and returns structured {@link LintMessage} diagnostics.
  *
  * @remarks
  * This class implements the pre-validation layer of the three-layer
@@ -180,7 +184,7 @@ export class ChangesetLinter {
 	 *
 	 * @remarks
 	 * Reads the file synchronously, strips YAML frontmatter, and runs all
-	 * four lint rules. The file path is preserved in each returned
+	 * five lint rules. The file path is preserved in each returned
 	 * {@link LintMessage} for error reporting.
 	 *
 	 * @param filePath - Absolute or relative path to the changeset `.md` file
@@ -195,7 +199,7 @@ export class ChangesetLinter {
 	 * Validate a markdown string directly.
 	 *
 	 * @remarks
-	 * Strips YAML frontmatter (if present) and runs all four lint rules
+	 * Strips YAML frontmatter (if present) and runs all five lint rules
 	 * against the remaining content. This method is useful for validating
 	 * changeset content that is already in memory, such as in test suites
 	 * or editor integrations.
@@ -210,10 +214,12 @@ export class ChangesetLinter {
 
 		const processor = unified()
 			.use(remarkParse)
+			.use(remarkGfm)
 			.use(remarkStringify)
 			.use(HeadingHierarchyRule)
 			.use(RequiredSectionsRule)
 			.use(ContentStructureRule)
+			.use(DependencyTableFormatRule)
 			.use(UncategorizedContentRule);
 
 		const file = processor.processSync(body);

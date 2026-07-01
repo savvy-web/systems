@@ -44,7 +44,14 @@ import {
 	VersioningStrategyLive,
 } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
-import { PackageManagerDetectorLive, WorkspaceDiscoveryLive, WorkspaceRootLive } from "workspaces-effect";
+import {
+	CatalogResolverLive,
+	LockfileReaderLive,
+	PackageManagerDetectorLive,
+	PublishabilityDetectorLive,
+	WorkspaceDiscoveryLive,
+	WorkspaceRootLive,
+} from "workspaces-effect";
 
 import { changesetCommand } from "../commands/changeset/index.js";
 import { checkCommand } from "../commands/check.js";
@@ -124,6 +131,19 @@ const BaseLive = Layer.mergeAll(
  * `BranchAnalyzerLive` AND re-exposes it for the surviving `config validate`
  * handler that yields it directly, so it is never constructed twice per run.
  *
+ * `Changesets.DepsRegenLive` (the `deps regen`/`deps detect` orchestration
+ * service) needs `WorkspaceSnapshotReader`, `ConfigInspector`,
+ * `WorkspaceDiscovery` (all from `BaseLive`/`InspectorAndAnalyzerLive`),
+ * plus `CatalogResolver` and `PublishabilityDetector` from `workspaces-effect`
+ * — neither of which the other commands need, so they're composed only for
+ * `DepsRegenGroupLive`. `CatalogResolverLive` in turn needs `WorkspaceRoot`,
+ * `LockfileReader`, `WorkspaceDiscovery`, `FileSystem`, `Path`; `LockfileReaderLive`
+ * (composed via `CatalogLive`) needs `WorkspaceRoot`, `PackageManagerDetector`,
+ * `FileSystem`, `Path` — all satisfied by `BaseLive`/`NodeContext.layer` below.
+ * `DepsRegenGroupLive` reuses the exact `InspectorAndAnalyzerLive` layer
+ * reference (not a fresh copy), so Effect's layer memoization builds that
+ * single `ConfigInspector` instance once and shares it here too.
+ *
  * `provideMerge(BaseLive)` feeds the remaining deps and re-exposes the base
  * services for handlers that yield them directly. `provideMerge(NodeContext.layer)`
  * supplies `FileSystem`, `Path`, and `CommandExecutor` to everything underneath.
@@ -133,10 +153,30 @@ const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
 	Layer.provideMerge(Changesets.ConfigInspectorLive),
 );
 
-const AppLive = Layer.mergeAll(ToolDiscoveryLive, VersioningStrategyLive, InspectorAndAnalyzerLive).pipe(
-	Layer.provideMerge(BaseLive),
-	Layer.provideMerge(NodeContext.layer),
+/**
+ * `CatalogResolver` composed with its own `LockfileReader` dependency. The
+ * remaining requirements of both (`WorkspaceRoot`, `WorkspaceDiscovery`,
+ * `PackageManagerDetector`, `FileSystem`, `Path`) are left open, satisfied
+ * by `BaseLive` / `NodeContext.layer` in `AppLive` below.
+ */
+const CatalogLive = CatalogResolverLive.pipe(Layer.provide(LockfileReaderLive));
+
+/**
+ * `Changesets.DepsRegen`, fully composed except for the base services
+ * (`WorkspaceSnapshotReader`, `WorkspaceDiscovery`) supplied by `BaseLive`.
+ */
+const DepsRegenGroupLive = Changesets.DepsRegenLive.pipe(
+	Layer.provide(InspectorAndAnalyzerLive),
+	Layer.provide(CatalogLive),
+	Layer.provide(PublishabilityDetectorLive),
 );
+
+const AppLive = Layer.mergeAll(
+	ToolDiscoveryLive,
+	VersioningStrategyLive,
+	InspectorAndAnalyzerLive,
+	DepsRegenGroupLive,
+).pipe(Layer.provideMerge(BaseLive), Layer.provideMerge(NodeContext.layer));
 
 /**
  * Bootstrap and run the `savvy` CLI application.

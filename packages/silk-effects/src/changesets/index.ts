@@ -100,6 +100,14 @@ export {
 	ResolvedVersionFileSchema,
 	makeConfigInspectorTest,
 } from "./services/config-inspector.js";
+export type { DepsRegenOptions, DepsRegenShape, RegenPlan, RegenResult } from "./services/deps-regen.js";
+export {
+	DepsRegen,
+	DepsRegenBase,
+	DepsRegenLive,
+	isPureDependencyChangeset,
+	resolveDiffRows,
+} from "./services/deps-regen.js";
 export type { GitHubServiceShape } from "./services/github.js";
 export { GitHubService, GitHubServiceBase } from "./services/github.js";
 export type { MarkdownServiceShape } from "./services/markdown.js";
@@ -158,6 +166,7 @@ export {
 	DependencyTableRowSchema,
 	DependencyTableSchema,
 	DependencyTableTypeSchema,
+	VERSION_RE,
 	VersionOrEmptySchema,
 } from "./schemas/dependency-table.js";
 export type { VersionType } from "./schemas/git.js";

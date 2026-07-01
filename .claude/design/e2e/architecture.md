@@ -3,9 +3,9 @@ status: current
 module: e2e
 category: testing
 created: 2026-06-30
-updated: 2026-06-30
-last-synced: 2026-06-30
-completeness: 90
+updated: 2026-07-01
+last-synced: 2026-07-01
+completeness: 92
 related:
   - ../tsdown-plugins/architecture.md
   - ../bundler/architecture.md
@@ -39,7 +39,7 @@ Tests live under `e2e/<pkg>/__test__/e2e/`. They are discovered by the existing 
 
 ## Current State
 
-Both harness packages are implemented and green in the normal test gate. `@e2e/bundler` carries the subprocess-build fixtures (`leaf`, `leaf-escape`, `multi`, `multitarget`, `catalog-consumer`, `catalog-unknown`, `meta-prod`) and the spawn helper in `e2e/bundler/__test__/e2e/helpers.ts`. `@e2e/pnpm-plugin-silk` carries the single contract test `pnpmfile-contract.e2e.test.ts`. These tests replace integration tests that were deleted because they resolved specifiers against the live host workspace (see below).
+Both harness packages are implemented and green in the normal test gate. `@e2e/bundler` carries the subprocess-build fixtures (`leaf`, `leaf-escape`, `multi`, `multitarget`, `catalog-consumer`, `catalog-unknown`, `meta-prod`) and the spawn helper in `e2e/bundler/__test__/e2e/helpers.ts`. `@e2e/pnpm-plugin-silk` carries two tests at different fidelities: `pnpmfile-contract.e2e.test.ts` (the config-dependency hook output contract) and `regen-catalog.e2e.test.ts` (a spawned-`savvy`-binary test driving the real `CatalogResolver` — see [Coverage](#coverage-two-fidelity-tiers)). These tests replace integration tests that were deleted because they resolved specifiers against the live host workspace (see below).
 
 ## The problem it solves
 
@@ -67,13 +67,15 @@ The deleted integration coverage is reconstituted at two distinct fidelities.
 
 **Tier 2 — `@e2e/pnpm-plugin-silk` (config-dependency hook OUTPUT contract).** `pnpmfile-contract.e2e.test.ts` imports the built `pnpmfile.mjs` directly and asserts that `hooks.updateConfig({})` injects the `silk`/`silkPeers` catalogs, the overrides, the public hoist pattern and the security defaults. It also asserts the package's main `catalogs` export exposes the same catalogs. This is the contract level, NOT a full pnpm `configDependencies` install: a registry-free install proved impossible because pnpm requires a registry plus integrity, so the chosen approach validates the hook's output shape and leaves the pnpm install/replay half to `workspaces-effect`, where it is unit-tested.
 
+**Tier 2b — `@e2e/pnpm-plugin-silk` (real `CatalogResolver` via a spawned `savvy` binary).** `regen-catalog.e2e.test.ts` closes the coverage gap the other two tiers leave: silk-effects' `Changesets.DepsRegen` is unit-tested only against a mocked `CatalogResolver`. This test copies the `regen-catalog` fixture into a fresh `mkdtempSync` dir OUTSIDE the repo, `git init`s it as the base commit, edits the working tree to add `catalog:`/`workspace:`/dev dependencies, then spawns the built `@savvy-web/cli` binary (`savvy changeset deps regen`) with `cwd` set to that dir. Because `CatalogResolver` roots at `process.cwd()`, resolution runs against the fixture's own `pnpm-workspace.yaml` and `packages/sibling`, never the host. It asserts the emitted changeset's `To` cells are concrete resolved versions (not raw protocol strings), that `devDependency` rows are absent, that `savvy changeset check` passes, and that the file passes markdownlint through the exact `@savvy-web/silk/changesets/markdownlint` custom-rule path the pre-commit hook uses. Unlike Tier 2's hook-output assertion, this tier exercises the real resolver end-to-end through the CLI, closer in fidelity to Tier 1's real subprocess builds.
+
 ## Boundaries and Invariants
 
 - Harness packages are `private: true`, never published, and depend on the package under test via `workspace:*` so they link the real built `dist/dev` artifact (built on install).
 - The subprocess `cwd` is always a fixture dir; the test process never `chdir`s for the subprocess path.
 - Every fixture that triggers resolution owns a `pnpm-workspace.yaml`; the `e2e/*` glob never matches a fixture or its siblings.
 - Tests run in the normal `pnpm test` gate via `AgentPlugin.discover()` — no separate vitest project, no separate CI job.
-- The pnpm-plugin tier asserts hook OUTPUT only; the install/replay half is `workspaces-effect`'s concern.
+- The `pnpmfile-contract` test asserts hook OUTPUT only; the install/replay half is `workspaces-effect`'s concern. `regen-catalog` is the exception that exercises the real `CatalogResolver` end-to-end via a spawned `savvy` binary, git-committed fixture state and a temp dir outside the repo.
 
 ## Gotchas worth remembering
 

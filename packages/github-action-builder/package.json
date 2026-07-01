@@ -60,7 +60,7 @@
 		"effect": "catalog:silk",
 		"jiti": "^2.7.0",
 		"picocolors": "^1.1.1",
-		"yaml-effect": "^0.6.0"
+		"yaml-effect": "^0.7.0"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",

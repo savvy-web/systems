@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
-import { SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
+import { Changesets, SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -52,5 +52,15 @@ describe("SilkRuntimeLive – layer completeness", () => {
 			}).pipe(Effect.provide(AppLayer)),
 		);
 		expect(resolved).toBe("function");
+	});
+
+	it("resolves Changesets.DepsRegen from the runtime layer", async () => {
+		const resolved = await Effect.runPromise(
+			Effect.gen(function* () {
+				const svc = yield* Changesets.DepsRegen;
+				return typeof svc.plan === "function" && typeof svc.execute === "function";
+			}).pipe(Effect.provide(AppLayer)),
+		);
+		expect(resolved).toBe(true);
 	});
 });

@@ -40,7 +40,7 @@
 		"@effect/sql": "catalog:silk",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",
-		"jsonc-effect": "^0.2.1",
+		"jsonc-effect": "^0.3.0",
 		"workspaces-effect": "^1.2.0",
 		"yaml": "^2.9.0"
 	},

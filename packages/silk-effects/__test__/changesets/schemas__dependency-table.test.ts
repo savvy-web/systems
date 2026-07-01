@@ -6,6 +6,7 @@ import {
 	DependencyTableRowSchema,
 	DependencyTableSchema,
 	DependencyTableTypeSchema,
+	VERSION_RE,
 	VersionOrEmptySchema,
 } from "../../src/changesets/schemas/dependency-table.js";
 
@@ -150,5 +151,34 @@ describe("DependencyTableSchema", () => {
 
 	it("rejects empty array", () => {
 		expect(() => decode([])).toThrow();
+	});
+});
+
+describe("VERSION_RE widening (protocol fallback)", () => {
+	const decode = Schema.decodeUnknownEither(VersionOrEmptySchema);
+
+	it("still accepts semver, ranges, and the em-dash sentinel", () => {
+		for (const v of ["1.2.3", "^1.2.3", "~1.2.3", "1.2.3-beta.1", "—"]) {
+			expect(VERSION_RE.test(v)).toBe(true);
+		}
+	});
+
+	it("accepts pnpm protocol specifiers as a last resort", () => {
+		for (const v of ["catalog:silk", "catalog:silkPeers", "workspace:*", "workspace:^", "npm:effect@3.19.0"]) {
+			expect(VERSION_RE.test(v)).toBe(true);
+			expect(decode(v)._tag).toBe("Right");
+		}
+	});
+
+	it("still rejects arbitrary text", () => {
+		for (const v of ["latest", "not a version", "1.2", "foo:bar"]) {
+			expect(VERSION_RE.test(v)).toBe(false);
+		}
+	});
+
+	it("rejects malformed cells: empty protocol payloads and dangling semver suffixes", () => {
+		for (const v of ["catalog:", "workspace:", "npm:", "1.2.3-", "1.2.3+", "1.2.3."]) {
+			expect(VERSION_RE.test(v)).toBe(false);
+		}
 	});
 });

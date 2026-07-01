@@ -1,13 +1,13 @@
 ---
 name: dependencies
 description: >
-  Manage pure dependency changesets via the @savvy-web/changesets CLI.
-  Ships two scripts: `detect.sh` (read-only) and `regen.sh` (delete-and-
-  recreate). The regen flow enforces our convention of one-package-per-
-  changeset and one-dependency-changeset-per-package.
+  Manage pure dependency changesets via the changeset_deps_regen (delete-
+  and-recreate) and changeset_deps_detect (read-only) MCP tools. The regen
+  flow enforces our convention of one-package-per-changeset and one-
+  dependency-changeset-per-package.
 user-invocable: false
 model: sonnet
-allowed-tools: Bash(bash *)
+allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_deps_regen mcp__plugin_silk_savvy-mcp__changeset_deps_detect
 ---
 
 # Manage Dependency Changesets
@@ -21,71 +21,99 @@ any `package.json`'s `dependencies` / `devDependencies` /
 
 **Always write one package per changeset file.** Although
 `@changesets/cli` accepts multi-package frontmatter, this project treats
-one changeset = one package as the rule. The regen script enforces this:
-it never writes a multi-package dependency changeset, and a workspace
-package may have at most **one** changeset file whose only content is a
-`## Dependencies` table.
+one changeset = one package as the rule. `changeset_deps_regen` enforces
+this: it never writes a multi-package dependency changeset, and a
+workspace package may have at most **one** changeset file whose only
+content is a `## Dependencies` table.
 
-## Primary path: `regen.sh`
+## Primary path: `changeset_deps_regen`
 
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/dependencies/scripts/regen.sh"
-```
+Call the `mcp__plugin_silk_savvy-mcp__changeset_deps_regen` tool.
+
+Args:
+
+| Arg | Effect |
+| --- | --- |
+| `dryRun` | `true` prints the plan without writing or deleting anything. Prefer running with `dryRun: true` first to preview, then re-invoke without it (or `dryRun: false`) to apply. |
+| `package` | Restrict to a single workspace package. Only that package's pure-dep changeset is deleted and re-written. |
+| `base` | Override the base branch (defaults to `.changeset/config.json#baseBranch`, typically `main`). |
+| `cwd` | Target a workspace other than the current directory. |
 
 What it does:
 
 1. Computes the cumulative dep diff from the merge base with the
-   project's base branch (`.changeset/config.json#baseBranch`, default
-   `main`) to the working tree — committed, staged, unstaged.
+   project's base branch to the working tree — committed, staged, unstaged.
 2. Finds every "pure dependency changeset" in `.changeset/*.md`. Strict
    detection: single-package frontmatter, exactly one `## Dependencies`
    heading, no other body content.
-3. Deletes them all.
+3. Deletes them all (or, on `dryRun`, reports what it would delete).
 4. Writes one fresh `<adjective>-<noun>-<verb>.md` per workspace
    package with current dep changes: single-package frontmatter,
    `patch` bump, one `## Dependencies` section, one CSH005 table
    (Dependency | Type | Action | From | To).
 
-Output (JSON to stdout):
+**Table rows carry resolved versions and omit `devDependency` rows.**
+`catalog:`/`workspace:` specifiers in the table are resolved to concrete
+versions before they land in the changeset, and devDependency changes
+are excluded entirely — they don't affect the published package's
+contract. Use `changeset_deps_detect` when you need the full diff
+including devDependencies.
+
+`structuredContent` shape:
 
 ```jsonc
 {
-  "toDelete": [{"file": "...", "package": "@scope/foo"}],
-  "toWrite":  [{"file": "...", "package": "@scope/foo", "diff": {...}}],
-  "skippedMixed": ["..."]  // changesets with Dependencies + other sections — never touched
+  "root": "...",
+  "deleted": ["..."],      // changeset files removed (or would be removed, on dryRun)
+  "written": ["..."],      // changeset files written (or would be written, on dryRun)
+  "skippedMixed": ["..."], // changesets with Dependencies + other sections — never touched
+  "dryRun": true
 }
 ```
 
-Common flags forwarded to the CLI:
+The tool also returns a formatted markdown transcript in its text
+content — present that to the user as-is when a human-readable summary
+is wanted.
 
-| Flag | Effect |
-| --- | --- |
-| `--dry-run` | Print the plan without writing or deleting. |
-| `--package <name>` | Restrict to a single workspace package. Only that package's pure-dep changeset is deleted and re-written. |
-| `--base <branch>` | Override the base branch (defaults to the config's `baseBranch`). |
+## Secondary path: `changeset_deps_detect`
 
-## Secondary path: `detect.sh`
+Call the `mcp__plugin_silk_savvy-mcp__changeset_deps_detect` tool.
 
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/dependencies/scripts/detect.sh"
+Read-only — no `.changeset/*.md` files are written or deleted. Returns
+the same cumulative dependency diff `changeset_deps_regen` would act on,
+per workspace package, and **includes devDependency rows** (unlike
+regen's output). Useful when you want to *see* what would change before
+committing to a regen, or when folding a dep change into a hand-authored
+mixed changeset.
+
+Args: `base`, `package`, `cwd` — same semantics as `changeset_deps_regen`.
+
+`structuredContent` shape:
+
+```jsonc
+{
+  "root": "...",
+  "packages": [
+    {
+      "package": "@scope/foo",
+      "relativePath": "packages/foo",
+      "rows": [
+        { "dependency": "effect", "type": "dependency", "action": "updated", "from": "3.18.0", "to": "3.19.1" }
+      ]
+    }
+  ]
+}
 ```
-
-Read-only. Returns the same per-workspace-package diff structure that
-`regen.sh` would write, without touching any files. Useful when you
-want to *see* what would change before committing to a regen, or when
-folding a dep change into a hand-authored mixed changeset.
-
-Flags: `--from <ref>` / `--to <ref>` (defaults: merge-base → working
-tree), `--package <name>`, `--markdown` (emit ready-to-paste CSH005
-blocks instead of JSON).
 
 ## When to invoke
 
 - **The diff touches any `package.json`'s dep fields.** Look at the
-  `changeset_inspect` (`mode: "branch"`) result: if any of the `files[]` entries are a
-  workspace `package.json` and have `status: "modified"`, run `regen.sh`.
-- **An existing `.changeset/*.md` has a stale Dependencies table.** The
-  `regen.sh` script will detect and replace it.
+  `changeset_inspect` (`mode: "branch"`) result: if any of the `files[]`
+  entries are a workspace `package.json` with `status: "modified"` or
+  `"added"` (a brand-new package ships with its own dependencies too),
+  call `changeset_deps_regen`.
+- **An existing `.changeset/*.md` has a stale Dependencies table.**
+  `changeset_deps_regen` will detect and replace it.
 - **Don't run during squash** — squash is for consolidating
   feature/fix changesets. Dependency changesets are regenerated, not
   merged.
@@ -106,8 +134,12 @@ blocks instead of JSON).
 
 ## Error handling
 
-Both scripts propagate the CLI's exit code:
+Both tools propagate typed errors from the MCP server — no stdout
+parsing required:
 
-- **Exit 0**: JSON plan on stdout.
-- **Exit 1, CLI not installed**: stderr names the missing dep. Report and stop.
-- **Exit non-zero, GitError**: typically a missing base branch. Report and stop.
+- **Success** — `structuredContent` plus a formatted markdown transcript
+  in the text content.
+- **`GitError`** — typically a missing base branch or git command
+  failure. Report the error message and stop.
+- **`WorkspaceRootNotFoundError`** — the `cwd` isn't inside a recognized
+  workspace. Report the error message and stop.

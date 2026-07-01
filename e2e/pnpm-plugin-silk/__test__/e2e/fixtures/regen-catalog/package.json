@@ -1,0 +1,7 @@
+{
+	"name": "@fixture/catalog-consumer",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"publishConfig": { "access": "public", "targets": { "npm": true } }
+}

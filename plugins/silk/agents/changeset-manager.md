@@ -8,7 +8,7 @@ description: >
   only when there is genuine ambiguity.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, mcp__plugin_silk_savvy-mcp__changeset_deps_regen, mcp__plugin_silk_savvy-mcp__changeset_deps_detect, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - changeset-style
   - status
@@ -33,7 +33,7 @@ Lead with **what** the user gets, not **how** the code got there. Include short 
 
 **Always write single-package changeset files.** `@changesets/cli` accepts multiple packages in a single changeset's frontmatter, but this project's convention is one package per changeset. Multiple files per package are fine — what's *not* fine is one file naming multiple packages. When a branch affects more than one workspace package, write one changeset file per package, each with its own frontmatter and its own body.
 
-The dependency-table case follows a tighter version of the same rule: **at most one changeset file per package may contain a `## Dependencies` table.** The `dependencies` skill's `regen.sh` script enforces this — it nukes existing pure dependency changesets and regenerates them from the current diff, one per affected package.
+The dependency-table case follows a tighter version of the same rule: **at most one changeset file per package may contain a `## Dependencies` table.** The `dependencies` skill's `changeset_deps_regen` MCP tool enforces this — it nukes existing pure dependency changesets and regenerates them from the current diff, one per affected package.
 
 ### What NOT to mention in a changeset
 
@@ -104,7 +104,7 @@ A "release surface" is anything whose changes belong in a package's release note
 
    For each in-scope file (after steps 3 and 4), judge `patch` (fixes, internal refactor), `minor` (new APIs, additive features), or `major` (removed/changed exports, breaking behavior). `changeset_inspect` does not assign bump levels — that's still your call.
 
-5. **Handle dependency changes via the `dependencies` skill.** If any entry in `files[]` is a workspace `package.json` with `status: "modified"`, invoke `dependencies` (which runs `regen.sh`). The skill deletes every pure dependency changeset in `.changeset/` and writes fresh single-package `patch` changesets reflecting the current cumulative dep diff. Do not write dependency tables by hand — the script enforces the table format and the single-package-per-changeset convention.
+5. **Handle dependency changes via the `dependencies` skill.** If any entry in `files[]` is a workspace `package.json` with `status: "modified"`, invoke `dependencies` (which calls the `changeset_deps_regen` MCP tool). The skill deletes every pure dependency changeset in `.changeset/` and writes fresh single-package `patch` changesets reflecting the current cumulative dep diff. Do not write dependency tables by hand — the tool enforces the table format and the single-package-per-changeset convention.
 
 6. **Reconcile non-dependency changes against existing changesets.** For each affected package (using the *non-package.json* entries from `files[]`):
    - **Existing changeset covers the change adequately** → no action.
@@ -164,7 +164,7 @@ You can invoke any plugin skill via the `Skill` tool. `changeset-style` and `sta
 | `changeset-style` | Preloaded | Authoritative format spec — already in scope at startup. |
 | `status` | Preloaded | Inventory-awareness rules — already in scope at startup. |
 | `config` | Lazy | **Invoke once per run during inventory.** Drives `mcp__plugin_silk_savvy-mcp__changeset_inspect`: `mode: "branch"` (primary — diff + classification in one shot), `mode: "config"` (config-only view when no diff is involved), and `mode: "classify"` (maps one or more arbitrary repo paths to their owning package — use when a path does not appear in the branch diff but you need to attribute it, e.g. a file the user references directly). The MCP server does the resolution; you read the structured content. |
-| `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the `changeset_inspect` (`mode: "branch"`) result is a workspace `package.json` with `status: "modified"`.** Runs `regen.sh` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
+| `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the `changeset_inspect` (`mode: "branch"`) result is a workspace `package.json` with `status: "modified"`.** Calls `mcp__plugin_silk_savvy-mcp__changeset_deps_regen` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
 | `changeset-check` | Lazy | **After writing or editing any changeset file, call `mcp__plugin_silk_savvy-mcp__changeset_validate` as an explicit verification step** — it returns typed CSH001-CSH005 diagnostics with no stdout parsing and surfaces violations before the pre-commit hook does. Invoke this skill to use the bundled `scripts/check.sh` / `scripts/lint.sh` Bash scripts as a fallback when the MCP tool is unavailable or when the PostToolUse hook already covered it. |
 | `changeset-list` | Lazy | Invoke during the inventory step if you want the structured listing rather than reading files yourself. Its bundled `scripts/list.sh` shells out to the project's `@changesets/cli` for JSON output. |
 | `changeset-preview` | Lazy | Invoke when you want to see what the final CHANGELOG would look like before deciding whether more changeset work is needed. |
