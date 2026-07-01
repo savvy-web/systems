@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-06-25
-last-synced: 2026-06-25
+updated: 2026-06-30
+last-synced: 2026-06-30
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -35,7 +35,7 @@ The `savvy` binary — the single command host for the Silk Suite's everyday dev
 
 **Bin:** `savvy` resolves through `src/bin/cli.ts` to `runCli()` in `src/cli/index.ts`.
 
-**Versioning:** a `fixed` changeset group with `@savvy-web/silk` (they always release together).
+**Versioning:** independent. cli is no longer in a `fixed` group with `@savvy-web/silk`, but silk stays tightly coupled: silk declares cli as a `workspace:*` source dependency, changesets treats that as cli's exact current version, so every cli release pushes silk's dep out of range and auto-PATCH-bumps silk (via the repo-wide `updateInternalDependencies: patch`), re-pinning silk's exact cli peer at publish. See `../silk/architecture.md`.
 
 It builds via `@savvy-web/bundler` through a front-door `savvy.build.ts`. The CLI keeps its runtime deps external rather than bundling them (tsdown auto-externalizes everything declared in `dependencies`), and `meta` is off because the package ships a binary, not a documented API surface. `publishConfig` links `dist/dev/pkg` for development and roots the tarball at `dist/prod/npm/pkg`. See `../bundler/architecture.md`.
 

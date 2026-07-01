@@ -68,10 +68,10 @@ Key coordination points:
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
 - README.md is for external users; `.claude/design/` for package architecture docs.
 - The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — all three depend only on `@savvy-web/silk-effects` within the repo.
-- `@savvy-web/silk`, `@savvy-web/cli`, and `@savvy-web/mcp` are a `fixed` changeset group (versioned and released together); silk's changeset config carries a `versionFiles` glob that bumps the `plugins/*` manifests in lockstep.
+- All packages version INDEPENDENTLY — `.changeset/config.json` has no `fixed` or `linked` arrays. silk/cli/mcp are NOT a fixed group, but silk stays exactly pinned to cli/mcp automatically: silk declares `@savvy-web/cli`/`@savvy-web/mcp` as source `dependencies` (`workspace:*`), which its build transform promotes to EXACT `peerDependencies` at publish. Changesets reads `workspace:*` as the exact current version, so a cli/mcp release auto-PATCH-bumps silk (`updateInternalDependencies: patch`) and re-pins the exact version. Because they are source `dependencies` (not source peerDependencies), silk is NOT force-major-bumped. silk's `versionFiles` glob still bumps the `plugins/*` manifests in lockstep with silk.
 - Integration/e2e tests must NOT resolve `catalog:`/`workspace:` against the host workspace — catalog-resolution coverage lives in `e2e/` via subprocess builds against isolated fixtures (`CatalogResolver` reads `process.cwd()`). See `e2e/CLAUDE.md`.
-- `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` version independently (changesets auto-bumps the bundler when tsdown-plugins changes; not a fixed group); both self-host while the other nine packages build via the bundler front door.
-- `@savvy-web/pnpm-plugin-silk` versions independently — not in the `fixed` (`silk`/`cli`/`mcp`) or `linked` (`bundler`/`rspress-builder`/`tsdown-plugins`) changeset groups; it is npm-registry-only (the one package not also on GitHub Packages).
+- `@savvy-web/bundler`, `@savvy-web/rspress-builder`, and `@savvy-web/tsdown-plugins` version independently (no longer a linked group); changesets still auto-bumps the bundler when tsdown-plugins changes (dependency relationship). Both bundler and tsdown-plugins self-host while the other nine packages build via the bundler front door.
+- `@savvy-web/pnpm-plugin-silk` versions independently and is npm-registry-only (the one package not also on GitHub Packages).
 
 ## Design Documentation
 

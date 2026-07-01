@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-25
-last-synced: 2026-06-25
+updated: 2026-06-30
+last-synced: 2026-06-30
 completeness: 92
 related:
   - ../cli/architecture.md
@@ -39,7 +39,7 @@ The single package a consumer installs to get the whole Silk Suite dev-tooling s
 **Package:** `@savvy-web/silk`
 **Location:** `packages/silk` in `savvy-web/systems`
 **Build:** ESM-only base with two dual-format CJS override entries, via `@savvy-web/bundler`; ships the Biome asset through the top-level `public/` convention. See [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime).
-**Versioning:** `fixed` changeset group with `@savvy-web/cli` and `@savvy-web/mcp` (they always release together)
+**Versioning:** independent, but auto-coupled to `@savvy-web/cli` and `@savvy-web/mcp`. silk declares both as `workspace:*` source dependencies; changesets treats `workspace:*` as their exact current version, so a cli or mcp release pushes silk's dep out of range and auto-PATCH-bumps silk (via the repo-wide `updateInternalDependencies: patch`), which re-pins the exact cli/mcp version at publish. Because cli/mcp are source `dependencies` (not source `peerDependencies`), silk gets a PATCH, not a forced major. See [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime) for the peerDep promotion transform that re-pins them.
 
 It replaces the config-integration subpaths of three standalone packages (`@savvy-web/changesets`, `@savvy-web/commitlint`, `@savvy-web/lint-staged`) as drop-in equivalents.
 
@@ -58,7 +58,7 @@ silk is the most demanding consumer of the bundler, and reconciling it drove the
 - **`dtsExternals: ["effect", "@effect/platform"]` externalizes those two in the declaration pass only.** The emitted `.d.ts`/`.d.cts` reference effect's types via `import` rather than inlining them. Inlining effect's cross-module `declare module` interface augmentations produced conflicting interface-extension errors (TS2320) when a consumer type-checked silk's dts. effect and `@effect/platform` are declared as runtime dependencies so consumers can resolve those dts type imports.
 - **Two CJS override entries: `./changesets/changelog` and `./changesets/markdownlint`.** Both are loaded by an external tool through a CommonJS `require()` path — the Changesets CLI resolves the changelog formatter via `resolve-from` + `require()`, and markdownlint-cli2 `require()`s its custom rules. An ESM-only export (only `import` + `types`, no `require` condition) makes the CJS resolver throw `ERR_PACKAGE_PATH_NOT_EXPORTED`, which broke `savvy changeset version`. Since CJS cannot `require()` ESM-only silk-effects, each override sets `format: ["esm", "cjs"]` and `bundleNodeModules: true` to INLINE silk-effects and its transitive node_modules; silk-effects is not externalized in an override (a partition does not inherit the base `externals`), so rolldown treats it as bundleable node_modules and emits co-located `.cjs` chunks the entry requires relatively. The base ESM entries stay external. The markdownlint override additionally sets `bundledPackages: ["@commitlint/types"]` to inline that package's declarations into its own dts; this need not be set top-level because no base entry's `.d.ts` references `@commitlint/types` (those types surface through the published silk-effects `Commitlint` namespace).
 - **The cjs-default-interop and node-builtin default-interop plugins are load-bearing for the CJS overrides.** rolldown's `output.exports` cannot emit `module.exports = <default>` while keeping named exports, so an ESM consumer doing `import(x).default` would receive a `{ default, ...named }` wrapper. silk's `./changesets/markdownlint` default-exports the rules ARRAY, which markdownlint-cli2 reads as `module.default` and `.flat()`s; without the interop footer it gets the wrapper and aborts. Separately, the node-builtin default-interop fix is what made the overrides' CJS work at all: a transitive dep (vfile, `export {default as minproc} from 'node:process'`) bundled into the `.cjs` crashed `savvy changeset version` with `Cannot read properties of undefined` until the rewrite landed. Both activate automatically because these entries build dual-format — see `../tsdown-plugins/architecture.md`.
-- **The peerDep promotion transform.** `@savvy-web/cli` and `@savvy-web/mcp` are declared as regular `dependencies` in source (so changesets versions them in lockstep with silk; a peerDependency on a released workspace package forces a major bump on every minor). The custom transform promotes them back into `peerDependencies` for the published manifest, keeps only `semver`/`effect`/`@effect/platform`/`@savvy-web/silk-effects` as runtime `dependencies` (the externalized and dts-externalized packages consumers must resolve), strips the rest since everything else is bundled, and calls `defaultManifestTransform` itself to keep the standard strip.
+- **The peerDep promotion transform.** `@savvy-web/cli` and `@savvy-web/mcp` are declared as regular `dependencies` in source (so changesets auto-PATCH-bumps silk to re-pin the exact peer when cli or mcp releases, rather than force-MAJOR-bumping it as a source `peerDependency` on a released workspace package would). The custom transform promotes them back into `peerDependencies` for the published manifest, keeps only `semver`/`effect`/`@effect/platform`/`@savvy-web/silk-effects` as runtime `dependencies` (the externalized and dts-externalized packages consumers must resolve), strips the rest since everything else is bundled, and calls `defaultManifestTransform` itself to keep the standard strip.
 
 ## The shim contract
 

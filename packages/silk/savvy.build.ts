@@ -67,12 +67,14 @@ await build({
 	meta: false,
 	transform: ({ pkg }) => {
 		// `@savvy-web/cli` and `@savvy-web/mcp` are declared as regular
-		// `dependencies` in source so changesets versions them in lockstep with
-		// silk: a peerDependency on a released workspace package forces a major
-		// bump on every minor of the dependency. Consumers should still receive
-		// them as peers alongside the rest of the suite, so promote them back into
-		// `peerDependencies` for the published manifest BEFORE the `dependencies`
-		// block is stripped below.
+		// `dependencies` in source (with a `workspace:*` range, which changesets reads
+		// as their exact current version). A cli/mcp release therefore pushes silk's
+		// dep out of range and auto-PATCH-bumps silk (`updateInternalDependencies:
+		// patch`), re-pinning the exact version at publish — a source `peerDependency`
+		// on a released workspace package would instead force a MAJOR bump every time.
+		// Consumers should still receive them as peers alongside the rest of the suite,
+		// so promote them back into `peerDependencies` for the published manifest BEFORE
+		// the `dependencies` block is stripped below.
 		const deps = pkg.dependencies as Record<string, string> | undefined;
 		const peers = (pkg.peerDependencies as Record<string, string> | undefined) ?? {};
 		for (const name of ["@savvy-web/cli", "@savvy-web/mcp"]) {
