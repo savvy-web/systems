@@ -3,31 +3,27 @@ status: current
 module: mcp
 category: architecture
 created: 2026-05-31
-updated: 2026-06-26
-last-synced: 2026-06-26
+updated: 2026-07-01
+last-synced: 2026-07-01
 completeness: 95
 related:
   - ../silk-effects/architecture.md
   - ../cli/architecture.md
   - ../silk/plugin.md
-  - ../docs/architecture.md
-  - ../api-extractor-llms/architecture.md
 dependencies:
   - ../silk-effects/architecture.md
 ---
 
 # @savvy-web/mcp architecture
 
-The `savvy-mcp` server — a standalone, spawnable MCP server that serves Silk Suite tooling and library knowledge to coding agents as structured tools and curated resources. Built on an Effect `ManagedRuntime` over `@savvy-web/silk-effects` plus the `@modelcontextprotocol/sdk`.
+The `savvy-mcp` server — a standalone, spawnable MCP server that serves Silk Suite tooling to coding agents as structured tools. Built on an Effect `ManagedRuntime` over `@savvy-web/silk-effects` plus the `@modelcontextprotocol/sdk`.
 
 ## Table of contents
 
 - [Overview](#overview)
 - [Current state](#current-state)
-- [The information-vs-direction split](#the-information-vs-direction-split)
 - [The runtime layer](#the-runtime-layer)
-- [The tool half](#the-tool-half)
-- [The resource half](#the-resource-half)
+- [The tools](#the-tools)
 - [Root resolution](#root-resolution)
 - [Plugin integration](#plugin-integration)
 - [Boundaries and invariants](#boundaries-and-invariants)
@@ -35,21 +31,19 @@ The `savvy-mcp` server — a standalone, spawnable MCP server that serves Silk S
 
 ## Overview
 
-`@savvy-web/mcp` owns the `savvy-mcp` binary: a long-lived MCP server, spawned (never typed by a human) alongside an agent in the project working directory, shared across Claude Code plugins. It exists to make Silk tooling cheaper for agents to consume than bash — structured JSON tool output instead of parsed console text — and to serve library knowledge as MCP resources agents research before guessing.
+`@savvy-web/mcp` owns the `savvy-mcp` binary: a long-lived MCP server, spawned (never typed by a human) alongside an agent in the project working directory, shared across Claude Code plugins. It exists to make Silk tooling cheaper for agents to consume than bash — structured JSON tool output instead of parsed console text.
 
-It is **not** a discovery host. The MCP is a content-rich server with two concrete jobs (tools and resources) and no discovery seam. It reuses `@savvy-web/silk-effects` for tool logic — the same business layer the `savvy` CLI uses.
+It is a **tools-only** server: six MCP tools and zero resources. It reuses `@savvy-web/silk-effects` for tool logic — the same business layer the `savvy` CLI uses. It is not a discovery host and carries no per-project gating; direction lives in the plugins, each of which orients the agent toward the tools it should prefer.
 
-**Package:** `@savvy-web/mcp`, at `packages/mcp` in `savvy-web/systems`. The `savvy-mcp` bin (`src/bin.ts`) calls `startMcpServer()` in `src/server.ts`. ESM-only, built via `@savvy-web/bundler`; the markdown corpus ships through the top-level `public/content` copy convention (see [The content corpus](#the-content-corpus-and-its-identity-contract)).
+**Package:** `@savvy-web/mcp`, at `packages/mcp` in `savvy-web/systems`. The `savvy-mcp` bin (`src/bin.ts`) calls `startMcpServer()` in `src/server.ts`. ESM-only, built via `@savvy-web/bundler`.
 
 ## Current state
 
-Implemented and verified end-to-end. The server ships seven tools (`workspace_info`, `silk_docs_search`, `turbo_inspect`, `changeset_inspect`, `changeset_validate`, `changeset_preview`, `biome_check`), the manifest-backed resource layer (`silk://catalog` plus a single `silk://{+path}` template over an on-disk markdown corpus), a turbo-orchestrated API-doc generation pipeline, body-content search, a related-graph retrieval boost, structured query logging and MCP wiring across three Claude Code plugins (`plugins/silk`, `plugins/github-actions`, `plugins/docs`) that each spawn the same server. `private: true` in source; the builder flips it on build.
+Implemented and verified end-to-end. The server ships six tools (`workspace_info`, `turbo_inspect`, `changeset_inspect`, `changeset_validate`, `changeset_preview`, `biome_check`) and MCP wiring across two Claude Code plugins (`plugins/silk`, `plugins/github-actions`) that each spawn the same server. `private: true` in source; the builder flips it on build.
 
-`@savvy-web/mcp` depends on `@savvy-web/silk-effects` (`workspace:*`) for tool logic, `workspaces-effect`, the `@effect/*` runtime, `@modelcontextprotocol/sdk`, `fuse.js` and `zod` (v4, boundary-only). `api-extractor-llms` — an external npm package, not a workspace sibling — is a build-only `devDependency` used by the `generate:api-docs` script and never bundled into the server. See `package.json` for exact ranges. Unlike `@savvy-web/silk`, which bundles silk-effects for CJS `require()` reasons, the MCP is a real Node process so silk-effects is a normal runtime **dependency**, not bundled.
+The resource subsystem has been removed entirely. The `silk://` resource scheme, the on-disk markdown corpus and its manifest, the `silk_docs_search` tool with its Fuse search index and related-graph boost, the structured query logging and the turbo-orchestrated API-doc render pipeline (along with its `api-extractor-llms` build-time devDependency) are all gone. API documentation is moving to a separate future RSPress website built from each package's `.api.json` model rather than being served from the server.
 
-## The information-vs-direction split
-
-The load-bearing architectural principle. **Information lives in the MCP; direction lives in the plugins.** The server carries every resource and tool regardless of the current project — including, eventually, GitHub Actions knowledge. Each plugin decides which resources and tools to point the agent at, so a non-Actions project never gets bloated with Actions context even though the shared server could serve it. This split is why three plugins (`plugins/silk`, `plugins/github-actions`, `plugins/docs`) spawn the identical server but orient the agent differently. The MCP itself carries no per-project gating.
+`@savvy-web/mcp` depends on `@savvy-web/silk-effects` (`workspace:*`) for tool logic, `workspaces-effect`, the `@effect/*` runtime, `@modelcontextprotocol/sdk` and `zod` (v4, boundary-only). See `package.json` for exact ranges. Unlike `@savvy-web/silk`, which bundles silk-effects for CJS `require()` reasons, the MCP is a real Node process so silk-effects is a normal runtime **dependency**, not bundled.
 
 ## The runtime layer
 
@@ -61,7 +55,7 @@ One long-lived Effect `ManagedRuntime`, built from `SilkRuntimeLive` (`src/runti
 
 The smoke tests in `__test__/` (`runtime.smoke.test.ts`, `server.smoke.test.ts`) are the layer-completeness gate, exactly as in the CLI: a missing service names itself at runtime, not at typecheck.
 
-## The tool half
+## The tools
 
 Every tool follows the conventions proven by `workspace_info` (`src/tools/workspace-info.ts`):
 
@@ -70,8 +64,6 @@ Every tool follows the conventions proven by `workspace_info` (`src/tools/worksp
 - **Effect Schema bridges to zod at the SDK boundary.** `@modelcontextprotocol/sdk`'s `registerTool` accepts only zod schemas. The bridge (`src/schema/effect-to-zod.ts`) routes Effect Schema → `JSONSchema.make` → inlined `$ref`s → `z.fromJSONSchema`. This is the one place the canonical Effect Schema crosses into the SDK's world.
 
 `workspace_info` wraps `SilkWorkspaceAnalyzer`. Its output is a deliberately **flat, non-recursive projection** of `WorkspaceAnalysis`: `linked`/`fixed` collapse to arrays of workspace names and `targets` to registry URL strings. This avoids the recursive `Schema.suspend` in `AnalyzedWorkspace` (which the zod bridge cannot inline, see [Rationale](#why-a-flat-tool-projection-over-the-rich-analysis)) and is more token-efficient for the agent. See `src/tools/workspace-info.ts`.
-
-`silk_docs_search` (`src/tools/docs-search.ts`) is the read-only entry into the resource corpus. It takes a plain keyword/phrase query — no operator DSL — and returns ranked hits with a normalized higher-is-better `confidence` plus a high/medium/low `confidenceLabel`. It runs **synchronously off the in-memory index, not the Effect runtime** (no silk-effects services involved). A real query that matches nothing returns an **empty** result set so a caller can distinguish "no docs match" from "here are some docs"; the priority-ordered top-N fallback fires only for a stop-word-only browse with no meaningful query tokens (see [Search index](#search-index)). Results also carry an optional `related` field (see [Search index](#search-index)) and emit a structured stderr query log line per call (see [Query logging](#query-logging)).
 
 `turbo_inspect` (`src/tools/turbo-inspect.ts`) wraps silk-effects' `Turbo.TurboInspector` — read-only Turborepo introspection that never executes a task (every path is `turbo … --dry=json`). Its result is a **discriminated union keyed by `mode`** (`cache` | `graph` | `affected`), each variant embedding the corresponding silk-effects `Turbo` result schema. Those embedded schemas are flat and non-recursive so the union round-trips cleanly through the effect→zod bridge. The handler resolves the workspace root via `WorkspaceRoot.find` from the requested (or fallback) `cwd` — the same walk-up `workspace_info` uses — then dispatches to the matching `TurboInspector` method.
 
@@ -85,110 +77,31 @@ Every tool follows the conventions proven by `workspace_info` (`src/tools/worksp
 
 The execution flow is **fix-then-validate over the stable `gitlab` reporter** (not the experimental `json` reporter). When `write`/`unsafe` is set the handler runs a fix pass first, then always runs a read pass that reports what *remains* after any fix. stdout is parsed regardless of exit code (Biome's `0`/`1` both carry diagnostics; only `>1` means Biome itself failed and surfaces as a tool error); the gitlab severity scale maps onto the result's three-level `error`/`warning`/`info`. Returning structured data instead of Bash stdout sidesteps the Bash tool's output truncation.
 
-## The resource half
-
-Resources serve a curated, on-disk markdown corpus behind a stable URI scheme. A build-time compiler validates the corpus and emits a tracked manifest; the runtime serves from that manifest plus the bodies on disk. An API-doc generation pipeline renders generated docs into this same corpus, and that rendered markdown is **tracked, committed source** — only the upstream API Extractor models that feed it are gitignored.
-
-### The content corpus and its identity contract
-
-The corpus lives under `public/content/{standards,packages,guides}/**.md` (under the top-level `public/` directory because the bundler copies only that directory). Each file carries YAML front-matter whose shape is the load-bearing contract — see the Effect Schemas in `src/resources/schema.ts` (`DocFrontMatter`, `ManifestEntry`, `Manifest`).
-
-The **`id` is the stable identity**, not the file path: the URI is derived as `silk://<id>`, never from where the file sits on disk. `ID_PATTERN` requires the id to be tier-prefixed and allows an optional trailing slash for directory-index docs (e.g. `packages/silk-effects/` resolves to `content/packages/silk-effects/index.md`). Directories prefixed with `_` (e.g. `_templates/`) are skipped by the compiler.
-
-The URI taxonomy stays stable when `packages/*` content swaps from hand-authored to generated-from-API-model:
-
-- `silk://standards/<topic>` — Silk development standards (commits, changesets, lint, testing, semver, dependency conventions, the API model pipeline and a `standards/turbo/*` Turborepo set).
-- `silk://packages/<pkg>/<topic>` — per-package API/usage docs; the `packages/<pkg>/api/<kind>/<slug>` sub-path is the generated API-reference space, with a generated per-package index page served at the bare `silk://packages/<pkg>/api` URI.
-- `silk://guides/<slug>` — higher-level conceptual articles layered over the packages.
-
-Tags are drawn from a controlled vocabulary in `content/tags.json` (canonical tags → aliases); the compiler canonicalizes and rejects unknown tags via `src/resources/tags.ts`.
-
-### The API-doc generation pipeline
-
-Generated docs are `source: generated` entries in the corpus. They are produced by a turbo-orchestrated pipeline that renders each package's `.api.json` model into `public/content/packages/*/api/**` plus a per-package `api.md` index. **That rendered markdown is tracked, committed source**, and the `manifest.json` that indexes it includes the generated entries. Only the upstream API Extractor `.api.json` model files are gitignored (`packages/mcp/lib/models/*/`). The corpus is committed because a clean release machine never runs `generate:api-docs`: an uncommitted corpus would ship nothing and every `silk://packages/<pkg>/api…` read would 404 with `ENOENT` (#178/#179). A local `build:prod` regenerates the corpus and keeps the committed copy in sync; a deep-equality write guard (see [The build-time compiler](#the-build-time-compiler)) keeps a no-op rebuild from churning git. The generator is skip-tolerant, so a bare install with no models never fails — it serves the already-committed corpus.
-
-**Targets.** `lib/scripts/api-targets.ts` declares the in-monorepo library packages that are generation (render) targets — see `API_TARGETS` for the live list (`silk-effects`, `templates`, `github-action-effects`, `github-action-builder` plus the three build libraries `bundler`, `tsdown-plugins` and `rspress-builder`, all rendered). `@savvy-web/silk` and `@savvy-web/cli` are excluded because they are not libraries. `@savvy-web/mcp` is excluded because its generated docs are an input to `build:catalog` → `build:dev`, so a `generate:api-docs → mcp#build:dev` dependency would be a turbo cycle; excluding mcp keeps the build subgraph acyclic.
-
-**Generator.** `lib/scripts/generate-api-docs.ts` reads each target's `.api.json` model from `lib/models/<pkg>/` (where the bundler's `--target prod` copies it from the canonical group's meta bundle via each leaf's `meta.localPaths`), calls the external `api-extractor-llms` package's `renderPackage` with two injected services, and writes the resulting per-symbol docs under `public/content/packages/<dir>/api/`. The two injected services are a `FrontmatterRenderer` that builds silk YAML front-matter (`source: generated`, `tier: packages`, empty `related`) and a `RouteFormatter` that maps item refs to `silk://packages/<dir>/api/<kind>/<slug>` URIs. It also emits a per-package index page (#179) at `public/content/packages/<dir>/api.md` (id `packages/<dir>/api`, served at the bare `silk://packages/<dir>/api` URI) — `paths.ts` resolves the bare path to the sibling `api.md` and the page lists every symbol grouped by kind with a `silk://` link each, giving search a package-level entry point that names the package. The pure builders for it are the exported `indexFrontMatterFor` and `renderApiIndexBody`.
-
-Generated docs carry empty `related` by design: no committed hand-authored doc may reference a generated `packages/*/api/*` id, because a bare install skips generation and would leave dangling references in `build:catalog`. The related-graph boost (see [Search index](#search-index)) therefore operates only on hand-authored links. The generator is **skip-tolerant**: if a target's model is absent it logs `SKIP` and exits 0, so a bare `pnpm install` never fails on a missing model. The body-budget guard in `lib/scripts/compile.ts` exempts `source: generated` docs from the per-tier byte-size warning — generated pages are split per API item, not editorially constrained.
-
-**Turbo orchestration.** `packages/mcp/turbo.json` (extends `//`) declares the task graph:
-
-```text
-@savvy-web/{silk-effects,templates,github-action-effects,github-action-builder,
-            bundler,rspress-builder,tsdown-plugins}#build:prod
-      ↓ (copy *.api.json into mcp/lib/models/<pkg>/ via meta.localPaths)
-@savvy-web/mcp#generate:api-docs
-      ↓ (write public/content/packages/*/api/** + api.md — committed, for every API_TARGET)
-@savvy-web/mcp#build:catalog
-      ↓ (compile manifest.json)
-@savvy-web/mcp#build:prod
-```
-
-Under the bundler every leaf emits its API Extractor model **during `build:prod`** (meta moved into `--target prod`; the old standalone `build:meta` is a soft-deprecated no-op), so `generate:api-docs` `dependsOn` the leaves' explicit `#build:prod` tasks (not `^build:prod`, so `silk`/`cli`/`mcp` never enter mcp's build subgraph). All seven library leaves — `silk-effects`, `templates`, `github-action-effects`, `github-action-builder` plus the three build libraries `bundler`, `tsdown-plugins` and `rspress-builder` — are both dependency edges and render targets, so the committed corpus carries pages for all seven. It has **no** workspace edge for the renderer itself: `api-extractor-llms` is an external npm package the generator pulls from `node_modules`. `build:catalog` depends on `generate:api-docs`; only mcp's `build:prod` depends on `build:catalog` (mcp's `turbo.json` declares `build:prod` `dependsOn: ["types:check", "build:dev", "build:catalog"]`). `build:dev` is **deliberately not** on the generation chain so `prepare`/install stays light and never invokes the renderer; a prod or CI build is what regenerates the corpus and keeps the committed copy in sync. `build:catalog`'s only declared output is the tracked `public/content/manifest.json`, and its inputs exclude that manifest so a manifest rewrite does not re-trigger it. See `../api-extractor-llms/architecture.md` for the external library that performs the actual rendering.
-
-### The build-time compiler
-
-`lib/scripts/compile.ts` holds the pure `compileCorpus` (no I/O); `lib/scripts/build-catalog.ts` is the I/O shell that walks the corpus under `public/content`, parses front-matter with gray-matter, runs `compileCorpus`, and writes `public/content/manifest.json`. Integrity checks fail the build on any error: id uniqueness, tier↔directory match, `related`-target resolution, controlled tags, per-tier body-size budgets (skipped for `source: generated`), a dead `workflow-*`-name grep and the generated-doc provenance marker. The compiler no longer stamps a per-doc `lastModified`: `RawDoc.lastModified` is now optional and emitted only when a caller supplies it, and `build-catalog.ts` supplies none. A git commit time is unknown in the commit that first introduces a doc, so a git-derived stamp churned the manifest by thousands of lines on every build — dropping it makes the manifest a function of doc content alone.
-
-The **committed** `manifest.json` indexes the whole corpus including the generated `source: generated` entries — it is a deterministic function of the corpus content (no embedded timestamps), so it is idempotent: `build:catalog` recompiles the same bytes whenever the content is unchanged. A `node:util` `isDeepStrictEqual` write guard only rewrites `manifest.json` when the parsed value differs from disk, so a no-op rebuild (or a Biome reindent) leaves the committed file byte-identical and the build never fights the formatter or churns git. Biome owns the committed format; the build respects it.
-
-`build:catalog` (run with `tsx`) is sequenced via turbo ahead of `build:prod` (not `build:dev`, which stays off the generation chain). The corpus ships through the top-level `public/content` directory, which the bundler copies wholesale into the built `dist/<group>/pkg` so the built binary serves the same corpus.
-
-### Runtime serving
-
-Two discovery surfaces coexist over the manifest:
-
-- **`silk://catalog`** is a single FIXED resource rendered from the manifest by `catalog.ts`, listing every doc grouped by tier with a "load when …" hint. Generated API-reference docs appear marked `(generated)`. It is the agent's mandated first read.
-- A single **`silk://{+path}` `ResourceTemplate`** (`src/resources/index.ts`) handles both `list()` and read. `list()` returns every doc except the catalog and `deprecated` docs; the read handler keys the body lookup off `variables.path` (never `uri.pathname`). Per-doc annotations (audience/priority) appear in both list entries and read contents. When the read falls through to disk and the file is missing, the handler maps the raw `ENOENT` to a clean `McpError(InvalidParams, "Resource not found: <uri>")` instead of leaking the absolute install path (#178); any other read failure becomes an `InternalError`.
-
-`load.ts` resolves the content root across the source and built layouts (throwing a diagnostic that lists the probed paths if no manifest is found) and reads bodies through the path-security resolver in `paths.ts`. See `src/resources/{catalog,index,load,schema}.ts`.
-
-### Search index
-
-`silk_docs_search` queries an in-memory Fuse `DocIndex` (`src/resources/doc-index.ts`), built once in `bin.ts` before `server.connect` and held per process. The Fuse key weights are title 0.55 / tags 0.3 / summary 0.12 / **body 0.03**. The body key is low-weight so body matches rescue body-only terms without letting long bodies dominate ranking over title and tag matches. Results tie-break by curated `priority`. A real query that scores nothing returns an **empty** result set (#177) so the caller can tell "no match" from "low-confidence match"; the priority-ordered fallback fires only when the query has no meaningful tokens (a stop-word-only or too-short browse), where surfacing the top entries is useful rather than misleading.
-
-**Related-graph boost.** After Fuse ranks, `DocIndex.search` inspects the top-3 hits' `related` arrays and appends any neighbors not already in the result set as low-confidence "see also" entries. The related graph is compile-time validated so every `related` id resolves; generated docs carry empty `related`, so the boost operates only on hand-authored links.
-
-### Query logging
-
-`src/resources/query-log.ts` provides a pure `formatQueryLogLine(query, results)` formatter and a `stderrQueryLogger` sink. When a `QueryLogger` is supplied, the tool handler emits one structured JSON line to stderr per query (`[savvy-mcp] docs-search {…}`). It is privacy-clean — no user content beyond the query string and the top result URIs. The logger is wired in `src/server.ts`; tests inject a spy logger.
-
 ## Root resolution
 
 The `savvy-mcp` bin resolves its base directory by precedence `argv[2]` → `SAVVY_MCP_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → `process.cwd()` (`src/bin.ts`). Because dev tooling launches the server from `packages/mcp/` rather than the repo root, the tool handlers additionally resolve the true workspace root by walking up from the base dir (or an explicit `cwd` argument) via `WorkspaceRoot.find` before analyzing — so the tools work from any subdirectory. The walk-up lives in the **mcp handler, not the analyzer**, so the analyzer/CLI contract stays unchanged.
 
 ## Plugin integration
 
-A plugin declares the server via an `mcpServers` block in `.claude-plugin/plugin.json` whose command runs a `bin/start-mcp.sh` launcher (detect package manager → `exec <pm> savvy-mcp`), passing the project dir through `CLAUDE_PROJECT_DIR`. The same launcher and declaration are reused by all three plugins — `plugins/silk`, `plugins/github-actions` and `plugins/docs` — and each is registered in the repo's `.claude-plugin/marketplace.json`.
+A plugin declares the server via an `mcpServers` block in `.claude-plugin/plugin.json` whose command runs a `bin/start-mcp.sh` launcher (detect package manager → `exec <pm> savvy-mcp`), passing the project dir through `CLAUDE_PROJECT_DIR`. The same launcher and declaration are reused by both plugins that spawn the server — `plugins/silk` and `plugins/github-actions` — and each is registered in the repo's `.claude-plugin/marketplace.json`. The former `plugins/docs` plugin, which owned the removed corpus write-side, has been deleted.
 
-Direction is added per plugin as SessionStart orientation hooks telling the agent to read `silk://catalog` before researching, prefer `silk_docs_search` over filesystem grep and consult `workspace_info` before reporting workspace facts. `plugins/docs` adds the *write* side of direction — an `mcp` corpus-authoring agent and two mode commands — over the same shared server. See `../silk/plugin.md` for the silk read-side orientation and the `docs-search` skill, and `../docs/architecture.md` for the docs plugin and the three-tier query/authoring split.
+**Information lives in the server, direction lives in the plugins.** Each plugin adds per-plugin SessionStart orientation hooks pointing the agent at the tools it should prefer — consult `workspace_info` before reporting workspace facts, reach for `changeset_inspect`/`changeset_validate`/`turbo_inspect`/`biome_check` rather than parsing bash stdout. The shared server carries every tool regardless of the current project; the plugin decides which to surface. See `../silk/plugin.md` for the silk orientation.
 
-When several plugins are active in one session, each declares the server, so Claude Code may spawn one instance per plugin. The server is stateless and lightweight, so this is acceptable.
+When both plugins are active in one session, each declares the server, so Claude Code may spawn one instance per plugin. The server is stateless and lightweight, so this is acceptable.
 
 ## Boundaries and invariants
 
-- **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from `silk-effects` (and `workspaces-effect`), preserving the cli↔silk↔mcp non-import invariant. `api-extractor-llms` is outside this invariant: it is an external npm package consumed purely as a build-time `devDependency`, outside the workspace dependency graph entirely.
+- **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from `silk-effects` (and `workspaces-effect`), preserving the cli↔silk↔mcp non-import invariant.
 - **ESM-only, real Node process.** silk-effects is a normal runtime dependency, not bundled — the opposite of `@savvy-web/silk`'s dual-format CJS-bundling requirement.
 - **Effect Schema is canonical; zod is a boundary-only dependency** confined to the `effect-to-zod` bridge at the SDK registration edge.
 - **`biome_check` is the one mutating tool — an intentional exception to the read-only convention.** Every other tool registers with `annotations: { readOnlyHint: true }` and never touches the working tree; `biome_check` carries **no** `readOnlyHint` because with `write`/`unsafe` it edits files. The mutation is never implicit (`write`/`unsafe` default off, so a bare call only reads) and Biome `--write` is deterministic and git-reversible. It is also the only tool that bypasses the Effect runtime and shells a CLI directly.
-- **Generated docs carry empty `related`.** No committed hand-authored doc may reference a generated `packages/*/api/*` id — those ids are not stable across API changes (a renamed or removed symbol drops its page on the next `build:prod`), so a hand-authored `related` pointing at one would dangle and fail `build:catalog`. The related-graph boost therefore operates only on hand-authored links, which are stable.
 
 ## Rationale
 
 ### Why a standalone server, not a discovery host
 
-A thin discovery host reading a contribution contract from installed packages was considered and dropped as premature coupling. A content-rich standalone server with a fixed tool/resource surface ships value now; the information-vs-direction split already gives per-project tailoring without a discovery seam. The CLI remains the bridge for what tools cannot yet cover.
+A thin discovery host reading a contribution contract from installed packages was considered and dropped as premature coupling. A standalone server with a fixed tool surface ships value now, and keeping direction in the plugins already gives per-project tailoring without a discovery seam. The CLI remains the bridge for what tools cannot yet cover.
 
 ### Why a flat tool projection over the rich analysis
 
 `WorkspaceAnalysis` uses recursive `Schema.suspend` for `linked`/`fixed` cross-references, which the Effect-Schema → JSON-Schema → zod bridge cannot inline. Projecting to a flat, name-only result both satisfies the bridge and produces more token-efficient output for the consuming agent. The projection is the tool's contract; the rich analysis stays the analyzer's contract in silk-effects.
-
-### Why the corpus and manifest are committed
-
-The rendered API docs and the `manifest.json` that indexes them are tracked, committed source; only the upstream `.api.json` models are gitignored. The decisive constraint is the release path: a clean release machine builds from a checkout and never runs `generate:api-docs`, so an uncommitted corpus would ship an empty `public/content/packages/*/api` tree and every `silk://packages/<pkg>/api…` read would 404 with `ENOENT`. Committing the corpus is what makes the API resources actually shippable. Idempotence is what makes committing it tolerable: the manifest is a function of doc content with no embedded git timestamps, so it does not churn build-to-build, and the deep-equality write guard plus the skip-tolerant generator keep a no-op rebuild (and a bare install with no models) from rewriting or failing. A local `build:prod` regenerates the corpus to keep the committed copy honest.
-
-### Why the related-graph boost uses compile-time-validated ids
-
-The corpus compiler rejects dangling `related` references as a build error, so every `related` id in the manifest resolves to a live doc and the boost can look up neighbors by URI without defensive null handling. Generated docs opt out by carrying empty `related` — their ids track the underlying API surface, so cross-linking them into the hand-authored graph would create links that vanish whenever a symbol is renamed or removed.

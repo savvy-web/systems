@@ -8,7 +8,7 @@ Each package has its own `CLAUDE.md` (auto-loaded when you work in its subtree) 
 
 - **silk-effects** (`@savvy-web/silk-effects`) — shared Effect library and dev-tooling business-logic core (`Changesets`/`Commitlint`/`Lint`/`Turbo`). See `packages/silk-effects/CLAUDE.md`.
 - **cli** (`@savvy-web/cli`) — the `savvy` binary (`init`/`check`/`commit`/`changeset`/`lint`/`clean`). See `packages/cli/CLAUDE.md`.
-- **mcp** (`@savvy-web/mcp`) — the spawnable `savvy-mcp` server (tools + corpus/API resources). See `packages/mcp/CLAUDE.md`.
+- **mcp** (`@savvy-web/mcp`) — the spawnable `savvy-mcp` server, a tools-only MCP server (six tools, no resources). See `packages/mcp/CLAUDE.md`.
 - **silk** (`@savvy-web/silk`) — the single install-target of config-integration shims + Biome asset. See `packages/silk/CLAUDE.md`.
 - **bundler** (`@savvy-web/bundler`) — the tsdown-based build orchestrator (`defineBuild`/`runBuild`). See `packages/bundler/CLAUDE.md`.
 - **tsdown-plugins** (`@savvy-web/tsdown-plugins`) — the interface-only tsdown/rolldown plugin pack the bundler orchestrates. See `packages/tsdown-plugins/CLAUDE.md`.
@@ -20,7 +20,7 @@ Each package has its own `CLAUDE.md` (auto-loaded when you work in its subtree) 
 
 `e2e/*` is a separate harness area of PRIVATE, test-only packages (`@e2e/bundler`, `@e2e/pnpm-plugin-silk`) — distinct from the published `packages/*` — that exercise built `dist/dev` artifacts against isolated fixtures. See `e2e/CLAUDE.md`.
 
-Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/docs`, `plugins/github-actions`), the placeholder docs site (`docs/`), cross-repo planning, and the plugin marketplace entry point (`.claude-plugin/`).
+Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/github-actions`), the placeholder docs site (`docs/`), cross-repo planning, and the plugin marketplace entry point (`.claude-plugin/`).
 
 ## Tech Stack
 
@@ -67,7 +67,7 @@ Key coordination points:
 - Use `catalog:silk` for pinned dependencies, `catalog:silkPeers` for peer dependency ranges.
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
 - README.md is for external users; `.claude/design/` for package architecture docs.
-- The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — all three depend only on `@savvy-web/silk-effects` within the repo. (`mcp` also consumes the external `api-extractor-llms` npm package as a build-time devDependency for its API-doc pipeline.)
+- The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — all three depend only on `@savvy-web/silk-effects` within the repo.
 - `@savvy-web/silk`, `@savvy-web/cli`, and `@savvy-web/mcp` are a `fixed` changeset group (versioned and released together); silk's changeset config carries a `versionFiles` glob that bumps the `plugins/*` manifests in lockstep.
 - Integration/e2e tests must NOT resolve `catalog:`/`workspace:` against the host workspace — catalog-resolution coverage lives in `e2e/` via subprocess builds against isolated fixtures (`CatalogResolver` reads `process.cwd()`). See `e2e/CLAUDE.md`.
 - `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` version independently (changesets auto-bumps the bundler when tsdown-plugins changes; not a fixed group); both self-host while the other nine packages build via the bundler front door.
@@ -80,11 +80,3 @@ Design docs live in `.claude/design/` (tracked). Per-package design pointers liv
 **`plugins/silk` — the merged Claude Code plugin:**
 → `@./.claude/design/silk/plugin.md`
 Load when working on `plugins/silk` (skills, agents, monitors, hooks, MCP wiring).
-
-**`plugins/docs` — the corpus-documentation Claude Code plugin:**
-→ `@./.claude/design/docs/architecture.md`
-Load when working on `plugins/docs` (the `mcp` corpus agent, capability skills, mode commands).
-
-**`api-extractor-llms` — API Extractor model → LLM-markdown renderer (external npm package, own repo):**
-→ `@./.claude/design/api-extractor-llms/architecture.md`
-Load when working on the mcp API-doc generation pipeline.

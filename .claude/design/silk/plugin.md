@@ -3,14 +3,13 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-06-21
-last-synced: 2026-06-21
+updated: 2026-07-01
+last-synced: 2026-07-01
 completeness: 88
 related:
   - ./architecture.md
   - ../cli/architecture.md
   - ../mcp/architecture.md
-  - ../docs/architecture.md
 dependencies: []
 ---
 
@@ -23,7 +22,7 @@ The `silk@savvy-web-systems` Claude Code plugin. Merges the skills, agents and h
 - [Overview](#overview)
 - [Current State](#current-state)
 - [Skill naming scheme](#skill-naming-scheme)
-- [MCP orientation and the docs-search skill](#mcp-orientation-and-the-docs-search-skill)
+- [MCP tool orientation](#mcp-tool-orientation)
 - [Turborepo capability](#turborepo-capability)
 - [Biome capability](#biome-capability)
 - [TSDoc capability](#tsdoc-capability)
@@ -44,10 +43,10 @@ Implemented. Contents:
 
 - **Skills** (`plugins/silk/skills/`): the merged set — tool-prefixed user-facing skills plus unprefixed internal mechanics. See the directory listing for the authoritative set and [Skill naming scheme](#skill-naming-scheme).
 - **Agents** (`plugins/silk/agents/`): `changeset-manager.md`, the only caller of the unprefixed internal skills; `turborepo.md`, the Turborepo domain agent that drives the MCP `turbo_inspect` tool for multi-step cache diagnosis, `turbo.json` refactors and CI cache setup; and `tsdoctor.md`, the TSDoc agent that drives a package's `ae-*`/`tsdoc-*` diagnostics to zero off the build's `issues.json` artifact. See [Turborepo capability](#turborepo-capability) and [TSDoc capability](#tsdoc-capability).
-- **Turbo skill** (`plugins/silk/skills/turbo/`): the model-invocable `turbo` front-door skill plus bundled `references/`. See [Turborepo capability](#turborepo-capability).
+- **Turbo skill** (`plugins/silk/skills/turbo/`): the model-invocable `turbo` front-door skill, self-contained via bundled `references/` — the six Turborepo standards that used to be served from the mcp corpus now live there. See [Turborepo capability](#turborepo-capability).
 - **TSDoc capability** (`plugins/silk/skills/tsdoc/`, `agents/tsdoctor.md`, `plugins/silk/monitors/`): the skill, the `tsdoctor` agent and a background monitor over the build's `issues.json` artifact. See [TSDoc capability](#tsdoc-capability).
 - **Hooks** (`plugins/silk/hooks/`): all three source hook sets merged into one `hooks.json` plus per-event script dirs and a shared `lib/`. See [Hook merge](#hook-merge).
-- **MCP wiring**: an `mcpServers` block in `.claude-plugin/plugin.json` spawns the shared `savvy-mcp` server via `bin/start-mcp.sh`, the always-on `session-start/orientation.sh` hook directs the agent to the corpus, and a model-invocable `docs-search` skill carries detailed query technique. This is the "direction" half of the information-vs-direction split — see `../mcp/architecture.md` and [MCP orientation and the docs-search skill](#mcp-orientation-and-the-docs-search-skill). The sibling `plugins/github-actions` reuses the identical launcher and server declaration; the separate `plugins/docs` plugin owns the corpus *write* side — see `../docs/architecture.md`.
+- **MCP wiring**: an `mcpServers` block in `.claude-plugin/plugin.json` spawns the shared `savvy-mcp` server via `bin/start-mcp.sh`, and the always-on `session-start/orientation.sh` hook orients the agent toward the server's tools. This is the "direction" half of the information-vs-direction split — see `../mcp/architecture.md` and [MCP tool orientation](#mcp-tool-orientation). The sibling `plugins/github-actions` reuses the identical launcher and server declaration.
 - **Biome LSP wiring**: an `lspServers.biome` block in `.claude-plugin/plugin.json` (sibling to `mcpServers`) launches `biome lsp-proxy` via `bin/biome-lsp.sh`, surfacing automatic Biome lint/format diagnostics after edits. See [Biome capability](#biome-capability).
 
 ## Skill naming scheme
@@ -57,22 +56,18 @@ The naming scheme is the load-bearing convention; the exact skill list is discov
 - **User-facing skills are tool-prefixed** (`changeset-*`, `commit-create`). Prefixing disambiguates now that three tools share one plugin.
 - **Internal mechanics stay unprefixed** (`config`, `dependencies`, `update`, `merge`, `delete`, `status`). They are not user-invoked — only the `changeset-manager` agent calls them by name, so they keep their short names.
 
-## MCP orientation and the docs-search skill
+## MCP tool orientation
 
-The silk plugin owns the **read** side of the corpus direction, split across two tiers by context cost.
+The silk plugin spawns the shared `savvy-mcp` server (tools-only — see `../mcp/architecture.md`) and orients the agent toward its tools. The combined `hooks/session-start/orientation.sh` hook (see [Hook merge](#hook-merge)) emits an always-on nudge making `workspace_info` the default for workspace facts (with a short labeled exception list) and steering the agent toward the structured MCP tools — `changeset_inspect`/`changeset_validate`/`changeset_preview`, `turbo_inspect` and `biome_check` — over parsing bash stdout. The nudge stays small: per-capability detail lives in the on-demand `turbo`/`tsdoc` skills and the `<turbo_capability>`/`<biome_capability>` orientation blocks below. The hook has no matcher, so it fires on every start including resume/compact.
 
-**Tier 1 — the always-on nudge.** The combined `hooks/session-start/orientation.sh` hook (see [Hook merge](#hook-merge)) emits the MCP nudge as part of its tier structure: an `<EXTREMELY_IMPORTANT>` (tier 1) block requiring the agent to read `silk://catalog` before guessing a path and to use `silk_docs_search` before any filesystem grep for a convention/API/standards question, plus an `<important>` (tier 2) block making `workspace_info` the default for workspace facts with a short labeled exception list. The nudge points at the `docs-search` skill for detail but never inlines query syntax, keeping the always-on payload small. The hook has no matcher, so it fires on every start including resume/compact.
-
-**Tier 2 — the on-demand skill.** `skills/docs-search/SKILL.md` is a **model-invocable** skill carrying corpus query best-practices: read the catalog first, phrase searches as concepts not filenames, interpret ranked results, and narrow when generated `api/*` pages dominate. It loads only when an agent is actually querying docs, so the detailed guidance costs context on demand rather than on every session start. It lives in silk (every silk consumer benefits from the read side) rather than the docs plugin (authoring only), and is the documented home for the `silk_docs_search` include/exclude filters.
-
-This two-tier read split, plus the separate `plugins/docs` write plugin, is one coherent three-tier query/authoring scheme — see `../docs/architecture.md` for the full picture.
+This is the "direction" half of the information-vs-direction split: information lives in the server, direction in the plugin.
 
 ## Turborepo capability
 
-The plugin layers a read-only Turborepo capability over the shared `savvy-mcp` server's `turbo_inspect` tool (see `../mcp/architecture.md`), structured the same way as the docs-search read side — a light always-on nudge, an on-demand skill, and a domain agent for heavy work.
+The plugin layers a read-only Turborepo capability over the shared `savvy-mcp` server's `turbo_inspect` tool (see `../mcp/architecture.md`), structured as a light always-on nudge, an on-demand skill and a domain agent for heavy work.
 
 - **The `<turbo_capability>` orientation block.** `hooks/session-start/orientation.sh` advertises `turbo_inspect`'s three modes (`cache`/`graph`/`affected`) and points lighter questions at the `turbo` skill (`/silk:turbo`) and heavier multi-step work at the `turborepo` agent. A `<note>` in the active-hooks block records that `turbo_inspect` has **no** hook — it is a read-only MCP tool the agent calls directly.
-- **The `turbo` skill** (`skills/turbo/SKILL.md`) is the model-invocable front door: decision trees, an anti-pattern catalog with rationale, and bundled `references/` deep dives. It encodes the Silk install/build-decoupling and api-docs turbo ordering so recommendations respect the monorepo's CI order.
+- **The `turbo` skill** (`skills/turbo/SKILL.md`) is the model-invocable front door: decision trees, an anti-pattern catalog with rationale, and bundled `references/` deep dives (the six Turborepo standards previously served from the mcp corpus). It encodes the Silk install/build-decoupling turbo ordering so recommendations respect the monorepo's CI order.
 - **The `turborepo` agent** (`agents/turborepo.md`) is the autonomous specialist for heavier work, operating in three modes (cache diagnosis / graph refactor / affected-CI). Its contract is *diagnose first, recommend second*: it pulls actual hash contributors and graph edges via `turbo_inspect` and only edits `turbo.json` once it can cite the contributor that justifies the change. It preloads the `turbo` skill.
 - **Safe-bash allowlist.** `hooks/lib/safe-bash-patterns.txt` auto-allows read-only `turbo … --dry`/`--dry=json` runs. The bare `turbo run <task>` form (which executes the task and mutates the cache) is intentionally **not** allowlisted — the load-bearing safety line that keeps the capability read-only at the bash layer too.
 
@@ -117,7 +112,7 @@ The `config` skill is the exception: it does not shell out at all, calling the `
 
 Two SessionStart hooks are registered as two entries in `hooks.json`, split by *when* they fire and *what side effect* they own:
 
-- `session-start/orientation.sh` — **no matcher**, so it fires on every start including resume and compact. It is the env **producer**: it detects the package manager, writes the session vars and dedup-appends them to `$CLAUDE_ENV_FILE` (see the namespace note below). It also emits the combined always-on orientation nudge — tier-1 MCP catalog-first / `silk_docs_search` directive, tier-2 `workspace_info` preference, the `<turbo_capability>` block (see [Turborepo capability](#turborepo-capability)), the `<biome_capability>` block (see [Biome capability](#biome-capability)), the `<changesets_plugin>` tools/skills context, and the tier-3 dogfood-feedback prompt.
+- `session-start/orientation.sh` — **no matcher**, so it fires on every start including resume and compact. It is the env **producer**: it detects the package manager, writes the session vars and dedup-appends them to `$CLAUDE_ENV_FILE` (see the namespace note below). It also emits the combined always-on orientation nudge — the `workspace_info` preference and MCP tool orientation (see [MCP tool orientation](#mcp-tool-orientation)), the `<turbo_capability>` block (see [Turborepo capability](#turborepo-capability)), the `<biome_capability>` block (see [Biome capability](#biome-capability)), the `<changesets_plugin>` tools/skills context, and the dogfood-feedback prompt.
 - `session-start/startup-only.sh` — **`matcher: "startup"`**, so it fires only on a fresh start, not resume or compact. It runs the `savvy commit hook session-start` side effect (stdout redirected so it cannot pollute the hook JSON) and emits a brief Silk-system intro plus the code-quality startup orientation. (Design-doc-agent orientation is owned by the design-docs plugin, so silk intentionally does not duplicate it.) Because a SessionStart hook cannot block, its missing-`CLAUDE_PROJECT_DIR` guard emits a noop and exits 0 rather than failing the session.
 
 ### Session env namespace: `SILK_*`

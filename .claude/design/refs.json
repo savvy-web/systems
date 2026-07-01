@@ -3,18 +3,6 @@
 	"refs": [
 		{
 			"source": "CLAUDE.md",
-			"target": ".claude/design/api-extractor-llms/architecture.md",
-			"hash": "bcea5268066bfe39cfbcc95a72d11dddb9e84ad585452f5eee9a6456303d59df",
-			"recordedAt": "2026-06-12"
-		},
-		{
-			"source": "CLAUDE.md",
-			"target": ".claude/design/docs/architecture.md",
-			"hash": "f0be1df9f332bed763d24e70117062290d956ed6d25ed9e2abf8d2801f1de87f",
-			"recordedAt": "2026-06-13"
-		},
-		{
-			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
 			"hash": "b348c08f881d3d5b8eb8e8779091ecdb4bcba3a4656aed12cd727b965f649a84",
 			"recordedAt": "2026-06-21"

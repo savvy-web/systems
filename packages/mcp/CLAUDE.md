@@ -1,17 +1,15 @@
 # @savvy-web/mcp
 
-`@savvy-web/mcp` is the spawnable `savvy-mcp` server — a standalone MCP server (not a discovery host) exposing Silk tooling over silk-effects. Built via `@savvy-web/bundler`.
+`@savvy-web/mcp` is the spawnable `savvy-mcp` server — a standalone tools-only MCP server (not a discovery host) exposing Silk tooling over silk-effects. No resource/corpus layer. Built via `@savvy-web/bundler`.
 
 ## Key surface
 
-- Tools (seven): six read-only — `workspace_info`, `silk_docs_search`, `turbo_inspect` (mode cache|graph|affected), `changeset_inspect` (mode branch|config|classify), `changeset_validate` (validates `.changeset/` files), `changeset_preview` (non-destructive release render over `Changesets.ReleasePlanner.preview`) — plus the one mutating tool `biome_check` (runs Biome with `--reporter=gitlab`, mode check|lint, `write`/`unsafe` to apply fixes; the intentional exception to the read-only convention).
-- Resource layer: `silk://catalog` plus a `silk://{+path}` template over a compiled markdown corpus, including `silk://standards/turbo/*` and the generated `silk://packages/<pkg>/api/*` API-reference docs (each package also gets a bare `silk://packages/<pkg>/api` index page listing its symbols). A missing resource returns a clean `McpError` not-found, never the absolute install path. The corpus documents seven library packages (`API_TARGETS` in `lib/scripts/api-targets.ts`): silk-effects, templates, github-action-effects, github-action-builder, bundler, tsdown-plugins, rspress-builder — bundler/tsdown-plugins/rspress-builder were added this run; silk/cli/mcp are deliberately excluded.
-- API docs are rendered at build time via the external `api-extractor-llms` npm package (a build-time devDependency); rendered markdown is tracked source, only the `.api.json` models under `lib/models/` are gitignored.
-- Build-time catalog compiler (`build:catalog`) emits the tracked `manifest.json` behind a deep-equality write guard. The manifest is deterministic — a function of corpus content with no embedded git timestamps — so a no-op rebuild leaves it byte-identical and never churns git. Generation runs only on `mcp#build:prod` (which `dependsOn build:catalog`), deliberately not on `build:dev`/install, so a bare install ships the already-committed corpus.
+- Tools (six): five read-only — `workspace_info` (structured workspace analysis: linked/fixed package groups + resolved registry targets), `turbo_inspect` (mode cache|graph|affected over `turbo --dry`), `changeset_inspect` (mode branch|config|classify), `changeset_validate` (validates `.changeset/` files), `changeset_preview` (non-destructive release render over `Changesets.ReleasePlanner.preview`) — plus the one mutating tool `biome_check` (runs Biome with `--reporter=gitlab`, mode check|lint, `write`/`unsafe` to apply fixes; the intentional exception to the read-only convention).
+- All tools are backed by the same `silk-effects` services the `savvy` CLI uses.
 - Depends only on `@savvy-web/silk-effects` within the repo; must NOT import `@savvy-web/cli` or `@savvy-web/silk`.
 
 ## Design
 
-Load for the runtime layer, tool half, resource half, and the API-doc tier:
+Load for the runtime layer and the tool implementations:
 → `@../../.claude/design/mcp/architecture.md`
-Load when adding a tool/resource, changing the runtime layer, or working on the manifest/API-doc pipeline.
+Load when adding a tool or changing the runtime layer.

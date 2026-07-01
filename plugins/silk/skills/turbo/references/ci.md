@@ -22,8 +22,7 @@ turbo run lint test typecheck --remote-only
 ```
 
 A populated remote cache turns a no-change `build:prod` into a restore, which is
-what makes the `build:prod → generate:api-docs → build:catalog → build` chain
-cheap on unaffected PRs.
+what keeps unaffected PRs cheap.
 
 ## Only build what changed
 

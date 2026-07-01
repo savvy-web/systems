@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-06-28
-last-synced: 2026-06-28
+updated: 2026-07-01
+last-synced: 2026-07-01
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -190,9 +190,9 @@ Turbo config is mostly generic: the root `turbo.json` carries the generic `build
 
 The two escape-hatch (tier 1/2) `savvy.build.ts` files port the externals and prod-strip transform that the package needs. They construct their own `BuildCollector`, pass it to `buildTargetGroups` and render the same unified log from `collector.snapshot` via `renderReport` — so a self-build gets the quiet/verbose terminal output too rather than tsdown's raw stream. On `--target prod` both also emit the `dist/prod/targets.json` binding via `writeTargetsBinding(cwd, resolveTargets({ targets: pkg.publishConfig.targets, baseName: pkg.name }))` so a release consumer can resolve their publish targets the same way front-door packages do. The front-door tier-3 files call `build()` directly.
 
-**Both self-builds now generate their own API model (the meta-pass unification).** On `--target prod` each escape hatch passes `emitDeclarations: true` into its `buildTargetGroups` call (matching the front door), then calls the shared `runMetaPass` (the same orchestrator the front door uses) then `writeIssuesArtifact`, so `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` are API-Extractor validated for the first time: each emits `dist/prod/npm/meta/<unscoped>.api.json`, stages it into `meta.localPaths` (`../mcp/lib/models/<pkg>` + `../../website/lib/models/<pkg>`) and writes `dist/prod/issues.json`. ae-*/tsdoc- diagnostics surface in the rendered report and the artifact but do not fail a local build; CI escalates `ae-forgotten-export` to a hard error. **Ordering fix:** the escape hatches run `removeDeclarationMaps` AFTER `runMetaPass` (API Extractor needs the `.d.ts.map` during meta to resolve original-source positions), mirroring the front-door ordering. tsdown-plugins' own meta carries `tsdoc.tagDefinitions` for `@since`/`@category` (leaking from `@effect/platform`'s inlined `FileSystem` declaration) and a `suppressWarnings` rule for the `_base` Effect-mixin synthetics. See [Meta generation wiring](#meta-generation-wiring).
+**Both self-builds now generate their own API model (the meta-pass unification).** On `--target prod` each escape hatch passes `emitDeclarations: true` into its `buildTargetGroups` call (matching the front door), then calls the shared `runMetaPass` (the same orchestrator the front door uses) then `writeIssuesArtifact`, so `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` are API-Extractor validated for the first time: each emits `dist/prod/npm/meta/<unscoped>.api.json`, stages it into `meta.localPaths` (`../../website/lib/models/<pkg>`) and writes `dist/prod/issues.json`. ae-*/tsdoc- diagnostics surface in the rendered report and the artifact but do not fail a local build; CI escalates `ae-forgotten-export` to a hard error. **Ordering fix:** the escape hatches run `removeDeclarationMaps` AFTER `runMetaPass` (API Extractor needs the `.d.ts.map` during meta to resolve original-source positions), mirroring the front-door ordering. tsdown-plugins' own meta carries `tsdoc.tagDefinitions` for `@since`/`@category` (leaking from `@effect/platform`'s inlined `FileSystem` declaration) and a `suppressWarnings` rule for the `_base` Effect-mixin synthetics. See [Meta generation wiring](#meta-generation-wiring).
 
-Package-specific concerns of note: `cli` uses the `dist/dev/pkg` + `dist/prod/npm/pkg` layout and a silk-effects dogfood bin path (`dist/dev/pkg/bin/savvy.js`); `mcp` keeps its corpus under top-level `public/content` because the bundler copies only `public/`; `silk` is the hard case — dual-format with a force-bundled runtime, documented in `../silk/architecture.md`.
+Package-specific concerns of note: `cli` uses the `dist/dev/pkg` + `dist/prod/npm/pkg` layout and a silk-effects dogfood bin path (`dist/dev/pkg/bin/savvy.js`); `silk` is the hard case — dual-format with a force-bundled runtime, documented in `../silk/architecture.md`.
 
 **The bundler's own integration fixtures import the source under test** (`src/config.js`/`run.js`), not the built `@savvy-web/bundler` package — they are integration tests of the bundler source, not e2e tests of the built tarball. That removes the bundler's `types:check → build:dev` self-dependency, so `packages/bundler/turbo.json` stays `{"tasks": {}}` and relies on the root's generic `types:check`. A future root `__test__/e2e/` against `dist/` is where a built-package check would live.
 
@@ -260,7 +260,7 @@ The bundler is pure wiring over `@savvy-web/tsdown-plugins`' meta surface (all t
 
 ### The build graph after meta moved into prod
 
-Because the `localPaths` copy now happens during `--target prod`, mcp's `generate:api-docs` `dependsOn` the four leaves' `#build:prod` (was `#build:meta`), and the root `build:prod` `dependsOn` `["types:check", "build:dev"]` (the dead `build:meta` edge dropped). `build:prod` `inputs` add `$TURBO_ROOT$/.changeset/**` so editing a changeset busts the cached prod build and recomputes the optimistic meta. The `build:meta` task definition + package scripts remain as no-ops (the soft-deprecation). See `../mcp/architecture.md` for the api-docs pipeline.
+Because the `localPaths` copy now happens during `--target prod`, each leaf's meta bundle lands in the website sink (`../../website/lib/models/<pkg>`) during a prod build, and the root `build:prod` `dependsOn` `["types:check", "build:dev"]` (the dead `build:meta` edge dropped). `build:prod` `inputs` add `$TURBO_ROOT$/.changeset/**` so editing a changeset busts the cached prod build and recomputes the optimistic meta. The `build:meta` task definition + package scripts remain as no-ops (the soft-deprecation).
 
 ## JSX wiring
 

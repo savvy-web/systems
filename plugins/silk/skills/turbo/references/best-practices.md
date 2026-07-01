@@ -38,8 +38,8 @@ If a task writes files but its `outputs` glob is missing or wrong, turbo caches
 **nothing** to restore — the next "cache hit" replays the log but leaves the
 working tree without the artifacts, and the following task fails on a missing
 `dist/`. Every build task here declares its real output dir (`dist/dev/**`,
-`dist/prod/**`, `meta/**`). The `build:catalog`/`build:meta` tasks are the
-exceptions that are deliberately uncached.
+`dist/prod/**`, `meta/**`). Deliberately uncached tasks — side-effecting or
+nondeterministic ones — are the exceptions.
 
 ## Don't over-broaden globalDependencies
 
