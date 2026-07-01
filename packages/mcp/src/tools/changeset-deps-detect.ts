@@ -42,7 +42,12 @@ export type ChangesetDepsDetectResultType = Schema.Schema.Type<typeof ChangesetD
  * forbids backslash-escaping a backtick inside a code span.
  */
 const mdInline = (value: string): string => {
-	const safe = value.replace(/\p{Cc}/gu, " ").replace(/\|/g, "\\|");
+	// Escape backslashes before pipes so an input `\|` cannot slip a raw pipe past
+	// the escape and split the GFM table cell (the table extension un-escapes both).
+	const safe = value
+		.replace(/\p{Cc}/gu, " ")
+		.replace(/\\/g, "\\\\")
+		.replace(/\|/g, "\\|");
 	const longest = safe.match(/`+/g)?.reduce((m, run) => Math.max(m, run.length), 0) ?? 0;
 	const fence = "`".repeat(longest + 1);
 	const pad = safe.startsWith("`") || safe.endsWith("`") || safe.trim() === "" ? " " : "";
