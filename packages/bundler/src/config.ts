@@ -200,8 +200,14 @@ export interface BuildConfig {
 	readonly define?: Record<string, string> | undefined;
 	/** Custom tsdown/rolldown plugins forwarded to every tsdown run (JS, dts, per-module declarations, looseFiles). */
 	readonly plugins?: ReadonlyArray<Plugin> | undefined;
-	/** Emit the prod `.d.ts` bundling pass (and, downstream, the meta pass). Defaults to `true`. See {@link BuildConfigInput.emitDts}. */
-	readonly emitDts: boolean;
+	/**
+	 * Emit the prod `.d.ts` bundling pass (and, downstream, the meta pass). Defaults to `true`. See
+	 * {@link BuildConfigInput.emitDts}. Typed optional (like `minify`) even though `defineBuild`
+	 * always resolves a concrete boolean — a hand-authored `BuildConfig` literal (bypassing
+	 * `defineBuild`, as several `runBuild` unit tests do) need not supply it; `runBuild` treats
+	 * `undefined` the same as `true` (current behavior).
+	 */
+	readonly emitDts?: boolean | undefined;
 }
 
 /**
