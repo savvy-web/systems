@@ -67,11 +67,11 @@ jobs:
             @octokit/auth-app
             @octokit/rest
             @rsbuild/*
-            @savvy-web/*
             @sigstore/bundle
             @sigstore/sign
             @types/mdast
             @types/shell-quote
+            @vitest-agent/*
             deep-equal
             fast-check
             jiti
