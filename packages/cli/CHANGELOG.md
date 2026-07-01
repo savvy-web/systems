@@ -1,5 +1,20 @@
 # @savvy-web/cli
 
+## 1.3.6
+
+### Bug Fixes
+
+* [`efca0aa`](https://github.com/savvy-web/systems/commit/efca0aa73461e5d769ee1521f99316e64312faa4) `savvy changeset deps regen`/`deps detect` now route through silk-effects' `Changesets.DepsRegen`, so regenerated dependency changesets resolve `catalog:`/`workspace:` specifiers to concrete versions (#199) and omit `devDependency` rows that never reach a consumer (#151). The emitted `## Dependencies` tables are now CSH005-valid and pass pre-commit, instead of passing the CLI checks but failing at commit time.
+
+### Dependencies
+
+* [`efca0aa`](https://github.com/savvy-web/systems/commit/efca0aa73461e5d769ee1521f99316e64312faa4) | Dependency | Type | Action | From | To |
+  \| ------------ | ---------- | ------- | ------ | ------ |
+  \| jsonc-effect | dependency | updated | ^0.2.1 | ^0.3.0 |
+  | Dependency              | Type       | Action  | From  | To    |
+  | ----------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/silk-effects | dependency | updated | 1.5.2 | 1.6.0 |
+
 ## 1.3.5
 
 ### Maintenance
