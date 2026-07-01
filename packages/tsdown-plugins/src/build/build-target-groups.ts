@@ -316,6 +316,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						transform: options.transform,
 						sourceDir: options.cwd,
 						dual: options.dualExports ?? js.format.includes("cjs"),
+						emitDts: options.emitDts !== false,
 						...(options.subdirExports !== undefined ? { subdirExports: options.subdirExports } : {}),
 						...(options.exeRewrite !== undefined ? { exeRewrite: options.exeRewrite } : {}),
 					})

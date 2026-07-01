@@ -234,6 +234,12 @@ export interface TransformManifestOptions {
 	readonly subdirExports?: ReadonlySet<string> | undefined;
 	/** When set, rewrite exports/bin values equal to `source` to the SEA path and add it to `files`. */
 	readonly exeRewrite?: ExeRewrite | undefined;
+	/**
+	 * Whether the build's dts pass ran. `false` omits the `types` condition from generated (non-
+	 * ambient) TS exports — the manifest must not point at a `.d.ts` that was never written
+	 * (issue #198). Defaults to `true`.
+	 */
+	readonly emitDts?: boolean | undefined;
 }
 
 /**
@@ -282,7 +288,12 @@ export function transformManifest(pkg: Json, options: TransformManifestOptions =
 	// Runs before the user transform (next line), so a package can still strip it.
 	if (result.exports !== undefined && result.exports !== null) {
 		const original = result.exports;
-		const transformed = transformExports(original, options.dual ?? false, options.subdirExports);
+		const transformed = transformExports(
+			original,
+			options.dual ?? false,
+			options.subdirExports,
+			options.emitDts ?? true,
+		);
 		const asMap: Json = typeof original === "string" ? { ".": transformed } : { ...(transformed as Json) };
 		if (!("./package.json" in asMap)) asMap["./package.json"] = "./package.json";
 		result.exports = asMap;

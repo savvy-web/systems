@@ -1153,6 +1153,39 @@ describe("buildTargetGroups", () => {
 		expect(calls.some((c) => String(c.outDir).endsWith("/declarations"))).toBe(false);
 	});
 
+	it("omits the types condition from the emitted manifest when emitDts is false", async () => {
+		// issue #198: the manifest's exports must not point at a .d.ts that the (now-skipped) dts
+		// pass never wrote.
+		const dir = await mkdtemp(join(tmpdir(), "btg-emitdts-"));
+		await writeFile(
+			join(dir, "package.json"),
+			JSON.stringify({ name: "base", version: "1.0.0", exports: { ".": "./src/index.ts" } }),
+		);
+		const captureBuild = (manifests: Array<Record<string, unknown>>) =>
+			(async (cfg: { plugins: Array<{ name: string; generateBundle?: () => Promise<void> }> }) => {
+				const emit = cfg.plugins.find((p) => p.name === "savvy:emit-manifest");
+				await emit?.generateBundle?.call({
+					emitFile(file: { fileName: string; source: string }) {
+						if (file.fileName === "package.json") manifests.push(JSON.parse(file.source));
+					},
+				});
+			}) as never;
+
+		const manifests: Array<Record<string, unknown>> = [];
+		await buildTargetGroups({
+			cwd: dir,
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: join(dir, "tsconfig.json"),
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			emitDts: false,
+			build: captureBuild(manifests),
+		});
+		const exportsOut = manifests[0]?.exports as Record<string, unknown>;
+		expect(exportsOut["."]).toEqual({ import: "./index.js" });
+	}, 30_000);
+
 	it("skips both the dts pass and the declarations pass when emitDts is false, while the JS pass still emits", async () => {
 		// issue #198: emitDts:false must drop BOTH the per-entry bundled dts pass AND the prod
 		// per-module declarations pass (no TypeScript compiler load), while the JS pass is unaffected.
