@@ -4,11 +4,22 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { BuildTargetGroupsOptions } from "@savvy-web/tsdown-plugins";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineBuild } from "../src/config.js";
 import { runBuild } from "../src/run.js";
 
 describe("runBuild", () => {
+	// These tests inject a mocked buildTargetGroups and assert on its call args, never on rendered
+	// output, but runBuild still renders the build summary via its default process.stdout.write sink.
+	// Stub it so the "build complete" line does not leak into the test console.
+	let writeSpy: ReturnType<typeof vi.spyOn>;
+	beforeEach(() => {
+		writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+	});
+	afterEach(() => {
+		writeSpy.mockRestore();
+	});
+
 	it("maps target dev -> a single dev group spec and invokes buildTargetGroups", async () => {
 		const spy = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(

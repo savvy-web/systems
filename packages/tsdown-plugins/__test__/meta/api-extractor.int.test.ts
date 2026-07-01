@@ -186,6 +186,10 @@ describe("runApiExtractor", () => {
 			suppressWarnings: [{ messageId: "ae-forgotten-export" }],
 			ci: true,
 			onSuppressed: (e) => suppressed.push({ code: e.code, text: e.text }),
+			// Route the remaining (unsuppressed) ae-missing-release-tag on the forgotten `Bar` to a no-op so
+			// API Extractor marks it handled and does not print it to the console; this test only asserts on
+			// onSuppressed, not diagnostic text.
+			onMessage: () => {},
 		});
 		expect(suppressed.some((s) => s.code === "ae-forgotten-export")).toBe(true);
 	});
