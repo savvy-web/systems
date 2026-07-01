@@ -281,7 +281,6 @@ await build({
 				minimatch: ">=10.2.3",
 				"smol-toml": ">=1.6.1",
 				tmp: "^0.2.7",
-				"@types/node": "^26.0.0",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {

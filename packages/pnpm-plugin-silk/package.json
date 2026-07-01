@@ -27,9 +27,9 @@
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
-		"pnpm:up": "rolldown-pnpm-config upgrade savvy.build.ts",
 		"pnpm:export": "rolldown-pnpm-config export",
 		"pnpm:preview": "rolldown-pnpm-config preview",
+		"pnpm:up": "rolldown-pnpm-config upgrade savvy.build.ts",
 		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
@@ -37,7 +37,7 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
-		"rolldown-pnpm-config": "^0.1.0",
+		"rolldown-pnpm-config": "^0.2.0",
 		"typescript": "catalog:silk"
 	},
 	"engines": {
