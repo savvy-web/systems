@@ -1,5 +1,11 @@
 # @savvy-web/mcp
 
+## 1.4.0
+
+### Features
+
+* [`c7e38d4`](https://github.com/savvy-web/systems/commit/c7e38d46b844e26ffc4e6ebb55d949f9a91d5d86) Remove the resource subsystem from savvy-mcp: the silk:// corpus, the manifest, the silk\_docs\_search tool, and the api-doc render pipeline. The server is now tools-only; api documentation moves to a dedicated website built from the api-models.
+
 ## 1.3.5
 
 ### Maintenance

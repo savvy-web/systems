@@ -1,5 +1,11 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.18.1
+
+### Bug Fixes
+
+* [`c7e38d4`](https://github.com/savvy-web/systems/commit/c7e38d46b844e26ffc4e6ebb55d949f9a91d5d86) Drop the @types/node override from the distributed pnpm config and bump rolldown-pnpm-config to ^0.2.0. The override forced an incompatible @types/node across every consuming workspace and broke type resolution; removing it lets each workspace resolve @types/node through its own catalog.
+
 ## 0.18.0
 
 ### Features
