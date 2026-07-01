@@ -109,7 +109,8 @@ Args: `base`, `package`, `cwd` — same semantics as `changeset_deps_regen`.
 
 - **The diff touches any `package.json`'s dep fields.** Look at the
   `changeset_inspect` (`mode: "branch"`) result: if any of the `files[]`
-  entries are a workspace `package.json` and have `status: "modified"`,
+  entries are a workspace `package.json` with `status: "modified"` or
+  `"added"` (a brand-new package ships with its own dependencies too),
   call `changeset_deps_regen`.
 - **An existing `.changeset/*.md` has a stale Dependencies table.**
   `changeset_deps_regen` will detect and replace it.

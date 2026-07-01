@@ -38,9 +38,15 @@ const cannedResult: Changesets.RegenResult = {
  * provided) whenever `execute()` is called, so tests can assert whether or
  * not the adapter reached the write path.
  */
-function makeStubLayer(onExecute?: () => void): Layer.Layer<Changesets.DepsRegen> {
+function makeStubLayer(
+	onExecute?: () => void,
+	onPlan?: (options: Changesets.DepsRegenOptions) => void,
+): Layer.Layer<Changesets.DepsRegen> {
 	return Layer.succeed(DepsRegen, {
-		plan: () => Effect.succeed(cannedPlan),
+		plan: (options) => {
+			onPlan?.(options);
+			return Effect.succeed(cannedPlan);
+		},
 		execute: (plan) => {
 			onExecute?.();
 			return Effect.succeed({ ...cannedResult, skippedMixed: plan.skippedMixed });
@@ -58,6 +64,8 @@ function collectStdout(
 	dryRun: boolean,
 	json: boolean,
 	layer: Layer.Layer<Changesets.DepsRegen>,
+	base: Option.Option<string> = Option.none(),
+	pkg: Option.Option<string> = Option.none(),
 ): Promise<string> {
 	let out = "";
 	const original = console.log;
@@ -65,7 +73,7 @@ function collectStdout(
 	console.log = ((...args: any[]): void => {
 		out += `${args.map((a) => (typeof a === "string" ? a : String(a))).join(" ")}\n`;
 	}) as typeof console.log;
-	return Effect.runPromise(runDepsRegen(cwd, Option.none(), Option.none(), dryRun, json).pipe(Effect.provide(layer)))
+	return Effect.runPromise(runDepsRegen(cwd, base, pkg, dryRun, json).pipe(Effect.provide(layer)))
 		.then(() => out)
 		.finally(() => {
 			console.log = original;
@@ -98,6 +106,17 @@ describe("savvy changeset deps regen (adapter)", () => {
 			expect(entry.diff.rows.some((row) => row.type === "devDependency")).toBe(false);
 		}
 		expect(executeCalled).toBe(false);
+	});
+
+	it("forwards cwd, base, and package to DepsRegen.plan", async () => {
+		let received: Changesets.DepsRegenOptions | undefined;
+		const layer = makeStubLayer(undefined, (options) => {
+			received = options;
+		});
+
+		await collectStdout("/repo", true, true, layer, Option.some("develop"), Option.some("@scope/foo"));
+
+		expect(received).toMatchObject({ cwd: "/repo", base: "develop", package: "@scope/foo" });
 	});
 
 	it("calls execute with the plan when --dry-run is not set", async () => {

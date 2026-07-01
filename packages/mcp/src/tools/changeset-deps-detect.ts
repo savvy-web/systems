@@ -34,11 +34,20 @@ export const ChangesetDepsDetectResult = Schema.Struct({
 export type ChangesetDepsDetectResultType = Schema.Schema.Type<typeof ChangesetDepsDetectResult>;
 
 /**
- * Render a repo-derived value as an inert markdown code span. Escapes backticks
- * and backslashes so a crafted path, package, or dependency name cannot inject
- * markdown structure into the transcript an agent reads.
+ * Render a repo-derived value as an inert markdown code span so a crafted path,
+ * package, or dependency name cannot inject markdown structure into the
+ * transcript an agent reads. Control characters (which would break table rows
+ * and headings) are flattened to spaces, table-cell pipes are escaped, and the
+ * span is fenced with a backtick run longer than any in the value — CommonMark
+ * forbids backslash-escaping a backtick inside a code span.
  */
-const mdInline = (value: string): string => `\`${value.replace(/[`\\]/g, "\\$&")}\``;
+const mdInline = (value: string): string => {
+	const safe = value.replace(/\p{Cc}/gu, " ").replace(/\|/g, "\\|");
+	const longest = safe.match(/`+/g)?.reduce((m, run) => Math.max(m, run.length), 0) ?? 0;
+	const fence = "`".repeat(longest + 1);
+	const pad = safe.startsWith("`") || safe.endsWith("`") || safe.trim() === "" ? " " : "";
+	return `${fence}${pad}${safe}${pad}${fence}`;
+};
 
 /** Render the structured result as a markdown transcript. */
 const renderMarkdown = (data: ChangesetDepsDetectResultType): string => {

@@ -28,13 +28,24 @@ export const ChangesetDepsRegenResult = Schema.Struct({
 
 export type ChangesetDepsRegenResultType = Schema.Schema.Type<typeof ChangesetDepsRegenResult>;
 
-/** Render a repo-derived value (path) as an inert markdown code span. */
-const mdInline = (value: string): string => `\`${value.replace(/[`\\]/g, "\\$&")}\``;
+/**
+ * Render a repo-derived value (path) as an inert markdown code span. Control
+ * characters are flattened to spaces and the span is fenced with a backtick run
+ * longer than any in the value — CommonMark forbids backslash-escaping a
+ * backtick inside a code span.
+ */
+const mdInline = (value: string): string => {
+	const safe = value.replace(/\p{Cc}/gu, " ");
+	const longest = safe.match(/`+/g)?.reduce((m, run) => Math.max(m, run.length), 0) ?? 0;
+	const fence = "`".repeat(longest + 1);
+	const pad = safe.startsWith("`") || safe.endsWith("`") || safe.trim() === "" ? " " : "";
+	return `${fence}${pad}${safe}${pad}${fence}`;
+};
 
 /** Render the structured result as a markdown transcript. */
 const renderMarkdown = (data: ChangesetDepsRegenResultType): string => {
 	const heading = `# changeset deps regen — ${mdInline(data.root)}${data.dryRun ? " (dry run)" : ""}`;
-	if (data.deleted.length === 0 && data.written.length === 0) {
+	if (data.deleted.length === 0 && data.written.length === 0 && data.skippedMixed.length === 0) {
 		return `${heading}\n\nNo dependency changes to regenerate.`;
 	}
 	const lines = [heading, ``];

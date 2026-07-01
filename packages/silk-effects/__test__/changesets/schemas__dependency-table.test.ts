@@ -175,4 +175,10 @@ describe("VERSION_RE widening (protocol fallback)", () => {
 			expect(VERSION_RE.test(v)).toBe(false);
 		}
 	});
+
+	it("rejects malformed cells: empty protocol payloads and dangling semver suffixes", () => {
+		for (const v of ["catalog:", "workspace:", "npm:", "1.2.3-", "1.2.3+", "1.2.3."]) {
+			expect(VERSION_RE.test(v)).toBe(false);
+		}
+	});
 });

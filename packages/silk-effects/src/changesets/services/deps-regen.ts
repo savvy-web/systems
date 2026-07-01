@@ -118,7 +118,15 @@ function randomFilename(changesetDir: string, chosen: Set<string>): string {
 			return candidate;
 		}
 	}
-	const fallback = `${pickRandomTriplet()}-${Date.now()}`;
+	// Timestamp fallback after 20 unlucky triplet picks. Loop until the name is
+	// unique against both the on-disk changesets and the slugs already chosen in
+	// this plan, so two packages exhausting the triplet space in the same
+	// millisecond cannot resolve to the same file.
+	let attempt = 0;
+	let fallback = `${pickRandomTriplet()}-${Date.now()}`;
+	while (chosen.has(fallback) || existsSync(join(changesetDir, `${fallback}.md`))) {
+		fallback = `${pickRandomTriplet()}-${Date.now()}-${++attempt}`;
+	}
 	chosen.add(fallback);
 	return fallback;
 }

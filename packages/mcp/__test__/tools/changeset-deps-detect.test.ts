@@ -32,10 +32,15 @@ const cannedPlan = {
 	skippedMixed: [],
 } as unknown as Changesets.RegenPlan;
 
+let capturedPlanOptions: Changesets.DepsRegenOptions | undefined;
+
 const DepsRegenStub = Layer.succeed(
 	Changesets.DepsRegen,
 	Changesets.DepsRegen.of({
-		plan: () => Effect.succeed(cannedPlan),
+		plan: (options) => {
+			capturedPlanOptions = options;
+			return Effect.succeed(cannedPlan);
+		},
 		execute: (p) => Effect.succeed({ deleted: [], written: [], skippedMixed: p.skippedMixed }),
 	}),
 );
@@ -48,6 +53,8 @@ const run = <A, E>(eff: Effect.Effect<A, E, WorkspaceRoot | Changesets.DepsRegen
 describe("changesetDepsDetect handler", () => {
 	it("maps the plan's toWrite into { root, packages: [{ package, relativePath, rows }] }, keeping devDeps", async () => {
 		const data = await run(changesetDepsDetect({}, ROOT));
+		// The detect path must forward includeDevDeps:true so the service keeps devDeps.
+		expect(capturedPlanOptions).toMatchObject({ cwd: ROOT, includeDevDeps: true });
 		expect(data.root).toBe(ROOT);
 		expect(data.packages).toHaveLength(1);
 		const pkg = data.packages[0];

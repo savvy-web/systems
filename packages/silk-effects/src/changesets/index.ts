@@ -166,6 +166,7 @@ export {
 	DependencyTableRowSchema,
 	DependencyTableSchema,
 	DependencyTableTypeSchema,
+	VERSION_RE,
 	VersionOrEmptySchema,
 } from "./schemas/dependency-table.js";
 export type { VersionType } from "./schemas/git.js";
