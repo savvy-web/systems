@@ -29,6 +29,23 @@ export interface BuildEmittedManifestOptions {
 	readonly exeRewrite?: ExeRewrite | undefined;
 }
 
+const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const;
+
+/**
+ * Whether any of `pkg`'s four dependency fields carries at least one `catalog:`/`workspace:`
+ * specifier. `resolveManifest` returns a manifest with none of these unchanged, so callers can
+ * skip the CatalogResolver + pnpm-workspace + lockfile assembly entirely when this is false.
+ */
+export function manifestNeedsCatalogResolution(pkg: Json): boolean {
+	return DEPENDENCY_FIELDS.some((field) => {
+		const deps = pkg[field] as Record<string, unknown> | undefined;
+		if (!deps) return false;
+		return Object.values(deps).some(
+			(spec) => typeof spec === "string" && (spec.startsWith("catalog:") || spec.startsWith("workspace:")),
+		);
+	});
+}
+
 /**
  * Compute the final manifest bytes for a TargetGroup (catalog resolution + standard transforms).
  *
@@ -36,7 +53,7 @@ export interface BuildEmittedManifestOptions {
  */
 export async function buildEmittedManifest(options: BuildEmittedManifestOptions): Promise<Json> {
 	const { pkg, targetGroup, devManifest, transform } = options;
-	const shouldResolve = targetGroup.isProd || devManifest === "resolve";
+	const shouldResolve = (targetGroup.isProd || devManifest === "resolve") && manifestNeedsCatalogResolution(pkg);
 	let base: Json = pkg;
 	if (shouldResolve) {
 		// resolveManifest delegates to workspaces-effect's CatalogResolver (returns a Promise)
