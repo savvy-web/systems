@@ -138,6 +138,10 @@ describe("generateMeta", () => {
 			localPaths: [],
 			tsdoc: { suppressWarnings: [{ messageId: "ae-forgotten-export" }], tagDefinitions: [] },
 			onSuppressed: (e) => suppressed.push(e.code ?? ""),
+			// Route the remaining (unsuppressed) ae-missing-release-tag on the forgotten `Bar` to a no-op so
+			// API Extractor marks it handled and does not print it to the console; this test only asserts on
+			// onSuppressed, not diagnostic text.
+			onMessage: () => {},
 		});
 		expect(suppressed).toContain("ae-forgotten-export");
 	});

@@ -115,7 +115,10 @@ describe("ActionLoggerLive", () => {
 		});
 
 		it("logInfo still emits plain stdout, not ::notice:: (no level remap)", async () => {
-			await run(Effect.logInfo("routine info"));
+			// logInfo routes through Effect's default logger (logfmt), not the ActionLogger service; swap it
+			// for a no-op logger so the routine line does not leak to the test console. A service-level remap
+			// to ::notice would still go through the spied process.stdout.write, so the assertion still holds.
+			await run(Effect.logInfo("routine info").pipe(Effect.provide(Logger.replace(Logger.defaultLogger, Logger.none))));
 			const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
 			expect(written.some((s: string) => s.includes("::notice"))).toBe(false);
 		});

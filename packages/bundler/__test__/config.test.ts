@@ -122,6 +122,15 @@ describe("defineBuild", () => {
 		expect(defineBuild({}).plugins).toBeUndefined();
 	});
 
+	it("defaults emitDts to true when not provided", () => {
+		// emitDts default true keeps prod .d.ts generation ON unless a caller opts out (issue #198).
+		expect(defineBuild({}).emitDts).toBe(true);
+	});
+
+	it("preserves emitDts: false through normalization", () => {
+		expect(defineBuild({ emitDts: false }).emitDts).toBe(false);
+	});
+
 	it("accepts platform + css on an entry override", () => {
 		const config = defineBuild({
 			overrides: [

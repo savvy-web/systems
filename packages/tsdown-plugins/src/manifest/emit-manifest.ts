@@ -27,6 +27,25 @@ export interface BuildEmittedManifestOptions {
 	readonly subdirExports?: ReadonlySet<string> | undefined;
 	/** When set, rewrite exports/bin values equal to the exe source to the SEA path and add it to `files`. */
 	readonly exeRewrite?: ExeRewrite | undefined;
+	/** Whether the dts pass ran; `false` omits `types` conditions from the emitted manifest (issue #198). Defaults to `true`. */
+	readonly emitDts?: boolean | undefined;
+}
+
+const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const;
+
+const isCatalogOrWorkspaceSpec = (spec: unknown): boolean =>
+	typeof spec === "string" && (spec.startsWith("catalog:") || spec.startsWith("workspace:"));
+
+/**
+ * Whether any of `pkg`'s four dependency fields carries at least one `catalog:`/`workspace:`
+ * specifier. `resolveManifest` returns a manifest with none of these unchanged, so callers can
+ * skip the CatalogResolver + pnpm-workspace + lockfile assembly entirely when this is false.
+ */
+export function manifestNeedsCatalogResolution(pkg: Json): boolean {
+	return DEPENDENCY_FIELDS.some((field) => {
+		const deps = pkg[field];
+		return typeof deps === "object" && deps !== null && Object.values(deps).some(isCatalogOrWorkspaceSpec);
+	});
 }
 
 /**
@@ -36,7 +55,7 @@ export interface BuildEmittedManifestOptions {
  */
 export async function buildEmittedManifest(options: BuildEmittedManifestOptions): Promise<Json> {
 	const { pkg, targetGroup, devManifest, transform } = options;
-	const shouldResolve = targetGroup.isProd || devManifest === "resolve";
+	const shouldResolve = (targetGroup.isProd || devManifest === "resolve") && manifestNeedsCatalogResolution(pkg);
 	let base: Json = pkg;
 	if (shouldResolve) {
 		// resolveManifest delegates to workspaces-effect's CatalogResolver (returns a Promise)
@@ -51,6 +70,7 @@ export async function buildEmittedManifest(options: BuildEmittedManifestOptions)
 		dual: options.dual ?? false,
 		subdirExports: options.subdirExports,
 		exeRewrite: options.exeRewrite,
+		emitDts: options.emitDts ?? true,
 	});
 }
 
@@ -67,6 +87,8 @@ export interface EmitManifestOptions {
 	readonly subdirExports?: ReadonlySet<string> | undefined;
 	/** When set, rewrite exports/bin values equal to the exe source to the SEA path and add it to `files`. */
 	readonly exeRewrite?: ExeRewrite | undefined;
+	/** Whether the dts pass ran; `false` omits `types` conditions from the emitted manifest (issue #198). Defaults to `true`. */
+	readonly emitDts?: boolean | undefined;
 }
 
 /**
@@ -88,6 +110,7 @@ export function emitManifest(options: EmitManifestOptions): Plugin {
 				dual: options.dual,
 				subdirExports: options.subdirExports,
 				exeRewrite: options.exeRewrite,
+				emitDts: options.emitDts,
 			});
 			this.emitFile({
 				type: "asset",

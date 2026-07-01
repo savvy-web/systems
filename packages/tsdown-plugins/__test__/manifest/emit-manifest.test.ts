@@ -1,6 +1,31 @@
 // packages/tsdown-plugins/__test__/manifest/emit-manifest.test.ts
 import { describe, expect, it } from "vitest";
-import { buildEmittedManifest } from "../../src/manifest/emit-manifest.js";
+import { buildEmittedManifest, manifestNeedsCatalogResolution } from "../../src/manifest/emit-manifest.js";
+
+describe("manifestNeedsCatalogResolution", () => {
+	// Behavior 2: pure helper detects catalog:/workspace: specifiers across all four dependency fields.
+	it("should detect catalog: and workspace: specifiers across all four dependency fields, and return false when none are present", () => {
+		expect(manifestNeedsCatalogResolution({ dependencies: { effect: "catalog:silk" } })).toBe(true);
+		expect(manifestNeedsCatalogResolution({ devDependencies: { "@x/p": "workspace:*" } })).toBe(true);
+		expect(manifestNeedsCatalogResolution({ peerDependencies: { react: "catalog:silkPeers" } })).toBe(true);
+		expect(manifestNeedsCatalogResolution({ optionalDependencies: { fsevents: "workspace:*" } })).toBe(true);
+		expect(
+			manifestNeedsCatalogResolution({
+				name: "@x/p",
+				version: "1.0.0",
+				dependencies: { effect: "^3.0.0" },
+				devDependencies: { vitest: "^2.0.0" },
+			}),
+		).toBe(false);
+		expect(manifestNeedsCatalogResolution({ name: "@x/p", version: "1.0.0" })).toBe(false);
+	});
+
+	it('should not throw on a null or non-object dependency field (valid JSON like "dependencies": null)', () => {
+		expect(() => manifestNeedsCatalogResolution({ dependencies: null })).not.toThrow();
+		expect(manifestNeedsCatalogResolution({ dependencies: null })).toBe(false);
+		expect(manifestNeedsCatalogResolution({ devDependencies: "not-an-object" })).toBe(false);
+	});
+});
 
 describe("buildEmittedManifest", () => {
 	it("dev group with devManifest=preserve keeps catalog: specifiers and stays private", async () => {
