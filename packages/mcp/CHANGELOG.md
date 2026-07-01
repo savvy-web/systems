@@ -1,5 +1,17 @@
 # @savvy-web/mcp
 
+## 1.5.0
+
+### Features
+
+* [`efca0aa`](https://github.com/savvy-web/systems/commit/efca0aa73461e5d769ee1521f99316e64312faa4) Added two tools backed by `Changesets.DepsRegen`, bringing the server to eight tools: `changeset_deps_detect` (read-only — the cumulative dependency diff with `catalog:`/`workspace:` specifiers resolved to concrete versions) and `changeset_deps_regen` (regenerates pure-dependency changesets; the second mutating tool after `biome_check`, and a no-op preview under `dryRun`).
+
+### Patch Changes
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 1.5.2 | 1.6.0 |
+
 ## 1.4.0
 
 ### Features

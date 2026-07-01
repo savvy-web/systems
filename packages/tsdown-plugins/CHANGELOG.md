@@ -1,5 +1,13 @@
 # @savvy-web/tsdown-plugins
 
+## 1.1.1
+
+### Dependencies
+
+* [`efca0aa`](https://github.com/savvy-web/systems/commit/efca0aa73461e5d769ee1521f99316e64312faa4) | Dependency | Type | Action | From | To |
+  \| ------------------ | ---------- | ------- | ------ | ------ |
+  \| json-schema-effect | dependency | updated | ^0.2.4 | ^0.3.0 |
+
 ## 1.1.0
 
 ### Features

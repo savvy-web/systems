@@ -1,5 +1,13 @@
 # @savvy-web/github-action-builder
 
+## 1.0.2
+
+### Dependencies
+
+* [`efca0aa`](https://github.com/savvy-web/systems/commit/efca0aa73461e5d769ee1521f99316e64312faa4) | Dependency | Type | Action | From | To |
+  \| ----------- | ---------- | ------- | ------ | ------ |
+  \| yaml-effect | dependency | updated | ^0.6.0 | ^0.7.0 |
+
 ## 1.0.1
 
 ### Maintenance

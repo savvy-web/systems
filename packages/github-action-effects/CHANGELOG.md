@@ -1,5 +1,15 @@
 # @savvy-web/github-action-effects
 
+## 2.3.4
+
+### Dependencies
+
+* [`efca0aa`](https://github.com/savvy-web/systems/commit/efca0aa73461e5d769ee1521f99316e64312faa4) | Dependency | Type | Action | From | To |
+  \| ------------- | ---------- | ------- | ------ | ------ |
+  \| jsonc-effect | dependency | updated | ^0.2.1 | ^0.3.0 |
+  \| semver-effect | dependency | updated | ^0.2.1 | ^0.3.0 |
+  \| yaml-effect | dependency | updated | ^0.6.0 | ^0.7.0 |
+
 ## 2.3.3
 
 ### Maintenance
