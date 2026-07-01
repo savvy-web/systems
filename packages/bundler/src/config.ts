@@ -140,6 +140,19 @@ export interface BuildConfigInput {
 	 * interop plugins and before its metrics instrumentation.
 	 */
 	readonly plugins?: ReadonlyArray<Plugin> | undefined;
+	/**
+	 * Emit the prod `.d.ts` bundling pass (and, downstream, the meta/API-Extractor pass that reads
+	 * those declarations). Defaults to `true` — bundled, self-contained declarations per public entry
+	 * are the default posture. Set `false` to skip BOTH the dts pass and the meta pass while still
+	 * emitting JS output, byte-variant target folders, catalog/workspace resolution, and the
+	 * transformed `package.json`. Orthogonal to `meta: false`, which disables ONLY the API-model
+	 * generation and still runs the dts pass; `emitDts: false` disables the dts pass itself (and
+	 * therefore meta, which has nothing to read without it). Intended for JS-only artifacts that
+	 * never consume declarations (e2e fixtures, bins, internal tools) — skipping the TypeScript
+	 * compiler load cuts a ~13s/build cost. Named `emitDts` (not `dts`) to avoid confusion with
+	 * tsdown's internal nested `dts` config object.
+	 */
+	readonly emitDts?: boolean | undefined;
 }
 
 /** @public */
@@ -187,6 +200,11 @@ export interface BuildConfig {
 	readonly define?: Record<string, string> | undefined;
 	/** Custom tsdown/rolldown plugins forwarded to every tsdown run (JS, dts, per-module declarations, looseFiles). */
 	readonly plugins?: ReadonlyArray<Plugin> | undefined;
+	/**
+	 * Emit the prod `.d.ts` bundling pass (and, downstream, the meta pass). Defaults to `true`.
+	 * See {@link BuildConfigInput.emitDts} for the full explanation.
+	 */
+	readonly emitDts: boolean;
 }
 
 /**
@@ -218,6 +236,7 @@ export function defineBuild(input: BuildConfigInput = {}): BuildConfig {
 		looseFiles: input.looseFiles,
 		define: input.define,
 		plugins: input.plugins,
+		emitDts: input.emitDts ?? true,
 	};
 	// Self-execution: only when this module's importer is the program entry.
 	// run.ts performs the actual import.meta.main gate (it has access to the caller's meta).
