@@ -31,6 +31,9 @@ export interface BuildEmittedManifestOptions {
 
 const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const;
 
+const isCatalogOrWorkspaceSpec = (spec: unknown): boolean =>
+	typeof spec === "string" && (spec.startsWith("catalog:") || spec.startsWith("workspace:"));
+
 /**
  * Whether any of `pkg`'s four dependency fields carries at least one `catalog:`/`workspace:`
  * specifier. `resolveManifest` returns a manifest with none of these unchanged, so callers can
@@ -39,10 +42,7 @@ const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "peerDependencies"
 export function manifestNeedsCatalogResolution(pkg: Json): boolean {
 	return DEPENDENCY_FIELDS.some((field) => {
 		const deps = pkg[field] as Record<string, unknown> | undefined;
-		if (!deps) return false;
-		return Object.values(deps).some(
-			(spec) => typeof spec === "string" && (spec.startsWith("catalog:") || spec.startsWith("workspace:")),
-		);
+		return deps !== undefined && Object.values(deps).some(isCatalogOrWorkspaceSpec);
 	});
 }
 
