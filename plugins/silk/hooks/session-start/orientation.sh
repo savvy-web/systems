@@ -2,15 +2,15 @@
 set -euo pipefail
 
 # SessionStart hook (no matcher — fires on all starts including resume/compact):
-# persist namespaced SILK_* env vars and inject MCP orientation + changeset +
+# persist namespaced SILK_* env vars and inject workspace, changeset, and
 # dogfood-feedback context into every session.
 #
 # Merges: changeset-env-export.sh + mcp-orientation.sh
 #
 # Contract: reads SessionStart envelope on stdin, writes 5 SILK_* exports to
 # the per-session silk-hook.sh file and CLAUDE_ENV_FILE, then emits
-# additionalContext with TIER-1 MCP catalog nudge, TIER-2 workspace_info nudge,
-# changesets plugin context, and a dogfood-feedback reminder.
+# additionalContext with a workspace_info nudge, changesets plugin context,
+# and a dogfood-feedback reminder.
 
 # shellcheck source=../lib/hook-output.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
