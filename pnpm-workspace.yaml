@@ -3,8 +3,6 @@ packages:
   - packages/*
 allowBuilds:
   "@parcel/watcher": true
-  "@savvy-web/github-action-builder": true
-  "@savvy-web/vitest": true
   better-sqlite3: true
   core-js: true
   esbuild: true
@@ -124,7 +122,7 @@ minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@savvy-web/*"
   - "@spencerbeggs/*"
-  - "@typescript/native-preview*"
+  - "@typescript/*"
   - "@vitest-agent/*"
   - api-extractor-llms
   - config-file-effect
@@ -152,6 +150,7 @@ overrides:
 peerDependencyRules:
   allowedVersions:
     "@effect/vitest>vitest": ^4.1.0
+    "@types/node": ^26.0.0
     "@typescript-eslint/project-service>typescript": ^6.0.0
     "@typescript-eslint/tsconfig-utils>typescript": ^6.0.0
     "@typescript-eslint/typescript-estree>typescript": ^6.0.0

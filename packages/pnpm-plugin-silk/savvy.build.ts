@@ -255,7 +255,7 @@ await build({
 			minimumReleaseAgeExclude: [
 				"@savvy-web/*",
 				"@vitest-agent/*",
-				"@typescript/native-preview*",
+				"@typescript/*",
 				"@spencerbeggs/*",
 				"vitest-bats",
 				"rspress-plugin-api-extractor",
@@ -317,8 +317,6 @@ await build({
 			},
 			allowBuilds: {
 				"@parcel/watcher": true,
-				"@savvy-web/github-action-builder": true,
-				"@savvy-web/vitest": true,
 				"better-sqlite3": true,
 				"core-js": true,
 				esbuild: true,
@@ -336,6 +334,7 @@ await build({
 			blockExoticSubdeps: true,
 			peerDependencyRules: {
 				allowedVersions: {
+					"@types/node": "^26.0.0",
 					"@effect/vitest>vitest": "^4.1.0",
 					"@typescript-eslint/project-service>typescript": "^6.0.0",
 					"@typescript-eslint/tsconfig-utils>typescript": "^6.0.0",
