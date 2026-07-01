@@ -91,26 +91,6 @@ case "$package_manager" in
 esac
 
 CONTEXT=$(cat <<CONTEXT
-<EXTREMELY_IMPORTANT>
-A shared MCP server (savvy-mcp) is active this session. It serves the Silk Suite
-documentation corpus and workspace analysis tools.
-
-Before you research any Silk convention, package API, standards rule, or
-architecture decision by guessing, reading source files, or running git/grep,
-you ABSOLUTELY MUST first:
-
-1. Read the resource silk://catalog — it lists every available doc grouped by
-   tier (Standards, Packages, Guides) with a "load when" hint, so you fetch only
-   what the task needs.
-2. Use the silk_docs_search tool to find relevant docs by keyword. It returns
-   ranked, scored hits and is faster and more accurate than filesystem grep.
-
-If there is even a 1% chance the corpus answers your question, search it before
-guessing. This is not negotiable.
-
-For detailed query technique, the silk docs-search skill is available on demand.
-</EXTREMELY_IMPORTANT>
-
 <important>
 When you need workspace layout, package names, publish or version state, or any
 other structural fact about the workspace, call the workspace_info MCP tool
