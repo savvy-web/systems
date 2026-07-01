@@ -20,8 +20,6 @@
 	"access": "restricted",
 	"baseBranch": "main",
 	"updateInternalDependencies": "patch",
-	"fixed": [["@savvy-web/silk", "@savvy-web/cli", "@savvy-web/mcp"]],
-	"linked": [["@savvy-web/bundler", "@savvy-web/rspress-builder", "@savvy-web/tsdown-plugins"]],
 	"ignore": [],
 	"privatePackages": {
 		"tag": true,
