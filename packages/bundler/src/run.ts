@@ -436,6 +436,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				...(config.plugins !== undefined ? { extraPlugins: config.plugins } : {}),
 				...(exeRewrite !== undefined ? { exeRewrite } : {}),
 				...(target === "prod" ? { emitDeclarations: true } : {}),
+				emitDts: config.emitDts,
 				collector,
 				verbose,
 			});
