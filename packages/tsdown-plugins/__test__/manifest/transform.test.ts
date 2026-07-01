@@ -187,6 +187,22 @@ describe("manifest transform", () => {
 		expect(out["./runtime"]).toEqual({ types: "./runtime/index.d.ts", import: "./runtime/index.js" });
 	});
 
+	it("omits the types condition from a TS export when emitDts is false, keeping import/require", () => {
+		// issue #198: emitDts:false skips the dts pass, so the manifest must not point at a
+		// declaration file that was never written.
+		const exports = { ".": "./src/index.ts" };
+		const out = transformExports(exports, true, undefined, false) as Record<string, Record<string, string>>;
+		expect(out["."]).toEqual({ import: "./index.js", require: "./index.cjs" });
+		expect(out["."].types).toBeUndefined();
+	});
+
+	it("keeps the types condition by default (emitDts omitted / true)", () => {
+		const exports = { ".": "./src/index.ts" };
+		expect(transformExports(exports, false) as Record<string, Record<string, string>>).toEqual({
+			".": { types: "./index.d.ts", import: "./index.js" },
+		});
+	});
+
 	it("treats dual:true as every TS export dual (back-compat) and dual:false as none", () => {
 		const exports = { "./a": "./src/a.ts", "./b": "./src/b.ts" };
 		const all = transformExports(exports, true) as Record<string, Record<string, string>>;

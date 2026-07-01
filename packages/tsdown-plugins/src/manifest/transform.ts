@@ -117,9 +117,14 @@ const toBuiltCjs = (exportKey: string, subdirExports?: ReadonlySet<string>): str
 const isDeclarationFile = (p: string): boolean => p.endsWith(".d.ts") || p.endsWith(".d.cts") || p.endsWith(".d.mts");
 const isTs = (p: string): boolean => !isDeclarationFile(p) && (p.endsWith(".ts") || p.endsWith(".tsx"));
 
-/** Build the conditions object for a TS export target (adds require when dual-format). */
-const tsConditions = (exportKey: string, dual: boolean, subdirExports?: ReadonlySet<string>): Json => ({
-	types: toBuiltDts(exportKey, subdirExports),
+/**
+ * Build the conditions object for a TS export target (adds require when dual-format). `emitDts`
+ * gates the `types` condition: when `false` (the build's dts pass was skipped, see issue #198),
+ * omitting `types` avoids pointing the published manifest at a declaration file that was never
+ * written. Defaults to `true` (current behavior, byte-identical).
+ */
+const tsConditions = (exportKey: string, dual: boolean, subdirExports?: ReadonlySet<string>, emitDts = true): Json => ({
+	...(emitDts ? { types: toBuiltDts(exportKey, subdirExports) } : {}),
 	import: toBuiltJs(exportKey, subdirExports),
 	...(dual ? { require: toBuiltCjs(exportKey, subdirExports) } : {}),
 });
@@ -145,17 +150,23 @@ function stripPublicPrefix(value: unknown): unknown {
  *
  * Export keys in `subdirExports` are built into an isolated `<key>/index.*` subdir (e.g. an
  * RSPress `./runtime`), so their conditions gain an `/index` segment.
+ *
+ * `emitDts` gates the `types` condition on every GENERATED (non-ambient) TS export: pass `false`
+ * when the build's dts pass was skipped (issue #198) so the manifest does not point at a `.d.ts`
+ * that was never written. Defaults to `true`. Ambient `.d.ts` exports (hand-authored, copied
+ * verbatim regardless of the dts pass) are unaffected — their `types` condition is always kept.
  * @public
  */
 export function transformExports(
 	exports: unknown,
 	dual: DualExports = false,
 	subdirExports?: ReadonlySet<string>,
+	emitDts = true,
 ): unknown {
 	// A bare string export is the root (`.`) target. Root ambient is unsupported — a whole-exports
 	// bare .d.ts string is returned verbatim; only subpath ambient exports are rewritten.
 	if (typeof exports === "string") {
-		return isTs(exports) ? tsConditions(".", isDualKey(dual, "."), subdirExports) : stripPublicPrefix(exports);
+		return isTs(exports) ? tsConditions(".", isDualKey(dual, "."), subdirExports, emitDts) : stripPublicPrefix(exports);
 	}
 	if (exports && typeof exports === "object") {
 		const out: Json = {};
@@ -171,9 +182,9 @@ export function transformExports(
 				continue;
 			}
 			if (typeof value === "string" && isTs(value)) {
-				out[key] = tsConditions(key, isDualKey(dual, key), subdirExports);
+				out[key] = tsConditions(key, isDualKey(dual, key), subdirExports, emitDts);
 			} else {
-				out[key] = transformExports(value, dual, subdirExports);
+				out[key] = transformExports(value, dual, subdirExports, emitDts);
 			}
 		}
 		return out;
