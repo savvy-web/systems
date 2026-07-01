@@ -1,5 +1,11 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.18.2
+
+### Bug Fixes
+
+* [`b2c530d`](https://github.com/savvy-web/systems/commit/b2c530da08cdcfb87422f7c616d3a1dc3b1d2955) Resync @types/node versions deeply
+
 ## 0.18.1
 
 ### Bug Fixes
