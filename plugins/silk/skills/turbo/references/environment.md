@@ -51,5 +51,5 @@ exactly what each task declares.
 
 ## See also
 
-The anti-pattern catalog is at `silk://standards/turbo/best-practices`.
-Remote-cache env wiring is at `silk://standards/turbo/ci`.
+The anti-pattern catalog is at [best-practices](./best-practices.md).
+Remote-cache env wiring is at [ci](./ci.md).

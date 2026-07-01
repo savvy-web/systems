@@ -59,5 +59,6 @@ that yields green checks with zero protection. Tag by architectural layer
 
 ## See also
 
-The underlying import rules are at `silk://standards/dependency-conventions`.
-Graph-correctness practices are at `silk://standards/turbo/best-practices`.
+The underlying import rules live in the dependency-conventions standard, which
+is not bundled with this skill. Graph-correctness practices are at
+[best-practices](./best-practices.md).

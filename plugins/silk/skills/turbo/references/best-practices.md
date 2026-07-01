@@ -63,5 +63,6 @@ a named turbo task, not a lifecycle shim.
 
 ## See also
 
-Env-hash correctness is at `silk://standards/turbo/environment`. Dependency
-declaration rules are at `silk://standards/dependency-conventions`.
+Env-hash correctness is at [environment](./environment.md). Dependency
+declaration rules live in the dependency-conventions standard, which is not
+bundled with this skill.

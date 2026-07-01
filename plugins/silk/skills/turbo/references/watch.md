@@ -51,5 +51,5 @@ stream cleanly.
 ## See also
 
 The persistent-task / `dependsOn` interaction is covered under outputs and
-parallelism at `silk://standards/turbo/best-practices`. Scoping watch to a subset
-uses the syntax at `silk://standards/turbo/filtering`.
+parallelism at [best-practices](./best-practices.md). Scoping watch to a subset
+uses the syntax at [filtering](./filtering.md).

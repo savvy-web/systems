@@ -60,4 +60,4 @@ and cache hits still count.
 
 ## See also
 
-Using filters in CI is at `silk://standards/turbo/ci`.
+Using filters in CI is at [ci](./ci.md).

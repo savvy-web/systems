@@ -56,5 +56,5 @@ with `Catalog(s) not found: silkPeers`. Keep build a post-install turbo step.
 
 ## See also
 
-Scoping syntax is at `silk://standards/turbo/filtering`. Cache-correct env
-declarations are at `silk://standards/turbo/environment`.
+Scoping syntax is at [filtering](./filtering.md). Cache-correct env
+declarations are at [environment](./environment.md).
