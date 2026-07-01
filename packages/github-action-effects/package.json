@@ -47,9 +47,9 @@
 		"@octokit/rest": "^22.0.1",
 		"@sigstore/bundle": "^5.0.0",
 		"@sigstore/sign": "^5.0.0",
-		"jsonc-effect": "^0.2.1",
-		"semver-effect": "^0.2.1",
-		"yaml-effect": "^0.6.0"
+		"jsonc-effect": "^0.3.0",
+		"semver-effect": "^0.3.0",
+		"yaml-effect": "^0.7.0"
 	},
 	"devDependencies": {
 		"@effect/cluster": "catalog:silk",
