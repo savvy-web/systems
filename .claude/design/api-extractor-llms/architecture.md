@@ -1,17 +1,21 @@
 ---
-status: current
+status: archived
 module: api-extractor-llms
 category: architecture
 created: 2026-06-01
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-07-01
+last-synced: 2026-07-01
 completeness: 100
+archived: 2026-07-01
+archival-reason: obsolete
 related:
   - ../mcp/architecture.md
 dependencies: []
 ---
 
 # api-extractor-llms (external dependency)
+
+> **ARCHIVED (2026-07-01):** `api-extractor-llms` is no longer a dependency of `@savvy-web/mcp` — the mcp API-doc render pipeline was removed with the server's resource subsystem (see `../mcp/architecture.md`). A future RSPress website spec will reintroduce what it needs from this library. This document is retained for historical context only.
 
 `api-extractor-llms` is an **external npm package** (unscoped, published from `spencerbeggs/api-extractor-llms`) that renders Microsoft API Extractor `.api.json` models into LLM-lean markdown. It was extracted out of this monorepo and no longer lives here. This doc records why this repo depends on it and where its architecture is documented; it is not the source of truth for the library's internals.
 

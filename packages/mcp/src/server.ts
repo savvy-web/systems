@@ -1,6 +1,6 @@
 /**
- * Constructs the MCP server, registers tools and resources, and connects the
- * stdio transport.
+ * Constructs the MCP server, registers tools, and connects the stdio
+ * transport.
  *
  * @packageDocumentation
  */
@@ -11,8 +11,6 @@ import { Schema } from "effect";
 import { z } from "zod";
 
 import type { McpContext } from "./context.js";
-import { registerAllResources } from "./resources/index.js";
-import { stderrQueryLogger } from "./resources/query-log.js";
 import { effectToZodSchema } from "./schema/effect-to-zod.js";
 import type { BiomeCheckArgs } from "./tools/biome-check.js";
 import { BiomeCheckAsMarkdown, BiomeCheckResult, runBiomeCheck } from "./tools/biome-check.js";
@@ -22,7 +20,6 @@ import type { ChangesetPreviewArgs } from "./tools/changeset-preview.js";
 import { ChangesetPreviewAsMarkdown, ChangesetPreviewResult, changesetPreview } from "./tools/changeset-preview.js";
 import type { ChangesetValidateArgs } from "./tools/changeset-validate.js";
 import { ChangesetValidateAsMarkdown, ChangesetValidateResult, changesetValidate } from "./tools/changeset-validate.js";
-import { DocsSearchResult, DocsSearchResultAsMarkdown, runDocsSearch } from "./tools/docs-search.js";
 import type { TurboInspectArgs } from "./tools/turbo-inspect.js";
 import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "./tools/turbo-inspect.js";
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
@@ -34,7 +31,7 @@ const structuredResult = <T extends object>(text: string, structured: T) => ({
 	structuredContent: structured as unknown as Record<string, unknown>,
 });
 
-/** Build the MCP server for the given context, registering tools + resources. */
+/** Build the MCP server for the given context, registering tools. */
 export function buildServer(ctx: McpContext): McpServer {
 	const server = new McpServer({ name: "savvy-mcp", version: CURRENT_MCP_VERSION });
 
@@ -52,34 +49,6 @@ export function buildServer(ctx: McpContext): McpServer {
 			const root = args.cwd ?? ctx.cwd;
 			const data = await ctx.runtime.runPromise(workspaceInfo(root));
 			const text = Schema.decodeSync(WorkspaceInfoAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
-
-	server.registerTool(
-		"silk_docs_search",
-		{
-			description:
-				"Search Silk documentation by intent. Pass plain keywords or a short phrase describing what you need (e.g. 'changeset bump rules'). Returns ranked docs with a confidence label; fetch a hit with resources/read <uri>. Read silk://catalog first to orient.",
-			inputSchema: {
-				query: z.string().describe("Keywords or a short phrase describing the doc you need."),
-				limit: z.optional(z.number()).describe("Max results (default 10)."),
-				tier: z.optional(z.enum(["standards", "packages", "guides"])).describe("Restrict to one tier."),
-			},
-			outputSchema: effectToZodSchema(DocsSearchResult) as never,
-			annotations: { readOnlyHint: true },
-		},
-		async (args) => {
-			const data = runDocsSearch(
-				ctx.docIndex,
-				args.query,
-				{
-					...(args.limit !== undefined ? { limit: args.limit } : {}),
-					...(args.tier !== undefined ? { tier: args.tier } : {}),
-				},
-				stderrQueryLogger,
-			);
-			const text = Schema.decodeSync(DocsSearchResultAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -185,8 +154,6 @@ export function buildServer(ctx: McpContext): McpServer {
 			return structuredResult(text, data);
 		},
 	);
-
-	registerAllResources(server, { manifest: ctx.manifest, contentRoot: ctx.contentRoot });
 
 	return server;
 }

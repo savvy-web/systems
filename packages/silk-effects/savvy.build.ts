@@ -4,7 +4,7 @@ await build({
 	// No `externals`: effect and @effect/platform are declared deps, auto-externalized by tsdown.
 	devManifest: "preserve",
 	meta: {
-		localPaths: ["../mcp/lib/models/silk-effects", "../../website/lib/models/silk-effects"],
+		localPaths: ["../../website/lib/models/silk-effects"],
 		tsdoc: {
 			suppressWarnings: [
 				{ messageId: "ae-forgotten-export", pattern: "_base" },

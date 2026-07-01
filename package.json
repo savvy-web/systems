@@ -33,10 +33,10 @@
 		"lint:fix:unsafe": "biome check --write --unsafe --max-diagnostics=none",
 		"lint:md": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc'",
 		"lint:md:fix": "markdownlint-cli2 --config './lib/configs/.markdownlint-cli2.jsonc' --fix",
-		"prepare": "husky",
-		"pnpm:up": "pnpm --filter '@savvy-web/pnpm-plugin-silk' run pnpm:up",
-		"pnpm:preview": "pnpm --filter '@savvy-web/pnpm-plugin-silk' run pnpm:preview",
 		"pnpm:export": "pnpm --filter '@savvy-web/pnpm-plugin-silk' run pnpm:export",
+		"pnpm:preview": "pnpm --filter '@savvy-web/pnpm-plugin-silk' run pnpm:preview",
+		"pnpm:up": "pnpm --filter '@savvy-web/pnpm-plugin-silk' run pnpm:up",
+		"prepare": "husky",
 		"test": "vitest run",
 		"typecheck": "turbo run types:check //#types:check --log-prefix=none --log-order=grouped",
 		"types:check": "tsgo --noEmit"
@@ -45,7 +45,7 @@
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^1.0.1"
+		"@vitest-agent/plugin": "^1.1.1"
 	},
 	"packageManager": "pnpm@11.9.0+sha512.bd682d5d03fe525ef7c9fd6780c6884d1e756ac4c9c9fe00c538782824310dcf90e3ddc4f53835f06dfaebd5085e41855e0bcbb3b60de2ac5bbab89e5036f03b",
 	"engines": {

@@ -112,8 +112,7 @@ Though declared inside a task (not globally), these pair with the global ones:
 
 ## Silk note
 
-Respect the established `dependsOn` chain: the four in-repo library `build:prod` tasks →
-mcp `generate:api-docs` → `build:catalog` → mcp `build`. `build:meta` is uncached
-(`"cache": false`) and `dependsOn: ["build:dev"]`. Never move build work into a
-`prepare`/`postprepare` script — install and build are decoupled, and an install-time
-build fails resolving `catalog:silkPeers` before pnpm writes the workspace state file.
+Respect the established `dependsOn` chains between packages — a consumer's build waits on
+its upstream libraries. Never move build work into a `prepare`/`postprepare` script —
+install and build are decoupled, and an install-time build fails resolving
+`catalog:silkPeers` before pnpm writes the workspace state file.

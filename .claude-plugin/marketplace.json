@@ -65,13 +65,6 @@
 			"description": "Savvy Web GitHub Actions assistant — Effect-based action development conventions and knowledge served via the shared savvy MCP",
 			"category": "developer-tools",
 			"tags": ["github-actions", "workflows", "automation", "ci-cd", "effect"]
-		},
-		{
-			"name": "docs",
-			"source": "./plugins/docs",
-			"description": "Savvy Web documentation authoring assistant — authors and registers docs in the savvy MCP corpus via the mcp agent",
-			"category": "developer-tools",
-			"tags": ["silk-suite", "documentation", "mcp", "savvy-mcp"]
 		}
 	]
 }

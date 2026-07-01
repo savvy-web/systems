@@ -47,7 +47,7 @@ const collector = new BuildCollector();
 const verbose = process.argv.includes("--verbose");
 
 const meta: MetaOptions = {
-	localPaths: ["../mcp/lib/models/bundler", "../../website/lib/models/bundler"],
+	localPaths: ["../../website/lib/models/bundler"],
 	// tsdoc filled by Task 6 once diagnostics are known; start empty.
 	tsdoc: {},
 };

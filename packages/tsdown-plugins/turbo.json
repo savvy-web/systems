@@ -2,7 +2,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:prod": {
-			"outputs": ["$TURBO_EXTENDS$", "../mcp/lib/models/tsdown-plugins", "../../website/lib/models/tsdown-plugins"]
+			"outputs": ["$TURBO_EXTENDS$", "../../website/lib/models/tsdown-plugins"]
 		}
 	}
 }

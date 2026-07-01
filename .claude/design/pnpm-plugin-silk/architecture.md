@@ -70,7 +70,7 @@ After any upgrade the export step must run to re-materialize the root workspace 
 
 ## Release posture
 
-Versions independently. It is in neither the changeset `fixed` group (`@savvy-web/silk`, `@savvy-web/cli`, `@savvy-web/mcp`) nor the `linked` group (`@savvy-web/bundler`, `@savvy-web/rspress-builder`, `@savvy-web/tsdown-plugins`); see `.changeset/config.json`. The repo-wide `updateInternalDependencies: patch` applies.
+Versions independently, as every package now does — `.changeset/config.json` no longer defines any `fixed` or `linked` groups. The repo-wide `updateInternalDependencies: patch` still applies.
 
 ## Rationale
 

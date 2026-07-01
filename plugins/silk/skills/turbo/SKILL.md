@@ -117,10 +117,6 @@ the tool does not surface.
   `prepare`/`postprepare` hook — an install-time build resolves `catalog:silkPeers`
   before pnpm has written the workspace state file and fails with
   `Catalog(s) not found: silkPeers`. Order is always install → build → checks.
-- The api-docs build chain runs through turbo: the four in-repo library targets'
-  `build:prod` → mcp `generate:api-docs` → `build:catalog` → mcp `build`. Respect that
-  ordering when touching `dependsOn`; `build:meta` is an uncached task that
-  `dependsOn: build:dev`.
 
 ## Deep dives
 
@@ -129,7 +125,6 @@ the tool does not surface.
 - `references/configuration.md` (bundled): the full `turbo.json` field reference —
   `tasks`, `dependsOn`, `outputs`, `inputs`, `cache`, `persistent`, `globalDependencies`,
   `globalEnv`.
-- The long tail lives in the MCP corpus. Search it with `silk_docs_search` (e.g.
-  "turbo affected", "turbo environment variables") or browse `silk://catalog`, exactly
-  as the `docs-search` skill describes. Relevant standards:
-  `silk://standards/turbo/{ci,filtering,environment,best-practices,watch,boundaries}`.
+- Turborepo standards (bundled): `references/best-practices.md`,
+  `references/boundaries.md`, `references/ci.md`, `references/environment.md`,
+  `references/filtering.md`, `references/watch.md`.

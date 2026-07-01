@@ -1,19 +1,22 @@
 ---
-status: current
+status: archived
 module: docs
 category: architecture
 created: 2026-06-01
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-07-01
+last-synced: 2026-07-01
 completeness: 90
+archived: 2026-07-01
+archival-reason: obsolete
 related:
   - ../mcp/architecture.md
   - ../silk/plugin.md
-dependencies:
-  - ../mcp/architecture.md
+dependencies: []
 ---
 
 # plugins/docs — the corpus authoring plugin
+
+> **ARCHIVED (2026-07-01):** The `plugins/docs` plugin has been deleted along with the `@savvy-web/mcp` resource subsystem it wrote to. `savvy-mcp` is now a tools-only server (see `../mcp/architecture.md`) and no longer serves a `silk://` corpus, so there is nothing left to author. This document is retained for historical context only. API documentation is planned to move to a separate future RSPress website built from the packages' `.api.json` models.
 
 The `docs@savvy-web-systems` Claude Code plugin: the third marketplace plugin, companion to `plugins/silk` and `plugins/github-actions`. Where those two orient agents toward *reading* the `@savvy-web/mcp` corpus, this plugin owns the *write* side — authoring, improving and registering docs under `packages/mcp/public/content/`.
 

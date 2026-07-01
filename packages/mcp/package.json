@@ -26,10 +26,8 @@
 		"savvy-mcp": "./src/bin.ts"
 	},
 	"scripts": {
-		"build:catalog": "tsx lib/scripts/build-catalog.ts",
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
-		"generate:api-docs": "tsx lib/scripts/generate-api-docs.ts",
 		"inspect": "exec mcp-inspector node ./dist/dev/pkg/bin/savvy-mcp.js",
 		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
@@ -43,7 +41,6 @@
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",
-		"fuse.js": "^7.4.0",
 		"workspaces-effect": "^1.2.0",
 		"zod": "^4.4.3"
 	},
@@ -52,8 +49,6 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
-		"api-extractor-llms": "^0.2.0",
-		"gray-matter": "^4.0.3",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"

@@ -2,7 +2,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:meta": {
-			"outputs": ["$TURBO_EXTENDS$", "../mcp/lib/models/templates", "../../website/lib/models/templates"]
+			"outputs": ["$TURBO_EXTENDS$", "../../website/lib/models/templates"]
 		}
 	}
 }

@@ -2,11 +2,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:prod": {
-			"outputs": [
-				"$TURBO_EXTENDS$",
-				"../mcp/lib/models/github-action-effects",
-				"../../website/lib/models/github-action-effects"
-			]
+			"outputs": ["$TURBO_EXTENDS$", "../../website/lib/models/github-action-effects"]
 		}
 	}
 }

@@ -2,7 +2,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:prod": {
-			"outputs": ["$TURBO_EXTENDS$", "../mcp/lib/models/silk-effects", "../../website/lib/models/silk-effects"]
+			"outputs": ["$TURBO_EXTENDS$", "../../website/lib/models/silk-effects"]
 		}
 	}
 }
