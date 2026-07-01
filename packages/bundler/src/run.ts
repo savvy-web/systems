@@ -452,7 +452,15 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		// group's package name. Copy the canonical group's bundle into meta.localPaths. Optionally rewrite
 		// versions optimistically. undefined -> default options; object -> overrides; false -> skip.
 		// An exe-only package has no JS entries (no dts), so there is nothing for API Extractor to read.
-		if (target === "prod" && config.meta !== false && (config.exe === undefined || hasJsEntries)) {
+		// `emitDts: false` (issue #198) also has nothing for API Extractor to read — the meta pass
+		// builds the api-model from the bundled declarations the (now-skipped) dts pass would have
+		// written, so it is skipped in lockstep whenever dts generation itself is off.
+		if (
+			target === "prod" &&
+			config.meta !== false &&
+			config.emitDts !== false &&
+			(config.exe === undefined || hasJsEntries)
+		) {
 			const ci = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 			await runMetaPass({
 				cwd,

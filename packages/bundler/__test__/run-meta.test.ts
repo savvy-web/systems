@@ -231,6 +231,42 @@ describe("runBuild meta target", () => {
 		expect(build.mock.calls[0]?.[0]?.emitDts).toBe(false);
 	});
 
+	it("does not call generateMeta for --target prod when config.emitDts is false", async () => {
+		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
+		const build = vi.fn(async () => {});
+		await runBuild(defineBuild({ emitDts: false }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: build,
+			generateMeta,
+			readPackageName: () => "@scope/fixture",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeOutput: () => {},
+			writeTargetsBinding: () => "x",
+		});
+		expect(build).toHaveBeenCalledTimes(1);
+		expect(generateMeta).not.toHaveBeenCalled();
+	});
+
+	it("still calls generateMeta for --target prod when config.emitDts is unset (default true, regression guard)", async () => {
+		const generateMeta = vi.fn(async () => ({ apiJsonPath: "x", apiJsonFilename: "x" }));
+		const build = vi.fn(async () => {});
+		await runBuild(defineBuild({}), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: build,
+			generateMeta,
+			readPackageName: () => "@scope/fixture",
+			readVersion: () => "1.0.0",
+			readExports: () => ({ ".": "./src/index.ts" }),
+			writeOutput: () => {},
+			writeTargetsBinding: () => "x",
+		});
+		expect(build).toHaveBeenCalledTimes(1);
+		expect(generateMeta).toHaveBeenCalledTimes(1);
+	});
+
 	it("--target dev does NOT set emitDeclarations on the buildTargetGroups call", async () => {
 		const build = vi.fn<(o: BuildTargetGroupsOptions) => Promise<void>>(async () => {});
 		await runBuild(defineBuild({}), {
