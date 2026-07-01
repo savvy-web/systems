@@ -33,4 +33,21 @@ describe("buildEmittedManifest resolveManifest guard", () => {
 		expect(mockResolveManifest).not.toHaveBeenCalled();
 		expect(out.dependencies).toEqual({ effect: "^3.0.0" });
 	});
+
+	it("should still call resolveManifest for a prod target group when the manifest has a catalog: specifier", async () => {
+		mockResolveManifest.mockClear();
+		const pkg = {
+			name: "@x/p",
+			version: "1.0.0",
+			exports: { ".": "./src/index.ts" },
+			dependencies: { effect: "catalog:silk" },
+		};
+		await buildEmittedManifest({
+			pkg,
+			targetGroup: { id: "npm", name: "@x/p", isProd: true },
+			devManifest: "preserve",
+		});
+		expect(mockResolveManifest).toHaveBeenCalledTimes(1);
+		expect(mockResolveManifest).toHaveBeenCalledWith(pkg);
+	});
 });
