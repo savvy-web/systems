@@ -8,7 +8,7 @@ await build({
 	externals: ["@effect/cluster", "@effect/rpc", "@effect/sql"],
 	devManifest: "preserve",
 	meta: {
-		localPaths: ["../mcp/lib/models/github-action-effects", "../../website/lib/models/github-action-effects"],
+		localPaths: ["../../website/lib/models/github-action-effects"],
 		tsdoc: {
 			suppressWarnings: [
 				{ messageId: "ae-forgotten-export", pattern: "_base" },

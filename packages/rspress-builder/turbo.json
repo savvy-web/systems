@@ -2,7 +2,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:prod": {
-			"outputs": ["$TURBO_EXTENDS$", "../mcp/lib/models/rspress-builder", "../../website/lib/models/rspress-builder"]
+			"outputs": ["$TURBO_EXTENDS$", "../../website/lib/models/rspress-builder"]
 		}
 	}
 }

@@ -45,7 +45,7 @@ const collector = new BuildCollector();
 const verbose = process.argv.includes("--verbose");
 
 const meta: MetaOptions = {
-	localPaths: ["../mcp/lib/models/tsdown-plugins", "../../website/lib/models/tsdown-plugins"],
+	localPaths: ["../../website/lib/models/tsdown-plugins"],
 	tsdoc: {
 		// @since/@category leak from @effect/platform's inlined FileSystem declaration
 		// (a devDependency rolled into the bundled .d.ts). We cannot edit upstream comments,

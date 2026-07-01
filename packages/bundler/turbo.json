@@ -2,7 +2,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"build:prod": {
-			"outputs": ["$TURBO_EXTENDS$", "../mcp/lib/models/bundler", "../../website/lib/models/bundler"]
+			"outputs": ["$TURBO_EXTENDS$", "../../website/lib/models/bundler"]
 		}
 	}
 }
