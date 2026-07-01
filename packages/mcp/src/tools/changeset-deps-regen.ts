@@ -10,7 +10,7 @@
 
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
+import type { WorkspaceDiscoveryError, WorkspaceRootNotFoundError } from "workspaces-effect";
 import { WorkspaceRoot } from "workspaces-effect";
 
 /** The `changeset_deps_regen` tool result. */
@@ -96,7 +96,7 @@ export const changesetDepsRegen = (
 	fallbackCwd: string,
 ): Effect.Effect<
 	ChangesetDepsRegenResultType,
-	Changesets.GitError | WorkspaceRootNotFoundError,
+	Changesets.GitError | WorkspaceRootNotFoundError | WorkspaceDiscoveryError,
 	WorkspaceRoot | Changesets.DepsRegen
 > =>
 	Effect.gen(function* () {

@@ -176,6 +176,7 @@ export function buildServer(ctx: McpContext): McpServer {
 				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
 			},
 			outputSchema: effectToZodSchema(ChangesetDepsRegenResult) as never,
+			annotations: { destructiveHint: true, idempotentHint: false },
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetDepsRegen(args as ChangesetDepsRegenArgs, ctx.cwd));

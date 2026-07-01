@@ -9,8 +9,9 @@
  * `workspace:` specifiers to concrete versions, drops `devDependency`
  * rows (unless `includeDevDeps`), and returns a complete {@link RegenPlan}
  * (target filenames + stale-changeset deletes) WITHOUT touching the
- * filesystem. `execute()` applies a plan — deleting stale pure-dependency
- * changesets, then writing the fresh ones.
+ * filesystem. `execute()` applies a plan — writing the fresh changesets
+ * first, then deleting the stale pure-dependency ones (so an interrupted
+ * run loses nothing and is safely re-runnable).
  *
  * This is the single source of truth for regen/detect: the CLI commands
  * and MCP tools are thin adapters over this service.
@@ -23,6 +24,7 @@
 import { existsSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Context, Effect, Layer, Option } from "effect";
+import type { WorkspaceDiscoveryError } from "workspaces-effect";
 import { CatalogResolver, PublishabilityDetector, WorkspaceDiscovery } from "workspaces-effect";
 import type { GitError } from "../errors.js";
 import type { DependencyTableRow } from "../schemas/dependency-table.js";
@@ -299,7 +301,7 @@ export interface DepsRegenShape {
 	 * @param options - See {@link DepsRegenOptions}.
 	 * @returns An Effect yielding the plan, or failing with {@link GitError}.
 	 */
-	readonly plan: (options: DepsRegenOptions) => Effect.Effect<RegenPlan, GitError, never>;
+	readonly plan: (options: DepsRegenOptions) => Effect.Effect<RegenPlan, GitError | WorkspaceDiscoveryError, never>;
 	/**
 	 * Apply a {@link RegenPlan}: delete stale changesets, write fresh ones.
 	 *
@@ -354,7 +356,7 @@ function makeShape(
 	const provideResolver = Layer.succeed(CatalogResolver, resolver);
 	const provideDetector = Layer.succeed(PublishabilityDetector, detector);
 
-	const plan = (options: DepsRegenOptions): Effect.Effect<RegenPlan, GitError, never> =>
+	const plan = (options: DepsRegenOptions): Effect.Effect<RegenPlan, GitError | WorkspaceDiscoveryError, never> =>
 		Effect.gen(function* () {
 			const resolvedCwd = resolve(options.cwd);
 			const changesetDir = join(resolvedCwd, ".changeset");
@@ -388,7 +390,10 @@ function makeShape(
 
 			// Publishable-package set — used both to filter diffs (absent an
 			// explicit `--package`) and to bound stale-changeset deletion.
-			const livePackages = yield* discovery.listPackages(resolvedCwd).pipe(Effect.catchAll(() => Effect.succeed([])));
+			// Do NOT swallow a genuine discovery failure — a malformed workspace
+			// must surface as an error rather than masquerade as "no packages
+			// publishable" (which would silently produce an empty plan).
+			const livePackages = yield* discovery.listPackages(resolvedCwd);
 			const publishable = yield* listPublishablePackageNames(livePackages).pipe(Effect.provide(provideDetector));
 
 			// Restrict, then resolve protocol cells + drop devDeps, then drop
@@ -428,7 +433,14 @@ function makeShape(
 		Effect.sync(() => {
 			const deleted: string[] = [];
 			const written: string[] = [];
-			// Delete first, then write.
+			// Write the fresh changesets first, then remove the stale ones. Fresh
+			// filenames never collide with existing files (randomFilename checks
+			// existsSync), so an interrupted write leaves every stale changeset in
+			// place — nothing is lost and the run is safely re-runnable.
+			for (const entry of plan.toWrite) {
+				writeFileSync(entry.file, renderChangesetContent(entry.diff));
+				written.push(entry.file);
+			}
 			for (const entry of plan.toDelete) {
 				try {
 					unlinkSync(entry.file);
@@ -436,10 +448,6 @@ function makeShape(
 				} catch {
 					// Missing/undeletable file — nothing to remove; skip silently.
 				}
-			}
-			for (const entry of plan.toWrite) {
-				writeFileSync(entry.file, renderChangesetContent(entry.diff));
-				written.push(entry.file);
 			}
 			return { deleted, written, skippedMixed: plan.skippedMixed };
 		});
