@@ -12,8 +12,6 @@ import { NodeContext } from "@effect/platform-node";
 import { Layer, ManagedRuntime } from "effect";
 
 import type { McpContext } from "./context.js";
-import { DocIndex } from "./resources/doc-index.js";
-import { loadManifest, readDocBody, resolveContentRoot } from "./resources/load.js";
 import { SilkRuntimeLive } from "./runtime.js";
 import { startMcpServer } from "./server.js";
 
@@ -30,17 +28,7 @@ async function main(): Promise<void> {
 	const cwd = resolveProjectDir();
 	const appLayer = SilkRuntimeLive.pipe(Layer.provide(NodeContext.layer));
 	const runtime = ManagedRuntime.make(appLayer);
-	const contentRoot = resolveContentRoot();
-	const manifest = loadManifest(contentRoot);
-	// Preload every body for the search index. Fuse indexes body at a low weight
-	// (0.03) so a term appearing only in a doc body still surfaces the doc, while
-	// title/tags/summary dominate ranking. Resource reads still stream fresh from
-	// disk per request (stateless readers). A read failure here fails boot loudly.
-	const bodies = Object.fromEntries(
-		manifest.entries.map((e) => [e.uri, readDocBody(contentRoot, e.uri.replace(/^silk:\/\//, ""))]),
-	);
-	const docIndex = DocIndex.fromManifest(manifest, bodies);
-	const ctx: McpContext = { runtime, cwd, docIndex, manifest, contentRoot };
+	const ctx: McpContext = { runtime, cwd };
 
 	process.stderr.write(`[savvy-mcp] starting in ${cwd}\n`);
 	await startMcpServer(ctx);
