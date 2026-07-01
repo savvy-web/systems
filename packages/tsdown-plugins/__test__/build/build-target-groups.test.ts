@@ -1153,6 +1153,32 @@ describe("buildTargetGroups", () => {
 		expect(calls.some((c) => String(c.outDir).endsWith("/declarations"))).toBe(false);
 	});
 
+	it("skips both the dts pass and the declarations pass when emitDts is false, while the JS pass still emits", async () => {
+		// issue #198: emitDts:false must drop BOTH the per-entry bundled dts pass AND the prod
+		// per-module declarations pass (no TypeScript compiler load), while the JS pass is unaffected.
+		const calls: Array<{ kind: "js" | "dts" | "declarations"; dts: unknown }> = [];
+		const fakeBuild = vi.fn(async (cfg: { outDir: string; dts: unknown }) => {
+			calls.push({
+				kind: String(cfg.outDir).endsWith("/declarations") ? "declarations" : cfg.dts === false ? "js" : "dts",
+				dts: cfg.dts,
+			});
+			return [];
+		});
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "./src/index.ts" },
+			tsconfigPath: "/tmp/t.json",
+			groups: [{ id: "npm", name: "base" }],
+			devManifest: "preserve",
+			emitDeclarations: true,
+			emitDts: false,
+			build: fakeBuild as never,
+		});
+		// Only the JS pass ran — no dts build() call, no declarations build() call.
+		expect(calls).toEqual([{ kind: "js", dts: false }]);
+	});
+
 	it("globs the whole source subtree for an outSubdir partition's JS pass, keeps the barrel for dts", async () => {
 		const calls: Array<{ entry: unknown; dts: unknown }> = [];
 		const fakeBuild = vi.fn(async (cfg: { entry: unknown; dts: unknown }) => {

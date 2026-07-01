@@ -200,10 +200,7 @@ export interface BuildConfig {
 	readonly define?: Record<string, string> | undefined;
 	/** Custom tsdown/rolldown plugins forwarded to every tsdown run (JS, dts, per-module declarations, looseFiles). */
 	readonly plugins?: ReadonlyArray<Plugin> | undefined;
-	/**
-	 * Emit the prod `.d.ts` bundling pass (and, downstream, the meta pass). Defaults to `true`.
-	 * See {@link BuildConfigInput.emitDts} for the full explanation.
-	 */
+	/** Emit the prod `.d.ts` bundling pass (and, downstream, the meta pass). Defaults to `true`. See {@link BuildConfigInput.emitDts}. */
 	readonly emitDts: boolean;
 }
 

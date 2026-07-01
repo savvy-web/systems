@@ -171,9 +171,16 @@ export interface BuildTargetGroupsOptions {
 	 * Emit a per-module (`unbundle: true`) declaration tree into `dist/prod/<id>/declarations/` per
 	 * group, in addition to the bundled dts in `pkg/`. API Extractor's diagnostics-run input for the
 	 * meta pass. Prod-only; the bundler sets it for `--target prod`. Absent → no third pass
-	 * (byte-identical to the two-pass default). Not captured by the collector.
+	 * (byte-identical to the two-pass default). Not captured by the collector. Has no effect when
+	 * `emitDts` is `false` — the declarations pass exists only to feed the dts-derived meta pass.
 	 */
 	readonly emitDeclarations?: boolean | undefined;
+	/**
+	 * When `false`, skip BOTH the bundled per-entry dts pass (Pass 2) and the prod per-module
+	 * declarations pass (Pass 3) — no TypeScript compiler load. The JS pass (Pass 1) and
+	 * `copyPublicDir` still run. Defaults to `true` (current two/three-pass behavior).
+	 */
+	readonly emitDts?: boolean | undefined;
 }
 
 /**
@@ -364,9 +371,12 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// Pass 2: bundled dts for this partition's entries. Always clean:false.
 			//
 			// Skip entirely when every entry was filtered out by deriveDtsPassOptions (e.g. a
-			// hypothetical bin-only partition with no export entries). An empty entry map would
-			// cause tsdown to throw "No input files". The JS pass above is unaffected.
-			if (Object.keys(dts.entry).length === 0) continue;
+			// hypothetical bin-only partition with no export entries) OR when the caller opted out
+			// via `emitDts: false` (issue #198) — no TypeScript compiler load, JS pass unaffected.
+			// This also skips Pass 3 below (per-module declarations), which only feeds the
+			// dts-derived meta pass and has nothing to do once the dts pass itself is off. An empty
+			// entry map would otherwise cause tsdown to throw "No input files".
+			if (options.emitDts === false || Object.keys(dts.entry).length === 0) continue;
 
 			// The dts pass's bundling posture tracks the JS pass's. There are three cases:
 			//
