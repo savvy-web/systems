@@ -1,5 +1,20 @@
 # @savvy-web/cli
 
+## 1.4.1
+
+### Bug Fixes
+
+* [`03356b7`](https://github.com/savvy-web/systems/commit/03356b70bb3fa2a89aa0b931d58377ae4f0f0d77) Upgrade transient semver-effect library to correct side effect issues in bundles.
+
+### Dependencies
+
+* [`03356b7`](https://github.com/savvy-web/systems/commit/03356b70bb3fa2a89aa0b931d58377ae4f0f0d77) | Dependency | Type | Action | From | To |
+  \| ----------------- | ---------- | ------- | ------ | ------ |
+  \| workspaces-effect | dependency | updated | ^2.0.0 | ^2.0.1 |
+  | Dependency              | Type       | Action  | From  | To    |
+  | ----------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/silk-effects | dependency | updated | 2.0.0 | 2.0.1 |
+
 ## 1.4.0
 
 ### Features

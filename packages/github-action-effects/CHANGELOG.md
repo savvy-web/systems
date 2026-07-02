@@ -1,5 +1,17 @@
 # @savvy-web/github-action-effects
 
+## 2.3.5
+
+### Bug Fixes
+
+* [`03356b7`](https://github.com/savvy-web/systems/commit/03356b70bb3fa2a89aa0b931d58377ae4f0f0d77) Upgrade transient semver-effect library to correct side effect issues in bundles.
+
+### Dependencies
+
+* [`03356b7`](https://github.com/savvy-web/systems/commit/03356b70bb3fa2a89aa0b931d58377ae4f0f0d77) | Dependency | Type | Action | From | To |
+  \| ------------- | ---------- | ------- | ------ | ------ |
+  \| semver-effect | dependency | updated | ^0.3.0 | ^0.3.1 |
+
 ## 2.3.4
 
 ### Dependencies
