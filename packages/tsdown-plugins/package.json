@@ -41,7 +41,7 @@
 		"sort-package-json": "^4.0.0",
 		"std-env": "^4.1.0",
 		"typescript": "catalog:silk",
-		"workspaces-effect": "^1.2.0"
+		"workspaces-effect": "^2.0.1"
 	},
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",

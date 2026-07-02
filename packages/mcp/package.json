@@ -41,7 +41,7 @@
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",
-		"workspaces-effect": "^2.0.0",
+		"workspaces-effect": "^2.0.1",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
