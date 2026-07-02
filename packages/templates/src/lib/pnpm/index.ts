@@ -1,5 +1,5 @@
-import { Schema } from "effect";
-import yaml from "js-yaml";
+import { Effect, Schema } from "effect";
+import { stringify } from "yaml-effect";
 import type { TemplateEntry } from "../types.js";
 
 /**
@@ -39,12 +39,7 @@ export function createPnpmWorkspace(options: unknown): TemplateEntry[] {
 	if (opts.catalogMode) config.catalogMode = opts.catalogMode;
 	if (opts.catalog && Object.keys(opts.catalog).length > 0) config.catalog = opts.catalog;
 
-	const content = yaml.dump(config, {
-		indent: 2,
-		lineWidth: -1,
-		noRefs: true,
-		sortKeys: false,
-	});
+	const content = Effect.runSync(stringify(config));
 
 	return [{ name: "pnpm-workspace", filename: "pnpm-workspace.yaml", content }];
 }
