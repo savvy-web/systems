@@ -34,8 +34,11 @@ export function makeReleaseFixture(spec: FixtureSpec): string {
 	const root = mkdtempSync(join(tmpdir(), "silk-relfix-"));
 	writeFileSync(
 		join(root, "package.json"),
-		JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true, workspaces: ["packages/*"] }, null, 2),
+		JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2),
 	);
+	// A pnpm workspace: @manypkg/get-packages v3 detects yarn/npm workspaces only
+	// via their lockfiles, but pnpm via pnpm-workspace.yaml alone.
+	writeFileSync(join(root, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
 	mkdirSync(join(root, ".changeset"), { recursive: true });
 	writeFileSync(
 		join(root, ".changeset", "config.json"),

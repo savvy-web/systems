@@ -29,12 +29,11 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
-		"js-yaml": "^4.2.0",
-		"sort-package-json": "^4.0.0"
+		"sort-package-json": "^4.0.0",
+		"yaml-effect": "^0.7.0"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
-		"@types/js-yaml": "^4.0.9",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",

@@ -1,6 +1,9 @@
-import yaml from "js-yaml";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml-effect";
 import { createPnpmWorkspace } from "../src/lib/pnpm/index.js";
+
+const loadYaml = (text: string): Record<string, unknown> => Effect.runSync(parse(text)) as Record<string, unknown>;
 
 describe("pnpm workspace template", () => {
 	it("creates pnpm-workspace.yaml with packages", () => {
@@ -11,7 +14,7 @@ describe("pnpm workspace template", () => {
 		expect(result[0].name).toBe("pnpm-workspace");
 		expect(result[0].filename).toBe("pnpm-workspace.yaml");
 
-		const parsed = yaml.load(result[0].content) as Record<string, unknown>;
+		const parsed = loadYaml(result[0].content);
 		expect(parsed.packages).toEqual(["packages/*", "apps/*"]);
 	});
 
@@ -20,7 +23,7 @@ describe("pnpm workspace template", () => {
 			packages: ["packages/*"],
 			autoInstallPeers: true,
 		});
-		const parsed = yaml.load(result[0].content) as Record<string, unknown>;
+		const parsed = loadYaml(result[0].content);
 		expect(parsed.autoInstallPeers).toBe(true);
 	});
 
@@ -30,14 +33,14 @@ describe("pnpm workspace template", () => {
 			catalog: { react: "^18.0.0", typescript: "^5.0.0" },
 			catalogMode: "strict",
 		});
-		const parsed = yaml.load(result[0].content) as Record<string, unknown>;
+		const parsed = loadYaml(result[0].content);
 		expect(parsed.catalog).toEqual({ react: "^18.0.0", typescript: "^5.0.0" });
 		expect(parsed.catalogMode).toBe("strict");
 	});
 
 	it("omits undefined optional fields", () => {
 		const result = createPnpmWorkspace({ packages: ["packages/*"] });
-		const parsed = yaml.load(result[0].content) as Record<string, unknown>;
+		const parsed = loadYaml(result[0].content);
 		expect(parsed.catalog).toBeUndefined();
 		expect(parsed.autoInstallPeers).toBeUndefined();
 	});

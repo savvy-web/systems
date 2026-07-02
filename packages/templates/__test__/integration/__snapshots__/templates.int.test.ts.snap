@@ -212,8 +212,8 @@ exports[`template snapshots > pnpm: workspace with catalog 1`] = `
 [
   {
     "content": "packages:
-  - .
-  - packages/*
+- .
+- packages/*
 autoInstallPeers: true
 catalogMode: strict
 catalog:
@@ -464,7 +464,7 @@ pnpm-release.json
   },
   {
     "content": "packages:
-  - packages/*
+- packages/*
 autoInstallPeers: true
 ",
     "filename": "pnpm-workspace.yaml",
