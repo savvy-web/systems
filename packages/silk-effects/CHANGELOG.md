@@ -1,5 +1,13 @@
 # @savvy-web/silk-effects
 
+## 2.0.2
+
+### Dependencies
+
+* [`5ada627`](https://github.com/savvy-web/systems/commit/5ada627c7e8b959036f0a7e1bf9ecaf4978136c8) | Dependency | Type | Action | From | To |
+  \| --------------------- | ---------- | ------- | ------ | ------ |
+  \| @manypkg/get-packages | dependency | updated | ^1.1.3 | ^3.1.0 |
+
 ## 2.0.1
 
 ### Bug Fixes

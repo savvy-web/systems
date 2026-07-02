@@ -1,5 +1,14 @@
 # @savvy-web/templates
 
+## 0.1.6
+
+### Dependencies
+
+* [`5ada627`](https://github.com/savvy-web/systems/commit/5ada627c7e8b959036f0a7e1bf9ecaf4978136c8) | Dependency | Type | Action | From | To |
+  \| ----------- | ---------- | ------- | ------ | ------ |
+  \| js-yaml | dependency | removed | ^4.2.0 | — |
+  \| yaml-effect | dependency | added | — | ^0.7.0 |
+
 ## 0.1.5
 
 ### Maintenance
