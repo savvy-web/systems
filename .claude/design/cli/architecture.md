@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-07-01
-last-synced: 2026-07-01
+updated: 2026-07-02
+last-synced: 2026-07-02
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -86,12 +86,13 @@ Inspector+Analyzer = BranchAnalyzer
 
 DepsRegenGroup = Changesets.DepsRegen
                    provide(Inspector+Analyzer)         ← shares the one ConfigInspector instance
-                   provide(CatalogResolver over LockfileReader)
+                   provide(PointInTimeWorkspace over WorkspaceLive)
                    provide(PublishabilityDetector)
+                   provide(ChangesetConfig over ChangesetConfigReader)
 
 BaseLive  = WorkspaceLive + ChangesetConfigReader + leaf silk-effects services
             (ManagedSection, BiomeSchemaSync, ConfigDiscovery,
-             SilkPublishabilityDetector, Changesets.WorkspaceSnapshotReader)
+             SilkPublishabilityDetector)
 
 WorkspaceLive = WorkspaceRoot + PackageManagerDetector
                 + WorkspaceDiscovery(provided WorkspaceRoot)
@@ -100,7 +101,7 @@ WorkspaceLive = WorkspaceRoot + PackageManagerDetector
 Two structural choices matter:
 
 - **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer`, the surviving `config validate` handler, `ReleasePlanner` and now `Changesets.DepsRegen` — the `classify`/`config show`/`analyze-branch`/`release-surface` CLI commands are gone, so `ConfigInspector` is otherwise consumed by the MCP tools `changeset_inspect`/`changeset_validate`) is never constructed twice per run. `Changesets.ReleasePlanner` backs `savvy changeset version`, which now natively applies the release — bumping versions, transforming CHANGELOGs and updating versionFiles via `ReleasePlanner.apply` — rather than shelling out to a `changeset` binary or detecting the package manager; `--dry-run` is a true no-write report. See `../silk-effects/architecture.md`. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeContext.layer` already satisfies it. See `../silk-effects/architecture.md`.
-- **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio rather than pulling in the heavier `WorkspacesLive`, which would also fork `DependencyGraph` / `PublishabilityDetector` background work the CLI does not need. `savvy changeset deps regen`/`deps detect` are the one exception that needs `CatalogResolver` and `PublishabilityDetector` from `workspaces-effect` (for `Changesets.DepsRegen` — see `../silk-effects/architecture.md`), so those two are composed by hand into `DepsRegenGroupLive` alongside a `CatalogResolverLive` built over `LockfileReaderLive`, rather than pulling in `WorkspacesLive` for every command.
+- **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio rather than pulling in the heavier `WorkspacesLive`, which would also fork `DependencyGraph` / `PublishabilityDetector` background work the CLI does not need. `savvy changeset deps regen`/`deps detect` are the one exception that needs `PointInTimeWorkspace` and `PublishabilityDetector` from `workspaces-effect` plus `ChangesetConfig` (for `Changesets.DepsRegen` — see `../silk-effects/architecture.md`), so those are composed by hand into `DepsRegenGroupLive`: `PointInTimeWorkspaceLive` is provided `WorkspaceLive` (for its `WorkspaceRoot`/`WorkspaceDiscovery` needs, with `CommandExecutor` flowing up to `NodeContext.layer` since it reads git history), and `ChangesetConfigLive` is provided its own `ChangesetConfigReaderLive` — rather than pulling in `WorkspacesLive` for every command. The old `CatalogResolverLive`/`LockfileReaderLive`/`WorkspaceSnapshotReaderLive` wiring is gone: per-ref catalog resolution now lives inside `PointInTimeWorkspace`.
 
 The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
 

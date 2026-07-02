@@ -63,6 +63,13 @@ catalogs:
     vitest:
       specifier: ^4.1.9
       version: 4.1.9
+  silkPeers:
+    '@types/react-dom':
+      specifier: ^19.2.0
+      version: 19.2.3
+    react-dom:
+      specifier: ^19.2.0
+      version: 19.2.7
 
 overrides:
   '@isaacs/brace-expansion': ^5.0.1
@@ -208,8 +215,8 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0(effect@3.21.4)
       workspaces-effect:
-        specifier: ^1.2.0
-        version: 1.2.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
+        specifier: ^2.0.0
+        version: 2.0.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -394,8 +401,8 @@ importers:
         specifier: catalog:silk
         version: 3.21.4
       workspaces-effect:
-        specifier: ^1.2.0
-        version: 1.2.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
+        specifier: ^2.0.0
+        version: 2.0.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -617,8 +624,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
       workspaces-effect:
-        specifier: ^1.2.0
-        version: 1.2.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
+        specifier: ^2.0.0
+        version: 2.0.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -751,7 +758,7 @@ importers:
         version: 6.0.3
       workspaces-effect:
         specifier: ^1.2.0
-        version: 1.2.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
+        version: 1.3.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
     devDependencies:
       '@effect/platform':
         specifier: catalog:silk
@@ -4426,11 +4433,6 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  jsonc-effect@0.2.1:
-    resolution: {integrity: sha512-gqxLlEStGJwmrRJZ3VyJbeb3m3yL+zptGGJrL30x0pxu2XgaWHbwM+YyruJtx4e3qXctWG79Fqyx8+VE/zNOUg==}
-    peerDependencies:
-      effect: '>=3.21.0'
-
   jsonc-effect@0.3.0:
     resolution: {integrity: sha512-V0T5h2lP00K9xwdT2Js2OBdb/glCwOAerzOgvmRnF9jF+6ZezhpvRJAjx2QrlJHSd3vlb9gXXmIroQOYB2RSKg==}
     engines: {node: '>=24.11.0'}
@@ -6308,12 +6310,19 @@ packages:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
 
-  workspaces-effect@1.2.0:
-    resolution: {integrity: sha512-roGCO4U0E9zRQaE4m6/FE+oIk9BjutOKRh0ICXpZFUhaIMYUaNozGo80lHx9vEXfOBeOuIYEe1SspXPnEz/lXQ==}
-    engines: {node: '>=24.0.0'}
+  workspaces-effect@1.3.0:
+    resolution: {integrity: sha512-cGR73JVQAhCW5z8a4Z4iGOVRGQJmL9DWYkfQMDmB3DyetrpD1yLjrBZXPujsgnBpeAsXh1PfvrgPVGwYJtmdyA==}
+    engines: {node: '>=24.11.0'}
     peerDependencies:
-      '@effect/platform': '>=0.96.0'
-      effect: '>=3.21.0'
+      '@effect/platform': ^0.96.0
+      effect: ^3.21.0
+
+  workspaces-effect@2.0.0:
+    resolution: {integrity: sha512-rxpxhAzPbxkazfOv1egI21YYgfm3fTmfkEABNeECKO+u2/gShhDzY+TLpYsf+0ZdyWOEN2otVMBTcES0fGpf6g==}
+    engines: {node: '>=24.11.0'}
+    peerDependencies:
+      '@effect/platform': ^0.96.0
+      effect: ^3.21.0
 
   wrap-ansi@10.0.0:
     resolution: {integrity: sha512-SGcvg80f0wUy2/fXES19feHMz8E0JoXv2uNgHOu4Dgi2OrCy1lqwFYEJz1BLbDI0exjPMe/ZdzZ/YpGECBG/aQ==}
@@ -6380,11 +6389,6 @@ packages:
 
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
-
-  yaml-effect@0.6.0:
-    resolution: {integrity: sha512-vsJasLU7QlbGLgPuFRVxnM58pXH07TXLpUMDWT0LUHNhnLDYbr2k9CWucfmRfX56qNEWL051I/SDGkhM8xzUfw==}
-    peerDependencies:
-      effect: '>=3.21.0'
 
   yaml-effect@0.7.0:
     resolution: {integrity: sha512-KYPnOOWzZSLKJX4qneqI3bnTxLf/AHojnimrqTSQ9R9JU1Qgisy55pBwvqO5fJA0uG5sknu2RUa3k1lmHEDvhw==}
@@ -8733,7 +8737,7 @@ snapshots:
       effect: 3.21.4
       magic-string: 0.30.21
       vitest: 4.1.9(@types/node@26.0.1)(@vitest/coverage-istanbul@4.1.9)(@vitest/coverage-v8@4.1.9)(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-      workspaces-effect: 1.2.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
+      workspaces-effect: 1.3.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
     transitivePeerDependencies:
       - '@effect/experimental'
       - '@effect/workflow'
@@ -8782,7 +8786,7 @@ snapshots:
       config-file-effect: 0.2.3(@effect/platform-node@0.107.0(@effect/cluster@0.59.0(@effect/platform@0.96.2(effect@3.21.4))(@effect/rpc@0.75.1(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(@effect/workflow@0.18.2(@effect/experimental@0.60.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(@effect/platform@0.96.2(effect@3.21.4))(@effect/rpc@0.75.1(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(effect@3.21.4))(effect@3.21.4))(@effect/platform@0.96.2(effect@3.21.4))(@effect/rpc@0.75.1(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4))(effect@3.21.4))(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
       effect: 3.21.4
       std-env: 4.1.0
-      workspaces-effect: 1.2.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
+      workspaces-effect: 1.3.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4)
       xdg-effect: 2.1.0(ebbd840a9936fee4732a1f63bb937b99)
     transitivePeerDependencies:
       - '@effect/experimental'
@@ -10449,10 +10453,6 @@ snapshots:
   json-with-bigint@3.5.8: {}
 
   json5@2.2.3: {}
-
-  jsonc-effect@0.2.1(effect@3.21.4):
-    dependencies:
-      effect: 3.21.4
 
   jsonc-effect@0.3.0(effect@3.21.4):
     dependencies:
@@ -12679,7 +12679,7 @@ snapshots:
 
   word-wrap@1.2.5: {}
 
-  workspaces-effect@1.2.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4):
+  workspaces-effect@1.3.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4):
     dependencies:
       '@effect/platform': 0.96.2(effect@3.21.4)
       '@pnpm/catalogs.config': 1100.0.2
@@ -12687,10 +12687,23 @@ snapshots:
       '@pnpm/catalogs.resolver': 1100.0.0
       '@pnpm/catalogs.types': 1100.0.0
       effect: 3.21.4
-      jsonc-effect: 0.2.1(effect@3.21.4)
+      jsonc-effect: 0.3.0(effect@3.21.4)
       minimatch: 10.2.5
-      semver-effect: 0.2.1(effect@3.21.4)
-      yaml-effect: 0.6.0(effect@3.21.4)
+      semver-effect: 0.3.0(effect@3.21.4)
+      yaml-effect: 0.7.0(effect@3.21.4)
+
+  workspaces-effect@2.0.0(@effect/platform@0.96.2(effect@3.21.4))(effect@3.21.4):
+    dependencies:
+      '@effect/platform': 0.96.2(effect@3.21.4)
+      '@pnpm/catalogs.config': 1100.0.2
+      '@pnpm/catalogs.protocol-parser': 1100.0.0
+      '@pnpm/catalogs.resolver': 1100.0.0
+      '@pnpm/catalogs.types': 1100.0.0
+      effect: 3.21.4
+      jsonc-effect: 0.3.0(effect@3.21.4)
+      minimatch: 10.2.5
+      semver-effect: 0.3.0(effect@3.21.4)
+      yaml-effect: 0.7.0(effect@3.21.4)
 
   wrap-ansi@10.0.0:
     dependencies:
@@ -12742,10 +12755,6 @@ snapshots:
   yallist@3.1.1: {}
 
   yallist@4.0.0: {}
-
-  yaml-effect@0.6.0(effect@3.21.4):
-    dependencies:
-      effect: 3.21.4
 
   yaml-effect@0.7.0(effect@3.21.4):
     dependencies:

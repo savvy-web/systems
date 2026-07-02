@@ -11,7 +11,7 @@
 
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceDiscoveryError, WorkspaceRootNotFoundError } from "workspaces-effect";
+import type { PointInTimeReadError, WorkspaceDiscoveryError, WorkspaceRootNotFoundError } from "workspaces-effect";
 import { WorkspaceRoot } from "workspaces-effect";
 
 /** One affected workspace package's resolved dependency diff. */
@@ -99,7 +99,11 @@ export const changesetDepsDetect = (
 	fallbackCwd: string,
 ): Effect.Effect<
 	ChangesetDepsDetectResultType,
-	Changesets.GitError | WorkspaceRootNotFoundError | WorkspaceDiscoveryError,
+	| Changesets.GitError
+	| WorkspaceRootNotFoundError
+	| WorkspaceDiscoveryError
+	| Changesets.ChangesetIOError
+	| PointInTimeReadError,
 	WorkspaceRoot | Changesets.DepsRegen
 > =>
 	Effect.gen(function* () {

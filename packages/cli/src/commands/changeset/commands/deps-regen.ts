@@ -93,9 +93,15 @@ export function runDepsRegen(
 				...(Option.isSome(pkg) ? { package: pkg.value } : {}),
 			})
 			.pipe(
-				Effect.catchTag("GitError", (err) => {
-					process.exitCode = 1;
-					return Effect.fail(err);
+				Effect.catchTags({
+					GitError: (err) => {
+						process.exitCode = 1;
+						return Effect.fail(err);
+					},
+					GitReadError: (err) => {
+						process.exitCode = 1;
+						return Effect.fail(err);
+					},
 				}),
 			);
 

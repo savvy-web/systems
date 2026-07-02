@@ -11,13 +11,12 @@
  *
  */
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { isAbsolute, join, relative } from "node:path";
 import applyReleasePlan from "@changesets/apply-release-plan";
 import { read as readChangesetConfig } from "@changesets/config";
 import getReleasePlan from "@changesets/get-release-plan";
 import type { ReleasePlan } from "@changesets/types";
+import { FileSystem } from "@effect/platform";
 import type { Packages } from "@manypkg/get-packages";
 import { getPackages } from "@manypkg/get-packages";
 import { Context, Effect, Layer } from "effect";
@@ -65,34 +64,32 @@ export const ReleasePlannerBase = _tag<ReleasePlanner, ReleasePlannerShape>();
 /** Effect service tag for the release planner. @public */
 export class ReleasePlanner extends ReleasePlannerBase {}
 
-/** Build the service shape over a resolved {@link ConfigInspector}. */
-function makeShape(inspector: ConfigInspectorShape): ReleasePlannerShape {
+/** Build the service shape over a resolved {@link ConfigInspector} and {@link FileSystem.FileSystem}. */
+function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): ReleasePlannerShape {
 	const plan: ReleasePlannerShape["plan"] = (root) =>
 		Effect.tryPromise({
 			try: () => getReleasePlan(root),
 			catch: (e) => new ReleasePlanError({ phase: "plan", reason: errMsg(e) }),
 		});
 
-	// preview + apply implemented in later tasks.
-	const preview: ReleasePlannerShape["preview"] = (root) =>
-		Effect.tryPromise({
-			try: () => previewImpl(root),
-			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-		});
+	const preview: ReleasePlannerShape["preview"] = (root) => previewEffect(root, fs);
 
-	const apply: ReleasePlannerShape["apply"] = (root, options) => applyEffect(root, options?.dryRun ?? false, inspector);
+	const apply: ReleasePlannerShape["apply"] = (root, options) =>
+		applyEffect(root, options?.dryRun ?? false, inspector, fs);
 
 	return { plan, preview, apply };
 }
 
-/** Production layer. Requires {@link ConfigInspector} (used by `apply`). @public */
-export const ReleasePlannerLive: Layer.Layer<ReleasePlanner, never, ConfigInspector> = Layer.effect(
-	ReleasePlanner,
-	Effect.gen(function* () {
-		const inspector = yield* ConfigInspector;
-		return makeShape(inspector);
-	}),
-);
+/** Production layer. Requires {@link ConfigInspector} (used by `apply`) and `FileSystem`. @public */
+export const ReleasePlannerLive: Layer.Layer<ReleasePlanner, never, ConfigInspector | FileSystem.FileSystem> =
+	Layer.effect(
+		ReleasePlanner,
+		Effect.gen(function* () {
+			const inspector = yield* ConfigInspector;
+			const fs = yield* FileSystem.FileSystem;
+			return makeShape(inspector, fs);
+		}),
+	);
 
 /**
  * Test factory — supply fixed results for any subset of methods. Unsupplied
@@ -130,60 +127,86 @@ export function extractVersionBlock(changelog: string, version: string): string 
 	return lines.slice(start, end).join("\n").trim();
 }
 
-async function previewImpl(root: string): Promise<ChangesetPreview> {
-	const [plan, packages] = await Promise.all([getReleasePlan(root), buildPackages(root)]);
-	const config = await readChangesetConfig(root, packages);
+/**
+ * Render a non-destructive preview by redirecting every write into a
+ * scope-managed temp directory (cleaned up automatically when the scope
+ * closes) and reading the generated CHANGELOG blocks back.
+ */
+function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<ChangesetPreview, ReleasePlanError> {
+	const program = Effect.gen(function* () {
+		const [plan, packages] = yield* Effect.tryPromise({
+			try: () => Promise.all([getReleasePlan(root), buildPackages(root)]),
+			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+		});
+		const config = yield* Effect.tryPromise({
+			try: () => readChangesetConfig(root, packages),
+			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+		});
 
-	const preMode: ChangesetPreview["preMode"] = plan.preState ? plan.preState.mode : null;
-	const changesets: PendingChangeset[] = plan.changesets.map((cs) => ({
-		id: cs.id,
-		summary: cs.summary,
-		releases: cs.releases.filter((r) => r.type !== "none").map((r) => ({ name: r.name, type: r.type as BumpType })),
-	}));
-	const releasesToRender = plan.releases.filter((r) => r.type !== "none");
-	if (releasesToRender.length === 0) {
-		return { preMode, releases: [], changesets };
-	}
+		const preMode: ChangesetPreview["preMode"] = plan.preState ? plan.preState.mode : null;
+		const changesets: PendingChangeset[] = plan.changesets.map((cs) => ({
+			id: cs.id,
+			summary: cs.summary,
+			releases: cs.releases.filter((r) => r.type !== "none").map((r) => ({ name: r.name, type: r.type as BumpType })),
+		}));
+		const releasesToRender = plan.releases.filter((r) => r.type !== "none");
+		if (releasesToRender.length === 0) {
+			return { preMode, releases: [], changesets };
+		}
 
-	const tempRoot = mkdtempSync(join(tmpdir(), "silk-preview-"));
-	try {
-		const mapDir = (dir: string) => {
+		const tempRoot = yield* fs.makeTempDirectoryScoped({ prefix: "silk-preview-" });
+
+		const mapDir = (dir: string): Effect.Effect<string, ReleasePlanError> => {
 			const rel = relative(packages.root.dir, dir);
 			// Guard the non-destructive invariant: a package dir outside the
 			// workspace root would make `relative` yield `..`/an absolute path and
 			// `join` escape `tempRoot`. Refuse rather than write outside temp.
 			if (rel.startsWith("..") || isAbsolute(rel)) {
-				throw new Error(`Package directory is outside the workspace root: ${dir}`);
+				return Effect.fail(
+					new ReleasePlanError({
+						phase: "preview",
+						reason: `Package directory is outside the workspace root: ${dir}`,
+					}),
+				);
 			}
-			return join(tempRoot, rel);
+			return Effect.succeed(join(tempRoot, rel));
 		};
+
+		const tempDirs = yield* Effect.forEach(packages.packages, (p) => mapDir(p.dir));
 		const tempPackages: Packages = {
 			tool: packages.tool,
 			root: { ...packages.root, dir: tempRoot, packageJson: structuredClone(packages.root.packageJson) },
-			packages: packages.packages.map((p) => ({
+			packages: packages.packages.map((p, i) => ({
 				...p,
-				dir: mapDir(p.dir),
+				dir: tempDirs[i],
 				packageJson: structuredClone(p.packageJson),
 			})),
 		};
 
 		// scaffold temp dirs + seed package.json + existing CHANGELOGs and pre.json
-		mkdirSync(join(tempRoot, ".changeset"), { recursive: true });
-		cpSync(join(root, "package.json"), join(tempRoot, "package.json"));
+		yield* fs.makeDirectory(join(tempRoot, ".changeset"), { recursive: true });
+		yield* fs.copyFile(join(root, "package.json"), join(tempRoot, "package.json"));
 		const preJson = join(root, ".changeset", "pre.json");
-		if (existsSync(preJson)) cpSync(preJson, join(tempRoot, ".changeset", "pre.json"));
-		for (const p of packages.packages) {
-			const tDir = mapDir(p.dir);
-			mkdirSync(tDir, { recursive: true });
-			cpSync(join(p.dir, "package.json"), join(tDir, "package.json"));
+		const preJsonExists = yield* fs.exists(preJson);
+		if (preJsonExists) yield* fs.copyFile(preJson, join(tempRoot, ".changeset", "pre.json"));
+		for (let i = 0; i < packages.packages.length; i++) {
+			const p = packages.packages[i];
+			const tDir = tempDirs[i];
+			yield* fs.makeDirectory(tDir, { recursive: true });
+			yield* fs.copyFile(join(p.dir, "package.json"), join(tDir, "package.json"));
 			const realCl = join(p.dir, "CHANGELOG.md");
-			if (existsSync(realCl)) cpSync(realCl, join(tDir, "CHANGELOG.md"));
+			const realClExists = yield* fs.exists(realCl);
+			if (realClExists) yield* fs.copyFile(realCl, join(tDir, "CHANGELOG.md"));
 		}
 		const rootCl = join(packages.root.dir, "CHANGELOG.md");
-		if (existsSync(rootCl)) cpSync(rootCl, join(tempRoot, "CHANGELOG.md"));
+		const rootClExists = yield* fs.exists(rootCl);
+		if (rootClExists) yield* fs.copyFile(rootCl, join(tempRoot, "CHANGELOG.md"));
 
 		// run the GENUINE engine; contextDir = real root so config.changelog resolves
-		await applyReleasePlan(plan, tempPackages, config, undefined, root);
+		yield* Effect.tryPromise({
+			try: () => applyReleasePlan(plan, tempPackages, config, undefined, root),
+			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+		});
 
 		const dirByName = new Map<string, string>();
 		for (const p of tempPackages.packages) dirByName.set(p.packageJson.name, p.dir);
@@ -194,9 +217,15 @@ async function previewImpl(root: string): Promise<ChangesetPreview> {
 			const dir = dirByName.get(r.name);
 			if (!dir) continue;
 			const clPath = join(dir, "CHANGELOG.md");
-			if (!existsSync(clPath)) continue;
-			ChangelogTransformer.transformFile(clPath);
-			const content = readFileSync(clPath, "utf-8");
+			const clExists = yield* fs.exists(clPath);
+			if (!clExists) continue;
+			// Sync engine call: a throw here must stay on the typed failure path
+			// rather than escaping the gen body as a defect.
+			yield* Effect.try({
+				try: () => ChangelogTransformer.transformFile(clPath),
+				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+			});
+			const content = yield* fs.readFileString(clPath);
 			releases.push({
 				name: r.name,
 				type: r.type as BumpType,
@@ -207,23 +236,28 @@ async function previewImpl(root: string): Promise<ChangesetPreview> {
 			});
 		}
 		return { preMode, releases, changesets };
-	} finally {
-		rmSync(tempRoot, { recursive: true, force: true });
-	}
+	});
+
+	return Effect.scoped(program).pipe(
+		Effect.mapError((e) =>
+			e instanceof ReleasePlanError ? e : new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+		),
+	);
 }
-/** Re-read a package's version from disk (post-bump) to feed versionFiles. */
-function diskVersion(workspaceDir: string, fallback: string): string {
-	try {
-		return JSON.parse(readFileSync(join(workspaceDir, "package.json"), "utf-8")).version ?? fallback;
-	} catch {
-		return fallback;
-	}
+
+/** Re-read a package's version from disk (post-bump) to feed versionFiles; unreadable/unparseable falls back. */
+function diskVersion(workspaceDir: string, fallback: string, fs: FileSystem.FileSystem): Effect.Effect<string> {
+	return fs.readFileString(join(workspaceDir, "package.json")).pipe(
+		Effect.flatMap((raw) => Effect.try(() => (JSON.parse(raw) as { version?: string }).version ?? fallback)),
+		Effect.orElseSucceed(() => fallback),
+	);
 }
 
 function applyEffect(
 	root: string,
 	dryRun: boolean,
 	inspector: ConfigInspectorShape,
+	fs: FileSystem.FileSystem,
 ): Effect.Effect<AppliedRelease, ReleasePlanError> {
 	return Effect.gen(function* () {
 		const { plan, packages, config } = yield* Effect.tryPromise({
@@ -268,18 +302,16 @@ function applyEffect(
 			);
 		let versionFileUpdates: Array<{ filePath: string; version: string }> = [];
 		if (inspected) {
+			const candidates = inspected.packages.filter((p) => p.versionFiles.length > 0);
+			const freshVersions = yield* Effect.forEach(candidates, (p) =>
+				dryRun ? Effect.succeed(newVersionByName.get(p.name) ?? p.version) : diskVersion(p.workspaceDir, p.version, fs),
+			);
+			const scopes = candidates.map((p, i) => {
+				const fresh = freshVersions[i];
+				return fresh !== p.version ? { ...p, version: fresh } : p;
+			});
 			versionFileUpdates = yield* Effect.try({
-				try: () => {
-					const scopes = inspected.packages
-						.filter((p) => p.versionFiles.length > 0)
-						.map((p) => {
-							const fresh = dryRun
-								? (newVersionByName.get(p.name) ?? p.version)
-								: diskVersion(p.workspaceDir, p.version);
-							return fresh !== p.version ? { ...p, version: fresh } : p;
-						});
-					return scopes.length > 0 ? VersionFiles.processResolvedVersionFiles(scopes, dryRun) : [];
-				},
+				try: () => (scopes.length > 0 ? VersionFiles.processResolvedVersionFiles(scopes, dryRun) : []),
 				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
 			});
 		}

@@ -1,4 +1,5 @@
 import { rmSync } from "node:fs";
+import { NodeContext } from "@effect/platform-node";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
@@ -29,7 +30,11 @@ describe("ReleasePlanner.plan", () => {
 		});
 		roots.push(root);
 		const planner = await Effect.runPromise(
-			Changesets.ReleasePlanner.pipe(Effect.provide(Changesets.ReleasePlannerLive), Effect.provide(InspectorStub)),
+			Changesets.ReleasePlanner.pipe(
+				Effect.provide(Changesets.ReleasePlannerLive),
+				Effect.provide(InspectorStub),
+				Effect.provide(NodeContext.layer),
+			),
 		);
 		const plan = await Effect.runPromise(planner.plan(root));
 		expect(plan.releases.map((r) => [r.name, r.newVersion])).toEqual([["@scope/a", "1.1.0"]]);

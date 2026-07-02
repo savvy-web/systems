@@ -21,10 +21,9 @@
  *   `ConfigDiscoveryLive`, `ToolDiscoveryLive`, and `VersioningStrategyLive`
  *   (provided `ChangesetConfigReaderLive`).
  * - Changesets-namespace services — `Changesets.ConfigInspectorLive` (provided
- *   `ChangesetConfigReaderLive`), `Changesets.WorkspaceSnapshotReaderLive`,
- *   `Changesets.ReleasePlannerLive` (provided `ConfigInspectorLive`), and
- *   `Changesets.BranchAnalyzerLive`, which shares the single `ConfigInspectorLive`
- *   instance built once via `provideMerge`.
+ *   `ChangesetConfigReaderLive`), `Changesets.ReleasePlannerLive` (provided
+ *   `ConfigInspectorLive`), and `Changesets.BranchAnalyzerLive`, which shares
+ *   the single `ConfigInspectorLive` instance built once via `provideMerge`.
  *
  * The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
  *
@@ -35,6 +34,7 @@ import { Command } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import {
 	BiomeSchemaSyncLive,
+	ChangesetConfigLive,
 	ChangesetConfigReaderLive,
 	Changesets,
 	ConfigDiscoveryLive,
@@ -45,9 +45,8 @@ import {
 } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 import {
-	CatalogResolverLive,
-	LockfileReaderLive,
 	PackageManagerDetectorLive,
+	PointInTimeWorkspaceLive,
 	PublishabilityDetectorLive,
 	WorkspaceDiscoveryLive,
 	WorkspaceRootLive,
@@ -97,10 +96,10 @@ const WorkspaceLive = Layer.mergeAll(
 
 /**
  * Base layer membership: silk-effects leaf services (`ManagedSection`,
- * `BiomeSchemaSync`, `ConfigDiscovery`, `SilkPublishabilityDetector`,
- * `WorkspaceSnapshotReader`) that depend only on the platform, plus the
- * changeset base layers (`WorkspaceLive`, `ChangesetConfigReader`) that
- * `AppLive`'s upper services build upon.
+ * `BiomeSchemaSync`, `ConfigDiscovery`, `SilkPublishabilityDetector`) that
+ * depend only on the platform, plus the changeset base layers
+ * (`WorkspaceLive`, `ChangesetConfigReader`) that `AppLive`'s upper services
+ * build upon.
  */
 const BaseLive = Layer.mergeAll(
 	WorkspaceLive,
@@ -109,7 +108,6 @@ const BaseLive = Layer.mergeAll(
 	BiomeSchemaSyncLive,
 	ConfigDiscoveryLive,
 	SilkPublishabilityDetectorLive,
-	Changesets.WorkspaceSnapshotReaderLive,
 );
 
 /**
@@ -132,14 +130,15 @@ const BaseLive = Layer.mergeAll(
  * handler that yields it directly, so it is never constructed twice per run.
  *
  * `Changesets.DepsRegenLive` (the `deps regen`/`deps detect` orchestration
- * service) needs `WorkspaceSnapshotReader`, `ConfigInspector`,
- * `WorkspaceDiscovery` (all from `BaseLive`/`InspectorAndAnalyzerLive`),
- * plus `CatalogResolver` and `PublishabilityDetector` from `workspaces-effect`
- * — neither of which the other commands need, so they're composed only for
- * `DepsRegenGroupLive`. `CatalogResolverLive` in turn needs `WorkspaceRoot`,
- * `LockfileReader`, `WorkspaceDiscovery`, `FileSystem`, `Path`; `LockfileReaderLive`
- * (composed via `CatalogLive`) needs `WorkspaceRoot`, `PackageManagerDetector`,
- * `FileSystem`, `Path` — all satisfied by `BaseLive`/`NodeContext.layer` below.
+ * service) needs `ConfigInspector`, `WorkspaceDiscovery` (from
+ * `BaseLive`/`InspectorAndAnalyzerLive`), plus `PointInTimeWorkspace` and
+ * `PublishabilityDetector` from `workspaces-effect`, and `ChangesetConfig`
+ * (provided its own `ChangesetConfigReaderLive`, since `Layer.mergeAll` does
+ * not cross-feed sibling layers) — none of which the other commands need, so
+ * they're composed only for `DepsRegenGroupLive`. `PointInTimeWorkspaceLive`
+ * in turn needs `WorkspaceRoot`, `WorkspaceDiscovery`, `CommandExecutor`,
+ * `FileSystem`, `Path` — the workspace pair supplied by `WorkspaceLive`, the
+ * platform trio by `NodeContext.layer` below.
  * `DepsRegenGroupLive` reuses the exact `InspectorAndAnalyzerLive` layer
  * reference (not a fresh copy), so Effect's layer memoization builds that
  * single `ConfigInspector` instance once and shares it here too.
@@ -154,21 +153,17 @@ const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
 );
 
 /**
- * `CatalogResolver` composed with its own `LockfileReader` dependency. The
- * remaining requirements of both (`WorkspaceRoot`, `WorkspaceDiscovery`,
- * `PackageManagerDetector`, `FileSystem`, `Path`) are left open, satisfied
- * by `BaseLive` / `NodeContext.layer` in `AppLive` below.
- */
-const CatalogLive = CatalogResolverLive.pipe(Layer.provide(LockfileReaderLive));
-
-/**
  * `Changesets.DepsRegen`, fully composed except for the base services
- * (`WorkspaceSnapshotReader`, `WorkspaceDiscovery`) supplied by `BaseLive`.
+ * (`WorkspaceDiscovery`, platform layers) supplied by `BaseLive` /
+ * `NodeContext.layer`. `PointInTimeWorkspaceLive` is provided `WorkspaceLive`
+ * so its `WorkspaceRoot`/`WorkspaceDiscovery` requirements resolve; the
+ * remaining `CommandExecutor`/`FileSystem`/`Path` flow up to `NodeContext.layer`.
  */
 const DepsRegenGroupLive = Changesets.DepsRegenLive.pipe(
 	Layer.provide(InspectorAndAnalyzerLive),
-	Layer.provide(CatalogLive),
+	Layer.provide(PointInTimeWorkspaceLive.pipe(Layer.provide(WorkspaceLive))),
 	Layer.provide(PublishabilityDetectorLive),
+	Layer.provide(ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive))),
 );
 
 const AppLive = Layer.mergeAll(

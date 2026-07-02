@@ -10,6 +10,7 @@
  */
 
 import {
+	ChangesetConfigLive,
 	ChangesetConfigReaderLive,
 	Changesets,
 	SilkWorkspaceAnalyzerLive,
@@ -19,7 +20,7 @@ import {
 	VersioningStrategyLive,
 } from "@savvy-web/silk-effects";
 import { Layer } from "effect";
-import { WorkspaceRootLive, WorkspacesLive } from "workspaces-effect";
+import { PointInTimeWorkspaceLive, WorkspaceRootLive, WorkspacesLive } from "workspaces-effect";
 
 /**
  * The silk-effects dependency set fed to {@link SilkWorkspaceAnalyzerLive}.
@@ -46,21 +47,23 @@ const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
  * orchestration service), fully composed except for the services supplied by
  * {@link DepsLive} / the host platform layer.
  *
- * `DepsRegenLive` requires `WorkspaceSnapshotReader | ConfigInspector |
- * WorkspaceDiscovery | CatalogResolver | PublishabilityDetector`. Here
+ * `DepsRegenLive` requires `PointInTimeWorkspace | ConfigInspector |
+ * WorkspaceDiscovery | PublishabilityDetector | ChangesetConfig`. Here
  * `ConfigInspector` is provided via the shared {@link InspectorAndAnalyzerLive}
  * reference (so Effect memoizes the single `ConfigInspector` instance already
- * merged into the runtime), and `WorkspaceSnapshotReader` via the
- * dependency-free {@link Changesets.WorkspaceSnapshotReaderLive}. The remaining
- * three — `WorkspaceDiscovery`, `CatalogResolver`, `PublishabilityDetector` —
- * are left open and satisfied by `WorkspacesLive` inside {@link DepsLive}
- * (unlike the CLI, whose minimal workspace trio has to compose
- * `CatalogResolverLive`/`PublishabilityDetectorLive` by hand). `FileSystem` /
- * `Path` / `CommandExecutor` flow up to the host `NodeContext.layer`.
+ * merged into the runtime), and `PointInTimeWorkspace` via
+ * `PointInTimeWorkspaceLive` (whose `WorkspaceRoot`/`WorkspaceDiscovery` come
+ * from `WorkspacesLive` inside {@link DepsLive}). `ChangesetConfig` is provided
+ * its own `ChangesetConfigReaderLive` (already present in {@link DepsLive}, but
+ * `Layer.mergeAll` does not cross-feed sibling layers). The remaining two —
+ * `WorkspaceDiscovery`, `PublishabilityDetector` — are left open and satisfied
+ * by `WorkspacesLive` inside {@link DepsLive}. `FileSystem` / `Path` /
+ * `CommandExecutor` flow up to the host `NodeContext.layer`.
  */
 const DepsRegenGroupLive = Changesets.DepsRegenLive.pipe(
 	Layer.provide(InspectorAndAnalyzerLive),
-	Layer.provide(Changesets.WorkspaceSnapshotReaderLive),
+	Layer.provide(PointInTimeWorkspaceLive),
+	Layer.provide(ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive))),
 );
 
 /**
