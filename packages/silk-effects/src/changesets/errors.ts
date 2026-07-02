@@ -362,6 +362,58 @@ export class GitError extends GitErrorBase<{
 }
 
 /**
+ * Base class for {@link ChangesetIOError}.
+ *
+ * @privateRemarks
+ * Effect's `Data.TaggedError` creates an anonymous base class that
+ * api-extractor cannot follow without an explicit export.
+ *
+ * @internal
+ */
+export const ChangesetIOErrorBase = Data.TaggedError("ChangesetIOError");
+
+/**
+ * Changeset file I/O failure.
+ *
+ * @remarks
+ * Raised by {@link DepsRegen} when reading, writing, listing, or deleting
+ * `.changeset/*.md` files fails. Deletion failures during
+ * {@link DepsRegenShape.execute} are tolerated (stale changesets are
+ * skip-and-continue, so an interrupted run stays safely re-runnable);
+ * read, list, and write failures are loud.
+ *
+ * @example
+ * ```typescript
+ * import { Effect } from "effect";
+ * import { ChangesetIOError } from "@savvy-web/changesets";
+ *
+ * declare const program: Effect.Effect<void, ChangesetIOError>;
+ *
+ * const handled = program.pipe(
+ *   Effect.catchTag("ChangesetIOError", (err) =>
+ *     Effect.logError(`changeset ${err.operation} failed at ${err.path}: ${err.reason}`)
+ *   ),
+ * );
+ * ```
+ *
+ * @see {@link DepsRegen} which produces these errors during plan/execute
+ *
+ * @public
+ */
+export class ChangesetIOError extends ChangesetIOErrorBase<{
+	/** Absolute path of the file or directory the operation targeted. */
+	readonly path: string;
+	/** The failed operation. */
+	readonly operation: "read" | "write" | "delete" | "list";
+	/** Human-readable failure reason. */
+	readonly reason: string;
+}> {
+	get message() {
+		return `changeset ${this.operation} failed at ${this.path}: ${this.reason}`;
+	}
+}
+
+/**
  * Base class for {@link ReleasePlanError}.
  *
  * @privateRemarks

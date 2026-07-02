@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { NodeContext } from "@effect/platform-node";
 import { Cause, Effect, Exit } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
@@ -29,6 +30,7 @@ async function getPlanner(projectDir: string) {
 		Changesets.ReleasePlanner.pipe(
 			Effect.provide(Changesets.ReleasePlannerLive),
 			Effect.provide(InspectorStub),
+			Effect.provide(NodeContext.layer),
 		) as Effect.Effect<Changesets.ReleasePlannerShape>,
 	);
 }
@@ -75,6 +77,7 @@ async function getPlannerWithVersionFiles(opts: {
 		Changesets.ReleasePlanner.pipe(
 			Effect.provide(Changesets.ReleasePlannerLive),
 			Effect.provide(InspectorStub),
+			Effect.provide(NodeContext.layer),
 		) as Effect.Effect<Changesets.ReleasePlannerShape>,
 	);
 }

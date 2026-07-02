@@ -46,10 +46,11 @@
 //     ../../services/ChangesetConfigReader.js). No equivalent in silk-effects.
 //     Lives at ./services/config-inspector.ts.
 //
-//   workspace-snapshot.ts — COPIED
-//     WorkspaceSnapshotReader + WorkspaceSnapshotReaderLive for reading workspace
-//     state at arbitrary git refs. No equivalent in silk-effects.
-//     Lives at ./services/workspace-snapshot.ts.
+//   workspace-snapshot.ts — REMOVED (#208)
+//     The former WorkspaceSnapshotReader (git-ref side) and utils/worktree-snapshot.ts
+//     (working-tree side) were replaced by workspaces-effect's PointInTimeWorkspace
+//     service, which snapshots both sides with per-ref catalog/workspace resolution.
+//     Only gitMergeBase survives, relocated to ./utils/git.ts.
 //
 // =============================================================================
 
@@ -104,9 +105,9 @@ export type { DepsRegenOptions, DepsRegenShape, RegenPlan, RegenResult } from ".
 export {
 	DepsRegen,
 	DepsRegenBase,
+	DepsRegenDefault,
 	DepsRegenLive,
 	isPureDependencyChangeset,
-	resolveDiffRows,
 } from "./services/deps-regen.js";
 export type { GitHubServiceShape } from "./services/github.js";
 export { GitHubService, GitHubServiceBase } from "./services/github.js";
@@ -119,13 +120,6 @@ export {
 	ReleasePlannerLive,
 	makeReleasePlannerTest,
 } from "./services/release-planner.js";
-export type { WorkspaceSnapshot, WorkspaceSnapshotReaderShape } from "./services/workspace-snapshot.js";
-export {
-	WorkspaceSnapshotReader,
-	WorkspaceSnapshotReaderBase,
-	WorkspaceSnapshotReaderLive,
-} from "./services/workspace-snapshot.js";
-
 // === Effect Layers ===
 
 export { GitHubLive, makeGitHubTest } from "./services/github.js";
@@ -134,6 +128,8 @@ export { MarkdownLive } from "./services/markdown.js";
 // === Tagged Errors ===
 
 export {
+	ChangesetIOError,
+	ChangesetIOErrorBase,
 	ChangesetValidationError,
 	ChangesetValidationErrorBase,
 	ConfigurationError,
@@ -214,10 +210,10 @@ export {
 export type { WorkspaceDependencyDiff } from "./utils/dep-diff.js";
 export { computeWorkspaceDependencyDiffs } from "./utils/dep-diff.js";
 export { serializeDependencyTableToMarkdown } from "./utils/dependency-table.js";
+export { gitMergeBase } from "./utils/git.js";
 export { listPublishablePackageNames } from "./utils/publishability.js";
 export type { VersionFileUpdate, WorkspaceVersion } from "./utils/version-files.js";
 export { VersionFiles } from "./utils/version-files.js";
-export { gitMergeBase, snapshotFromWorktree } from "./utils/worktree-snapshot.js";
 
 // === Types ===
 

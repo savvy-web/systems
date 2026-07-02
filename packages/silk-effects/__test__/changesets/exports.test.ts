@@ -24,6 +24,22 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 		expect(mod.MarkdownService).toBeDefined();
 	});
 
+	it("exports the DepsRegen surface (WorkspaceSnapshotReader/resolveDiffRows removed in #208)", async () => {
+		const mod = await import("../../src/changesets/index.js");
+		expect(mod.DepsRegen).toBeDefined();
+		expect(mod.DepsRegenBase).toBeDefined();
+		expect(mod.DepsRegenLive).toBeDefined();
+		expect(mod.DepsRegenDefault).toBeDefined();
+		expect(mod.isPureDependencyChangeset).toBeDefined();
+		expect(mod.gitMergeBase).toBeDefined();
+		expect(mod.computeWorkspaceDependencyDiffs).toBeDefined();
+		// Removed public API — must no longer be exported.
+		expect("WorkspaceSnapshotReader" in mod).toBe(false);
+		expect("WorkspaceSnapshotReaderLive" in mod).toBe(false);
+		expect("resolveDiffRows" in mod).toBe(false);
+		expect("snapshotFromWorktree" in mod).toBe(false);
+	});
+
 	it("exports layers", async () => {
 		const mod = await import("../../src/changesets/index.js");
 		expect(mod.GitHubLive).toBeDefined();
@@ -32,6 +48,7 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 
 	it("exports tagged errors", async () => {
 		const mod = await import("../../src/changesets/index.js");
+		expect(mod.ChangesetIOError).toBeDefined();
 		expect(mod.ChangesetValidationError).toBeDefined();
 		expect(mod.ConfigurationError).toBeDefined();
 		expect(mod.GitHubApiError).toBeDefined();

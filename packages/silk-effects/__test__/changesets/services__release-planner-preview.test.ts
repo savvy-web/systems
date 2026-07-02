@@ -3,6 +3,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NodeContext } from "@effect/platform-node";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
@@ -32,6 +33,7 @@ async function getPlanner() {
 		Changesets.ReleasePlanner.pipe(
 			Effect.provide(Changesets.ReleasePlannerLive),
 			Effect.provide(InspectorStub),
+			Effect.provide(NodeContext.layer),
 		) as Effect.Effect<Changesets.ReleasePlannerShape>,
 	);
 }
