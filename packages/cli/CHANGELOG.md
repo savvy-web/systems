@@ -1,5 +1,26 @@
 # @savvy-web/cli
 
+## 1.4.0
+
+### Features
+
+* [`63b3987`](https://github.com/savvy-web/systems/commit/63b39876114f20621540e8b0131b79bcac0a2428) `savvy changeset deps regen`/`deps detect` now report catalog-aware dependency rows: a stable `catalog:` specifier whose resolved version changed shows the concrete `from`/`to` versions, and a package that only adopted a `catalog:` specifier without a version change no longer produces noise.
+* Dependency-changeset gating now follows the `publishable OR privatePackages.version` (minus ignored) rule, matching the rest of the changeset tooling.
+* Both commands now also handle `GitReadError` alongside `GitError`, so snapshot-read failures exit with a clear error instead of an unhandled rejection.
+
+### Refactoring
+
+* [`63b3987`](https://github.com/savvy-web/systems/commit/63b39876114f20621540e8b0131b79bcac0a2428) Internal layer composition for `deps regen`/`deps detect` moved from `CatalogResolverLive`/`WorkspaceSnapshotReaderLive` to `workspaces-effect`'s `PointInTimeWorkspaceLive`.
+
+### Dependencies
+
+* [`63b3987`](https://github.com/savvy-web/systems/commit/63b39876114f20621540e8b0131b79bcac0a2428) | Dependency | Type | Action | From | To |
+  \| ----------------- | ---------- | ------- | ------ | ------ |
+  \| workspaces-effect | dependency | updated | ^1.2.0 | ^2.0.0 |
+  | Dependency              | Type       | Action  | From  | To    |
+  | ----------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/silk-effects | dependency | updated | 1.6.0 | 2.0.0 |
+
 ## 1.3.6
 
 ### Bug Fixes
