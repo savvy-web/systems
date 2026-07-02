@@ -17,7 +17,6 @@ import { read as readChangesetConfig } from "@changesets/config";
 import getReleasePlan from "@changesets/get-release-plan";
 import type { ReleasePlan } from "@changesets/types";
 import { FileSystem } from "@effect/platform";
-import type { Packages } from "@manypkg/get-packages";
 import { getPackages } from "@manypkg/get-packages";
 import { Context, Effect, Layer } from "effect";
 import { ChangelogTransformer } from "../api/transformer.js";
@@ -33,8 +32,32 @@ import { VersionFiles } from "../utils/version-files.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector } from "./config-inspector.js";
 
-/** Single workspace-discovery seam; swap to an Effect-native stack later here. */
-const buildPackages = (root: string): Promise<Packages> => getPackages(root);
+/**
+ * The v1 `Packages` shape the changesets engine consumes (its own transitive
+ * `@manypkg/get-packages@1.x`), derived from the engine's signature so it
+ * tracks whatever shape changesets expects if it ever upgrades.
+ */
+type ChangesetsPackages = Parameters<typeof applyReleasePlan>[1];
+
+const V1_TOOLS = new Set(["yarn", "bolt", "pnpm", "lerna", "root"]);
+
+/**
+ * Single workspace-discovery seam; swap to an Effect-native stack later here.
+ *
+ * Discovers with `@manypkg/get-packages@3.x` and adapts to the v1 shape:
+ * `tool` collapses to its type string (tools unknown to v1 map to `"root"` —
+ * the engine never reads `tool` at runtime, only `root.dir`), and
+ * `rootDir`/`rootPackage` fold back into `root`.
+ */
+const buildPackages = async (root: string): Promise<ChangesetsPackages> => {
+	const { tool, rootDir, rootPackage, packages } = await getPackages(root);
+	if (!rootPackage) throw new Error(`Workspace root has no package.json: ${rootDir}`);
+	return {
+		tool: (V1_TOOLS.has(tool.type) ? tool.type : "root") as ChangesetsPackages["tool"],
+		root: { dir: rootPackage.dir, packageJson: rootPackage.packageJson },
+		packages: packages.map((p) => ({ dir: p.dir, packageJson: p.packageJson })),
+	};
+};
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -173,7 +196,7 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 		};
 
 		const tempDirs = yield* Effect.forEach(packages.packages, (p) => mapDir(p.dir));
-		const tempPackages: Packages = {
+		const tempPackages: ChangesetsPackages = {
 			tool: packages.tool,
 			root: { ...packages.root, dir: tempRoot, packageJson: structuredClone(packages.root.packageJson) },
 			packages: packages.packages.map((p, i) => ({

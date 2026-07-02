@@ -25,11 +25,11 @@ export interface NextVersions {
 export async function resolveNextVersions(cwd: string): Promise<NextVersions> {
 	try {
 		const packages = await getPackages(cwd);
-		// tool === "root" means getPackages found no workspace manager (pnpm/yarn/lerna/etc.),
+		// tool type "root" means getPackages found no workspace manager (pnpm/yarn/lerna/etc.),
 		// treating the cwd as a standalone root with itself as the only "package". That is not
 		// a multi-package workspace, so return an empty map rather than exposing the root pkg.
-		if (packages.tool === "root") {
-			return { root: packages.root.dir, versions: new Map() };
+		if (packages.tool.type === "root") {
+			return { root: packages.rootDir, versions: new Map() };
 		}
 		const versions = new Map<string, string>();
 		for (const p of packages.packages) {
@@ -37,14 +37,14 @@ export async function resolveNextVersions(cwd: string): Promise<NextVersions> {
 			if (name && version) versions.set(name, version);
 		}
 		try {
-			const plan = await getReleasePlan(packages.root.dir);
+			const plan = await getReleasePlan(packages.rootDir);
 			// plan.releases includes type:"none" entries (unbumped dependents) whose newVersion equals
 			// the current version, so overlaying every release is safe.
 			for (const r of plan.releases) versions.set(r.name, r.newVersion);
 		} catch {
 			// No `.changeset/config.json` (or unreadable): keep current versions.
 		}
-		return { root: packages.root.dir, versions };
+		return { root: packages.rootDir, versions };
 	} catch {
 		// Not a workspace / cannot enumerate packages: optimistic becomes a full no-op.
 		return { root: cwd, versions: new Map() };
