@@ -1,5 +1,25 @@
 # @savvy-web/mcp
 
+## 1.6.0
+
+### Features
+
+* [`63b3987`](https://github.com/savvy-web/systems/commit/63b39876114f20621540e8b0131b79bcac0a2428) `changeset_deps_regen`/`changeset_deps_detect` now report catalog-aware dependency rows: a stable `catalog:` specifier whose resolved version changed shows the concrete `from`/`to` versions, and a package that only adopted a `catalog:` specifier without a version change no longer produces a row.
+* Dependency-changeset gating now follows the `publishable OR privatePackages.version` (minus ignored) rule, matching the rest of the changeset tooling.
+
+### Refactoring
+
+* [`63b3987`](https://github.com/savvy-web/systems/commit/63b39876114f20621540e8b0131b79bcac0a2428) Both tools' declared error unions widen to include `ChangesetIOError` and `PointInTimeReadError`, reflecting the underlying `DepsRegen` service's new failure modes. Internal layer composition moved from `WorkspaceSnapshotReaderLive` to `workspaces-effect`'s `PointInTimeWorkspaceLive`.
+
+### Dependencies
+
+* [`63b3987`](https://github.com/savvy-web/systems/commit/63b39876114f20621540e8b0131b79bcac0a2428) | Dependency | Type | Action | From | To |
+  \| ----------------- | ---------- | ------- | ------ | ------ |
+  \| workspaces-effect | dependency | updated | ^1.2.0 | ^2.0.0 |
+  | Dependency              | Type       | Action  | From  | To    |
+  | ----------------------- | ---------- | ------- | ----- | ----- |
+  | @savvy-web/silk-effects | dependency | updated | 1.6.0 | 2.0.0 |
+
 ## 1.5.0
 
 ### Features
