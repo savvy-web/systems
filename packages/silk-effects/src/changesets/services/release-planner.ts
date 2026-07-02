@@ -219,7 +219,12 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 			const clPath = join(dir, "CHANGELOG.md");
 			const clExists = yield* fs.exists(clPath);
 			if (!clExists) continue;
-			ChangelogTransformer.transformFile(clPath);
+			// Sync engine call: a throw here must stay on the typed failure path
+			// rather than escaping the gen body as a defect.
+			yield* Effect.try({
+				try: () => ChangelogTransformer.transformFile(clPath),
+				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+			});
 			const content = yield* fs.readFileString(clPath);
 			releases.push({
 				name: r.name,
