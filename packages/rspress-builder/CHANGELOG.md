@@ -1,5 +1,17 @@
 # @savvy-web/rspress-builder
 
+## 1.0.6
+
+### Dependencies
+
+| Dependency         | Type       | Action  | From  | To    |
+| ------------------ | ---------- | ------- | ----- | ----- |
+| @savvy-web/bundler | dependency | updated | 1.1.3 | 1.1.4 |
+
+* | Dependency  | Type           | Action  | From    | To      |
+  | ----------- | -------------- | ------- | ------- | ------- |
+  | @types/node | peerDependency | updated | ^26.0.0 | ^26.1.0 |
+
 ## 1.0.5
 
 ### Patch Changes
