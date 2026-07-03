@@ -53,8 +53,6 @@ jobs:
           auto-merge: "squash"
           upgrade-package-manager: "^11.0.0"
           upgrade-runtime-node: "^26.0.0"
-          config-dependencies: |
-            @savvy-web/pnpm-plugin-silk
           dependencies: |
             @microsoft/api-extractor
             @microsoft/tsdoc

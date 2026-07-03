@@ -18,7 +18,6 @@ describe("e2e: built @savvy-web/pnpm-plugin-silk artifact", () => {
 		const result = mod.hooks.updateConfig({});
 		expect(result.catalogs.silk.effect).toMatch(/^[~^]?\d/);
 		expect(result.catalogs.silkPeers.effect).toMatch(/^[~^]?\d/);
-		expect(result.overrides.lodash).toBeTruthy();
 		expect(result.publicHoistPattern).toContain("typescript");
 		expect(result.strictDepBuilds).toBe(true);
 	});

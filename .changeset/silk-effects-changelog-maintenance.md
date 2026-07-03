@@ -1,8 +1,8 @@
 ---
-"@savvy-web/silk-effects": major
+"@savvy-web/silk-effects": minor
 ---
 
-## Breaking Changes
+## Features
 
 ### Release lines no longer carry commit-link prefixes
 
