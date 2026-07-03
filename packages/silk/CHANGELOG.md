@@ -1,5 +1,24 @@
 # @savvy-web/silk
 
+## 1.3.11
+
+### Dependencies
+
+| Dependency     | Type       | Action  | From  | To    |
+| -------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/cli | dependency | updated | 1.4.2 | 1.4.3 |
+| @savvy-web/mcp | dependency | updated | 1.6.2 | 1.6.3 |
+
+* | Dependency                      | Type           | Action  | From    | To      |
+  | ------------------------------- | -------------- | ------- | ------- | ------- |
+  | @commitlint/cli                 | peerDependency | updated | ^21.1.0 | ^21.2.0 |
+  | @commitlint/config-conventional | peerDependency | updated | ^21.1.0 | ^21.2.0 |
+  | @types/node                     | peerDependency | updated | ^26.0.0 | ^26.1.0 |
+  | commitizen                      | peerDependency | updated | ^4.3.0  | ^4.3.2  |
+  | lint-staged                     | peerDependency | updated | ^17.0.7 | ^17.0.8 |
+  | markdownlint-cli2               | peerDependency | updated | ^0.22.1 | ^0.23.0 |
+  | turbo                           | peerDependency | updated | ^2.10.0 | ^2.10.2 |
+
 ## 1.3.10
 
 ### Patch Changes

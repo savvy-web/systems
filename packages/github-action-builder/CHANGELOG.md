@@ -1,5 +1,13 @@
 # @savvy-web/github-action-builder
 
+## 1.0.3
+
+### Dependencies
+
+* | Dependency  | Type           | Action  | From    | To      |
+  | ----------- | -------------- | ------- | ------- | ------- |
+  | @types/node | peerDependency | updated | ^26.0.0 | ^26.1.0 |
+
 ## 1.0.2
 
 ### Dependencies

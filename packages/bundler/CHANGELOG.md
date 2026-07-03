@@ -1,5 +1,13 @@
 # @savvy-web/bundler
 
+## 1.1.4
+
+### Dependencies
+
+* | Dependency  | Type           | Action  | From    | To      |
+  | ----------- | -------------- | ------- | ------- | ------- |
+  | @types/node | peerDependency | updated | ^26.0.0 | ^26.1.0 |
+
 ## 1.1.3
 
 ### Patch Changes

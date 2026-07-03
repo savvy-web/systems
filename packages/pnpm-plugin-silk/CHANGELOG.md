@@ -1,5 +1,11 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.19.0
+
+### Bug Fixes
+
+* Overrides `@manypkgs/get-root` to install modern `@types/node`. An ancient version was being dragging into the dependency graph because the package ships with devDependencies declared in it's package.json.
+
 ## 0.18.2
 
 ### Bug Fixes
