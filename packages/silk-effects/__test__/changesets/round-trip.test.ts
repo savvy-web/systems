@@ -121,4 +121,17 @@ describe("Round-trip: lint → format → transform", () => {
 		expect(headings).toContain("Features");
 		expect(headings).toContain("Documentation");
 	});
+
+	it("collapses byte-identical entries from two changesets into one item", async () => {
+		const mk = (id: string) =>
+			getReleaseLine(
+				{ id, summary: "## Bug Fixes\n\n- Fixed the crash", releases: [{ name: "pkg", type: "patch" }] },
+				"patch",
+				OPTIONS,
+			).pipe(Effect.provide(testLayer));
+		const [a, b] = await Effect.runPromise(Effect.all([mk("dup-1"), mk("dup-2")]));
+		const result = ChangelogTransformer.transformContent(`## 1.0.1\n\n${a}\n\n${b}\n`);
+		const occurrences = (result.match(/Fixed the crash/g) || []).length;
+		expect(occurrences).toBe(1);
+	});
 });

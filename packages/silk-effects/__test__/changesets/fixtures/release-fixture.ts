@@ -27,6 +27,8 @@ export interface FixtureChangeset {
 export interface FixtureSpec {
 	readonly packages: ReadonlyArray<FixturePackage>;
 	readonly changesets: ReadonlyArray<FixtureChangeset>;
+	/** Extra .changeset/config.json fields (e.g. { fixed: [["@scope/a", "@scope/b"]] }). */
+	readonly configExtra?: Record<string, unknown>;
 }
 
 /** Create a temp workspace; returns its absolute root path. */
@@ -51,6 +53,7 @@ export function makeReleaseFixture(spec: FixtureSpec): string {
 				baseBranch: "main",
 				updateInternalDependencies: "patch",
 				ignore: [],
+				...(spec.configExtra ?? {}),
 			},
 			null,
 			2,

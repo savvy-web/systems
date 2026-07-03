@@ -4,7 +4,7 @@ import { NodeContext } from "@effect/platform-node";
 import { Cause, Effect, Exit } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
-import { makeReleaseFixture } from "./fixtures/release-fixture.js";
+import { makeReleaseFixture, readFixtureChangelog } from "./fixtures/release-fixture.js";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -214,5 +214,26 @@ describe("ReleasePlanner.apply", () => {
 		expect(cl).toContain("## 1.1.0");
 		expect(existsSync(join(root, ".changeset", "brave-pandas-learn.md"))).toBe(false);
 		expect(result.touchedFiles.some((f) => f.endsWith("CHANGELOG.md"))).toBe(true);
+	});
+
+	it("writes a Maintenance note into the changelog of a fixed-group release with no changesets", async () => {
+		const root = makeReleaseFixture({
+			packages: [
+				{ dir: "packages/f1", name: "@scope/fixed-1", version: "2.3.0" },
+				{ dir: "packages/f2", name: "@scope/fixed-2", version: "2.3.0" },
+			],
+			changesets: [{ id: "calm-owls-run", releases: { "@scope/fixed-2": "patch" }, summary: "fix: something" }],
+			configExtra: { fixed: [["@scope/fixed-1", "@scope/fixed-2"]] },
+		});
+		roots.push(root);
+		const planner = await getPlanner(root);
+		await Effect.runPromise(planner.apply(root));
+		const changelog = readFixtureChangelog(root, "packages/f1");
+		expect(changelog).toContain("## 2.3.1");
+		expect(changelog).toContain("### Maintenance");
+		expect(changelog).toContain("`@scope/fixed-2@2.3.1`");
+		expect(changelog).toContain("(fixed version group)");
+		// the mover's own changelog gets no note
+		expect(readFixtureChangelog(root, "packages/f2")).not.toContain("### Maintenance");
 	});
 });

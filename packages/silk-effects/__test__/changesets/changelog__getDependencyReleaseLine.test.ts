@@ -33,7 +33,7 @@ function makeDep(name: string, newVersion: string, deps?: Record<string, Record<
 }
 
 describe("getDependencyReleaseLine", () => {
-	it("returns empty string when no dependencies updated", async () => {
+	it("returns empty string (no heading) when no dependencies were updated", async () => {
 		const changesets: NewChangesetWithCommit[] = [
 			{ id: "cs-1", summary: "bump", releases: [], commit: "abc1234567890" },
 		];
@@ -41,6 +41,18 @@ describe("getDependencyReleaseLine", () => {
 			getDependencyReleaseLine(changesets, [], OPTIONS).pipe(Effect.provide(testLayer)),
 		);
 		expect(result).toBe("");
+	});
+
+	it("prefixes the table with a ### Dependencies heading", async () => {
+		const changesets: NewChangesetWithCommit[] = [{ id: "cs-1", summary: "bump", releases: [] }];
+		const deps = [makeDep("@scope/dep", "1.1.0")];
+
+		const result = await Effect.runPromise(
+			getDependencyReleaseLine(changesets, deps, OPTIONS).pipe(Effect.provide(testLayer)),
+		);
+
+		expect(result.startsWith("### Dependencies\n\n")).toBe(true);
+		expect(result).toContain("| Dependency |");
 	});
 
 	it("emits a markdown table with correct columns", async () => {

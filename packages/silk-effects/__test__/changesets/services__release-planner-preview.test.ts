@@ -51,6 +51,29 @@ describe("ReleasePlanner.preview", () => {
 		expect(preview.changesets).toEqual([]);
 	});
 
+	it("includes a Maintenance note in the changelogEntry of a fixed-group release with no changesets", async () => {
+		const root = makeReleaseFixture({
+			packages: [
+				{ dir: "packages/f1", name: "@scope/fixed-1", version: "2.3.0" },
+				{ dir: "packages/f2", name: "@scope/fixed-2", version: "2.3.0" },
+			],
+			changesets: [{ id: "calm-owls-run", releases: { "@scope/fixed-2": "patch" }, summary: "fix: something" }],
+			configExtra: { fixed: [["@scope/fixed-1", "@scope/fixed-2"]] },
+		});
+		roots.push(root);
+		// symlink the monorepo node_modules so @changesets/cli/changelog resolves from this fixture root
+		symlinkSync(repoNodeModules, join(root, "node_modules"), "dir");
+		const planner = await getPlanner();
+		const preview = await Effect.runPromise(planner.preview(root) as Effect.Effect<Changesets.ChangesetPreview>);
+		const fixed1 = preview.releases.find((r) => r.name === "@scope/fixed-1");
+		expect(fixed1).toBeDefined();
+		expect(fixed1?.changelogEntry).toContain("### Maintenance");
+		expect(fixed1?.changelogEntry).toContain("`@scope/fixed-2@2.3.1`");
+		expect(fixed1?.changelogEntry).toContain("(fixed version group)");
+		const fixed2 = preview.releases.find((r) => r.name === "@scope/fixed-2");
+		expect(fixed2?.changelogEntry).not.toContain("### Maintenance");
+	});
+
 	it("does not mutate the repo and matches a real apply (differential)", async () => {
 		const spec = {
 			packages: [

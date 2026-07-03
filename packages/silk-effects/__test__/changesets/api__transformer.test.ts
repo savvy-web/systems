@@ -120,6 +120,78 @@ describe("ChangelogTransformer.transformContent", () => {
 		// Issue ref converted
 		expect(result).toMatch(/\[#10\]:/);
 	});
+
+	it("aggregates multiple ### Dependencies sections into one collapsed table", () => {
+		const md = [
+			"## 1.0.0",
+			"",
+			"### Dependencies",
+			"",
+			"| Dependency | Type | Action | From | To |",
+			"| --- | --- | --- | --- | --- |",
+			"| foo | dependency | updated | 1.0.0 | 1.1.0 |",
+			"",
+			"### Dependencies",
+			"",
+			"| Dependency | Type | Action | From | To |",
+			"| --- | --- | --- | --- | --- |",
+			"| foo | dependency | updated | 1.1.0 | 1.2.0 |",
+			"| bar | dependency | updated | 2.0.0 | 2.1.0 |",
+			"",
+		].join("\n");
+		const result = ChangelogTransformer.transformContent(md);
+		// Exactly one heading survives
+		expect((result.match(/### Dependencies/g) || []).length).toBe(1);
+		// Chained foo rows collapse into exactly ONE row spanning 1.0.0 -> 1.2.0
+		expect((result.match(/\| foo/g) || []).length).toBe(1);
+		const fooRow = result.split("\n").find((line) => line.includes("| foo"));
+		expect(fooRow).toBeDefined();
+		expect(fooRow).toContain("1.0.0");
+		expect(fooRow).toContain("1.2.0");
+		expect(fooRow).not.toContain("1.1.0");
+		// The bar row survives
+		expect((result.match(/\| bar/g) || []).length).toBe(1);
+		expect(result).toContain("2.1.0");
+	});
+
+	it("drops the engine's empty ### Patch Changes wrapper left above a ### Dependencies section", () => {
+		const md = [
+			"## 1.0.0",
+			"",
+			"### Patch Changes",
+			"",
+			"### Dependencies",
+			"",
+			"| Dependency | Type | Action | From | To |",
+			"| --- | --- | --- | --- | --- |",
+			"| foo | dependency | updated | 1.0.0 | 1.1.0 |",
+			"",
+		].join("\n");
+		const result = ChangelogTransformer.transformContent(md);
+		expect(result).not.toContain("### Patch Changes");
+		expect(result).toContain("### Dependencies");
+		expect(result).toContain("foo");
+	});
+
+	it("appends a Maintenance note to an empty version block when maintenance options are given", () => {
+		const result = ChangelogTransformer.transformContent("# pkg\n\n## 2.3.1\n", {
+			maintenance: {
+				version: "2.3.1",
+				reason: { kind: "fixed", triggers: [{ name: "@savvy-web/fixed-2", version: "2.3.1" }] },
+			},
+		});
+		expect(result).toContain("### Maintenance");
+		expect(result).toContain("(fixed version group)");
+	});
+
+	it("does not add a Maintenance note when the block gained content from the preset run", () => {
+		const md =
+			"## 2.3.1\n\n### Dependencies\n\n| Dependency | Type | Action | From | To |\n| --- | --- | --- | --- | --- |\n| foo | dependency | updated | 1.0.0 | 1.1.0 |\n";
+		const result = ChangelogTransformer.transformContent(md, {
+			maintenance: { version: "2.3.1", reason: { kind: "unspecified", triggers: [] } },
+		});
+		expect(result).not.toContain("### Maintenance");
+	});
 });
 
 describe("ChangelogTransformer.transformFile", () => {

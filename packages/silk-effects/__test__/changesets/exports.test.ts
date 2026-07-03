@@ -126,4 +126,10 @@ describe("remark exports via Changesets namespace", () => {
 		expect(mod.SilkChangesetPreset).toHaveLength(5);
 		expect(mod.SilkChangesetTransformPreset).toHaveLength(7);
 	});
+
+	it("exports the maintenance-note API", async () => {
+		const mod = await import("../../src/changesets/index.js");
+		expect(mod.MaintenanceNotePlugin).toBeDefined();
+		expect(mod.deriveMaintenanceReason).toBeDefined();
+	});
 });

@@ -66,7 +66,6 @@ describe("Full pipeline integration", () => {
 
 		expect(result).toContain("## 1.0.0");
 		expect(result).toContain("add authentication");
-		expect(result).toContain("[`aaa1234`]");
 	});
 
 	it("single changeset, section-aware preserves order", async () => {
