@@ -67,6 +67,16 @@ export const BuildOptionsSchema = Schema.Struct({
 	externals: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
 	/** Packages to exclude from the bundle and replace with a stub that throws if loaded at runtime. Use for optional transitive dependencies the action never exercises (e.g. native modules). Defaults to []. */
 	ignore: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
+	/**
+	 * Packages whose dynamic `import(...)` calls must stay native `import()` at runtime instead of
+	 * being compiled into an rspack context module. Use this for packages that resolve a module path
+	 * at runtime (e.g. from a config value or a computed changelog id) and dynamically import it —
+	 * rspack cannot statically analyze a fully dynamic `import(expr)`, so it emits an empty-context
+	 * stub that throws `Cannot find module` at runtime even though the file exists on disk. Listing
+	 * the package here injects a `webpackIgnore` comment into its dynamic imports so rspack leaves
+	 * them alone. Defaults to [].
+	 */
+	nativeDynamicImports: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
 });
 
 /**
@@ -162,6 +172,7 @@ export const ConfigInputSchema = Schema.Struct({
 			sourceMap: Schema.optional(Schema.Boolean),
 			externals: Schema.optional(Schema.Array(Schema.String)),
 			ignore: Schema.optional(Schema.Array(Schema.String)),
+			nativeDynamicImports: Schema.optional(Schema.Array(Schema.String)),
 		}),
 	),
 	validation: Schema.optional(
@@ -263,6 +274,7 @@ export type Config = typeof ConfigSchema.Type;
  *     sourceMap: true,
  *     externals: ["@aws-sdk/client-s3"],
  *     ignore: ["libxmljs2"],
+ *     nativeDynamicImports: ["@changesets/apply-release-plan"],
  *   },
  *   validation: {
  *     requireActionYml: true,

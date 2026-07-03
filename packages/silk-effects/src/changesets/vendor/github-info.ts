@@ -4,8 +4,14 @@
  * @remarks
  * Bridges the `\@changesets/get-github-info` package (which returns
  * promises) into the Effect ecosystem. The {@link getGitHubInfo}
- * function wraps the upstream `getInfo()` call in `Effect.tryPromise`,
- * mapping failures to {@link GitHubApiError}.
+ * function wraps the upstream `getCommitInfo()` call in `Effect.tryPromise`,
+ * adapting its structured `CommitInfo | undefined` return back to the
+ * legacy {@link GitHubCommitInfo} shape and mapping failures (including a
+ * `not found` result) to {@link GitHubApiError}.
+ *
+ * The upstream v1 package added a `.env` fallback: it reads
+ * `GITHUB_TOKEN` from `process.env` directly when no token is otherwise
+ * configured, so the caller does not need to plumb one through.
  *
  * The {@link GitHubCommitInfo} type is the only item from this module
  * that is part of the public API (re-exported from the package root).
@@ -16,7 +22,7 @@
  * @internal
  */
 
-import { getInfo } from "@changesets/get-github-info";
+import { getCommitInfo } from "@changesets/get-github-info";
 import { Effect } from "effect";
 
 import { GitHubApiError } from "../errors.js";
@@ -67,9 +73,13 @@ export interface GitHubCommitInfo {
  * Fetch GitHub info for a commit, wrapped in Effect.
  *
  * @remarks
- * Calls the upstream `getInfo()` from `\@changesets/get-github-info`
- * within `Effect.tryPromise`. Any thrown error is caught and mapped
- * to a {@link GitHubApiError} with the operation set to `"getInfo"`.
+ * Calls the upstream `getCommitInfo()` from `\@changesets/get-github-info`
+ * within `Effect.tryPromise`, adapting its structured `CommitInfo`
+ * return to the legacy {@link GitHubCommitInfo} shape. An `undefined`
+ * result (commit or repo not found) is treated as a thrown error so it
+ * is mapped to the same {@link GitHubApiError} failure channel. Any
+ * thrown error is caught and mapped to a {@link GitHubApiError} with
+ * the operation set to `"getCommitInfo"`.
  *
  * Requires a `GITHUB_TOKEN` environment variable to be set for
  * authenticated API access (the upstream library reads it directly).
@@ -85,11 +95,25 @@ export function getGitHubInfo(params: {
 	repo: string;
 }): Effect.Effect<GitHubCommitInfo, GitHubApiError> {
 	return Effect.tryPromise({
-		try: () => getInfo({ commit: params.commit, repo: params.repo }),
+		try: async () => {
+			const info = await getCommitInfo({ commit: params.commit, repo: params.repo });
+			if (info === undefined) {
+				throw new Error(`commit ${params.commit} not found in ${params.repo}`);
+			}
+			return {
+				user: info.author?.login ?? null,
+				pull: info.pull?.number ?? null,
+				links: {
+					commit: info.commit.markdownLink,
+					pull: info.pull?.markdownLink ?? null,
+					user: info.author?.markdownLink ?? null,
+				},
+			};
+		},
 		/* v8 ignore next 5 -- error mapping tested via GitHubService test layer */
 		catch: (error) =>
 			new GitHubApiError({
-				operation: "getInfo",
+				operation: "getCommitInfo",
 				reason: error instanceof Error ? error.message : String(error),
 			}),
 	});

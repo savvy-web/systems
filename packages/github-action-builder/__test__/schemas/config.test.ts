@@ -82,6 +82,18 @@ describe("BuildOptions Schema", () => {
 		});
 		expect(options.ignore).toEqual(["libxmljs2"]);
 	});
+
+	it("defaults nativeDynamicImports to an empty array", () => {
+		const options = Schema.decodeUnknownSync(BuildOptionsSchema)({});
+		expect(options.nativeDynamicImports).toEqual([]);
+	});
+
+	it("accepts a nativeDynamicImports list", () => {
+		const options = Schema.decodeUnknownSync(BuildOptionsSchema)({
+			nativeDynamicImports: ["@changesets/apply-release-plan"],
+		});
+		expect(options.nativeDynamicImports).toEqual(["@changesets/apply-release-plan"]);
+	});
 });
 
 describe("ValidationOptions Schema", () => {
@@ -156,6 +168,13 @@ describe("ConfigInput Schema", () => {
 			build: { ignore: ["libxmljs2"] },
 		});
 		expect(input.build?.ignore).toEqual(["libxmljs2"]);
+	});
+
+	it("accepts build.nativeDynamicImports", () => {
+		const input = Schema.decodeUnknownSync(ConfigInputSchema)({
+			build: { nativeDynamicImports: ["@changesets/apply-release-plan"] },
+		});
+		expect(input.build?.nativeDynamicImports).toEqual(["@changesets/apply-release-plan"]);
 	});
 });
 

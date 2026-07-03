@@ -237,3 +237,58 @@ describe("ReleasePlanner.apply", () => {
 		expect(readFixtureChangelog(root, "packages/f2")).not.toContain("### Maintenance");
 	});
 });
+
+describe("ReleasePlanner.apply changelogModules", () => {
+	it("rewrites a mapped changelog id to the module path and applies", async () => {
+		const root = makeReleaseFixture({
+			packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+			changesets: [{ id: "calm-owls-run", releases: { "@scope/a": "minor" }, summary: "feat: mapped changelog" }],
+		});
+		roots.push(root);
+		// Fixture config names a package that is NOT installed anywhere.
+		const configPath = join(root, ".changeset/config.json");
+		const config = JSON.parse(readFileSync(configPath, "utf-8"));
+		config.changelog = ["@savvy-web/not-installed/changelog", { repo: "o/r" }];
+		writeFileSync(configPath, JSON.stringify(config, null, 2));
+		// A real module file the map points at.
+		const modPath = join(root, "mapped-changelog.mjs");
+		writeFileSync(
+			modPath,
+			"export default {\n" +
+				"  getReleaseLine: async (cs) => `- mapped: ${cs.summary}`,\n" +
+				'  getDependencyReleaseLine: async () => "",\n' +
+				"};\n",
+		);
+
+		const planner = await getPlanner(root);
+		const result = await Effect.runPromise(
+			planner.apply(root, { changelogModules: { "@savvy-web/not-installed/changelog": modPath } }),
+		);
+
+		expect(result.releases[0].newVersion).toBe("1.1.0");
+		const changelog = readFixtureChangelog(root, "packages/a");
+		expect(changelog).toContain("mapped: feat: mapped changelog");
+	});
+
+	it("fails with a typed error naming an unmapped id", async () => {
+		const root = makeReleaseFixture({
+			packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+			changesets: [{ id: "brisk-ants-march", releases: { "@scope/a": "patch" }, summary: "fix: unmapped" }],
+		});
+		roots.push(root);
+		const configPath = join(root, ".changeset/config.json");
+		const config = JSON.parse(readFileSync(configPath, "utf-8"));
+		config.changelog = ["@custom/generator", null];
+		writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+		const planner = await getPlanner(root);
+		const exit = await Effect.runPromiseExit(
+			planner.apply(root, { changelogModules: { "@savvy-web/changelog": "/tmp/nope.mjs" } }),
+		);
+
+		expect(Exit.isFailure(exit)).toBe(true);
+		const message = Cause.pretty(Exit.isFailure(exit) ? exit.cause : Cause.empty);
+		expect(message).toContain("@custom/generator");
+		expect(message).toContain("@savvy-web/changelog");
+	});
+});

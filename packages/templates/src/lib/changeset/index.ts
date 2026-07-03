@@ -33,7 +33,7 @@ export function createChangeset(options: unknown): TemplateEntry[] {
 	const opts = Schema.decodeUnknownSync(ChangesetOptions)(options);
 
 	const config: Record<string, unknown> = {
-		$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+		$schema: "https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json",
 		changelog: opts.repo ? [opts.changelog, { repo: opts.repo }] : opts.changelog,
 		commit: false,
 		fixed: [],

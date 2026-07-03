@@ -9,7 +9,7 @@ describe("changeset template", () => {
 		expect(result[0].filename).toBe(".changeset/config.json");
 
 		const parsed = JSON.parse(result[0].content);
-		expect(parsed.$schema).toBe("https://unpkg.com/@changesets/config@3.1.1/schema.json");
+		expect(parsed.$schema).toBe("https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json");
 		expect(parsed.access).toBe("restricted");
 		expect(parsed.baseBranch).toBe("main");
 		expect(parsed.commit).toBe(false);

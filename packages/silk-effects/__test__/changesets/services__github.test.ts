@@ -1,9 +1,34 @@
-import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { Effect, Exit } from "effect";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@changesets/get-github-info", () => ({
+	getCommitInfo: vi.fn(async ({ commit }: { commit: string }) =>
+		commit === "missing"
+			? undefined
+			: {
+					commit: {
+						sha: commit,
+						url: "https://github.com/o/r/commit/abc",
+						markdownLink: "[`abc1234`](https://github.com/o/r/commit/abc)",
+					},
+					author: {
+						login: "spencer",
+						url: "https://github.com/spencer",
+						markdownLink: "[@spencer](https://github.com/spencer)",
+					},
+					pull: {
+						number: 7,
+						url: "https://github.com/o/r/pull/7",
+						markdownLink: "[#7](https://github.com/o/r/pull/7)",
+					},
+				},
+	),
+}));
 
 import { GitHubApiError } from "../../src/changesets/errors.js";
 import { GitHubLive, GitHubService, makeGitHubTest } from "../../src/changesets/services/github.js";
 import type { GitHubCommitInfo } from "../../src/changesets/vendor/github-info.js";
+import { getGitHubInfo } from "../../src/changesets/vendor/github-info.js";
 
 const MOCK_INFO: GitHubCommitInfo = {
 	user: "octocat",
@@ -71,5 +96,26 @@ describe("GitHubService (test layer)", () => {
 		expect(error).toBeInstanceOf(GitHubApiError);
 		expect(error.reason).toContain("No mock response for commit deadbeef123");
 		expect(error.message).toContain("GitHub API error during getInfo");
+	});
+});
+
+describe("getGitHubInfo (v3 adapter)", () => {
+	it("adapts CommitInfo to the legacy GitHubCommitInfo shape", async () => {
+		const info = await Effect.runPromise(getGitHubInfo({ commit: "abc1234", repo: "o/r" }));
+		expect(info.user).toBe("spencer");
+		expect(info.pull).toBe(7);
+		expect(info.links.pull).toBe("[#7](https://github.com/o/r/pull/7)");
+		expect(info.links.user).toBe("[@spencer](https://github.com/spencer)");
+		expect(info.links.commit).toContain("commit/abc");
+	});
+
+	it("fails with GitHubApiError when the commit is not found", async () => {
+		const program = Effect.gen(function* () {
+			return yield* getGitHubInfo({ commit: "missing", repo: "o/r" });
+		});
+
+		const error = await Effect.runPromise(program.pipe(Effect.flip));
+		expect(error).toBeInstanceOf(GitHubApiError);
+		expect(error.reason).toContain("not found");
 	});
 });

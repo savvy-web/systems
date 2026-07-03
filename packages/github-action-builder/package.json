@@ -36,7 +36,8 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./tsconfig/action.json": "./public/tsconfig/action.json"
+		"./tsconfig/action.json": "./public/tsconfig/action.json",
+		"./loaders/webpack-ignore-dynamic-imports.cjs": "./public/loaders/webpack-ignore-dynamic-imports.cjs"
 	},
 	"bin": {
 		"github-action-builder": "./src/cli/index.ts"

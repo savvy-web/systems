@@ -1,4 +1,4 @@
-import getReleasePlan from "@changesets/get-release-plan";
+import { getReleasePlan } from "@changesets/get-release-plan";
 import { getPackages } from "@manypkg/get-packages";
 
 /**

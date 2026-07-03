@@ -6,8 +6,8 @@ category: architecture
 type: architecture
 completeness: 95
 created: 2026-01-29
-updated: 2026-06-25
-last-synced: 2026-06-25
+updated: 2026-07-03
+last-synced: 2026-07-03
 related:
   - ../github-action-effects/index.md
 dependencies: []
@@ -61,20 +61,22 @@ Configuration is an optional `action.config.ts` resolved from cwd (override with
 
 All schemas use `@effect/schema` (not Zod) with `Schema.optionalWith` for defaults — see `src/schemas/config.ts` for the `Config`, `BuildOptions`, `ValidationOptions` and `PersistLocalOptions` shapes, and `src/schemas/action-yml.ts` for the `action.yml` schema. The schemas are the source of truth for defaults; do not restate them here.
 
-Two `build` knobs control what leaves the bundle, and `ignore` takes precedence over `externals`:
+Three `build` knobs control what leaves the bundle, and `ignore` takes precedence over `externals`:
 
 - **`externals`** — packages left as runtime imports, expected to be present at runtime. `node:` builtins are always external (see below).
 - **`ignore`** — packages removed from the bundle and replaced with a stub that throws if loaded at runtime. Use for optional transitive deps the action never exercises (e.g. native modules).
+- **`nativeDynamicImports`** — packages whose dynamic `import(...)` calls must stay native runtime `import()` instead of being compiled into an rspack context module. Use for packages that resolve a module path at runtime and dynamically import it (e.g. `@changesets/apply-release-plan` loading a configured changelog module). See the interop bullet below.
 
 ## Build pipeline and rsbuild interop
 
-Each entry is bundled by `bundleEntry` in `src/services/build-live.ts`. The output is enforced single-file: `chunkSplit: { strategy: "all-in-one" }` plus `tools.rspack.output.asyncChunks: false`, so dynamic `import()` calls fold back into the parent chunk rather than emitting separate numbered chunks. Tree-shaking is unaffected. The result is always exactly one `.js` per detected entry — `dist/main.js`, `dist/pre.js`, `dist/post.js` and one `dist/<name>.js` per declared worker.
+Each entry is bundled by `bundleEntry` in `src/services/build-live.ts`. The output is enforced single-file: `chunkSplit: { strategy: "all-in-one" }` plus `tools.rspack.output.asyncChunks: false`, so dynamic `import()` calls fold back into the parent chunk rather than emitting separate numbered chunks. Tree-shaking is unaffected. The one exception is `build.nativeDynamicImports` (see below): a listed package's dynamic imports are left as native runtime `import()` calls, resolved for real when the action runs, rather than being folded or context-moduled. The result is always exactly one `.js` per detected entry — `dist/main.js`, `dist/pre.js`, `dist/post.js` and one `dist/<name>.js` per declared worker.
 
 The non-obvious interop decisions, all in `build-live.ts`, are the reason rsbuild was chosen over the unmaintained ncc:
 
 - **`node:` builtins → `node-commonjs` external** (issue #79). With ESM output, the default external type makes `require("node:*")` inside a bundled CJS dep return an ESM namespace, breaking the TypeScript `__importDefault` helper with "instanceof is not callable". The `node-commonjs` type preserves real `require()` semantics.
 - **Single externals function, not a function-plus-array** (issue #81). Leading an `externals` array with a function made rspack stop consulting trailing string entries, so user-configured string externals were silently bundled and failed to resolve. One function handles every case: `node:` → `node-commonjs`, user externals (not also ignored) → runtime import, everything else → bundle.
 - **`build.ignore` stub** — a single throwing `.mjs` is written to a deterministic project-local path (`node_modules/.cache/github-action-builder/ignore-stub.mjs`) and each ignored specifier is aliased to it via `resolve.alias` with a `$` exact-match suffix. The fixed path keeps the committed bundle reproducible across builds (issue #94); a `mkdtemp` path changed the output every run.
+- **`build.nativeDynamicImports` → the `webpackIgnore`-injecting loader.** rspack compiles a fully dynamic `import(expr)` — a non-literal argument or an interpolated template literal — into a context module that throws `Cannot find module` at runtime even when the file exists on disk, which breaks packages that resolve a module path at runtime and import it. For each listed package, `buildNativeDynamicImportRules` (`src/services/native-dynamic-imports.ts`) adds one rspack module rule matching that package's resolved path under `node_modules` (flat and pnpm layouts) and routes its source through `webpack-ignore-dynamic-imports.cjs` — a pure string-transform loader that injects `/* webpackIgnore: true */` into every fully-dynamic `import(` call (idempotent; other magic comments like `webpackChunkName` do not suppress injection), so rspack leaves those calls as native `import()`. The loader ships as a genuine on-disk `.cjs` asset (rspack loaders are `require()`d at build time) under `public/loaders/`, exported at `./loaders/webpack-ignore-dynamic-imports.cjs` and resolved via `import.meta.resolve` through the package's own exports map so the path is correct from both `src` and built `dist`. See the loader file for the exact injection rules and documented non-AST limitations.
 - **`__dirname` / `__filename` shims** via `tools.rspack.node: "node-module"`. CJS deps that reference these globals (e.g. `@cyclonedx/cyclonedx-library`) throw "__dirname is not defined" inside ESM; rspack derives them from `import.meta.url` instead.
 - **`legalComments: "inline"`** keeps third-party license banners inline rather than extracting them to `*.LICENSE.txt` sidecars, which are committed-action noise, while preserving attribution (issue #94).
 

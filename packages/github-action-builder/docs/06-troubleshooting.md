@@ -159,6 +159,31 @@ Bundle failed: Cannot find module 'some-package'
    });
    ```
 
+### "Cannot find module" at runtime from a dynamic import
+
+**Error:**
+
+```text
+Error: Cannot find module '/path/that/exists/on/disk.js'
+```
+
+The action fails at runtime with `Cannot find module` for a path that exists on disk, typically from inside a bundled dependency.
+
+**Cause:** rspack cannot statically resolve a fully dynamic `import(expr)` — a bare variable or an interpolated template literal — so it compiles the call into a context module that throws for any path it did not see at build time. Packages that resolve a module path at runtime and then dynamically import it break when bundled this way.
+
+**Solution:** Add the package that performs the dynamic import to `nativeDynamicImports` so its `import()` calls stay native at runtime:
+
+```typescript
+// action.config.ts
+export default defineConfig({
+  build: {
+    nativeDynamicImports: ["@changesets/apply-release-plan"],
+  },
+});
+```
+
+The dynamically imported module must exist on disk when the action runs, since the bundler no longer inlines it. See [Configuration](./02-configuration.md#nativedynamicimports) for details.
+
 ### "Write error: EACCES"
 
 **Error:**
