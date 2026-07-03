@@ -113,7 +113,11 @@ export {
 export type { GitHubServiceShape } from "./services/github.js";
 export { GitHubService, GitHubServiceBase } from "./services/github.js";
 export type { MaintenanceReason, MaintenanceTrigger } from "./services/maintenance-reason.js";
-export { deriveMaintenanceReason } from "./services/maintenance-reason.js";
+export {
+	MaintenanceReasonSchema,
+	MaintenanceTriggerSchema,
+	deriveMaintenanceReason,
+} from "./services/maintenance-reason.js";
 export type { MarkdownServiceShape } from "./services/markdown.js";
 export { MarkdownService, MarkdownServiceBase } from "./services/markdown.js";
 export type { ReleasePlannerShape } from "./services/release-planner.js";

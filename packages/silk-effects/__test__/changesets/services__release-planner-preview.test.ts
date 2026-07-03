@@ -71,6 +71,7 @@ describe("ReleasePlanner.preview", () => {
 		expect(fixed1?.changelogEntry).toContain("`@scope/fixed-2@2.3.1`");
 		expect(fixed1?.changelogEntry).toContain("(fixed version group)");
 		const fixed2 = preview.releases.find((r) => r.name === "@scope/fixed-2");
+		expect(fixed2).toBeDefined();
 		expect(fixed2?.changelogEntry).not.toContain("### Maintenance");
 	});
 

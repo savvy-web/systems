@@ -131,5 +131,7 @@ describe("remark exports via Changesets namespace", () => {
 		const mod = await import("../../src/changesets/index.js");
 		expect(mod.MaintenanceNotePlugin).toBeDefined();
 		expect(mod.deriveMaintenanceReason).toBeDefined();
+		expect(mod.MaintenanceReasonSchema).toBeDefined();
+		expect(mod.MaintenanceTriggerSchema).toBeDefined();
 	});
 });

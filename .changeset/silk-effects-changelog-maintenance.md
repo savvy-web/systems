@@ -30,7 +30,7 @@ One consequence: identical summaries from separate changesets now genuinely dedu
 
 Version-only releases forced by `fixed`/`linked` version groups now get a generated `### Maintenance` note instead of shipping an empty version block. The note names the triggering package (e.g. "Released in lockstep with `@scope/pkg@1.2.3` (fixed version group)."), with a generic fallback sentence when the trigger can't be determined.
 
-New public API: `MaintenanceNotePlugin`, `deriveMaintenanceReason`, `MaintenanceReason`, `MaintenanceTrigger`, and a `maintenance` option on `ChangelogTransformer`'s `TransformOptions`.
+New public API: `MaintenanceNotePlugin`, `deriveMaintenanceReason`, `MaintenanceReasonSchema`, `MaintenanceTriggerSchema`, the derived `MaintenanceReason`/`MaintenanceTrigger` types, and a `maintenance` option on `ChangelogTransformer`'s `TransformOptions`.
 
 ### Dependency tables under their own heading
 

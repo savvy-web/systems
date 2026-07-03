@@ -15,6 +15,7 @@
  */
 
 import type { ComprehensiveRelease, Config, ReleasePlan } from "@changesets/types";
+import { Schema } from "effect";
 
 import { ChangesetConfig } from "../../services/ChangesetConfig.js";
 
@@ -23,24 +24,38 @@ import { ChangesetConfig } from "../../services/ChangesetConfig.js";
  *
  * @public
  */
-export interface MaintenanceTrigger {
+export const MaintenanceTriggerSchema = Schema.Struct({
 	/** Package name of the triggering co-member. */
-	readonly name: string;
+	name: Schema.String,
 	/** The co-member's new version in the same release plan. */
-	readonly version: string;
-}
+	version: Schema.String,
+});
+
+/**
+ * A group co-member whose own changesets forced this release.
+ *
+ * @public
+ */
+export type MaintenanceTrigger = typeof MaintenanceTriggerSchema.Type;
 
 /**
  * Why a package is releasing with no changesets of its own.
  *
  * @public
  */
-export interface MaintenanceReason {
+export const MaintenanceReasonSchema = Schema.Struct({
 	/** Coupling that forced the release; `"unspecified"` when undetermined. */
-	readonly kind: "fixed" | "linked" | "unspecified";
+	kind: Schema.Literal("fixed", "linked", "unspecified"),
 	/** Triggering co-members; empty for `"unspecified"`. */
-	readonly triggers: ReadonlyArray<MaintenanceTrigger>;
-}
+	triggers: Schema.Array(MaintenanceTriggerSchema),
+});
+
+/**
+ * Why a package is releasing with no changesets of its own.
+ *
+ * @public
+ */
+export type MaintenanceReason = typeof MaintenanceReasonSchema.Type;
 
 /**
  * Derive the {@link MaintenanceReason} for a release, or `undefined` when the

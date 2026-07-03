@@ -142,7 +142,9 @@ export function getReleaseLine(
 						lines.push(firstContentLine);
 						lines.push(...contentLines.slice(1));
 					} else {
-						lines.push(`- ${section.content}`);
+						// Indent prose continuation lines so they stay inside the list item
+						lines.push(`- ${firstContentLine}`);
+						lines.push(...contentLines.slice(1).map((line) => (line.length > 0 ? `  ${line}` : line)));
 					}
 				}
 				lines.push("");

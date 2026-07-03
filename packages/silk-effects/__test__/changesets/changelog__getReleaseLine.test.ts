@@ -92,6 +92,16 @@ describe("getReleaseLine", () => {
 		expect(result).toContain("New thing");
 	});
 
+	it("indents multi-line prose section content inside the list item", async () => {
+		const result = await run({
+			id: "prose-section",
+			summary: "## Features\n\nFirst prose line\nsecond prose line",
+			releases: [{ name: "@savvy-web/changesets", type: "minor" }],
+			commit: "abc1234567890",
+		});
+		expect(result).toContain("- First prose line\n  second prose line");
+	});
+
 	it("backward-compat flat-text summary", async () => {
 		const result = await run({
 			id: "flat",
