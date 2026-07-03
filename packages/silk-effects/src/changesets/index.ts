@@ -61,6 +61,7 @@ export { Changelog } from "./api/changelog.js";
 export { DependencyTable } from "./api/dependency-table.js";
 export type { LintMessage } from "./api/linter.js";
 export { ChangesetLinter } from "./api/linter.js";
+export type { TransformOptions } from "./api/transformer.js";
 export { ChangelogTransformer } from "./api/transformer.js";
 
 // === Changelog formatter entry point (Changesets API integration) ===
@@ -111,6 +112,12 @@ export {
 } from "./services/deps-regen.js";
 export type { GitHubServiceShape } from "./services/github.js";
 export { GitHubService, GitHubServiceBase } from "./services/github.js";
+export type { MaintenanceReason, MaintenanceTrigger } from "./services/maintenance-reason.js";
+export {
+	MaintenanceReasonSchema,
+	MaintenanceTriggerSchema,
+	deriveMaintenanceReason,
+} from "./services/maintenance-reason.js";
 export type { MarkdownServiceShape } from "./services/markdown.js";
 export { MarkdownService, MarkdownServiceBase } from "./services/markdown.js";
 export type { ReleasePlannerShape } from "./services/release-planner.js";
@@ -240,6 +247,8 @@ export { AggregateDependencyTablesPlugin } from "./remark/plugins/aggregate-depe
 export { ContributorFootnotesPlugin } from "./remark/plugins/contributor-footnotes.js";
 export { DeduplicateItemsPlugin } from "./remark/plugins/deduplicate-items.js";
 export { IssueLinkRefsPlugin } from "./remark/plugins/issue-link-refs.js";
+export type { MaintenanceNoteOptions } from "./remark/plugins/maintenance-note.js";
+export { MaintenanceNotePlugin } from "./remark/plugins/maintenance-note.js";
 export { MergeSectionsPlugin } from "./remark/plugins/merge-sections.js";
 export { NormalizeFormatPlugin } from "./remark/plugins/normalize-format.js";
 export { ReorderSectionsPlugin } from "./remark/plugins/reorder-sections.js";

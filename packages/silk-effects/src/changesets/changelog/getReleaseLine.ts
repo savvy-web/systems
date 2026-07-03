@@ -10,7 +10,7 @@
  *
  * 1. **Section-aware changesets** — When the changeset summary contains h2
  *    headings (e.g., `## Features`, `## Bug Fixes`), each section is rendered
- *    as an h3 heading with commit-linked list items beneath it. This mode
+ *    as an h3 heading with list items beneath it. This mode
  *    produces multi-line output suitable for rich changelogs.
  *
  * 2. **Flat-text changesets** — When the summary is plain text without section
@@ -20,7 +20,6 @@
  *
  * In both modes, the formatter:
  * - Fetches GitHub metadata (PR number, author) via {@link GitHubService}
- * - Generates shortened commit hash links (`[abc1234](...)`)
  * - Extracts and renders issue references (Closes, Fixes, Refs)
  * - Appends PR and user attribution when available
  *
@@ -67,7 +66,7 @@ import { formatChangelogEntry, formatPRAndUserAttribution } from "./formatting.j
  *    `Fixes #N`, and `Refs #N` patterns.
  * 5. **Build attribution** — Format PR link and user credit from GitHub info.
  * 6. **Section-aware output** — If sections were found, render each as an
- *    h3 heading with commit-linked list items.
+ *    h3 heading with list items.
  * 7. **Flat-text fallback** — Otherwise, produce a single `- entry` line
  *    with the resolved category heading.
  *
@@ -135,21 +134,17 @@ export function getReleaseLine(
 				lines.push(`### ${section.category.heading}`);
 				lines.push("");
 
-				// Format content as list items with commit link
-				const commitPrefix = changeset.commit
-					? `[\`${changeset.commit.substring(0, 7)}\`](https://github.com/${options.repo}/commit/${changeset.commit}) `
-					: "";
-
 				if (section.content) {
-					// Content may already contain list items; prefix first line
+					// Content may already contain list items; render the first line as-is
 					const contentLines = section.content.split("\n");
 					const firstContentLine = contentLines[0];
 					if (firstContentLine.startsWith("- ") || firstContentLine.startsWith("* ")) {
-						// Content already has list markers
-						lines.push(`${firstContentLine.substring(0, 2)}${commitPrefix}${firstContentLine.substring(2)}`);
+						lines.push(firstContentLine);
 						lines.push(...contentLines.slice(1));
 					} else {
-						lines.push(`- ${commitPrefix}${section.content}`);
+						// Indent prose continuation lines so they stay inside the list item
+						lines.push(`- ${firstContentLine}`);
+						lines.push(...contentLines.slice(1).map((line) => (line.length > 0 ? `  ${line}` : line)));
 					}
 				}
 				lines.push("");
@@ -167,7 +162,6 @@ export function getReleaseLine(
 			type: category.heading,
 			summary: changeset.summary,
 			issues: issueRefs,
-			...(changeset.commit ? { commit: changeset.commit } : {}),
 		};
 
 		const entry = formatChangelogEntry(entryInput, { repo: options.repo });

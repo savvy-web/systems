@@ -3,8 +3,8 @@
  *
  * Provides the low-level string-formatting functions used by
  * {@link getReleaseLine} and {@link getDependencyReleaseLine} to produce
- * markdown changelog entries. These helpers handle commit-link generation,
- * issue reference formatting, and pull-request/user attribution.
+ * markdown changelog entries. These helpers handle issue reference
+ * formatting and pull-request/user attribution.
  *
  * @remarks
  * This module is the final stage of the release-line formatting pipeline.
@@ -25,14 +25,12 @@ import { extractUrlFromMarkdown } from "../utils/markdown-link.js";
  * A single changelog entry ready for formatting.
  *
  * Represents the fully-resolved data needed to render one changelog line:
- * the commit hash (optional), the conventional commit type, the human-readable
- * summary, and any issue references extracted from the changeset body.
+ * the conventional commit type, the human-readable summary, and any issue
+ * references extracted from the changeset body.
  *
  * @internal
  */
 export interface ChangelogEntry {
-	/** Full SHA-1 commit hash. When present, a short-hash link is rendered. */
-	commit?: string;
 	/** Conventional commit type or resolved category heading (e.g., `"Features"`, `"Bug Fixes"`). */
 	type: string;
 	/** Human-readable summary description of the change. */
@@ -58,8 +56,8 @@ const ISSUE_CATEGORIES = [
 /**
  * Format a changelog entry into a markdown string with GitHub links.
  *
- * Produces a commit-link prefix (shortened to 7 characters) followed by the
- * summary text and any issue references, each rendered as GitHub links.
+ * Produces the summary text followed by any issue references, each
+ * rendered as GitHub links.
  *
  * @remarks
  * The output does **not** include a leading `- ` list marker — the caller
@@ -69,13 +67,11 @@ const ISSUE_CATEGORIES = [
  *
  * Output format examples:
  *
- * With commit: `[short-hash](commit-url) Summary text`
+ * Without issues: `Summary text`
  *
  * With issues: `Summary text` followed by `Closes: [#1](issue-url)`
  *
- * With both: `[short-hash](commit-url) Summary text` followed by `Fixes: [#2](issue-url)`
- *
- * @param entry - The changelog entry containing commit, summary, and issue data
+ * @param entry - The changelog entry containing summary and issue data
  * @param options - Must include `repo` in `owner/repo` format for link generation
  * @returns Formatted markdown string (without leading `- `)
  *
@@ -83,11 +79,6 @@ const ISSUE_CATEGORIES = [
  */
 export function formatChangelogEntry(entry: ChangelogEntry, options: { repo: string }): string {
 	const parts: string[] = [];
-
-	if (entry.commit) {
-		const shortHash = entry.commit.substring(0, 7);
-		parts.push(`[\`${shortHash}\`](https://github.com/${options.repo}/commit/${entry.commit})`);
-	}
 
 	parts.push(entry.summary.trim());
 

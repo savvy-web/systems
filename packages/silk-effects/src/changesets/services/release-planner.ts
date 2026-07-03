@@ -11,11 +11,11 @@
  *
  */
 
-import { isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import applyReleasePlan from "@changesets/apply-release-plan";
 import { read as readChangesetConfig } from "@changesets/config";
 import getReleasePlan from "@changesets/get-release-plan";
-import type { ReleasePlan } from "@changesets/types";
+import type { Config, ReleasePlan } from "@changesets/types";
 import { FileSystem } from "@effect/platform";
 import { getPackages } from "@manypkg/get-packages";
 import { Context, Effect, Layer } from "effect";
@@ -31,6 +31,8 @@ import type {
 import { VersionFiles } from "../utils/version-files.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector } from "./config-inspector.js";
+import type { MaintenanceReason } from "./maintenance-reason.js";
+import { deriveMaintenanceReason } from "./maintenance-reason.js";
 
 /**
  * The v1 `Packages` shape the changesets engine consumes (its own transitive
@@ -150,6 +152,17 @@ export function extractVersionBlock(changelog: string, version: string): string 
 	return lines.slice(start, end).join("\n").trim();
 }
 
+/** Maintenance reasons for every changeset-less release in the plan, keyed by package name. */
+function maintenanceReasons(plan: ReleasePlan, config: Config): Map<string, MaintenanceReason> {
+	const reasons = new Map<string, MaintenanceReason>();
+	for (const r of plan.releases) {
+		if (r.type === "none") continue;
+		const reason = deriveMaintenanceReason(r, plan, config);
+		if (reason) reasons.set(r.name, reason);
+	}
+	return reasons;
+}
+
 /**
  * Render a non-destructive preview by redirecting every write into a
  * scope-managed temp directory (cleaned up automatically when the scope
@@ -165,6 +178,7 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 			try: () => readChangesetConfig(root, packages),
 			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 		});
+		const reasonByName = maintenanceReasons(plan, config);
 
 		const preMode: ChangesetPreview["preMode"] = plan.preState ? plan.preState.mode : null;
 		const changesets: PendingChangeset[] = plan.changesets.map((cs) => ({
@@ -244,8 +258,13 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 			if (!clExists) continue;
 			// Sync engine call: a throw here must stay on the typed failure path
 			// rather than escaping the gen body as a defect.
+			const reason = reasonByName.get(r.name);
 			yield* Effect.try({
-				try: () => ChangelogTransformer.transformFile(clPath),
+				try: () =>
+					ChangelogTransformer.transformFile(
+						clPath,
+						reason ? { maintenance: { version: r.newVersion, reason } } : undefined,
+					),
 				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 			});
 			const content = yield* fs.readFileString(clPath);
@@ -298,11 +317,23 @@ function applyEffect(
 
 		let touchedFiles: string[] = [];
 		if (!dryRun) {
+			const reasonByName = maintenanceReasons(plan, config);
+			const versionByPkgName = new Map(plan.releases.map((r) => [r.name, r.newVersion]));
+			const nameByDir = new Map<string, string>();
+			for (const p of packages.packages) nameByDir.set(p.dir, p.packageJson.name);
+			if (packages.root.packageJson.name) nameByDir.set(packages.root.dir, packages.root.packageJson.name);
 			touchedFiles = yield* Effect.tryPromise({
 				try: async () => {
 					const touched = await applyReleasePlan(plan, packages, config);
 					for (const f of touched) {
-						if (f.endsWith("CHANGELOG.md")) ChangelogTransformer.transformFile(f);
+						if (!f.endsWith("CHANGELOG.md")) continue;
+						const pkgName = nameByDir.get(dirname(f));
+						const reason = pkgName ? reasonByName.get(pkgName) : undefined;
+						const newVersion = pkgName ? versionByPkgName.get(pkgName) : undefined;
+						ChangelogTransformer.transformFile(
+							f,
+							reason && newVersion ? { maintenance: { version: newVersion, reason } } : undefined,
+						);
 					}
 					return touched;
 				},

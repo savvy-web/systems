@@ -32,7 +32,6 @@ describe("getReleaseLine", () => {
 			releases: [{ name: "@savvy-web/changesets", type: "minor" }],
 			commit: "abc1234567890",
 		});
-		expect(result).toContain("[`abc1234`]");
 		expect(result).toContain("add authentication system");
 		expect(result).toContain("[#42]");
 		expect(result).toContain("@octocat");
@@ -93,6 +92,16 @@ describe("getReleaseLine", () => {
 		expect(result).toContain("New thing");
 	});
 
+	it("indents multi-line prose section content inside the list item", async () => {
+		const result = await run({
+			id: "prose-section",
+			summary: "## Features\n\nFirst prose line\nsecond prose line",
+			releases: [{ name: "@savvy-web/changesets", type: "minor" }],
+			commit: "abc1234567890",
+		});
+		expect(result).toContain("- First prose line\n  second prose line");
+	});
+
 	it("backward-compat flat-text summary", async () => {
 		const result = await run({
 			id: "flat",
@@ -110,5 +119,37 @@ describe("getReleaseLine", () => {
 		});
 		expect(result).toContain("Closes:");
 		expect(result).toContain("[#123]");
+	});
+
+	it("does not inject a commit link prefix in section-aware mode", async () => {
+		const result = await run({
+			id: "no-prefix-1",
+			summary: "## Features\n\n- Added search",
+			releases: [{ name: "pkg", type: "minor" }],
+			commit: "abc1234567890",
+		});
+		expect(result).not.toContain("commit/abc1234567890");
+		expect(result).not.toContain("[`abc1234`]");
+		expect(result).toContain("Added search");
+	});
+
+	it("does not inject a commit link prefix in flat-text mode", async () => {
+		const result = await run({
+			id: "no-prefix-2",
+			summary: "feat: add search",
+			releases: [{ name: "pkg", type: "minor" }],
+			commit: "abc1234567890",
+		});
+		expect(result).not.toContain("commit/abc1234567890");
+	});
+
+	it("preserves links the author wrote in the changeset body", async () => {
+		const result = await run({
+			id: "authored-link",
+			summary: "## Features\n\n- See [the RFC](https://github.com/owner/repo/issues/9)",
+			releases: [{ name: "pkg", type: "minor" }],
+			commit: "abc1234567890",
+		});
+		expect(result).toContain("[the RFC](https://github.com/owner/repo/issues/9)");
 	});
 });

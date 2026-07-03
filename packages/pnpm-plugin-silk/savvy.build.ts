@@ -189,8 +189,8 @@ await build({
 							strategy: "interop",
 						},
 						"@types/node": {
-							range: "^26.0.1",
-							peer: "^26.0.0",
+							range: "^26.1.0",
+							peer: "^26.1.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -275,12 +275,7 @@ await build({
 				"xdg-effect",
 			],
 			overrides: {
-				"@isaacs/brace-expansion": "^5.0.1",
-				lodash: "^4.17.23",
-				"markdown-it": "^14.1.1",
-				minimatch: ">=10.2.3",
-				"smol-toml": ">=1.6.1",
-				tmp: "^0.2.7",
+				"@manypkg/find-root>@types/node": "catalog:silk",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {
@@ -334,7 +329,6 @@ await build({
 			blockExoticSubdeps: true,
 			peerDependencyRules: {
 				allowedVersions: {
-					"@types/node": "^26.0.0",
 					"@effect/vitest>vitest": "^4.1.0",
 					"@typescript-eslint/project-service>typescript": "^6.0.0",
 					"@typescript-eslint/tsconfig-utils>typescript": "^6.0.0",

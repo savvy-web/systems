@@ -49,6 +49,6 @@ If `releases` is empty, report "No pending changesets" and stop.
 - Do not modify any files — this is a read-only preview.
 
 > **Preview reflects the working tree.** Changeset files are not yet committed,
-> so author, PR, and commit links won't resolve until release. `savvy changeset
+> so author and PR links won't resolve until release. `savvy changeset
 > version` run at this same point has the identical gap, so content and ordering
 > match what ships.

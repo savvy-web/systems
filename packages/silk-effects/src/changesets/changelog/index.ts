@@ -32,7 +32,7 @@
  *    config is decoded through `ChangesetOptionsSchema`.
  * 2. **Release line formatting** — each changeset is formatted by
  *    `getReleaseLine`, which resolves GitHub metadata, parses sections,
- *    and produces structured markdown with commit links and attribution.
+ *    and produces structured markdown with attribution.
  * 3. **Dependency table formatting** — bulk dependency updates are
  *    formatted by `getDependencyReleaseLine` into a markdown table.
  *

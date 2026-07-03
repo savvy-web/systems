@@ -5,20 +5,6 @@ import { formatChangelogEntry, formatPRAndUserAttribution } from "../../src/chan
 describe("formatChangelogEntry", () => {
 	const repo = "owner/repo";
 
-	it("formats entry with commit link", () => {
-		const result = formatChangelogEntry(
-			{
-				commit: "abc123def456789",
-				type: "feat",
-				summary: "add new feature",
-				issues: { closes: [], fixes: [], refs: [] },
-			},
-			{ repo },
-		);
-		expect(result).toContain("[`abc123d`](https://github.com/owner/repo/commit/abc123def456789)");
-		expect(result).toContain("add new feature");
-	});
-
 	it("formats entry without commit", () => {
 		const result = formatChangelogEntry(
 			{

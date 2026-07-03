@@ -10,11 +10,14 @@
  * handles the "Updated dependencies" section that Changesets appends
  * when a package's dependencies are bumped as part of a release.
  *
- * The output is a GFM (GitHub Flavored Markdown) table with columns:
- * `Dependency`, `Type`, `Action`, `From`, `To`. The dependency type
- * is inferred from the consuming package's `package.json` fields
- * (`dependencies`, `devDependencies`, `peerDependencies`,
- * `optionalDependencies`) via the {@link inferDependencyType} helper.
+ * The output is a `### Dependencies` h3 heading followed by a GFM
+ * (GitHub Flavored Markdown) table with columns: `Dependency`, `Type`,
+ * `Action`, `From`, `To`. The dependency type is inferred from the
+ * consuming package's `package.json` fields (`dependencies`,
+ * `devDependencies`, `peerDependencies`, `optionalDependencies`) via
+ * the {@link inferDependencyType} helper. Downstream, the heading is
+ * consumed by `AggregateDependencyTablesPlugin`, which locates and
+ * merges per-package dependency tables during changelog assembly.
  *
  * ### Dependency type inference
  *
@@ -93,7 +96,8 @@ function inferDependencyType(dep: ModCompWithPackage): DependencyTableType {
  * The function maps each `ModCompWithPackage` entry to a `DependencyTableRow`,
  * inferring the dependency type from the consuming package's `package.json`,
  * then delegates to `serializeDependencyTableToMarkdown` for GFM table
- * rendering. Returns an empty string when no dependencies were updated.
+ * rendering, prefixed with a `### Dependencies` heading. Returns an empty
+ * string when no dependencies were updated.
  *
  * The `_changesets` and `_options` parameters are part of the Changesets API
  * contract but are not used in the table format. They are retained for
@@ -102,7 +106,7 @@ function inferDependencyType(dep: ModCompWithPackage): DependencyTableType {
  * @param _changesets - Changesets that caused the dependency updates (unused in table format)
  * @param dependenciesUpdated - The list of dependencies that were updated, including old/new versions
  * @param _options - Validated configuration options (unused in table format)
- * @returns An `Effect` that resolves to a formatted markdown table string, or empty string if no dependencies were updated
+ * @returns An `Effect` that resolves to a `### Dependencies` heading followed by a formatted markdown table string, or empty string if no dependencies were updated
  */
 export function getDependencyReleaseLine(
 	_changesets: NewChangesetWithCommit[],
@@ -129,6 +133,6 @@ export function getDependencyReleaseLine(
 			to: dep.newVersion,
 		}));
 
-		return serializeDependencyTableToMarkdown(rows);
+		return `### Dependencies\n\n${serializeDependencyTableToMarkdown(rows)}`;
 	});
 }

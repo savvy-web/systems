@@ -49,7 +49,6 @@ describe("ChangelogService (Effect service layer)", () => {
 		const result = await Effect.runPromise(program.pipe(Effect.provide(TestLayer)));
 		expect(typeof result).toBe("string");
 		expect(result).toContain("add feature via service");
-		expect(result).toContain("[`abc1234`]");
 	});
 
 	it("formatDependencyReleaseLine via service returns formatted output", async () => {

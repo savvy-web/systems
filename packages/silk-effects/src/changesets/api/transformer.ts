@@ -14,34 +14,31 @@ import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
 
-import { ContributorFootnotesPlugin } from "../remark/plugins/contributor-footnotes.js";
-import { DeduplicateItemsPlugin } from "../remark/plugins/deduplicate-items.js";
-import { IssueLinkRefsPlugin } from "../remark/plugins/issue-link-refs.js";
-import { MergeSectionsPlugin } from "../remark/plugins/merge-sections.js";
-import { NormalizeFormatPlugin } from "../remark/plugins/normalize-format.js";
-import { ReorderSectionsPlugin } from "../remark/plugins/reorder-sections.js";
+import type { MaintenanceNoteOptions } from "../remark/plugins/maintenance-note.js";
+import { MaintenanceNotePlugin } from "../remark/plugins/maintenance-note.js";
+import { SilkChangesetTransformPreset } from "../remark/presets.js";
+
+/**
+ * Optional per-file behavior for {@link ChangelogTransformer}.
+ *
+ * @public
+ */
+export interface TransformOptions {
+	/** Insert a Maintenance note into this version block when it ends up empty. */
+	readonly maintenance?: MaintenanceNoteOptions;
+}
 
 /**
  * Static class for post-processing CHANGELOG.md files.
  *
  * Implements the third layer of the three-layer pipeline by running
- * six remark transform plugins in a fixed order to clean up, normalize,
- * and enhance changelog output produced by the formatter layer.
+ * the {@link SilkChangesetTransformPreset} plugins (currently seven) in a
+ * fixed order to clean up, normalize, and enhance changelog output produced
+ * by the formatter layer.
  *
  * @remarks
- * The six plugins run in this order:
- *
- * 1. **MergeSectionsPlugin** -- merges duplicate section headings (e.g., two
- *    "Features" sections from separate changesets are combined into one)
- * 2. **ReorderSectionsPlugin** -- reorders sections by category priority
- *    (Breaking Changes first, Other last) using the {@link Categories} priority values
- * 3. **DeduplicateItemsPlugin** -- removes duplicate list items within a section
- * 4. **ContributorFootnotesPlugin** -- converts inline contributor mentions
- *    into footnote references for cleaner formatting
- * 5. **IssueLinkRefsPlugin** -- converts inline issue/PR links into markdown
- *    reference-style links collected at the bottom of the document
- * 6. **NormalizeFormatPlugin** -- applies consistent formatting (spacing,
- *    trailing newlines, heading levels)
+ * See {@link SilkChangesetTransformPreset} for the ordered plugin list and
+ * the rationale behind each plugin's position.
  *
  * The transformer operates on the full CHANGELOG.md content (all versions),
  * not just the latest release block. It is idempotent -- running it multiple
@@ -102,29 +99,30 @@ export class ChangelogTransformer {
 	private constructor() {}
 
 	/**
-	 * Transform CHANGELOG markdown content by running all six transform plugins.
+	 * Transform CHANGELOG markdown content by running the
+	 * {@link SilkChangesetTransformPreset} plugins.
 	 *
 	 * @remarks
 	 * The input is parsed with `remark-parse` and `remark-gfm` (for table
-	 * support), processed through all six plugins in order, and stringified
-	 * back to markdown. The operation is synchronous and idempotent.
+	 * support), processed through every plugin in {@link SilkChangesetTransformPreset}
+	 * in order, and stringified back to markdown. The operation is synchronous
+	 * and idempotent.
 	 *
 	 * @param content - Raw CHANGELOG markdown string (may contain multiple
 	 *   version blocks, GFM tables, footnotes, and reference links)
-	 * @returns The transformed markdown string with sections merged, reordered,
-	 *   deduplicated, and normalized
+	 * @param options - Optional transformation options, including maintenance note configuration
+	 * @returns The transformed markdown string with dependency tables aggregated,
+	 *   sections merged, reordered, deduplicated, and normalized
 	 */
-	static transformContent(content: string): string {
-		const processor = unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.use(MergeSectionsPlugin)
-			.use(ReorderSectionsPlugin)
-			.use(DeduplicateItemsPlugin)
-			.use(ContributorFootnotesPlugin)
-			.use(IssueLinkRefsPlugin)
-			.use(NormalizeFormatPlugin)
-			.use(remarkStringify);
+	static transformContent(content: string, options?: TransformOptions): string {
+		const processor = unified().use(remarkParse).use(remarkGfm);
+		for (const plugin of SilkChangesetTransformPreset) {
+			processor.use(plugin);
+		}
+		if (options?.maintenance) {
+			processor.use(MaintenanceNotePlugin, options.maintenance);
+		}
+		processor.use(remarkStringify);
 
 		const file = processor.processSync(content);
 		return String(file);
@@ -143,10 +141,11 @@ export class ChangelogTransformer {
 	 * when invoked without the `--dry-run` or `--check` flags.
 	 *
 	 * @param filePath - Absolute or relative path to the CHANGELOG.md file
+	 * @param options - Optional transformation options, including maintenance note configuration
 	 */
-	static transformFile(filePath: string): void {
+	static transformFile(filePath: string, options?: TransformOptions): void {
 		const content = readFileSync(filePath, "utf-8");
-		const result = ChangelogTransformer.transformContent(content);
+		const result = ChangelogTransformer.transformContent(content, options);
 		writeFileSync(filePath, result, "utf-8");
 	}
 }

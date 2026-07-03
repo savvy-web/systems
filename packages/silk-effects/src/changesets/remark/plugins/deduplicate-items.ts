@@ -61,11 +61,15 @@ export const DeduplicateItemsPlugin: Plugin<[], Root> = () => {
 			const sections = getBlockSections(tree, block);
 
 			for (const section of sections) {
+				// Track seen item text across all list nodes in this section, not just
+				// within a single list -- MergeSectionsPlugin may splice duplicate
+				// sections' content in as sibling list nodes rather than merging them
+				// into one list, so cross-list duplicates must be caught here too.
+				const seen = new Set<string>();
 				for (const node of section.contentNodes) {
 					if (node.type !== "list") continue;
 
 					const list = node as List;
-					const seen = new Set<string>();
 					list.children = list.children.filter((item) => {
 						const text = mdastToString(item);
 						if (seen.has(text)) return false;
