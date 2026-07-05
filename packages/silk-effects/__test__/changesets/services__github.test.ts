@@ -1,4 +1,4 @@
-import { Effect, Exit } from "effect";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@changesets/get-github-info", () => ({
