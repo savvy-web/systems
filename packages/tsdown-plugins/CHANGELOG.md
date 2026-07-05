@@ -1,5 +1,17 @@
 # @savvy-web/tsdown-plugins
 
+## 1.1.4
+
+### Dependencies
+
+* | Dependency                   | Type       | Action  | From    | To            |                                                                       |
+  | ---------------------------- | ---------- | ------- | ------- | ------------- | --------------------------------------------------------------------- |
+  | @changesets/get-release-plan | dependency | updated | ^4.0.16 | ^5.0.0-next.7 | [#218][#218] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#218]: https://github.com/savvy-web/systems/pull/218
+
 ## 1.1.3
 
 ### Dependencies

@@ -1,5 +1,34 @@
 # @savvy-web/silk
 
+## 2.0.0
+
+### Breaking Changes
+
+* Ships `@changesets/cli@^3.0.0-next.8` to consumers (was `^2.31.0`) as both a `devDependency` and `peerDependency`. The v3 CLI is a significant contract change for anyone consuming this package:
+
+  * **ESM-only.** The CLI no longer ships a CommonJS build — projects invoking it programmatically must be able to `import` it.
+  * **Node >=22.11 required.** Consumers on older Node LTS lines will need to upgrade before adopting this version.
+  * **`changeset tag` is renamed `changeset git-tag`.** Any script or CI step invoking `changeset tag` must be updated to the new subcommand name.
+
+### Dependencies
+
+| Dependency     | Type       | Action  | From  | To    |
+| -------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/cli | dependency | updated | 1.4.3 | 1.4.4 |
+| @savvy-web/mcp | dependency | updated | 1.6.3 | 1.6.4 |
+
+* | Dependency      | Type           | Action  | From    | To            |                                                                       |
+  | --------------- | -------------- | ------- | ------- | ------------- | --------------------------------------------------------------------- |
+  | @changesets/cli | peerDependency | updated | ^2.31.0 | ^3.0.0-next.8 | [#218][#218] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Maintenance
+
+* The force-bundled CJS entries (`./changesets/changelog`, `./changesets/markdownlint`) now steer `jsonc-parser` — pulled in transitively by the v3 engine — to its ESM build at bundle time. Its UMD `main` entry survives rolldown's single-file CJS output with unresolvable relative `require("./impl/*")` calls, which made both entries throw `Cannot find module` at load.
+
+### Patch Changes
+
+[#218]: https://github.com/savvy-web/systems/pull/218
+
 ## 1.3.11
 
 ### Dependencies

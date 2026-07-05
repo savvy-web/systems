@@ -255,6 +255,7 @@ describe("ReleasePlanner.apply changelogModules", () => {
 		writeFileSync(
 			modPath,
 			"export default {\n" +
+				// biome-ignore lint/suspicious/noTemplateCurlyInString: intentional plain string containing literal backtick-quoted JS source, not a template literal.
 				"  getReleaseLine: async (cs) => `- mapped: ${cs.summary}`,\n" +
 				'  getDependencyReleaseLine: async () => "",\n' +
 				"};\n",

@@ -1,5 +1,17 @@
 # @savvy-web/templates
 
+## 0.1.7
+
+### Maintenance
+
+* The changeset config template now writes the `$schema` URL `https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json` (was `@changesets/config@3.1.1`), keeping generated `.changeset/config.json` output in sync with the v3 config schema. [#218][#218]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#218]: https://github.com/savvy-web/systems/pull/218
+
 ## 0.1.6
 
 ### Dependencies
