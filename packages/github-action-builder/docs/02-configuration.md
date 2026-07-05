@@ -100,6 +100,7 @@ Configure how your action is bundled.
 | `sourceMap` | `boolean` | `false` | Generate source maps |
 | `externals` | `string[]` | `[]` | Packages to leave out of the bundle; must be available at runtime |
 | `ignore` | `string[]` | `[]` | Packages to leave out of the bundle and replace with a stub that throws if loaded |
+| `nativeDynamicImports` | `string[]` | `[]` | Packages whose fully dynamic `import()` calls stay native at runtime instead of being compiled by rspack |
 | `quiet` | `boolean` | `false` | Suppress build output |
 
 #### Development build with source maps
@@ -135,6 +136,18 @@ import { GitHubAction } from "@savvy-web/github-action-builder";
 export default GitHubAction.create({
   build: {
     ignore: ["cpu-features", "bufferutil"],
+  },
+});
+```
+
+#### Keep a package's dynamic imports native
+
+```typescript
+import { GitHubAction } from "@savvy-web/github-action-builder";
+
+export default GitHubAction.create({
+  build: {
+    nativeDynamicImports: ["@changesets/apply-release-plan"],
   },
 });
 ```
@@ -215,6 +228,27 @@ The difference from `externals`:
 If a module appears in both lists, `ignore` takes precedence — the stub is applied and the module is not externalized.
 
 Matching is exact: `ignore: ["cpu-features"]` stubs `cpu-features` but not a subpath import such as `cpu-features/native`. If a dependency reaches an ignored module through a subpath, add that subpath specifier to the list as well.
+
+##### nativeDynamicImports
+
+An array of package names whose fully dynamic `import(...)` calls are kept as native runtime `import()` instead of being compiled by rspack.
+
+rspack cannot statically resolve a dynamic import whose argument is an expression — a bare variable like `import(modulePath)` or an interpolated template literal like `` import(`${dir}/index.js`) ``. It compiles such calls into a "context module", a stub that globs a directory at build time and throws `Cannot find module` at runtime for any path it did not see, even when the real file exists on disk. Some packages resolve a module path at runtime (from a config value, for example) and dynamically import it; bundling that call as a context module breaks the package.
+
+Listing a package here injects a `webpackIgnore` magic comment into its dynamic imports, so rspack leaves them as plain native `import()` calls:
+
+```typescript
+build: {
+  nativeDynamicImports: ["@changesets/apply-release-plan"],
+}
+```
+
+What it does and does not change:
+
+* The listed package itself is still bundled; only its dynamic `import()` calls are left native.
+* Whatever those calls import at runtime must exist on disk when the action runs, since the bundler no longer inlines it.
+* String-literal imports (`import("./static.js")`) and fully static template literals are untouched; the bundler already resolves those correctly.
+* Matching is by package name against the module's resolved path under `node_modules`, covering both the flat and pnpm layouts. Scoped names like `@changesets/apply-release-plan` work as-is.
 
 ##### quiet
 
@@ -409,6 +443,7 @@ export default GitHubAction.create({
     sourceMap: false,
     externals: [],
     ignore: [],
+    nativeDynamicImports: [],
     quiet: false,
   },
 
@@ -444,6 +479,7 @@ The builder works without any configuration file. These defaults are applied:
     sourceMap: false,
     externals: [],
     ignore: [],
+    nativeDynamicImports: [],
     quiet: false,
   },
   validation: {

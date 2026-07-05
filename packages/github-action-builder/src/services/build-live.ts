@@ -5,6 +5,7 @@
  */
 import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createRsbuild } from "@rsbuild/core";
 import { Effect, Layer } from "effect";
 
@@ -14,12 +15,32 @@ import type { BuildResult, BuildRunnerOptions, BundleResult } from "./build.js";
 import { BuildService } from "./build.js";
 import type { DetectedEntry } from "./config.js";
 import { ConfigService } from "./config.js";
+import { buildNativeDynamicImportRules } from "./native-dynamic-imports.js";
 
 /**
  * Source of the stub module that replaces packages listed in `build.ignore`.
  * It is bundled in place of the real module and throws if ever loaded.
  */
 const IGNORE_STUB_SOURCE = `throw new Error("A module excluded via the build 'ignore' option was loaded at runtime.");\n`;
+
+/**
+ * Self-referencing specifier for the `webpackIgnore`-injecting loader
+ * shipped from `public/loaders/webpack-ignore-dynamic-imports.cjs` (see
+ * `package.json` `exports`). Resolved through the package's own `exports`
+ * map via `import.meta.resolve`, which stays correct whether this module is
+ * running from `src` (the map points at `./public/loaders/...`) or from a
+ * built `dist` (the map points at the flattened `./loaders/...`, since the
+ * `public/` copy step drops the `public/` prefix both on disk and in the
+ * built manifest) — no relative-path assumption needed either way.
+ */
+const WEBPACK_IGNORE_LOADER_SPECIFIER = "@savvy-web/github-action-builder/loaders/webpack-ignore-dynamic-imports.cjs";
+
+/**
+ * Resolve the absolute on-disk path to the `webpackIgnore`-injecting loader.
+ */
+function resolveWebpackIgnoreLoaderPath(): string {
+	return fileURLToPath(import.meta.resolve(WEBPACK_IGNORE_LOADER_SPECIFIER));
+}
 
 /**
  * Format bytes as a human-readable string.
@@ -128,6 +149,18 @@ function bundleEntry(
 		const externalsSet = new Set(config.build.externals);
 		const ignoreSet = new Set(config.build.ignore);
 		const ignoreAlias: Record<string, string> = {};
+
+		// Packages listed in `build.nativeDynamicImports` resolve a module path
+		// at runtime and dynamically import it (e.g. @changesets/apply-release-plan
+		// resolving a changelog module). rspack cannot statically analyze a fully
+		// dynamic import(expr) and compiles it into a context module that throws
+		// "Cannot find module" at runtime even though the file exists on disk. The
+		// webpackIgnore-injecting loader below leaves those calls as native
+		// import() so they resolve for real at runtime.
+		const nativeDynamicImportRules =
+			config.build.nativeDynamicImports.length > 0
+				? buildNativeDynamicImportRules(config.build.nativeDynamicImports, resolveWebpackIgnoreLoaderPath())
+				: [];
 		if (config.build.ignore.length > 0) {
 			// rspack embeds the stub's path verbatim as the ignored modules' module
 			// id, so the path must be deterministic — a per-build `mkdtemp` directory
@@ -215,7 +248,13 @@ function bundleEntry(
 								// before any fallback — crashing the action. Disabling the parse
 								// leaves `import.meta.url` resolving to the emitted ESM bundle's own
 								// URL at runtime on every platform. See silk-runtime-action#137.
-								module: { parser: { javascript: { importMeta: false } } },
+								module: {
+									parser: { javascript: { importMeta: false } },
+									// One rule per `build.nativeDynamicImports` package name; each
+									// routes that package's bundled source through the
+									// webpackIgnore-injecting loader (empty when the option is unset).
+									rules: nativeDynamicImportRules,
+								},
 								// A committed GitHub Action is cleaner as one file per entry.
 								// `asyncChunks: false` folds dynamically-imported code into the
 								// parent chunk, so a dynamic `import()` in the source no longer

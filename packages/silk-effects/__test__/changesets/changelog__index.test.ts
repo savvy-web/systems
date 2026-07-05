@@ -4,13 +4,21 @@ import changelogFunctions from "../../src/changesets/changelog/index.js";
 
 // Mock the GitHub API to avoid real network calls
 vi.mock("@changesets/get-github-info", () => ({
-	getInfo: vi.fn().mockResolvedValue({
-		user: "testuser",
-		pull: 99,
-		links: {
-			commit: "[`abc1234`](https://github.com/owner/repo/commit/abc1234567890)",
-			pull: "https://github.com/owner/repo/pull/99",
-			user: "https://github.com/testuser",
+	getCommitInfo: vi.fn().mockResolvedValue({
+		commit: {
+			sha: "abc1234567890",
+			url: "https://github.com/owner/repo/commit/abc1234567890",
+			markdownLink: "[`abc1234`](https://github.com/owner/repo/commit/abc1234567890)",
+		},
+		author: {
+			login: "testuser",
+			url: "https://github.com/testuser",
+			markdownLink: "[@testuser](https://github.com/testuser)",
+		},
+		pull: {
+			number: 99,
+			url: "https://github.com/owner/repo/pull/99",
+			markdownLink: "[#99](https://github.com/owner/repo/pull/99)",
 		},
 	}),
 }));

@@ -1,0 +1,8 @@
+{
+	"name": "fake-dynamic-pkg",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./index.mjs",
+	"exports": "./index.mjs"
+}

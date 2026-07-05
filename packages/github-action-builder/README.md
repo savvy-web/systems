@@ -11,7 +11,7 @@ Build a GitHub Action from TypeScript source without writing build config. The b
 - **No build config required** - Picks up entry points from `src/main.ts`, `src/pre.ts`, `src/post.ts` on its own
 - **Node.js 24** - Emits ESM actions that run on the `node24` GitHub Actions runtime
 - **Schema validation** - Validates `action.yml` against GitHub's official metadata specification
-- **Single-file bundles** - All npm dependencies inlined via rsbuild; `node:` builtins externalized; user-configured `externals` and `ignore` options for optional or native modules
+- **Single-file bundles** - All npm dependencies inlined via rsbuild; `node:` builtins externalized; user-configured `externals`, `ignore` and `nativeDynamicImports` options for native modules, optional dependencies and runtime-resolved dynamic imports
 - **Local testing** - Auto-persists build output for testing with [nektos/act](https://github.com/nektos/act)
 - **CI-aware** - Strict validation in CI, warnings-only locally
 

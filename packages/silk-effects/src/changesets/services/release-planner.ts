@@ -12,10 +12,10 @@
  */
 
 import { dirname, isAbsolute, join, relative } from "node:path";
-import applyReleasePlan from "@changesets/apply-release-plan";
-import { read as readChangesetConfig } from "@changesets/config";
-import getReleasePlan from "@changesets/get-release-plan";
-import type { Config, ReleasePlan } from "@changesets/types";
+import { applyReleasePlan } from "@changesets/apply-release-plan";
+import { readConfig } from "@changesets/config";
+import { getReleasePlan } from "@changesets/get-release-plan";
+import type { Config, Packages, ReleasePlan } from "@changesets/types";
 import { FileSystem } from "@effect/platform";
 import { getPackages } from "@manypkg/get-packages";
 import { Context, Effect, Layer } from "effect";
@@ -34,34 +34,21 @@ import { ConfigInspector } from "./config-inspector.js";
 import type { MaintenanceReason } from "./maintenance-reason.js";
 import { deriveMaintenanceReason } from "./maintenance-reason.js";
 
-/**
- * The v1 `Packages` shape the changesets engine consumes (its own transitive
- * `@manypkg/get-packages@1.x`), derived from the engine's signature so it
- * tracks whatever shape changesets expects if it ever upgrades.
- */
-type ChangesetsPackages = Parameters<typeof applyReleasePlan>[1];
-
-const V1_TOOLS = new Set(["yarn", "bolt", "pnpm", "lerna", "root"]);
-
-/**
- * Single workspace-discovery seam; swap to an Effect-native stack later here.
- *
- * Discovers with `@manypkg/get-packages@3.x` and adapts to the v1 shape:
- * `tool` collapses to its type string (tools unknown to v1 map to `"root"` —
- * the engine never reads `tool` at runtime, only `root.dir`), and
- * `rootDir`/`rootPackage` fold back into `root`.
- */
-const buildPackages = async (root: string): Promise<ChangesetsPackages> => {
-	const { tool, rootDir, rootPackage, packages } = await getPackages(root);
-	if (!rootPackage) throw new Error(`Workspace root has no package.json: ${rootDir}`);
-	return {
-		tool: (V1_TOOLS.has(tool.type) ? tool.type : "root") as ChangesetsPackages["tool"],
-		root: { dir: rootPackage.dir, packageJson: rootPackage.packageJson },
-		packages: packages.map((p) => ({ dir: p.dir, packageJson: p.packageJson })),
-	};
-};
-
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/**
+ * Read the changesets config, surfacing non-throwing `readConfig` errors as a
+ * thrown `Error` so callers inside `Effect.tryPromise` land on the existing
+ * `ReleasePlanError` mapping. Warnings are returned alongside the config so
+ * the caller can log them via the Effect runtime rather than console output.
+ */
+async function loadConfig(root: string, packages: Packages): Promise<{ config: Config; warnings: string[] }> {
+	const configResult = await readConfig(root, packages);
+	if (configResult.config === undefined) {
+		throw new Error(`Invalid changeset config:\n${configResult.errors.join("\n")}`);
+	}
+	return { config: configResult.config, warnings: configResult.warnings };
+}
 
 /** The `ReleasePlanner` service surface. @public */
 export interface ReleasePlannerShape {
@@ -72,7 +59,16 @@ export interface ReleasePlannerShape {
 	/** Natively apply the release (destructive unless `dryRun`). */
 	readonly apply: (
 		root: string,
-		options?: { readonly dryRun?: boolean },
+		options?: {
+			readonly dryRun?: boolean;
+			/**
+			 * Map configured changelog ids to absolute module paths. When set,
+			 * `config.changelog[0]` must be a key of this map (rewritten before the
+			 * engine call; unmapped ids fail) and the engine's `format` integration
+			 * is disabled — callers in no-`node_modules` contexts own formatting.
+			 */
+			readonly changelogModules?: Readonly<Record<string, string>>;
+		},
 	) => Effect.Effect<AppliedRelease, ReleasePlanError>;
 }
 
@@ -100,7 +96,7 @@ function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): 
 	const preview: ReleasePlannerShape["preview"] = (root) => previewEffect(root, fs);
 
 	const apply: ReleasePlannerShape["apply"] = (root, options) =>
-		applyEffect(root, options?.dryRun ?? false, inspector, fs);
+		applyEffect(root, options?.dryRun ?? false, options?.changelogModules, inspector, fs);
 
 	return { plan, preview, apply };
 }
@@ -170,14 +166,25 @@ function maintenanceReasons(plan: ReleasePlan, config: Config): Map<string, Main
  */
 function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<ChangesetPreview, ReleasePlanError> {
 	const program = Effect.gen(function* () {
+		// v3 `readPreState` (invoked internally by `getReleasePlan`) rewrites a
+		// legacy `pre.json` in place as an auto-migration — acceptable, but it
+		// means even this read-only preview path can touch disk when `pre.json`
+		// is stale.
 		const [plan, packages] = yield* Effect.tryPromise({
-			try: () => Promise.all([getReleasePlan(root), buildPackages(root)]),
+			try: () => Promise.all([getReleasePlan(root), getPackages(root)]),
 			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 		});
-		const config = yield* Effect.tryPromise({
-			try: () => readChangesetConfig(root, packages),
+		if (!packages.rootPackage) {
+			return yield* Effect.fail(
+				new ReleasePlanError({ phase: "preview", reason: `Workspace root has no package.json: ${root}` }),
+			);
+		}
+		const rootPackage = packages.rootPackage;
+		const { config, warnings } = yield* Effect.tryPromise({
+			try: () => loadConfig(root, packages),
 			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 		});
+		yield* Effect.forEach(warnings, (w) => Effect.logWarning(w));
 		const reasonByName = maintenanceReasons(plan, config);
 
 		const preMode: ChangesetPreview["preMode"] = plan.preState ? plan.preState.mode : null;
@@ -194,7 +201,7 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 		const tempRoot = yield* fs.makeTempDirectoryScoped({ prefix: "silk-preview-" });
 
 		const mapDir = (dir: string): Effect.Effect<string, ReleasePlanError> => {
-			const rel = relative(packages.root.dir, dir);
+			const rel = relative(packages.rootDir, dir);
 			// Guard the non-destructive invariant: a package dir outside the
 			// workspace root would make `relative` yield `..`/an absolute path and
 			// `join` escape `tempRoot`. Refuse rather than write outside temp.
@@ -210,11 +217,11 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 		};
 
 		const tempDirs = yield* Effect.forEach(packages.packages, (p) => mapDir(p.dir));
-		const tempPackages: ChangesetsPackages = {
+		const tempPackages: Packages = {
 			tool: packages.tool,
-			root: { ...packages.root, dir: tempRoot, packageJson: structuredClone(packages.root.packageJson) },
+			rootDir: tempRoot,
+			rootPackage: { dir: tempRoot, packageJson: structuredClone(rootPackage.packageJson) },
 			packages: packages.packages.map((p, i) => ({
-				...p,
 				dir: tempDirs[i],
 				packageJson: structuredClone(p.packageJson),
 			})),
@@ -235,7 +242,7 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 			const realClExists = yield* fs.exists(realCl);
 			if (realClExists) yield* fs.copyFile(realCl, join(tDir, "CHANGELOG.md"));
 		}
-		const rootCl = join(packages.root.dir, "CHANGELOG.md");
+		const rootCl = join(packages.rootDir, "CHANGELOG.md");
 		const rootClExists = yield* fs.exists(rootCl);
 		if (rootClExists) yield* fs.copyFile(rootCl, join(tempRoot, "CHANGELOG.md"));
 
@@ -247,7 +254,9 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 
 		const dirByName = new Map<string, string>();
 		for (const p of tempPackages.packages) dirByName.set(p.packageJson.name, p.dir);
-		if (tempPackages.root.packageJson.name) dirByName.set(tempPackages.root.packageJson.name, tempRoot);
+		if (tempPackages.rootPackage?.packageJson.name) {
+			dirByName.set(tempPackages.rootPackage.packageJson.name, tempRoot);
+		}
 
 		const releases: PreviewRelease[] = [];
 		for (const r of releasesToRender) {
@@ -298,18 +307,43 @@ function diskVersion(workspaceDir: string, fallback: string, fs: FileSystem.File
 function applyEffect(
 	root: string,
 	dryRun: boolean,
+	changelogModules: Readonly<Record<string, string>> | undefined,
 	inspector: ConfigInspectorShape,
 	fs: FileSystem.FileSystem,
 ): Effect.Effect<AppliedRelease, ReleasePlanError> {
 	return Effect.gen(function* () {
-		const { plan, packages, config } = yield* Effect.tryPromise({
+		// v3 `readPreState` (invoked internally by `getReleasePlan`) rewrites a
+		// legacy `pre.json` in place as an auto-migration — acceptable, but it
+		// means even this read-only `plan` computation can touch disk when
+		// `pre.json` is stale.
+		const { plan, packages, config, warnings } = yield* Effect.tryPromise({
 			try: async () => {
-				const [plan, packages] = await Promise.all([getReleasePlan(root), buildPackages(root)]);
-				const config = await readChangesetConfig(root, packages);
-				return { plan, packages, config };
+				const [plan, packages] = await Promise.all([getReleasePlan(root), getPackages(root)]);
+				const { config, warnings } = await loadConfig(root, packages);
+				return { plan, packages, config, warnings };
 			},
 			catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
 		});
+		yield* Effect.forEach(warnings, (w) => Effect.logWarning(w));
+
+		let engineConfig: Config = config;
+		if (changelogModules) {
+			engineConfig = { ...config, format: false };
+			if (Array.isArray(config.changelog)) {
+				const configuredId = config.changelog[0];
+				const mapped = changelogModules[configuredId];
+				if (mapped === undefined) {
+					const supported = Object.keys(changelogModules).join(", ");
+					return yield* Effect.fail(
+						new ReleasePlanError({
+							phase: "apply",
+							reason: `changelog id "${configuredId}" is not in changelogModules (supported: ${supported})`,
+						}),
+					);
+				}
+				engineConfig = { ...engineConfig, changelog: [mapped, config.changelog[1]] };
+			}
+		}
 
 		const releases = plan.releases
 			.filter((r) => r.type !== "none")
@@ -321,10 +355,12 @@ function applyEffect(
 			const versionByPkgName = new Map(plan.releases.map((r) => [r.name, r.newVersion]));
 			const nameByDir = new Map<string, string>();
 			for (const p of packages.packages) nameByDir.set(p.dir, p.packageJson.name);
-			if (packages.root.packageJson.name) nameByDir.set(packages.root.dir, packages.root.packageJson.name);
+			if (packages.rootPackage?.packageJson.name) {
+				nameByDir.set(packages.rootDir, packages.rootPackage.packageJson.name);
+			}
 			touchedFiles = yield* Effect.tryPromise({
 				try: async () => {
-					const touched = await applyReleasePlan(plan, packages, config);
+					const touched = await applyReleasePlan(plan, packages, engineConfig);
 					for (const f of touched) {
 						if (!f.endsWith("CHANGELOG.md")) continue;
 						const pkgName = nameByDir.get(dirname(f));

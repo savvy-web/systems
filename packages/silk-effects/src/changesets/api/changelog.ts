@@ -108,7 +108,7 @@ export class Changelog {
 	 *   Pass `null` to use defaults (no GitHub link resolution).
 	 * @returns A promise resolving to the formatted markdown string
 	 */
-	static formatReleaseLine(
+	static async formatReleaseLine(
 		changeset: NewChangesetWithCommit,
 		versionType: VersionType,
 		options: Record<string, unknown> | null,
@@ -132,7 +132,7 @@ export class Changelog {
 	 * @returns A promise resolving to the formatted markdown string containing
 	 *   the dependency update table
 	 */
-	static formatDependencyReleaseLine(
+	static async formatDependencyReleaseLine(
 		changesets: NewChangesetWithCommit[],
 		dependenciesUpdated: ModCompWithPackage[],
 		options: Record<string, unknown> | null,

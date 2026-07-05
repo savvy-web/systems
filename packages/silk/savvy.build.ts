@@ -19,6 +19,24 @@ await build({
 	externals: ["source-map-support", "@savvy-web/silk-effects"],
 	// Base build is ESM-only; only the markdownlint override (below) emits CJS.
 	format: ["esm"],
+	plugins: [
+		{
+			// `jsonc-parser` (pulled in by @changesets/apply-release-plan since the
+			// changesets v3 bump) publishes no `exports` field, so the CJS override
+			// bundles below resolve its UMD `main`. The UMD factory receives `require`
+			// as a function PARAMETER, which rolldown's CommonJS transform cannot trace,
+			// so its relative require("./impl/*") calls survive into the emitted single
+			// -file .cjs and throw MODULE_NOT_FOUND at load time. Steer resolution to
+			// the `module` ESM build, which bundles cleanly.
+			name: "jsonc-parser-esm",
+			async resolveId(id, importer) {
+				if (id !== "jsonc-parser") return null;
+				const resolved = await this.resolve(id, importer);
+				if (resolved === null) return null;
+				return { ...resolved, id: resolved.id.replace("/lib/umd/", "/lib/esm/") };
+			},
+		},
+	],
 	// Externalized in the DECLARATION pass only: the emitted `.d.ts` references
 	// effect's types via `import` instead of inlining them. This avoids inlining
 	// effect's cross-module `declare module` interface augmentations, which produced
