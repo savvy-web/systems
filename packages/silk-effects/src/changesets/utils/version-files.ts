@@ -302,7 +302,45 @@ export class VersionFiles {
 	 * @see {@link VersionFiles.applyVersionEdit} for the per-path edit
 	 */
 	static updateFile(filePath: string, jsonPaths: readonly string[], version: string): VersionFileUpdate | undefined {
-		let content = readFileSync(filePath, "utf-8");
+		const original = readFileSync(filePath, "utf-8");
+		const { content, previousValues, totalChanged } = VersionFiles.computeUpdate(original, jsonPaths, version);
+
+		if (totalChanged === 0) {
+			return undefined;
+		}
+
+		writeFileSync(filePath, content, "utf-8");
+
+		return {
+			filePath,
+			jsonPaths,
+			version,
+			previousValues,
+		};
+	}
+
+	/**
+	 * Compute the full update for a document without touching the filesystem:
+	 * the edited content, the previous values at every matched path, and how
+	 * many locations actually changed.
+	 *
+	 * @remarks
+	 * This is the single decision path shared by {@link VersionFiles.updateFile}
+	 * and the dry-run branches of the two process methods, so a preview reports
+	 * exactly the files a real run would write — including pending inserts of a
+	 * not-yet-existing wildcard-free leaf, and excluding same-value no-ops.
+	 *
+	 * @param original - Document text as read from disk
+	 * @param jsonPaths - JSONPath expressions to update
+	 * @param version - New version string
+	 * @returns The updated content, previous values, and changed-location count
+	 */
+	private static computeUpdate(
+		original: string,
+		jsonPaths: readonly string[],
+		version: string,
+	): { content: string; previousValues: unknown[]; totalChanged: number } {
+		let content = original;
 		const obj = Effect.runSync(parseJsonc(content));
 
 		const previousValues = jsonPaths.flatMap((jp) => jsonPathGet(obj, jp));
@@ -346,18 +384,7 @@ export class VersionFiles {
 			}
 		}
 
-		if (totalChanged === 0) {
-			return undefined;
-		}
-
-		writeFileSync(filePath, content, "utf-8");
-
-		return {
-			filePath,
-			jsonPaths,
-			version,
-			previousValues,
-		};
+		return { content, previousValues, totalChanged };
 	}
 
 	/**
@@ -438,12 +465,11 @@ export class VersionFiles {
 
 			try {
 				if (dryRun) {
+					// Same decision path as the real run (computeUpdate), minus the write, so
+					// the preview reports pending inserts and skips same-value no-ops too.
 					const content = readFileSync(filePath, "utf-8");
-					// Parse via jsonc-effect so a JSONC file (comments/trailing commas) previews
-					// cleanly instead of throwing here while the real updateFile write succeeds.
-					const obj = Effect.runSync(parseJsonc(content));
-					const previousValues = jsonPaths.flatMap((jp) => jsonPathGet(obj, jp));
-					if (previousValues.length > 0) {
+					const { previousValues, totalChanged } = VersionFiles.computeUpdate(content, jsonPaths, version);
+					if (totalChanged > 0) {
 						updates.push({ filePath, jsonPaths, version, previousValues });
 					}
 				} else {
@@ -490,12 +516,11 @@ export class VersionFiles {
 				for (const filePath of vf.matchedFiles) {
 					try {
 						if (dryRun) {
+							// Same decision path as the real run (computeUpdate), minus the write, so
+							// the preview reports pending inserts and skips same-value no-ops too.
 							const content = readFileSync(filePath, "utf-8");
-							// Parse via jsonc-effect so a JSONC file (comments/trailing commas) previews
-							// cleanly instead of throwing here while the real updateFile write succeeds.
-							const obj = Effect.runSync(parseJsonc(content));
-							const previousValues = jsonPaths.flatMap((jp) => jsonPathGet(obj, jp));
-							if (previousValues.length > 0) {
+							const { previousValues, totalChanged } = VersionFiles.computeUpdate(content, jsonPaths, scope.version);
+							if (totalChanged > 0) {
 								updates.push({ filePath, jsonPaths, version: scope.version, previousValues });
 							}
 						} else {

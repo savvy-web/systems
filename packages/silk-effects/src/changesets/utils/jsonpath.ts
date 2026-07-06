@@ -123,13 +123,23 @@ export function parseJsonPath(path: string): Segment[] {
  * @internal
  */
 export function jsonPathGet(obj: unknown, path: string): unknown[] {
+	return walkJsonPath(obj, path).map((entry) => entry.node);
+}
+
+/**
+ * Shared breadth-first traversal behind {@link jsonPathGet} and
+ * {@link jsonPathResolve}: each segment fans out the current set of matched
+ * entries, carrying both the node and the concrete path taken to reach it.
+ * The two public functions differ only in which half of the entry they keep.
+ */
+function walkJsonPath(obj: unknown, path: string): Array<{ node: unknown; path: Array<string | number> }> {
 	const segments = parseJsonPath(path);
-	let current: unknown[] = [obj];
+	let current: Array<{ node: unknown; path: Array<string | number> }> = [{ node: obj, path: [] }];
 
 	for (const segment of segments) {
-		const next: unknown[] = [];
+		const next: Array<{ node: unknown; path: Array<string | number> }> = [];
 
-		for (const node of current) {
+		for (const { node, path: nodePath } of current) {
 			if (node === null || node === undefined || typeof node !== "object") {
 				continue;
 			}
@@ -138,19 +148,21 @@ export function jsonPathGet(obj: unknown, path: string): unknown[] {
 				case "property": {
 					const value = (node as Record<string, unknown>)[segment.key];
 					if (value !== undefined) {
-						next.push(value);
+						next.push({ node: value, path: [...nodePath, segment.key] });
 					}
 					break;
 				}
 				case "index": {
 					if (Array.isArray(node) && segment.index < node.length) {
-						next.push(node[segment.index]);
+						next.push({ node: node[segment.index], path: [...nodePath, segment.index] });
 					}
 					break;
 				}
 				case "wildcard": {
 					if (Array.isArray(node)) {
-						next.push(...node);
+						node.forEach((element, index) => {
+							next.push({ node: element, path: [...nodePath, index] });
+						});
 					}
 					break;
 				}
@@ -194,46 +206,7 @@ export function jsonPathGet(obj: unknown, path: string): unknown[] {
  * @internal
  */
 export function jsonPathResolve(obj: unknown, path: string): Array<Array<string | number>> {
-	const segments = parseJsonPath(path);
-	let current: Array<{ node: unknown; path: Array<string | number> }> = [{ node: obj, path: [] }];
-
-	for (const segment of segments) {
-		const next: Array<{ node: unknown; path: Array<string | number> }> = [];
-
-		for (const { node, path: nodePath } of current) {
-			if (node === null || node === undefined || typeof node !== "object") {
-				continue;
-			}
-
-			switch (segment.type) {
-				case "property": {
-					const value = (node as Record<string, unknown>)[segment.key];
-					if (value !== undefined) {
-						next.push({ node: value, path: [...nodePath, segment.key] });
-					}
-					break;
-				}
-				case "index": {
-					if (Array.isArray(node) && segment.index < node.length) {
-						next.push({ node: node[segment.index], path: [...nodePath, segment.index] });
-					}
-					break;
-				}
-				case "wildcard": {
-					if (Array.isArray(node)) {
-						node.forEach((element, index) => {
-							next.push({ node: element, path: [...nodePath, index] });
-						});
-					}
-					break;
-				}
-			}
-		}
-
-		current = next;
-	}
-
-	return current.map((entry) => entry.path);
+	return walkJsonPath(obj, path).map((entry) => entry.path);
 }
 
 /**

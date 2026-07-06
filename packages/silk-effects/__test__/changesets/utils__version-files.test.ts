@@ -496,11 +496,46 @@ describe("VersionFiles.processVersionFiles", () => {
 		expect(result[0].jsonPaths).toEqual(["$.version"]);
 	});
 
-	it("skips files with no matching paths in dry-run mode", () => {
+	it("reports a pending insert in dry-run mode when a wildcard-free leaf is missing", () => {
+		// Parity with the real run: updateFile would INSERT $.version into this
+		// file, so the preview must report it rather than silently omitting it.
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("package.json")) return JSON.stringify({ name: "root", version: "2.0.0" });
 			if (s.endsWith("other.json")) return JSON.stringify({ unrelated: "field" });
+			throw new Error("ENOENT");
+		});
+		vi.mocked(globSync).mockReturnValue(["other.json"]);
+
+		const configs = [{ glob: "other.json", paths: ["$.version"] }];
+		const result = VersionFiles.processVersionFiles("/project", configs, true);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].version).toBe("2.0.0");
+		expect(result[0].previousValues).toEqual([]);
+		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+	});
+
+	it("skips files with no wildcard matches in dry-run mode", () => {
+		vi.mocked(readFileSync).mockImplementation((p) => {
+			const s = String(p);
+			if (s.endsWith("package.json")) return JSON.stringify({ name: "root", version: "2.0.0" });
+			if (s.endsWith("other.json")) return JSON.stringify({ packages: [] });
+			throw new Error("ENOENT");
+		});
+		vi.mocked(globSync).mockReturnValue(["other.json"]);
+
+		const configs = [{ glob: "other.json", paths: ["$.packages[*].version"] }];
+		const result = VersionFiles.processVersionFiles("/project", configs, true);
+
+		expect(result).toHaveLength(0);
+	});
+
+	it("skips same-value files in dry-run mode, matching the real run's no-op", () => {
+		vi.mocked(readFileSync).mockImplementation((p) => {
+			const s = String(p);
+			if (s.endsWith("package.json")) return JSON.stringify({ name: "root", version: "2.0.0" });
+			if (s.endsWith("other.json")) return JSON.stringify({ version: "2.0.0" });
 			throw new Error("ENOENT");
 		});
 		vi.mocked(globSync).mockReturnValue(["other.json"]);
