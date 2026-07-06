@@ -34,14 +34,16 @@
 	},
 	"dependencies": {
 		"@effect/cluster": "catalog:silk",
+		"@effect/experimental": "catalog:silk",
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
 		"@effect/rpc": "catalog:silk",
 		"@effect/sql": "catalog:silk",
+		"@effect/workflow": "catalog:silk",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",
-		"workspaces-effect": "^2.0.1",
+		"workspaces-effect": "^2.0.2",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {

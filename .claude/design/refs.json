@@ -82,7 +82,7 @@
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "32cf3daba03a712eb124eea35e2fda735120cc9c25ce0926886e72b272c6ef2c",
+			"hash": "b98b7a59749c431b5aee9551f74d2438f01f2eb74fd34e42d80438bf5f693730",
 			"recordedAt": "2026-07-06"
 		}
 	]

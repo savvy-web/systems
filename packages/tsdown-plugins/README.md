@@ -57,7 +57,7 @@ export default defineConfig({
 
 ## Effect
 
-The package is implemented in [Effect](https://effect.website/), but Effect runs behind the plugin boundary: the catalog wrapper returns a `Promise` and the reporter is rendered with `Effect.runPromise` at the call site. The plugin and helper values you compose are plain rolldown-conformant objects. `effect` is a peer dependency.
+The package is implemented in [Effect](https://effect.website/), but Effect runs behind the plugin boundary: the catalog wrapper returns a `Promise` and the reporter is rendered with `Effect.runPromise` at the call site. The plugin and helper values you compose are plain rolldown-conformant objects. `effect` and its `@effect/*` companions ship as regular dependencies, so you install nothing extra and your project's own Effect versions never affect the plugin pack.
 
 ## License
 

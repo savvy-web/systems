@@ -49,7 +49,7 @@
 		"@sigstore/sign": "^5.0.0",
 		"jsonc-effect": "^0.3.0",
 		"semver-effect": "^0.3.1",
-		"yaml-effect": "^0.7.0"
+		"yaml-effect": "^0.7.2"
 	},
 	"devDependencies": {
 		"@effect/cluster": "catalog:silk",
