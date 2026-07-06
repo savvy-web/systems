@@ -1,5 +1,23 @@
 # @savvy-web/cli
 
+## 1.5.0
+
+### Features
+
+* `savvy init` now writes `@savvy-web/changelog` as the canonical `changelog` id in fresh and patched `.changeset/config.json` files. The prior `@savvy-web/silk/changesets/changelog` shim id and the pre-merge `@savvy-web/changesets/changelog` id are still accepted by `init --check`, so existing repos migrate lazily on their next `savvy init`. [#223][#223]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.0.0 | 3.0.1 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#223]: https://github.com/savvy-web/systems/pull/223
+
 ## 1.4.4
 
 ### Dependencies

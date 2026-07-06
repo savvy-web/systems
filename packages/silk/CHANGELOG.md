@@ -1,5 +1,33 @@
 # @savvy-web/silk
 
+## 2.1.0
+
+### Features
+
+* ### @savvy-web/changelog ships as a peer companion
+
+  `@savvy-web/silk` now declares `@savvy-web/changelog` as a peer dependency alongside `@savvy-web/cli` and `@savvy-web/mcp` — installing `@savvy-web/silk` brings in the standalone changesets changelog generator as part of the same peer group.
+
+### Bug Fixes
+
+* The `./changesets/changelog` and `./changesets/markdownlint` subpath artifacts are now genuinely self-contained ESM builds (via the `@savvy-web/tsdown-plugins` fix) — the previously-published ESM variants of these subpaths silently broke once packed with `npm pack`.
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.0.0 | 0.1.0 |
+| @savvy-web/cli       | dependency | updated | 1.4.4 | 1.5.0 |
+| @savvy-web/mcp       | dependency | updated | 1.6.4 | 1.6.5 |
+
+* | Dependency           | Type      | Action | From | To    |                                                                       |
+  | :------------------- | :-------- | :----- | :--- | :---- | --------------------------------------------------------------------- |
+  | @savvy-web/changelog | workspace | added  | —    | 0.1.0 | [#223][#223] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#223]: https://github.com/savvy-web/systems/pull/223
+
 ## 2.0.0
 
 ### Breaking Changes
