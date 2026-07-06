@@ -10,19 +10,11 @@
 	"homepage": "https://github.com/savvy-web/systems",
 	"repository": "https://github.com/savvy-web/systems.git",
 	"license": "MIT",
-	"keywords": [
-		"github-actions",
-		"workflows",
-		"automation",
-		"ci-cd",
-		"effect"
-	],
+	"keywords": ["github-actions", "workflows", "automation", "ci-cd", "effect"],
 	"mcpServers": {
 		"savvy-mcp": {
 			"command": "sh",
-			"args": [
-				"${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"
-			]
+			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"]
 		}
 	}
 }
