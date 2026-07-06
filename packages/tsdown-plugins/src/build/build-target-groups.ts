@@ -204,6 +204,13 @@ const STUB_BASE_ENTRY = "index";
  * build (JS and the dts plugin share it), so a single pass cannot give per-module JS + bundled
  * dts. Per-module dts breaks type portability (TS2883); bundling the JS re-bundles workspace
  * consumers. The split keeps per-module JS AND rolled-up, self-contained declarations.
+ *
+ * **The JS pass's `unbundle` flips to `false` for a `bundleNodeModules` partition** (see
+ * `DerivedTsdownOptions` in `target-groups.ts`), so that partition's JS pass ALSO bundles
+ * instead of preserving modules — a per-module preserveModules JS pass writes every inlined
+ * node_modules dependency to its own sibling file (mirroring its `node_modules/...` path),
+ * which `npm pack` then strips, breaking the "self-contained" promise `bundleNodeModules`
+ * already makes. Scoped to that flag alone; every other build's JS pass is unaffected.
  * @public
  */
 export async function buildTargetGroups(options: BuildTargetGroupsOptions): Promise<void> {
@@ -227,6 +234,11 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 
 	const metricsPlugins = (groupId: string, pass: PassKind): Plugin[] =>
 		collector === undefined ? [] : [buildMetricsPlugin(collector, groupId, pass, verbose)];
+
+	// PLUGIN_TIMINGS is rolldown's plugin-performance diagnostic. The builder's own always-on
+	// plugins (savvy:emit-manifest, metrics) trip it on virtually every build, so in normal runs
+	// it is unactionable noise; verbose keeps it available for profiling sessions.
+	const timingChecks = { checks: { pluginTimings: verbose } };
 
 	// Run a build pass under a timer, recording elapsed into the collector.
 	const timed = async (groupId: string, pass: PassKind, run: () => Promise<unknown>): Promise<void> => {
@@ -273,6 +285,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 				tsconfigPath: dtsEmitTsconfigPath,
 				devManifest: options.devManifest,
 				...(partExternals !== undefined ? { externals: partExternals } : {}),
+				...(partBundleNodeModules !== undefined ? { bundleNodeModules: partBundleNodeModules } : {}),
 				...(partBundledPackages !== undefined ? { bundledPackages: partBundledPackages } : {}),
 				...(part.format !== undefined ? { format: part.format } : {}),
 				...(options.minify !== undefined ? { minify: options.minify } : {}),
@@ -338,6 +351,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 					fixedExtension: js.fixedExtension,
 					dts: js.dts,
 					define: js.define,
+					...timingChecks,
 					...instrument(group.id),
 					...(part.css !== undefined ? { css: part.css } : {}),
 					...(partExternals?.length || partBundleNodeModules || partBundle?.length
@@ -501,6 +515,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						fixedExtension: dts.fixedExtension,
 						dts: dts.dts,
 						define: dts.define,
+						...timingChecks,
 						...instrument(group.id),
 						...dtsDeps,
 						// The dts pass runs with emitDtsOnly, but for dual format tsdown still RE-EMITS the
@@ -546,6 +561,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						fixedExtension: decl.fixedExtension,
 						dts: decl.dts,
 						define: decl.define,
+						...timingChecks,
 						logLevel: "silent",
 						...(dtsNeverBundle.length > 0 || partBundleNodeModules || decl.bundledPackages
 							? {
@@ -607,6 +623,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
 						...options.define,
 					},
+					...timingChecks,
 					...instrument(group.id),
 					...(Object.keys(looseDeps).length > 0 ? { deps: looseDeps } : {}),
 					...(hasCjs ? { cjsDefault: true } : {}),

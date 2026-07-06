@@ -587,6 +587,53 @@ describe("buildTargetGroups", () => {
 		expect(captured[0]?.deps as Record<string, unknown>).not.toHaveProperty("skipNodeModulesBundle");
 	});
 
+	it("turns the JS pass unbundle OFF when bundleNodeModules is set (self-contained esm+cjs)", async () => {
+		// Regression test for the packed-esm defect: a per-module (preserveModules) JS pass
+		// writes every inlined node_modules dependency it bundles to its OWN sibling file,
+		// mirroring its node_modules/... path — which `npm pack` strips, so the esm entry
+		// throws `Cannot find module` once packed and installed. bundleNodeModules already
+		// promises a self-contained artifact (its own TSDoc says so); the JS pass must
+		// actually bundle (not preserve modules) to keep that promise for BOTH esm and cjs.
+		const captured: Array<{ unbundle?: unknown; dts?: unknown }> = [];
+		const build = (async (cfg: { unbundle?: unknown; dts?: unknown }) => {
+			captured.push({ unbundle: cfg.unbundle, dts: cfg.dts });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			format: ["esm", "cjs"],
+			bundleNodeModules: true,
+			build,
+		});
+		// [0] = JS pass (dts:false): unbundle must be false so both esm and cjs bundle whole.
+		expect(captured[0]?.dts).toBe(false);
+		expect(captured[0]?.unbundle).toBe(false);
+		// [1] = dts pass: already unbundle:false regardless — unaffected, still bundled.
+		expect(captured[1]?.unbundle).toBe(false);
+	});
+
+	it("leaves the JS pass unbundle ON when bundleNodeModules is absent (default per-module layout)", async () => {
+		const captured: Array<{ unbundle?: unknown; dts?: unknown }> = [];
+		const build = (async (cfg: { unbundle?: unknown; dts?: unknown }) => {
+			captured.push({ unbundle: cfg.unbundle, dts: cfg.dts });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			build,
+		});
+		expect(captured[0]?.dts).toBe(false);
+		expect(captured[0]?.unbundle).toBe(true);
+	});
+
 	it("keeps the leaf dts pass deps byte-identical (only neverBundle) when neither bundle flag is set", async () => {
 		const captured: Array<{ deps?: unknown }> = [];
 		const build = (async (cfg: { deps?: unknown }) => {

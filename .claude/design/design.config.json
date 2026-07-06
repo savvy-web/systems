@@ -81,6 +81,17 @@
 				"siteDocs": null
 			}
 		},
+		"changelog": {
+			"path": "packages/changelog",
+			"designDocsPath": ".claude/design/changelog",
+			"categories": ["architecture", "integration"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": "packages/changelog/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
 		"mcp": {
 			"path": "packages/mcp",
 			"designDocsPath": ".claude/design/mcp",

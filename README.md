@@ -43,6 +43,12 @@ The `savvy-mcp` Model Context Protocol server, serving Silk Suite tooling and li
 
 See the [mcp README](./packages/mcp/README.md) for the tool and resource surface.
 
+### @savvy-web/changelog
+
+The [changesets](https://github.com/changesets/changesets) changelog generator as a standalone package — the canonical `changelog` id for `.changeset/config.json`, shipped dual ESM/CJS so the vanilla changesets CLI can `require()` it. Installed automatically as a peer of `@savvy-web/silk`.
+
+See the [changelog README](./packages/changelog/README.md) for the config entry.
+
 ### @savvy-web/github-action-effects
 
 [Effect](https://effect.website/) services for building GitHub Actions: schema-validated inputs, structured logging that maps to workflow commands and typed wrappers around the GitHub API, with no `@actions/*` packages in the dependency tree.

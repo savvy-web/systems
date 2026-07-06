@@ -13,7 +13,7 @@ npm install --save-dev @savvy-web/silk
 pnpm add -D @savvy-web/silk
 ```
 
-Installing `silk` pulls [`@savvy-web/cli`](https://www.npmjs.com/package/@savvy-web/cli) and [`@savvy-web/mcp`](https://www.npmjs.com/package/@savvy-web/mcp) along with the real tools its configs reference (Biome, husky, commitlint, changesets, lint-staged, markdownlint), so the versions stay in lockstep.
+Installing `silk` pulls [`@savvy-web/cli`](https://www.npmjs.com/package/@savvy-web/cli), [`@savvy-web/mcp`](https://www.npmjs.com/package/@savvy-web/mcp) and [`@savvy-web/changelog`](https://www.npmjs.com/package/@savvy-web/changelog) along with the real tools its configs reference (Biome, husky, commitlint, changesets, lint-staged, markdownlint), so the versions stay in lockstep.
 
 ## Quick start
 
@@ -24,7 +24,7 @@ npx savvy init
 # writes the changeset, commit and lint configs and wires husky to the savvy subcommands
 ```
 
-The configs `savvy init` writes reference the `@savvy-web/silk` subpaths shown below. You can also write them by hand.
+The configs `savvy init` writes reference the entry points shown below. You can also write them by hand.
 
 ## Config entry points
 
@@ -44,13 +44,15 @@ Markdownlint (`.markdownlint-cli2.jsonc`) loads the changeset rule module:
 }
 ```
 
-Changesets (`.changeset/config.json`) loads the changelog formatter:
+Changesets (`.changeset/config.json`) loads the changelog generator, the standalone [`@savvy-web/changelog`](https://www.npmjs.com/package/@savvy-web/changelog) package that silk ships as a peer:
 
 ```json
 {
-  "changelog": "@savvy-web/silk/changesets/changelog"
+  "changelog": ["@savvy-web/changelog", { "repo": "owner/repo" }]
 }
 ```
+
+The `@savvy-web/silk/changesets/changelog` subpath re-exports the same generator and remains accepted by `savvy check`.
 
 Biome (`biome.jsonc`) extends the bundled preset:
 
@@ -65,7 +67,7 @@ Biome (`biome.jsonc`) extends the bundled preset:
 | Subpath | What it provides |
 | ------- | ---------------- |
 | `./changesets` | Changeset class and service surface |
-| `./changesets/changelog` | `ChangelogFunctions` default for `.changeset/config.json` |
+| `./changesets/changelog` | `ChangelogFunctions` default (same generator as `@savvy-web/changelog`) |
 | `./changesets/markdownlint` | markdownlint-cli2 rules (default array plus named rules) |
 | `./changesets/remark` | remark transform plugins, presets and lint rules |
 | `./commitlint` | Auto-detecting `CommitlintConfig` plus types |

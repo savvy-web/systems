@@ -218,7 +218,7 @@ describe("handleConfig", () => {
 		const written = getWritten(calls, 0);
 		const config = JSON.parse(written);
 		expect(config.$schema).toContain("@changesets/config");
-		expect(config.changelog).toEqual(["@savvy-web/silk/changesets/changelog", { repo: "savvy-web/changesets" }]);
+		expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "savvy-web/changesets" }]);
 		expect(config.commit).toBe(false);
 		expect(config.access).toBe("restricted");
 		expect(config.baseBranch).toBe("main");
@@ -246,7 +246,7 @@ describe("handleConfig", () => {
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
 		const config = JSON.parse(getWritten(calls, 0));
-		expect(config.changelog).toEqual(["@savvy-web/silk/changesets/changelog", { repo: "org/repo" }]);
+		expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "org/repo" }]);
 		// Preserved existing values
 		expect(config.commit).toBe(true);
 		expect(config.access).toBe("public");
@@ -306,7 +306,7 @@ describe("handleConfig", () => {
 		// Force writes full defaults — existing commit/baseBranch are replaced
 		expect(config.commit).toBe(false);
 		expect(config.baseBranch).toBe("main");
-		expect(config.changelog).toEqual(["@savvy-web/silk/changesets/changelog", { repo: "org/repo" }]);
+		expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "org/repo" }]);
 	});
 
 	it("returns InitError when writeFileSync throws", async () => {
@@ -786,6 +786,16 @@ describe("checkConfig", () => {
 		vi.mocked(readFileSync).mockReturnValue(
 			JSON.stringify({
 				changelog: ["@savvy-web/silk/changesets/changelog", { repo: "owner/repo" }],
+			}),
+		);
+		expect(checkConfig(changesetDir, "owner/repo")).toEqual([]);
+	});
+
+	it("accepts the @savvy-web/changelog formatter", () => {
+		vi.mocked(existsSync).mockReturnValue(true);
+		vi.mocked(readFileSync).mockReturnValue(
+			JSON.stringify({
+				changelog: ["@savvy-web/changelog", { repo: "owner/repo" }],
 			}),
 		);
 		expect(checkConfig(changesetDir, "owner/repo")).toEqual([]);

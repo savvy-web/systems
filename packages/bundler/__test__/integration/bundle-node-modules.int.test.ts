@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { defineBuild } from "../../src/config.js";
@@ -6,15 +6,6 @@ import { runBuild } from "../../src/run.js";
 
 const FIX = join(import.meta.dirname, "fixtures/bundle-node-modules");
 const OUT = join(FIX, "dist/dev/pkg");
-// Derive tinyrainbow's pnpm virtual-store dirname from the installed version so a
-// devDep version bump does not break the path assertions below. The bundler copies
-// the dep under OUT using this same `name@version` dirname, so reading it from the
-// root store (always present, unlike OUT which only exists after a build) keeps the
-// bundled-path assertion in sync with whatever version is installed.
-const PNPM_STORE = join(import.meta.dirname, "../../../../node_modules/.pnpm");
-const TINYRAINBOW_DIR = readdirSync(PNPM_STORE).find((d) => d.startsWith("tinyrainbow@"));
-if (!TINYRAINBOW_DIR) throw new Error("tinyrainbow not found in the pnpm store");
-const BUNDLED_DEP = join(OUT, "node_modules/.pnpm", TINYRAINBOW_DIR, "node_modules/tinyrainbow/dist/index.js");
 
 /** True only when the bare specifier survives as a real import/require (not a comment). */
 function hasBareReference(js: string, specifier: string): boolean {
@@ -29,7 +20,7 @@ describe("bundleNodeModules: force-bundle node_modules JS deps (deps.skipNodeMod
 		rmSync(join(FIX, "dist"), { recursive: true, force: true });
 	});
 
-	it("bundles an unlisted node_modules value dep into the output when bundleNodeModules is true", async () => {
+	it("inlines an unlisted node_modules value dep into a SINGLE self-contained entry file when bundleNodeModules is true", async () => {
 		rmSync(join(FIX, "dist"), { recursive: true, force: true });
 		await runBuild(defineBuild({ devManifest: "preserve", bundleNodeModules: true }), {
 			cwd: FIX,
@@ -37,19 +28,21 @@ describe("bundleNodeModules: force-bundle node_modules JS deps (deps.skipNodeMod
 			writeOutput: () => {},
 		});
 		const js = readFileSync(join(OUT, "index.js"), "utf-8");
-		// tinyrainbow is neither an external nor a bundledPackages target. Its
-		// runtime code is bundled into the output tree (per-module chunk), and the
-		// entry references it by a relative path — there is NO surviving bare
-		// `import ... from "tinyrainbow"` left for the consumer to resolve.
+		// tinyrainbow is neither an external nor a bundledPackages target. Its runtime code is
+		// bundled into the entry itself — there is NO surviving bare `import ... from
+		// "tinyrainbow"` left for the consumer to resolve.
 		expect(hasBareReference(js, "tinyrainbow")).toBe(false);
-		// The dependency's source is physically emitted into dist, so the package
-		// is self-contained (rslib bundle-everything-except-externals parity).
-		expect(existsSync(BUNDLED_DEP)).toBe(true);
-		const dep = readFileSync(BUNDLED_DEP, "utf-8");
-		// The bundled chunk carries tinyrainbow's recognizable source: a region
-		// header sourced from its node_modules path plus its ANSI color table.
-		expect(dep).toMatch(/#region.*node_modules.*\/tinyrainbow\//);
-		expect(dep).toMatch(/bold:/);
+		// bundleNodeModules must produce a genuinely SELF-CONTAINED single file, not a
+		// per-module chunk tree mirroring node_modules paths: `npm pack` unconditionally strips
+		// any directory literally named `node_modules`, so a packed-and-installed consumer of a
+		// preserveModules-chunked output throws `Cannot find module` at load time (the packed-
+		// tarball defect this test guards against — see the tsdown-plugins `unbundle` TSDoc for
+		// the full finding). No node_modules dir may exist in the built package at all.
+		expect(existsSync(join(OUT, "node_modules"))).toBe(false);
+		// tinyrainbow's recognizable source (a region header sourced from its node_modules path,
+		// plus its ANSI color table) is inlined directly into the single entry file.
+		expect(js).toMatch(/#region.*node_modules.*\/tinyrainbow\//);
+		expect(js).toMatch(/bold:/);
 		// Our own entry still exports its surface against the bundled implementation.
 		expect(js).toMatch(/export\s*\{[^}]*\blabel\b/);
 	}, 120_000);
@@ -66,8 +59,9 @@ describe("bundleNodeModules: force-bundle node_modules JS deps (deps.skipNodeMod
 		});
 		const js = readFileSync(join(OUT, "index.js"), "utf-8");
 		// With tinyrainbow now externalized, the bare import survives and the dep is
-		// NOT copied into the output tree — the externals list still wins.
+		// NOT inlined into the entry — the externals list still wins.
 		expect(hasBareReference(js, "tinyrainbow")).toBe(true);
-		expect(existsSync(BUNDLED_DEP)).toBe(false);
+		expect(js).not.toMatch(/#region.*node_modules.*\/tinyrainbow\//);
+		expect(existsSync(join(OUT, "node_modules"))).toBe(false);
 	}, 120_000);
 });
