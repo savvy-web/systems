@@ -57,7 +57,7 @@
 		"@effect/rpc": "catalog:silk",
 		"@effect/sql": "catalog:silk",
 		"@effect/typeclass": "catalog:silk",
-		"@rsbuild/core": "^2.1.1",
+		"@rsbuild/core": "^2.1.4",
 		"effect": "catalog:silk",
 		"jiti": "^2.7.0",
 		"picocolors": "^1.1.1",
