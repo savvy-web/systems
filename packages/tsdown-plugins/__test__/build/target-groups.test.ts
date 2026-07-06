@@ -78,6 +78,33 @@ describe("deriveTargetGroupOptions (JS pass)", () => {
 		} as never);
 		expect((o as unknown as Record<string, unknown>).bundledPackages).toBeUndefined();
 	});
+
+	it("turns preserveModules OFF (unbundle:false) when bundleNodeModules is set", () => {
+		// bundleNodeModules promises a self-contained artifact; a per-module (preserveModules)
+		// JS pass writes every inlined node_modules dependency to its own sibling file, which
+		// `npm pack` strips, breaking that promise for the esm output. See the TSDoc on
+		// DerivedTsdownOptions.unbundle for the full finding.
+		const o = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve", bundleNodeModules: true });
+		expect(o.unbundle).toBe(false);
+	});
+
+	it("keeps preserveModules ON (unbundle:true) when bundleNodeModules is false or absent", () => {
+		const withFalse = deriveTargetGroupOptions({
+			...base,
+			group: "dev",
+			devManifest: "preserve",
+			bundleNodeModules: false,
+		});
+		expect(withFalse.unbundle).toBe(true);
+		const withAbsent = deriveTargetGroupOptions({ ...base, group: "dev", devManifest: "preserve" });
+		expect(withAbsent.unbundle).toBe(true);
+	});
+
+	it("turns preserveModules off for a prod group too when bundleNodeModules is set", () => {
+		const o = deriveTargetGroupOptions({ ...base, group: "npm", devManifest: "preserve", bundleNodeModules: true });
+		expect(o.unbundle).toBe(false);
+		expect(o.isProd).toBe(true);
+	});
 });
 
 describe("deriveDtsPassOptions (dts pass)", () => {

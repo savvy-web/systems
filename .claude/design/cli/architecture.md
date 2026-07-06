@@ -3,12 +3,13 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-07-02
-last-synced: 2026-07-02
+updated: 2026-07-06
+last-synced: 2026-07-06
 completeness: 90
 related:
   - ../silk/architecture.md
   - ../silk-effects/architecture.md
+  - ../changelog/architecture.md
   - ../mcp/architecture.md
 dependencies:
   - ../silk-effects/architecture.md
@@ -124,7 +125,7 @@ The consequence: because the R-channel is `any`, the type-checker cannot prove t
 
 Within each source package the CLI commands and the config-integration exports share the tool's own internal logic (the changeset `transform` command and the `./remark` export run the same plugins; the changeset `lint` command and the `./markdownlint` export run the same rules). If that logic sat in `silk` and the commands sat in `cli`, `cli` would have to import `silk` — which the topology forbids. The shared logic therefore lives in `silk-effects`, leaving both `cli` and `silk` thin and neither importing the other. See `../silk-effects/architecture.md`.
 
-`changeset init` reflects this same topology in what it writes. Consumers install only `@savvy-web/silk`, so `init` writes the silk shim paths into a consumer's `.changeset/config.json` and `.markdownlint-cli2.jsonc` — the changelog formatter `@savvy-web/silk/changesets/changelog` and the markdownlint customRule `@savvy-web/silk/changesets/markdownlint`. `savvy check` also accepts the standalone `@savvy-web/changesets/*` paths, but `init` always writes the silk path and migrates a standalone customRule entry to it. Writing the standalone specifier would regress a silk-only consumer to reference a package it does not install. See `src/commands/changeset/commands/init.ts` for the accepted-versus-canonical entry constants.
+`changeset init` reflects this same topology in what it writes. The canonical changelog formatter `init` writes into `.changeset/config.json` is the standalone `@savvy-web/changelog` package — an installable id the vanilla changesets CLI can `require()` directly, which silk ships as a peer companion (so a silk consumer has it installed) and silk-release-action's native versioning can bundle (see `../changelog/architecture.md`). The markdownlint customRule stays the silk shim `@savvy-web/silk/changesets/markdownlint`. `savvy check` still accepts the prior canonical silk shim path (`@savvy-web/silk/changesets/changelog`) and the pre-merge standalone `@savvy-web/changesets/changelog`, but `init` always writes the canonical entries and migrates a standalone customRule entry to the silk shim. See `src/commands/changeset/commands/init.ts` for the accepted-versus-canonical entry constants.
 
 ### Why static, not discovered
 

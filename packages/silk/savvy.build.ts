@@ -84,18 +84,18 @@ await build({
 	// meta asset.
 	meta: false,
 	transform: ({ pkg }) => {
-		// `@savvy-web/cli` and `@savvy-web/mcp` are declared as regular
-		// `dependencies` in source (with a `workspace:*` range, which changesets reads
-		// as their exact current version). A cli/mcp release therefore pushes silk's
-		// dep out of range and auto-PATCH-bumps silk (`updateInternalDependencies:
-		// patch`), re-pinning the exact version at publish — a source `peerDependency`
-		// on a released workspace package would instead force a MAJOR bump every time.
-		// Consumers should still receive them as peers alongside the rest of the suite,
-		// so promote them back into `peerDependencies` for the published manifest BEFORE
-		// the `dependencies` block is stripped below.
+		// `@savvy-web/cli`, `@savvy-web/mcp`, and `@savvy-web/changelog` are declared as
+		// regular `dependencies` in source (with a `workspace:*` range, which changesets
+		// reads as their exact current version). A release of any of them therefore
+		// pushes silk's dep out of range and auto-PATCH-bumps silk
+		// (`updateInternalDependencies: patch`), re-pinning the exact version at publish
+		// — a source `peerDependency` on a released workspace package would instead force
+		// a MAJOR bump every time. Consumers should still receive them as peers alongside
+		// the rest of the suite, so promote them back into `peerDependencies` for the
+		// published manifest BEFORE the `dependencies` block is stripped below.
 		const deps = pkg.dependencies as Record<string, string> | undefined;
 		const peers = (pkg.peerDependencies as Record<string, string> | undefined) ?? {};
-		for (const name of ["@savvy-web/cli", "@savvy-web/mcp"]) {
+		for (const name of ["@savvy-web/changelog", "@savvy-web/cli", "@savvy-web/mcp"]) {
 			const range = deps?.[name];
 			if (range) peers[name] = range;
 		}
@@ -104,8 +104,8 @@ await build({
 		// the two `dtsExternals` packages (externalized in the dts so consumers can resolve
 		// the type imports), and `@savvy-web/silk-effects` (externalized in the BASE ESM
 		// entries, so the published package needs it as a real dependency for consumers to
-		// resolve those `import`s). cli/mcp are promoted to peers and everything else is
-		// bundled into silk's JS, so keep ONLY these and drop the rest.
+		// resolve those `import`s). cli/mcp/changelog are promoted to peers and everything
+		// else is bundled into silk's JS, so keep ONLY these and drop the rest.
 		const kept: Record<string, string> = {};
 		for (const name of ["semver", "effect", "@effect/platform"]) {
 			const range = deps?.[name];

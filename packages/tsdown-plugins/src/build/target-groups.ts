@@ -61,6 +61,13 @@ export interface DeriveOptions {
 	 * runtime JS bundling is unaffected.
 	 */
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	/**
+	 * Force-bundle node_modules (and workspace) JS dependencies into the JS pass (tsdown
+	 * `deps.skipNodeModulesBundle: false`). Consumed here ONLY to decide the JS pass's
+	 * `unbundle` posture — see {@link DerivedTsdownOptions.unbundle} — the `deps` shape
+	 * itself is computed separately in `buildTargetGroups`.
+	 */
+	readonly bundleNodeModules?: boolean | undefined;
 }
 
 /**
@@ -79,6 +86,22 @@ export interface DeriveOptions {
  * the JS re-bundles workspace consumers (e.g. silk re-bundling silk-effects crashes at
  * runtime). The split keeps per-module JS (no re-bundle hazard) AND bundled, self-contained
  * declarations (no TS2883).
+ *
+ * **`unbundle` flips to `false` when `bundleNodeModules` is set.** `bundleNodeModules: true`
+ * exists to produce a genuinely self-contained artifact (its own TSDoc already promises this),
+ * but `preserveModules` (the per-module JS pass) writes every inlined node_modules dependency
+ * out to its OWN sibling file, mirroring its `node_modules/.pnpm/...` (or workspace) path
+ * relative to the package root — for BOTH esm and cjs. `npm pack` unconditionally strips any
+ * directory literally named `node_modules` from the published tarball, so an esm entry built
+ * this way throws `Cannot find module '.../node_modules/.pnpm/.../foo.js'` once packed and
+ * installed (the cjs sibling accidentally escapes this: tsdown's own dts pass, which always
+ * runs `unbundle: false`, re-emits and overwrites a dual-format build's `.cjs` JS chunk as a
+ * side effect of emitting `.d.cts` — see the dts-pass rebuild note in `buildTargetGroups` — so
+ * only the esm artifact keeps the broken preserveModules layout). Turning `unbundle` off for
+ * the JS pass whenever `bundleNodeModules` is requested makes BOTH formats bundle into one
+ * self-contained file, matching what the flag already promises and what the cjs side already
+ * does by accident. Scoped to `bundleNodeModules` alone: every other build keeps the default
+ * per-module dev-friendly layout unchanged.
  * @public
  */
 export interface DerivedTsdownOptions {
@@ -86,7 +109,8 @@ export interface DerivedTsdownOptions {
 	readonly sourcemap: boolean;
 	readonly minify: boolean;
 	readonly format: ReadonlyArray<BuildFormat>;
-	readonly unbundle: true;
+	/** `false` only when `bundleNodeModules` is set — see the interface TSDoc above. */
+	readonly unbundle: boolean;
 	/** JS pass starts fresh; it owns the outDir before the dts pass appends to it. */
 	readonly clean: true;
 	readonly platform: BuildPlatform;
@@ -186,7 +210,11 @@ export function deriveTargetGroupOptions(options: DeriveOptions): DerivedTsdownO
 		// minifies only when the caller asked. Node libraries favor readable output.
 		minify: isProd && (options.minify ?? false),
 		format,
-		unbundle: true,
+		// See DerivedTsdownOptions' TSDoc: bundleNodeModules promises a self-contained
+		// artifact, which per-module preserveModules output defeats for esm once packed
+		// (npm pack strips node_modules dirs the JS pass wrote its inlined deps into).
+		// Turning preserveModules off restores a single bundled file for every format.
+		unbundle: !(options.bundleNodeModules ?? false),
 		clean: true,
 		platform: options.platform ?? "node",
 		// Always false: tsdown derives ESM .js plus CJS .cjs for a type:module package, the

@@ -16,14 +16,20 @@
 		{
 			"source": "packages/bundler/CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "a031ff3a9d3832d4c9c072a9bbc51c3b81dcf081edf496a86d69975bc404ddca",
-			"recordedAt": "2026-07-03"
+			"hash": "9e968aff374b1462bc83a37442cadff8884a50dafe197994efd8ddfa0c107bcc",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "packages/changelog/CLAUDE.md",
+			"target": ".claude/design/changelog/architecture.md",
+			"hash": "a0714dafff80d06532690fae50c9543bdbc2f47be621c1a59a26868c8db07edd",
+			"recordedAt": "2026-07-06"
 		},
 		{
 			"source": "packages/cli/CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "78ed879e6494c136361490b697b4a059f472db2110946247e55b575934ea160b",
-			"recordedAt": "2026-07-02"
+			"hash": "e22143c40fc418ab1ebf465ec43349329b3a3010047f3469cb33e2b1c82fe601",
+			"recordedAt": "2026-07-06"
 		},
 		{
 			"source": "packages/github-action-builder/CLAUDE.md",
@@ -64,8 +70,8 @@
 		{
 			"source": "packages/silk/CLAUDE.md",
 			"target": ".claude/design/silk/architecture.md",
-			"hash": "f46fd3b9d33543a0fc970a902d159fa306a07924939dd13799c9d39226d2ab5b",
-			"recordedAt": "2026-07-03"
+			"hash": "37437a12fa7bde672292572faa6053a1f9a8be65ec842a4c7d51ec6f36beed61",
+			"recordedAt": "2026-07-06"
 		},
 		{
 			"source": "packages/templates/CLAUDE.md",
@@ -76,8 +82,8 @@
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "01f6146d07df30a81b30d98dabee79b0b3c612066fa7a42593dc5662dd29d312",
-			"recordedAt": "2026-07-03"
+			"hash": "32cf3daba03a712eb124eea35e2fda735120cc9c25ce0926886e72b272c6ef2c",
+			"recordedAt": "2026-07-06"
 		}
 	]
 }

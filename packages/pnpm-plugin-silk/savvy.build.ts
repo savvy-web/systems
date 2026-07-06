@@ -279,7 +279,7 @@ await build({
 			},
 			publicHoistPattern: {
 				excludeByRepo: {
-					"savvy-web-systems": ["@savvy-web/cli", "@savvy-web/mcp"],
+					"savvy-web-systems": ["@savvy-web/changelog", "@savvy-web/cli", "@savvy-web/mcp"],
 					"vitest-agent": ["@vitest-agent/cli", "@vitest-agent/mcp"],
 				},
 				value: [
@@ -288,6 +288,7 @@ await build({
 					"@commitlint/config-conventional",
 					"@commitlint/cz-commitlint",
 					"@rslib/core",
+					"@savvy-web/changelog",
 					"@savvy-web/cli",
 					"@savvy-web/mcp",
 					"@types/bun",

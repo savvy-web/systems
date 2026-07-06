@@ -1,0 +1,54 @@
+{
+	"name": "@savvy-web/changelog",
+	"version": "0.0.0",
+	"private": true,
+	"description": "The Silk Suite changesets changelog generator as a standalone package",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/changelog",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/changelog"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build:dev": "node savvy.build.ts --target dev",
+		"build:prod": "node savvy.build.ts --target prod",
+		"types:check": "tsgo --noEmit"
+	},
+	"dependencies": {
+		"jju": "^1.4.0",
+		"semver": "^7.8.5"
+	},
+	"devDependencies": {
+		"@savvy-web/bundler": "workspace:*",
+		"@savvy-web/silk-effects": "workspace:*",
+		"@types/node": "catalog:silk",
+		"@typescript/native-preview": "catalog:silk",
+		"effect": "catalog:silk",
+		"tsx": "catalog:silk",
+		"typescript": "catalog:silk",
+		"vitest": "catalog:silk"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev/pkg",
+		"linkDirectory": true,
+		"targets": {
+			"npm": true,
+			"github": true
+		}
+	}
+}

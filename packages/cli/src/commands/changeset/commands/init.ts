@@ -46,15 +46,15 @@ import { WorkspaceRoot } from "workspaces-effect";
 const { LegacyVersionFilesSchema } = Changesets;
 
 /**
- * Canonical changelog formatter written by `init` — the `@savvy-web/silk`
- * shim that consumers actually install (the standalone `@savvy-web/changesets`
- * package was merged into `@savvy-web/silk`).
+ * Canonical changelog formatter written by `init` — the standalone
+ * `@savvy-web/changelog` package (hoisted by pnpm-plugin-silk as a silk
+ * peer companion; also bundled by silk-release-action's native versioning).
  */
-const CHANGELOG_ENTRY = "@savvy-web/silk/changesets/changelog";
-/** Pre-merge standalone formatter; still accepted by `check` for backward compat. */
-const LEGACY_CHANGELOG_ENTRY = "@savvy-web/changesets/changelog";
-/** Changelog formatters `check` treats as valid (canonical silk shim + legacy). */
-const ACCEPTED_CHANGELOG_ENTRIES: readonly string[] = [CHANGELOG_ENTRY, LEGACY_CHANGELOG_ENTRY];
+const CHANGELOG_ENTRY = "@savvy-web/changelog";
+/** Prior canonical (silk shim subpath) and pre-merge standalone formatter; still accepted by `check`. */
+const LEGACY_CHANGELOG_ENTRIES = ["@savvy-web/silk/changesets/changelog", "@savvy-web/changesets/changelog"] as const;
+/** Changelog formatters `check` treats as valid (canonical + legacy). */
+const ACCEPTED_CHANGELOG_ENTRIES: readonly string[] = [CHANGELOG_ENTRY, ...LEGACY_CHANGELOG_ENTRIES];
 
 /** Canonical markdownlint custom-rule entry written by `init` — the silk shim. */
 const CUSTOM_RULES_ENTRY = "@savvy-web/silk/changesets/markdownlint";
@@ -220,7 +220,7 @@ export function ensureChangesetDir(root: string): Effect.Effect<string, InitErro
  *
  * When `force` is `true` or the file does not exist, writes a fresh config
  * with the default schema. Otherwise, patches only the `changelog` field to
- * point at `\@savvy-web/silk/changesets/changelog` with the detected `repoSlug`.
+ * point at `\@savvy-web/changelog` with the detected `repoSlug`.
  *
  * @param changesetDir - Absolute path to the `.changeset/` directory
  * @param repoSlug - The `owner/repo` GitHub slug to embed in the config
@@ -526,9 +526,10 @@ export function checkChangesetDir(root: string): CheckIssue[] {
 /**
  * Check that `.changeset/config.json` exists and has the correct changelog entry.
  *
- * Verifies that the `changelog` field points to the silk changelog shim
- * (`\@savvy-web/silk/changesets/changelog`; the pre-merge
- * `\@savvy-web/changesets/changelog` is still accepted) and that the embedded
+ * Verifies that the `changelog` field points to the standalone
+ * `\@savvy-web/changelog` package (the prior silk shim subpath
+ * `\@savvy-web/silk/changesets/changelog` and the pre-merge
+ * `\@savvy-web/changesets/changelog` are still accepted) and that the embedded
  * `repo` value matches `repoSlug`.
  *
  * @param changesetDir - Absolute path to the `.changeset/` directory

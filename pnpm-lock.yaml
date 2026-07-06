@@ -180,6 +180,41 @@ importers:
         version: 4.1.9(@types/node@26.1.0)(@vitest/coverage-istanbul@4.1.9)(@vitest/coverage-v8@4.1.9)(vite@8.1.2(@types/node@26.1.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
+  packages/changelog:
+    dependencies:
+      jju:
+        specifier: ^1.4.0
+        version: 1.4.0
+      semver:
+        specifier: ^7.8.5
+        version: 7.8.5
+    devDependencies:
+      '@savvy-web/bundler':
+        specifier: workspace:*
+        version: link:../bundler/dist/dev/pkg
+      '@savvy-web/silk-effects':
+        specifier: workspace:*
+        version: link:../silk-effects/dist/dev/pkg
+      '@types/node':
+        specifier: catalog:silk
+        version: 26.1.0
+      '@typescript/native-preview':
+        specifier: catalog:silk
+        version: 7.0.0-dev.20260702.3
+      effect:
+        specifier: catalog:silk
+        version: 3.21.4
+      tsx:
+        specifier: catalog:silk
+        version: 4.22.4
+      typescript:
+        specifier: catalog:silk
+        version: 6.0.3
+      vitest:
+        specifier: catalog:silk
+        version: 4.1.9(@types/node@26.1.0)(@vitest/coverage-istanbul@4.1.9)(@vitest/coverage-v8@4.1.9)(vite@8.1.2(@types/node@26.1.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+    publishDirectory: dist/dev/pkg
+
   packages/cli:
     dependencies:
       '@effect/cli':
@@ -493,6 +528,9 @@ importers:
       '@effect/platform':
         specifier: catalog:silk
         version: 0.96.2(effect@3.21.4)
+      '@savvy-web/changelog':
+        specifier: workspace:*
+        version: link:../changelog/dist/dev/pkg
       '@savvy-web/cli':
         specifier: workspace:*
         version: link:../cli/dist/dev/pkg
