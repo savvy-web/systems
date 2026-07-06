@@ -164,6 +164,79 @@ export function jsonPathGet(obj: unknown, path: string): unknown[] {
 }
 
 /**
+ * Resolve a JSONPath expression to the concrete paths of every existing match.
+ *
+ * @remarks
+ * Uses the same breadth-first expansion as {@link jsonPathGet}, but instead of
+ * collecting the matched *values* it records the concrete `(string | number)[]`
+ * path taken to reach each one. Wildcards and indices are materialized into the
+ * numeric array index actually traversed, so the returned paths are directly
+ * consumable by structural editors such as `jsonc-effect`'s `modify`, which
+ * require a fully concrete path (no wildcards).
+ *
+ * Only existing locations are returned; nothing is created. A path with no
+ * matches yields an empty array, and the empty path (`"$."`) yields a single
+ * empty concrete path (the document root).
+ *
+ * @param obj - The object to query
+ * @param path - JSONPath string (e.g., `"$.packages[*].version"`)
+ * @returns Array of concrete paths, each an array of string keys / numeric indices
+ *
+ * @example
+ * ```typescript
+ * import { jsonPathResolve } from "../utils/jsonpath.js";
+ *
+ * const obj = { packages: [{ version: "1.0.0" }, { version: "2.0.0" }] };
+ * const paths = jsonPathResolve(obj, "$.packages[*].version");
+ * // [["packages", 0, "version"], ["packages", 1, "version"]]
+ * ```
+ *
+ * @internal
+ */
+export function jsonPathResolve(obj: unknown, path: string): Array<Array<string | number>> {
+	const segments = parseJsonPath(path);
+	let current: Array<{ node: unknown; path: Array<string | number> }> = [{ node: obj, path: [] }];
+
+	for (const segment of segments) {
+		const next: Array<{ node: unknown; path: Array<string | number> }> = [];
+
+		for (const { node, path: nodePath } of current) {
+			if (node === null || node === undefined || typeof node !== "object") {
+				continue;
+			}
+
+			switch (segment.type) {
+				case "property": {
+					const value = (node as Record<string, unknown>)[segment.key];
+					if (value !== undefined) {
+						next.push({ node: value, path: [...nodePath, segment.key] });
+					}
+					break;
+				}
+				case "index": {
+					if (Array.isArray(node) && segment.index < node.length) {
+						next.push({ node: node[segment.index], path: [...nodePath, segment.index] });
+					}
+					break;
+				}
+				case "wildcard": {
+					if (Array.isArray(node)) {
+						node.forEach((element, index) => {
+							next.push({ node: element, path: [...nodePath, index] });
+						});
+					}
+					break;
+				}
+			}
+		}
+
+		current = next;
+	}
+
+	return current.map((entry) => entry.path);
+}
+
+/**
  * Mutate all matching locations in an object in-place.
  *
  * @remarks

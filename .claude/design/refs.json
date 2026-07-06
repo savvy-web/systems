@@ -64,8 +64,8 @@
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
 			"target": ".claude/design/silk-effects/architecture.md",
-			"hash": "2ed5f3d3f477bf7433e9203b4a711cf95a3088d39c60a58cf334f7c238cff57d",
-			"recordedAt": "2026-07-03"
+			"hash": "9d7900d59e8c5088adc88cd518e904010eb5127c4b7c5fab00b1273bc344c0c7",
+			"recordedAt": "2026-07-06"
 		},
 		{
 			"source": "packages/silk/CLAUDE.md",

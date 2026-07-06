@@ -255,11 +255,12 @@ describe("VersionFiles.updateFile", () => {
 		expect(result?.previousValues).toEqual(["1.0.0", "1.0.0"]);
 	});
 
-	it("returns undefined when no paths match", () => {
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify({ other: "field" }));
+	it("returns undefined and does not write for a wildcard path with no matches", () => {
+		vi.mocked(readFileSync).mockReturnValue('{\n\t"packages": []\n}\n');
 
-		const result = VersionFiles.updateFile("/project/file.json", ["$.version"], "2.0.0");
+		const result = VersionFiles.updateFile("/project/file.json", ["$.packages[*].version"], "2.0.0");
 		expect(result).toBeUndefined();
+		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
 	});
 
 	it("preserves trailing newline", () => {
@@ -279,6 +280,168 @@ describe("VersionFiles.updateFile", () => {
 		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
 		expect(written.endsWith("}\n")).toBe(false);
 		expect(written.endsWith("}")).toBe(true);
+	});
+
+	it("preserves an inline array layout byte-for-byte on a version bump", () => {
+		// Biome line-width style keeps short arrays on one line. JSON.stringify would
+		// explode this to one element per line; the jsonc edit path must not.
+		const content = '{\n\t"version": "1.0.0",\n\t"keywords": ["a", "b", "c"]\n}\n';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/plugin.json", ["$.version"], "1.0.1");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n\t"version": "1.0.1",\n\t"keywords": ["a", "b", "c"]\n}\n');
+	});
+
+	it("touches only the version value in a #233-shaped plugin.json (tab-indented, nested, inline arrays)", () => {
+		const content = [
+			"{",
+			'\t"name": "github-actions",',
+			'\t"version": "2.1.0",',
+			'\t"keywords": ["github-actions", "workflows", "automation", "ci-cd", "effect"],',
+			'\t"commands": {',
+			'\t\t"deploy": { "args": ["--env", "prod"] }',
+			"\t}",
+			"}",
+			"",
+		].join("\n");
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/.claude-plugin/plugin.json", ["$.version"], "2.1.1");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe(content.replace('"version": "2.1.0"', '"version": "2.1.1"'));
+	});
+
+	it("preserves a 2-space document with a trailing newline byte-for-byte", () => {
+		const content = '{\n  "name": "pkg",\n  "version": "1.0.0"\n}\n';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/file.json", ["$.version"], "1.2.3");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n  "name": "pkg",\n  "version": "1.2.3"\n}\n');
+	});
+
+	it("preserves a 2-space document without a trailing newline byte-for-byte", () => {
+		const content = '{\n  "name": "pkg",\n  "version": "1.0.0"\n}';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/file.json", ["$.version"], "1.2.3");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n  "name": "pkg",\n  "version": "1.2.3"\n}');
+	});
+
+	it("preserves a tab document with a trailing newline byte-for-byte", () => {
+		const content = '{\n\t"name": "pkg",\n\t"version": "1.0.0"\n}\n';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/file.json", ["$.version"], "1.2.3");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n\t"name": "pkg",\n\t"version": "1.2.3"\n}\n');
+	});
+
+	it("preserves a tab document without a trailing newline byte-for-byte", () => {
+		const content = '{\n\t"name": "pkg",\n\t"version": "1.0.0"\n}';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/file.json", ["$.version"], "1.2.3");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n\t"name": "pkg",\n\t"version": "1.2.3"\n}');
+	});
+
+	it("inserts an explicit path that does not yet exist using the 2-space indent", () => {
+		const content = '{\n  "name": "pkg"\n}\n';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		const result = VersionFiles.updateFile("/project/file.json", ["$.version"], "1.0.0");
+
+		expect(result).toBeDefined();
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toContain('  "version": "1.0.0"');
+		expect(written).toContain('"name": "pkg"');
+	});
+
+	it("inserts a missing property using the document's tab indent", () => {
+		const content = '{\n\t"name": "pkg"\n}\n';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/file.json", ["$.version"], "1.0.0");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toContain('\t"version": "1.0.0"');
+	});
+
+	it("preserves comments in JSONC input while bumping the version", () => {
+		const content = '{\n\t// pinned by release automation\n\t"version": "1.0.0"\n}\n';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		VersionFiles.updateFile("/project/file.json", ["$.version"], "2.0.0");
+
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n\t// pinned by release automation\n\t"version": "2.0.0"\n}\n');
+	});
+
+	it("updates every wildcard match while preserving formatting", () => {
+		const content = '{\n\t"packages": [\n\t\t{ "version": "1.0.0" },\n\t\t{ "version": "1.0.0" }\n\t]\n}\n';
+		vi.mocked(readFileSync).mockReturnValue(content);
+
+		const result = VersionFiles.updateFile("/project/file.json", ["$.packages[*].version"], "2.0.0");
+
+		expect(result).toBeDefined();
+		expect(result?.previousValues).toEqual(["1.0.0", "1.0.0"]);
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n\t"packages": [\n\t\t{ "version": "2.0.0" },\n\t\t{ "version": "2.0.0" }\n\t]\n}\n');
+	});
+
+	it("returns undefined and does not write when the value is already the target version", () => {
+		vi.mocked(readFileSync).mockReturnValue('{\n  "version": "2.0.0"\n}\n');
+
+		const result = VersionFiles.updateFile("/project/file.json", ["$.version"], "2.0.0");
+
+		expect(result).toBeUndefined();
+		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+	});
+
+	it("inserts a version into an empty object using the default indent", () => {
+		vi.mocked(readFileSync).mockReturnValue("{}");
+
+		const result = VersionFiles.updateFile("/project/file.json", ["$.version"], "1.0.0");
+
+		expect(result).toBeDefined();
+		const written = vi.mocked(writeFileSync).mock.calls[0][1] as string;
+		expect(written).toBe('{\n  "version": "1.0.0"\n}');
+	});
+
+	it("does not insert an array element for an out-of-bounds index path", () => {
+		vi.mocked(readFileSync).mockReturnValue('{\n\t"items": ["a"]\n}\n');
+
+		const result = VersionFiles.updateFile("/project/file.json", ["$.items[5]"], "2.0.0");
+
+		expect(result).toBeUndefined();
+		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+	});
+
+	it("does not insert when the parent path does not exist", () => {
+		vi.mocked(readFileSync).mockReturnValue("{}");
+
+		const result = VersionFiles.updateFile("/project/file.json", ["$.a.b"], "2.0.0");
+
+		expect(result).toBeUndefined();
+		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+	});
+
+	it("does not insert when the parent is not an object", () => {
+		vi.mocked(readFileSync).mockReturnValue('{\n\t"foo": "bar"\n}\n');
+
+		const result = VersionFiles.updateFile("/project/file.json", ["$.foo.version"], "2.0.0");
+
+		expect(result).toBeUndefined();
+		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
 	});
 });
 

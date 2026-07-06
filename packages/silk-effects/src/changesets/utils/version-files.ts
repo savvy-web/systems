@@ -21,14 +21,15 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
+import { applyEdits, modify, parse as parseJsonc } from "jsonc-effect";
 import { globSync } from "tinyglobby";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import type { LegacyVersionFileConfig } from "../schemas/version-files.js";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import { LegacyVersionFilesSchema } from "../schemas/version-files.js";
 import type { ResolvedPackageScope } from "../services/config-inspector.js";
-import { jsonPathGet, jsonPathSet } from "./jsonpath.js";
+import { jsonPathGet, jsonPathResolve, parseJsonPath } from "./jsonpath.js";
 
 /**
  * Result of a single version file update.
@@ -272,42 +273,84 @@ export class VersionFiles {
 	}
 
 	/**
-	 * Update JSON file at specified JSONPath locations.
+	 * Update a JSON (or JSONC) file at specified JSONPath locations,
+	 * preserving the original formatting byte-for-byte.
 	 *
 	 * @remarks
-	 * Reads the file, detects its indentation style and trailing newline
-	 * preference, applies all JSONPath updates via {@link jsonPathSet},
-	 * and writes the result back preserving the original formatting.
-	 * Returns `undefined` if no JSONPath locations matched (no write occurs).
+	 * The write is performed with `jsonc-effect`'s format-preserving
+	 * `modify`/`applyEdits` rather than a `JSON.parse`/`JSON.stringify`
+	 * round-trip (which always explodes inline arrays one-element-per-line and
+	 * drops comments). Each JSONPath expression is resolved to concrete
+	 * `(string | number)[]` paths against the parsed document, and each
+	 * concrete path becomes a minimal text edit that touches only the target
+	 * value's span — so inline arrays, comments,
+	 * indentation, and the trailing-newline preference all survive; a one-line
+	 * version bump produces a one-line diff.
+	 *
+	 * Insertion semantics: a concrete, wildcard-free JSONPath whose leaf
+	 * property does not exist yet is inserted after the last sibling using the
+	 * document's detected indent (the one case where indent detection still
+	 * matters). Wildcard expressions only ever update existing matches. Returns
+	 * `undefined` (no write) when nothing was updated or inserted.
 	 *
 	 * @param filePath - Absolute path to the JSON file
 	 * @param jsonPaths - JSONPath expressions to update
 	 * @param version - New version string
 	 * @returns Update result, or `undefined` if no changes were made
+	 *
+	 * @see {@link jsonPathResolve} for concrete-path enumeration
+	 * @see {@link VersionFiles.applyVersionEdit} for the per-path edit
 	 */
 	static updateFile(filePath: string, jsonPaths: readonly string[], version: string): VersionFileUpdate | undefined {
-		const content = readFileSync(filePath, "utf-8");
-		const indent = VersionFiles.detectIndent(content);
-		const trailingNewline = content.endsWith("\n");
-		const obj = JSON.parse(content) as unknown;
+		let content = readFileSync(filePath, "utf-8");
+		const obj = Effect.runSync(parseJsonc(content));
 
 		const previousValues = jsonPaths.flatMap((jp) => jsonPathGet(obj, jp));
-		let totalUpdated = 0;
+
+		// detectIndent + EOL are only consulted when a not-yet-existing property is
+		// inserted; existing values are edited in place and inherit their own layout.
+		const indent = VersionFiles.detectIndent(content);
+		const eol = content.includes("\r\n") ? "\r\n" : "\n";
+
+		let totalChanged = 0;
 
 		for (const jp of jsonPaths) {
-			totalUpdated += jsonPathSet(obj, jp, version);
+			const segments = parseJsonPath(jp);
+			if (segments.length === 0) {
+				continue;
+			}
+
+			const hasWildcard = segments.some((segment) => segment.type === "wildcard");
+			// Wildcard paths only match what exists. Wildcard-free paths are turned into a
+			// single concrete path directly, so a not-yet-existing property can be inserted —
+			// unless the leaf is a numeric index, where `modify` would append to the array
+			// instead of leaving the file alone.
+			let concretePaths: Array<Array<string | number>>;
+			if (hasWildcard) {
+				concretePaths = jsonPathResolve(obj, jp);
+			} else {
+				// hasWildcard is false here, so every segment is a property or index.
+				const direct = segments.map((segment) =>
+					segment.type === "property" ? segment.key : (segment as { index: number }).index,
+				);
+				const leafExists = jsonPathResolve(obj, jp).length > 0;
+				concretePaths = leafExists || typeof direct[direct.length - 1] === "string" ? [direct] : [];
+			}
+
+			for (const concretePath of concretePaths) {
+				const updated = VersionFiles.applyVersionEdit(content, concretePath, version, indent, eol);
+				if (updated !== undefined) {
+					content = updated;
+					totalChanged += 1;
+				}
+			}
 		}
 
-		if (totalUpdated === 0) {
+		if (totalChanged === 0) {
 			return undefined;
 		}
 
-		let output = JSON.stringify(obj, null, indent);
-		if (trailingNewline) {
-			output += "\n";
-		}
-
-		writeFileSync(filePath, output, "utf-8");
+		writeFileSync(filePath, content, "utf-8");
 
 		return {
 			filePath,
@@ -315,6 +358,50 @@ export class VersionFiles {
 			version,
 			previousValues,
 		};
+	}
+
+	/**
+	 * Compute the format-preserving edit for a single concrete path, returning
+	 * the updated document, or `undefined` when nothing changed.
+	 *
+	 * @remarks
+	 * Delegates to `jsonc-effect`'s {@link modify} + {@link applyEdits}
+	 * (requires `jsonc-effect >= 0.3.1`, whose edit spans touch only the target
+	 * value), so every other byte of the document is preserved. When the leaf
+	 * of a wildcard-free path does not exist, `modify` inserts the property
+	 * after the last sibling using the supplied formatting options — the only
+	 * case where the detected indent matters. A path whose parent is missing or
+	 * not an object cannot be navigated; the resulting modification error is
+	 * caught and reported as "no change" so the file is left alone.
+	 *
+	 * @param content - Current document text
+	 * @param concretePath - A wildcard-free `(string | number)[]` path
+	 * @param version - New version string
+	 * @param indentUnit - One indentation level, for inserted text
+	 * @param eol - End-of-line sequence, for inserted text
+	 * @returns The updated document, or `undefined` if the path was unchanged
+	 */
+	private static applyVersionEdit(
+		content: string,
+		concretePath: ReadonlyArray<string | number>,
+		version: string,
+		indentUnit: string,
+		eol: string,
+	): string | undefined {
+		const insertSpaces = !indentUnit.includes("\t");
+		const program = modify(content, [...concretePath], version, {
+			formattingOptions: {
+				insertSpaces,
+				tabSize: insertSpaces ? indentUnit.length : 1,
+				eol,
+			},
+		}).pipe(
+			Effect.flatMap((edits) => applyEdits(content, edits)),
+			// A same-value edit round-trips to the identical document; report no change.
+			Effect.map((updated) => (updated === content ? undefined : updated)),
+			Effect.catchTag("JsoncModificationError", () => Effect.succeed(undefined)),
+		);
+		return Effect.runSync(program);
 	}
 
 	/**
@@ -352,7 +439,9 @@ export class VersionFiles {
 			try {
 				if (dryRun) {
 					const content = readFileSync(filePath, "utf-8");
-					const obj = JSON.parse(content) as unknown;
+					// Parse via jsonc-effect so a JSONC file (comments/trailing commas) previews
+					// cleanly instead of throwing here while the real updateFile write succeeds.
+					const obj = Effect.runSync(parseJsonc(content));
 					const previousValues = jsonPaths.flatMap((jp) => jsonPathGet(obj, jp));
 					if (previousValues.length > 0) {
 						updates.push({ filePath, jsonPaths, version, previousValues });
@@ -402,7 +491,9 @@ export class VersionFiles {
 					try {
 						if (dryRun) {
 							const content = readFileSync(filePath, "utf-8");
-							const obj = JSON.parse(content) as unknown;
+							// Parse via jsonc-effect so a JSONC file (comments/trailing commas) previews
+							// cleanly instead of throwing here while the real updateFile write succeeds.
+							const obj = Effect.runSync(parseJsonc(content));
 							const previousValues = jsonPaths.flatMap((jp) => jsonPathGet(obj, jp));
 							if (previousValues.length > 0) {
 								updates.push({ filePath, jsonPaths, version: scope.version, previousValues });

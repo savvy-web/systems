@@ -45,7 +45,7 @@
 		"@effect/workflow": "catalog:silk",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:silk",
-		"jsonc-effect": "^0.3.0",
+		"jsonc-effect": "^0.3.1",
 		"workspaces-effect": "^2.0.2",
 		"yaml": "^2.9.0"
 	},

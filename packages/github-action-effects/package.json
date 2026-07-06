@@ -47,7 +47,7 @@
 		"@octokit/rest": "^22.0.1",
 		"@sigstore/bundle": "^5.0.0",
 		"@sigstore/sign": "^5.0.0",
-		"jsonc-effect": "^0.3.0",
+		"jsonc-effect": "^0.3.1",
 		"semver-effect": "^0.3.1",
 		"yaml-effect": "^0.7.2"
 	},
