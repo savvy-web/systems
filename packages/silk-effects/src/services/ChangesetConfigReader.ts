@@ -6,12 +6,14 @@ import { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/Version
 /**
  * Substrings that identify a Silk changelog adapter entry in `.changeset/config.json`.
  *
- * Both the standalone package (`@savvy-web/changesets/changelog`) and the
- * consolidated Silk re-export (`@savvy-web/silk/changesets/changelog`) are Silk
- * adapters. The `/silk/` segment in the consolidated path breaks the original
+ * `@savvy-web/changelog` is the canonical standalone changelog id that `savvy init`
+ * now writes. The two legacy forms — the original standalone package
+ * (`@savvy-web/changesets/changelog`) and the consolidated Silk re-export
+ * (`@savvy-web/silk/changesets/changelog`) — remain accepted for configs written
+ * before the rename. The `/silk/` segment in the consolidated path breaks the
  * `@savvy-web/changesets` substring, so each form needs its own marker.
  */
-const SILK_CHANGELOG_MARKERS = ["@savvy-web/changesets", "@savvy-web/silk/changesets"] as const;
+const SILK_CHANGELOG_MARKERS = ["@savvy-web/changelog", "@savvy-web/changesets", "@savvy-web/silk/changesets"] as const;
 
 function matchesSilkMarker(value: string): boolean {
 	return SILK_CHANGELOG_MARKERS.some((marker) => value.includes(marker));
