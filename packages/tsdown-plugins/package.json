@@ -30,32 +30,34 @@
 	},
 	"dependencies": {
 		"@changesets/get-release-plan": "^5.0.0-next.7",
+		"@effect/cluster": "catalog:silk",
+		"@effect/experimental": "catalog:silk",
+		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
+		"@effect/rpc": "catalog:silk",
+		"@effect/sql": "catalog:silk",
+		"@effect/workflow": "catalog:silk",
 		"@manypkg/get-packages": "^3.1.0",
 		"@microsoft/api-extractor": "^7.58.9",
 		"@microsoft/tsdoc": "^0.16.0",
 		"@microsoft/tsdoc-config": "^0.18.1",
 		"deep-equal": "^2.2.3",
+		"effect": "catalog:silk",
 		"json-schema-effect": "^0.3.0",
 		"picocolors": "^1.1.1",
 		"sort-package-json": "^4.0.0",
 		"std-env": "^4.1.0",
 		"typescript": "catalog:silk",
-		"workspaces-effect": "^2.0.1"
+		"workspaces-effect": "^2.0.2"
 	},
 	"devDependencies": {
-		"@effect/platform": "catalog:silk",
 		"@types/deep-equal": "^1.0.4",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
-		"effect": "catalog:silk",
 		"rolldown": "^1.1.4",
 		"tsdown": "^0.22.3",
 		"tsx": "catalog:silk",
 		"vitest": "catalog:silk"
-	},
-	"peerDependencies": {
-		"effect": "catalog:silkPeers"
 	},
 	"publishConfig": {
 		"access": "public",

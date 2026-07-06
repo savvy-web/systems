@@ -30,7 +30,7 @@
 	},
 	"dependencies": {
 		"sort-package-json": "^4.0.0",
-		"yaml-effect": "^0.7.0"
+		"yaml-effect": "^0.7.2"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",

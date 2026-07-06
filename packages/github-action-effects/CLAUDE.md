@@ -6,6 +6,7 @@
 
 - 39 schema-validated Effect services covering the GitHub Actions runtime surface.
 - All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
+- Library posture: `@effect/*` stays devDependencies + `peerDependencies` (consumers provide the Effect runtime) — deliberate; do NOT seal the closure as regular deps like cli/mcp/tsdown-plugins do.
 
 ## Design
 

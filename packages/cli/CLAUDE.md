@@ -9,6 +9,7 @@
 - `savvy changeset` group: `lint`, `check` (validates changeset files), `transform`, `validate-file`, `version` (native version bumping via silk-effects' `Changesets.ReleasePlanner.apply` — no `changeset` shell-out, true no-write `--dry-run`), plus `config validate` and `deps detect`/`deps regen` (thin adapters over silk-effects' `Changesets.DepsRegen` — orchestration lives there, not in the CLI).
 - `savvy init` writes `@savvy-web/changelog` as the canonical `.changeset/config.json` changelog id; `savvy check` still accepts the prior silk shim subpath (`@savvy-web/silk/changesets/changelog`) and the pre-merge `@savvy-web/changesets/changelog`.
 - Depends only on `@savvy-web/silk-effects` within the repo; must NOT import `@savvy-web/silk` or `@savvy-web/mcp` (the cli↔silk↔mcp non-import invariant).
+- NO `peerDependencies` block: the Effect closure is sealed as regular `dependencies` (same posture as mcp and tsdown-plugins, #228). When adding a new `@effect/*` dep, declare its required peers as regular deps too.
 - Changeset inspection lives in the MCP tools, not the CLI.
 - `savvy lint`/`savvy check` sync each consumer `biome.json(c)` `$schema` URL to the hand-pinned `BIOME_VERSION` const in `src/commands/lint/biome-version.ts`. On a Biome upgrade, bump it alongside `@savvy-web/silk`'s peer range and Biome asset `$schema` (see that package's CLAUDE.md).
 
