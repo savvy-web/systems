@@ -1,5 +1,27 @@
 # @savvy-web/cli
 
+## 1.5.1
+
+### Bug Fixes
+
+* Declared `@effect/experimental`, `@effect/workflow`, `@effect/printer`, `@effect/printer-ansi`, and `@effect/typeclass` as regular dependencies, completing the Effect peer-dependency closure. All five were required peers of already-declared packages (`@effect/sql`, `@effect/cluster`, `@effect/cli`, and the printer pair), so pnpm auto-installed them at the consumer's importer level, where a consumer depending on a different major of `effect` could bind them against an incompatible `effect` instance (#228) [#232][#232]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.0.1 | 3.0.2 |
+
+* | Dependency        | Type       | Action  | From   | To     |                                                                       |
+  | ----------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | workspaces-effect | dependency | updated | ^2.0.1 | ^2.0.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#232]: https://github.com/savvy-web/systems/pull/232
+
 ## 1.5.0
 
 ### Features

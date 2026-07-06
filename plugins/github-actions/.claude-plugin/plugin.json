@@ -1,6 +1,6 @@
 {
 	"name": "github-actions",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"description": "Savvy Web GitHub Actions assistant — Effect-based action development conventions and knowledge, served via the shared savvy MCP",
 	"author": {
 		"name": "C. Spencer Beggs",
@@ -10,11 +10,19 @@
 	"homepage": "https://github.com/savvy-web/systems",
 	"repository": "https://github.com/savvy-web/systems.git",
 	"license": "MIT",
-	"keywords": ["github-actions", "workflows", "automation", "ci-cd", "effect"],
+	"keywords": [
+		"github-actions",
+		"workflows",
+		"automation",
+		"ci-cd",
+		"effect"
+	],
 	"mcpServers": {
 		"savvy-mcp": {
 			"command": "sh",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"]
+			"args": [
+				"${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"
+			]
 		}
 	}
 }
