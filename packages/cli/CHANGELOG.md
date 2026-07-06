@@ -1,5 +1,21 @@
 # @savvy-web/cli
 
+## 1.5.2
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.0.2 | 3.0.3 |
+
+* | Dependency   | Type       | Action  | From   | To     |                                                                       |
+  | ------------ | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | jsonc-effect | dependency | updated | ^0.3.0 | ^0.3.1 | [#235][#235] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#235]: https://github.com/savvy-web/systems/pull/235
+
 ## 1.5.1
 
 ### Bug Fixes
