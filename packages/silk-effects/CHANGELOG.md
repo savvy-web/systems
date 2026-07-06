@@ -1,5 +1,15 @@
 # @savvy-web/silk-effects
 
+## 3.0.1
+
+### Bug Fixes
+
+* `ChangesetConfigReader` now recognizes the standalone `@savvy-web/changelog` package as a Silk changelog adapter. Configs written by the new `savvy init` (which uses `@savvy-web/changelog` as the canonical `changelog` id) were silently decoded as plain non-Silk configs because the id matched neither legacy marker substring. The two legacy id families (`@savvy-web/changesets` and `@savvy-web/silk/changesets`) remain accepted.
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.0.0
 
 ### Breaking Changes

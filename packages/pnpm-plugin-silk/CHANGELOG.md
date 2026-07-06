@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.20.0
+
+### Features
+
+* `@savvy-web/changelog` is now publicly hoisted in consumer repos (alongside `@savvy-web/cli` and `@savvy-web/mcp`), with the same systems-repo self-exclusion applied to the existing peers. [#223][#223]
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#223]: https://github.com/savvy-web/systems/pull/223
+
 ## 0.19.0
 
 ### Bug Fixes
