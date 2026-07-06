@@ -1,5 +1,17 @@
 # @savvy-web/github-action-effects
 
+## 2.3.7
+
+### Dependencies
+
+* | Dependency   | Type       | Action  | From   | To     |                                                                       |
+  | ------------ | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | jsonc-effect | dependency | updated | ^0.3.0 | ^0.3.1 | [#235][#235] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#235]: https://github.com/savvy-web/systems/pull/235
+
 ## 2.3.6
 
 ### Dependencies

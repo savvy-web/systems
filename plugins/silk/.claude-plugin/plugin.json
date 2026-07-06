@@ -1,6 +1,6 @@
 {
 	"name": "silk",
-	"version": "2.1.1",
+	"version": "2.1.2",
 	"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 	"author": {
 		"name": "C. Spencer Beggs",
@@ -10,17 +10,29 @@
 	"homepage": "https://github.com/savvy-web/systems",
 	"repository": "https://github.com/savvy-web/systems.git",
 	"license": "MIT",
-	"keywords": ["silk-suite", "changesets", "commitlint", "lint-staged", "biome", "code-quality", "turborepo"],
+	"keywords": [
+		"silk-suite",
+		"changesets",
+		"commitlint",
+		"lint-staged",
+		"biome",
+		"code-quality",
+		"turborepo"
+	],
 	"mcpServers": {
 		"savvy-mcp": {
 			"command": "sh",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"]
+			"args": [
+				"${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"
+			]
 		}
 	},
 	"lspServers": {
 		"biome": {
 			"command": "sh",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/biome-lsp.sh"],
+			"args": [
+				"${CLAUDE_PLUGIN_ROOT}/bin/biome-lsp.sh"
+			],
 			"extensionToLanguage": {
 				".js": "javascript",
 				".mjs": "javascript",
