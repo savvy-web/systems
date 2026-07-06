@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { jsonPathGet, jsonPathSet, parseJsonPath } from "../../src/changesets/utils/jsonpath.js";
+import { jsonPathGet, jsonPathResolve, jsonPathSet, parseJsonPath } from "../../src/changesets/utils/jsonpath.js";
 
 describe("parseJsonPath", () => {
 	it("parses simple property access", () => {
@@ -159,5 +159,66 @@ describe("jsonPathSet", () => {
 		expect(count).toBe(2);
 		expect(obj.a.items[0].config.version).toBe("new");
 		expect(obj.a.items[1].config.version).toBe("new");
+	});
+});
+
+describe("jsonPathResolve", () => {
+	it("resolves a top-level property to its concrete path", () => {
+		expect(jsonPathResolve({ version: "1.0.0" }, "$.version")).toEqual([["version"]]);
+	});
+
+	it("resolves a nested property path", () => {
+		expect(jsonPathResolve({ metadata: { version: "2.0.0" } }, "$.metadata.version")).toEqual([
+			["metadata", "version"],
+		]);
+	});
+
+	it("resolves wildcard matches to indexed concrete paths", () => {
+		const obj = { plugins: [{ version: "1.0.0" }, { version: "2.0.0" }, { version: "3.0.0" }] };
+		expect(jsonPathResolve(obj, "$.plugins[*].version")).toEqual([
+			["plugins", 0, "version"],
+			["plugins", 1, "version"],
+			["plugins", 2, "version"],
+		]);
+	});
+
+	it("resolves an array index path", () => {
+		expect(jsonPathResolve({ items: ["a", "b", "c"] }, "$.items[1]")).toEqual([["items", 1]]);
+	});
+
+	it("resolves deep wildcard-plus-index paths", () => {
+		const obj = { a: { items: [{ config: { version: "x" } }, { config: { version: "y" } }] } };
+		expect(jsonPathResolve(obj, "$.a.items[*].config.version")).toEqual([
+			["a", "items", 0, "config", "version"],
+			["a", "items", 1, "config", "version"],
+		]);
+	});
+
+	it("returns an empty array for a missing property", () => {
+		expect(jsonPathResolve({ a: 1 }, "$.b")).toEqual([]);
+	});
+
+	it("returns an empty array for a wildcard over an empty array", () => {
+		expect(jsonPathResolve({ items: [] }, "$.items[*].version")).toEqual([]);
+	});
+
+	it("returns an empty array for a null input", () => {
+		expect(jsonPathResolve(null, "$.version")).toEqual([]);
+	});
+
+	it("returns an empty array for an out-of-bounds index", () => {
+		expect(jsonPathResolve({ items: ["a"] }, "$.items[5]")).toEqual([]);
+	});
+
+	it("returns the root path for an empty path expression", () => {
+		expect(jsonPathResolve({ version: "1.0.0" }, "$.")).toEqual([[]]);
+	});
+
+	it("returns an empty array for a wildcard over a non-array node", () => {
+		expect(jsonPathResolve({ a: { x: 1 } }, "$.a[*]")).toEqual([]);
+	});
+
+	it("returns an empty array for an index over a non-array node", () => {
+		expect(jsonPathResolve({ a: { x: 1 } }, "$.a[0]")).toEqual([]);
 	});
 });
