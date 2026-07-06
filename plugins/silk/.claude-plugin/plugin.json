@@ -10,17 +10,29 @@
 	"homepage": "https://github.com/savvy-web/systems",
 	"repository": "https://github.com/savvy-web/systems.git",
 	"license": "MIT",
-	"keywords": ["silk-suite", "changesets", "commitlint", "lint-staged", "biome", "code-quality", "turborepo"],
+	"keywords": [
+		"silk-suite",
+		"changesets",
+		"commitlint",
+		"lint-staged",
+		"biome",
+		"code-quality",
+		"turborepo"
+	],
 	"mcpServers": {
 		"savvy-mcp": {
 			"command": "sh",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"]
+			"args": [
+				"${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"
+			]
 		}
 	},
 	"lspServers": {
 		"biome": {
 			"command": "sh",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/biome-lsp.sh"],
+			"args": [
+				"${CLAUDE_PLUGIN_ROOT}/bin/biome-lsp.sh"
+			],
 			"extensionToLanguage": {
 				".js": "javascript",
 				".mjs": "javascript",
