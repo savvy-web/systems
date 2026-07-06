@@ -1,5 +1,27 @@
 # @savvy-web/mcp
 
+## 1.6.6
+
+### Bug Fixes
+
+* Declared `@effect/experimental` and `@effect/workflow` as regular dependencies, completing the Effect peer-dependency closure. Both were required peers of the already-declared `@effect/sql` and `@effect/cluster`, so pnpm auto-installed them at the consumer's importer level, where a consumer depending on a different major of `effect` could bind them against an incompatible `effect` instance (#228) [#232][#232]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.0.1 | 3.0.2 |
+
+* | Dependency        | Type       | Action  | From   | To     |                                                                       |
+  | ----------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | workspaces-effect | dependency | updated | ^2.0.1 | ^2.0.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#232]: https://github.com/savvy-web/systems/pull/232
+
 ## 1.6.5
 
 ### Dependencies

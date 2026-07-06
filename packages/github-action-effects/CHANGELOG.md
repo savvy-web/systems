@@ -1,5 +1,17 @@
 # @savvy-web/github-action-effects
 
+## 2.3.6
+
+### Dependencies
+
+* | Dependency  | Type       | Action  | From   | To     |                                                                       |
+  | ----------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | yaml-effect | dependency | updated | ^0.7.0 | ^0.7.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#232]: https://github.com/savvy-web/systems/pull/232
+
 ## 2.3.5
 
 ### Bug Fixes
