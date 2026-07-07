@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { StandardTags } from "@microsoft/tsdoc";
-import deepEqual from "deep-equal";
 import type { TsdocOptions } from "./config.js";
 
 const TSDOC_SCHEMA = "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json";
@@ -52,7 +52,7 @@ export function writeTsdocConfig(cwd: string, tsdoc: TsdocOptions): string {
 	if (existsSync(path)) {
 		try {
 			const existing = JSON.parse(readFileSync(path, "utf-8")) as unknown;
-			if (deepEqual(existing, config, { strict: true })) return path;
+			if (isDeepStrictEqual(existing, config)) return path;
 		} catch {
 			// fall through to rewrite
 		}
