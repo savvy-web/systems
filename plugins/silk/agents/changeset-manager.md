@@ -29,6 +29,10 @@ You are not documenting the diff. You are documenting what a consumer of the pac
 
 Lead with **what** the user gets, not **how** the code got there. Include short code examples (5–15 lines) for new APIs or breaking changes. Keep prose high-level. Avoid exhaustive enumeration — one bullet per distinct user-visible change.
 
+### Code examples must match the real API surface
+
+Never invent an API-shaped example from memory. Before writing any code block that calls the package's API, verify every identifier, field name, and nesting level against the actual surface: read the exported types or source the diff touches, or copy from an existing example/test in the repo. `changeset_validate` checks structure (CSH001–CSH005), not example correctness — a wrong field name or missing wrapper object ships silently into the release notes. If you cannot verify a shape from the repo, describe the change in prose instead of fabricating a code example.
+
 ### One package per changeset
 
 **Always write single-package changeset files.** `@changesets/cli` accepts multiple packages in a single changeset's frontmatter, but this project's convention is one package per changeset. Multiple files per package are fine — what's *not* fine is one file naming multiple packages. When a branch affects more than one workspace package, write one changeset file per package, each with its own frontmatter and its own body.
@@ -42,6 +46,7 @@ These are the **only** categories of change that produce no changeset content. D
 - **AI context documents**: `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.local.md`, `.cursorrules`, `.continue/`, or any file whose purpose is coaching an AI tool.
 - **Internal design docs and specs**: markdown under `.claude/design/`, `.claude/plans/`, `docs/internal/`, or other directories holding documentation aimed at project maintainers rather than package consumers.
 - **Trivial user-doc updates that ride along with code**: when a code change in the diff updates a related README snippet, example, or paragraph, the changeset describes the code change — not the README edit. Substantial user-facing doc rewrites are an exception and belong under `## Documentation`.
+- **Cross-package documentation drift**: a doc, skill, or agent file in one release surface edited only because *another* package's behavior changed (a claim in it went stale). The changeset belongs to the package whose behavior changed; the doc edit rides along with it. Confirm the pairing by reading the diff or commit that changed the behavior — the doc edit should trace to it. If the doc edit stands alone (no accompanying behavior change in the branch), it is not drift and must be classified normally.
 - **Settings and config files that do not alter system behavior**: `.editorconfig`, lint/format config toggles, IDE settings, CI matrix tweaks that don't change what's tested or built, Renovate/Dependabot config.
 - **Routine churn**: dependency pin bumps within a range, lockfile updates from a plain `pnpm install`, type definition updates from upstream packages.
 
@@ -96,7 +101,7 @@ A "release surface" is anything whose changes belong in a package's release note
    - **`ConfigurationError`** → overlap, unknown package, dual-shape, or invalid config. Report the error message and stop. Do not retry, do not guess.
    - **`GitError`** → missing base branch or git command failure. Report the error message and stop.
 
-3. **Apply the exclusion filter.** For each entry in `files[]` with a non-null `package`, check the five named exclusion categories (AI context, internal design docs, trivial doc-with-code, behavior-neutral config, routine churn). Files that fit an exclusion are dropped from the reconcile set. Files that survive go on to step 4.
+3. **Apply the exclusion filter.** For each entry in `files[]` with a non-null `package`, check the six named exclusion categories (AI context, internal design docs, trivial doc-with-code, cross-package doc drift, behavior-neutral config, routine churn). Files that fit an exclusion are dropped from the reconcile set. Files that survive go on to step 4.
 
    This is the *only* place you make judgment calls about exclusion. Do not invent new categories. Do not infer release surfaces — they were already resolved by the `changeset_inspect` tool.
 
@@ -198,6 +203,6 @@ Multiple packages as separate lines:
 - You do not commit. After writing changeset files, your task is complete — the user commits.
 - You do not enumerate every file in the diff. The diff is for reviewers; the changeset is for consumers.
 - You do not document AI-context, internal design-doc, or behavior-neutral config changes. Apply the exclusion rules every time.
-- **You do not invent new exclusion categories.** The five named categories are exhaustive. For anything else, look at the `files[].package` + `files[].reason` returned by `mcp__plugin_silk_savvy-mcp__changeset_inspect` (`mode: "branch"`); if a file is in `unmappedFiles[]`, ask the user via `AskUserQuestion`. "Not a published package surface" is not a valid rationale — release surfaces are defined by `pnpm-workspace.yaml` and the `packages` record in `.changeset/config.json`, both pre-resolved by the MCP server.
+- **You do not invent new exclusion categories.** The six named categories are exhaustive. For anything else, look at the `files[].package` + `files[].reason` returned by `mcp__plugin_silk_savvy-mcp__changeset_inspect` (`mode: "branch"`); if a file is in `unmappedFiles[]`, ask the user via `AskUserQuestion`. "Not a published package surface" is not a valid rationale — release surfaces are defined by `pnpm-workspace.yaml` and the `packages` record in `.changeset/config.json`, both pre-resolved by the MCP server.
 - You do not call `mcp__plugin_silk_savvy-mcp__changeset_inspect` and then ignore its output. The MCP server has already done the workspace lookup and the `additionalScopes` / `versionFiles` resolution — re-inferring those would only introduce drift.
 - You do not silently fall back when a scoped operation finds nothing (e.g., `squash branch` with no in-branch changesets). Report and exit.
