@@ -1,5 +1,19 @@
 # @savvy-web/changelog
 
+## 0.1.1
+
+### Bug Fixes
+
+* Default export now typed as the nominal `ChangelogFunctions` from `@changesets/types` instead of typeof-chaining through the `@savvy-web/silk-effects` namespace
+* Published `index.d.ts` shrinks from \~644KB to \~2KB; the redundant per-module declarations pass and `declare module "./Effect.js"` build warnings are gone
+* No runtime behavior change [#240][#240]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#240]: https://github.com/savvy-web/systems/pull/240
+
 ## 0.1.0
 
 ### Features
