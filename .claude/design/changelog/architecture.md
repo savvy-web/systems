@@ -34,11 +34,11 @@ The Silk Suite changesets changelog generator as a standalone installable packag
 
 **Package:** `@savvy-web/changelog`, at `packages/changelog` in `savvy-web/systems`.
 **Build:** dual esm+cjs, self-contained via `bundleNodeModules`, through the `@savvy-web/bundler` front door. See [How it builds](#how-it-builds-self-contained-dual-format).
-**Versioning:** independent; a release auto-PATCH-bumps `@savvy-web/silk`, which pins it as an exact peer. See [Distribution and coupling](#distribution-and-coupling).
+**Versioning:** independent; a release auto-PATCH-bumps `@savvy-web/silk`, which re-pins it as an exact regular dependency. See [Distribution and coupling](#distribution-and-coupling).
 
 ## Current State
 
-Implemented and wired across the suite: `savvy changeset init` writes `@savvy-web/changelog` as the canonical `.changeset/config.json` changelog id (see `../cli/architecture.md`), `@savvy-web/silk` ships it as a peer companion alongside cli/mcp (see `../silk/architecture.md`) and `@savvy-web/pnpm-plugin-silk` public-hoists it so the changesets CLI can resolve it from a consumer workspace (excluded from hoisting inside `systems` itself, where it is a workspace package — see `packages/pnpm-plugin-silk/savvy.build.ts`). The test suite asserts the default export is reference-identical to silk-effects' `Changesets.changelogFunctions`.
+Implemented and wired across the suite: `savvy changeset init` writes `@savvy-web/changelog` as the canonical `.changeset/config.json` changelog id (see `../cli/architecture.md`), `@savvy-web/silk` ships it as an exact-pinned dependency alongside cli/mcp (see `../silk/architecture.md`) and `@savvy-web/pnpm-plugin-silk` public-hoists it so the changesets CLI can resolve it from a consumer workspace (excluded from hoisting inside `systems` itself, where it is a workspace package — see `packages/pnpm-plugin-silk/savvy.build.ts`). The test suite asserts the default export is reference-identical to silk-effects' `Changesets.changelogFunctions`.
 
 ## How it builds: self-contained dual format
 
@@ -54,7 +54,7 @@ The build posture mirrors silk's `./changesets/changelog` CJS override, applied 
 
 Three coordination points make the id resolvable in a consumer workspace without anyone installing it by hand:
 
-- **silk ships it as a peer companion.** silk declares `@savvy-web/changelog` as a `workspace:*` source dependency and its build transform promotes it into an EXACT-pinned `peerDependency` — the same mechanism that couples silk to cli/mcp. A changelog release auto-PATCH-bumps silk and re-pins the peer. See `../silk/architecture.md`.
+- **silk ships it as an exact-pinned dependency.** silk declares `@savvy-web/changelog` as a `workspace:*` source dependency and its build transform keeps it as an EXACT-pinned regular `dependency` in the published manifest — the same mechanism that couples silk to cli/mcp (silk's transform no longer promotes the trio to `peerDependencies`; peers made `autoInstallPeers` propagate their Effect graph into consumers at the wrong versions). A changelog release auto-PATCH-bumps silk and re-pins the dependency. See `../silk/architecture.md`.
 - **pnpm-plugin-silk public-hoists it** so the changesets CLI (which resolves the id from the workspace root) finds it; the hoist is excluded per-repo where the package is a workspace member. The authored list lives in `packages/pnpm-plugin-silk/savvy.build.ts`.
 - **cli writes it as canonical.** `savvy changeset init` writes `@savvy-web/changelog` into `.changeset/config.json`; `savvy check` still accepts the prior silk shim subpath and the pre-merge standalone id. See `../cli/architecture.md`.
 
