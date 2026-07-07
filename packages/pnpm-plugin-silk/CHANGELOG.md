@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.21.0
+
+### Bug Fixes
+
+* Prevent `@effect/*` and `effect` from being publically hoisted.
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.20.0
 
 ### Features
