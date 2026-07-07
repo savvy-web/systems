@@ -53,6 +53,11 @@ Types come from TypeScript, not from doc comments. Never restate a type in a tag
 
 Every exported declaration needs **exactly one release tag plus a one-line summary** describing its purpose — a bare tag with no description is only half the fix, for `@public` and `@internal` alike. Default binary policy: consumer-facing API → `@public`; a type that only leaks into the rollup → `@internal`. `@beta`/`@alpha` are a deliberate human choice, not an agent default. (`@packageDocumentation` is the exception to tagging every export: it documents an entry as a whole and belongs only in an entry-point file — one per `exports` entry, e.g. both `src/index.ts` and `src/testing.ts` for a two-entry package — never on a non-entry leaf file.) Full decision tree: `references/release-tags.md`.
 
+Neither mistake below reliably raises an `ae-*`/`tsdoc-*` diagnostic, so a clean `issues.json` doesn't mean they're absent — check proactively, don't wait for the build to flag them:
+
+- **Never** add `@packageDocumentation` to a file that isn't itself an `exports` entry — a stray one is a bug, not a lint nit.
+- Module-header narration on a non-entry file is a `//` line comment, not a `/** ... */` block — see `references/supported-tags.md` for why.
+
 ## Document the whole public surface
 
 Public exports are rendered into cross-linked API reference sites by `rspress-plugin-api-extractor`, so passing the build is the floor, not the goal. For every `@public` symbol — and the `@internal` ones maintainers and agents read — write a one-line summary on the export **and on each property/member** (they render as individual rows), push depth into `@remarks`, keep maintainer-only notes in `@privateRemarks`, and add an `@example` that is a complete, compilable program (separate `import type` for types) with any output shown in a `// =>` comment. Re-exporting through barrel files (`export { X } from "./x.js"`) detaches a symbol from its declaration and is a doc-generation footgun — prefer explicit per-module exports, and flag a barrel to the user before refactoring it rather than reshaping exports yourself. Full guidance: `references/doc-quality.md`.
