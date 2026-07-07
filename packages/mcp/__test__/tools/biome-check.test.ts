@@ -61,6 +61,28 @@ describe("buildBiomeResult", () => {
 		expect(result.diagnostics).toHaveLength(2);
 		expect(result.guidance).toContain("Do NOT disable rules");
 	});
+
+	it("honors project severities by default: warnings stay warnings with non-blocking guidance", () => {
+		const diags = parseBiomeGitlab(SAMPLE).filter((d) => d.severity === "warning");
+		const result = buildBiomeResult({ diagnostics: diags, wrote: false });
+		expect(result.summary).toEqual({ errors: 0, warnings: 1 });
+		expect(result.diagnostics[0].severity).toBe("warning");
+		expect(result.diagnostics[0].originalSeverity).toBeUndefined();
+		expect(result.guidance).toContain("do not block");
+	});
+
+	it("strict upgrades warnings to errors, preserving originalSeverity and counting the upgrade", () => {
+		const diags = parseBiomeGitlab(SAMPLE);
+		const result = buildBiomeResult({ diagnostics: diags, wrote: false, strict: true });
+		expect(result.summary).toEqual({ errors: 2, warnings: 0, upgradedWarnings: 1 });
+		const upgraded = result.diagnostics.find((d) => d.rule === "format");
+		expect(upgraded?.severity).toBe("error");
+		expect(upgraded?.originalSeverity).toBe("warning");
+		const real = result.diagnostics.find((d) => d.rule === "lint/suspicious/noExplicitAny");
+		expect(real?.severity).toBe("error");
+		expect(real?.originalSeverity).toBeUndefined();
+		expect(result.guidance).toContain("not CI blockers");
+	});
 });
 
 describe("BiomeCheckAsMarkdown", () => {
@@ -82,6 +104,13 @@ describe("BiomeCheckAsMarkdown", () => {
 		const md = Schema.decodeSync(BiomeCheckAsMarkdown)(result);
 		expect(md).toContain("No remaining diagnostics");
 		expect(md).toContain("git diff");
+	});
+
+	it("marks strict-upgraded diagnostics in the rendered markdown", () => {
+		const result = buildBiomeResult({ diagnostics: parseBiomeGitlab(SAMPLE), wrote: false, strict: true });
+		const md = Schema.decodeSync(BiomeCheckAsMarkdown)(result);
+		expect(md).toContain("strict-upgraded from project warnings");
+		expect(md).toContain("(project warning, strict)");
 	});
 
 	it("is one-way (encode forbidden)", () => {

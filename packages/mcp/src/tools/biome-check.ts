@@ -23,13 +23,20 @@ export const BiomeDiagnostic = Schema.Struct({
 	severity: BiomeSeverity,
 	rule: Schema.String,
 	message: Schema.String,
+	/** Present only when `strict` upgraded this diagnostic; holds the project-configured severity. */
+	originalSeverity: Schema.optional(BiomeSeverity),
 }).annotations({ identifier: "BiomeDiagnostic" });
 
 export type BiomeDiagnosticType = Schema.Schema.Type<typeof BiomeDiagnostic>;
 
 /** The `biome_check` tool result. */
 export const BiomeCheckResult = Schema.Struct({
-	summary: Schema.Struct({ errors: Schema.Number, warnings: Schema.Number }),
+	summary: Schema.Struct({
+		errors: Schema.Number,
+		warnings: Schema.Number,
+		/** Count of project-level warnings reported as errors because `strict` was set. */
+		upgradedWarnings: Schema.optional(Schema.Number),
+	}),
 	diagnostics: Schema.Array(BiomeDiagnostic),
 	wrote: Schema.Boolean,
 	guidance: Schema.String,
@@ -42,7 +49,15 @@ export const BiomeCheckResult = Schema.Struct({
 export type BiomeCheckResultType = Schema.Schema.Type<typeof BiomeCheckResult>;
 
 /** Guardrail shown to the agent so it fixes code rather than silencing rules. */
-const GUIDANCE = "Fix the actual code. Do NOT disable rules or add config overrides to silence these.";
+const GUIDANCE_ERRORS = "Fix the actual code. Do NOT disable rules or add config overrides to silence these.";
+
+/** Guidance when only project-tolerated warnings remain (default, non-strict run). */
+const GUIDANCE_WARNINGS =
+	"These are warnings under the project's Biome config — the project's own lint passes and they do not block commits or CI. Fix them when they sit in code you are already changing; do not churn unrelated files to silence them, and do NOT disable rules.";
+
+/** Suffix appended when strict mode upgraded project warnings to errors. */
+const GUIDANCE_STRICT_NOTE =
+	"Diagnostics marked with originalSeverity are project-level warnings surfaced strictly by this run — they are not CI blockers.";
 
 /** Shape of a single diagnostic in Biome's `--reporter=gitlab` output. */
 const GitlabDiagnostic = Schema.Struct({
@@ -90,14 +105,33 @@ export const parseBiomeGitlab = (stdout: string): readonly BiomeDiagnosticType[]
 export const buildBiomeResult = (params: {
 	diagnostics: readonly BiomeDiagnosticType[];
 	wrote: boolean;
+	strict?: boolean;
 }): BiomeCheckResultType => {
-	const errors = params.diagnostics.filter((d) => d.severity === "error").length;
-	const warnings = params.diagnostics.filter((d) => d.severity === "warning").length;
+	// Strict mode upgrades project warnings to errors IN-PROCESS (never via
+	// --error-on-warnings) so the pre-upgrade severity survives on the diagnostic
+	// and the summary can distinguish real errors from surfaced warnings.
+	const diagnostics = params.strict
+		? params.diagnostics.map((d) =>
+				d.severity === "warning" ? { ...d, severity: "error" as const, originalSeverity: "warning" as const } : d,
+			)
+		: [...params.diagnostics];
+	const upgradedWarnings = diagnostics.filter((d) => d.originalSeverity === "warning").length;
+	const errors = diagnostics.filter((d) => d.severity === "error").length;
+	const warnings = diagnostics.filter((d) => d.severity === "warning").length;
+	const realErrors = errors - upgradedWarnings;
+	const guidance =
+		realErrors > 0
+			? params.strict && upgradedWarnings > 0
+				? `${GUIDANCE_ERRORS} ${GUIDANCE_STRICT_NOTE}`
+				: GUIDANCE_ERRORS
+			: upgradedWarnings > 0
+				? `${GUIDANCE_WARNINGS} ${GUIDANCE_STRICT_NOTE}`
+				: GUIDANCE_WARNINGS;
 	return {
-		summary: { errors, warnings },
-		diagnostics: [...params.diagnostics],
+		summary: params.strict ? { errors, warnings, upgradedWarnings } : { errors, warnings },
+		diagnostics,
 		wrote: params.wrote,
-		guidance: GUIDANCE,
+		guidance: diagnostics.length === 0 ? GUIDANCE_ERRORS : guidance,
 	};
 };
 
@@ -107,10 +141,13 @@ const renderMarkdown = (data: BiomeCheckResultType): string => {
 		const wroteNote = data.wrote ? " A --write pass ran; check `git diff` for what changed." : "";
 		return `# biome — clean\n\n✅ No remaining diagnostics.${wroteNote}`;
 	}
-	const lines = [`# biome — ${data.summary.errors} error(s), ${data.summary.warnings} warning(s)`, ``];
+	const upgraded = data.summary.upgradedWarnings ?? 0;
+	const upgradedNote = upgraded > 0 ? ` (${upgraded} strict-upgraded from project warnings)` : "";
+	const lines = [`# biome — ${data.summary.errors} error(s)${upgradedNote}, ${data.summary.warnings} warning(s)`, ``];
 	if (data.wrote) lines.push(`A --write pass ran; the diagnostics below remain unfixed.`, ``);
 	for (const d of data.diagnostics) {
-		lines.push(`- \`${d.file}:${d.line}\` **${d.severity}** ${d.rule} — ${d.message}`);
+		const severity = d.originalSeverity ? `${d.severity} (project ${d.originalSeverity}, strict)` : d.severity;
+		lines.push(`- \`${d.file}:${d.line}\` **${severity}** ${d.rule} — ${d.message}`);
 	}
 	lines.push(``, `---`, data.guidance);
 	return lines.join("\n");
@@ -133,6 +170,8 @@ export interface BiomeCheckArgs {
 	readonly write?: boolean;
 	readonly unsafe?: boolean;
 	readonly cwd?: string;
+	/** Report project warnings as errors (marked with originalSeverity). Default: honor the project config. */
+	readonly strict?: boolean;
 }
 
 /**
@@ -213,12 +252,20 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 		wrote = true;
 	}
 
-	const readArgs = [...prefix, mode, "--reporter=gitlab", "--error-on-warnings", "--no-errors-on-unmatched", ...paths];
+	// No --error-on-warnings here: the read pass honors the project config's
+	// severities so this tool agrees with the project's own `biome check`.
+	// Strict upgrading happens in-process (buildBiomeResult) so the original
+	// severity is preserved on each diagnostic.
+	const readArgs = [...prefix, mode, "--reporter=gitlab", "--no-errors-on-unmatched", ...paths];
 	const read = spawnSync(bin, readArgs, { cwd, encoding: "utf8", maxBuffer, timeout, killSignal });
 	if (read.error) throw read.error;
 	if ((read.status ?? 0) > 1) {
 		throw new Error(`Biome failed (exit ${read.status}): ${(read.stderr ?? "").trim() || "unknown error"}`);
 	}
 
-	return buildBiomeResult({ diagnostics: parseBiomeGitlab(read.stdout ?? ""), wrote });
+	return buildBiomeResult({
+		diagnostics: parseBiomeGitlab(read.stdout ?? ""),
+		wrote,
+		...(args.strict !== undefined ? { strict: args.strict } : {}),
+	});
 };
