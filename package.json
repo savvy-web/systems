@@ -26,6 +26,7 @@
 		"ci:build": "CI=\"true\" turbo run build:dev build:prod --log-order=grouped --output-logs=full --log-prefix=none",
 		"ci:test": "CI=\"true\" vitest run",
 		"ci:version": "savvy changeset version && biome format --write .",
+		"claude": "claude --plugin-dir=plugins/silk",
 		"dev:mcp": "turbo run inspect --filter=@savvy-web/mcp",
 		"init": "savvy init",
 		"lint": "biome check --max-diagnostics=none",
