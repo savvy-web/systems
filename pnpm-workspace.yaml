@@ -26,7 +26,7 @@ catalogs:
     "@effect/cli": ^0.75.2
     "@effect/cluster": ^0.59.0
     "@effect/experimental": ^0.60.0
-    "@effect/language-service": ^0.86.2
+    "@effect/language-service": ^0.86.4
     "@effect/opentelemetry": ^0.63.0
     "@effect/platform": ^0.96.2
     "@effect/platform-browser": ^0.76.0
@@ -50,7 +50,7 @@ catalogs:
     "@effect/sql-sqlite-node": ^0.52.0
     "@effect/sql-sqlite-react-native": ^0.54.0
     "@effect/sql-sqlite-wasm": ^0.52.0
-    "@effect/tsgo": ^0.15.0
+    "@effect/tsgo": ^0.16.0
     "@effect/typeclass": ^0.40.0
     "@effect/vitest": ^0.29.0
     "@effect/workflow": ^0.18.2
@@ -63,7 +63,7 @@ catalogs:
     effect: ^3.21.4
     react: ^19.2.7
     react-dom: ^19.2.7
-    tsx: ^4.22.4
+    tsx: ^4.23.0
     typescript: ^6.0.3
     vitest: ^4.1.9
   silkPeers:
@@ -75,7 +75,7 @@ catalogs:
     "@effect/cli": ^0.75.2
     "@effect/cluster": ^0.59.0
     "@effect/experimental": ^0.60.0
-    "@effect/language-service": ^0.86.2
+    "@effect/language-service": ^0.86.4
     "@effect/opentelemetry": ^0.63.0
     "@effect/platform": ^0.96.0
     "@effect/platform-browser": ^0.76.0
@@ -99,7 +99,7 @@ catalogs:
     "@effect/sql-sqlite-node": ^0.52.0
     "@effect/sql-sqlite-react-native": ^0.54.0
     "@effect/sql-sqlite-wasm": ^0.52.0
-    "@effect/tsgo": ^0.15.0
+    "@effect/tsgo": ^0.16.0
     "@effect/typeclass": ^0.40.0
     "@effect/vitest": ^0.29.0
     "@effect/workflow": ^0.18.2
@@ -112,7 +112,7 @@ catalogs:
     effect: ^3.21.0
     react: ^19.2.0
     react-dom: ^19.2.0
-    tsx: ^4.22.4
+    tsx: ^4.23.0
     typescript: ^6.0.0
     vitest: ^4.1.0
 includeWorkspaceRoot: true
@@ -153,6 +153,8 @@ peerDependencyRules:
     eslint-plugin-tsdoc>typescript: ^6.0.0
     ink-tab>ink: ^7.0.0
 publicHoistPattern:
+  - "!@effect/*"
+  - "!effect"
   - "@changesets/cli"
   - "@commitlint/cli"
   - "@commitlint/config-conventional"

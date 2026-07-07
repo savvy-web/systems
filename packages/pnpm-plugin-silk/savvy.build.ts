@@ -49,8 +49,8 @@ await build({
 							strategy: "interop",
 						},
 						"@effect/language-service": {
-							range: "^0.86.2",
-							peer: "^0.86.2",
+							range: "^0.86.4",
+							peer: "^0.86.4",
 							strategy: "interop",
 						},
 						"@effect/opentelemetry": {
@@ -169,8 +169,8 @@ await build({
 							strategy: "interop",
 						},
 						"@effect/tsgo": {
-							range: "^0.15.0",
-							peer: "^0.15.0",
+							range: "^0.16.0",
+							peer: "^0.16.0",
 							strategy: "interop",
 						},
 						"@effect/typeclass": {
@@ -233,8 +233,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsx: {
-							range: "^4.22.4",
-							peer: "^4.22.4",
+							range: "^4.23.0",
+							peer: "^4.23.0",
 							strategy: "lock",
 						},
 						typescript: {
@@ -309,6 +309,8 @@ await build({
 					"turbo",
 					"typescript",
 					"vitest",
+					"!@effect/*",
+					"!effect",
 				],
 			},
 			allowBuilds: {
