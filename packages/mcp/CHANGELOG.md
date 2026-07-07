@@ -1,5 +1,35 @@
 # @savvy-web/mcp
 
+## 1.7.0
+
+### Features
+
+* Added an optional `strict` input to `biome_check`. When `strict: true`, warnings are surfaced as errors in-process; each upgraded diagnostic is marked with `originalSeverity: "warning"`, and `summary.upgradedWarnings` reports how many were upgraded
+* Guidance text is now severity-aware — a warnings-only run (no `strict`) returns non-blocking guidance instead of the previous fix-it-now wording [#240][#240]
+
+- The `changeset_deps_detect` and `changeset_deps_regen` tools each gain two new optional inputs, mirroring `@savvy-web/silk-effects`'s `DepsRegen` service:
+
+  * `packages` — an array of workspace package names to restrict the run to, unioned with the existing `package` input.
+  * `exclude` — an array of workspace package names to drop from scope entirely; nothing is written for them and their existing changesets are left untouched. Wins over `package` and `packages`. [#241][#241]
+
+### Bug Fixes
+
+* `biome_check` no longer silently upgrades project warn-level diagnostics to errors by default — severities now match the project's Biome config, the same as running `biome check` / `pnpm run lint` directly
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.0.3 | 3.1.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#240]: https://github.com/savvy-web/systems/pull/240
+
+[#241]: https://github.com/savvy-web/systems/pull/241
+
 ## 1.6.7
 
 ### Dependencies

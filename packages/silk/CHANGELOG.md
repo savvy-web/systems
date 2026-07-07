@@ -1,5 +1,32 @@
 # @savvy-web/silk
 
+## 2.1.3
+
+### Bug Fixes
+
+* The published manifest no longer promotes `@savvy-web/changelog`, `@savvy-web/cli`, and `@savvy-web/mcp` from `dependencies` to `peerDependencies`. Promoting them to peers let pnpm's `autoInstallPeers` propagate their Effect dependency graph into consuming repos at versions `@savvy-web/silk` didn't control. They now ship as regular, exact-pinned `dependencies` instead — the exact-version coupling via `workspace:*` is unchanged, only the manifest field. `@savvy-web/pnpm-plugin-silk` already hoists all three publicly, so their bins remain available to consumers either way. [#245][#245]
+
+### Documentation
+
+* The `changeset-manager` agent gains a sixth exclusion category, cross-package documentation drift, and a new rule requiring code examples in changesets to match the real API surface. The `config` skill's exclusion-category list is updated to match (five categories → six).
+* The `tsdoc` skill's `ae-forgotten-export` guidance now distinguishes an in-package unexported type from an externally-inlined dependency type — each needs a different fix. The `ae-missing-release-tag` guidance now documents the `export * as NS` / `_d_exports` limitation and its sanctioned `suppressWarnings` workaround. [#238][#238]
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.0 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 1.5.2 | 1.5.3 |
+| @savvy-web/mcp       | dependency | updated | 1.6.7 | 1.7.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#238]: https://github.com/savvy-web/systems/pull/238
+
+[#245]: https://github.com/savvy-web/systems/pull/245
+
 ## 2.1.2
 
 ### Dependencies

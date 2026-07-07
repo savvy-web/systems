@@ -1,5 +1,19 @@
 # @savvy-web/tsdown-plugins
 
+## 1.1.7
+
+### Refactoring
+
+* Replaced the `deep-equal` dependency with `node:util`'s `isDeepStrictEqual` in the tsdoc.json idempotent-write check
+* `deep-equal` and `@types/deep-equal` removed from dependencies
+* No behavior change [#240][#240]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#240]: https://github.com/savvy-web/systems/pull/240
+
 ## 1.1.6
 
 ### Bug Fixes
