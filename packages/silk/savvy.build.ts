@@ -85,29 +85,32 @@ await build({
 	meta: false,
 	transform: ({ pkg }) => {
 		// `@savvy-web/cli`, `@savvy-web/mcp`, and `@savvy-web/changelog` are declared as
-		// regular `dependencies` in source (with a `workspace:*` range, which changesets
-		// reads as their exact current version). A release of any of them therefore
-		// pushes silk's dep out of range and auto-PATCH-bumps silk
-		// (`updateInternalDependencies: patch`), re-pinning the exact version at publish
-		// — a source `peerDependency` on a released workspace package would instead force
-		// a MAJOR bump every time. Consumers should still receive them as peers alongside
-		// the rest of the suite, so promote them back into `peerDependencies` for the
-		// published manifest BEFORE the `dependencies` block is stripped below.
+		// regular `dependencies` (with a `workspace:*` range, which changesets reads as
+		// their exact current version). A release of any of them therefore pushes silk's
+		// dep out of range and auto-PATCH-bumps silk (`updateInternalDependencies: patch`),
+		// re-pinning the exact version at publish. They ship as plain `dependencies` in
+		// the published manifest too — publishing them as peers made pnpm's
+		// `autoInstallPeers` propagate their Effect graph into consuming repos at the
+		// wrong versions. `@savvy-web/pnpm-plugin-silk` publicly hoists all three, so
+		// their bins stay available to consumers either way.
+		//
+		// The surviving runtime dependencies are those three exact-pinned companions,
+		// `semver` (externalized in JS, see above), the two `dtsExternals` packages
+		// (externalized in the dts so consumers can resolve the type imports), and
+		// `@savvy-web/silk-effects` (externalized in the BASE ESM entries, so the
+		// published package needs it as a real dependency for consumers to resolve those
+		// `import`s). Everything else is bundled into silk's JS, so keep ONLY these and
+		// drop the rest.
 		const deps = pkg.dependencies as Record<string, string> | undefined;
-		const peers = (pkg.peerDependencies as Record<string, string> | undefined) ?? {};
-		for (const name of ["@savvy-web/changelog", "@savvy-web/cli", "@savvy-web/mcp"]) {
-			const range = deps?.[name];
-			if (range) peers[name] = range;
-		}
-		pkg.peerDependencies = peers;
-		// The surviving runtime dependencies are `semver` (externalized in JS, see above),
-		// the two `dtsExternals` packages (externalized in the dts so consumers can resolve
-		// the type imports), and `@savvy-web/silk-effects` (externalized in the BASE ESM
-		// entries, so the published package needs it as a real dependency for consumers to
-		// resolve those `import`s). cli/mcp/changelog are promoted to peers and everything
-		// else is bundled into silk's JS, so keep ONLY these and drop the rest.
 		const kept: Record<string, string> = {};
-		for (const name of ["semver", "effect", "@effect/platform"]) {
+		for (const name of [
+			"semver",
+			"effect",
+			"@effect/platform",
+			"@savvy-web/changelog",
+			"@savvy-web/cli",
+			"@savvy-web/mcp",
+		]) {
 			const range = deps?.[name];
 			if (range) kept[name] = range;
 		}
