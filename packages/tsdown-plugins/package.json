@@ -41,7 +41,6 @@
 		"@microsoft/api-extractor": "^7.58.9",
 		"@microsoft/tsdoc": "^0.16.0",
 		"@microsoft/tsdoc-config": "^0.18.1",
-		"deep-equal": "^2.2.3",
 		"effect": "catalog:silk",
 		"json-schema-effect": "^0.3.0",
 		"picocolors": "^1.1.1",
@@ -51,7 +50,6 @@
 		"workspaces-effect": "^2.0.2"
 	},
 	"devDependencies": {
-		"@types/deep-equal": "^1.0.4",
 		"@types/node": "catalog:silk",
 		"@typescript/native-preview": "catalog:silk",
 		"rolldown": "^1.1.4",

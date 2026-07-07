@@ -189,7 +189,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		"biome_check",
 		{
 			description:
-				"Run Biome over a path and get structured diagnostics back. mode=check (default; lint + format + organize-imports) or mode=lint. Set write=true to apply safe fixes (--write), unsafe=true for unsafe fixes (--write --unsafe). Prefer this over shelling out to biome; the LSP already covers files you've edited. Returns markdown in content[] and a typed object in structuredContent. NOTE: with write/unsafe this tool MUTATES files (git-reversible).",
+				"Run Biome over a path and get structured diagnostics back. mode=check (default; lint + format + organize-imports) or mode=lint. Set write=true to apply safe fixes (--write), unsafe=true for unsafe fixes (--write --unsafe). Severities match the project's Biome config (what `biome check` reports); set strict=true to surface project warnings as errors, each marked with its originalSeverity. Prefer this over shelling out to biome; the LSP already covers files you've edited. Returns markdown in content[] and a typed object in structuredContent. NOTE: with write/unsafe this tool MUTATES files (git-reversible).",
 			inputSchema: {
 				paths: z.optional(z.array(z.string())).describe("Paths to check. Defaults to the whole workspace."),
 				mode: z
@@ -197,6 +197,9 @@ export function buildServer(ctx: McpContext): McpServer {
 					.describe("check = lint+format+imports (default); lint = lint only."),
 				write: z.optional(z.boolean()).describe("Apply safe fixes (--write)."),
 				unsafe: z.optional(z.boolean()).describe("Apply unsafe fixes (--write --unsafe); implies write."),
+				strict: z
+					.optional(z.boolean())
+					.describe("Report project warnings as errors (marked with originalSeverity). Default: honor project config."),
 				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
 			},
 			outputSchema: effectToZodSchema(BiomeCheckResult) as never,
