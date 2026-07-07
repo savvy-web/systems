@@ -82,6 +82,8 @@ export interface ChangesetDepsRegenArgs {
 	readonly cwd?: string;
 	readonly base?: string;
 	readonly package?: string;
+	readonly packages?: readonly string[];
+	readonly exclude?: readonly string[];
 	readonly dryRun?: boolean;
 }
 
@@ -111,6 +113,8 @@ export const changesetDepsRegen = (
 			cwd: root,
 			...(args.base ? { base: args.base } : {}),
 			...(args.package ? { package: args.package } : {}),
+			...(args.packages && args.packages.length > 0 ? { packages: args.packages } : {}),
+			...(args.exclude && args.exclude.length > 0 ? { exclude: args.exclude } : {}),
 		});
 
 		if (args.dryRun === true) {

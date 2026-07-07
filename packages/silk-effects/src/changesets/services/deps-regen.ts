@@ -274,8 +274,20 @@ export interface DepsRegenOptions {
 	readonly cwd: string;
 	/** Override the base branch used to compute the merge-base when `from` is omitted. */
 	readonly base?: string;
-	/** Restrict regeneration to a single workspace package. */
+	/** Restrict regeneration to a single workspace package. Unioned with {@link DepsRegenOptions.packages}. */
 	readonly package?: string;
+	/**
+	 * Restrict regeneration to these workspace packages. Like `package`, an
+	 * explicit target bypasses the versionable gate but NOT the changeset
+	 * ignore list. Unioned with `package` when both are set.
+	 */
+	readonly packages?: ReadonlyArray<string>;
+	/**
+	 * Drop these packages from scope entirely — no changesets are written for
+	 * them and none of their stale pure-dependency changesets are deleted.
+	 * Applies to both repo-wide and explicitly-targeted runs (exclude wins).
+	 */
+	readonly exclude?: ReadonlyArray<string>;
 	/**
 	 * When `true`, retain `devDependency` rows (the `deps detect` path);
 	 * when falsy (the `deps regen` default), drop them unconditionally.
@@ -405,7 +417,11 @@ function makeShape(
 				: yield* pit.worktree({ cwd: resolvedCwd });
 
 			const rawDiffs = computeWorkspaceDependencyDiffs(before, after);
-			const targetPkg = options.package;
+			const explicitTargets = new Set<string>([
+				...(options.packages ?? []),
+				...(options.package ? [options.package] : []),
+			]);
+			const excluded = new Set(options.exclude ?? []);
 
 			// In-scope package set — "versionable minus ignored" — used both to
 			// filter diffs (absent an explicit `--package`) and to bound
@@ -426,19 +442,23 @@ function makeShape(
 				if (yield* config.isIgnored(pkg.name, resolvedCwd)) continue;
 				if (publishable.has(pkg.name) || versionPrivate) inScope.add(pkg.name);
 			}
-			// Explicit `--package` bypasses the versionable half but NOT ignore: an
-			// ignored target package produces an empty plan for it.
-			const targetIgnored = targetPkg ? yield* config.isIgnored(targetPkg, resolvedCwd) : false;
+			// Explicit targets (`--package` / `packages`) bypass the versionable half
+			// but NOT ignore: an ignored target package produces an empty plan for
+			// it. `exclude` wins over everything.
+			const activeTargets = new Set<string>();
+			for (const name of explicitTargets) {
+				if (excluded.has(name)) continue;
+				if (yield* config.isIgnored(name, resolvedCwd)) continue;
+				activeTargets.add(name);
+			}
+			const inScopeFor = (name: string): boolean =>
+				explicitTargets.size > 0 ? activeTargets.has(name) : inScope.has(name) && !excluded.has(name);
 
 			// Restrict, then drop devDeps (unless kept), then drop diffs whose rows
 			// became empty. Specifier resolution already happened per-side inside
 			// computeWorkspaceDependencyDiffs, so rows arrive fully resolved.
 			const keepDevDeps = options.includeDevDeps === true;
-			const scoped = targetPkg
-				? targetIgnored
-					? []
-					: rawDiffs.filter((d) => d.package === targetPkg)
-				: rawDiffs.filter((d) => inScope.has(d.package));
+			const scoped = rawDiffs.filter((d) => inScopeFor(d.package));
 
 			const resolved: WorkspaceDependencyDiff[] = [];
 			for (const diff of scoped) {
@@ -449,14 +469,11 @@ function makeShape(
 			const existingPure = yield* findPureDependencyChangesets(fs, changesetDir);
 			const skippedMixed = yield* findMixedDependencyChangesets(fs, changesetDir);
 
-			// When `--package` is set, only delete pure changesets for that package
+			// With explicit targets, only delete pure changesets for those packages
 			// (unless ignored); otherwise delete pure-dep changesets for every
 			// in-scope package — even stale ones with no current dep changes.
-			const toDelete = targetPkg
-				? targetIgnored
-					? []
-					: existingPure.filter((p) => p.package === targetPkg)
-				: existingPure.filter((p) => inScope.has(p.package));
+			// Excluded packages keep their existing changesets untouched.
+			const toDelete = existingPure.filter((p) => inScopeFor(p.package));
 
 			const chosenFilenames = new Set<string>();
 			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = [];

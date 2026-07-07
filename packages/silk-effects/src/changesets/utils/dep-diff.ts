@@ -63,6 +63,37 @@ const resolveOrRaw = (snapshot: WorkspaceStateSnapshot, dep: string, spec: strin
 	Option.getOrElse(snapshot.resolve(dep, spec), () => spec);
 
 /**
+ * Drop no-net-change field moves: the same dependency removed from one field
+ * and added to another with an equal resolved version (e.g. a dep promoted
+ * from `devDependencies` to `dependencies`). A field reclassification is a
+ * contract change worth release-note prose, not a version movement, so it
+ * must not surface as an unrelated removed row plus an added row. Moves that
+ * also change the resolved version keep both rows (the movement is real).
+ */
+const collapseFieldMoves = (rows: ReadonlyArray<DependencyTableRow>): DependencyTableRow[] => {
+	const dropped = new Set<DependencyTableRow>();
+	const byName = new Map<string, DependencyTableRow[]>();
+	for (const row of rows) {
+		const group = byName.get(row.dependency);
+		if (group) group.push(row);
+		else byName.set(row.dependency, [row]);
+	}
+	for (const group of byName.values()) {
+		for (const removed of group) {
+			if (removed.action !== "removed" || dropped.has(removed)) continue;
+			const added = group.find(
+				(r) => r.action === "added" && !dropped.has(r) && r.type !== removed.type && r.to === removed.from,
+			);
+			if (added) {
+				dropped.add(removed);
+				dropped.add(added);
+			}
+		}
+	}
+	return rows.filter((r) => !dropped.has(r));
+};
+
+/**
  * Diff two workspace snapshots and return per-package dependency-table rows,
  * comparing already-resolved specifier values per side.
  *
@@ -114,8 +145,9 @@ export function computeWorkspaceDependencyDiffs(
 			}
 		}
 
-		if (rows.length > 0) {
-			result.push({ package: afterPkg.name, relativePath: afterPkg.relativePath, rows: sortDependencyRows(rows) });
+		const collapsed = collapseFieldMoves(rows);
+		if (collapsed.length > 0) {
+			result.push({ package: afterPkg.name, relativePath: afterPkg.relativePath, rows: sortDependencyRows(collapsed) });
 		}
 	}
 

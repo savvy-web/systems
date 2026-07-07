@@ -28,13 +28,16 @@ const cannedPlan = {
 	skippedMixed: ["/repo/.changeset/mixed-owls-rest.md"],
 } as unknown as Changesets.RegenPlan;
 
-/** Build a stub layer that records whether `execute` was invoked. */
+/** Build a stub layer that records whether `execute` was invoked and the plan options seen. */
 const makeStub = () => {
-	const calls = { execute: 0 };
+	const calls = { execute: 0, planOptions: [] as Changesets.DepsRegenOptions[] };
 	const layer = Layer.succeed(
 		Changesets.DepsRegen,
 		Changesets.DepsRegen.of({
-			plan: () => Effect.succeed(cannedPlan),
+			plan: (options) => {
+				calls.planOptions.push(options);
+				return Effect.succeed(cannedPlan);
+			},
 			execute: (p) => {
 				calls.execute += 1;
 				return Effect.succeed({
@@ -72,6 +75,18 @@ describe("changesetDepsRegen handler", () => {
 		expect(data.dryRun).toBe(false);
 		expect(data.deleted).toEqual(["/repo/.changeset/stale-cats-sing.md"]);
 		expect(data.written).toEqual(["/repo/.changeset/brave-dogs-fly.md"]);
+	});
+
+	it("forwards packages and exclude to plan(), omitting them when empty (#231)", async () => {
+		const { calls, layer } = makeStub();
+		await run(
+			changesetDepsRegen({ dryRun: true, packages: ["@scope/foo", "@scope/bar"], exclude: ["@scope/baz"] }, ROOT),
+			layer,
+		);
+		await run(changesetDepsRegen({ dryRun: true, packages: [], exclude: [] }, ROOT), layer);
+		expect(calls.planOptions[0]).toMatchObject({ packages: ["@scope/foo", "@scope/bar"], exclude: ["@scope/baz"] });
+		expect(calls.planOptions[1]).not.toHaveProperty("packages");
+		expect(calls.planOptions[1]).not.toHaveProperty("exclude");
 	});
 
 	it("renders markdown for the plan and forbids encoding back", async () => {

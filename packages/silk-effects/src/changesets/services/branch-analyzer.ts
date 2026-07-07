@@ -300,18 +300,23 @@ function makeShape(inspector: typeof ConfigInspector.Service): BranchAnalyzerSha
 				status: "added" as FileStatus,
 			}));
 
+			// The branch's own changeset entries are the artifact being reconciled,
+			// never a classification question — reporting them as unmapped is
+			// guaranteed noise for every run that already wrote a changeset.
+			const isOwnChangeset = (path: string): boolean => path.startsWith(".changeset/") && path.endsWith(".md");
+
 			// Dedupe by path. `git diff` wins on collision (it carries the
 			// authoritative status — added/modified/deleted/renamed). Untracked
 			// entries fill in for files git has not seen at all.
 			const seen = new Set<string>();
 			const rawEntries: Array<{ path: string; status: FileStatus }> = [];
 			for (const e of diffEntries) {
-				if (seen.has(e.path)) continue;
+				if (seen.has(e.path) || isOwnChangeset(e.path)) continue;
 				seen.add(e.path);
 				rawEntries.push(e);
 			}
 			for (const e of untrackedEntries) {
-				if (seen.has(e.path)) continue;
+				if (seen.has(e.path) || isOwnChangeset(e.path)) continue;
 				seen.add(e.path);
 				rawEntries.push(e);
 			}
