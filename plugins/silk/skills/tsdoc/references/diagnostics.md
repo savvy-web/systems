@@ -8,10 +8,18 @@ The `@savvy-web/bundler` API Extractor pass surfaces three families. Config is p
 
 **Cause:** a `@public` declaration references a type that is not itself exported, so it would be missing from the published rollup.
 
-**Fix — an API-surface decision, not a comment edit:**
+**Fix — an API-surface decision, not a comment edit.** First determine where the referenced type comes from; the fix differs:
+
+**Case 1 — in-package unexported type** (the type is declared in this package but not exported):
 
 - If consumers need the type: export it and give it `@public`.
-- If the type is an internal detail: mark it `@internal`. API Extractor then treats it as part of the internal surface and stops warning, while keeping it out of the public docs.
+- If the type is an internal detail: mark it `@internal` (the referencing member or the type itself). API Extractor then treats it as part of the internal surface and stops warning, while keeping it out of the public docs.
+
+**Case 2 — externally-inlined dependency type** (the type comes from a dependency — often a devDependency — and the bundler inlines it into the rolled-up `.d.ts`, e.g. an Effect signature leaking `FileSystem` from `@effect/platform` as `FileSystem_2`): `@internal` on the referencing member does **not** clear the warning — the external type is physically present in the bundle regardless of the member's release tag. The real fixes are:
+
+- remove the public export entirely, or
+- promote the dependency to a runtime dependency and externalize it so the type resolves as an external import instead of being inlined, or
+- restructure the signature so the external type is not part of the public surface.
 
 ```ts
 // before: Options is referenced by a @public function but not exported → ae-forgotten-export
@@ -36,6 +44,14 @@ export interface Options { retries: number }
 **Cause:** an exported declaration has no release tag.
 
 **Fix:** add one per the binary policy in `release-tags.md` — `@public` for real API, `@internal` for rollup-only leaks. Do not blanket-tag everything `@public`; a leaked helper should be `@internal`.
+
+**Known limitation — `export * as NS` namespaces always trigger this.** Rolldown's dts generation drops the doc comment from an `export * as NS from "./mod.js"` statement: the rollup contains a generated, un-commented `declare namespace <mod>_d_exports` that API Extractor flags (`index_d_exports`, `Step_d_exports`, `_d_exports$1`, …). There is **no package-source fix** — `@public` on the `export * as` statement never reaches the generated namespace, and the import-then-named-export form collapses to the same output. The sanctioned workaround is a narrow `meta.tsdoc.suppressWarnings` entry in `savvy.build.ts`, keyed on the synthetic suffix:
+
+```ts
+{ messageId: "ae-missing-release-tag", pattern: "_d_exports" }
+```
+
+(as applied in `silk-effects` and `github-action-effects`). Do not chase this per-symbol; it is a bundler limitation, not a missing tag.
 
 ## `ae-incompatible-release-tags`
 

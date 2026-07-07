@@ -57,7 +57,7 @@ Output schema (`BranchAnalysis` shape in `structuredContent`):
 
 1. **Skip the manual diff step.** `files[]` already carries status + classification.
 2. **Skip the workspace lookup step.** `package` and `reason` are pre-resolved by `ConfigInspector`.
-3. **For every entry in `files[]`** — apply the five exclusion categories (AI context, internal design docs, trivial doc-with-code, behavior-neutral config, routine churn). Files that survive the exclusion filter and have a non-null `package` go into the reconcile step.
+3. **For every entry in `files[]`** — apply the six exclusion categories (AI context, internal design docs, trivial doc-with-code, cross-package doc drift, behavior-neutral config, routine churn). Files that survive the exclusion filter and have a non-null `package` go into the reconcile step.
 4. **For every entry in `unmappedFiles[]`** — invoke `AskUserQuestion` to find out whether the path belongs to a package's release surface. Do not invent a "not a release surface" exclusion.
 
 ## Secondary path: `mode: "config"`

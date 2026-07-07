@@ -36,3 +36,5 @@ For a re-exported symbol, tag the original declaration, not the `export { ... }`
 ## Interaction with `ae-forgotten-export`
 
 When a `@public` signature references an **unexported** type, you get `ae-forgotten-export`, not a release-tag warning. The fix is an API-surface decision (see `diagnostics.md`): either export the type and tag it `@public`, or, if it should stay private, mark the referencing member or the type `@internal` — leaving it unexported is not enough, since the public rollup still pulls it in.
+
+That `@internal` fix only works for types declared **in this package**. When the referenced type comes from an external dependency and gets inlined into the rollup (e.g. `FileSystem_2` from `@effect/platform`), `@internal` on the referencing member does not clear the warning — see the two-case breakdown under `ae-forgotten-export` in `diagnostics.md`.
