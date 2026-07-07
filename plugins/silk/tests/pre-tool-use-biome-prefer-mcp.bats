@@ -123,3 +123,57 @@ setup() {
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
+
+# --- savvy-web/systems#250: env / VAR= / runner-peeling coverage --------
+#
+# _biome_segment_invokes_biome's peeling loop (env, inline VAR=value, and
+# pnpm|npm|yarn|bun optionally-followed-by-run) was the least-obviously-
+# correct part of the matcher and had no dedicated tests before this PR.
+
+@test "env biome check .: nudge emitted (leading 'env' is peeled)" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-env-direct.json' | '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
+}
+
+@test "FOO=bar biome check .: nudge emitted (inline VAR=value assignment is peeled)" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-inline-assignment.json' | '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
+}
+
+# npm run biome / pnpm run biome / yarn biome: the matcher's docstring
+# explicitly documents peeling "pnpm/npm/yarn/bun optionally followed by
+# run" as one of the accepted runner-keyword forms (see the "1. Direct
+# invocation" comment above), so a script literally NAMED "biome" is
+# intentionally treated as a direct match here -- this is distinct from,
+# and does not disturb, branch 2 below (which inspects the package.json
+# script BODY for scripts not literally named "biome").
+#
+# Nuance worth flagging rather than silently cementing: `npm run biome`
+# runs a package.json script named "biome", not the biome binary directly.
+# In the common convention (`"biome": "biome check --write ."`) that
+# script's body does invoke the real biome binary, so nudging is the
+# right call in the overwhelmingly likely case. But nothing here confirms
+# the script body actually shells out to biome -- a script named "biome"
+# that does something unrelated would still nudge. This asserts the
+# matcher's actual (documented) intent; if a false-positive on a
+# non-biome "biome"-named script ever surfaces in practice, that's a
+# follow-up worth its own decision, not something to silently "fix" here.
+@test "npm run biome: nudge emitted (script literally named 'biome' -- documented runner-keyword peel, see comment above)" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.npm-run-biome.json' | '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
+}
+
+@test "pnpm run biome: nudge emitted (same runner-keyword peel as npm run biome)" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.pnpm-run-biome.json' | '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
+}
+
+@test "yarn biome (no 'run' keyword): nudge emitted (bare 'pnpm|npm|yarn|bun <script>' form is also peeled)" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.yarn-biome-no-run.json' | '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
+}

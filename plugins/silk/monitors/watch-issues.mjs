@@ -94,7 +94,17 @@ async function main() {
 		}
 	};
 	await tick();
-	if (!once) setInterval(tick, POLL_MS);
+	// Self-scheduling rather than setInterval: each scan must finish before the
+	// next starts. Overlapping ticks would both read the same `prev` snapshot
+	// before either writes it back, losing streak increments and corrupting the
+	// debounce state.
+	if (!once) {
+		const loop = async () => {
+			await tick();
+			setTimeout(loop, POLL_MS);
+		};
+		setTimeout(loop, POLL_MS);
+	}
 }
 
 // Only run the polling loop when invoked as a script, so `diagnose` can be
