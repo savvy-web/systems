@@ -36,6 +36,8 @@ Args:
 | --- | --- |
 | `dryRun` | `true` prints the plan without writing or deleting anything. Prefer running with `dryRun: true` first to preview, then re-invoke without it (or `dryRun: false`) to apply. |
 | `package` | Restrict to a single workspace package. Only that package's pure-dep changeset is deleted and re-written. |
+| `packages` | Restrict to a list of workspace packages in one call (unioned with `package`). Prefer this over invoking the tool once per package. |
+| `exclude` | Skip these packages entirely: nothing is written for them and their existing changesets are left untouched. Use when one package's dep diff is already covered by a narrative changeset. |
 | `base` | Override the base branch (defaults to `.changeset/config.json#baseBranch`, typically `main`). |
 | `cwd` | Target a workspace other than the current directory. |
 
@@ -58,6 +60,12 @@ versions before they land in the changeset, and devDependency changes
 are excluded entirely — they don't affect the published package's
 contract. Use `changeset_deps_detect` when you need the full diff
 including devDependencies.
+
+**No-version-change field moves produce no rows.** A dependency moved
+between fields (e.g. `devDependencies` → `dependencies`) with the same
+resolved version is a contract change worth narrative prose, not a
+version movement — the diff drops the would-be removed/added row pair.
+Document such reclassifications in a hand-written changeset instead.
 
 `structuredContent` shape:
 
@@ -86,7 +94,7 @@ regen's output). Useful when you want to *see* what would change before
 committing to a regen, or when folding a dep change into a hand-authored
 mixed changeset.
 
-Args: `base`, `package`, `cwd` — same semantics as `changeset_deps_regen`.
+Args: `base`, `package`, `packages`, `exclude`, `cwd` — same semantics as `changeset_deps_regen`.
 
 `structuredContent` shape:
 

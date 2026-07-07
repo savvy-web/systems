@@ -67,6 +67,49 @@ describe("computeWorkspaceDependencyDiffs (catalog-aware)", () => {
 		]);
 	});
 
+	it("collapses a no-version-change field move (dev -> runtime) into no rows", () => {
+		const fields = (deps: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }) =>
+			new WorkspaceStateSnapshot({
+				packages: [
+					new PackageStateSnapshot({ name: "@x/pkg", version: "1.0.0", relativePath: "packages/pkg", ...deps }),
+				],
+				catalogs: CatalogSet.empty(),
+			});
+		const before = fields({ devDependencies: { effect: "^3.21.0" } });
+		const after = fields({ dependencies: { effect: "^3.21.0" } });
+		expect(computeWorkspaceDependencyDiffs(before, after)).toEqual([]);
+	});
+
+	it("collapses a field move when resolved values match across catalog adoption", () => {
+		const mk = (deps: { dependencies?: Record<string, string>; peerDependencies?: Record<string, string> }) =>
+			new WorkspaceStateSnapshot({
+				packages: [
+					new PackageStateSnapshot({ name: "@x/pkg", version: "1.0.0", relativePath: "packages/pkg", ...deps }),
+				],
+				catalogs: CatalogSet.fromCatalogs({ silk: { effect: "^3.21.0" } }),
+			});
+		const before = mk({ peerDependencies: { effect: "^3.21.0" } });
+		const after = mk({ dependencies: { effect: "catalog:silk" } });
+		expect(computeWorkspaceDependencyDiffs(before, after)).toEqual([]);
+	});
+
+	it("keeps both rows when a field move also changes the resolved version", () => {
+		const mk = (deps: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }) =>
+			new WorkspaceStateSnapshot({
+				packages: [
+					new PackageStateSnapshot({ name: "@x/pkg", version: "1.0.0", relativePath: "packages/pkg", ...deps }),
+				],
+				catalogs: CatalogSet.empty(),
+			});
+		const before = mk({ devDependencies: { effect: "^3.20.0" } });
+		const after = mk({ dependencies: { effect: "^3.21.0" } });
+		const [diff] = computeWorkspaceDependencyDiffs(before, after);
+		expect(diff?.rows).toEqual([
+			{ dependency: "effect", type: "devDependency", action: "removed", from: "^3.20.0", to: "—" },
+			{ dependency: "effect", type: "dependency", action: "added", from: "—", to: "^3.21.0" },
+		]);
+	});
+
 	it("reports a package absent at the before ref as all-added", () => {
 		const before = new WorkspaceStateSnapshot({ packages: [], catalogs: CatalogSet.empty() });
 		const after = snap({ silk: { effect: "^3.21.0" } }, { effect: "catalog:silk" });

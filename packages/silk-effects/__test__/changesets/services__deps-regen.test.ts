@@ -299,7 +299,11 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 
 	const runGatingPlan = async (
 		config: Layer.Layer<ChangesetConfig>,
-		options: { readonly package?: string } = {},
+		options: {
+			readonly package?: string;
+			readonly packages?: ReadonlyArray<string>;
+			readonly exclude?: ReadonlyArray<string>;
+		} = {},
 	): Promise<RegenPlan> => {
 		const dir = makeGatingFixture();
 		const deps = Layer.mergeAll(
@@ -356,5 +360,39 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 		});
 		expect(writtenPackages(plan)).toEqual([]);
 		expect(deletedPackages(plan)).toEqual([]);
+	});
+
+	it("case 7: packages batch include targets both in one call, bypassing versionable (#231)", async () => {
+		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
+			packages: ["@x/pub", "@x/priv"],
+		});
+		expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+		expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+	});
+
+	it("case 8: repo-wide run with exclude skips the package AND leaves its stale changeset alone (#231)", async () => {
+		const plan = await runGatingPlan(configStub({ versionPrivate: true, ignored: [] }), {
+			exclude: ["@x/priv"],
+		});
+		expect(writtenPackages(plan)).toEqual(["@x/pub"]);
+		expect(deletedPackages(plan)).toEqual(["@x/pub"]);
+	});
+
+	it("case 9: exclude wins over an explicit packages include (#231)", async () => {
+		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
+			packages: ["@x/pub", "@x/priv"],
+			exclude: ["@x/priv"],
+		});
+		expect(writtenPackages(plan)).toEqual(["@x/pub"]);
+		expect(deletedPackages(plan)).toEqual(["@x/pub"]);
+	});
+
+	it("case 10: package and packages union into one target set (#231)", async () => {
+		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
+			package: "@x/pub",
+			packages: ["@x/priv"],
+		});
+		expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+		expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
 	});
 });

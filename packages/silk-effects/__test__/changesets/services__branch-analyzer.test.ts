@@ -195,6 +195,28 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 		expect(byPath.get("keep.md")).toBeUndefined();
 	});
 
+	it("filters the branch's own .changeset/*.md entries from files and unmappedFiles (#216)", async () => {
+		const { dir, layer } = setupGitFixture({
+			inspectedFor: (d) => inspectedConfig(d),
+			baseFiles: [{ path: "src/code.ts", content: "export const a = 1;\n" }],
+			featureChanges: [
+				{ kind: "modify", path: "src/code.ts", content: "export const a = 2;\n" },
+				{ kind: "add", path: ".changeset/brave-foxes-dance.md", content: '---\n"@x/a": patch\n---\n\nnote\n' },
+				{ kind: "add", path: ".changeset/config.json", content: "{}\n" },
+			],
+		});
+		trash.push(dir);
+
+		const result = await runAnalyze(layer, dir);
+		const paths = result.files.map((f) => f.path);
+		expect(paths).toContain("src/code.ts");
+		// The changeset entry is the artifact being reconciled — never noise to ask about.
+		expect(paths).not.toContain(".changeset/brave-foxes-dance.md");
+		expect(result.unmappedFiles).not.toContain(".changeset/brave-foxes-dance.md");
+		// Non-markdown .changeset files (e.g. config.json) are still reported.
+		expect(paths).toContain(".changeset/config.json");
+	});
+
 	it("reports renames with the new path and `renamed` status", async () => {
 		const { dir, layer } = setupGitFixture({
 			inspectedFor: (d) => inspectedConfig(d),

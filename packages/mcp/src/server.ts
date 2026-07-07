@@ -134,6 +134,10 @@ export function buildServer(ctx: McpContext): McpServer {
 			inputSchema: {
 				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
 				package: z.optional(z.string()).describe("Restrict output to a single workspace package."),
+				packages: z
+					.optional(z.array(z.string()))
+					.describe("Restrict output to these workspace packages (unioned with package)."),
+				exclude: z.optional(z.array(z.string())).describe("Drop these packages from the output entirely."),
 				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
 			},
 			outputSchema: effectToZodSchema(ChangesetDepsDetectResult) as never,
@@ -172,6 +176,12 @@ export function buildServer(ctx: McpContext): McpServer {
 			inputSchema: {
 				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
 				package: z.optional(z.string()).describe("Restrict regeneration to a single workspace package."),
+				packages: z
+					.optional(z.array(z.string()))
+					.describe("Restrict regeneration to these workspace packages (unioned with package)."),
+				exclude: z
+					.optional(z.array(z.string()))
+					.describe("Skip these packages entirely: nothing written, existing changesets untouched."),
 				dryRun: z.optional(z.boolean()).describe("Compute the plan without writing or deleting any file."),
 				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
 			},
