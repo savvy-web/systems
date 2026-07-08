@@ -1,5 +1,5 @@
 ---
-"@savvy-web/silk": major
+"@savvy-web/silk": minor
 ---
 
 ## Breaking Changes
