@@ -1,5 +1,57 @@
 # @savvy-web/silk
 
+## 2.2.0
+
+### Breaking Changes
+
+* ### Changeset commands consolidated into a single `/silk:changeset` router
+
+  The five separate changeset slash commands are removed and replaced by one flag-driven command. Anyone with muscle memory or scripts invoking the old command names must switch to the new form:
+
+  | Old command                                                                 | New command                                                                   |
+  | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+  | `/silk:changeset-create [--require] [--package N] [--bump LVL] [--dry-run]` | `/silk:changeset --create [--require] [--package N] [--bump LVL] [--dry-run]` |
+  | `/silk:changeset-squash [branch\|all] [--package N] [--dry-run]`            | `/silk:changeset --squash [branch\|all] [--package N] [--dry-run]`            |
+  | `/silk:changeset-check`                                                     | `/silk:changeset --check`                                                     |
+  | `/silk:changeset-list`                                                      | `/silk:changeset --list`                                                      |
+  | `/silk:changeset-preview`                                                   | `/silk:changeset --preview`                                                   |
+
+  A bare `/silk:changeset` (no flag) defaults to create/reconcile. `/silk:changeset-style` is unaffected and keeps its own name.
+
+### Features
+
+* ### New `build` skill
+
+  `/silk:build` documents configuring and running `@savvy-web/bundler` (and its `rspress-builder` sibling) from a `savvy.build.ts` — the `build()` front door, the full `BuildConfig` option surface, `build:dev`/`build:prod`/`types:check`/`prepare` workspace and Turborepo wiring, SEA executables, and the API Extractor meta pass. It auto-loads whenever `savvy.build.ts` is opened.
+
+  ### New `changeset-config` skill
+
+  `/silk:changeset-config` documents `.changeset/config.json` in a Silk repo — the two-element `changelog` tuple, the standard `@changesets/config` fields, and the Silk-custom per-package `versionFiles` and `additionalScopes` options. It auto-loads whenever `.changeset/config.json` is opened. [#253][#253]
+
+### Bug Fixes
+
+* Hardens the silk plugin's Biome nudge hook and tsdoc monitor so they stop pointing agents at actions they cannot take, or should not take yet.
+
+  * The `biome_check` nudge no longer fires inside subagents. Subagents run with a curated `tools:` allowlist and often cannot call the MCP tool the nudge recommends, so the reminder was a dead end.
+  * The nudge now matches Biome only when it is the invoked binary, not when the word "biome" merely appears as an argument — for example inside a `gh issue create --body` text.
+  * The tsdoc monitor debounces: it waits for a package's ae-\*/tsdoc- count to hold steady across a short quiet period before notifying, so an agent actively fixing diagnostics no longer triggers churn. The notification also tells the reader to let an in-flight fix finish before dispatching another. [#250][#250]
+
+- Hardens the `tsdoctor` agent so a multi-step run (build → read `issues.json` → edit → rebuild) reliably finishes in a single dispatch and catches two header-comment mistakes the diagnostic-driven loop was missing.
+
+  * Turn-discipline contract: the agent no longer ends a turn on a statement of intent — it must run the final verifying build, confirm the filtered `ae-*`/`tsdoc-*` arrays are empty, and deliver the report as its last message.
+  * Proactive `@packageDocumentation` sweep: greps the package `src` and confirms every occurrence sits in an `exports`-entry file, since a stray tag on a non-entry file raises no diagnostic.
+  * Comment-style rule: module-header narration on non-entry files (especially `internal/*`) must use `//` line comments, not `/** */` doc blocks, which API Extractor parses and can misattribute. [#249][#249]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#249]: https://github.com/savvy-web/systems/pull/249
+
+[#250]: https://github.com/savvy-web/systems/pull/250
+
+[#253]: https://github.com/savvy-web/systems/pull/253
+
 ## 2.1.3
 
 ### Bug Fixes
