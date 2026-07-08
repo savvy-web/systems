@@ -22,6 +22,7 @@ The `silk@savvy-web-systems` Claude Code plugin. Merges the skills, agents and h
 - [Overview](#overview)
 - [Current State](#current-state)
 - [Skill naming scheme](#skill-naming-scheme)
+- [Changeset command surface](#changeset-command-surface)
 - [MCP tool orientation](#mcp-tool-orientation)
 - [Turborepo capability](#turborepo-capability)
 - [Biome capability](#biome-capability)
@@ -44,6 +45,7 @@ Implemented. Contents:
 - **Skills** (`plugins/silk/skills/`): the merged set — tool-prefixed user-facing skills plus unprefixed internal mechanics. See the directory listing for the authoritative set and [Skill naming scheme](#skill-naming-scheme).
 - **Agents** (`plugins/silk/agents/`): `changeset-manager.md`, the only caller of the unprefixed internal skills; `turborepo.md`, the Turborepo domain agent that drives the MCP `turbo_inspect` tool for multi-step cache diagnosis, `turbo.json` refactors and CI cache setup; and `tsdoctor.md`, the TSDoc agent that drives a package's `ae-*`/`tsdoc-*` diagnostics to zero off the build's `issues.json` artifact. See [Turborepo capability](#turborepo-capability) and [TSDoc capability](#tsdoc-capability).
 - **Turbo skill** (`plugins/silk/skills/turbo/`): the model-invocable `turbo` front-door skill, self-contained via bundled `references/` — the six Turborepo standards that used to be served from the mcp corpus now live there. See [Turborepo capability](#turborepo-capability).
+- **Build skill** (`plugins/silk/skills/build/`): the model-invocable `build` authoring reference (`/silk:build`, also `paths`-triggered on `**/savvy.build.ts`) for the `@savvy-web/bundler` / `@savvy-web/rspress-builder` / `@savvy-web/tsdown-plugins` toolchain, self-contained via bundled `references/`. It shares the `**/savvy.build.ts` auto-load path with the `tsdoc` skill by design: `build` owns build *config*, `tsdoc` owns doc *comments*.
 - **TSDoc capability** (`plugins/silk/skills/tsdoc/`, `agents/tsdoctor.md`, `plugins/silk/monitors/`): the skill, the `tsdoctor` agent and a background monitor over the build's `issues.json` artifact. See [TSDoc capability](#tsdoc-capability).
 - **Hooks** (`plugins/silk/hooks/`): all three source hook sets merged into one `hooks.json` plus per-event script dirs and a shared `lib/`. See [Hook merge](#hook-merge).
 - **MCP wiring**: an `mcpServers` block in `.claude-plugin/plugin.json` spawns the shared `savvy-mcp` server via `bin/start-mcp.sh`, and the always-on `session-start/orientation.sh` hook orients the agent toward the server's tools. This is the "direction" half of the information-vs-direction split — see `../mcp/architecture.md` and [MCP tool orientation](#mcp-tool-orientation). The sibling `plugins/github-actions` reuses the identical launcher and server declaration.
@@ -53,8 +55,22 @@ Implemented. Contents:
 
 The naming scheme is the load-bearing convention; the exact skill list is discoverable in the `skills/` directory.
 
-- **User-facing skills are tool-prefixed** (`changeset-*`, `commit-create`). Prefixing disambiguates now that three tools share one plugin.
+- **User-facing skills are tool-prefixed** (the `changeset` router plus its `changeset-style`/`changeset-config` siblings, and `commit-create`). Prefixing disambiguates now that three tools share one plugin. Capability skills are named for their capability (`build`, `tsdoc`, `turbo`).
 - **Internal mechanics stay unprefixed** (`config`, `dependencies`, `update`, `merge`, `delete`, `status`). They are not user-invoked — only the `changeset-manager` agent calls them by name, so they keep their short names.
+
+## Changeset command surface
+
+The changeset user surface is a single flag-driven router skill, `changeset` (`/silk:changeset --create|--squash|--list|--preview|--check`), that replaced five former per-command skills (`changeset-create`, `changeset-squash`, `changeset-check`, `changeset-list`, `changeset-preview`). The router parses the leading flag and dispatches; everything after it passes through verbatim. See `skills/changeset/SKILL.md` for the authoritative dispatch table.
+
+- `--create` / `--squash` → the `changeset-manager` agent (`subagent_type: silk:changeset-manager`), in create or squash mode.
+- `--check` → the `changeset_validate` MCP tool directly (typed CSH001–CSH005 diagnostics, no CLI script).
+- `--preview` → the `changeset_preview` MCP tool directly (see [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect)).
+- `--list` → the bundled `scripts/list.sh`, moved here from the old `changeset-list` skill.
+- A bare or vague invocation defaults to create/reconcile; a phrase table maps auto-triggered wording to a mode.
+
+The router declares a **scoped** `allowed-tools` (`Agent`, `changeset_validate`, `changeset_preview`, `Bash(bash *)`) — it holds only the grants its own modes fire directly. The heavier `changeset_inspect` and `changeset_deps_*` grants live on the `changeset-manager` agent it dispatches to, not on the router.
+
+Two changeset skills stay separate from the router because they cover file formats, not commands: `changeset-style` owns `.changeset/*.md` body format, and `changeset-config` owns `.changeset/config.json` — including the Silk-custom per-package `versionFiles` and `additionalScopes` fields (both auto-load on their respective paths).
 
 ## MCP tool orientation
 
@@ -94,11 +110,11 @@ The plugin's TSDoc capability mirrors the Turborepo shape — a reference skill,
 
 ## The config skill drives changeset_inspect
 
-The `config` skill (`skills/config/SKILL.md`, agent-internal, `user-invocable: false`) is the `changeset-manager` agent's window onto changeset attribution. It calls the shared `savvy-mcp` server's `changeset_inspect` MCP tool directly (`allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_inspect`), with `mode: "branch"` as the primary create-mode classification call and `mode: "config"` as the secondary config-only view (a third `mode: "classify"` resolves an arbitrary path to its owning package). The `changeset-manager` agent holds the same tool grant plus `mcp__plugin_silk_savvy-mcp__changeset_validate` (structured changeset-file validation), and reads the tool's `structuredContent` (the `BranchAnalysis` / `InspectedConfig` shapes); the `dependencies` skill's "when to invoke" check reads the same `mode: "branch"` result. See `../mcp/architecture.md` for the tool half.
+The `config` skill (`skills/config/SKILL.md`, agent-internal, `user-invocable: false`) is the `changeset-manager` agent's window onto changeset attribution. It calls the shared `savvy-mcp` server's `changeset_inspect` MCP tool directly (`allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_inspect`), with `mode: "branch"` as the primary create-mode classification call and `mode: "config"` as the secondary config-only view (a third `mode: "classify"` resolves an arbitrary path to its owning package). The `changeset-manager` agent holds the same `changeset_inspect` grant plus `changeset_validate` (post-write changeset-file validation), `changeset_preview` (release preview before deciding whether more changeset work is needed) and the `changeset_deps_regen`/`changeset_deps_detect` grants the `dependencies` skill drives, and reads the tool's `structuredContent` (the `BranchAnalysis` / `InspectedConfig` shapes); the `dependencies` skill's "when to invoke" check reads the same `mode: "branch"` result. Its `tools:` frontmatter also carries `Bash(bash *)` so it can run the router's bundled `list.sh` directly during inventory. See `../mcp/architecture.md` for the tool half.
 
 The load-bearing reason it uses the MCP tool rather than the CLI: the CLI's `--json` output is prefixed with an `Effect.log` `[…] INFO (#NN):` line that breaks a naive `JSON.parse` of stdout. The structured MCP result has no such framing, removing the stdout-parsing fragility. Error handling also simplifies — the tool surfaces `ConfigurationError` / `GitError` as MCP tool errors (no exit codes, no stderr to parse), and there is no "CLI not installed" branch because the MCP server ships the implementation. The `savvy changeset analyze-branch` / `config show` / `classify` / `release-surface` inspection commands have been **removed** from the CLI; the `changeset_inspect` / `changeset_validate` MCP tools are the inspection surface. The CLI keeps only `lint` / `validate-file` (used by the bash PostToolUse hook) plus `check` / `transform` / `version` / `config validate` / `deps`.
 
-The model-invocable `changeset-preview` skill (`skills/changeset-preview/SKILL.md`) is the read-only release-preview front door: it renders directly from the `changeset_preview` MCP tool (`allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_preview`), which runs the genuine changesets engine and returns the version bumps plus rendered CHANGELOG blocks. The skill's previous hand-rolled multi-step CHANGELOG-merge algorithm is gone — it now presents the tool's structured result and markdown transcript, with the only caveat narrowed to the inherent commit-metadata gap. See `../mcp/architecture.md` for the tool.
+The `/silk:changeset --preview` router mode is the read-only release-preview front door: it renders directly from the `changeset_preview` MCP tool, which runs the genuine changesets engine and returns the version bumps plus rendered CHANGELOG blocks. There is no hand-rolled CHANGELOG-merge step — the router presents the tool's structured result and markdown transcript, with the only caveat narrowed to the inherent commit-metadata gap. See `../mcp/architecture.md` for the tool and [Changeset command surface](#changeset-command-surface) for the router.
 
 ## Hook merge
 
@@ -106,7 +122,7 @@ All source hook sets merge into `plugins/silk/hooks/hooks.json`. PreToolUse/Post
 
 A standing hygiene concern is avoiding double-fires where the changesets and commitlint guards both match `Bash` — check `hooks.json`'s matcher set when adding a new Bash guard.
 
-The same applies to the **skill scripts**: the bundled scripts that shell out to the CLI (`changeset-check`'s `check.sh`/`lint.sh`) target the unified `savvy changeset …` subcommands. Notably `changeset-check` validates via `savvy changeset lint`, not a `check` subcommand. Any plugin caller — hook or skill — that invokes the CLI goes through the single `savvy` bin; no script may assume a per-tool `savvy-*` bin is installed.
+The same applies to the **skill scripts**: any bundled script that shells out to the Silk CLI goes through the single `savvy` bin — no script may assume a per-tool `savvy-*` bin is installed. The changeset router's one bundled script, `changeset/scripts/list.sh` (the `--list` mode), is a deliberate exception to *which* CLI it targets: it shells out to the project's own `@changesets/cli` (`changeset status --output`) for structured JSON, not to `savvy`. Validation no longer rides a CLI script at all — the router's `--check` mode calls the `changeset_validate` MCP tool directly (see [Changeset command surface](#changeset-command-surface)).
 
 The `config` and `dependencies` skills are the exceptions: neither shells out — `config` calls the `changeset_inspect` MCP tool directly (see [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect)), and `dependencies` calls the `changeset_deps_regen`/`changeset_deps_detect` MCP tools directly (its former `detect.sh`/`regen.sh` scripts are retired). Both are thin adapters over `Changesets.DepsRegen` — see `../mcp/architecture.md` and `../silk-effects/architecture.md`.
 

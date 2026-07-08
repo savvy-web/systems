@@ -45,8 +45,8 @@ This helps identify consolidation opportunities and ensures nothing is accidenta
 
 Use these skills to manage pending changesets:
 
-- `/silk:changeset-list` — overview of pending changesets with packages, bump types, and content previews
+- `/silk:changeset --list` — overview of pending changesets with packages, bump types, and content previews
 - `/silk:update` — modify an existing changeset's content or bump type
 - `/silk:merge` — combine changesets that share the same bump type into a single file
 - `/silk:delete` — remove a changeset that is no longer needed
-- `/silk:changeset-preview` — preview the combined CHANGELOG output that the current set of changesets would produce
+- `/silk:changeset --preview` — preview the combined CHANGELOG output that the current set of changesets would produce

@@ -3,8 +3,8 @@ name: merge
 description: >
   Mechanics for consolidating two or more changesets that share an identical
   package-to-bump-type mapping. Invoked by the changeset-manager agent during
-  /silk:changeset-squash. Not user-invokable; users initiate this work via
-  /silk:changeset-squash.
+  /silk:changeset --squash. Not user-invokable; users initiate this work via
+  /silk:changeset --squash.
 user-invocable: false
 model: sonnet
 ---

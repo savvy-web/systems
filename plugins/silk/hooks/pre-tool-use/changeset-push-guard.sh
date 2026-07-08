@@ -194,7 +194,7 @@ Changesets are this repo's release documentation. A push without one publishes a
 Pick one path before re-running:
 
 1. The change has user-facing impact (any code in a published package, public API, behavior, bug fix, perf change):
-   Run /silk:changeset-create to draft one, commit it, then push again.
+   Run /silk:changeset --create to draft one, commit it, then push again.
 
 2. The change has NO user-facing impact (docs-only, internal refactor, CI/test-only, dependency pin bump within range, or anything covered by the plugin's exclusion rules):
    Re-run the same push prefixed with SILK_SKIP_PUSH_CHECK=1, for example:

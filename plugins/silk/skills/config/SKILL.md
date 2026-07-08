@@ -131,4 +131,4 @@ implementation and is always available when the session is running.
 
 - It does not classify files. The MCP tool does that via `ConfigInspector.classify`; this skill is the agent's window onto the result.
 - It does not infer release surfaces. The trust boundary is the config file: `pnpm-workspace.yaml` defines workspace packages, `.changeset/config.json#packages[*].additionalScopes` defines linked surfaces, and anything outside both gets reported in `unmappedFiles` for the agent to ask about.
-- It does not modify the config. Treat it as read-only — use `/silk:changeset-create` or direct edits to make changes.
+- It does not modify the config. Treat it as read-only — use `/silk:changeset --create` or direct edits to make changes.

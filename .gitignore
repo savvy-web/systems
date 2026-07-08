@@ -5,6 +5,9 @@
 # Allow src/build and __test__/build source directories (not output dirs)
 !**/src/build/
 !**/__test__/build/
+# Allow the silk plugin's "build" skill directory (not an output dir)
+!plugins/silk/skills/build/
+!plugins/silk/skills/build/**
 **/.rslib
 **/.artifacts
 **/.turbo
