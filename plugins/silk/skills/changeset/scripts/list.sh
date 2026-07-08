@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # list.sh — Emit structured listing of pending changesets as JSON.
-# Bundled with the `list` skill.
+# Bundled with the `changeset` skill's --list mode.
 #
 # Uses @changesets/cli's built-in `status --output=<file>` to produce JSON
 # describing every pending changeset (releases, packages, bump levels,

@@ -176,23 +176,18 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
   </cli>
 
   <skills prefix="/silk:">
-    /silk:changeset-create [--require] [--package N] [--bump LVL] [--dry-run]
-        — reconcile changesets with the branch diff. Discovers existing
-          entries, classifies the diff, applies exclusion rules, and
-          decides whether to create / update / delete. The changeset-manager
-          agent does the work autonomously and only asks when public-surface
-          ambiguity makes a guess unsafe.
-    /silk:changeset-squash [branch|all] [--package N] [--dry-run]
-        — consolidate per-package changesets with identical bump mappings.
-          Default scope is "branch" (only entries added since the merge
-          base). "all" includes pre-existing entries.
-    /silk:changeset-check    — validate existing changesets against CSH001-CSH005
-    /silk:changeset-list     — overview of pending changesets
-    /silk:changeset-preview  — render the combined CHANGELOG output
-    /silk:changeset-style    — full style specification (also auto-loads on .changeset/*.md)
+    /silk:changeset --create [--require] [--package N] [--bump LVL] [--dry-run]
+        — reconcile changesets with the branch diff (changeset-manager agent)
+    /silk:changeset --squash [branch|all] [--package N] [--dry-run]
+        — consolidate per-package changesets (changeset-manager agent)
+    /silk:changeset --check    — validate against CSH001-CSH005 (changeset_validate MCP)
+    /silk:changeset --list     — overview of pending changesets
+    /silk:changeset --preview  — render the combined CHANGELOG output
+    A bare /silk:changeset defaults to --create/reconcile.
+    /silk:changeset-style      — full style specification (also auto-loads on .changeset/*.md)
   </skills>
   <agent_dispatch>
-    Both /silk:changeset-create and /silk:changeset-squash dispatch the
+    Both /silk:changeset --create and /silk:changeset --squash dispatch the
     changeset-manager agent. The main agent should also delegate to
     changeset-manager when implementation work concludes and a changeset
     pass is needed but no slash command has been invoked — the agent owns

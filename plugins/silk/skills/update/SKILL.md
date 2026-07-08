@@ -5,7 +5,7 @@ description: >
   changeset-manager agent when the diff has grown since the changeset was
   authored, when a bump-type mismatch is detected, or when a squash needs
   to rewrite an entry's content. Not user-invokable; users initiate this
-  work via /silk:changeset-create.
+  work via /silk:changeset --create.
 user-invocable: false
 model: sonnet
 ---

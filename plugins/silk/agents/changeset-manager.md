@@ -3,12 +3,12 @@ name: changeset-manager
 description: >
   Use when changesets need to be reconciled with the branch's diff (create,
   update, delete) or when multiple changesets need to be squashed together.
-  Invoked by /silk:changeset-create and /silk:changeset-squash. Discovers existing
+  Invoked by /silk:changeset --create and /silk:changeset --squash. Discovers existing
   changesets, classifies the diff, applies exclusion rules, and asks the user
   only when there is genuine ambiguity.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, mcp__plugin_silk_savvy-mcp__changeset_deps_regen, mcp__plugin_silk_savvy-mcp__changeset_deps_detect, Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, mcp__plugin_silk_savvy-mcp__changeset_preview, mcp__plugin_silk_savvy-mcp__changeset_deps_regen, mcp__plugin_silk_savvy-mcp__changeset_deps_detect, Bash(bash *), Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - changeset-style
   - status
@@ -62,7 +62,7 @@ A "release surface" is anything whose changes belong in a package's release note
 
 **Do not infer release surfaces.** The `changeset_inspect` tool (`mode: "branch"` — see the inventory step below) returns the resolved attribution per file. Every classification you need has already been computed by the MCP server — your job is to apply the exclusion filter on top, ask about `unmappedFiles`, and act on the result. Never decide a path is "not a release surface" without consulting the tool's output.
 
-## Mode 1: Create (invoked by `/silk:changeset-create`)
+## Mode 1: Create (invoked by `/silk:changeset --create`)
 
 ### Arguments
 
@@ -129,7 +129,7 @@ A "release surface" is anything whose changes belong in a package's release note
 
 11. **Report.** Summarize: files created, files updated, files deleted, dependency changesets regenerated (with which packages were affected), packages classified, exclusions applied, and any classification questions you asked the user.
 
-## Mode 2: Squash (invoked by `/silk:changeset-squash`)
+## Mode 2: Squash (invoked by `/silk:changeset --squash`)
 
 ### Arguments
 
@@ -170,14 +170,17 @@ You can invoke any plugin skill via the `Skill` tool. `changeset-style` and `sta
 | `status` | Preloaded | Inventory-awareness rules — already in scope at startup. |
 | `config` | Lazy | **Invoke once per run during inventory.** Drives `mcp__plugin_silk_savvy-mcp__changeset_inspect`: `mode: "branch"` (primary — diff + classification in one shot), `mode: "config"` (config-only view when no diff is involved), and `mode: "classify"` (maps one or more arbitrary repo paths to their owning package — use when a path does not appear in the branch diff but you need to attribute it, e.g. a file the user references directly). The MCP server does the resolution; you read the structured content. |
 | `dependencies` | Lazy | **Invoke after step 4 when any `files[]` entry in the `changeset_inspect` (`mode: "branch"`) result is a workspace `package.json` with `status: "modified"`.** Calls `mcp__plugin_silk_savvy-mcp__changeset_deps_regen` to delete-and-recreate pure dependency changesets — one fresh single-package `patch` changeset per workspace package whose declared deps changed since the base branch. |
-| `changeset-check` | Lazy | **After writing or editing any changeset file, call `mcp__plugin_silk_savvy-mcp__changeset_validate` as an explicit verification step** — it returns typed CSH001-CSH005 diagnostics with no stdout parsing and surfaces violations before the pre-commit hook does. Invoke this skill to use the bundled `scripts/check.sh` / `scripts/lint.sh` Bash scripts as a fallback when the MCP tool is unavailable or when the PostToolUse hook already covered it. |
-| `changeset-list` | Lazy | Invoke during the inventory step if you want the structured listing rather than reading files yourself. Its bundled `scripts/list.sh` shells out to the project's `@changesets/cli` for JSON output. |
-| `changeset-preview` | Lazy | Invoke when you want to see what the final CHANGELOG would look like before deciding whether more changeset work is needed. |
 | `update` | Lazy | Mechanics for modifying an existing changeset's frontmatter or body. |
 | `merge` | Lazy | Mechanics for consolidating two or more changesets with identical mappings (used inside squash mode). |
 | `delete` | Lazy | Mechanics for removing a stale changeset and reporting what was removed. |
 
-Prefer the `config` skill's `changeset_inspect` MCP tool, and the bundled scripts inside `changeset-check` and `changeset-list`, over re-implementing their logic — the MCP server and CLIs they wrap produce deterministic, machine-readable structured output.
+The old per-command validate, list, and preview skills no longer exist — they were consolidated into the `/silk:changeset --check|--list|--preview` router, so call their underlying tools directly instead of dispatching a skill:
+
+- **After writing or editing any changeset file, call `mcp__plugin_silk_savvy-mcp__changeset_validate` directly as an explicit verification step** — it returns typed CSH001-CSH005 diagnostics with no stdout parsing and surfaces violations before the pre-commit hook does. This is preferred over any Bash-based validation.
+- For the structured pending-changeset listing during inventory, run `bash "${CLAUDE_PLUGIN_ROOT}/skills/changeset/scripts/list.sh"` directly — it shells out to the project's `@changesets/cli` for JSON output.
+- To see what the final CHANGELOG would look like before deciding whether more changeset work is needed, call `mcp__plugin_silk_savvy-mcp__changeset_preview` directly.
+
+Prefer the `config` skill's `changeset_inspect` MCP tool, and `changeset_validate`/`changeset_preview`, over re-implementing their logic — the MCP server and CLIs they wrap produce deterministic, machine-readable structured output.
 
 ## YAML frontmatter format
 

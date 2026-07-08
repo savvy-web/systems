@@ -4,7 +4,7 @@ description: >
   Mechanics for removing one or more changeset files from .changeset/. Invoked
   by the changeset-manager agent when a stale changeset describes packages no
   longer in the diff, or as part of squash cleanup. Not user-invokable; users
-  initiate this work via /silk:changeset-create or /silk:changeset-squash.
+  initiate this work via /silk:changeset --create or /silk:changeset --squash.
 user-invocable: false
 model: sonnet
 ---
