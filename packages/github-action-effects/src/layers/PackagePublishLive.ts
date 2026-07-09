@@ -10,40 +10,9 @@ import { NpmRegistry } from "../services/NpmRegistry.js";
 import type { DryRunResult, IdempotentPublishInput, PackResult } from "../services/PackagePublish.js";
 import { PackagePublish } from "../services/PackagePublish.js";
 import { npmCacheArgs } from "../utils/npm-cache.js";
+import { parseNpmPackJson } from "../utils/npm-pack-json.js";
+import { findUnresolvedSpecifiers } from "../utils/publishable-manifest.js";
 import { isNpmRegistry } from "../utils/RegistryClassifier.js";
-
-/**
- * The size-bearing fields of npm's `--json` dry-run output.
- *
- * `npm publish --dry-run --json` emits one such object;
- * `npm pack --dry-run --json` emits an array of them. Only the fields
- * consumed by {@link DryRunResult} are modelled.
- */
-interface PackedJson {
-	readonly size?: number;
-	readonly unpackedSize?: number;
-	readonly entryCount?: number;
-}
-
-/**
- * Shape of an entry in `npm pack --json` output.
- *
- * @remarks
- * `npm pack --json` emits an array of objects, one per packed tarball.
- * Each object carries the fields modelled below; `integrity` is in the
- * `sha512-<base64>` shape the registry stores as `dist.integrity`.
- *
- * @internal
- */
-interface NpmPackJsonEntry {
-	readonly filename: string;
-	readonly name?: string;
-	readonly version?: string;
-	readonly integrity?: string;
-	readonly size?: number;
-	readonly unpackedSize?: number;
-	readonly entryCount?: number;
-}
 
 /**
  * Build npm's `_authToken` config key for a registry.
@@ -106,6 +75,50 @@ const writeAuthToken = (registry: string, token: Redacted.Redacted<string>): Eff
 	});
 
 /**
+ * Fail when the manifest about to be packed still carries a `catalog:` or
+ * `workspace:` dependency specifier.
+ *
+ * @remarks
+ * Those protocols are resolvable only by a workspace-aware package manager. A
+ * published manifest carrying one installs nowhere — npm rejects it with
+ * `EUNSUPPORTEDPROTOCOL: Unsupported URL Type "catalog:"`. Reaching a registry
+ * with one means an unresolved dev/workspace manifest was selected for packing,
+ * so refuse before any bytes are produced.
+ *
+ * A missing or unreadable `package.json` is NOT an error here: `npm pack` is
+ * about to fail on it anyway with a better message than this guard could give.
+ *
+ * @param packageDir - The directory that will be packed.
+ * @param operation - The failing operation to attribute the error to.
+ *
+ * @internal
+ */
+const assertPublishableManifest = (
+	packageDir: string,
+	operation: "pack" | "dryRun",
+): Effect.Effect<void, PackagePublishError> =>
+	Effect.gen(function* () {
+		const manifest = yield* Effect.try({
+			try: () => JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")) as unknown,
+			catch: () => null,
+		}).pipe(Effect.orElseSucceed(() => null));
+		if (manifest === null) return;
+
+		const unresolved = findUnresolvedSpecifiers(manifest);
+		if (unresolved.length === 0) return;
+
+		const rendered = unresolved.map((u) => `${u.block}.${u.name}=${u.specifier}`).join(", ");
+		return yield* Effect.fail(
+			new PackagePublishError({
+				operation,
+				reason:
+					`Refusing to pack ${packageDir}: manifest carries unresolved workspace specifiers ` +
+					`(${rendered}). A published package with these is uninstallable.`,
+			}),
+		);
+	});
+
+/**
  * Resolve the command + base args used to invoke `npm` under each supported
  * package manager.
  *
@@ -119,16 +132,30 @@ const writeAuthToken = (registry: string, token: Redacted.Redacted<string>): Eff
  * supports the exchange. `"npm"` keeps the bundled `npm` and is the safe
  * default for callers that have ensured an adequate version themselves.
  *
+ * The npm spec is PINNED to a major. An unpinned `pnpm dlx npm` resolves
+ * `npm@latest` afresh on every run, so npm's next major lands in every
+ * consumer's release pipeline on whatever day it publishes, unannounced. That
+ * is exactly what happened when npm 12.0.0 took the `latest` dist-tag on
+ * 2026-07-08: `pack --json` switched from an array to an object keyed by
+ * package name and every publish died with "npm pack returned empty result".
+ *
+ * The pin stays on 11 rather than 12 because npm 12.0.0's `publish` is broken
+ * outright — `libnpmpublish` declares `sigstore@^5` but the tarball does not
+ * bundle it, so `provenance.js` throws `MODULE_NOT_FOUND` at require time on
+ * *any* publish, provenance or not (npm/cli#9722). Move this to `npm@12` once
+ * that ships fixed; {@link parseNpmPackJson} already reads both shapes, so the
+ * pin bump is the only change required.
+ *
  * @internal
  */
 const getNpmCommand = (pm?: "npm" | "pnpm" | "yarn" | "bun"): { cmd: string; baseArgs: ReadonlyArray<string> } => {
 	switch (pm) {
 		case "pnpm":
-			return { cmd: "pnpm", baseArgs: ["dlx", "npm"] };
+			return { cmd: "pnpm", baseArgs: ["dlx", "npm@11"] };
 		case "yarn":
 			return { cmd: "yarn", baseArgs: ["npm"] };
 		case "bun":
-			return { cmd: "bun", baseArgs: ["x", "npm"] };
+			return { cmd: "bun", baseArgs: ["x", "npm@11"] };
 		default:
 			return { cmd: "npm", baseArgs: [] };
 	}
@@ -218,6 +245,8 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 					pack: (packageDir: string, options?: { readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun" }) =>
 						Effect.gen(function* () {
 							yield* Effect.logInfo(`pack: ${packageDir} start`);
+							// Refuse an unresolved workspace manifest before npm produces bytes.
+							yield* assertPublishableManifest(packageDir, "pack");
 							// Route through the active manager's npm executor — same dispatch as
 							// `publish`/`dryRun` so every phase packs with the SAME npm. `--cache`
 							// dodges the runner's root-owned `~/.npm` (see `npmCacheArgs`).
@@ -235,11 +264,14 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 									),
 								);
 							const entries = yield* Effect.try({
-								try: () => JSON.parse(output.stdout) as ReadonlyArray<NpmPackJsonEntry>,
+								// Reads npm 11's array form and npm 12's name-keyed object form alike.
+								try: () => parseNpmPackJson(output.stdout),
 								catch: (error) =>
 									new PackagePublishError({
 										operation: "pack",
-										reason: `Failed to parse npm pack JSON output: ${output.stdout.slice(0, 200)}`,
+										reason: `Failed to parse npm pack JSON output: ${
+											error instanceof Error ? error.message : String(error)
+										} — stdout: ${output.stdout.slice(0, 200)}`,
 										cause: error,
 									}),
 							});
@@ -252,11 +284,30 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 									}),
 								);
 							}
+							// A zero-entry tarball is never a legitimate artifact: it publishes an
+							// installable-but-empty package. npm itself does not treat this as an
+							// error, so catch it here rather than ship the bytes.
+							if (first.entryCount === 0) {
+								return yield* Effect.fail(
+									new PackagePublishError({
+										operation: "pack",
+										reason: `npm pack produced a tarball with 0 files in ${packageDir}`,
+									}),
+								);
+							}
 							if (typeof first.integrity !== "string" || first.integrity === "") {
 								return yield* Effect.fail(
 									new PackagePublishError({
 										operation: "pack",
 										reason: "npm pack output missing integrity field",
+									}),
+								);
+							}
+							if (typeof first.filename !== "string" || first.filename === "") {
+								return yield* Effect.fail(
+									new PackagePublishError({
+										operation: "pack",
+										reason: "npm pack output missing filename field",
 									}),
 								);
 							}
@@ -512,15 +563,15 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 						const { cmd, baseArgs } = getNpmCommand(options?.packageManager);
 						const args = [...baseArgs, "pack", "--dry-run", "--json", ...npmCacheArgs()];
 
-						return runner.execCapture(cmd, args, { cwd: packageDir }).pipe(
+						return assertPublishableManifest(packageDir, "dryRun").pipe(
+							Effect.andThen(() => runner.execCapture(cmd, args, { cwd: packageDir })),
 							Effect.flatMap((output) =>
 								Effect.try({
 									try: () => {
-										// `npm publish --dry-run --json` emits a single JSON object.
-										// `npm pack --dry-run --json` emits an array of such objects.
-										// Tolerate both so this parser is robust to either form.
-										const parsed = JSON.parse(output.stdout) as PackedJson | ReadonlyArray<PackedJson>;
-										const first: PackedJson | undefined = Array.isArray(parsed) ? parsed[0] : parsed;
+										// Reads every shape npm has emitted: npm 11's array, npm 12's
+										// name-keyed object, and a single unwrapped entry. Throws on
+										// npm's `{ error }` envelope so its summary reaches the caller.
+										const first = parseNpmPackJson(output.stdout)[0];
 										const result: DryRunResult = {
 											ok: true,
 											output: output.stdout,
@@ -533,10 +584,24 @@ export const PackagePublishLive: Layer.Layer<PackagePublish, never, CommandRunne
 									catch: (error) =>
 										new PackagePublishError({
 											operation: "dryRun",
-											reason: `Failed to parse npm pack --dry-run --json output: ${output.stdout.slice(0, 200)}`,
+											reason: `Failed to parse npm pack --dry-run --json output: ${
+												error instanceof Error ? error.message : String(error)
+											} — stdout: ${output.stdout.slice(0, 200)}`,
 											cause: error,
 										}),
 								}),
+							),
+							// Phase 2 must block the release PR on a zero-file package rather than
+							// render "0 files" in the sticky comment and let auto-merge proceed.
+							Effect.flatMap((result) =>
+								result.fileCount === 0
+									? Effect.fail(
+											new PackagePublishError({
+												operation: "dryRun",
+												reason: `npm pack --dry-run reported a tarball with 0 files in ${packageDir}`,
+											}),
+										)
+									: Effect.succeed(result),
 							),
 							Effect.catchTag(
 								"CommandRunnerError",
