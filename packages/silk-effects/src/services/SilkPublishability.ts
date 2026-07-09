@@ -1,7 +1,8 @@
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import { FileSystem } from "@effect/platform";
 import { Effect, Layer } from "effect";
 import type { WorkspacePackage } from "workspaces-effect";
+import { PublishTargetBindingError } from "../errors/PublishTargetBindingError.js";
 import {
 	PublishTarget,
 	PublishabilityDetector,
@@ -263,11 +264,26 @@ export class SilkPublishability {
 	 * Resolve a package's publish targets via {@link SilkPublishability}, then drop any
 	 * whose built `directory` package.json is `private: true`. Returned targets keep the
 	 * detector's original (possibly package-relative) `directory`.
+	 *
+	 * @remarks
+	 * When the prod build has written `dist/prod/targets.json`, that binding is
+	 * authoritative: every surviving target's directory must be one of the group
+	 * directories it names. A directory outside the binding means detection did
+	 * not select the prod output — the `yaml-effect@0.7.1` shape, where a dev
+	 * manifest carrying `catalog:` specifiers was packed and published. Rather
+	 * than ship those bytes, fail with {@link PublishTargetBindingError}.
+	 *
+	 * Before the prod build runs there is no binding, and the detector's
+	 * placeholder directories are left alone.
 	 */
 	static resolveTargets(
 		pkg: WorkspacePackage,
 		root: string,
-	): Effect.Effect<ReadonlyArray<PublishTarget>, never, PublishabilityDetector | FileSystem.FileSystem> {
+	): Effect.Effect<
+		ReadonlyArray<PublishTarget>,
+		PublishTargetBindingError,
+		PublishabilityDetector | FileSystem.FileSystem
+	> {
 		return Effect.gen(function* () {
 			const detector = yield* PublishabilityDetector;
 			const fs = yield* FileSystem.FileSystem;
@@ -276,6 +292,22 @@ export class SilkPublishability {
 			for (const t of targets) {
 				const dir = isAbsolute(t.directory) ? t.directory : join(pkg.path, t.directory);
 				if (!(yield* isTargetPrivate(fs, dir))) kept.push(t);
+			}
+
+			const binding = yield* readTargetsBinding(fs, pkg.path);
+			if (binding === null) return kept;
+
+			// Compare on package-relative POSIX paths: the detector may hand back either
+			// form, while the binding always records package-relative dirs.
+			const boundDirectories = binding.groups.map((g) => normalizeDir(g.dir));
+			const bound = new Set(boundDirectories);
+			for (const t of kept) {
+				const relativeDir = normalizeDir(isAbsolute(t.directory) ? relative(pkg.path, t.directory) : t.directory);
+				if (!bound.has(relativeDir)) {
+					return yield* Effect.fail(
+						new PublishTargetBindingError({ pkg: pkg.name, directory: relativeDir, boundDirectories }),
+					);
+				}
 			}
 			return kept;
 		});
@@ -306,6 +338,16 @@ export class SilkPublishability {
 		});
 	}
 }
+
+/**
+ * Reduce a directory to a comparable package-relative POSIX path: backslashes to
+ * forward slashes, no `./` prefix, no trailing slash. `""` (the package root)
+ * normalizes to `.`, matching how a root-directory target is recorded.
+ */
+const normalizeDir = (dir: string): string => {
+	const normalized = dir.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+	return normalized === "" ? "." : normalized;
+};
 
 /** True when a built target directory's package.json is `private: true`. Missing/unreadable/malformed → false. */
 const isTargetPrivate = (fs: FileSystem.FileSystem, targetDir: string): Effect.Effect<boolean> =>

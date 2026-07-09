@@ -8,6 +8,7 @@ import { PublishConfig, PublishabilityDetector, WorkspacePackage } from "workspa
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 import {
 	PublishabilityDetectorAdaptiveLive,
+	SilkPublishability,
 	SilkPublishabilityDetectorLive,
 } from "../../src/services/SilkPublishability.js";
 
@@ -433,5 +434,75 @@ describe("PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk ru
 			["@libraries/*"],
 		);
 		expect(targets.length).toBe(0);
+	});
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SilkPublishability.resolveTargets — prod-binding guard (issue #144, guard 2)
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("SilkPublishability.resolveTargets — prod-binding guard", () => {
+	let tmpDir: string;
+	beforeEach(() => {
+		tmpDir = mkdtempSync(join(tmpdir(), "pub-bind-"));
+	});
+
+	const runResolve = (pkg: WorkspacePackage, root: string) =>
+		Effect.runPromiseExit(
+			SilkPublishability.resolveTargets(pkg, root).pipe(
+				Effect.provide(SilkPublishabilityDetectorLive),
+				Effect.provide(NodeContext.layer),
+			),
+		);
+
+	it("fails when a prod binding exists but detection selected a directory outside it (#143 shape)", async () => {
+		// The #143 failure: silk mode was misdetected, detection fell through to the
+		// vanilla `publishConfig.directory` branch and selected the DEV build dir,
+		// while the prod binding says the bytes live in dist/prod/npm/pkg. The dev
+		// manifest still carried `catalog:` deps, so the published tarball was
+		// uninstallable.
+		writePkg(tmpDir, {
+			name: "yaml-effect",
+			version: "0.7.1",
+			publishConfig: { access: "public", directory: "dist/dev/pkg" },
+		});
+		writeBinding(tmpDir, dualRegistryBinding("yaml-effect"));
+
+		const exit = await runResolve(makeWsPkg(tmpDir, "yaml-effect"), tmpDir);
+
+		expect(exit._tag).toBe("Failure");
+		const rendered = JSON.stringify(exit);
+		expect(rendered).toContain("dist/dev/pkg");
+		expect(rendered).toContain("dist/prod/npm/pkg");
+		expect(rendered).toContain("yaml-effect");
+	});
+
+	it("succeeds when the detected directory is one of the binding's group dirs", async () => {
+		writePkg(tmpDir, {
+			name: "yaml-effect",
+			version: "0.7.1",
+			publishConfig: { access: "public", targets: { npm: true, github: true } },
+		});
+		writeBinding(tmpDir, dualRegistryBinding("yaml-effect"));
+
+		const exit = await runResolve(makeWsPkg(tmpDir, "yaml-effect"), tmpDir);
+
+		expect(exit._tag).toBe("Success");
+		if (exit._tag === "Success") {
+			expect(exit.value).toHaveLength(2);
+			for (const t of exit.value) expect(t.directory).toBe("dist/prod/npm/pkg");
+		}
+	});
+
+	it("succeeds with no binding on disk (pre-build), leaving placeholders untouched", async () => {
+		writePkg(tmpDir, {
+			name: "pre-build",
+			version: "1.0.0",
+			publishConfig: { access: "public", directory: "dist/dev/pkg" },
+		});
+
+		const exit = await runResolve(makeWsPkg(tmpDir, "pre-build"), tmpDir);
+
+		expect(exit._tag).toBe("Success");
 	});
 });
