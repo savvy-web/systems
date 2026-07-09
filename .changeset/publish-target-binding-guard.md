@@ -2,7 +2,9 @@
 "@savvy-web/silk-effects": minor
 ---
 
-Refuse to publish a directory the prod `targets.json` binding does not describe
+## Features
+
+### Refuse to publish a directory the prod `targets.json` binding does not describe
 
 `SilkPublishability.resolveTargets` now asserts that every surviving target's directory is one of the group directories named by the package's `dist/prod/targets.json`, whenever that binding exists. A directory outside it means publishability detection did not select the prod build output.
 

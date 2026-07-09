@@ -169,8 +169,8 @@ await build({
 							strategy: "interop",
 						},
 						"@effect/tsgo": {
-							range: "^0.16.0",
-							peer: "^0.16.0",
+							range: "^0.16.3",
+							peer: "^0.16.3",
 							strategy: "interop",
 						},
 						"@effect/typeclass": {
@@ -189,7 +189,7 @@ await build({
 							strategy: "interop",
 						},
 						"@types/node": {
-							range: "^26.1.0",
+							range: "^26.1.1",
 							peer: "^26.1.0",
 							strategy: "lock-minor",
 						},
@@ -208,12 +208,12 @@ await build({
 							peer: "^7.0.0-dev.20260612.1",
 						},
 						"@vitest/coverage-istanbul": {
-							range: "^4.1.9",
+							range: "^4.1.10",
 							peer: "^4.1.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-v8": {
-							range: "^4.1.9",
+							range: "^4.1.10",
 							peer: "^4.1.0",
 							strategy: "lock-minor",
 						},
@@ -243,7 +243,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vitest: {
-							range: "^4.1.9",
+							range: "^4.1.10",
 							peer: "^4.1.0",
 							strategy: "lock-minor",
 						},

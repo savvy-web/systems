@@ -2,7 +2,9 @@
 "@savvy-web/github-action-effects": minor
 ---
 
-Pin the dlx-fetched npm to v11 and read npm 12's `pack --json` shape; guard against unpublishable manifests
+## Features
+
+### Pin the dlx-fetched npm to v11 and read npm 12's `pack --json` shape
 
 `getNpmCommand` fetched an **unpinned** `npm` through `pnpm dlx npm` / `bun x npm`, so npm's next major landed in every consumer's release pipeline the day it published. When npm 12.0.0 took the `latest` dist-tag on 2026-07-08 it changed `pack --json` from an array of entries to an object keyed by package name (npm's changelog: "the `--json` output of `npm pack` and `npm publish` have changed. They are now always consistent"). Indexing `[0]` into that object yields `undefined`, so every publish failed with `npm pack returned empty result`, and Phase-2 sticky comments reported a package size of zero files.
 
