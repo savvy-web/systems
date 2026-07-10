@@ -7,7 +7,7 @@ description: >
   dependency-changeset-per-package.
 user-invocable: false
 model: sonnet
-allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_deps_regen mcp__plugin_silk_savvy-mcp__changeset_deps_detect
+allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_deps_regen, mcp__plugin_silk_savvy-mcp__changeset_deps_detect
 ---
 
 # Manage Dependency Changesets

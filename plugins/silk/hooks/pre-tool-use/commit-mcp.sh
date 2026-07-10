@@ -20,9 +20,20 @@ TOOL=$(echo "$ENVELOPE" | jq -r '.tool_name // empty')
 # mcp__github-acme__list_issues. Scope segments may contain any non-`__`
 # character, so use shell parameter expansion (^___ greedy strip after a
 # scope-aware prefix) instead of a brittle char-class regex.
+# The GitKraken MCP server registers as `gitkraken` (or `GitKraken` in some
+# clients); `gk` is kept for back-compat with older configs. All three feed
+# the same safe-mcp-gk-ops.txt allow-list.
 case "$TOOL" in
   mcp__gk__*)
     OP="${TOOL#mcp__gk__}"
+    SERVER="gk"
+    ;;
+  mcp__gitkraken__*)
+    OP="${TOOL#mcp__gitkraken__}"
+    SERVER="gk"
+    ;;
+  mcp__GitKraken__*)
+    OP="${TOOL#mcp__GitKraken__}"
     SERVER="gk"
     ;;
   mcp__github__*)

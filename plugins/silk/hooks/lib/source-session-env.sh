@@ -62,4 +62,3 @@ source_session_env() {
 # must invoke the function explicitly:
 #     . "$(dirname "$0")/../lib/source-session-env.sh"
 #     source_session_env "$session_id"
-#     source_session_env "$session_id"
