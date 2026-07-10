@@ -8,7 +8,7 @@ description: >
   only when there is genuine ambiguity.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, mcp__plugin_silk_savvy-mcp__changeset_preview, mcp__plugin_silk_savvy-mcp__changeset_deps_regen, mcp__plugin_silk_savvy-mcp__changeset_deps_detect, Bash(bash *), Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Write, Edit, Skill, AskUserQuestion, SendMessage, mcp__plugin_silk_savvy-mcp__changeset_inspect, mcp__plugin_silk_savvy-mcp__changeset_validate, mcp__plugin_silk_savvy-mcp__changeset_preview, mcp__plugin_silk_savvy-mcp__changeset_deps_regen, mcp__plugin_silk_savvy-mcp__changeset_deps_detect, Bash(bash *), Bash(git *), Bash(pnpm *), Bash(yarn *), Bash(bun *), Bash(npm *), Bash(npx *), Bash(bunx *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - changeset-style
   - status

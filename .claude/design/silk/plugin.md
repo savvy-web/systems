@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-07-07
-last-synced: 2026-07-07
+updated: 2026-07-10
+last-synced: 2026-07-10
 completeness: 88
 related:
   - ./architecture.md
@@ -43,7 +43,7 @@ The `silk@savvy-web-systems` Claude Code plugin. Merges the skills, agents and h
 Implemented. Contents:
 
 - **Skills** (`plugins/silk/skills/`): the merged set — tool-prefixed user-facing skills plus unprefixed internal mechanics. See the directory listing for the authoritative set and [Skill naming scheme](#skill-naming-scheme).
-- **Agents** (`plugins/silk/agents/`): `changeset-manager.md`, the only caller of the unprefixed internal skills; `turborepo.md`, the Turborepo domain agent that drives the MCP `turbo_inspect` tool for multi-step cache diagnosis, `turbo.json` refactors and CI cache setup; and `tsdoctor.md`, the TSDoc agent that drives a package's `ae-*`/`tsdoc-*` diagnostics to zero off the build's `issues.json` artifact. See [Turborepo capability](#turborepo-capability) and [TSDoc capability](#tsdoc-capability).
+- **Agents** (`plugins/silk/agents/`): `changeset-manager.md`, the only caller of the unprefixed internal skills; `turborepo.md`, the Turborepo domain agent that drives the MCP `turbo_inspect` tool for multi-step cache diagnosis, `turbo.json` refactors and CI cache setup; and `tsdoctor.md`, the TSDoc agent that drives a package's `ae-*`/`tsdoc-*` diagnostics to zero off the build's `issues.json` artifact. See [Turborepo capability](#turborepo-capability) and [TSDoc capability](#tsdoc-capability). Every agent declares a curated `tools:` allowlist (never omit `tools:` — inheriting everything undoes the scoping), and every allowlist must include `SendMessage`: a teammate-dispatched agent without it cannot report back or answer a `shutdown_request` and idle-loops until killed (savvy-web/systems#256, #263).
 - **Turbo skill** (`plugins/silk/skills/turbo/`): the model-invocable `turbo` front-door skill, self-contained via bundled `references/` — the six Turborepo standards that used to be served from the mcp corpus now live there. See [Turborepo capability](#turborepo-capability).
 - **Build skill** (`plugins/silk/skills/build/`): the model-invocable `build` authoring reference (`/silk:build`, also `paths`-triggered on `**/savvy.build.ts`) for the `@savvy-web/bundler` / `@savvy-web/rspress-builder` / `@savvy-web/tsdown-plugins` toolchain, self-contained via bundled `references/`. It shares the `**/savvy.build.ts` auto-load path with the `tsdoc` skill by design: `build` owns build *config*, `tsdoc` owns doc *comments*.
 - **TSDoc capability** (`plugins/silk/skills/tsdoc/`, `agents/tsdoctor.md`, `plugins/silk/monitors/`): the skill, the `tsdoctor` agent and a background monitor over the build's `issues.json` artifact. See [TSDoc capability](#tsdoc-capability).
