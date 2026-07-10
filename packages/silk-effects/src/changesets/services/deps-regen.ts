@@ -408,6 +408,15 @@ function makeShape(
 				fromRef = yield* gitMergeBase(resolvedCwd, baseBranch);
 			}
 
+			// WorkspaceDiscovery caches listPackages per root for the layer
+			// lifetime, and Effect memoizes the discovery layer by reference across
+			// composition branches — so in a process that enumerated the workspace
+			// BEFORE manifests were edited (an updater tool's natural flow), both
+			// the worktree snapshot and the gating reads below would be served the
+			// pre-edit manifests and the diff would silently collapse to a no-op.
+			// A plan must read the workspace as it is now: drop the cache first.
+			yield* discovery.refresh();
+
 			// Snapshots: before = from ref, after = to ref (or working tree). Each
 			// side carries its own catalogs and package versions, so rows leave the
 			// diff already resolved.
