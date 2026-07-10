@@ -143,6 +143,7 @@ describe("transform command – runTransform handler", () => {
 		const failingInspector = Layer.succeed(ConfigInspector, {
 			inspect: () => Effect.fail(new ConfigurationError({ field: "options", reason: "synthetic" })),
 			classify: () => Effect.fail(new ConfigurationError({ field: "options", reason: "synthetic" })),
+			refresh: () => Effect.void,
 		});
 
 		const exit = await Effect.runPromiseExit(

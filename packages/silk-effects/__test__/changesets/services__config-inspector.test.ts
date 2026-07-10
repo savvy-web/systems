@@ -599,6 +599,94 @@ describe("ConfigInspector — explicit `packages` augments release-surface disco
 	});
 });
 
+describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	function setupBaseBranchFixture(): string {
+		return setupFixture({
+			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+			configJson: makeConfig(),
+		});
+	}
+
+	it("without refresh, a second inspect() in the same runtime still serves the cached (stale) result", async () => {
+		const dir = setupBaseBranchFixture();
+		dirs.push(dir);
+
+		const program = Effect.gen(function* () {
+			const inspector = yield* ConfigInspector;
+			const first = yield* inspector.inspect(dir);
+
+			const configPath = join(dir, ".changeset", "config.json");
+			const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+			raw.baseBranch = "develop";
+			writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
+
+			const second = yield* inspector.inspect(dir);
+			return { first, second };
+		});
+
+		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(TestLive)));
+		expect(first.baseBranch).toBe("main");
+		expect(second.baseBranch).toBe("main");
+	});
+
+	it("after refresh(), inspect() reflects an on-disk edit made since the last inspect() in the same runtime", async () => {
+		const dir = setupBaseBranchFixture();
+		dirs.push(dir);
+
+		const program = Effect.gen(function* () {
+			const inspector = yield* ConfigInspector;
+			const first = yield* inspector.inspect(dir);
+
+			const configPath = join(dir, ".changeset", "config.json");
+			const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+			raw.baseBranch = "develop";
+			writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
+
+			yield* inspector.refresh();
+			const second = yield* inspector.inspect(dir);
+			return { first, second };
+		});
+
+		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(TestLive)));
+		expect(first.baseBranch).toBe("main");
+		expect(second.baseBranch).toBe("develop");
+	});
+
+	it("after refresh(), inspect() also reflects a newly-added workspace package (WorkspaceDiscovery staleness)", async () => {
+		const dir = setupBaseBranchFixture();
+		dirs.push(dir);
+
+		const program = Effect.gen(function* () {
+			const inspector = yield* ConfigInspector;
+			const first = yield* inspector.inspect(dir);
+
+			mkdirSync(join(dir, "packages", "bar"), { recursive: true });
+			writeFileSync(
+				join(dir, "packages", "bar", "package.json"),
+				JSON.stringify({ name: "@scope/bar", version: "1.0.0", publishConfig: { access: "public" } }, null, 2),
+			);
+			writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/foo"\n  - "packages/bar"\n');
+
+			yield* inspector.refresh();
+			const second = yield* inspector.inspect(dir);
+			return { first, second };
+		});
+
+		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(TestLive)));
+		expect(first.packages.map((p) => p.name)).toEqual(["@scope/foo"]);
+		expect(second.packages.map((p) => p.name).sort()).toEqual(["@scope/bar", "@scope/foo"]);
+	});
+});
+
 describe("InspectedConfigSchema", () => {
 	it("decodes a resolved config shape", () => {
 		const sample = {

@@ -2,12 +2,12 @@
  * Unit tests for ChangesetConfig service.
  */
 
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
 import { Effect } from "effect";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChangesetConfig, ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
 import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
 
@@ -30,6 +30,10 @@ describe("ChangesetConfig", () => {
 	let tmpDir: string;
 	beforeEach(() => {
 		tmpDir = mkdtempSync(join(tmpdir(), "ccfg-"));
+	});
+
+	afterEach(() => {
+		rmSync(tmpDir, { recursive: true, force: true });
 	});
 
 	it("returns 'none' when .changeset/config.json does not exist", async () => {
@@ -92,6 +96,10 @@ describe("ChangesetConfig.isIgnored / ignorePatterns", () => {
 		tmpDir = mkdtempSync(join(tmpdir(), "cc-ignore-"));
 	});
 
+	afterEach(() => {
+		rmSync(tmpDir, { recursive: true, force: true });
+	});
+
 	it("returns the configured ignore patterns", async () => {
 		writeConfig(tmpDir, { changelog: "@changesets/cli/changelog", ignore: ["@libraries/*", "@rspress/*"] });
 		const patterns = await run(Effect.flatMap(ChangesetConfig, (c) => c.ignorePatterns(tmpDir)));
@@ -117,10 +125,58 @@ describe("ChangesetConfig.isIgnored / ignorePatterns", () => {
 	});
 });
 
+describe("ChangesetConfig.refresh (#229 — long-lived process staleness)", () => {
+	let tmpDir: string;
+	beforeEach(() => {
+		tmpDir = mkdtempSync(join(tmpdir(), "cc-refresh-"));
+	});
+
+	afterEach(() => {
+		rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("without refresh, a second read in the same runtime still serves the cached (stale) ignore list", async () => {
+		const program = Effect.gen(function* () {
+			const config = yield* ChangesetConfig;
+			const before = yield* config.isIgnored("@libraries/x", tmpDir);
+
+			writeConfig(tmpDir, { changelog: "@changesets/cli/changelog", ignore: ["@libraries/*"] });
+			const stillCached = yield* config.isIgnored("@libraries/x", tmpDir);
+			return { before, stillCached };
+		});
+
+		writeConfig(tmpDir, { changelog: "@changesets/cli/changelog", ignore: [] });
+		const { before, stillCached } = await run(program);
+		expect(before).toBe(false);
+		expect(stillCached).toBe(false);
+	});
+
+	it("after refresh(), a read reflects an on-disk edit made since the last read in the same runtime", async () => {
+		const program = Effect.gen(function* () {
+			const config = yield* ChangesetConfig;
+			const before = yield* config.isIgnored("@libraries/x", tmpDir);
+
+			writeConfig(tmpDir, { changelog: "@changesets/cli/changelog", ignore: ["@libraries/*"] });
+			yield* config.refresh();
+			const after = yield* config.isIgnored("@libraries/x", tmpDir);
+			return { before, after };
+		});
+
+		writeConfig(tmpDir, { changelog: "@changesets/cli/changelog", ignore: [] });
+		const { before, after } = await run(program);
+		expect(before).toBe(false);
+		expect(after).toBe(true);
+	});
+});
+
 describe("ChangesetConfig.fixed", () => {
 	let tmpDir: string;
 	beforeEach(() => {
 		tmpDir = mkdtempSync(join(tmpdir(), "cc-fixed-"));
+	});
+
+	afterEach(() => {
+		rmSync(tmpDir, { recursive: true, force: true });
 	});
 
 	it("returns the configured fixed groups", async () => {

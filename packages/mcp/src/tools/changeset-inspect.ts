@@ -142,6 +142,15 @@ export const changesetInspect = (
 	Effect.gen(function* () {
 		const workspaceRoot = yield* WorkspaceRoot;
 		const root = yield* workspaceRoot.find(args.cwd ?? fallbackCwd);
+
+		// The MCP server holds one ConfigInspector for its whole process
+		// lifetime (#229). Its cache never expires on its own, so every tool
+		// call must refresh it first to observe on-disk edits made since the
+		// last call — covers all three modes, since branch mode's
+		// BranchAnalyzer also reads through this same shared inspector.
+		const inspector = yield* Changesets.ConfigInspector;
+		yield* inspector.refresh();
+
 		switch (args.mode) {
 			case "branch": {
 				const analyzer = yield* Changesets.BranchAnalyzer;
@@ -149,12 +158,10 @@ export const changesetInspect = (
 				return { mode: "branch", result } as ChangesetInspectResultType;
 			}
 			case "config": {
-				const inspector = yield* Changesets.ConfigInspector;
 				const result = yield* inspector.inspect(root);
 				return { mode: "config", result } as ChangesetInspectResultType;
 			}
 			case "classify": {
-				const inspector = yield* Changesets.ConfigInspector;
 				const result = yield* inspector.classify(root, args.paths ?? []);
 				return { mode: "classify", result } as ChangesetInspectResultType;
 			}

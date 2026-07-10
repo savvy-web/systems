@@ -145,7 +145,7 @@ See [Publishability](./docs/publishability.md) for the adaptive layer and the `C
 
 #### ChangesetConfig
 
-Typed accessor over a workspace root's `.changeset/config.json`, reading through `ChangesetConfigReader` with a per-root cache. Every accessor is total — a missing or unreadable config collapses to `mode: "none"` and empty defaults. Methods: `mode`, `versionPrivate`, `ignorePatterns`, `isIgnored`, `fixed`, plus a static `ChangesetConfig.matches(name, pattern)`.
+Typed accessor over a workspace root's `.changeset/config.json`, reading through `ChangesetConfigReader` with a per-root cache. Every accessor is total — a missing or unreadable config collapses to `mode: "none"` and empty defaults. Methods: `mode`, `versionPrivate`, `ignorePatterns`, `isIgnored`, `fixed` and `refresh` (drops every cached read so a long-lived host observes on-disk config edits made since the last call), plus a static `ChangesetConfig.matches(name, pattern)`.
 
 ```typescript
 import { Effect } from "effect";
