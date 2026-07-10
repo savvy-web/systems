@@ -7,9 +7,7 @@
  *
  * @internal
  */
-import { Schema } from "effect";
-
-// =============================================================================
+import { Schema } from "effect"; // =============================================================================
 // Entry Point Schema
 // =============================================================================
 
@@ -22,8 +20,8 @@ import { Schema } from "effect";
  * - `pre`: Runs before the main action (optional)
  * - `post`: Runs after the main action for cleanup (optional)
  *
- * Additional non-lifecycle bundles can be declared via `workers` (name → source path),
- * each emitted as `dist/<name>.js`.
+ * Additional non-lifecycle bundles can be declared via `workers` (name -\> source path),
+ * each emitted as `dist/\{name\}.js`.
  *
  * @public
  */
@@ -34,7 +32,7 @@ export const EntriesSchema = Schema.Struct({
 	pre: Schema.optional(Schema.String),
 	/** Path to the post-action hook entry point. */
 	post: Schema.optional(Schema.String),
-	/** Extra non-lifecycle worker bundles (name -> source path), each emitted as dist/<name>.js. */
+	/** Extra non-lifecycle worker bundles (name -\> source path), each emitted as dist/\{name\}.js. */
 	workers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
 });
 
