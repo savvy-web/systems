@@ -1,5 +1,25 @@
 # @savvy-web/silk
 
+## 2.2.3
+
+### Bug Fixes
+
+* The `changeset-manager`, `tsdoctor`, and `turborepo` plugin agents now include `SendMessage` in their `tools:` frontmatter, so when dispatched as teammates they can report results back to the orchestrator and answer a `shutdown_request` instead of idle-looping until the session ends. [#265][#265]
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 1.5.5 | 1.5.6 |
+| @savvy-web/mcp       | dependency | updated | 1.7.2 | 1.7.3 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#265]: https://github.com/savvy-web/systems/pull/265
+
 ## 2.2.2
 
 ### Dependencies
