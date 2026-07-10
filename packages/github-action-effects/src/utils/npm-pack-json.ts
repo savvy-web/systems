@@ -60,11 +60,16 @@ export const parseNpmPackJson = (stdout: string): ReadonlyArray<NpmPackJsonEntry
 	if (Array.isArray(parsed)) return parsed.filter(isEntry);
 	if (typeof parsed !== "object" || parsed === null) return [];
 
-	// npm 12 reports command failures as `{ error: { code, summary, detail } }`
-	// on stdout with a non-zero exit. Surface npm's own words rather than the
-	// misleading "returned empty result" an unrecognized shape would produce.
+	// npm 12 reports command failures as `{ error: { code, summary, detail } }` on
+	// stdout with a non-zero exit. Surface npm's own words rather than the misleading
+	// "returned empty result" an unrecognized shape would produce.
+	//
+	// `error` is also a real npm package (error@10.4.0), and npm 12 keys pack output by
+	// package name — so packing it emits `{ "error": <entry> }`, colliding with the
+	// envelope. Tell them apart by shape: an entry carries `filename`/`entryCount`/`size`;
+	// an envelope carries `code`/`summary`/`detail`.
 	const { error } = parsed as { error?: { code?: string; summary?: string } };
-	if (error !== undefined && error !== null) {
+	if (error !== undefined && error !== null && !isEntry(error)) {
 		const code = error.code ?? "UNKNOWN";
 		const summary = error.summary ?? "npm reported an error with no summary";
 		throw new Error(`${code}: ${summary}`);

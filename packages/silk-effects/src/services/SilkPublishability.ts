@@ -343,9 +343,20 @@ export class SilkPublishability {
  * Reduce a directory to a comparable package-relative POSIX path: backslashes to
  * forward slashes, no `./` prefix, no trailing slash. `""` (the package root)
  * normalizes to `.`, matching how a root-directory target is recorded.
+ *
+ * @remarks
+ * Trailing slashes are trimmed with an index scan rather than `/\/+$/`. That
+ * regex is unanchored at the start, so the engine retries the match from every
+ * position and degrades to O(n²) on a path of many slashes (CodeQL
+ * `js/polynomial-redos`). `dir` reaches here from `dist/prod/targets.json`, which
+ * the bundler writes but a consumer repo could hand-edit.
  */
 const normalizeDir = (dir: string): string => {
-	const normalized = dir.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+	const slashed = dir.replaceAll("\\", "/");
+	const withoutPrefix = slashed.startsWith("./") ? slashed.slice(2) : slashed;
+	let end = withoutPrefix.length;
+	while (end > 0 && withoutPrefix[end - 1] === "/") end -= 1;
+	const normalized = withoutPrefix.slice(0, end);
 	return normalized === "" ? "." : normalized;
 };
 

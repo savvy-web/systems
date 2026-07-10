@@ -64,6 +64,21 @@ describe("parseNpmPackJson", () => {
 		expect(() => parseNpmPackJson(stdout)).toThrow(/MODULE_NOT_FOUND: Cannot find module 'sigstore'/);
 	});
 
+	it("reads a package literally named `error` as an entry, not an error envelope", () => {
+		// `error` is a real npm package (error@10.4.0). Under npm 12 its pack output is
+		// `{ "error": <entry> }`, which collides with npm's `{ "error": { code, summary } }`
+		// failure envelope. The two are told apart by shape, not by the key.
+		const stdout = JSON.stringify({
+			error: { filename: "error-1.0.0.tgz", name: "error", version: "1.0.0", integrity: "sha512-abc", entryCount: 2 },
+		});
+
+		const entries = parseNpmPackJson(stdout);
+
+		expect(entries).toHaveLength(1);
+		expect(entries[0]?.name).toBe("error");
+		expect(entries[0]?.filename).toBe("error-1.0.0.tgz");
+	});
+
 	it("throws on unparseable output", () => {
 		expect(() => parseNpmPackJson("not json")).toThrow();
 	});

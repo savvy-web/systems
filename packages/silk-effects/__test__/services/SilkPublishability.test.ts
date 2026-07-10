@@ -494,6 +494,46 @@ describe("SilkPublishability.resolveTargets — prod-binding guard", () => {
 		}
 	});
 
+	it("matches a binding dir written with a ./ prefix and a trailing slash", async () => {
+		// The binding is bundler-written but hand-editable, so compare on normalized
+		// paths rather than raw strings.
+		writePkg(tmpDir, {
+			name: "yaml-effect",
+			version: "0.7.1",
+			publishConfig: { access: "public", targets: { npm: true, github: true } },
+		});
+		writeBinding(tmpDir, {
+			groups: [{ id: "npm", name: "yaml-effect", dir: "./dist/prod/npm/pkg/" }],
+			targets: [
+				{ id: "npm", group: "npm", name: "yaml-effect", registry: "https://registry.npmjs.org" },
+				{ id: "github", group: "npm", name: "yaml-effect", registry: "https://npm.pkg.github.com" },
+			],
+		});
+
+		const exit = await runResolve(makeWsPkg(tmpDir, "yaml-effect"), tmpDir);
+
+		expect(exit._tag).toBe("Success");
+	});
+
+	it("normalizes a pathological run of slashes without quadratic backtracking", async () => {
+		writePkg(tmpDir, {
+			name: "yaml-effect",
+			version: "0.7.1",
+			publishConfig: { access: "public", targets: { npm: true, github: true } },
+		});
+		writeBinding(tmpDir, {
+			groups: [{ id: "npm", name: "yaml-effect", dir: `dist/prod/npm/pkg${"/".repeat(50_000)}` }],
+			targets: [{ id: "npm", group: "npm", name: "yaml-effect", registry: "https://registry.npmjs.org" }],
+		});
+
+		const started = performance.now();
+		const exit = await runResolve(makeWsPkg(tmpDir, "yaml-effect"), tmpDir);
+		const elapsed = performance.now() - started;
+
+		expect(exit._tag).toBe("Success");
+		expect(elapsed).toBeLessThan(2_000);
+	});
+
 	it("succeeds with no binding on disk (pre-build), leaving placeholders untouched", async () => {
 		writePkg(tmpDir, {
 			name: "pre-build",
