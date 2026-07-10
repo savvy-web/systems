@@ -2,13 +2,13 @@ import { isAbsolute, join, relative } from "node:path";
 import { FileSystem } from "@effect/platform";
 import { Effect, Layer } from "effect";
 import type { WorkspacePackage } from "workspaces-effect";
-import { PublishTargetBindingError } from "../errors/PublishTargetBindingError.js";
 import {
 	PublishTarget,
 	PublishabilityDetector,
 	PublishabilityDetectorLive,
 	WorkspaceDiscovery,
 } from "workspaces-effect";
+import { PublishTargetBindingError } from "../errors/PublishTargetBindingError.js";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 
 /**
