@@ -48,7 +48,7 @@
 		"unified": "^11.0.5",
 		"unified-lint-rule": "^3.0.1",
 		"unist-util-visit": "^5.1.0",
-		"workspaces-effect": "^2.0.2",
+		"workspaces-effect": "^2.0.3",
 		"yaml": "^2.9.0",
 		"yaml-effect": "^0.7.2",
 		"yaml-lint": "^1.7.0"

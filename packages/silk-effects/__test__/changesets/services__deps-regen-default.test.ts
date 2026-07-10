@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
+import { WorkspaceDiscovery, WorkspaceDiscoveryLive, WorkspaceRootLive } from "workspaces-effect";
 import { DepsRegen, DepsRegenDefault } from "../../src/changesets/services/deps-regen.js";
 
 function git(cwd: string, ...args: string[]): string {
@@ -250,5 +251,109 @@ describe("DepsRegenDefault — genuinely publishable package (regression: publis
 		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/pub"]);
 		expect(plan.toDelete.map((d) => d.package)).toEqual(["@fix/pub"]);
 		expect(plan.toDelete.map((d) => d.file)).toEqual([join(dir, ".changeset", "stale-pub.md")]);
+	});
+});
+
+describe("DepsRegenDefault — worktree freshness (regression: stale WorkspaceDiscovery cache)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Real pnpm-workspace git fixture with one versionable package and a
+	 * committed base state. Unlike the other fixtures, the dependency bump is
+	 * NOT applied here — the test applies it AFTER first enumerating the
+	 * workspace, mirroring silk-update-action's main phase (RegularDeps lists
+	 * packages, then edits manifests, then DepsRegen plans). workspaces-effect
+	 * caches listPackages per root for the layer lifetime and Effect memoizes
+	 * `WorkspaceDiscoveryLive` by reference across composition branches, so
+	 * without an explicit refresh the plan's worktree side is served from the
+	 * pre-edit cache and the diff collapses to a no-op.
+	 */
+	function makeUnbumpedFixture(): string {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-default-fresh-"));
+
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+
+		const pkgDir = join(dir, "packages", "fresh");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify(
+				{
+					name: "@fix/fresh",
+					version: "1.0.0",
+					private: true,
+					dependencies: { "left-pad": "^1.0.0" },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "restricted",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+					privatePackages: { version: true, tag: false },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit");
+
+		return dir;
+	}
+
+	it("sees manifest edits made after the workspace was already enumerated in the same process", async () => {
+		const dir = makeUnbumpedFixture();
+		dirs.push(dir);
+
+		const freshLive = Layer.mergeAll(
+			DepsRegenDefault,
+			WorkspaceDiscoveryLive.pipe(Layer.provide(WorkspaceRootLive)),
+		).pipe(Layer.provide(NodeContext.layer));
+
+		const plan = await Effect.runPromise(
+			Effect.gen(function* () {
+				// Prime the (memoized, shared) discovery cache before the edit.
+				const discovery = yield* WorkspaceDiscovery;
+				yield* discovery.listPackages(dir);
+
+				// Now edit the manifest on disk, as an updater tool would.
+				const pkgJsonPath = join(dir, "packages", "fresh", "package.json");
+				const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
+				raw.dependencies["left-pad"] = "^1.1.0";
+				writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
+
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir });
+			}).pipe(Effect.provide(freshLive)),
+		);
+
+		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/fresh"]);
 	});
 });

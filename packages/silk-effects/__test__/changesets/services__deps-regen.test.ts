@@ -103,6 +103,7 @@ describe("DepsRegen plan/execute", () => {
 	} as never);
 	const DiscoveryLayer = Layer.succeed(WorkspaceDiscovery, {
 		listPackages: () => Effect.succeed([{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" }]),
+		refresh: () => Effect.void,
 	} as never);
 	const DetectorLayer = Layer.succeed(PublishabilityDetector, {
 		detect: () => Effect.succeed([{}]),
@@ -183,6 +184,7 @@ describe("DepsRegen plan/execute", () => {
 					{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" },
 					{ name: "@scope/bar", path: "/x/packages/bar", version: "1.0.0" },
 				]),
+			refresh: () => Effect.void,
 		} as never);
 		const DetectorLayerMulti = Layer.succeed(PublishabilityDetector, {
 			detect: () => Effect.succeed([{}]),
@@ -275,6 +277,7 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 				{ name: "@x/pub", path: "/x/packages/pub", version: "1.0.0" },
 				{ name: "@x/priv", path: "/x/packages/priv", version: "1.0.0" },
 			]),
+		refresh: () => Effect.void,
 	} as never);
 	// Only @x/pub is publishable — @x/priv detects to an empty target list.
 	const GatingDetectorLayer = Layer.succeed(PublishabilityDetector, {
