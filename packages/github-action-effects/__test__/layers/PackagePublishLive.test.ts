@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Exit, Layer, Logger, Redacted } from "effect";
@@ -64,6 +64,26 @@ const makeMockRunner = (handlers: {
 		execLines: () => Effect.die("not used"),
 	} as typeof CommandRunner.Service);
 };
+
+/**
+ * Create a throwaway package directory holding a `package.json` and, optionally,
+ * a tarball for `pack` to hash. Returned dirs are cleaned up in `afterEach`.
+ */
+const tempDirs: Array<string> = [];
+const makePackageDir = (options?: {
+	readonly manifest?: Record<string, unknown>;
+	readonly tarball?: string;
+}): string => {
+	const dir = mkdtempSync(join(tmpdir(), "pkgpub-pkg-"));
+	tempDirs.push(dir);
+	writeFileSync(join(dir, "package.json"), JSON.stringify(options?.manifest ?? { name: "pkg", version: "1.0.0" }));
+	if (options?.tarball !== undefined) writeFileSync(join(dir, options.tarball), "tarball-bytes");
+	return dir;
+};
+
+afterEach(() => {
+	for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 describe("PackagePublishLive", () => {
 	it("setupAuth writes the auth token to .npmrc off-argv and masks it via setSecret (S7)", async () => {
@@ -402,7 +422,8 @@ describe("PackagePublishLive", () => {
 		// npm rather than using the runner's bundled npm. Node 24 ships npm
 		// 10.x, which has no OIDC token-exchange support; `pnpm dlx npm`
 		// pulls npm 11.5.1+, which does. The cmd flips from "npm" to "pnpm",
-		// and "dlx", "npm" is prepended to the publish args.
+		// and "dlx", "npm@11" is prepended to the publish args (the spec is pinned;
+		// an unpinned `npm` silently adopted npm 12 and broke every publish).
 		const calls: Array<{ command: string; args: ReadonlyArray<string> }> = [];
 		const runner = makeMockRunner({
 			exec: (command, args) => {
@@ -434,7 +455,7 @@ describe("PackagePublishLive", () => {
 		expect(calls[0]?.command).toBe("pnpm");
 		expect(calls[0]?.args).toEqual([
 			"dlx",
-			"npm",
+			"npm@11",
 			"publish",
 			"--registry",
 			"https://registry.npmjs.org",
@@ -494,7 +515,7 @@ describe("PackagePublishLive", () => {
 		);
 
 		expect(calls[0]?.command).toBe("bun");
-		expect(calls[0]?.args).toEqual(["x", "npm", "publish", "--loglevel", "verbose", ...npmCacheArgs()]);
+		expect(calls[0]?.args).toEqual(["x", "npm@11", "publish", "--loglevel", "verbose", ...npmCacheArgs()]);
 	});
 
 	it("publish keeps the bare `npm` dispatch when packageManager is unset or 'npm'", async () => {
@@ -695,6 +716,170 @@ describe("PackagePublishLive", () => {
 		expect(error.reason).toBe("npm pack returned empty result");
 	});
 
+	it("pack reads the npm 12 name-keyed object form of pack --json", async () => {
+		// npm 12 emits `{ "<pkg-name>": <entry> }` where npm 11 emitted `[<entry>]`.
+		// Before normalization this produced "npm pack returned empty result" and
+		// failed every publish the day npm 12 became `latest`.
+		const dir = makePackageDir({ tarball: "pkg-1.0.0.tgz" });
+		const runner = makeMockRunner({
+			execCapture: () =>
+				Effect.succeed({
+					exitCode: 0,
+					stdout: JSON.stringify({
+						pkg: {
+							filename: "pkg-1.0.0.tgz",
+							name: "pkg",
+							version: "1.0.0",
+							integrity: "sha512-abc",
+							size: 190,
+							unpackedSize: 77,
+							entryCount: 2,
+						},
+					}),
+					stderr: "",
+				}),
+		});
+		const registry = NpmRegistryTest.empty();
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
+
+		const result = await Effect.runPromise(
+			PackagePublish.pipe(
+				Effect.flatMap((svc) => svc.pack(dir)),
+				Effect.provide(layer),
+			),
+		);
+
+		expect(result.name).toBe("pkg");
+		expect(result.version).toBe("1.0.0");
+		expect(result.digest).toBe("sha512-abc");
+		expect(result.fileCount).toBe(2);
+		expect(result.tarballPath).toBe(join(dir, "pkg-1.0.0.tgz"));
+	});
+
+	it("pack fails when npm reports an empty object (npm 12 packed nothing)", async () => {
+		const dir = makePackageDir();
+		const runner = makeMockRunner({
+			execCapture: () => Effect.succeed({ exitCode: 0, stdout: "{}", stderr: "" }),
+		});
+		const registry = NpmRegistryTest.empty();
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
+
+		const error = await Effect.runPromise(
+			PackagePublish.pipe(
+				Effect.flatMap((svc) => svc.pack(dir)),
+				Effect.provide(layer),
+				Effect.flip,
+			),
+		);
+
+		expect(error.operation).toBe("pack");
+		expect(error.reason).toBe("npm pack returned empty result");
+	});
+
+	it("pack fails when the tarball would contain zero files", async () => {
+		// A zero-entry tarball is never a legitimate release artifact; publishing it
+		// yields an installable-but-empty package (issue #144, guard 3).
+		const dir = makePackageDir({ tarball: "pkg-1.0.0.tgz" });
+		const runner = makeMockRunner({
+			execCapture: () =>
+				Effect.succeed({
+					exitCode: 0,
+					stdout: JSON.stringify({
+						pkg: { filename: "pkg-1.0.0.tgz", name: "pkg", version: "1.0.0", integrity: "sha512-abc", entryCount: 0 },
+					}),
+					stderr: "",
+				}),
+		});
+		const registry = NpmRegistryTest.empty();
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
+
+		const error = await Effect.runPromise(
+			PackagePublish.pipe(
+				Effect.flatMap((svc) => svc.pack(dir)),
+				Effect.provide(layer),
+				Effect.flip,
+			),
+		);
+
+		expect(error.operation).toBe("pack");
+		expect(error.reason).toContain("0 files");
+	});
+
+	it("pack refuses a manifest carrying a catalog: specifier before invoking npm", async () => {
+		// Issue #144, guard 1: `catalog:`/`workspace:` are pnpm-only protocols. A packed
+		// manifest still carrying one is an unresolved workspace manifest; npm consumers
+		// hit EUNSUPPORTEDPROTOCOL on install (the yaml-effect@0.7.1 failure).
+		const dir = makePackageDir({
+			manifest: { name: "pkg", version: "1.0.0", dependencies: { effect: "catalog:effect" } },
+		});
+		let invoked = false;
+		const runner = makeMockRunner({
+			execCapture: () => {
+				invoked = true;
+				return Effect.succeed({ exitCode: 0, stdout: "[]", stderr: "" });
+			},
+		});
+		const registry = NpmRegistryTest.empty();
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
+
+		const error = await Effect.runPromise(
+			PackagePublish.pipe(
+				Effect.flatMap((svc) => svc.pack(dir)),
+				Effect.provide(layer),
+				Effect.flip,
+			),
+		);
+
+		expect(error.operation).toBe("pack");
+		expect(error.reason).toContain("catalog:effect");
+		expect(error.reason).toContain("dependencies.effect");
+		// The guard runs before npm does — no bytes are ever produced.
+		expect(invoked).toBe(false);
+	});
+
+	it("pack accepts a manifest whose dependencies are all registry ranges", async () => {
+		const dir = makePackageDir({
+			manifest: { name: "pkg", version: "1.0.0", dependencies: { effect: "^3.0.0" } },
+			tarball: "pkg-1.0.0.tgz",
+		});
+		const runner = makeMockRunner({
+			execCapture: () =>
+				Effect.succeed({
+					exitCode: 0,
+					stdout: JSON.stringify([
+						{ filename: "pkg-1.0.0.tgz", name: "pkg", version: "1.0.0", integrity: "sha512-abc", entryCount: 2 },
+					]),
+					stderr: "",
+				}),
+		});
+		const registry = NpmRegistryTest.empty();
+		const layer = Layer.merge(
+			silentLogger,
+			PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+		);
+
+		const result = await Effect.runPromise(
+			PackagePublish.pipe(
+				Effect.flatMap((svc) => svc.pack(dir)),
+				Effect.provide(layer),
+			),
+		);
+
+		expect(result.fileCount).toBe(2);
+	});
+
 	it("pack wraps CommandRunnerError from execCapture into PackagePublishError", async () => {
 		const runner = makeMockRunner({
 			execCapture: () =>
@@ -844,7 +1029,7 @@ describe("PackagePublishLive", () => {
 		expect(calls[0]?.command).toBe("pnpm");
 		expect(calls[0]?.args).toEqual([
 			"dlx",
-			"npm",
+			"npm@11",
 			"publish",
 			"--registry",
 			"https://registry.npmjs.org",
@@ -974,7 +1159,7 @@ describe("PackagePublishLive", () => {
 		it("dispatches through `pnpm dlx npm` when packageManager is pnpm", async () => {
 			// The dry-run must run through the SAME npm executor as the live publish
 			// so it validates against the exact npm (fresh dlx-fetched 11.5+) the
-			// publish will use — `cmd` flips to "pnpm" and "dlx", "npm" is prepended.
+			// publish will use — `cmd` flips to "pnpm" and "dlx", "npm@11" is prepended.
 			const calls: Array<{ command: string; args: ReadonlyArray<string> }> = [];
 			const runner = makeMockRunner({
 				execCapture: (command, args) => {
@@ -1001,7 +1186,7 @@ describe("PackagePublishLive", () => {
 
 			expect(calls).toHaveLength(1);
 			expect(calls[0]?.command).toBe("pnpm");
-			expect(calls[0]?.args).toEqual(["dlx", "npm", "pack", "--dry-run", "--json", ...npmCacheArgs()]);
+			expect(calls[0]?.args).toEqual(["dlx", "npm@11", "pack", "--dry-run", "--json", ...npmCacheArgs()]);
 		});
 
 		it("returns size fields when npm emits the array form (npm pack shape)", async () => {
@@ -1030,6 +1215,96 @@ describe("PackagePublishLive", () => {
 			expect(result.packedSize).toBe(42);
 			expect(result.unpackedSize).toBe(84);
 			expect(result.fileCount).toBe(3);
+		});
+
+		it("returns size fields when npm emits the npm 12 name-keyed object form", async () => {
+			const runner = makeMockRunner({
+				execCapture: () =>
+					Effect.succeed({
+						exitCode: 0,
+						stdout: JSON.stringify({
+							pkg: { filename: "pkg-1.0.0.tgz", size: 42, unpackedSize: 84, entryCount: 3 },
+						}),
+						stderr: "",
+					}),
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
+
+			const result = await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) => svc.dryRun("/pkg")),
+					Effect.provide(layer),
+				),
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.packedSize).toBe(42);
+			expect(result.unpackedSize).toBe(84);
+			expect(result.fileCount).toBe(3);
+		});
+
+		it("fails when the packed tarball would contain zero files", async () => {
+			// Phase-2 must refuse a zero-file package rather than report "0 files" and
+			// let the release PR auto-merge (issue #144, guard 3).
+			const runner = makeMockRunner({
+				execCapture: () =>
+					Effect.succeed({
+						exitCode: 0,
+						stdout: JSON.stringify({ pkg: { filename: "pkg-1.0.0.tgz", size: 42, entryCount: 0 } }),
+						stderr: "",
+					}),
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
+
+			const error = await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) => svc.dryRun("/pkg")),
+					Effect.provide(layer),
+					Effect.flip,
+				),
+			);
+
+			expect(error.operation).toBe("dryRun");
+			expect(error.reason).toContain("0 files");
+		});
+
+		it("surfaces npm's own error summary when npm emits its error envelope", async () => {
+			// npm 12 prints `{ error: { code, summary } }` on stdout. Reporting
+			// "empty result" here would bury the actual cause.
+			const runner = makeMockRunner({
+				execCapture: () =>
+					Effect.succeed({
+						exitCode: 0,
+						stdout: JSON.stringify({
+							error: { code: "MODULE_NOT_FOUND", summary: "Cannot find module 'sigstore'", detail: "" },
+						}),
+						stderr: "",
+					}),
+			});
+			const registry = NpmRegistryTest.empty();
+			const layer = Layer.merge(
+				silentLogger,
+				PackagePublishLive.pipe(Layer.provide(Layer.mergeAll(runner, registry, outputsLayer))),
+			);
+
+			const error = await Effect.runPromise(
+				PackagePublish.pipe(
+					Effect.flatMap((svc) => svc.dryRun("/pkg")),
+					Effect.provide(layer),
+					Effect.flip,
+				),
+			);
+
+			expect(error.operation).toBe("dryRun");
+			expect(error.reason).toContain("Cannot find module 'sigstore'");
 		});
 
 		it("returns ok: false (not an Effect failure) when npm exits non-zero", async () => {
@@ -1301,9 +1576,9 @@ describe("PackagePublishLive", () => {
 		// even though pack then fails hashing the (absent) tarball — Effect.either keeps
 		// the run from rejecting so the captured argv can be asserted.
 		const cases = [
-			{ pm: "pnpm" as const, command: "pnpm", head: ["dlx", "npm", "pack", "--json"] },
+			{ pm: "pnpm" as const, command: "pnpm", head: ["dlx", "npm@11", "pack", "--json"] },
 			{ pm: "yarn" as const, command: "yarn", head: ["npm", "pack", "--json"] },
-			{ pm: "bun" as const, command: "bun", head: ["x", "npm", "pack", "--json"] },
+			{ pm: "bun" as const, command: "bun", head: ["x", "npm@11", "pack", "--json"] },
 		];
 		for (const { pm, command, head } of cases) {
 			it(`dispatches through \`${command}\` when packageManager is ${pm}`, async () => {
@@ -1450,7 +1725,7 @@ describe("PackagePublishLive", () => {
 			expect(calls[0]?.command).toBe("pnpm");
 			expect(calls[0]?.args).toEqual([
 				"dlx",
-				"npm",
+				"npm@11",
 				"publish",
 				"/tmp/pkg.tgz",
 				"--registry",

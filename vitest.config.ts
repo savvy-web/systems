@@ -100,11 +100,6 @@ export default async () => {
 					"packages/github-action-effects/src/layers/GitHubReleaseTest.ts",
 					"packages/github-action-effects/src/layers/NpmRegistryTest.ts",
 
-					// github-action-effects utility functions with low branch coverage — thin
-					// wrappers around Node/GitHub APIs whose branch paths require real I/O to reach.
-					"packages/github-action-effects/src/utils/IoUtil.ts",
-					"packages/github-action-effects/src/utils/unwrapRedacted.ts",
-
 					// AttestLive: wraps @sigstore/attest with live attestation calls; all non-happy
 					// paths require network access and real OIDC tokens.
 					"packages/github-action-effects/src/layers/AttestLive.ts",

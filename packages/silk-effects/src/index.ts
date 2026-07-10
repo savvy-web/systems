@@ -41,6 +41,7 @@ export * as Commitlint from "./commitlint/index.js";
 export { BiomeSyncError } from "./errors/BiomeSyncError.js";
 export { ChangesetConfigError } from "./errors/ChangesetConfigError.js";
 export { ConfigNotFoundError } from "./errors/ConfigNotFoundError.js";
+export { PublishTargetBindingError } from "./errors/PublishTargetBindingError.js";
 export { SectionParseError } from "./errors/SectionParseError.js";
 export { SectionValidationError } from "./errors/SectionValidationError.js";
 export { SectionWriteError } from "./errors/SectionWriteError.js";
