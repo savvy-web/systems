@@ -1,5 +1,19 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.22.0
+
+### Features
+
+* ### Bumps `@types/node` to latest
+
+  Regular update for Node.js cosumers [#257][#257]
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#257]: https://github.com/savvy-web/systems/pull/257
+
 ## 0.21.0
 
 ### Bug Fixes
