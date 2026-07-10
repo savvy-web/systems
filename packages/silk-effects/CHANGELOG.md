@@ -1,5 +1,17 @@
 # @savvy-web/silk-effects
 
+## 3.2.2
+
+### Bug Fixes
+
+* Replaced the unanchored trailing-slash regex in the workspace analysis `sameRegistry` comparison with a shared index-scan helper (`trimTrailingSlashes`), eliminating a polynomial-time regex (CodeQL `js/polynomial-redos`) that degraded to O(n²) on registry strings containing long interior slash runs. `normalizeDir` in the publishability service now uses the same helper. [#265][#265]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#265]: https://github.com/savvy-web/systems/pull/265
+
 ## 3.2.1
 
 ### Bug Fixes
