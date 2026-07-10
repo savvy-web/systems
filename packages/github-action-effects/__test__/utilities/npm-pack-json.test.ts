@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseNpmPackJson } from "../src/utils/npm-pack-json.js";
+import { parseNpmPackJson } from "../../src/utils/npm-pack-json.js";
 
 describe("parseNpmPackJson", () => {
 	it("reads the npm 11 array form", () => {

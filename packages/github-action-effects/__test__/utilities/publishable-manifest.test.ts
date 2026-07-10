@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findUnresolvedSpecifiers } from "../src/utils/publishable-manifest.js";
+import { findUnresolvedSpecifiers } from "../../src/utils/publishable-manifest.js";
 
 describe("findUnresolvedSpecifiers", () => {
 	it("finds a catalog: specifier", () => {
