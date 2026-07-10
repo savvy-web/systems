@@ -1,0 +1,6 @@
+{
+	"session_id": "sess-startup-1",
+	"cwd": "/tmp/silk-fixture-project",
+	"hook_event_name": "SessionStart",
+	"source": "startup"
+}
