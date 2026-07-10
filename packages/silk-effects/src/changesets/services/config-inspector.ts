@@ -131,6 +131,18 @@ export interface ConfigInspectorShape {
 		cwd: string,
 		paths: ReadonlyArray<string>,
 	) => Effect.Effect<ReadonlyArray<Classification>, ConfigurationError>;
+
+	/**
+	 * Drop the cached {@link InspectedConfig} for every previously-inspected
+	 * root, and refresh the underlying `WorkspaceDiscovery` snapshot. Callers
+	 * that hold this service across multiple logical operations in a single
+	 * process (e.g. a long-lived MCP server) must call this before an
+	 * operation that needs to observe on-disk edits made since the last
+	 * `inspect`/`classify` call — the cache never expires on its own.
+	 *
+	 * @returns An Effect that clears the cache and succeeds with `void`.
+	 */
+	readonly refresh: () => Effect.Effect<void>;
 }
 
 const _tag = Context.Tag("ConfigInspector");
@@ -634,7 +646,13 @@ function makeShape(
 			return paths.map((p) => classifyOne(inspected, p));
 		});
 
-	return { inspect, classify };
+	const refresh = (): Effect.Effect<void> =>
+		Effect.gen(function* () {
+			cache.clear();
+			yield* discovery.refresh();
+		});
+
+	return { inspect, classify, refresh };
 }
 
 /**
@@ -723,6 +741,7 @@ export function makeConfigInspectorTest(fixed: InspectedConfig): Layer.Layer<Con
 	const shape: ConfigInspectorShape = {
 		inspect: () => Effect.succeed(fixed),
 		classify: (_cwd, paths) => Effect.succeed(paths.map((p) => classifyOne(fixed, p))),
+		refresh: () => Effect.void,
 	};
 	return Layer.succeed(ConfigInspector, shape);
 }

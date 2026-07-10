@@ -12,7 +12,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
@@ -108,9 +108,23 @@ describe("DepsRegenDefault — silk gating end-to-end (#209 semantics through th
 				2,
 			)}\n`,
 		);
-		// Pre-existing pure-dependency changesets for BOTH packages, so the
-		// toDelete assertions can distinguish "deleted (in scope)" from
-		// "left alone (ignored)".
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit");
+
+		// Working-tree-only from here down — this branch's own uncommitted
+		// local regen output, never merged. The dependency bump makes both
+		// packages' diffs non-empty; the pre-existing pure-dependency
+		// changesets (added AFTER the base commit, so they are NOT present at
+		// the merge base — #258) let the toDelete assertions distinguish
+		// "deleted (in scope)" from "left alone (ignored)".
+		for (const name of ["priv-versioned", "priv-ignored"]) {
+			const pkgJsonPath = join(dir, "packages", name, "package.json");
+			const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
+			raw.dependencies["left-pad"] = "^1.1.0";
+			writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
+		}
 		writeFileSync(
 			join(dir, ".changeset", "stale-priv-versioned.md"),
 			["---", '"@fix/priv-versioned": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
@@ -119,20 +133,6 @@ describe("DepsRegenDefault — silk gating end-to-end (#209 semantics through th
 			join(dir, ".changeset", "stale-priv-ignored.md"),
 			["---", '"@fix/priv-ignored": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
 		);
-
-		git(dir, "init", "--quiet", "-b", "main");
-		git(dir, "config", "commit.gpgsign", "false");
-		git(dir, "add", "-A");
-		git(dir, "commit", "--quiet", "-m", "base commit");
-
-		// Working-tree-only dependency bump in BOTH packages — left uncommitted
-		// so `PointInTimeWorkspace.worktree()` picks it up as the "after" side.
-		for (const name of ["priv-versioned", "priv-ignored"]) {
-			const pkgJsonPath = join(dir, "packages", name, "package.json");
-			const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
-			raw.dependencies["left-pad"] = "^1.1.0";
-			writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
-		}
 
 		return dir;
 	}
@@ -219,20 +219,21 @@ describe("DepsRegenDefault — genuinely publishable package (regression: publis
 				2,
 			)}\n`,
 		);
-		writeFileSync(
-			join(dir, ".changeset", "stale-pub.md"),
-			["---", '"@fix/pub": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
-		);
-
 		git(dir, "init", "--quiet", "-b", "main");
 		git(dir, "config", "commit.gpgsign", "false");
 		git(dir, "add", "-A");
 		git(dir, "commit", "--quiet", "-m", "base commit");
 
+		// Working-tree-only from here down (see makeFixture() above for why the
+		// stale changeset must NOT be part of the base commit — #258).
 		const pkgJsonPath = join(pkgDir, "package.json");
 		const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
 		raw.dependencies["left-pad"] = "^1.1.0";
 		writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
+		writeFileSync(
+			join(dir, ".changeset", "stale-pub.md"),
+			["---", '"@fix/pub": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
+		);
 
 		return dir;
 	}
@@ -355,5 +356,228 @@ describe("DepsRegenDefault — worktree freshness (regression: stale WorkspaceDi
 		);
 
 		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/fresh"]);
+	});
+});
+
+describe("DepsRegenDefault — merge-base authorship filter (regression: #258)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Real pnpm-workspace git fixture with one versionable package
+	 * (`@fix/mb`) and a pure dependency changeset COMMITTED at the base
+	 * commit (`at-merge-base.md`) — standing in for a changeset authored by
+	 * an earlier, already-merged PR. On top of that base commit, this test
+	 * leaves TWO things uncommitted (working-tree-only, standing in for this
+	 * branch's own not-yet-merged work): a real dependency bump in
+	 * `@fix/mb/package.json`, and a second pure dependency changeset
+	 * (`branch-authored.md`) — the kind of stale local regen artifact a
+	 * developer would want cleaned up by a fresh `deps regen` run. Because
+	 * there is only ever one branch in this fixture, `git merge-base main
+	 * HEAD` resolves to the base commit itself, which is exactly the ref
+	 * that must protect `at-merge-base.md`.
+	 */
+	function makeMergeBaseFixture(): string {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-mergebase-"));
+
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+
+		const pkgDir = join(dir, "packages", "mb");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify(
+				{
+					name: "@fix/mb",
+					version: "1.0.0",
+					private: true,
+					dependencies: { "left-pad": "^1.0.0" },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "restricted",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+					privatePackages: { version: true, tag: false },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		// Committed at the base commit — must survive any regen run on top of it.
+		writeFileSync(
+			join(dir, ".changeset", "at-merge-base.md"),
+			["---", '"@fix/mb": patch', "---", "", "## Dependencies", "", "(already-merged table)", ""].join("\n"),
+		);
+
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit");
+
+		// Working-tree-only from here down — this branch's own uncommitted work.
+		const pkgJsonPath = join(pkgDir, "package.json");
+		const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
+		raw.dependencies["left-pad"] = "^1.1.0";
+		writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
+
+		writeFileSync(
+			join(dir, ".changeset", "branch-authored.md"),
+			["---", '"@fix/mb": patch', "---", "", "## Dependencies", "", "(stale local table)", ""].join("\n"),
+		);
+
+		return dir;
+	}
+
+	it("keeps the changeset already committed at the merge base, and only deletes the branch-authored stale one", async () => {
+		const dir = makeMergeBaseFixture();
+		dirs.push(dir);
+
+		const atMergeBasePath = join(dir, ".changeset", "at-merge-base.md");
+		const branchAuthoredPath = join(dir, ".changeset", "branch-authored.md");
+
+		const { plan, result } = await Effect.runPromise(
+			Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const plan = yield* svc.plan({ cwd: dir });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
+			}).pipe(Effect.provide(live)),
+		);
+
+		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/mb"]);
+		expect(plan.toDelete.map((d) => d.file)).toEqual([branchAuthoredPath]);
+		expect(plan.toDelete.map((d) => d.file)).not.toContain(atMergeBasePath);
+
+		expect(result.deleted).toEqual([branchAuthoredPath]);
+		expect(existsSync(atMergeBasePath)).toBe(true);
+		expect(existsSync(branchAuthoredPath)).toBe(false);
+		expect(result.written).toHaveLength(1);
+	});
+});
+
+describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-lived process staleness)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Real pnpm-workspace git fixture with one private, versionable package
+	 * and NOT yet ignored — a base commit, and a working-tree-only dependency
+	 * bump. The ignore list starts empty so the first `plan()` call schedules
+	 * the package, which also primes `ChangesetConfig`'s per-root cache
+	 * (`isIgnored`/`versionPrivate`) through the shared `DepsRegenDefault`
+	 * graph — the same graph a long-lived MCP server process holds for its
+	 * whole lifetime.
+	 */
+	function makeIgnoreFixture(): string {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-default-ignore-"));
+
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+
+		const pkgDir = join(dir, "packages", "stale-ignore");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify(
+				{
+					name: "@fix/stale-ignore",
+					version: "1.0.0",
+					private: true,
+					dependencies: { "left-pad": "^1.0.0" },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "restricted",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+					privatePackages: { version: true, tag: false },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit");
+
+		// Working-tree-only dependency bump so the diff is non-empty for both
+		// plan() calls below.
+		const pkgJsonPath = join(pkgDir, "package.json");
+		const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
+		raw.dependencies["left-pad"] = "^1.1.0";
+		writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
+
+		return dir;
+	}
+
+	it("a second plan() in the same runtime sees an ignore-list edit made after the first plan() call", async () => {
+		const dir = makeIgnoreFixture();
+		dirs.push(dir);
+		const configPath = join(dir, ".changeset", "config.json");
+
+		const { firstPlan, secondPlan } = await Effect.runPromise(
+			Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const firstPlan = yield* svc.plan({ cwd: dir });
+
+				const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+				raw.ignore = ["@fix/stale-ignore"];
+				writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
+
+				const secondPlan = yield* svc.plan({ cwd: dir });
+				return { firstPlan, secondPlan };
+			}).pipe(Effect.provide(live)),
+		);
+
+		expect(firstPlan.toWrite.map((w) => w.package)).toEqual(["@fix/stale-ignore"]);
+		expect(secondPlan.toWrite.map((w) => w.package)).toEqual([]);
+		expect(secondPlan.toDelete.map((d) => d.package)).toEqual([]);
 	});
 });

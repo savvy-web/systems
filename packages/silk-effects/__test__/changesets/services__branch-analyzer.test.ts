@@ -335,6 +335,7 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 			{
 				inspect: () => Effect.fail(new ConfigurationError({ field: "options", reason: "synthetic test failure" })),
 				classify: () => Effect.fail(new ConfigurationError({ field: "options", reason: "synthetic test failure" })),
+				refresh: () => Effect.void,
 			},
 		);
 		const layer = BranchAnalyzerLive.pipe(Layer.provide(failingInspector));

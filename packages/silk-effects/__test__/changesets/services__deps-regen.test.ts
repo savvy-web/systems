@@ -79,6 +79,7 @@ const configStub = (opts: { versionPrivate: boolean; ignored: ReadonlyArray<stri
 		ignorePatterns: () => Effect.succeed(opts.ignored),
 		isIgnored: (name: string) => Effect.succeed(opts.ignored.includes(name)),
 		fixed: () => Effect.succeed([]),
+		refresh: () => Effect.void,
 	} as never);
 
 describe("DepsRegen plan/execute", () => {
@@ -100,6 +101,7 @@ describe("DepsRegen plan/execute", () => {
 	const InspectorLayer = Layer.succeed(ConfigInspector, {
 		inspect: () => Effect.succeed({ baseBranch: "main" }),
 		classify: () => Effect.succeed([]),
+		refresh: () => Effect.void,
 	} as never);
 	const DiscoveryLayer = Layer.succeed(WorkspaceDiscovery, {
 		listPackages: () => Effect.succeed([{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" }]),
@@ -254,6 +256,79 @@ describe("DepsRegen plan/execute", () => {
 	});
 });
 
+describe("DepsRegen — devDependency-only diffs must not delete pure changesets (#258)", () => {
+	// @scope/foo's ONLY diff row is a devDependency bump, which plan() drops
+	// unconditionally (unless includeDevDeps) — so @scope/foo ends up with ZERO
+	// resolved rows and is never added to toWrite. A pre-existing pure
+	// dependency changeset for @scope/foo must therefore survive: today's bug
+	// deletes it anyway because the delete predicate only checked in-scope-ness,
+	// not "is this package actually being rewritten this run".
+	const mkDevDepOnlySnap = (devDepVersion: string) =>
+		new WorkspaceStateSnapshot({
+			packages: [
+				new PackageStateSnapshot({
+					name: "@scope/foo",
+					version: "1.0.0",
+					relativePath: "packages/foo",
+					dependencies: {},
+					devDependencies: { "some-dev-tool": devDepVersion },
+				}),
+			],
+			catalogs: CatalogSet.fromCatalogs({}),
+		});
+	const devDepBefore = mkDevDepOnlySnap("^1.0.0");
+	const devDepAfter = mkDevDepOnlySnap("^2.0.0");
+
+	const DevDepPitLayer = pitStub(devDepBefore, devDepAfter);
+	const DevDepInspectorLayer = Layer.succeed(ConfigInspector, {
+		inspect: () => Effect.succeed({ baseBranch: "main" }),
+		classify: () => Effect.succeed([]),
+		refresh: () => Effect.void,
+	} as never);
+	const DevDepDiscoveryLayer = Layer.succeed(WorkspaceDiscovery, {
+		listPackages: () => Effect.succeed([{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" }]),
+		refresh: () => Effect.void,
+	} as never);
+	const DevDepDetectorLayer = Layer.succeed(PublishabilityDetector, {
+		detect: () => Effect.succeed([{}]),
+	} as never);
+	const devDeps = Layer.mergeAll(
+		DevDepPitLayer,
+		DevDepInspectorLayer,
+		DevDepDiscoveryLayer,
+		DevDepDetectorLayer,
+		configStub({ versionPrivate: false, ignored: [] }),
+	);
+	const devDepLive = DepsRegenLive.pipe(Layer.provide(devDeps));
+
+	it("plan() excludes the pre-existing pure changeset from toDelete, and execute() leaves it on disk", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-devdep-"));
+		const csDir = join(dir, ".changeset");
+		mkdirSync(csDir);
+		const preExisting = join(csDir, "pre-existing-foo.md");
+		writeFileSync(
+			preExisting,
+			["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
+		);
+
+		const program = Effect.gen(function* () {
+			const svc = yield* DepsRegen;
+			const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			const result = yield* svc.execute(plan);
+			return { plan, result };
+		});
+
+		const { plan, result } = await Effect.runPromise(
+			program.pipe(Effect.provide(devDepLive), Effect.provide(NodeContext.layer)),
+		);
+
+		expect(plan.toWrite).toHaveLength(0);
+		expect(plan.toDelete.map((d) => d.file)).not.toContain(preExisting);
+		expect(result.deleted).not.toContain(preExisting);
+		expect(existsSync(preExisting)).toBe(true);
+	});
+});
+
 describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 	// Two workspace packages: @x/pub is publishable, @x/priv is not. Both have a
 	// dependency change in the diff (effect 3.18.0 -> 3.19.0) and both have a
@@ -270,6 +345,7 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 	const GatingInspectorLayer = Layer.succeed(ConfigInspector, {
 		inspect: () => Effect.succeed({ baseBranch: "main" }),
 		classify: () => Effect.succeed([]),
+		refresh: () => Effect.void,
 	} as never);
 	const GatingDiscoveryLayer = Layer.succeed(WorkspaceDiscovery, {
 		listPackages: () =>

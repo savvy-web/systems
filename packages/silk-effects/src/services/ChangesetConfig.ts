@@ -27,6 +27,14 @@ export class ChangesetConfig extends Context.Tag("@savvy-web/silk-effects/Change
 		readonly ignorePatterns: (root: string) => Effect.Effect<ReadonlyArray<string>>;
 		readonly isIgnored: (name: string, root: string) => Effect.Effect<boolean>;
 		readonly fixed: (root: string) => Effect.Effect<ReadonlyArray<ReadonlyArray<string>>>;
+		/**
+		 * Drop the cached read for every previously-read root. Callers that hold
+		 * this service across multiple logical operations in a single process
+		 * (e.g. a long-lived MCP server) must call this before an operation that
+		 * needs to observe an on-disk edit made since the last accessor call —
+		 * the cache never expires on its own.
+		 */
+		readonly refresh: () => Effect.Effect<void>;
 	}
 >() {
 	/**
@@ -108,6 +116,7 @@ export const ChangesetConfigLive: Layer.Layer<ChangesetConfig, never, ChangesetC
 				),
 			fixed: (root) =>
 				read(root).pipe(Effect.map(Option.match({ onNone: () => [], onSome: (cfg) => cfg.fixed ?? [] }))),
+			refresh: () => Effect.sync(() => cache.clear()),
 		};
 	}),
 );

@@ -57,6 +57,7 @@ const mockChangesetConfig = (mode: "silk" | "vanilla" | "none", versionPrivate =
 		ignorePatterns: () => Effect.succeed(ignore),
 		isIgnored: (name: string) => Effect.succeed(ignore.some((p) => ChangesetConfig.matches(name, p))),
 		fixed: () => Effect.succeed([]),
+		refresh: () => Effect.void,
 	});
 
 const runAdaptive = <A>(

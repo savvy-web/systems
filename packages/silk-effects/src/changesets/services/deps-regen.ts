@@ -15,6 +15,15 @@
  * first, then deleting the stale pure-dependency ones (so an interrupted
  * run loses nothing and is safely re-runnable).
  *
+ * A pure dependency changeset is only ever a delete candidate when BOTH:
+ * its package is in scope AND actually produced a fresh diff this run
+ * (present in {@link RegenPlan.toWrite}), and the file was authored on
+ * this branch rather than already committed at the merge-base ref. Either
+ * gap silently destroyed a still-relevant release note before this was
+ * fixed (#258) — a devDependency-only diff drops all its rows and was
+ * never rewritten, and a changeset an earlier, already-merged PR
+ * committed was swept away by an unrelated branch's regen run.
+ *
  * This is the single source of truth for regen/detect: the CLI commands
  * and MCP tools are thin adapters over this service.
  *
@@ -23,7 +32,7 @@
  *
  */
 
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type { CommandExecutor, Path } from "@effect/platform";
 import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer, Option } from "effect";
@@ -44,7 +53,7 @@ import { ChangesetIOError } from "../errors.js";
 import type { WorkspaceDependencyDiff } from "../utils/dep-diff.js";
 import { computeWorkspaceDependencyDiffs } from "../utils/dep-diff.js";
 import { serializeDependencyTableToMarkdown, sortDependencyRows } from "../utils/dependency-table.js";
-import { gitMergeBase } from "../utils/git.js";
+import { gitListChangesetFilesAtRef, gitMergeBase } from "../utils/git.js";
 import { listPublishablePackageNames } from "../utils/publishability.js";
 import { ConfigInspector, ConfigInspectorLive } from "./config-inspector.js";
 
@@ -398,7 +407,17 @@ function makeShape(
 			// snapshot, and the versionable gating — would be served the pre-edit
 			// manifests and the diff would silently collapse to a no-op. A plan
 			// must read the workspace as it is now: drop the cache first.
-			yield* discovery.refresh();
+			//
+			// ConfigInspector and ChangesetConfig carry their own per-root caches
+			// with no self-expiry (#229) - a long-lived process such as the
+			// savvy-mcp server holds one DepsRegen for its whole lifetime, so an
+			// edit to .changeset/config.json made between two plan() calls (a
+			// changed ignore list, privatePackages setting, or baseBranch) would
+			// otherwise be invisible for the rest of the process.
+			// inspector.refresh() also refreshes WorkspaceDiscovery, so this one
+			// call covers both.
+			yield* inspector.refresh();
+			yield* config.refresh();
 
 			// Resolve the "from" ref — explicit `from`, else merge-base with the
 			// (possibly overridden) base branch.
@@ -479,11 +498,35 @@ function makeShape(
 			const existingPure = yield* findPureDependencyChangesets(fs, changesetDir);
 			const skippedMixed = yield* findMixedDependencyChangesets(fs, changesetDir);
 
+			// A package is only "being rewritten this run" when it survives the
+			// devDep-drop + empty-diff filters above and lands in `resolved` (the
+			// list that feeds toWrite). A package whose only diff rows were
+			// devDependency-only (dropped unless includeDevDeps) has ZERO resolved
+			// rows and is never rewritten — its pre-existing pure dependency
+			// changeset must therefore be left alone rather than deleted with
+			// nothing to replace it (#258).
+			const rewrittenPackages = new Set(resolved.map((d) => d.package));
+
+			// A changeset already committed at `fromRef` (the merge base, reused
+			// from the diff resolution above rather than re-running git) was
+			// authored by an earlier, already-merged PR — a regen run on an
+			// unrelated branch must never delete it, even for an in-scope package
+			// that IS being rewritten this run (#258). Tolerant by construction:
+			// when `fromRef` isn't a real, readable git ref (e.g. the synthetic
+			// refs used by unit tests against a bare tmpdir), this resolves to an
+			// empty set and the filter becomes a no-op.
+			const atMergeBase = yield* gitListChangesetFilesAtRef(resolvedCwd, fromRef);
+			const authoredOnBranch = (file: string): boolean => !atMergeBase.has(basename(file));
+
 			// With explicit targets, only delete pure changesets for those packages
 			// (unless ignored); otherwise delete pure-dep changesets for every
-			// in-scope package — even stale ones with no current dep changes.
-			// Excluded packages keep their existing changesets untouched.
-			const toDelete = existingPure.filter((p) => inScopeFor(p.package));
+			// in-scope package that is actually being rewritten this run AND whose
+			// file was authored on this branch (not present at the merge base).
+			// Excluded packages, packages with no surviving diff rows, and
+			// merge-base-authored files keep their existing changesets untouched.
+			const toDelete = existingPure.filter(
+				(p) => inScopeFor(p.package) && rewrittenPackages.has(p.package) && authoredOnBranch(p.file),
+			);
 
 			const chosenFilenames = new Set<string>();
 			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = [];

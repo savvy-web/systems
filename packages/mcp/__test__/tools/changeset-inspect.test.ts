@@ -1,6 +1,6 @@
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { WorkspaceRoot } from "workspaces-effect";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
@@ -29,6 +29,8 @@ const BranchAnalyzerTest = Layer.succeed(
 	}),
 );
 
+let configInspectorRefreshCalls = 0;
+
 const ConfigInspectorTest = Layer.succeed(
 	Changesets.ConfigInspector,
 	Changesets.ConfigInspector.of({
@@ -44,6 +46,10 @@ const ConfigInspectorTest = Layer.succeed(
 				legacyVersionFilesUsed: false,
 			}),
 		classify: (_cwd, paths) => Effect.succeed(paths.map((p) => ({ path: p, package: null, reason: null }))),
+		refresh: () =>
+			Effect.sync(() => {
+				configInspectorRefreshCalls++;
+			}),
 	}),
 );
 
@@ -57,6 +63,10 @@ const run = <A, E>(eff: Effect.Effect<A, E, Changesets.BranchAnalyzer | Changese
 	);
 
 describe("changesetInspect handler", () => {
+	beforeEach(() => {
+		configInspectorRefreshCalls = 0;
+	});
+
 	it("projects branch mode and renders markdown", async () => {
 		const data = await run(changesetInspect({ mode: "branch" }, "/repo"));
 		expect(data.mode).toBe("branch");
@@ -80,6 +90,24 @@ describe("changesetInspect handler", () => {
 		}
 		const md = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
 		expect(md).toContain("packages/foo/x.ts");
+	});
+
+	// #229: the long-lived savvy-mcp server holds one ConfigInspector for its
+	// whole process lifetime; every call must refresh its cache first so an
+	// on-disk edit made since the last tool call is observed.
+	it("refreshes the ConfigInspector cache before serving config mode", async () => {
+		await run(changesetInspect({ mode: "config" }, "/repo"));
+		expect(configInspectorRefreshCalls).toBe(1);
+	});
+
+	it("refreshes the ConfigInspector cache before serving classify mode", async () => {
+		await run(changesetInspect({ mode: "classify", paths: [] }, "/repo"));
+		expect(configInspectorRefreshCalls).toBe(1);
+	});
+
+	it("refreshes the ConfigInspector cache before serving branch mode", async () => {
+		await run(changesetInspect({ mode: "branch" }, "/repo"));
+		expect(configInspectorRefreshCalls).toBe(1);
 	});
 
 	it("forbids encoding markdown back", () => {
