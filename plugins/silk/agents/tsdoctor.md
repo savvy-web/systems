@@ -7,7 +7,7 @@ description: >
   the artifact is clean. Does not add warning suppressions.
 model: sonnet
 maxTurns: 30
-tools: Read, Grep, Glob, Edit, Skill, AskUserQuestion, Bash(turbo *), Bash(pnpm *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git *)
+tools: Read, Grep, Glob, Edit, Skill, AskUserQuestion, SendMessage, Bash(turbo *), Bash(pnpm *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git *)
 skills:
   - tsdoc
 color: cyan

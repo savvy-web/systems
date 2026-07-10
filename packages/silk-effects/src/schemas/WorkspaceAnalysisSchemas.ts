@@ -1,5 +1,6 @@
 import { Equal, Function as Fn, Hash, Option, Pretty, Schema } from "effect";
 import { PublishConfig, PublishTarget } from "workspaces-effect";
+import { trimTrailingSlashes } from "../utils/TrailingSlash.js";
 import { TagStrategyType } from "./TagStrategySchemas.js";
 import { ChangesetConfigFile, SilkChangesetConfigFile, VersioningStrategyResult } from "./VersioningSchemas.js";
 
@@ -49,7 +50,7 @@ const KNOWN_REGISTRIES: Record<string, string> = {
  * both sides so `hasTarget`/`targetFor` match regardless of which form a target
  * carries (binding-driven, placeholder, or access-branch fallback).
  */
-const sameRegistry = (a: string, b: string): boolean => a.replace(/\/+$/, "") === b.replace(/\/+$/, "");
+const sameRegistry = (a: string, b: string): boolean => trimTrailingSlashes(a) === trimTrailingSlashes(b);
 
 const WorkspaceVersion = Schema.Struct({
 	current: Schema.String,
