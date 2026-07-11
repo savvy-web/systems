@@ -30,26 +30,26 @@ STUB
 
 @test "committed (not interrupted): CLI post-verify stdout flows through" {
 	_stub_ok_cli
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-commit.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-commit.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"CLI-POST-VERIFY-RAN"* ]]
 }
 
 @test "interrupted commit: silent no-op (CLI not invoked)" {
 	_stub_ok_cli
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-interrupted.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-interrupted.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "non-commit command (ls -la): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-unrelated.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-unrelated.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "empty command: silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-empty.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-empty.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
@@ -64,15 +64,15 @@ cat >/dev/null 2>&1 || true
 echo 'verify exploded' >&2
 exit 1
 STUB
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-commit.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.bash-commit.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 	[ -f "$SILK_HOOK_ERROR_LOG" ]
 	grep -q "post-commit-verify failed" "$SILK_HOOK_ERROR_LOG"
 }
 
-@test "malformed JSON input: non-zero exit (jq parse error)" {
-	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
-	[ "$status" -ne 0 ]
-	[ -z "$output" ]
+@test "malformed JSON input: no-op (fails open)" {
+	run bash -c "printf 'not json' | bash '${HOOK}' 2>/dev/null"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
 }

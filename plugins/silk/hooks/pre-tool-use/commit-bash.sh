@@ -5,15 +5,20 @@ set -euo pipefail
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
 # shellcheck source=../lib/hook-debug.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
+# shellcheck source=../lib/hook-env.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-env.sh"
+
+_HOOK="pre-tool-use/bash"
 
 if ! command -v jq >/dev/null 2>&1; then
-  hook_error "pre-tool-use/bash" "jq not found; skipping"
+  hook_error "$_HOOK" "jq not found; skipping"
   emit_noop
   exit 0
 fi
 
-ENVELOPE=$(cat)
-COMMAND=$(echo "$ENVELOPE" | jq -r '.tool_input.command // empty')
+read_envelope_or_noop "$_HOOK"
+ENVELOPE="$HOOK_ENVELOPE"
+COMMAND=$(jq -r '.tool_input.command // empty' <<< "$ENVELOPE")
 [ -z "$COMMAND" ] && exit 0
 
 # Hot path — auto-allow safe commands. The hard exclusions inside
@@ -33,7 +38,7 @@ if bash "${CLAUDE_PLUGIN_ROOT}/hooks/lib/is-commit-related.sh" "$COMMAND"; then
   err=$(mktemp -t silk-commit-pre-bash.XXXXXX)
   trap 'rm -f "$err"' EXIT
   if ! echo "$ENVELOPE" | $RUN savvy commit hook pre-commit-message 2>"$err"; then
-    hook_error "pre-tool-use/bash" "savvy commit hook pre-commit-message failed: $(tr '\n' ' ' < "$err")"
+    hook_error "$_HOOK" "savvy commit hook pre-commit-message failed: $(tr '\n' ' ' < "$err")"
   fi
 fi
 exit 0

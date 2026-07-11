@@ -34,9 +34,15 @@ export function buildPostCommitAdvice(i: PostCommitInputs): string | null {
 			lines.push(
 				"The commit was unsigned but commit.gpgsign=true is configured. Re-sign with: git commit --amend --no-edit -S",
 			);
-		} else if (["B", "X", "Y", "R", "E"].includes(i.sigStatus)) {
+		} else if (["B", "X", "Y", "R"].includes(i.sigStatus)) {
+			// NOT "E". git reports E for "signature cannot be checked (e.g. missing
+			// key)" — the commit is signed, but this process cannot reach the keyring
+			// or gpg-agent to verify it, which is routine inside a hook subprocess.
+			// A failure to VERIFY is not a defective signature: the same commit that
+			// reports E here reports G from an interactive shell. Advising an amend
+			// on E told users to repair a commit that was correctly signed.
 			lines.push(
-				`The commit signature status is '${i.sigStatus}' (B=bad, X=expired sig, Y=expired key, R=revoked, E=missing key). Investigate your signing setup and amend.`,
+				`The commit signature status is '${i.sigStatus}' (B=bad, X=expired sig, Y=expired key, R=revoked). Investigate your signing setup and amend.`,
 			);
 		}
 	}

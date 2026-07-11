@@ -19,7 +19,7 @@ setup() {
 
 @test "emits SessionStart context with the orientation payload" {
 	make_project >/dev/null
-	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "SessionStart" ]
 	local ctx
@@ -31,7 +31,7 @@ setup() {
 
 @test "writes the per-session silk-hook.sh env file with the 5 SILK_* exports" {
 	make_project >/dev/null
-	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	local env_file="${HOME}/.claude/session-env/sess-orient-1/silk-hook.sh"
 	[ -f "$env_file" ]
@@ -46,7 +46,7 @@ setup() {
 	export CLAUDE_PROJECT_DIR="${BATS_TEST_TMPDIR}/pnpm-proj"
 	mkdir -p "$CLAUDE_PROJECT_DIR"
 	printf '{"packageManager":"pnpm@9.0.0"}\n' > "${CLAUDE_PROJECT_DIR}/package.json"
-	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	local env_file="${HOME}/.claude/session-env/sess-orient-1/silk-hook.sh"
 	grep -q "^export SILK_PACKAGE_MANAGER=pnpm$" "$env_file"
@@ -56,7 +56,7 @@ setup() {
 	make_project >/dev/null
 	export CLAUDE_ENV_FILE="${BATS_TEST_TMPDIR}/claude-env.sh"
 	: > "$CLAUDE_ENV_FILE"
-	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/sessionstart.orientation.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	grep -q '^export SILK_PROJECT_DIR=' "$CLAUDE_ENV_FILE"
 	grep -q '^export SILK_SESSION_ID=' "$CLAUDE_ENV_FILE"
@@ -66,15 +66,15 @@ setup() {
 	make_project >/dev/null
 	local envelope="${BATS_TEST_TMPDIR}/no-sid.json"
 	jq 'del(.session_id)' "${FIXTURES_DIR}/sessionstart.orientation.json" > "$envelope"
-	run bash -c "cat '${envelope}' | '${HOOK}'"
+	run bash -c "cat '${envelope}' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "SessionStart" ]
 	[ ! -d "${HOME}/.claude/session-env" ]
 }
 
-@test "malformed JSON input: non-zero exit (jq parse error)" {
+@test "malformed JSON input: no-op (fails open)" {
 	make_project >/dev/null
-	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
-	[ "$status" -ne 0 ]
-	[ -z "$output" ]
+	run bash -c "printf 'not json' | bash '${HOOK}' 2>/dev/null"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
 }

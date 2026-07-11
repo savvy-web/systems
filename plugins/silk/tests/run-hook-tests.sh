@@ -37,7 +37,7 @@ while IFS= read -r f; do
 	if head -n1 "$f" | grep -q '^#!'; then
 		shellcheck_targets+=("$f")
 	fi
-done < <(find hooks bin tests -type f -name '*.sh' | sort)
+done < <(find hooks bin tests skills -type f -name '*.sh' | sort)
 
 # tests/*.bash helpers carry a `# shellcheck shell=bash` directive.
 while IFS= read -r f; do

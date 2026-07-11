@@ -41,35 +41,35 @@ STUB
 
 @test "non-changeset file (src/index.ts): no-op" {
 	_stub_savvy 0 1 "should not run"
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.write-non-changeset.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.write-non-changeset.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test ".changeset/README.md: no-op (README is not a changeset)" {
 	_stub_savvy 0 1 "should not run"
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-readme.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-readme.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "missing file_path: no-op" {
 	_stub_savvy 0 1 "should not run"
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.write-empty.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.write-empty.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "changeset file, CLI unavailable (--version fails): silent no-op" {
 	_stub_savvy 1 1 "unreachable"
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-file.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-file.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "changeset file, validation FAILS: emits findings as additionalContext" {
 	_stub_savvy 0 1 "CSH001: section heading missing at line 3"
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-file.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-file.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "PostToolUse" ]
 	local ctx
@@ -80,13 +80,13 @@ STUB
 
 @test "changeset file, validation PASSES: no-op" {
 	_stub_savvy 0 0 ""
-	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-file.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/posttooluse.changeset-file.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
-@test "malformed JSON input: non-zero exit (jq parse error)" {
-	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
-	[ "$status" -ne 0 ]
-	[ -z "$output" ]
+@test "malformed JSON input: no-op (fails open)" {
+	run bash -c "printf 'not json' | bash '${HOOK}' 2>/dev/null"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
 }

@@ -16,6 +16,8 @@ set -euo pipefail
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
 # shellcheck source=../lib/hook-debug.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
+# shellcheck source=../lib/hook-env.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-env.sh"
 
 _HOOK="session-start-orientation"
 
@@ -26,7 +28,8 @@ if ! command -v jq &>/dev/null; then
 	exit 0
 fi
 
-hook_json=$(cat)
+read_envelope_or_noop "$_HOOK"
+hook_json="$HOOK_ENVELOPE"
 session_id=$(jq -r '.session_id // ""' <<< "$hook_json")
 envelope_cwd=$(jq -r '.cwd // empty' <<< "$hook_json")
 
@@ -195,12 +198,30 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
   </agent_dispatch>
 
   <mcp_tools>
+    These are the source of truth for release state. Prefer them over shelling
+    out to git/pnpm and over reasoning from memory — they return structured JSON
+    and they already know this repo's package boundaries and exclusion rules.
+
+    mcp__plugin_silk_savvy-mcp__changeset_inspect
+        — mode: "branch" gives the branch diff already classified by owning
+          package (plus any unmappedFiles). This is how you find out WHAT
+          CHANGED and WHO OWNS IT. mode: "classify" maps arbitrary repo paths to
+          their package, for files that do not appear in the diff.
     mcp__plugin_silk_savvy-mcp__changeset_validate
         — structured CSH001-CSH005 validation for one or more changeset files;
           returns typed diagnostics. Call after writing or editing changesets.
-    mcp__plugin_silk_savvy-mcp__changeset_inspect mode: "classify"
-        — maps arbitrary repo paths to their owning package. Use when a path
-          does not appear in the branch diff but you need to attribute it.
+    mcp__plugin_silk_savvy-mcp__changeset_preview
+        — renders the CHANGELOG that the pending changesets would produce. Use it
+          to answer "what will this release look like".
+    mcp__plugin_silk_savvy-mcp__changeset_deps_detect
+        — read-only: which packages have pure dependency changes needing a
+          Dependencies changeset. (deps_regen writes them.)
+    mcp__plugin_silk_savvy-mcp__workspace_info
+        — workspace layout, package names, publish and version state.
+
+    To answer "does this branch need a changeset / what is pending / what ships
+    next", call changeset_inspect (mode: "branch") and changeset_preview. Do not
+    infer release state from the file tree.
   </mcp_tools>
 </available_tools>
 
@@ -208,9 +229,19 @@ You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end o
   <hook event="PostToolUse" matcher="Write|Edit">
     After writing a .changeset/*.md file, the CLI automatically validates it. If validation finds issues, they are provided as context — fix the file before proceeding.
   </hook>
-  <hook event="PreToolUse" matcher="Bash">
-    Before git commits, you are reminded to consider whether a changeset is needed.
+  <hook event="Stop">
+    When a turn ends on a branch that has commits but no changeset, a message is
+    shown TO THE USER noting that. It is informational and addressed to them, not
+    to you: nothing is blocked and you are not being asked to act on it.
   </hook>
+  <note>
+    No hook blocks a commit or a push for a missing changeset. Whether a change
+    needs one is a human judgement — many branches legitimately need none
+    (docs, CI, tests, internal refactors) — and it is enforced in CI on the pull
+    request, where the full diff is available. Never try to work around a hook or
+    disable a check to get a commit or push through; if something blocks you,
+    stop and tell the user.
+  </note>
   <note>
     turbo_inspect (mcp__plugin_silk_savvy-mcp__turbo_inspect) has no hook — it is a
     read-only MCP tool; call it directly when Turborepo questions arise.

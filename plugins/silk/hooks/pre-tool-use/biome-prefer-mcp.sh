@@ -14,6 +14,8 @@ set -euo pipefail
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
 # shellcheck source=../lib/hook-debug.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
+# shellcheck source=../lib/hook-env.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-env.sh"
 
 _HOOK="pre-tool-use/biome-prefer-mcp"
 
@@ -23,7 +25,8 @@ if ! command -v jq >/dev/null 2>&1; then
 	exit 0
 fi
 
-ENVELOPE=$(cat)
+read_envelope_or_noop "$_HOOK"
+ENVELOPE="$HOOK_ENVELOPE"
 
 # Subagent guard — placed before any biome-detection work so subagent calls
 # short-circuit cheaply. `agent_id` is present in the envelope only when this
@@ -220,7 +223,7 @@ if [ "$is_biome" -eq 0 ]; then
 		| grep -Eo '(pnpm|npm|yarn|bun|turbo)[[:space:]]+(run[[:space:]]+)?[A-Za-z0-9:_-]+' 2>/dev/null \
 		| head -n1 | awk '{ print $NF }' || true)
 	if [ -n "${script:-}" ]; then
-		root="${CLAUDE_PROJECT_DIR:-$(echo "$ENVELOPE" | jq -r '.cwd // empty')}"
+		root=$(resolve_project_dir "$ENVELOPE")
 		root="${root:-$(pwd)}"
 		if [ -f "$root/package.json" ]; then
 			body=$(jq -r --arg s "$script" '.scripts[$s] // empty' "$root/package.json" 2>/dev/null || true)

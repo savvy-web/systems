@@ -24,13 +24,13 @@ setup() {
 }
 
 @test "subagent envelope (agent_id present) + direct biome command: no nudge" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-subagent.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-subagent.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "main-session envelope (no agent_id) + direct biome command: nudge emitted" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "PreToolUse" ]
 	[ "$(jq -r '.hookSpecificOutput.permissionDecision // empty' <<< "$output")" = "" ]
@@ -40,13 +40,13 @@ setup() {
 }
 
 @test "main-session envelope, grep command that only mentions 'biome' as a quoted regex string: no nudge (false-positive check)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-grep-mention.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-grep-mention.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "main-session envelope, unrelated command: no nudge" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.non-bash-unrelated.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.non-bash-unrelated.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
@@ -63,11 +63,11 @@ setup() {
 	jq --arg sid "$session" '.session_id = $sid' "${FIXTURES_DIR}/pretooluse.biome-bash-subagent.json" > "$sub_fixture"
 	jq --arg sid "$session" '.session_id = $sid' "${FIXTURES_DIR}/pretooluse.biome-bash-direct.json" > "$main_fixture"
 
-	run bash -c "cat '${sub_fixture}' | '${HOOK}'"
+	run bash -c "cat '${sub_fixture}' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
-	run bash -c "cat '${main_fixture}' | '${HOOK}'"
+	run bash -c "cat '${main_fixture}' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	local ctx
 	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
@@ -75,13 +75,13 @@ setup() {
 }
 
 @test "nudge fires at most once per session for the main thread" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 
 	# Second call, same session_id (same fixture) -> already-nudged marker
 	# exists -> no-op.
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
@@ -89,37 +89,37 @@ setup() {
 # --- savvy-web/systems#248: command-position matcher --------------------
 
 @test "gh issue create --body mentioning 'biome' in prose: no nudge (#248 repro)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.gh-issue-body-mentions-biome.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.gh-issue-body-mentions-biome.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "grep biome somefile: no nudge (biome is an argument, not the invoked binary)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.grep-biome-argument.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.grep-biome-argument.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "biome check .: nudge emitted (still matches — regression guard)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-bash-direct.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
 
 @test "pnpm exec biome check: nudge emitted (still matches — regression guard)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.pnpm-exec-biome.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.pnpm-exec-biome.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
 
 @test "absolute-path biome invocation: nudge emitted (still matches — regression guard)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.absolute-path-biome.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.absolute-path-biome.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
 
 @test "cd foo && biome check .: nudge emitted (chained command, still matches — regression guard)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.chained-cd-biome.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.chained-cd-biome.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
@@ -131,13 +131,13 @@ setup() {
 # correct part of the matcher and had no dedicated tests before this PR.
 
 @test "env biome check .: nudge emitted (leading 'env' is peeled)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-env-direct.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-env-direct.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
 
 @test "FOO=bar biome check .: nudge emitted (inline VAR=value assignment is peeled)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-inline-assignment.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.biome-inline-assignment.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
@@ -161,19 +161,19 @@ setup() {
 # non-biome "biome"-named script ever surfaces in practice, that's a
 # follow-up worth its own decision, not something to silently "fix" here.
 @test "npm run biome: nudge emitted (script literally named 'biome' -- documented runner-keyword peel, see comment above)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.npm-run-biome.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.npm-run-biome.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
 
 @test "pnpm run biome: nudge emitted (same runner-keyword peel as npm run biome)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.pnpm-run-biome.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.pnpm-run-biome.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
 
 @test "yarn biome (no 'run' keyword): nudge emitted (bare 'pnpm|npm|yarn|bun <script>' form is also peeled)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.yarn-biome-no-run.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.yarn-biome-no-run.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$(jq -r '.hookSpecificOutput.additionalContext // empty' <<< "$output")" == *"biome_check"* ]]
 }
