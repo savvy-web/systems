@@ -29,7 +29,7 @@ Before creating a new changeset file, always check for existing ones:
 If an existing changeset already covers the same package and change type as the one you intend to create:
 
 - Do not create a new changeset file for that package/bump-type combination
-- Instead, suggest updating the existing changeset using `/silk:update`
+- Instead, suggest `/silk:changeset --create` — the reconcile flow updates the existing changeset in place rather than duplicating it
 - Only create a new changeset when the package or bump type is not yet represented, or when the changes are clearly distinct enough to warrant separate entries
 
 ## Summarize When Listing or Reviewing
@@ -43,10 +43,9 @@ This helps identify consolidation opportunities and ensures nothing is accidenta
 
 ## Available Management Skills
 
-Use these skills to manage pending changesets:
+Use these commands to manage pending changesets (update/merge/delete are internal mechanics driven by the changeset-manager agent, not user-invocable commands):
 
 - `/silk:changeset --list` — overview of pending changesets with packages, bump types, and content previews
-- `/silk:update` — modify an existing changeset's content or bump type
-- `/silk:merge` — combine changesets that share the same bump type into a single file
-- `/silk:delete` — remove a changeset that is no longer needed
+- `/silk:changeset --create` — reconcile changesets with the branch diff (updates or deletes stale entries as needed)
+- `/silk:changeset --squash` — consolidate changesets that share the same package-to-bump-type mapping
 - `/silk:changeset --preview` — preview the combined CHANGELOG output that the current set of changesets would produce

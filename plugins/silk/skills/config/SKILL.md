@@ -7,7 +7,7 @@ description: >
   attribution without re-implementing the logic.
 user-invocable: false
 model: sonnet
-allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_inspect mcp__plugin_silk_savvy-mcp__changeset_validate
+allowed-tools: mcp__plugin_silk_savvy-mcp__changeset_inspect
 ---
 
 # Inspect Changeset Configuration

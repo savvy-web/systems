@@ -8,7 +8,7 @@ description: >
   the main agent for lighter questions.
 model: sonnet
 maxTurns: 20
-tools: Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, SendMessage, ListMcpResourcesTool, ReadMcpResourceTool, mcp__plugin_silk_savvy-mcp__turbo_inspect, mcp__plugin_silk_savvy-mcp__workspace_info, Bash(turbo *), Bash(pnpm *), Bash(git *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
+tools: Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, SendMessage, mcp__plugin_silk_savvy-mcp__turbo_inspect, mcp__plugin_silk_savvy-mcp__workspace_info, Bash(turbo *), Bash(pnpm *), Bash(git *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(find *)
 skills:
   - turbo
 color: blue

@@ -1,0 +1,6 @@
+{
+	"session_id": "test-mcp-github-unlisted",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "mcp__github__delete_file",
+	"tool_input": {}
+}

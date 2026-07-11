@@ -1,0 +1,46 @@
+name: Hook Tests
+
+# BATS + shellcheck coverage for the silk Claude Code plugin's hook scripts.
+# The suite is pure shell (bash + bats + shellcheck + jq + git) and needs no
+# Node.js / pnpm install, so it runs as a small dedicated job rather than
+# through the release reusable workflow.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - plugins/silk/hooks/**
+      - plugins/silk/tests/**
+      - plugins/silk/bin/**
+      - .github/workflows/hook-tests.yml
+  push:
+    branches: [main]
+    paths:
+      - plugins/silk/hooks/**
+      - plugins/silk/tests/**
+      - plugins/silk/bin/**
+      - .github/workflows/hook-tests.yml
+
+concurrency:
+  group: hook-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hook-tests:
+    name: BATS + shellcheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Install bats, shellcheck, and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats shellcheck jq
+
+      - name: Run hook tests
+        run: bash plugins/silk/tests/run-hook-tests.sh

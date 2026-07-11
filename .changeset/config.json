@@ -6,7 +6,7 @@
 			"repo": "savvy-web/systems",
 			"packages": {
 				"@savvy-web/silk": {
-					"additionalScopes": ["plugins/silk/**", "plugins/github-actions/**"],
+					"additionalScopes": ["plugins/silk/**", "plugins/github-actions/**", ".github/workflows/hook-tests.yml"],
 					"versionFiles": [
 						{
 							"glob": "plugins/*/.claude-plugin/plugin.json",

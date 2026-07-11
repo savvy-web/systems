@@ -52,7 +52,7 @@
 				]
 			},
 			{
-				"matcher": "mcp__gk__.*|mcp__github(-[^_].*)?__.*",
+				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
 				"hooks": [
 					{
 						"type": "command",

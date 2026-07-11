@@ -17,7 +17,7 @@ when_to_use: >
   body of a conventional commit message, even if the user has not explicitly
   said the word "commit".
 user-invocable: false
-allowed-tools: Bash(git log *) Bash(git status *) Bash(git diff *) Bash(git show *)
+allowed-tools: Bash(git log *), Bash(git status *), Bash(git diff *), Bash(git show *)
 ---
 
 # commit-create
