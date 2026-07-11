@@ -46,13 +46,29 @@ pnpm lint:md        # Markdown lint
 
 ## Install & Build Orchestration
 
-Build runs on install. A single root `prepare: husky && turbo run build:dev` builds the dev outputs during `pnpm install` (husky runs first so git hooks install even if the build is slow). A fresh clone gets a working `savvy` bin on PATH and functional git hooks immediately. `pnpm build` (turbo `build:dev` + `build:prod`) produces the prod outputs.
+Build runs on install, but NOT from the root. The root `prepare` script is `husky` and nothing else — it installs the git hooks. The dev outputs get built because each workspace-dependency package carries its OWN `prepare: turbo run build:dev`, which pnpm runs per workspace package during `pnpm install`. There is no root build-on-install step. A fresh clone gets a working `savvy` bin on PATH and functional git hooks immediately. `pnpm build` (turbo `build:dev` + `build:prod`) produces the prod outputs.
 
-`packages/changelog` is the ONE package carrying its own `prepare: turbo run build:dev`; every other package relies on the root one. It needs it because `.changeset/config.json` names `@savvy-web/changelog` as its changelog id, so the changesets engine resolves the package from the repo root — and without its own `prepare` the dist it links to is not built in time, leaving `@savvy-web/changelog` unresolvable and `changeset version`/`changeset_preview` broken with `Cannot find package '@savvy-web/changelog'`. Do not remove it to satisfy the one-root-prepare rule.
+### Package scripts
+
+Every package built by `@savvy-web/bundler` (or `@savvy-web/rspress-builder`) declares `publishConfig.directory: dist/dev/pkg` and these scripts (`tsdown-plugins` bootstraps with `tsx` rather than `node`; other supporting scripts may also be present):
+
+```json
+"build:dev": "node savvy.build.ts --target dev",
+"build:prod": "node savvy.build.ts --target prod",
+"types:check": "tsgo --noEmit"
+```
+
+A package ALSO needs `"prepare": "turbo run build:dev"` whenever it is a `workspace:*` dependency of ANY other `package.json` in the repo — root, a sibling package, or an `e2e/*` fixture. Its consumer resolves it through a `link:` into `dist/dev/pkg`, and that link has to resolve at install time. That package's own `prepare` is the ONLY thing that builds it then; nothing upstream does it for them.
+
+Today: `@savvy-web/bundler`, `@savvy-web/changelog`, `@savvy-web/cli`, `@savvy-web/mcp`, `@savvy-web/pnpm-plugin-silk` (consumed by `e2e/pnpm-plugin-silk`), `@savvy-web/silk`, `@savvy-web/silk-effects`, `@savvy-web/tsdown-plugins`. Re-derive the list rather than trusting it: `grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.json e2e/*/package.json`.
+
+DO NOT delete these. Agents repeatedly remove them as redundant, reasoning that turbo's `dependsOn` already orders the build. It does not. `dependsOn` only orders builds turbo has ALREADY been asked to run; it has no say over whether a package's `prepare` fires, and it never reaches `pnpm install`'s linking step. A package that appears to build fine without a `prepare` is working by accident of orchestration order, not by design — absence of breakage is not evidence the script is unnecessary. The failure mode is `Cannot find package '@savvy-web/<name>'` from anything resolving the package outside the task graph; `@savvy-web/changelog` hit exactly this and broke `changeset version` / `changeset_preview`.
+
+A package no other `package.json` depends on does not need `prepare` (today: `github-action-builder`, `github-action-effects`, `rspress-builder`, `templates`). Add one the moment something depends on it.
 
 The vitest `globalSetup` runs `pnpm turbo run build:dev`, so when a test run needs to rebuild a package its `dist/dev` (and the `node_modules/@savvy-web/*` `link:` symlinks pointing into it) can momentarily appear missing mid-run. This is transient — do not "fix" it; let the run finish, then re-check. The outputs and links are back once the build completes.
 
-Required `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`. The plugin is pinned in `pnpm-workspace.yaml` WITH its `+sha512-...` integrity hash (turbo/reproducibility need it); `pnpm add --config` omits the hash, so add it by hand. Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts`: injection hard-links each package's `dist/dev` at link time, which is absent before the `prepare` build runs, so a frozen install aborts with `ENOENT`. Plain `link:` symlinks (publishConfig `directory: dist/dev/pkg` for the twelve bundler-built packages, + `linkDirectory: true`) tolerate the not-yet-built dir, which the `prepare` build then populates. `@savvy-web/cli`, `@savvy-web/mcp`, and `@savvy-web/changelog` are direct root devDependencies so they link to `dist/dev`. The `savvy` bin resolves at `dist/dev/pkg/bin/savvy.js`, on PATH after the `prepare` build. `@savvy-web/changelog` must be a root devDependency for the same reason it carries its own `prepare`: the changesets engine resolves the changelog id from the repo root.
+Required `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`. The plugin is pinned in `pnpm-workspace.yaml` WITH its `+sha512-...` integrity hash (turbo/reproducibility need it); `pnpm add --config` omits the hash, so add it by hand. Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts`: injection hard-links each package's `dist/dev` at link time, which is absent before the `prepare` build runs, so a frozen install aborts with `ENOENT`. Plain `link:` symlinks (publishConfig `directory: dist/dev/pkg` for the twelve bundler-built packages, + `linkDirectory: true`) tolerate the not-yet-built dir, which the package's own `prepare` build then populates. `@savvy-web/changelog`, `@savvy-web/cli`, `@savvy-web/mcp`, and `@savvy-web/silk` are the four direct root devDependencies, so they link to `dist/dev`. The `savvy` bin resolves at `dist/dev/pkg/bin/savvy.js`, on PATH once `@savvy-web/cli`'s `prepare` has run. `@savvy-web/changelog` must be a root devDependency because the changesets engine resolves the changelog id named in `.changeset/config.json` from the repo root; without the root link it fails with `Cannot find package '@savvy-web/changelog'`.
 
 ## Ecosystem Context
 

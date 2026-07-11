@@ -26,6 +26,7 @@
 	"scripts": {
 		"build:dev": "tsx savvy.build.ts --target dev",
 		"build:prod": "tsx savvy.build.ts --target prod",
+		"prepare": "turbo run build:dev",
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
