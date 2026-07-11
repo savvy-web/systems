@@ -17,7 +17,7 @@ when_to_use: >
   body of a conventional commit message, even if the user has not explicitly
   said the word "commit".
 user-invocable: false
-allowed-tools: Bash(git log *), Bash(git status *), Bash(git diff *), Bash(git show *)
+allowed-tools: Bash(git log *), Bash(git status *), Bash(git diff *), Bash(git show *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/validate-message.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh *)
 ---
 
 # commit-create
@@ -26,6 +26,62 @@ This skill defines the complete commit-message contract for this repository.
 Read it fully before you compose a subject line, body, or trailer. The rules
 below are enforced by the `@savvy-web/commitlint` Silk preset — violations
 cause the `commit-msg` husky hook to reject the commit.
+
+<EXTREMELY_IMPORTANT>
+You CANNOT eyeball a 300-character body line, a 100-character header, or a
+100-character trailer line and get it right. This is not a skill issue —
+LLMs measurably cannot count characters by inspection. Guessing and retrying
+is not a viable strategy: the `commit-msg` hook fires AFTER `lint-staged`
+(biome + markdownlint + chmod over every staged file, tens of seconds), so
+every wrong guess costs a full lint-staged cycle before you even find out.
+
+The fix is not "be more careful." It is: never invoke `git commit` yourself.
+Compose the message into a file, then run
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh" <message-file>
+```
+
+This validates the message against the REAL commitlint preset and, ONLY on
+success, creates the commit. If validation fails, NOTHING is committed and
+you fix the file and re-run the same command.
+
+Do not run a length check yourself and then call `git commit` as a second,
+separate command — EVEN IF the check says the message is fine. That exact
+sequence is a known failure mode: a check can report a violation correctly
+and the commit still happens anyway, because reading a check's output and
+acting on it are two different steps, and under context pressure the second
+step gets skipped. `commit.sh` exists precisely so there is no second step —
+git commit is unreachable inside the script unless validation already
+exited 0. Calling `git commit` directly, for any reason, bypasses this
+guarantee. If `commit.sh` errors for a reason unrelated to the message
+(missing config, wrong directory), fix that reason and rerun `commit.sh` —
+do not fall back to a bare `git commit`.
+</EXTREMELY_IMPORTANT>
+
+For `--amend` or a signed commit, pass the git flags after `--`:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh" <message-file> -- --amend
+bash "${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh" <message-file> -- -S
+```
+
+`commit.sh` refuses `--no-verify`/`-n` outright — it would skip lint-staged
+and the commit-msg hook for the actual commit. If a hook seems wrong, fix
+the hook; do not bypass it.
+
+If the commit is being made through an MCP tool (GitKraken) or as a `gh pr
+create`/`gh pr edit` body instead of a Bash `git commit` — where there is no
+wrapper script to call — the same discipline still applies without the
+structural guarantee: run
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/validate-message.sh" <message-file>
+```
+
+and treat a non-zero exit as an absolute stop. Do not call the MCP tool or
+`gh` command in the same turn as a failed validation "to save time" — fix
+the message and re-validate first.
 
 ---
 
@@ -94,7 +150,7 @@ A `tdd` commit without a valid scope will be rejected by the hook.
 ## Subject line rules
 
 - **Mood:** imperative ("add", "fix", "remove" — not "added", "adding", "fixes")
-- **Case:** lowercase first letter after the colon; the entire header is lowercase except proper nouns
+- **Case:** prefer a lowercase first letter after the colon for consistency with the rest of this repo's history and rendered changelogs. Note this is a style preference, not a mechanically enforced rule — the Silk preset explicitly disables commitlint's built-in `subject-case` check (`AI tools often capitalize, which is acceptable`) — so getting it wrong will not fail the hook, but match the convention anyway
 - **Length:** max 100 characters for the full `type(scope): subject` header
 - **No period:** do not end the subject with a period or any punctuation
 - **No markdown:** no backticks, bold, italic, or links in the subject
@@ -118,10 +174,16 @@ When you write a body:
 
 - Explain **what changed conceptually and why** — one level above the diff
 - Target 2–5 lines maximum; trim aggressively
-- Each bullet or paragraph is **one continuous line** — do not soft-wrap at 72 or any other column. The 300-character-per-line limit makes wrapping unnecessary
+- Each bullet or paragraph is **one continuous line** — do not soft-wrap at 72 or any other column, that produces a stray indented continuation line that fails a different check (the `silk/body-prose-only`-adjacent soft-wrap heuristic)
+- **Keep each line comfortably under 300 characters — target roughly 200 as a safe working limit, not the ceiling itself.** The hard limit is 300; writing up to the edge of it leaves no headroom for a miscount. If a single bullet or sentence is approaching 200 characters, that is a signal to split it into two bullets, not a reason to compress punctuation to squeeze under 300
 - Name the concept or component that changed, not every file touched
 - Avoid vague qualifiers: "for clarity", "to improve readability", "as a cleanup" — unless the diff is purely formatting
 - Dependency updates: list only direct deps changed in the manifest; never enumerate transitive lockfile entries
+
+Do not count characters by eye and do not estimate. Write the message to a
+file and run `scripts/validate-message.sh` (or `scripts/commit.sh`, which
+calls it for you) — it prints the exact length and line number of every
+violation. See "Validate before you commit" above.
 
 **Never include in the body:**
 
@@ -148,6 +210,14 @@ Run `git config user.name` and `git config user.email` if unsure.
 
 Do not paraphrase or abbreviate — the exact format `Signed-off-by: Name <email>` is required.
 
+**The trailer line itself is capped at 100 characters** — the
+`footer-max-line-length` rule from `@commitlint/config-conventional` applies
+to every trailer line (`Signed-off-by:`, `Closes #N`, `Fixes #N`,
+`Resolves #N`), not just the body. It is easy to miss because nothing else
+in this contract calls it out, and it normally never comes up — but a very
+long name/email combination or a stacked list of `Closes` trailers can trip
+it. `validate-message.sh` measures this too.
+
 ---
 
 ## Closes / Fixes / Resolves trailers
@@ -162,7 +232,8 @@ Signed-off-by: Spencer Beggs <spencer@example.com>
 
 Any of `Closes`, `Fixes`, or `Resolves` followed by `#N` are accepted. Use
 one trailer per issue. If the branch name contains a ticket number and the
-work closes that issue, always include the trailer.
+work closes that issue, always include the trailer. Each trailer line is
+subject to the same 100-character `footer-max-line-length` cap noted above.
 
 ---
 
@@ -244,12 +315,31 @@ Problems: markdown header in body, enumerating transitive lockfile entries.
 
 ---
 
-## Before you run `git commit`
+## Composing the message: what to get right before you validate
+
+The validator catches every violation listed in this skill, but composing a
+message that passes on the first try (rather than the second or third) still
+starts with getting these right:
 
 1. Confirm the type is in the allowed list above.
 2. For `tdd` commits, confirm the scope matches `^\d+:(spike|red|green|refactor)$`.
-3. Check the subject: imperative mood, lowercase first letter, no period, under 100 characters total.
-4. If you wrote a body, verify no markdown formatting and no plan-file references.
-5. Confirm `Signed-off-by: Full Name <email>` is the last trailer.
+3. Check the subject: imperative mood, no period, under 100 characters total.
+4. If you wrote a body, verify no markdown formatting, no plan-file references, and every line comfortably under 300 characters (target ~200 — see "Body rules").
+5. Confirm `Signed-off-by: Full Name <email>` is present, each trailer line under 100 characters.
 6. If the branch implies a ticket and the work closes it, add `Closes #N` above the signoff.
 7. If `commit.gpgsign=true`, confirm the signing agent is responsive before committing.
+
+## The one command that actually commits
+
+Write the composed message to a file, then run:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh" <message-file>
+```
+
+This is not an optional pre-check — it is the entire mechanism by which a
+commit gets created in this workflow. It validates against the real
+commitlint preset and only execs `git commit -F <message-file>` on success.
+See "Validate before you commit" at the top of this skill for why a separate
+"check, then commit" sequence is the specific failure this replaces, and for
+the `--amend`/`-S` passthrough form.
