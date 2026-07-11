@@ -37,7 +37,7 @@ _message() {
 @test "commits, no changeset: emits a systemMessage naming the branch" {
 	init_push_repo >/dev/null
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: work" src/a.ts
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	local msg
 	msg="$(_message "$output")"
@@ -51,7 +51,7 @@ _message() {
 @test "never blocks: no decision, no additionalContext, ever" {
 	init_push_repo >/dev/null
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: work" src/a.ts
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.decision // "none"' <<< "$output")" = "none" ]
 	[ "$(jq -r '.continue // "unset"' <<< "$output")" = "unset" ]
@@ -64,14 +64,14 @@ _message() {
 	init_push_repo >/dev/null
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: work" src/a.ts
 	repo_commit "$CLAUDE_PROJECT_DIR" "docs: changeset" .changeset/tidy-mice.md "---"
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "no commits since base: silent" {
 	init_push_repo >/dev/null
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
@@ -79,7 +79,7 @@ _message() {
 @test "on the default branch (main): silent" {
 	init_push_repo >/dev/null
 	git -C "$CLAUDE_PROJECT_DIR" checkout -q main
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
@@ -88,7 +88,7 @@ _message() {
 	init_push_repo >/dev/null
 	git -C "$CLAUDE_PROJECT_DIR" checkout -q -b release/1.2.0
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: work" src/a.ts
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
@@ -99,11 +99,11 @@ _message() {
 	init_push_repo >/dev/null
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: work" src/a.ts
 
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ -n "$(_message "$output")" ]
 
 	# Same HEAD, next turn — must not nag again.
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
@@ -112,14 +112,14 @@ _message() {
 	init_push_repo >/dev/null
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: work" src/a.ts
 
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ -n "$(_message "$output")" ]
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$output" = "{}" ]
 
 	# HEAD moves -> speak again, with the updated count.
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: more work" src/b.ts
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	local msg
 	msg="$(_message "$output")"
@@ -137,7 +137,7 @@ _message() {
 	wt="$(add_worktree "$repo" worktree-agent-9)"
 	repo_commit "$wt" "feat: agent work" src/agent.ts
 
-	run bash -c "cat '$(_stop_env "$wt")' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env "$wt")' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	local msg
 	msg="$(_message "$output")"
@@ -151,20 +151,20 @@ _message() {
 	init_push_repo >/dev/null
 	repo_commit "$CLAUDE_PROJECT_DIR" "feat: work" src/a.ts
 	export SILK_SKIP_CHANGESET_NUDGE=1
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "not a git repository: silent (fails open)" {
 	make_project >/dev/null
-	run bash -c "cat '$(_stop_env)' | '${HOOK}'"
+	run bash -c "cat '$(_stop_env)' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
 
 @test "malformed JSON input: no-op (fails open)" {
-	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
+	run bash -c "printf 'not json' | bash '${HOOK}' 2>/dev/null"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }

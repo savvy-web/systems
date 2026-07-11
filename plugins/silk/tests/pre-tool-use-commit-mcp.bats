@@ -21,77 +21,77 @@ _decision() {
 }
 
 @test "gk read op in allow-list (git_status): allow" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gk-read.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gk-read.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "allow" ]
 	[[ "$output" == *"mcp__gk__git_status"* ]]
 }
 
 @test "gk op NOT in allow-list (git_reflog): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gk-unlisted.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gk-unlisted.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "gitkraken server name, read op in allow-list (git_status): allow" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-read.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-read.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "allow" ]
 	[[ "$output" == *"mcp__gitkraken__git_status"* ]]
 }
 
 @test "GitKraken cased server name, read op in allow-list (git_log_or_diff): allow" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-cased-read.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-cased-read.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "allow" ]
 	[[ "$output" == *"mcp__GitKraken__git_log_or_diff"* ]]
 }
 
 @test "gitkraken git_push NOT auto-allowed (remote-mutating op stays prompt-gated): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-push.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-push.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "gitkraken git_add_or_commit NOT auto-allowed (would bypass commit validation): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-commit.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-commit.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "unscoped github read op (list_issues): allow" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-github-read.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-github-read.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "allow" ]
 }
 
 @test "scoped github server (mcp__github-savvy-web__list_issues): allow (scope peeled)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-github-scoped-read.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-github-scoped-read.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "allow" ]
 	[[ "$output" == *"mcp__github-savvy-web__list_issues"* ]]
 }
 
 @test "github op NOT in allow-list (delete_file): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-github-unlisted.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-github-unlisted.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "non-MCP tool name (Bash): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-non-matching.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-non-matching.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "empty tool_name: silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-empty.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-empty.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "malformed JSON input: no-op (fails open)" {
-	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
+	run bash -c "printf 'not json' | bash '${HOOK}' 2>/dev/null"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }

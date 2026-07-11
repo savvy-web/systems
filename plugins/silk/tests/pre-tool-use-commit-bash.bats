@@ -20,20 +20,20 @@ setup() {
 }
 
 @test "safe command (git status): auto-allow" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-safe.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-safe.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.permissionDecision' <<< "$output")" = "allow" ]
 	[[ "$output" == *"auto-allowed safe Bash"* ]]
 }
 
 @test "unrelated, non-safe, non-commit command: silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-unrelated.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-unrelated.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "empty command: silent exit 0" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-empty.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-empty.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
@@ -48,7 +48,7 @@ cat >/dev/null 2>&1 || true
 printf 'CLI-PRE-COMMIT-RAN\n'
 exit 0
 STUB
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-commit.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-commit.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"CLI-PRE-COMMIT-RAN"* ]]
 }
@@ -63,7 +63,7 @@ cat >/dev/null 2>&1 || true
 echo 'cli exploded' >&2
 exit 1
 STUB
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-commit.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.bash-commit.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 	[ -f "$SILK_HOOK_ERROR_LOG" ]
@@ -71,7 +71,7 @@ STUB
 }
 
 @test "malformed JSON input: no-op (fails open)" {
-	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
+	run bash -c "printf 'not json' | bash '${HOOK}' 2>/dev/null"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }

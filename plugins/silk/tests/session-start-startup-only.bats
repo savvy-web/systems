@@ -20,7 +20,7 @@ setup() {
 
 @test "CLAUDE_PROJECT_DIR unset: no-op (cannot block a SessionStart)" {
 	# common_setup already unset CLAUDE_PROJECT_DIR.
-	run bash -c "cat '${FIXTURES_DIR}/sessionstart.startup.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/sessionstart.startup.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
@@ -33,7 +33,7 @@ setup() {
 #!/usr/bin/env bash
 exit 0
 STUB
-	run bash -c "cat '${FIXTURES_DIR}/sessionstart.startup.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/sessionstart.startup.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "SessionStart" ]
 	local ctx
@@ -51,7 +51,7 @@ STUB
 echo 'session-start side effect exploded' >&2
 exit 1
 STUB
-	run bash -c "cat '${FIXTURES_DIR}/sessionstart.startup.json' | '${HOOK}'"
+	run bash -c "cat '${FIXTURES_DIR}/sessionstart.startup.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "SessionStart" ]
 }
@@ -64,7 +64,7 @@ STUB
 #!/usr/bin/env bash
 exit 0
 STUB
-	run bash -c "printf 'not json at all' | '${HOOK}'"
+	run bash -c "printf 'not json at all' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "SessionStart" ]
 }
