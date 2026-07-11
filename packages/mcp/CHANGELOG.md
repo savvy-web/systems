@@ -1,5 +1,23 @@
 # @savvy-web/mcp
 
+## 1.7.4
+
+### Bug Fixes
+
+* The `changeset_inspect` tool now refreshes the shared `ConfigInspector` (and its workspace discovery) at the start of every call, so edits to `.changeset/config.json` or the workspace made during a long-running session are visible immediately across `branch`, `config`, and `classify` modes — instead of serving state cached from the first call. Completes the staleness fix started in #262 for the dependency tools (#229). [#267][#267]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.2.2 | 3.2.3 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#267]: https://github.com/savvy-web/systems/pull/267
+
 ## 1.7.3
 
 ### Dependencies
