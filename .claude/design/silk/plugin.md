@@ -118,7 +118,7 @@ The `/silk:changeset --preview` router mode is the read-only release-preview fro
 
 ## Hook merge
 
-All source hook sets merge into `plugins/silk/hooks/hooks.json`. PreToolUse/PostToolUse matchers combine across the changesets push-guard and the commitlint bash/fs/mcp guards, plus the Biome `biome-prefer-mcp.sh` nudge as a third `matcher: "Bash"` PreToolUse entry (see [Biome capability](#biome-capability)). Every hook script targets the unified `savvy changeset …` / `savvy commit hook …` paths; the shared resolver in `hooks/lib/` targets the single `savvy` bin.
+All source hook sets merge into `plugins/silk/hooks/hooks.json`. PreToolUse/PostToolUse matchers combine across the commitlint bash/fs/mcp guards, plus the Biome `biome-prefer-mcp.sh` nudge as a second `matcher: "Bash"` PreToolUse entry (see [Biome capability](#biome-capability)). A single `Stop` hook, `stop/changeset-nudge.sh`, carries the changeset reminder (see [No hook blocks on changesets](#no-hook-blocks-on-changesets)). Every hook script targets the unified `savvy changeset …` / `savvy commit hook …` paths; the shared resolver in `hooks/lib/` targets the single `savvy` bin.
 
 A standing hygiene concern is avoiding double-fires where the changesets and commitlint guards both match `Bash` — check `hooks.json`'s matcher set when adding a new Bash guard.
 
@@ -135,7 +135,31 @@ Two SessionStart hooks are registered as two entries in `hooks.json`, split by *
 
 ### Session env namespace: `SILK_*`
 
-The producer writes the `SILK_*` session vars (project dir, data dir, plugin root, session id, package manager) to a per-session `silk-hook.sh` file under `~/.claude/session-env/${session_id}/`. The lateral-propagation helper `hooks/lib/source-session-env.sh` sources every `*hook*.sh` in that dir, so consumer hooks (the push-guard, the changeset-validate post-tool hook) and the changeset skill scripts pick the vars up by their `SILK_*` names. The user-facing push-guard escape hatch is `SILK_SKIP_PUSH_CHECK` and the debug toggle sourced from `hooks/lib/hook-debug.sh` is `SILK_HOOK_DEBUG`.
+The producer writes the `SILK_*` session vars (project dir, data dir, plugin root, session id, package manager) to a per-session `silk-hook.sh` file under `~/.claude/session-env/${session_id}/`. The lateral-propagation helper `hooks/lib/source-session-env.sh` sources every `*hook*.sh` in that dir, so consumer hooks (the changeset-validate post-tool hook, the Stop nudge) and the changeset skill scripts pick the vars up by their `SILK_*` names. The nudge opt-out is `SILK_SKIP_CHANGESET_NUDGE` and the debug toggle sourced from `hooks/lib/hook-debug.sh` is `SILK_HOOK_DEBUG`.
+
+**`SILK_PROJECT_DIR` is not a project-dir override.** It is derived from `CLAUDE_PROJECT_DIR` by the SessionStart producer, so it carries the same value and the same limitation: it names the session's **primary checkout**, and does not track the directory an individual tool call runs in. Hooks that reason about git state must resolve the tree from the hook envelope's `cwd` — see [Working-tree resolution](#working-tree-resolution).
+
+### Working-tree resolution
+
+`hooks/lib/hook-env.sh` is the single place hooks resolve two things: the stdin envelope (`read_envelope_or_noop` — validates the JSON and no-ops on garbage rather than aborting under `set -euo pipefail`) and the working tree (`resolve_project_dir`).
+
+`resolve_project_dir` takes the envelope's `cwd` **first**, then `SILK_PROJECT_DIR`, then `CLAUDE_PROJECT_DIR`. That order is load-bearing. Both env vars are pinned to the primary checkout for the whole session; only `cwd` follows a git worktree. Since agents routinely work in worktrees (`.claude/worktrees/agent-<id>/`, on their own branch, at their own commit), a hook that resolves git state from either env var is inspecting a tree with no relationship to the call it is handling. Ranking `SILK_PROJECT_DIR` above `cwd` — its name invites this — silently reinstates the bug in every real session, because the SessionStart producer always writes it.
+
+### No hook blocks on changesets
+
+Whether a change needs a changeset is a **human judgement**, and the plugin's hooks do not make it. A hook can only see "commits exist, no `.changeset/*.md`", which cannot distinguish a user-facing fix from a docs-only branch — so any hook that *blocks* on that signal is guaranteed to be wrong for a large, legitimate class of branches (docs, CI, tests, internal refactors).
+
+The previous `pre-tool-use/changeset-push-guard.sh` did block, and it was removed rather than repaired (savvy-web/systems#274). Two failures drove that:
+
+- **It was unsound.** It resolved its tree from `CLAUDE_PROJECT_DIR`, so it judged worktree pushes against whatever branch the primary checkout happened to be on — denying pushes whose changesets were present, and waving through pushes it never evaluated. Its verdict depended on the caller's cwd, not on the ref being pushed.
+- **Its remedy was a safety bypass.** The deny message advertised `SILK_SKIP_PUSH_CHECK=1`, so an agent following the guard's own instructions attempted to disarm a repo safety mechanism — which Claude Code's safety classifier then flagged. A guard that misfires teaches the thing it guards to route around it, and this escape hatch was the worst possible one to make habitual.
+
+What replaces it:
+
+- **`stop/changeset-nudge.sh`** (Stop) emits a top-level `systemMessage` — shown to the **user**, not injected into the model's context — when the branch has commits and no changeset. It emits no `decision` and no `additionalContext`: it cannot block the stop and does not ask the agent to act. `Stop` fires only for the main agent (`SubagentStop` is a separate event), so a subagent making many commits is never nagged. It is debounced on HEAD, so it speaks once per commit state rather than once per turn.
+- **CI on the pull request** is where enforcement lives: the full branch diff is available there, and an override is an explicit, reviewable human act.
+
+Commit time is deliberately *not* a nudge point: the changeset decision needs the whole branch diff, which does not exist at commit 3 of 12.
 
 ### Canonical lib, no per-plugin duplicates
 

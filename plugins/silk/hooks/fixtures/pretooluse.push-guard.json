@@ -1,9 +1,0 @@
-{
-	"session_id": "test-push-guard",
-	"cwd": "/tmp/silk-fixture-project",
-	"hook_event_name": "PreToolUse",
-	"tool_name": "Bash",
-	"tool_input": {
-		"command": "git push"
-	}
-}

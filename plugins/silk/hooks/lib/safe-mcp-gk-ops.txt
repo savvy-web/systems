@@ -18,9 +18,11 @@ issues_assigned_to_me
 repository_get_file_content
 # === Write ===
 # NOTE: `git_add_or_commit` and `git_push` are deliberately NOT auto-allowed.
-# The plugin's commit-message validation and changeset-push-guard run on the
-# Bash cold path only; auto-allowing the MCP equivalents would silently bypass
-# both guards. Keep them prompt-gated unless equivalent MCP handlers exist.
+# Commit-message validation runs on the Bash cold path only, so auto-allowing the
+# MCP commit equivalent would silently bypass it. `git_push` stays prompt-gated
+# as plain conservatism about a remote-mutating op — no hook blocks a push for a
+# missing changeset any more (that is the human's call, enforced in CI), so this
+# is a permissions choice, not a guard-bypass concern.
 git_checkout
 git_pull
 git_stash

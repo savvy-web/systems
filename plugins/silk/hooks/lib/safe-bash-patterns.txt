@@ -61,10 +61,10 @@
 # `git stash` enumerates safe operations (push/pop/apply/save/list/show). drop/clear are NOT auto-allowed.
 ^[[:space:]]*git[[:space:]]+stash([[:space:]]+(push|pop|apply|save|list|show))?(\b|$)
 ^[[:space:]]*git[[:space:]]+reset[[:space:]]+--soft\b
-# `git push` is auto-allowed here, but pre-tool-use/changeset-push-guard.sh is a
-# separate PreToolUse Bash hook that may `deny` the same call when the branch has
-# no changeset. Both fire in parallel; this is correct only because a deny from
-# any hook takes precedence over an allow. Keep the two in sync.
+# `git push` is auto-allowed. No hook blocks a push for a missing changeset any
+# more: that judgement is the human's, enforced in CI on the PR. The Stop hook
+# stop/changeset-nudge.sh only tells the user about a missing changeset; it never
+# denies. Force-pushes are still excluded by match-safe-bash.sh.
 ^[[:space:]]*git[[:space:]]+push(\b|$)
 ^[[:space:]]*gh[[:space:]]+(pr[[:space:]]+comment|issue[[:space:]]+(create|close|comment))(\b|$)
 ^[[:space:]]*pnpm[[:space:]]+(exec|run|test|lint|typecheck|build)(\b|$)

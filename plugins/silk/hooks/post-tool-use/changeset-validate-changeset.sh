@@ -10,6 +10,8 @@ set -euo pipefail
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
 # shellcheck source=../lib/hook-debug.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
+# shellcheck source=../lib/hook-env.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-env.sh"
 # shellcheck source=../lib/source-session-env.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/source-session-env.sh"
 
@@ -22,7 +24,8 @@ if ! command -v jq &>/dev/null; then
 	exit 0
 fi
 
-input=$(cat)
+read_envelope_or_noop "$_HOOK"
+input="$HOOK_ENVELOPE"
 session_id=$(jq -r '.session_id // ""' <<< "$input")
 if [ -n "$session_id" ]; then
 	source_session_env "$session_id"
@@ -46,9 +49,11 @@ if [[ "$file_path" =~ \.changeset/README\.md$ ]]; then
 	exit 0
 fi
 
-# Resolve project root via three-tier fallback. SILK_PROJECT_DIR
-# survives subshells via the per-session env file written by SessionStart.
-project_dir="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"
+# Resolve the tree the Write/Edit actually landed in — see hooks/lib/hook-env.sh.
+# A changeset written from an agent worktree lives in THAT tree, not in the
+# session's primary checkout, so validating it against CLAUDE_PROJECT_DIR would
+# resolve a relative path against the wrong root.
+project_dir=$(resolve_project_dir "$input")
 if [ -z "$project_dir" ]; then
 	project_dir=$(pwd)
 fi

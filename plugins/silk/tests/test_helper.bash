@@ -27,7 +27,7 @@ common_setup() {
 	# of the isolated fixtures — e.g. the changeset-validate hook would shell
 	# out to the workspace's real `savvy` CLI. Strip them all.
 	unset SILK_PROJECT_DIR SILK_DATA_DIR SILK_PLUGIN_ROOT SILK_SESSION_ID \
-		SILK_PACKAGE_MANAGER SILK_SKIP_PUSH_CHECK \
+		SILK_PACKAGE_MANAGER SILK_SKIP_CHANGESET_NUDGE \
 		CLAUDE_PROJECT_DIR CLAUDE_ENV_FILE
 
 	# Isolate HOME so the once-per-session marker file
@@ -84,7 +84,7 @@ make_project() {
 
 # init_push_repo — create a throwaway git repo with a committed `main` branch
 # and a checked-out `feature` branch, export CLAUDE_PROJECT_DIR to it, and echo
-# the path. The changeset-push-guard suite layers per-scenario commits on top.
+# the path. The changeset-nudge suite layers per-scenario commits on top.
 init_push_repo() {
 	local repo="${BATS_TEST_TMPDIR}/repo"
 	mkdir -p "$repo"
@@ -107,4 +107,15 @@ repo_commit() {
 	printf '%s\n' "$content" > "${repo}/${path}"
 	git -C "$repo" add "$path"
 	git -C "$repo" commit -q -m "$msg"
+}
+
+# add_worktree <repo> <branch> — create a git worktree of <repo> on a NEW branch
+# <branch>, and echo its path. CLAUDE_PROJECT_DIR is deliberately left pointing
+# at the primary checkout: that split is the whole subject of savvy-web/systems#274.
+# A hook must reason about the worktree (the envelope's cwd), not the primary.
+add_worktree() {
+	local repo="$1" branch="$2"
+	local wt="${BATS_TEST_TMPDIR}/wt-${branch//\//-}"
+	git -C "$repo" worktree add -q -b "$branch" "$wt" main
+	echo "$wt"
 }

@@ -77,8 +77,8 @@ absolute path), derive it in the test with `jq` rather than adding a near-
 duplicate fixture:
 
 ```bash
-jq --arg c "git push --tags" '.tool_input.command = $c' \
-  "${FIXTURES_DIR}/pretooluse.push-guard.json" > "$envelope"
+jq --arg c "pnpm biome check" '.tool_input.command = $c' \
+  "${FIXTURES_DIR}/pretooluse.bash-safe.json" > "$envelope"
 ```
 
 ## Test helper
@@ -144,8 +144,8 @@ context / fail-open paths.
 
 | Suite | Hook |
 | --- | --- |
+| `lib-match-safe-bash.bats` | `lib/match-safe-bash.sh` |
 | `pre-tool-use-biome-prefer-mcp.bats` | `pre-tool-use/biome-prefer-mcp.sh` |
-| `pre-tool-use-changeset-push-guard.bats` | `pre-tool-use/changeset-push-guard.sh` |
 | `pre-tool-use-commit-bash.bats` | `pre-tool-use/commit-bash.sh` |
 | `pre-tool-use-commit-mcp.bats` | `pre-tool-use/commit-mcp.sh` |
 | `pre-tool-use-commit-fs.bats` | `pre-tool-use/commit-fs.sh` |
@@ -153,6 +153,7 @@ context / fail-open paths.
 | `post-tool-use-changeset-validate-changeset.bats` | `post-tool-use/changeset-validate-changeset.sh` |
 | `session-start-orientation.bats` | `session-start/orientation.sh` |
 | `session-start-startup-only.bats` | `session-start/startup-only.sh` |
+| `stop-changeset-nudge.bats` | `stop/changeset-nudge.sh` |
 
 Each suite exercises the real contract: an envelope on stdin, JSON decision /
 `additionalContext` and exit code on stdout, across the allow / deny / context

@@ -61,8 +61,42 @@ _decision() {
 	[ -z "$output" ]
 }
 
-@test "malformed JSON input: non-zero exit (jq parse error), no decision emitted" {
+@test "malformed JSON input: no-op (fails open)" {
 	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
-	[ "$status" -ne 0 ]
-	[ -z "$output" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+}
+
+# savvy-web/systems#270: the hook used to dereference ${CLAUDE_PROJECT_DIR}
+# unguarded under `set -u`, so an unset variable aborted with an
+# unbound-variable error instead of failing open like every other hook.
+@test "CLAUDE_PROJECT_DIR unset, no envelope cwd: no-op (fails open)" {
+	unset CLAUDE_PROJECT_DIR
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.fs-cache-relative.json' | '${HOOK}' 2>/dev/null"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+}
+
+@test "CLAUDE_PROJECT_DIR unset, absolute path: no-op (fails open, no abort)" {
+	unset CLAUDE_PROJECT_DIR
+	local envelope="${BATS_TEST_TMPDIR}/abs-no-projectdir.json"
+	jq --arg p "/somewhere/.claude/cache/data.json" '.tool_input.file_path = $p' \
+		"${FIXTURES_DIR}/pretooluse.fs-cache-relative.json" > "$envelope"
+	run bash -c "cat '${envelope}' | '${HOOK}' 2>/dev/null"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+}
+
+# With CLAUDE_PROJECT_DIR absent, the envelope's cwd is enough to resolve the
+# cache root — the worktree case from savvy-web/systems#274 applied to this hook.
+@test "CLAUDE_PROJECT_DIR unset but envelope cwd present: resolves against cwd" {
+	unset CLAUDE_PROJECT_DIR
+	local root="${BATS_TEST_TMPDIR}/wt"
+	mkdir -p "$root"
+	local envelope="${BATS_TEST_TMPDIR}/cwd-cache.json"
+	jq --arg d "$root" '.cwd = $d' \
+		"${FIXTURES_DIR}/pretooluse.fs-cache-relative.json" > "$envelope"
+	run bash -c "cat '${envelope}' | '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "allow" ]
 }

@@ -5,15 +5,19 @@ set -euo pipefail
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
 # shellcheck source=../lib/hook-debug.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
+# shellcheck source=../lib/hook-env.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-env.sh"
+
+_HOOK="pre-tool-use/mcp"
 
 if ! command -v jq >/dev/null 2>&1; then
-  hook_error "pre-tool-use/mcp" "jq not found; skipping"
+  hook_error "$_HOOK" "jq not found; skipping"
   emit_noop
   exit 0
 fi
 
-ENVELOPE=$(cat)
-TOOL=$(echo "$ENVELOPE" | jq -r '.tool_name // empty')
+read_envelope_or_noop "$_HOOK"
+TOOL=$(jq -r '.tool_name // empty' <<< "$HOOK_ENVELOPE")
 [ -z "$TOOL" ] && exit 0
 
 # Split mcp__<server>__<op>, supporting scoped server names like

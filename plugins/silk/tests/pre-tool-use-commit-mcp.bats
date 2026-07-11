@@ -47,7 +47,7 @@ _decision() {
 	[[ "$output" == *"mcp__GitKraken__git_log_or_diff"* ]]
 }
 
-@test "gitkraken git_push NOT auto-allowed (would bypass changeset-push-guard): silent no-op" {
+@test "gitkraken git_push NOT auto-allowed (remote-mutating op stays prompt-gated): silent no-op" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.mcp-gitkraken-push.json' | '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
@@ -90,10 +90,8 @@ _decision() {
 	[ -z "$output" ]
 }
 
-@test "malformed JSON input: non-zero exit (jq parse error), no decision emitted" {
-	# Documents CURRENT behaviour: the hook jq-parses stdin without a fail-open
-	# guard for invalid JSON, so a parse error aborts under `set -e`.
+@test "malformed JSON input: no-op (fails open)" {
 	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
-	[ "$status" -ne 0 ]
-	[ -z "$output" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
 }

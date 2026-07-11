@@ -85,8 +85,8 @@ STUB
 	[ "$output" = "{}" ]
 }
 
-@test "malformed JSON input: non-zero exit (jq parse error)" {
+@test "malformed JSON input: no-op (fails open)" {
 	run bash -c "printf 'not json' | '${HOOK}' 2>/dev/null"
-	[ "$status" -ne 0 ]
-	[ -z "$output" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
 }
