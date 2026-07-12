@@ -65,7 +65,7 @@ describe("buildTargetGroups", () => {
 
 		// dts pass: bundled declarations only, NO manifest plugin, clean:false (keep JS pass output).
 		expect(devDts.hasManifest).toBe(false);
-		expect(devDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
+		expect(devDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true, generator: "tsc" });
 		expect(devDts.unbundle).toBe(false);
 		expect(devDts.clean).toBe(false);
 	});
@@ -1095,7 +1095,7 @@ describe("buildTargetGroups", () => {
 		expect(rtJs.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
 		expect(rtJs.dts).toBe(false);
 		expect(rtDts.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
-		expect(rtDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
+		expect(rtDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true, generator: "tsc" });
 	});
 
 	it("skips the dts pass when all entries are bin/ (empty dts entry after bin filter)", async () => {
@@ -1138,7 +1138,7 @@ describe("buildTargetGroups", () => {
 		});
 		const decl = calls.find((c) => c.unbundle === true && String(c.outDir).endsWith("/dist/prod/npm/declarations"));
 		expect(decl).toBeDefined();
-		expect(decl?.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true });
+		expect(decl?.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true, generator: "tsc" });
 		expect(decl?.clean).toBe(true);
 	});
 
