@@ -53,7 +53,7 @@ The bundler ships its shared TypeScript base as a subpath export. Extend it from
 
 ```json
 {
- "$schema": "https://json.schemastore.org/tsconfig",
+ "$schema": "https://json.schemastore.org/tsconfig.json",
  "extends": "@savvy-web/bundler/tsconfig/ecma.json"
 }
 ```
