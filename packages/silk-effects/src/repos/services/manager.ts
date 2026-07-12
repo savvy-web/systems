@@ -148,8 +148,12 @@ export const ReposManagerLive: Layer.Layer<
 						const lockPath = path.join(moduleDir, lock);
 						const lockExists = yield* fs.exists(lockPath).pipe(Effect.orElseSucceed(() => false));
 						if (lockExists) {
-							yield* fs.remove(lockPath).pipe(Effect.orElseSucceed(() => undefined));
-							clearedAnyLock = true;
+							const removed = yield* fs
+								.remove(lockPath)
+								.pipe(Effect.match({ onSuccess: () => true, onFailure: () => false }));
+							if (removed) {
+								clearedAnyLock = true;
+							}
 						}
 					}
 					if (clearedAnyLock) {

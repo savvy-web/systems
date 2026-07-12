@@ -189,6 +189,55 @@ describe("ReposManager.sync / status — real git", () => {
 		expect(dirtyEntry?.present).toBe(true);
 		expect(dirtyEntry?.dirty).toBe(true);
 	});
+
+	it("clears stale lock files during sync and reports them in clearedLocks", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const name = "spec";
+		const upstreamUrl = `file://${up}`;
+
+		mkdirSync(join(host, ".repos"), { recursive: true });
+		writeFileSync(
+			join(host, ".repos", "config.json"),
+			JSON.stringify({
+				repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+			}),
+		);
+
+		simulatePriorAdd(host, upstreamUrl, name, "1.0.0");
+
+		// Create stale lock files before syncing
+		const lockDirPath = join(host, ".git", "modules", ".repos", name);
+		mkdirSync(lockDirPath, { recursive: true });
+		writeFileSync(join(lockDirPath, "index.lock"), "");
+		writeFileSync(join(lockDirPath, "shallow.lock"), "");
+
+		const configStoreReal = Layer.succeed(ReposConfigStore, {
+			exists: () => Effect.succeed(true),
+			read: () =>
+				Effect.succeed({
+					repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+				} as ReposManifestFile),
+			write: () => Effect.succeed(undefined),
+		} as never);
+
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreReal), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		const syncResult = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.sync(host);
+			}),
+		);
+
+		// Verify lock files were cleared
+		expect(syncResult.clearedLocks).toContain(name);
+		const { existsSync } = await import("node:fs");
+		expect(existsSync(join(lockDirPath, "index.lock"))).toBe(false);
+		expect(existsSync(join(lockDirPath, "shallow.lock"))).toBe(false);
+	});
 });
 
 describe("ReposManager — unimplemented mutations", () => {
