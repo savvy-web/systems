@@ -1,11 +1,14 @@
 import { Command } from "@effect/cli";
 
+import { addCommand } from "./commands/add.js";
+import { noteCommand } from "./commands/note.js";
+import { pinCommand } from "./commands/pin.js";
 import { statusCommand } from "./commands/status.js";
 import { syncCommand } from "./commands/sync.js";
 
 /* v8 ignore start -- CLI registration; each command tested via exported handler */
 const _reposCommand = Command.make("repos").pipe(
-	Command.withSubcommands([statusCommand, syncCommand]),
+	Command.withSubcommands([statusCommand, syncCommand, pinCommand, addCommand, noteCommand]),
 	Command.withDescription("Vendored reference repos under .repos/"),
 );
 
@@ -29,5 +32,8 @@ export const reposCommand: Command.Command<"repos", any, any, any> = _reposComma
 >;
 /* v8 ignore stop */
 
+export { runReposAdd } from "./commands/add.js";
+export { runReposNote } from "./commands/note.js";
+export { runReposPin } from "./commands/pin.js";
 export { runReposStatus } from "./commands/status.js";
 export { runReposSync } from "./commands/sync.js";
