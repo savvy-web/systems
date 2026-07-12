@@ -27,7 +27,7 @@
 		"build:dev": "tsx savvy.build.ts --target dev",
 		"build:prod": "tsx savvy.build.ts --target prod",
 		"prepare": "turbo run build:dev",
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@changesets/get-release-plan": "^5.0.0-next.7",
@@ -46,15 +46,14 @@
 		"json-schema-effect": "^0.3.0",
 		"picocolors": "^1.1.1",
 		"sort-package-json": "^4.0.0",
-		"std-env": "^4.1.0",
-		"typescript": "catalog:silk",
+		"std-env": "^4.2.0",
+		"typescript": "^6.0.3",
 		"workspaces-effect": "^2.0.3"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
-		"rolldown": "^1.1.4",
-		"tsdown": "^0.22.3",
+		"rolldown": "catalog:silk",
+		"tsdown": "catalog:silk",
 		"tsx": "catalog:silk",
 		"vitest": "catalog:silk"
 	},

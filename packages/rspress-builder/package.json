@@ -28,27 +28,25 @@
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/tsdown-plugins": "workspace:*",
-		"@tsdown/css": "^0.22.3"
+		"@tsdown/css": "catalog:silk"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
 		"react": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"
 	},
 	"peerDependencies": {
-		"@rspress/core": "^2.0.0",
+		"@rspress/core": "catalog:silkPeers",
 		"@types/node": "catalog:silkPeers",
 		"@types/react": "catalog:silkPeers",
 		"@types/react-dom": "catalog:silkPeers",
-		"@typescript/native-preview": "catalog:silkPeers",
 		"react": "catalog:silkPeers",
 		"react-dom": "catalog:silkPeers",
 		"typescript": "catalog:silkPeers"

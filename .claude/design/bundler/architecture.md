@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-07-06
-last-synced: 2026-07-06
+updated: 2026-07-11
+last-synced: 2026-07-11
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -12,6 +12,7 @@ related:
   - ../github-action-builder/architecture.md
   - ../rspress-builder/architecture.md
   - ../silk/architecture.md
+  - ../e2e/architecture.md
 dependencies:
   - ../tsdown-plugins/architecture.md
 ---
@@ -194,7 +195,7 @@ The two escape-hatch (tier 1/2) `savvy.build.ts` files port the externals and pr
 
 Package-specific concerns of note: `cli` uses the `dist/dev/pkg` + `dist/prod/npm/pkg` layout and a silk-effects dogfood bin path (`dist/dev/pkg/bin/savvy.js`); `silk` is the hard case — dual-format with a force-bundled runtime, documented in `../silk/architecture.md`.
 
-**The bundler's own integration fixtures import the source under test** (`src/config.js`/`run.js`), not the built `@savvy-web/bundler` package — they are integration tests of the bundler source, not e2e tests of the built tarball. That removes the bundler's `types:check → build:dev` self-dependency, so `packages/bundler/turbo.json` stays `{"tasks": {}}` and relies on the root's generic `types:check`. A future root `__test__/e2e/` against `dist/` is where a built-package check would live.
+**The bundler's own integration fixtures import the source under test** (`src/config.js`/`run.js`), not the built `@savvy-web/bundler` package — they are integration tests of the bundler source, not e2e tests of the built tarball. That removes the bundler's `types:check → build:dev` self-dependency, so `packages/bundler/turbo.json` stays `{"tasks": {}}` and relies on the root's generic `types:check`. Built-package checks live in the `@e2e/bundler` harness (`e2e/bundler/__test__/e2e/`), which spawns the built front door against isolated fixtures — see `../e2e/architecture.md`. The `bundleNodeModules` posture is covered there (the former in-package `bundle-node-modules` integration test resolved its fixture dep from the host workspace and was migrated to the harness); any coverage that needs a dependency resolved from a real consumer context belongs in the harness, not in `packages/bundler/__test__/`.
 
 ## The shipped ecma.json tsconfig preset
 

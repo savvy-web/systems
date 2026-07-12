@@ -4,13 +4,14 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/tsdown-plugins": "workspace:*",
 		"@types/node": "catalog:silk",
-		"tsdown": "^0.22.3",
-		"typescript": "catalog:silk"
+		"tinyrainbow": "^3.1.0",
+		"tsdown": "catalog:silk",
+		"typescript": "^6.0.3"
 	}
 }

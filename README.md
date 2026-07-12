@@ -1,16 +1,14 @@
 # Silk Suite Systems
 
-Coordination hub and shared libraries for the [Silk Suite](https://github.com/orgs/savvy-web/projects/1)
-open-source ecosystem, maintained by [Savvy Web Systems](https://savvyweb.systems).
+Coordination hub and shared libraries for the [Silk Suite](https://github.com/orgs/savvy-web/projects/1) open-source ecosystem, maintained by [Savvy Web Systems](https://savvyweb.systems).
 
 ## Packages
 
 ### @savvy-web/silk-effects
 
-Shared [Effect](https://effect.website/) library providing Silk Suite conventions.
-Platform-agnostic -- consumers provide their own runtime layer.
+Shared [Effect](https://effect.website/) library providing Silk Suite conventions. Platform-agnostic -- consumers provide their own runtime layer.
 
-| Module | What It Does |
+| Module | What it does |
 | ------ | ------------ |
 | [publish](./packages/silk-effects/docs/publish.md) | Multi-registry target resolution and publishability detection |
 | [versioning](./packages/silk-effects/docs/versioning.md) | Changeset config reading with Silk detection, strategy determination |
@@ -39,9 +37,9 @@ See the [cli README](./packages/cli/README.md) for the command reference.
 
 ### @savvy-web/mcp
 
-The `savvy-mcp` Model Context Protocol server, serving Silk Suite tooling and library knowledge to coding agents as structured tools and a curated documentation corpus.
+The `savvy-mcp` Model Context Protocol server, serving Silk Suite tooling to coding agents as structured tools so an agent can read workspace facts and run Silk checks instead of parsing console output. Tools-only — no resources.
 
-See the [mcp README](./packages/mcp/README.md) for the tool and resource surface.
+See the [mcp README](./packages/mcp/README.md) for the tool surface.
 
 ### @savvy-web/changelog
 
@@ -79,11 +77,19 @@ Builds RSPress plugin packages on top of `@savvy-web/bundler`. One `definePlugin
 
 See the [rspress-builder README](./packages/rspress-builder/README.md) for the `definePlugin` surface and `savvy.build.ts` wiring.
 
-### Planned
+### @savvy-web/templates
 
-- **@savvy-web/templates** -- Effect-based project scaffolding (replacing Yeoman generators)
+Pure TypeScript templates for Silk Suite project scaffolding. Each template takes typed options (validated with [Effect](https://effect.website/) Schema) and returns `TemplateEntry[]` — a list of `{ name, filename, content }` records. No filesystem calls; you decide where and how to write the output.
 
-## Claude Code Plugin Marketplace
+See the [templates README](./packages/templates/README.md) for usage examples.
+
+### @savvy-web/pnpm-plugin-silk
+
+Centralized dependency-version management for the Silk ecosystem, delivered as a pnpm config dependency: the `silk` and `silkPeers` catalogs, security overrides and install-time policy shared across every consuming repository.
+
+See the [pnpm-plugin-silk README](./packages/pnpm-plugin-silk/README.md) for the catalog reference and install steps.
+
+## Claude Code plugin marketplace
 
 Silk Suite includes a plugin marketplace for [Claude Code](https://docs.anthropic.com/en/docs/claude-code):
 
@@ -95,7 +101,6 @@ claude plugin add marketplace savvy-web/systems
 
 - **silk** -- Companion for `@savvy-web/silk`: changeset, commit, lint and Turborepo conventions, skills and agents, the bundled `savvy-mcp` server and live Biome diagnostics
 - **github-actions** -- Effect-based GitHub Actions conventions served via the shared `savvy-mcp` server
-- **docs** -- Authors and registers docs in the `savvy-mcp` corpus via the `mcp` agent
 - **changesets** -- Companion for `@savvy-web/changesets`: structured changeset files
 - **vitest** -- Companion for `@savvy-web/vitest`: well-structured test files
 - **lint-staged** -- Companion for `@savvy-web/lint-staged`: lint-staged configuration
@@ -111,51 +116,34 @@ For on-demand checks the bundled `savvy-mcp` server exposes the `biome_check` to
 
 Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
 
-### Build Systems
+### Build systems
 
-- [@savvy-web/rslib-builder](https://github.com/savvy-web/rslib-builder) --
-  TypeScript library builder using RSlib/Rsbuild with auto entry detection
-- [@savvy-web/bun-builder](https://github.com/savvy-web/bun-builder) --
-  Bun-native builder with lifecycle-phase architecture
+- [@savvy-web/rslib-builder](https://github.com/savvy-web/rslib-builder) -- TypeScript library builder using RSlib/Rsbuild with auto entry detection
+- [@savvy-web/bun-builder](https://github.com/savvy-web/bun-builder) -- Bun-native builder with lifecycle-phase architecture
 
-### Developer Experience
+### Developer experience
 
-- [@savvy-web/lint-staged](https://github.com/savvy-web/lint-staged) --
-  Composable pre-commit handlers (Biome, markdown, TypeScript, YAML)
-- [@savvy-web/commitlint](https://github.com/savvy-web/commitlint) --
-  Dynamic commitlint configuration with auto-detection
-- [@savvy-web/vitest](https://github.com/savvy-web/vitest) --
-  Zero-config monorepo test discovery and coverage presets
-- [@savvy-web/changesets](https://github.com/savvy-web/changesets) --
-  Structured changelog formatting with 13-category sections
+- [@savvy-web/lint-staged](https://github.com/savvy-web/lint-staged) -- Composable pre-commit handlers (Biome, markdown, TypeScript, YAML)
+- [@savvy-web/commitlint](https://github.com/savvy-web/commitlint) -- Dynamic commitlint configuration with auto-detection
+- [@savvy-web/vitest](https://github.com/savvy-web/vitest) -- Zero-config monorepo test discovery and coverage presets
+- [@savvy-web/changesets](https://github.com/savvy-web/changesets) -- Structured changelog formatting with 13-category sections
 
-### Package Management
+### CI/CD pipeline
 
-- [@savvy-web/pnpm-plugin-silk](https://github.com/savvy-web/pnpm-plugin-silk) --
-  Centralized dependency catalogs and version management via pnpm config dependencies
-
-### CI/CD Pipeline
-
-- [silk-router-action](https://github.com/savvy-web/silk-router-action) --
-  Release pipeline entry point: phase detection and release plan computation
-- [silk-release-action](https://github.com/savvy-web/silk-release-action) --
-  Release engine: branch management, validation, multi-registry publishing
-- [silk-runtime-action](https://github.com/savvy-web/silk-runtime-action) --
-  Runtime setup from `devEngines` with smart caching
-- [silk-sync-action](https://github.com/savvy-web/silk-sync-action) --
-  Organization-wide repo settings and label synchronization
+- [silk-router-action](https://github.com/savvy-web/silk-router-action) -- Release pipeline entry point: phase detection and release plan computation
+- [silk-release-action](https://github.com/savvy-web/silk-release-action) -- Release engine: branch management, validation, multi-registry publishing
+- [silk-runtime-action](https://github.com/savvy-web/silk-runtime-action) -- Runtime setup from `devEngines` with smart caching
+- [silk-sync-action](https://github.com/savvy-web/silk-sync-action) -- Organization-wide repo settings and label synchronization
 
 ### Templates
 
-- [pnpm-module-template](https://github.com/savvy-web/pnpm-module-template) --
-  Single package starter with full Silk Suite integration
-- [pnpm-monorepo-template](https://github.com/savvy-web/pnpm-monorepo-template) --
-  Multi-package monorepo scaffold
+- [pnpm-module-template](https://github.com/savvy-web/pnpm-module-template) -- Single package starter with full Silk Suite integration
+- [pnpm-monorepo-template](https://github.com/savvy-web/pnpm-monorepo-template) -- Multi-package monorepo scaffold
 
 ## Requirements
 
-- Node.js 24+
-- pnpm 10+
+- Node.js 24.11.0+
+- pnpm 11+
 
 ## License
 

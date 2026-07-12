@@ -27,26 +27,24 @@
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
 		"prepare": "turbo run build:dev",
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@savvy-web/tsdown-plugins": "workspace:*",
-		"@tsdown/exe": "^0.22.3",
+		"@tsdown/exe": "catalog:silk",
 		"effect": "catalog:silk",
-		"rolldown": "^1.1.4",
-		"tsdown": "^0.22.3"
+		"rolldown": "catalog:silk",
+		"tsdown": "catalog:silk"
 	},
 	"devDependencies": {
 		"@effect/platform": "catalog:silk",
 		"@effect/platform-node": "catalog:silk",
-		"@tsdown/css": "^0.22.3",
+		"@tsdown/css": "catalog:silk",
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",
 		"@types/react-dom": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
 		"react": "catalog:silk",
 		"react-dom": "catalog:silk",
-		"tinyrainbow": "^3.1.0",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"
 	},
@@ -54,7 +52,6 @@
 		"@types/node": "catalog:silkPeers",
 		"@types/react": "catalog:silkPeers",
 		"@types/react-dom": "catalog:silkPeers",
-		"@typescript/native-preview": "catalog:silkPeers",
 		"react": "catalog:silkPeers",
 		"react-dom": "catalog:silkPeers",
 		"typescript": "catalog:silkPeers"

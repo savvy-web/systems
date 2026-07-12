@@ -9,7 +9,7 @@ The canonical package uses four scripts and inherits a shared Turborepo task gra
   "scripts": {
     "build:dev": "node savvy.build.ts --target dev",
     "build:prod": "node savvy.build.ts --target prod",
-    "types:check": "tsgo --noEmit",
+    "types:check": "tsc --noEmit",
     "prepare": "turbo run build:dev"
   }
 }

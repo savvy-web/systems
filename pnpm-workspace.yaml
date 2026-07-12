@@ -18,6 +18,9 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   silk:
+    "@changesets/cli": ^3.0.0-next.8
+    "@commitlint/cli": ^21.2.1
+    "@commitlint/config-conventional": ^21.2.0
     "@effect/ai": ^0.36.0
     "@effect/ai-amazon-bedrock": ^0.16.1
     "@effect/ai-anthropic": ^0.26.0
@@ -26,7 +29,7 @@ catalogs:
     "@effect/cli": ^0.75.2
     "@effect/cluster": ^0.59.0
     "@effect/experimental": ^0.60.0
-    "@effect/language-service": ^0.86.4
+    "@effect/language-service": ^0.86.6
     "@effect/opentelemetry": ^0.63.0
     "@effect/platform": ^0.96.2
     "@effect/platform-browser": ^0.76.0
@@ -50,10 +53,14 @@ catalogs:
     "@effect/sql-sqlite-node": ^0.52.0
     "@effect/sql-sqlite-react-native": ^0.54.0
     "@effect/sql-sqlite-wasm": ^0.52.0
-    "@effect/tsgo": ^0.16.3
+    "@effect/tsgo": ^0.19.0
     "@effect/typeclass": ^0.40.0
     "@effect/vitest": ^0.29.0
     "@effect/workflow": ^0.18.2
+    "@rsbuild/core": ^2.1.5
+    "@rspress/core": ^2.0.17
+    "@tsdown/css": ^0.22.4
+    "@tsdown/exe": ^0.22.4
     "@types/node": ^26.1.1
     "@types/react": ^19.2.17
     "@types/react-dom": ^19.2.3
@@ -61,12 +68,22 @@ catalogs:
     "@vitest/coverage-istanbul": ^4.1.10
     "@vitest/coverage-v8": ^4.1.10
     effect: ^3.21.4
+    husky: ^9.1.7
+    lint-staged: ^17.0.8
+    markdownlint-cli2: ^0.23.0
+    markdownlint-cli2-formatter-codequality: ^0.0.7
     react: ^19.2.7
     react-dom: ^19.2.7
+    rolldown: ^1.1.5
+    tsdown: ^0.22.4
     tsx: ^4.23.0
-    typescript: ^6.0.3
+    turbo: ^2.10.4
+    typescript: ^7.0.2
     vitest: ^4.1.10
   silkPeers:
+    "@changesets/cli": ^3.0.0-next.8
+    "@commitlint/cli": ^21.2.1
+    "@commitlint/config-conventional": ^21.2.0
     "@effect/ai": ^0.36.0
     "@effect/ai-amazon-bedrock": ^0.16.1
     "@effect/ai-anthropic": ^0.26.0
@@ -75,7 +92,7 @@ catalogs:
     "@effect/cli": ^0.75.2
     "@effect/cluster": ^0.59.0
     "@effect/experimental": ^0.60.0
-    "@effect/language-service": ^0.86.4
+    "@effect/language-service": ^0.86.6
     "@effect/opentelemetry": ^0.63.0
     "@effect/platform": ^0.96.0
     "@effect/platform-browser": ^0.76.0
@@ -99,10 +116,14 @@ catalogs:
     "@effect/sql-sqlite-node": ^0.52.0
     "@effect/sql-sqlite-react-native": ^0.54.0
     "@effect/sql-sqlite-wasm": ^0.52.0
-    "@effect/tsgo": ^0.16.3
+    "@effect/tsgo": ^0.19.0
     "@effect/typeclass": ^0.40.0
     "@effect/vitest": ^0.29.0
     "@effect/workflow": ^0.18.2
+    "@rsbuild/core": ^2.1.5
+    "@rspress/core": ^2.0.0
+    "@tsdown/css": ^0.22.4
+    "@tsdown/exe": ^0.22.4
     "@types/node": ^26.1.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
@@ -110,16 +131,24 @@ catalogs:
     "@vitest/coverage-istanbul": ^4.1.0
     "@vitest/coverage-v8": ^4.1.0
     effect: ^3.21.0
+    husky: ^9.1.7
+    lint-staged: ^17.0.8
+    markdownlint-cli2: ^0.23.0
+    markdownlint-cli2-formatter-codequality: ^0.0.7
     react: ^19.2.0
     react-dom: ^19.2.0
+    rolldown: ^1.1.0
+    tsdown: ^0.22.0
     tsx: ^4.23.0
-    typescript: ^6.0.0
+    turbo: ^2.10.4
+    typescript: ^7.0.0
     vitest: ^4.1.0
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
+  - "@effected/*"
   - "@savvy-web/*"
   - "@spencerbeggs/*"
   - "@typescript/*"
@@ -141,7 +170,7 @@ minimumReleaseAgeExclude:
   - xdg-effect
   - yaml-effect
 overrides:
-  "@manypkg/find-root>@types/node": catalog:silk
+  "@microsoft/api-extractor>typescript": ^6.0.3
 peerDependencyRules:
   allowedVersions:
     "@effect/vitest>vitest": ^4.1.0
@@ -152,9 +181,8 @@ peerDependencyRules:
     "@typescript-eslint/utils>typescript": ^6.0.0
     eslint-plugin-tsdoc>typescript: ^6.0.0
     ink-tab>ink: ^7.0.0
+    tsdown>typescript: ^5.0.0 || ^6.0.0 || ^7.0.0
 publicHoistPattern:
-  - "!@effect/*"
-  - "!effect"
   - "@changesets/cli"
   - "@commitlint/cli"
   - "@commitlint/config-conventional"
@@ -169,7 +197,6 @@ publicHoistPattern:
   - "@vitest-agent/mcp"
   - "@vitest/coverage-istanbul"
   - "@vitest/coverage-v8"
-  - commitizen
   - husky
   - lint-staged
   - markdownlint-cli2

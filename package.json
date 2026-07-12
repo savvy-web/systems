@@ -40,8 +40,8 @@
 		"prepare": "husky",
 		"test": "vitest run",
 		"test:hooks": "bash plugins/silk/tests/run-hook-tests.sh",
-		"typecheck": "turbo run types:check //#types:check --log-prefix=none --log-order=grouped",
-		"types:check": "tsgo --noEmit"
+		"typecheck": "turbo run types:check",
+		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@savvy-web/changelog": "workspace:*",
