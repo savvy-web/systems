@@ -1,8 +1,9 @@
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
 import { Context, Effect, Layer } from "effect";
-import { REPOS_DIR } from "../constants.js";
-import type { NoteNotFoundError, RepoNotFoundError, ReposConfigError } from "../errors.js";
-import { GitSubmoduleError } from "../errors.js";
+import { MANIFEST_PATH, REPOS_DIR } from "../constants.js";
+import type { NoteNotFoundError, ReposConfigError } from "../errors.js";
+import { GitSubmoduleError, RepoNotFoundError } from "../errors.js";
+import type { RepoEntry } from "../schemas/manifest.js";
 import type {
 	ReposAddResult,
 	ReposNoteResult,
@@ -177,11 +178,102 @@ export const ReposManagerLive: Layer.Layer<
 				return { initialized, sparseApplied, upToDate, clearedLocks };
 			});
 
+		/** Last path segment of a repo URL, with a trailing `.git` stripped. */
+		const repoSlug = (url: string): string => {
+			const last =
+				url
+					.split("/")
+					.filter((segment) => segment.length > 0)
+					.pop() ?? url;
+			return last.endsWith(".git") ? last.slice(0, -".git".length) : last;
+		};
+
+		/**
+		 * Fetch `ref` shallow into a submodule. Tags need the explicit
+		 * `fetch origin tag <ref>` form; branches/commits fall back to a plain
+		 * `fetch origin <ref>`.
+		 */
+		const fetchRef = (sub: string, ref: string) =>
+			runGit(sub, ["fetch", "--depth", "1", "origin", "tag", ref]).pipe(
+				Effect.orElse(() => runGit(sub, ["fetch", "--depth", "1", "origin", ref])),
+			);
+
+		const add = (
+			root: string,
+			options: {
+				readonly url: string;
+				readonly ref: string;
+				readonly purpose: string;
+				readonly name?: string;
+				readonly sparse?: ReadonlyArray<string>;
+			},
+		) =>
+			Effect.gen(function* () {
+				const name = options.name ?? repoSlug(options.url);
+				const repoPath = `${REPOS_DIR}/${name}`;
+				const subPath = path.join(root, repoPath);
+
+				yield* runGit(root, ["submodule", "add", "--depth", "1", options.url, repoPath]);
+				yield* runGit(root, ["config", "-f", ".gitmodules", `submodule.${repoPath}.shallow`, "true"]);
+
+				yield* fetchRef(subPath, options.ref);
+				yield* runGit(subPath, ["checkout", "--detach", "FETCH_HEAD"]);
+
+				if (options.sparse && options.sparse.length > 0) {
+					yield* runGit(subPath, ["sparse-checkout", "set", "--no-cone", ...options.sparse]);
+				}
+
+				const exists = yield* configStore.exists(root);
+				const manifest = exists ? yield* configStore.read(root) : { repos: {} };
+
+				const entry: RepoEntry = {
+					url: options.url,
+					ref: options.ref,
+					purpose: options.purpose,
+					...(options.sparse && options.sparse.length > 0 ? { sparse: options.sparse } : {}),
+				};
+
+				yield* configStore.write(root, { repos: { ...manifest.repos, [name]: entry } });
+
+				yield* runGit(root, ["add", ".gitmodules", MANIFEST_PATH, repoPath]);
+
+				return { name, ref: options.ref, path: repoPath };
+			});
+
+		const pin = (root: string, name: string, ref: string) =>
+			Effect.gen(function* () {
+				const manifest = yield* configStore.read(root);
+				const entry = manifest.repos[name];
+				if (!entry) {
+					return yield* Effect.fail(new RepoNotFoundError({ name }));
+				}
+
+				const repoPath = `${REPOS_DIR}/${name}`;
+				const subPath = path.join(root, repoPath);
+
+				const oldCommit = yield* runGit(subPath, ["rev-parse", "HEAD"]).pipe(Effect.orElseSucceed(() => null));
+
+				yield* fetchRef(subPath, ref);
+				yield* runGit(subPath, ["checkout", "--detach", "FETCH_HEAD"]);
+				const newCommit = yield* runGit(subPath, ["rev-parse", "HEAD"]);
+
+				yield* configStore.write(root, {
+					repos: { ...manifest.repos, [name]: { ...entry, ref } },
+				});
+
+				yield* runGit(root, ["add", MANIFEST_PATH, repoPath]);
+
+				const staleNoteIds = (entry.notes ?? []).filter((note) => note.ref !== ref).map((note) => note.id);
+				const commitMessage = `chore(repos): pin ${name} to ${ref}`;
+
+				return { name, ref, oldCommit, newCommit, commitMessage, staleNoteIds };
+			});
+
 		return ReposManager.of({
 			status,
 			sync,
-			add: (_root, _options) => Effect.die(new Error("not implemented")),
-			pin: (_root, _name, _ref) => Effect.die(new Error("not implemented")),
+			add,
+			pin,
 			note: (_root, _name, _op) => Effect.die(new Error("not implemented")),
 		});
 	}),

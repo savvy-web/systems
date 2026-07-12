@@ -1,14 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CommandExecutor } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ReposManifestFile } from "../../src/repos/schemas/manifest.js";
-import type { ReposStatusReport } from "../../src/repos/schemas/reports.js";
-import { ReposConfigStore } from "../../src/repos/services/config-store.js";
+import type { ReposAddResult, ReposPinResult, ReposStatusReport } from "../../src/repos/schemas/reports.js";
+import { ReposConfigStore, ReposConfigStoreLive } from "../../src/repos/services/config-store.js";
 import { ReposManager, ReposManagerLive } from "../../src/repos/services/manager.js";
 
 const GIT_ENV = {
@@ -240,8 +240,176 @@ describe("ReposManager.sync / status — real git", () => {
 	});
 });
 
-describe("ReposManager — unimplemented mutations", () => {
-	it("add/pin/note die as not-implemented in this task", async () => {
+describe("ReposManager.add / pin — real git", () => {
+	// `git submodule add` does NOT honor repo-local `protocol.file.allow` config
+	// (unlike `submodule update --init`), so the production `add`/`pin` paths need
+	// this scoped globally for the child git processes they spawn. Test-only: the
+	// production code itself must never carry any file-protocol allowance.
+	let previousAllowProtocol: string | undefined;
+
+	beforeAll(() => {
+		previousAllowProtocol = process.env.GIT_ALLOW_PROTOCOL;
+		process.env.GIT_ALLOW_PROTOCOL = "file";
+	});
+
+	afterAll(() => {
+		if (previousAllowProtocol === undefined) {
+			delete process.env.GIT_ALLOW_PROTOCOL;
+		} else {
+			process.env.GIT_ALLOW_PROTOCOL = previousAllowProtocol;
+		}
+	});
+
+	function makeUpstream(): string {
+		const up = mkdtempSync(join(tmpdir(), "repos-manager-add-upstream-"));
+		git(up, "init", "--quiet", "-b", "main");
+		git(up, "config", "commit.gpgsign", "false");
+		mkdirSync(join(up, "src"), { recursive: true });
+		mkdirSync(join(up, "docs"), { recursive: true });
+		writeFileSync(join(up, "src", "keep.ts"), "export const keep = true;\n");
+		writeFileSync(join(up, "docs", "skip.md"), "# skip\n");
+		git(up, "add", "-A");
+		git(up, "commit", "--quiet", "-m", "initial");
+		git(up, "tag", "1.0.0");
+		return up;
+	}
+
+	function makeHost(): string {
+		const host = mkdtempSync(join(tmpdir(), "repos-manager-add-host-"));
+		git(host, "init", "--quiet", "-b", "main");
+		execFileSync("git", ["config", "protocol.file.allow", "always"], { cwd: host });
+		git(host, "config", "commit.gpgsign", "false");
+		writeFileSync(join(host, "README.md"), "# host\n");
+		git(host, "add", "-A");
+		git(host, "commit", "--quiet", "-m", "initial");
+		return host;
+	}
+
+	it("stages a new submodule + manifest entry on add, then re-pins it to a new tag without committing either time", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const name = "spec";
+		const upstreamUrl = `file://${up}`;
+
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		const commitCountBefore = git(host, "log", "--oneline").trim().split("\n").length;
+
+		const addResult: ReposAddResult = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, {
+					url: upstreamUrl,
+					ref: "1.0.0",
+					purpose: "spec authority",
+					name,
+					sparse: ["src"],
+				});
+			}),
+		);
+
+		expect(addResult).toEqual({ name, ref: "1.0.0", path: `.repos/${name}` });
+
+		// Submodule materialized and sparse-checkout applied.
+		expect(existsSync(join(host, ".repos", name))).toBe(true);
+		expect(readdirSync(join(host, ".repos", name, "src"))).toContain("keep.ts");
+		expect(() => readdirSync(join(host, ".repos", name, "docs"))).toThrow();
+
+		// .gitmodules carries the shallow flag.
+		const gitmodules = readFileSync(join(host, ".gitmodules"), "utf8");
+		expect(gitmodules).toContain("shallow = true");
+
+		// Manifest entry was written.
+		const manifestPath = join(host, ".repos", "config.json");
+		const manifestAfterAdd = JSON.parse(readFileSync(manifestPath, "utf8")) as ReposManifestFile;
+		expect(manifestAfterAdd.repos[name]).toMatchObject({
+			url: upstreamUrl,
+			ref: "1.0.0",
+			purpose: "spec authority",
+			sparse: ["src"],
+		});
+
+		// Staged, not committed.
+		const stagedAfterAdd = git(host, "diff", "--cached", "--name-only").trim().split("\n");
+		expect(stagedAfterAdd).toEqual(expect.arrayContaining([".gitmodules", ".repos/config.json", `.repos/${name}`]));
+		expect(git(host, "log", "--oneline").trim().split("\n").length).toBe(commitCountBefore);
+
+		// Pre-seed a note against the current ref, as `note` (Task 5) would have.
+		const addedEntry = manifestAfterAdd.repos[name];
+		if (!addedEntry) {
+			throw new Error("expected manifest entry to exist after add");
+		}
+		const manifestWithNote: ReposManifestFile = {
+			repos: {
+				...manifestAfterAdd.repos,
+				[name]: {
+					...addedEntry,
+					notes: [{ id: "note-1", date: "2026-07-12", ref: "1.0.0", note: "written against 1.0.0" }],
+				},
+			},
+		};
+		writeFileSync(manifestPath, `${JSON.stringify(manifestWithNote, null, "\t")}\n`);
+
+		// Cut a second tag upstream.
+		writeFileSync(join(up, "src", "keep.ts"), "export const keep = false;\n");
+		git(up, "add", "-A");
+		git(up, "commit", "--quiet", "-m", "second");
+		git(up, "tag", "2.0.0");
+		const expectedCommit = git(up, "rev-parse", "2.0.0").trim();
+
+		const pinResult: ReposPinResult = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.pin(host, name, "2.0.0");
+			}),
+		);
+
+		expect(pinResult.name).toBe(name);
+		expect(pinResult.ref).toBe("2.0.0");
+		expect(pinResult.newCommit).toBe(expectedCommit);
+		expect(pinResult.commitMessage).toBe(`chore(repos): pin ${name} to 2.0.0`);
+		expect(pinResult.staleNoteIds).toEqual(["note-1"]);
+
+		const manifestAfterPin = JSON.parse(readFileSync(manifestPath, "utf8")) as ReposManifestFile;
+		expect(manifestAfterPin.repos[name]?.ref).toBe("2.0.0");
+
+		const stagedAfterPin = git(host, "diff", "--cached", "--name-only").trim().split("\n");
+		expect(stagedAfterPin).toEqual(expect.arrayContaining([".repos/config.json", `.repos/${name}`]));
+		expect(git(host, "log", "--oneline").trim().split("\n").length).toBe(commitCountBefore);
+	});
+
+	it("fails with RepoNotFoundError when pinning a name absent from the manifest", async () => {
+		const configStoreStub = Layer.succeed(ReposConfigStore, {
+			exists: () => Effect.succeed(true),
+			read: () => Effect.succeed({ repos: {} } as ReposManifestFile),
+			write: () => Effect.succeed(undefined),
+		} as never);
+
+		const root = mkdtempSync(join(tmpdir(), "repos-manager-pin-missing-"));
+
+		const pinExit = await Effect.runPromiseExit(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.pin(root, "does-not-exist", "1.0.0");
+			}).pipe(
+				Effect.provide(ReposManagerLive),
+				Effect.provide(configStoreStub),
+				Effect.provide(NodeContext.layer),
+			) as Effect.Effect<unknown, unknown>,
+		);
+
+		expect(pinExit._tag).toBe("Failure");
+		if (pinExit._tag === "Failure" && pinExit.cause._tag === "Fail") {
+			expect(pinExit.cause.error).toMatchObject({ _tag: "RepoNotFoundError", name: "does-not-exist" });
+		}
+	});
+});
+
+describe("ReposManager.note — unimplemented mutation", () => {
+	it("dies as not-implemented (Task 5)", async () => {
 		const configStoreStub = Layer.succeed(ReposConfigStore, {
 			exists: () => Effect.succeed(true),
 			read: () => Effect.succeed({ repos: {} } as ReposManifestFile),
@@ -250,36 +418,15 @@ describe("ReposManager — unimplemented mutations", () => {
 
 		const root = mkdtempSync(join(tmpdir(), "repos-manager-stub-"));
 
-		const runDie = (effect: Effect.Effect<unknown, unknown, ReposManager>) =>
-			Effect.runPromiseExit(
-				effect.pipe(
-					Effect.provide(ReposManagerLive),
-					Effect.provide(configStoreStub),
-					Effect.provide(NodeContext.layer),
-				) as Effect.Effect<unknown, unknown>,
-			);
-
-		const addExit = await runDie(
-			Effect.gen(function* () {
-				const manager = yield* ReposManager;
-				return yield* manager.add(root, { url: "https://example.com/x.git", ref: "1.0.0", purpose: "x" });
-			}),
-		);
-		expect(addExit._tag).toBe("Failure");
-
-		const pinExit = await runDie(
-			Effect.gen(function* () {
-				const manager = yield* ReposManager;
-				return yield* manager.pin(root, "spec", "2.0.0");
-			}),
-		);
-		expect(pinExit._tag).toBe("Failure");
-
-		const noteExit = await runDie(
+		const noteExit = await Effect.runPromiseExit(
 			Effect.gen(function* () {
 				const manager = yield* ReposManager;
 				return yield* manager.note(root, "spec", { op: "add", note: "hello" });
-			}),
+			}).pipe(
+				Effect.provide(ReposManagerLive),
+				Effect.provide(configStoreStub),
+				Effect.provide(NodeContext.layer),
+			) as Effect.Effect<unknown, unknown>,
 		);
 		expect(noteExit._tag).toBe("Failure");
 	});
