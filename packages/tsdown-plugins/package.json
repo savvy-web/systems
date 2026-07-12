@@ -47,13 +47,13 @@
 		"picocolors": "^1.1.1",
 		"sort-package-json": "^4.0.0",
 		"std-env": "^4.2.0",
+		"tsdown": "catalog:silk",
 		"typescript": "^6.0.3",
 		"workspaces-effect": "^2.0.3"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:silk",
 		"rolldown": "catalog:silk",
-		"tsdown": "catalog:silk",
 		"tsx": "catalog:silk",
 		"vitest": "catalog:silk"
 	},
