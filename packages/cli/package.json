@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/cli",
-	"version": "1.5.9",
+	"version": "1.5.10",
 	"private": true,
 	"description": "The savvy CLI — unified commit, changeset, and lint commands for the Silk Suite",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/cli",
