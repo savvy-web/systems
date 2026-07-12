@@ -43,7 +43,7 @@
 		"remark-parse": "^11.0.0",
 		"remark-stringify": "^11.0.0",
 		"semver-effect": "^0.3.1",
-		"shell-quote": "^1.9.0",
+		"shell-quote": "^1.10.0",
 		"sort-package-json": "^4.0.0",
 		"tinyglobby": "^0.2.17",
 		"unified": "^11.0.5",
