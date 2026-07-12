@@ -1,5 +1,28 @@
 # @savvy-web/silk
 
+## 2.3.1
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 1.5.8 | 1.5.9 |
+| @savvy-web/mcp       | dependency | updated | 1.7.4 | 1.7.5 |
+
+* | Dependency                 | Type           | Action  | From                  | To      |                                                                       |
+  | -------------------------- | -------------- | ------- | --------------------- | ------- | --------------------------------------------------------------------- |
+  | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | —       |                                                                       |
+  | commitizen                 | peerDependency | removed | ^4.3.2                | —       |                                                                       |
+  | prettier                   | dependency     | updated | ^3.9.4                | ^3.9.5  |                                                                       |
+  | @commitlint/cli            | peerDependency | updated | ^21.2.0               | ^21.2.1 |                                                                       |
+  | turbo                      | peerDependency | updated | ^2.10.2               | ^2.10.4 |                                                                       |
+  | typescript                 | peerDependency | updated | ^6.0.0                | ^7.0.0  | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#278]: https://github.com/savvy-web/systems/pull/278
+
 ## 2.3.0
 
 ### Breaking Changes
