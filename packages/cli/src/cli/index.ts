@@ -39,6 +39,7 @@ import {
 	Changesets,
 	ConfigDiscoveryLive,
 	ManagedSectionLive,
+	Repos,
 	SilkPublishabilityDetectorLive,
 	ToolDiscoveryLive,
 	VersioningStrategyLive,
@@ -58,6 +59,7 @@ import { cleanCommand } from "../commands/clean.js";
 import { commitCommand } from "../commands/commit/index.js";
 import { initCommand } from "../commands/init.js";
 import { lintCommand } from "../commands/lint/index.js";
+import { reposCommand } from "../commands/repos/index.js";
 
 /* v8 ignore start -- CLI registration; each command tested via exported handler */
 
@@ -65,7 +67,15 @@ import { lintCommand } from "../commands/lint/index.js";
  * Root `savvy` command nesting the two orchestrators and three command groups.
  */
 const rootCommand = Command.make("savvy").pipe(
-	Command.withSubcommands([initCommand, checkCommand, cleanCommand, commitCommand, changesetCommand, lintCommand]),
+	Command.withSubcommands([
+		initCommand,
+		checkCommand,
+		cleanCommand,
+		commitCommand,
+		changesetCommand,
+		lintCommand,
+		reposCommand,
+	]),
 );
 
 const cli = Command.run(rootCommand, {
@@ -166,11 +176,19 @@ const DepsRegenGroupLive = Changesets.DepsRegenLive.pipe(
 	Layer.provide(ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive))),
 );
 
+/**
+ * `Repos.ReposManager`, provided its `Repos.ReposConfigStoreLive` dependency.
+ * Both draw their platform requirements (`FileSystem`, `Path`,
+ * `CommandExecutor`) from `NodeContext.layer` below.
+ */
+const ReposGroupLive = Repos.ReposManagerLive.pipe(Layer.provide(Repos.ReposConfigStoreLive));
+
 const AppLive = Layer.mergeAll(
 	ToolDiscoveryLive,
 	VersioningStrategyLive,
 	InspectorAndAnalyzerLive,
 	DepsRegenGroupLive,
+	ReposGroupLive,
 ).pipe(Layer.provideMerge(BaseLive), Layer.provideMerge(NodeContext.layer));
 
 /**
