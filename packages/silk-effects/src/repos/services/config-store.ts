@@ -35,33 +35,51 @@ export const ReposConfigStoreLive: Layer.Layer<ReposConfigStore, never, FileSyst
 			const exists = (root: string) => fs.exists(manifestPath(root)).pipe(Effect.orElseSucceed(() => false));
 
 			const read = (root: string) =>
-				fs.readFileString(manifestPath(root)).pipe(
-					Effect.mapError((cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause) })),
-					Effect.flatMap((text) =>
-						Effect.try({
-							try: () => JSON.parse(text) as unknown,
-							catch: (cause) =>
-								new ReposConfigError({ path: manifestPath(root), reason: `invalid JSON: ${String(cause)}` }),
-						}),
-					),
-					Effect.flatMap((json) =>
-						Schema.decodeUnknown(ReposManifestFile)(json).pipe(
-							Effect.mapError((cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause) })),
+				Effect.gen(function* () {
+					const present = yield* exists(root);
+					if (!present) {
+						return yield* Effect.fail(
+							new ReposConfigError({ path: manifestPath(root), reason: "no such file", kind: "missing" }),
+						);
+					}
+					const text = yield* fs
+						.readFileString(manifestPath(root))
+						.pipe(
+							Effect.mapError(
+								(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
+							),
+						);
+					const json = yield* Effect.try({
+						try: () => JSON.parse(text) as unknown,
+						catch: (cause) =>
+							new ReposConfigError({
+								path: manifestPath(root),
+								reason: `invalid JSON: ${String(cause)}`,
+								kind: "invalid",
+							}),
+					});
+					return yield* Schema.decodeUnknown(ReposManifestFile)(json).pipe(
+						Effect.mapError(
+							(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
 						),
-					),
-				);
+					);
+				});
 
 			const write = (root: string, manifest: ReposManifestFile) =>
 				Effect.gen(function* () {
 					const dir = path.join(root, ".repos");
 					yield* fs.makeDirectory(dir, { recursive: true }).pipe(Effect.orElseSucceed(() => undefined));
 					const encoded = yield* Schema.encode(ReposManifestFile)(manifest).pipe(
-						Effect.mapError((cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause) })),
+						Effect.mapError(
+							(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
+						),
 					);
 					yield* fs
 						.writeFileString(manifestPath(root), `${JSON.stringify(encoded, null, "\t")}\n`)
 						.pipe(
-							Effect.mapError((cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause) })),
+							Effect.mapError(
+								(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
+							),
 						);
 				});
 

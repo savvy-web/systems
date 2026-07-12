@@ -5,8 +5,10 @@
  * A thin adapter over {@link Repos.ReposManager.sync}: initializes missing
  * submodules, re-applies sparse-checkout patterns, and clears stale git
  * locks left behind by an interrupted fetch. Sync is idempotent repair, so
- * it always exits 0 -- an absent `.repos/config.json` manifest is the
- * common, friendly case (nothing to sync yet), not an error.
+ * a `ReposConfigError` with kind `"missing"` -- the common, friendly case
+ * (nothing to sync yet) -- always exits 0. A `ReposConfigError` with kind
+ * `"invalid"` means the manifest exists but is corrupt or unreadable --
+ * that is a real failure, logged and reported via a non-zero exit code.
  *
  * @example
  * ```bash
@@ -45,7 +47,15 @@ export const runReposSync = (cwd: string) =>
 		if (report.initialized.length === 0 && report.sparseApplied.length === 0 && report.clearedLocks.length === 0) {
 			yield* Effect.log("all vendored repos up to date");
 		}
-	}).pipe(Effect.catchTag("ReposConfigError", () => Effect.log("no .repos/config.json — nothing vendored")));
+	}).pipe(
+		Effect.catchTag("ReposConfigError", (error) => {
+			if (error.kind === "missing") {
+				return Effect.log("no .repos/config.json — nothing vendored");
+			}
+			process.exitCode = 1;
+			return Effect.log(error.message);
+		}),
+	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposSync */
 export const syncCommand = Command.make("sync", { cwd: cwdOption }, ({ cwd }) => runReposSync(cwd)).pipe(

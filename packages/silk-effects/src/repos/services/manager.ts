@@ -292,6 +292,7 @@ export const ReposManagerLive: Layer.Layer<
 							new ReposConfigError({
 								path: MANIFEST_PATH,
 								reason: `note limit (${NOTE_LIMIT}) reached for ${name}; promote or remove notes first`,
+								kind: "invalid",
 							}),
 						);
 					}

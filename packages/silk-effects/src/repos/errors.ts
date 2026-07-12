@@ -9,9 +9,10 @@ export const ReposConfigErrorBase = Data.TaggedError("ReposConfigError");
 export class ReposConfigError extends ReposConfigErrorBase<{
 	readonly path: string;
 	readonly reason: string;
+	readonly kind: "missing" | "invalid";
 }> {
 	get message(): string {
-		return `repos manifest error at ${this.path}: ${this.reason}`;
+		return `repos manifest ${this.kind} at ${this.path}: ${this.reason}`;
 	}
 }
 

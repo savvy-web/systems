@@ -133,14 +133,47 @@ describe("runReposStatus (adapter)", () => {
 		expect(process.exitCode).toBeUndefined();
 	});
 
-	it("logs a friendly no-manifest message and exits 0 on ReposConfigError", async () => {
+	it("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", async () => {
 		const layer = makeStubLayer(() =>
-			Effect.fail(new ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file" })),
+			Effect.fail(new ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" })),
 		);
 
 		const logs = await collectLogs("/repo", false, layer);
 
 		expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
 		expect(process.exitCode).toBeUndefined();
+	});
+
+	it("logs the error and sets exitCode 1 on ReposConfigError kind invalid", async () => {
+		const layer = makeStubLayer(() =>
+			Effect.fail(new ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" })),
+		);
+
+		const logs = await collectLogs("/repo", false, layer);
+
+		expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
+		expect(process.exitCode).toBe(1);
+	});
+
+	it("prints an empty-but-parseable JSON report and exits 0 on ReposConfigError kind missing with --json", async () => {
+		const layer = makeStubLayer(() =>
+			Effect.fail(new ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" })),
+		);
+
+		const out = await collectStdout("/repo", true, layer);
+		const parsed: unknown = JSON.parse(out);
+
+		expect(parsed).toEqual({ repos: [], clean: true });
+		expect(process.exitCode).toBeUndefined();
+	});
+
+	it("sets exitCode 1 on ReposConfigError kind invalid with --json", async () => {
+		const layer = makeStubLayer(() =>
+			Effect.fail(new ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" })),
+		);
+
+		await collectLogs("/repo", true, layer);
+
+		expect(process.exitCode).toBe(1);
 	});
 });

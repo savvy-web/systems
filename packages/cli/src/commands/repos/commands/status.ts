@@ -4,10 +4,12 @@
  * @remarks
  * A thin adapter over {@link Repos.ReposManager.status}: reports, per vendored
  * repo, whether the submodule is present, dirty, and whether any agent notes
- * have gone stale relative to the pinned ref. An absent `.repos/config.json`
- * manifest is the common, friendly case (nothing has been vendored yet) --
- * not an error -- so `ReposConfigError` is caught and rendered as a plain
- * message with exit code 0.
+ * have gone stale relative to the pinned ref. A `ReposConfigError` with kind
+ * `"missing"` is the common, friendly case (nothing has been vendored yet) --
+ * not an error -- so it is rendered as a plain message (or an empty JSON
+ * report, in `--json` mode) with exit code 0. A `ReposConfigError` with kind
+ * `"invalid"` means the manifest exists but is corrupt or unreadable -- that
+ * is a real failure, logged and reported via a non-zero exit code.
  *
  * @example
  * ```bash
@@ -57,7 +59,18 @@ export const runReposStatus = (cwd: string, json: boolean) =>
 			].filter((f): f is string => f !== undefined);
 			yield* Effect.log(`${repo.name} @ ${repo.ref}${flags.length > 0 ? ` [${flags.join(", ")}]` : " [ok]"}`);
 		}
-	}).pipe(Effect.catchTag("ReposConfigError", () => Effect.log("no .repos/config.json — nothing vendored")));
+	}).pipe(
+		Effect.catchTag("ReposConfigError", (error) => {
+			if (error.kind === "missing") {
+				if (json) {
+					return Console.log(JSON.stringify({ repos: [], clean: true }, null, 2));
+				}
+				return Effect.log("no .repos/config.json — nothing vendored");
+			}
+			process.exitCode = 1;
+			return Effect.log(error.message);
+		}),
+	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposStatus */
 export const statusCommand = Command.make("status", { json: jsonOption, cwd: cwdOption }, ({ json, cwd }) =>

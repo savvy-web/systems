@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
-import { Effect } from "effect";
+import { Cause, Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { ReposConfigStore, ReposConfigStoreLive } from "../../src/repos/services/config-store.js";
 
@@ -39,7 +39,7 @@ describe("ReposConfigStore", () => {
 		await run(store.write(root, manifest));
 		expect(await run(store.exists(root))).toBe(true);
 	});
-	it("fails with ReposConfigError on invalid JSON", async () => {
+	it("fails with ReposConfigError kind invalid on invalid JSON", async () => {
 		const root = mkdtempSync(join(tmpdir(), "repos-store-"));
 		mkdirSync(join(root, ".repos"), { recursive: true });
 		writeFileSync(join(root, ".repos", "config.json"), "{not json");
@@ -50,8 +50,15 @@ describe("ReposConfigStore", () => {
 			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
 		);
 		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure") {
+			const error = Cause.failureOption(exit.cause);
+			expect(error._tag).toBe("Some");
+			if (error._tag === "Some") {
+				expect(error.value.kind).toBe("invalid");
+			}
+		}
 	});
-	it("fails with ReposConfigError on schema violation", async () => {
+	it("fails with ReposConfigError kind invalid on schema violation", async () => {
 		const root = mkdtempSync(join(tmpdir(), "repos-store-"));
 		mkdirSync(join(root, ".repos"), { recursive: true });
 		writeFileSync(join(root, ".repos", "config.json"), JSON.stringify({ repos: { x: { url: "u" } } }));
@@ -62,5 +69,29 @@ describe("ReposConfigStore", () => {
 			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
 		);
 		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure") {
+			const error = Cause.failureOption(exit.cause);
+			expect(error._tag).toBe("Some");
+			if (error._tag === "Some") {
+				expect(error.value.kind).toBe("invalid");
+			}
+		}
+	});
+	it("fails with ReposConfigError kind missing when the manifest file does not exist", async () => {
+		const root = mkdtempSync(join(tmpdir(), "repos-store-"));
+		const exit = await Effect.runPromiseExit(
+			Effect.gen(function* () {
+				const store = yield* ReposConfigStore;
+				return yield* store.read(root);
+			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
+		);
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure") {
+			const error = Cause.failureOption(exit.cause);
+			expect(error._tag).toBe("Some");
+			if (error._tag === "Some") {
+				expect(error.value.kind).toBe("missing");
+			}
+		}
 	});
 });
