@@ -78,9 +78,6 @@
 		"@types/node": {
 			"optional": false
 		},
-		"@typescript/native-preview": {
-			"optional": false
-		},
 		"typescript": {
 			"optional": false
 		}
