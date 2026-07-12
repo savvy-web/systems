@@ -1,5 +1,17 @@
 # @savvy-web/tsdown-plugins
 
+## 1.1.9
+
+### Dependencies
+
+* | Dependency | Type       | Action  | From   | To     |                                                                       |
+  | ---------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | std-env    | dependency | updated | ^4.1.0 | ^4.2.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#278]: https://github.com/savvy-web/systems/pull/278
+
 ## 1.1.8
 
 ### Dependencies
