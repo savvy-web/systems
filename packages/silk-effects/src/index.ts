@@ -58,6 +58,11 @@ export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
  * @public
  */
 export * as Lint from "./lint/index.js";
+/**
+ * Vendored reference repos: the .repos/config.json manifest, submodule plumbing, and drift reporting.
+ * @public
+ */
+export * as Repos from "./repos/index.js";
 // ── Schemas ────────────────────────────────────────────────────
 export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
 export type { CommentStyle } from "./schemas/CommentStyle.js";
