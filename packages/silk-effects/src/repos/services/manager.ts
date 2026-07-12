@@ -1,9 +1,9 @@
+import { createHash } from "node:crypto";
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
-import { Context, Effect, Layer } from "effect";
-import { MANIFEST_PATH, REPOS_DIR } from "../constants.js";
-import type { NoteNotFoundError, ReposConfigError } from "../errors.js";
-import { GitSubmoduleError, RepoNotFoundError } from "../errors.js";
-import type { RepoEntry } from "../schemas/manifest.js";
+import { Clock, Context, Effect, Layer } from "effect";
+import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
+import { GitSubmoduleError, NoteNotFoundError, RepoNotFoundError, ReposConfigError } from "../errors.js";
+import type { RepoEntry, RepoNote, RepoOrientation } from "../schemas/manifest.js";
 import type {
 	ReposAddResult,
 	ReposNoteResult,
@@ -269,12 +269,75 @@ export const ReposManagerLive: Layer.Layer<
 				return { name, ref, oldCommit, newCommit, commitMessage, staleNoteIds };
 			});
 
+		const note = (
+			root: string,
+			name: string,
+			op:
+				| { readonly op: "add"; readonly note: string }
+				| { readonly op: "remove"; readonly id: string }
+				| { readonly op: "promote"; readonly id: string; readonly into: "layout" | "startHere" },
+		) =>
+			Effect.gen(function* () {
+				const manifest = yield* configStore.read(root);
+				const entry = manifest.repos[name];
+				if (!entry) {
+					return yield* Effect.fail(new RepoNotFoundError({ name }));
+				}
+
+				const notes = entry.notes ?? [];
+
+				if (op.op === "add") {
+					if (notes.length >= NOTE_LIMIT) {
+						return yield* Effect.fail(
+							new ReposConfigError({
+								path: MANIFEST_PATH,
+								reason: `note limit (${NOTE_LIMIT}) reached for ${name}; promote or remove notes first`,
+							}),
+						);
+					}
+
+					const existingIds = new Set(notes.map((existing) => existing.id));
+					const hash = createHash("sha256").update(op.note).digest("hex");
+					let id = `n-${hash.slice(0, 4)}`;
+					if (existingIds.has(id)) {
+						id = `n-${hash.slice(0, 8)}`;
+					}
+
+					const millis = yield* Clock.currentTimeMillis;
+					const date = new Date(millis).toISOString().slice(0, 10);
+
+					const newNote: RepoNote = { id, date, ref: entry.ref, note: op.note };
+					const updatedNotes = [...notes, newNote];
+					const updatedEntry: RepoEntry = { ...entry, notes: updatedNotes };
+					yield* configStore.write(root, { repos: { ...manifest.repos, [name]: updatedEntry } });
+
+					return { name, op: "add" as const, id, noteCount: updatedNotes.length };
+				}
+
+				const target = notes.find((existing) => existing.id === op.id);
+				if (!target) {
+					return yield* Effect.fail(new NoteNotFoundError({ name, id: op.id }));
+				}
+				const updatedNotes = notes.filter((existing) => existing.id !== op.id);
+
+				if (op.op === "remove") {
+					const updatedEntry: RepoEntry = { ...entry, notes: updatedNotes };
+					yield* configStore.write(root, { repos: { ...manifest.repos, [name]: updatedEntry } });
+					return { name, op: "remove" as const, id: op.id, noteCount: updatedNotes.length };
+				}
+
+				const updatedOrientation: RepoOrientation = { ...entry.orientation, [op.into]: target.note };
+				const updatedEntry: RepoEntry = { ...entry, orientation: updatedOrientation, notes: updatedNotes };
+				yield* configStore.write(root, { repos: { ...manifest.repos, [name]: updatedEntry } });
+				return { name, op: "promote" as const, id: op.id, noteCount: updatedNotes.length };
+			});
+
 		return ReposManager.of({
 			status,
 			sync,
 			add,
 			pin,
-			note: (_root, _name, _op) => Effect.die(new Error("not implemented")),
+			note,
 		});
 	}),
 );
