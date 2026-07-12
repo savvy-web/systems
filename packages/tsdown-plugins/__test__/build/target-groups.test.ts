@@ -115,8 +115,9 @@ describe("deriveDtsPassOptions (dts pass)", () => {
 		expect(o.outDir).toBe("/abs/pkg/dist/dev/pkg");
 		// bundled: rolldown preserveModules off
 		expect(o.unbundle).toBe(false);
-		// dts-only emission
-		expect(o.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true });
+		// dts-only emission; generator pinned to "tsc" (rolldown-plugin-dts auto-detect flips to
+		// its broken "tsgo" generator when a peer-resolved typescript >= 7 is installed).
+		expect(o.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true, generator: "tsc" });
 		// must NOT wipe the JS pass output
 		expect(o.clean).toBe(false);
 		// dts maps off
@@ -236,7 +237,7 @@ describe("deriveDeclarationsPassOptions", () => {
 		const d = deriveDeclarationsPassOptions(base);
 		expect(d.unbundle).toBe(true);
 		expect(d.outDir).toBe("/repo/pkg/dist/prod/npm/declarations");
-		expect(d.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true });
+		expect(d.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true, generator: "tsc" });
 		expect(d.format).toEqual(["esm"]);
 		expect(d.platform).toBe("node");
 		expect(Object.keys(d.entry)).toEqual(["index"]);

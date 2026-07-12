@@ -175,7 +175,7 @@ export interface DerivedDtsPassOptions {
 	readonly platform: "node";
 	readonly fixedExtension: false;
 	readonly entry: Record<string, string>;
-	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true };
+	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true; readonly generator: "tsc" };
 	readonly define: Record<string, string>;
 	readonly isProd: boolean;
 	/** External packages to inline into the bundled dts (tsdown `deps.onlyBundle`). */
@@ -250,7 +250,11 @@ export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOpti
 		platform: "node",
 		fixedExtension: false,
 		entry,
-		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true },
+		// generator is pinned to "tsc" because rolldown-plugin-dts' auto-detect flips to its
+		// "tsgo" generator when a peer-resolved typescript >= 7 is installed (as in consumer
+		// repos), and tsgo derives --rootDir from the tmpdir tsconfig's dirname, so it emits
+		// nothing (TS6059).
+		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true, generator: "tsc" },
 		define: {
 			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
 			...options.define,
@@ -269,7 +273,7 @@ export interface DerivedDeclarationsPassOptions {
 	readonly platform: "node";
 	readonly fixedExtension: false;
 	readonly entry: Record<string, string>;
-	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true };
+	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true; readonly generator: "tsc" };
 	readonly define: Record<string, string>;
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 }
@@ -291,7 +295,7 @@ export function deriveDeclarationsPassOptions(options: DeriveOptions): DerivedDe
 		platform: "node",
 		fixedExtension: false,
 		entry,
-		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true },
+		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true, generator: "tsc" },
 		define: {
 			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
 			...options.define,
