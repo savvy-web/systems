@@ -406,6 +406,171 @@ describe("ReposManager.add / pin — real git", () => {
 			expect(pinExit.cause.error).toMatchObject({ _tag: "RepoNotFoundError", name: "does-not-exist" });
 		}
 	});
+
+	it("derives the default name slug from the upstream URL, stripping .git suffix", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const upstreamBareDir = mkdtempSync(join(tmpdir(), "repos-manager-slug-upstream-"));
+		execFileSync("git", ["clone", "--bare", up, join(upstreamBareDir, "myrepo.git")], {
+			cwd: upstreamBareDir,
+			env: { ...process.env, ...GIT_ENV },
+		});
+		const upstreamUrl = `file://${join(upstreamBareDir, "myrepo.git")}`;
+
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		const addResult: ReposAddResult = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, {
+					url: upstreamUrl,
+					ref: "1.0.0",
+					purpose: "spec authority",
+					// no name provided — should derive from URL
+				});
+			}),
+		);
+
+		expect(addResult.name).toBe("myrepo"); // .git stripped
+		expect(addResult.path).toBe(".repos/myrepo");
+
+		const manifestPath = join(host, ".repos", "config.json");
+		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as ReposManifestFile;
+		expect(Object.keys(manifest.repos)).toContain("myrepo");
+		expect(manifest.repos.myrepo?.url).toBe(upstreamUrl);
+	});
+
+	it("pins to a branch ref via fallback fetch when tag form fails", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const name = "spec";
+		const upstreamUrl = `file://${up}`;
+
+		// Create a branch pointing to a commit
+		git(up, "branch", "stable", "1.0.0");
+		const stableSha = git(up, "rev-parse", "stable").trim();
+
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		// First add the repo with tag ref
+		await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, {
+					url: upstreamUrl,
+					ref: "1.0.0",
+					purpose: "spec authority",
+					name,
+				});
+			}),
+		);
+
+		// Now pin to branch ref (tag fetch will fail, should fallback to plain fetch)
+		const pinResult: ReposPinResult = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.pin(host, name, "stable");
+			}),
+		);
+
+		expect(pinResult.newCommit).toBe(stableSha);
+		expect(pinResult.ref).toBe("stable");
+
+		const manifestPath = join(host, ".repos", "config.json");
+		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as ReposManifestFile;
+		expect(manifest.repos[name]?.ref).toBe("stable");
+	});
+
+	it("preserves untouched entries when pinning one of many repos in the manifest", async () => {
+		const up1 = makeUpstream();
+		const up2 = mkdtempSync(join(tmpdir(), "repos-manager-add-upstream-"));
+		git(up2, "init", "--quiet", "-b", "main");
+		git(up2, "config", "commit.gpgsign", "false");
+		mkdirSync(join(up2, "src"), { recursive: true });
+		writeFileSync(join(up2, "src", "other.ts"), "export const other = true;\n");
+		git(up2, "add", "-A");
+		git(up2, "commit", "--quiet", "-m", "initial");
+		git(up2, "tag", "1.0.0");
+
+		const host = makeHost();
+
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		const upstreamUrl1 = `file://${up1}`;
+		const upstreamUrl2 = `file://${up2}`;
+
+		// Add two repos
+		await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, {
+					url: upstreamUrl1,
+					ref: "1.0.0",
+					purpose: "spec authority",
+					name: "spec",
+				});
+			}),
+		);
+
+		await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, {
+					url: upstreamUrl2,
+					ref: "1.0.0",
+					purpose: "other repo",
+					name: "other",
+				});
+			}),
+		);
+
+		const manifestPath = join(host, ".repos", "config.json");
+		const manifestBefore = JSON.parse(readFileSync(manifestPath, "utf8")) as ReposManifestFile;
+		const otherEntryBefore = manifestBefore.repos.other;
+
+		// Add a note to the "other" repo to make sure it survives the pin
+		const manifestWithNote: ReposManifestFile = {
+			repos: {
+				...manifestBefore.repos,
+				other: {
+					...otherEntryBefore!,
+					notes: [{ id: "note-1", date: "2026-07-12", ref: "1.0.0", note: "a note" }],
+				},
+			},
+		};
+		writeFileSync(manifestPath, `${JSON.stringify(manifestWithNote, null, "\t")}\n`);
+
+		// Pin the first repo to a new tag (create it first)
+		writeFileSync(join(up1, "src", "keep.ts"), "export const keep = false;\n");
+		git(up1, "add", "-A");
+		git(up1, "commit", "--quiet", "-m", "second");
+		git(up1, "tag", "2.0.0");
+
+		await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.pin(host, "spec", "2.0.0");
+			}),
+		);
+
+		// Read and verify both entries still exist
+		const manifestAfter = JSON.parse(readFileSync(manifestPath, "utf8")) as ReposManifestFile;
+
+		// spec should be updated
+		expect(manifestAfter.repos.spec?.ref).toBe("2.0.0");
+
+		// other should be completely untouched (including the note)
+		expect(manifestAfter.repos.other).toEqual(manifestWithNote.repos.other);
+	});
 });
 
 describe("ReposManager.note — unimplemented mutation", () => {
