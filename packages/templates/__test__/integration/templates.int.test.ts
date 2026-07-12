@@ -40,7 +40,7 @@ describe("template snapshots", () => {
 				build: "turbo run build:dev build:prod --log-order=grouped",
 				"build:dev": "rslib build --config-loader native --env-mode dev",
 				"build:prod": "rslib build --config-loader native --env-mode npm",
-				"types:check": "tsgo --noEmit",
+				"types:check": "tsc --noEmit",
 			},
 			dependencies: {
 				"@effect/platform": "catalog:silk",

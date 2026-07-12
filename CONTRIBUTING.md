@@ -4,8 +4,8 @@ Thank you for considering contributing to the Silk Suite Systems repo. This docu
 
 ## Prerequisites
 
-- **Node.js** 24.11.0 (see `devEngines` in `package.json`)
-- **pnpm** 10.33.0 (enforced via `packageManager` field)
+- **Node.js** 24.11.0+ (see `devEngines` in `package.json`)
+- **pnpm** 11+ (exact version enforced via the `packageManager` field)
 - **Git** with commit signing configured (recommended)
 
 ## Setup
@@ -16,7 +16,7 @@ cd systems
 pnpm install
 ```
 
-## Development Commands
+## Development commands
 
 | Command | Description |
 | --- | --- |
@@ -27,7 +27,7 @@ pnpm install
 | `pnpm lint:fix` | Run Biome with auto-fix (safe fixes only) |
 | `pnpm lint:md` | Lint markdown files |
 
-## Code Quality Standards
+## Code quality standards
 
 - **Formatter:** Biome -- tabs, no trailing commas
 - **Linting:** Biome with strict rules including `useNodejsImportProtocol`
@@ -35,7 +35,7 @@ pnpm install
 - **Testing:** Vitest via `@vitest-agent/plugin`
 - **Imports:** Use `node:` protocol for Node.js built-ins; separate type imports
 
-## Pre-commit Hooks
+## Pre-commit hooks
 
 The repository uses Husky with lint-staged. When you commit:
 
@@ -45,7 +45,7 @@ The repository uses Husky with lint-staged. When you commit:
 - YAML files are formatted and validated
 - TypeScript changes trigger a full typecheck
 
-## Contribution Process
+## Contribution process
 
 1. **Fork and branch** -- Create a feature branch from `main`
 2. **Make changes** -- Follow the code quality standards above

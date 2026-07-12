@@ -1,10 +1,10 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { defineBuild } from "../../src/config.js";
-import { runBuild } from "../../src/run.js";
+import { SPAWN_ENV, fixtureDir, runFixtureBuild } from "./helpers.js";
 
-const FIX = join(import.meta.dirname, "fixtures/bundle-node-modules");
+const FIX = fixtureDir("bundle-node-modules");
 const OUT = join(FIX, "dist/dev/pkg");
 
 /** True only when the bare specifier survives as a real import/require (not a comment). */
@@ -15,18 +15,13 @@ function hasBareReference(js: string, specifier: string): boolean {
 	return js.split("\n").some((l) => fromImport.test(l) || sideEffect.test(l) || req.test(l));
 }
 
-describe("bundleNodeModules: force-bundle node_modules JS deps (deps.skipNodeModulesBundle false)", () => {
+describe("e2e: bundleNodeModules force-bundles node_modules JS deps (deps.skipNodeModulesBundle false)", () => {
 	afterAll(() => {
 		rmSync(join(FIX, "dist"), { recursive: true, force: true });
 	});
 
-	it("inlines an unlisted node_modules value dep into a SINGLE self-contained entry file when bundleNodeModules is true", async () => {
-		rmSync(join(FIX, "dist"), { recursive: true, force: true });
-		await runBuild(defineBuild({ devManifest: "preserve", bundleNodeModules: true }), {
-			cwd: FIX,
-			argv: ["--target", "dev"],
-			writeOutput: () => {},
-		});
+	it("inlines an unlisted node_modules value dep into a SINGLE self-contained entry file when bundleNodeModules is true", () => {
+		runFixtureBuild("bundle-node-modules", ["--target", "dev"]);
 		const js = readFileSync(join(OUT, "index.js"), "utf-8");
 		// tinyrainbow is neither an external nor a bundledPackages target. Its runtime code is
 		// bundled into the entry itself — there is NO surviving bare `import ... from
@@ -47,16 +42,12 @@ describe("bundleNodeModules: force-bundle node_modules JS deps (deps.skipNodeMod
 		expect(js).toMatch(/export\s*\{[^}]*\blabel\b/);
 	}, 120_000);
 
-	it("keeps a declared external as a surviving external import (the flag does not externalize externals)", async () => {
-		// effect is an external value dep here. Even with bundleNodeModules on, an
-		// external (deps.neverBundle) must stay a real external import, proving the
-		// flag bundles only NON-externalized node_modules deps, not everything.
+	it("keeps a declared external as a surviving external import (the flag does not externalize externals)", () => {
+		// Even with bundleNodeModules on, an external (deps.neverBundle) must stay a real
+		// external import, proving the flag bundles only NON-externalized node_modules deps,
+		// not everything.
 		rmSync(join(FIX, "dist"), { recursive: true, force: true });
-		await runBuild(defineBuild({ devManifest: "preserve", bundleNodeModules: true, externals: ["tinyrainbow"] }), {
-			cwd: FIX,
-			argv: ["--target", "dev"],
-			writeOutput: () => {},
-		});
+		execFileSync("node", ["externals-build.ts", "--target", "dev"], { cwd: FIX, stdio: "pipe", env: SPAWN_ENV });
 		const js = readFileSync(join(OUT, "index.js"), "utf-8");
 		// With tinyrainbow now externalized, the bare import survives and the dep is
 		// NOT inlined into the entry — the externals list still wins.

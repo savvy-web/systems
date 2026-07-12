@@ -27,7 +27,7 @@
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
 		"prepare": "turbo run build:dev",
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"jju": "^1.4.0",
@@ -38,7 +38,6 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",

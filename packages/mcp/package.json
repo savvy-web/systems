@@ -30,7 +30,7 @@
 		"build:prod": "node savvy.build.ts --target prod",
 		"inspect": "exec mcp-inspector node ./dist/dev/pkg/bin/savvy-mcp.js",
 		"prepare": "turbo run build:dev",
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@effect/cluster": "catalog:silk",
@@ -50,7 +50,6 @@
 		"@modelcontextprotocol/inspector": "^0.22.0",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"

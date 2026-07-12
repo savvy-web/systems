@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-07-06
-last-synced: 2026-07-06
+updated: 2026-07-11
+last-synced: 2026-07-11
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -106,11 +106,11 @@ Two structural choices matter:
 
 The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
 
-### Why runtime smoke tests verify completeness, not tsgo
+### Why runtime smoke tests verify completeness, not the type-checker
 
 The command groups are exported typed as `Command.Command<"name", any, any, any>`. The `any` R-channel is deliberate: Effect's `@effect/cli` command types infer internal types that cannot survive TypeScript declaration emit (TS4023 "cannot be named" errors). Casting to `any` is the escape hatch.
 
-The consequence: because the R-channel is `any`, the type-checker cannot prove that `AppLive` supplies every service the handlers require. The cast in `runCli` restores the fully-provided shape, but the real layer-completeness gate is the runtime smoke tests, not `tsgo`. If a handler yields a tag no layer provides, the type-checker stays silent and the CLI fails at runtime — so the smoke tests that run each command are the contract that the layer stack is complete. Treat them as such when adding a command that needs a new service.
+The consequence: because the R-channel is `any`, the type-checker cannot prove that `AppLive` supplies every service the handlers require. The cast in `runCli` restores the fully-provided shape, but the real layer-completeness gate is the runtime smoke tests, not `tsc` (`types:check`). If a handler yields a tag no layer provides, the type-checker stays silent and the CLI fails at runtime — so the smoke tests that run each command are the contract that the layer stack is complete. Treat them as such when adding a command that needs a new service.
 
 ## Boundaries and invariants
 

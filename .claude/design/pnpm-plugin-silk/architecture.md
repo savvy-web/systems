@@ -3,8 +3,8 @@ status: current
 module: pnpm-plugin-silk
 category: architecture
 created: 2026-06-30
-updated: 2026-06-30
-last-synced: 2026-06-30
+updated: 2026-07-11
+last-synced: 2026-07-11
 completeness: 85
 related:
   - ../bundler/architecture.md
@@ -39,6 +39,8 @@ The emitted plugin exports `{ hooks }` with a single `updateConfig(config)` func
 Fully migrated into this monorepo on branch `feat/pnpm-plugin-silk` from its former standalone repo `savvy-web/pnpm-plugin-silk`, which will be archived after the first release cut from here. Currently v0.17.0, `private: true` in source with `publishConfig.access: public` and an npm-only target (`publishConfig.targets.npm`). The package builds through the `@savvy-web/bundler` front door like the other in-repo packages.
 
 The authored configuration is the argument object passed to `PnpmConfigPlugin({...})` in `savvy.build.ts` — that file is the single source of truth for catalogs, overrides, `allowBuilds`, hoist patterns, peer rules, release-age gating and security defaults. Do not look for the config anywhere else; `src/` is two re-export lines.
+
+One managed override carries the TypeScript 7 migration's compatibility shim: the `silk` catalog moved `typescript` to the TS7 line, but `@microsoft/api-extractor` pins TS ~5.9 and TS 7.0 ships no stable compiler API until 7.1, so `savvy.build.ts` declares an `overrides` entry (`@microsoft/api-extractor>typescript`) forcing TypeScript 6 into api-extractor's dependency graph — the 5/6 compiler APIs are equivalent for its purposes. Because it lives in the managed base, every consuming repo and the exported root workspace config inherit it; drop it when API Extractor supports TS7.
 
 ## Build mechanism
 

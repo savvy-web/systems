@@ -38,7 +38,7 @@
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@azure/storage-blob": "^12.33.0",
@@ -59,7 +59,6 @@
 		"@effect/sql": "catalog:silk",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
 		"effect": "catalog:silk",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",

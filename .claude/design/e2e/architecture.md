@@ -3,8 +3,8 @@ status: current
 module: e2e
 category: testing
 created: 2026-06-30
-updated: 2026-07-01
-last-synced: 2026-07-01
+updated: 2026-07-11
+last-synced: 2026-07-11
 completeness: 92
 related:
   - ../tsdown-plugins/architecture.md
@@ -39,7 +39,7 @@ Tests live under `e2e/<pkg>/__test__/e2e/`. They are discovered by the existing 
 
 ## Current State
 
-Both harness packages are implemented and green in the normal test gate. `@e2e/bundler` carries the subprocess-build fixtures (`leaf`, `leaf-escape`, `multi`, `multitarget`, `catalog-consumer`, `catalog-unknown`, `meta-prod`) and the spawn helper in `e2e/bundler/__test__/e2e/helpers.ts`. `@e2e/pnpm-plugin-silk` carries two tests at different fidelities: `pnpmfile-contract.e2e.test.ts` (the config-dependency hook output contract) and `regen-catalog.e2e.test.ts` (a spawned-`savvy`-binary test driving the real `CatalogResolver` — see [Coverage](#coverage-two-fidelity-tiers)). These tests replace integration tests that were deleted because they resolved specifiers against the live host workspace (see below).
+Both harness packages are implemented and green in the normal test gate. `@e2e/bundler` carries the subprocess-build fixtures (`leaf`, `leaf-escape`, `multi`, `multitarget`, `catalog-consumer`, `catalog-unknown`, `meta-prod`, `bundle-node-modules`) and the spawn helper in `e2e/bundler/__test__/e2e/helpers.ts`. `@e2e/pnpm-plugin-silk` carries two tests at different fidelities: `pnpmfile-contract.e2e.test.ts` (the config-dependency hook output contract) and `regen-catalog.e2e.test.ts` (a spawned-`savvy`-binary test driving the real `CatalogResolver` — see [Coverage](#coverage-two-fidelity-tiers)). These tests replace integration tests that were deleted because they resolved specifiers against the live host workspace (see below).
 
 ## The problem it solves
 
@@ -63,7 +63,7 @@ Fixtures live under `e2e/<pkg>/__test__/e2e/fixtures/<name>/`. They are test DAT
 
 The deleted integration coverage is reconstituted at two distinct fidelities.
 
-**Tier 1 — `@e2e/bundler` (build mechanics via real subprocess builds).** Inline-catalog fixtures plus real `node savvy.build.ts` runs cover: leaf/multi/multitarget build mechanics (`build.e2e.test.ts`); escape-hatch byte-parity, where the raw `tsdown.config.ts` path (`escape-build.ts`) must produce a `pkg/` manifest byte-identical to the front door (`escape-hatch.e2e.test.ts`); catalog/workspace resolution through a build, asserting the emitted manifest contains no residual `catalog:`/`workspace:` specifiers (`catalog-build.e2e.test.ts`); the meta build with real API Extractor, made self-contained by a local `@fixture/*` sibling under the fixture's own `packages/` so the merge has a real workspace dependency to resolve; and an unknown-catalog negative test asserting a non-zero exit whose stderr is catalog-related rather than an unrelated crash.
+**Tier 1 — `@e2e/bundler` (build mechanics via real subprocess builds).** Inline-catalog fixtures plus real `node savvy.build.ts` runs cover: leaf/multi/multitarget build mechanics (`build.e2e.test.ts`); escape-hatch byte-parity, where the raw `tsdown.config.ts` path (`escape-build.ts`) must produce a `pkg/` manifest byte-identical to the front door (`escape-hatch.e2e.test.ts`); catalog/workspace resolution through a build, asserting the emitted manifest contains no residual `catalog:`/`workspace:` specifiers (`catalog-build.e2e.test.ts`); the meta build with real API Extractor, made self-contained by a local `@fixture/*` sibling under the fixture's own `packages/` so the merge has a real workspace dependency to resolve; and an unknown-catalog negative test asserting a non-zero exit whose stderr is catalog-related rather than an unrelated crash. The `bundle-node-modules` fixture (`bundle-node-modules.e2e.test.ts`) covers the bundler's `bundleNodeModules` posture through the built front door: an unlisted node_modules value dep (`tinyrainbow`, a devDependency of the harness, never of the host packages) is inlined into a single self-contained entry file with no `node_modules` dir in the output, while a variant build (`externals-build.ts`) proves a declared external still survives as a bare import. This coverage moved here from a deleted `packages/bundler` integration test that resolved `tinyrainbow` from the host workspace, violating the isolation convention.
 
 **Tier 2 — `@e2e/pnpm-plugin-silk` (config-dependency hook OUTPUT contract).** `pnpmfile-contract.e2e.test.ts` imports the built `pnpmfile.mjs` directly and asserts that `hooks.updateConfig({})` injects the `silk`/`silkPeers` catalogs, the overrides, the public hoist pattern and the security defaults. It also asserts the package's main `catalogs` export exposes the same catalogs. This is the contract level, NOT a full pnpm `configDependencies` install: a registry-free install proved impossible because pnpm requires a registry plus integrity, so the chosen approach validates the hook's output shape and leaves the pnpm install/replay half to `workspaces-effect`, where it is unit-tested.
 
@@ -80,6 +80,8 @@ The deleted integration coverage is reconstituted at two distinct fidelities.
 ## Gotchas worth remembering
 
 **`emitManifest` resolves unconditionally for prod groups.** `packages/tsdown-plugins/src/manifest/emit-manifest.ts` calls `resolveManifest(pkg)` in `generateBundle` whenever the target group is prod (or `devManifest === "resolve"`), using `process.cwd()`. So ANY in-process unit test that drives `emitManifest`'s `generateBundle` for a prod group resolves against the host — the exact trap the e2e harness was created to avoid. Real builds dodge it because they run as subprocesses with `cwd` set to the package dir. The one in-process unit test that hit it (`packages/tsdown-plugins/__test__/build/build-target-groups.test.ts`) was made hermetic by `chdir`-ing into a temp dir that has its own empty `pnpm-workspace.yaml` and restoring the prior `cwd` in `finally`. Recommended follow-up: guard `emit-manifest` to skip `resolveManifest` when a manifest has no `catalog:`/`workspace:` specifiers — a behavior-preserving optimization that also speeds real builds.
+
+**`@e2e/bundler` pins `typescript: ^6.0.3`, not `catalog:silk`.** The `leaf-escape` raw-tsdown escape-hatch fixture resolves tsdown through `e2e/bundler`'s node_modules, and rolldown-plugin-dts auto-selects its native "tsgo" dts generator when the peer-resolved typescript major is >= 7. That generator breaks on the tmpdir-written resolved tsconfig — it spawns the native compiler with `--rootDir dirname(tsconfig)`, producing TS6059, leaking declarations into the fixture's `src/` and failing the build with "tsgo did not generate dts file". Pinning TS6 in the harness keeps the escape hatch on the stable tsc generator; the front door was never affected because the bundler executes tsdown resolved from tsdown-plugins' context, which pins TS6 (see `../tsdown-plugins/architecture.md`). Revisit when the compiler API stabilizes at TS 7.1.
 
 **Subprocess coverage races vitest's V8 provider.** Spawned builds inherit `NODE_V8_COVERAGE` and write coverage temp files that race vitest's V8 coverage provider, producing intermittent `coverage/.tmp/*.json` ENOENT and an exit-1 even when every test passes. The harness strips `NODE_V8_COVERAGE` from the spawned env via the shared `SPAWN_ENV` in `e2e/bundler/__test__/e2e/helpers.ts`; every `execFileSync` in the harness must pass that env.
 

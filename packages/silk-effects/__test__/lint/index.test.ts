@@ -530,11 +530,29 @@ describe("Handler classes", () => {
 			expect(TypeScript.glob).toBe("*.{ts,cts,mts,tsx}");
 		});
 
+		// Stub Command.findTool so compiler detection is deterministic instead of
+		// probing whatever happens to be installed in the host workspace.
+		const stubFindTool = (available: readonly string[]) =>
+			vi
+				.spyOn(Command, "findTool")
+				.mockImplementation((tool: string) =>
+					available.includes(tool)
+						? { available: true, command: tool, source: "global" }
+						: { available: false, command: undefined, source: undefined },
+				);
+
 		it("should run typecheck by default", () => {
-			const handler = TypeScript.create();
-			const result = handler(["src/index.ts"]);
-			expect(result).toHaveLength(1);
-			expect((result as string[])[0]).toContain("tsgo --noEmit");
+			TypeScript.clearCache();
+			const spy = stubFindTool(["tsc"]);
+			try {
+				const handler = TypeScript.create();
+				const result = handler(["src/index.ts"]);
+				expect(result).toHaveLength(1);
+				expect((result as string[])[0]).toBe("tsc --noEmit");
+			} finally {
+				spy.mockRestore();
+				TypeScript.clearCache();
+			}
 		});
 
 		it("should return empty when typecheck is skipped", () => {
@@ -545,14 +563,38 @@ describe("Handler classes", () => {
 
 		it("should use detected compiler for typecheck command", () => {
 			TypeScript.clearCache();
-			const cmd = TypeScript.getDefaultTypecheckCommand();
-			expect(cmd).toContain("tsgo --noEmit");
+			const spy = stubFindTool(["tsgo", "tsc"]);
+			try {
+				const cmd = TypeScript.getDefaultTypecheckCommand();
+				expect(cmd).toBe("tsgo --noEmit");
+			} finally {
+				spy.mockRestore();
+				TypeScript.clearCache();
+			}
 		});
 
 		it("should detect tsgo compiler when tsgo is available", () => {
 			TypeScript.clearCache();
-			const compiler = TypeScript.detectCompiler();
-			expect(compiler).toBe("tsgo");
+			const spy = stubFindTool(["tsgo"]);
+			try {
+				const compiler = TypeScript.detectCompiler();
+				expect(compiler).toBe("tsgo");
+			} finally {
+				spy.mockRestore();
+				TypeScript.clearCache();
+			}
+		});
+
+		it("should fall back to tsc when tsgo is unavailable", () => {
+			TypeScript.clearCache();
+			const spy = stubFindTool(["tsc"]);
+			try {
+				const compiler = TypeScript.detectCompiler();
+				expect(compiler).toBe("tsc");
+			} finally {
+				spy.mockRestore();
+				TypeScript.clearCache();
+			}
 		});
 
 		it("should have isAvailable method", () => {

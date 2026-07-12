@@ -8,6 +8,21 @@ await build({
 			catalogs: {
 				silk: {
 					packages: {
+						"@changesets/cli": {
+							range: "^3.0.0-next.8",
+							peer: "^3.0.0-next.8",
+							strategy: "lock",
+						},
+						"@commitlint/cli": {
+							range: "^21.2.1",
+							peer: "^21.2.1",
+							strategy: "lock",
+						},
+						"@commitlint/config-conventional": {
+							range: "^21.2.0",
+							peer: "^21.2.0",
+							strategy: "lock",
+						},
 						"@effect/ai": {
 							range: "^0.36.0",
 							peer: "^0.36.0",
@@ -49,8 +64,8 @@ await build({
 							strategy: "interop",
 						},
 						"@effect/language-service": {
-							range: "^0.86.4",
-							peer: "^0.86.4",
+							range: "^0.86.6",
+							peer: "^0.86.6",
 							strategy: "interop",
 						},
 						"@effect/opentelemetry": {
@@ -169,8 +184,8 @@ await build({
 							strategy: "interop",
 						},
 						"@effect/tsgo": {
-							range: "^0.16.3",
-							peer: "^0.16.3",
+							range: "^0.19.0",
+							peer: "^0.19.0",
 							strategy: "interop",
 						},
 						"@effect/typeclass": {
@@ -187,6 +202,26 @@ await build({
 							range: "^0.18.2",
 							peer: "^0.18.2",
 							strategy: "interop",
+						},
+						"@rsbuild/core": {
+							range: "^2.1.5",
+							peer: "^2.1.5",
+							strategy: "lock-minor",
+						},
+						"@rspress/core": {
+							range: "^2.0.17",
+							peer: "^2.0.0",
+							strategy: "lock-minor",
+						},
+						"@tsdown/exe": {
+							range: "^0.22.4",
+							peer: "^0.22.4",
+							strategy: "lock",
+						},
+						"@tsdown/css": {
+							range: "^0.22.4",
+							peer: "^0.22.4",
+							strategy: "lock",
 						},
 						"@types/node": {
 							range: "^26.1.1",
@@ -222,6 +257,26 @@ await build({
 							peer: "^3.21.0",
 							strategy: "interop",
 						},
+						husky: {
+							range: "^9.1.7",
+							peer: "^9.1.7",
+							strategy: "lock",
+						},
+						"lint-staged": {
+							range: "^17.0.8",
+							peer: "^17.0.8",
+							strategy: "lock",
+						},
+						"markdownlint-cli2": {
+							range: "^0.23.0",
+							peer: "^0.23.0",
+							strategy: "lock",
+						},
+						"markdownlint-cli2-formatter-codequality": {
+							range: "^0.0.7",
+							peer: "^0.0.7",
+							strategy: "lock",
+						},
 						react: {
 							range: "^19.2.7",
 							peer: "^19.2.0",
@@ -232,15 +287,30 @@ await build({
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
+						rolldown: {
+							range: "^1.1.5",
+							peer: "^1.1.0",
+							strategy: "lock-minor",
+						},
+						tsdown: {
+							range: "^0.22.4",
+							peer: "^0.22.0",
+							strategy: "lock-minor",
+						},
 						tsx: {
 							range: "^4.23.0",
 							peer: "^4.23.0",
 							strategy: "lock",
 						},
 						typescript: {
-							range: "^6.0.3",
-							peer: "^6.0.0",
+							range: "^7.0.2",
+							peer: "^7.0.0",
 							strategy: "lock-minor",
+						},
+						turbo: {
+							range: "^2.10.4",
+							peer: "^2.10.4",
+							strategy: "lock",
 						},
 						vitest: {
 							range: "^4.1.10",
@@ -253,6 +323,7 @@ await build({
 			confirmModulesPurge: false,
 			minimumReleaseAge: 1440,
 			minimumReleaseAgeExclude: [
+				"@effected/*",
 				"@savvy-web/*",
 				"@vitest-agent/*",
 				"@typescript/*",
@@ -275,7 +346,7 @@ await build({
 				"xdg-effect",
 			],
 			overrides: {
-				"@manypkg/find-root>@types/node": "catalog:silk",
+				"@microsoft/api-extractor>typescript": "^6.0.3",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {
@@ -300,7 +371,6 @@ await build({
 					"@vitest-agent/mcp",
 					"@vitest/coverage-istanbul",
 					"@vitest/coverage-v8",
-					"commitizen",
 					"husky",
 					"lint-staged",
 					"markdownlint-cli2",
@@ -309,8 +379,6 @@ await build({
 					"turbo",
 					"typescript",
 					"vitest",
-					"!@effect/*",
-					"!effect",
 				],
 			},
 			allowBuilds: {
@@ -332,6 +400,7 @@ await build({
 			blockExoticSubdeps: true,
 			peerDependencyRules: {
 				allowedVersions: {
+					"tsdown>typescript": "^5.0.0 || ^6.0.0 || ^7.0.0",
 					"@effect/vitest>vitest": "^4.1.0",
 					"@typescript-eslint/project-service>typescript": "^6.0.0",
 					"@typescript-eslint/tsconfig-utils>typescript": "^6.0.0",

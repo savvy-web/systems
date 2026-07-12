@@ -55,7 +55,7 @@ Every package built by `@savvy-web/bundler` (or `@savvy-web/rspress-builder`) de
 ```json
 "build:dev": "node savvy.build.ts --target dev",
 "build:prod": "node savvy.build.ts --target prod",
-"types:check": "tsgo --noEmit"
+"types:check": "tsc --noEmit"
 ```
 
 A package ALSO needs `"prepare": "turbo run build:dev"` whenever it is a `workspace:*` dependency of ANY other `package.json` in the repo — root, a sibling package, or an `e2e/*` fixture. Its consumer resolves it through a `link:` into `dist/dev/pkg`, and that link has to resolve at install time. That package's own `prepare` is the ONLY thing that builds it then; nothing upstream does it for them.

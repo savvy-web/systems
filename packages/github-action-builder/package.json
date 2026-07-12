@@ -45,7 +45,7 @@
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
-		"types:check": "tsgo --noEmit"
+		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@effect/cli": "catalog:silk",
@@ -57,7 +57,7 @@
 		"@effect/rpc": "catalog:silk",
 		"@effect/sql": "catalog:silk",
 		"@effect/typeclass": "catalog:silk",
-		"@rsbuild/core": "^2.1.4",
+		"@rsbuild/core": "catalog:silk",
 		"effect": "catalog:silk",
 		"jiti": "^2.7.0",
 		"picocolors": "^1.1.1",
@@ -66,14 +66,12 @@
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
-		"@typescript/native-preview": "catalog:silk",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"
 	},
 	"peerDependencies": {
 		"@types/node": "catalog:silkPeers",
-		"@typescript/native-preview": "catalog:silkPeers",
 		"typescript": "catalog:silkPeers"
 	},
 	"peerDependenciesMeta": {
