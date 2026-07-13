@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
-import { Clock, Context, Effect, Layer, Option, Schema } from "effect";
+import { Clock, Context, Effect, Layer, Option, Schema, Stream } from "effect";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
 import { GitSubmoduleError, NoteNotFoundError, RepoNotFoundError, ReposConfigError } from "../errors.js";
 import type { RepoEntry, RepoNote, RepoOrientation, ReposManifestFile } from "../schemas/manifest.js";
@@ -103,13 +103,49 @@ export const ReposManagerLive: Layer.Layer<
 		const path = yield* Path.Path;
 		const executor = yield* CommandExecutor.CommandExecutor;
 
-		const runGit = (cwd: string, args: ReadonlyArray<string>) =>
-			Command.string(Command.workingDirectory(Command.make("git", ...args), cwd)).pipe(
-				Effect.provideService(CommandExecutor.CommandExecutor, executor),
-				Effect.mapError(
-					(cause) => new GitSubmoduleError({ command: `git ${args.join(" ")}`, cwd, reason: String(cause) }),
+		// `Command.string` collects stdout WITHOUT inspecting the exit code, so
+		// a git process that exits non-zero with empty stdout still "succeeds".
+		// This runner starts the process directly, drains stdout/stderr while
+		// awaiting the exit code, and fails a typed `GitSubmoduleError` on any
+		// non-zero exit (stderr as the reason) — making the declared error
+		// unions real for actual git failures, not just spawn errors.
+		const runGit = (cwd: string, args: ReadonlyArray<string>): Effect.Effect<string, GitSubmoduleError> =>
+			Effect.scoped(
+				Effect.gen(function* () {
+					const process = yield* executor.start(Command.workingDirectory(Command.make("git", ...args), cwd));
+					const [exitCode, stdout, stderr] = yield* Effect.all(
+						[
+							process.exitCode,
+							process.stdout.pipe(
+								Stream.decodeText(),
+								Stream.runFold("", (acc, chunk) => acc + chunk),
+							),
+							process.stderr.pipe(
+								Stream.decodeText(),
+								Stream.runFold("", (acc, chunk) => acc + chunk),
+							),
+						],
+						{ concurrency: 3 },
+					);
+					if (exitCode !== 0) {
+						return yield* Effect.fail(
+							new GitSubmoduleError({
+								command: `git ${args.join(" ")}`,
+								cwd,
+								reason: stderr.trim().length > 0 ? stderr.trim() : `exit code ${exitCode}`,
+							}),
+						);
+					}
+					return stdout.trim();
+				}),
+			).pipe(
+				Effect.catchAll((cause) =>
+					Effect.fail(
+						cause instanceof GitSubmoduleError
+							? cause
+							: new GitSubmoduleError({ command: `git ${args.join(" ")}`, cwd, reason: String(cause) }),
+					),
 				),
-				Effect.map((s) => s.trim()),
 			);
 
 		const isPresent = (repoPath: string) =>

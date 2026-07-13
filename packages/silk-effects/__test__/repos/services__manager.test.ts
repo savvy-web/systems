@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CommandExecutor } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Stream } from "effect";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ReposManifestFile } from "../../src/repos/schemas/manifest.js";
 import type {
@@ -58,8 +58,15 @@ describe("ReposManager.status — stubbed executor", () => {
 			write: () => Effect.succeed(undefined),
 		} as never);
 
+		// A fake process that exits 0 with empty stdout — runGit is
+		// exit-code-aware, so the stub must model start/exitCode/stdout/stderr.
 		const executorStub = Layer.succeed(CommandExecutor.CommandExecutor, {
-			string: () => Effect.succeed(""),
+			start: () =>
+				Effect.succeed({
+					exitCode: Effect.succeed(0),
+					stdout: Stream.empty,
+					stderr: Stream.empty,
+				}),
 		} as never);
 
 		const root = mkdtempSync(join(tmpdir(), "repos-manager-status-"));
@@ -519,9 +526,18 @@ describe("ReposManager.add / pin — real git", () => {
 		const name = "spec";
 		const upstreamUrl = `file://${up}`;
 
-		// Create a branch pointing to a commit
-		git(up, "branch", "stable", "1.0.0");
+		// Create a branch at a commit DISTINCT from tag 1.0.0. Under the old
+		// exit-code-blind runner the failed tag fetch left FETCH_HEAD at the
+		// add's 1.0.0 commit and the fallback never fired — a branch pointing
+		// at 1.0.0 made this test pass coincidentally. A distinct commit
+		// proves the plain-fetch fallback actually ran.
+		writeFileSync(join(up, "src", "branch-only.ts"), "export const branchOnly = true;\n");
+		git(up, "add", "-A");
+		git(up, "commit", "--quiet", "-m", "branch-only commit");
+		git(up, "branch", "stable");
+		git(up, "reset", "--hard", "--quiet", "1.0.0");
 		const stableSha = git(up, "rev-parse", "stable").trim();
+		expect(stableSha).not.toBe(git(up, "rev-parse", "1.0.0^{commit}").trim());
 
 		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
 		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
@@ -646,6 +662,42 @@ describe("ReposManager.add / pin — real git", () => {
 		expect(manifestAfter.repos.other).toEqual(manifestWithNote.repos.other);
 	});
 
+	it("surfaces a nonexistent-ref pin as GitSubmoduleError carrying git's stderr, not silence", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const name = "spec";
+		const upstreamUrl = `file://${up}`;
+
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+		const runExit = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromiseExit(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority", name });
+			}),
+		);
+
+		const exit = await runExit(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.pin(host, name, "no-such-ref-xyz");
+			}),
+		);
+
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
+			expect(exit.cause.error).toMatchObject({ _tag: "GitSubmoduleError" });
+			// The reason carries git's stderr naming the missing ref — before the
+			// exit-code-aware runner, this pin "succeeded" silently.
+			expect((exit.cause.error as { reason: string }).reason).toContain("no-such-ref-xyz");
+		}
+	});
+
 	it("rejects an invalid --name before any side effect (path traversal)", async () => {
 		const up = makeUpstream();
 		const host = makeHost();
@@ -739,7 +791,7 @@ describe("ReposManager.status — propagates git failures", () => {
 		// swallowed this via orElseSucceed and reported commit null / dirty
 		// false as if everything were fine.
 		const failingExecutorStub = Layer.succeed(CommandExecutor.CommandExecutor, {
-			string: () => Effect.fail(new Error("git exploded")),
+			start: () => Effect.fail(new Error("git exploded")),
 		} as never);
 
 		const exit = await Effect.runPromiseExit(
