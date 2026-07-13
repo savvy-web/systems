@@ -19,6 +19,15 @@
 						"timeout": 10
 					}
 				]
+			},
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/repos-orientation.sh\"",
+						"timeout": 10
+					}
+				]
 			}
 		],
 		"PreToolUse": [
