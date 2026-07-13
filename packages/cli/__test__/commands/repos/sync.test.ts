@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runReposSync } from "../../../src/commands/repos/commands/sync.js";
 
-const { ReposManager, ReposConfigError } = Repos;
+const { ReposManager, ReposConfigError, GitSubmoduleError } = Repos;
 
 /** A canned report with one entry in each of the three actionable buckets. */
 const activeReport: Repos.ReposSyncReport = {
@@ -96,6 +96,25 @@ describe("runReposSync (adapter)", () => {
 		const logs = await collectLogs("/repo", layer);
 
 		expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
+		expect(process.exitCode).toBe(1);
+	});
+
+	it("logs the error message and sets exitCode 1 on GitSubmoduleError", async () => {
+		const layer = makeStubLayer(() =>
+			Effect.fail(
+				new GitSubmoduleError({
+					command: "git submodule update --init --depth 1 -- .repos/foo",
+					cwd: "/repo",
+					reason: "fatal: could not fetch",
+				}),
+			),
+		);
+
+		const logs = await collectLogs("/repo", layer);
+
+		expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch"))).toBe(
+			true,
+		);
 		expect(process.exitCode).toBe(1);
 	});
 });

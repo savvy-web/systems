@@ -20,10 +20,11 @@ import { ReposConfigStore } from "./config-store.js";
 const STALE_LOCKS = ["index.lock", "shallow.lock"] as const;
 
 /**
- * The full contractual surface of {@link ReposManager}. `status` and `sync`
- * are implemented against real git plumbing; `add`, `pin`, and `note` are
- * declared here (with accurate error unions) and wired to `Effect.die` until
- * later tasks implement them.
+ * The full contractual surface of {@link ReposManager}. All five methods are
+ * implemented against real git plumbing and the manifest store: `status`
+ * reports drift, `sync` reconciles the working tree with the manifest,
+ * `add` vendors a new repo, `pin` re-pins an existing entry to a new ref,
+ * and `note` adds, removes, or promotes an agent note.
  * @internal
  */
 export interface ReposManagerShape {
@@ -60,7 +61,8 @@ export const ReposManagerBase = _tag<ReposManager, ReposManagerShape>();
 /**
  * Drives the vendored `.repos/` submodules over git: reports status
  * (presence, dirtiness, stale notes), reconciles the working tree with the
- * manifest, and (in later tasks) adds/pins/annotates entries.
+ * manifest, vendors new entries (`add`), re-pins existing entries to a new
+ * ref (`pin`), and adds, removes, or promotes agent notes (`note`).
  * @public
  */
 export class ReposManager extends ReposManagerBase {}
