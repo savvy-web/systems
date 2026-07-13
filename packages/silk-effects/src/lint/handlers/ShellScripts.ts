@@ -10,11 +10,16 @@ import { Filter } from "../utils/Filter.js";
 /**
  * Handler for shell script files.
  *
- * Removes executable bit by default (security best practice).
+ * Removes the executable bit by default: Silk repos invoke shell scripts via
+ * `bash <script>`, so the bit is never needed at runtime, and normalizing the
+ * mode keeps diffs clean. Committed `.sh` files landing as `100644` is
+ * intentional, not mode drift.
  *
  * @remarks
- * By default, excludes `.claude/scripts/` which need to remain executable
- * for lint-staged hooks to work.
+ * The default excludes `.claude/scripts/` as a consumer escape-hatch
+ * convention: a repo that needs a script to stay executable across commits
+ * can place it there (or pass its own `exclude` list). Nothing in Silk itself
+ * requires the directory to exist.
  *
  * @example
  * ```typescript

@@ -163,6 +163,7 @@ fi
 CONTEXT=$(cat <<CONTEXT
 <vendored_repos>
 ${CONTRACT_LINE}
+judgment layer (when to vendor, sparse-checkout, re-pin rule, notes policy): /silk:repos
 ${SYNC_LINE}
 
 ${BODY}</vendored_repos>

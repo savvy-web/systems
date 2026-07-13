@@ -4,7 +4,7 @@
 # Coverage for hooks/session-start/orientation.sh: on every session start,
 # persist the 5 SILK_* exports into the per-session env file (and, when set,
 # CLAUDE_ENV_FILE), and emit SessionStart additionalContext with the
-# workspace / changesets / dogfood-feedback orientation.
+# <silk_capabilities> surface (MCP tool, agent, and skill indexes).
 #
 # No CLI shell-out — this hook is pure jq + file writes, so it needs no stubs;
 # HOME isolation (common_setup) keeps the env-file writes inside the tmp tree.
@@ -24,9 +24,11 @@ setup() {
 	[ "$(jq -r '.hookSpecificOutput.hookEventName' <<< "$output")" = "SessionStart" ]
 	local ctx
 	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
+	[[ "$ctx" == *"silk_capabilities"* ]]
 	[[ "$ctx" == *"workspace_info"* ]]
-	[[ "$ctx" == *"changesets_plugin"* ]]
-	[[ "$ctx" == *"dogfood_feedback"* ]]
+	[[ "$ctx" == *"biome_check"* ]]
+	[[ "$ctx" == *"changeset_inspect"* ]]
+	[[ "$ctx" == *"/silk:commit-create"* ]]
 }
 
 @test "writes the per-session silk-hook.sh env file with the 5 SILK_* exports" {
