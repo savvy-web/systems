@@ -1,5 +1,46 @@
 # @savvy-web/silk-effects
 
+## 3.3.0
+
+### Features
+
+* ### `Repos` namespace: vendored reference repos
+
+  Adds a new public `Repos` namespace for managing vendored reference repos under a project's `.repos/` directory — git submodules kept purely as read-only agent authorities, never forks to modify.
+
+  ```ts
+  import { Repos } from "@savvy-web/silk-effects";
+
+  const manager = yield* Repos.ReposManager;
+  const report = yield* manager.status(root);
+  // report.clean, report.repos[].{ name, ref, purpose, present, commit, dirty, staleNoteIds }
+  ```
+
+  The manifest lives at `.repos/config.json`. Each entry (`Repos.RepoEntry`) declares a `url`, a pinned `ref`, a required `purpose`, optional `sparse` checkout paths, an optional `orientation` block (`layout`, `keyPaths`, `startHere`), and up to ten agent-authored `notes` — each stamped with a content-hash `id` and the ref it was written against.
+
+  Two services back the namespace:
+
+  * `Repos.ReposConfigStore` — reads, validates, and writes the manifest.
+  * `Repos.ReposManager` — drift reporting (`status`), idempotent self-healing sync that clears stale git lock files before reinitializing a submodule (`sync`), staging a new vendored repo with a shallow ref fetch (`add`), re-pinning an existing entry to a new ref (`pin`), and adding, removing, or promoting agent notes (`note`). `add` and `pin` stage their changes and hand back a ready-made commit message rather than committing.
+
+  A missing manifest is a distinct, non-error `ReposConfigError` kind (`"missing"`) from a corrupt one (`"invalid"`), so callers can render the common "nothing vendored yet" case as a friendly no-op.
+
+### Documentation
+
+* Corrected the `ShellScripts` lint handler's TSDoc: the exec-bit strip is now explained as intentional normalization (scripts run via `bash <script>`, so the mode is never needed at runtime), and the `.claude/scripts/` default exclude is now described as a consumer escape-hatch convention rather than something Silk itself requires — the previous comment incorrectly claimed it was needed "for lint-staged hooks to work." [#299][#299]
+
+### Maintenance
+
+* The generated markdownlint template now ignores `**/.repos`, so vendored submodule content is excluded from lint runs in projects that adopt the pattern via `savvy init`'s union-merge. [#292][#292]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#292]: https://github.com/savvy-web/systems/pull/292
+
+[#299]: https://github.com/savvy-web/systems/pull/299
+
 ## 3.2.5
 
 ### Dependencies

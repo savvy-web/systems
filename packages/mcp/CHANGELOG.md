@@ -1,5 +1,30 @@
 # @savvy-web/mcp
 
+## 1.8.0
+
+### Features
+
+* ### `repos_inspect` and `repos_manage` tools
+
+  Adds two tools for the vendored `.repos/` reference-repo pattern, bringing the server to ten tools (three mutating):
+
+  * `repos_inspect` (read-only) — `mode: "status"` returns a drift report (presence, dirtiness, stale notes per repo); `mode: "config"` returns the full parsed manifest, including purposes, orientation, and notes.
+  * `repos_manage` (mutating) — `action: "sync" | "pin" | "add" | "note"` against the vendored submodules, using a flat wire schema (no `oneOf`) that decodes into a per-action request internally, naming the first missing required field on failure. The `pin` result surfaces `commitMessage` and `staleNoteIds` as an explicit review-and-commit cue.
+
+  Both tools render vendored-repo content (names, refs, purposes, note text) as escaped inline code spans in their markdown transcript, since that content originates from an external, untrusted source. [#292][#292]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.2.5 | 3.3.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#292]: https://github.com/savvy-web/systems/pull/292
+
 ## 1.7.6
 
 ### Dependencies

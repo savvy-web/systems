@@ -1,5 +1,65 @@
 # @savvy-web/silk
 
+## 2.4.0
+
+### Features
+
+* ### `.repos/` support: Biome exclusion, orientation hook, write guards, and skill
+
+  The Biome preset now excludes `**/.repos` from processing, so vendored repo content stays searchable by other tools without ever being gitignored or reformatted.
+
+  The bundled Claude Code plugin gains full support for the vendored-repos pattern:
+
+  * A session-start hook that runs a best-effort `savvy repos sync` and injects a per-repo orientation block (purpose, layout, key paths, notes) into context on every session start, resume, and compact — budgeted at 2000 characters, with per-repo entries falling back to a one-line summary once the budget is exceeded.
+  * Three `PreToolUse` write guards for `.repos/**`: a hard-deny for file-editing tools (with `.repos/config.json` itself exempted), and best-effort tripwires over Bash and MCP git-style tools — enforcing that vendored repos stay read-only-by-convention.
+  * A new `/silk:repos` skill covering when to vendor a repo, sparse-checkout discipline, the re-pin-on-dependency-bump rule, and the orientation/notes editorial policy. Auto-loads whenever `.repos/config.json` is present. [#292][#292]
+
+- ### Consolidated `silk_capabilities` orientation
+
+  The always-on SessionStart hook now emits a single `<silk_capabilities>` block instead of the old fragmented `workspace_info`/`turbo_inspect`/Biome/changesets-plugin sections: the full ten-tool savvy-mcp index, the three-agent index, the eight-skill index, the Biome LSP/`biome_check`/Bash division of labor, and an active-hooks map (commit guards, the Biome nudge, the `.repos/**` write guards, changeset validation, the missing-changeset note). It's a net reduction in context size while adding coverage for `savvy commit`, `tsdoctor`, `/silk:build`, and the vendored-repos pattern that the old payload didn't mention.
+
+  ### `tsdoctor` and `turborepo` agents gain direct Biome access
+
+  Both agents now carry `mcp__plugin_silk_savvy-mcp__biome_check` in their tool allowlist, so they can run structured Biome checks and fixes directly instead of shelling out to Bash.
+
+  ### `/silk:repos` pointer in vendored-repos orientation
+
+  The per-session vendored-repos block now points at the `/silk:repos` skill for the judgment layer — when to vendor, sparse-checkout discipline, the re-pin rule, and notes editorial policy.
+
+### Bug Fixes
+
+* ### SessionStart producer now resolves the working tree worktree-correctly
+
+  The always-on SessionStart hook — the producer of `SILK_PROJECT_DIR` and `SILK_PACKAGE_MANAGER` for every reader hook — previously ranked `CLAUDE_PROJECT_DIR` above the hook envelope's `cwd`, pinning a git-worktree session to the primary checkout's path and package manager for its whole life. It now resolves through the shared `resolve_project_dir` (envelope `cwd` first), and package-manager detection is deduplicated into the shared hook library with a uniform fail-open-to-npm posture across both SessionStart hooks.
+
+  ### Corrected pre-commit and tool-preference guidance
+
+  The startup context's tool-preference guidance previously taught Bash `biome check` as the primary path and wrongly claimed the root `typecheck` script runs `tsgo` directly. It now states the correct order — Biome LSP first (automatic diagnostics on edit), `biome_check` second (structured, can fix), Bash as the escape hatch — and adds a `pre_commit_pipeline` block enumerating every lint-staged autofix that runs on commit, including the intentional exec-bit strip on `.sh` files, so agents stop mistaking that mode flip for damage. [#299][#299]
+
+### Documentation
+
+* Documents that plugin hook scripts intentionally commit without an executable bit (`100644`). The lint-staged `ShellScripts` handler strips the exec bit from staged `.sh` files, and every hook is invoked as `bash "${CLAUDE_PLUGIN_ROOT}/hooks/..."`, so the bit is never exercised. Prevents mistaking a `644` mode on a hook script for accidental permission drift during review. [#299][#299]
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From   | To    |
+| -------------------- | ---------- | ------- | ------ | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1  | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 1.5.10 | 1.6.0 |
+| @savvy-web/mcp       | dependency | updated | 1.7.6  | 1.8.0 |
+
+* | Dependency      | Type           | Action  | From          | To     |                                                          |
+  | --------------- | -------------- | ------- | ------------- | ------ | -------------------------------------------------------- |
+  | @changesets/cli | peerDependency | updated | ^3.0.0-next.8 | ^3.0.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#292]: https://github.com/savvy-web/systems/pull/292
+
+[#299]: https://github.com/savvy-web/systems/pull/299
+
 ## 2.3.2
 
 ### Dependencies
