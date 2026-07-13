@@ -152,7 +152,10 @@ context / fail-open paths.
 | `post-tool-use-commit-bash.bats` | `post-tool-use/commit-bash.sh` |
 | `post-tool-use-changeset-validate-changeset.bats` | `post-tool-use/changeset-validate-changeset.sh` |
 | `pre-tool-use-repos-fs-guard.bats` | `pre-tool-use/repos-fs-guard.sh` |
+| `pre-tool-use-repos-bash-guard.bats` | `pre-tool-use/repos-bash-guard.sh` |
+| `pre-tool-use-repos-mcp-guard.bats` | `pre-tool-use/repos-mcp-guard.sh` |
 | `session-start-orientation.bats` | `session-start/orientation.sh` |
+| `session-start-repos-orientation.bats` | `session-start/repos-orientation.sh` |
 | `session-start-startup-only.bats` | `session-start/startup-only.sh` |
 | `stop-changeset-nudge.bats` | `stop/changeset-nudge.sh` |
 
@@ -218,8 +221,15 @@ relative to the sourcing script's own directory.
 
 ## Known gaps
 
-- **Malformed input.** The jq-parsing hooks abort with a jq parse error (a
-  non-zero exit) on invalid JSON rather than failing open with an empty no-op.
-  The suites document this current behaviour; they do not assert it is ideal.
-  `session-start/startup-only.sh` is the exception — it drains stdin without
-  parsing it, so a malformed body still emits context.
+- **Malformed input.** Every jq-parsing hook sources `hook-env.sh` and calls
+  `read_envelope_or_noop` before touching the envelope, so invalid or empty
+  JSON on stdin fails open — a silent no-op (`{}`), not a jq parse-error abort.
+  `read_envelope_or_noop` (PR #276) retrofitted this fail-open behavior across
+  every jq-parsing hook that existed at the time; the three
+  `repos-*-guard.sh` hooks (savvy-web/systems#285/#286) — the first real
+  callers of `emit_deny` — were written against it from the start, so the
+  posture is uniform across old and new hooks alike. Each suite's
+  `malformed JSON input: no-op (fails open)` case asserts this directly.
+  `session-start/startup-only.sh` remains the one true exception — it drains
+  stdin without parsing it at all, so a malformed body still emits context
+  regardless.
