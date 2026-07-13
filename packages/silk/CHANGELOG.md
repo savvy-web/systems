@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 2.4.1
+
+### Bug Fixes
+
+* Bump `@changesets/cli` peer dependency to correct range.
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.4.0
 
 ### Features
