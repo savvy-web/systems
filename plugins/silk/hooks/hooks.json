@@ -61,6 +61,16 @@
 						"timeout": 5
 					}
 				]
+			},
+			{
+				"matcher": "Write|Edit|NotebookEdit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-fs-guard.sh\"",
+						"timeout": 5
+					}
+				]
 			}
 		],
 		"PostToolUse": [

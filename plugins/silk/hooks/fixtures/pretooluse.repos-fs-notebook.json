@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-fs-notebook",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "NotebookEdit",
+	"tool_input": {
+		"notebook_path": "__PROJECT_DIR__/.repos/effect-smol/analysis.ipynb"
+	}
+}
