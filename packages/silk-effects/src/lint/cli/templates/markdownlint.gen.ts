@@ -28,6 +28,7 @@ export const MARKDOWNLINT_TEMPLATE = {
 		"**/docs/superpowers",
 		"**/__test__/**/fixtures/**",
 		"**/__fixtures__/**",
+		"**/.repos",
 	],
 	customRules: ["@savvy-web/silk/changesets/markdownlint"],
 	config: {
