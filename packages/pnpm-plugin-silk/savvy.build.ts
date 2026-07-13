@@ -10,7 +10,7 @@ await build({
 					packages: {
 						"@changesets/cli": {
 							range: "^3.0.0-next.8",
-							peer: "^3.0.0-next.8",
+							peer: "^3.0.0",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
@@ -205,7 +205,7 @@ await build({
 						},
 						"@rsbuild/core": {
 							range: "^2.1.5",
-							peer: "^2.1.5",
+							peer: "^2.1.0",
 							strategy: "lock-minor",
 						},
 						"@rspress/core": {
@@ -214,13 +214,13 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@tsdown/exe": {
-							range: "^0.22.4",
-							peer: "^0.22.4",
+							range: "^0.22.5",
+							peer: "^0.22.5",
 							strategy: "lock",
 						},
 						"@tsdown/css": {
-							range: "^0.22.4",
-							peer: "^0.22.4",
+							range: "^0.22.5",
+							peer: "^0.22.5",
 							strategy: "lock",
 						},
 						"@types/node": {
@@ -293,7 +293,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsdown: {
-							range: "^0.22.4",
+							range: "^0.22.5",
 							peer: "^0.22.0",
 							strategy: "lock-minor",
 						},
