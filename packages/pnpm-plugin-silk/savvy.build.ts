@@ -10,7 +10,7 @@ await build({
 					packages: {
 						"@changesets/cli": {
 							range: "^3.0.0-next.8",
-							peer: "^3.0.0",
+							peer: "^3.0.0-next.8",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
