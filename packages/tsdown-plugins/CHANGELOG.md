@@ -1,5 +1,13 @@
 # @savvy-web/tsdown-plugins
 
+## 1.1.11
+
+### Dependencies
+
+* | Dependency | Type       | Action  | From    | To      |                                                          |
+  | ---------- | ---------- | ------- | ------- | ------- | -------------------------------------------------------- |
+  | tsdown     | dependency | updated | ^0.22.4 | ^0.22.5 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 1.1.10
 
 ### Bug Fixes

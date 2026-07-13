@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.23.0
+
+### Maintenance
+
+* Bump bundler dependency versions. [#299][#299]
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#299]: https://github.com/savvy-web/systems/pull/299
+
 ## 0.22.1
 
 ### Bug Fixes
