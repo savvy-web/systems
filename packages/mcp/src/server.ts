@@ -34,6 +34,8 @@ import type { ChangesetValidateArgs } from "./tools/changeset-validate.js";
 import { ChangesetValidateAsMarkdown, ChangesetValidateResult, changesetValidate } from "./tools/changeset-validate.js";
 import type { ReposInspectArgs } from "./tools/repos-inspect.js";
 import { ReposInspectAsMarkdown, ReposInspectResult, reposInspect } from "./tools/repos-inspect.js";
+import type { ReposManageArgs } from "./tools/repos-manage.js";
+import { ReposManageAsMarkdown, ReposManageResult, reposManage } from "./tools/repos-manage.js";
 import type { TurboInspectArgs } from "./tools/turbo-inspect.js";
 import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "./tools/turbo-inspect.js";
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
@@ -212,6 +214,35 @@ export function buildServer(ctx: McpContext): McpServer {
 		async (args) => {
 			const data = await ctx.runtime.runPromise(reposInspect(args as ReposInspectArgs, ctx.cwd));
 			const text = Schema.decodeSync(ReposInspectAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
+		"repos_manage",
+		{
+			title: "Manage vendored repos",
+			description:
+				"Mutating: sync (initialize/reconcile submodules per the manifest), pin (re-pin a repo to a new ref), add (vendor a new repo), or note (add/remove/promote an agent note). Pass action plus the fields that action needs: pin needs name+ref; add needs url+ref+purpose (name/sparse optional); note needs name+op, plus note (op=add), id (op=remove), or id+into (op=promote). A decode failure names the missing field. The pin result's markdown surfaces commitMessage and staleNoteIds — review and commit after pinning.",
+			inputSchema: {
+				action: z.enum(["sync", "pin", "add", "note"]).describe("Which mutation to perform."),
+				name: z.optional(z.string()).describe("Repo name (pin, note; optional override for add)."),
+				ref: z.optional(z.string()).describe("Git ref to pin/vendor to (pin, add)."),
+				url: z.optional(z.string()).describe("Repo URL to vendor (add)."),
+				purpose: z.optional(z.string()).describe("One-line purpose for the manifest (add)."),
+				sparse: z.optional(z.array(z.string())).describe("Sparse-checkout patterns (add)."),
+				op: z.optional(z.enum(["add", "remove", "promote"])).describe("Note operation (note)."),
+				note: z.optional(z.string()).describe("Note text (note, op=add)."),
+				id: z.optional(z.string()).describe("Note id (note, op=remove|promote)."),
+				into: z.optional(z.enum(["layout", "startHere"])).describe("Orientation target (note, op=promote)."),
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(ReposManageResult) as never,
+			annotations: { destructiveHint: true, idempotentHint: false },
+		},
+		async (args) => {
+			const data = await ctx.runtime.runPromise(reposManage(args as ReposManageArgs, ctx.cwd));
+			const text = Schema.decodeSync(ReposManageAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
