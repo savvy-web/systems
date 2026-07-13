@@ -154,16 +154,18 @@ read them via the tools below rather than trusting recall for field names.
   blocked, don't route around the guard with a workaround, use
   `repos_manage`/`savvy repos` instead.
 - **`sync` re-materializes and re-applies, it does not fix dirtiness.** For
-  each manifest entry, `sync` clears stale git locks, and — only when the
-  submodule checkout is **absent** — re-initializes it and re-applies its
-  sparse paths. A submodule that is **present but dirty** (stray local edits)
-  is left untouched by `sync` and reported `upToDate`; dirtiness is surfaced
-  by `repos_inspect mode:"status"` (or `savvy repos status`), not fixed by it.
-  To restore pristine content, either discard the stray edits with `git`
-  inside the submodule directory, or delete the submodule's working directory
-  and re-run `sync` to re-materialize it clean. Reach for `sync` before
-  hand-running `git submodule` commands against `.repos/`, but don't expect it
-  to clean up dirt on its own.
+  each manifest entry, `sync` clears stale git locks, re-initializes any
+  **absent** submodule checkout, and re-applies each repo's configured sparse
+  paths on every run regardless of presence — that's how a manifest sparse
+  change propagates to a checkout that already exists. A submodule that is
+  **present but dirty** (stray local edits) is left untouched by `sync` and
+  reported `upToDate`; dirtiness is surfaced by `repos_inspect mode:"status"`
+  (or `savvy repos status`), not fixed by it. To restore pristine content,
+  either discard the stray edits with `git` inside the submodule directory,
+  or delete the submodule's working directory and re-run `sync` to
+  re-materialize it clean. Reach for `sync` before hand-running `git
+  submodule` commands against `.repos/`, but don't expect it to clean up
+  dirt on its own.
 
 ## Known gaps
 
