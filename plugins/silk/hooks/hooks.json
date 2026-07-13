@@ -19,6 +19,15 @@
 						"timeout": 10
 					}
 				]
+			},
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start/repos-orientation.sh\"",
+						"timeout": 10
+					}
+				]
 			}
 		],
 		"PreToolUse": [
@@ -43,6 +52,16 @@
 				]
 			},
 			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-bash-guard.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
 				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
 				"hooks": [
 					{
@@ -53,11 +72,31 @@
 				]
 			},
 			{
+				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-mcp-guard.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
 				"matcher": "Read|Write|Edit",
 				"hooks": [
 					{
 						"type": "command",
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/commit-fs.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
+				"matcher": "Write|Edit|NotebookEdit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-fs-guard.sh\"",
 						"timeout": 5
 					}
 				]

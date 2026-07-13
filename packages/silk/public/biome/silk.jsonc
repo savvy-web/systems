@@ -141,6 +141,7 @@
 			"**",
 			"!**/node_modules",
 			"!**/dist",
+			"!**/.repos",
 			"!**/.turbo",
 			"!**/.git",
 			"!**/.rslib",

@@ -13,7 +13,7 @@ describe("buildServer", () => {
 		expect(server).toBeDefined();
 	});
 
-	it("registers exactly eight tools including the two changeset deps tools", () => {
+	it("registers exactly ten tools including the two changeset deps tools, repos_inspect, and repos_manage", () => {
 		const ctx: McpContext = {
 			runtime: null as unknown as McpContext["runtime"],
 			cwd: "/tmp",
@@ -29,10 +29,12 @@ describe("buildServer", () => {
 				"changeset_inspect",
 				"changeset_preview",
 				"changeset_validate",
+				"repos_inspect",
+				"repos_manage",
 				"turbo_inspect",
 				"workspace_info",
 			].sort(),
 		);
-		expect(names).toHaveLength(8);
+		expect(names).toHaveLength(10);
 	});
 });

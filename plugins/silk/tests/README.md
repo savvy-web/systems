@@ -151,13 +151,51 @@ context / fail-open paths.
 | `pre-tool-use-commit-fs.bats` | `pre-tool-use/commit-fs.sh` |
 | `post-tool-use-commit-bash.bats` | `post-tool-use/commit-bash.sh` |
 | `post-tool-use-changeset-validate-changeset.bats` | `post-tool-use/changeset-validate-changeset.sh` |
+| `pre-tool-use-repos-fs-guard.bats` | `pre-tool-use/repos-fs-guard.sh` |
+| `pre-tool-use-repos-bash-guard.bats` | `pre-tool-use/repos-bash-guard.sh` |
+| `pre-tool-use-repos-mcp-guard.bats` | `pre-tool-use/repos-mcp-guard.sh` |
 | `session-start-orientation.bats` | `session-start/orientation.sh` |
+| `session-start-repos-orientation.bats` | `session-start/repos-orientation.sh` |
 | `session-start-startup-only.bats` | `session-start/startup-only.sh` |
 | `stop-changeset-nudge.bats` | `stop/changeset-nudge.sh` |
 
 Each suite exercises the real contract: an envelope on stdin, JSON decision /
 `additionalContext` and exit code on stdout, across the allow / deny / context
 paths, the "not applicable, exit 0 silently" paths, and malformed input.
+
+## Deny-path fixture pattern
+
+`pre-tool-use-repos-fs-guard.bats` is the first suite to exercise
+`emit_deny` (`hooks/lib/hook-output.sh`) — copy from it when adding
+coverage for a new deny hook. `pre-tool-use-repos-bash-guard.bats` and
+`pre-tool-use-repos-mcp-guard.bats` (savvy-web/systems#285) are the next
+callers. Two things about it that don't come up in the allow / no-op suites
+above:
+
+1. **Placeholder-project fixtures for absolute-path scenarios.** A fixture
+   that needs to assert on an absolute path under the project root can't bake
+   in a real path — the project dir is a fresh `$BATS_TEST_TMPDIR` tree per
+   test. Write the fixture with a literal `__PROJECT_DIR__` token in
+   `tool_input.file_path` / `tool_input.notebook_path`
+   (`hooks/fixtures/pretooluse.repos-fs-deny.json`,
+   `pretooluse.repos-fs-notebook.json`), then have the test substitute it with
+   `jq`'s `gsub` before piping the envelope to the hook. Relative-path
+   scenarios don't need this — they resolve against `CLAUDE_PROJECT_DIR`
+   inside the hook, so the fixture can stay a plain relative path
+   (`pretooluse.repos-fs-outside.json`, `pretooluse.repos-fs-config-allow.json`).
+2. **`make_project`'s export only lands in the current shell, never a command
+   substitution.** `make_project` both `export`s `CLAUDE_PROJECT_DIR` in the
+   caller's shell AND echoes the path — but `project="$(make_project)"` runs
+   the function in a subshell, so the `export` never reaches the test
+   process; only the echoed path is captured, and `CLAUDE_PROJECT_DIR` is
+   left unset. Call `make_project >/dev/null` on its own line, then read
+   `$CLAUDE_PROJECT_DIR` back, exactly like the existing `make_git_project`
+   comment in `skill-commit-create-commit.bats` documents.
+
+Assert both the `permissionDecision: "deny"` value and that
+`permissionDecisionReason` names the sanctioned mutation path (e.g.
+`repos_manage` / `savvy repos`) — a deny with no actionable reason just
+frustrates the agent it blocked.
 
 ## Adding a suite for a new hook
 
@@ -183,8 +221,15 @@ relative to the sourcing script's own directory.
 
 ## Known gaps
 
-- **Malformed input.** The jq-parsing hooks abort with a jq parse error (a
-  non-zero exit) on invalid JSON rather than failing open with an empty no-op.
-  The suites document this current behaviour; they do not assert it is ideal.
-  `session-start/startup-only.sh` is the exception — it drains stdin without
-  parsing it, so a malformed body still emits context.
+- **Malformed input.** Every jq-parsing hook sources `hook-env.sh` and calls
+  `read_envelope_or_noop` before touching the envelope, so invalid or empty
+  JSON on stdin fails open — a silent no-op (`{}`), not a jq parse-error abort.
+  `read_envelope_or_noop` (PR #276) retrofitted this fail-open behavior across
+  every jq-parsing hook that existed at the time; the three
+  `repos-*-guard.sh` hooks (savvy-web/systems#285/#286) — the first real
+  callers of `emit_deny` — were written against it from the start, so the
+  posture is uniform across old and new hooks alike. Each suite's
+  `malformed JSON input: no-op (fails open)` case asserts this directly.
+  `session-start/startup-only.sh` remains the one true exception — it drains
+  stdin without parsing it at all, so a malformed body still emits context
+  regardless.

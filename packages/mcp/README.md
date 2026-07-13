@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@savvy-web%2Fmcp?label=npm&color=cb3837)](https://www.npmjs.com/package/@savvy-web/mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-4caf50.svg)](https://opensource.org/licenses/MIT)
 
-The `savvy-mcp` [Model Context Protocol](https://modelcontextprotocol.io/) server. It serves [Silk Suite](https://github.com/savvy-web/systems) tooling to coding agents as structured tools, so an agent can read workspace facts and run Silk checks instead of parsing console output or guessing. It is a tools-only server — eight tools, no resources.
+The `savvy-mcp` [Model Context Protocol](https://modelcontextprotocol.io/) server. It serves [Silk Suite](https://github.com/savvy-web/systems) tooling to coding agents as structured tools, so an agent can read workspace facts and run Silk checks instead of parsing console output or guessing. It is a tools-only server — ten tools, no resources.
 
 ## Install
 
@@ -49,6 +49,8 @@ npx @modelcontextprotocol/inspector savvy-mcp .
 - `changeset_deps_detect` — read-only preview of the cumulative dependency diff (merge-base to working tree): one entry per affected workspace package with its resolved dependency-table rows, `catalog:`/`workspace:` specifiers resolved to concrete versions. It never writes a changeset. Backed by `silk-effects`' `Changesets.DepsRegen.plan`.
 - `changeset_deps_regen` — regenerates pure-dependency changesets: deletes stale ones and writes fresh single-package, patch-bump changesets from the cumulative dependency diff. Mutating unless `dryRun` is set, in which case it reports what it would delete and write without touching the filesystem. Backed by `silk-effects`' `Changesets.DepsRegen`.
 - `biome_check` — run Biome over a path and get structured diagnostics back: `mode=check` (lint, format and organize-imports) or `mode=lint`. Unlike most of the other tools it can mutate — pass `write` for safe fixes or `unsafe` for unsafe ones (both git-reversible) — so it returns the same diagnostics the Biome LSP surfaces for files you have edited.
+- `repos_inspect` — read-only inspection of vendored repositories: `mode=status` reports per-repo presence, the gitlink commit, working-tree dirtiness, and stale note ids; `mode=config` surfaces the validated `.repos/config.json` manifest and its entries. Returns markdown-escaped output since vendored-repo content is untrusted input. Backed by the same `silk-effects` `Repos` services the `savvy` CLI uses.
+- `repos_manage` — manages vendored repositories (mutating counterpart to repos_inspect): `action=sync` initializes any missing submodules (`git submodule update --init --depth 1`), applies sparse-checkout from the manifest, and clears stale git locks; `action=pin` fetches and checks out the new ref, staging the updated gitlink and manifest; `action=add` adds a new repo entry; `action=note` appends a short note to a repo. Pin and add stage git changes for the caller to commit. Backed by the same `silk-effects` `Repos` services the `savvy` CLI uses.
 
 ## License
 

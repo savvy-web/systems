@@ -17,7 +17,8 @@
 		"**/__test__/**/fixtures/**",
 		"**/__fixtures__/**",
 		"**/public/content/packages/*/api/**",
-		"**/public/content/packages/*/api.md"
+		"**/public/content/packages/*/api.md",
+		"**/.repos"
 	],
 	"customRules": ["@savvy-web/silk/changesets/markdownlint"],
 	"config": {

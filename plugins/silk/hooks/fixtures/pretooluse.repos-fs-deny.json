@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-fs-deny",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Write",
+	"tool_input": {
+		"file_path": "__PROJECT_DIR__/.repos/effect-smol/src/x.ts"
+	}
+}

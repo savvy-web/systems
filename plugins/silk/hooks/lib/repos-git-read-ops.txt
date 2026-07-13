@@ -1,0 +1,16 @@
+# Read-only git subcommands allowed against a .repos/** working tree
+# (git -C .repos/<repo> ..., --git-dir=/--work-tree= targeting .repos/).
+# Used by hooks/pre-tool-use/repos-bash-guard.sh (grep -Fxq, whole-line
+# match). Anything NOT listed here is treated as a write and denied.
+status
+log
+diff
+show
+ls-files
+ls-tree
+cat-file
+blame
+grep
+remote
+rev-parse
+describe
