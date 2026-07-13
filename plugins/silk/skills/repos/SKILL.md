@@ -108,7 +108,10 @@ and not a place to restate what's already obvious from the layout. Concretely:
   signal it was actually durable structure misfiled as a note — promote it
   (`op:"promote"`, `into: "layout"` or `"startHere"`) instead of just
   re-stamping it. A note that keeps surviving pins and never gets promoted is
-  a sign the orientation block is under-filled.
+  a sign the orientation block is under-filled. Promote only targets `layout`
+  and `startHere` — `orientation.keyPaths` has no tool write path at all, so a
+  discovered key path is added by hand-editing the manifest entry's
+  `orientation.keyPaths` map directly, note or no note.
 - **The cap is 10 notes per repo, enforced at write time.** Hitting it means
   **consolidate**, not silently fail to add the next one and not delete the
   oldest just to make room. Fold overlapping notes into one, promote whatever
@@ -121,33 +124,46 @@ the same cost.
 ## Mechanics pointers
 
 The manifest and result schemas are the source of truth for exact fields —
-read them via the tools below rather than hand-editing `.repos/config.json`
-from memory (it's read-only by convention; see the guards note).
+read them via the tools below rather than trusting recall for field names.
 
 - **`repos_inspect`** (read-only) — `mode:"status"` for a drift report
   (present/dirty/stale-notes per repo); `mode:"config"` for the full manifest
   brief (purposes, orientation, notes).
-- **`repos_manage`** (mutating; every action stages rather than commits) —
-  `action:"sync"` self-heals; `action:"pin"` re-pins one repo and returns a
-  commit message plus `staleNoteIds`; `action:"add"` vendors a new repo
-  (`url`/`ref`/`purpose` required); `action:"note"` with `op:"add"|"remove"|
-  "promote"` on a named repo's note list.
+- **`repos_manage`** (mutating) — `action:"sync"` re-materializes missing
+  checkouts; `action:"pin"` re-pins one repo, stages the manifest and gitlink,
+  and returns a ready-made commit message plus `staleNoteIds`; `action:"add"`
+  vendors a new repo (`url`/`ref`/`purpose` required) and stages the result the
+  same way as `pin`; `action:"note"` with `op:"add"|"remove"|"promote"` writes
+  the manifest directly but does **not** stage it — the note write is an
+  ordinary unstaged file edit, like any other, that the caller stages and
+  commits themselves.
 - **CLI equivalent** — `savvy repos status|sync|pin|add|note`, same
   semantics; `savvy repos status --json` for machine-readable drift, `savvy
   repos add` requires `--purpose`. Run `savvy repos --help` for the full flag
   reference rather than guessing at option names.
-- **`.repos/**` is read-only by guard, not just by convention.** The
-  fs/Bash/MCP guards deny direct writes into vendored trees (`config.json`
-  itself is exempt, since the tools above write it deliberately). The Bash and
-  MCP tripwires are best-effort pattern matches, not a sandbox — they can
-  over-deny on an unusual command shape; if a legitimate command gets blocked,
-  don't route around the guard with a workaround, use `repos_manage`/`savvy
-  repos` instead, which are the sanctioned write paths.
-- **`sync` is self-healing.** A dirty submodule, a missing checkout, or a
-  stale `git` lock are all things `repos_manage action:"sync"` (or `savvy
-  repos sync`) repairs — re-initializing, re-applying sparse paths, and
-  clearing stale locks. Reach for `sync` before hand-running `git submodule`
-  commands against `.repos/`.
+- **The tools are the sanctioned path for submodule mutations; the manifest
+  itself is legitimately hand-editable.** The fs/Bash/MCP guards deny direct
+  writes into vendored submodule trees, but `config.json` is deliberately
+  exempted — the guards' own deny messages point at it as the way to edit
+  notes and orientation by hand, and `repos_manage action:"note"` is simply
+  the tool-mediated way to make the same edit. Use `pin`/`add`/`sync` for
+  anything that touches a submodule's checkout or gitlink; either the tool or
+  a direct edit is fine for notes and orientation. The Bash and MCP tripwires
+  are best-effort pattern matches, not a sandbox — they can over-deny on an
+  unusual command shape; if a legitimate submodule-mutating command gets
+  blocked, don't route around the guard with a workaround, use
+  `repos_manage`/`savvy repos` instead.
+- **`sync` re-materializes and re-applies, it does not fix dirtiness.** For
+  each manifest entry, `sync` clears stale git locks, and — only when the
+  submodule checkout is **absent** — re-initializes it and re-applies its
+  sparse paths. A submodule that is **present but dirty** (stray local edits)
+  is left untouched by `sync` and reported `upToDate`; dirtiness is surfaced
+  by `repos_inspect mode:"status"` (or `savvy repos status`), not fixed by it.
+  To restore pristine content, either discard the stray edits with `git`
+  inside the submodule directory, or delete the submodule's working directory
+  and re-run `sync` to re-materialize it clean. Reach for `sync` before
+  hand-running `git submodule` commands against `.repos/`, but don't expect it
+  to clean up dirt on its own.
 
 ## Known gaps
 
