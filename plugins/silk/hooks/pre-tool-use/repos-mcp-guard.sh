@@ -73,6 +73,6 @@ esac
 
 INPUT_STR=$(jq -r '.tool_input | tostring' <<< "$HOOK_ENVELOPE")
 if [[ "$INPUT_STR" == *.repos/* ]]; then
-	emit_deny "MCP writes inside .repos/** are denied; re-pin via repos_manage (action: pin)."
+	emit_deny "MCP writes inside .repos/** are denied. Use repos_manage for submodule mutations (action: pin to re-pin, sync/add likewise) and its note action — or edit the local .repos/config.json directly — for notes and orientation."
 fi
 exit 0
