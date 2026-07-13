@@ -68,16 +68,47 @@ fi
 
 # Step 2: run `savvy repos sync` behind an internal watchdog. SYNC_OK tracks
 # the outcome for the header line below; it never blocks context emission.
+#
+# No process in this subtree may be left as an orphan holding an inherited
+# file descriptor: whatever launches this hook (bats `run`, the Claude Code
+# harness) may have duplicated its own capture pipe onto a descriptor above
+# fd 2 for its own bookkeeping (bats-core does exactly this: `exec 3<&1`).
+# Redirecting fd 1/2 on a spawned process does not touch that descriptor, so
+# the only reliable fix is to make sure nothing in this subtree outlives
+# run_sync -- an orphan that lingers for even a few seconds holds every
+# inherited fd open that long, and the caller blocks on it.
+#
+# reap <pid> -- kill <pid> AND every process it has spawned (the runner --
+# npx/pnpm exec/bunx -- can itself fork a further process for the real CLI,
+# and `kill <pid>` only ever signals that one process). Children must be
+# enumerated with `pgrep -P` BEFORE <pid> is killed: once a process exits,
+# its children are immediately reparented (typically to PID 1), so a
+# `pgrep -P <pid>` issued after the kill no longer finds them -- the PIDs
+# have to be captured first and killed by those captured PIDs directly.
+reap() {
+	local target="$1" kids
+	kids=$(pgrep -P "$target" 2>/dev/null || true)
+	kill "$target" 2>/dev/null || true
+	if [ -n "$kids" ]; then
+		# shellcheck disable=SC2086  # word-split intentionally: kids is a
+		# newline-separated PID list, each PID its own kill argument.
+		kill $kids 2>/dev/null || true
+	fi
+}
+
 RUNNER=$(bash "${CLAUDE_PLUGIN_ROOT}/hooks/lib/run-cli.sh")
 
 SYNC_OK=1
 run_sync() {
 	$RUNNER savvy repos sync --cwd "$PROJECT_DIR" >/dev/null 2>&1 &
 	local pid=$!
-	( sleep "${SILK_REPOS_SYNC_TIMEOUT:-6}" && kill "$pid" 2>/dev/null ) &
+	# The watchdog's own stdio is detached (`</dev/null >/dev/null 2>&1`)
+	# BEFORE its `sleep` starts, so a slow-to-reap watchdog can never inherit
+	# a live copy of the hook's real stdout in the first place.
+	( sleep "${SILK_REPOS_SYNC_TIMEOUT:-6}"; reap "$pid" ) </dev/null >/dev/null 2>&1 &
 	local watchdog=$!
 	if ! wait "$pid"; then SYNC_OK=0; fi
-	kill "$watchdog" 2>/dev/null || true
+	reap "$watchdog"
 }
 run_sync
 
