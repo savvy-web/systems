@@ -181,6 +181,10 @@ Commit time is deliberately *not* a nudge point: the changeset decision needs th
 
 Every hook sources the canonical `hooks/lib/hook-output.sh` and `hook-debug.sh`; there are no per-tool duplicates of these libs.
 
+### Hook scripts carry no exec bit
+
+Hook scripts commit as `100644`: the lint-staged ShellScripts handler strips the executable bit from staged `.sh` files, and nothing needs it — every hook is invoked as `bash "${CLAUDE_PLUGIN_ROOT}/hooks/..."` by `hooks.json` and the bats runner. Reviews keep flagging new 644 scripts against older 755 siblings as accidental mode drift; it is intentional normalization, not a bug (savvy-web/systems#289). The same note lives in `plugins/silk/tests/README.md` and `lib/configs/lint-staged.config.ts`.
+
 ### Dogfood-feedback prompt
 
 The always-on orientation nudge tells the main agent to note rough edges in any silk skill, hook, the `savvy` CLI or the `changeset-manager` agent during the session, and to ask subagents it dispatches to report theirs back. At session end the agent surfaces what it noticed and asks the user before opening an issue in `savvy-web/systems` via `gh issue create` — a hard user-agreement gate: it must never file one on its own judgement.

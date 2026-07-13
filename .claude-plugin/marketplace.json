@@ -9,53 +9,9 @@
 	},
 	"plugins": [
 		{
-			"name": "changesets",
-			"source": {
-				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/changesets.git",
-				"path": "plugin"
-			},
-			"description": "Companion plugin for @savvy-web/changesets that helps write well-structured changeset files for GitHub release documentation",
-			"category": "developer-tools",
-			"tags": ["changesets", "changelog", "release-notes"]
-		},
-		{
-			"name": "vitest",
-			"source": {
-				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/vitest.git",
-				"path": "plugin"
-			},
-			"description": "Companion plugin for @savvy-web/vitest that helps write well-structured test files for GitHub release documentation",
-			"category": "developer-tools",
-			"tags": ["vitest", "testing", "unit-tests"]
-		},
-		{
-			"name": "lint-staged",
-			"source": {
-				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/lint-staged.git",
-				"path": "plugin"
-			},
-			"description": "Companion plugin for @savvy-web/lint-staged that helps write well-structured lint-staged configuration files for GitHub release documentation",
-			"category": "developer-tools",
-			"tags": ["lint-staged", "linting", "pre-commit-hooks"]
-		},
-		{
-			"name": "commitlint",
-			"source": {
-				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/commitlint.git",
-				"path": "plugin"
-			},
-			"description": "Companion plugin for @savvy-web/commitlint that helps write well-structured commitlint configuration files for GitHub release documentation",
-			"category": "developer-tools",
-			"tags": ["commitlint", "commit-msg", "git-hooks"]
-		},
-		{
 			"name": "silk",
 			"source": "./plugins/silk",
-			"description": "Companion plugin for the Savvy Web Silk Suite — changeset, commit, and lint conventions, skills, and agents for silk-effects, templates, and the savvy CLI",
+			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 			"category": "developer-tools",
 			"tags": ["silk-suite", "changesets", "commitlint", "biome", "code-quality"]
 		},

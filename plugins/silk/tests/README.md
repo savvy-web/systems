@@ -209,6 +209,18 @@ frustrates the agent it blocked.
 5. Run `pnpm test:hooks` and confirm both the shellcheck pass and the new suite
    are green.
 
+## Hook script file modes
+
+Hook scripts commit as `100644` (no exec bit) on purpose. The lint-staged
+ShellScripts handler strips the executable bit from staged `.sh` files
+(`chmod -x`), so a freshly added hook that starts life as `755` lands in the
+commit as `644` while older siblings may still show `755` from before the
+handler existed. This is not mode drift and needs no fix: every hook is
+invoked as `bash "${CLAUDE_PLUGIN_ROOT}/hooks/..."` (see `hooks/hooks.json`
+and `run-hook-tests.sh`), so the exec bit is never exercised, and normalizing
+it keeps diffs clean. Do not chmod hook scripts back to `755` or exclude them
+from the handler.
+
 ## shellcheck strategy
 
 `run-hook-tests.sh` passes only shebang-bearing scripts to `shellcheck` as
