@@ -164,9 +164,10 @@ paths, the "not applicable, exit 0 silently" paths, and malformed input.
 
 `pre-tool-use-repos-fs-guard.bats` is the first suite to exercise
 `emit_deny` (`hooks/lib/hook-output.sh`) — copy from it when adding
-coverage for a new deny hook (`repos-bash-guard.sh` / `repos-mcp-guard.sh`
-are the next callers, per savvy-web/systems#285). Two things about it that
-don't come up in the allow / no-op suites above:
+coverage for a new deny hook. `pre-tool-use-repos-bash-guard.bats` and
+`pre-tool-use-repos-mcp-guard.bats` (savvy-web/systems#285) are the next
+callers. Two things about it that don't come up in the allow / no-op suites
+above:
 
 1. **Placeholder-project fixtures for absolute-path scenarios.** A fixture
    that needs to assert on an absolute path under the project root can't bake

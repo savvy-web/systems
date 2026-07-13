@@ -43,11 +43,31 @@
 				]
 			},
 			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-bash-guard.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
 				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
 				"hooks": [
 					{
 						"type": "command",
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/commit-mcp.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
+				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-mcp-guard.sh\"",
 						"timeout": 5
 					}
 				]

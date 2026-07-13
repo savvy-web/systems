@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-mcp-write",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "mcp__gitkraken__git_add_or_commit",
+	"tool_input": {
+		"directory": "/x/.repos/effect-smol"
+	}
+}

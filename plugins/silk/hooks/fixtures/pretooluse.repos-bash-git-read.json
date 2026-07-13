@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-bash-git-read",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "git -C .repos/effect-smol log --oneline"
+	}
+}
