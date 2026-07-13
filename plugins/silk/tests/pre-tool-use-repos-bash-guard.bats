@@ -62,6 +62,36 @@ _reason() {
 	[ -z "$output" ]
 }
 
+@test "redirect append into .repos/config.json.bak (adjacent filename, NOT the exact exemption): deny" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-config-bak-deny.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "redirect append into .repos/config.jsonX (suffix, NOT the exact exemption): deny" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-config-suffix-deny.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "sed -i with the flag reordered after the script arg: deny" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-sed-reordered.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "git --git-dir=<abs>/.repos/<repo>/.git checkout (write subcommand): deny" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-dir-write.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "git --work-tree=<abs>/.repos/<repo> status (read subcommand): silent no-op" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-worktree-read.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "rg read over .repos/** : silent no-op" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-rg.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]

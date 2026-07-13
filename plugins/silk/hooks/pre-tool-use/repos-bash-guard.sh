@@ -82,14 +82,24 @@ fi
 
 # --- Non-git leg -----------------------------------------------------------
 # Write-shaped patterns: redirection (> / >>), tee, sed -i, cp, mv, rm,
-# patch, dd of=. ".repos/config.json" is the one hand-editable exception --
-# strip that exact substring out of $COMMAND first, then check whether
-# ".repos/" still appears anywhere else. Reads (cat, grep, rg, ls, or a
-# plain mention with none of these shapes) fall through silently.
+# patch, dd of=. ".repos/config.json" is the one hand-editable exception.
+# Reads (cat, grep, rg, ls, or a plain mention with none of these shapes)
+# fall through silently.
+#
+# sed -i detection: widened to "sed appears as a command" AND "an -i-shaped
+# flag (-i, -ni, --in-place, ...) appears anywhere in the command", rather
+# than requiring the flag immediately after `sed` -- `sed -e 's/a/b/' -i
+# .repos/x` (flag reordered) is caught too. Still best-effort: a flag value
+# that happens to look like `-i` (e.g. inside a quoted script argument) can
+# false-positive; accepted per the tripwire posture (over-denial only costs
+# a re-pin, never corrupts state).
 is_write_shape=0
 [[ "$COMMAND" =~ \>+[[:space:]]*[^[:space:]]*\.repos/ ]] && is_write_shape=1
 [[ "$COMMAND" =~ (^|[^[:alnum:]_])tee([[:space:]]|$) ]] && is_write_shape=1
-[[ "$COMMAND" =~ sed[[:space:]]+(-[A-Za-z]*i|--in-place) ]] && is_write_shape=1
+if [[ "$COMMAND" =~ (^|[^[:alnum:]_])sed([[:space:]]|$) ]] \
+	&& [[ "$COMMAND" =~ (^|[[:space:]])(-[A-Za-z]*i|--in-place)([[:space:]]|$) ]]; then
+	is_write_shape=1
+fi
 [[ "$COMMAND" =~ (^|[^[:alnum:]_])cp([[:space:]]|$) ]] && is_write_shape=1
 [[ "$COMMAND" =~ (^|[^[:alnum:]_])mv([[:space:]]|$) ]] && is_write_shape=1
 [[ "$COMMAND" =~ (^|[^[:alnum:]_])rm([[:space:]]|$) ]] && is_write_shape=1
@@ -97,8 +107,30 @@ is_write_shape=0
 [[ "$COMMAND" =~ dd[[:space:]].*of= ]] && is_write_shape=1
 
 if [ "$is_write_shape" -eq 1 ]; then
-	STRIPPED="${COMMAND//.repos\/config.json/}"
-	if [[ "$STRIPPED" == *.repos/* ]]; then
+	# Exact-match the config.json exemption: word-split $COMMAND (best-
+	# effort, not quote-aware -- consistent with the rest of this script)
+	# and, for every token that mentions ".repos/", peel off a directly-
+	# glued redirect operator (">"/">>"), dd's "of=", and a single pair of
+	# surrounding quotes, then compare what's left EXACTLY to
+	# ".repos/config.json". A previous version stripped that substring out
+	# of $COMMAND wholesale, which wrongly cleared adjacent-filename writes
+	# like ".repos/config.json.bak" (the strip left ".bak", no ".repos/"
+	# remained, so the deny below never fired) -- fixed by requiring an
+	# exact token match instead, mirroring repos-fs-guard.sh's exact case
+	# match on the resolved path.
+	deny=0
+	for tok in $COMMAND; do
+		[[ "$tok" == *.repos/* ]] || continue
+		target="$tok"
+		while [[ "$target" == ">"* ]]; do target="${target#>}"; done
+		target="${target#of=}"
+		target="${target%\"}"; target="${target#\"}"
+		target="${target%\'}"; target="${target#\'}"
+		if [ "$target" != ".repos/config.json" ]; then
+			deny=1
+		fi
+	done
+	if [ "$deny" -eq 1 ]; then
 		emit_deny "writes inside .repos/** are denied; use repos_manage (or savvy repos) to mutate vendored repos, or edit .repos/config.json directly for notes and orientation."
 		exit 0
 	fi
