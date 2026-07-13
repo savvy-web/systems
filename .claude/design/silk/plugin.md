@@ -181,6 +181,10 @@ Commit time is deliberately *not* a nudge point: the changeset decision needs th
 
 Every hook sources the canonical `hooks/lib/hook-output.sh` and `hook-debug.sh`; there are no per-tool duplicates of these libs.
 
+### Hook scripts carry no exec bit
+
+Hook scripts commit as `100644`: the lint-staged ShellScripts handler strips the executable bit from staged `.sh` files, and nothing needs it — every hook is invoked as `bash "${CLAUDE_PLUGIN_ROOT}/hooks/..."` by `hooks.json` and the bats runner. Reviews keep flagging new 644 scripts against older 755 siblings as accidental mode drift; it is intentional normalization, not a bug (savvy-web/systems#289). The same note lives in `plugins/silk/tests/README.md` and `lib/configs/lint-staged.config.ts`.
+
 ### Dogfood-feedback prompt (removed)
 
 Early releases carried an always-on dogfood-feedback prompt (note rough edges, ask the user before filing issues). It was removed from the orientation payload once the plugin matured past its initial dogfooding phase: it cost ~700 characters of every context window — including after every resume and compact — long after "newly released" stopped being true. Rough-edge reporting still happens organically; the hard user-agreement gate on issue filing remains the norm for agents regardless of any prompt.
