@@ -18,6 +18,10 @@ The per-session vendored-repos block now points at the `/silk:repos` skill for t
 
 ## Bug Fixes
 
+### SessionStart producer now resolves the working tree worktree-correctly
+
+The always-on SessionStart hook — the producer of `SILK_PROJECT_DIR` and `SILK_PACKAGE_MANAGER` for every reader hook — previously ranked `CLAUDE_PROJECT_DIR` above the hook envelope's `cwd`, pinning a git-worktree session to the primary checkout's path and package manager for its whole life. It now resolves through the shared `resolve_project_dir` (envelope `cwd` first), and package-manager detection is deduplicated into the shared hook library with a uniform fail-open-to-npm posture across both SessionStart hooks.
+
 ### Corrected pre-commit and tool-preference guidance
 
 The startup context's tool-preference guidance previously taught Bash `biome check` as the primary path and wrongly claimed the root `typecheck` script runs `tsgo` directly. It now states the correct order — Biome LSP first (automatic diagnostics on edit), `biome_check` second (structured, can fix), Bash as the escape hatch — and adds a `pre_commit_pipeline` block enumerating every lint-staged autofix that runs on commit, including the intentional exec-bit strip on `.sh` files, so agents stop mistaking that mode flip for damage.

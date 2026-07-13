@@ -109,6 +109,35 @@ repo_commit() {
 	git -C "$repo" commit -q -m "$msg"
 }
 
+# envelope_with_cwd <fixture> [dir] — copy <fixture>, substituting its literal
+# __PROJECT_DIR__ cwd token with <dir> (default: $CLAUDE_PROJECT_DIR), and echo
+# the path to the copy.
+#
+# The SessionStart fixtures carry the token rather than a baked-in path because
+# both SessionStart hooks resolve their project dir through
+# `resolve_project_dir` — envelope .cwd OUTRANKS CLAUDE_PROJECT_DIR
+# (savvy-web/systems#274) — and the project dir is a fresh $BATS_TEST_TMPDIR
+# tree per test. Same pattern as the repos-fs-guard deny fixtures.
+envelope_with_cwd() {
+	local fixture="$1"
+	local dir="${2:-${CLAUDE_PROJECT_DIR:-}}"
+	local out
+	out="${BATS_TEST_TMPDIR}/envelope-$(basename "$fixture")"
+	jq --arg d "$dir" '.cwd = $d' "$fixture" > "$out"
+	echo "$out"
+}
+
+# envelope_without_cwd <fixture> — copy <fixture> with .cwd deleted, and echo the
+# path to the copy. Exercises the CLAUDE_PROJECT_DIR / SILK_PROJECT_DIR fallback
+# legs of resolve_project_dir.
+envelope_without_cwd() {
+	local fixture="$1"
+	local out
+	out="${BATS_TEST_TMPDIR}/envelope-nocwd-$(basename "$fixture")"
+	jq 'del(.cwd)' "$fixture" > "$out"
+	echo "$out"
+}
+
 # add_worktree <repo> <branch> — create a git worktree of <repo> on a NEW branch
 # <branch>, and echo its path. CLAUDE_PROJECT_DIR is deliberately left pointing
 # at the primary checkout: that split is the whole subject of savvy-web/systems#274.

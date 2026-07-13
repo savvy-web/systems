@@ -7,62 +7,47 @@ set -euo pipefail
 #
 # Merges: commit-main.sh + lint-staged-env.sh
 #
-# Contract: reads SessionStart envelope on stdin; if CLAUDE_PROJECT_DIR is unset
-# emits a noop and exits 0 (cannot block a SessionStart). Otherwise runs
-# `savvy commit hook session-start` as a side-effect and emits additionalContext
-# with a Silk-system intro, the lint-rule contract, the pre-commit lint-staged
-# pipeline (including the intentional exec-bit strip), and the LSP-first tool
-# preference order. (Design-doc orientation is owned by the design-docs plugin
-# and is intentionally not duplicated here.)
+# Contract: reads the SessionStart envelope on stdin and resolves the working
+# tree through resolve_project_dir (envelope .cwd first — worktree-correct, see
+# savvy-web/systems#274); if no project dir resolves at all it emits a noop and
+# exits 0 (cannot block a SessionStart). Otherwise runs `savvy commit hook
+# session-start` as a side-effect and emits additionalContext with a Silk-system
+# intro, the lint-rule contract, the pre-commit lint-staged pipeline (including
+# the intentional exec-bit strip), and the LSP-first tool preference order.
+# (Design-doc orientation is owned by the design-docs plugin and is intentionally
+# not duplicated here.)
+#
+# Unlike the other jq-parsing hooks this one does NOT call read_envelope_or_noop:
+# a malformed body must still emit the code-quality context (it is unconditional
+# session orientation, not a decision about a tool call). resolve_project_dir
+# tolerates a non-JSON envelope — its jq call is guarded — and simply falls back
+# to SILK_PROJECT_DIR / CLAUDE_PROJECT_DIR.
 
 # shellcheck source=../lib/hook-output.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
 # shellcheck source=../lib/hook-debug.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
+# shellcheck source=../lib/hook-env.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-env.sh"
 
 _HOOK="session-start-startup-only"
 
-# Drain stdin once.
-cat > /dev/null
+# Drain stdin once, keeping the body so the project dir can be resolved from it.
+ENVELOPE=$(cat)
 
-# Guard: CLAUDE_PROJECT_DIR must be set. A SessionStart cannot block, so
-# emit_noop and exit 0 rather than exit 1 when the env var is absent.
-if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
-	hook_error "$_HOOK" "CLAUDE_PROJECT_DIR is not set; skipping"
+PROJECT_DIR=$(resolve_project_dir "$ENVELOPE")
+
+# Guard: a project dir must resolve from somewhere. A SessionStart cannot block,
+# so emit_noop and exit 0 rather than exit 1 when nothing resolves.
+if [ -z "$PROJECT_DIR" ]; then
+	hook_error "$_HOOK" "no project dir (envelope cwd / SILK_PROJECT_DIR / CLAUDE_PROJECT_DIR all unset); skipping"
 	emit_noop
 	exit 0
 fi
 
-# Detect package manager for context block interpolation.
-detect_pm() {
-	local root="$CLAUDE_PROJECT_DIR"
-	if [ -f "$root/package.json" ] && command -v jq >/dev/null 2>&1; then
-		local pm
-		pm=$(jq -r '.packageManager // empty' "$root/package.json" 2>/dev/null | cut -d'@' -f1)
-		if [ -n "$pm" ]; then
-			echo "$pm"
-			return
-		fi
-	fi
-	if [ -f "$root/pnpm-lock.yaml" ]; then
-		echo "pnpm"
-	elif [ -f "$root/yarn.lock" ]; then
-		echo "yarn"
-	elif [ -f "$root/bun.lock" ]; then
-		echo "bun"
-	else
-		echo "npm"
-	fi
-}
-
-PM=$(detect_pm)
-
-case "$PM" in
-	pnpm) RUN="pnpm exec" ;;
-	yarn) RUN="yarn exec" ;;
-	bun)  RUN="bunx" ;;
-	*)    RUN="npx --no --" ;;
-esac
+# Package-manager detection is shared with orientation.sh via hook-env.sh.
+PM=$(detect_package_manager "$PROJECT_DIR")
+RUN=$(package_manager_exec "$PM")
 
 # Side-effect: run savvy commit hook session-start via the run-cli.sh resolver.
 # On failure, log the error and continue — a hook side-effect failure must never
@@ -174,7 +159,7 @@ Preference order when you need to check or fix code quality:
      ${RUN} biome check [--write]
      ${PM} run lint:md   /   ${PM} run lint:md:fix     (markdownlint-cli2)
      ${PM} run typecheck                               (turbo run types:check)
-     ${RUN} lint-staged --config "${CLAUDE_PROJECT_DIR}/lib/configs/lint-staged.config.ts"
+     ${RUN} lint-staged --config "${PROJECT_DIR}/lib/configs/lint-staged.config.ts"
 </running_tools>
 </reminder>
 CONTEXT

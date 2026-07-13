@@ -53,11 +53,11 @@ read_envelope_or_noop() {
 # follows the worktree.
 #
 # SILK_PROJECT_DIR is NOT a user-facing override despite its name: SessionStart's
-# orientation.sh derives it from CLAUDE_PROJECT_DIR and writes it to the
-# per-session env file that reader hooks source. It is therefore the same value
-# with the same defect and must rank BELOW .cwd — ranking it above (as an
-# "operator override") would silently reinstate the primary-checkout bug in every
-# real session, since the env file is always present.
+# orientation.sh resolves it through THIS helper and writes it to the per-session
+# env file that reader hooks source. It therefore carries whatever the producer
+# resolved and must rank BELOW .cwd — ranking it above (as an "operator override")
+# would silently reinstate the primary-checkout bug in every real session, since
+# the env file is always present.
 resolve_project_dir() {
 	local envelope="${1:-}"
 	local cwd=""
@@ -65,4 +65,66 @@ resolve_project_dir() {
 		cwd=$(jq -r '.cwd // empty' <<< "$envelope" 2>/dev/null || true)
 	fi
 	printf '%s' "${cwd:-${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}}"
+}
+
+# detect_package_manager <project-dir> — echo the package manager for the given
+# project root: pnpm | yarn | bun | npm.
+#
+# Resolution order, first hit wins:
+#   1. package.json "packageManager" field (the corepack declaration).
+#   2. A lockfile: pnpm-lock.yaml, then yarn.lock, then bun.lock.
+#   3. npm.
+#
+# FAILS OPEN TO npm at every step: an empty or nonexistent <project-dir>, an
+# absent or unreadable package.json, a missing jq, or a malformed manifest all
+# land on npm rather than aborting. A SessionStart hook cannot block, and a
+# reader hook that guesses the wrong runner degrades gracefully (`npx --no --`
+# simply fails to find the CLI) — where an abort would take the whole hook down.
+#
+# Single source of truth for the SILK_PACKAGE_MANAGER export contract: the
+# SessionStart producer (session-start/orientation.sh) writes what this returns,
+# and every consumer reads it back from the per-session env file. Both SessionStart
+# hooks previously carried private near-duplicate copies of this logic that had
+# drifted apart in their project-dir guards (savvy-web/systems#289 follow-up).
+detect_package_manager() {
+	local root="${1:-}"
+
+	if [ -z "$root" ] || [ ! -d "$root" ]; then
+		printf 'npm'
+		return
+	fi
+
+	if [ -f "${root}/package.json" ] && command -v jq >/dev/null 2>&1; then
+		local pm
+		pm=$(jq -r '.packageManager // empty' "${root}/package.json" 2>/dev/null | cut -d'@' -f1 || true)
+		if [ -n "$pm" ]; then
+			printf '%s' "$pm"
+			return
+		fi
+	fi
+
+	if [ -f "${root}/pnpm-lock.yaml" ]; then
+		printf 'pnpm'
+	elif [ -f "${root}/yarn.lock" ]; then
+		printf 'yarn'
+	elif [ -f "${root}/bun.lock" ]; then
+		printf 'bun'
+	else
+		printf 'npm'
+	fi
+}
+
+# package_manager_exec <package-manager> — echo the runner prefix that invokes a
+# workspace-local binary with that package manager. Call sites append the binary
+# and its args, e.g.: "$(package_manager_exec pnpm) savvy changeset".
+#
+# Unknown or empty input falls open to the npm form, matching
+# detect_package_manager's posture.
+package_manager_exec() {
+	case "${1:-}" in
+		pnpm) printf 'pnpm exec' ;;
+		yarn) printf 'yarn exec' ;;
+		bun) printf 'bunx' ;;
+		*) printf 'npx --no --' ;;
+	esac
 }

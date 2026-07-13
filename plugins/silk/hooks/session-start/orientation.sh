@@ -33,39 +33,18 @@ fi
 read_envelope_or_noop "$_HOOK"
 hook_json="$HOOK_ENVELOPE"
 session_id=$(jq -r '.session_id // ""' <<< "$hook_json")
-envelope_cwd=$(jq -r '.cwd // empty' <<< "$hook_json")
 
-project_dir="${CLAUDE_PROJECT_DIR:-$envelope_cwd}"
+# Working-tree resolution (savvy-web/systems#274): the envelope's cwd outranks
+# CLAUDE_PROJECT_DIR, which is pinned to the PRIMARY checkout for the whole
+# session and does not follow a git worktree. This hook is the producer of
+# SILK_PROJECT_DIR, so what it resolves here is what every reader hook sees.
+project_dir=$(resolve_project_dir "$hook_json")
 data_dir="${CLAUDE_PLUGIN_DATA:-}"
 plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
 
-# Detect package manager so reader hooks can reuse the same logic via the
-# SILK_PACKAGE_MANAGER export. Fail open to "npm" if anything goes wrong.
-detect_pm() {
-	if [ -z "$project_dir" ] || [ ! -d "$project_dir" ]; then
-		echo "npm"
-		return
-	fi
-	if [ -f "$project_dir/package.json" ]; then
-		local pm
-		pm=$(jq -r '.packageManager // empty' "$project_dir/package.json" 2>/dev/null | cut -d'@' -f1)
-		if [ -n "$pm" ]; then
-			echo "$pm"
-			return
-		fi
-	fi
-	if [ -f "$project_dir/pnpm-lock.yaml" ]; then
-		echo "pnpm"
-	elif [ -f "$project_dir/yarn.lock" ]; then
-		echo "yarn"
-	elif [ -f "$project_dir/bun.lock" ]; then
-		echo "bun"
-	else
-		echo "npm"
-	fi
-}
-
-package_manager=$(detect_pm)
+# Package-manager detection is shared with startup-only.sh via hook-env.sh —
+# it fails open to npm. Reader hooks pick it up through SILK_PACKAGE_MANAGER.
+package_manager=$(detect_package_manager "$project_dir")
 
 if [ -n "$session_id" ]; then
 	env_dir="${HOME}/.claude/session-env/${session_id}"
@@ -88,12 +67,7 @@ if [ -n "$session_id" ]; then
 	fi
 fi
 
-case "$package_manager" in
-	pnpm) RUN="pnpm exec savvy changeset" ;;
-	yarn) RUN="yarn exec savvy changeset" ;;
-	bun)  RUN="bunx savvy changeset" ;;
-	*)    RUN="npx --no -- savvy changeset" ;;
-esac
+RUN="$(package_manager_exec "$package_manager") savvy changeset"
 
 CONTEXT=$(cat <<CONTEXT
 <silk_capabilities>

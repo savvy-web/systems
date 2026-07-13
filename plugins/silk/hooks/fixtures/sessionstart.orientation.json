@@ -1,5 +1,5 @@
 {
 	"session_id": "sess-orient-1",
-	"cwd": "/tmp/silk-fixture-project",
+	"cwd": "__PROJECT_DIR__",
 	"hook_event_name": "SessionStart"
 }
