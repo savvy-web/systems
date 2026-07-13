@@ -71,4 +71,29 @@ describe("runLintInit: .repos ignore propagation", () => {
 		// No duplicates introduced.
 		expect(merged.ignores.filter((g: string) => g === "**/.repos")).toHaveLength(1);
 	});
+
+	it("is idempotent when the config already contains **/.repos: it appears exactly once and other entries survive", async () => {
+		const existing = {
+			...Lint.MARKDOWNLINT_TEMPLATE,
+			ignores: ["**/.git", "**/node_modules", "**/.repos", "**/dist", "**/my-vendor"],
+		};
+		mkdirSync(join(testDir, "lib/configs"), { recursive: true });
+		writeFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), `${JSON.stringify(existing, null, "\t")}\n`);
+
+		const handler = runLintInit({
+			force: false,
+			config: "lint-staged.config.ts",
+			preset: "silk",
+		});
+		await Effect.runPromise(Effect.provide(handler, TestLayer));
+
+		const merged = JSON.parse(readFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), "utf8"));
+
+		// The pre-existing .repos entry is not duplicated.
+		expect(merged.ignores.filter((g: string) => g === "**/.repos")).toHaveLength(1);
+		// Every pre-existing entry, including the user-added one, survives.
+		for (const glob of existing.ignores) {
+			expect(merged.ignores).toContain(glob);
+		}
+	});
 });

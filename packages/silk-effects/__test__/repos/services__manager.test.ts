@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	utimesSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CommandExecutor } from "@effect/platform";
@@ -14,7 +23,7 @@ import type {
 	ReposStatusReport,
 } from "../../src/repos/schemas/reports.js";
 import { ReposConfigStore, ReposConfigStoreLive } from "../../src/repos/services/config-store.js";
-import { ReposManager, ReposManagerLive } from "../../src/repos/services/manager.js";
+import { ReposManager, ReposManagerLive, STALE_LOCK_MAX_AGE_MS } from "../../src/repos/services/manager.js";
 
 const GIT_ENV = {
 	GIT_AUTHOR_NAME: "Test",
@@ -211,11 +220,16 @@ describe("ReposManager.sync / status — real git", () => {
 
 		simulatePriorAdd(host, upstreamUrl, name, "1.0.0");
 
-		// Create stale lock files before syncing
+		// Create stale lock files before syncing, then backdate their mtime past
+		// the staleness threshold so `sync` treats them as abandoned rather than
+		// held by an active git process.
 		const lockDirPath = join(host, ".git", "modules", ".repos", name);
 		mkdirSync(lockDirPath, { recursive: true });
 		writeFileSync(join(lockDirPath, "index.lock"), "");
 		writeFileSync(join(lockDirPath, "shallow.lock"), "");
+		const staleTime = new Date(Date.now() - STALE_LOCK_MAX_AGE_MS - 60_000);
+		utimesSync(join(lockDirPath, "index.lock"), staleTime, staleTime);
+		utimesSync(join(lockDirPath, "shallow.lock"), staleTime, staleTime);
 
 		const configStoreReal = Layer.succeed(ReposConfigStore, {
 			exists: () => Effect.succeed(true),
@@ -242,6 +256,57 @@ describe("ReposManager.sync / status — real git", () => {
 		const { existsSync } = await import("node:fs");
 		expect(existsSync(join(lockDirPath, "index.lock"))).toBe(false);
 		expect(existsSync(join(lockDirPath, "shallow.lock"))).toBe(false);
+	});
+
+	it("leaves a young lock file in place and omits the repo from clearedLocks", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const name = "spec";
+		const upstreamUrl = `file://${up}`;
+
+		mkdirSync(join(host, ".repos"), { recursive: true });
+		writeFileSync(
+			join(host, ".repos", "config.json"),
+			JSON.stringify({
+				repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+			}),
+		);
+
+		simulatePriorAdd(host, upstreamUrl, name, "1.0.0");
+
+		// A freshly-written lock file — well within the staleness window — as if
+		// an active git process currently holds it.
+		const lockDirPath = join(host, ".git", "modules", ".repos", name);
+		mkdirSync(lockDirPath, { recursive: true });
+		writeFileSync(join(lockDirPath, "index.lock"), "");
+
+		const configStoreReal = Layer.succeed(ReposConfigStore, {
+			exists: () => Effect.succeed(true),
+			read: () =>
+				Effect.succeed({
+					repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+				} as ReposManifestFile),
+			write: () => Effect.succeed(undefined),
+		} as never);
+
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreReal), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromiseExit(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		const exit = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.sync(host);
+			}),
+		);
+
+		// The young lock survives regardless of whether the subsequent git
+		// operation itself succeeded or failed on the contested lock.
+		const { existsSync } = await import("node:fs");
+		expect(existsSync(join(lockDirPath, "index.lock"))).toBe(true);
+		if (exit._tag === "Success") {
+			expect(exit.value.clearedLocks).not.toContain(name);
+		}
 	});
 });
 
@@ -580,6 +645,120 @@ describe("ReposManager.add / pin — real git", () => {
 		// other should be completely untouched (including the note)
 		expect(manifestAfter.repos.other).toEqual(manifestWithNote.repos.other);
 	});
+
+	it("rejects an invalid --name before any side effect (path traversal)", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const upstreamUrl = `file://${up}`;
+
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const runExit = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromiseExit(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		const exit = await runExit(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, {
+					url: upstreamUrl,
+					ref: "1.0.0",
+					purpose: "spec authority",
+					name: "../evil",
+				});
+			}),
+		);
+
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
+			expect(exit.cause.error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect((exit.cause.error as { reason: string }).reason).toContain("../evil");
+		}
+
+		// No side effects: no manifest ever created, and no git changes staged
+		// or committed (the submodule add never ran).
+		expect(existsSync(join(host, ".repos"))).toBe(false);
+		expect(existsSync(join(host, "..", "evil"))).toBe(false);
+		expect(git(host, "status", "--porcelain").trim()).toBe("");
+	});
+
+	it("fails cleanly on a duplicate name: manifest byte-identical, no git error state", async () => {
+		const up = makeUpstream();
+		const host = makeHost();
+		const name = "spec";
+		const upstreamUrl = `file://${up}`;
+
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+		const runExit = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+			Effect.runPromiseExit(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
+
+		await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority", name });
+			}),
+		);
+
+		const manifestPath = join(host, ".repos", "config.json");
+		const manifestBefore = readFileSync(manifestPath, "utf8");
+
+		const exit = await runExit(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.add(host, { url: upstreamUrl, ref: "1.0.0", purpose: "duplicate attempt", name });
+			}),
+		);
+
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
+			expect(exit.cause.error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect((exit.cause.error as { reason: string }).reason).toContain("already vendored");
+		}
+
+		const manifestAfter = readFileSync(manifestPath, "utf8");
+		expect(manifestAfter).toBe(manifestBefore);
+	});
+});
+
+describe("ReposManager.status — propagates git failures", () => {
+	it("fails with GitSubmoduleError instead of reporting a clean/null status when the git invocation fails", async () => {
+		const root = mkdtempSync(join(tmpdir(), "repos-manager-status-git-fail-"));
+
+		const manifest: ReposManifestFile = {
+			repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },
+		};
+		const configStoreStub = Layer.succeed(ReposConfigStore, {
+			exists: () => Effect.succeed(true),
+			read: () => Effect.succeed(manifest),
+			write: () => Effect.succeed(undefined),
+		} as never);
+
+		// An executor whose every invocation fails: before the fix, status
+		// swallowed this via orElseSucceed and reported commit null / dirty
+		// false as if everything were fine.
+		const failingExecutorStub = Layer.succeed(CommandExecutor.CommandExecutor, {
+			string: () => Effect.fail(new Error("git exploded")),
+		} as never);
+
+		const exit = await Effect.runPromiseExit(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.status(root);
+			}).pipe(
+				Effect.provide(ReposManagerLive),
+				Effect.provide(configStoreStub),
+				Effect.provide(failingExecutorStub),
+				Effect.provide(NodeContext.layer),
+			) as Effect.Effect<unknown, unknown>,
+		);
+
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
+			expect(exit.cause.error).toMatchObject({ _tag: "GitSubmoduleError" });
+		}
+	});
 });
 
 describe("ReposManager.note", () => {
@@ -778,6 +957,49 @@ describe("ReposManager.note", () => {
 		expect(first.id).not.toBe(second.id);
 		expect(first.id).toMatch(/^n-[0-9a-f]{4}$/);
 		expect(second.id).toMatch(/^n-[0-9a-f]{8}$/);
+	});
+
+	it("extends past 8 hex chars for a third identical note, keeping all three ids distinct", async () => {
+		const { configStore, getManifest } = makeConfigStore({ repos: { spec: baseEntry } });
+		const root = "/virtual/root";
+
+		const first = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.note(root, "spec", { op: "add", note: "same text" });
+			}),
+			configStore,
+		);
+		const second = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.note(root, "spec", { op: "add", note: "same text" });
+			}),
+			configStore,
+		);
+		const third = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.note(root, "spec", { op: "add", note: "same text" });
+			}),
+			configStore,
+		);
+
+		const ids = [first.id, second.id, third.id];
+		expect(new Set(ids).size).toBe(3);
+		expect(third.id).toMatch(/^n-[0-9a-f]{12}$/);
+		expect(getManifest().repos.spec?.notes).toHaveLength(3);
+
+		// Removing the second id removes exactly one note.
+		const afterRemove = await run(
+			Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.note(root, "spec", { op: "remove", id: second.id });
+			}),
+			configStore,
+		);
+		expect(afterRemove.noteCount).toBe(2);
+		expect(getManifest().repos.spec?.notes?.map((n) => n.id)).toEqual([first.id, third.id]);
 	});
 
 	it("fails with RepoNotFoundError when the repo is absent from the manifest", async () => {

@@ -25,6 +25,7 @@ describe("Repos namespace (src/repos/index.ts)", () => {
 		expect(SilkEffects.Repos.RepoEntry).toBeDefined();
 		expect(SilkEffects.Repos.RepoNote).toBeDefined();
 		expect(SilkEffects.Repos.RepoOrientation).toBeDefined();
+		expect(SilkEffects.Repos.RepoName).toBeDefined();
 	});
 
 	it("exports report schemas", () => {

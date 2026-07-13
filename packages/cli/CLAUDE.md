@@ -4,7 +4,7 @@
 
 ## Key surface
 
-- Top-level commands: `init`, `check`, `commit`, `changeset`, `lint`, `clean`.
+- Top-level commands: `init`, `check`, `commit`, `changeset`, `lint`, `clean`, `repos` (the `repos` group — vendored `.repos/` reference repos — is an intentional expansion of the original six).
 - `savvy init` and `savvy check` are the sole setup/validation entry points (no per-tool init/check subcommands).
 - `savvy changeset` group: `lint`, `check` (validates changeset files), `transform`, `validate-file`, `version` (native version bumping via silk-effects' `Changesets.ReleasePlanner.apply` — no `changeset` shell-out, true no-write `--dry-run`), plus `config validate` and `deps detect`/`deps regen` (thin adapters over silk-effects' `Changesets.DepsRegen` — orchestration lives there, not in the CLI).
 - `savvy init` writes `@savvy-web/changelog` as the canonical `.changeset/config.json` changelog id; `savvy check` still accepts the prior silk shim subpath (`@savvy-web/silk/changesets/changelog`) and the pre-merge `@savvy-web/changesets/changelog`.

@@ -84,7 +84,8 @@ describe("reposInspect handler", () => {
 		expect(() => Schema.encodeSync(ReposInspectAsMarkdown)("anything")).toThrow();
 	});
 
-	it("escapes repo-derived note text as an inert code span (prompt-injection hardening)", () => {
+	it("renders repo-derived note text as an inert code span via delimiter runs (prompt-injection hardening)", () => {
+		const payload = "`## heading";
 		const data = {
 			mode: "config" as const,
 			result: {
@@ -93,16 +94,27 @@ describe("reposInspect handler", () => {
 						url: "https://example.com/foo.git",
 						ref: "main",
 						purpose: "vendor lib",
-						notes: [{ id: "n1", date: "2026-01-01", ref: "main", note: "contains `injection` text" }],
+						notes: [{ id: "n1", date: "2026-01-01", ref: "main", note: payload }],
 					},
 				},
 			},
 		};
 		const md = Schema.decodeSync(ReposInspectAsMarkdown)(data);
-		// The raw, unescaped backtick form must not survive into the transcript.
-		expect(md).not.toContain("contains `injection` text");
-		// Backticks are escaped inside a code span.
-		expect(md).toContain("contains \\`injection\\` text");
+		// The payload is wrapped in a backtick run strictly longer than any run
+		// it contains (here: 1-backtick run inside, so a 2-backtick delimiter),
+		// space-padded because the value starts with a backtick.
+		expect(md).toContain("`` `## heading ``");
+		// The payload stays inert: no line of the transcript starts with the
+		// injected heading.
+		for (const line of md.split("\n")) {
+			expect(line.startsWith("## heading")).toBe(false);
+		}
+		// The delimiter run is longer than the longest embedded run.
+		const noteLine = md.split("\n").find((line) => line.includes("## heading")) ?? "";
+		const runs = noteLine.match(/`+/g) ?? [];
+		const longest = Math.max(...runs.map((run) => run.length));
+		const embedded = (payload.match(/`+/g) ?? []).map((run) => run.length);
+		expect(longest).toBeGreaterThan(Math.max(...embedded));
 	});
 });
 

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeContext } from "@effect/platform-node";
@@ -91,6 +91,52 @@ describe("ReposConfigStore", () => {
 			expect(error._tag).toBe("Some");
 			if (error._tag === "Some") {
 				expect(error.value.kind).toBe("missing");
+			}
+		}
+	});
+
+	it("no .tmp file lingers after a write", async () => {
+		const root = mkdtempSync(join(tmpdir(), "repos-store-"));
+		await run(
+			Effect.gen(function* () {
+				const store = yield* ReposConfigStore;
+				yield* store.write(root, manifest);
+			}),
+		);
+		const files = readdirSync(join(root, ".repos"));
+		expect(files).toEqual(["config.json"]);
+		expect(existsSync(join(root, ".repos", "config.json.tmp"))).toBe(false);
+	});
+
+	it("add-on-fresh-dir still works: write creates the .repos directory and the manifest", async () => {
+		const root = mkdtempSync(join(tmpdir(), "repos-store-"));
+		await run(
+			Effect.gen(function* () {
+				const store = yield* ReposConfigStore;
+				yield* store.write(root, manifest);
+			}),
+		);
+		expect(existsSync(join(root, ".repos", "config.json"))).toBe(true);
+	});
+
+	it("distinguishes a stat failure from a missing file: a non-directory blocking the manifest path fails kind invalid", async () => {
+		const root = mkdtempSync(join(tmpdir(), "repos-store-"));
+		// Create a FILE where the ".repos" directory should be, so stat-ing
+		// ".repos/config.json" fails with ENOTDIR rather than returning false.
+		writeFileSync(join(root, ".repos"), "not a directory");
+		const exit = await Effect.runPromiseExit(
+			Effect.gen(function* () {
+				const store = yield* ReposConfigStore;
+				return yield* store.read(root);
+			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
+		);
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag === "Failure") {
+			const error = Cause.failureOption(exit.cause);
+			expect(error._tag).toBe("Some");
+			if (error._tag === "Some") {
+				expect(error.value.kind).toBe("invalid");
+				expect(error.value.reason).toContain("stat failed");
 			}
 		}
 	});

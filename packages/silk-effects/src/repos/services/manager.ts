@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
-import { Clock, Context, Effect, Layer } from "effect";
+import { Clock, Context, Effect, Layer, Option, Schema } from "effect";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
 import { GitSubmoduleError, NoteNotFoundError, RepoNotFoundError, ReposConfigError } from "../errors.js";
-import type { RepoEntry, RepoNote, RepoOrientation } from "../schemas/manifest.js";
+import type { RepoEntry, RepoNote, RepoOrientation, ReposManifestFile } from "../schemas/manifest.js";
+import { RepoName } from "../schemas/manifest.js";
 import type {
 	ReposAddResult,
 	ReposNoteResult,
@@ -18,6 +19,20 @@ import { ReposConfigStore } from "./config-store.js";
  * clears these before attempting to (re)initialize a submodule.
  */
 const STALE_LOCKS = ["index.lock", "shallow.lock"] as const;
+
+/**
+ * Minimum age (in milliseconds) a `.lock` file must reach before `sync` will
+ * remove it. An ACTIVE git process can legitimately hold
+ * `index.lock`/`shallow.lock` for the duration of its own run; removing a
+ * young lock out from under it would corrupt the submodule. Ten minutes
+ * comfortably exceeds any single shallow fetch/checkout this manager
+ * performs, while still reclaiming locks abandoned by a process that was
+ * killed or crashed. A lock younger than this is left in place — the
+ * subsequent git operation fails naturally if it is genuinely contested,
+ * and that failure already propagates.
+ * @public
+ */
+export const STALE_LOCK_MAX_AGE_MS = 10 * 60_000;
 
 /**
  * The full contractual surface of {@link ReposManager}. All five methods are
@@ -111,17 +126,19 @@ export const ReposManagerLive: Layer.Layer<
 						const repoPath = path.join(root, REPOS_DIR, name);
 						const present = yield* isPresent(repoPath);
 
-						const lsTree = yield* runGit(root, ["ls-tree", "HEAD", "--", `${REPOS_DIR}/${name}`]).pipe(
-							Effect.orElseSucceed(() => ""),
-						);
+						// Empty stdout is a legitimate non-error: the path simply isn't
+						// tracked at HEAD yet (e.g. `add` staged but not committed). A
+						// failing `ls-tree` invocation itself (not present in this repo
+						// at all, corrupt HEAD, etc.) is a real git failure and must
+						// propagate as `GitSubmoduleError` rather than be read as "no
+						// commit".
+						const lsTree = yield* runGit(root, ["ls-tree", "HEAD", "--", `${REPOS_DIR}/${name}`]);
 						const commit = lsTree.length > 0 ? (lsTree.split(/\s+/)[2] ?? null) : null;
 
 						let dirty = false;
 						if (present) {
-							dirty = yield* runGit(repoPath, ["status", "--porcelain"]).pipe(
-								Effect.map((out) => out.length > 0),
-								Effect.orElseSucceed(() => false),
-							);
+							const porcelain = yield* runGit(repoPath, ["status", "--porcelain"]);
+							dirty = porcelain.length > 0;
 						}
 
 						const staleNoteIds = (entry.notes ?? []).filter((note) => note.ref !== entry.ref).map((note) => note.id);
@@ -149,14 +166,29 @@ export const ReposManagerLive: Layer.Layer<
 					let clearedAnyLock = false;
 					for (const lock of STALE_LOCKS) {
 						const lockPath = path.join(moduleDir, lock);
-						const lockExists = yield* fs.exists(lockPath).pipe(Effect.orElseSucceed(() => false));
-						if (lockExists) {
-							const removed = yield* fs
-								.remove(lockPath)
-								.pipe(Effect.match({ onSuccess: () => true, onFailure: () => false }));
-							if (removed) {
-								clearedAnyLock = true;
-							}
+						// `Effect.option` folds "absent" and "stat failed" into the same
+						// `None` outcome: either way there's nothing this pass can
+						// safely remove.
+						const info = yield* fs.stat(lockPath).pipe(Effect.option);
+						if (Option.isNone(info)) {
+							continue;
+						}
+						const mtime = info.value.mtime;
+						if (Option.isNone(mtime)) {
+							// Age is undeterminable on this filesystem; leave it alone.
+							continue;
+						}
+						const now = yield* Clock.currentTimeMillis;
+						const age = now - mtime.value.getTime();
+						if (age < STALE_LOCK_MAX_AGE_MS) {
+							// Young enough that an active git process may still hold it.
+							continue;
+						}
+						const removed = yield* fs
+							.remove(lockPath)
+							.pipe(Effect.match({ onSuccess: () => true, onFailure: () => false }));
+						if (removed) {
+							clearedAnyLock = true;
 						}
 					}
 					if (clearedAnyLock) {
@@ -212,6 +244,45 @@ export const ReposManagerLive: Layer.Layer<
 		) =>
 			Effect.gen(function* () {
 				const name = options.name ?? repoSlug(options.url);
+
+				// 1. Validate the effective name BEFORE any side effect — a bad
+				// name (path traversal, separators, "." or "..") must never reach
+				// git or the filesystem.
+				yield* Schema.decodeUnknown(RepoName)(name).pipe(
+					Effect.mapError(
+						() =>
+							new ReposConfigError({
+								path: MANIFEST_PATH,
+								reason: `invalid repo name "${name}": must be non-empty, contain no "/" or "\\", and not be "." or ".."`,
+								kind: "invalid",
+							}),
+					),
+				);
+
+				// 2. Read the manifest, treating "no manifest yet" as empty. Only a
+				// read that reports kind "missing" is read as absence — any other
+				// failure (stat failure, invalid JSON, schema violation)
+				// propagates, so a transient I/O error can never be silently
+				// reinitialized over a real manifest.
+				const manifest: ReposManifestFile = yield* configStore
+					.read(root)
+					.pipe(
+						Effect.catchTag("ReposConfigError", (error) =>
+							error.kind === "missing" ? Effect.succeed({ repos: {} } as ReposManifestFile) : Effect.fail(error),
+						),
+					);
+
+				// 3. Reject a duplicate name before touching git.
+				if (manifest.repos[name]) {
+					return yield* Effect.fail(
+						new ReposConfigError({
+							path: MANIFEST_PATH,
+							reason: `"${name}" is already vendored — use pin to change its ref`,
+							kind: "invalid",
+						}),
+					);
+				}
+
 				const repoPath = `${REPOS_DIR}/${name}`;
 				const subPath = path.join(root, repoPath);
 
@@ -224,9 +295,6 @@ export const ReposManagerLive: Layer.Layer<
 				if (options.sparse && options.sparse.length > 0) {
 					yield* runGit(subPath, ["sparse-checkout", "set", "--no-cone", ...options.sparse]);
 				}
-
-				const exists = yield* configStore.exists(root);
-				const manifest = exists ? yield* configStore.read(root) : { repos: {} };
 
 				const entry: RepoEntry = {
 					url: options.url,
@@ -301,9 +369,32 @@ export const ReposManagerLive: Layer.Layer<
 
 					const existingIds = new Set(notes.map((existing) => existing.id));
 					const hash = createHash("sha256").update(op.note).digest("hex");
-					let id = `n-${hash.slice(0, 4)}`;
-					if (existingIds.has(id)) {
-						id = `n-${hash.slice(0, 8)}`;
+
+					// Extend the slice length (4, 8, 12, ... up to the full 64-hex
+					// digest) until it lands on an id not already in use. A third
+					// (or later) note with byte-identical text hashes to the same
+					// digest as its predecessors, so a fixed 4-then-8 extension
+					// collides again on the third add; walking the full digest space
+					// keeps every distinct slot in `notes` distinct.
+					let id: string | undefined;
+					for (let len = 4; len <= hash.length; len += 4) {
+						const candidate = `n-${hash.slice(0, len)}`;
+						if (!existingIds.has(candidate)) {
+							id = candidate;
+							break;
+						}
+					}
+					if (id === undefined) {
+						// Even the full digest collides -- true duplicate note text with
+						// every prior slot already occupied. Fall back to a numeric
+						// counter suffix so the id still stays unique.
+						let counter = 2;
+						let candidate = `n-${hash}-${counter}`;
+						while (existingIds.has(candidate)) {
+							counter += 1;
+							candidate = `n-${hash}-${counter}`;
+						}
+						id = candidate;
 					}
 
 					const millis = yield* Clock.currentTimeMillis;

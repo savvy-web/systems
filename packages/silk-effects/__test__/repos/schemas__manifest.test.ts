@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { ReposManifestFile } from "../../src/repos/schemas/manifest.js";
+import { RepoName, ReposManifestFile } from "../../src/repos/schemas/manifest.js";
 
 const valid = {
 	repos: {
@@ -38,5 +38,25 @@ describe("ReposManifestFile", () => {
 	it("rejects a missing purpose", () => {
 		const bad = { repos: { x: { url: "https://e.com/x.git", ref: "1.0.0" } } };
 		expect(() => Schema.decodeUnknownSync(ReposManifestFile)(bad)).toThrow();
+	});
+
+	it.each(["../x", "a/b", "..", "."])("rejects a manifest whose repos key is %j", (badKey) => {
+		const bad = { repos: { [badKey]: { url: "https://e.com/x.git", ref: "1.0.0", purpose: "p" } } };
+		expect(() => Schema.decodeUnknownSync(ReposManifestFile)(bad)).toThrow();
+	});
+
+	it("rejects an empty-string repos key", () => {
+		const bad = { repos: { "": { url: "https://e.com/x.git", ref: "1.0.0", purpose: "p" } } };
+		expect(() => Schema.decodeUnknownSync(ReposManifestFile)(bad)).toThrow();
+	});
+});
+
+describe("RepoName", () => {
+	it.each(["../x", "a/b", "a\\b", "..", ".", ""])("rejects %j", (bad) => {
+		expect(() => Schema.decodeUnknownSync(RepoName)(bad)).toThrow();
+	});
+
+	it.each(["spec", "effect-smol", "my_repo.v2"])("accepts %j", (good) => {
+		expect(Schema.decodeUnknownSync(RepoName)(good)).toBe(good);
 	});
 });

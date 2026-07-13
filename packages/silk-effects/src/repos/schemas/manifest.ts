@@ -1,6 +1,19 @@
 import { Schema } from "effect";
 
 /**
+ * A vendored-repo manifest key: non-empty, contains no `/` or `\`, and is
+ * never `.` or `..` — safe to join onto a filesystem path segment
+ * (`.repos/<name>`) without escaping the `.repos/` directory.
+ * @public
+ */
+export const RepoName = Schema.String.pipe(
+	Schema.pattern(/^(?!\.{1,2}$)[A-Za-z0-9][A-Za-z0-9._-]*$/),
+	Schema.annotations({ identifier: "RepoName" }),
+);
+/** @public */
+export type RepoName = typeof RepoName.Type;
+
+/**
  * An agent-appended note: a discovered answer stamped with the pin it was written against.
  * @public
  */
@@ -41,11 +54,34 @@ export const RepoEntry = Schema.Struct({
 export type RepoEntry = typeof RepoEntry.Type;
 
 /**
+ * Bad-key guard for {@link ReposManifestFile}.
+ *
+ * @remarks
+ * `Schema.Record`'s key schema has "pick matching keys" semantics: a key
+ * that fails to decode against the key schema is silently OMITTED from the
+ * decoded record rather than failing the decode (Effect Schema issue-free
+ * by design, since a record's key schema is also used to select entries out
+ * of a wider object). That is the opposite of what a manifest guard needs —
+ * a bad key must REJECT the whole decode, not vanish. So `repos` decodes
+ * with a permissive `Schema.String` key (nothing is dropped) and this
+ * filter walks every key against {@link RepoName} itself, failing loudly
+ * and naming the offending key.
+ */
+const isRepoName = Schema.is(RepoName);
+
+/**
  * The committed .repos/config.json manifest.
  * @public
  */
 export const ReposManifestFile = Schema.Struct({
-	repos: Schema.Record({ key: Schema.String, value: RepoEntry }),
+	repos: Schema.Record({ key: Schema.String, value: RepoEntry }).pipe(
+		Schema.filter((repos) => {
+			const badKey = Object.keys(repos).find((key) => !isRepoName(key));
+			return badKey === undefined
+				? undefined
+				: `every repos key must be a valid RepoName (non-empty, no "/" or "\\", not "." or ".."); got ${JSON.stringify(badKey)}`;
+		}),
+	),
 });
 /** @public */
 export type ReposManifestFile = typeof ReposManifestFile.Type;

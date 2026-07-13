@@ -116,18 +116,37 @@ describe("reposManage handler — request validation", () => {
 });
 
 describe("reposManage handler — pin markdown transcript", () => {
-	it("surfaces commitMessage and staleNoteIds prominently, escaping backtick injection", async () => {
+	it("surfaces commitMessage and staleNoteIds prominently, neutralizing backtick injection via delimiter runs", async () => {
 		const data = await run(reposManage({ action: "pin", name: "foo", ref: "main" }, "/repo"));
 		const md = Schema.decodeSync(ReposManageAsMarkdown)(data);
 		// The transcript must have a dedicated commit-message section...
 		expect(md.toLowerCase()).toContain("commit message");
 		expect(md).toContain("chore(repos): pin");
-		// ...but never the raw unescaped backtick-fenced command it carries.
-		expect(md).not.toContain("chore(repos): pin `foo` to main; `rm -rf /`");
+		// ...with the backtick-carrying message wrapped in a delimiter run
+		// strictly longer than any backtick run it contains (1-backtick runs
+		// inside -> 2-backtick delimiter, space-padded for the trailing
+		// backtick), so the embedded backticks cannot terminate the span.
+		const commitLine = md.split("\n").find((line) => line.includes("rm -rf /")) ?? "";
+		expect(commitLine).toBe("`` chore(repos): pin `foo` to main; `rm -rf /` ``");
+		const runs = commitLine.match(/`+/g) ?? [];
+		const longest = Math.max(...runs.map((run) => run.length));
+		const embedded = ("chore(repos): pin `foo` to main; `rm -rf /`".match(/`+/g) ?? []).map((run) => run.length);
+		expect(longest).toBeGreaterThan(Math.max(...embedded));
 		// staleNoteIds must be surfaced as the review/commit cue.
 		expect(md.toLowerCase()).toContain("stale");
 		expect(md).toContain("n-aaaa");
 		expect(md).toContain("n-bbbb");
+	});
+
+	it("keeps a heading-injection note payload inert in the note transcript", async () => {
+		const data = await run(reposManage({ action: "note", name: "`## heading", op: "add", note: "x" }, "/repo"));
+		const md = Schema.decodeSync(ReposManageAsMarkdown)(data);
+		// The payload renders inside a longer backtick run and never lands at
+		// the start of a line as a live markdown heading.
+		expect(md).toContain("`` `## heading ``");
+		for (const line of md.split("\n")) {
+			expect(line.startsWith("## heading")).toBe(false);
+		}
 	});
 });
 
