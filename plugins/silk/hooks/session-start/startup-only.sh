@@ -7,61 +7,47 @@ set -euo pipefail
 #
 # Merges: commit-main.sh + lint-staged-env.sh
 #
-# Contract: reads SessionStart envelope on stdin; if CLAUDE_PROJECT_DIR is unset
-# emits a noop and exits 0 (cannot block a SessionStart). Otherwise runs
-# `savvy commit hook session-start` as a side-effect and emits additionalContext
-# with a Silk-system intro and the code_quality_context block. (Design-doc
-# orientation is owned by the design-docs plugin and is intentionally not
-# duplicated here.)
+# Contract: reads the SessionStart envelope on stdin and resolves the working
+# tree through resolve_project_dir (envelope .cwd first — worktree-correct, see
+# savvy-web/systems#274); if no project dir resolves at all it emits a noop and
+# exits 0 (cannot block a SessionStart). Otherwise runs `savvy commit hook
+# session-start` as a side-effect and emits additionalContext with a Silk-system
+# intro, the lint-rule contract, the pre-commit lint-staged pipeline (including
+# the intentional exec-bit strip), and the LSP-first tool preference order.
+# (Design-doc orientation is owned by the design-docs plugin and is intentionally
+# not duplicated here.)
+#
+# Unlike the other jq-parsing hooks this one does NOT call read_envelope_or_noop:
+# a malformed body must still emit the code-quality context (it is unconditional
+# session orientation, not a decision about a tool call). resolve_project_dir
+# tolerates a non-JSON envelope — its jq call is guarded — and simply falls back
+# to SILK_PROJECT_DIR / CLAUDE_PROJECT_DIR.
 
 # shellcheck source=../lib/hook-output.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
 # shellcheck source=../lib/hook-debug.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-debug.sh"
+# shellcheck source=../lib/hook-env.sh
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-env.sh"
 
 _HOOK="session-start-startup-only"
 
-# Drain stdin once.
-cat > /dev/null
+# Drain stdin once, keeping the body so the project dir can be resolved from it.
+ENVELOPE=$(cat)
 
-# Guard: CLAUDE_PROJECT_DIR must be set. A SessionStart cannot block, so
-# emit_noop and exit 0 rather than exit 1 when the env var is absent.
-if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
-	hook_error "$_HOOK" "CLAUDE_PROJECT_DIR is not set; skipping"
+PROJECT_DIR=$(resolve_project_dir "$ENVELOPE")
+
+# Guard: a project dir must resolve from somewhere. A SessionStart cannot block,
+# so emit_noop and exit 0 rather than exit 1 when nothing resolves.
+if [ -z "$PROJECT_DIR" ]; then
+	hook_error "$_HOOK" "no project dir (envelope cwd / SILK_PROJECT_DIR / CLAUDE_PROJECT_DIR all unset); skipping"
 	emit_noop
 	exit 0
 fi
 
-# Detect package manager for context block interpolation.
-detect_pm() {
-	local root="$CLAUDE_PROJECT_DIR"
-	if [ -f "$root/package.json" ] && command -v jq >/dev/null 2>&1; then
-		local pm
-		pm=$(jq -r '.packageManager // empty' "$root/package.json" 2>/dev/null | cut -d'@' -f1)
-		if [ -n "$pm" ]; then
-			echo "$pm"
-			return
-		fi
-	fi
-	if [ -f "$root/pnpm-lock.yaml" ]; then
-		echo "pnpm"
-	elif [ -f "$root/yarn.lock" ]; then
-		echo "yarn"
-	elif [ -f "$root/bun.lock" ]; then
-		echo "bun"
-	else
-		echo "npm"
-	fi
-}
-
-PM=$(detect_pm)
-
-case "$PM" in
-	pnpm) RUN="pnpm exec" ;;
-	yarn) RUN="yarn exec" ;;
-	bun)  RUN="bunx" ;;
-	*)    RUN="npx --no --" ;;
-esac
+# Package-manager detection is shared with orientation.sh via hook-env.sh.
+PM=$(detect_package_manager "$PROJECT_DIR")
+RUN=$(package_manager_exec "$PM")
 
 # Side-effect: run savvy commit hook session-start via the run-cli.sh resolver.
 # On failure, log the error and continue — a hook side-effect failure must never
@@ -77,11 +63,9 @@ fi
 
 CONTEXT=$(cat <<CONTEXT
 <silk_system>
-You are working in a Silk-enabled workspace — a Savvy Web Silk Suite project with
-shared conventions and tooling for changesets, commits, and code quality. The
-always-on session orientation explains the rest: the shared savvy MCP, the
-available skills, and how to find Silk docs. This startup note carries the
-project's code-quality conventions you need from the first edit.
+You are working in a Silk-enabled workspace. The always-on orientation lists the
+plugin's MCP tools, agents and skills — use them. This startup note carries the
+code-quality contract you need from your FIRST edit.
 </silk_system>
 
 <EXTREMELY_IMPORTANT>
@@ -96,7 +80,7 @@ Biome lint rules (all Error-level):
 - useNodejsImportProtocol: Node.js built-ins MUST use node: protocol (node:fs, node:path)
 - noUnusedVariables: Unused variables are an error (rest siblings excepted)
 - noImportCycles: Circular imports are an error — no import cycles
-- organizeImports: Imports are auto-sorted; write them in any order and Biome fixes on save
+- organizeImports: Imports are auto-sorted; write them in any order, Biome fixes them
 
 TypeScript strict flags (enabled — violations are compile errors):
 - verbatimModuleSyntax: use import type for type-only imports
@@ -105,42 +89,78 @@ TypeScript strict flags (enabled — violations are compile errors):
 </code_quality_lint_rules>
 </EXTREMELY_IMPORTANT>
 
+<pre_commit_pipeline>
+
+Husky runs lint-staged (lib/configs/lint-staged.config.ts -> Preset.silk()) over
+STAGED files on every commit. It AUTOFIXES most things and re-stages the result.
+Know what it does so you neither duplicate it nor misread it as damage:
+
+  package.json          sort-package-json, then biome check --write
+  *.{js,ts,cjs,mjs,jsx,tsx,json,jsonc,d.cts,d.mts}
+                        biome check --write — formats, applies safe fixes,
+                        organizes imports
+  *.{md,mdx}            markdownlint-cli2 --fix
+  *.{yml,yaml}          savvy lint fmt yaml
+  pnpm-workspace.yaml   savvy lint fmt pnpm-workspace
+  *.sh                  chmod -x  <- STRIPS THE EXECUTABLE BIT
+  *.{ts,cts,mts,tsx}    tsgo --noEmit (or tsc --noEmit) — BLOCKING, no autofix.
+                        A type error fails the commit. Nothing else here will.
+
+Two consequences, both of which agents get wrong:
+
+1. DO NOT HAND-FORMAT. Do not hand-sort imports, hand-wrap lines, hand-order
+   package.json keys, or run a formatting pass "to be safe". Formatting is
+   applied for you at commit time. Write correct code; let the hook style it.
+
+2. THE EXEC-BIT STRIP IS INTENTIONAL — NOT MODE DRIFT, NOT A BUG.
+   Committed .sh files land as 100644, never 100755 (the sole exception is
+   .claude/scripts/, which the handler excludes). Every shell script in this
+   repo — plugin hooks, the bats runner — is invoked as \`bash <script>\`, so
+   nothing needs the exec bit at runtime. Writing an executable script is fine:
+   chmod +x and run it; the commit simply normalizes the mode back to 644, and
+   you can flip it again if you need to re-run it. Expect that flip — it is
+   standard behavior, not damage. Do NOT "fix" a 755-to-644 mode change in a
+   diff, do NOT flag it in a review, and do NOT open an issue about it. This is
+   documented in savvy-web/systems#289 and in the header comment of
+   lint-staged.config.ts.
+
+</pre_commit_pipeline>
+
 <reminder>
 <code_quality_formatting>
 
-Biome auto-formats on pre-commit — you do not need to hand-format. For reference:
-- Indent: tabs, width 2
-- Line width: 120 characters
-- Format-with-errors enabled (formats even if there are parse issues)
-- package.json: JSON auto-expanded; turbo.json, tsconfig*.json: keys auto-sorted
+For reference (all applied automatically — see above):
+- Indent: tabs, width 2; line width 120; format-with-errors enabled
+- package.json auto-expanded; turbo.json / tsconfig*.json keys auto-sorted
 - Test files (*.test.ts): noUndeclaredDependencies is off
 
-Markdown files are linted with markdownlint-cli2:
-- No line length limit (MD013 disabled)
-- Duplicate headings allowed only among siblings (MD024)
-- HTML elements restricted to: br, details, summary, img, sup, sub
-- Code fences must have a language identifier (MD040)
-- Tables must use compact style (MD060) — single space around cell content
-- Files must end with a single newline (MD047)
+Markdown (markdownlint-cli2):
+- No line-length limit (MD013 off); duplicate headings only among siblings (MD024)
+- HTML restricted to: br, details, summary, img, sup, sub
+- Code fences require a language (MD040); compact tables (MD060); single
+  trailing newline (MD047)
 
-TypeScript base config (non-blocking, for reference):
-- Target: ES2023, Module: NodeNext; strict + strictNullChecks; isolatedModules; esModuleInterop
+TypeScript base: ES2023 / NodeNext; strict + strictNullChecks; isolatedModules;
+esModuleInterop.
 
 </code_quality_formatting>
 
 <running_tools>
-If you need to check or fix code quality manually:
-- ${RUN} biome check — check all files with Biome
-- ${RUN} biome check --write — auto-fix lint issues
-- ${RUN} markdownlint-cli2 --config lib/configs/.markdownlint-cli2.jsonc — check markdown files
-- ${RUN} lint-staged --config "${CLAUDE_PROJECT_DIR}/lib/configs/lint-staged.config.ts" — run lint-staged manually
-- pnpm run typecheck — type-check with tsgo
-</running_tools>
+Preference order when you need to check or fix code quality:
 
-<pre_commit_hook>
-Lint-staged runs automatically on pre-commit via Husky. The hook uses the
-detected package manager (${PM}) and config at lib/configs/lint-staged.config.ts.
-</pre_commit_hook>
+1. Biome LSP — automatic. Edit a file, read the diagnostics you are handed. No
+   command needed. Do not run Biome just to look at a file you just edited.
+2. mcp__plugin_silk_savvy-mcp__biome_check — for anything wider than one file,
+   and for EVERY fix pass: paths[], mode:"check"|"lint", write:true (safe fixes),
+   unsafe:true, strict:true. Structured diagnostics, not stdout you have to parse.
+3. Bash — the escape hatch, available but not preferred. It works; it draws a
+   one-time nudge; it is the right call only when biome_check lacks a flag you
+   need or the MCP server is down:
+     ${RUN} biome check [--write]
+     ${PM} run lint:md   /   ${PM} run lint:md:fix     (markdownlint-cli2)
+     ${PM} run typecheck                               (turbo run types:check)
+     ${RUN} lint-staged --config "${PROJECT_DIR}/lib/configs/lint-staged.config.ts"
+</running_tools>
 </reminder>
 CONTEXT
 )

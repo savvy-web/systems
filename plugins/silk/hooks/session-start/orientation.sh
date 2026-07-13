@@ -2,15 +2,17 @@
 set -euo pipefail
 
 # SessionStart hook (no matcher — fires on all starts including resume/compact):
-# persist namespaced SILK_* env vars and inject workspace, changeset, and
-# dogfood-feedback context into every session.
+# persist namespaced SILK_* env vars and inject the silk capability surface into
+# every session.
 #
 # Merges: changeset-env-export.sh + mcp-orientation.sh
 #
 # Contract: reads SessionStart envelope on stdin, writes 5 SILK_* exports to
 # the per-session silk-hook.sh file and CLAUDE_ENV_FILE, then emits
-# additionalContext with a workspace_info nudge, changesets plugin context,
-# and a dogfood-feedback reminder.
+# additionalContext with a single <silk_capabilities> block: the savvy-mcp tool
+# index, the agent and skill indexes, the Biome division of labor, and the
+# active-hooks map. Edit-time conventions live in startup-only.sh; per-format
+# detail stays at point-of-use (path-triggered skills, PreToolUse nudges).
 
 # shellcheck source=../lib/hook-output.sh
 . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/hook-output.sh"
@@ -31,39 +33,18 @@ fi
 read_envelope_or_noop "$_HOOK"
 hook_json="$HOOK_ENVELOPE"
 session_id=$(jq -r '.session_id // ""' <<< "$hook_json")
-envelope_cwd=$(jq -r '.cwd // empty' <<< "$hook_json")
 
-project_dir="${CLAUDE_PROJECT_DIR:-$envelope_cwd}"
+# Working-tree resolution (savvy-web/systems#274): the envelope's cwd outranks
+# CLAUDE_PROJECT_DIR, which is pinned to the PRIMARY checkout for the whole
+# session and does not follow a git worktree. This hook is the producer of
+# SILK_PROJECT_DIR, so what it resolves here is what every reader hook sees.
+project_dir=$(resolve_project_dir "$hook_json")
 data_dir="${CLAUDE_PLUGIN_DATA:-}"
 plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
 
-# Detect package manager so reader hooks can reuse the same logic via the
-# SILK_PACKAGE_MANAGER export. Fail open to "npm" if anything goes wrong.
-detect_pm() {
-	if [ -z "$project_dir" ] || [ ! -d "$project_dir" ]; then
-		echo "npm"
-		return
-	fi
-	if [ -f "$project_dir/package.json" ]; then
-		local pm
-		pm=$(jq -r '.packageManager // empty' "$project_dir/package.json" 2>/dev/null | cut -d'@' -f1)
-		if [ -n "$pm" ]; then
-			echo "$pm"
-			return
-		fi
-	fi
-	if [ -f "$project_dir/pnpm-lock.yaml" ]; then
-		echo "pnpm"
-	elif [ -f "$project_dir/yarn.lock" ]; then
-		echo "yarn"
-	elif [ -f "$project_dir/bun.lock" ]; then
-		echo "bun"
-	else
-		echo "npm"
-	fi
-}
-
-package_manager=$(detect_pm)
+# Package-manager detection is shared with startup-only.sh via hook-env.sh —
+# it fails open to npm. Reader hooks pick it up through SILK_PACKAGE_MANAGER.
+package_manager=$(detect_package_manager "$project_dir")
 
 if [ -n "$session_id" ]; then
 	env_dir="${HOME}/.claude/session-env/${session_id}"
@@ -86,179 +67,123 @@ if [ -n "$session_id" ]; then
 	fi
 fi
 
-case "$package_manager" in
-	pnpm) RUN="pnpm exec savvy changeset" ;;
-	yarn) RUN="yarn exec savvy changeset" ;;
-	bun)  RUN="bunx savvy changeset" ;;
-	*)    RUN="npx --no -- savvy changeset" ;;
-esac
+RUN="$(package_manager_exec "$package_manager") savvy changeset"
 
 CONTEXT=$(cat <<CONTEXT
-<important>
-When you need workspace layout, package names, publish or version state, or any
-other structural fact about the workspace, call the workspace_info MCP tool
-before running shell commands or answering from memory. It returns structured
-JSON. Use Bash workspace commands only when:
-  - you need git status or branch info (workspace_info does not cover this), or
-  - you need output from a task-specific script the tool does not provide, or
-  - workspace_info is unavailable or errors.
+<silk_capabilities>
+This is a Silk Suite workspace. The silk plugin gives you a savvy-mcp server (10
+structured tools), 3 domain agents, 8 skills, a Biome LSP, and a build monitor —
+all of which already know this repo's package boundaries, conventions and
+exclusion rules.
 
-When you need to diagnose a Turborepo cache miss, inspect the task graph, or
-identify which packages are affected by a change, call the turbo_inspect MCP
-tool before hand-running turbo commands or guessing. It is read-only and never
-executes tasks. Use Bash turbo commands only when you need a field turbo_inspect
-does not surface (and always with --dry in that case).
-</important>
+USE THEM. Shelling out to git/pnpm/turbo/biome to reconstruct what a tool returns
+in one call is slower, lossier, and gets the repo-specific rules wrong. Answering
+from memory about this repo's layout, release state, or lint policy is guessing.
+When a question falls in a capability below, open that capability first. The tools
+are cheap; a wrong answer derived from parsed stdout is not.
 
-<turbo_capability>
-The savvy-mcp server provides a read-only Turborepo inspection tool:
+<mcp_tools server="savvy-mcp" prefix="mcp__plugin_silk_savvy-mcp__">
+  workspace_info    — workspace layout, package names, publish/version state.
+                      THE default for any structural fact about this repo.
+  turbo_inspect     — read-only, never executes tasks.
+                      mode:"cache"    HIT/MISS per package + the exact hash
+                                      contributors (inputs, env, dep hashes,
+                                      global hash). Cache-miss diagnosis.
+                      mode:"graph"    task graph + critical path. Read this
+                                      before any dependsOn/inputs/outputs edit.
+                      mode:"affected" the changed-package set.
+  biome_check       — Biome with structured diagnostics instead of console text.
+                      paths[] (default: whole workspace), mode:"check"|"lint",
+                      write:true (safe fixes), unsafe:true, strict:true (surface
+                      project warnings as errors, tagged originalSeverity).
+                      The ONLY way to apply Biome fixes from a tool. Preferred
+                      over Bash biome for every check and every fix.
+  changeset_inspect — mode:"branch" = the branch diff already classified by
+                      owning package (+ unmappedFiles). This is how you learn
+                      WHAT CHANGED and WHO OWNS IT. mode:"classify" maps
+                      arbitrary paths to their package.
+  changeset_validate— typed CSH001-CSH005 diagnostics for changeset files.
+  changeset_preview — renders the CHANGELOG the pending changesets would produce.
+                      Answers "what ships next".
+  changeset_deps_detect — read-only: packages needing a Dependencies changeset.
+  changeset_deps_regen  — writes them (delete-and-recreate).
+  repos_inspect / repos_manage — vendored reference repos under .repos/.
 
-  mcp__plugin_silk_savvy-mcp__turbo_inspect
-    mode: "cache"    — per-package HIT/MISS verdict plus the exact hash
-                       contributors (input files, env vars, external-dep hashes,
-                       global hash). Use for cache-miss diagnosis.
-    mode: "graph"    — full task graph and critical path. Use before any
-                       dependsOn / outputs / inputs refactor.
-    mode: "affected" — changed-package set (what --affected would select).
-                       Use to scope CI or confirm graph edges.
+  Full savvy changeset CLI: ${RUN} --help (check | lint | validate-file |
+  transform | version).
 
-For lighter Turborepo questions (configuring a task, understanding dependsOn,
-anti-patterns) the turbo skill is available on demand: /silk:turbo.
+  Do not infer release state from the file tree. Do not infer workspace layout
+  from ls. Do not parse \`turbo --dry\` when turbo_inspect will hand you the hash
+  contributors. Bash is the escape hatch for git status/branch info, task-specific
+  scripts, and any field a tool genuinely does not surface.
+</mcp_tools>
 
-For multi-step cache diagnosis, turbo.json refactors, or CI cache setup,
-dispatch the turborepo agent — it drives turbo_inspect, interprets the hash
-contributors, and recommends concrete changes.
-</turbo_capability>
+<agents>
+  changeset-manager — reconciles changesets against the branch diff (create /
+      update / delete / squash). Owns discovery, classification and the exclusion
+      rules. Dispatch it when implementation work concludes and a changeset pass
+      is needed — you do not have to wait for a slash command.
+  turborepo — multi-step cache diagnosis, turbo.json refactors, CI cache setup.
+      Drives turbo_inspect and interprets the hash contributors.
+  tsdoctor — drives a package's ae-*/tsdoc-* API Extractor diagnostics to zero
+      off dist/prod/issues.json, then rebuilds to confirm. Dispatch it the moment
+      a build reports API Extractor issues; do not hand-patch TSDoc comments and
+      never add warning suppressions.
+</agents>
 
-<biome_capability>
-Biome (the suite's linter/formatter) is wired into this session two ways:
+<skills>
+  /silk:changeset        create|squash|list|preview|check changesets (bare =
+                         create/reconcile; dispatches changeset-manager)
+  /silk:changeset-style  the format spec — auto-loads on any .changeset/*.md
+  /silk:changeset-config .changeset/config.json: versionFiles, additionalScopes
+  /silk:commit-create    the commit-message contract enforced by
+                         @savvy-web/commitlint — type enum, tdd scope grammar,
+                         subject/body rules, DCO signoff, Closes trailers.
+                         LOAD THIS BEFORE writing any commit message or PR body;
+                         PR bodies are commitlint-validated too.
+  /silk:build            savvy.build.ts, BuildConfig, the build:dev/build:prod/
+                         types:check/prepare script contract, SEA binaries.
+                         Auto-loads on savvy.build.ts, package.json, turbo.json.
+  /silk:tsdoc            TSDoc that survives API Extractor: release tags, the
+                         supported-tag allow-list, ae-forgotten-export and
+                         friends. Your JSDoc habits are wrong here.
+  /silk:turbo            Turborepo config, dependsOn, --affected/--filter,
+                         anti-patterns. Lighter than the turborepo agent.
+  /silk:repos            vendored reference repos under .repos/.
+  A background monitor (tsdoc-diagnostics) surfaces ae-*/tsdoc-* diagnostics
+  from dist/<target>/issues.json as builds change them.
+</skills>
 
-1. LSP (automatic). After you edit a JS/TS/JSON/CSS/GraphQL file, Biome lint and
-   format diagnostics are reported to you automatically. Do NOT run
-   \`biome check <file>\` via Bash just to SEE problems on a file you edited — the
-   diagnostics already arrive. The LSP cannot apply fixes and only sees files you
-   have opened/edited.
-
-2. mcp__plugin_silk_savvy-mcp__biome_check (on demand, structured, can fix). Run Biome over
-   any path and get parsed diagnostics back instead of console text:
-     mode:   "check" (default — lint + format + imports) | "lint"
-     write:  true  — apply safe fixes (--write)
-     unsafe: true  — apply unsafe fixes (--write --unsafe)
-   Use it for whole-package or multi-file checks and for applying fixes, instead
-   of shelling out to biome.
-
-<active_hooks>
-  <hook event="PreToolUse" matcher="Bash">
-    When you run Biome via Bash (directly or through a package.json script), a
-    one-time, non-blocking nudge reminds you to prefer biome_check. It never
-    blocks — Bash biome stays a valid escape hatch when the tool lacks a flag you
-    need or the MCP server is misbehaving.
-  </hook>
-</active_hooks>
-</biome_capability>
-
-<changesets_plugin>
-
-<overview>
-This project uses section-aware changesets via @savvy-web/changesets. Changesets are release documentation: short markdown files in .changeset/ that describe what users upgrading the package need to know, organized under category headings.
-</overview>
-
-<style_rules>
-The full style and format specification — YAML frontmatter shape, the 13 valid section headings, structural rules CSH001-CSH005, content depth tiers, and worked examples — lives in the \`changeset-style\` skill. It auto-loads whenever you read a file under .changeset/ via the path-based skill trigger, so reading or editing any changeset gives you the rules for free.
-
-You can also invoke it on demand: \`/silk:changeset-style\`. Useful at the end of a session when context from earlier work has rotated out and you need the format reference without re-loading the SessionStart payload.
-</style_rules>
-
-<available_tools>
-  <cli runner="${RUN}">
-    ${RUN} check .changeset — validate all changesets with human-readable summary
-    ${RUN} lint .changeset — machine-readable validation (file:line:col format)
-    ${RUN} validate-file path — validate a single changeset file
-    ${RUN} transform file — post-process CHANGELOG.md
-    ${RUN} version — run changeset version and transform all CHANGELOGs
-  </cli>
-
-  <skills prefix="/silk:">
-    /silk:changeset --create [--require] [--package N] [--bump LVL] [--dry-run]
-        — reconcile changesets with the branch diff (changeset-manager agent)
-    /silk:changeset --squash [branch|all] [--package N] [--dry-run]
-        — consolidate per-package changesets (changeset-manager agent)
-    /silk:changeset --check    — validate against CSH001-CSH005 (changeset_validate MCP)
-    /silk:changeset --list     — overview of pending changesets
-    /silk:changeset --preview  — render the combined CHANGELOG output
-    A bare /silk:changeset defaults to --create/reconcile.
-    /silk:changeset-style      — full style specification (also auto-loads on .changeset/*.md)
-  </skills>
-  <agent_dispatch>
-    Both /silk:changeset --create and /silk:changeset --squash dispatch the
-    changeset-manager agent. The main agent should also delegate to
-    changeset-manager when implementation work concludes and a changeset
-    pass is needed but no slash command has been invoked — the agent owns
-    discovery, classification, and the exclusion rules.
-  </agent_dispatch>
-
-  <mcp_tools>
-    These are the source of truth for release state. Prefer them over shelling
-    out to git/pnpm and over reasoning from memory — they return structured JSON
-    and they already know this repo's package boundaries and exclusion rules.
-
-    mcp__plugin_silk_savvy-mcp__changeset_inspect
-        — mode: "branch" gives the branch diff already classified by owning
-          package (plus any unmappedFiles). This is how you find out WHAT
-          CHANGED and WHO OWNS IT. mode: "classify" maps arbitrary repo paths to
-          their package, for files that do not appear in the diff.
-    mcp__plugin_silk_savvy-mcp__changeset_validate
-        — structured CSH001-CSH005 validation for one or more changeset files;
-          returns typed diagnostics. Call after writing or editing changesets.
-    mcp__plugin_silk_savvy-mcp__changeset_preview
-        — renders the CHANGELOG that the pending changesets would produce. Use it
-          to answer "what will this release look like".
-    mcp__plugin_silk_savvy-mcp__changeset_deps_detect
-        — read-only: which packages have pure dependency changes needing a
-          Dependencies changeset. (deps_regen writes them.)
-    mcp__plugin_silk_savvy-mcp__workspace_info
-        — workspace layout, package names, publish and version state.
-
-    To answer "does this branch need a changeset / what is pending / what ships
-    next", call changeset_inspect (mode: "branch") and changeset_preview. Do not
-    infer release state from the file tree.
-  </mcp_tools>
-</available_tools>
+<biome>
+Biome is wired in twice, and neither way is Bash.
+1. LSP (automatic, zero cost). After you edit a JS/TS/JSON/JSONC/CSS/GraphQL
+   file, Biome lint and format diagnostics arrive on their own. Never run
+   \`biome check <file>\` just to SEE problems on a file you edited. The LSP
+   cannot apply fixes and only sees files you have touched.
+2. biome_check (on demand, structured, CAN fix). Use it for whole-package and
+   multi-file checks, and for every fix pass.
+Bash biome still works and is never blocked — it is the escape hatch for a flag
+the tool lacks. Reaching for it first draws a one-time PreToolUse nudge.
+</biome>
 
 <active_hooks>
-  <hook event="PostToolUse" matcher="Write|Edit">
-    After writing a .changeset/*.md file, the CLI automatically validates it. If validation finds issues, they are provided as context — fix the file before proceeding.
-  </hook>
-  <hook event="Stop">
-    When a turn ends on a branch that has commits but no changeset, a message is
-    shown TO THE USER noting that. It is informational and addressed to them, not
-    to you: nothing is blocked and you are not being asked to act on it.
-  </hook>
-  <note>
-    No hook blocks a commit or a push for a missing changeset. Whether a change
-    needs one is a human judgement — many branches legitimately need none
-    (docs, CI, tests, internal refactors) — and it is enforced in CI on the pull
-    request, where the full diff is available. Never try to work around a hook or
-    disable a check to get a commit or push through; if something blocks you,
-    stop and tell the user.
-  </note>
-  <note>
-    turbo_inspect (mcp__plugin_silk_savvy-mcp__turbo_inspect) has no hook — it is a
-    read-only MCP tool; call it directly when Turborepo questions arise.
-  </note>
+  PreToolUse  Bash / Read|Write|Edit / MCP-git — commit guards. A \`git commit\` or
+      \`gh pr create|edit\` is intercepted and checked against the commitlint
+      contract. Load /silk:commit-create before you compose the message, not
+      after the hook rejects it.
+  PreToolUse  Bash — biome-prefer-mcp: one-time, non-blocking nudge toward
+      biome_check. Never blocks.
+  PreToolUse  Write|Edit|Bash|MCP-git — repos guards: .repos/** is read-only
+      vendored source. Mutate it only via repos_manage or \`savvy repos\`.
+  PostToolUse Write|Edit — a .changeset/*.md file you write is validated
+      immediately. Fix reported issues before moving on.
+  Stop — a missing-changeset note addressed TO THE USER, not to you. Nothing is
+      blocked; do not act on it.
+  No hook blocks a commit or a push for a missing changeset — that is a human
+  judgement and CI enforces it on the PR. Never work around a hook or disable a
+  check to get a commit through. If something blocks you, stop and tell the user.
 </active_hooks>
-
-</changesets_plugin>
-
-<reminder>
-<dogfood_feedback>
-This plugin (silk@savvy-web-systems) is newly released and is being dogfooded. During this session, if a skill, hook, the savvy CLI, or an agent such as changeset-manager returns wrong, unhelpful, or confusing results, fires incorrectly, or shows any rough edge worth improving, note it.
-
-When you dispatch a subagent, ask it to note any such rough edges and report them back to you.
-
-At the end of the session, surface what you noticed and ask the user, for example: "I ran into X with the silk plugin. Want me to open an issue in savvy-web/systems?" Open an issue ONLY if the user explicitly agrees, using: gh issue create --repo savvy-web/systems --title "..." --body "...". You MUST wait for explicit user confirmation before opening any issue. Never file one on your own judgement.
-</dogfood_feedback>
-</reminder>
+</silk_capabilities>
 CONTEXT
 )
 

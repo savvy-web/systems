@@ -117,6 +117,31 @@ Helpers for hooks that shell out or need a repo:
 | `write_stub <name>` | Install an executable stub reading its body from stdin. |
 | `init_push_repo` | Create a git repo with a committed `main` and a checked-out `feature` branch; export `CLAUDE_PROJECT_DIR`. |
 | `repo_commit <repo> <msg> <path> [content]` | Write and commit a file on the current branch. |
+| `add_worktree <repo> <branch>` | Add a git worktree on a new branch; `CLAUDE_PROJECT_DIR` deliberately stays on the primary checkout. |
+| `envelope_with_cwd <fixture> [dir]` | Copy a fixture, substituting its `__PROJECT_DIR__` cwd token with `[dir]` (default `$CLAUDE_PROJECT_DIR`); echo the copy's path. |
+| `envelope_without_cwd <fixture>` | Copy a fixture with `.cwd` deleted; echo the copy's path. Exercises the env-var fallback legs of `resolve_project_dir`. |
+
+### Project-dir resolution in fixtures
+
+Every hook that reasons about a working tree resolves it through
+`resolve_project_dir` (`hooks/lib/hook-env.sh`), where the envelope's `.cwd`
+**outranks** `CLAUDE_PROJECT_DIR` (savvy-web/systems#274). A fixture therefore
+cannot bake in a real cwd — the project dir is a fresh `$BATS_TEST_TMPDIR` tree
+per test, and a stale literal would silently win over the dir the test just
+built. The SessionStart fixtures (`sessionstart.orientation.json`,
+`sessionstart.startup.json`) carry a literal `__PROJECT_DIR__` token instead;
+substitute it with `envelope_with_cwd` (or drop the field with
+`envelope_without_cwd` to test the fallback):
+
+```bash
+make_project >/dev/null
+local envelope
+envelope="$(envelope_with_cwd "${FIXTURES_DIR}/sessionstart.orientation.json")"
+run bash -c "cat '${envelope}' | bash '${HOOK}'"
+```
+
+This is the same placeholder pattern the repos-fs-guard deny fixtures use for
+`tool_input.file_path` (below), applied to `.cwd`.
 
 ### Stubbing the savvy CLI
 
@@ -209,15 +234,38 @@ frustrates the agent it blocked.
 5. Run `pnpm test:hooks` and confirm both the shellcheck pass and the new suite
    are green.
 
+## Hook script file modes
+
+Hook scripts commit as `100644` (no exec bit) on purpose. The lint-staged
+ShellScripts handler strips the executable bit from staged `.sh` files
+(`chmod -x`), so a freshly added hook that starts life as `755` lands in the
+commit as `644` while older siblings may still show `755` from before the
+handler existed. This is not mode drift and needs no fix: every hook is
+invoked as `bash "${CLAUDE_PLUGIN_ROOT}/hooks/..."` (see `hooks/hooks.json`
+and `run-hook-tests.sh`), so the exec bit is never exercised, and normalizing
+it keeps diffs clean. Do not chmod hook scripts back to `755` or exclude them
+from the handler.
+
 ## shellcheck strategy
 
 `run-hook-tests.sh` passes only shebang-bearing scripts to `shellcheck` as
 top-level inputs and runs with `-x -P SCRIPTDIR`. The sourced-only libraries
-(`hooks/lib/hook-output.sh`, `hook-debug.sh`, `source-session-env.sh`) carry no
-shebang; they are validated in context via follow-source from the scripts that
-source them, which also avoids the spurious `SC2148` they raise when linted
-standalone. `-P SCRIPTDIR` resolves each `# shellcheck source=` directive
-relative to the sourcing script's own directory.
+(`hooks/lib/hook-output.sh`, `hook-debug.sh`, `hook-env.sh`,
+`source-session-env.sh`) carry no shebang; they are validated in context via
+follow-source from the scripts that source them, which also avoids the spurious
+`SC2148` they raise when linted standalone. `-P SCRIPTDIR` resolves each
+`# shellcheck source=` directive relative to the sourcing script's own directory.
+
+`hook-env.sh` is the shared home for envelope and environment resolution —
+`read_envelope_or_noop`, `resolve_project_dir`, `detect_package_manager`,
+`package_manager_exec`. Put a new shared helper there (or in another
+sourced-only lib) rather than in a hook: a private copy in one hook is how the
+two SessionStart hooks' package-manager detection drifted apart in the first
+place. A helper added there needs **no** change to the shellcheck invocation —
+it is linted through its consumers' `# shellcheck source=` directives. A new
+sourced-only lib file likewise needs no shebang and no runner change; only a
+new *standalone* entry script (shebang + `set -euo pipefail`, like
+`lib/run-cli.sh`) becomes a top-level shellcheck input.
 
 ## Known gaps
 
@@ -230,6 +278,10 @@ relative to the sourcing script's own directory.
   callers of `emit_deny` — were written against it from the start, so the
   posture is uniform across old and new hooks alike. Each suite's
   `malformed JSON input: no-op (fails open)` case asserts this directly.
-  `session-start/startup-only.sh` remains the one true exception — it drains
-  stdin without parsing it at all, so a malformed body still emits context
-  regardless.
+  `session-start/startup-only.sh` remains the one true exception: it does not
+  call `read_envelope_or_noop`, because its payload is unconditional session
+  orientation rather than a decision about a tool call. It reads the body only
+  through `resolve_project_dir`, whose jq call is guarded, so a malformed
+  envelope degrades to the `CLAUDE_PROJECT_DIR` fallback and the context is
+  still emitted. Its suite asserts that (`malformed body with a project dir:
+  still emits context`) rather than a no-op.
