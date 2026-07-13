@@ -13,6 +13,7 @@ import {
 	ChangesetConfigLive,
 	ChangesetConfigReaderLive,
 	Changesets,
+	Repos,
 	SilkWorkspaceAnalyzerLive,
 	TagStrategyLive,
 	ToolDiscoveryLive,
@@ -67,11 +68,26 @@ const DepsRegenGroupLive = Changesets.DepsRegenLive.pipe(
 );
 
 /**
+ * `Repos.ReposManager` + `Repos.ReposConfigStore`, both exposed on the
+ * runtime. `ReposManagerLive` requires `ReposConfigStore`, so it is given its
+ * own `ReposConfigStoreLive` reference here (`Layer.mergeAll` does not
+ * cross-feed sibling layers); `ReposConfigStore` is ALSO merged in directly so
+ * `repos_inspect`'s config mode can resolve it on its own. The remaining
+ * `CommandExecutor` + `FileSystem` + `Path` requirements flow up to the host
+ * platform layer (`NodeContext.layer` in bin.ts).
+ */
+const ReposGroupLive = Layer.mergeAll(
+	Repos.ReposConfigStoreLive,
+	Repos.ReposManagerLive.pipe(Layer.provide(Repos.ReposConfigStoreLive)),
+);
+
+/**
  * The MCP runtime layer. Provides `SilkWorkspaceAnalyzer`, `WorkspaceRoot`,
  * `Turbo.TurboInspector`, `Changesets.BranchAnalyzer`,
- * `Changesets.ConfigInspector`, `Changesets.ReleasePlanner`, and
- * `Changesets.DepsRegen`; requires `CommandExecutor` + `FileSystem` + `Path`
- * from the host's platform layer (`NodeContext.layer` in bin.ts).
+ * `Changesets.ConfigInspector`, `Changesets.ReleasePlanner`,
+ * `Changesets.DepsRegen`, `Repos.ReposManager`, and `Repos.ReposConfigStore`;
+ * requires `CommandExecutor` + `FileSystem` + `Path` from the host's platform
+ * layer (`NodeContext.layer` in bin.ts).
  *
  * `TurboInspectorLive` is fed its own `ToolDiscoveryLive`, whose
  * `PackageManagerDetector` + `WorkspaceRoot` requirements are satisfied by
@@ -84,4 +100,5 @@ export const SilkRuntimeLive = Layer.mergeAll(
 	Turbo.TurboInspectorLive.pipe(Layer.provide(ToolDiscoveryLive)),
 	InspectorAndAnalyzerLive,
 	DepsRegenGroupLive,
+	ReposGroupLive,
 ).pipe(Layer.provide(DepsLive));

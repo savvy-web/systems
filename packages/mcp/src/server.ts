@@ -32,6 +32,8 @@ import type { ChangesetPreviewArgs } from "./tools/changeset-preview.js";
 import { ChangesetPreviewAsMarkdown, ChangesetPreviewResult, changesetPreview } from "./tools/changeset-preview.js";
 import type { ChangesetValidateArgs } from "./tools/changeset-validate.js";
 import { ChangesetValidateAsMarkdown, ChangesetValidateResult, changesetValidate } from "./tools/changeset-validate.js";
+import type { ReposInspectArgs } from "./tools/repos-inspect.js";
+import { ReposInspectAsMarkdown, ReposInspectResult, reposInspect } from "./tools/repos-inspect.js";
 import type { TurboInspectArgs } from "./tools/turbo-inspect.js";
 import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "./tools/turbo-inspect.js";
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
@@ -191,6 +193,25 @@ export function buildServer(ctx: McpContext): McpServer {
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetDepsRegen(args as ChangesetDepsRegenArgs, ctx.cwd));
 			const text = Schema.decodeSync(ChangesetDepsRegenAsMarkdown)(data);
+			return structuredResult(text, data);
+		},
+	);
+
+	server.registerTool(
+		"repos_inspect",
+		{
+			title: "Inspect vendored repos",
+			description: "Read-only: drift report or parsed .repos/config.json manifest with orientation and notes.",
+			inputSchema: {
+				mode: z.enum(["status", "config"]).describe("status = drift report; config = the full agent brief."),
+				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+			},
+			outputSchema: effectToZodSchema(ReposInspectResult) as never,
+			annotations: { readOnlyHint: true },
+		},
+		async (args) => {
+			const data = await ctx.runtime.runPromise(reposInspect(args as ReposInspectArgs, ctx.cwd));
+			const text = Schema.decodeSync(ReposInspectAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);

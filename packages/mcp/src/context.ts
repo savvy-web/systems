@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import type { Changesets, SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
+import type { Changesets, Repos, SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
 import type { ManagedRuntime } from "effect";
 import type { WorkspaceDiscoveryError, WorkspaceRoot } from "workspaces-effect";
 
@@ -17,7 +17,9 @@ export interface McpContext {
 		| Changesets.BranchAnalyzer
 		| Changesets.ConfigInspector
 		| Changesets.ReleasePlanner
-		| Changesets.DepsRegen,
+		| Changesets.DepsRegen
+		| Repos.ReposManager
+		| Repos.ReposConfigStore,
 		WorkspaceDiscoveryError
 	>;
 	readonly cwd: string;
