@@ -178,3 +178,9 @@ read them via the tools below rather than trusting recall for field names.
   `git clone`) will see `.repos/` entries as empty directories with no
   content to sync — vendored content is only ever reachable through an
   actual git checkout with submodules initialized.
+- **The shared presets can't reach every place a repo's own config lists
+  paths.** Biome, markdownlint, and the shared tsconfig bases exclude
+  `.repos/` centrally, but a consuming repo's `pnpm-workspace.yaml` package
+  globs, `turbo.json` task `inputs`, and vitest `exclude` lists are
+  per-repo config the shared presets don't own — each may need its own
+  `.repos` exclusion added by hand in the repo that adopts vendoring.

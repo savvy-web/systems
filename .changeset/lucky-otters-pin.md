@@ -13,9 +13,9 @@ savvy repos status [--json]
 savvy repos sync
 savvy repos pin <name> <ref>
 savvy repos add <url> --ref <ref> --purpose <text> [--name <name>] [--sparse <path>...]
-savvy repos note add <name> --note <text>
-savvy repos note remove <name> --id <id>
-savvy repos note promote <name> --id <id> --into layout|startHere
+savvy repos note <name> add <text>
+savvy repos note <name> remove <id>
+savvy repos note <name> promote <id> --into layout|startHere
 ```
 
 - `status` prints a drift report (gitlink vs. manifest ref, dirty and unsynced submodules); `--json` emits the structured report.

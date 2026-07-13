@@ -11,7 +11,8 @@ Adds a new public `Repos` namespace for managing vendored reference repos under 
 ```ts
 import { Repos } from "@savvy-web/silk-effects";
 
-const report = yield* Repos.ReposManager.status(root);
+const manager = yield* Repos.ReposManager;
+const report = yield* manager.status(root);
 // report.clean, report.repos[].{ name, ref, purpose, present, commit, dirty, staleNoteIds }
 ```
 
