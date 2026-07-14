@@ -1,5 +1,20 @@
 # @savvy-web/silk
 
+## 2.4.3
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 1.6.1 | 1.6.1 |
+| @savvy-web/mcp       | dependency | updated | 1.8.1 | 1.8.1 |
+
+* | Dependency      | Type           | Action  | From          | To      |                                                          |
+  | --------------- | -------------- | ------- | ------------- | ------- | -------------------------------------------------------- |
+  | @changesets/cli | peerDependency | updated | ^3.0.0-next.8 | ^3.0.0  |                                                          |
+  | @types/bun      | peerDependency | added   | —             | ^1.3.14 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 2.4.2
 
 ### Dependencies
