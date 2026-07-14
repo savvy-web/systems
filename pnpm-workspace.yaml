@@ -82,7 +82,7 @@ catalogs:
     typescript: ^7.0.2
     vitest: ^4.1.10
   silkPeers:
-    "@changesets/cli": ^3.0.0
+    "@changesets/cli": ^3.0.0-next.8
     "@commitlint/cli": ^21.2.1
     "@commitlint/config-conventional": ^21.2.0
     "@effect/ai": ^0.36.0
@@ -151,6 +151,8 @@ loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@effected/*"
+  - "@oxc-parser/*"
+  - "@oxc-project/*"
   - "@savvy-web/*"
   - "@spencerbeggs/*"
   - "@typescript/*"
@@ -159,6 +161,7 @@ minimumReleaseAgeExclude:
   - config-file-effect
   - json-schema-effect
   - jsonc-effect
+  - oxc-parser
   - package-json-effect
   - reposets
   - rolldown-pnpm-config
@@ -189,7 +192,6 @@ publicHoistPattern:
   - "@commitlint/cli"
   - "@commitlint/config-conventional"
   - "@commitlint/cz-commitlint"
-  - "@rslib/core"
   - "@types/bun"
   - "@types/node"
   - "@types/react"
