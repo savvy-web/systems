@@ -13,13 +13,7 @@ on:
         description: Branch name for dependency update PR
         type: string
         default: pnpm/config-deps
-      log-level:
-        description: Logging verbosity
-        type: choice
-        options:
-          - info
-          - debug
-        default: debug
+
 concurrency:
   group: silk-update-${{ github.ref }}
   cancel-in-progress: true
@@ -48,7 +42,6 @@ jobs:
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
           branch: ${{ inputs.branch || 'pnpm/config-deps' }}
           dry-run: ${{ inputs.dry-run || false }}
-          log-level: ${{ inputs.log-level || 'info' }}
           changesets: true
           auto-merge: "squash"
           upgrade-package-manager: "^11.0.0"
