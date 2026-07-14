@@ -1,5 +1,18 @@
 # @savvy-web/bundler
 
+## 1.1.14
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From   | To     |
+| ------------------------- | ---------- | ------- | ------ | ------ |
+| @savvy-web/tsdown-plugins | dependency | updated | 1.1.12 | 1.1.13 |
+
+* | Dependency  | Type       | Action  | From    | To      |                                                          |
+  | ----------- | ---------- | ------- | ------- | ------- | -------------------------------------------------------- |
+  | @tsdown/exe | dependency | updated | ^0.22.5 | ^0.22.7 |                                                          |
+  | tsdown      | dependency | updated | ^0.22.5 | ^0.22.7 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 1.1.13
 
 ### Dependencies

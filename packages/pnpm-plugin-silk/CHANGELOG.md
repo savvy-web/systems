@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.23.2
+
+### Features
+
+* ### Adds @types/bun to silkPeers
+
+  You can now access Bun module types directly from the shared `@savvy-web/pnpm-plugin-silk` peer dependencies.
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.23.1
 
 ### Bug Fixes
