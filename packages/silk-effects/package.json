@@ -49,7 +49,7 @@
 		"unified": "^11.0.5",
 		"unified-lint-rule": "^3.0.1",
 		"unist-util-visit": "^5.1.0",
-		"workspaces-effect": "^2.0.3",
+		"workspaces-effect": "^2.1.0",
 		"yaml": "^2.9.0",
 		"yaml-effect": "^0.7.2",
 		"yaml-lint": "^1.7.0"
@@ -65,7 +65,7 @@
 		"@types/shell-quote": "^1.7.5",
 		"effect": "catalog:silk",
 		"fast-check": "^4.9.0",
-		"markdownlint": "^0.41.0",
+		"markdownlint": "^0.41.1",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"

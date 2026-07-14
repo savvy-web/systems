@@ -49,7 +49,7 @@
 		"std-env": "^4.2.0",
 		"tsdown": "catalog:silk",
 		"typescript": "^6.0.3",
-		"workspaces-effect": "^2.0.3"
+		"workspaces-effect": "^2.1.0"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:silk",
