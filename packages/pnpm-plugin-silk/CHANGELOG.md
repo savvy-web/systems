@@ -1,5 +1,16 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.24.0
+
+### Features
+
+* Adds `tsx` and `@vitest/coverage-*` to peerDependencies
+* Allows oxc project to bypass minimumReleaseAge
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.23.2
 
 ### Features

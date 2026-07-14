@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/pnpm-plugin-silk",
-	"version": "0.23.2",
+	"version": "0.24.0",
 	"private": true,
 	"description": "pnpm config dependency for centralized catalog management across the Silk ecosystem.",
 	"keywords": ["pnpm", "pnpm-plugin", "config-dependency", "catalog", "monorepo", "silk"],
