@@ -70,6 +70,7 @@
 		"@changesets/cli": "catalog:silkPeers",
 		"@commitlint/cli": "catalog:silkPeers",
 		"@commitlint/config-conventional": "catalog:silkPeers",
+		"@types/bun": "catalog:silkPeers",
 		"@types/node": "catalog:silkPeers",
 		"husky": "catalog:silkPeers",
 		"lint-staged": "catalog:silkPeers",
