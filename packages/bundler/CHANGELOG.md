@@ -1,5 +1,13 @@
 # @savvy-web/bundler
 
+## 1.1.13
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From   | To     |
+| ------------------------- | ---------- | ------- | ------ | ------ |
+| @savvy-web/tsdown-plugins | dependency | updated | 1.1.11 | 1.1.12 |
+
 ## 1.1.12
 
 ### Dependencies
