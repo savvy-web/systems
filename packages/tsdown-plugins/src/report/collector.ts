@@ -182,7 +182,6 @@ function toEntry(input: DiagnosticInput): DiagnosticEntry {
 }
 
 /** @public */
-export class BuildCollectorTag extends Context.Tag("@savvy-web/tsdown-plugins/BuildCollector")<
-	BuildCollectorTag,
-	BuildCollector
->() {}
+export class BuildCollectorTag extends Context.Service<BuildCollectorTag, BuildCollector>()(
+	"@savvy-web/tsdown-plugins/BuildCollector",
+) {}

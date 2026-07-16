@@ -32,13 +32,12 @@
 	"dependencies": {
 		"@savvy-web/tsdown-plugins": "workspace:*",
 		"@tsdown/exe": "catalog:silk",
-		"effect": "catalog:silk",
+		"effect": "catalog:effect",
 		"rolldown": "catalog:silk",
 		"tsdown": "catalog:silk"
 	},
 	"devDependencies": {
-		"@effect/platform": "catalog:silk",
-		"@effect/platform-node": "catalog:silk",
+		"@effect/platform-node": "catalog:effect",
 		"@tsdown/css": "catalog:silk",
 		"@types/node": "catalog:silk",
 		"@types/react": "catalog:silk",

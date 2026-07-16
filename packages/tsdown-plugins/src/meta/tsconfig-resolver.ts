@@ -1,18 +1,10 @@
 // packages/tsdown-plugins/src/meta/tsconfig-resolver.ts
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import type { ParseConfigFileHost, ParsedCommandLine } from "typescript";
-import {
-	JsxEmit,
-	ModuleDetectionKind,
-	ModuleKind,
-	ModuleResolutionKind,
-	NewLineKind,
-	ScriptTarget,
-	flattenDiagnosticMessageText,
-	getParsedCommandLineOfConfigFile,
-	sys,
-} from "typescript";
+import { existsSync, readFileSync } from "node:fs";
+import * as nodePath from "node:path";
+import type { TsconfigLoaderSyncOptions } from "@effected/tsconfig-json";
+import { PortableTsconfig as PortableTsconfigFilter, TsconfigLoaderSync } from "@effected/tsconfig-json";
+import type { ParsedCommandLine } from "typescript";
+import { JsxEmit, ModuleDetectionKind, ModuleKind, ModuleResolutionKind, NewLineKind, ScriptTarget } from "typescript";
 
 /**
  * JSON schema URL for tsconfig.json files.
@@ -292,15 +284,29 @@ export class TsconfigResolver {
 }
 
 /**
+ * The consumer-supplied sync operations backing {@link resolvePortableTsconfig}:
+ * Node's `existsSync`/`readFileSync` satisfy the loader's `SyncFileSystem`, and
+ * `node:path` satisfies `SyncPath` verbatim.
+ *
+ * @internal
+ */
+const syncOptions: TsconfigLoaderSyncOptions = {
+	fileSystem: { exists: existsSync, readFile: (p) => readFileSync(p, "utf8") },
+	path: nodePath,
+};
+
+/**
  * Resolves the package's effective compiler options (following `extends`) into a
  * portable, JSON-serializable tsconfig for the meta release bundle.
  *
  * @remarks
  * Resolves the package's own `<cwd>/tsconfig.json` (which extends the shared
- * `@savvy-web/bundler/ecma.json` base) via the TypeScript API so the result
- * carries the full effective options (target/module/strict/jsx/lib), then
- * converts them to a portable, compilerOptions-only shape with no absolute
- * paths or emit/file-selection options.
+ * `@savvy-web/bundler/ecma.json` base) via `@effected/tsconfig-json`'s
+ * synchronous `TsconfigLoaderSync` (tsc-parity `extends` resolution) so the
+ * result carries the full effective options (target/module/strict/jsx/lib),
+ * then projects them through the kit's `PortableTsconfig.make` allow-list
+ * filter to a portable, compilerOptions-only shape with no absolute paths or
+ * emit/file-selection options.
  *
  * When the package has no own `tsconfig.json` (e.g. a minimal test fixture),
  * falls back to `fallbackConfigPath` — the build's already-resolved dts tsconfig,
@@ -314,7 +320,7 @@ export class TsconfigResolver {
  * @public
  */
 export function resolvePortableTsconfig(cwd: string, fallbackConfigPath?: string): PortableTsconfig {
-	const ownConfig = join(cwd, "tsconfig.json");
+	const ownConfig = nodePath.join(cwd, "tsconfig.json");
 	const configPath = existsSync(ownConfig)
 		? ownConfig
 		: fallbackConfigPath !== undefined && existsSync(fallbackConfigPath)
@@ -324,16 +330,11 @@ export function resolvePortableTsconfig(cwd: string, fallbackConfigPath?: string
 		// No tsconfig to resolve from — emit a minimal portable config with just the virtual-env flags.
 		return { $schema: TSCONFIG_SCHEMA_URL, compilerOptions: { composite: false, noEmit: true } };
 	}
-	const host: ParseConfigFileHost = {
-		...sys,
-		onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
-			const message = flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-			throw new Error(`Cannot resolve portable tsconfig at ${configPath}: ${message}`);
-		},
-	};
-	const parsed = getParsedCommandLineOfConfigFile(configPath, {}, host);
-	if (parsed === undefined) {
-		throw new Error(`Failed to parse tsconfig at ${configPath}`);
+	try {
+		const resolved = TsconfigLoaderSync.resolve(configPath, syncOptions);
+		return PortableTsconfigFilter.make(resolved);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(`Cannot resolve portable tsconfig at ${configPath}: ${message}`, { cause: error });
 	}
-	return new TsconfigResolver().resolve(parsed);
 }

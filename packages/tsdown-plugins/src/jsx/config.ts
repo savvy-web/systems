@@ -1,5 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import * as nodePath from "node:path";
+import type { CompilerOptions, TsconfigLoaderSyncOptions } from "@effected/tsconfig-json";
+import { JsxConfig as KitJsxConfig, TsconfigLoaderSync } from "@effected/tsconfig-json";
+import { Option } from "effect";
 
 /**
  * Resolved JSX transform settings. The shape mirrors the subset of rolldown's JsxOptions, but the
@@ -27,7 +30,8 @@ export interface TsconfigJsx {
 
 /**
  * Resolve the effective JSX config: an explicit override wins; otherwise infer from the tsconfig
- * values. Returns undefined when no JSX transform is needed (preserve/none).
+ * values via `@effected/tsconfig-json`'s `JsxConfig.fromCompilerOptions`. Returns undefined when
+ * no JSX transform is needed (preserve/none).
  * @public
  */
 export function resolveJsxConfig(tsconfig: TsconfigJsx, override: JsxConfig | undefined): JsxConfig | undefined {
@@ -36,28 +40,38 @@ export function resolveJsxConfig(tsconfig: TsconfigJsx, override: JsxConfig | un
 			? { runtime: "automatic", importSource: override.importSource ?? "react" }
 			: override;
 	}
-	const ts = tsconfig.jsx;
-	if (ts === "react-jsx" || ts === "react-jsxdev") {
-		return { runtime: "automatic", importSource: tsconfig.jsxImportSource ?? "react" };
-	}
-	if (ts === "react") {
-		return { runtime: "classic" };
-	}
-	// "preserve" / "react-native" / undefined: nothing for the bundler to configure.
-	return undefined;
+	// The kit's projection implements the same mapping this module used to hand-roll:
+	// react-jsx/react-jsxdev -> automatic (importSource ?? "react"); react -> classic; else None.
+	const inferred = KitJsxConfig.fromCompilerOptions({
+		...(tsconfig.jsx !== undefined ? { jsx: tsconfig.jsx } : {}),
+		...(tsconfig.jsxImportSource !== undefined ? { jsxImportSource: tsconfig.jsxImportSource } : {}),
+	} as CompilerOptions.Type);
+	return Option.match(inferred, {
+		onNone: () => undefined,
+		onSome: (cfg): JsxConfig => ({
+			runtime: cfg.runtime,
+			...(cfg.importSource !== undefined ? { importSource: cfg.importSource } : {}),
+		}),
+	});
 }
+
+/** The consumer-supplied sync operations for the tsconfig loader. @internal */
+const syncOptions: TsconfigLoaderSyncOptions = {
+	fileSystem: { exists: existsSync, readFile: (p) => readFileSync(p, "utf8") },
+	path: nodePath,
+};
 
 /**
  * Read the jsx-relevant compilerOptions from a package's own tsconfig.json (best-effort;
- * returns empty on absence or parse error).
+ * returns empty on absence or parse error). Resolved through `@effected/tsconfig-json`'s
+ * sync loader, so JSONC syntax and `extends` chains are honored.
  * @public
  */
 export function readTsconfigJsx(cwd: string): TsconfigJsx {
-	const path = join(cwd, "tsconfig.json");
+	const path = nodePath.join(cwd, "tsconfig.json");
 	if (!existsSync(path)) return {};
 	try {
-		const raw = JSON.parse(readFileSync(path, "utf-8")) as { compilerOptions?: TsconfigJsx };
-		const co = raw.compilerOptions ?? {};
+		const co = TsconfigLoaderSync.compilerOptions(path, syncOptions);
 		return {
 			...(co.jsx !== undefined ? { jsx: co.jsx } : {}),
 			...(co.jsxImportSource !== undefined ? { jsxImportSource: co.jsxImportSource } : {}),

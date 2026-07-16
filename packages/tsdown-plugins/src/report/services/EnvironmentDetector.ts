@@ -6,7 +6,7 @@ import { Context } from "effect";
 export type Environment = "agent-shell" | "terminal" | "ci-github" | "ci-generic";
 
 /** @public */
-export class EnvironmentDetector extends Context.Tag("@savvy-web/tsdown-plugins/EnvironmentDetector")<
+export class EnvironmentDetector extends Context.Service<
 	EnvironmentDetector,
 	{ readonly detect: () => Effect.Effect<Environment> }
->() {}
+>()("@savvy-web/tsdown-plugins/EnvironmentDetector") {}

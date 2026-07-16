@@ -1,0 +1,6 @@
+{
+	"session_id": "test-dogfood-mcp-github-push-files",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "mcp__github__push_files",
+	"tool_input": {}
+}

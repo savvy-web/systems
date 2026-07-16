@@ -8,7 +8,7 @@ import type { Executor } from "./ExecutorResolver.js";
 export type OutputFormat = "terminal" | "json" | "markdown" | "ci-annotations" | "silent";
 
 /** @public */
-export class FormatSelector extends Context.Tag("@savvy-web/tsdown-plugins/FormatSelector")<
+export class FormatSelector extends Context.Service<
 	FormatSelector,
 	{ readonly select: (executor: Executor, explicit?: OutputFormat, env?: Environment) => Effect.Effect<OutputFormat> }
->() {}
+>()("@savvy-web/tsdown-plugins/FormatSelector") {}

@@ -28,6 +28,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/github-acti
 - **Runtime:** Node.js 24.11.0+
 - **Package Manager:** pnpm 11.5.1 with `@savvy-web/pnpm-plugin-silk` config dependency
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all twelve packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other ten via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
+- **Effect:** split — build tooling (`bundler`, `tsdown-plugins`) on v4 (`catalog:effect`), all other packages on v3 (`catalog:silk`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency (`effect`/`effectPeers`/`effect3`/`effect3Peers`). `effect` core source is vendored at `.repos/effect-smol` (pinned to the catalog tag) — the authority for v4 APIs
 - **Linting:** Biome, markdownlint
 - **Testing:** Vitest via `@vitest-agent/plugin`; built-artifact e2e harness in `e2e/*`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
@@ -84,13 +85,28 @@ Key coordination points:
 
 - Source `package.json` `"private": true` is transformed by builders based on `publishConfig.access`.
 - Use `catalog:silk` for pinned dependencies, `catalog:silkPeers` for peer dependency ranges.
-- All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
+- Effect is mixed across the repo: the build tooling (`bundler`, `tsdown-plugins`) is on v4 via `catalog:effect`; everything else is still v3 via `catalog:silk`. Match the package you are in — check its `package.json` before writing Effect code.
+- All Effect code uses class-based services, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`. Services are `Context.Tag` on v3, `Context.Service` on v4.
 - README.md is for external users; `.claude/design/` for package architecture docs.
 - The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — all three depend only on `@savvy-web/silk-effects` within the repo.
 - All packages version INDEPENDENTLY — `.changeset/config.json` has no `fixed` or `linked` arrays. silk/cli/mcp/changelog are NOT a fixed group, but silk stays exactly pinned to cli/mcp/changelog automatically: silk declares `@savvy-web/cli`/`@savvy-web/mcp`/`@savvy-web/changelog` as source `dependencies` (`workspace:*`), published as EXACT-pinned regular `dependencies` — the build transform no longer promotes them to peers (peer publishing made pnpm `autoInstallPeers` propagate their Effect graph into consumers at wrong versions; `@savvy-web/pnpm-plugin-silk` publicly hoists all three so bins stay available). Changesets reads `workspace:*` as the exact current version, so a cli/mcp/changelog release auto-PATCH-bumps silk (`updateInternalDependencies: patch`) and re-pins the exact version. Because they are plain `dependencies` (never source peerDependencies), silk is NOT force-major-bumped. silk's `versionFiles` glob still bumps the `plugins/*` manifests in lockstep with silk.
 - Integration/e2e tests must NOT resolve `catalog:`/`workspace:` against the host workspace — catalog-resolution coverage lives in `e2e/` via subprocess builds against isolated fixtures (`CatalogResolver` reads `process.cwd()`). See `e2e/CLAUDE.md`.
 - `@savvy-web/bundler`, `@savvy-web/rspress-builder`, and `@savvy-web/tsdown-plugins` version independently (no longer a linked group); changesets still auto-bumps the bundler when tsdown-plugins changes (dependency relationship). Both bundler and tsdown-plugins self-host while the other ten packages build via the bundler front door.
 - `@savvy-web/pnpm-plugin-silk` versions independently and is npm-registry-only (the one package not also on GitHub Packages).
+
+## Dogfooding `@effected`
+
+The Effect v3→v4 migration consumes the `@effected/*` kit (`spencerbeggs/effected`, a sibling checkout at `../../spencerbeggs/effected`) from LOCAL prod artifacts, so kit APIs get shaped against real consumers before anything is released. This section defines that working pattern.
+
+**Authorities.** For `effect` core itself: the vendored source at `.repos/effect-smol` (pinned to the catalog tag). For `@effected/*`: the kit source at `../../spencerbeggs/effected/packages/<name>/src` and the installed `.d.ts` under `node_modules/@effected/<name>/` — verify signatures there, never from summaries relayed between sessions.
+
+**pnpm linking.** `pnpm-workspace.yaml` carries an `overrides:` entry per consumed kit package: `"@effected/<name>": "file:../../spencerbeggs/effected/packages/<name>/dist/prod/npm/pkg"` (the manifest lives under `pkg/`, not `npm/`). Package manifests keep ordinary registry semver ranges — the overrides do the linking, and removing them relinks to the registry. Keep the override list covering the FULL transitive `@effected` closure (re-derive from the lockfile, not memory).
+
+**Inter-agent mailbox.** Cross-repo communication lives at `.claude/dogfood/<sending-id>/` in the RECEIVING repo, where `<sending-id>` is the SENDER's root `package.json` name — gitignored on both sides, never in design docs. This repo's id is `savvy-web-systems`; the kit repo's is `effected`. So: outbound requests go to `../../spencerbeggs/effected/.claude/dogfood/savvy-web-systems/` (e.g. `systems-dogfood-feedback.md`), and the kit session's return handoffs arrive here in `.claude/dogfood/effected/`. The sender-keyed layout generalizes to dogfooding other repos. Reports carry `file:line` references so the other side reads real call sites, and each keeps an item-status table current.
+
+**The loop.** (1) Migrate a piece here. (2) Gather findings — hand-rolled capability the kit should own, API friction, bugs — each with `file:line` references into this repo. (3) Write them as requests into the kit repo's mailbox (above). (4) An agent session in the effected repo implements on a branch there and rebuilds prod artifacts in place. (5) On the return handoff (its mailbox file here), refresh: `pnpm clean --lockfile && pnpm install --ignore-scripts`, then `pnpm rebuild better-sqlite3` — `--ignore-scripts` skips native builds and the vitest-agent persistence layer dies without that rebuild. (6) Adopt the new surfaces, run the full gates (types:check, build:dev/prod, package tests), and feed the next round of findings back into the report.
+
+**Discipline.** While `file:` overrides are active this branch does NOT push or open PRs — the paths only exist on this machine and the loop isn't done until the kit provides what we need. The exit is: effected cuts a live release, the `overrides:` block is deleted (unlink), `pnpm clean --lockfile && pnpm install` against the registry, full verification, and only then the finalize workflow (docs, changesets, squash, PR).
 
 ## Design Documentation
 

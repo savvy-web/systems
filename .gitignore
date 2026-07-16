@@ -40,6 +40,7 @@ pnpm-release.json
 
 # Claude Code Files
 .claude/settings.local.json
+.claude/dogfood
 .claude/plans
 .claude/agents
 .claude/cache

@@ -47,9 +47,9 @@ const verbose = process.argv.includes("--verbose");
 const meta: MetaOptions = {
 	localPaths: ["../../website/lib/models/tsdown-plugins"],
 	tsdoc: {
-		// @since/@category leak from @effect/platform's inlined FileSystem declaration
-		// (a devDependency rolled into the bundled .d.ts). We cannot edit upstream comments,
-		// so register the tags to silence tsdoc-undefined-tag on those library blocks.
+		// @since/@category leak from effect's inlined library declarations rolled into the
+		// bundled .d.ts. We cannot edit upstream comments, so register the tags to silence
+		// tsdoc-undefined-tag on those library blocks.
 		tagDefinitions: [
 			{ tagName: "@since", syntaxKind: "block" },
 			{ tagName: "@category", syntaxKind: "block" },

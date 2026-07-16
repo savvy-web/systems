@@ -179,10 +179,12 @@ context / fail-open paths.
 | `pre-tool-use-repos-fs-guard.bats` | `pre-tool-use/repos-fs-guard.sh` |
 | `pre-tool-use-repos-bash-guard.bats` | `pre-tool-use/repos-bash-guard.sh` |
 | `pre-tool-use-repos-mcp-guard.bats` | `pre-tool-use/repos-mcp-guard.sh` |
+| `pre-tool-use-dogfood-guard.bats` | `pre-tool-use/dogfood-guard.sh` |
 | `session-start-orientation.bats` | `session-start/orientation.sh` |
 | `session-start-repos-orientation.bats` | `session-start/repos-orientation.sh` |
 | `session-start-startup-only.bats` | `session-start/startup-only.sh` |
 | `stop-changeset-nudge.bats` | `stop/changeset-nudge.sh` |
+| `monitor-dogfood-mail.bats` | `monitors/dogfood-mail.mjs` (not a hook — the fs-only dogfood mail/journal monitor; covered here rather than a separate harness since bats already isolates `CLAUDE_PROJECT_DIR` per test) |
 
 Each suite exercises the real contract: an envelope on stdin, JSON decision /
 `additionalContext` and exit code on stdout, across the allow / deny / context

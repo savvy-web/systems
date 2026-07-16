@@ -12,8 +12,8 @@ export class ReportTimings extends Schema.Class<ReportTimings>("ReportTimings")(
  * @public
  */
 export class DiagnosticEntry extends Schema.Class<DiagnosticEntry>("DiagnosticEntry")({
-	source: Schema.Literal("tsdown", "rolldown", "api-extractor"),
-	level: Schema.Literal("warn", "error"),
+	source: Schema.Literals(["tsdown", "rolldown", "api-extractor"]),
+	level: Schema.Literals(["warn", "error"]),
 	text: Schema.String,
 	/** API Extractor messageId (e.g. "ae-forgotten-export"); used to group suppressed messages by type. */
 	code: Schema.optional(Schema.String),
@@ -41,7 +41,7 @@ export class EmittedFile extends Schema.Class<EmittedFile>("EmittedFile")({
  * @public
  */
 export class PassReport extends Schema.Class<PassReport>("PassReport")({
-	id: Schema.Literal("js", "dts", "loose", "exe", "meta"),
+	id: Schema.Literals(["js", "dts", "loose", "exe", "meta"]),
 	files: Schema.Array(EmittedFile),
 	ms: Schema.Number,
 }) {}

@@ -6,7 +6,8 @@
 
 - `build(input?, overrides?)` — canonical `savvy.build.ts` front door; calls `defineBuild(input)` then `runBuild`, deriving `cwd` from `dirname(process.argv[1])` and `argv` from `process.argv.slice(2)`. `defineBuild`/`runBuild` remain exported as primitives.
 - `defineBuild`/`runBuild` orchestrator; `runBuild` runs the `ConfigValidator` service first to fast-fail on bad config across dev/prod/exe.
-- Catalog/`workspace:` resolution delegated to `workspaces-effect`'s `CatalogResolver`.
+- Catalog/`workspace:` resolution delegated to tsdown-plugins' `resolveManifest` (over `@effected/workspaces`).
+- Effect v4 (`effect` on `catalog:effect`) — ahead of the rest of the repo, still v3 on `catalog:silk`. Manifest-only migration: zero source changes, since v4 absorbed `@effect/platform` into core (its devDep was dropped; `@effect/platform-node` moved to `catalog:effect`).
 - `--target prod` derives byte-variant groups from the Record-map `publishConfig.targets`, writes the `dist/prod/targets.json` binding, and calls tsdown-plugins' `runMetaPass` — the single meta-generation orchestrator — per group (emitting a `meta/` release asset + `meta.localPaths`, with `meta.optimistic` next-version forward-looking). `runBuild` no longer carries an inline meta block; `runMetaPass` is shared with both self-hosting escape hatches.
 - `--target exe` SEA-compiles via `runExeBuild` (`@tsdown/exe` is a runtime dep).
 - `defineBuild` options include `format` (`BuildFormat`, default esm-only), `jsx`, `bundle`, `overrides` (per-entry format+bundling partitions), `define`, `looseFiles`, `bundleNodeModules`, and `plugins` (custom rolldown `Plugin`s, forwarded to every tsdown pass as `extraPlugins`). `defaultManifestTransform` is the default `transform`; `minify` defaults false and prod-only.
