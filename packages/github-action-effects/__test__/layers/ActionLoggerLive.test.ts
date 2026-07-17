@@ -1,4 +1,4 @@
-import { Effect, LogLevel, Logger } from "effect";
+import { Effect, Logger, References } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionLoggerLive } from "../../src/layers/ActionLoggerLive.js";
 import { ActionLogger } from "../../src/services/ActionLogger.js";
@@ -51,7 +51,7 @@ describe("ActionLoggerLive", () => {
 			const result = await Effect.runPromise(
 				Effect.provide(
 					Effect.flatMap(ActionLogger, (svc) => svc.withBuffer("test", Effect.succeed(42))).pipe(
-						Logger.withMinimumLogLevel(LogLevel.Debug),
+						Effect.provideService(References.MinimumLogLevel, "Debug"),
 					),
 					ActionLoggerLive,
 				),
@@ -64,7 +64,7 @@ describe("ActionLoggerLive", () => {
 				Effect.provide(
 					Effect.flatMap(ActionLogger, (svc) =>
 						svc.withBuffer("test", Effect.log("verbose line").pipe(Effect.map(() => "ok"))),
-					).pipe(Logger.withMinimumLogLevel(LogLevel.Info)),
+					).pipe(Effect.provideService(References.MinimumLogLevel, "Info")),
 					ActionLoggerLive,
 				),
 			);
@@ -80,7 +80,7 @@ describe("ActionLoggerLive", () => {
 					Effect.provide(
 						Effect.flatMap(ActionLogger, (svc) =>
 							svc.withBuffer("fail-op", Effect.log("buffered line").pipe(Effect.flatMap(() => Effect.fail("boom")))),
-						).pipe(Logger.withMinimumLogLevel(LogLevel.Info)),
+						).pipe(Effect.provideService(References.MinimumLogLevel, "Info")),
 						ActionLoggerLive,
 					),
 				),
@@ -118,7 +118,7 @@ describe("ActionLoggerLive", () => {
 			// logInfo routes through Effect's default logger (logfmt), not the ActionLogger service; swap it
 			// for a no-op logger so the routine line does not leak to the test console. A service-level remap
 			// to ::notice would still go through the spied process.stdout.write, so the assertion still holds.
-			await run(Effect.logInfo("routine info").pipe(Effect.provide(Logger.replace(Logger.defaultLogger, Logger.none))));
+			await run(Effect.logInfo("routine info").pipe(Effect.provide(Logger.layer([]))));
 			const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
 			expect(written.some((s: string) => s.includes("::notice"))).toBe(false);
 		});
@@ -140,7 +140,7 @@ describe("ActionLoggerLive", () => {
 				"action",
 				svc.group("install", Effect.log("buffered detail").pipe(Effect.flatMap(() => Effect.fail("boom")))),
 			),
-		).pipe(Logger.withMinimumLogLevel(LogLevel.Info));
+		).pipe(Effect.provideService(References.MinimumLogLevel, "Info"));
 
 		it("flushes the active buffer inside a failing group, before ::endgroup::", async () => {
 			await Effect.runPromise(Effect.exit(Effect.provide(failingGroupProgram, ActionLoggerLive)));
@@ -162,7 +162,7 @@ describe("ActionLoggerLive", () => {
 		it("still flushes at the withBuffer boundary when the failure is outside any group", async () => {
 			const program = Effect.flatMap(ActionLogger, (svc) =>
 				svc.withBuffer("action", Effect.log("ungrouped detail").pipe(Effect.flatMap(() => Effect.fail("boom")))),
-			).pipe(Logger.withMinimumLogLevel(LogLevel.Info));
+			).pipe(Effect.provideService(References.MinimumLogLevel, "Info"));
 			await Effect.runPromise(Effect.exit(Effect.provide(program, ActionLoggerLive)));
 			const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
 			expect(written.some((s: string) => s.includes("ungrouped detail"))).toBe(true);

@@ -1,5 +1,5 @@
-import { HttpClient, HttpClientError, HttpClientResponse } from "@effect/platform";
 import { Cause, Effect, Exit, Layer, Option } from "effect";
+import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubBlobStoreLive } from "../../src/layers/GitHubBlobStoreLive.js";
 import { BlobStore } from "../../src/services/BlobStore.js";
@@ -62,11 +62,12 @@ const mockHttpLayer: Layer.Layer<HttpClient.HttpClient> = Layer.succeed(
 			const reply = twirpReplies.shift() ?? { status: 500 };
 			if (reply.transportError !== undefined) {
 				return yield* Effect.fail(
-					new HttpClientError.RequestError({
-						request,
-						reason: "Transport",
-						cause: new Error(reply.transportError),
-						description: reply.transportError,
+					new HttpClientError.HttpClientError({
+						reason: new HttpClientError.TransportError({
+							request,
+							cause: new Error(reply.transportError),
+							description: reply.transportError,
+						}),
 					}),
 				);
 			}
@@ -161,7 +162,7 @@ describe("GitHubBlobStoreLive", () => {
 		const program = Effect.flatMap(BlobStore, (s) => s.put("k", new Uint8Array([1])));
 		const exit = await Effect.runPromise(Effect.exit(program.pipe(Effect.provide(liveLayer))));
 		expect(Exit.isFailure(exit)).toBe(true);
-		const error = Exit.isFailure(exit) ? Option.getOrUndefined(Cause.failureOption(exit.cause)) : undefined;
+		const error = Exit.isFailure(exit) ? Option.getOrUndefined(Cause.findErrorOption(exit.cause)) : undefined;
 		expect(error?._tag).toBe("BlobStoreError");
 		expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
 	});

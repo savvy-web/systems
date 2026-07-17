@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeFileSystem } from "@effect/platform-node";
 import { BiomeSchemaSyncLive, Lint, ManagedSectionLive } from "@savvy-web/silk-effects";
-import { Effect, Layer, LogLevel, Logger } from "effect";
+import { Effect, Layer, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runLintInit } from "../../../src/commands/lint/init.js";
 
 const TestLayer = Layer.provideMerge(Layer.merge(ManagedSectionLive, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
-	Layer.provide(Logger.minimumLogLevel(LogLevel.None)),
+	Layer.provide(Logger.layer([])),
 );
 
 describe("runLintInit: .repos ignore propagation", () => {

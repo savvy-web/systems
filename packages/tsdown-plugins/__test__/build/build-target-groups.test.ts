@@ -315,6 +315,7 @@ describe("buildTargetGroups", () => {
 			types: "./index.d.ts",
 			import: "./index.js",
 			require: "./index.cjs",
+			default: "./index.js",
 		});
 
 		const esm: Array<Record<string, unknown>> = [];
@@ -330,6 +331,7 @@ describe("buildTargetGroups", () => {
 		expect((esm[0]?.exports as Record<string, unknown>)["."]).toEqual({
 			types: "./index.d.ts",
 			import: "./index.js",
+			default: "./index.js",
 		});
 	}, 30_000); // real fs (mkdtemp + manifest read) can starve past the 5s default under full-suite load
 
@@ -1230,7 +1232,7 @@ describe("buildTargetGroups", () => {
 			build: captureBuild(manifests),
 		});
 		const exportsOut = manifests[0]?.exports as Record<string, unknown>;
-		expect(exportsOut["."]).toEqual({ import: "./index.js" });
+		expect(exportsOut["."]).toEqual({ import: "./index.js", default: "./index.js" });
 	}, 30_000);
 
 	it("skips both the dts pass and the declarations pass when emitDts is false, while the JS pass still emits", async () => {

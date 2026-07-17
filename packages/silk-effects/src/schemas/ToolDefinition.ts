@@ -58,6 +58,6 @@ export class ToolDefinition implements Equal.Equal {
 	}
 
 	[Hash.symbol](): number {
-		return Hash.cached(this)(Hash.hash(this.name));
+		return Hash.optimize(Hash.hash(this.name));
 	}
 }

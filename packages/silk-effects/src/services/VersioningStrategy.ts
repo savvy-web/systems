@@ -4,6 +4,29 @@ import type { VersioningStrategyResult } from "../schemas/VersioningSchemas.js";
 import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
 
 /**
+ * The {@link VersioningStrategy} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface VersioningStrategyShape {
+	/**
+	 * Classify the versioning strategy for a list of publishable package names.
+	 *
+	 * @param publishablePackages - Package names (e.g. `"@my-org/pkg"`) that will be published.
+	 * @param root - Workspace root directory to read changeset config from.
+	 * @returns An `Effect` resolving to a {@link (VersioningStrategyResult:type)}, or failing with
+	 *   {@link VersioningDetectionError} on unexpected errors.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly detect: (
+		publishablePackages: ReadonlyArray<string>,
+		root: string,
+	) => Effect.Effect<VersioningStrategyResult, VersioningDetectionError>;
+}
+
+/**
  * Service that classifies the versioning strategy used by a workspace.
  *
  * @remarks
@@ -20,7 +43,7 @@ import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
  *   }).pipe(
  *     Effect.provide(VersioningStrategyLive),
  *     Effect.provide(ChangesetConfigReaderLive),
- *     Effect.provide(NodeContext.layer),
+ *     Effect.provide(NodeServices.layer),
  *   )
  * );
  * ```
@@ -28,25 +51,9 @@ import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
  * @since 0.1.0
  * @public
  */
-export class VersioningStrategy extends Context.Tag("@savvy-web/silk-effects/VersioningStrategy")<
-	VersioningStrategy,
-	{
-		/**
-		 * Classify the versioning strategy for a list of publishable package names.
-		 *
-		 * @param publishablePackages - Package names (e.g. `"@my-org/pkg"`) that will be published.
-		 * @param root - Workspace root directory to read changeset config from.
-		 * @returns An `Effect` resolving to a {@link (VersioningStrategyResult:type)}, or failing with
-		 *   {@link VersioningDetectionError} on unexpected errors.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly detect: (
-			publishablePackages: ReadonlyArray<string>,
-			root: string,
-		) => Effect.Effect<VersioningStrategyResult, VersioningDetectionError>;
-	}
->() {}
+export class VersioningStrategy extends Context.Service<VersioningStrategy, VersioningStrategyShape>()(
+	"@savvy-web/silk-effects/VersioningStrategy",
+) {}
 
 /**
  * Live implementation of {@link VersioningStrategy}.

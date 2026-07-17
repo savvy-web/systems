@@ -1,21 +1,22 @@
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
+import { Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspacesLive } from "workspaces-effect";
 import { ToolDiscoveryLive } from "../../src/services/ToolDiscovery.js";
 import { TurboInspector, TurboInspectorLive } from "../../src/turbo/services/TurboInspector.js";
 
 describe("TurboInspector (live layer)", () => {
-	// Live stack: TurboInspectorLive needs ToolDiscovery | CommandExecutor | FileSystem.
-	// ToolDiscoveryLive needs CommandExecutor | PackageManagerDetector | WorkspaceRoot.
-	// WorkspacesLive supplies PackageManagerDetector + WorkspaceRoot (over FileSystem + Path);
-	// NodeContext.layer supplies CommandExecutor + FileSystem + Path.
+	// Live stack: TurboInspectorLive needs ToolDiscovery | ChildProcessSpawner | FileSystem | Git.
+	// ToolDiscoveryLive needs ChildProcessSpawner | PackageManagerDetector | WorkspaceRoot.
+	// Workspaces.layerWithGit() supplies PackageManagerDetector + WorkspaceRoot + Git
+	// (over FileSystem + Path + ChildProcessSpawner); NodeServices.layer supplies
+	// ChildProcessSpawner + FileSystem + Path.
 	const repoRoot = join(import.meta.dirname, "../../../..");
 	const LiveStack = TurboInspectorLive.pipe(
 		Layer.provide(ToolDiscoveryLive),
-		Layer.provideMerge(WorkspacesLive),
-		Layer.provideMerge(NodeContext.layer),
+		Layer.provideMerge(Workspaces.layerWithGit()),
+		Layer.provideMerge(NodeServices.layer),
 	);
 
 	it("diagnoseCache reports per-task statuses for the real monorepo", async () => {

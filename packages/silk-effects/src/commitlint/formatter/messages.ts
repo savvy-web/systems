@@ -1,8 +1,4 @@
-/**
- * Error message templates for the formatter.
- *
- * @internal
- */
+// Error message templates for the formatter.
 
 /**
  * Detailed error explanations for common rule failures.

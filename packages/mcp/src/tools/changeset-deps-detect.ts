@@ -9,23 +9,23 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { PointInTimeReadError, WorkspaceDiscoveryError, WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 
 /** One affected workspace package's resolved dependency diff. */
 export const ChangesetDepsDetectPackage = Schema.Struct({
 	package: Schema.String,
 	relativePath: Schema.String,
 	rows: Schema.Array(Changesets.DependencyTableRowSchema),
-}).annotations({ identifier: "ChangesetDepsDetectPackage" });
+}).annotate({ identifier: "ChangesetDepsDetectPackage" });
 
 /** The `changeset_deps_detect` tool result. */
 export const ChangesetDepsDetectResult = Schema.Struct({
 	root: Schema.String,
 	packages: Schema.Array(ChangesetDepsDetectPackage),
-}).annotations({
+}).annotate({
 	identifier: "ChangesetDepsDetectResult",
 	title: "changeset_deps_detect result",
 	description: "Read-only per-package dependency diff (devDependencies retained). No files are written.",
@@ -72,14 +72,12 @@ const renderMarkdown = (data: ChangesetDepsDetectResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetDepsDetectAsMarkdown = Schema.transformOrFail(ChangesetDepsDetectResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "ChangesetDepsDetectAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const ChangesetDepsDetectAsMarkdown = ChangesetDepsDetectResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "ChangesetDepsDetectAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link changesetDepsDetect} handler. */
 export interface ChangesetDepsDetectArgs {
@@ -101,11 +99,7 @@ export const changesetDepsDetect = (
 	fallbackCwd: string,
 ): Effect.Effect<
 	ChangesetDepsDetectResultType,
-	| Changesets.GitError
-	| WorkspaceRootNotFoundError
-	| WorkspaceDiscoveryError
-	| Changesets.ChangesetIOError
-	| PointInTimeReadError,
+	Changesets.DepsRegenPlanError | WorkspaceRootNotFoundError,
 	WorkspaceRoot | Changesets.DepsRegen
 > =>
 	Effect.gen(function* () {

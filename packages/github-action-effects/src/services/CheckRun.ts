@@ -63,37 +63,41 @@ export interface CheckRunData {
 }
 
 /**
+ * Service shape for {@link CheckRun}.
+ *
+ * @public
+ */
+export interface CheckRunShape {
+	/** Create a new check run. Returns the created check run. */
+	readonly create: (name: string, headSha: string) => Effect.Effect<CheckRunData, CheckRunError>;
+
+	/** Get a check run by id. */
+	readonly get: (checkRunId: number) => Effect.Effect<CheckRunData, CheckRunError>;
+
+	/** Update an in-progress check run with output. */
+	readonly update: (checkRunId: number, output: CheckRunOutput) => Effect.Effect<void, CheckRunError>;
+
+	/** Complete a check run with a conclusion and optional final output. */
+	readonly complete: (
+		checkRunId: number,
+		conclusion: CheckRunConclusion,
+		output?: CheckRunOutput,
+	) => Effect.Effect<void, CheckRunError>;
+
+	/**
+	 * Bracket pattern: create check run, run effect, then complete.
+	 * On success, completes with "success". On failure, completes with "failure".
+	 */
+	readonly withCheckRun: <A, E>(
+		name: string,
+		headSha: string,
+		effect: (checkRunId: number) => Effect.Effect<A, E>,
+	) => Effect.Effect<A, E | CheckRunError>;
+}
+
+/**
  * Service for GitHub check run operations.
  *
  * @public
  */
-export class CheckRun extends Context.Tag("github-action-effects/CheckRun")<
-	CheckRun,
-	{
-		/** Create a new check run. Returns the created check run. */
-		readonly create: (name: string, headSha: string) => Effect.Effect<CheckRunData, CheckRunError>;
-
-		/** Get a check run by id. */
-		readonly get: (checkRunId: number) => Effect.Effect<CheckRunData, CheckRunError>;
-
-		/** Update an in-progress check run with output. */
-		readonly update: (checkRunId: number, output: CheckRunOutput) => Effect.Effect<void, CheckRunError>;
-
-		/** Complete a check run with a conclusion and optional final output. */
-		readonly complete: (
-			checkRunId: number,
-			conclusion: CheckRunConclusion,
-			output?: CheckRunOutput,
-		) => Effect.Effect<void, CheckRunError>;
-
-		/**
-		 * Bracket pattern: create check run, run effect, then complete.
-		 * On success, completes with "success". On failure, completes with "failure".
-		 */
-		readonly withCheckRun: <A, E>(
-			name: string,
-			headSha: string,
-			effect: (checkRunId: number) => Effect.Effect<A, E>,
-		) => Effect.Effect<A, E | CheckRunError>;
-	}
->() {}
+export class CheckRun extends Context.Service<CheckRun, CheckRunShape>()("github-action-effects/CheckRun") {}

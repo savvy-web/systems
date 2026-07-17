@@ -7,7 +7,7 @@
 import { Schema } from "effect";
 
 /** A semantic-version bump level (the `"none"` plan type is filtered out upstream). @public */
-export const BumpTypeSchema = Schema.Literal("major", "minor", "patch");
+export const BumpTypeSchema = Schema.Literals(["major", "minor", "patch"]);
 /** A semantic-version bump level. @public */
 export type BumpType = Schema.Schema.Type<typeof BumpTypeSchema>;
 
@@ -19,7 +19,7 @@ export const PreviewReleaseSchema = Schema.Struct({
 	newVersion: Schema.String,
 	changesetIds: Schema.Array(Schema.String),
 	changelogEntry: Schema.String,
-}).annotations({ identifier: "PreviewRelease" });
+}).annotate({ identifier: "PreviewRelease" });
 /** One package's previewed release. @public */
 export type PreviewRelease = Schema.Schema.Type<typeof PreviewReleaseSchema>;
 
@@ -28,16 +28,16 @@ export const PendingChangesetSchema = Schema.Struct({
 	id: Schema.String,
 	summary: Schema.String,
 	releases: Schema.Array(Schema.Struct({ name: Schema.String, type: BumpTypeSchema })),
-}).annotations({ identifier: "PendingChangeset" });
+}).annotate({ identifier: "PendingChangeset" });
 /** A parsed pending changeset. @public */
 export type PendingChangeset = Schema.Schema.Type<typeof PendingChangesetSchema>;
 
 /** Read-only preview of what the next release would produce. @public */
 export const ChangesetPreviewSchema = Schema.Struct({
-	preMode: Schema.NullOr(Schema.Literal("exit", "pre")),
+	preMode: Schema.NullOr(Schema.Literals(["exit", "pre"])),
 	releases: Schema.Array(PreviewReleaseSchema),
 	changesets: Schema.Array(PendingChangesetSchema),
-}).annotations({ identifier: "ChangesetPreview" });
+}).annotate({ identifier: "ChangesetPreview" });
 /** Read-only preview of what the next release would produce. @public */
 export type ChangesetPreview = Schema.Schema.Type<typeof ChangesetPreviewSchema>;
 
@@ -47,13 +47,13 @@ export const AppliedReleaseEntrySchema = Schema.Struct({
 	type: BumpTypeSchema,
 	oldVersion: Schema.String,
 	newVersion: Schema.String,
-}).annotations({ identifier: "AppliedReleaseEntry" });
+}).annotate({ identifier: "AppliedReleaseEntry" });
 
 /** A single versionFiles update applied (or planned, when dry). @public */
 export const VersionFileUpdateRecordSchema = Schema.Struct({
 	filePath: Schema.String,
 	version: Schema.String,
-}).annotations({ identifier: "VersionFileUpdateRecord" });
+}).annotate({ identifier: "VersionFileUpdateRecord" });
 
 /** Result of {@link ReleasePlanner.apply}. @public */
 export const AppliedReleaseSchema = Schema.Struct({
@@ -61,6 +61,6 @@ export const AppliedReleaseSchema = Schema.Struct({
 	touchedFiles: Schema.Array(Schema.String),
 	releases: Schema.Array(AppliedReleaseEntrySchema),
 	versionFileUpdates: Schema.Array(VersionFileUpdateRecordSchema),
-}).annotations({ identifier: "AppliedRelease" });
+}).annotate({ identifier: "AppliedRelease" });
 /** Result of a native apply. @public */
 export type AppliedRelease = Schema.Schema.Type<typeof AppliedReleaseSchema>;

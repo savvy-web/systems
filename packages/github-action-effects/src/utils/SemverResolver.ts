@@ -1,11 +1,11 @@
+import { Range, SemVer } from "@effected/semver";
 import { Effect, Option } from "effect";
-import { Range, SemVer } from "semver-effect";
 import { SemverResolverError } from "../errors/SemverResolverError.js";
 
 /**
  * Namespace for semver resolution operations.
  *
- * Wraps `semver-effect` with unified {@link SemverResolverError} error handling.
+ * Wraps `@effected/semver` with unified {@link SemverResolverError} error handling.
  *
  * @public
  */

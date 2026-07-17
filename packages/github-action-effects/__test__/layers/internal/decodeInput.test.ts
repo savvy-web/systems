@@ -13,7 +13,7 @@ describe("decodeInput", () => {
 	});
 
 	it("fails with ActionInputError when schema validation fails", async () => {
-		const exit = await Effect.runPromise(Effect.exit(decodeInput("myInput", "not-a-number", Schema.NumberFromString)));
+		const exit = await Effect.runPromise(Effect.exit(decodeInput("myInput", "not-a-number", Schema.Number)));
 		expect(Exit.isFailure(exit)).toBe(true);
 		if (Exit.isFailure(exit)) {
 			const error = exit.cause.toJSON();

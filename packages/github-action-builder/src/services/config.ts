@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides configuration loading, resolution, and entry point detection
- * using Effect's service pattern with Context.Tag.
+ * using Effect's service pattern with Context.Service.
  *
  * @internal
  */
@@ -40,7 +40,7 @@ export type LoadConfigOptions = typeof LoadConfigOptionsSchema.Type;
  * Entry point type.
  * @internal
  */
-export const EntryTypeSchema = Schema.Literal("main", "pre", "post");
+export const EntryTypeSchema = Schema.Literals(["main", "pre", "post"]);
 
 /**
  * Entry point type literal.
@@ -115,7 +115,7 @@ export interface LoadConfigResult {
 // =============================================================================
 
 /**
- * ConfigService interface for configuration management capabilities.
+ * Service shape for configuration management capabilities.
  *
  * @remarks
  * This service handles:
@@ -123,23 +123,12 @@ export interface LoadConfigResult {
  * - Resolving partial configuration with defaults
  * - Detecting entry points in the project
  *
- * @example Using ConfigService with Effect
- * ```typescript
- * import { Effect } from "effect";
- * import { AppLayer, ConfigService } from "@savvy-web/github-action-builder";
- *
- * const program = Effect.gen(function* () {
- *   const configService = yield* ConfigService;
- *   const result = yield* configService.load({ cwd: process.cwd() });
- *   console.log("Loaded config:", result.config);
- * });
- *
- * Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
- * ```
+ * Use this interface to type structural implementations (e.g. test mocks);
+ * use the {@link ConfigService} class as the service key.
  *
  * @public
  */
-export interface ConfigService {
+export interface ConfigServiceShape {
 	/**
 	 * Load configuration from file or use defaults.
 	 *
@@ -170,8 +159,22 @@ export interface ConfigService {
 }
 
 /**
- * ConfigService tag for dependency injection.
+ * ConfigService key for dependency injection.
+ *
+ * @example Using ConfigService with Effect
+ * ```typescript
+ * import { Effect } from "effect";
+ * import { AppLayer, ConfigService } from "@savvy-web/github-action-builder";
+ *
+ * const program = Effect.gen(function* () {
+ *   const configService = yield* ConfigService;
+ *   const result = yield* configService.load({ cwd: process.cwd() });
+ *   console.log("Loaded config:", result.config);
+ * });
+ *
+ * Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+ * ```
  *
  * @public
  */
-export const ConfigService = Context.GenericTag<ConfigService>("ConfigService");
+export class ConfigService extends Context.Service<ConfigService, ConfigServiceShape>()("ConfigService") {}

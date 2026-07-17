@@ -22,7 +22,7 @@ export const GitHubContext = Schema.Struct({
 	action: Schema.String,
 	job: Schema.String,
 	workflow: Schema.String,
-}).annotations({ identifier: "GitHubContext" });
+}).annotate({ identifier: "GitHubContext" });
 
 /**
  * Inferred type for GitHubContext.
@@ -42,7 +42,7 @@ export const RunnerContext = Schema.Struct({
 	temp: Schema.String,
 	toolCache: Schema.String,
 	debug: Schema.Boolean,
-}).annotations({ identifier: "RunnerContext" });
+}).annotate({ identifier: "RunnerContext" });
 
 /**
  * Inferred type for RunnerContext.

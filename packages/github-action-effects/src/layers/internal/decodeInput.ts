@@ -9,9 +9,9 @@ import { ActionInputError } from "../../errors/ActionInputError.js";
 export const decodeInput = <A, I>(
 	name: string,
 	raw: string,
-	schema: Schema.Schema<A, I, never>,
+	schema: Schema.Codec<A, I>,
 ): Effect.Effect<A, ActionInputError> =>
-	Schema.decode(schema)(raw as unknown as I).pipe(
+	Schema.decodeUnknownEffect(schema)(raw).pipe(
 		Effect.mapError(
 			(parseError) =>
 				new ActionInputError({
@@ -30,7 +30,7 @@ export const decodeInput = <A, I>(
 export const decodeJsonInput = <A, I>(
 	name: string,
 	raw: string,
-	schema: Schema.Schema<A, I, never>,
+	schema: Schema.Codec<A, I>,
 ): Effect.Effect<A, ActionInputError> =>
 	Effect.try({
 		try: () => JSON.parse(raw) as unknown,
@@ -42,7 +42,7 @@ export const decodeJsonInput = <A, I>(
 			}),
 	}).pipe(
 		Effect.flatMap((parsed) =>
-			Schema.decode(schema)(parsed as I).pipe(
+			Schema.decodeUnknownEffect(schema)(parsed).pipe(
 				Effect.mapError(
 					(parseError) =>
 						new ActionInputError({

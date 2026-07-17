@@ -24,7 +24,7 @@ import { Schema } from "effect";
  *
  * @internal
  */
-export const BrandingIcon = Schema.Literal(
+export const BrandingIcon = Schema.Literals([
 	"activity",
 	"airplay",
 	"alert-circle",
@@ -282,7 +282,7 @@ export const BrandingIcon = Schema.Literal(
 	"zap",
 	"zoom-in",
 	"zoom-out",
-);
+]);
 
 /**
  * Type for branding icon.
@@ -373,7 +373,7 @@ export type Runs = typeof Runs.Type;
  *
  * @internal
  */
-export const BrandingColor = Schema.Literal(
+export const BrandingColor = Schema.Literals([
 	"white",
 	"black",
 	"yellow",
@@ -383,7 +383,7 @@ export const BrandingColor = Schema.Literal(
 	"red",
 	"purple",
 	"gray-dark",
-);
+]);
 
 /**
  * Type for branding color.
@@ -425,8 +425,8 @@ export const ActionYml = Schema.Struct({
 	name: Schema.String,
 	description: Schema.String,
 	author: Schema.optional(Schema.String),
-	inputs: Schema.optional(Schema.Record({ key: Schema.String, value: ActionInput })),
-	outputs: Schema.optional(Schema.Record({ key: Schema.String, value: ActionOutput })),
+	inputs: Schema.optional(Schema.Record(Schema.String, ActionInput)),
+	outputs: Schema.optional(Schema.Record(Schema.String, ActionOutput)),
 	runs: Runs,
 	branding: Schema.optional(Branding),
 });

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { HttpClient, HttpClientRequest } from "@effect/platform";
 import { Effect, Layer, Option, Redacted } from "effect";
+import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { BlobStoreError } from "../errors/BlobStoreError.js";
 import { BlobStore } from "../services/BlobStore.js";
 import { signS3Request } from "./internal/sigv4.js";
@@ -63,7 +63,7 @@ export const S3BlobStoreLive = (config: S3BlobStoreConfig): Layer.Layer<BlobStor
 							);
 						}
 					}).pipe(
-						Effect.catchAll((e) =>
+						Effect.catch((e) =>
 							e instanceof BlobStoreError
 								? Effect.fail(e)
 								: Effect.fail(new BlobStoreError({ key, operation: "put", reason: String(e) })),
@@ -84,7 +84,7 @@ export const S3BlobStoreLive = (config: S3BlobStoreConfig): Layer.Layer<BlobStor
 						const buf = yield* res.arrayBuffer;
 						return Option.some(new Uint8Array(buf));
 					}).pipe(
-						Effect.catchAll((e) =>
+						Effect.catch((e) =>
 							e instanceof BlobStoreError
 								? Effect.fail(e)
 								: Effect.fail(new BlobStoreError({ key, operation: "get", reason: String(e) })),
@@ -104,7 +104,7 @@ export const S3BlobStoreLive = (config: S3BlobStoreConfig): Layer.Layer<BlobStor
 						}
 						return true;
 					}).pipe(
-						Effect.catchAll((e) =>
+						Effect.catch((e) =>
 							e instanceof BlobStoreError
 								? Effect.fail(e)
 								: Effect.fail(new BlobStoreError({ key, operation: "has", reason: String(e) })),

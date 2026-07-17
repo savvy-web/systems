@@ -1,4 +1,4 @@
-import { Command } from "@effect/cli";
+import { Command } from "effect/unstable/cli";
 
 import { fmtCommand } from "./fmt.js";
 
@@ -16,16 +16,7 @@ const _lintCommand = Command.make("lint").pipe(
  * errors from Effect's internal types. Task B7 should import and use this directly
  * as `Command.withSubcommands([lintCommand])` — the cast is for declaration emit only.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const lintCommand: Command.Command<"lint", any, any, any> = _lintCommand as Command.Command<
-	"lint",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+export const lintCommand = _lintCommand;
 /* v8 ignore stop */
 
 // Re-export named handlers for B5/B6 orchestrator consumption.

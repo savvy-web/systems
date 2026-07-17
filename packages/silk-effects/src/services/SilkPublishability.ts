@@ -1,13 +1,7 @@
 import { isAbsolute, join, relative } from "node:path";
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
-import type { WorkspacePackage } from "workspaces-effect";
-import {
-	PublishTarget,
-	PublishabilityDetector,
-	PublishabilityDetectorLive,
-	WorkspaceDiscovery,
-} from "workspaces-effect";
+import type { WorkspacePackage } from "@effected/workspaces";
+import { PublishTarget, PublishabilityDetector, WorkspaceDiscovery } from "@effected/workspaces";
+import { Effect, FileSystem, Layer } from "effect";
 import { PublishTargetBindingError } from "../errors/PublishTargetBindingError.js";
 import { trimTrailingSlashes } from "../utils/TrailingSlash.js";
 import { ChangesetConfig } from "./ChangesetConfig.js";
@@ -155,7 +149,7 @@ const provenanceForRegistry = (registry: string): boolean => {
 };
 
 /**
- * Silk publishability rules over `workspaces-effect`'s `PublishTarget`.
+ * Silk publishability rules over `@effected/workspaces`' `PublishTarget`.
  *
  * @remarks
  * In silk mode `private: true` is the norm on workspace `package.json`; publishability is
@@ -279,7 +273,7 @@ export class SilkPublishability {
 	 */
 	static resolveTargets(
 		pkg: WorkspacePackage,
-		root: string,
+		_root: string,
 	): Effect.Effect<
 		ReadonlyArray<PublishTarget>,
 		PublishTargetBindingError,
@@ -288,7 +282,7 @@ export class SilkPublishability {
 		return Effect.gen(function* () {
 			const detector = yield* PublishabilityDetector;
 			const fs = yield* FileSystem.FileSystem;
-			const targets = yield* detector.detect(pkg, root);
+			const targets = yield* detector.detect(pkg);
 			const kept: PublishTarget[] = [];
 			for (const t of targets) {
 				const dir = isAbsolute(t.directory) ? t.directory : join(pkg.path, t.directory);
@@ -319,18 +313,18 @@ export class SilkPublishability {
 	 * {@link SilkPublishability} (which already honors changeset ignore in adaptive mode).
 	 */
 	static listPublishable(
-		root: string,
+		_root: string,
 	): Effect.Effect<ReadonlyArray<PublishablePackage>, never, WorkspaceDiscovery | PublishabilityDetector> {
 		return Effect.gen(function* () {
 			const discovery = yield* WorkspaceDiscovery;
 			const detector = yield* PublishabilityDetector;
 			// Discovery errors become defects (the `never` error channel): this resolver assumes a
 			// healthy workspace. Callers needing to recover from discovery failure should yield
-			// `WorkspaceDiscovery` directly rather than wrapping this in `Effect.catchAll`.
+			// `WorkspaceDiscovery` directly rather than wrapping this in `Effect.catch`.
 			const packages = yield* discovery.listPackages().pipe(Effect.orDie);
 			const out: PublishablePackage[] = [];
 			for (const pkg of packages) {
-				const targets = yield* detector.detect(pkg, root);
+				const targets = yield* detector.detect(pkg);
 				if (targets.length > 0) {
 					out.push({ name: pkg.name, version: pkg.version, path: pkg.path, targetCount: targets.length });
 				}
@@ -409,7 +403,7 @@ export const readTargetsBinding = (fs: FileSystem.FileSystem, pkgPath: string): 
 	);
 
 /**
- * Override of `workspaces-effect`'s {@link SilkPublishability} Tag with pure silk rules.
+ * Override of `@effected/workspaces`' `PublishabilityDetector` Tag with pure silk rules.
  *
  * @remarks Requires `FileSystem` (captured at layer build); `detect` reads the raw
  * `package.json` from `pkg.packageJsonPath` and applies `SilkPublishability.detect`.
@@ -423,7 +417,7 @@ export const SilkPublishabilityDetectorLive: Layer.Layer<PublishabilityDetector,
 		Effect.gen(function* () {
 			const fs = yield* FileSystem.FileSystem;
 			return {
-				detect: (pkg: WorkspacePackage, _root: string) =>
+				detect: (pkg: WorkspacePackage) =>
 					Effect.gen(function* () {
 						const raw = yield* readRaw(fs, pkg.packageJsonPath);
 						if (!raw) return [];
@@ -435,11 +429,35 @@ export const SilkPublishabilityDetectorLive: Layer.Layer<PublishabilityDetector,
 	);
 
 /**
- * Ignore-aware override of {@link SilkPublishability}. `detect` short-circuits to `[]`
+ * The workspace root a package was discovered against, derived from its own
+ * coordinates: `relativePath` is the package directory relative to the
+ * discovery root (POSIX, `"."` for the root package), so ascending one level
+ * per path segment from `pkg.path` lands exactly on that root.
+ *
+ * @remarks
+ * Derivation is deliberate — probing the filesystem for workspace markers
+ * (`WorkspaceRoot.find`) can walk PAST the intended root when that root
+ * carries no marker (a fixture tree, a bare directory) and land on an
+ * enclosing workspace, silently swapping in that outer root's
+ * `.changeset/config.json` and dropping the ignore/mode gating (the #209
+ * regression class). The discovery root needs no probing: whoever built the
+ * `WorkspacePackage` already knew it.
+ */
+const packageRoot = (pkg: WorkspacePackage): string => {
+	const segments = pkg.relativePath.split("/").filter((segment) => segment !== "" && segment !== ".");
+	return segments.length === 0 ? pkg.path : join(pkg.path, ...segments.map(() => ".."));
+};
+
+/**
+ * Ignore-aware override of `PublishabilityDetector`. `detect` short-circuits to `[]`
  * for changeset-ignored packages, then dispatches on `ChangesetConfig.mode`:
  * `none` → `[]`; `silk` → `SilkPublishability.detect`; `vanilla` → the library default.
  *
- * @remarks Requires `FileSystem` + {@link ChangesetConfig} at build.
+ * @remarks Requires `FileSystem` and {@link ChangesetConfig} at build.
+ * The kit's `detect` contract no longer receives the workspace root, so the changeset
+ * lookups derive it per package from the package's own discovery coordinates
+ * (`pkg.path` ascended by `pkg.relativePath` — never a filesystem marker walk,
+ * which could escape an unmarked root and read the wrong `.changeset/config.json`).
  *
  * @since 0.4.0
  * @public
@@ -453,11 +471,12 @@ export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const config = yield* ChangesetConfig;
-		const vanilla = yield* Effect.provide(PublishabilityDetector, PublishabilityDetectorLive);
+		const vanilla = yield* Effect.provide(PublishabilityDetector, PublishabilityDetector.layer);
 
 		return {
-			detect: (pkg: WorkspacePackage, root: string) =>
+			detect: (pkg: WorkspacePackage) =>
 				Effect.gen(function* () {
+					const root = packageRoot(pkg);
 					if (yield* config.isIgnored(pkg.name, root)) return [];
 					const mode = yield* config.mode(root);
 					if (mode === "none") return [];
@@ -467,7 +486,7 @@ export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
 						const binding = yield* readTargetsBinding(fs, pkg.path);
 						return SilkPublishability.detect(pkg.name, raw, binding);
 					}
-					return yield* vanilla.detect(pkg, root);
+					return yield* vanilla.detect(pkg);
 				}),
 		};
 	}),

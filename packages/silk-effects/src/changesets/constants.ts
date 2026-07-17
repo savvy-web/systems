@@ -1,21 +1,16 @@
-/**
- * Constants for changeset lint rule documentation URLs.
- *
- * @remarks
- * Each lint rule in the \@savvy-web/changesets remark-lint plugin has a
- * corresponding documentation page hosted on GitHub. These URLs are
- * referenced in lint diagnostic messages to help users understand and
- * resolve validation errors.
- *
- * Rule codes follow the `CSH` prefix convention:
- * - `CSH001` -- Changeset heading validation
- * - `CSH002` -- Changeset summary validation
- * - `CSH003` -- Dependency table structure validation
- * - `CSH004` -- Changeset body content validation
- * - `CSH005` -- Frontmatter validation
- *
- * @internal
- */
+// Constants for changeset lint rule documentation URLs.
+//
+// Each lint rule in the @savvy-web/changesets remark-lint plugin has a
+// corresponding documentation page hosted on GitHub. These URLs are
+// referenced in lint diagnostic messages to help users understand and
+// resolve validation errors.
+//
+// Rule codes follow the `CSH` prefix convention:
+// - `CSH001` -- Changeset heading validation
+// - `CSH002` -- Changeset summary validation
+// - `CSH003` -- Dependency table structure validation
+// - `CSH004` -- Changeset body content validation
+// - `CSH005` -- Frontmatter validation
 
 /** Base URL for rule documentation on GitHub. */
 const DOCS_BASE = "https://github.com/savvy-web/changesets/blob/main/docs/rules";

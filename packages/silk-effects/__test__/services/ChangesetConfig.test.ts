@@ -5,7 +5,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChangesetConfig, ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
@@ -22,7 +22,7 @@ const run = <A, E>(eff: Effect.Effect<A, E, ChangesetConfig>): Promise<A> =>
 		eff.pipe(
 			Effect.provide(ChangesetConfigLive),
 			Effect.provide(ChangesetConfigReaderLive),
-			Effect.provide(NodeContext.layer),
+			Effect.provide(NodeServices.layer),
 		),
 	);
 

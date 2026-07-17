@@ -26,8 +26,8 @@
  *
  */
 
+import type { WorkspaceStateSnapshot } from "@effected/workspaces";
 import { Option } from "effect";
-import type { WorkspaceStateSnapshot } from "workspaces-effect";
 import type { DependencyTableRow, DependencyTableType } from "../schemas/dependency-table.js";
 import { sortDependencyRows } from "./dependency-table.js";
 

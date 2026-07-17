@@ -223,23 +223,37 @@ export type {
 	WorkspaceType as WorkspaceTypeType,
 } from "./schemas/Workspace.js";
 export { WorkspaceInfo, WorkspacePackage, WorkspaceType } from "./schemas/Workspace.js";
+// Service shape interfaces (structural types for the class-based Context.Service definitions).
+export type { ActionCacheShape } from "./services/ActionCache.js";
 // -- Services --
 export { ActionCache } from "./services/ActionCache.js";
+export type { ActionEnvironmentShape } from "./services/ActionEnvironment.js";
 export { ActionEnvironment } from "./services/ActionEnvironment.js";
+export type { ActionLoggerShape } from "./services/ActionLogger.js";
 export { ActionLogger } from "./services/ActionLogger.js";
+export type { ActionOutputsShape } from "./services/ActionOutputs.js";
 export { ActionOutputs } from "./services/ActionOutputs.js";
+export type { ActionStateShape } from "./services/ActionState.js";
 export { ActionState } from "./services/ActionState.js";
 export type {
 	ArtifactItem,
+	ArtifactShape,
 	DownloadOptions,
 	FindBy,
 	UploadOptions,
 	UploadResult,
 } from "./services/Artifact.js";
 export { Artifact } from "./services/Artifact.js";
-export type { AttestationListEntry, ProvenanceAttestationInput, SbomAttestationInput } from "./services/Attest.js";
+export type {
+	AttestShape,
+	AttestationListEntry,
+	ProvenanceAttestationInput,
+	SbomAttestationInput,
+} from "./services/Attest.js";
 export { Attest } from "./services/Attest.js";
+export type { BlobStoreShape } from "./services/BlobStore.js";
 export { BlobStore } from "./services/BlobStore.js";
+export type { ChangesetAnalyzerShape } from "./services/ChangesetAnalyzer.js";
 export { ChangesetAnalyzer } from "./services/ChangesetAnalyzer.js";
 export type {
 	AnnotationLevel,
@@ -247,50 +261,73 @@ export type {
 	CheckRunConclusion,
 	CheckRunData,
 	CheckRunOutput,
+	CheckRunShape,
 } from "./services/CheckRun.js";
 export { CheckRun } from "./services/CheckRun.js";
-export type { ExecOptions, ExecOutput } from "./services/CommandRunner.js";
+export type { CommandRunnerShape, ExecOptions, ExecOutput } from "./services/CommandRunner.js";
 export { CommandRunner } from "./services/CommandRunner.js";
+export type { ConfigLoaderShape } from "./services/ConfigLoader.js";
 export { ConfigLoader } from "./services/ConfigLoader.js";
+export type { DryRunShape } from "./services/DryRun.js";
 export { DryRun } from "./services/DryRun.js";
+export type { GitBranchShape } from "./services/GitBranch.js";
 export { GitBranch } from "./services/GitBranch.js";
+export type { GitCommitShape } from "./services/GitCommit.js";
 export { GitCommit } from "./services/GitCommit.js";
-export type { BotIdentity, InstallationToken as InstallationTokenType } from "./services/GitHubApp.js";
+export type { BotIdentity, GitHubAppShape, InstallationToken as InstallationTokenType } from "./services/GitHubApp.js";
 export { GitHubApp, InstallationToken } from "./services/GitHubApp.js";
-export type { StorageRecordInput } from "./services/GitHubArtifactMetadata.js";
+export type { GitHubArtifactMetadataShape, StorageRecordInput } from "./services/GitHubArtifactMetadata.js";
 export { GitHubArtifactMetadata } from "./services/GitHubArtifactMetadata.js";
+export type { GitHubClientShape } from "./services/GitHubClient.js";
 export { GitHubClient } from "./services/GitHubClient.js";
-export type { CommitComparison, CommitDetail, CommitFile, CommitSummary } from "./services/GitHubCommit.js";
+export type {
+	CommitComparison,
+	CommitDetail,
+	CommitFile,
+	CommitSummary,
+	GitHubCommitShape,
+} from "./services/GitHubCommit.js";
 export { GitHubCommit } from "./services/GitHubCommit.js";
+export type { GitHubContentShape } from "./services/GitHubContent.js";
 export { GitHubContent } from "./services/GitHubContent.js";
+export type { GitHubGraphQLShape } from "./services/GitHubGraphQL.js";
 export { GitHubGraphQL } from "./services/GitHubGraphQL.js";
-export type { IssueData } from "./services/GitHubIssue.js";
+export type { GitHubIssueShape, IssueData } from "./services/GitHubIssue.js";
 export { GitHubIssue } from "./services/GitHubIssue.js";
-export type { ReleaseAsset, ReleaseData } from "./services/GitHubRelease.js";
+export type { GitHubReleaseShape, ReleaseAsset, ReleaseData } from "./services/GitHubRelease.js";
 export { GitHubRelease } from "./services/GitHubRelease.js";
-export type { TagRef } from "./services/GitTag.js";
+export type { GitTagShape, TagRef } from "./services/GitTag.js";
 export { GitTag } from "./services/GitTag.js";
-export type { GlobOptions, HashFilesOptions } from "./services/Glob.js";
+export type { GlobOptions, GlobShape, HashFilesOptions } from "./services/Glob.js";
 export { Glob } from "./services/Glob.js";
+export type { NpmRegistryShape } from "./services/NpmRegistry.js";
 export { NpmRegistry } from "./services/NpmRegistry.js";
-export type { AppAuth } from "./services/OctokitAuthApp.js";
+export type { AppAuth, OctokitAuthAppShape } from "./services/OctokitAuthApp.js";
 export { OctokitAuthApp } from "./services/OctokitAuthApp.js";
+export type { OidcTokenIssuerShape } from "./services/OidcTokenIssuer.js";
 export { OidcTokenIssuer } from "./services/OidcTokenIssuer.js";
-export type { InstallOptions } from "./services/PackageManagerAdapter.js";
+export type { InstallOptions, PackageManagerAdapterShape } from "./services/PackageManagerAdapter.js";
 export { PackageManagerAdapter } from "./services/PackageManagerAdapter.js";
 export type {
 	DryRunResult,
 	IdempotentPublishInput,
 	IdempotentPublishResult,
 	PackResult,
+	PackagePublishShape,
 	PublishTarballResult,
 	RegistryTarget,
 } from "./services/PackagePublish.js";
 export { PackagePublish } from "./services/PackagePublish.js";
-export type { PullRequestFile, PullRequestInfo, PullRequestListOptions } from "./services/PullRequest.js";
+export type {
+	PullRequestFile,
+	PullRequestInfo,
+	PullRequestListOptions,
+	PullRequestShape,
+} from "./services/PullRequest.js";
 export { PullRequest } from "./services/PullRequest.js";
-export type { CommentRecord } from "./services/PullRequestComment.js";
+export type { CommentRecord, PullRequestCommentShape } from "./services/PullRequestComment.js";
 export { PullRequestComment } from "./services/PullRequestComment.js";
+export type { RateLimiterShape } from "./services/RateLimiter.js";
 export { RateLimiter } from "./services/RateLimiter.js";
 export type {
 	CycloneDXBom,
@@ -299,15 +336,19 @@ export type {
 	SbomAuthor,
 	SbomContact,
 	SbomInput,
+	SbomShape,
 	SbomSupplier,
 } from "./services/Sbom.js";
 export { Sbom } from "./services/Sbom.js";
-export type { SigstoreSignerConfig } from "./services/SigstoreSigner.js";
+export type { SigstoreSignerConfig, SigstoreSignerShape } from "./services/SigstoreSigner.js";
 export { IN_TOTO_PAYLOAD_TYPE, SIGSTORE_OIDC_AUDIENCE, SigstoreSigner } from "./services/SigstoreSigner.js";
+export type { TokenPermissionCheckerShape } from "./services/TokenPermissionChecker.js";
 export { TokenPermissionChecker } from "./services/TokenPermissionChecker.js";
+export type { ToolInstallerShape } from "./services/ToolInstaller.js";
 export { ToolInstaller } from "./services/ToolInstaller.js";
-export type { PollOptions, WorkflowRunStatus } from "./services/WorkflowDispatch.js";
+export type { PollOptions, WorkflowDispatchShape, WorkflowRunStatus } from "./services/WorkflowDispatch.js";
 export { WorkflowDispatch } from "./services/WorkflowDispatch.js";
+export type { WorkspaceDetectorShape } from "./services/WorkspaceDetector.js";
 export { WorkspaceDetector } from "./services/WorkspaceDetector.js";
 export { AutoMerge } from "./utils/AutoMerge.js";
 export type { AccumulateResult } from "./utils/ErrorAccumulator.js";

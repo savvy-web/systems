@@ -1,9 +1,9 @@
+import { Yaml } from "@effected/yaml";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { parse } from "yaml-effect";
 import { createPnpmWorkspace } from "../src/lib/pnpm/index.js";
 
-const loadYaml = (text: string): Record<string, unknown> => Effect.runSync(parse(text)) as Record<string, unknown>;
+const loadYaml = (text: string): Record<string, unknown> => Effect.runSync(Yaml.parse(text)) as Record<string, unknown>;
 
 describe("pnpm workspace template", () => {
 	it("creates pnpm-workspace.yaml with packages", () => {

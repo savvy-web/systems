@@ -5,7 +5,7 @@ import { Schema } from "effect";
  *
  * @public
  */
-export const WorkspaceType = Schema.Literal("single", "pnpm", "yarn", "npm", "bun");
+export const WorkspaceType = Schema.Literals(["single", "pnpm", "yarn", "npm", "bun"]);
 /** @public */
 export type WorkspaceType = typeof WorkspaceType.Type;
 
@@ -32,7 +32,7 @@ export const WorkspacePackage = Schema.Struct({
 	version: Schema.String,
 	path: Schema.String,
 	private: Schema.Boolean,
-	dependencies: Schema.Record({ key: Schema.String, value: Schema.String }),
+	dependencies: Schema.Record(Schema.String, Schema.String),
 });
 /** @public */
 export type WorkspacePackage = typeof WorkspacePackage.Type;

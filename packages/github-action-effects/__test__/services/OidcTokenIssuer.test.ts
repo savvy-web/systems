@@ -10,10 +10,10 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { FileSystem } from "@effect/platform";
-import { HttpClient, HttpClientResponse } from "@effect/platform";
 import { NodeFileSystem } from "@effect/platform-node";
+import type { FileSystem } from "effect";
 import { Effect, Exit, Layer, Redacted } from "effect";
+import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { OidcTokenError, OidcTokenIssuer, OidcTokenIssuerLive, saveToken } from "../../src/testing.js";
 

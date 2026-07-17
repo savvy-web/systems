@@ -1,5 +1,5 @@
-import { HttpClient, HttpClientResponse } from "@effect/platform";
 import { Cause, Effect, Exit, Layer, Redacted } from "effect";
+import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubAppError } from "../../src/errors/GitHubAppError.js";
 import { GitHubAppLive } from "../../src/layers/GitHubAppLive.js";
@@ -298,7 +298,7 @@ describe("GitHubAppLive", () => {
 			const exit = await runExit(Effect.flatMap(GitHubApp, (svc) => svc.resolveAppIdentity("app-1", pk)));
 			expect(Exit.isFailure(exit)).toBe(true);
 			if (Exit.isFailure(exit)) {
-				const error = Cause.failureOption(exit.cause);
+				const error = Cause.findErrorOption(exit.cause);
 				expect(error._tag).toBe("Some");
 				if (error._tag === "Some") {
 					expect(error.value).toBeInstanceOf(GitHubAppError);
@@ -315,7 +315,7 @@ describe("GitHubAppLive", () => {
 			const exit = await runExit(Effect.flatMap(GitHubApp, (svc) => svc.resolveAppIdentity("app-1", pk)));
 			expect(Exit.isFailure(exit)).toBe(true);
 			if (Exit.isFailure(exit)) {
-				const error = Cause.failureOption(exit.cause);
+				const error = Cause.findErrorOption(exit.cause);
 				expect(error._tag).toBe("Some");
 				if (error._tag === "Some") {
 					expect(error.value).toBeInstanceOf(GitHubAppError);

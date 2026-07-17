@@ -1,6 +1,5 @@
 import type * as CdxLibrary from "@cyclonedx/cyclonedx-library";
-import type { FileSystem } from "@effect/platform";
-import type { Effect } from "effect";
+import type { Effect, FileSystem } from "effect";
 import { Context } from "effect";
 import type { SbomError } from "../errors/SbomError.js";
 
@@ -120,20 +119,24 @@ export interface SbomInput {
 export type CycloneDXBom = CdxLibrary.Models.Bom;
 
 /**
+ * Service shape for {@link Sbom}.
+ *
+ * @public
+ */
+export interface SbomShape {
+	/** Build an in-memory CycloneDX 1.5 BOM from the resolved dependency graph. */
+	readonly generate: (input: SbomInput) => Effect.Effect<CycloneDXBom, SbomError>;
+
+	/** Serialize a BOM to JSON. The result is the canonical CycloneDX JSON form. */
+	readonly serializeJson: (bom: CycloneDXBom) => Effect.Effect<string, SbomError>;
+
+	/** Write a BOM to disk as pretty-printed JSON. */
+	readonly save: (bom: CycloneDXBom, path: string) => Effect.Effect<void, SbomError, FileSystem.FileSystem>;
+}
+
+/**
  * Sbom service surface.
  *
  * @public
  */
-export class Sbom extends Context.Tag("github-action-effects/Sbom")<
-	Sbom,
-	{
-		/** Build an in-memory CycloneDX 1.5 BOM from the resolved dependency graph. */
-		readonly generate: (input: SbomInput) => Effect.Effect<CycloneDXBom, SbomError>;
-
-		/** Serialize a BOM to JSON. The result is the canonical CycloneDX JSON form. */
-		readonly serializeJson: (bom: CycloneDXBom) => Effect.Effect<string, SbomError>;
-
-		/** Write a BOM to disk as pretty-printed JSON. */
-		readonly save: (bom: CycloneDXBom, path: string) => Effect.Effect<void, SbomError, FileSystem.FileSystem>;
-	}
->() {}
+export class Sbom extends Context.Service<Sbom, SbomShape>()("github-action-effects/Sbom") {}

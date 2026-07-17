@@ -1,11 +1,11 @@
 import { execSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
+import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { ChangesetConfigReaderLive, ManagedSectionLive, VersioningStrategyLive } from "@savvy-web/silk-effects";
-import { Effect, Layer, LogLevel, Logger } from "effect";
+import { Effect, Layer, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { WorkspaceDiscovery, WorkspaceRootLive } from "workspaces-effect";
 import { runCommitCheck } from "../../src/commands/commit/check.js";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
 
@@ -14,23 +14,20 @@ const BEGIN_MARKER = "# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---";
 const END_MARKER = "# --- END SAVVY-COMMIT MANAGED SECTION ---";
 
 /** Stub WorkspaceDiscovery that returns empty packages (no workspace root needed). */
-const WorkspaceDiscoveryStub = Layer.succeed(
-	WorkspaceDiscovery,
-	WorkspaceDiscovery.of({
-		listPackages: () => Effect.succeed([]),
-		getPackage: () => Effect.die("not implemented"),
-		importerMap: () => Effect.succeed(new Map()),
-		refresh: () => Effect.void,
-	}),
-);
+const WorkspaceDiscoveryStub = Layer.succeed(WorkspaceDiscovery, {
+	listPackages: () => Effect.succeed([]),
+	getPackage: () => Effect.die("not implemented"),
+	importerMap: () => Effect.succeed(new Map()),
+	refresh: () => Effect.void,
+} as never);
 
 /** Test layer combining all required services, with logs silenced. */
 const TestLayer = Layer.mergeAll(
 	ManagedSectionLive,
 	VersioningStrategyLive.pipe(Layer.provide(ChangesetConfigReaderLive)),
 	WorkspaceDiscoveryStub,
-	WorkspaceRootLive,
-).pipe(Layer.provideMerge(NodeContext.layer), Layer.provide(Logger.minimumLogLevel(LogLevel.None)));
+	WorkspaceRoot.layer.pipe(Layer.provide(NodeServices.layer)),
+).pipe(Layer.provideMerge(NodeServices.layer), Layer.provide(Logger.layer([])));
 
 describe("runCommitCheck", () => {
 	it("is a valid Effect CLI command", () => {

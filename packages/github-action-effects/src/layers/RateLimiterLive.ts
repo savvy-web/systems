@@ -89,7 +89,10 @@ export const RateLimiterLive: Layer.Layer<RateLimiter, never, GitHubClient> = La
 			withRateLimit: <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | RateLimitError, R> => {
 				/** Count a low-quota event, tagged by the reaction taken. */
 				const countHit = (action: "slept" | "failed") =>
-					Metric.update(rateLimitHits.pipe(Metric.tagged("api", "rest"), Metric.tagged("action", action)), 1);
+					Metric.update(
+						rateLimitHits.pipe(Metric.withAttributes({ api: "rest" }), Metric.withAttributes({ action: action })),
+						1,
+					);
 
 				return Effect.flatMap(Ref.get(snapshotRef), (cached): Effect.Effect<A, E | RateLimitError, R> => {
 					// Never observed yet → run directly; the first real call will
@@ -132,9 +135,10 @@ export const RateLimiterLive: Layer.Layer<RateLimiter, never, GitHubClient> = La
 				const maxRetries = options?.maxRetries ?? 3;
 				const baseDelay = options?.baseDelay ?? 1000;
 				return effect.pipe(
-					Effect.retry(
-						Schedule.exponential(Duration.millis(baseDelay)).pipe(Schedule.compose(Schedule.recurs(maxRetries))),
-					),
+					Effect.retry({
+						schedule: Schedule.exponential(Duration.millis(baseDelay)),
+						times: maxRetries,
+					}),
 				);
 			},
 		};

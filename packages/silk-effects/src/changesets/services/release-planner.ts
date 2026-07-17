@@ -16,9 +16,8 @@ import { applyReleasePlan } from "@changesets/apply-release-plan";
 import { readConfig } from "@changesets/config";
 import { getReleasePlan } from "@changesets/get-release-plan";
 import type { Config, Packages, ReleasePlan } from "@changesets/types";
-import { FileSystem } from "@effect/platform";
 import { getPackages } from "@manypkg/get-packages";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, FileSystem, Layer } from "effect";
 import { ChangelogTransformer } from "../api/transformer.js";
 import { ReleasePlanError } from "../errors.js";
 import type {
@@ -72,18 +71,8 @@ export interface ReleasePlannerShape {
 	) => Effect.Effect<AppliedRelease, ReleasePlanError>;
 }
 
-const _tag = Context.Tag("ReleasePlanner");
-
-/**
- * Base class for {@link ReleasePlanner}.
- *
- * @privateRemarks Required export for api-extractor (anonymous Context.Tag base). Do not delete.
- * @internal
- */
-export const ReleasePlannerBase = _tag<ReleasePlanner, ReleasePlannerShape>();
-
 /** Effect service tag for the release planner. @public */
-export class ReleasePlanner extends ReleasePlannerBase {}
+export class ReleasePlanner extends Context.Service<ReleasePlanner, ReleasePlannerShape>()("ReleasePlanner") {}
 
 /** Build the service shape over a resolved {@link ConfigInspector} and {@link FileSystem.FileSystem}. */
 function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): ReleasePlannerShape {
@@ -386,7 +375,7 @@ function applyEffect(
 		const inspected = yield* inspector
 			.inspect(root)
 			.pipe(
-				Effect.catchAll((error) =>
+				Effect.catch((error) =>
 					Effect.logWarning(`Skipping versionFiles update: ${errMsg(error)}`).pipe(Effect.as(null)),
 				),
 			);

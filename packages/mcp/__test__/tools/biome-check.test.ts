@@ -88,33 +88,33 @@ describe("buildBiomeResult", () => {
 describe("BiomeCheckAsMarkdown", () => {
 	it("renders diagnostics", () => {
 		const result = buildBiomeResult({ diagnostics: parseBiomeGitlab(SAMPLE), wrote: false });
-		const md = Schema.decodeSync(BiomeCheckAsMarkdown)(result);
+		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
 		expect(md).toContain("src/x.ts:12");
 		expect(md).toContain("noExplicitAny");
 	});
 
 	it("renders the clean state", () => {
 		const result = buildBiomeResult({ diagnostics: [], wrote: false });
-		const md = Schema.decodeSync(BiomeCheckAsMarkdown)(result);
+		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
 		expect(md).toContain("No remaining diagnostics");
 	});
 
 	it("notes the write pass in the clean state", () => {
 		const result = buildBiomeResult({ diagnostics: [], wrote: true });
-		const md = Schema.decodeSync(BiomeCheckAsMarkdown)(result);
+		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
 		expect(md).toContain("No remaining diagnostics");
 		expect(md).toContain("git diff");
 	});
 
 	it("marks strict-upgraded diagnostics in the rendered markdown", () => {
 		const result = buildBiomeResult({ diagnostics: parseBiomeGitlab(SAMPLE), wrote: false, strict: true });
-		const md = Schema.decodeSync(BiomeCheckAsMarkdown)(result);
+		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
 		expect(md).toContain("strict-upgraded from project warnings");
 		expect(md).toContain("(project warning, strict)");
 	});
 
 	it("is one-way (encode forbidden)", () => {
-		expect(() => Schema.encodeSync(BiomeCheckAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(BiomeCheckAsMarkdown)("anything")).toThrow();
 	});
 });
 

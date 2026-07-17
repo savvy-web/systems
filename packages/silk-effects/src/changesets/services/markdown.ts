@@ -57,20 +57,6 @@ export interface MarkdownServiceShape {
 	readonly stringify: (tree: Root) => Effect.Effect<string>;
 }
 
-const _tag = Context.Tag("MarkdownService");
-
-/**
- * Base class for MarkdownService.
- *
- * @privateRemarks
- * This export is required for api-extractor documentation generation.
- * Effect's Context.Tag creates an anonymous base class that must be
- * explicitly exported to avoid "forgotten export" warnings. Do not delete.
- *
- * @internal
- */
-export const MarkdownServiceBase = _tag<MarkdownService, MarkdownServiceShape>();
-
 /**
  * Effect service tag for markdown parsing and stringification.
  *
@@ -79,7 +65,7 @@ export const MarkdownServiceBase = _tag<MarkdownService, MarkdownServiceShape>()
  * service instance.
  *
  * @remarks
- * This tag follows the standard Effect `Context.Tag` pattern. The
+ * This tag follows the standard Effect `Context.Service` pattern. The
  * {@link MarkdownLive} layer provides the default implementation backed by
  * the remark/unified pipeline. For testing, you can supply a custom layer
  * via `Layer.succeed(MarkdownService, { parse: ..., stringify: ... })`.
@@ -101,11 +87,10 @@ export const MarkdownServiceBase = _tag<MarkdownService, MarkdownServiceShape>()
  *
  * @see {@link MarkdownServiceShape} for the service interface
  * @see {@link MarkdownLive} for the production layer
- * @see {@link MarkdownServiceBase} for the api-extractor base class
  *
  * @public
  */
-export class MarkdownService extends MarkdownServiceBase {}
+export class MarkdownService extends Context.Service<MarkdownService, MarkdownServiceShape>()("MarkdownService") {}
 
 /**
  * Production layer for {@link MarkdownService}.

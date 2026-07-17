@@ -18,12 +18,11 @@
 //
 // Modules examined from ../commitlint/package/src/ vs existing silk-effects:
 //
-//   detection/scopes.ts — COPIED
-//     Uses workspaces-effect (WorkspaceDiscovery) directly. This is distinct from
-//     silk-effects' ConfigDiscovery which focuses on config file paths. The scope
-//     detection logic reads workspace package names for commitlint's scope-enum
-//     rule — specific to commitlint, no equivalent in silk-effects. Kept as-is;
-//     imports workspaces-effect which silk-effects already depends on.
+//   detection/scopes.ts — COPIED (v4: workspaces-effect → @effected/workspaces)
+//     Uses @effected/workspaces (WorkspaceDiscovery) directly. This is distinct
+//     from silk-effects' ConfigDiscovery which focuses on config file paths. The
+//     scope detection logic reads workspace package names for commitlint's
+//     scope-enum rule — specific to commitlint, no equivalent in silk-effects.
 //
 //   detection/dco.ts — COPIED
 //     Pure filesystem walk using node:fs sync APIs. Detects DCO file at repo root.
@@ -78,10 +77,12 @@
 //     Logger.minimumLogLevel(LogLevel.Warning) Layer for hook subcommands.
 //     No equivalent in silk-effects.
 //
-//   hook/diagnostics/* — COPIED
+//   hook/diagnostics/* — COPIED (v4: child_process spawns restructured)
 //     All six diagnostic modules (branch, cache, commitlint-config, open-issues,
-//     package-manager, signing). None use @effect/platform-node; they use node:fs,
-//     node:child_process, and node:util builtins directly. No equivalent in
+//     package-manager, signing). Git reads run through @effected/git (branch,
+//     signing); non-git spawns (gh, gpg) run on effect/unstable/process
+//     ChildProcess via ChildProcessSpawner. cache, commitlint-config, and
+//     package-manager keep node:fs builtins directly. No equivalent in
 //     silk-effects.
 //
 //   hook/rules/* — COPIED

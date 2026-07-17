@@ -1,4 +1,4 @@
-import { Effect, Layer, Stream } from "effect";
+import { Cause, Effect, Layer, Option, Stream } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubArtifactMetadataError } from "../../src/errors/GitHubArtifactMetadataError.js";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
@@ -124,10 +124,10 @@ describe("GitHubArtifactMetadataLive", () => {
 
 			expect(exit._tag).toBe("Failure");
 			if (exit._tag === "Failure") {
-				const cause = exit.cause;
-				expect(cause._tag).toBe("Fail");
-				if (cause._tag === "Fail") {
-					const error = cause.error;
+				const maybeError = Cause.findErrorOption(exit.cause);
+				expect(Option.isSome(maybeError)).toBe(true);
+				if (Option.isSome(maybeError)) {
+					const error = maybeError.value;
 					expect(error).toBeInstanceOf(GitHubArtifactMetadataError);
 					expect((error as GitHubArtifactMetadataError).operation).toBe("createStorageRecord");
 				}

@@ -27,7 +27,8 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 	it("exports the DepsRegen surface (WorkspaceSnapshotReader/resolveDiffRows removed in #208)", async () => {
 		const mod = await import("../../src/changesets/index.js");
 		expect(mod.DepsRegen).toBeDefined();
-		expect(mod.DepsRegenBase).toBeDefined();
+		// DepsRegenBase removed in the v4 port (inline Context.Service + _base suppression).
+		expect("DepsRegenBase" in mod).toBe(false);
 		expect(mod.DepsRegenLive).toBeDefined();
 		expect(mod.DepsRegenDefault).toBeDefined();
 		expect(mod.isPureDependencyChangeset).toBeDefined();

@@ -48,7 +48,7 @@
 //
 //   workspace-snapshot.ts — REMOVED (#208)
 //     The former WorkspaceSnapshotReader (git-ref side) and utils/worktree-snapshot.ts
-//     (working-tree side) were replaced by workspaces-effect's PointInTimeWorkspace
+//     (working-tree side) were replaced by @effected/workspaces' WorkspaceSnapshots
 //     service, which snapshots both sides with per-ref catalog/workspace resolution.
 //     Only gitMergeBase survives, relocated to ./utils/git.ts.
 //
@@ -75,14 +75,13 @@ export type { BranchAnalysis, BranchAnalyzerShape, BranchFileEntry, FileStatus }
 export {
 	BranchAnalysisSchema,
 	BranchAnalyzer,
-	BranchAnalyzerBase,
 	BranchAnalyzerLive,
 	BranchFileEntrySchema,
 	FileStatusSchema,
 	makeBranchAnalyzerTest,
 } from "./services/branch-analyzer.js";
 export type { ChangelogServiceShape } from "./services/changelog.js";
-export { ChangelogService, ChangelogServiceBase } from "./services/changelog.js";
+export { ChangelogService } from "./services/changelog.js";
 export type {
 	Classification,
 	ClassificationReason,
@@ -95,23 +94,28 @@ export {
 	ClassificationReasonSchema,
 	ClassificationSchema,
 	ConfigInspector,
-	ConfigInspectorBase,
 	ConfigInspectorLive,
 	InspectedConfigSchema,
 	ResolvedPackageScopeSchema,
 	ResolvedVersionFileSchema,
 	makeConfigInspectorTest,
 } from "./services/config-inspector.js";
-export type { DepsRegenOptions, DepsRegenShape, RegenPlan, RegenResult } from "./services/deps-regen.js";
+export type {
+	DepsRegenOptions,
+	DepsRegenPlanError,
+	DepsRegenShape,
+	RegenPlan,
+	RegenResult,
+} from "./services/deps-regen.js";
 export {
 	DepsRegen,
-	DepsRegenBase,
 	DepsRegenDefault,
 	DepsRegenLive,
 	isPureDependencyChangeset,
+	makeDepsRegenDefault,
 } from "./services/deps-regen.js";
 export type { GitHubServiceShape } from "./services/github.js";
-export { GitHubService, GitHubServiceBase } from "./services/github.js";
+export { GitHubService } from "./services/github.js";
 export type { MaintenanceReason, MaintenanceTrigger } from "./services/maintenance-reason.js";
 export {
 	MaintenanceReasonSchema,
@@ -119,14 +123,9 @@ export {
 	deriveMaintenanceReason,
 } from "./services/maintenance-reason.js";
 export type { MarkdownServiceShape } from "./services/markdown.js";
-export { MarkdownService, MarkdownServiceBase } from "./services/markdown.js";
+export { MarkdownService } from "./services/markdown.js";
 export type { ReleasePlannerShape } from "./services/release-planner.js";
-export {
-	ReleasePlanner,
-	ReleasePlannerBase,
-	ReleasePlannerLive,
-	makeReleasePlannerTest,
-} from "./services/release-planner.js";
+export { ReleasePlanner, ReleasePlannerLive, makeReleasePlannerTest } from "./services/release-planner.js";
 // === Effect Layers ===
 
 export { GitHubLive, makeGitHubTest } from "./services/github.js";
@@ -136,21 +135,13 @@ export { MarkdownLive } from "./services/markdown.js";
 
 export {
 	ChangesetIOError,
-	ChangesetIOErrorBase,
 	ChangesetValidationError,
-	ChangesetValidationErrorBase,
 	ConfigurationError,
-	ConfigurationErrorBase,
 	GitError,
-	GitErrorBase,
 	GitHubApiError,
-	GitHubApiErrorBase,
 	MarkdownParseError,
-	MarkdownParseErrorBase,
 	ReleasePlanError,
-	ReleasePlanErrorBase,
 	VersionFileError,
-	VersionFileErrorBase,
 } from "./errors.js";
 
 // === Schemas ===

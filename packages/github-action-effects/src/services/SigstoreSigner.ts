@@ -19,25 +19,31 @@ export const IN_TOTO_PAYLOAD_TYPE = "application/vnd.in-toto+json" as const;
 export const SIGSTORE_OIDC_AUDIENCE = "sigstore" as const;
 
 /**
+ * Service shape for {@link SigstoreSigner}.
+ *
+ * @public
+ */
+export interface SigstoreSignerShape {
+	/**
+	 * Build a Sigstore DSSE bundle from an in-toto statement.
+	 *
+	 * @remarks
+	 * The bundle is the structure GitHub accepts via
+	 * `POST /repos/{owner}/{repo}/attestations`.
+	 */
+	readonly signStatement: (
+		statement: InTotoStatement,
+	) => Effect.Effect<SigstoreBundle, SigstoreSignerError, OidcTokenIssuer>;
+}
+
+/**
  * Sigstore signer service surface.
  *
  * @public
  */
-export class SigstoreSigner extends Context.Tag("github-action-effects/SigstoreSigner")<
-	SigstoreSigner,
-	{
-		/**
-		 * Build a Sigstore DSSE bundle from an in-toto statement.
-		 *
-		 * @remarks
-		 * The bundle is the structure GitHub accepts via
-		 * `POST /repos/{owner}/{repo}/attestations`.
-		 */
-		readonly signStatement: (
-			statement: InTotoStatement,
-		) => Effect.Effect<SigstoreBundle, SigstoreSignerError, OidcTokenIssuer>;
-	}
->() {}
+export class SigstoreSigner extends Context.Service<SigstoreSigner, SigstoreSignerShape>()(
+	"github-action-effects/SigstoreSigner",
+) {}
 
 /**
  * Configuration knobs for the Live SigstoreSigner.

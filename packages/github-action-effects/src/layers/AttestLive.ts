@@ -8,8 +8,7 @@
  * provenance + SBOM attestations.
  */
 
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, FileSystem, Layer, Schema } from "effect";
 import { AttestError } from "../errors/AttestError.js";
 import type { AttestInput, AttestationRecord } from "../schemas/Attestation.js";
 import { CYCLONEDX_BOM, InTotoStatement, SLSA_PROVENANCE_V1, SigstoreBundle } from "../schemas/Attestation.js";
@@ -254,7 +253,8 @@ const attestFromInput = (
 		// `dsseEnvelope` are `Schema.Unknown` (encode is identity), so the encoded
 		// object is structurally identical to the old round-trip output; the POST
 		// body is JSON-serialized by Octokit regardless.
-		const bundlePayload = (yield* Schema.encode(SigstoreBundle)(bundle).pipe(
+		const bundlePayload = (yield* Schema.decodeUnknownEffect(SigstoreBundle)(bundle).pipe(
+			Effect.flatMap((instance) => Schema.encodeEffect(SigstoreBundle)(instance)),
 			Effect.mapError(
 				(cause) =>
 					new AttestError({

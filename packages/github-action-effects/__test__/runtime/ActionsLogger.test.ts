@@ -1,10 +1,10 @@
-import { Effect, Layer, LogLevel, Logger } from "effect";
+import { Effect, Layer, Logger, References } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionsLogger } from "../../src/runtime/ActionsLogger.js";
 
 const ActionsLoggerLayer = Layer.merge(
-	Logger.replace(Logger.defaultLogger, ActionsLogger),
-	Logger.minimumLogLevel(LogLevel.Trace),
+	Logger.layer([ActionsLogger]),
+	Layer.succeed(References.MinimumLogLevel, "Trace"),
 );
 
 const withActionsLogger = <A, E>(effect: Effect.Effect<A, E>) =>

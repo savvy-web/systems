@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import { ChangesetAnalyzerLive } from "../../src/layers/ChangesetAnalyzerLive.js";
 import { ChangesetAnalyzer } from "../../src/services/ChangesetAnalyzer.js";

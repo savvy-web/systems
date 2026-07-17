@@ -1,7 +1,7 @@
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 import type { TemplateEntry } from "../types.js";
 
-const RepoPattern = Schema.String.pipe(Schema.pattern(/^[^/\s]+\/[^/\s]+$/));
+const RepoPattern = Schema.String.check(Schema.isPattern(/^[^/\s]+\/[^/\s]+$/));
 
 /**
  * Options for generating a Changesets configuration file.
@@ -9,9 +9,11 @@ const RepoPattern = Schema.String.pipe(Schema.pattern(/^[^/\s]+\/[^/\s]+$/));
  * @public
  */
 export const ChangesetOptions = Schema.Struct({
-	access: Schema.optionalWith(Schema.Literal("public", "restricted"), { default: () => "restricted" as const }),
-	baseBranch: Schema.optionalWith(Schema.String, { default: () => "main" }),
-	changelog: Schema.optionalWith(Schema.String, { default: () => "@savvy-web/changesets/changelog" }),
+	access: Schema.Literals(["public", "restricted"]).pipe(
+		Schema.withDecodingDefaultType(Effect.succeed("restricted" as const)),
+	),
+	baseBranch: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed("main"))),
+	changelog: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed("@savvy-web/changesets/changelog"))),
 	repo: Schema.optional(RepoPattern),
 });
 

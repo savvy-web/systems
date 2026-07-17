@@ -55,13 +55,15 @@ export const GitTagLive: Layer.Layer<GitTag, never, GitHubClient> = Layer.effect
 			repo: string,
 			tag: string,
 			obj: RawGitObject,
-		): Effect.Effect<string, GitTagError> =>
-			Effect.iterate(
-				{ sha: obj.sha, type: obj.type, depth: 0 },
-				{
-					while: (state) => state.type === "tag" && state.depth < MAX_TAG_PEEL,
-					body: (state) =>
-						client
+		): Effect.Effect<string, GitTagError> => {
+			interface PeelState {
+				readonly sha: string;
+				readonly type: string;
+				readonly depth: number;
+			}
+			const step = (state: PeelState): Effect.Effect<PeelState, GitTagError> =>
+				state.type === "tag" && state.depth < MAX_TAG_PEEL
+					? client
 							.rest("git.getTag", (octokit) => asGit(octokit).rest.git.getTag({ owner, repo, tag_sha: state.sha }))
 							.pipe(
 								Effect.map((data) => {
@@ -69,9 +71,10 @@ export const GitTagLive: Layer.Layer<GitTag, never, GitHubClient> = Layer.effect
 									return { sha: next.sha, type: next.type, depth: state.depth + 1 };
 								}),
 								Effect.mapError(mapError("resolve", tag)),
-							),
-				},
-			).pipe(
+								Effect.flatMap(step),
+							)
+					: Effect.succeed(state);
+			return step({ sha: obj.sha, type: obj.type, depth: 0 }).pipe(
 				Effect.flatMap((state) =>
 					state.type === "commit"
 						? Effect.succeed(state.sha)
@@ -84,6 +87,7 @@ export const GitTagLive: Layer.Layer<GitTag, never, GitHubClient> = Layer.effect
 							),
 				),
 			);
+		};
 
 		return {
 			create: (tag, sha) =>

@@ -64,7 +64,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		async (args) => {
 			const root = args.cwd ?? ctx.cwd;
 			const data = await ctx.runtime.runPromise(workspaceInfo(root));
-			const text = Schema.decodeSync(WorkspaceInfoAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(WorkspaceInfoAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -85,7 +85,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(turboInspect(args as TurboInspectArgs, ctx.cwd));
-			const text = Schema.decodeSync(TurboInspectAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -106,7 +106,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetInspect(args as ChangesetInspectArgs, ctx.cwd));
-			const text = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -125,7 +125,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetValidate(args as ChangesetValidateArgs, ctx.cwd));
-			const text = Schema.decodeSync(ChangesetValidateAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(ChangesetValidateAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -149,7 +149,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetDepsDetect(args as ChangesetDepsDetectArgs, ctx.cwd));
-			const text = Schema.decodeSync(ChangesetDepsDetectAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -167,7 +167,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetPreview(args as ChangesetPreviewArgs, ctx.cwd));
-			const text = Schema.decodeSync(ChangesetPreviewAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(ChangesetPreviewAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -194,7 +194,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(changesetDepsRegen(args as ChangesetDepsRegenArgs, ctx.cwd));
-			const text = Schema.decodeSync(ChangesetDepsRegenAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(ChangesetDepsRegenAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -213,7 +213,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(reposInspect(args as ReposInspectArgs, ctx.cwd));
-			const text = Schema.decodeSync(ReposInspectAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -242,7 +242,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await ctx.runtime.runPromise(reposManage(args as ReposManageArgs, ctx.cwd));
-			const text = Schema.decodeSync(ReposManageAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);
@@ -268,7 +268,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		},
 		async (args) => {
 			const data = await runBiomeCheck(args as BiomeCheckArgs, ctx.cwd);
-			const text = Schema.decodeSync(BiomeCheckAsMarkdown)(data);
+			const text = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(data);
 			return structuredResult(text, data);
 		},
 	);

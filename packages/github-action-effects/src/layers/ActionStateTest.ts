@@ -37,7 +37,7 @@ export const ActionStateTest = {
 	 */
 	layer: (state: ActionStateTestState): Layer.Layer<ActionState> =>
 		Layer.succeed(ActionState, {
-			save: <A, I>(key: string, value: A, schema: Schema.Schema<A, I, never>) =>
+			save: <A, I>(key: string, value: A, schema: Schema.Codec<A, I>) =>
 				encodeState(key, value, schema).pipe(
 					Effect.tap((json) =>
 						Effect.sync(() => {
@@ -47,7 +47,7 @@ export const ActionStateTest = {
 					Effect.asVoid,
 				),
 
-			get: <A, I>(key: string, schema: Schema.Schema<A, I, never>) => {
+			get: <A, I>(key: string, schema: Schema.Codec<A, I>) => {
 				const raw = state.entries.get(key);
 				if (raw === undefined) {
 					return Effect.fail(
@@ -61,7 +61,7 @@ export const ActionStateTest = {
 				return decodeState(key, raw, schema);
 			},
 
-			getOptional: <A, I>(key: string, schema: Schema.Schema<A, I, never>) => {
+			getOptional: <A, I>(key: string, schema: Schema.Codec<A, I>) => {
 				const raw = state.entries.get(key);
 				if (raw === undefined) {
 					return Effect.succeed(Option.none<A>());

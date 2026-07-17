@@ -8,9 +8,16 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { NodeServices } from "@effect/platform-node";
+import type { Git } from "@effected/git";
+import { Git as GitService } from "@effected/git";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { gitListChangesetFilesAtRef } from "../../src/changesets/utils/git.js";
+
+/** Run a Git-requiring effect with the real `@effected/git` layer over NodeServices. */
+const runWithGit = <A>(fx: Effect.Effect<A, never, Git>): Promise<A> =>
+	Effect.runPromise(fx.pipe(Effect.provide(GitService.layer), Effect.provide(NodeServices.layer)));
 
 function git(cwd: string, ...args: string[]): string {
 	return execFileSync("git", args, {
@@ -38,7 +45,7 @@ describe("gitListChangesetFilesAtRef", () => {
 		git(dir, "add", "-A");
 		git(dir, "commit", "--quiet", "-m", "base commit");
 
-		const result = await Effect.runPromise(gitListChangesetFilesAtRef(dir, "HEAD"));
+		const result = await runWithGit(gitListChangesetFilesAtRef(dir, "HEAD"));
 		expect(result).toEqual(new Set(["committed-one.md", "committed-two.md"]));
 	});
 
@@ -55,7 +62,7 @@ describe("gitListChangesetFilesAtRef", () => {
 		// Working-tree-only addition, never committed.
 		writeFileSync(join(dir, ".changeset", "uncommitted.md"), ["---", '"@x/b": patch', "---", ""].join("\n"));
 
-		const result = await Effect.runPromise(gitListChangesetFilesAtRef(dir, "HEAD"));
+		const result = await runWithGit(gitListChangesetFilesAtRef(dir, "HEAD"));
 		expect(result).toEqual(new Set(["committed.md"]));
 	});
 
@@ -64,7 +71,7 @@ describe("gitListChangesetFilesAtRef", () => {
 		mkdirSync(join(dir, ".changeset"), { recursive: true });
 		writeFileSync(join(dir, ".changeset", "whatever.md"), ["---", '"@x/a": patch', "---", ""].join("\n"));
 
-		const result = await Effect.runPromise(gitListChangesetFilesAtRef(dir, "HEAD"));
+		const result = await runWithGit(gitListChangesetFilesAtRef(dir, "HEAD"));
 		expect(result).toEqual(new Set());
 	});
 
@@ -78,7 +85,7 @@ describe("gitListChangesetFilesAtRef", () => {
 		git(dir, "add", "-A");
 		git(dir, "commit", "--quiet", "-m", "base commit");
 
-		const result = await Effect.runPromise(gitListChangesetFilesAtRef(dir, "not-a-real-ref"));
+		const result = await runWithGit(gitListChangesetFilesAtRef(dir, "not-a-real-ref"));
 		expect(result).toEqual(new Set());
 	});
 });

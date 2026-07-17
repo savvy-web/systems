@@ -28,7 +28,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/github-acti
 - **Runtime:** Node.js 24.11.0+
 - **Package Manager:** pnpm 11.5.1 with `@savvy-web/pnpm-plugin-silk` config dependency
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all twelve packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other ten via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
-- **Effect:** split — build tooling (`bundler`, `tsdown-plugins`) on v4 (`catalog:effect`), all other packages on v3 (`catalog:silk`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency (`effect`/`effectPeers`/`effect3`/`effect3Peers`). `effect` core source is vendored at `.repos/effect-smol` (pinned to the catalog tag) — the authority for v4 APIs
+- **Effect:** the whole repo is on Effect v4 (`catalog:effect` / `catalog:effectPeers`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency (`effect`/`effectPeers`; the `effect3` catalogs remain for any consumer still on v3). `effect` core source is vendored at `.repos/effect-smol` (pinned to the catalog tag) — the authority for v4 APIs. The suite consumes the `@effected/*` kit (git, glob, jsonc, package-json, semver, walker, workspaces, yaml) from the npm registry
 - **Linting:** Biome, markdownlint
 - **Testing:** Vitest via `@vitest-agent/plugin`; built-artifact e2e harness in `e2e/*`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
@@ -85,8 +85,8 @@ Key coordination points:
 
 - Source `package.json` `"private": true` is transformed by builders based on `publishConfig.access`.
 - Use `catalog:silk` for pinned dependencies, `catalog:silkPeers` for peer dependency ranges.
-- Effect is mixed across the repo: the build tooling (`bundler`, `tsdown-plugins`) is on v4 via `catalog:effect`; everything else is still v3 via `catalog:silk`. Match the package you are in — check its `package.json` before writing Effect code.
-- All Effect code uses class-based services, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`. Services are `Context.Tag` on v3, `Context.Service` on v4.
+- Effect is v4 everywhere (`catalog:effect` / `catalog:effectPeers`). Verify any API against the vendored `.repos/effect-smol` source or the installed beta, never v3 memory.
+- All Effect code uses class-based `Context.Service` services (each exporting a companion `*Shape` interface), `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
 - README.md is for external users; `.claude/design/` for package architecture docs.
 - The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — all three depend only on `@savvy-web/silk-effects` within the repo.
 - All packages version INDEPENDENTLY — `.changeset/config.json` has no `fixed` or `linked` arrays. silk/cli/mcp/changelog are NOT a fixed group, but silk stays exactly pinned to cli/mcp/changelog automatically: silk declares `@savvy-web/cli`/`@savvy-web/mcp`/`@savvy-web/changelog` as source `dependencies` (`workspace:*`), published as EXACT-pinned regular `dependencies` — the build transform no longer promotes them to peers (peer publishing made pnpm `autoInstallPeers` propagate their Effect graph into consumers at wrong versions; `@savvy-web/pnpm-plugin-silk` publicly hoists all three so bins stay available). Changesets reads `workspace:*` as the exact current version, so a cli/mcp/changelog release auto-PATCH-bumps silk (`updateInternalDependencies: patch`) and re-pins the exact version. Because they are plain `dependencies` (never source peerDependencies), silk is NOT force-major-bumped. silk's `versionFiles` glob still bumps the `plugins/*` manifests in lockstep with silk.

@@ -44,7 +44,7 @@ export const ErrorAccumulator = {
 						_tag: "success",
 						value,
 					})),
-					Effect.catchAll((error: E) =>
+					Effect.catch((error: E) =>
 						Effect.succeed({
 							_tag: "failure" as const,
 							item,

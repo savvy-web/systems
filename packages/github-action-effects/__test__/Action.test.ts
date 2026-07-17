@@ -1,4 +1,4 @@
-import { Cause, Data, FiberId } from "effect";
+import { Cause, Data } from "effect";
 import { describe, expect, it } from "vitest";
 import { Action } from "../src/Action.js";
 
@@ -33,7 +33,7 @@ describe("Action.formatCause", () => {
 	});
 
 	it("handles interrupt cause", () => {
-		const cause = Cause.interrupt(FiberId.make(1, 0));
+		const cause = Cause.interrupt(1);
 		const message = Action.formatCause(cause);
 		expect(message.length).toBeGreaterThan(0);
 	});

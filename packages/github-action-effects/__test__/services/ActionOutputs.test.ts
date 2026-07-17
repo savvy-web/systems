@@ -5,7 +5,7 @@ import { ActionOutputs } from "../../src/services/ActionOutputs.js";
 
 // -- Service method shorthand (eliminates repeated pipe+flatMap boilerplate) --
 
-const use = <A, E>(fn: (svc: Effect.Effect.Success<typeof ActionOutputs>) => Effect.Effect<A, E>) =>
+const use = <A, E>(fn: (svc: Effect.Success<typeof ActionOutputs>) => Effect.Effect<A, E>) =>
 	Effect.flatMap(ActionOutputs, fn);
 
 const runWithOutputs = <A, E>(effect: Effect.Effect<A, E, ActionOutputs>) => {

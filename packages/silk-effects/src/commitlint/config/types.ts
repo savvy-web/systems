@@ -1,8 +1,4 @@
-/**
- * TypeScript type definitions for commitlint configuration.
- *
- * @internal
- */
+// TypeScript type definitions for commitlint configuration.
 /**
  * Rule severity level.
  * - 0: Disabled

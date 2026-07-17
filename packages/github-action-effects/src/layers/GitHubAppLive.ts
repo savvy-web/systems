@@ -1,9 +1,9 @@
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
 import { Effect, Layer, Redacted, Schema } from "effect";
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 import { GitHubAppError } from "../errors/GitHubAppError.js";
 import type { InstallationToken } from "../services/GitHubApp.js";
 import { GitHubApp } from "../services/GitHubApp.js";
-import type { AppAuth } from "../services/OctokitAuthApp.js";
+import type { AppAuth, OctokitAuthAppShape } from "../services/OctokitAuthApp.js";
 import { OctokitAuthApp } from "../services/OctokitAuthApp.js";
 import { formatBotIdentity } from "../utils/botIdentity.js";
 
@@ -101,7 +101,7 @@ const resolveInstallationId = (http: HttpClient.HttpClient, auth: AppAuth): Effe
 
 const generateToken = (
 	http: HttpClient.HttpClient,
-	authApp: OctokitAuthApp["Type"],
+	authApp: OctokitAuthAppShape,
 	appId: string,
 	privateKey: Redacted.Redacted<string>,
 	installationId?: number,
@@ -128,7 +128,7 @@ const generateToken = (
 
 const resolveAppIdentity = (
 	http: HttpClient.HttpClient,
-	authApp: OctokitAuthApp["Type"],
+	authApp: OctokitAuthAppShape,
 	appId: string,
 	privateKey: Redacted.Redacted<string>,
 	installationToken?: Redacted.Redacted<string>,
@@ -189,7 +189,7 @@ const revokeToken = (
 	token: Redacted.Redacted<string>,
 ): Effect.Effect<void, GitHubAppError> =>
 	Effect.gen(function* () {
-		const request = HttpClientRequest.del("https://api.github.com/installation/token").pipe(
+		const request = HttpClientRequest.make("DELETE")("https://api.github.com/installation/token").pipe(
 			// `token <value>` (not `Bearer`) is the revoke endpoint's scheme.
 			HttpClientRequest.setHeader("Authorization", `token ${Redacted.value(token)}`),
 			HttpClientRequest.setHeader("Accept", "application/vnd.github+json"),
@@ -231,7 +231,7 @@ export const GitHubAppLive: Layer.Layer<GitHubApp, never, OctokitAuthApp | HttpC
 				Effect.acquireUseRelease(
 					generateToken(http, authApp, appId, privateKey),
 					(tokenInfo) => effect(tokenInfo.token),
-					(tokenInfo) => revokeToken(http, tokenInfo.token).pipe(Effect.catchAll(() => Effect.void)),
+					(tokenInfo) => revokeToken(http, tokenInfo.token).pipe(Effect.catch(() => Effect.void)),
 				),
 		};
 	}),

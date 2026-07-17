@@ -10,7 +10,7 @@ describe("e2e: leaf package build", () => {
 		expect(existsSync(join(out, "index.js"))).toBe(true);
 		expect(existsSync(join(out, "index.d.ts"))).toBe(true);
 		const manifest = JSON.parse(readFileSync(join(out, "package.json"), "utf-8"));
-		expect(manifest.exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(manifest.exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js", default: "./index.js" });
 		expect(manifest.exports["./package.json"]).toBe("./package.json");
 	}, 120_000);
 

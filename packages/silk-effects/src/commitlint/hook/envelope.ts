@@ -13,14 +13,14 @@ import { Schema } from "effect";
 export const PreToolUseEnvelope = Schema.Struct({
 	hook_event_name: Schema.Literal("PreToolUse"),
 	tool_name: Schema.String,
-	tool_input: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	tool_input: Schema.Record(Schema.String, Schema.Unknown),
 });
 export type PreToolUseEnvelope = Schema.Schema.Type<typeof PreToolUseEnvelope>;
 
 export const PostToolUseEnvelope = Schema.Struct({
 	hook_event_name: Schema.Literal("PostToolUse"),
 	tool_name: Schema.String,
-	tool_input: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	tool_input: Schema.Record(Schema.String, Schema.Unknown),
 	tool_response: Schema.Struct({
 		interrupted: Schema.optional(Schema.Boolean),
 		exit_code: Schema.optional(Schema.Number),

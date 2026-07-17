@@ -20,14 +20,14 @@
  */
 
 import { resolve } from "node:path";
-import { Args, Command } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Argument, Command } from "effect/unstable/cli";
 
 const { ConfigInspector } = Changesets;
 
 /* v8 ignore next */
-const dirArg = Args.directory({ name: "dir" }).pipe(Args.withDefault("."));
+const dirArg = Argument.directory("dir").pipe(Argument.withDefault("."));
 
 /**
  * Run validation. Logs a one-line OK on success; logs the error and sets

@@ -118,7 +118,7 @@ describe("Attest.attest — step 4: end-to-end upload", () => {
 
 		expect(Exit.isFailure(exit)).toBe(true);
 		if (Exit.isFailure(exit)) {
-			const failure = Cause.failureOption(exit.cause);
+			const failure = Cause.findErrorOption(exit.cause);
 			expect(failure._tag).toBe("Some");
 			if (failure._tag === "Some") {
 				expect(failure.value._tag).toBe("AttestError");

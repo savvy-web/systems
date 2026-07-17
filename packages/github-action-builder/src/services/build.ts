@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides bundling and build orchestration capabilities
- * using Effect's service pattern with Context.Tag.
+ * using Effect's service pattern with Context.Service.
  *
  * @internal
  */
@@ -102,7 +102,7 @@ export type BuildResult = typeof BuildResultSchema.Type;
 // =============================================================================
 
 /**
- * BuildService interface for build and bundling capabilities.
+ * Service shape for build and bundling capabilities.
  *
  * @remarks
  * This service handles:
@@ -111,29 +111,12 @@ export type BuildResult = typeof BuildResultSchema.Type;
  * - Collecting build statistics
  * - Formatting build results
  *
- * @example Using BuildService with Effect
- * ```typescript
- * import { Effect } from "effect";
- * import { AppLayer, BuildService, ConfigService } from "@savvy-web/github-action-builder";
- *
- * const program = Effect.gen(function* () {
- *   const configService = yield* ConfigService;
- *   const buildService = yield* BuildService;
- *
- *   const { config } = yield* configService.load();
- *   const result = yield* buildService.build(config);
- *
- *   if (result.success) {
- *     console.log("Build complete:", result.entries.length, "entries");
- *   }
- * });
- *
- * Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
- * ```
+ * Use this interface to type structural implementations (e.g. test mocks);
+ * use the {@link BuildService} class as the service key.
  *
  * @public
  */
-export interface BuildService {
+export interface BuildServiceShape {
 	/**
 	 * Build all entries from the configuration.
 	 *
@@ -181,8 +164,28 @@ export interface BuildService {
 }
 
 /**
- * BuildService tag for dependency injection.
+ * BuildService key for dependency injection.
+ *
+ * @example Using BuildService with Effect
+ * ```typescript
+ * import { Effect } from "effect";
+ * import { AppLayer, BuildService, ConfigService } from "@savvy-web/github-action-builder";
+ *
+ * const program = Effect.gen(function* () {
+ *   const configService = yield* ConfigService;
+ *   const buildService = yield* BuildService;
+ *
+ *   const { config } = yield* configService.load();
+ *   const result = yield* buildService.build(config);
+ *
+ *   if (result.success) {
+ *     console.log("Build complete:", result.entries.length, "entries");
+ *   }
+ * });
+ *
+ * Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+ * ```
  *
  * @public
  */
-export const BuildService = Context.GenericTag<BuildService>("BuildService");
+export class BuildService extends Context.Service<BuildService, BuildServiceShape>()("BuildService") {}

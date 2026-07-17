@@ -1,5 +1,5 @@
+import type { WorkspacePackage } from "@effected/workspaces";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WorkspacePackage } from "workspaces-effect";
 import {
 	getWorkspacePackagePaths,
 	getWorkspacePackages,
@@ -8,12 +8,12 @@ import {
 	resetWorkspaceCache,
 } from "../../src/lint/utils/Workspace.js";
 
-vi.mock("workspaces-effect", () => ({
+vi.mock("@effected/workspaces", () => ({
 	findWorkspaceRootSync: vi.fn(),
 	getWorkspacePackagesSync: vi.fn(),
 }));
 
-import { findWorkspaceRootSync, getWorkspacePackagesSync } from "workspaces-effect";
+import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
 
 const mockFindWorkspaceRootSync = vi.mocked(findWorkspaceRootSync);
 const mockGetWorkspacePackagesSync = vi.mocked(getWorkspacePackagesSync);

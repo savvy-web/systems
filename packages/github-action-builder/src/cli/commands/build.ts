@@ -2,8 +2,8 @@
 /**
  * Build command for GitHub Action Builder CLI.
  */
-import { Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 import { BuildFailed, ValidationFailed } from "../../errors.js";
 import { BuildService } from "../../services/build.js";
@@ -14,35 +14,30 @@ import { ValidationService } from "../../services/validation.js";
 /**
  * Config file option - shared across commands.
  */
-export const configOption = Options.file("config").pipe(
-	Options.withAlias("c"),
-	Options.withDescription("Path to configuration file"),
-	Options.optional,
+export const configOption = Flag.file("config").pipe(
+	Flag.withAlias("c"),
+	Flag.withDescription("Path to configuration file"),
+	Flag.optional,
 );
 
 /**
  * Quiet mode option - suppress non-error output.
  */
-export const quietOption = Options.boolean("quiet").pipe(
-	Options.withAlias("q"),
-	Options.withDescription("Suppress non-error output"),
-	Options.withDefault(false),
+export const quietOption = Flag.boolean("quiet").pipe(
+	Flag.withAlias("q"),
+	Flag.withDescription("Suppress non-error output"),
 );
 
 /**
  * Skip validation option.
  */
-export const noValidateOption = Options.boolean("no-validate").pipe(
-	Options.withDescription("Skip validation step"),
-	Options.withDefault(false),
-);
+export const noValidateOption = Flag.boolean("no-validate").pipe(Flag.withDescription("Skip validation step"));
 
 /**
  * Skip persist-local option.
  */
-export const noPersistOption = Options.boolean("no-persist").pipe(
-	Options.withDescription("Skip persisting build output to local action directory"),
-	Options.withDefault(false),
+export const noPersistOption = Flag.boolean("no-persist").pipe(
+	Flag.withDescription("Skip persisting build output to local action directory"),
 );
 
 /**

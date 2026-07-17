@@ -6,31 +6,31 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 
 /** Cache-diagnosis variant of the `turbo_inspect` result. */
 export const TurboCacheResult = Schema.Struct({
 	mode: Schema.Literal("cache"),
 	result: Turbo.CacheDiagnosis,
-}).annotations({ identifier: "TurboCacheResult" });
+}).annotate({ identifier: "TurboCacheResult" });
 
 /** Task-graph variant of the `turbo_inspect` result. */
 export const TurboGraphResult = Schema.Struct({
 	mode: Schema.Literal("graph"),
 	result: Turbo.TaskGraphResult,
-}).annotations({ identifier: "TurboGraphResult" });
+}).annotate({ identifier: "TurboGraphResult" });
 
 /** Affected-packages variant of the `turbo_inspect` result. */
 export const TurboAffectedResult = Schema.Struct({
 	mode: Schema.Literal("affected"),
 	result: Turbo.AffectedResult,
-}).annotations({ identifier: "TurboAffectedResult" });
+}).annotate({ identifier: "TurboAffectedResult" });
 
 /** The `turbo_inspect` tool result — a discriminated union keyed by `mode`. */
-export const TurboInspectResult = Schema.Union(TurboCacheResult, TurboGraphResult, TurboAffectedResult).annotations({
+export const TurboInspectResult = Schema.Union([TurboCacheResult, TurboGraphResult, TurboAffectedResult]).annotate({
 	identifier: "TurboInspectResult",
 	title: "turbo_inspect result",
 	description: "Read-only Turborepo inspection grouped by mode (cache | graph | affected).",
@@ -97,14 +97,12 @@ const renderMarkdown = (data: TurboInspectResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const TurboInspectAsMarkdown = Schema.transformOrFail(TurboInspectResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "TurboInspectAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const TurboInspectAsMarkdown = TurboInspectResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "TurboInspectAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link turboInspect} handler. */
 export interface TurboInspectArgs {

@@ -164,7 +164,7 @@ describe("GitTagLive", () => {
 			mockListTags.mockRejectedValue(new Error("api error"));
 			const result = await Effect.runPromise(
 				Effect.provide(
-					Effect.flatMap(GitTag, (svc) => svc.list("v1.")).pipe(Effect.catchAll((error) => Effect.succeed(error))),
+					Effect.flatMap(GitTag, (svc) => svc.list("v1.")).pipe(Effect.catch((error) => Effect.succeed(error))),
 					testLayer,
 				),
 			);
@@ -180,7 +180,7 @@ describe("GitTagLive", () => {
 			const result = await Effect.runPromise(
 				Effect.provide(
 					Effect.flatMap(GitTag, (svc) => svc.create("v1.0.0", "abc123")).pipe(
-						Effect.catchAll((error) => Effect.succeed(error)),
+						Effect.catch((error) => Effect.succeed(error)),
 					),
 					testLayer,
 				),
@@ -194,7 +194,7 @@ describe("GitTagLive", () => {
 			mockDeleteRef.mockRejectedValue(new Error("api error"));
 			const result = await Effect.runPromise(
 				Effect.provide(
-					Effect.flatMap(GitTag, (svc) => svc.delete("v2.0.0")).pipe(Effect.catchAll((error) => Effect.succeed(error))),
+					Effect.flatMap(GitTag, (svc) => svc.delete("v2.0.0")).pipe(Effect.catch((error) => Effect.succeed(error))),
 					testLayer,
 				),
 			);
@@ -207,9 +207,7 @@ describe("GitTagLive", () => {
 			mockGetRef.mockRejectedValue(new Error("not found"));
 			const result = await Effect.runPromise(
 				Effect.provide(
-					Effect.flatMap(GitTag, (svc) => svc.resolve("v3.0.0")).pipe(
-						Effect.catchAll((error) => Effect.succeed(error)),
-					),
+					Effect.flatMap(GitTag, (svc) => svc.resolve("v3.0.0")).pipe(Effect.catch((error) => Effect.succeed(error))),
 					testLayer,
 				),
 			);
@@ -266,9 +264,7 @@ describe("GitTagLive", () => {
 			mockGetTag.mockRejectedValue(new Error("tag object not found"));
 			const result = await Effect.runPromise(
 				Effect.provide(
-					Effect.flatMap(GitTag, (svc) => svc.resolve("v4.0.0")).pipe(
-						Effect.catchAll((error) => Effect.succeed(error)),
-					),
+					Effect.flatMap(GitTag, (svc) => svc.resolve("v4.0.0")).pipe(Effect.catch((error) => Effect.succeed(error))),
 					testLayer,
 				),
 			);

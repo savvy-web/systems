@@ -156,7 +156,7 @@ describe("GitHubGraphQL", () => {
 			const result = await Effect.runPromise(
 				GitHubGraphQL.pipe(
 					Effect.flatMap((gql) => gql.mutation("CreateProject", "mutation { createProject }")),
-					Effect.catchAll((error) => Effect.succeed(error)),
+					Effect.catch((error) => Effect.succeed(error)),
 					Effect.provide(layer),
 				),
 			);

@@ -1,4 +1,4 @@
-import { Effect, Exit } from "effect";
+import { Cause, Effect, Exit, Option } from "effect";
 import { describe, expect, it } from "vitest";
 import { TagFormatError } from "../../src/errors/TagFormatError.js";
 import type { VersioningStrategyResult } from "../../src/schemas/VersioningSchemas.js";
@@ -87,12 +87,10 @@ describe("TagStrategy", () => {
 			);
 			expect(exit._tag).toBe("Failure");
 			if (Exit.isFailure(exit)) {
-				const cause = exit.cause;
-				expect(cause._tag).toBe("Fail");
-				if (cause._tag === "Fail") {
-					expect(cause.error).toBeInstanceOf(TagFormatError);
-					expect((cause.error as TagFormatError)._tag).toBe("TagFormatError");
-				}
+				// v4 Cause is a collection of reasons; extract the typed error.
+				const error = Option.getOrThrow(Cause.findErrorOption(exit.cause));
+				expect(error).toBeInstanceOf(TagFormatError);
+				expect(error._tag).toBe("TagFormatError");
 			}
 		});
 	});

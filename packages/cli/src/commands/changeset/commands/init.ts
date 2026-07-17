@@ -34,14 +34,14 @@
  * @internal
  */
 
-import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { Git } from "@effected/git";
+import type { JsoncFormattingOptions } from "@effected/jsonc";
+import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Data, Effect, Schema } from "effect";
-import type { JsoncFormattingOptions } from "jsonc-effect";
-import { applyEdits, modify, parse as parseJsonc } from "jsonc-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Data, Effect, Option, Result, Schema } from "effect";
 
 const { LegacyVersionFilesSchema } = Changesets;
 
@@ -127,17 +127,20 @@ export class InitError extends InitErrorBase<{
  *
  * @internal
  */
-export function detectGitHubRepo(cwd: string): string | null {
-	try {
-		const url = execSync("git remote get-url origin", { cwd, encoding: "utf-8" }).trim();
-		const https = url.match(/github\.com\/([^/]+)\/([^/.]+)/);
+export function detectGitHubRepo(cwd: string): Effect.Effect<string | null, never, Git> {
+	return Effect.gen(function* () {
+		const git = yield* Git;
+		// The kit degrades a missing remote to Option.none; any other failure
+		// (not a git repo, git unavailable) degrades here — same null contract
+		// as the previous execSync form.
+		const url = yield* git.remoteUrl(cwd).pipe(Effect.catch(() => Effect.succeed(Option.none<string>())));
+		if (Option.isNone(url)) return null;
+		const https = url.value.match(/github\.com\/([^/]+)\/([^/.]+)/);
 		if (https) return `${https[1]}/${https[2]}`;
-		const ssh = url.match(/github\.com:([^/]+)\/([^/.]+)/);
+		const ssh = url.value.match(/github\.com:([^/]+)\/([^/.]+)/);
 		if (ssh) return `${ssh[1]}/${ssh[2]}`;
-	} catch {
-		// git not available or no remote
-	}
-	return null;
+		return null;
+	});
 }
 
 /**
@@ -166,7 +169,7 @@ const JSONC_FORMAT: Partial<JsoncFormattingOptions> = {
 export function resolveWorkspaceRoot(cwd: string): Effect.Effect<string, never, WorkspaceRoot> {
 	return WorkspaceRoot.pipe(
 		Effect.flatMap((wr) => wr.find(cwd)),
-		Effect.catchAll(() => Effect.succeed(cwd)),
+		Effect.catch(() => Effect.succeed(cwd)),
 	);
 }
 
@@ -366,7 +369,7 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 			);
 		}
 
-		let parsed = (yield* parseJsonc(text)) as Record<string, unknown>;
+		let parsed = (yield* Jsonc.parse(text)) as Record<string, unknown>;
 
 		// Reconcile customRules: register the canonical silk shim, migrate any
 		// pre-merge standalone entry to it, and dedupe. `init` always writes the
@@ -374,10 +377,10 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 		const currentRules = Array.isArray(parsed.customRules) ? (parsed.customRules as unknown[]) : null;
 		if (currentRules === null) {
 			// customRules key doesn't exist yet — set the whole array
-			const edits = yield* modify(text, ["customRules"], [CUSTOM_RULES_ENTRY], {
+			const edits = yield* JsoncModifier.modify(text, ["customRules"], [CUSTOM_RULES_ENTRY], {
 				formattingOptions: JSONC_FORMAT,
 			});
-			text = yield* applyEdits(text, edits);
+			text = JsoncEdit.applyAll(text, edits);
 		} else {
 			// Keep unrelated rules in order; drop any legacy or duplicate silk
 			// entry, then append exactly one canonical silk entry.
@@ -385,30 +388,30 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 			desired.push(CUSTOM_RULES_ENTRY);
 			const changed = desired.length !== currentRules.length || desired.some((r, i) => r !== currentRules[i]);
 			if (changed) {
-				const edits = yield* modify(text, ["customRules"], desired, {
+				const edits = yield* JsoncModifier.modify(text, ["customRules"], desired, {
 					formattingOptions: JSONC_FORMAT,
 				});
-				text = yield* applyEdits(text, edits);
+				text = JsoncEdit.applyAll(text, edits);
 			}
 		}
 
 		// Ensure config is an object (replace null/missing with {})
-		parsed = (yield* parseJsonc(text)) as Record<string, unknown>;
+		parsed = (yield* Jsonc.parse(text)) as Record<string, unknown>;
 		const currentConfig = parsed.config;
 		if (typeof currentConfig !== "object" || currentConfig === null) {
-			const edits = yield* modify(text, ["config"], {}, { formattingOptions: JSONC_FORMAT });
-			text = yield* applyEdits(text, edits);
+			const edits = yield* JsoncModifier.modify(text, ["config"], {}, { formattingOptions: JSONC_FORMAT });
+			text = JsoncEdit.applyAll(text, edits);
 		}
 
 		// Add missing rule entries
-		parsed = (yield* parseJsonc(text)) as Record<string, unknown>;
+		parsed = (yield* Jsonc.parse(text)) as Record<string, unknown>;
 		const config = parsed.config as Record<string, unknown>;
 		for (const rule of RULE_NAMES) {
 			if (!(rule in config)) {
-				const edits = yield* modify(text, ["config", rule], false, {
+				const edits = yield* JsoncModifier.modify(text, ["config", rule], false, {
 					formattingOptions: JSONC_FORMAT,
 				});
-				text = yield* applyEdits(text, edits);
+				text = JsoncEdit.applyAll(text, edits);
 			}
 		}
 
@@ -424,7 +427,7 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 		}
 		return `Updated ${foundPath}`;
 	}).pipe(
-		Effect.catchAll((error) => {
+		Effect.catch((error) => {
 			if (error instanceof InitError) return Effect.fail(error);
 			return Effect.fail(
 				new InitError({
@@ -565,8 +568,8 @@ export function checkConfig(changesetDir: string, repoSlug: string): CheckIssue[
 		// Validate versionFiles if present
 		const options = Array.isArray(changelog) ? changelog[1] : undefined;
 		if (options && typeof options === "object" && "versionFiles" in options) {
-			const result = Schema.decodeUnknownEither(LegacyVersionFilesSchema)(options.versionFiles);
-			if (result._tag === "Left") {
+			const result = Schema.decodeUnknownResult(LegacyVersionFilesSchema)(options.versionFiles);
+			if (Result.isFailure(result)) {
 				issues.push({
 					file: ".changeset/config.json",
 					message: "versionFiles config is invalid",
@@ -608,7 +611,7 @@ export function checkBaseMarkdownlint(root: string): CheckIssue[] {
 
 	try {
 		const raw = readFileSync(join(root, foundPath), "utf-8");
-		const parsed = Effect.runSync(parseJsonc(raw)) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(raw)) as Record<string, unknown>;
 		const issues: CheckIssue[] = [];
 
 		if (
@@ -691,13 +694,13 @@ export function runChangesetInit(opts: {
 	quiet: boolean;
 	skipMarkdownlint: boolean;
 	check: boolean;
-}): Effect.Effect<void, never, WorkspaceRoot> {
+}): Effect.Effect<void, never, WorkspaceRoot | Git> {
 	const { force, quiet, skipMarkdownlint, check } = opts;
 	return Effect.gen(function* () {
 		const root = yield* resolveWorkspaceRoot(process.cwd());
 
 		// 1. Detect GitHub repo
-		const repo = detectGitHubRepo(root);
+		const repo = yield* detectGitHubRepo(root);
 		if (!repo && !quiet) {
 			yield* Effect.log("Warning: could not detect GitHub repo from git remote, using placeholder");
 		}
@@ -733,9 +736,9 @@ export function runChangesetInit(opts: {
 		const errors: InitError[] = [];
 
 		// 3. Handle config.json
-		const configResult = yield* handleConfig(changesetDir, repoSlug, force).pipe(Effect.either);
-		if (configResult._tag === "Right") {
-			yield* Effect.log(configResult.right);
+		const configResult = yield* handleConfig(changesetDir, repoSlug, force).pipe(Effect.result);
+		if (Result.isSuccess(configResult)) {
+			yield* Effect.log(configResult.success);
 			// 3b. Surface deprecation when the (possibly newly patched) config
 			//     still carries the legacy top-level `versionFiles[]`. This is
 			//     never fatal — the warning text names the migration target.
@@ -743,25 +746,25 @@ export function runChangesetInit(opts: {
 				yield* warnIfLegacyVersionFiles(changesetDir);
 			}
 		} else {
-			errors.push(configResult.left);
+			errors.push(configResult.failure);
 		}
 
 		// 4. Handle base markdownlint config
 		if (!skipMarkdownlint) {
-			const baseResult = yield* handleBaseMarkdownlint(root).pipe(Effect.either);
-			if (baseResult._tag === "Right") {
-				yield* Effect.log(baseResult.right);
+			const baseResult = yield* handleBaseMarkdownlint(root).pipe(Effect.result);
+			if (Result.isSuccess(baseResult)) {
+				yield* Effect.log(baseResult.success);
 			} else {
-				errors.push(baseResult.left);
+				errors.push(baseResult.failure);
 			}
 		}
 
 		// 5. Handle .changeset/.markdownlint.json
-		const mdlintResult = yield* handleChangesetMarkdownlint(changesetDir, root, force).pipe(Effect.either);
-		if (mdlintResult._tag === "Right") {
-			yield* Effect.log(mdlintResult.right);
+		const mdlintResult = yield* handleChangesetMarkdownlint(changesetDir, root, force).pipe(Effect.result);
+		if (Result.isSuccess(mdlintResult)) {
+			yield* Effect.log(mdlintResult.success);
 		} else {
-			errors.push(mdlintResult.left);
+			errors.push(mdlintResult.failure);
 		}
 
 		// Report collected errors
@@ -777,7 +780,7 @@ export function runChangesetInit(opts: {
 
 		yield* Effect.log("Init complete.");
 	}).pipe(
-		Effect.catchAll((error) =>
+		Effect.catch((error) =>
 			Effect.gen(function* () {
 				if (!quiet) {
 					yield* Effect.logError(error instanceof InitError ? error.message : `Init failed: ${String(error)}`);

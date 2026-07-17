@@ -75,7 +75,7 @@ describe("GitHubRelease", () => {
 		const error = await Effect.runPromise(
 			GitHubRelease.pipe(
 				Effect.flatMap((svc) => svc.getByTag("missing")),
-				Effect.catchAll((e) => Effect.succeed(e)),
+				Effect.catch((e) => Effect.succeed(e)),
 				Effect.provide(layer),
 			),
 		);

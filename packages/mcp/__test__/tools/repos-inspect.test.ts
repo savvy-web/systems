@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import { ReposInspectAsMarkdown, ReposInspectResult, reposInspect } from "../../src/tools/repos-inspect.js";
@@ -64,7 +64,7 @@ describe("reposInspect handler", () => {
 	it("projects status mode and renders markdown", async () => {
 		const data = await run(reposInspect({ mode: "status" }, "/repo"));
 		expect(data.mode).toBe("status");
-		const md = Schema.decodeSync(ReposInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
 		expect(md).toContain("foo");
 		expect(md).toContain("abc123");
 	});
@@ -75,13 +75,13 @@ describe("reposInspect handler", () => {
 		if (data.mode === "config") {
 			expect(data.result.repos.foo.url).toBe("https://example.com/foo.git");
 		}
-		const md = Schema.decodeSync(ReposInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
 		expect(md).toContain("repos config");
 		expect(md).toContain("vendor lib");
 	});
 
 	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeSync(ReposInspectAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(ReposInspectAsMarkdown)("anything")).toThrow();
 	});
 
 	it("renders repo-derived note text as an inert code span via delimiter runs (prompt-injection hardening)", () => {
@@ -99,7 +99,7 @@ describe("reposInspect handler", () => {
 				},
 			},
 		};
-		const md = Schema.decodeSync(ReposInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
 		// The payload is wrapped in a backtick run strictly longer than any run
 		// it contains (here: 1-backtick run inside, so a 2-backtick delimiter),
 		// space-padded because the value starts with a backtick.

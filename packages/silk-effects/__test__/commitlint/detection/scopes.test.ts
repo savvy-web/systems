@@ -1,26 +1,28 @@
-import { NodeContext } from "@effect/platform-node";
-import { Effect, Layer, LogLevel, Logger } from "effect";
+import { NodeServices } from "@effect/platform-node";
+import type { WorkspaceDiscoveryShape } from "@effected/workspaces";
+import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
+import { Effect, Layer, Option, References } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceDiscovery, WorkspaceDiscoveryLive, WorkspaceRootLive } from "workspaces-effect";
 import { detectScopes } from "../../../src/commitlint/detection/scopes.js";
 
 /** Test layer with real workspace services for integration tests, with logs silenced. */
-const TestLayer = WorkspaceDiscoveryLive.pipe(
-	Layer.provideMerge(WorkspaceRootLive),
-	Layer.provideMerge(NodeContext.layer),
-	Layer.provide(Logger.minimumLogLevel(LogLevel.None)),
+const TestLayer = WorkspaceDiscovery.layer().pipe(
+	Layer.provide(WorkspaceRoot.layer),
+	Layer.provide(NodeServices.layer),
+	Layer.provide(Layer.succeed(References.MinimumLogLevel, "None")),
 );
 
 /** Stub layer that returns empty packages. */
-const EmptyLayer = Layer.succeed(
-	WorkspaceDiscovery,
-	WorkspaceDiscovery.of({
-		listPackages: () => Effect.succeed([]),
-		getPackage: () => Effect.die("not implemented"),
-		importerMap: () => Effect.succeed(new Map()),
-		refresh: () => Effect.void,
-	}),
-);
+const emptyDiscovery: WorkspaceDiscoveryShape = {
+	info: () => Effect.die("not implemented"),
+	listPackages: () => Effect.succeed([]),
+	importerMap: () => Effect.succeed(new Map()),
+	getPackage: () => Effect.die("not implemented"),
+	resolveFile: () => Effect.succeed(Option.none()),
+	resolveFiles: () => Effect.succeed([]),
+	refresh: () => Effect.void,
+};
+const EmptyLayer = Layer.succeed(WorkspaceDiscovery, WorkspaceDiscovery.of(emptyDiscovery));
 
 describe("detectScopes", () => {
 	it("returns an array of scopes for the current repository", async () => {

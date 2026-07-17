@@ -7,10 +7,10 @@
  */
 
 import { resolve } from "node:path";
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Data, Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Data, Effect, Schema, SchemaGetter } from "effect";
 
 /** A thrown failure from the pure {@link Changesets.ChangesetLinter.validate} (e.g. a missing directory). */
 export class ChangesetValidateError extends Data.TaggedError("ChangesetValidateError")<{
@@ -25,7 +25,7 @@ export const ChangesetLintMessage = Schema.Struct({
 	line: Schema.Number,
 	column: Schema.Number,
 	message: Schema.String,
-}).annotations({ identifier: "ChangesetLintMessage" });
+}).annotate({ identifier: "ChangesetLintMessage" });
 
 /** The `changeset_validate` tool result. */
 export const ChangesetValidateResult = Schema.Struct({
@@ -33,7 +33,7 @@ export const ChangesetValidateResult = Schema.Struct({
 	ok: Schema.Boolean,
 	errorCount: Schema.Number,
 	messages: Schema.Array(ChangesetLintMessage),
-}).annotations({
+}).annotate({
 	identifier: "ChangesetValidateResult",
 	title: "changeset_validate result",
 	description: "Read-only validation of changeset files against the section-aware rules.",
@@ -61,14 +61,12 @@ const renderMarkdown = (data: ChangesetValidateResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetValidateAsMarkdown = Schema.transformOrFail(ChangesetValidateResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "ChangesetValidateAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const ChangesetValidateAsMarkdown = ChangesetValidateResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "ChangesetValidateAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link changesetValidate} handler. */
 export interface ChangesetValidateArgs {

@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import { SectionDefinition } from "../../src/schemas/SectionDefinition.js";
 import { ManagedSection, ManagedSectionLive } from "../../src/services/ManagedSection.js";

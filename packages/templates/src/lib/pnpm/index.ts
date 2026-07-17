@@ -1,5 +1,5 @@
+import { Yaml } from "@effected/yaml";
 import { Effect, Schema } from "effect";
-import { stringify } from "yaml-effect";
 import type { TemplateEntry } from "../types.js";
 
 /**
@@ -10,8 +10,8 @@ import type { TemplateEntry } from "../types.js";
 export const PnpmWorkspaceOptions = Schema.Struct({
 	packages: Schema.Array(Schema.String),
 	autoInstallPeers: Schema.optional(Schema.Boolean),
-	catalogMode: Schema.optional(Schema.Literal("strict", "prefer", "manual")),
-	catalog: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+	catalogMode: Schema.optional(Schema.Literals(["strict", "prefer", "manual"])),
+	catalog: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 });
 
 /**
@@ -39,7 +39,7 @@ export function createPnpmWorkspace(options: unknown): TemplateEntry[] {
 	if (opts.catalogMode) config.catalogMode = opts.catalogMode;
 	if (opts.catalog && Object.keys(opts.catalog).length > 0) config.catalog = opts.catalog;
 
-	const content = Effect.runSync(stringify(config));
+	const content = Effect.runSync(Yaml.stringify(config));
 
 	return [{ name: "pnpm-workspace", filename: "pnpm-workspace.yaml", content }];
 }

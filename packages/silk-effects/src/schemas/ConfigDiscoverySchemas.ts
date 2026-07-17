@@ -11,7 +11,7 @@ import { Schema } from "effect";
  * @since 0.1.0
  * @public
  */
-export const ConfigSource = Schema.Literal("lib", "root", "cosmiconfig");
+export const ConfigSource = Schema.Literals(["lib", "root", "cosmiconfig"]);
 /**
  * @since 0.1.0
  * @public

@@ -1,12 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
 import { Layer, ManagedRuntime } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { McpContext } from "../src/context.js";
-import { SilkRuntimeLive } from "../src/runtime.js";
+import { makeSilkRuntimeLayer } from "../src/runtime.js";
 import { workspaceInfo } from "../src/tools/workspace-info.js";
 
 function setupFixture(): string {
@@ -28,7 +28,9 @@ describe("server spine – workspace_info over the real runtime", () => {
 
 	beforeEach(() => {
 		dir = setupFixture();
-		runtime = ManagedRuntime.make(SilkRuntimeLive.pipe(Layer.provide(NodeContext.layer)));
+		// The runtime is root-bound at layer build (single-root semantics), so
+		// each fixture gets its own layer built with that fixture's root.
+		runtime = ManagedRuntime.make(makeSilkRuntimeLayer(dir).pipe(Layer.provide(NodeServices.layer)));
 	});
 	afterEach(async () => {
 		await runtime.dispose();

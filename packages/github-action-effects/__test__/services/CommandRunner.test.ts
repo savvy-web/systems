@@ -1,4 +1,4 @@
-import { Effect, Exit, Schema } from "effect";
+import { Cause, Effect, Exit, Option, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { CommandRunnerError } from "../../src/errors/CommandRunnerError.js";
 import type { CommandResponse } from "../../src/layers/CommandRunnerTest.js";
@@ -27,7 +27,7 @@ const exec = (command: string, args?: ReadonlyArray<string>) =>
 const execCapture = (command: string, args?: ReadonlyArray<string>) =>
 	Effect.flatMap(CommandRunner, (svc) => svc.execCapture(command, args));
 
-const execJson = <A, I>(command: string, args: ReadonlyArray<string> | undefined, schema: Schema.Schema<A, I, never>) =>
+const execJson = <A, I>(command: string, args: ReadonlyArray<string> | undefined, schema: Schema.Codec<A, I>) =>
 	Effect.flatMap(CommandRunner, (svc) => svc.execJson(command, args, schema));
 
 const execLines = (command: string, args?: ReadonlyArray<string>) =>
@@ -51,10 +51,7 @@ describe("CommandRunner", () => {
 			);
 			expect(exit._tag).toBe("Failure");
 			if (Exit.isFailure(exit)) {
-				const error = exit.cause.pipe((cause) => {
-					if (cause._tag === "Fail") return cause.error;
-					return undefined;
-				});
+				const error = Option.getOrUndefined(Cause.findErrorOption(exit.cause));
 				expect(error).toBeInstanceOf(CommandRunnerError);
 				if (error instanceof CommandRunnerError) {
 					expect(error.exitCode).toBe(128);

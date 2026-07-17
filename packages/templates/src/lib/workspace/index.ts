@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 import { createBiome } from "../biome/index.js";
 import { createChangeset } from "../changeset/index.js";
 import { createGitignore } from "../gitignore/index.js";
@@ -25,10 +25,10 @@ const Features = Schema.Struct({
  */
 export const WorkspaceOptions = Schema.Struct({
 	name: Schema.String,
-	packageManager: Schema.Literal("pnpm", "npm", "bun"),
+	packageManager: Schema.Literals(["pnpm", "npm", "bun"]),
 	packageManagerVersion: Schema.String,
 	nodeVersion: Schema.String,
-	biomeVersion: Schema.optionalWith(Schema.String, { default: () => "2.3.3" }),
+	biomeVersion: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed("2.3.3"))),
 	features: Schema.optional(Features),
 });
 

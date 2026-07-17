@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { BlobClient, BlockBlobClient } from "@azure/storage-blob";
-import { HttpClient } from "@effect/platform";
 import { Effect, Layer, Option, Redacted } from "effect";
+import { HttpClient } from "effect/unstable/http";
 import { BlobStoreError } from "../errors/BlobStoreError.js";
 import { BlobStore } from "../services/BlobStore.js";
 import { CONFLICT, makeTwirpRetrySchedule, twirpCall as twirpCallShared } from "./internal/twirp.js";

@@ -18,6 +18,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { NodeServices } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -104,7 +105,9 @@ function setupGitFixture(opts: GitFixtureOptions): { dir: string; layer: Layer.L
 
 	const inspected = opts.inspectedFor(dir);
 	const inspectorLayer = makeConfigInspectorTest(inspected);
-	const layer = BranchAnalyzerLive.pipe(Layer.provide(inspectorLayer));
+	// v4: BranchAnalyzerLive composes @effected/git internally, which needs a
+	// ChildProcessSpawner — NodeServices.layer supplies it.
+	const layer = BranchAnalyzerLive.pipe(Layer.provide(inspectorLayer), Layer.provide(NodeServices.layer));
 
 	return { dir, layer };
 }
@@ -263,6 +266,7 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 					}),
 				),
 			),
+			Layer.provide(NodeServices.layer),
 		);
 
 		const result = await runAnalyze(realLayer, dir);
@@ -338,7 +342,7 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 				refresh: () => Effect.void,
 			},
 		);
-		const layer = BranchAnalyzerLive.pipe(Layer.provide(failingInspector));
+		const layer = BranchAnalyzerLive.pipe(Layer.provide(failingInspector), Layer.provide(NodeServices.layer));
 
 		const err = await runAnalyzeFail(layer, dir);
 		expect(err).toBeInstanceOf(ConfigurationError);

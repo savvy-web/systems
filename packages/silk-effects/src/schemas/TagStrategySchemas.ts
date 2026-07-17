@@ -12,7 +12,7 @@ import { Schema } from "effect";
  * @since 0.1.0
  * @public
  */
-export const TagStrategyType = Schema.Literal("single", "scoped");
+export const TagStrategyType = Schema.Literals(["single", "scoped"]);
 /**
  * @since 0.1.0
  * @public

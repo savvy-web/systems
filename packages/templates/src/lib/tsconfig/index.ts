@@ -7,7 +7,7 @@ import type { TemplateEntry } from "../types.js";
  * @public
  */
 export const TsConfigOptions = Schema.Struct({
-	extends: Schema.optional(Schema.Union(Schema.String, Schema.Array(Schema.String))),
+	extends: Schema.optional(Schema.Union([Schema.String, Schema.Array(Schema.String)])),
 	composite: Schema.optional(Schema.Boolean),
 	include: Schema.optional(Schema.Array(Schema.String)),
 	exclude: Schema.optional(Schema.Array(Schema.String)),

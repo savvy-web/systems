@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 
 /**
  * Configuration for how private packages are handled during versioning.
@@ -10,13 +10,13 @@ import { Schema } from "effect";
  *
  * @since 0.2.0
  */
-const PrivatePackagesConfig = Schema.Union(
+const PrivatePackagesConfig = Schema.Union([
 	Schema.Struct({
 		tag: Schema.optional(Schema.Boolean),
 		version: Schema.optional(Schema.Boolean),
 	}),
 	Schema.Literal(false),
-);
+]);
 
 /**
  * Snapshot release configuration for changesets.
@@ -46,13 +46,13 @@ const SnapshotConfig = Schema.Struct({
 // Standard changesets config (matches @changesets/config@4.0.0-next.6 upstream spec)
 /** @public */
 export const ChangesetConfigFile = Schema.Struct({
-	changelog: Schema.optional(Schema.Union(Schema.String, Schema.Array(Schema.Unknown), Schema.Literal(false))),
-	commit: Schema.optional(Schema.Union(Schema.Boolean, Schema.String, Schema.Array(Schema.Unknown))),
+	changelog: Schema.optional(Schema.Union([Schema.String, Schema.Array(Schema.Unknown), Schema.Literal(false)])),
+	commit: Schema.optional(Schema.Union([Schema.Boolean, Schema.String, Schema.Array(Schema.Unknown)])),
 	fixed: Schema.optional(Schema.Array(Schema.Array(Schema.String))),
 	linked: Schema.optional(Schema.Array(Schema.Array(Schema.String))),
-	access: Schema.optional(Schema.Literal("public", "restricted")),
+	access: Schema.optional(Schema.Literals(["public", "restricted"])),
 	baseBranch: Schema.optional(Schema.String),
-	updateInternalDependencies: Schema.optional(Schema.Literal("patch", "minor", "major")),
+	updateInternalDependencies: Schema.optional(Schema.Literals(["patch", "minor", "major"])),
 	ignore: Schema.optional(Schema.Array(Schema.String)),
 	privatePackages: Schema.optional(PrivatePackagesConfig),
 	prettier: Schema.optional(Schema.Boolean),
@@ -78,12 +78,13 @@ export type ChangesetConfigFile = typeof ChangesetConfigFile.Type;
  */
 // Silk extension — detected by checking changelog field
 /** @public */
-export const SilkChangesetConfigFile = Schema.extend(
-	ChangesetConfigFile,
-	Schema.Struct({
-		_isSilk: Schema.optionalWith(Schema.Boolean, { default: () => true }),
-	}),
-);
+export const SilkChangesetConfigFile = Schema.Struct({
+	...ChangesetConfigFile.fields,
+	_isSilk: Schema.Boolean.pipe(
+		Schema.withDecodingDefaultType(Effect.succeed(true)),
+		Schema.withConstructorDefault(Effect.succeed(true)),
+	),
+});
 /**
  * @since 0.1.0
  * @public
@@ -101,7 +102,7 @@ export type SilkChangesetConfigFile = typeof SilkChangesetConfigFile.Type;
  * @since 0.1.0
  * @public
  */
-export const VersioningStrategyType = Schema.Literal("single", "fixed-group", "independent");
+export const VersioningStrategyType = Schema.Literals(["single", "fixed-group", "independent"]);
 /**
  * @since 0.1.0
  * @public

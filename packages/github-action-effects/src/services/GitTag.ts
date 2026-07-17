@@ -17,23 +17,27 @@ export interface TagRef {
 }
 
 /**
+ * Service shape for {@link GitTag}.
+ *
+ * @public
+ */
+export interface GitTagShape {
+	/** Create a lightweight tag pointing at the given SHA. */
+	readonly create: (tag: string, sha: string) => Effect.Effect<void, GitTagError>;
+
+	/** Delete a tag. */
+	readonly delete: (tag: string) => Effect.Effect<void, GitTagError>;
+
+	/** List tags, optionally filtered by prefix. */
+	readonly list: (prefix?: string) => Effect.Effect<Array<TagRef>, GitTagError>;
+
+	/** Resolve a tag to its commit SHA, dereferencing annotated tags. */
+	readonly resolve: (tag: string) => Effect.Effect<string, GitTagError>;
+}
+
+/**
  * Service for GitHub tag management via Git Data API.
  *
  * @public
  */
-export class GitTag extends Context.Tag("github-action-effects/GitTag")<
-	GitTag,
-	{
-		/** Create a lightweight tag pointing at the given SHA. */
-		readonly create: (tag: string, sha: string) => Effect.Effect<void, GitTagError>;
-
-		/** Delete a tag. */
-		readonly delete: (tag: string) => Effect.Effect<void, GitTagError>;
-
-		/** List tags, optionally filtered by prefix. */
-		readonly list: (prefix?: string) => Effect.Effect<Array<TagRef>, GitTagError>;
-
-		/** Resolve a tag to its commit SHA, dereferencing annotated tags. */
-		readonly resolve: (tag: string) => Effect.Effect<string, GitTagError>;
-	}
->() {}
+export class GitTag extends Context.Service<GitTag, GitTagShape>()("github-action-effects/GitTag") {}

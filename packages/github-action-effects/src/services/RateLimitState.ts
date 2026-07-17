@@ -22,16 +22,23 @@ export interface RateLimitSnapshot {
 }
 
 /**
+ * Service shape for {@link RateLimitState}: a `Ref` holding the most recently
+ * observed snapshot, `Option.none()` until the first response is seen.
+ *
+ * INTERNAL — see {@link RateLimitState}.
+ */
+export type RateLimitStateShape = Ref.Ref<Option.Option<RateLimitSnapshot>>;
+
+/**
  * Internal shared state holding the most recently observed rate-limit snapshot.
  *
  * INTERNAL — not exported from `index.ts` / `testing.ts`. Provided by both
  * `GitHubClientLive.*` and `RateLimiterLive` so the client can record headers
  * and the rate limiter can read them without a pre-flight probe.
  */
-export class RateLimitState extends Context.Tag("github-action-effects/RateLimitState")<
-	RateLimitState,
-	Ref.Ref<Option.Option<RateLimitSnapshot>>
->() {
+export class RateLimitState extends Context.Service<RateLimitState, RateLimitStateShape>()(
+	"github-action-effects/RateLimitState",
+) {
 	/** Default layer seeding an empty (unobserved) snapshot. */
 	static readonly Default: Layer.Layer<RateLimitState> = Layer.effect(
 		RateLimitState,

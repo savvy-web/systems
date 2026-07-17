@@ -14,8 +14,8 @@
  * @internal
  */
 
-import { Command, Options } from "@effect/cli";
 import { Effect } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 import { runChangesetInit } from "./changeset/index.js";
 import { runCommitInit } from "./commit/init.js";
@@ -33,25 +33,25 @@ const DEFAULT_LINT_CONFIG = "lib/configs/lint-staged.config.ts";
 // ---------------------------------------------------------------------------
 
 /* v8 ignore start -- CLI option definitions; orchestration logic tested via runInit */
-const forceOption = Options.boolean("force").pipe(
-	Options.withAlias("f"),
-	Options.withDescription("Overwrite existing config files and hooks across all tools"),
-	Options.withDefault(false),
+const forceOption = Flag.boolean("force").pipe(
+	Flag.withAlias("f"),
+	Flag.withDescription("Overwrite existing config files and hooks across all tools"),
+	Flag.withDefault(false),
 );
 
-const commitConfigOption = Options.text("commit-config").pipe(
-	Options.withDescription("Relative path for the commitlint config file"),
-	Options.withDefault(DEFAULT_COMMIT_CONFIG),
+const commitConfigOption = Flag.string("commit-config").pipe(
+	Flag.withDescription("Relative path for the commitlint config file"),
+	Flag.withDefault(DEFAULT_COMMIT_CONFIG),
 );
 
-const lintConfigOption = Options.text("lint-config").pipe(
-	Options.withDescription("Relative path for the lint-staged config file"),
-	Options.withDefault(DEFAULT_LINT_CONFIG),
+const lintConfigOption = Flag.string("lint-config").pipe(
+	Flag.withDescription("Relative path for the lint-staged config file"),
+	Flag.withDefault(DEFAULT_LINT_CONFIG),
 );
 
-const lintPresetOption = Options.choice("lint-preset", ["minimal", "standard", "silk"]).pipe(
-	Options.withDescription("lint-staged preset: minimal, standard, or silk"),
-	Options.withDefault("silk" as const),
+const lintPresetOption = Flag.choice("lint-preset", ["minimal", "standard", "silk"]).pipe(
+	Flag.withDescription("lint-staged preset: minimal, standard, or silk"),
+	Flag.withDefault("silk" as const),
 );
 /* v8 ignore stop */
 
@@ -118,13 +118,4 @@ const _initCommand = Command.make(
  * errors from Effect's internal types. Task B7 should use this via
  * `Command.withSubcommands([initCommand as never])` or re-infer the type.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const initCommand: Command.Command<"init", any, any, any> = _initCommand as Command.Command<
-	"init",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+export const initCommand = _initCommand;

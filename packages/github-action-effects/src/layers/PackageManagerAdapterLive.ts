@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { PackageManagerError } from "../errors/PackageManagerError.js";
 import type { PackageManagerInfo, PackageManagerName } from "../schemas/PackageManager.js";
 import { CommandRunner } from "../services/CommandRunner.js";
@@ -144,7 +143,7 @@ export const PackageManagerAdapterLive: Layer.Layer<
 						if (typeof field !== "string") return undefined;
 						return parsePackageManagerField(field);
 					}),
-					Effect.catchAll(() => Effect.succeed(undefined)),
+					Effect.catch(() => Effect.succeed(undefined)),
 				);
 
 			const detectFromLockfile = (): Effect.Effect<
@@ -154,7 +153,7 @@ export const PackageManagerAdapterLive: Layer.Layer<
 				const checks = lockfileMap.map(([file, name]) =>
 					fs.access(file).pipe(
 						Effect.map(() => ({ name, lockfile: file })),
-						Effect.catchAll(() => Effect.succeed(undefined)),
+						Effect.catch(() => Effect.succeed(undefined)),
 					),
 				);
 				return Effect.all(checks).pipe(Effect.map((results) => results.find((r) => r !== undefined)));

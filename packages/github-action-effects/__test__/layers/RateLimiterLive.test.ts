@@ -1,4 +1,5 @@
-import { Duration, Effect, Exit, Fiber, Layer, Metric, Option, Ref, Stream, TestClock, TestContext } from "effect";
+import { Duration, Effect, Exit, Fiber, Layer, Metric, Option, Ref, Stream } from "effect";
+import { TestClock } from "effect/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import { RateLimiterLive } from "../../src/layers/RateLimiterLive.js";
@@ -174,7 +175,7 @@ describe("RateLimiterLive", () => {
 					Option.some({ remaining: 10, limit: 5000, resetEpochSeconds: nearReset, observedAt: Date.now() }),
 				);
 				let ran = 0;
-				const fiber = yield* Effect.fork(
+				const fiber = yield* Effect.forkChild(
 					Effect.flatMap(RateLimiter, (svc) =>
 						svc.withRateLimit(
 							Effect.sync(() => {
@@ -185,13 +186,13 @@ describe("RateLimiterLive", () => {
 					),
 				);
 				// Before advancing the clock the guarded effect must not have run.
-				const pollBefore = yield* Fiber.poll(fiber);
+				const pollBefore = fiber.pollUnsafe();
 				yield* TestClock.adjust(Duration.seconds(11));
 				const result = yield* Fiber.join(fiber);
 				return { pollBefore, result, ran };
-			}).pipe(Effect.provide(baseLayer), Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.provide(baseLayer), Effect.provide(TestClock.layer()), Effect.runPromise);
 
-			expect(Option.isNone(outcome.pollBefore)).toBe(true);
+			expect(outcome.pollBefore).toBeUndefined();
 			expect(outcome.result).toBe("done");
 			expect(outcome.ran).toBe(1);
 		});
@@ -216,8 +217,14 @@ describe("RateLimiterLive", () => {
 	});
 
 	describe("telemetry", () => {
-		const sleptCounter = rateLimitHits.pipe(Metric.tagged("api", "rest"), Metric.tagged("action", "slept"));
-		const failedCounter = rateLimitHits.pipe(Metric.tagged("api", "rest"), Metric.tagged("action", "failed"));
+		const sleptCounter = rateLimitHits.pipe(
+			Metric.withAttributes({ api: "rest" }),
+			Metric.withAttributes({ action: "slept" }),
+		);
+		const failedCounter = rateLimitHits.pipe(
+			Metric.withAttributes({ api: "rest" }),
+			Metric.withAttributes({ action: "failed" }),
+		);
 
 		it("counts a rate-limit hit when it sleeps", async () => {
 			const nearReset = Math.floor(Date.now() / 1000) + 10;
@@ -228,14 +235,14 @@ describe("RateLimiterLive", () => {
 					ref,
 					Option.some({ remaining: 10, limit: 5000, resetEpochSeconds: nearReset, observedAt: Date.now() }),
 				);
-				const fiber = yield* Effect.fork(
+				const fiber = yield* Effect.forkChild(
 					Effect.flatMap(RateLimiter, (svc) => svc.withRateLimit(Effect.succeed("done"))),
 				);
 				yield* TestClock.adjust(Duration.seconds(11));
 				yield* Fiber.join(fiber);
 				const after = (yield* Metric.value(sleptCounter)).count;
 				return after - before;
-			}).pipe(Effect.provide(baseLayer), Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.provide(baseLayer), Effect.provide(TestClock.layer()), Effect.runPromise);
 
 			expect(delta).toBe(1);
 		});

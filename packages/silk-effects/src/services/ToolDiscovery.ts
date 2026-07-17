@@ -1,11 +1,53 @@
-import { Command, CommandExecutor } from "@effect/platform";
+import { PackageManagerDetector, WorkspaceRoot } from "@effected/workspaces";
 import { Context, Effect, Layer, Option, Ref } from "effect";
-import { PackageManagerDetector, WorkspaceRoot } from "workspaces-effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { ToolNotFoundError } from "../errors/ToolNotFoundError.js";
 import { ToolResolutionError } from "../errors/ToolResolutionError.js";
 import { ResolvedTool } from "../schemas/ResolvedTool.js";
 import type { ToolDefinition } from "../schemas/ToolDefinition.js";
 import type { VersionExtractor } from "../schemas/ToolResults.js";
+
+/**
+ * The {@link ToolDiscovery} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface ToolDiscoveryShape {
+	/**
+	 * Resolve a tool definition to a {@link ResolvedTool}, enforcing source
+	 * requirements and resolution policies. Results are cached by tool name.
+	 *
+	 * @since 0.2.0
+	 */
+	readonly resolve: (definition: ToolDefinition) => Effect.Effect<ResolvedTool, ToolResolutionError>;
+
+	/**
+	 * Like {@link ToolDiscoveryShape.resolve} but maps failures to {@link ToolNotFoundError}.
+	 * Accepts an optional custom error message.
+	 *
+	 * @since 0.2.0
+	 */
+	readonly require: {
+		(definition: ToolDefinition): Effect.Effect<ResolvedTool, ToolNotFoundError>;
+		(definition: ToolDefinition, message: string): Effect.Effect<ResolvedTool, ToolNotFoundError>;
+	};
+
+	/**
+	 * Quick availability check — returns `true` if the tool can be found
+	 * either globally or locally. Does not cache.
+	 *
+	 * @since 0.2.0
+	 */
+	readonly isAvailable: (definition: ToolDefinition) => Effect.Effect<boolean>;
+
+	/**
+	 * Clear the internal resolution cache so subsequent calls re-run discovery.
+	 *
+	 * @since 0.2.0
+	 */
+	readonly clearCache: Effect.Effect<void>;
+}
 
 /**
  * Service that resolves CLI tools — locating them globally (PATH) or locally
@@ -22,7 +64,7 @@ import type { VersionExtractor } from "../schemas/ToolResults.js";
  *     );
  *   }).pipe(
  *     Effect.provide(ToolDiscoveryLive),
- *     Effect.provide(NodeContext.layer),
+ *     Effect.provide(NodeServices.layer),
  *   )
  * );
  * ```
@@ -30,44 +72,9 @@ import type { VersionExtractor } from "../schemas/ToolResults.js";
  * @since 0.2.0
  * @public
  */
-export class ToolDiscovery extends Context.Tag("@savvy-web/silk-effects/ToolDiscovery")<
-	ToolDiscovery,
-	{
-		/**
-		 * Resolve a tool definition to a {@link ResolvedTool}, enforcing source
-		 * requirements and resolution policies. Results are cached by tool name.
-		 *
-		 * @since 0.2.0
-		 */
-		readonly resolve: (definition: ToolDefinition) => Effect.Effect<ResolvedTool, ToolResolutionError>;
-
-		/**
-		 * Like {@link resolve} but maps failures to {@link ToolNotFoundError}.
-		 * Accepts an optional custom error message.
-		 *
-		 * @since 0.2.0
-		 */
-		readonly require: {
-			(definition: ToolDefinition): Effect.Effect<ResolvedTool, ToolNotFoundError>;
-			(definition: ToolDefinition, message: string): Effect.Effect<ResolvedTool, ToolNotFoundError>;
-		};
-
-		/**
-		 * Quick availability check — returns `true` if the tool can be found
-		 * either globally or locally. Does not cache.
-		 *
-		 * @since 0.2.0
-		 */
-		readonly isAvailable: (definition: ToolDefinition) => Effect.Effect<boolean>;
-
-		/**
-		 * Clear the internal resolution cache so subsequent calls re-run discovery.
-		 *
-		 * @since 0.2.0
-		 */
-		readonly clearCache: Effect.Effect<void>;
-	}
->() {}
+export class ToolDiscovery extends Context.Service<ToolDiscovery, ToolDiscoveryShape>()(
+	"@savvy-web/silk-effects/ToolDiscovery",
+) {}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,20 +99,26 @@ function pmExecArgs(pmType: "npm" | "pnpm" | "yarn" | "bun", name: string): [str
 /**
  * Run a command and return its stdout, or `Option.none()` on failure.
  */
-function tryString(cmd: Command.Command): Effect.Effect<Option.Option<string>, never, CommandExecutor.CommandExecutor> {
-	return Command.string(cmd).pipe(
+function tryString(
+	spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
+	cmd: ChildProcess.Command,
+): Effect.Effect<Option.Option<string>> {
+	return spawner.string(cmd).pipe(
 		Effect.map((s) => Option.some(s.trim())),
-		Effect.catchAll(() => Effect.succeed(Option.none<string>())),
+		Effect.catch(() => Effect.succeed(Option.none<string>())),
 	);
 }
 
 /**
  * Run a command and return true if it succeeds (exit code 0).
  */
-function tryExists(cmd: Command.Command): Effect.Effect<boolean, never, CommandExecutor.CommandExecutor> {
-	return Command.exitCode(cmd).pipe(
+function tryExists(
+	spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
+	cmd: ChildProcess.Command,
+): Effect.Effect<boolean> {
+	return spawner.exitCode(cmd).pipe(
 		Effect.map((code) => code === 0),
-		Effect.catchAll(() => Effect.succeed(false)),
+		Effect.catch(() => Effect.succeed(false)),
 	);
 }
 
@@ -144,8 +157,9 @@ function extractVersion(output: Option.Option<string>, extractor: VersionExtract
  * Live implementation of {@link ToolDiscovery}.
  *
  * @remarks
- * Requires `CommandExecutor` from `@effect/platform`, `PackageManagerDetector`
- * and `WorkspaceRoot` from `workspaces-effect`.
+ * Requires `ChildProcessSpawner` from `effect/unstable/process` (provide
+ * `NodeServices.layer` at the app edge), plus `PackageManagerDetector`
+ * and `WorkspaceRoot` from `@effected/workspaces`.
  *
  * @since 0.2.0
  * @public
@@ -153,11 +167,11 @@ function extractVersion(output: Option.Option<string>, extractor: VersionExtract
 export const ToolDiscoveryLive: Layer.Layer<
 	ToolDiscovery,
 	never,
-	CommandExecutor.CommandExecutor | PackageManagerDetector | WorkspaceRoot
+	ChildProcessSpawner.ChildProcessSpawner | PackageManagerDetector | WorkspaceRoot
 > = Layer.effect(
 	ToolDiscovery,
 	Effect.gen(function* () {
-		const executor = yield* CommandExecutor.CommandExecutor;
+		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
 		const wsRoot = yield* WorkspaceRoot;
 		const pmDetector = yield* PackageManagerDetector;
 		const cache = yield* Ref.make<Map<string, ResolvedTool>>(new Map());
@@ -173,7 +187,7 @@ export const ToolDiscoveryLive: Layer.Layer<
 				const root = yield* wsRoot
 					.find(process.cwd())
 					.pipe(
-						Effect.catchAll(() =>
+						Effect.catch(() =>
 							Effect.fail(new ToolResolutionError({ name: definition.name, reason: "Could not find workspace root" })),
 						),
 					);
@@ -182,30 +196,25 @@ export const ToolDiscoveryLive: Layer.Layer<
 				const pm = yield* pmDetector
 					.detect(root)
 					.pipe(
-						Effect.catchAll(() =>
+						Effect.catch(() =>
 							Effect.fail(
 								new ToolResolutionError({ name: definition.name, reason: "Could not detect package manager" }),
 							),
 						),
 					);
-				const pmType = pm.type as "npm" | "pnpm" | "yarn" | "bun";
+				const pmType = pm.name;
 
 				// 4. Check global availability
-				const globalExists = yield* Effect.provideService(
-					tryExists(Command.make("sh", "-c", `command -v ${definition.name}`)),
-					CommandExecutor.CommandExecutor,
-					executor,
+				const globalExists = yield* tryExists(
+					spawner,
+					ChildProcess.make("sh", ["-c", `command -v ${definition.name}`]),
 				);
 
 				// 5. Extract global version if found
 				let globalVersion = Option.none<string>();
 				if (globalExists && definition.versionExtractor._tag !== "None") {
 					const flag = definition.versionExtractor.flag;
-					const globalOutput = yield* Effect.provideService(
-						tryString(Command.make(definition.name, flag)),
-						CommandExecutor.CommandExecutor,
-						executor,
-					);
+					const globalOutput = yield* tryString(spawner, ChildProcess.make(definition.name, [flag]));
 					globalVersion = extractVersion(globalOutput, definition.versionExtractor);
 				}
 
@@ -215,22 +224,14 @@ export const ToolDiscoveryLive: Layer.Layer<
 				const [pmBin, ...pmArgs] = pmExecArgs(pmType, definition.name);
 				if (definition.versionExtractor._tag !== "None") {
 					const flag = definition.versionExtractor.flag;
-					const localOutput = yield* Effect.provideService(
-						tryString(Command.make(pmBin, ...pmArgs, flag)),
-						CommandExecutor.CommandExecutor,
-						executor,
-					);
+					const localOutput = yield* tryString(spawner, ChildProcess.make(pmBin, [...pmArgs, flag]));
 					if (Option.isSome(localOutput)) {
 						localExists = true;
 						localVersion = extractVersion(localOutput, definition.versionExtractor);
 					}
 				} else {
 					// No version extractor — just check if the tool exists locally
-					localExists = yield* Effect.provideService(
-						tryExists(Command.make(pmBin, ...pmArgs, "--version")),
-						CommandExecutor.CommandExecutor,
-						executor,
-					);
+					localExists = yield* tryExists(spawner, ChildProcess.make(pmBin, [...pmArgs, "--version"]));
 				}
 
 				// 8. Enforce SourceRequirement
@@ -344,11 +345,7 @@ export const ToolDiscoveryLive: Layer.Layer<
 		const isAvailable = (definition: ToolDefinition): Effect.Effect<boolean> =>
 			Effect.gen(function* () {
 				// Check global
-				const globalFound = yield* Effect.provideService(
-					tryExists(Command.make("sh", "-c", `command -v ${definition.name}`)),
-					CommandExecutor.CommandExecutor,
-					executor,
-				);
+				const globalFound = yield* tryExists(spawner, ChildProcess.make("sh", ["-c", `command -v ${definition.name}`]));
 				if (globalFound) return true;
 
 				// Check local — need workspace root and PM
@@ -358,21 +355,17 @@ export const ToolDiscoveryLive: Layer.Layer<
 				const pmResult = yield* pmDetector.detect(rootResult.value).pipe(Effect.option);
 				if (Option.isNone(pmResult)) return false;
 
-				const pmType = pmResult.value.type as "npm" | "pnpm" | "yarn" | "bun";
+				const pmType = pmResult.value.name;
 				const probeFlag = definition.versionExtractor._tag !== "None" ? definition.versionExtractor.flag : "--version";
 				const [pmBin, ...pmArgs] = pmExecArgs(pmType, definition.name);
-				return yield* Effect.provideService(
-					tryExists(Command.make(pmBin, ...pmArgs, probeFlag)),
-					CommandExecutor.CommandExecutor,
-					executor,
-				);
+				return yield* tryExists(spawner, ChildProcess.make(pmBin, [...pmArgs, probeFlag]));
 			});
 
 		const clearCache: Effect.Effect<void> = Ref.set(cache, new Map());
 
 		return {
 			resolve,
-			require: require_ as ToolDiscovery["Type"]["require"],
+			require: require_ as ToolDiscoveryShape["require"],
 			isAvailable,
 			clearCache,
 		};

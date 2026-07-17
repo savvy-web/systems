@@ -4,6 +4,41 @@ import type { TagStrategyType } from "../schemas/TagStrategySchemas.js";
 import type { VersioningStrategyResult } from "../schemas/VersioningSchemas.js";
 
 /**
+ * The {@link TagStrategy} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface TagStrategyShape {
+	/**
+	 * Determine the appropriate tag strategy type from a versioning strategy result.
+	 *
+	 * @param versioningResult - The result of `VersioningStrategy.detect`.
+	 * @returns An `Effect` that always succeeds with a {@link (TagStrategyType:type)}.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly determine: (versioningResult: VersioningStrategyResult) => Effect.Effect<TagStrategyType>;
+
+	/**
+	 * Format a git tag string for a given package name, version, and strategy.
+	 *
+	 * @param name - The package name (e.g. `"@my-org/pkg"` or `"my-pkg"`).
+	 * @param version - The semver version string (e.g. `"1.2.3"`). Must not be empty.
+	 * @param strategy - The {@link (TagStrategyType:type)} to apply.
+	 * @returns An `Effect` that resolves to the formatted tag string, or fails with
+	 *   {@link TagFormatError} when `version` is empty.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly formatTag: (
+		name: string,
+		version: string,
+		strategy: TagStrategyType,
+	) => Effect.Effect<string, TagFormatError>;
+}
+
+/**
  * Service that determines and applies the git-tag naming strategy for a release.
  *
  * @remarks
@@ -26,37 +61,9 @@ import type { VersioningStrategyResult } from "../schemas/VersioningSchemas.js";
  * @since 0.1.0
  * @public
  */
-export class TagStrategy extends Context.Tag("@savvy-web/silk-effects/TagStrategy")<
-	TagStrategy,
-	{
-		/**
-		 * Determine the appropriate tag strategy type from a versioning strategy result.
-		 *
-		 * @param versioningResult - The result of `VersioningStrategy.detect`.
-		 * @returns An `Effect` that always succeeds with a {@link TagStrategyType}.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly determine: (versioningResult: VersioningStrategyResult) => Effect.Effect<TagStrategyType>;
-
-		/**
-		 * Format a git tag string for a given package name, version, and strategy.
-		 *
-		 * @param name - The package name (e.g. `"@my-org/pkg"` or `"my-pkg"`).
-		 * @param version - The semver version string (e.g. `"1.2.3"`). Must not be empty.
-		 * @param strategy - The {@link TagStrategyType} to apply.
-		 * @returns An `Effect` that resolves to the formatted tag string, or fails with
-		 *   {@link TagFormatError} when `version` is empty.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly formatTag: (
-			name: string,
-			version: string,
-			strategy: TagStrategyType,
-		) => Effect.Effect<string, TagFormatError>;
-	}
->() {}
+export class TagStrategy extends Context.Service<TagStrategy, TagStrategyShape>()(
+	"@savvy-web/silk-effects/TagStrategy",
+) {}
 
 /**
  * Live implementation of {@link TagStrategy} with no external dependencies.
@@ -67,37 +74,34 @@ export class TagStrategy extends Context.Tag("@savvy-web/silk-effects/TagStrateg
  * @since 0.1.0
  * @public
  */
-export const TagStrategyLive: Layer.Layer<TagStrategy> = Layer.succeed(
-	TagStrategy,
-	TagStrategy.of({
-		determine: (versioningResult) => {
-			if (versioningResult.type === "independent") {
-				return Effect.succeed("scoped" as const);
-			}
-			return Effect.succeed("single" as const);
-		},
+export const TagStrategyLive: Layer.Layer<TagStrategy> = Layer.succeed(TagStrategy, {
+	determine: (versioningResult) => {
+		if (versioningResult.type === "independent") {
+			return Effect.succeed("scoped" as const);
+		}
+		return Effect.succeed("single" as const);
+	},
 
-		formatTag: (name, version, strategy) => {
-			if (version === "") {
-				return Effect.fail(
-					new TagFormatError({
-						name,
-						version,
-						reason: "version cannot be empty",
-					}),
-				);
-			}
+	formatTag: (name, version, strategy) => {
+		if (version === "") {
+			return Effect.fail(
+				new TagFormatError({
+					name,
+					version,
+					reason: "version cannot be empty",
+				}),
+			);
+		}
 
-			if (strategy === "single") {
-				return Effect.succeed(version);
-			}
+		if (strategy === "single") {
+			return Effect.succeed(version);
+		}
 
-			// scoped strategy
-			if (name.startsWith("@")) {
-				return Effect.succeed(`${name}@${version}`);
-			}
-
+		// scoped strategy
+		if (name.startsWith("@")) {
 			return Effect.succeed(`${name}@${version}`);
-		},
-	}),
-);
+		}
+
+		return Effect.succeed(`${name}@${version}`);
+	},
+});

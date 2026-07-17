@@ -2,16 +2,17 @@
  * Git helpers for the changesets deps regen/detect orchestration.
  *
  * @remarks
- * `PointInTimeWorkspace` (from `workspaces-effect`) reads both sides of a
- * dependency diff over `CommandExecutor`. The one git operation it does not
- * cover is resolving the default `--from` ref — the merge-base with the base
- * branch — which stays here as a synchronous `execFileSync` shell-out.
+ * `WorkspaceSnapshots` (from `@effected/workspaces`) reads both sides of a
+ * dependency diff. The one git operation it does not cover is resolving the
+ * default `--from` ref — the merge-base with the base branch — which is
+ * delegated to `@effected/git`'s `Git` service (spawning through
+ * `ChildProcessSpawner`, provided at the app edge).
  *
  * @internal
  */
 
-import { execFileSync } from "node:child_process";
 import { basename } from "node:path";
+import { Git } from "@effected/git";
 import { Effect } from "effect";
 
 import { GitError } from "../errors.js";
@@ -22,29 +23,25 @@ import { GitError } from "../errors.js";
  *
  * @internal
  */
-export function gitMergeBase(cwd: string, base: string): Effect.Effect<string, GitError> {
-	return Effect.try({
-		try: () =>
-			execFileSync("git", ["merge-base", base, "HEAD"], {
-				cwd,
-				encoding: "utf8",
-				stdio: ["ignore", "pipe", "pipe"],
-			}).trim(),
-		catch: (error) => {
-			const stderr = (error as { stderr?: Buffer | string }).stderr;
-			const text = typeof stderr === "string" ? stderr : (stderr?.toString() ?? "");
-			return new GitError({
-				command: `git merge-base ${base} HEAD`,
-				cwd,
-				reason: text.trim() || ((error as Error).message ?? String(error)),
-			});
-		},
+export function gitMergeBase(cwd: string, base: string): Effect.Effect<string, GitError, Git> {
+	return Effect.gen(function* () {
+		const git = yield* Git;
+		return yield* git.mergeBase(cwd, base, "HEAD").pipe(
+			Effect.mapError(
+				(error) =>
+					new GitError({
+						command: `git merge-base ${base} HEAD`,
+						cwd,
+						reason: error.message,
+					}),
+			),
+		);
 	});
 }
 
 /**
  * List the basenames of `.changeset/*.md` files tracked at `ref` (e.g. the
- * merge base), via `git ls-tree -r --name-only`. Used by `DepsRegen.plan()`
+ * merge base), via `git ls-tree -r`. Used by `DepsRegen.plan()`
  * to protect changesets authored by already-merged PRs from being deleted by
  * an unrelated branch's regen run (#258).
  *
@@ -59,22 +56,12 @@ export function gitMergeBase(cwd: string, base: string): Effect.Effect<string, G
  *
  * @internal
  */
-export function gitListChangesetFilesAtRef(cwd: string, ref: string): Effect.Effect<ReadonlySet<string>> {
-	return Effect.sync(() => {
-		try {
-			const out = execFileSync("git", ["ls-tree", "-r", "--name-only", ref, "--", ".changeset"], {
-				cwd,
-				encoding: "utf8",
-				stdio: ["ignore", "pipe", "pipe"],
-			});
-			return new Set(
-				out
-					.split(/\r?\n/)
-					.filter((line) => line.trim().length > 0)
-					.map((path) => basename(path)),
-			);
-		} catch {
-			return new Set<string>();
-		}
+export function gitListChangesetFilesAtRef(cwd: string, ref: string): Effect.Effect<ReadonlySet<string>, never, Git> {
+	return Effect.gen(function* () {
+		const git = yield* Git;
+		const entries = yield* git
+			.lsTree(cwd, ref, { pathspec: [".changeset"] })
+			.pipe(Effect.catch(() => Effect.succeed([])));
+		return new Set(entries.filter((entry) => entry.path.trim().length > 0).map((entry) => basename(entry.path)));
 	});
 }

@@ -81,7 +81,7 @@ describe("NpmRegistry", () => {
 		const result = await Effect.runPromise(
 			NpmRegistry.pipe(
 				Effect.flatMap((reg) => reg.getLatestVersion("missing-pkg")),
-				Effect.catchAll((error) => Effect.succeed(error)),
+				Effect.catch((error) => Effect.succeed(error)),
 				Effect.provide(layer),
 			),
 		);

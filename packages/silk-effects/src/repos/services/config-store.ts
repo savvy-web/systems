@@ -1,27 +1,28 @@
-import { FileSystem, Path } from "@effect/platform";
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, Effect, FileSystem, Layer, Path, Schema } from "effect";
 import { MANIFEST_PATH, REPOS_DIR } from "../constants.js";
 import { ReposConfigError } from "../errors.js";
 import { ReposManifestFile } from "../schemas/manifest.js";
 
-/** @internal */
+/**
+ * The {@link ReposConfigStore} service shape.
+ * @public
+ */
 export interface ReposConfigStoreShape {
 	readonly exists: (root: string) => Effect.Effect<boolean>;
 	readonly read: (root: string) => Effect.Effect<ReposManifestFile, ReposConfigError>;
 	readonly write: (root: string, manifest: ReposManifestFile) => Effect.Effect<void, ReposConfigError>;
 }
 
-const _tag = Context.Tag("@savvy-web/silk-effects/ReposConfigStore");
-/** @internal */
-export const ReposConfigStoreBase = _tag<ReposConfigStore, ReposConfigStoreShape>();
 /**
  * Reads, validates, and writes the .repos/config.json manifest.
  * @public
  */
-export class ReposConfigStore extends ReposConfigStoreBase {}
+export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposConfigStoreShape>()(
+	"@savvy-web/silk-effects/ReposConfigStore",
+) {}
 
 /**
- * Live layer over the platform FileSystem.
+ * Live layer over the core FileSystem.
  * @public
  */
 export const ReposConfigStoreLive: Layer.Layer<ReposConfigStore, never, FileSystem.FileSystem | Path.Path> =
@@ -75,7 +76,7 @@ export const ReposConfigStoreLive: Layer.Layer<ReposConfigStore, never, FileSyst
 								kind: "invalid",
 							}),
 					});
-					return yield* Schema.decodeUnknown(ReposManifestFile)(json).pipe(
+					return yield* Schema.decodeUnknownEffect(ReposManifestFile)(json).pipe(
 						Effect.mapError(
 							(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
 						),
@@ -95,7 +96,7 @@ export const ReposConfigStoreLive: Layer.Layer<ReposConfigStore, never, FileSyst
 								}),
 						),
 					);
-					const encoded = yield* Schema.encode(ReposManifestFile)(manifest).pipe(
+					const encoded = yield* Schema.encodeEffect(ReposManifestFile)(manifest).pipe(
 						Effect.mapError(
 							(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
 						),

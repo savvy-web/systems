@@ -37,7 +37,7 @@ import { Schema } from "effect";
  *
  * @public
  */
-export const NonEmptyString = Schema.String.pipe(Schema.minLength(1));
+export const NonEmptyString = Schema.String.check(Schema.isMinLength(1));
 
 /**
  * A positive integer schema.
@@ -66,4 +66,4 @@ export const NonEmptyString = Schema.String.pipe(Schema.minLength(1));
  *
  * @public
  */
-export const PositiveInteger = Schema.Number.pipe(Schema.int(), Schema.positive());
+export const PositiveInteger = Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0));

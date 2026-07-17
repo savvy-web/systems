@@ -1,6 +1,6 @@
-import type { HttpClient } from "@effect/platform";
 import { Octokit } from "@octokit/rest";
-import { Chunk, Effect, Layer, Metric, Option, Redacted, Ref, Stream } from "effect";
+import { Effect, Layer, Metric, Option, Redacted, Ref, Stream } from "effect";
+import type { HttpClient } from "effect/unstable/http";
 import type { GitHubAppError } from "../errors/GitHubAppError.js";
 import { GitHubClientError } from "../errors/GitHubClientError.js";
 import { githubApiCalls } from "../runtime/Telemetry.js";
@@ -184,9 +184,9 @@ const makeClient = (
 	const countApiCall = (kind: "rest" | "graphql", operation: string, outcome: "success" | "failure") =>
 		Metric.update(
 			githubApiCalls.pipe(
-				Metric.tagged("kind", kind),
-				Metric.tagged("operation", operation),
-				Metric.tagged("outcome", outcome),
+				Metric.withAttributes({ kind: kind }),
+				Metric.withAttributes({ operation: operation }),
+				Metric.withAttributes({ outcome: outcome }),
 			),
 			1,
 		);
@@ -259,7 +259,7 @@ const makeClient = (
 			const perPage = options?.perPage ?? 100;
 			const maxPages = options?.maxPages ?? Infinity;
 
-			return Stream.paginateChunkEffect(1, (page: number) =>
+			return Stream.paginate(1, (page: number) =>
 				withResilience(
 					Effect.tryPromise({
 						try: () => fn(octokit, page, perPage),
@@ -269,9 +269,8 @@ const makeClient = (
 				).pipe(
 					Effect.tap((response) => recordSnapshot(response as WithHeaders)),
 					Effect.map((response) => {
-						const chunk = Chunk.fromIterable(response.data);
 						const more = response.data.length >= perPage && page < maxPages;
-						return [chunk, more ? Option.some(page + 1) : Option.none<number>()] as const;
+						return [response.data, more ? Option.some(page + 1) : Option.none<number>()] as const;
 					}),
 				),
 			);
@@ -398,7 +397,7 @@ const fromApp = (
 	},
 	resilience?: ResilienceOptions,
 ): Layer.Layer<GitHubClient, GitHubAppError, HttpClient.HttpClient> =>
-	Layer.scoped(
+	Layer.effect(
 		GitHubClient,
 		Effect.gen(function* () {
 			const app = yield* GitHubApp;

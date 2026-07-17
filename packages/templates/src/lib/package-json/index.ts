@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 import { sortPackageJson } from "sort-package-json";
 import type { TemplateEntry } from "../types.js";
 
@@ -32,7 +32,7 @@ const PublishConfig = Schema.Struct({
  */
 export const PackageJsonOptions = Schema.Struct({
 	name: Schema.String,
-	version: Schema.optionalWith(Schema.String, { default: () => "0.0.0" }),
+	version: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed("0.0.0"))),
 	private: Schema.optional(Schema.Boolean),
 	description: Schema.optional(Schema.String),
 	homepage: Schema.optional(Schema.String),
@@ -41,12 +41,12 @@ export const PackageJsonOptions = Schema.Struct({
 	license: Schema.optional(Schema.String),
 	author: Schema.optional(Author),
 	sideEffects: Schema.optional(Schema.Boolean),
-	type: Schema.optional(Schema.Literal("module", "commonjs")),
+	type: Schema.optional(Schema.Literals(["module", "commonjs"])),
 	exports: Schema.optional(Schema.Unknown),
-	scripts: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
-	dependencies: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
-	devDependencies: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
-	peerDependencies: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+	scripts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+	dependencies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+	devDependencies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+	peerDependencies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 	engines: Schema.optional(
 		Schema.Struct({
 			node: Schema.optional(Schema.String),

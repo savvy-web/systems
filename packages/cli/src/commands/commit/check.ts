@@ -3,8 +3,8 @@
  *
  * @internal
  */
-import { FileSystem } from "@effect/platform";
-import type { PlatformError } from "@effect/platform/Error";
+
+import { WorkspaceDiscovery } from "@effected/workspaces";
 import type { SectionParseError } from "@savvy-web/silk-effects";
 import {
 	CheckResult,
@@ -16,8 +16,8 @@ import {
 	savvyBasePreamble,
 	savvyHooksHygiene,
 } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
-import { WorkspaceDiscovery } from "workspaces-effect";
+import { Effect, FileSystem } from "effect";
+import type { PlatformError } from "effect/PlatformError";
 import {
 	CHECK_MARK,
 	HUSKY_HOOK_PATH,
@@ -107,13 +107,13 @@ const detectReleaseFormat = Effect.gen(function* () {
 	const versioning = yield* VersioningStrategy;
 	const discovery = yield* WorkspaceDiscovery;
 
-	const packages = yield* Effect.catchAll(discovery.listPackages(), () => Effect.succeed([]));
+	const packages = yield* Effect.catch(discovery.listPackages(), () => Effect.succeed([]));
 
 	const publishableNames = packages
 		.filter((pkg) => !pkg.private || pkg.publishConfig?.access !== undefined)
 		.map((pkg) => pkg.name);
 
-	const result = yield* Effect.catchAll(versioning.detect(publishableNames, process.cwd()), () =>
+	const result = yield* Effect.catch(versioning.detect(publishableNames, process.cwd()), () =>
 		Effect.succeed({ type: "single" as const }),
 	);
 
@@ -223,7 +223,7 @@ export function runCommitCheck(): Effect.Effect<
 		const releaseFormat = yield* detectReleaseFormat;
 		yield* Effect.log(`  Release format: ${releaseFormat}`);
 
-		const scopes = yield* Effect.catchAll(Commitlint.detectScopes, () => Effect.succeed([] as string[]));
+		const scopes = yield* Effect.catch(Commitlint.detectScopes, () => Effect.succeed([] as string[]));
 		const scopeDisplay = scopes.length > 0 ? scopes.join(", ") : "(none - not a monorepo or no packages found)";
 		yield* Effect.log(`  Detected scopes: ${scopeDisplay}`);
 

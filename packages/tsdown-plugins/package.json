@@ -34,7 +34,7 @@
 		"@effect/platform-node": "catalog:effect",
 		"@effected/npm": "^0.2.0",
 		"@effected/tsconfig-json": "^0.2.0",
-		"@effected/workspaces": "^0.2.0",
+		"@effected/workspaces": "^0.3.0",
 		"@microsoft/api-extractor": "^7.58.9",
 		"@microsoft/tsdoc": "^0.16.0",
 		"@microsoft/tsdoc-config": "^0.18.1",

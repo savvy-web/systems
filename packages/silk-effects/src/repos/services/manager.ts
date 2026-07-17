@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
-import { Clock, Context, Effect, Layer, Option, Schema, Stream } from "effect";
+import { Git } from "@effected/git";
+import { Clock, Context, Effect, FileSystem, Layer, Option, Path, Schema } from "effect";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
 import { GitSubmoduleError, NoteNotFoundError, RepoNotFoundError, ReposConfigError } from "../errors.js";
 import type { RepoEntry, RepoNote, RepoOrientation, ReposManifestFile } from "../schemas/manifest.js";
@@ -70,9 +70,6 @@ export interface ReposManagerShape {
 	) => Effect.Effect<ReposNoteResult, ReposConfigError | RepoNotFoundError | NoteNotFoundError>;
 }
 
-const _tag = Context.Tag("@savvy-web/silk-effects/ReposManager");
-/** @internal */
-export const ReposManagerBase = _tag<ReposManager, ReposManagerShape>();
 /**
  * Drives the vendored `.repos/` submodules over git: reports status
  * (presence, dirtiness, stale notes), reconciles the working tree with the
@@ -80,73 +77,38 @@ export const ReposManagerBase = _tag<ReposManager, ReposManagerShape>();
  * ref (`pin`), and adds, removes, or promotes agent notes (`note`).
  * @public
  */
-export class ReposManager extends ReposManagerBase {}
+export class ReposManager extends Context.Service<ReposManager, ReposManagerShape>()(
+	"@savvy-web/silk-effects/ReposManager",
+) {}
 
 /**
  * Live implementation of {@link ReposManager}.
  *
  * @remarks
- * Mirrors `TurboInspector`: the `CommandExecutor` is captured once at layer
- * construction and discharged onto each git invocation via
- * `Effect.provideService`, so the public method effects stay at `R = never`.
+ * All git plumbing runs through `@effected/git`'s `Git` service (captured once
+ * at layer construction; `Git.layer` requires `ChildProcessSpawner` at the app
+ * edge), so the public method effects stay at `R = never`. The kit classifies
+ * git's exit-code/stderr taxonomy into typed failures, which are mapped onto
+ * this module's {@link GitSubmoduleError} to keep the declared error unions.
  * @public
  */
 export const ReposManagerLive: Layer.Layer<
 	ReposManager,
 	never,
-	ReposConfigStore | CommandExecutor.CommandExecutor | FileSystem.FileSystem | Path.Path
+	ReposConfigStore | Git | FileSystem.FileSystem | Path.Path
 > = Layer.effect(
 	ReposManager,
 	Effect.gen(function* () {
 		const configStore = yield* ReposConfigStore;
 		const fs = yield* FileSystem.FileSystem;
 		const path = yield* Path.Path;
-		const executor = yield* CommandExecutor.CommandExecutor;
+		const git = yield* Git;
 
-		// `Command.string` collects stdout WITHOUT inspecting the exit code, so
-		// a git process that exits non-zero with empty stdout still "succeeds".
-		// This runner starts the process directly, drains stdout/stderr while
-		// awaiting the exit code, and fails a typed `GitSubmoduleError` on any
-		// non-zero exit (stderr as the reason) — making the declared error
-		// unions real for actual git failures, not just spawn errors.
-		const runGit = (cwd: string, args: ReadonlyArray<string>): Effect.Effect<string, GitSubmoduleError> =>
-			Effect.scoped(
-				Effect.gen(function* () {
-					const process = yield* executor.start(Command.workingDirectory(Command.make("git", ...args), cwd));
-					const [exitCode, stdout, stderr] = yield* Effect.all(
-						[
-							process.exitCode,
-							process.stdout.pipe(
-								Stream.decodeText(),
-								Stream.runFold("", (acc, chunk) => acc + chunk),
-							),
-							process.stderr.pipe(
-								Stream.decodeText(),
-								Stream.runFold("", (acc, chunk) => acc + chunk),
-							),
-						],
-						{ concurrency: 3 },
-					);
-					if (exitCode !== 0) {
-						return yield* Effect.fail(
-							new GitSubmoduleError({
-								command: `git ${args.join(" ")}`,
-								cwd,
-								reason: stderr.trim().length > 0 ? stderr.trim() : `exit code ${exitCode}`,
-							}),
-						);
-					}
-					return stdout.trim();
-				}),
-			).pipe(
-				Effect.catchAll((cause) =>
-					Effect.fail(
-						cause instanceof GitSubmoduleError
-							? cause
-							: new GitSubmoduleError({ command: `git ${args.join(" ")}`, cwd, reason: String(cause) }),
-					),
-				),
-			);
+		/** Map any typed `@effected/git` failure onto this module's `GitSubmoduleError`. */
+		const asSubmoduleError =
+			(command: string, cwd: string) =>
+			(error: { readonly message: string }): GitSubmoduleError =>
+				new GitSubmoduleError({ command, cwd, reason: error.message });
 
 		const isPresent = (repoPath: string) =>
 			fs.readDirectory(repoPath).pipe(
@@ -162,18 +124,22 @@ export const ReposManagerLive: Layer.Layer<
 						const repoPath = path.join(root, REPOS_DIR, name);
 						const present = yield* isPresent(repoPath);
 
-						// Empty stdout is a legitimate non-error: the path simply isn't
+						// An empty listing is a legitimate non-error: the path simply isn't
 						// tracked at HEAD yet (e.g. `add` staged but not committed). A
 						// failing `ls-tree` invocation itself (not present in this repo
 						// at all, corrupt HEAD, etc.) is a real git failure and must
 						// propagate as `GitSubmoduleError` rather than be read as "no
 						// commit".
-						const lsTree = yield* runGit(root, ["ls-tree", "HEAD", "--", `${REPOS_DIR}/${name}`]);
-						const commit = lsTree.length > 0 ? (lsTree.split(/\s+/)[2] ?? null) : null;
+						const lsTree = yield* git
+							.lsTree(root, "HEAD", { pathspec: [`${REPOS_DIR}/${name}`] })
+							.pipe(Effect.mapError(asSubmoduleError(`git ls-tree HEAD -- ${REPOS_DIR}/${name}`, root)));
+						const commit = lsTree[0]?.oid ?? null;
 
 						let dirty = false;
 						if (present) {
-							const porcelain = yield* runGit(repoPath, ["status", "--porcelain"]);
+							const porcelain = yield* git
+								.status(repoPath)
+								.pipe(Effect.mapError(asSubmoduleError("git status --porcelain", repoPath)));
 							dirty = porcelain.length > 0;
 						}
 
@@ -233,14 +199,22 @@ export const ReposManagerLive: Layer.Layer<
 
 					const present = yield* isPresent(repoPath);
 					if (!present) {
-						yield* runGit(root, ["submodule", "update", "--init", "--depth", "1", "--", `${REPOS_DIR}/${name}`]);
+						yield* git
+							.submoduleUpdate(root, { init: true, depth: 1, paths: [`${REPOS_DIR}/${name}`] })
+							.pipe(
+								Effect.mapError(
+									asSubmoduleError(`git submodule update --init --depth 1 -- ${REPOS_DIR}/${name}`, root),
+								),
+							);
 						initialized.push(name);
 					} else {
 						upToDate.push(name);
 					}
 
 					if (entry.sparse && entry.sparse.length > 0) {
-						yield* runGit(repoPath, ["sparse-checkout", "set", "--no-cone", ...entry.sparse]);
+						yield* git
+							.sparseCheckoutSet(repoPath, entry.sparse, { cone: false })
+							.pipe(Effect.mapError(asSubmoduleError("git sparse-checkout set --no-cone", repoPath)));
 						sparseApplied.push(name);
 					}
 				}
@@ -259,14 +233,19 @@ export const ReposManagerLive: Layer.Layer<
 		};
 
 		/**
-		 * Fetch `ref` shallow into a submodule. Tags need the explicit
-		 * `fetch origin tag <ref>` form; branches/commits fall back to a plain
-		 * `fetch origin <ref>`.
+		 * Fetch `ref` shallow into a submodule via the kit's `Git.fetchAny`:
+		 * tag-form fetch first (tags need the explicit `fetch origin tag <ref>`
+		 * form), falling back to a plain `fetch origin <ref>` on
+		 * `UnknownRefError` OR `GitCommandError` (unclassified tag-form stderr
+		 * keeps the v3 any-failure fallback). `NotARepositoryError` deliberately
+		 * does NOT fall back — a plain fetch in a non-repo fails identically, so
+		 * retrying only doubled the latency of a certain failure. When both
+		 * attempts fail, the plain fetch's error surfaces.
 		 */
-		const fetchRef = (sub: string, ref: string) =>
-			runGit(sub, ["fetch", "--depth", "1", "origin", "tag", ref]).pipe(
-				Effect.orElse(() => runGit(sub, ["fetch", "--depth", "1", "origin", ref])),
-			);
+		const fetchRef = (sub: string, ref: string): Effect.Effect<void, GitSubmoduleError> =>
+			git
+				.fetchAny(sub, { ref, depth: 1 })
+				.pipe(Effect.mapError(asSubmoduleError(`git fetch --depth 1 origin ${ref}`, sub)));
 
 		const add = (
 			root: string,
@@ -284,7 +263,7 @@ export const ReposManagerLive: Layer.Layer<
 				// 1. Validate the effective name BEFORE any side effect — a bad
 				// name (path traversal, separators, "." or "..") must never reach
 				// git or the filesystem.
-				yield* Schema.decodeUnknown(RepoName)(name).pipe(
+				yield* Schema.decodeUnknownEffect(RepoName)(name).pipe(
 					Effect.mapError(
 						() =>
 							new ReposConfigError({
@@ -322,14 +301,24 @@ export const ReposManagerLive: Layer.Layer<
 				const repoPath = `${REPOS_DIR}/${name}`;
 				const subPath = path.join(root, repoPath);
 
-				yield* runGit(root, ["submodule", "add", "--depth", "1", options.url, repoPath]);
-				yield* runGit(root, ["config", "-f", ".gitmodules", `submodule.${repoPath}.shallow`, "true"]);
+				yield* git
+					.submoduleAdd(root, { url: options.url, path: repoPath, depth: 1 })
+					.pipe(Effect.mapError(asSubmoduleError(`git submodule add --depth 1 ${options.url} ${repoPath}`, root)));
+				yield* git
+					.configSet(root, `submodule.${repoPath}.shallow`, "true", { file: ".gitmodules" })
+					.pipe(
+						Effect.mapError(asSubmoduleError(`git config -f .gitmodules submodule.${repoPath}.shallow true`, root)),
+					);
 
 				yield* fetchRef(subPath, options.ref);
-				yield* runGit(subPath, ["checkout", "--detach", "FETCH_HEAD"]);
+				yield* git
+					.checkout(subPath, "FETCH_HEAD", { detach: true })
+					.pipe(Effect.mapError(asSubmoduleError("git checkout --detach FETCH_HEAD", subPath)));
 
 				if (options.sparse && options.sparse.length > 0) {
-					yield* runGit(subPath, ["sparse-checkout", "set", "--no-cone", ...options.sparse]);
+					yield* git
+						.sparseCheckoutSet(subPath, options.sparse, { cone: false })
+						.pipe(Effect.mapError(asSubmoduleError("git sparse-checkout set --no-cone", subPath)));
 				}
 
 				const entry: RepoEntry = {
@@ -341,7 +330,9 @@ export const ReposManagerLive: Layer.Layer<
 
 				yield* configStore.write(root, { repos: { ...manifest.repos, [name]: entry } });
 
-				yield* runGit(root, ["add", ".gitmodules", MANIFEST_PATH, repoPath]);
+				yield* git
+					.add(root, [".gitmodules", MANIFEST_PATH, repoPath])
+					.pipe(Effect.mapError(asSubmoduleError(`git add .gitmodules ${MANIFEST_PATH} ${repoPath}`, root)));
 
 				return { name, ref: options.ref, path: repoPath };
 			});
@@ -357,17 +348,23 @@ export const ReposManagerLive: Layer.Layer<
 				const repoPath = `${REPOS_DIR}/${name}`;
 				const subPath = path.join(root, repoPath);
 
-				const oldCommit = yield* runGit(subPath, ["rev-parse", "HEAD"]).pipe(Effect.orElseSucceed(() => null));
+				const oldCommit = yield* git.revParse(subPath, "HEAD").pipe(Effect.orElseSucceed(() => null));
 
 				yield* fetchRef(subPath, ref);
-				yield* runGit(subPath, ["checkout", "--detach", "FETCH_HEAD"]);
-				const newCommit = yield* runGit(subPath, ["rev-parse", "HEAD"]);
+				yield* git
+					.checkout(subPath, "FETCH_HEAD", { detach: true })
+					.pipe(Effect.mapError(asSubmoduleError("git checkout --detach FETCH_HEAD", subPath)));
+				const newCommit = yield* git
+					.revParse(subPath, "HEAD")
+					.pipe(Effect.mapError(asSubmoduleError("git rev-parse HEAD", subPath)));
 
 				yield* configStore.write(root, {
 					repos: { ...manifest.repos, [name]: { ...entry, ref } },
 				});
 
-				yield* runGit(root, ["add", MANIFEST_PATH, repoPath]);
+				yield* git
+					.add(root, [MANIFEST_PATH, repoPath])
+					.pipe(Effect.mapError(asSubmoduleError(`git add ${MANIFEST_PATH} ${repoPath}`, root)));
 
 				const staleNoteIds = (entry.notes ?? []).filter((note) => note.ref !== ref).map((note) => note.id);
 				const commitMessage = `chore(repos): pin ${name} to ${ref}`;
@@ -462,12 +459,12 @@ export const ReposManagerLive: Layer.Layer<
 				return { name, op: "promote" as const, id: op.id, noteCount: updatedNotes.length };
 			});
 
-		return ReposManager.of({
+		return {
 			status,
 			sync,
 			add,
 			pin,
 			note,
-		});
+		};
 	}),
 );

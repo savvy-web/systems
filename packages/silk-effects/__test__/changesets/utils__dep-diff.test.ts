@@ -1,5 +1,5 @@
+import { CatalogSet, PackageStateSnapshot, WorkspaceStateSnapshot } from "@effected/workspaces";
 import { describe, expect, it } from "vitest";
-import { CatalogSet, PackageStateSnapshot, WorkspaceStateSnapshot } from "workspaces-effect";
 import { computeWorkspaceDependencyDiffs } from "../../src/changesets/utils/dep-diff.js";
 
 const snap = (catalogs: Record<string, Record<string, string>>, deps: Record<string, string>, version = "1.0.0") =>

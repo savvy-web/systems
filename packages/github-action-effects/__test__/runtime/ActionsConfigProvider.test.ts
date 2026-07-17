@@ -1,13 +1,13 @@
-import { Config, ConfigError, Effect } from "effect";
+import { Cause, Config, ConfigProvider, Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ActionsConfigProvider } from "../../src/runtime/ActionsConfigProvider.js";
 
 // Helper to run a Config (which extends Effect<A, ConfigError>) with ActionsConfigProvider installed
 const run = <A>(config: Config.Config<A>) =>
-	Effect.runPromise(Effect.withConfigProvider(ActionsConfigProvider)(config));
+	Effect.runPromise(Effect.provide(config, ConfigProvider.layer(ActionsConfigProvider)));
 
 const runExit = <A>(config: Config.Config<A>) =>
-	Effect.runPromiseExit(Effect.withConfigProvider(ActionsConfigProvider)(config));
+	Effect.runPromiseExit(Effect.provide(config, ConfigProvider.layer(ActionsConfigProvider)));
 
 // Track which env vars we set so we can clean up
 let envKeysSet: string[] = [];
@@ -52,10 +52,10 @@ describe("ActionsConfigProvider", () => {
 		const exit = await runExit(Config.string("missing-thing"));
 		expect(exit._tag).toBe("Failure");
 		if (exit._tag === "Failure") {
-			const cause = exit.cause;
-			expect(cause._tag).toBe("Fail");
-			if (cause._tag === "Fail") {
-				expect(ConfigError.isMissingData(cause.error)).toBe(true);
+			const maybeError = Cause.findErrorOption(exit.cause);
+			expect(Option.isSome(maybeError)).toBe(true);
+			if (Option.isSome(maybeError)) {
+				expect(maybeError.value).toBeInstanceOf(Config.ConfigError);
 			}
 		}
 	});
@@ -65,10 +65,10 @@ describe("ActionsConfigProvider", () => {
 		const exit = await runExit(Config.string("empty-val"));
 		expect(exit._tag).toBe("Failure");
 		if (exit._tag === "Failure") {
-			const cause = exit.cause;
-			expect(cause._tag).toBe("Fail");
-			if (cause._tag === "Fail") {
-				expect(ConfigError.isMissingData(cause.error)).toBe(true);
+			const maybeError = Cause.findErrorOption(exit.cause);
+			expect(Option.isSome(maybeError)).toBe(true);
+			if (Option.isSome(maybeError)) {
+				expect(maybeError.value).toBeInstanceOf(Config.ConfigError);
 			}
 		}
 	});
@@ -85,9 +85,9 @@ describe("ActionsConfigProvider", () => {
 		expect(result).toBe(true);
 	});
 
-	it("reads and parses Config.integer('count') from INPUT_COUNT", async () => {
+	it("reads and parses Config.int('count') from INPUT_COUNT", async () => {
 		setEnv("INPUT_COUNT", "42");
-		const result = await run(Config.integer("count"));
+		const result = await run(Config.int("count"));
 		expect(result).toBe(42);
 	});
 });

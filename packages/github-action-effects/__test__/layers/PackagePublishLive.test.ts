@@ -34,7 +34,7 @@ const outputsState = ActionOutputsTest.empty();
 const outputsLayer = ActionOutputsTest.layer(outputsState);
 
 /** Suppresses the publish flow's INFO logging so test output stays clean. */
-const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
+const silentLogger = Logger.layer([]);
 
 const makeMockRunner = (handlers: {
 	exec?: (
@@ -1573,7 +1573,7 @@ describe("PackagePublishLive", () => {
 		// `pack` routes through the same npm executor as publish/dryRun (getNpmCommand),
 		// so a pack runs through the identical npm the live publish will. The execCapture
 		// call is recorded before pack reads the tarball, so the dispatch is observable
-		// even though pack then fails hashing the (absent) tarball — Effect.either keeps
+		// even though pack then fails hashing the (absent) tarball — Effect.result keeps
 		// the run from rejecting so the captured argv can be asserted.
 		const cases = [
 			{ pm: "pnpm" as const, command: "pnpm", head: ["dlx", "npm@11", "pack", "--json"] },
@@ -1603,7 +1603,7 @@ describe("PackagePublishLive", () => {
 					PackagePublish.pipe(
 						Effect.flatMap((svc) => svc.pack("/pkg", { packageManager: pm })),
 						// pack fails hashing the nonexistent tarball; only the dispatch matters here.
-						Effect.either,
+						Effect.result,
 						Effect.provide(layer),
 					),
 				);

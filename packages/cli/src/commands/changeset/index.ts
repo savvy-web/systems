@@ -1,4 +1,6 @@
-import { Command } from "@effect/cli";
+import type { Changesets } from "@savvy-web/silk-effects";
+import type { Cause } from "effect";
+import { Command } from "effect/unstable/cli";
 
 import { checkCommand } from "./commands/check.js";
 import { configValidateCommand } from "./commands/config-validate.js";
@@ -37,20 +39,24 @@ const _changesetCommand = Command.make("changeset").pipe(
  * The `savvy changeset` command group for use in Task B7 root assembly.
  *
  * @remarks
- * Typed as `unknown` at the export boundary to avoid TypeScript declaration-emit
- * errors from Effect's internal types. Task B7 should import and use this via
- * `Command.withSubcommands([changesetCommand as never])` or re-infer the type.
+ * Annotated with the exact five-parameter `Command.Command` instantiation
+ * (verified against the inferred type): the bare inferred type additionally
+ * prints the structural `subcommands` tree, whose inline command types
+ * reference effect's non-exported `Inspectable` module (TS4023). The
+ * annotation preserves the exact Error/Requirements channels, so the root
+ * layer graph stays compiler-validated.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const changesetCommand: Command.Command<"changeset", any, any, any> = _changesetCommand as Command.Command<
+export const changesetCommand: Command.Command<
 	"changeset",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+	Record<string, never>,
+	Record<string, never>,
+	| Changesets.ConfigurationError
+	| Error
+	| Changesets.ReleasePlanError
+	| Cause.UnknownError
+	| Changesets.DepsRegenPlanError,
+	never
+> = _changesetCommand;
 /* v8 ignore stop */
 
 // Re-export named handlers for B5/B6 orchestrator consumption.

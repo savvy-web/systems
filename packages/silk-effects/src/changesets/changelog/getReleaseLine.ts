@@ -89,12 +89,12 @@ export function getReleaseLine(
 			commitInfo = yield* github.getInfo({ commit: changeset.commit, repo: options.repo }).pipe(
 				// Validate response shape
 				Effect.flatMap((raw) =>
-					Schema.decodeUnknown(GitHubInfoSchema)(raw).pipe(
+					Schema.decodeUnknownEffect(GitHubInfoSchema)(raw).pipe(
 						Effect.map(() => raw),
-						Effect.catchAll(() => Effect.succeed(raw)),
+						Effect.catch(() => Effect.succeed(raw)),
 					),
 				),
-				Effect.catchAll((error) => {
+				Effect.catch((error) => {
 					logWarning("Could not fetch GitHub info for commit:", changeset.commit ?? "", String(error));
 					return Effect.succeed(null);
 				}),

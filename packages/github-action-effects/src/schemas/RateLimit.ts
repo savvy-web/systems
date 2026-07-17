@@ -10,7 +10,7 @@ export const RateLimitStatus = Schema.Struct({
 	remaining: Schema.Number,
 	reset: Schema.Number,
 	used: Schema.Number,
-}).annotations({ identifier: "RateLimitStatus" });
+}).annotate({ identifier: "RateLimitStatus" });
 
 /**
  * Decoded type for RateLimitStatus.

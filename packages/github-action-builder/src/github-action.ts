@@ -120,9 +120,9 @@ export type GitHubActionBuildResult = typeof GitHubActionBuildResultSchema.Type;
  * It handles configuration loading, validation, and bundling in a single workflow.
  *
  * For Effect consumers, use the services directly:
- * - {@link (ConfigService:interface)} for configuration
- * - {@link (ValidationService:interface)} for validation
- * - {@link (BuildService:interface)} for building
+ * - {@link ConfigService} for configuration
+ * - {@link ValidationService} for validation
+ * - {@link BuildService} for building
  *
  * @example Complete build workflow
  * ```typescript

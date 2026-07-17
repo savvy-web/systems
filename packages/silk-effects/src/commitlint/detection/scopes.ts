@@ -3,9 +3,9 @@
  *
  * @internal
  */
+import type { WorkspaceDiscoveryFailure } from "@effected/workspaces";
+import { WorkspaceDiscovery } from "@effected/workspaces";
 import { Effect } from "effect";
-import type { WorkspaceDiscoveryError } from "workspaces-effect";
-import { WorkspaceDiscovery } from "workspaces-effect";
 
 /**
  * Extract scope-friendly name from a package name.
@@ -26,7 +26,7 @@ function extractScopeName(name: string): string | undefined {
  * Detect package scopes from workspace configuration.
  *
  * @remarks
- * Uses workspaces-effect to find all packages in the workspace and extracts
+ * Uses `@effected/workspaces` to find all packages in the workspace and extracts
  * their names as potential commit scopes. For scoped packages like
  * `@scope/package-name`, only the package name portion is used as the scope.
  *
@@ -34,7 +34,7 @@ function extractScopeName(name: string): string | undefined {
  *
  * @public
  */
-export const detectScopes: Effect.Effect<string[], WorkspaceDiscoveryError, WorkspaceDiscovery> = Effect.gen(
+export const detectScopes: Effect.Effect<string[], WorkspaceDiscoveryFailure, WorkspaceDiscovery> = Effect.gen(
 	function* () {
 		const discovery = yield* WorkspaceDiscovery;
 		const packages = yield* discovery.listPackages();

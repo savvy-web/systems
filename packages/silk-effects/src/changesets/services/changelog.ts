@@ -73,20 +73,6 @@ export interface ChangelogServiceShape {
 	) => Effect.Effect<string, never, GitHubService>;
 }
 
-const _tag = Context.Tag("ChangelogService");
-
-/**
- * Base class for ChangelogService.
- *
- * @privateRemarks
- * This export is required for api-extractor documentation generation.
- * Effect's Context.Tag creates an anonymous base class that must be
- * explicitly exported to avoid "forgotten export" warnings. Do not delete.
- *
- * @internal
- */
-export const ChangelogServiceBase = _tag<ChangelogService, ChangelogServiceShape>();
-
 /**
  * Effect service tag for changelog formatting.
  *
@@ -114,8 +100,7 @@ export const ChangelogServiceBase = _tag<ChangelogService, ChangelogServiceShape
  * ```
  *
  * @see {@link ChangelogServiceShape} for the service interface
- * @see {@link ChangelogServiceBase} for the api-extractor base class
  *
  * @public
  */
-export class ChangelogService extends ChangelogServiceBase {}
+export class ChangelogService extends Context.Service<ChangelogService, ChangelogServiceShape>()("ChangelogService") {}

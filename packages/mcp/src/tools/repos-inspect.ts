@@ -7,26 +7,26 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 import { mdInline } from "./md-inline.js";
 
 /** Status-report variant. */
 export const ReposStatusResult = Schema.Struct({
 	mode: Schema.Literal("status"),
 	result: Repos.ReposStatusReport,
-}).annotations({ identifier: "ReposStatusResult" });
+}).annotate({ identifier: "ReposStatusResult" });
 
 /** Manifest-config variant. */
 export const ReposConfigResult = Schema.Struct({
 	mode: Schema.Literal("config"),
 	result: Repos.ReposManifestFile,
-}).annotations({ identifier: "ReposConfigResult" });
+}).annotate({ identifier: "ReposConfigResult" });
 
 /** The `repos_inspect` tool result — a discriminated union keyed by `mode`. */
-export const ReposInspectResult = Schema.Union(ReposStatusResult, ReposConfigResult).annotations({
+export const ReposInspectResult = Schema.Union([ReposStatusResult, ReposConfigResult]).annotate({
 	identifier: "ReposInspectResult",
 	title: "repos_inspect result",
 	description: "Drift report (status) or the parsed manifest with purposes, orientation, and notes (config).",
@@ -96,14 +96,12 @@ const renderMarkdown = (data: ReposInspectResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ReposInspectAsMarkdown = Schema.transformOrFail(ReposInspectResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "ReposInspectAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const ReposInspectAsMarkdown = ReposInspectResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "ReposInspectAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link reposInspect} handler. */
 export interface ReposInspectArgs {

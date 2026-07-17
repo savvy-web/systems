@@ -83,7 +83,7 @@ describe("GitHubClient.paginate", () => {
 		const result = await Effect.runPromise(
 			GitHubClient.pipe(
 				Effect.flatMap((client) => client.paginate("listPRs", async () => ({ data: [] }))),
-				Effect.catchAll((error) => Effect.succeed(error)),
+				Effect.catch((error) => Effect.succeed(error)),
 				Effect.provide(layer),
 			),
 		);

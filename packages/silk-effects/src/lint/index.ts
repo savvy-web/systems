@@ -26,8 +26,8 @@
 //     resolution). The sync API is required by lint-staged handlers which must
 //     return synchronous command strings. Not replacing with ToolDiscovery.
 //
-//   utils/Workspace.ts — COPIED
-//     Wraps workspaces-effect synchronous APIs (findWorkspaceRootSync,
+//   utils/Workspace.ts — COPIED (v4: workspaces-effect → @effected/workspaces)
+//     Wraps @effected/workspaces synchronous APIs (findWorkspaceRootSync,
 //     getWorkspacePackagesSync) with module-level caching. silk-effects'
 //     SilkWorkspaceAnalyzer is Effect-based and async; no sync equivalent exists.
 //     The handlers need synchronous workspace root discovery, so this cannot

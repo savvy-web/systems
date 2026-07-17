@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { ChangesetDepsRegenAsMarkdown, changesetDepsRegen } from "../../src/tools/changeset-deps-regen.js";
 
@@ -92,9 +92,9 @@ describe("changesetDepsRegen handler", () => {
 	it("renders markdown for the plan and forbids encoding back", async () => {
 		const { layer } = makeStub();
 		const data = await run(changesetDepsRegen({ dryRun: true }, ROOT), layer);
-		const md = Schema.decodeSync(ChangesetDepsRegenAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetDepsRegenAsMarkdown)(data);
 		expect(md).toContain("brave-dogs-fly.md");
 		expect(md).toContain("stale-cats-sing.md");
-		expect(() => Schema.encodeSync(ChangesetDepsRegenAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(ChangesetDepsRegenAsMarkdown)("anything")).toThrow();
 	});
 });

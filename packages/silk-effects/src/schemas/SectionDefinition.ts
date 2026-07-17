@@ -18,7 +18,10 @@ import { SectionDiff as SectionDiffEnum } from "./SectionResults.js";
  */
 export class SectionDefinition extends Schema.TaggedClass<SectionDefinition>()("SectionDefinition", {
 	toolName: Schema.String,
-	commentStyle: Schema.optionalWith(CommentStyleSchema, { default: () => "#" as const }),
+	commentStyle: CommentStyleSchema.pipe(
+		Schema.withDecodingDefaultType(Effect.succeed("#" as const)),
+		Schema.withConstructorDefault(Effect.succeed("#" as const)),
+	),
 }) {
 	// ── Non-schema property: validation ─────────────────────────
 
@@ -140,7 +143,7 @@ export class SectionDefinition extends Schema.TaggedClass<SectionDefinition>()("
 	}
 
 	[Hash.symbol](): number {
-		return Hash.cached(this)(Hash.combine(Hash.hash(this.toolName))(Hash.hash(this.commentStyle)));
+		return Hash.optimize(Hash.combine(Hash.hash(this.toolName), Hash.hash(this.commentStyle)));
 	}
 }
 

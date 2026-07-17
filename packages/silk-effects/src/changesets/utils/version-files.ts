@@ -21,9 +21,12 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { Effect, Schema } from "effect";
-import { applyEdits, modify, parse as parseJsonc } from "jsonc-effect";
-import { globSync } from "tinyglobby";
+import { GlobPattern } from "@effected/glob";
+import { Jsonc, JsoncEdit, JsoncFormattingOptions, JsoncModifier } from "@effected/jsonc";
+import type { DescendError } from "@effected/walker";
+import { descend } from "@effected/walker";
+import type { FileSystem } from "effect";
+import { Effect, Option, Path, Schema } from "effect";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import type { LegacyVersionFileConfig } from "../schemas/version-files.js";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
@@ -84,13 +87,14 @@ export interface WorkspaceVersion {
  *
  * @example
  * ```typescript
+ * import { Effect } from "effect";
  * import { VersionFiles } from "../utils/version-files.js";
  *
  * const configs = VersionFiles.extractVersionFiles(parsedConfig);
  * if (configs) {
- *   const updates = VersionFiles.processVersionFiles("/path/to/project", configs);
+ *   const updates = yield* VersionFiles.processVersionFiles("/path/to/project", configs);
  *   for (const update of updates) {
- *     console.log(`Updated ${update.filePath} to ${update.version}`);
+ *     yield* Effect.log(`Updated ${update.filePath} to ${update.version}`);
  *   }
  * }
  * ```
@@ -227,33 +231,33 @@ export class VersionFiles {
 	 * Resolve glob patterns to absolute file paths.
 	 *
 	 * @remarks
-	 * Uses `tinyglobby` to expand each config's glob pattern relative to
-	 * `cwd`. The `node_modules` directory is always ignored. Returns
-	 * tuples pairing each resolved absolute path with its originating config.
+	 * Compiles each config's glob with `@effected/glob` and expands it against
+	 * a filesystem walk rooted at `cwd` via `@effected/walker`'s `descend`
+	 * (literal patterns fast-path a direct stat; magic patterns walk from
+	 * their literal prefix). The `node_modules` and `.git` directories are
+	 * always ignored. Returns tuples pairing each resolved absolute path with
+	 * its originating config, per-glob results sorted by relative path.
 	 *
 	 * @param configs - Version file configurations
 	 * @param cwd - Project root directory
-	 * @returns Array of `[filePath, config]` tuples
+	 * @returns Effect of `[filePath, config]` tuples
 	 */
 	static resolveGlobs(
 		configs: readonly LegacyVersionFileConfig[],
 		cwd: string,
-	): Array<[string, LegacyVersionFileConfig]> {
-		const results: Array<[string, LegacyVersionFileConfig]> = [];
-		const resolvedCwd = resolve(cwd);
+	): Effect.Effect<Array<[string, LegacyVersionFileConfig]>, DescendError, FileSystem.FileSystem> {
+		return Effect.gen(function* () {
+			const results: Array<[string, LegacyVersionFileConfig]> = [];
+			const resolvedCwd = resolve(cwd);
 
-		for (const config of configs) {
-			const matches = globSync(config.glob, {
-				cwd: resolvedCwd,
-				ignore: ["**/node_modules/**"],
-			});
-
-			for (const match of matches) {
-				results.push([join(resolvedCwd, match), config]);
+			for (const config of configs) {
+				for (const match of yield* expandGlob(config.glob, resolvedCwd)) {
+					results.push([join(resolvedCwd, match), config]);
+				}
 			}
-		}
 
-		return results;
+			return results;
+		});
 	}
 
 	/**
@@ -341,7 +345,7 @@ export class VersionFiles {
 		version: string,
 	): { content: string; previousValues: unknown[]; totalChanged: number } {
 		let content = original;
-		const obj = Effect.runSync(parseJsonc(content));
+		const obj = Effect.runSync(Jsonc.parse(content));
 
 		const previousValues = jsonPaths.flatMap((jp) => jsonPathGet(obj, jp));
 
@@ -392,9 +396,9 @@ export class VersionFiles {
 	 * the updated document, or `undefined` when nothing changed.
 	 *
 	 * @remarks
-	 * Delegates to `jsonc-effect`'s {@link modify} + {@link applyEdits}
-	 * (requires `jsonc-effect >= 0.3.1`, whose edit spans touch only the target
-	 * value), so every other byte of the document is preserved. When the leaf
+	 * Delegates to `@effected/jsonc`'s `JsoncModifier.modify` +
+	 * `JsoncEdit.applyAll` (whose edit spans touch only the target value), so
+	 * every other byte of the document is preserved. When the leaf
 	 * of a wildcard-free path does not exist, `modify` inserts the property
 	 * after the last sibling using the supplied formatting options — the only
 	 * case where the detected indent matters. A path whose parent is missing or
@@ -416,14 +420,14 @@ export class VersionFiles {
 		eol: string,
 	): string | undefined {
 		const insertSpaces = !indentUnit.includes("\t");
-		const program = modify(content, [...concretePath], version, {
-			formattingOptions: {
+		const program = JsoncModifier.modify(content, [...concretePath], version, {
+			formattingOptions: JsoncFormattingOptions.make({
 				insertSpaces,
 				tabSize: insertSpaces ? indentUnit.length : 1,
 				eol,
-			},
+			}),
 		}).pipe(
-			Effect.flatMap((edits) => applyEdits(content, edits)),
+			Effect.map((edits) => JsoncEdit.applyAll(content, edits)),
 			// A same-value edit round-trips to the identical document; report no change.
 			Effect.map((updated) => (updated === content ? undefined : updated)),
 			Effect.catchTag("JsoncModificationError", () => Effect.succeed(undefined)),
@@ -443,47 +447,50 @@ export class VersionFiles {
 	 * @param cwd - Project root directory
 	 * @param configs - Validated version file configurations
 	 * @param dryRun - If true, do not write files (default: `false`)
-	 * @returns Array of update results
-	 * @throws If any file cannot be read or parsed
+	 * @returns Effect of update results; a file that cannot be read or parsed
+	 *   is a defect (the legacy path treats it as a caller bug, as the
+	 *   previous synchronous `throw` did)
 	 */
 	static processVersionFiles(
 		cwd: string,
 		configs: readonly LegacyVersionFileConfig[],
 		dryRun = false,
 		packages: ReadonlyArray<{ name: string; version: string; path: string }> = [],
-	): VersionFileUpdate[] {
-		const workspaces = VersionFiles.discoverVersions(cwd, packages);
-		const rootVersion = workspaces.find((ws) => ws.path === resolve(cwd))?.version ?? "0.0.0";
-		const resolved = VersionFiles.resolveGlobs(configs, cwd);
-		const updates: VersionFileUpdate[] = [];
+	): Effect.Effect<VersionFileUpdate[], DescendError, FileSystem.FileSystem> {
+		return Effect.gen(function* () {
+			const workspaces = VersionFiles.discoverVersions(cwd, packages);
+			const rootVersion = workspaces.find((ws) => ws.path === resolve(cwd))?.version ?? "0.0.0";
+			const resolved = yield* VersionFiles.resolveGlobs(configs, cwd);
+			const updates: VersionFileUpdate[] = [];
 
-		for (const [filePath, config] of resolved) {
-			const jsonPaths = config.paths ?? ["$.version"];
-			const version = config.package
-				? (workspaces.find((ws) => ws.name === config.package)?.version ?? rootVersion)
-				: VersionFiles.resolveVersion(filePath, workspaces, rootVersion);
+			for (const [filePath, config] of resolved) {
+				const jsonPaths = config.paths ?? ["$.version"];
+				const version = config.package
+					? (workspaces.find((ws) => ws.name === config.package)?.version ?? rootVersion)
+					: VersionFiles.resolveVersion(filePath, workspaces, rootVersion);
 
-			try {
-				if (dryRun) {
-					// Same decision path as the real run (computeUpdate), minus the write, so
-					// the preview reports pending inserts and skips same-value no-ops too.
-					const content = readFileSync(filePath, "utf-8");
-					const { previousValues, totalChanged } = VersionFiles.computeUpdate(content, jsonPaths, version);
-					if (totalChanged > 0) {
-						updates.push({ filePath, jsonPaths, version, previousValues });
+				try {
+					if (dryRun) {
+						// Same decision path as the real run (computeUpdate), minus the write, so
+						// the preview reports pending inserts and skips same-value no-ops too.
+						const content = readFileSync(filePath, "utf-8");
+						const { previousValues, totalChanged } = VersionFiles.computeUpdate(content, jsonPaths, version);
+						if (totalChanged > 0) {
+							updates.push({ filePath, jsonPaths, version, previousValues });
+						}
+					} else {
+						const result = VersionFiles.updateFile(filePath, jsonPaths, version);
+						if (result) {
+							updates.push(result);
+						}
 					}
-				} else {
-					const result = VersionFiles.updateFile(filePath, jsonPaths, version);
-					if (result) {
-						updates.push(result);
-					}
+				} catch (error) {
+					throw new Error(`Failed to update ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
 				}
-			} catch (error) {
-				throw new Error(`Failed to update ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
 			}
-		}
 
-		return updates;
+			return updates;
+		});
 	}
 
 	/**
@@ -538,6 +545,42 @@ export class VersionFiles {
 
 		return updates;
 	}
+}
+
+/**
+ * Expand a glob pattern against the filesystem, returning matching FILE paths
+ * relative to `cwd` (POSIX separators), sorted by relative path.
+ *
+ * @remarks
+ * The walk is `@effected/walker`'s `descend` (literal fast path,
+ * `enumerationPrefix` bounding, `node_modules`/`.git` pruning), with
+ * `onUnreadable: "skip"` preserving this module's silent-skip policy for
+ * unreadable directories. Matching semantics are minimatch DEFAULTS via the
+ * compiled pattern — notably, wildcards do not match dotfiles, same as the
+ * previous `tinyglobby` defaults. An uncompilable pattern expands to no
+ * matches. `descend`'s `Path` requirement is satisfied internally with the
+ * core POSIX `Path.layer` — this module already speaks POSIX relative match
+ * paths and node-bound absolute paths throughout.
+ *
+ * @param source - The glob pattern, repo-relative
+ * @param cwd - Absolute directory the pattern is resolved against
+ * @returns Effect of relative paths of matching files, sorted
+ *
+ * @internal
+ */
+function expandGlob(
+	source: string,
+	cwd: string,
+): Effect.Effect<ReadonlyArray<string>, DescendError, FileSystem.FileSystem> {
+	return Effect.option(GlobPattern.compile(source)).pipe(
+		Effect.flatMap(
+			Option.match({
+				onNone: () => Effect.succeed<ReadonlyArray<string>>([]),
+				onSome: (pattern) => descend(pattern, { cwd, onUnreadable: "skip" }),
+			}),
+		),
+		Effect.provide(Path.layer),
+	);
 }
 
 /**

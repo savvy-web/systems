@@ -1,6 +1,5 @@
-import { FileSystem } from "@effect/platform";
 import type { Exit } from "effect";
-import { Cause, Chunk, Effect, Layer, Schema } from "effect";
+import { Cause, Effect, FileSystem, Layer, Option, Result, Schema } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionOutputsLive } from "../../src/layers/ActionOutputsLive.js";
 import { ActionOutputs } from "../../src/services/ActionOutputs.js";
@@ -145,8 +144,8 @@ describe("ActionOutputsLive", () => {
 			);
 			expect(exit._tag).toBe("Failure");
 			if (exit._tag === "Failure") {
-				expect(Cause.isDie(exit.cause)).toBe(true);
-				const defect = Chunk.toArray(Cause.defects(exit.cause))[0] as { _tag: string; outputName: string };
+				expect(Cause.hasDies(exit.cause)).toBe(true);
+				const defect = Result.getOrThrow(Cause.findDefect(exit.cause)) as { _tag: string; outputName: string };
 				expect(defect._tag).toBe("ActionOutputError");
 				expect(defect.outputName).toBe("key");
 			}
@@ -184,7 +183,7 @@ describe("ActionOutputsLive", () => {
 			);
 			expect(exit._tag).toBe("Failure");
 			if (exit._tag === "Failure") {
-				const first = Chunk.toArray(Cause.failures(exit.cause))[0] as {
+				const first = Option.getOrThrow(Cause.findErrorOption(exit.cause)) as {
 					_tag: string;
 					outputName: string;
 					reason: string;
@@ -224,7 +223,7 @@ describe("ActionOutputsLive", () => {
 			);
 			expect(exit._tag).toBe("Failure");
 			if (exit._tag === "Failure") {
-				const first = Chunk.toArray(Cause.failures(exit.cause))[0] as {
+				const first = Option.getOrThrow(Cause.findErrorOption(exit.cause)) as {
 					_tag: string;
 					outputName: string;
 					reason: string;

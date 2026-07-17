@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import type { PackageManagerError } from "../../src/errors/PackageManagerError.js";
 import type { CommandResponse } from "../../src/layers/CommandRunnerTest.js";

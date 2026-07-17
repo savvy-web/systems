@@ -1,6 +1,5 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
-import { parse as parseYaml } from "yaml-effect";
+import { Yaml } from "@effected/yaml";
+import { Effect, FileSystem, Layer } from "effect";
 import { WorkspaceDetectorError } from "../errors/WorkspaceDetectorError.js";
 import type { WorkspaceInfo, WorkspacePackage } from "../schemas/Workspace.js";
 import { WorkspaceDetector } from "../services/WorkspaceDetector.js";
@@ -22,7 +21,7 @@ export const WorkspaceDetectorLive: Layer.Layer<WorkspaceDetector, never, FileSy
 		const fileExists = (path: string) =>
 			fs.access(path).pipe(
 				Effect.map(() => true),
-				Effect.catchAll(() => Effect.succeed(false)),
+				Effect.catch(() => Effect.succeed(false)),
 			);
 
 		const readFileString = (path: string) =>
@@ -42,7 +41,7 @@ export const WorkspaceDetectorLive: Layer.Layer<WorkspaceDetector, never, FileSy
 					if (hasPnpmWorkspace) {
 						return readFileString("pnpm-workspace.yaml").pipe(
 							Effect.flatMap((content) =>
-								parseYaml(content).pipe(
+								Yaml.parse(content).pipe(
 									Effect.mapError(
 										(error) =>
 											new WorkspaceDetectorError({

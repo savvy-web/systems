@@ -41,7 +41,7 @@ import { NonEmptyString } from "./primitives.js";
  *
  * @public
  */
-export const DependencyActionSchema = Schema.Literal("added", "updated", "removed");
+export const DependencyActionSchema = Schema.Literals(["added", "updated", "removed"]);
 
 /**
  * Inferred type for {@link DependencyActionSchema}.
@@ -77,14 +77,14 @@ export type DependencyAction = typeof DependencyActionSchema.Type;
  *
  * @public
  */
-export const DependencyTableTypeSchema = Schema.Literal(
+export const DependencyTableTypeSchema = Schema.Literals([
 	"dependency",
 	"devDependency",
 	"peerDependency",
 	"optionalDependency",
 	"workspace",
 	"config",
-);
+]);
 
 /**
  * Inferred type for {@link DependencyTableTypeSchema}.
@@ -135,7 +135,7 @@ export const VERSION_RE =
  *
  * @public
  */
-export const VersionOrEmptySchema = Schema.String.pipe(Schema.pattern(VERSION_RE));
+export const VersionOrEmptySchema = Schema.String.check(Schema.isPattern(VERSION_RE));
 
 /**
  * Schema for a single dependency table row.
@@ -233,4 +233,4 @@ export interface DependencyTableRow extends Schema.Schema.Type<typeof Dependency
  *
  * @public
  */
-export const DependencyTableSchema = Schema.Array(DependencyTableRowSchema).pipe(Schema.minItems(1));
+export const DependencyTableSchema = Schema.Array(DependencyTableRowSchema).check(Schema.isMinLength(1));

@@ -1,12 +1,8 @@
-/**
- * Markdownlint template data.
- *
- * Originally generated in the now-deprecated `@savvy-web/lint-staged` package;
- * the generator does not live in this repo, so this file is maintained by hand.
- * Edit the `MARKDOWNLINT_TEMPLATE` / `MARKDOWNLINT_CONFIG` objects directly.
- *
- * @internal
- */
+// Markdownlint template data.
+//
+// Originally generated in the now-deprecated `@savvy-web/lint-staged` package;
+// the generator does not live in this repo, so this file is maintained by hand.
+// Edit the `MARKDOWNLINT_TEMPLATE` / `MARKDOWNLINT_CONFIG` objects directly.
 
 /** Full markdownlint-cli2 config template. */
 export const MARKDOWNLINT_TEMPLATE = {

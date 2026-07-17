@@ -1,6 +1,6 @@
-import { FetchHttpClient } from "@effect/platform";
 import { NodeFileSystem } from "@effect/platform-node";
-import { Layer, Logger } from "effect";
+import { ConfigProvider, Layer, Logger } from "effect";
+import { FetchHttpClient } from "effect/unstable/http";
 import { ActionEnvironmentLive } from "../layers/ActionEnvironmentLive.js";
 import { ActionLoggerLive } from "../layers/ActionLoggerLive.js";
 import { ActionOutputsLive } from "../layers/ActionOutputsLive.js";
@@ -40,8 +40,8 @@ import { ActionsLogger } from "./ActionsLogger.js";
  */
 export const ActionsRuntime = {
 	Default: Layer.mergeAll(
-		Layer.setConfigProvider(ActionsConfigProvider),
-		Logger.replace(Logger.defaultLogger, ActionsLogger),
+		ConfigProvider.layer(ActionsConfigProvider),
+		Logger.layer([ActionsLogger]),
 		ActionEnvironmentLive,
 		ActionLoggerLive,
 		ActionOutputsLive,

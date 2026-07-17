@@ -1,20 +1,6 @@
-import { HttpClient, HttpClientResponse } from "@effect/platform";
-import {
-	Cause,
-	Chunk,
-	Duration,
-	Effect,
-	Exit,
-	Fiber,
-	Layer,
-	Metric,
-	Option,
-	Redacted,
-	Ref,
-	Stream,
-	TestClock,
-	TestContext,
-} from "effect";
+import { Cause, Duration, Effect, Exit, Fiber, Layer, Metric, Option, Redacted, Ref, Stream } from "effect";
+import { TestClock } from "effect/testing";
+import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientLive } from "../../src/layers/GitHubClientLive.js";
 import { githubApiCalls } from "../../src/runtime/Telemetry.js";
@@ -401,10 +387,10 @@ describe("GitHubClientLive", () => {
 		/** Drive a retrying effect under TestClock so backoff sleeps are instant. */
 		const runWithClock = <A, E>(effect: Effect.Effect<A, E>, advance = Duration.seconds(600)) =>
 			Effect.gen(function* () {
-				const fiber = yield* Effect.fork(effect);
+				const fiber = yield* Effect.forkChild(effect);
 				yield* TestClock.adjust(advance);
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 		it("rest retries a transient 503 then succeeds (default-on)", async () => {
 			let attempts = 0;
@@ -505,7 +491,7 @@ describe("GitHubClientLive", () => {
 		it("honors a Retry-After header as the retry delay", async () => {
 			let attempts = 0;
 			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.fork(
+				const fiber = yield* Effect.forkChild(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (client) =>
 							client.rest("op", () => {
@@ -526,12 +512,12 @@ describe("GitHubClientLive", () => {
 				);
 				// Less than the advised 5s: still pending.
 				yield* TestClock.adjust(Duration.seconds(4));
-				const stillRunning = (yield* Fiber.poll(fiber))._tag === "None";
+				const stillRunning = fiber.pollUnsafe() === undefined;
 				// Past the advised delay: completes.
 				yield* TestClock.adjust(Duration.seconds(2));
 				const result = yield* Fiber.join(fiber);
 				return { stillRunning, result };
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 			expect(exit._tag).toBe("Success");
 			if (Exit.isSuccess(exit)) {
@@ -612,7 +598,7 @@ describe("GitHubClientLive", () => {
 									{ perPage: 3 },
 								)
 								.pipe(Stream.take(1)),
-						).pipe(Effect.map(Chunk.toReadonlyArray)),
+						),
 					),
 					GitHubClientLive.fromToken(Redacted.make("t")),
 				),
@@ -635,7 +621,7 @@ describe("GitHubClientLive", () => {
 								},
 								{ perPage: 3, maxPages: 2 },
 							),
-						).pipe(Effect.map(Chunk.toReadonlyArray)),
+						),
 					),
 					GitHubClientLive.fromToken(Redacted.make("t")),
 				),
@@ -658,9 +644,7 @@ describe("GitHubClientLive", () => {
 			);
 			const streamed = await Effect.runPromise(
 				Effect.provide(
-					Effect.flatMap(GitHubClient, (client) =>
-						Stream.runCollect(client.paginateStream("op", fn, { perPage: 3 })).pipe(Effect.map(Chunk.toReadonlyArray)),
-					),
+					Effect.flatMap(GitHubClient, (client) => Stream.runCollect(client.paginateStream("op", fn, { perPage: 3 }))),
 					GitHubClientLive.fromToken(Redacted.make("t")),
 				),
 			);
@@ -686,7 +670,7 @@ describe("GitHubClientLive", () => {
 									{ perPage: 3 },
 								)
 								.pipe(Stream.takeWhile((x) => x < 5)),
-						).pipe(Effect.map(Chunk.toReadonlyArray)),
+						),
 					),
 					GitHubClientLive.fromToken(Redacted.make("t")),
 				),
@@ -714,9 +698,9 @@ describe("GitHubClientLive", () => {
 	describe("telemetry (item 5, on WS2's resilient client)", () => {
 		it("increments the GitHub-API counter per rest call, tagged by operation + outcome", async () => {
 			const successCounter = githubApiCalls.pipe(
-				Metric.tagged("kind", "rest"),
-				Metric.tagged("operation", "tagged.op"),
-				Metric.tagged("outcome", "success"),
+				Metric.withAttributes({ kind: "rest" }),
+				Metric.withAttributes({ operation: "tagged.op" }),
+				Metric.withAttributes({ outcome: "success" }),
 			);
 			const before = await Effect.runPromise(Metric.value(successCounter));
 			await Effect.runPromise(
@@ -731,16 +715,16 @@ describe("GitHubClientLive", () => {
 
 		it("increments the failure-tagged counter once even across resilient retries", async () => {
 			const failureCounter = githubApiCalls.pipe(
-				Metric.tagged("kind", "rest"),
-				Metric.tagged("operation", "retry.op"),
-				Metric.tagged("outcome", "failure"),
+				Metric.withAttributes({ kind: "rest" }),
+				Metric.withAttributes({ operation: "retry.op" }),
+				Metric.withAttributes({ outcome: "failure" }),
 			);
 			const before = await Effect.runPromise(Metric.value(failureCounter));
 			let attempts = 0;
 			// Always-503 so WS2's resilience retries internally; the span/counter
 			// must wrap the OUTERMOST effect so the counter ticks exactly once.
 			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.fork(
+				const fiber = yield* Effect.forkChild(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (client) =>
 							client.rest("retry.op", () => {
@@ -753,7 +737,7 @@ describe("GitHubClientLive", () => {
 				);
 				yield* TestClock.adjust(Duration.seconds(600));
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 			expect(exit._tag).toBe("Failure");
 			expect(attempts).toBeGreaterThan(1);
@@ -805,17 +789,17 @@ describe("GitHubClientLive", () => {
 
 			await Effect.runPromise(
 				Effect.gen(function* () {
-					const shared = yield* Layer.memoize(
+					const shared = yield* Layer.build(
 						Layer.provide(
 							GitHubClientLive.fromApp({ clientId: "Iv1.abc", privateKey: Redacted.make("key"), installationId: 42 }),
 							httpLayer,
 						),
 					);
 					yield* Effect.flatMap(GitHubClient, (client) => client.rest("a", () => Promise.resolve({ data: 1 }))).pipe(
-						Effect.provide(shared),
+						Effect.provideContext(shared),
 					);
 					yield* Effect.flatMap(GitHubClient, (client) => client.rest("b", () => Promise.resolve({ data: 2 }))).pipe(
-						Effect.provide(shared),
+						Effect.provideContext(shared),
 					);
 				}).pipe(Effect.scoped),
 			);

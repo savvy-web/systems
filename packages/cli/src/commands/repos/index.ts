@@ -1,4 +1,5 @@
-import { Command } from "@effect/cli";
+import type { Repos } from "@savvy-web/silk-effects";
+import { Command } from "effect/unstable/cli";
 
 import { addCommand } from "./commands/add.js";
 import { noteCommand } from "./commands/note.js";
@@ -16,20 +17,20 @@ const _reposCommand = Command.make("repos").pipe(
  * The `savvy repos` command group.
  *
  * @remarks
- * Typed as `unknown` at the export boundary to avoid TypeScript declaration-emit
- * errors from Effect's internal types (TS4023), matching the `changesetCommand`
- * export pattern.
+ * Annotated with the exact five-parameter `Command.Command` instantiation
+ * (verified against the inferred type): the bare inferred type additionally
+ * prints the structural `subcommands` tree, whose inline command types
+ * reference effect's non-exported `Inspectable` module (TS4023). The
+ * annotation preserves the exact Error/Requirements channels, so the root
+ * layer graph stays compiler-validated.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const reposCommand: Command.Command<"repos", any, any, any> = _reposCommand as Command.Command<
+export const reposCommand: Command.Command<
 	"repos",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+	Record<string, never>,
+	Record<string, never>,
+	Repos.GitSubmoduleError,
+	never
+> = _reposCommand;
 /* v8 ignore stop */
 
 export { runReposAdd } from "./commands/add.js";

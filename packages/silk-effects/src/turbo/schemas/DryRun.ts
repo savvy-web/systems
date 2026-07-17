@@ -4,9 +4,9 @@ import { Schema } from "effect";
 export const TurboCache = Schema.Struct({
 	local: Schema.Boolean,
 	remote: Schema.Boolean,
-	status: Schema.Literal("HIT", "MISS"),
+	status: Schema.Literals(["HIT", "MISS"]),
 	timeSaved: Schema.Number,
-}).annotations({ identifier: "TurboCache" });
+}).annotate({ identifier: "TurboCache" });
 
 /** turbo's environment-variable contribution block (per-task and global). */
 export const TurboEnvVars = Schema.Struct({
@@ -17,7 +17,7 @@ export const TurboEnvVars = Schema.Struct({
 	configured: Schema.Array(Schema.String),
 	inferred: Schema.Array(Schema.String),
 	passthrough: Schema.NullOr(Schema.Array(Schema.String)),
-}).annotations({ identifier: "TurboEnvVars" });
+}).annotate({ identifier: "TurboEnvVars" });
 
 /** A single task entry from `turbo run <task> --dry=json`. */
 export const TurboDryTask = Schema.Struct({
@@ -26,29 +26,29 @@ export const TurboDryTask = Schema.Struct({
 	package: Schema.String,
 	directory: Schema.String,
 	hash: Schema.String,
-	inputs: Schema.Record({ key: Schema.String, value: Schema.String }),
+	inputs: Schema.Record(Schema.String, Schema.String),
 	hashOfExternalDependencies: Schema.String,
 	cache: TurboCache,
 	dependencies: Schema.Array(Schema.String),
 	dependents: Schema.Array(Schema.String),
 	environmentVariables: TurboEnvVars,
-}).annotations({ identifier: "TurboDryTask" });
+}).annotate({ identifier: "TurboDryTask" });
 
 /** The `globalCacheInputs` block — the components of the global hash. */
 export const TurboGlobalCacheInputs = Schema.Struct({
 	rootKey: Schema.String,
-	files: Schema.Record({ key: Schema.String, value: Schema.String }),
+	files: Schema.Record(Schema.String, Schema.String),
 	hashOfExternalDependencies: Schema.String,
 	hashOfInternalDependencies: Schema.String,
 	environmentVariables: TurboEnvVars,
-}).annotations({ identifier: "TurboGlobalCacheInputs" });
+}).annotate({ identifier: "TurboGlobalCacheInputs" });
 
 /** The subset of `turbo run <task> --dry=json` the Turbo namespace reads. */
 export const TurboDryRun = Schema.Struct({
 	turboVersion: Schema.String,
 	globalCacheInputs: TurboGlobalCacheInputs,
 	tasks: Schema.Array(TurboDryTask),
-}).annotations({ identifier: "TurboDryRun" });
+}).annotate({ identifier: "TurboDryRun" });
 
 export type TurboDryRunType = Schema.Schema.Type<typeof TurboDryRun>;
 export type TurboDryTaskType = Schema.Schema.Type<typeof TurboDryTask>;

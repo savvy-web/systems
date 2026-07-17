@@ -1,10 +1,10 @@
 import { join } from "node:path";
+import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { findWorkspaceRootSync, getWorkspacePackagesSync } from "workspaces-effect";
 import { Biome } from "../../../src/lint/handlers/Biome.js";
 import { isWorkspacePackagePath, resetWorkspaceCache } from "../../../src/lint/utils/Workspace.js";
 
-vi.mock("workspaces-effect", () => ({
+vi.mock("@effected/workspaces", () => ({
 	findWorkspaceRootSync: vi.fn(),
 	getWorkspacePackagesSync: vi.fn(),
 }));

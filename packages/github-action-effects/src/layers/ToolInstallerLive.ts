@@ -39,7 +39,7 @@ const spawnEffect = (
 	operation: "extract",
 	tool: string,
 ): Effect.Effect<void, ToolInstallerError> =>
-	Effect.async<void, ToolInstallerError>((resume) => {
+	Effect.callback<void, ToolInstallerError>((resume) => {
 		const spawnOpts: SpawnOptions = { stdio: "pipe" };
 		const child = spawn(command, [...args], spawnOpts);
 
@@ -92,7 +92,7 @@ const MAX_REDIRECTS = 10;
 const USER_AGENT = "github-action-effects";
 
 const httpRequest = (url: string, redirectCount = 0): Effect.Effect<string, ToolInstallerError> =>
-	Effect.async<string, ToolInstallerError>((resume) => {
+	Effect.callback<string, ToolInstallerError>((resume) => {
 		// Hoisted so the interruption finalizer can clean up a partial download.
 		let tempFile: string | undefined;
 		if (redirectCount > MAX_REDIRECTS) {
@@ -178,7 +178,7 @@ const httpRequest = (url: string, redirectCount = 0): Effect.Effect<string, Tool
 
 		// On interruption: abort the in-flight request socket and remove any
 		// partial download. `unlink` ENOENT (file never created) is swallowed.
-		// Each recursive redirect hop is its own `Effect.async` with its own
+		// Each recursive redirect hop is its own `Effect.callback` with its own
 		// finalizer, so a mid-redirect interrupt still aborts that hop's `req`.
 		return Effect.sync(() => {
 			req.destroy();
@@ -223,16 +223,16 @@ export const ToolInstallerLive: Layer.Layer<ToolInstaller> = Layer.succeed(ToolI
 			catch: () => null,
 		}).pipe(
 			Effect.map((s) => (s?.isDirectory() ? Option.some(toolCachePath(tool, version)) : Option.none())),
-			Effect.catchAll(() => Effect.succeed(Option.none())),
+			Effect.catch(() => Effect.succeed(Option.none())),
 		),
 
 	download: (url: string) =>
 		httpRequest(url).pipe(
-			Effect.retry(
-				Schedule.intersect(Schedule.exponential("1 second"), Schedule.recurs(2)).pipe(
-					Schedule.whileInput(isRetryableDownloadError),
-				),
-			),
+			Effect.retry({
+				schedule: Schedule.exponential("1 second"),
+				times: 2,
+				while: isRetryableDownloadError,
+			}),
 		),
 
 	extractTar: (file: string, dest?: string, flags?: ReadonlyArray<string>) =>
@@ -275,7 +275,7 @@ export const ToolInstallerLive: Layer.Layer<ToolInstaller> = Layer.succeed(ToolI
 			if (process.platform === "win32") {
 				const psCommand = `Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('${file.replace(/'/g, "''")}', '${targetDir.replace(/'/g, "''")}')`;
 				yield* spawnEffect("pwsh", ["-NoProfile", "-NonInteractive", "-Command", psCommand], "extract", "unknown").pipe(
-					Effect.catchAll(() =>
+					Effect.catch(() =>
 						spawnEffect("powershell", ["-NoProfile", "-NonInteractive", "-Command", psCommand], "extract", "unknown"),
 					),
 				);

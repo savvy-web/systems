@@ -2,17 +2,17 @@
 /**
  * Binary entrypoint for the `savvy-mcp` server.
  *
- * Resolves the project working directory, builds the long-lived runtime, and
- * starts the MCP server over stdio.
+ * Resolves the project working directory, builds the long-lived runtime
+ * (root-bound to that directory), and starts the MCP server over stdio.
  *
  * @internal
  */
 /* v8 ignore start -- process bootstrap; covered by server.smoke.test.ts */
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
 import { Layer, ManagedRuntime } from "effect";
 
 import type { McpContext } from "./context.js";
-import { SilkRuntimeLive } from "./runtime.js";
+import { makeSilkRuntimeLayer } from "./runtime.js";
 import { startMcpServer } from "./server.js";
 
 function resolveProjectDir(): string {
@@ -26,7 +26,7 @@ function resolveProjectDir(): string {
 
 async function main(): Promise<void> {
 	const cwd = resolveProjectDir();
-	const appLayer = SilkRuntimeLive.pipe(Layer.provide(NodeContext.layer));
+	const appLayer = makeSilkRuntimeLayer(cwd).pipe(Layer.provide(NodeServices.layer));
 	const runtime = ManagedRuntime.make(appLayer);
 	const ctx: McpContext = { runtime, cwd };
 

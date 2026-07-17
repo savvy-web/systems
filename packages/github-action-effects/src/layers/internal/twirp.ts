@@ -1,6 +1,7 @@
-import type { HttpClient } from "@effect/platform";
-import { HttpClientRequest, HttpClientResponse } from "@effect/platform";
+import type { Duration } from "effect";
 import { Effect, Redacted, Schedule, Schema } from "effect";
+import type { HttpClient } from "effect/unstable/http";
+import { HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 
 /**
  * Shared Twirp RPC plumbing for the GitHub Actions results backend.
@@ -58,7 +59,7 @@ export const twirpCall = <T, E>(
 		const request = HttpClientRequest.post(`${baseUrl}twirp/${service}/${method}`).pipe(
 			// Unwrap the runtime token only here, at the request boundary (S9).
 			HttpClientRequest.bearerToken(Redacted.value(token)),
-			HttpClientRequest.bodyUnsafeJson(body),
+			HttpClientRequest.bodyJsonUnsafe(body),
 		);
 		// Transport faults surface as `<method> failed: <message>`; the message
 		// preserves the underlying `ECONNRESET`/`ETIMEDOUT` substring the retry
@@ -112,7 +113,14 @@ export const isRetryableTwirpReason = (reason: string): boolean =>
  *
  * @internal
  */
-export const makeTwirpRetrySchedule = <E>(reasonOf: (error: E) => string): Schedule.Schedule<unknown, E> =>
-	Schedule.intersect(Schedule.exponential("3 seconds", 1.5), Schedule.recurs(4)).pipe(
-		Schedule.whileInput((error: E) => isRetryableTwirpReason(reasonOf(error))),
-	);
+export const makeTwirpRetrySchedule = <E>(
+	reasonOf: (error: E) => string,
+): {
+	readonly schedule: Schedule.Schedule<Duration.Duration>;
+	readonly times: number;
+	readonly while: (error: E) => boolean;
+} => ({
+	schedule: Schedule.exponential("3 seconds", 1.5),
+	times: 4,
+	while: (error: E) => isRetryableTwirpReason(reasonOf(error)),
+});

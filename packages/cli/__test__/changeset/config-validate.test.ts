@@ -1,21 +1,23 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
+import { Workspaces } from "@effected/workspaces";
 import { ChangesetConfigReaderLive, Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { WorkspacesLive } from "workspaces-effect";
+
+const WorkspacesKitLive = Workspaces.layer();
 
 import { runConfigValidate } from "../../src/commands/changeset/commands/config-validate.js";
 
 const { ConfigInspectorLive } = Changesets;
 
 const TestLive = ConfigInspectorLive.pipe(
-	Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, WorkspacesLive)),
-	Layer.provide(NodeContext.layer),
+	Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, WorkspacesKitLive)),
+	Layer.provide(NodeServices.layer),
 );
-const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
+const silentLogger = Logger.layer([]);
 
 function setupFixture(opts: { configJson: Record<string, unknown> }): string {
 	const dir = mkdtempSync(join(tmpdir(), "cs-cli-validate-"));

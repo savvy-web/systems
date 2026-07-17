@@ -22,8 +22,7 @@
  */
 
 import type * as CdxLibrary from "@cyclonedx/cyclonedx-library";
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { SbomError } from "../errors/SbomError.js";
 import type {
 	CycloneDXBom,

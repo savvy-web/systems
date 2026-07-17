@@ -8,7 +8,7 @@ const Example = Schema.Struct({
 	name: Schema.String,
 	count: Schema.Number,
 	tags: Schema.Array(Schema.String),
-}).annotations({ identifier: "Example" });
+}).annotate({ identifier: "Example" });
 
 describe("effectToZodSchema", () => {
 	it("produces an object-typed zod schema that parses a conforming value", () => {

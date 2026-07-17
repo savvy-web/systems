@@ -4,7 +4,7 @@ import { Schema } from "effect";
  * Status values for `statusIcon`.
  * @public
  */
-export const Status = Schema.Literal("pass", "fail", "skip", "warn").annotations({
+export const Status = Schema.Literals(["pass", "fail", "skip", "warn"]).annotate({
 	identifier: "Status",
 	title: "Check Status",
 	description: "Status indicator for check run outcomes",
@@ -20,7 +20,7 @@ export type Status = typeof Status.Type;
 export const ChecklistItem = Schema.Struct({
 	label: Schema.String,
 	checked: Schema.Boolean,
-}).annotations({
+}).annotate({
 	identifier: "ChecklistItem",
 	title: "Checklist Item",
 });
@@ -35,7 +35,7 @@ export type ChecklistItem = typeof ChecklistItem.Type;
 export const CapturedOutput = Schema.Struct({
 	name: Schema.String,
 	value: Schema.String,
-}).annotations({
+}).annotate({
 	identifier: "CapturedOutput",
 	title: "Captured Output",
 });

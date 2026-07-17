@@ -32,22 +32,13 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effect/cli": "catalog:silk",
-		"@effect/cluster": "catalog:silk",
-		"@effect/experimental": "catalog:silk",
-		"@effect/platform": "catalog:silk",
-		"@effect/platform-node": "catalog:silk",
-		"@effect/printer": "catalog:silk",
-		"@effect/printer-ansi": "catalog:silk",
-		"@effect/rpc": "catalog:silk",
-		"@effect/sql": "catalog:silk",
-		"@effect/typeclass": "catalog:silk",
-		"@effect/workflow": "catalog:silk",
+		"@effect/platform-node": "catalog:effect",
+		"@effected/git": "^0.3.0",
+		"@effected/jsonc": "^0.2.0",
+		"@effected/workspaces": "^0.3.0",
+		"@effected/yaml": "^0.2.0",
 		"@savvy-web/silk-effects": "workspace:*",
-		"effect": "catalog:silk",
-		"jsonc-effect": "^0.3.1",
-		"workspaces-effect": "^2.1.0",
-		"yaml": "^2.9.0"
+		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",

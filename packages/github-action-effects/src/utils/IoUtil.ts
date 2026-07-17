@@ -1,8 +1,7 @@
 import { constants as fsConstants } from "node:fs";
 import { access as fsAccess } from "node:fs/promises";
 import { delimiter, isAbsolute, resolve, sep } from "node:path";
-import { FileSystem } from "@effect/platform";
-import { Effect, Option } from "effect";
+import { Effect, FileSystem, Option } from "effect";
 import { IoError } from "../errors/IoError.js";
 
 const isWindows = process.platform === "win32";
@@ -97,7 +96,7 @@ const checkCandidate = (fs: FileSystem.FileSystem, candidate: string): Effect.Ef
 			}
 			return Effect.succeed(Option.none<string>());
 		}),
-		Effect.catchAll(() => Effect.succeed(Option.none<string>())),
+		Effect.catch(() => Effect.succeed(Option.none<string>())),
 	);
 
 /**
@@ -152,7 +151,7 @@ const collectMatches = (fs: FileSystem.FileSystem, tool: string): Effect.Effect<
  * wiring inside `Action.run`.
  *
  * `cp` / `mv` / `rmRF` / `mkdirP` are intentionally NOT provided here — they map
- * directly onto `@effect/platform` `FileSystem` (`copy` / `rename` / `remove` /
+ * directly onto the core `effect` `FileSystem` (`copy` / `rename` / `remove` /
  * `makeDirectory`). See `docs/15-filesystem-io.md` for the substitution recipe.
  *
  * @public

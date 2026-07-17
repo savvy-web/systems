@@ -3,9 +3,9 @@
 /**
  * GitHub Action Builder CLI entry point.
  */
-import { Command } from "@effect/cli";
-import { NodeContext, NodeRuntime } from "@effect/platform-node";
-import { Cause, Console, Effect, Layer } from "effect";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { Effect, Layer } from "effect";
+import { Command } from "effect/unstable/cli";
 
 import { AppLayer } from "../layers/app.js";
 import { buildCommand, initCommand, validateCommand } from "./commands/index.js";
@@ -18,34 +18,24 @@ const rootCommand = Command.make("github-action-builder").pipe(
 );
 
 /**
- * CLI application configuration.
+ * CLI application: reads argv from the Stdio service provided by NodeServices.
  */
 const cli = Command.run(rootCommand, {
-	name: "github-action-builder",
 	version: process.env.__PACKAGE_VERSION__ ?? "0.0.0",
 });
 
 /**
- * Combined layer: AppLayer + NodeContext for CLI.
+ * Combined layer: AppLayer + the Node implementations of the CLI
+ * environment (FileSystem, Path, Terminal, Stdio, ChildProcessSpawner).
  */
-const CliLayer = Layer.merge(AppLayer, NodeContext.layer);
+const CliLayer = Layer.mergeAll(AppLayer, NodeServices.layer);
 
 /**
- * Run the CLI with full error cause rendering.
+ * Run the CLI.
  *
  * Expected typed errors (ValidationFailed, BuildFailed, etc.) are already
- * printed by command handlers — they just need to exit with failure.
- * Unexpected defects get full Cause.pretty rendering with stack traces.
+ * printed by command handlers — the failed effect makes the runtime exit
+ * non-zero. Usage errors print help via the CLI framework and also fail.
+ * NodeRuntime.runMain reports unexpected defects with full cause rendering.
  */
-const main = Effect.suspend(() => cli(process.argv)).pipe(
-	Effect.provide(CliLayer),
-	Effect.catchAllCause((cause) => {
-		const defects = Cause.defects(cause);
-		if (defects.length > 0) {
-			return Console.error(Cause.pretty(cause)).pipe(Effect.andThen(Effect.failCause(cause)));
-		}
-		return Effect.failCause(cause);
-	}),
-);
-
-NodeRuntime.runMain(main);
+NodeRuntime.runMain(cli.pipe(Effect.provide(CliLayer)));

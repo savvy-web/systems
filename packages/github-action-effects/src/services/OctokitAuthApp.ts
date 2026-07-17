@@ -19,13 +19,19 @@ export interface AppAuth {
 }
 
 /**
+ * Service shape for {@link OctokitAuthApp}.
+ *
+ * @public
+ */
+export interface OctokitAuthAppShape {
+	readonly createAppAuth: (options: { appId: string; privateKey: string }) => AppAuth;
+}
+
+/**
  * Wrapper service for `@octokit/auth-app`.
  *
  * @public
  */
-export class OctokitAuthApp extends Context.Tag("github-action-effects/OctokitAuthApp")<
-	OctokitAuthApp,
-	{
-		readonly createAppAuth: (options: { appId: string; privateKey: string }) => AppAuth;
-	}
->() {}
+export class OctokitAuthApp extends Context.Service<OctokitAuthApp, OctokitAuthAppShape>()(
+	"github-action-effects/OctokitAuthApp",
+) {}

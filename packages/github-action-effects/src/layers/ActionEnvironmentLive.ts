@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer, Option, Schema } from "effect";
+import { Effect, FileSystem, Layer, Option, Schema } from "effect";
 import { ActionEnvironmentError } from "../errors/ActionEnvironmentError.js";
 import type { GitHubContext, RunnerContext } from "../schemas/Environment.js";
 import { WebhookPayload } from "../schemas/EventPayload.js";
@@ -52,7 +51,7 @@ const decodePayload = (raw: string): Effect.Effect<WebhookPayload, ActionEnviron
 			}),
 	}).pipe(
 		Effect.flatMap((data) =>
-			Schema.decodeUnknown(WebhookPayload, { onExcessProperty: "preserve" })(data).pipe(
+			Schema.decodeUnknownEffect(WebhookPayload, { onExcessProperty: "preserve" })(data).pipe(
 				Effect.mapError(
 					(error) =>
 						new ActionEnvironmentError({

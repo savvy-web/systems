@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "../../src/tools/turbo-inspect.js";
@@ -58,7 +58,7 @@ describe("turboInspect handler", () => {
 	it("projects the cache mode and renders markdown", async () => {
 		const data = await run(turboInspect({ mode: "cache", task: "build:dev" }, "/repo"));
 		expect(data.mode).toBe("cache");
-		const md = Schema.decodeSync(TurboInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
 		expect(md).toContain("turbo cache");
 		expect(md).toContain("Misses");
 	});
@@ -66,7 +66,7 @@ describe("turboInspect handler", () => {
 	it("projects the graph mode", async () => {
 		const data = await run(turboInspect({ mode: "graph" }, "/repo"));
 		expect(data.mode).toBe("graph");
-		const md = Schema.decodeSync(TurboInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
 		expect(md).toContain("turbo task graph");
 		expect(md).toContain("a#build:dev");
 	});
@@ -74,13 +74,13 @@ describe("turboInspect handler", () => {
 	it("projects the affected mode", async () => {
 		const data = await run(turboInspect({ mode: "affected", base: "main" }, "/repo"));
 		expect(data.mode).toBe("affected");
-		const md = Schema.decodeSync(TurboInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
 		expect(md).toContain("turbo affected");
 		expect(md).toContain("- a");
 	});
 
 	it("forbids encoding markdown back to the structured result", () => {
-		expect(() => Schema.encodeSync(TurboInspectAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(TurboInspectAsMarkdown)("anything")).toThrow();
 	});
 });
 

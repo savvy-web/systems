@@ -1,13 +1,16 @@
 /**
  * Branch and inferred-ticket detection.
  *
+ * @remarks
+ * Branch lookup runs through `@effected/git`'s `currentBranch` (Option-shaped:
+ * a detached `HEAD` is `Option.none`, not the literal string `"HEAD"`). Any
+ * git failure degrades to the `{ branch: null }` fallback, preserving the
+ * never-fails contract of the v3 implementation.
+ *
  * @internal
  */
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { Effect } from "effect";
-
-const execFileP = promisify(execFile);
+import { Git } from "@effected/git";
+import { Effect, Option } from "effect";
 
 export interface BranchInfo {
 	branch: string | null;
@@ -21,10 +24,11 @@ export function inferTicketId(branch: string): number | null {
 	return m ? Number(m[1]) : null;
 }
 
-export function readBranchInfo(): Effect.Effect<BranchInfo> {
-	return Effect.tryPromise(async () => {
-		const { stdout } = await execFileP("git", ["rev-parse", "--abbrev-ref", "HEAD"]);
-		const branch = stdout.trim();
-		return { branch, inferredTicketId: inferTicketId(branch) };
-	}).pipe(Effect.orElseSucceed(() => ({ branch: null, inferredTicketId: null })));
+export function readBranchInfo(): Effect.Effect<BranchInfo, never, Git> {
+	return Effect.gen(function* () {
+		const git = yield* Git;
+		const branchOption = yield* git.currentBranch(process.cwd());
+		const branch = Option.getOrNull(branchOption);
+		return { branch, inferredTicketId: branch === null ? null : inferTicketId(branch) };
+	}).pipe(Effect.orElseSucceed((): BranchInfo => ({ branch: null, inferredTicketId: null })));
 }

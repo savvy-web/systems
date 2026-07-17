@@ -1,10 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
+import { PublishConfig, PublishabilityDetector, WorkspacePackage, WorkspaceRoot } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
-import { PublishConfig, PublishabilityDetector, WorkspacePackage } from "workspaces-effect";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 import {
 	PublishabilityDetectorAdaptiveLive,
@@ -44,11 +44,13 @@ const makeWsPkg = (
 		packageJsonPath: join(dir, "package.json"),
 		relativePath: ".",
 		private: opts.private ?? false,
-		publishConfig: opts.publishConfig ? new PublishConfig(opts.publishConfig) : undefined,
+		// Conditional spread: v4 constructors validate, and `publishConfig` is an
+		// exact-optional key — never pass explicit undefined.
+		...(opts.publishConfig ? { publishConfig: new PublishConfig(opts.publishConfig) } : {}),
 	});
 
 const runSilk = <A>(eff: Effect.Effect<A, never, PublishabilityDetector>): Promise<A> =>
-	Effect.runPromise(eff.pipe(Effect.provide(SilkPublishabilityDetectorLive), Effect.provide(NodeContext.layer)));
+	Effect.runPromise(eff.pipe(Effect.provide(SilkPublishabilityDetectorLive), Effect.provide(NodeServices.layer)));
 
 const mockChangesetConfig = (mode: "silk" | "vanilla" | "none", versionPrivate = false, ignore: string[] = []) =>
 	Layer.succeed(ChangesetConfig, {
@@ -60,6 +62,14 @@ const mockChangesetConfig = (mode: "silk" | "vanilla" | "none", versionPrivate =
 		refresh: () => Effect.void,
 	});
 
+// The adaptive detector resolves the changeset root per package via
+// WorkspaceRoot (the kit detect contract lost its root param). The tmpdir
+// fixtures carry no workspace markers, so stub find as a passthrough — the
+// mocked ChangesetConfig ignores the root argument anyway.
+const mockWorkspaceRoot = Layer.succeed(WorkspaceRoot, {
+	find: (cwd: string) => Effect.succeed(cwd),
+});
+
 const runAdaptive = <A>(
 	eff: Effect.Effect<A, never, PublishabilityDetector>,
 	mode: "silk" | "vanilla" | "none",
@@ -69,9 +79,11 @@ const runAdaptive = <A>(
 	Effect.runPromise(
 		eff.pipe(
 			Effect.provide(
-				PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(mockChangesetConfig(mode, versionPrivate, ignore))),
+				PublishabilityDetectorAdaptiveLive.pipe(
+					Layer.provide(Layer.merge(mockChangesetConfig(mode, versionPrivate, ignore), mockWorkspaceRoot)),
+				),
 			),
-			Effect.provide(NodeContext.layer),
+			Effect.provide(NodeServices.layer),
 		),
 	);
 
@@ -87,9 +99,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 
 	it("private !== true, no targets → publishable (one default target)", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0" });
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
+		const targets = await runSilk(Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))));
 		expect(targets.length).toBe(1);
 	});
 
@@ -105,7 +115,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		});
 		writeBinding(tmpDir, dualRegistryBinding("@scope/x"));
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(2);
 		expect(targets.every((t) => t.directory === "dist/prod/npm/pkg")).toBe(true);
@@ -127,7 +137,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			publishConfig: { access: "public", directory: "dist/dev/pkg", targets: { npm: true, github: true } },
 		});
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(2);
 		expect(targets.map((t) => t.registry).sort()).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
@@ -149,7 +159,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			targets: [{ id: "corp", group: "corp", name: "@scope/x", registry: "https://npm.corp.example.com" }],
 		});
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(1);
 		expect(targets[0].registry).toBe("https://npm.corp.example.com");
@@ -167,7 +177,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			publishConfig: { access: "public", targets: { corp: { registry: "https://npm.corp.example.com" } } },
 		});
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(1);
 		expect(targets[0].registry).toBe("https://npm.corp.example.com");
@@ -195,7 +205,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			],
 		});
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(2);
 		expect(targets.every((t) => t.provenance === false)).toBe(true);
@@ -213,7 +223,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			targets: [{ id: "npm", group: "npm", name: "@scope/x", registry: "https://registry.npmjs.org" }],
 		});
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(1);
 		expect(targets[0].directory).toBe("dist/prod/npm/pkg");
@@ -231,7 +241,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			targets: [{ id: "npm", group: "npm", name: "@scope/x", registry: "https://registry.npmjs.org" }],
 		});
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(1);
 		expect(targets[0].access).toBe("public");
@@ -249,7 +259,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			targets: [{ id: "npm", group: "npm", name: "@scope/x", registry: "https://registry.npmjs.org" }],
 		});
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(1);
 		expect(targets[0].access).toBe("restricted");
@@ -262,51 +272,39 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 			private: true,
 			publishConfig: { access: "public", directory: "dist/dev/pkg", targets: {} },
 		});
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
+		const targets = await runSilk(Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))));
 		expect(targets.length).toBe(1);
 		expect(targets[0].directory).toBe("dist/dev/pkg");
 	});
 
 	it("private === true + publishConfig.access public, no targets → publishable", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0", private: true, publishConfig: { access: "public" } });
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
+		const targets = await runSilk(Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))));
 		expect(targets.length).toBe(1);
 		expect(targets[0].access).toBe("public");
 	});
 
 	it("private === true + no publishConfig → not publishable", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0", private: true });
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
+		const targets = await runSilk(Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))));
 		expect(targets.length).toBe(0);
 	});
 
 	it("private === true + publishConfig with no access and no targets → not publishable", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0", private: true, publishConfig: {} });
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
+		const targets = await runSilk(Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))));
 		expect(targets.length).toBe(0);
 	});
 
 	it("missing package.json → not publishable", async () => {
 		// no writePkg call — tmpDir exists but no package.json
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
+		const targets = await runSilk(Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))));
 		expect(targets.length).toBe(0);
 	});
 
 	it("malformed package.json → not publishable", async () => {
 		writeFileSync(join(tmpDir, "package.json"), "{ not valid json", "utf-8");
-		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
-		);
+		const targets = await runSilk(Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))));
 		expect(targets.length).toBe(0);
 	});
 
@@ -320,7 +318,7 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 		mkdirSync(join(tmpDir, "dist", "prod"), { recursive: true });
 		writeFileSync(join(tmpDir, "dist", "prod", "targets.json"), "{ not valid json", "utf-8");
 		const targets = await runSilk(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 		);
 		expect(targets.length).toBe(1);
 		expect(targets[0].directory).toBe("dist/prod/npm/pkg");
@@ -340,7 +338,7 @@ describe("PublishabilityDetectorAdaptiveLive — vanilla mode", () => {
 	it("private === true + no publishConfig.access → not publishable", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0", private: true });
 		const targets = await runAdaptive(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x", { private: true }), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x", { private: true }))),
 			"vanilla",
 		);
 		expect(targets.length).toBe(0);
@@ -351,7 +349,7 @@ describe("PublishabilityDetectorAdaptiveLive — vanilla mode", () => {
 		// Pass publishConfig to the WorkspacePackage so the vanilla library can read it
 		const targets = await runAdaptive(
 			Effect.flatMap(PublishabilityDetector, (d) =>
-				d.detect(makeWsPkg(tmpDir, "x", { private: true, publishConfig: { access: "public" } }), tmpDir),
+				d.detect(makeWsPkg(tmpDir, "x", { private: true, publishConfig: { access: "public" } })),
 			),
 			"vanilla",
 		);
@@ -361,7 +359,7 @@ describe("PublishabilityDetectorAdaptiveLive — vanilla mode", () => {
 	it("private !== true → publishable", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0" });
 		const targets = await runAdaptive(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))),
 			"vanilla",
 		);
 		expect(targets.length).toBe(1);
@@ -381,7 +379,7 @@ describe("PublishabilityDetectorAdaptiveLive — none mode", () => {
 	it("none mode treats everything as not publishable regardless of package contents", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0" });
 		const targets = await runAdaptive(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))),
 			"none",
 		);
 		expect(targets.length).toBe(0);
@@ -406,7 +404,7 @@ describe("PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk ru
 			publishConfig: { access: "public", targets: { npm: true } },
 		});
 		const targets = await runAdaptive(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
 			"silk",
 		);
 		expect(targets.length).toBe(1);
@@ -415,7 +413,7 @@ describe("PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk ru
 	it("silk mode: private + no publishConfig → not publishable", async () => {
 		writePkg(tmpDir, { name: "x", version: "1.0.0", private: true });
 		const targets = await runAdaptive(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "x"))),
 			"silk",
 		);
 		expect(targets.length).toBe(0);
@@ -429,7 +427,7 @@ describe("PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk ru
 			publishConfig: { access: "public", targets: { npm: true } },
 		});
 		const targets = await runAdaptive(
-			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@libraries/x"), tmpDir)),
+			Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@libraries/x"))),
 			"silk",
 			false,
 			["@libraries/*"],
@@ -452,7 +450,7 @@ describe("SilkPublishability.resolveTargets — prod-binding guard", () => {
 		Effect.runPromiseExit(
 			SilkPublishability.resolveTargets(pkg, root).pipe(
 				Effect.provide(SilkPublishabilityDetectorLive),
-				Effect.provide(NodeContext.layer),
+				Effect.provide(NodeServices.layer),
 			),
 		);
 

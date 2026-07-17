@@ -41,11 +41,10 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effect/platform": "catalog:silk",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
-		"effect": "catalog:silk",
+		"effect": "catalog:effect",
 		"prettier": "^3.9.5",
 		"semver": "^7.8.5"
 	},

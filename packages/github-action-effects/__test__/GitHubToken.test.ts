@@ -25,7 +25,7 @@ vi.mock("@octokit/rest", async (importOriginal) => {
 const STATE_KEY = "github-action-effects/installation-token";
 
 /** Suppresses provision's INFO/WARN logging so test output stays clean. */
-const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
+const silentLogger = Logger.layer([]);
 
 /** Build a GitHubApp test state that returns the given installation token. */
 const appStateWith = (
@@ -161,16 +161,14 @@ describe("GitHubToken", () => {
 			});
 			const state = ActionStateTest.empty();
 			const outputs = ActionOutputsTest.empty();
-			const configProvider = ConfigProvider.fromMap(
-				new Map([
-					["app-client-id", "Iv1.config"],
-					["app-private-key", "config-pk"],
-				]),
-			);
+			const configProvider = ConfigProvider.fromUnknown({
+				"app-client-id": "Iv1.config",
+				"app-private-key": "config-pk",
+			});
 
 			const token = await Effect.runPromise(
 				Effect.provide(
-					GitHubToken.provision({ installationId: 7 }).pipe(Effect.withConfigProvider(configProvider)),
+					GitHubToken.provision({ installationId: 7 }).pipe(Effect.provide(ConfigProvider.layer(configProvider))),
 					provisionLayer(state, appState, outputs),
 				),
 			);

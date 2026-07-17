@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer, Option, Schema } from "effect";
+import { Effect, FileSystem, Layer, Option, Schema } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ActionStateLive } from "../../src/layers/ActionStateLive.js";
 import { ActionState } from "../../src/services/ActionState.js";

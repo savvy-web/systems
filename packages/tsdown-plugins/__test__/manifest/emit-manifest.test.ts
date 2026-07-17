@@ -41,7 +41,7 @@ describe("buildEmittedManifest", () => {
 		});
 		expect(out.dependencies).toEqual({ effect: "catalog:silk" });
 		expect(out.exports).toEqual({
-			".": { types: "./index.d.ts", import: "./index.js" },
+			".": { types: "./index.d.ts", import: "./index.js", default: "./index.js" },
 			"./package.json": "./package.json",
 		});
 	});

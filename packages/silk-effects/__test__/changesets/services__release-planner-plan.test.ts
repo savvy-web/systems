@@ -1,5 +1,5 @@
 import { rmSync } from "node:fs";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
@@ -33,7 +33,7 @@ describe("ReleasePlanner.plan", () => {
 			Changesets.ReleasePlanner.pipe(
 				Effect.provide(Changesets.ReleasePlannerLive),
 				Effect.provide(InspectorStub),
-				Effect.provide(NodeContext.layer),
+				Effect.provide(NodeServices.layer),
 			),
 		);
 		const plan = await Effect.runPromise(planner.plan(root));

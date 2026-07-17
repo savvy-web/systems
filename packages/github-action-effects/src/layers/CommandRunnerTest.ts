@@ -71,7 +71,7 @@ const makeTestRunner = (responses: ReadonlyMap<string, CommandResponse>): typeof
 					}),
 				),
 				Effect.flatMap((parsed) =>
-					Schema.decodeUnknown(schema)(parsed).pipe(
+					Schema.decodeUnknownEffect(schema)(parsed).pipe(
 						Effect.mapError(
 							() =>
 								new CommandRunnerError({

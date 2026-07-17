@@ -5,7 +5,7 @@ import { Schema } from "effect";
  *
  * @public
  */
-export const BumpType = Schema.Literal("major", "minor", "patch").annotations({ identifier: "BumpType" });
+export const BumpType = Schema.Literals(["major", "minor", "patch"]).annotate({ identifier: "BumpType" });
 
 /**
  * @public
@@ -26,7 +26,7 @@ export const Changeset = Schema.Struct({
 		}),
 	),
 	summary: Schema.String,
-}).annotations({ identifier: "Changeset" });
+}).annotate({ identifier: "Changeset" });
 
 /**
  * @public
@@ -41,7 +41,7 @@ export type Changeset = typeof Changeset.Type;
 export const ChangesetFile = Schema.Struct({
 	path: Schema.String,
 	content: Schema.String,
-}).annotations({ identifier: "ChangesetFile" });
+}).annotate({ identifier: "ChangesetFile" });
 
 /**
  * @public

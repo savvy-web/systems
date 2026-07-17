@@ -1,6 +1,5 @@
-import { FileSystem } from "@effect/platform";
 import type { Exit } from "effect";
-import { Effect, Layer } from "effect";
+import { Cause, Effect, FileSystem, Layer, Option } from "effect";
 import { describe, expect, it } from "vitest";
 import { ChangesetConfigError } from "../../src/errors/ChangesetConfigError.js";
 import { VersioningDetectionError } from "../../src/errors/VersioningDetectionError.js";
@@ -170,14 +169,10 @@ describe("ChangesetConfigReader", () => {
 
 			expect(exit._tag).toBe("Failure");
 			if (exit._tag === "Failure") {
-				const cause = exit.cause;
-				// Check cause is a Fail
-				expect(cause._tag).toBe("Fail");
-				if (cause._tag === "Fail") {
-					const error = cause.error;
-					expect((error as { _tag: string })._tag).toBe("ChangesetConfigError");
-					expect((error as { path: string }).path).toContain(".changeset/config.json");
-				}
+				// v4 Cause is a collection of reasons; extract the typed error.
+				const error = Option.getOrThrow(Cause.findErrorOption(exit.cause));
+				expect((error as { _tag: string })._tag).toBe("ChangesetConfigError");
+				expect((error as { path: string }).path).toContain(".changeset/config.json");
 			}
 		});
 

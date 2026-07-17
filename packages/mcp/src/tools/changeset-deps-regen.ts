@@ -8,10 +8,10 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { PointInTimeReadError, WorkspaceDiscoveryError, WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 
 /** The `changeset_deps_regen` tool result. */
 export const ChangesetDepsRegenResult = Schema.Struct({
@@ -20,7 +20,7 @@ export const ChangesetDepsRegenResult = Schema.Struct({
 	written: Schema.Array(Schema.String),
 	skippedMixed: Schema.Array(Schema.String),
 	dryRun: Schema.Boolean,
-}).annotations({
+}).annotate({
 	identifier: "ChangesetDepsRegenResult",
 	title: "changeset_deps_regen result",
 	description: "Regenerated pure-dependency changesets. Mutates .changeset/*.md unless dryRun is set.",
@@ -68,14 +68,12 @@ const renderMarkdown = (data: ChangesetDepsRegenResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetDepsRegenAsMarkdown = Schema.transformOrFail(ChangesetDepsRegenResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "ChangesetDepsRegenAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const ChangesetDepsRegenAsMarkdown = ChangesetDepsRegenResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "ChangesetDepsRegenAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link changesetDepsRegen} handler. */
 export interface ChangesetDepsRegenArgs {
@@ -98,11 +96,7 @@ export const changesetDepsRegen = (
 	fallbackCwd: string,
 ): Effect.Effect<
 	ChangesetDepsRegenResultType,
-	| Changesets.GitError
-	| WorkspaceRootNotFoundError
-	| WorkspaceDiscoveryError
-	| Changesets.ChangesetIOError
-	| PointInTimeReadError,
+	Changesets.DepsRegenPlanError | WorkspaceRootNotFoundError,
 	WorkspaceRoot | Changesets.DepsRegen
 > =>
 	Effect.gen(function* () {

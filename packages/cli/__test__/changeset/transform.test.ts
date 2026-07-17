@@ -8,7 +8,7 @@ import { runTransform } from "../../src/commands/changeset/commands/transform.js
 
 const { ConfigurationError, ConfigInspector, makeConfigInspectorTest } = Changesets;
 
-const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
+const silentLogger = Logger.layer([]);
 
 // The tests below do not create a `.changeset/config.json` next to their
 // CHANGELOG fixtures, so `requireValidConfig` short-circuits before

@@ -8,7 +8,7 @@ import { Schema } from "effect";
  * - `debug` — Everything. Full command output, input/output values, internal state.
  * @public
  */
-export const ActionLogLevel = Schema.Literal("info", "verbose", "debug").annotations({
+export const ActionLogLevel = Schema.Literals(["info", "verbose", "debug"]).annotate({
 	identifier: "ActionLogLevel",
 	title: "Action Log Level",
 	description: "Logging verbosity for GitHub Action output",
@@ -22,14 +22,11 @@ export type ActionLogLevel = typeof ActionLogLevel.Type;
  * Includes `auto` which resolves based on the GitHub Actions environment.
  * @public
  */
-export const LogLevelInput = Schema.Literal("info", "verbose", "debug", "auto").annotations({
+export const LogLevelInput = Schema.Literals(["info", "verbose", "debug", "auto"]).annotate({
 	identifier: "LogLevelInput",
 	title: "Log Level Input",
 	description: "Logging verbosity: info, verbose, debug, or auto",
-	message: () => ({
-		message: 'log-level must be one of: "info", "verbose", "debug", "auto"',
-		override: true,
-	}),
+	message: 'log-level must be one of: "info", "verbose", "debug", "auto"',
 });
 
 /** @public */

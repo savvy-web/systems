@@ -7,35 +7,35 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 
 /** Branch-analysis variant. */
 export const ChangesetBranchResult = Schema.Struct({
 	mode: Schema.Literal("branch"),
 	result: Changesets.BranchAnalysisSchema,
-}).annotations({ identifier: "ChangesetBranchResult" });
+}).annotate({ identifier: "ChangesetBranchResult" });
 
 /** Config-inspection variant. */
 export const ChangesetConfigResult = Schema.Struct({
 	mode: Schema.Literal("config"),
 	result: Changesets.InspectedConfigSchema,
-}).annotations({ identifier: "ChangesetConfigResult" });
+}).annotate({ identifier: "ChangesetConfigResult" });
 
 /** Classify variant — arbitrary paths to owning package. */
 export const ChangesetClassifyResult = Schema.Struct({
 	mode: Schema.Literal("classify"),
 	result: Schema.Array(Changesets.ClassificationSchema),
-}).annotations({ identifier: "ChangesetClassifyResult" });
+}).annotate({ identifier: "ChangesetClassifyResult" });
 
 /** The `changeset_inspect` tool result — a discriminated union keyed by `mode`. */
-export const ChangesetInspectResult = Schema.Union(
+export const ChangesetInspectResult = Schema.Union([
 	ChangesetBranchResult,
 	ChangesetConfigResult,
 	ChangesetClassifyResult,
-).annotations({
+]).annotate({
 	identifier: "ChangesetInspectResult",
 	title: "changeset_inspect result",
 	description: "Read-only changeset analysis grouped by mode (branch | config | classify).",
@@ -110,14 +110,12 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetInspectAsMarkdown = Schema.transformOrFail(ChangesetInspectResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "ChangesetInspectAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const ChangesetInspectAsMarkdown = ChangesetInspectResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "ChangesetInspectAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link changesetInspect} handler. */
 export interface ChangesetInspectArgs {

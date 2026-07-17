@@ -76,7 +76,7 @@ export type ReposAddResult = typeof ReposAddResult.Type;
  */
 export const ReposNoteResult = Schema.Struct({
 	name: Schema.String,
-	op: Schema.Literal("add", "remove", "promote"),
+	op: Schema.Literals(["add", "remove", "promote"]),
 	id: Schema.String,
 	noteCount: Schema.Number,
 });

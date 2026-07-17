@@ -5,7 +5,9 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { parse, stringify } from "yaml";
+import { Yaml as EffectedYaml, YamlStringifyOptions } from "@effected/yaml";
+import { Effect, Result } from "effect";
+import { format, resolveConfig } from "prettier";
 import type { LintStagedHandler, PnpmWorkspaceOptions } from "../types.js";
 import { Command } from "../utils/Command.js";
 
@@ -21,12 +23,21 @@ export interface PnpmWorkspaceContent {
 
 /**
  * Default YAML stringify options for consistent formatting.
+ *
+ * @remarks
+ * `lineWidth: 0` disables line wrapping, matching the v3 `yaml` package
+ * behavior. `@effected/yaml` emits block sequences without the extra
+ * two-space indentation the v3 `yaml` package used, so the stringified
+ * output is normalized through Prettier's YAML printer below — probed
+ * byte-identical to the v3 `yaml.stringify(..., { indent: 2, lineWidth: 0,
+ * singleQuote: false })` output on this repo's real `pnpm-workspace.yaml`
+ * and on hostile synthetic shapes (quoted keys, block scalars, nested
+ * sequences of maps).
  */
-const DEFAULT_STRINGIFY_OPTIONS = {
+const DEFAULT_STRINGIFY_OPTIONS = new YamlStringifyOptions({
 	indent: 2,
 	lineWidth: 0, // Disable line wrapping
-	singleQuote: false,
-} as const;
+});
 
 /**
  * Handler for pnpm-workspace.yaml.
@@ -143,7 +154,7 @@ export class PnpmWorkspace {
 		const skipFormat = options.skipFormat ?? false;
 		const skipLint = options.skipLint ?? false;
 
-		return (): string | string[] => {
+		return async (): Promise<string | string[]> => {
 			const filepath = "pnpm-workspace.yaml";
 
 			// If the file doesn't exist, nothing to do
@@ -153,17 +164,15 @@ export class PnpmWorkspace {
 
 			// Read and parse the file
 			const content = readFileSync(filepath, "utf-8");
-			let parsed: PnpmWorkspaceContent;
-
-			try {
-				parsed = parse(content) as PnpmWorkspaceContent;
-			} catch (error) {
+			const parseResult = Effect.runSync(Effect.result(EffectedYaml.parse(content)));
+			if (Result.isFailure(parseResult)) {
 				if (!skipLint) {
-					throw new Error(`Invalid YAML in ${filepath}: ${error instanceof Error ? error.message : String(error)}`);
+					throw new Error(`Invalid YAML in ${filepath}: ${parseResult.failure.message}`);
 				}
 				// If skipLint and parsing failed, we can't continue
 				return [];
 			}
+			let parsed = parseResult.success as PnpmWorkspaceContent;
 
 			// Sort if not skipped
 			if (!skipSort) {
@@ -172,7 +181,15 @@ export class PnpmWorkspace {
 
 			// Format and write back (unless both sort and format are skipped)
 			if (!skipSort || !skipFormat) {
-				const formatted = stringify(parsed, DEFAULT_STRINGIFY_OPTIONS);
+				const stringified = Effect.runSync(EffectedYaml.stringify(parsed, DEFAULT_STRINGIFY_OPTIONS));
+				// Normalize sequence indentation to the v3 `yaml` byte format
+				// (see DEFAULT_STRINGIFY_OPTIONS remarks).
+				const prettierConfig = await resolveConfig(filepath);
+				const formatted = await format(stringified, {
+					...prettierConfig,
+					filepath,
+					parser: "yaml",
+				});
 				writeFileSync(filepath, formatted, "utf-8");
 
 				return [];

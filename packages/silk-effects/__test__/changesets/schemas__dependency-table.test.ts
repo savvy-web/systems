@@ -155,7 +155,7 @@ describe("DependencyTableSchema", () => {
 });
 
 describe("VERSION_RE widening (protocol fallback)", () => {
-	const decode = Schema.decodeUnknownEither(VersionOrEmptySchema);
+	const decode = Schema.decodeUnknownExit(VersionOrEmptySchema);
 
 	it("still accepts semver, ranges, and the em-dash sentinel", () => {
 		for (const v of ["1.2.3", "^1.2.3", "~1.2.3", "1.2.3-beta.1", "—"]) {
@@ -166,7 +166,7 @@ describe("VERSION_RE widening (protocol fallback)", () => {
 	it("accepts pnpm protocol specifiers as a last resort", () => {
 		for (const v of ["catalog:silk", "catalog:silkPeers", "workspace:*", "workspace:^", "npm:effect@3.19.0"]) {
 			expect(VERSION_RE.test(v)).toBe(true);
-			expect(decode(v)._tag).toBe("Right");
+			expect(decode(v)._tag).toBe("Success");
 		}
 	});
 

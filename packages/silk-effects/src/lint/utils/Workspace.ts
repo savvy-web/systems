@@ -2,21 +2,25 @@
  * Workspace-aware discovery utilities.
  *
  * @remarks
- * Wraps the synchronous APIs from `workspaces-effect` with caching.
- * Workspace layout does not change during a lint-staged run, so
- * results are cached on first access. Use `resetWorkspaceCache()`
+ * Wraps the synchronous APIs from `@effected/workspaces` with caching.
+ * The kit's sync entry points never import `node:*` themselves — the
+ * Node binding is the kit's own `@effected/workspaces/node-sync` preset
+ * (`nodeSyncOps`), which replaced this module's hand-wired ops in kit
+ * round 3. Workspace layout does not change during a lint-staged run,
+ * so results are cached on first access. Use `resetWorkspaceCache()`
  * in tests to clear state between runs.
  */
 
 import { dirname } from "node:path";
-import { findWorkspaceRootSync, getWorkspacePackagesSync } from "workspaces-effect";
+import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
+import { nodeSyncOps } from "@effected/workspaces/node-sync";
 
 /**
  * Minimal shape of a workspace package needed by this module.
  *
  * @remarks
  * Avoids importing the full WorkspacePackage Schema.Class from
- * workspaces-effect, keeping the sync boundary clean.
+ * `@effected/workspaces`, keeping the sync boundary clean.
  */
 export interface WorkspacePackageInfo {
 	readonly name: string;
@@ -37,7 +41,7 @@ let cachedPaths: string[] | typeof UNRESOLVED = UNRESOLVED;
  */
 export function getWorkspaceRoot(): string | null {
 	if (cachedRoot !== UNRESOLVED) return cachedRoot;
-	cachedRoot = findWorkspaceRootSync() ?? null;
+	cachedRoot = findWorkspaceRootSync(nodeSyncOps);
 	return cachedRoot;
 }
 
@@ -55,7 +59,7 @@ export function getWorkspacePackages(): WorkspacePackageInfo[] | null {
 		return null;
 	}
 
-	const all = getWorkspacePackagesSync(root) ?? [];
+	const all = getWorkspacePackagesSync(root, nodeSyncOps);
 	cachedPackages = all.filter((pkg) => pkg.path !== root);
 	return cachedPackages;
 }

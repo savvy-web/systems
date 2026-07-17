@@ -1,4 +1,4 @@
-import { Effect, Exit, Option, Schema } from "effect";
+import { Cause, Effect, Exit, Option, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { ActionStateError } from "../../src/errors/ActionStateError.js";
 import type { ActionStateTestState } from "../../src/layers/ActionStateTest.js";
@@ -18,10 +18,10 @@ const runExit = <A, E>(state: ActionStateTestState, effect: Effect.Effect<A, E, 
 
 // -- Service method shorthands --
 
-const get = <A, I>(key: string, schema: Schema.Schema<A, I, never>) =>
+const get = <A, I>(key: string, schema: Schema.Codec<A, I>) =>
 	Effect.flatMap(ActionState, (svc) => svc.get(key, schema));
 
-const getOptional = <A, I>(key: string, schema: Schema.Schema<A, I, never>) =>
+const getOptional = <A, I>(key: string, schema: Schema.Codec<A, I>) =>
 	Effect.flatMap(ActionState, (svc) => svc.getOptional(key, schema));
 
 describe("ActionState", () => {
@@ -46,7 +46,7 @@ describe("ActionState", () => {
 
 	describe("Schema.DateFromString round-trip", () => {
 		it("encodes Date to ISO string and decodes back", async () => {
-			const DateSchema = Schema.Date;
+			const DateSchema = Schema.DateFromString;
 			const state = ActionStateTest.empty();
 			const testDate = new Date("2024-06-15T10:30:00.000Z");
 
@@ -74,10 +74,7 @@ describe("ActionState", () => {
 
 			expect(exit._tag).toBe("Failure");
 			if (Exit.isFailure(exit)) {
-				const error = exit.cause.pipe((cause) => {
-					if (cause._tag === "Fail") return cause.error;
-					return undefined;
-				});
+				const error = Option.getOrUndefined(Cause.findErrorOption(exit.cause));
 				expect(error).toBeInstanceOf(ActionStateError);
 				if (error instanceof ActionStateError) {
 					expect(error.reason).toContain("phase ordering");

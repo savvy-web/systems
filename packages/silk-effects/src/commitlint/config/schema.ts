@@ -3,7 +3,7 @@
  *
  * @internal
  */
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 
 /**
  * Release format type for the release commit type.
@@ -23,7 +23,7 @@ export type ReleaseFormat = "semver" | "packages" | "scoped";
  *
  * @internal
  */
-export const ReleaseFormatSchema = Schema.Literal("semver", "packages", "scoped");
+export const ReleaseFormatSchema = Schema.Literals(["semver", "packages", "scoped"]);
 
 /**
  * Effect Schema for validating {@link ConfigOptions}.
@@ -39,9 +39,11 @@ export const ConfigOptionsSchema = Schema.Struct({
 	scopes: Schema.optional(Schema.Array(Schema.String)),
 	additionalScopes: Schema.optional(Schema.Array(Schema.String)),
 	releaseFormat: Schema.optional(ReleaseFormatSchema),
-	emojis: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-	bodyMaxLineLength: Schema.optionalWith(Schema.Number.pipe(Schema.positive()), { default: () => 300 }),
-	noMarkdown: Schema.optionalWith(Schema.Boolean, { default: () => true }),
+	emojis: Schema.Boolean.pipe(Schema.withDecodingDefaultType(Effect.succeed(false))),
+	bodyMaxLineLength: Schema.Number.check(Schema.isGreaterThan(0)).pipe(
+		Schema.withDecodingDefaultType(Effect.succeed(300)),
+	),
+	noMarkdown: Schema.Boolean.pipe(Schema.withDecodingDefaultType(Effect.succeed(true))),
 	cwd: Schema.optional(Schema.String),
 });
 

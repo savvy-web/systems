@@ -32,7 +32,7 @@ describe("transformManifest exeRewrite", () => {
 		);
 		const exports = out.exports as Record<string, unknown>;
 		expect(exports["./bin/cli"]).toBe("./bin/vitest-agent-sidecar-darwin-arm64");
-		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js", default: "./index.js" });
 	});
 
 	it("does not duplicate an already-present files entry", () => {

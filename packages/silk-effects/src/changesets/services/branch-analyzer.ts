@@ -13,7 +13,8 @@
  *
  * 1. Explicit `opts.baseBranch` passed to {@link BranchAnalyzerShape.analyzeBranch}.
  * 2. `baseBranch` from `.changeset/config.json` (surfaced via the inspector).
- * 3. The branch `origin/HEAD` points to (`git symbolic-ref refs/remotes/origin/HEAD`).
+ * 3. The branch `origin/HEAD` points to (`git symbolic-ref refs/remotes/origin/HEAD`,
+ *    via `@effected/git`'s `defaultBranch`).
  * 4. `"main"` as a final fallback.
  *
  * Diff resolution covers everything the user might commit before merging:
@@ -33,20 +34,27 @@
  * discarded since the classifier needs a single canonical path per
  * file.
  *
+ * All git plumbing runs through `@effected/git`'s `Git` service; its typed
+ * failures are folded into this package's {@link GitError} so the public
+ * error channel stays `ConfigurationError | GitError`.
+ *
  * @see {@link BranchAnalyzer} for the service tag
  * @see {@link BranchAnalyzerLive} for the production layer
  * @see {@link ConfigInspector} for the underlying classification service
  *
  */
 
-import { execFileSync } from "node:child_process";
-import { Context, Effect, Layer, Schema } from "effect";
+import type { GitCommandError, GitShape, NameStatusEntry, NotARepositoryError, UnknownRefError } from "@effected/git";
+import { Git } from "@effected/git";
+import { Context, Effect, Layer, Option, Schema } from "effect";
+import type { ChildProcessSpawner } from "effect/unstable/process";
 import type { ConfigurationError } from "../errors.js";
 import { GitError } from "../errors.js";
+import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ClassificationReasonSchema, ConfigInspector } from "./config-inspector.js";
 
 /** Git diff status as reported by `--name-status`. @public */
-export const FileStatusSchema = Schema.Literal(
+export const FileStatusSchema = Schema.Literals([
 	"added",
 	"modified",
 	"deleted",
@@ -55,23 +63,23 @@ export const FileStatusSchema = Schema.Literal(
 	"typechange",
 	"unmerged",
 	"unknown",
-).annotations({ identifier: "FileStatus" });
+]).annotate({ identifier: "FileStatus" });
 /** Git diff status as reported by `--name-status`. @public */
-export type FileStatus = Schema.Schema.Type<typeof FileStatusSchema>;
+export type FileStatus = typeof FileStatusSchema.Type;
 
 /** One file entry in the branch analysis output. @public */
 export const BranchFileEntrySchema = Schema.Struct({
-	path: Schema.String.annotations({
+	path: Schema.String.annotate({
 		description: "Repo-relative path (the new path in the case of renames).",
 	}),
 	status: FileStatusSchema,
-	package: Schema.NullOr(Schema.String).annotations({
+	package: Schema.NullOr(Schema.String).annotate({
 		description: "Owning package, or null if outside every known release surface.",
 	}),
 	reason: ClassificationReasonSchema,
-}).annotations({ identifier: "BranchFileEntry" });
+}).annotate({ identifier: "BranchFileEntry" });
 /** One file entry in the branch analysis output. @public */
-export type BranchFileEntry = Schema.Schema.Type<typeof BranchFileEntrySchema>;
+export type BranchFileEntry = typeof BranchFileEntrySchema.Type;
 
 /** Structured result of analyzing the current branch against its base. @public */
 export const BranchAnalysisSchema = Schema.Struct({
@@ -79,12 +87,12 @@ export const BranchAnalysisSchema = Schema.Struct({
 	mergeBaseSha: Schema.String,
 	files: Schema.Array(BranchFileEntrySchema),
 	packagesAffected: Schema.Array(Schema.String),
-	unmappedFiles: Schema.Array(Schema.String).annotations({
+	unmappedFiles: Schema.Array(Schema.String).annotate({
 		description: "Repo-relative paths whose package is null — candidates for an AskUserQuestion.",
 	}),
-}).annotations({ identifier: "BranchAnalysis" });
+}).annotate({ identifier: "BranchAnalysis" });
 /** Structured result of analyzing the current branch against its base. @public */
-export type BranchAnalysis = Schema.Schema.Type<typeof BranchAnalysisSchema>;
+export type BranchAnalysis = typeof BranchAnalysisSchema.Type;
 
 /**
  * Effect service interface for branch analysis.
@@ -107,19 +115,6 @@ export interface BranchAnalyzerShape {
 	) => Effect.Effect<BranchAnalysis, ConfigurationError | GitError>;
 }
 
-const _tag = Context.Tag("BranchAnalyzer");
-
-/**
- * Base class for {@link BranchAnalyzer}.
- *
- * @privateRemarks
- * Effect's `Context.Tag` creates an anonymous base class that api-extractor
- * cannot follow without an explicit export. Do not delete.
- *
- * @internal
- */
-export const BranchAnalyzerBase = _tag<BranchAnalyzer, BranchAnalyzerShape>();
-
 /**
  * Effect service tag for {@link BranchAnalyzerShape}.
  *
@@ -138,138 +133,83 @@ export const BranchAnalyzerBase = _tag<BranchAnalyzer, BranchAnalyzerShape>();
  *   program.pipe(
  *     Effect.provide(BranchAnalyzerLive),
  *     Effect.provide(ConfigInspectorLive),
- *     // ... + ChangesetConfigReaderLive + WorkspacesLive + NodeContext.layer
+ *     // ... + ChangesetConfigReaderLive + kit workspace layers + NodeServices.layer
  *   ),
  * );
  * ```
  *
  * @public
  */
-export class BranchAnalyzer extends BranchAnalyzerBase {}
+export class BranchAnalyzer extends Context.Service<BranchAnalyzer, BranchAnalyzerShape>()("BranchAnalyzer") {}
 
 /* ----------------------------------------------------------------- *
  * Internal helpers
  * ----------------------------------------------------------------- */
 
-/**
- * Invoke `git` with the given args under `cwd` and return stdout. On
- * non-zero exit (or any throw), maps to a {@link GitError} carrying the
- * command, cwd, and captured stderr.
- */
-function runGit(cwd: string, args: ReadonlyArray<string>): Effect.Effect<string, GitError> {
-	return Effect.try({
-		try: () =>
-			execFileSync("git", args as string[], {
-				cwd,
-				encoding: "utf8",
-				stdio: ["ignore", "pipe", "pipe"],
-			}),
-		catch: (error) => {
-			const e = error as { stderr?: string | Buffer; message?: string };
-			const stderr = typeof e.stderr === "string" ? e.stderr : (e.stderr?.toString() ?? "");
-			return new GitError({
-				command: `git ${args.join(" ")}`,
-				cwd,
-				reason: stderr.trim() || e.message || String(error),
-			});
-		},
-	});
-}
-
-const STATUS_MAP: Record<string, FileStatus> = {
-	A: "added",
-	M: "modified",
-	D: "deleted",
-	R: "renamed",
-	C: "copied",
-	T: "typechange",
-	U: "unmerged",
-};
-
-function statusFromCode(code: string): FileStatus {
-	// Rename / copy status codes are followed by a similarity percentage:
-	// "R100", "C75", etc. Strip everything after the leading letter.
-	const head = code.charAt(0);
-	return STATUS_MAP[head] ?? "unknown";
-}
+/** The union of typed failures a `@effected/git` read can produce. */
+type GitFailure = GitCommandError | NotARepositoryError | UnknownRefError;
 
 /**
- * Parse `git diff --name-status -z` output into one entry per changed file.
- *
- * `-z` separates fields with NUL bytes and avoids the per-record `\n`
- * delimiter, so paths containing spaces or special characters round-trip
- * cleanly. Rename and copy entries occupy three NUL-separated tokens
- * (status, old path, new path) instead of two; everything else is two.
+ * Fold a `@effected/git` typed failure into this package's {@link GitError},
+ * preserving the public `ConfigurationError | GitError` error channel.
  */
-function parseNameStatus(output: string): ReadonlyArray<{ readonly path: string; readonly status: FileStatus }> {
-	if (output.length === 0) return [];
-	const tokens = output.split("\0");
-	// Trailing empty token after the last NUL byte — drop it.
-	if (tokens[tokens.length - 1] === "") tokens.pop();
+const toGitError =
+	(command: string, cwd: string) =>
+	(e: GitFailure): GitError =>
+		new GitError({ command, cwd, reason: e.message });
 
-	const entries: Array<{ path: string; status: FileStatus }> = [];
-	for (let i = 0; i < tokens.length; ) {
-		const code = tokens[i] ?? "";
-		if (code.length === 0) {
-			/* v8 ignore next 2 -- defensive guard; trailing empties stripped at parse time */
-			i += 1;
-			continue;
-		}
-		const status = statusFromCode(code);
-		if (status === "renamed" || status === "copied") {
-			// status + oldPath + newPath
-			const newPath = tokens[i + 2] ?? "";
-			if (newPath.length > 0) entries.push({ path: newPath, status });
-			i += 3;
-		} else {
-			const path = tokens[i + 1] ?? "";
-			if (path.length > 0) entries.push({ path, status });
-			i += 2;
-		}
+/**
+ * Map `@effected/git`'s `NameStatusEntry` status vocabulary onto this
+ * package's public {@link FileStatus} literals. The kit spells
+ * `"typeChanged"` where the public schema (stable since 0.x) says
+ * `"typechange"`, and adds `"broken"` (git's `B`), which the public schema
+ * folds into `"unknown"`.
+ */
+function toFileStatus(status: NameStatusEntry["status"]): FileStatus {
+	switch (status) {
+		case "typeChanged":
+			return "typechange";
+		case "broken":
+			return "unknown";
+		default:
+			return status;
 	}
-	return entries;
-}
-
-/**
- * Parse a NUL-separated list of paths (e.g., `git ls-files -z` output) into
- * an array of strings, dropping any trailing empty entry left by the final
- * NUL byte.
- */
-function parseNulSeparatedPaths(output: string): ReadonlyArray<string> {
-	if (output.length === 0) return [];
-	const tokens = output.split("\0");
-	if (tokens[tokens.length - 1] === "") tokens.pop();
-	return tokens.filter((t) => t.length > 0);
-}
-
-/**
- * Resolve the base branch using the documented priority order.
- */
-function resolveBaseBranch(opts: {
-	readonly explicit?: string | undefined;
-	readonly configBaseBranch: string;
-	readonly cwd: string;
-}): Effect.Effect<string, GitError> {
-	if (opts.explicit && opts.explicit.length > 0) return Effect.succeed(opts.explicit);
-	if (opts.configBaseBranch && opts.configBaseBranch !== "main") return Effect.succeed(opts.configBaseBranch);
-	// Try origin/HEAD; fall through to the config default (typically "main")
-	return runGit(opts.cwd, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]).pipe(
-		/* v8 ignore start -- callback only reachable with a remote that exposes origin/HEAD */
-		Effect.map((stdout) => {
-			const trimmed = stdout.trim();
-			// "origin/main" → "main"; fall back to configured base when stdout is empty
-			return trimmed.length > 0 ? trimmed.replace(/^origin\//, "") : opts.configBaseBranch;
-		}),
-		/* v8 ignore stop */
-		Effect.catchAll(() => Effect.succeed(opts.configBaseBranch)),
-	);
 }
 
 /* ----------------------------------------------------------------- *
  * Live layer
  * ----------------------------------------------------------------- */
 
-function makeShape(inspector: typeof ConfigInspector.Service): BranchAnalyzerShape {
+/**
+ * The analyzer reads four methods off the kit's full `GitShape` contract
+ * (`defaultBranch`, `mergeBase`, `nameStatus`, `untrackedFiles`); the local
+ * re-typing this alias replaces was round-3 kit item 3.
+ */
+type GitReads = Pick<GitShape, "defaultBranch" | "mergeBase" | "nameStatus" | "untrackedFiles">;
+
+/**
+ * Resolve the base branch using the documented priority order.
+ */
+function resolveBaseBranch(
+	git: GitReads,
+	opts: {
+		readonly explicit?: string | undefined;
+		readonly configBaseBranch: string;
+		readonly cwd: string;
+	},
+): Effect.Effect<string> {
+	if (opts.explicit && opts.explicit.length > 0) return Effect.succeed(opts.explicit);
+	if (opts.configBaseBranch && opts.configBaseBranch !== "main") return Effect.succeed(opts.configBaseBranch);
+	// Try origin/HEAD; fall through to the config default (typically "main").
+	// `defaultBranch` already strips the remote prefix and degrades an unset
+	// origin/HEAD to Option.none.
+	return git.defaultBranch(opts.cwd).pipe(
+		Effect.map(Option.getOrElse(() => opts.configBaseBranch)),
+		Effect.catch(() => Effect.succeed(opts.configBaseBranch)),
+	);
+}
+
+function makeShape(inspector: ConfigInspectorShape, git: GitReads): BranchAnalyzerShape {
 	const analyzeBranch = (
 		cwd: string,
 		opts?: { readonly baseBranch?: string },
@@ -277,28 +217,29 @@ function makeShape(inspector: typeof ConfigInspector.Service): BranchAnalyzerSha
 		Effect.gen(function* () {
 			const inspected = yield* inspector.inspect(cwd);
 
-			const baseBranch = yield* resolveBaseBranch({
+			const baseBranch = yield* resolveBaseBranch(git, {
 				explicit: opts?.baseBranch,
 				configBaseBranch: inspected.baseBranch,
 				cwd,
 			});
 
-			const mergeBaseSha = (yield* runGit(cwd, ["merge-base", baseBranch, "HEAD"])).trim();
+			const mergeBaseSha = (yield* git
+				.mergeBase(cwd, baseBranch, "HEAD")
+				.pipe(Effect.mapError(toGitError(`git merge-base ${baseBranch} HEAD`, cwd)))).trim();
 
-			// Use the single-arg `git diff <merge-base>` form so the working
-			// tree (not just HEAD) is compared against the merge base — that
-			// captures committed, staged, and unstaged changes in one pass.
-			const diffOutput = yield* runGit(cwd, ["diff", "--name-status", "-z", mergeBaseSha]);
-			const diffEntries = parseNameStatus(diffOutput);
+			// Diff the working tree (not just HEAD) against the merge base —
+			// the head-less `nameStatus` form — so committed, staged, and
+			// unstaged changes are captured in one pass. Renames arrive with
+			// the NEW path in `entry.path`; the old path is discarded.
+			const diffEntries = yield* git
+				.nameStatus(cwd, { base: mergeBaseSha })
+				.pipe(Effect.mapError(toGitError(`git diff --name-status ${mergeBaseSha}`, cwd)));
 
 			// Untracked files are invisible to `git diff`; pick them up
-			// separately via `ls-files --others --exclude-standard` and
-			// report each as `"added"`.
-			const untrackedOutput = yield* runGit(cwd, ["ls-files", "-z", "--others", "--exclude-standard"]);
-			const untrackedEntries = parseNulSeparatedPaths(untrackedOutput).map((path) => ({
-				path,
-				status: "added" as FileStatus,
-			}));
+			// separately and report each as `"added"`.
+			const untracked = yield* git
+				.untrackedFiles(cwd)
+				.pipe(Effect.mapError(toGitError("git ls-files --others --exclude-standard", cwd)));
 
 			// The branch's own changeset entries are the artifact being reconciled,
 			// never a classification question — reporting them as unmapped is
@@ -313,12 +254,12 @@ function makeShape(inspector: typeof ConfigInspector.Service): BranchAnalyzerSha
 			for (const e of diffEntries) {
 				if (seen.has(e.path) || isOwnChangeset(e.path)) continue;
 				seen.add(e.path);
-				rawEntries.push(e);
+				rawEntries.push({ path: e.path, status: toFileStatus(e.status) });
 			}
-			for (const e of untrackedEntries) {
-				if (seen.has(e.path) || isOwnChangeset(e.path)) continue;
-				seen.add(e.path);
-				rawEntries.push(e);
+			for (const path of untracked) {
+				if (seen.has(path) || isOwnChangeset(path)) continue;
+				seen.add(path);
+				rawEntries.push({ path, status: "added" });
 			}
 
 			const paths = rawEntries.map((e) => e.path);
@@ -356,17 +297,24 @@ function makeShape(inspector: typeof ConfigInspector.Service): BranchAnalyzerSha
  * Live layer for {@link BranchAnalyzer}.
  *
  * Requires {@link ConfigInspector} (which in turn requires
- * `ChangesetConfigReader` and `WorkspaceDiscovery`).
+ * `ChangesetConfigReader` and `WorkspaceDiscovery`) and a
+ * `ChildProcessSpawner` (satisfied by `NodeServices.layer`) for the
+ * internally-composed `@effected/git` layer.
  *
  * @public
  */
-export const BranchAnalyzerLive: Layer.Layer<BranchAnalyzer, never, ConfigInspector> = Layer.effect(
+export const BranchAnalyzerLive: Layer.Layer<
+	BranchAnalyzer,
+	never,
+	ConfigInspector | ChildProcessSpawner.ChildProcessSpawner
+> = Layer.effect(
 	BranchAnalyzer,
 	Effect.gen(function* () {
 		const inspector = yield* ConfigInspector;
-		return makeShape(inspector);
+		const git = yield* Git;
+		return makeShape(inspector, git);
 	}),
-);
+).pipe(Layer.provide(Git.layer));
 
 /**
  * Test factory — build a {@link BranchAnalyzer} that returns a fixed

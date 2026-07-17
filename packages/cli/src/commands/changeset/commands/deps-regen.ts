@@ -41,33 +41,34 @@
  * @internal
  */
 
-import { Command, Options } from "@effect/cli";
+import { resolve } from "node:path";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 type RegenPlan = Changesets.RegenPlan;
 const { DepsRegen } = Changesets;
 
 /* v8 ignore start -- CLI option definitions */
-const cwdOption = Options.directory("cwd").pipe(
-	Options.withDescription("Project root (defaults to the current working directory)"),
-	Options.withDefault("."),
+const cwdOption = Flag.directory("cwd").pipe(
+	Flag.withDescription("Project root (defaults to the current working directory)"),
+	Flag.withDefault("."),
 );
-const baseOption = Options.text("base").pipe(
-	Options.withDescription("Override the base branch (defaults to config baseBranch)"),
-	Options.optional,
+const baseOption = Flag.string("base").pipe(
+	Flag.withDescription("Override the base branch (defaults to config baseBranch)"),
+	Flag.optional,
 );
-const packageOption = Options.text("package").pipe(
-	Options.withDescription("Restrict regeneration to a single workspace package"),
-	Options.optional,
+const packageOption = Flag.string("package").pipe(
+	Flag.withDescription("Restrict regeneration to a single workspace package"),
+	Flag.optional,
 );
-const dryRunOption = Options.boolean("dry-run").pipe(
-	Options.withDescription("Print the plan without writing or deleting"),
-	Options.withDefault(false),
+const dryRunOption = Flag.boolean("dry-run").pipe(
+	Flag.withDescription("Print the plan without writing or deleting"),
+	Flag.withDefault(false),
 );
-const jsonOption = Options.boolean("json").pipe(
-	Options.withDescription("Emit a structured plan as JSON"),
-	Options.withDefault(false),
+const jsonOption = Flag.boolean("json").pipe(
+	Flag.withDescription("Emit a structured plan as JSON"),
+	Flag.withDefault(false),
 );
 /* v8 ignore stop */
 
@@ -93,16 +94,13 @@ export function runDepsRegen(
 				...(Option.isSome(pkg) ? { package: pkg.value } : {}),
 			})
 			.pipe(
-				Effect.catchTags({
-					GitError: (err) => {
+				// Any plan failure (git, IO, discovery, snapshot) exits non-zero; the
+				// typed error still propagates for runMain to report.
+				Effect.tapError(() =>
+					Effect.sync(() => {
 						process.exitCode = 1;
-						return Effect.fail(err);
-					},
-					GitReadError: (err) => {
-						process.exitCode = 1;
-						return Effect.fail(err);
-					},
-				}),
+					}),
+				),
 			);
 
 		if (!dryRun) {
@@ -148,9 +146,16 @@ function renderHumanPlan(plan: RegenPlan) {
 	});
 }
 
-/* v8 ignore next 8 */
+/* v8 ignore next 12 */
 export const depsRegenCommand = Command.make(
 	"regen",
 	{ cwd: cwdOption, base: baseOption, package: packageOption, dryRun: dryRunOption, json: jsonOption },
-	({ cwd, base, package: pkg, dryRun, json }) => runDepsRegen(cwd, base, pkg, dryRun, json),
+	({ cwd, base, package: pkg, dryRun, json }) =>
+		// The DepsRegen graph is root-bound at LAYER build, so it is composed here
+		// — per invocation, bound to the parsed --cwd — rather than in AppLive
+		// (which would silently pin discovery to process.cwd() and half-ignore
+		// --cwd). Platform services flow up to AppLive's NodeServices.layer.
+		runDepsRegen(cwd, base, pkg, dryRun, json).pipe(
+			Effect.provide(Changesets.makeDepsRegenDefault({ cwd: resolve(cwd) })),
+		),
 ).pipe(Command.withDescription("Delete pure dependency changesets and regenerate them from the current diff"));

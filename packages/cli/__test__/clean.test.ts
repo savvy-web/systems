@@ -1,15 +1,15 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
+import { WorkspaceDiscovery, WorkspacePackage } from "@effected/workspaces";
 import { Effect, Layer, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { WorkspaceDiscovery, WorkspacePackage } from "workspaces-effect";
 import { collectTargets, removeTargets, runClean } from "../src/commands/clean.js";
 
 const run = <A, E>(eff: Effect.Effect<A, E>): Promise<A> => Effect.runPromise(eff);
 
 /** Suppresses the command's INFO logging so test output stays clean. */
-const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
+const silentLogger = Logger.layer([]);
 
 describe("collectTargets", () => {
 	let dir: string;
@@ -175,8 +175,11 @@ const discoveryLayer = (pkgs: ReadonlyArray<WorkspacePackage>) =>
 		listPackages: () => Effect.succeed(pkgs),
 		getPackage: () => Effect.die("unused"),
 		importerMap: () => Effect.die("unused"),
+		info: () => Effect.die("unused"),
+		resolveFile: () => Effect.die("unused"),
+		resolveFiles: () => Effect.die("unused"),
 		refresh: () => Effect.void,
-	});
+	} as never);
 
 describe("runClean", () => {
 	let root: string;

@@ -17,8 +17,8 @@
  * @internal
  */
 
-import { Command, Options } from "@effect/cli";
-import { Effect } from "effect";
+import { Effect, Result } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 import { runChangesetCheck } from "./changeset/index.js";
 import { runCommitCheck } from "./commit/check.js";
@@ -35,15 +35,15 @@ const DEFAULT_CHANGESET_DIR = ".changeset";
 // ---------------------------------------------------------------------------
 
 /* v8 ignore start -- CLI option definitions; orchestration logic tested via runCheck */
-const changesetDirOption = Options.text("changeset-dir").pipe(
-	Options.withDescription("Path to the changeset directory"),
-	Options.withDefault(DEFAULT_CHANGESET_DIR),
+const changesetDirOption = Flag.string("changeset-dir").pipe(
+	Flag.withDescription("Path to the changeset directory"),
+	Flag.withDefault(DEFAULT_CHANGESET_DIR),
 );
 
-const quietOption = Options.boolean("quiet").pipe(
-	Options.withAlias("q"),
-	Options.withDescription("Only output warnings from lint check"),
-	Options.withDefault(false),
+const quietOption = Flag.boolean("quiet").pipe(
+	Flag.withAlias("q"),
+	Flag.withDescription("Only output warnings from lint check"),
+	Flag.withDefault(false),
 );
 /* v8 ignore stop */
 
@@ -68,10 +68,20 @@ export function runCheck<EChangeset, RChangeset, ECommit, RCommit, ELint, RLint>
 	commit: Effect.Effect<unknown, ECommit, RCommit>;
 	lint: Effect.Effect<unknown, ELint, RLint>;
 }): Effect.Effect<void, EChangeset | ECommit | ELint, RChangeset | RCommit | RLint> {
-	return Effect.all([steps.changeset, steps.commit, steps.lint], {
-		concurrency: 1,
-		mode: "validate",
-	}).pipe(Effect.asVoid) as Effect.Effect<void, EChangeset | ECommit | ELint, RChangeset | RCommit | RLint>;
+	// v4's Effect.all dropped the v3 "validate" mode; "result" collects a
+	// Result per step so every step still RUNS (nothing short-circuits), then
+	// the first failure is re-raised to preserve the fail-if-any contract.
+	return Effect.gen(function* () {
+		const results: ReadonlyArray<Result.Result<unknown, EChangeset | ECommit | ELint>> = yield* Effect.all(
+			[Effect.result(steps.changeset), Effect.result(steps.commit), Effect.result(steps.lint)],
+			{ concurrency: 1 },
+		);
+		for (const result of results) {
+			if (Result.isFailure(result)) {
+				return yield* Effect.fail(result.failure);
+			}
+		}
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -96,13 +106,4 @@ const _checkCommand = Command.make("check", { changesetDir: changesetDirOption, 
  * errors from Effect's internal types. Task B7 should use this via
  * `Command.withSubcommands([checkCommand as never])` or re-infer the type.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const checkCommand: Command.Command<"check", any, any, any> = _checkCommand as Command.Command<
-	"check",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+export const checkCommand = _checkCommand;

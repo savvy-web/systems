@@ -4,7 +4,7 @@
  *
  * @internal
  */
-import { Command } from "@effect/cli";
+import { Command } from "effect/unstable/cli";
 import { postCommitVerifyCommand } from "./hooks/post-commit-verify.js";
 import { preCommitMessageCommand } from "./hooks/pre-commit-message.js";
 import { sessionStartCommand } from "./hooks/session-start.js";

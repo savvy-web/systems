@@ -5,8 +5,6 @@
  */
 import { chmod } from "node:fs/promises";
 import { dirname } from "node:path";
-import { FileSystem } from "@effect/platform";
-import type { PlatformError } from "@effect/platform/Error";
 import type { SectionBlock, SectionWriteError } from "@savvy-web/silk-effects";
 import {
 	ManagedSection,
@@ -17,7 +15,8 @@ import {
 	savvyHooksHygiene,
 	savvyToolSection,
 } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
+import { Effect, FileSystem } from "effect";
+import type { PlatformError } from "effect/PlatformError";
 import {
 	CHECK_MARK,
 	HUSKY_HOOK_PATH,

@@ -71,6 +71,45 @@ export interface FindBy {
 }
 
 /**
+ * Service shape for {@link Artifact}.
+ *
+ * @public
+ */
+export interface ArtifactShape {
+	/**
+	 * Zip `files` (relative to `rootDirectory`) and upload them as a named
+	 * artifact. v2 forbids re-uploading the same name in a run; a conflict is
+	 * surfaced as an {@link ArtifactError} (`operation: "upload"`).
+	 */
+	readonly uploadArtifact: (
+		name: string,
+		files: ReadonlyArray<string>,
+		rootDirectory: string,
+		options?: UploadOptions,
+	) => Effect.Effect<UploadResult, ArtifactError>;
+
+	/** List artifacts for the current run (or a `findBy` run/repo). */
+	readonly listArtifacts: (findBy?: FindBy) => Effect.Effect<ReadonlyArray<ArtifactItem>, ArtifactError>;
+
+	/**
+	 * Look up a single artifact by name. Returns `Option.none()` on miss (the
+	 * toolkit throws `ArtifactNotFoundError`; `Option` is the idiomatic Effect
+	 * modeling and matches `ActionCache.restore`).
+	 */
+	readonly getArtifact: (name: string, findBy?: FindBy) => Effect.Effect<Option.Option<ArtifactItem>, ArtifactError>;
+
+	/** Download an artifact by id, returning the directory it was unzipped to. */
+	readonly downloadArtifact: (
+		artifactId: number,
+		options?: DownloadOptions,
+		findBy?: FindBy,
+	) => Effect.Effect<{ readonly downloadPath: string }, ArtifactError>;
+
+	/** Delete an artifact by name, returning the deleted artifact's id. */
+	readonly deleteArtifact: (name: string, findBy?: FindBy) => Effect.Effect<{ readonly id: number }, ArtifactError>;
+}
+
+/**
  * Service for uploading, listing, downloading, and deleting GitHub Actions
  * artifacts (`@actions/artifact` v2 parity).
  *
@@ -92,39 +131,4 @@ export interface FindBy {
  *
  * @public
  */
-export class Artifact extends Context.Tag("github-action-effects/Artifact")<
-	Artifact,
-	{
-		/**
-		 * Zip `files` (relative to `rootDirectory`) and upload them as a named
-		 * artifact. v2 forbids re-uploading the same name in a run; a conflict is
-		 * surfaced as an {@link ArtifactError} (`operation: "upload"`).
-		 */
-		readonly uploadArtifact: (
-			name: string,
-			files: ReadonlyArray<string>,
-			rootDirectory: string,
-			options?: UploadOptions,
-		) => Effect.Effect<UploadResult, ArtifactError>;
-
-		/** List artifacts for the current run (or a `findBy` run/repo). */
-		readonly listArtifacts: (findBy?: FindBy) => Effect.Effect<ReadonlyArray<ArtifactItem>, ArtifactError>;
-
-		/**
-		 * Look up a single artifact by name. Returns `Option.none()` on miss (the
-		 * toolkit throws `ArtifactNotFoundError`; `Option` is the idiomatic Effect
-		 * modeling and matches `ActionCache.restore`).
-		 */
-		readonly getArtifact: (name: string, findBy?: FindBy) => Effect.Effect<Option.Option<ArtifactItem>, ArtifactError>;
-
-		/** Download an artifact by id, returning the directory it was unzipped to. */
-		readonly downloadArtifact: (
-			artifactId: number,
-			options?: DownloadOptions,
-			findBy?: FindBy,
-		) => Effect.Effect<{ readonly downloadPath: string }, ArtifactError>;
-
-		/** Delete an artifact by name, returning the deleted artifact's id. */
-		readonly deleteArtifact: (name: string, findBy?: FindBy) => Effect.Effect<{ readonly id: number }, ArtifactError>;
-	}
->() {}
+export class Artifact extends Context.Service<Artifact, ArtifactShape>()("github-action-effects/Artifact") {}

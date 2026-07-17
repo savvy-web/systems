@@ -1,6 +1,37 @@
-import { FileSystem } from "@effect/platform";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, FileSystem, Layer } from "effect";
 import type { ConfigLocation } from "../schemas/ConfigDiscoverySchemas.js";
+
+/**
+ * The {@link ConfigDiscovery} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface ConfigDiscoveryShape {
+	/**
+	 * Return the highest-priority {@link (ConfigLocation:type)} for the given config file name,
+	 * or `null` when none of the candidate paths exist.
+	 *
+	 * @param name - Config file name (e.g. `"biome.json"`).
+	 * @param options - Optional `cwd` override for path resolution.
+	 * @returns An `Effect` that always succeeds with a {@link (ConfigLocation:type)} or `null`.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly find: (name: string, options?: { cwd?: string }) => Effect.Effect<ConfigLocation | null>;
+
+	/**
+	 * Return all existing {@link (ConfigLocation:type)} entries for the given config file name,
+	 * ordered from highest to lowest priority.
+	 *
+	 * @param name - Config file name (e.g. `"biome.json"`).
+	 * @param options - Optional `cwd` override for path resolution.
+	 * @returns An `Effect` that always succeeds with an array of {@link (ConfigLocation:type)} records.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly findAll: (name: string, options?: { cwd?: string }) => Effect.Effect<ReadonlyArray<ConfigLocation>>;
+}
 
 /**
  * Service that locates named config files within a workspace using priority-ordered search paths.
@@ -20,7 +51,7 @@ import type { ConfigLocation } from "../schemas/ConfigDiscoverySchemas.js";
  *     return yield* discovery.find("biome.json");
  *   }).pipe(
  *     Effect.provide(ConfigDiscoveryLive),
- *     Effect.provide(NodeContext.layer),
+ *     Effect.provide(NodeServices.layer),
  *   )
  * );
  * ```
@@ -28,34 +59,9 @@ import type { ConfigLocation } from "../schemas/ConfigDiscoverySchemas.js";
  * @since 0.1.0
  * @public
  */
-export class ConfigDiscovery extends Context.Tag("@savvy-web/silk-effects/ConfigDiscovery")<
-	ConfigDiscovery,
-	{
-		/**
-		 * Return the highest-priority {@link ConfigLocation} for the given config file name,
-		 * or `null` when none of the candidate paths exist.
-		 *
-		 * @param name - Config file name (e.g. `"biome.json"`).
-		 * @param options - Optional `cwd` override for path resolution.
-		 * @returns An `Effect` that always succeeds with a {@link ConfigLocation} or `null`.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly find: (name: string, options?: { cwd?: string }) => Effect.Effect<ConfigLocation | null>;
-
-		/**
-		 * Return all existing {@link ConfigLocation} entries for the given config file name,
-		 * ordered from highest to lowest priority.
-		 *
-		 * @param name - Config file name (e.g. `"biome.json"`).
-		 * @param options - Optional `cwd` override for path resolution.
-		 * @returns An `Effect` that always succeeds with an array of {@link ConfigLocation} records.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly findAll: (name: string, options?: { cwd?: string }) => Effect.Effect<ReadonlyArray<ConfigLocation>>;
-	}
->() {}
+export class ConfigDiscovery extends Context.Service<ConfigDiscovery, ConfigDiscoveryShape>()(
+	"@savvy-web/silk-effects/ConfigDiscovery",
+) {}
 
 /**
  * Check whether a path exists, treating any PlatformError as "not found".
@@ -68,8 +74,8 @@ function safeExists(fs: FileSystem.FileSystem, path: string): Effect.Effect<bool
  * Live implementation of {@link ConfigDiscovery}.
  *
  * @remarks
- * Requires `FileSystem` from `@effect/platform`. Provide `NodeContext.layer` or
- * `BunContext.layer` to satisfy this dependency.
+ * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
+ * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
  *
  * @since 0.1.0
  * @public

@@ -3,8 +3,8 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { Effect, Layer, ParseResult, Schema } from "effect";
-import { parse as parseYaml } from "yaml-effect";
+import { Yaml } from "@effected/yaml";
+import { Effect, Layer, Result, Schema } from "effect";
 
 import {
 	ActionYmlMissing,
@@ -38,11 +38,8 @@ const makeWarning = (code: string, message: string, suggestion: string, file?: s
 
 /** Format schema parse errors. */
 /* v8 ignore start - only called for schema validation errors */
-const formatSchemaErrors = (
-	error: ParseResult.ParseError,
-	filePath: string,
-): Array<{ path: string; message: string }> => [
-	{ path: filePath, message: ParseResult.TreeFormatter.formatErrorSync(error) },
+const formatSchemaErrors = (error: Schema.SchemaError, filePath: string): Array<{ path: string; message: string }> => [
+	{ path: filePath, message: error.message },
 ];
 /* v8 ignore stop */
 
@@ -78,7 +75,7 @@ export const ValidationServiceLive = Layer.effect(
 				});
 
 				// Parse YAML
-				const parsed = yield* parseYaml(content).pipe(
+				const parsed = yield* Yaml.parse(content).pipe(
 					/* v8 ignore next 5 - requires malformed YAML */
 					Effect.mapError(
 						(error) =>
@@ -102,11 +99,11 @@ export const ValidationServiceLive = Layer.effect(
 		/* v8 ignore start - schema validation error branch */
 		const validateSchema = (parsed: Record<string, unknown>, path: string) =>
 			Effect.gen(function* () {
-				const result = Schema.decodeUnknownEither(ActionYml)(parsed);
-				if (result._tag === "Left") {
-					return yield* new ActionYmlSchemaError({ path, errors: formatSchemaErrors(result.left, path) });
+				const result = yield* Effect.result(Schema.decodeUnknownEffect(ActionYml)(parsed));
+				if (Result.isFailure(result)) {
+					return yield* new ActionYmlSchemaError({ path, errors: formatSchemaErrors(result.failure, path) });
 				}
-				return result.right;
+				return result.success;
 			});
 		/* v8 ignore stop */
 
@@ -215,14 +212,14 @@ export const ValidationServiceLive = Layer.effect(
 				if (config.entries.pre) entriesConfig.pre = config.entries.pre;
 				if (config.entries.post) entriesConfig.post = config.entries.post;
 
-				const result = yield* Effect.either(configService.detectEntries(cwd, entriesConfig));
+				const result = yield* Effect.result(configService.detectEntries(cwd, entriesConfig));
 
 				/* v8 ignore start - error branch requires missing main entry */
-				if (result._tag === "Left" && result.left instanceof MainEntryMissing) {
+				if (Result.isFailure(result) && result.failure instanceof MainEntryMissing) {
 					errors.push({
 						code: "MAIN_ENTRY_MISSING",
-						message: `Main entry point not found: ${result.left.expectedPath}`,
-						file: result.left.expectedPath,
+						message: `Main entry point not found: ${result.failure.expectedPath}`,
+						file: result.failure.expectedPath,
 						suggestion: "Create src/main.ts or specify a different path in config",
 					});
 				}
@@ -243,10 +240,10 @@ export const ValidationServiceLive = Layer.effect(
 				}
 
 				const actionYmlPath = resolve(cwd, "action.yml");
-				const result = yield* Effect.either(validateActionYml(actionYmlPath));
+				const result = yield* Effect.result(validateActionYml(actionYmlPath));
 
-				if (result._tag === "Left") {
-					const error = result.left;
+				if (Result.isFailure(result)) {
+					const error = result.failure;
 					if (error instanceof ActionYmlMissing) {
 						warnings.push({
 							code: "ACTION_YML_MISSING",
@@ -270,7 +267,7 @@ export const ValidationServiceLive = Layer.effect(
 						}
 					}
 				} else {
-					warnings.push(...result.right.warnings);
+					warnings.push(...result.success.warnings);
 				}
 
 				return { errors, warnings };

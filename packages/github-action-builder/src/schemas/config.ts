@@ -7,7 +7,9 @@
  *
  * @internal
  */
-import { Schema } from "effect"; // =============================================================================
+import { Effect, Schema } from "effect";
+
+// =============================================================================
 // Entry Point Schema
 // =============================================================================
 
@@ -27,13 +29,13 @@ import { Schema } from "effect"; // ============================================
  */
 export const EntriesSchema = Schema.Struct({
 	/** Path to the main action entry point. Defaults to "src/main.ts". */
-	main: Schema.optionalWith(Schema.String, { default: () => "src/main.ts" }),
+	main: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed("src/main.ts"))),
 	/** Path to the pre-action hook entry point. */
 	pre: Schema.optional(Schema.String),
 	/** Path to the post-action hook entry point. */
 	post: Schema.optional(Schema.String),
 	/** Extra non-lifecycle worker bundles (name -\> source path), each emitted as dist/\{name\}.js. */
-	workers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+	workers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 });
 
 /**
@@ -58,13 +60,13 @@ export type Entries = typeof EntriesSchema.Type;
  */
 export const BuildOptionsSchema = Schema.Struct({
 	/** Enable minification to reduce bundle size. Defaults to true. */
-	minify: Schema.optionalWith(Schema.Boolean, { default: () => true }),
+	minify: Schema.Boolean.pipe(Schema.withDecodingDefaultType(Effect.succeed(true))),
 	/** Generate source maps for debugging. Defaults to false. */
-	sourceMap: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+	sourceMap: Schema.Boolean.pipe(Schema.withDecodingDefaultType(Effect.succeed(false))),
 	/** Packages to exclude from the bundle (in addition to node: builtins). Defaults to []. */
-	externals: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
+	externals: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultType(Effect.succeed([]))),
 	/** Packages to exclude from the bundle and replace with a stub that throws if loaded at runtime. Use for optional transitive dependencies the action never exercises (e.g. native modules). Defaults to []. */
-	ignore: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
+	ignore: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultType(Effect.succeed([]))),
 	/**
 	 * Packages whose dynamic `import(...)` calls must stay native `import()` at runtime instead of
 	 * being compiled into an rspack context module. Use this for packages that resolve a module path
@@ -74,7 +76,7 @@ export const BuildOptionsSchema = Schema.Struct({
 	 * the package here injects a `webpackIgnore` comment into its dynamic imports so rspack leaves
 	 * them alone. Defaults to [].
 	 */
-	nativeDynamicImports: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
+	nativeDynamicImports: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultType(Effect.succeed([]))),
 });
 
 /**
@@ -99,7 +101,7 @@ export type BuildOptions = typeof BuildOptionsSchema.Type;
  */
 export const ValidationOptionsSchema = Schema.Struct({
 	/** Require action.yml to exist and be valid. Defaults to true. */
-	requireActionYml: Schema.optionalWith(Schema.Boolean, { default: () => true }),
+	requireActionYml: Schema.Boolean.pipe(Schema.withDecodingDefaultType(Effect.succeed(true))),
 	/** Maximum bundle size before warning/error (e.g., "5mb", "500kb"). */
 	maxBundleSize: Schema.optional(Schema.String),
 	/** Treat warnings as errors. Auto-detects from CI when undefined. */
@@ -128,11 +130,11 @@ export type ValidationOptions = typeof ValidationOptionsSchema.Type;
  */
 export const PersistLocalOptionsSchema = Schema.Struct({
 	/** Enable persisting build output locally. Defaults to true. */
-	enabled: Schema.optionalWith(Schema.Boolean, { default: () => true }),
+	enabled: Schema.Boolean.pipe(Schema.withDecodingDefaultType(Effect.succeed(true))),
 	/** Path for the local action directory, relative to cwd. Defaults to ".github/actions/local". */
-	path: Schema.optionalWith(Schema.String, { default: () => ".github/actions/local" }),
+	path: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed(".github/actions/local"))),
 	/** Generate act boilerplate files (.actrc, act-test.yml) if they don't exist. Defaults to true. */
-	actTemplate: Schema.optionalWith(Schema.Boolean, { default: () => true }),
+	actTemplate: Schema.Boolean.pipe(Schema.withDecodingDefaultType(Effect.succeed(true))),
 });
 
 /**
@@ -161,7 +163,7 @@ export const ConfigInputSchema = Schema.Struct({
 			main: Schema.optional(Schema.String),
 			pre: Schema.optional(Schema.String),
 			post: Schema.optional(Schema.String),
-			workers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+			workers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 		}),
 	),
 	build: Schema.optional(

@@ -51,9 +51,9 @@ const REPO_PATTERN = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
  *
  * @public
  */
-export const RepoSchema = Schema.String.pipe(
-	Schema.pattern(REPO_PATTERN, {
-		message: () => 'Repository must be in format "owner/repository" (e.g., "microsoft/vscode")',
+export const RepoSchema = Schema.String.check(
+	Schema.isPattern(REPO_PATTERN, {
+		message: 'Repository must be in format "owner/repository" (e.g., "microsoft/vscode")',
 	}),
 );
 
@@ -127,12 +127,16 @@ export const ChangesetOptionsSchema = Schema.Struct({
 	 * @deprecated 0.9.0 — migrate to `packages`. Removed in 1.0.0.
 	 */
 	versionFiles: Schema.optional(LegacyVersionFilesSchema),
-}).pipe(
-	Schema.filter((opts) => opts.packages === undefined || opts.versionFiles === undefined, {
-		message: () =>
-			"Configuration cannot declare both `packages` and the deprecated top-level `versionFiles` array. " +
-			"Migrate the legacy `versionFiles` entries into `packages[<name>].versionFiles` and remove the top-level field.",
-	}),
+}).check(
+	Schema.makeFilter(
+		(opts: { readonly packages?: unknown; readonly versionFiles?: unknown }) =>
+			opts.packages === undefined || opts.versionFiles === undefined,
+		{
+			message:
+				"Configuration cannot declare both `packages` and the deprecated top-level `versionFiles` array. " +
+				"Migrate the legacy `versionFiles` entries into `packages[<name>].versionFiles` and remove the top-level field.",
+		},
+	),
 );
 
 /**
@@ -223,7 +227,7 @@ export function validateChangesetOptions(input: unknown): Effect.Effect<Changese
 		);
 	}
 
-	return Schema.decodeUnknown(ChangesetOptionsSchema)(input).pipe(
+	return Schema.decodeUnknownEffect(ChangesetOptionsSchema)(input).pipe(
 		Effect.mapError(
 			(parseError) =>
 				new ConfigurationError({

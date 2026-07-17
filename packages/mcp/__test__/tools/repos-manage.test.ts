@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Cause, Effect, Exit, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import { ReposManageAsMarkdown, ReposManageResult, reposManage } from "../../src/tools/repos-manage.js";
@@ -118,7 +118,7 @@ describe("reposManage handler — request validation", () => {
 describe("reposManage handler — pin markdown transcript", () => {
 	it("surfaces commitMessage and staleNoteIds prominently, neutralizing backtick injection via delimiter runs", async () => {
 		const data = await run(reposManage({ action: "pin", name: "foo", ref: "main" }, "/repo"));
-		const md = Schema.decodeSync(ReposManageAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
 		// The transcript must have a dedicated commit-message section...
 		expect(md.toLowerCase()).toContain("commit message");
 		expect(md).toContain("chore(repos): pin");
@@ -140,7 +140,7 @@ describe("reposManage handler — pin markdown transcript", () => {
 
 	it("keeps a heading-injection note payload inert in the note transcript", async () => {
 		const data = await run(reposManage({ action: "note", name: "`## heading", op: "add", note: "x" }, "/repo"));
-		const md = Schema.decodeSync(ReposManageAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
 		// The payload renders inside a longer backtick run and never lands at
 		// the start of a line as a live markdown heading.
 		expect(md).toContain("`` `## heading ``");

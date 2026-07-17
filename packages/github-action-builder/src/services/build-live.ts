@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRsbuild } from "@rsbuild/core";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Result } from "effect";
 
 import { BundleFailed, CleanError, WriteError } from "../errors.js";
 import type { Config } from "../schemas/config.js";
@@ -355,15 +355,15 @@ export const BuildServiceLive = Layer.effect(
 					// Build each entry
 					const entryResults: BundleResult[] = [];
 					for (const entry of entriesResult.entries) {
-						const result = yield* Effect.either(bundleEntry(entry, config, cwd));
-						if (result._tag === "Left") {
-							const err = result.left;
+						const result = yield* Effect.result(bundleEntry(entry, config, cwd));
+						if (Result.isFailure(result)) {
+							const err = result.failure;
 							entryResults.push({
 								success: false,
 								error: err.cause instanceof Error ? err.cause.message : String(err.cause),
 							});
 						} else {
-							entryResults.push(result.right);
+							entryResults.push(result.success);
 						}
 					}
 

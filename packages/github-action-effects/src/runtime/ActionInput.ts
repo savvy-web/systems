@@ -1,4 +1,4 @@
-import { Config, ConfigError, Either } from "effect";
+import { Config, Effect, Option, Schema, SchemaIssue } from "effect";
 
 /**
  * GitHub-faithful action input helpers expressed as Effect `Config` combinators.
@@ -29,7 +29,8 @@ export const ActionInput = {
 	 * (→ `false`). Surrounding whitespace is trimmed before the comparison
 	 * (matching the toolkit, which trims by default). Everything else — including
 	 * Effect's `Config.boolean` extras `yes`/`on`/`1`/`no`/`off`/`0` and
-	 * mixed-case variants like `tRue` — fails with `ConfigError.InvalidData`.
+	 * mixed-case variants like `tRue` — fails with a `Config.ConfigError`
+	 * carrying an invalid-value schema issue.
 	 *
 	 * Prefer this over `Config.boolean` for GitHub-faithful semantics:
 	 * `Config.boolean("dry-run")` would silently accept `dry-run: yes` (which
@@ -43,16 +44,20 @@ export const ActionInput = {
 			Config.mapOrFail((raw) => {
 				const val = raw.trim();
 				if (val === "true" || val === "True" || val === "TRUE") {
-					return Either.right(true);
+					return Effect.succeed(true);
 				}
 				if (val === "false" || val === "False" || val === "FALSE") {
-					return Either.right(false);
+					return Effect.succeed(false);
 				}
-				return Either.left(
-					ConfigError.InvalidData(
-						[name],
-						`Input does not meet YAML 1.2 "Core Schema" specification: ${name}\n` +
-							"Support boolean input list: `true | True | TRUE | false | False | FALSE`",
+				return Effect.fail(
+					new Config.ConfigError(
+						new Schema.SchemaError(
+							new SchemaIssue.InvalidValue(Option.some(raw), {
+								message:
+									`Input does not meet YAML 1.2 "Core Schema" specification: ${name}\n` +
+									"Support boolean input list: `true | True | TRUE | false | False | FALSE`",
+							}),
+						),
 					),
 				);
 			}),
@@ -63,8 +68,8 @@ export const ActionInput = {
 	 *
 	 * @remarks
 	 * Splits the raw value on `\n`, drops empty lines (after the split, before
-	 * trimming), and trims each remaining line. A missing input is a
-	 * `ConfigError.MissingData` (matching `Config.string`); combine with
+	 * trimming), and trims each remaining line. A missing input is a missing-data
+	 * `Config.ConfigError` (matching `Config.string`); combine with
 	 * `Config.withDefault([])` for an empty-when-absent array.
 	 *
 	 * @param name - The input name (read as `INPUT_<NAME>`).

@@ -1,6 +1,5 @@
-import { FileSystem } from "@effect/platform";
 import type { Schema } from "effect";
-import { Effect, Layer, Option } from "effect";
+import { Effect, FileSystem, Layer, Option } from "effect";
 import { ActionStateError } from "../errors/ActionStateError.js";
 import * as RuntimeFile from "../runtime/RuntimeFile.js";
 import { ActionState } from "../services/ActionState.js";
@@ -14,13 +13,13 @@ export const ActionStateLive: Layer.Layer<ActionState, never, FileSystem.FileSys
 		const fsLayer = Layer.succeed(FileSystem.FileSystem, fs);
 
 		return {
-			save: <A, I>(key: string, value: A, schema: Schema.Schema<A, I, never>) =>
+			save: <A, I>(key: string, value: A, schema: Schema.Codec<A, I>) =>
 				encodeState(key, value, schema).pipe(
 					Effect.flatMap((json) => RuntimeFile.append("GITHUB_STATE", key, json).pipe(Effect.provide(fsLayer))),
 					Effect.orDie,
 				),
 
-			get: <A, I>(key: string, schema: Schema.Schema<A, I, never>) =>
+			get: <A, I>(key: string, schema: Schema.Codec<A, I>) =>
 				Effect.sync(() => process.env[`STATE_${key}`] ?? "").pipe(
 					Effect.flatMap((raw) => {
 						if (raw === "") {
@@ -36,7 +35,7 @@ export const ActionStateLive: Layer.Layer<ActionState, never, FileSystem.FileSys
 					}),
 				),
 
-			getOptional: <A, I>(key: string, schema: Schema.Schema<A, I, never>) =>
+			getOptional: <A, I>(key: string, schema: Schema.Codec<A, I>) =>
 				Effect.sync(() => process.env[`STATE_${key}`] ?? "").pipe(
 					Effect.flatMap((raw) => {
 						if (raw === "") {
