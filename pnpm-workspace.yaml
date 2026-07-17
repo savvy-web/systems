@@ -57,15 +57,15 @@ catalogs:
     '@effect/typeclass': ^0.40.0
     '@effect/vitest': ^0.29.0
     '@effect/workflow': ^0.18.2
-    '@rsbuild/core': ^2.1.5
+    '@rsbuild/core': ^2.1.6
     '@rspress/core': ^2.0.17
-    '@tsdown/css': ^0.22.7
-    '@tsdown/exe': ^0.22.7
+    '@tsdown/css': ^0.22.9
+    '@tsdown/exe': ^0.22.9
     '@types/bun': ^1.3.14
     '@types/node': ^26.1.1
     '@types/react': ^19.2.17
     '@types/react-dom': ^19.2.3
-    '@typescript/native-preview': ^7.0.0-dev.20260630.1
+    '@typescript/native-preview': ^7.0.0-dev.20260707.2
     '@vitest/coverage-istanbul': ^4.1.10
     '@vitest/coverage-v8': ^4.1.10
     effect: ^3.21.4
@@ -75,10 +75,10 @@ catalogs:
     markdownlint-cli2-formatter-codequality: ^0.0.7
     react: ^19.2.7
     react-dom: ^19.2.7
-    rolldown: ^1.1.5
-    tsdown: ^0.22.7
+    rolldown: ^1.2.0
+    tsdown: ^0.22.9
     tsx: ^4.23.1
-    turbo: ^2.10.4
+    turbo: ^2.10.5
     typescript: ^7.0.2
     vitest: ^4.1.10
   silkPeers:
@@ -123,13 +123,13 @@ catalogs:
     '@effect/workflow': ^0.18.2
     '@rsbuild/core': ^2.1.0
     '@rspress/core': ^2.0.0
-    '@tsdown/css': ^0.22.7
-    '@tsdown/exe': ^0.22.7
+    '@tsdown/css': ^0.22.9
+    '@tsdown/exe': ^0.22.9
     '@types/bun': ^1.3.14
     '@types/node': ^26.1.0
     '@types/react': ^19.2.0
     '@types/react-dom': ^19.2.0
-    '@typescript/native-preview': ^7.0.0-dev.20260612.1
+    '@typescript/native-preview': ^7.0.0-dev.20260707.2
     '@vitest/coverage-istanbul': ^4.1.0
     '@vitest/coverage-v8': ^4.1.0
     effect: ^3.21.0
@@ -139,10 +139,10 @@ catalogs:
     markdownlint-cli2-formatter-codequality: ^0.0.7
     react: ^19.2.0
     react-dom: ^19.2.0
-    rolldown: ^1.1.0
+    rolldown: ^1.2.0
     tsdown: ^0.22.0
     tsx: ^4.23.1
-    turbo: ^2.10.4
+    turbo: ^2.10.5
     typescript: ^7.0.0
     vitest: ^4.1.0
 configDependencies:

@@ -204,7 +204,7 @@ await build({
 							strategy: "interop",
 						},
 						"@rsbuild/core": {
-							range: "^2.1.5",
+							range: "^2.1.6",
 							peer: "^2.1.0",
 							strategy: "lock-minor",
 						},
@@ -214,13 +214,13 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@tsdown/exe": {
-							range: "^0.22.7",
-							peer: "^0.22.7",
+							range: "^0.22.9",
+							peer: "^0.22.9",
 							strategy: "lock",
 						},
 						"@tsdown/css": {
-							range: "^0.22.7",
-							peer: "^0.22.7",
+							range: "^0.22.9",
+							peer: "^0.22.9",
 							strategy: "lock",
 						},
 						"@types/bun": {
@@ -244,8 +244,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@typescript/native-preview": {
-							range: "^7.0.0-dev.20260630.1",
-							peer: "^7.0.0-dev.20260612.1",
+							range: "^7.0.0-dev.20260707.2",
+							peer: "^7.0.0-dev.20260707.2",
 						},
 						"@vitest/coverage-istanbul": {
 							range: "^4.1.10",
@@ -293,12 +293,12 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.1.5",
-							peer: "^1.1.0",
+							range: "^1.2.0",
+							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
 						tsdown: {
-							range: "^0.22.7",
+							range: "^0.22.9",
 							peer: "^0.22.0",
 							strategy: "lock-minor",
 						},
@@ -313,8 +313,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						turbo: {
-							range: "^2.10.4",
-							peer: "^2.10.4",
+							range: "^2.10.5",
+							peer: "^2.10.5",
 							strategy: "lock",
 						},
 						vitest: {
