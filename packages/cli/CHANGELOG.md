@@ -1,5 +1,50 @@
 # @savvy-web/cli
 
+## 2.0.0
+
+### Breaking Changes
+
+* The `savvy` binary is rebuilt on the in-core `effect/unstable/cli` framework; the dead `@effect/cli` dependency and eight unused `@effect/*` pins are removed.
+* The `repos note` grammar moves the repo name after the operation (`savvy repos note add <name> <text>`), since v4's CLI framework has no parent-positional sharing.
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 3.3.1 | 4.0.0 |
+
+* | Dependency            | Type       | Action  | From     | To             |                                                                       |
+  | --------------------- | ---------- | ------- | -------- | -------------- | --------------------------------------------------------------------- |
+  | @effect/cli           | dependency | removed | ^0.75.2  | —              |                                                                       |
+  | @effect/cluster       | dependency | removed | ^0.59.0  | —              |                                                                       |
+  | @effect/experimental  | dependency | removed | ^0.60.0  | —              |                                                                       |
+  | @effect/platform      | dependency | removed | ^0.96.2  | —              |                                                                       |
+  | @effect/printer       | dependency | removed | ^0.49.0  | —              |                                                                       |
+  | @effect/printer-ansi  | dependency | removed | ^0.49.0  | —              |                                                                       |
+  | @effect/rpc           | dependency | removed | ^0.75.1  | —              |                                                                       |
+  | @effect/sql           | dependency | removed | ^0.51.1  | —              |                                                                       |
+  | @effect/typeclass     | dependency | removed | ^0.40.0  | —              |                                                                       |
+  | @effect/workflow      | dependency | removed | ^0.18.2  | —              |                                                                       |
+  | jsonc-effect          | dependency | removed | ^0.3.1   | —              |                                                                       |
+  | workspaces-effect     | dependency | removed | ^2.1.0   | —              |                                                                       |
+  | yaml                  | dependency | removed | ^2.9.0   | —              |                                                                       |
+  | @effect/platform-node | dependency | updated | ^0.107.0 | catalog:effect |                                                                       |
+  | effect                | dependency | updated | ^3.21.4  | catalog:effect |                                                                       |
+  | @effected/git         | dependency | added   | —        | ^0.3.0         |                                                                       |
+  | @effected/jsonc       | dependency | added   | —        | ^0.2.0         |                                                                       |
+  | @effected/workspaces  | dependency | added   | —        | ^0.3.0         |                                                                       |
+  | @effected/yaml        | dependency | added   | —        | ^0.2.0         | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Other
+
+* Git introspection in the commit and changeset hooks adopts `@effected/git` (`repoRoot`, `commitInfo`, `remoteUrl`). [#312][#312]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
 ## 1.6.1
 
 ### Dependencies

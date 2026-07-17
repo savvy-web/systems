@@ -1,5 +1,37 @@
 # @savvy-web/github-action-effects
 
+## 3.0.0
+
+### Breaking Changes
+
+* The library targets `effect@4` and peers on `catalog:effectPeers` for `effect` and `@effect/platform-node`; the `@effect/platform` peer is dropped. Consuming action repositories must move to the v4 runtime.
+* All 39 services convert from `Context.Tag` to class-based `Context.Service`, each exporting a companion `*Shape` interface.
+* Several v4 behaviours change observable contracts: `Config.ConfigError` no longer distinguishes invalid from missing data, `PlatformError` exposes only a `message` getter, and `NumberFromString`/`DateFromString` no longer reject non-conforming input.
+
+### Dependencies
+
+* | Dependency            | Type           | Action  | From     | To                  |                                                                       |
+  | --------------------- | -------------- | ------- | -------- | ------------------- | --------------------------------------------------------------------- |
+  | jsonc-effect          | dependency     | removed | ^0.3.1   | —                   |                                                                       |
+  | semver-effect         | dependency     | removed | ^0.3.1   | —                   |                                                                       |
+  | yaml-effect           | dependency     | removed | ^0.7.2   | —                   |                                                                       |
+  | @effect/platform      | peerDependency | removed | ^0.96.0  | —                   |                                                                       |
+  | @effect/platform-node | peerDependency | updated | ^0.107.0 | catalog:effectPeers |                                                                       |
+  | effect                | peerDependency | updated | ^3.21.0  | catalog:effectPeers |                                                                       |
+  | @effected/jsonc       | dependency     | added   | —        | ^0.2.0              |                                                                       |
+  | @effected/semver      | dependency     | added   | —        | ^0.1.0              |                                                                       |
+  | @effected/yaml        | dependency     | added   | —        | ^0.2.0              | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Other
+
+* The HTTP client surface moves to `effect/unstable/http`, the retry subsystem moves onto `Effect.retry` option objects, streams adopt `Stream.paginate`, and `jsonc-effect`/`semver-effect`/`yaml-effect` swap to their `@effected` successors. [#312][#312]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
 ## 2.4.0
 
 ### Features

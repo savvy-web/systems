@@ -1,5 +1,38 @@
 # @savvy-web/github-action-builder
 
+## 2.0.0
+
+### Breaking Changes
+
+* The build tool targets `effect@4` and ports its CLI from the dead `@effect/cli` to the in-core `effect/unstable/cli`; the four services convert to class-based `Context.Service` with exported `*Shape` interfaces.
+
+### Dependencies
+
+* | Dependency            | Type       | Action  | From     | To             |                                                                       |
+  | --------------------- | ---------- | ------- | -------- | -------------- | --------------------------------------------------------------------- |
+  | @effect/cli           | dependency | removed | ^0.75.2  | —              |                                                                       |
+  | @effect/cluster       | dependency | removed | ^0.59.0  | —              |                                                                       |
+  | @effect/platform      | dependency | removed | ^0.96.2  | —              |                                                                       |
+  | @effect/printer       | dependency | removed | ^0.49.0  | —              |                                                                       |
+  | @effect/printer-ansi  | dependency | removed | ^0.49.0  | —              |                                                                       |
+  | @effect/rpc           | dependency | removed | ^0.75.1  | —              |                                                                       |
+  | @effect/sql           | dependency | removed | ^0.51.1  | —              |                                                                       |
+  | @effect/typeclass     | dependency | removed | ^0.40.0  | —              |                                                                       |
+  | yaml-effect           | dependency | removed | ^0.7.2   | —              |                                                                       |
+  | @effect/platform-node | dependency | updated | ^0.107.0 | catalog:effect |                                                                       |
+  | effect                | dependency | updated | ^3.21.4  | catalog:effect |                                                                       |
+  | @effected/yaml        | dependency | added   | —        | ^0.2.0         | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Other
+
+* YAML parsing adopts `@effected/yaml`; eight unused `@effect/*` pins are removed. [#312][#312]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
 ## 1.1.2
 
 ### Dependencies
