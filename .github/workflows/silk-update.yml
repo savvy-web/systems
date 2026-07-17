@@ -46,7 +46,10 @@ jobs:
           auto-merge: "squash"
           upgrade-package-manager: "^11.0.0"
           upgrade-runtime-node: "^26.0.0"
+          config-dependencies: |
+            @effected/pnpm-plugin-effect
           dependencies: |
+            @effected/*
             @microsoft/api-extractor
             @microsoft/tsdoc
             @microsoft/tsdoc-config
@@ -77,7 +80,6 @@ jobs:
             remark-gfm
             remark-parse
             remark-stringify
-            rolldown
             shell-quote
             sort-package-json
             semver-effect
@@ -92,18 +94,6 @@ jobs:
             yaml
             yaml-effect
             yaml-lint
-          peer-minor: |
-            rolldown
-          peer-lock: |
-            @changesets/cli
-            @commitlint/cli
-            @commitlint/config-conventional
-            commitizen
-            husky
-            lint-staged
-            markdownlint-cli2
-            markdownlint-cli2-formatter-codequality
-            turbo
           run: |
             pnpm savvy init
             pnpm lint:fix 2>/dev/null || true
