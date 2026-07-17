@@ -38,7 +38,7 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
-		"effect": "catalog:silk",
+		"effect": "catalog:effect",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"

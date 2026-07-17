@@ -74,13 +74,13 @@ describe("manifest transform", () => {
 
 	it("rewrites a TS string export to a types+import conditions object", () => {
 		expect(transformExports({ ".": "./src/index.ts" }, false)).toEqual({
-			".": { types: "./index.d.ts", import: "./index.js" },
+			".": { types: "./index.d.ts", import: "./index.js", default: "./index.js" },
 		});
 	});
 
 	it("derives a nested subpath export's output from the flat entry name (not the source path)", () => {
 		expect(transformExports({ "./commitlint": "./src/commitlint/index.ts" }, false)).toEqual({
-			"./commitlint": { types: "./commitlint.d.ts", import: "./commitlint.js" },
+			"./commitlint": { types: "./commitlint.d.ts", import: "./commitlint.js", default: "./commitlint.js" },
 		});
 	});
 
@@ -89,13 +89,14 @@ describe("manifest transform", () => {
 			"./changesets/markdownlint": {
 				types: "./changesets-markdownlint.d.ts",
 				import: "./changesets-markdownlint.js",
+				default: "./changesets-markdownlint.js",
 			},
 		});
 	});
 
 	it("emits import-only conditions for a TS export when not dual-format", () => {
 		expect(transformExports({ "./changesets": "./src/changesets/index.ts" }, false)).toEqual({
-			"./changesets": { types: "./changesets.d.ts", import: "./changesets.js" },
+			"./changesets": { types: "./changesets.d.ts", import: "./changesets.js", default: "./changesets.js" },
 		});
 	});
 
@@ -105,13 +106,14 @@ describe("manifest transform", () => {
 				types: "./commitlint.d.ts",
 				import: "./commitlint.js",
 				require: "./commitlint.cjs",
+				default: "./commitlint.js",
 			},
 		});
 	});
 
 	it("keeps a flat/root export byte-identical to the emitted index file in dual-format", () => {
 		expect(transformExports({ ".": "./src/index.ts" }, true)).toEqual({
-			".": { types: "./index.d.ts", import: "./index.js", require: "./index.cjs" },
+			".": { types: "./index.d.ts", import: "./index.js", require: "./index.cjs", default: "./index.js" },
 		});
 	});
 
@@ -132,7 +134,7 @@ describe("manifest transform", () => {
 				false,
 			),
 		).toEqual({
-			".": { types: "./index.d.ts", import: "./index.js" },
+			".": { types: "./index.d.ts", import: "./index.js", default: "./index.js" },
 			"./asset": "./ecma.json",
 			"./nested": "./tsconfig/ecma.json",
 		});
@@ -141,7 +143,7 @@ describe("manifest transform", () => {
 	it("passes a .d.ts asset export through as a leaf but strips its public/ segment", () => {
 		const exports = { ".": "./src/index.ts", "./rspress-env.d.ts": "./public/rspress-env.d.ts" };
 		const out = transformExports(exports, false) as Record<string, unknown>;
-		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js", default: "./index.js" });
 		expect(out["./rspress-env.d.ts"]).toBe("./rspress-env.d.ts");
 	});
 
@@ -181,10 +183,14 @@ describe("manifest transform", () => {
 		const exports = { ".": "./src/index.ts", "./runtime": "./src/runtime/index.tsx" };
 		const out = transformExports(exports, false, new Set(["./runtime"])) as Record<
 			string,
-			{ types: string; import: string }
+			{ types: string; import: string; default: string }
 		>;
-		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
-		expect(out["./runtime"]).toEqual({ types: "./runtime/index.d.ts", import: "./runtime/index.js" });
+		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js", default: "./index.js" });
+		expect(out["./runtime"]).toEqual({
+			types: "./runtime/index.d.ts",
+			import: "./runtime/index.js",
+			default: "./runtime/index.js",
+		});
 	});
 
 	it("omits the types condition from a TS export when emitDts is false, keeping import/require", () => {
@@ -192,14 +198,14 @@ describe("manifest transform", () => {
 		// declaration file that was never written.
 		const exports = { ".": "./src/index.ts" };
 		const out = transformExports(exports, true, undefined, false) as Record<string, Record<string, string>>;
-		expect(out["."]).toEqual({ import: "./index.js", require: "./index.cjs" });
+		expect(out["."]).toEqual({ import: "./index.js", require: "./index.cjs", default: "./index.js" });
 		expect(out["."].types).toBeUndefined();
 	});
 
 	it("keeps the types condition by default (emitDts omitted / true)", () => {
 		const exports = { ".": "./src/index.ts" };
 		expect(transformExports(exports, false) as Record<string, Record<string, string>>).toEqual({
-			".": { types: "./index.d.ts", import: "./index.js" },
+			".": { types: "./index.d.ts", import: "./index.js", default: "./index.js" },
 		});
 	});
 
@@ -223,7 +229,7 @@ describe("transformExports — ambient .d.ts exports", () => {
 		}) as Record<string, unknown>;
 		expect(out["./virtual"]).toEqual({ types: "./virtual.d.ts" });
 		// the normal runtime export is untouched
-		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(out["."]).toEqual({ types: "./index.d.ts", import: "./index.js", default: "./index.js" });
 	});
 	it("rewrites a bare .d.ts string export and preserves the declaration extension", () => {
 		const out = transformExports({ "./globals": "./src/g.d.cts" }) as Record<string, unknown>;
@@ -256,7 +262,7 @@ describe("auto ./package.json export injection", () => {
 		const out = transformManifest({ name: "@x/p", version: "1.0.0", exports: { ".": "./src/index.ts" } });
 		const exports = out.exports as Record<string, unknown>;
 		expect(exports["./package.json"]).toBe("./package.json");
-		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js", default: "./index.js" });
 	});
 
 	it("does not duplicate or overwrite an existing ./package.json export", () => {
@@ -272,7 +278,7 @@ describe("auto ./package.json export injection", () => {
 	it("injects ./package.json for a bare-string (root-only) exports, preserving the root under .", () => {
 		const out = transformManifest({ name: "@x/p", version: "1.0.0", exports: "./src/index.ts" });
 		const exports = out.exports as Record<string, unknown>;
-		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js" });
+		expect(exports["."]).toEqual({ types: "./index.d.ts", import: "./index.js", default: "./index.js" });
 		expect(exports["./package.json"]).toBe("./package.json");
 	});
 

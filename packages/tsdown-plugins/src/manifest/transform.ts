@@ -122,11 +122,18 @@ const isTs = (p: string): boolean => !isDeclarationFile(p) && (p.endsWith(".ts")
  * gates the `types` condition: when `false` (the build's dts pass was skipped, see issue #198),
  * omitting `types` avoids pointing the published manifest at a declaration file that was never
  * written. Defaults to `true` (current behavior, byte-identical).
+ *
+ * The trailing `default` condition mirrors the ESM artifact so `require(esm)` resolves on the
+ * Node range every published package supports (engines >=24.11.0): Node's require() matches
+ * `node`/`require`/`default` but never `import`, so an import-only map dies with
+ * ERR_PACKAGE_PATH_NOT_EXPORTED even where require(esm) works. Dual-format entries keep their
+ * dedicated CJS artifact under `require`, which wins over `default` by condition order.
  */
 const tsConditions = (exportKey: string, dual: boolean, subdirExports?: ReadonlySet<string>, emitDts = true): Json => ({
 	...(emitDts ? { types: toBuiltDts(exportKey, subdirExports) } : {}),
 	import: toBuiltJs(exportKey, subdirExports),
 	...(dual ? { require: toBuiltCjs(exportKey, subdirExports) } : {}),
+	default: toBuiltJs(exportKey, subdirExports),
 });
 
 /**
