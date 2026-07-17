@@ -65,9 +65,6 @@
 		"effect": "catalog:effectPeers"
 	},
 	"peerDependenciesMeta": {
-		"@effect/platform": {
-			"optional": false
-		},
 		"@effect/platform-node": {
 			"optional": false
 		},
