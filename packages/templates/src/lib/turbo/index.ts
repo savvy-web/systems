@@ -7,12 +7,12 @@ import type { TemplateEntry } from "../types.js";
  * @public
  */
 export const TurboRootOptions = Schema.Struct({
-	tasks: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	tasks: Schema.Record(Schema.String, Schema.Unknown),
 	globalDependencies: Schema.optional(Schema.Array(Schema.String)),
 	globalEnv: Schema.optional(Schema.Array(Schema.String)),
 	globalPassThroughEnv: Schema.optional(Schema.Array(Schema.String)),
-	ui: Schema.optional(Schema.Literal("tui", "stream")),
-	concurrency: Schema.optional(Schema.Union(Schema.String, Schema.Number)),
+	ui: Schema.optional(Schema.Literals(["tui", "stream"])),
+	concurrency: Schema.optional(Schema.Union([Schema.String, Schema.Number])),
 });
 
 /**
@@ -28,7 +28,7 @@ export type TurboRootOptionsType = typeof TurboRootOptions.Type;
  * @public
  */
 export const TurboWorkspaceOptions = Schema.Struct({
-	tasks: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	tasks: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
 });
 
 /**

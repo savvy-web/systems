@@ -29,19 +29,19 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"sort-package-json": "^4.0.0",
-		"yaml-effect": "^0.7.2"
+		"@effected/yaml": "^0.1.0",
+		"sort-package-json": "^4.0.0"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
-		"effect": "catalog:silk",
+		"effect": "catalog:effect",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"
 	},
 	"peerDependencies": {
-		"effect": "catalog:silkPeers"
+		"effect": "catalog:effectPeers"
 	},
 	"publishConfig": {
 		"access": "public",

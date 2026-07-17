@@ -97,6 +97,12 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
+    '@vitest/coverage-istanbul':
+      specifier: ^4.1.10
+      version: 4.1.10
+    '@vitest/coverage-v8':
+      specifier: ^4.1.10
+      version: 4.1.10
     effect:
       specifier: ^3.21.4
       version: 3.22.0
@@ -136,6 +142,16 @@ catalogs:
     vitest:
       specifier: ^4.1.10
       version: 4.1.10
+  silkPeers:
+    '@rspress/core':
+      specifier: ^2.0.0
+      version: 2.0.17
+    '@types/react-dom':
+      specifier: ^19.2.0
+      version: 19.2.3
+    react-dom:
+      specifier: ^19.2.0
+      version: 19.2.7
 
 overrides:
   '@microsoft/api-extractor>typescript': ^6.0.3
@@ -789,12 +805,12 @@ importers:
 
   packages/templates:
     dependencies:
+      '@effected/yaml':
+        specifier: ^0.1.0
+        version: 0.1.0(effect@4.0.0-beta.98)
       sort-package-json:
         specifier: ^4.0.0
         version: 4.0.0
-      yaml-effect:
-        specifier: ^0.7.2
-        version: 0.7.2(effect@3.22.0)
     devDependencies:
       '@savvy-web/bundler':
         specifier: workspace:*
@@ -803,8 +819,8 @@ importers:
         specifier: catalog:silk
         version: 26.1.1
       effect:
-        specifier: catalog:silk
-        version: 3.22.0
+        specifier: catalog:effect
+        version: 4.0.0-beta.98
       tsx:
         specifier: catalog:silk
         version: 4.23.1
