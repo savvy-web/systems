@@ -1,5 +1,14 @@
 # @savvy-web/rspress-builder
 
+## 1.0.17
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From   | To    |
+| ------------------------- | ---------- | ------- | ------ | ----- |
+| @savvy-web/bundler        | dependency | updated | 1.1.14 | 2.0.0 |
+| @savvy-web/tsdown-plugins | dependency | updated | 1.1.13 | 2.0.0 |
+
 ## 1.0.16
 
 ### Dependencies

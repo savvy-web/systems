@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/rspress-builder",
-	"version": "1.0.16",
+	"version": "1.0.17",
 	"private": true,
 	"description": "RSPress plugin builder for the Silk Suite, built on @savvy-web/bundler",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/rspress-builder",
