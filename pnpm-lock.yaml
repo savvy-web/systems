@@ -97,12 +97,6 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
-    '@vitest/coverage-istanbul':
-      specifier: ^4.1.10
-      version: 4.1.10
-    '@vitest/coverage-v8':
-      specifier: ^4.1.10
-      version: 4.1.10
     effect:
       specifier: ^3.21.4
       version: 3.22.0
@@ -142,16 +136,6 @@ catalogs:
     vitest:
       specifier: ^4.1.10
       version: 4.1.10
-  silkPeers:
-    '@rspress/core':
-      specifier: ^2.0.0
-      version: 2.0.17
-    '@types/react-dom':
-      specifier: ^19.2.0
-      version: 19.2.3
-    react-dom:
-      specifier: ^19.2.0
-      version: 19.2.7
 
 overrides:
   '@microsoft/api-extractor>typescript': ^6.0.3
@@ -562,8 +546,8 @@ importers:
         specifier: catalog:silk
         version: 26.1.1
       rolldown-pnpm-config:
-        specifier: ^0.3.0
-        version: 0.3.0(@types/react@19.2.17)(ioredis@5.11.1)(rolldown@1.2.0)
+        specifier: ^0.4.0
+        version: 0.4.0(@types/react@19.2.17)(ioredis@5.11.1)(rolldown@1.2.0)
       typescript:
         specifier: catalog:silk
         version: 7.0.2
@@ -847,8 +831,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/walker@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/workspaces':
-        specifier: ^0.2.0
-        version: 0.2.0(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.2.1
+        version: 0.2.1(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@microsoft/api-extractor':
         specifier: ^7.58.9
         version: 7.58.9(@types/node@26.1.1)
@@ -1385,8 +1369,8 @@ packages:
       '@effect/rpc': ^0.75.1
       effect: ^3.21.2
 
-  '@effected/git@0.1.0':
-    resolution: {integrity: sha512-rpwPfTXSx1gpXtteQaDYXbU4PbXuQtqjLVi+RZbGaUc8dlv9PN+cYT5tzpFs40nKX5br6OFU0I1q12wnEnzf0g==}
+  '@effected/git@0.2.0':
+    resolution: {integrity: sha512-CGB9AVK3dBgfL8xGjYDoPze9he/d/dKhZEctOl7JyRdd0MGKtcGns+28rmu+41NkmFsYLFo5CpIHLKiwZPVziQ==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
@@ -1446,8 +1430,8 @@ packages:
     peerDependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/workspaces@0.2.0':
-    resolution: {integrity: sha512-XTRtrWKNg0p+GMVvsg7j4zP4H9ILkXhegMRZuhYS9aYOzhijnupM3n3kikG47G/9xYXPK1Puq4A9AsmaIB3tCQ==}
+  '@effected/workspaces@0.2.1':
+    resolution: {integrity: sha512-RkQ8dRZBDwAg35ED9WQERJg/YB/JawHx11TWNWi+k0b8303975umNqdu7u6bW/F3z8QIeApR8J/GL0A12lsCaQ==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
@@ -5685,8 +5669,8 @@ packages:
       vue-tsc:
         optional: true
 
-  rolldown-pnpm-config@0.3.0:
-    resolution: {integrity: sha512-byuCKHyWyuFhTWuZnUnKTrvZNjS4WD0bxkrmDIhKrK4/rnioDE2cSCzD+V9viSk2D6cUNcn5ynvkDgviqav3Pw==}
+  rolldown-pnpm-config@0.4.0:
+    resolution: {integrity: sha512-Do3cq6Xs0kuRu5nG+zwlaq/osKlGdjvBi/fLNLMxdqYkcp1vKL78Pf3va5nn7bg3WS/jcT5/qq+BksB3Sj10iQ==}
     engines: {node: '>=24.11.0'}
     hasBin: true
     peerDependencies:
@@ -7142,7 +7126,7 @@ snapshots:
       '@effect/rpc': 0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)
       effect: 3.22.0
 
-  '@effected/git@0.1.0(effect@4.0.0-beta.98)':
+  '@effected/git@0.2.0(effect@4.0.0-beta.98)':
     dependencies:
       effect: 4.0.0-beta.98
 
@@ -7188,9 +7172,9 @@ snapshots:
     dependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/workspaces@0.2.0(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
+  '@effected/workspaces@0.2.1(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
     dependencies:
-      '@effected/git': 0.1.0(effect@4.0.0-beta.98)
+      '@effected/git': 0.2.0(effect@4.0.0-beta.98)
       '@effected/glob': 0.1.0(effect@4.0.0-beta.98)
       '@effected/lockfiles': 0.1.1(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/npm@0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(@effected/yaml@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/npm': 0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
@@ -11783,35 +11767,24 @@ snapshots:
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-pnpm-config@0.3.0(@types/react@19.2.17)(ioredis@5.11.1)(rolldown@1.2.0):
+  rolldown-pnpm-config@0.4.0(@types/react@19.2.17)(ioredis@5.11.1)(rolldown@1.2.0):
     dependencies:
-      '@effect/cli': 0.75.2(@effect/platform@0.96.3(effect@3.22.0))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.22.0))(effect@3.22.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.22.0))(effect@3.22.0))(effect@3.22.0)
-      '@effect/cluster': 0.59.0(@effect/platform@0.96.3(effect@3.22.0))(@effect/rpc@0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(@effect/workflow@0.18.2(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(@effect/rpc@0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(effect@3.22.0))(effect@3.22.0)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1)
-      '@effect/platform': 0.96.3(effect@3.22.0)
-      '@effect/platform-node': 0.107.0(@effect/cluster@0.59.0(@effect/platform@0.96.3(effect@3.22.0))(@effect/rpc@0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(@effect/workflow@0.18.2(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(@effect/rpc@0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(effect@3.22.0))(effect@3.22.0))(@effect/platform@0.96.3(effect@3.22.0))(@effect/rpc@0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(effect@3.22.0)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@3.22.0))(effect@3.22.0)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@3.22.0))(effect@3.22.0)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)
-      '@effect/typeclass': 0.40.0(effect@3.22.0)
-      '@effect/workflow': 0.18.2(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(@effect/rpc@0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(effect@3.22.0)
-      effect: 3.22.0
+      '@effect/platform-node': 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
+      '@effected/semver': 0.1.0(effect@4.0.0-beta.98)
+      '@effected/yaml': 0.1.0(effect@4.0.0-beta.98)
+      effect: 4.0.0-beta.98
       ink: 7.1.0(@types/react@19.2.17)(react@19.2.7)
       ink-tab: 5.2.0(@types/react@19.2.17)(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       oxc-parser: 0.140.0
       react: 19.2.7
-      semver-effect: 0.3.1(effect@3.22.0)
       std-env: 4.2.0
       std-osc8: 0.2.0
-      yaml: 2.9.0
     optionalDependencies:
       rolldown: 1.2.0
     transitivePeerDependencies:
       - '@types/react'
       - bufferutil
       - ioredis
-      - lmdb
       - react-devtools-core
       - utf-8-validate
 
