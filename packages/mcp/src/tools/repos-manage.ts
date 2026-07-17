@@ -8,10 +8,11 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import type { SchemaError } from "effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 import { mdInline } from "./md-inline.js";
 
 /** `sync` has no extra fields. */
@@ -39,12 +40,12 @@ const AddRequest = Schema.TaggedStruct("add", {
  */
 const NoteRequest = Schema.TaggedStruct("note", {
 	name: Schema.String,
-	op: Schema.Literal("add", "remove", "promote"),
+	op: Schema.Literals(["add", "remove", "promote"]),
 	note: Schema.optional(Schema.String),
 	id: Schema.optional(Schema.String),
-	into: Schema.optional(Schema.Literal("layout", "startHere")),
-}).pipe(
-	Schema.filter((request) => {
+	into: Schema.optional(Schema.Literals(["layout", "startHere"])),
+}).check(
+	Schema.makeFilter((request) => {
 		if (request.op === "add" && request.note === undefined) {
 			return 'note op "add" requires `note`';
 		}
@@ -59,39 +60,39 @@ const NoteRequest = Schema.TaggedStruct("note", {
 );
 
 /** Internal tagged-union request the flat wire args decode into. */
-const ReposManageRequest = Schema.Union(SyncRequest, PinRequest, AddRequest, NoteRequest);
+const ReposManageRequest = Schema.Union([SyncRequest, PinRequest, AddRequest, NoteRequest]);
 
 /** `sync` result variant. */
 export const ReposManageSyncResult = Schema.Struct({
 	action: Schema.Literal("sync"),
 	result: Repos.ReposSyncReport,
-}).annotations({ identifier: "ReposManageSyncResult" });
+}).annotate({ identifier: "ReposManageSyncResult" });
 
 /** `pin` result variant. */
 export const ReposManagePinResult = Schema.Struct({
 	action: Schema.Literal("pin"),
 	result: Repos.ReposPinResult,
-}).annotations({ identifier: "ReposManagePinResult" });
+}).annotate({ identifier: "ReposManagePinResult" });
 
 /** `add` result variant. */
 export const ReposManageAddResult = Schema.Struct({
 	action: Schema.Literal("add"),
 	result: Repos.ReposAddResult,
-}).annotations({ identifier: "ReposManageAddResult" });
+}).annotate({ identifier: "ReposManageAddResult" });
 
 /** `note` result variant. */
 export const ReposManageNoteResult = Schema.Struct({
 	action: Schema.Literal("note"),
 	result: Repos.ReposNoteResult,
-}).annotations({ identifier: "ReposManageNoteResult" });
+}).annotate({ identifier: "ReposManageNoteResult" });
 
 /** The `repos_manage` tool result — a discriminated union keyed by `action`. */
-export const ReposManageResult = Schema.Union(
+export const ReposManageResult = Schema.Union([
 	ReposManageSyncResult,
 	ReposManagePinResult,
 	ReposManageAddResult,
 	ReposManageNoteResult,
-).annotations({
+]).annotate({
 	identifier: "ReposManageResult",
 	title: "repos_manage result",
 	description: "Result of a mutating repos action: sync, pin, add, or note.",
@@ -170,14 +171,12 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ReposManageAsMarkdown = Schema.transformOrFail(ReposManageResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "ReposManageAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const ReposManageAsMarkdown = ReposManageResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "ReposManageAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Flat wire arguments for the {@link reposManage} handler. */
 export interface ReposManageArgs {
@@ -208,7 +207,7 @@ export const reposManage = (
 	| Repos.GitSubmoduleError
 	| Repos.RepoNotFoundError
 	| Repos.NoteNotFoundError
-	| ParseResult.ParseError
+	| SchemaError.SchemaError
 	| WorkspaceRootNotFoundError,
 	Repos.ReposManager | WorkspaceRoot
 > =>
@@ -218,7 +217,7 @@ export const reposManage = (
 		const manager = yield* Repos.ReposManager;
 
 		const { action, cwd: _cwd, ...rest } = args;
-		const request = yield* Schema.decodeUnknown(ReposManageRequest)({ _tag: action, ...rest });
+		const request = yield* Schema.decodeUnknownEffect(ReposManageRequest)({ _tag: action, ...rest });
 
 		switch (request._tag) {
 			case "sync": {

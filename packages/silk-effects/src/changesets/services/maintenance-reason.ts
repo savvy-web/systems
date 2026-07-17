@@ -45,7 +45,7 @@ export type MaintenanceTrigger = typeof MaintenanceTriggerSchema.Type;
  */
 export const MaintenanceReasonSchema = Schema.Struct({
 	/** Coupling that forced the release; `"unspecified"` when undetermined. */
-	kind: Schema.Literal("fixed", "linked", "unspecified"),
+	kind: Schema.Literals(["fixed", "linked", "unspecified"]),
 	/** Triggering co-members; empty for `"unspecified"`. */
 	triggers: Schema.Array(MaintenanceTriggerSchema),
 });

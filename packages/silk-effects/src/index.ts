@@ -96,11 +96,15 @@ export type {
 } from "./schemas/VersioningSchemas.js";
 export { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "./schemas/WorkspaceAnalysisSchemas.js";
 // ── Services ───────────────────────────────────────────────────
+export type { BiomeSchemaSyncShape } from "./services/BiomeSchemaSync.js";
 export { BiomeSchemaSync, BiomeSchemaSyncLive, buildSchemaUrl, extractSemver } from "./services/BiomeSchemaSync.js";
-export type { ChangesetMode } from "./services/ChangesetConfig.js";
+export type { ChangesetConfigShape, ChangesetMode } from "./services/ChangesetConfig.js";
 export { ChangesetConfig, ChangesetConfigLive } from "./services/ChangesetConfig.js";
+export type { ChangesetConfigReaderShape } from "./services/ChangesetConfigReader.js";
 export { ChangesetConfigReader, ChangesetConfigReaderLive } from "./services/ChangesetConfigReader.js";
+export type { ConfigDiscoveryShape } from "./services/ConfigDiscovery.js";
 export { ConfigDiscovery, ConfigDiscoveryLive } from "./services/ConfigDiscovery.js";
+export type { ManagedSectionShape } from "./services/ManagedSection.js";
 export { ManagedSection, ManagedSectionLive } from "./services/ManagedSection.js";
 export type {
 	PublishablePackage,
@@ -119,9 +123,13 @@ export {
 	SilkPublishabilityDetectorLive,
 	readTargetsBinding,
 } from "./services/SilkPublishability.js";
+export type { SilkWorkspaceAnalyzerShape } from "./services/SilkWorkspaceAnalyzer.js";
 export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/SilkWorkspaceAnalyzer.js";
+export type { TagStrategyShape } from "./services/TagStrategy.js";
 export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";
+export type { ToolDiscoveryShape } from "./services/ToolDiscovery.js";
 export { ToolDiscovery, ToolDiscoveryLive } from "./services/ToolDiscovery.js";
+export type { VersioningStrategyShape } from "./services/VersioningStrategy.js";
 export { VersioningStrategy, VersioningStrategyLive } from "./services/VersioningStrategy.js";
 /**
  * Read-only Turborepo inspection — cache diagnosis, task-graph, and affected-set

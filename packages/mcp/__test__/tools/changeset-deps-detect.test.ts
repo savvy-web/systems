@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { ChangesetDepsDetectAsMarkdown, changesetDepsDetect } from "../../src/tools/changeset-deps-detect.js";
 
@@ -68,7 +68,7 @@ describe("changesetDepsDetect handler", () => {
 
 	it("renders the structured result as markdown including the devDependency row", async () => {
 		const data = await run(changesetDepsDetect({}, ROOT));
-		const md = Schema.decodeSync(ChangesetDepsDetectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown)(data);
 		expect(md).toContain("@scope/foo");
 		expect(md).toContain("packages/foo");
 		expect(md).toContain("effect");
@@ -76,6 +76,6 @@ describe("changesetDepsDetect handler", () => {
 	});
 
 	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeSync(ChangesetDepsDetectAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(ChangesetDepsDetectAsMarkdown)("anything")).toThrow();
 	});
 });

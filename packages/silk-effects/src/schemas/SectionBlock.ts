@@ -90,6 +90,6 @@ export class SectionBlock extends Schema.TaggedClass<SectionBlock>()("SectionBlo
 	}
 
 	[Hash.symbol](): number {
-		return Hash.cached(this)(Hash.hash(this.normalized));
+		return Hash.optimize(Hash.hash(this.normalized));
 	}
 }

@@ -6,7 +6,7 @@ import { Data, Schema } from "effect";
  * @since 0.2.0
  * @public
  */
-export const ToolSource = Schema.Literal("global", "local");
+export const ToolSource = Schema.Literals(["global", "local"]);
 /**
  * @since 0.2.0
  * @public

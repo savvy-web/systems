@@ -5,11 +5,11 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import type { AnalyzedWorkspace, WorkspaceAnalysis, WorkspaceAnalysisError } from "@savvy-web/silk-effects";
 import { SilkWorkspaceAnalyzer } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 
 /** A flattened, non-recursive summary of one analyzed workspace. */
 export const WorkspaceSummary = Schema.Struct({
@@ -18,25 +18,25 @@ export const WorkspaceSummary = Schema.Struct({
 	path: Schema.String,
 	root: Schema.Boolean,
 	publishable: Schema.Boolean,
-	targets: Schema.Array(Schema.String).annotations({ description: "Publish registry URLs." }),
+	targets: Schema.Array(Schema.String).annotate({ description: "Publish registry URLs." }),
 	versioned: Schema.Boolean,
 	tagged: Schema.Boolean,
 	released: Schema.Boolean,
-	linked: Schema.Array(Schema.String).annotations({ description: "Names of linked workspaces." }),
-	fixed: Schema.Array(Schema.String).annotations({ description: "Names of fixed-group siblings." }),
-}).annotations({ identifier: "WorkspaceSummary" });
+	linked: Schema.Array(Schema.String).annotate({ description: "Names of linked workspaces." }),
+	fixed: Schema.Array(Schema.String).annotate({ description: "Names of fixed-group siblings." }),
+}).annotate({ identifier: "WorkspaceSummary" });
 
 /** The `workspace_info` tool result — a projection of `WorkspaceAnalysis`. */
 export const WorkspaceInfoResult = Schema.Struct({
 	root: Schema.String,
-	runtime: Schema.Literal("node", "bun"),
+	runtime: Schema.Literals(["node", "bun"]),
 	packageManager: Schema.Struct({
-		type: Schema.Literal("npm", "pnpm", "yarn", "bun"),
+		type: Schema.Literals(["npm", "pnpm", "yarn", "bun"]),
 		version: Schema.optional(Schema.String),
 	}),
 	workspaceCount: Schema.Number,
 	workspaces: Schema.Array(WorkspaceSummary),
-}).annotations({
+}).annotate({
 	identifier: "WorkspaceInfoResult",
 	title: "workspace_info result",
 	description:
@@ -93,14 +93,12 @@ export const formatWorkspaceInfoMarkdown = (data: WorkspaceInfoResultType): stri
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const WorkspaceInfoAsMarkdown = Schema.transformOrFail(WorkspaceInfoResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(formatWorkspaceInfoMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "WorkspaceInfoAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const WorkspaceInfoAsMarkdown = WorkspaceInfoResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(formatWorkspaceInfoMarkdown),
+		encode: SchemaGetter.forbidden(() => "WorkspaceInfoAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /**
  * Effect handler: resolve the workspace root by walking up from `base`, analyze

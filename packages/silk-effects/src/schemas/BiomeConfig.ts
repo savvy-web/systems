@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 
 /**
  * Result of a Biome schema URL sync or check operation.
@@ -34,7 +34,10 @@ export type BiomeSyncResult = typeof BiomeSyncResult.Type;
  */
 export const BiomeSyncOptions = Schema.Struct({
 	cwd: Schema.optional(Schema.String),
-	gitignore: Schema.optionalWith(Schema.Boolean, { default: () => true }),
+	gitignore: Schema.Boolean.pipe(
+		Schema.withDecodingDefaultType(Effect.succeed(true)),
+		Schema.withConstructorDefault(Effect.succeed(true)),
+	),
 });
 /**
  * @since 0.1.0

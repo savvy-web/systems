@@ -1,10 +1,10 @@
-import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Effect, Layer, Logger } from "effect";
-import { parse as parseJsonc } from "jsonc-effect";
+import { Git, GitCommandError } from "@effected/git";
+import { Jsonc } from "@effected/jsonc";
+import { WorkspaceRoot } from "@effected/workspaces";
+import { Effect, Layer, Logger, Option } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 import type { CheckIssue } from "../../src/commands/changeset/commands/init.js";
 import {
 	InitError,
@@ -23,11 +23,6 @@ import {
 	resolveWorkspaceRoot,
 	warnIfLegacyVersionFiles,
 } from "../../src/commands/changeset/commands/init.js";
-
-vi.mock("node:child_process", () => ({
-	execSync: vi.fn(),
-	execFile: vi.fn(),
-}));
 
 vi.mock("node:fs", async () => {
 	const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
@@ -61,32 +56,50 @@ function getWrittenPath(calls: Array<unknown[]>, index: number): string {
 // ---------------------------------------------------------------------------
 // detectGitHubRepo
 // ---------------------------------------------------------------------------
+
+/** A Git stub whose `remoteUrl` yields the given outcome (the kit returns TRIMMED urls). */
+const gitRemoteStub = (result: Effect.Effect<Option.Option<string>, GitCommandError>) =>
+	Layer.succeed(Git, {
+		remoteUrl: () => result,
+	} as never);
+
+/** Run detectGitHubRepo against a stubbed Git service. */
+const detectWith = (result: Effect.Effect<Option.Option<string>, GitCommandError>) =>
+	Effect.runPromise(detectGitHubRepo("/project").pipe(Effect.provide(gitRemoteStub(result))));
+
 describe("detectGitHubRepo", () => {
-	it("parses HTTPS remote URL", () => {
-		vi.mocked(execSync).mockReturnValue("https://github.com/savvy-web/changesets.git\n");
-		expect(detectGitHubRepo("/project")).toBe("savvy-web/changesets");
+	it("parses HTTPS remote URL", async () => {
+		await expect(detectWith(Effect.succeed(Option.some("https://github.com/savvy-web/changesets.git")))).resolves.toBe(
+			"savvy-web/changesets",
+		);
 	});
 
-	it("parses SSH remote URL", () => {
-		vi.mocked(execSync).mockReturnValue("git@github.com:savvy-web/changesets.git\n");
-		expect(detectGitHubRepo("/project")).toBe("savvy-web/changesets");
+	it("parses SSH remote URL", async () => {
+		await expect(detectWith(Effect.succeed(Option.some("git@github.com:savvy-web/changesets.git")))).resolves.toBe(
+			"savvy-web/changesets",
+		);
 	});
 
-	it("parses HTTPS URL without .git suffix", () => {
-		vi.mocked(execSync).mockReturnValue("https://github.com/owner/repo\n");
-		expect(detectGitHubRepo("/project")).toBe("owner/repo");
+	it("parses HTTPS URL without .git suffix", async () => {
+		await expect(detectWith(Effect.succeed(Option.some("https://github.com/owner/repo")))).resolves.toBe("owner/repo");
 	});
 
-	it("returns null when git command fails", () => {
-		vi.mocked(execSync).mockImplementation(() => {
-			throw new Error("not a git repo");
-		});
-		expect(detectGitHubRepo("/project")).toBeNull();
+	it("returns null when git command fails", async () => {
+		await expect(
+			detectWith(
+				Effect.fail(
+					GitCommandError.make({ args: ["remote", "get-url", "origin"], cwd: "/project", stderr: "not a git repo" }),
+				),
+			),
+		).resolves.toBeNull();
 	});
 
-	it("returns null for non-GitHub remote", () => {
-		vi.mocked(execSync).mockReturnValue("https://gitlab.com/owner/repo.git\n");
-		expect(detectGitHubRepo("/project")).toBeNull();
+	it("returns null when no origin remote exists", async () => {
+		await expect(detectWith(Effect.succeed(Option.none()))).resolves.toBeNull();
+	});
+
+	it("returns null for non-GitHub remote", async () => {
+		await expect(detectWith(Effect.succeed(Option.some("https://gitlab.com/owner/repo.git")))).resolves.toBeNull();
 	});
 });
 
@@ -187,13 +200,13 @@ describe("ensureChangesetDir", () => {
 			throw new Error("EACCES: permission denied");
 		});
 
-		const result = await Effect.runPromise(ensureChangesetDir("/readonly").pipe(Effect.either));
+		const result = await Effect.runPromise(ensureChangesetDir("/readonly").pipe(Effect.result));
 
-		expect(result._tag).toBe("Left");
-		if (result._tag === "Left") {
-			expect(result.left).toBeInstanceOf(InitError);
-			expect(result.left.step).toBe(".changeset directory");
-			expect(result.left.reason).toBe("EACCES: permission denied");
+		expect(result._tag).toBe("Failure");
+		if (result._tag === "Failure") {
+			expect(result.failure).toBeInstanceOf(InitError);
+			expect(result.failure.step).toBe(".changeset directory");
+			expect(result.failure.reason).toBe("EACCES: permission denied");
 		}
 	});
 });
@@ -315,13 +328,13 @@ describe("handleConfig", () => {
 			throw new Error("ENOSPC: no space left on device");
 		});
 
-		const result = await Effect.runPromise(handleConfig(changesetDir, "org/repo", false).pipe(Effect.either));
+		const result = await Effect.runPromise(handleConfig(changesetDir, "org/repo", false).pipe(Effect.result));
 
-		expect(result._tag).toBe("Left");
-		if (result._tag === "Left") {
-			expect(result.left).toBeInstanceOf(InitError);
-			expect(result.left.step).toBe(".changeset/config.json");
-			expect(result.left.reason).toBe("ENOSPC: no space left on device");
+		expect(result._tag).toBe("Failure");
+		if (result._tag === "Failure") {
+			expect(result.failure).toBeInstanceOf(InitError);
+			expect(result.failure.step).toBe(".changeset/config.json");
+			expect(result.failure.reason).toBe("ENOSPC: no space left on device");
 		}
 	});
 
@@ -369,7 +382,7 @@ describe("handleBaseMarkdownlint", () => {
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
 		expect(getWrittenPath(calls, 0)).toBe(baseConfigPath);
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		expect(parsed.customRules).toContain("some-other-plugin");
 		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
 		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
@@ -392,7 +405,7 @@ describe("handleBaseMarkdownlint", () => {
 		await Effect.runPromise(handleBaseMarkdownlint(root));
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		expect(Array.isArray(parsed.customRules)).toBe(true);
 		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
 	});
@@ -409,7 +422,7 @@ describe("handleBaseMarkdownlint", () => {
 		await Effect.runPromise(handleBaseMarkdownlint(root));
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		expect(typeof parsed.config).toBe("object");
 		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
 		expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
@@ -430,7 +443,7 @@ describe("handleBaseMarkdownlint", () => {
 		await Effect.runPromise(handleBaseMarkdownlint(root));
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		expect(typeof parsed.config).toBe("object");
 		expect(parsed.config).not.toBeNull();
 		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
@@ -454,7 +467,7 @@ describe("handleBaseMarkdownlint", () => {
 		await Effect.runPromise(handleBaseMarkdownlint(root));
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		const count = (parsed.customRules as string[]).filter(
 			(r: string) => r === "@savvy-web/silk/changesets/markdownlint",
 		).length;
@@ -480,7 +493,7 @@ describe("handleBaseMarkdownlint", () => {
 		await Effect.runPromise(handleBaseMarkdownlint(root));
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		const rules = parsed.customRules as string[];
 		// Unrelated plugins are preserved.
 		expect(rules).toContain("some-other-plugin");
@@ -508,7 +521,7 @@ describe("handleBaseMarkdownlint", () => {
 		await Effect.runPromise(handleBaseMarkdownlint(root));
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		expect(parsed.customRules).toEqual(["@savvy-web/silk/changesets/markdownlint"]);
 	});
 
@@ -527,7 +540,7 @@ describe("handleBaseMarkdownlint", () => {
 		await Effect.runPromise(handleBaseMarkdownlint(root));
 
 		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(parseJsonc(getWritten(calls, 0))) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
 		// Should not overwrite the existing true value
 		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(true);
 		// Should add missing rules
@@ -556,7 +569,7 @@ describe("handleBaseMarkdownlint", () => {
 		expect(written).toContain("// Custom rules");
 		expect(written).toContain("/* Config block */");
 		// Values are still correct
-		const parsed = Effect.runSync(parseJsonc(written)) as Record<string, unknown>;
+		const parsed = Effect.runSync(Jsonc.parse(written)) as Record<string, unknown>;
 		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
 		expect((parsed.config as Record<string, unknown>).default).toBe(true);
 	});
@@ -567,13 +580,13 @@ describe("handleBaseMarkdownlint", () => {
 			throw new Error("EACCES: permission denied");
 		});
 
-		const result = await Effect.runPromise(handleBaseMarkdownlint(root).pipe(Effect.either));
+		const result = await Effect.runPromise(handleBaseMarkdownlint(root).pipe(Effect.result));
 
-		expect(result._tag).toBe("Left");
-		if (result._tag === "Left") {
-			expect(result.left).toBeInstanceOf(InitError);
-			expect(result.left.step).toBe("markdownlint config");
-			expect(result.left.reason).toBe("EACCES: permission denied");
+		expect(result._tag).toBe("Failure");
+		if (result._tag === "Failure") {
+			expect(result.failure).toBeInstanceOf(InitError);
+			expect(result.failure.step).toBe("markdownlint config");
+			expect(result.failure.reason).toBe("EACCES: permission denied");
 		}
 	});
 });
@@ -717,13 +730,13 @@ describe("handleChangesetMarkdownlint", () => {
 			throw new Error("ENOSPC: no space left on device");
 		});
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.either));
+		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.result));
 
-		expect(result._tag).toBe("Left");
-		if (result._tag === "Left") {
-			expect(result.left).toBeInstanceOf(InitError);
-			expect(result.left.step).toBe(".changeset/.markdownlint.json");
-			expect(result.left.reason).toBe("ENOSPC: no space left on device");
+		expect(result._tag).toBe("Failure");
+		if (result._tag === "Failure") {
+			expect(result.failure).toBeInstanceOf(InitError);
+			expect(result.failure.step).toBe(".changeset/.markdownlint.json");
+			expect(result.failure.reason).toBe("ENOSPC: no space left on device");
 		}
 	});
 
@@ -737,12 +750,12 @@ describe("handleChangesetMarkdownlint", () => {
 			throw new Error("EACCES: permission denied");
 		});
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.either));
+		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.result));
 
-		expect(result._tag).toBe("Left");
-		if (result._tag === "Left") {
-			expect(result.left).toBeInstanceOf(InitError);
-			expect(result.left.step).toBe(".changeset/.markdownlint.json");
+		expect(result._tag).toBe("Failure");
+		if (result._tag === "Failure") {
+			expect(result.failure).toBeInstanceOf(InitError);
+			expect(result.failure.step).toBe(".changeset/.markdownlint.json");
 		}
 	});
 });
@@ -1186,9 +1199,7 @@ describe("warnIfLegacyVersionFiles", () => {
 		// detection branch ran and emitted a warning. We've already covered
 		// the message shape via `legacyVersionFilesWarning`.
 		await expect(
-			Effect.runPromise(
-				warnIfLegacyVersionFiles(changesetDir).pipe(Effect.provide(Logger.replace(Logger.defaultLogger, Logger.none))),
-			),
+			Effect.runPromise(warnIfLegacyVersionFiles(changesetDir).pipe(Effect.provide(Logger.layer([])))),
 		).resolves.toBeUndefined();
 	});
 });

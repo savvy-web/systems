@@ -15,11 +15,20 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
+import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
-import { WorkspaceDiscovery, WorkspaceDiscoveryLive, WorkspaceRootLive } from "workspaces-effect";
-import { DepsRegen, DepsRegenDefault } from "../../src/changesets/services/deps-regen.js";
+import { ConfigInspectorLive } from "../../src/changesets/services/config-inspector.js";
+import {
+	DepsRegen,
+	DepsRegenDefault,
+	DepsRegenLive,
+	makeDepsRegenDefault,
+} from "../../src/changesets/services/deps-regen.js";
+import { ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
+import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
+import { PublishabilityDetectorAdaptiveLive } from "../../src/services/SilkPublishability.js";
 
 function git(cwd: string, ...args: string[]): string {
 	return execFileSync("git", args, {
@@ -35,11 +44,16 @@ function git(cwd: string, ...args: string[]): string {
 	});
 }
 
-const live = DepsRegenDefault.pipe(Layer.provide(NodeContext.layer));
+// The kit graph inside DepsRegenDefault is root-bound (single-root by design;
+// process.cwd() for the zero-arg binding), so every fixture test builds its
+// own layer via makeDepsRegenDefault({ cwd: fixtureDir }).
+const liveFor = (cwd: string) => makeDepsRegenDefault({ cwd }).pipe(Layer.provide(NodeServices.layer));
 
 describe("DepsRegenDefault", () => {
-	it("resolves with only NodeContext.layer", async () => {
-		const svc = await Effect.runPromise(DepsRegen.pipe(Effect.provide(live)));
+	it("resolves with only NodeServices.layer", async () => {
+		const svc = await Effect.runPromise(
+			DepsRegen.pipe(Effect.provide(DepsRegenDefault.pipe(Layer.provide(NodeServices.layer)))),
+		);
 		expect(typeof svc.plan).toBe("function");
 		expect(typeof svc.execute).toBe("function");
 	});
@@ -145,7 +159,7 @@ describe("DepsRegenDefault — silk gating end-to-end (#209 semantics through th
 			Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				return yield* svc.plan({ cwd: dir });
-			}).pipe(Effect.provide(live)),
+			}).pipe(Effect.provide(liveFor(dir))),
 		);
 
 		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/priv-versioned"]);
@@ -246,7 +260,7 @@ describe("DepsRegenDefault — genuinely publishable package (regression: publis
 			Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				return yield* svc.plan({ cwd: dir });
-			}).pipe(Effect.provide(live)),
+			}).pipe(Effect.provide(liveFor(dir))),
 		);
 
 		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/pub"]);
@@ -333,16 +347,27 @@ describe("DepsRegenDefault — worktree freshness (regression: stale WorkspaceDi
 		const dir = makeUnbumpedFixture();
 		dirs.push(dir);
 
+		// Mirror makeDepsRegenDefault's composition around ONE explicitly-shared
+		// kit graph const, merged back out so the test can prime the very same
+		// memoized WorkspaceDiscovery instance the DepsRegen graph reads —
+		// exercising plan()'s up-front refresh against a genuinely stale cache.
+		const kit = Workspaces.layerWithGit({ cwd: dir });
+		const configGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
 		const freshLive = Layer.mergeAll(
-			DepsRegenDefault,
-			WorkspaceDiscoveryLive.pipe(Layer.provide(WorkspaceRootLive)),
-		).pipe(Layer.provide(NodeContext.layer));
+			DepsRegenLive.pipe(
+				Layer.provide(ConfigInspectorLive.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, kit)))),
+				Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(Layer.mergeAll(configGraph, kit)))),
+				Layer.provide(configGraph),
+				Layer.provide(kit),
+			),
+			kit,
+		).pipe(Layer.provide(NodeServices.layer));
 
 		const plan = await Effect.runPromise(
 			Effect.gen(function* () {
 				// Prime the (memoized, shared) discovery cache before the edit.
 				const discovery = yield* WorkspaceDiscovery;
-				yield* discovery.listPackages(dir);
+				yield* discovery.listPackages();
 
 				// Now edit the manifest on disk, as an updater tool would.
 				const pkgJsonPath = join(dir, "packages", "fresh", "package.json");
@@ -465,7 +490,7 @@ describe("DepsRegenDefault — merge-base authorship filter (regression: #258)",
 				const plan = yield* svc.plan({ cwd: dir });
 				const result = yield* svc.execute(plan);
 				return { plan, result };
-			}).pipe(Effect.provide(live)),
+			}).pipe(Effect.provide(liveFor(dir))),
 		);
 
 		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/mb"]);
@@ -573,7 +598,7 @@ describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-
 
 				const secondPlan = yield* svc.plan({ cwd: dir });
 				return { firstPlan, secondPlan };
-			}).pipe(Effect.provide(live)),
+			}).pipe(Effect.provide(liveFor(dir))),
 		);
 
 		expect(firstPlan.toWrite.map((w) => w.package)).toEqual(["@fix/stale-ignore"]);

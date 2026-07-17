@@ -15,7 +15,6 @@
 
 import { Schema } from "effect";
 import { CommitHashSchema } from "./git.js";
-import { NonEmptyString } from "./primitives.js";
 
 /**
  * Schema for a changeset summary (1--1000 characters).
@@ -41,13 +40,13 @@ import { NonEmptyString } from "./primitives.js";
  *
  * @public
  */
-export const ChangesetSummarySchema = Schema.String.pipe(
-	Schema.minLength(1, {
-		message: () =>
+export const ChangesetSummarySchema = Schema.String.check(
+	Schema.isMinLength(1, {
+		message:
 			'Changeset summary cannot be empty. Provide a 1-1000 character description of the change (e.g., "Fix authentication timeout in login flow")',
 	}),
-	Schema.maxLength(1000, {
-		message: () =>
+	Schema.isMaxLength(1000, {
+		message:
 			"Changeset summary exceeds the 1000 character limit. Shorten the summary to at most 1000 characters — use the changeset body for additional details",
 	}),
 );
@@ -125,12 +124,12 @@ export interface Changeset extends Schema.Schema.Type<typeof ChangesetSchema> {}
  *
  * @public
  */
-export const DependencyTypeSchema = Schema.Literal(
+export const DependencyTypeSchema = Schema.Literals([
 	"dependencies",
 	"devDependencies",
 	"peerDependencies",
 	"optionalDependencies",
-);
+]);
 
 /**
  * Inferred type for {@link DependencyTypeSchema}.
@@ -172,9 +171,7 @@ export type DependencyType = typeof DependencyTypeSchema.Type;
  */
 export const DependencyUpdateSchema = Schema.Struct({
 	/** Package name (must be non-empty). */
-	name: NonEmptyString.annotations({
-		message: () => "Package name cannot be empty",
-	}),
+	name: Schema.String.check(Schema.isMinLength(1, { message: "Package name cannot be empty" })),
 	/** npm dependency type. */
 	type: DependencyTypeSchema,
 	/** Previous version string. */

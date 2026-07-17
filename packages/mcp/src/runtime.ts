@@ -1,18 +1,22 @@
 /**
  * Composes the long-lived Effect runtime layer for the MCP server.
  *
- * `SilkRuntimeLive` provides {@link SilkWorkspaceAnalyzer} and {@link WorkspaceRoot}.
- * `WorkspaceRoot` lets the server resolve the workspace root by walking up from
- * its launch directory. The layer still requires `FileSystem` + `Path`; the host
- * (bin.ts) supplies them via `NodeContext.layer`.
+ * {@link makeSilkRuntimeLayer} builds the full service graph for ONE workspace
+ * root: the `@effected/workspaces` kit layers are root-bound at layer build
+ * (single-root by design), so the server resolves its project directory once
+ * at startup (bin.ts) and builds the layer with that root. The layer still
+ * requires the platform services (`FileSystem` + `Path` +
+ * `ChildProcessSpawner`); the host supplies them via `NodeServices.layer`.
  *
  * @packageDocumentation
  */
 
+import { Workspaces } from "@effected/workspaces";
 import {
 	ChangesetConfigLive,
 	ChangesetConfigReaderLive,
 	Changesets,
+	PublishabilityDetectorAdaptiveLive,
 	Repos,
 	SilkWorkspaceAnalyzerLive,
 	TagStrategyLive,
@@ -20,85 +24,84 @@ import {
 	Turbo,
 	VersioningStrategyLive,
 } from "@savvy-web/silk-effects";
+import type { FileSystem, Path } from "effect";
 import { Layer } from "effect";
-import { PointInTimeWorkspaceLive, WorkspaceRootLive, WorkspacesLive } from "workspaces-effect";
+import type { ChildProcessSpawner } from "effect/unstable/process";
+
+import type { McpServices } from "./context.js";
 
 /**
- * The silk-effects dependency set fed to {@link SilkWorkspaceAnalyzerLive}.
+ * Build the MCP runtime layer for a workspace root. Provides
+ * `SilkWorkspaceAnalyzer`, `WorkspaceRoot`, `Turbo.TurboInspector`,
+ * `Changesets.BranchAnalyzer`, `Changesets.ConfigInspector`,
+ * `Changesets.ReleasePlanner`, `Changesets.DepsRegen`, `Repos.ReposManager`,
+ * and `Repos.ReposConfigStore`; requires `ChildProcessSpawner` + `FileSystem`
+ * + `Path` from the host's platform layer (`NodeServices.layer` in bin.ts).
  *
- * `WorkspacesLive` supplies the workspace trio plus `DependencyGraph` and
- * `TopologicalSorter` (all required by the analyzer). `VersioningStrategyLive`
- * is provided its own `ChangesetConfigReader` because `Layer.mergeAll` does not
- * cross-feed sibling layers.
+ * @remarks
+ * The kit graph (`Workspaces.layerWithGit`) mints a fresh layer reference per
+ * call, so it is bound to a `const` and provided ONCE via `Layer.provideMerge`
+ * — layer memoization by reference then constructs each kit service exactly
+ * once and exposes `WorkspaceRoot` on the runtime. The same discipline gives
+ * the whole runtime a SINGLE `ConfigInspector` (the MCP server holds one for
+ * its whole process lifetime, #229 — `changeset_inspect` refreshes it before
+ * every call, and `BranchAnalyzer`, `ReleasePlanner`, and `DepsRegen` all read
+ * through that shared instance). `DepsRegen` is gated by silk's adaptive
+ * publishability detector — provided closer than the kit graph, so it wins
+ * over the kit's npm-semantics default — mirroring
+ * `Changesets.makeDepsRegenDefault`'s composition ("versionable minus
+ * ignored", identical to the savvy CLI).
  */
-const DepsLive = Layer.mergeAll(
-	WorkspacesLive,
-	ChangesetConfigReaderLive,
-	TagStrategyLive,
-	VersioningStrategyLive.pipe(Layer.provide(ChangesetConfigReaderLive)),
-);
+export const makeSilkRuntimeLayer = (
+	cwd: string,
+): Layer.Layer<McpServices, never, FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner> => {
+	// One reference, one construction: WorkspaceRoot, WorkspaceDiscovery,
+	// PackageManagerDetector, WorkspaceSnapshots, PublishabilityDetector
+	// (npm default), ChangeDetector, and Git — root-bound to `cwd`.
+	const kitGraph = Workspaces.layerWithGit({ cwd });
 
-const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
-	Layer.provideMerge(Changesets.ReleasePlannerLive),
-	Layer.provideMerge(Changesets.ConfigInspectorLive),
-);
+	// ChangesetConfigReaderLive is a shared const, so every consumer below
+	// memoizes onto the same reader instance.
+	const analyzerDeps = Layer.mergeAll(
+		ChangesetConfigReaderLive,
+		TagStrategyLive,
+		VersioningStrategyLive.pipe(Layer.provide(ChangesetConfigReaderLive)),
+	);
 
-/**
- * `Changesets.DepsRegen` (the `changeset_deps_detect` / `changeset_deps_regen`
- * orchestration service), fully composed except for the services supplied by
- * {@link DepsLive} / the host platform layer.
- *
- * `DepsRegenLive` requires `PointInTimeWorkspace | ConfigInspector |
- * WorkspaceDiscovery | PublishabilityDetector | ChangesetConfig`. Here
- * `ConfigInspector` is provided via the shared {@link InspectorAndAnalyzerLive}
- * reference (so Effect memoizes the single `ConfigInspector` instance already
- * merged into the runtime), and `PointInTimeWorkspace` via
- * `PointInTimeWorkspaceLive` (whose `WorkspaceRoot`/`WorkspaceDiscovery` come
- * from `WorkspacesLive` inside {@link DepsLive}). `ChangesetConfig` is provided
- * its own `ChangesetConfigReaderLive` (already present in {@link DepsLive}, but
- * `Layer.mergeAll` does not cross-feed sibling layers). The remaining two —
- * `WorkspaceDiscovery`, `PublishabilityDetector` — are left open and satisfied
- * by `WorkspacesLive` inside {@link DepsLive}. `FileSystem` / `Path` /
- * `CommandExecutor` flow up to the host `NodeContext.layer`.
- */
-const DepsRegenGroupLive = Changesets.DepsRegenLive.pipe(
-	Layer.provide(InspectorAndAnalyzerLive),
-	Layer.provide(PointInTimeWorkspaceLive),
-	Layer.provide(ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive))),
-);
+	/**
+	 * `BranchAnalyzer` + `ReleasePlanner` + the ONE shared `ConfigInspector`,
+	 * merged so all three land on the runtime and every internal consumer
+	 * memoizes onto the same inspector reference.
+	 */
+	const inspectorAndAnalyzer = Changesets.BranchAnalyzerLive.pipe(
+		Layer.provideMerge(Changesets.ReleasePlannerLive),
+		Layer.provideMerge(Changesets.ConfigInspectorLive.pipe(Layer.provide(ChangesetConfigReaderLive))),
+	);
 
-/**
- * `Repos.ReposManager` + `Repos.ReposConfigStore`, both exposed on the
- * runtime. `ReposManagerLive` requires `ReposConfigStore`, so it is given its
- * own `ReposConfigStoreLive` reference here (`Layer.mergeAll` does not
- * cross-feed sibling layers); `ReposConfigStore` is ALSO merged in directly so
- * `repos_inspect`'s config mode can resolve it on its own. The remaining
- * `CommandExecutor` + `FileSystem` + `Path` requirements flow up to the host
- * platform layer (`NodeContext.layer` in bin.ts).
- */
-const ReposGroupLive = Layer.mergeAll(
-	Repos.ReposConfigStoreLive,
-	Repos.ReposManagerLive.pipe(Layer.provide(Repos.ReposConfigStoreLive)),
-);
+	const changesetConfig = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
 
-/**
- * The MCP runtime layer. Provides `SilkWorkspaceAnalyzer`, `WorkspaceRoot`,
- * `Turbo.TurboInspector`, `Changesets.BranchAnalyzer`,
- * `Changesets.ConfigInspector`, `Changesets.ReleasePlanner`,
- * `Changesets.DepsRegen`, `Repos.ReposManager`, and `Repos.ReposConfigStore`;
- * requires `CommandExecutor` + `FileSystem` + `Path` from the host's platform
- * layer (`NodeContext.layer` in bin.ts).
- *
- * `TurboInspectorLive` is fed its own `ToolDiscoveryLive`, whose
- * `PackageManagerDetector` + `WorkspaceRoot` requirements are satisfied by
- * {@link DepsLive}; the leftover `CommandExecutor` + `FileSystem` flow up to the
- * host platform layer.
- */
-export const SilkRuntimeLive = Layer.mergeAll(
-	SilkWorkspaceAnalyzerLive,
-	WorkspaceRootLive,
-	Turbo.TurboInspectorLive.pipe(Layer.provide(ToolDiscoveryLive)),
-	InspectorAndAnalyzerLive,
-	DepsRegenGroupLive,
-	ReposGroupLive,
-).pipe(Layer.provide(DepsLive));
+	const depsRegen = Changesets.DepsRegenLive.pipe(
+		Layer.provide(inspectorAndAnalyzer),
+		Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(changesetConfig))),
+		Layer.provide(changesetConfig),
+	);
+
+	/**
+	 * `ReposManagerLive` requires `ReposConfigStore`, so it is given its own
+	 * `ReposConfigStoreLive` reference; the store is ALSO merged in directly so
+	 * `repos_inspect`'s config mode can resolve it on its own. Same reference —
+	 * one store instance.
+	 */
+	const repos = Layer.mergeAll(
+		Repos.ReposConfigStoreLive,
+		Repos.ReposManagerLive.pipe(Layer.provide(Repos.ReposConfigStoreLive)),
+	);
+
+	return Layer.mergeAll(
+		SilkWorkspaceAnalyzerLive.pipe(Layer.provide(analyzerDeps)),
+		Turbo.TurboInspectorLive.pipe(Layer.provide(ToolDiscoveryLive)),
+		inspectorAndAnalyzer,
+		depsRegen,
+		repos,
+	).pipe(Layer.provideMerge(kitGraph));
+};

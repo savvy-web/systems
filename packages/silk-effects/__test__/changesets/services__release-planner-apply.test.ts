@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
-import { Cause, Effect, Exit } from "effect";
+import { NodeServices } from "@effect/platform-node";
+import { Cause, Effect, Exit, Result } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
 import { makeReleaseFixture, readFixtureChangelog } from "./fixtures/release-fixture.js";
@@ -30,7 +30,7 @@ async function getPlanner(projectDir: string) {
 		Changesets.ReleasePlanner.pipe(
 			Effect.provide(Changesets.ReleasePlannerLive),
 			Effect.provide(InspectorStub),
-			Effect.provide(NodeContext.layer),
+			Effect.provide(NodeServices.layer),
 		) as Effect.Effect<Changesets.ReleasePlannerShape>,
 	);
 }
@@ -77,7 +77,7 @@ async function getPlannerWithVersionFiles(opts: {
 		Changesets.ReleasePlanner.pipe(
 			Effect.provide(Changesets.ReleasePlannerLive),
 			Effect.provide(InspectorStub),
-			Effect.provide(NodeContext.layer),
+			Effect.provide(NodeServices.layer),
 		) as Effect.Effect<Changesets.ReleasePlannerShape>,
 	);
 }
@@ -170,11 +170,11 @@ describe("ReleasePlanner.apply (versionFiles)", () => {
 		const exit = await Effect.runPromiseExit(planner.apply(root, { dryRun: true }));
 		expect(Exit.isFailure(exit)).toBe(true);
 		if (Exit.isFailure(exit)) {
-			expect(Cause.isDie(exit.cause)).toBe(false);
-			const failure = Cause.failureOption(exit.cause);
-			expect(failure._tag).toBe("Some");
-			if (failure._tag === "Some") {
-				expect((failure.value as { _tag: string })._tag).toBe("ReleasePlanError");
+			expect(Cause.hasDies(exit.cause)).toBe(false);
+			const failure = Cause.findFail(exit.cause);
+			expect(Result.isSuccess(failure)).toBe(true);
+			if (Result.isSuccess(failure)) {
+				expect((failure.success.error as { _tag: string })._tag).toBe("ReleasePlanError");
 			}
 		}
 	});

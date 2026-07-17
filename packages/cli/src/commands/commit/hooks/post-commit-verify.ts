@@ -6,9 +6,10 @@
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { Command } from "@effect/cli";
+import { Git } from "@effected/git";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Command } from "effect/unstable/cli";
 
 const execFileP = promisify(execFile);
 
@@ -78,54 +79,41 @@ export function buildCommitlintInvocation(
 	}
 }
 
-async function getRepoRoot(): Promise<string> {
-	try {
-		const { stdout } = await execFileP("git", ["rev-parse", "--show-toplevel"]);
-		return stdout.trim();
-	} catch {
-		return process.cwd();
-	}
-}
+/** The repo root via `@effected/git`, degrading to `process.cwd()` — the prior execFile contract. */
+const getRepoRoot: Effect.Effect<string, never, Git> = Effect.gen(function* () {
+	const git = yield* Git;
+	return yield* git.repoRoot(process.cwd()).pipe(Effect.catch(() => Effect.succeed(process.cwd())));
+});
 
-async function runCommitlintLast(): Promise<boolean> {
-	const root = await getRepoRoot();
-	const pm = await Commitlint.detectPackageManager(root);
-	const configPath = await Commitlint.readCommitlintConfigPath(root);
-	const { command, args } = buildCommitlintInvocation(pm, configPath);
-	try {
-		await execFileP(command, args, { cwd: root });
-		return false;
-	} catch {
-		return true;
-	}
-}
-
-async function readSignatureStatus(): Promise<string> {
-	try {
-		const { stdout } = await execFileP("git", ["log", "-1", "--format=%G?"]);
-		return stdout.trim();
-	} catch {
-		return "N";
-	}
-}
-
-async function readLastCommitBody(): Promise<string> {
-	try {
-		const { stdout } = await execFileP("git", ["log", "-1", "--format=%B"]);
-		return stdout;
-	} catch {
-		return "";
-	}
+function runCommitlintLast(root: string): Promise<boolean> {
+	return (async () => {
+		const pm = await Commitlint.detectPackageManager(root);
+		const configPath = await Commitlint.readCommitlintConfigPath(root);
+		const { command, args } = buildCommitlintInvocation(pm, configPath);
+		try {
+			await execFileP(command, args, { cwd: root });
+			return false;
+		} catch {
+			return true;
+		}
+	})();
 }
 
 export const postCommitVerifyCommand = Command.make("post-commit-verify", {}, () =>
 	Effect.gen(function* () {
+		const git = yield* Git;
 		const branch = yield* Commitlint.readBranchInfo();
 		const signing = yield* Commitlint.readSigningDiagnostic();
 
-		const commitlintFailed = yield* Effect.promise(runCommitlintLast);
-		const sigStatus = yield* Effect.promise(readSignatureStatus);
-		const body = yield* Effect.promise(readLastCommitBody);
+		const root = yield* getRepoRoot;
+		const commitlintFailed = yield* Effect.promise(() => runCommitlintLast(root));
+		// One `git log -1` read covers both the `%G?` verdict and the `%B` body;
+		// failure degrades to the prior per-call fallbacks ("N" / "").
+		const lastCommit = yield* git
+			.commitInfo(root)
+			.pipe(Effect.catch(() => Effect.succeed({ signatureStatus: "N" as const, message: "" })));
+		const sigStatus = lastCommit.signatureStatus;
+		const body = lastCommit.message;
 		const bodyHasClosing =
 			branch.inferredTicketId !== null && Commitlint.hasClosingTrailer(body, branch.inferredTicketId);
 

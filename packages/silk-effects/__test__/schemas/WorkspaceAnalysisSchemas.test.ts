@@ -1,7 +1,7 @@
+import { PublishTarget } from "@effected/workspaces";
 import { Option, Schema } from "effect";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { PublishTarget } from "workspaces-effect";
 import { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "../../src/schemas/WorkspaceAnalysisSchemas.js";
 
 describe("SilkPublishConfig", () => {

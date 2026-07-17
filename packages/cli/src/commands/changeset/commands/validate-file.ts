@@ -13,14 +13,14 @@
  * @internal
  */
 
-import { Args, Command } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Argument, Command } from "effect/unstable/cli";
 
 const { ChangesetLinter } = Changesets;
 
 /* v8 ignore next */
-const fileArg = Args.file({ name: "file" });
+const fileArg = Argument.file("file");
 
 /**
  * Run lint validation on a single changeset file.
@@ -37,7 +37,7 @@ const fileArg = Args.file({ name: "file" });
 export function runValidateFile(filePath: string) {
 	return Effect.gen(function* () {
 		const result = yield* Effect.try(() => ChangesetLinter.validateFile(filePath)).pipe(
-			Effect.catchAll((error) =>
+			Effect.catch((error) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Error: ${error instanceof Error ? error.message : String(error)}`);
 					process.exitCode = 1;

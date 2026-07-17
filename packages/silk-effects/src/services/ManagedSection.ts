@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Context, Effect, Equal, Function as Fn, Layer } from "effect";
+import { Context, Effect, Equal, FileSystem, Function as Fn, Layer } from "effect";
 import { SectionParseError } from "../errors/SectionParseError.js";
 import { SectionWriteError } from "../errors/SectionWriteError.js";
 import { SectionBlock } from "../schemas/SectionBlock.js";
@@ -113,6 +112,51 @@ type SectionItem =
 // ── Service ─────────────────────────────────────────────────────
 
 /**
+ * The {@link ManagedSection} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface ManagedSectionShape {
+	readonly read: {
+		(definition: SectionDefinition): (path: string) => Effect.Effect<SectionBlock | null, SectionParseError>;
+		(path: string, definition: SectionDefinition): Effect.Effect<SectionBlock | null, SectionParseError>;
+	};
+
+	readonly isManaged: {
+		(definition: SectionDefinition): (path: string) => Effect.Effect<boolean>;
+		(path: string, definition: SectionDefinition): Effect.Effect<boolean>;
+	};
+
+	readonly write: {
+		(block: SectionBlock): (path: string) => Effect.Effect<void, SectionWriteError>;
+		(path: string, block: SectionBlock): Effect.Effect<void, SectionWriteError>;
+	};
+
+	readonly sync: {
+		(block: SectionBlock): (path: string) => Effect.Effect<SyncResult, SectionWriteError>;
+		(path: string, block: SectionBlock): Effect.Effect<SyncResult, SectionWriteError>;
+	};
+
+	readonly syncMany: {
+		(
+			blocks: ReadonlyArray<SectionBlock>,
+		): (path: string) => Effect.Effect<ReadonlyArray<SyncResult>, SectionWriteError>;
+		(path: string, blocks: ReadonlyArray<SectionBlock>): Effect.Effect<ReadonlyArray<SyncResult>, SectionWriteError>;
+	};
+
+	readonly check: {
+		(block: SectionBlock): (path: string) => Effect.Effect<CheckResult, SectionParseError>;
+		(path: string, block: SectionBlock): Effect.Effect<CheckResult, SectionParseError>;
+	};
+
+	readonly remove: {
+		(definition: SectionDefinition): (path: string) => Effect.Effect<boolean, SectionWriteError>;
+		(path: string, definition: SectionDefinition): Effect.Effect<boolean, SectionWriteError>;
+	};
+}
+
+/**
  * Service for managing delimited sections in user-editable files.
  *
  * All methods use dual API (data-first and data-last).
@@ -122,52 +166,14 @@ type SectionItem =
  * @since 0.2.0
  * @public
  */
-export class ManagedSection extends Context.Tag("@savvy-web/silk-effects/ManagedSection")<
-	ManagedSection,
-	{
-		readonly read: {
-			(definition: SectionDefinition): (path: string) => Effect.Effect<SectionBlock | null, SectionParseError>;
-			(path: string, definition: SectionDefinition): Effect.Effect<SectionBlock | null, SectionParseError>;
-		};
-
-		readonly isManaged: {
-			(definition: SectionDefinition): (path: string) => Effect.Effect<boolean>;
-			(path: string, definition: SectionDefinition): Effect.Effect<boolean>;
-		};
-
-		readonly write: {
-			(block: SectionBlock): (path: string) => Effect.Effect<void, SectionWriteError>;
-			(path: string, block: SectionBlock): Effect.Effect<void, SectionWriteError>;
-		};
-
-		readonly sync: {
-			(block: SectionBlock): (path: string) => Effect.Effect<SyncResult, SectionWriteError>;
-			(path: string, block: SectionBlock): Effect.Effect<SyncResult, SectionWriteError>;
-		};
-
-		readonly syncMany: {
-			(
-				blocks: ReadonlyArray<SectionBlock>,
-			): (path: string) => Effect.Effect<ReadonlyArray<SyncResult>, SectionWriteError>;
-			(path: string, blocks: ReadonlyArray<SectionBlock>): Effect.Effect<ReadonlyArray<SyncResult>, SectionWriteError>;
-		};
-
-		readonly check: {
-			(block: SectionBlock): (path: string) => Effect.Effect<CheckResult, SectionParseError>;
-			(path: string, block: SectionBlock): Effect.Effect<CheckResult, SectionParseError>;
-		};
-
-		readonly remove: {
-			(definition: SectionDefinition): (path: string) => Effect.Effect<boolean, SectionWriteError>;
-			(path: string, definition: SectionDefinition): Effect.Effect<boolean, SectionWriteError>;
-		};
-	}
->() {}
+export class ManagedSection extends Context.Service<ManagedSection, ManagedSectionShape>()(
+	"@savvy-web/silk-effects/ManagedSection",
+) {}
 
 // ── Layer ───────────────────────────────────────────────────────
 
 /**
- * Live implementation of {@link ManagedSection} backed by `@effect/platform` FileSystem.
+ * Live implementation of {@link ManagedSection} backed by the core `FileSystem` service.
  *
  * @since 0.2.0
  * @public
@@ -177,7 +183,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 
-		const read: ManagedSection["Type"]["read"] = Fn.dual(
+		const read: ManagedSectionShape["read"] = Fn.dual(
 			2,
 			(path: string, definition: SectionDefinition): Effect.Effect<SectionBlock | null, SectionParseError> =>
 				Effect.gen(function* () {
@@ -200,7 +206,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 				}),
 		);
 
-		const isManaged: ManagedSection["Type"]["isManaged"] = Fn.dual(
+		const isManaged: ManagedSectionShape["isManaged"] = Fn.dual(
 			2,
 			(path: string, definition: SectionDefinition): Effect.Effect<boolean> =>
 				Effect.gen(function* () {
@@ -216,7 +222,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 				}),
 		);
 
-		const write: ManagedSection["Type"]["write"] = Fn.dual(
+		const write: ManagedSectionShape["write"] = Fn.dual(
 			2,
 			(path: string, block: SectionBlock): Effect.Effect<void, SectionWriteError> =>
 				Effect.gen(function* () {
@@ -258,7 +264,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 				}),
 		);
 
-		const sync: ManagedSection["Type"]["sync"] = Fn.dual(
+		const sync: ManagedSectionShape["sync"] = Fn.dual(
 			2,
 			(path: string, block: SectionBlock): Effect.Effect<SyncResult, SectionWriteError> =>
 				Effect.gen(function* () {
@@ -286,7 +292,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 				}),
 		);
 
-		const syncMany: ManagedSection["Type"]["syncMany"] = Fn.dual(
+		const syncMany: ManagedSectionShape["syncMany"] = Fn.dual(
 			2,
 			(
 				path: string,
@@ -421,7 +427,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 				}),
 		);
 
-		const check: ManagedSection["Type"]["check"] = Fn.dual(
+		const check: ManagedSectionShape["check"] = Fn.dual(
 			2,
 			(path: string, block: SectionBlock): Effect.Effect<CheckResult, SectionParseError> =>
 				Effect.gen(function* () {
@@ -440,7 +446,7 @@ export const ManagedSectionLive: Layer.Layer<ManagedSection, never, FileSystem.F
 				}),
 		);
 
-		const remove: ManagedSection["Type"]["remove"] = Fn.dual(
+		const remove: ManagedSectionShape["remove"] = Fn.dual(
 			2,
 			(path: string, definition: SectionDefinition): Effect.Effect<boolean, SectionWriteError> =>
 				Effect.gen(function* () {

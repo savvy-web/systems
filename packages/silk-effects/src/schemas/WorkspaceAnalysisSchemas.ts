@@ -1,20 +1,23 @@
-import { Equal, Function as Fn, Hash, Option, Pretty, Schema } from "effect";
-import { PublishConfig, PublishTarget } from "workspaces-effect";
+import { PublishConfig, PublishTarget } from "@effected/workspaces";
+import { Effect, Equal, Function as Fn, Hash, Option, Schema } from "effect";
 import { trimTrailingSlashes } from "../utils/TrailingSlash.js";
 import { TagStrategyType } from "./TagStrategySchemas.js";
 import { ChangesetConfigFile, SilkChangesetConfigFile, VersioningStrategyResult } from "./VersioningSchemas.js";
 
 // ── SilkPublishConfig input target schemas (module-local) ─────────────────────
 
-const PublishProtocol = Schema.Literal("npm", "jsr");
+const PublishProtocol = Schema.Literals(["npm", "jsr"]);
 
-const PublishTargetShorthand = Schema.Literal("npm", "github", "jsr");
+const PublishTargetShorthand = Schema.Literals(["npm", "github", "jsr"]);
 
 const PublishTargetObject = Schema.Struct({
-	protocol: Schema.optionalWith(PublishProtocol, { default: () => "npm" as const }),
+	protocol: PublishProtocol.pipe(
+		Schema.withDecodingDefaultType(Effect.succeed("npm" as const)),
+		Schema.withConstructorDefault(Effect.succeed("npm" as const)),
+	),
 	registry: Schema.optional(Schema.String),
 	directory: Schema.optional(Schema.String),
-	access: Schema.optional(Schema.Literal("public", "restricted")),
+	access: Schema.optional(Schema.Literals(["public", "restricted"])),
 	provenance: Schema.optional(Schema.Boolean),
 	tag: Schema.optional(Schema.String),
 });
@@ -23,15 +26,16 @@ const PublishTargetObject = Schema.Struct({
  * Silk-extended publishConfig schema.
  *
  * @remarks
- * Extends the base PublishConfig from workspaces-effect (which covers npm
- * standard fields: access, registry, directory, tag, linkDirectory) with the
- * Silk `targets` extension for multi-registry publishing.
+ * Extends the base PublishConfig from `@effected/workspaces` (which covers the
+ * npm standard fields — access, registry, directory, tag — and, as of kit
+ * round 3, `linkDirectory`) with the Silk `targets` extension for
+ * multi-registry publishing.
  *
  * @since 0.2.0
  * @public
  */
 export class SilkPublishConfig extends PublishConfig.extend<SilkPublishConfig>("SilkPublishConfig")({
-	targets: Schema.optional(Schema.Array(Schema.Union(PublishTargetShorthand, PublishTargetObject))),
+	targets: Schema.optional(Schema.Array(Schema.Union([PublishTargetShorthand, PublishTargetObject]))),
 }) {}
 
 // ── AnalyzedWorkspace ─────────────────────────────────────────
@@ -119,7 +123,7 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 	}
 
 	[Hash.symbol](): number {
-		return Hash.cached(this)(Hash.combine(Hash.hash(this.name))(Hash.hash(this.path)));
+		return Hash.optimize(Hash.combine(Hash.hash(this.name), Hash.hash(this.path)));
 	}
 
 	toString(): string {
@@ -168,12 +172,12 @@ AnalyzedWorkspace.findByName = Fn.dual(
 );
 
 // Wire pretty printer
-AnalyzedWorkspace.pretty = Pretty.make(AnalyzedWorkspace);
+AnalyzedWorkspace.pretty = Schema.toFormatter(AnalyzedWorkspace);
 
 // ── WorkspaceAnalysis ─────────────────────────────────────────
 
 const PackageManagerInfo = Schema.Struct({
-	type: Schema.Literal("npm", "pnpm", "yarn", "bun"),
+	type: Schema.Literals(["npm", "pnpm", "yarn", "bun"]),
 	version: Schema.optional(Schema.String),
 });
 
@@ -186,10 +190,10 @@ const PackageManagerInfo = Schema.Struct({
  */
 export class WorkspaceAnalysis extends Schema.TaggedClass<WorkspaceAnalysis>()("WorkspaceAnalysis", {
 	root: Schema.String,
-	runtime: Schema.Literal("node", "bun"),
+	runtime: Schema.Literals(["node", "bun"]),
 	packageManager: PackageManagerInfo,
 	workspaces: Schema.Array(AnalyzedWorkspace),
-	changesetConfig: Schema.NullOr(Schema.Union(SilkChangesetConfigFile, ChangesetConfigFile)),
+	changesetConfig: Schema.NullOr(Schema.Union([SilkChangesetConfigFile, ChangesetConfigFile])),
 	versioning: Schema.NullOr(VersioningStrategyResult),
 	tagStrategy: Schema.NullOr(TagStrategyType),
 }) {
@@ -234,7 +238,7 @@ export class WorkspaceAnalysis extends Schema.TaggedClass<WorkspaceAnalysis>()("
 	}
 
 	[Hash.symbol](): number {
-		return Hash.cached(this)(Hash.hash(this.root));
+		return Hash.optimize(Hash.hash(this.root));
 	}
 
 	toString(): string {
@@ -246,4 +250,4 @@ export class WorkspaceAnalysis extends Schema.TaggedClass<WorkspaceAnalysis>()("
 }
 
 // Wire pretty printer
-WorkspaceAnalysis.pretty = Pretty.make(WorkspaceAnalysis);
+WorkspaceAnalysis.pretty = Schema.toFormatter(WorkspaceAnalysis);

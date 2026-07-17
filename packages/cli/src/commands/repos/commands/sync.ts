@@ -19,12 +19,12 @@
  * @internal
  */
 
-import { Command, Options } from "@effect/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option definitions */
-const cwdOption = Options.directory("cwd").pipe(Options.withDescription("Repo root to sync"), Options.withDefault("."));
+const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to sync"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

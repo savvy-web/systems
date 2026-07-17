@@ -26,7 +26,7 @@ describe("runValidateFile", () => {
 		const collectLogger = Logger.make(({ message }) => {
 			logs.push(typeof message === "string" ? message : String(message));
 		});
-		const program = runValidateFile(filePath).pipe(Effect.provide(Logger.replace(Logger.defaultLogger, collectLogger)));
+		const program = runValidateFile(filePath).pipe(Effect.provide(Logger.layer([collectLogger])));
 		return Effect.runPromise(program).then(() => logs);
 	}
 

@@ -40,7 +40,14 @@ export function makeReleaseFixture(spec: FixtureSpec): string {
 	);
 	// A pnpm workspace: @manypkg/get-packages v3 detects yarn/npm workspaces only
 	// via their lockfiles, but pnpm via pnpm-workspace.yaml alone.
-	writeFileSync(join(root, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
+	// verifyDepsBeforeRun MUST be off here: the differential tests run
+	// `pnpm exec changeset version` inside the fixture, whose node_modules is a
+	// symlink into the host monorepo. Without the opt-out, pnpm's dep
+	// verification decides the (foreign) modules dir is out of date and tries
+	// to auto-install — aborting under no TTY (and worse, attempting to purge
+	// the symlinked monorepo node_modules with one). The host repo carries the
+	// same setting in its own pnpm-workspace.yaml for the same reason.
+	writeFileSync(join(root, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\nverifyDepsBeforeRun: false\n');
 	mkdirSync(join(root, ".changeset"), { recursive: true });
 	writeFileSync(
 		join(root, ".changeset", "config.json"),

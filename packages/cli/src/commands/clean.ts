@@ -10,9 +10,9 @@
 
 import { glob as nodeGlob, realpath, rm } from "node:fs/promises";
 import { join, sep } from "node:path";
-import { Command, Options } from "@effect/cli";
+import { WorkspaceDiscovery } from "@effected/workspaces";
 import { Data, Effect } from "effect";
-import { WorkspaceDiscovery } from "workspaces-effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 /** Default patterns cleaned when `--globs` is omitted. */
 const DEFAULT_GLOBS = ["dist", ".turbo", "coverage", "node_modules", ".rslib"];
@@ -134,12 +134,12 @@ export function runClean(opts: {
 	return Effect.gen(function* () {
 		const discovery = yield* WorkspaceDiscovery;
 		const packages = yield* discovery
-			.listPackages(process.cwd())
+			.listPackages()
 			.pipe(Effect.mapError((e) => new CleanError({ step: "discover workspaces", reason: e.message })));
 
 		// Order: non-root packages (leaves) first, the root workspace last.
-		const leaves = packages.filter((p) => !p.isRootWorkspace);
-		const roots = packages.filter((p) => p.isRootWorkspace);
+		const leaves = packages.filter((p) => !(p.relativePath === "."));
+		const roots = packages.filter((p) => p.relativePath === ".");
 		const ordered = [...leaves, ...roots];
 
 		// Plan per workspace (concurrent), then dedup paths globally in order so a
@@ -157,8 +157,8 @@ export function runClean(opts: {
 			return { pkg, targets: unique };
 		});
 
-		const leafGroups = groups.filter((g) => !g.pkg.isRootWorkspace);
-		const rootGroups = groups.filter((g) => g.pkg.isRootWorkspace);
+		const leafGroups = groups.filter((g) => !(g.pkg.relativePath === "."));
+		const rootGroups = groups.filter((g) => g.pkg.relativePath === ".");
 
 		const verb = opts.dryRun ? "would remove" : "removed";
 		let total = 0;
@@ -199,18 +199,18 @@ export function runClean(opts: {
 }
 
 /* v8 ignore start -- CLI option/registration; orchestration tested via runClean */
-const globsOption = Options.text("globs").pipe(
-	Options.withAlias("g"),
-	Options.withDescription(
+const globsOption = Flag.string("globs").pipe(
+	Flag.withAlias("g"),
+	Flag.withDescription(
 		`Comma-separated glob patterns to remove from each workspace root (default: ${DEFAULT_GLOBS.join(",")})`,
 	),
-	Options.withDefault(DEFAULT_GLOBS.join(",")),
+	Flag.withDefault(DEFAULT_GLOBS.join(",")),
 );
 
-const dryRunOption = Options.boolean("dry-run").pipe(
-	Options.withAlias("n"),
-	Options.withDescription("Report what would be removed without deleting anything"),
-	Options.withDefault(false),
+const dryRunOption = Flag.boolean("dry-run").pipe(
+	Flag.withAlias("n"),
+	Flag.withDescription("Report what would be removed without deleting anything"),
+	Flag.withDefault(false),
 );
 
 const _cleanCommand = Command.make("clean", { globs: globsOption, dryRun: dryRunOption }, (opts) =>
@@ -226,13 +226,4 @@ const _cleanCommand = Command.make("clean", { globs: globsOption, dryRun: dryRun
  * errors from Effect's internal Command types, matching the other top-level
  * command exports.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const cleanCommand: Command.Command<"clean", any, any, any> = _cleanCommand as Command.Command<
-	"clean",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+export const cleanCommand = _cleanCommand;

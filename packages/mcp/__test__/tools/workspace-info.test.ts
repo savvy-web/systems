@@ -47,7 +47,7 @@ describe("toWorkspaceInfoResult", () => {
 
 	it("encodes to the output schema without error", () => {
 		const result = toWorkspaceInfoResult(analysis);
-		const encoded = Schema.encodeSync(WorkspaceInfoResult)(result);
+		const encoded = Schema.encodeUnknownSync(WorkspaceInfoResult)(result);
 		expect(encoded.root).toBe("/repo");
 	});
 
@@ -98,13 +98,13 @@ describe("toWorkspaceInfoResult", () => {
 describe("WorkspaceInfoAsMarkdown", () => {
 	it("renders a one-way markdown transcript", () => {
 		const result = toWorkspaceInfoResult(analysis);
-		const md = Schema.decodeSync(WorkspaceInfoAsMarkdown)(result);
+		const md = Schema.decodeUnknownSync(WorkspaceInfoAsMarkdown)(result);
 		expect(md).toContain("# Workspace");
 		expect(md).toContain("@scope/foo");
 		expect(md).toContain("pnpm");
 	});
 
 	it("forbids encoding markdown back to the structured result", () => {
-		expect(() => Schema.encodeSync(WorkspaceInfoAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(WorkspaceInfoAsMarkdown)("anything")).toThrow();
 	});
 });

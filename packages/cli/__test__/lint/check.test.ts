@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
+import { Workspaces } from "@effected/workspaces";
 import {
 	BiomeSchemaSyncLive,
 	ConfigDiscoveryLive,
@@ -10,12 +11,14 @@ import {
 } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { WorkspacesLive } from "workspaces-effect";
+
+const WorkspacesKitLive = Workspaces.layer();
+
 import { runLintCheck } from "../../src/commands/lint/check.js";
 import { runLintInit } from "../../src/commands/lint/init.js";
 
 const SilkLive = Layer.mergeAll(ManagedSectionLive, BiomeSchemaSyncLive, ConfigDiscoveryLive, ToolDiscoveryLive);
-const BaseAppLayer = SilkLive.pipe(Layer.provideMerge(WorkspacesLive), Layer.provideMerge(NodeContext.layer));
+const BaseAppLayer = SilkLive.pipe(Layer.provideMerge(WorkspacesKitLive), Layer.provideMerge(NodeServices.layer));
 
 /** Build a TestLayer that captures every Effect.log line into `sink` (replaces the default logger). */
 function captureLayer(sink: string[]) {
@@ -23,7 +26,7 @@ function captureLayer(sink: string[]) {
 		const text = Array.isArray(message) ? message.join(" ") : String(message);
 		sink.push(text);
 	});
-	return Layer.provideMerge(BaseAppLayer, Logger.replace(Logger.defaultLogger, captureLogger));
+	return Layer.provideMerge(BaseAppLayer, Logger.layer([captureLogger]));
 }
 
 /** Bootstrap a workspace root + leaf package so workspaces-effect resolves cleanly. */

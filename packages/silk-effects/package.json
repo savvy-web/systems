@@ -38,6 +38,7 @@
 		"@effected/glob": "^0.1.0",
 		"@effected/jsonc": "^0.1.0",
 		"@effected/package-json": "^0.2.0",
+		"@effected/walker": "^0.2.0",
 		"@effected/workspaces": "^0.2.1",
 		"@effected/yaml": "^0.1.0",
 		"@manypkg/get-packages": "^3.1.0",

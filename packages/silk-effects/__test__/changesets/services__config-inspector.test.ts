@@ -4,7 +4,7 @@
  * Each test sets up a throwaway project directory under `os.tmpdir()` with
  * a minimal pnpm workspace structure and a `.changeset/config.json`, then
  * runs the real {@link ConfigInspectorLive} layer composed with
- * `ChangesetConfigReaderLive`, `WorkspacesLive`, and `NodeContext.layer`.
+ * `ChangesetConfigReaderLive`, `WorkspacesLive`, and `NodeServices.layer`.
  * This exercises the glob-materialization and overlap-detection paths that
  * a pure mock layer would not.
  */
@@ -12,11 +12,12 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
+import { Workspaces } from "@effected/workspaces";
 import { Effect, Layer, Schema } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { WorkspacesLive } from "workspaces-effect";
 import { ConfigurationError } from "../../src/changesets/errors.js";
+import type { ConfigInspector as ConfigInspectorTag } from "../../src/changesets/services/config-inspector.js";
 import {
 	ConfigInspector,
 	ConfigInspectorLive,
@@ -28,10 +29,15 @@ import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigRea
 // requirement set is fully satisfied. Layer.mergeAll alone unions
 // requirements rather than threading them; `Layer.provide` is what feeds
 // upstream services into downstream ones.
-const TestLive = ConfigInspectorLive.pipe(
-	Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, WorkspacesLive)),
-	Layer.provide(NodeContext.layer),
-);
+//
+// v4/kit: `@effected/workspaces`' discovery is bound to the root its layer
+// was built with (single-root by design), so the test layer is a per-fixture
+// factory — build it with the fixture's cwd, never share one across tmpdirs.
+const testLive = (cwd: string): Layer.Layer<ConfigInspectorTag> =>
+	ConfigInspectorLive.pipe(
+		Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, Workspaces.layer({ cwd }))),
+		Layer.provide(NodeServices.layer),
+	);
 
 interface FixtureOptions {
 	readonly rootName?: string;
@@ -126,7 +132,7 @@ const runInspect = (cwd: string) =>
 		Effect.gen(function* () {
 			const inspector = yield* ConfigInspector;
 			return yield* inspector.inspect(cwd);
-		}).pipe(Effect.provide(TestLive)),
+		}).pipe(Effect.provide(testLive(cwd))),
 	);
 
 const runInspectFail = (cwd: string) =>
@@ -134,7 +140,7 @@ const runInspectFail = (cwd: string) =>
 		Effect.gen(function* () {
 			const inspector = yield* ConfigInspector;
 			return yield* inspector.inspect(cwd);
-		}).pipe(Effect.provide(TestLive), Effect.flip),
+		}).pipe(Effect.provide(testLive(cwd)), Effect.flip),
 	);
 
 const runClassify = (cwd: string, paths: ReadonlyArray<string>) =>
@@ -142,7 +148,7 @@ const runClassify = (cwd: string, paths: ReadonlyArray<string>) =>
 		Effect.gen(function* () {
 			const inspector = yield* ConfigInspector;
 			return yield* inspector.classify(cwd, paths);
-		}).pipe(Effect.provide(TestLive)),
+		}).pipe(Effect.provide(testLive(cwd))),
 	);
 
 describe("ConfigInspector.inspect", () => {
@@ -633,7 +639,7 @@ describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () =
 			return { first, second };
 		});
 
-		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(TestLive)));
+		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(testLive(dir))));
 		expect(first.baseBranch).toBe("main");
 		expect(second.baseBranch).toBe("main");
 	});
@@ -656,7 +662,7 @@ describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () =
 			return { first, second };
 		});
 
-		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(TestLive)));
+		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(testLive(dir))));
 		expect(first.baseBranch).toBe("main");
 		expect(second.baseBranch).toBe("develop");
 	});
@@ -681,7 +687,7 @@ describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () =
 			return { first, second };
 		});
 
-		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(TestLive)));
+		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(testLive(dir))));
 		expect(first.packages.map((p) => p.name)).toEqual(["@scope/foo"]);
 		expect(second.packages.map((p) => p.name).sort()).toEqual(["@scope/bar", "@scope/foo"]);
 	});

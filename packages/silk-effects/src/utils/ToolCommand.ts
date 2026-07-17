@@ -1,48 +1,87 @@
-import type { CommandExecutor } from "@effect/platform";
-import { Command } from "@effect/platform";
-import type { PlatformError } from "@effect/platform/Error";
-import type { Effect, Stream } from "effect";
+import type { PlatformError } from "effect";
+import { Effect, Stream } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 /**
- * Wraps `@effect/platform` `Command.Command` with instance method ergonomics.
+ * Rebuild a command with patched options.
  *
- * Use `yield* cmd.string()` instead of `yield* Command.string(cmd)`.
+ * @remarks
+ * `ChildProcess.Command` values are pure data, but core only ships setters for
+ * `cwd` and `env`. This helper rebuilds a `StandardCommand` with merged
+ * options, recursing into both sides of a `PipedCommand` the same way
+ * `ChildProcess.setCwd` does.
+ */
+const patchOptions = (
+	command: ChildProcess.Command,
+	patch: (options: ChildProcess.CommandOptions) => ChildProcess.CommandOptions,
+): ChildProcess.Command => {
+	switch (command._tag) {
+		case "StandardCommand":
+			return ChildProcess.make(command.command, command.args, patch(command.options));
+		case "PipedCommand":
+			return ChildProcess.pipeTo(
+				patchOptions(command.left, patch),
+				patchOptions(command.right, patch),
+				command.options,
+			);
+	}
+};
+
+/**
+ * Wraps `effect/unstable/process` `ChildProcess.Command` with instance method ergonomics.
+ *
+ * Use `yield* cmd.string()` instead of resolving the `ChildProcessSpawner` service by hand.
  *
  * @since 0.2.0
  * @public
  */
 export class ToolCommand {
-	readonly command: Command.Command;
+	readonly command: ChildProcess.Command;
 
-	constructor(command: Command.Command) {
+	constructor(command: ChildProcess.Command) {
 		this.command = command;
 	}
 
-	string(encoding?: string): Effect.Effect<string, PlatformError, CommandExecutor.CommandExecutor> {
-		return Command.string(this.command, encoding);
+	string(): Effect.Effect<string, PlatformError.PlatformError, ChildProcessSpawner.ChildProcessSpawner> {
+		return Effect.flatMap(ChildProcessSpawner.ChildProcessSpawner, (spawner) => spawner.string(this.command));
 	}
 
-	exitCode(): Effect.Effect<number, PlatformError, CommandExecutor.CommandExecutor> {
-		return Command.exitCode(this.command);
+	exitCode(): Effect.Effect<number, PlatformError.PlatformError, ChildProcessSpawner.ChildProcessSpawner> {
+		return Effect.flatMap(ChildProcessSpawner.ChildProcessSpawner, (spawner) => spawner.exitCode(this.command));
 	}
 
-	lines(encoding?: string): Effect.Effect<Array<string>, PlatformError, CommandExecutor.CommandExecutor> {
-		return Command.lines(this.command, encoding);
+	lines(): Effect.Effect<Array<string>, PlatformError.PlatformError, ChildProcessSpawner.ChildProcessSpawner> {
+		return Effect.flatMap(ChildProcessSpawner.ChildProcessSpawner, (spawner) => spawner.lines(this.command));
 	}
 
-	stream(): Stream.Stream<Uint8Array, PlatformError, CommandExecutor.CommandExecutor> {
-		return Command.stream(this.command);
+	stream(): Stream.Stream<string, PlatformError.PlatformError, ChildProcessSpawner.ChildProcessSpawner> {
+		return Stream.unwrap(
+			Effect.map(ChildProcessSpawner.ChildProcessSpawner, (spawner) => spawner.streamString(this.command)),
+		);
 	}
 
 	env(environment: Record<string, string | undefined>): ToolCommand {
-		return new ToolCommand(Command.env(this.command, environment));
+		return new ToolCommand(
+			patchOptions(this.command, (options) => ({
+				...options,
+				env: { ...options.env, ...environment },
+				// The Node backend only merges the parent environment when asked;
+				// v3 always extended it, so keep that behavior explicit.
+				extendEnv: true,
+			})),
+		);
 	}
 
 	workingDirectory(cwd: string): ToolCommand {
-		return new ToolCommand(Command.workingDirectory(this.command, cwd));
+		return new ToolCommand(ChildProcess.setCwd(this.command, cwd));
 	}
 
 	stdin(input: string): ToolCommand {
-		return new ToolCommand(Command.feed(this.command, input));
+		return new ToolCommand(
+			patchOptions(this.command, (options) => ({
+				...options,
+				stdin: Stream.succeed(new TextEncoder().encode(input)),
+			})),
+		);
 	}
 }

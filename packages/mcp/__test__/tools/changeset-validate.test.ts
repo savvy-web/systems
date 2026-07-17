@@ -1,6 +1,6 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { ChangesetValidateAsMarkdown, changesetValidate } from "../../src/tools/changeset-validate.js";
 
@@ -18,7 +18,7 @@ describe("changesetValidate handler", () => {
 		expect(data.ok).toBe(true);
 		expect(data.messages).toHaveLength(0);
 		expect(data.errorCount).toBe(0);
-		const md = Schema.decodeSync(ChangesetValidateAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetValidateAsMarkdown)(data);
 		expect(md).toContain("No changeset issues");
 	});
 
@@ -30,12 +30,12 @@ describe("changesetValidate handler", () => {
 		expect(data.errorCount).toBeGreaterThan(0);
 		expect(data.messages[0]).toHaveProperty("rule");
 		expect(data.messages[0]).toHaveProperty("file");
-		const md = Schema.decodeSync(ChangesetValidateAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetValidateAsMarkdown)(data);
 		expect(md).toContain("issue(s)");
 	});
 
 	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeSync(ChangesetValidateAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(ChangesetValidateAsMarkdown)("anything")).toThrow();
 	});
 
 	it("maps a thrown validate error into the typed error channel", async () => {

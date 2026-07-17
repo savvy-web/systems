@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, Effect, FileSystem, Layer, Schema } from "effect";
 import { ChangesetConfigError } from "../errors/ChangesetConfigError.js";
 import { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
 
@@ -30,6 +29,24 @@ function isSilkChangelog(changelog: unknown): boolean {
 }
 
 /**
+ * The {@link ChangesetConfigReader} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface ChangesetConfigReaderShape {
+	/**
+	 * Read and decode `.changeset/config.json` from the given workspace root.
+	 *
+	 * @param root - Absolute path to the workspace root containing the `.changeset/` directory.
+	 * @returns An `Effect` that succeeds with the decoded config or fails with {@link ChangesetConfigError}.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly read: (root: string) => Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError>;
+}
+
+/**
  * Service that reads and decodes the `.changeset/config.json` for a given workspace root.
  *
  * @remarks
@@ -45,7 +62,7 @@ function isSilkChangelog(changelog: unknown): boolean {
  *     return yield* reader.read(process.cwd());
  *   }).pipe(
  *     Effect.provide(ChangesetConfigReaderLive),
- *     Effect.provide(NodeContext.layer),
+ *     Effect.provide(NodeServices.layer),
  *   )
  * );
  * ```
@@ -53,27 +70,16 @@ function isSilkChangelog(changelog: unknown): boolean {
  * @since 0.1.0
  * @public
  */
-export class ChangesetConfigReader extends Context.Tag("@savvy-web/silk-effects/ChangesetConfigReader")<
-	ChangesetConfigReader,
-	{
-		/**
-		 * Read and decode `.changeset/config.json` from the given workspace root.
-		 *
-		 * @param root - Absolute path to the workspace root containing the `.changeset/` directory.
-		 * @returns An `Effect` that succeeds with the decoded config or fails with {@link ChangesetConfigError}.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly read: (root: string) => Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError>;
-	}
->() {}
+export class ChangesetConfigReader extends Context.Service<ChangesetConfigReader, ChangesetConfigReaderShape>()(
+	"@savvy-web/silk-effects/ChangesetConfigReader",
+) {}
 
 /**
  * Live implementation of {@link ChangesetConfigReader}.
  *
  * @remarks
- * Requires `FileSystem` from `@effect/platform`. Provide `NodeContext.layer` or
- * `BunContext.layer` to satisfy this dependency.
+ * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
+ * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
  *
  * @since 0.1.0
  * @public
@@ -130,7 +136,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 				const rawConfig = parsed as { changelog?: unknown };
 
 				if (isSilkChangelog(rawConfig.changelog)) {
-					return yield* Schema.decodeUnknown(SilkChangesetConfigFile)(parsed).pipe(
+					return yield* Schema.decodeUnknownEffect(SilkChangesetConfigFile)(parsed).pipe(
 						Effect.mapError(
 							/* v8 ignore next 4 -- error path requires schema decode failure */
 							(cause) =>
@@ -142,7 +148,7 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 					);
 				}
 
-				return yield* Schema.decodeUnknown(ChangesetConfigFile)(parsed).pipe(
+				return yield* Schema.decodeUnknownEffect(ChangesetConfigFile)(parsed).pipe(
 					Effect.mapError(
 						/* v8 ignore next 4 -- error path requires schema decode failure */
 						(cause) =>

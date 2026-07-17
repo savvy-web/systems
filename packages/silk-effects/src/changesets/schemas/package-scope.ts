@@ -64,10 +64,10 @@ import { VersionFileConfigSchema } from "./version-files.js";
  *
  * @public
  */
-export const GlobSchema = Schema.String.pipe(
-	Schema.minLength(1),
-	Schema.filter((s) => !s.startsWith("/") && !s.startsWith("../") && !s.includes("/../"), {
-		message: () => "Glob must be repo-relative — absolute paths and parent traversal (../) are not allowed",
+export const GlobSchema = Schema.String.check(
+	Schema.isMinLength(1),
+	Schema.makeFilter((s: string) => !s.startsWith("/") && !s.startsWith("../") && !s.includes("/../"), {
+		message: "Glob must be repo-relative — absolute paths and parent traversal (../) are not allowed",
 	}),
 );
 
@@ -133,4 +133,4 @@ export interface PackageScope extends Schema.Schema.Type<typeof PackageScopeSche
  *
  * @public
  */
-export const PackagesRecordSchema = Schema.Record({ key: Schema.String, value: PackageScopeSchema });
+export const PackagesRecordSchema = Schema.Record(Schema.String, PackageScopeSchema);

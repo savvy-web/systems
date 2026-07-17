@@ -1,14 +1,14 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
 import { Cause, Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { ReposConfigStore, ReposConfigStoreLive } from "../../src/repos/services/config-store.js";
 
 const run = <A, E>(effect: Effect.Effect<A, E, ReposConfigStore>) =>
 	Effect.runPromise(
-		effect.pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)) as Effect.Effect<A, E>,
+		effect.pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeServices.layer)) as Effect.Effect<A, E>,
 	);
 
 const manifest = {
@@ -25,7 +25,7 @@ describe("ReposConfigStore", () => {
 				return yield* store.read(root);
 			}),
 		);
-		expect(out.repos["spec"]?.purpose).toBe("spec authority");
+		expect(out.repos.spec?.purpose).toBe("spec authority");
 		expect(readFileSync(join(root, ".repos", "config.json"), "utf8").endsWith("\n")).toBe(true);
 	});
 	it("exists() is false before write and true after", async () => {
@@ -47,11 +47,11 @@ describe("ReposConfigStore", () => {
 			Effect.gen(function* () {
 				const store = yield* ReposConfigStore;
 				return yield* store.read(root);
-			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
+			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeServices.layer)),
 		);
 		expect(exit._tag).toBe("Failure");
 		if (exit._tag === "Failure") {
-			const error = Cause.failureOption(exit.cause);
+			const error = Cause.findErrorOption(exit.cause);
 			expect(error._tag).toBe("Some");
 			if (error._tag === "Some") {
 				expect(error.value.kind).toBe("invalid");
@@ -66,11 +66,11 @@ describe("ReposConfigStore", () => {
 			Effect.gen(function* () {
 				const store = yield* ReposConfigStore;
 				return yield* store.read(root);
-			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
+			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeServices.layer)),
 		);
 		expect(exit._tag).toBe("Failure");
 		if (exit._tag === "Failure") {
-			const error = Cause.failureOption(exit.cause);
+			const error = Cause.findErrorOption(exit.cause);
 			expect(error._tag).toBe("Some");
 			if (error._tag === "Some") {
 				expect(error.value.kind).toBe("invalid");
@@ -83,11 +83,11 @@ describe("ReposConfigStore", () => {
 			Effect.gen(function* () {
 				const store = yield* ReposConfigStore;
 				return yield* store.read(root);
-			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
+			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeServices.layer)),
 		);
 		expect(exit._tag).toBe("Failure");
 		if (exit._tag === "Failure") {
-			const error = Cause.failureOption(exit.cause);
+			const error = Cause.findErrorOption(exit.cause);
 			expect(error._tag).toBe("Some");
 			if (error._tag === "Some") {
 				expect(error.value.kind).toBe("missing");
@@ -128,11 +128,11 @@ describe("ReposConfigStore", () => {
 			Effect.gen(function* () {
 				const store = yield* ReposConfigStore;
 				return yield* store.read(root);
-			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeContext.layer)),
+			}).pipe(Effect.provide(ReposConfigStoreLive), Effect.provide(NodeServices.layer)),
 		);
 		expect(exit._tag).toBe("Failure");
 		if (exit._tag === "Failure") {
-			const error = Cause.failureOption(exit.cause);
+			const error = Cause.findErrorOption(exit.cause);
 			expect(error._tag).toBe("Some");
 			if (error._tag === "Some") {
 				expect(error.value.kind).toBe("invalid");

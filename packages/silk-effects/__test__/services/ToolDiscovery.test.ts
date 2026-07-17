@@ -1,9 +1,8 @@
-import type { Command } from "@effect/platform";
-import { CommandExecutor } from "@effect/platform";
-import { SystemError } from "@effect/platform/Error";
-import { Effect, Layer, Option } from "effect";
+import { DetectedPackageManager, PackageManagerDetector, WorkspaceRoot } from "@effected/workspaces";
+import { Effect, Layer, Option, PlatformError } from "effect";
+import type { ChildProcess } from "effect/unstable/process";
+import { ChildProcessSpawner } from "effect/unstable/process";
 import { describe, expect, it } from "vitest";
-import { PackageManagerDetector, WorkspaceRoot } from "workspaces-effect";
 import { ToolDefinition } from "../../src/schemas/ToolDefinition.js";
 import { ResolutionPolicy, SourceRequirement, VersionExtractor } from "../../src/schemas/ToolResults.js";
 import { ToolDiscovery, ToolDiscoveryLive } from "../../src/services/ToolDiscovery.js";
@@ -21,7 +20,7 @@ interface CommandResponse {
  * Serialize a Command to a matchable string key.
  * For standard commands: "binary arg1 arg2"
  */
-function cmdKey(cmd: Command.Command): string {
+function cmdKey(cmd: ChildProcess.Command): string {
 	if (cmd._tag === "StandardCommand") {
 		const args = [...cmd.args];
 		return args.length > 0 ? `${cmd.command} ${args.join(" ")}` : cmd.command;
@@ -30,21 +29,20 @@ function cmdKey(cmd: Command.Command): string {
 }
 
 function makePlatformError() {
-	return new SystemError({
-		reason: "Unknown",
-		module: "Command",
-		method: "exec",
-		pathOrDescriptor: "",
+	return PlatformError.systemError({
+		_tag: "NotFound",
+		module: "ChildProcess",
+		method: "spawn",
 	});
 }
 
 /**
- * Build a mock CommandExecutor. Response keys are matched against the
- * serialized command string. Matching uses exact match first, then checks
+ * Build a mock ChildProcessSpawner service. Response keys are matched against
+ * the serialized command string. Matching uses exact match first, then checks
  * if any key appears in the command string (for shell-wrapped commands).
  */
-function buildExecutorMethods(responses: Record<string, CommandResponse>) {
-	function findResponse(cmd: Command.Command): CommandResponse | undefined {
+function buildSpawnerMethods(responses: Record<string, CommandResponse>) {
+	function findResponse(cmd: ChildProcess.Command): CommandResponse | undefined {
 		const key = cmdKey(cmd);
 		// Exact match
 		if (responses[key]) return responses[key];
@@ -58,25 +56,24 @@ function buildExecutorMethods(responses: Record<string, CommandResponse>) {
 	}
 
 	return {
-		[CommandExecutor.TypeId]: CommandExecutor.TypeId,
-		exitCode: (cmd: Command.Command) => {
+		exitCode: (cmd: ChildProcess.Command) => {
 			const resp = findResponse(cmd);
-			if (resp) return Effect.succeed(resp.exitCode);
+			if (resp) return Effect.succeed(ChildProcessSpawner.ExitCode(resp.exitCode));
 			return Effect.fail(makePlatformError());
 		},
-		string: (cmd: Command.Command) => {
+		string: (cmd: ChildProcess.Command) => {
 			const resp = findResponse(cmd);
 			if (resp && resp.exitCode === 0) return Effect.succeed(resp.stdout);
 			return Effect.fail(makePlatformError());
 		},
-		lines: (cmd: Command.Command) => {
+		lines: (cmd: ChildProcess.Command) => {
 			const resp = findResponse(cmd);
 			if (resp && resp.exitCode === 0) return Effect.succeed(resp.stdout.split("\n"));
 			return Effect.fail(makePlatformError());
 		},
-		start: () => Effect.fail(makePlatformError()),
-		stream: () => {
-			throw new Error("stream not implemented in mock");
+		spawn: () => Effect.fail(makePlatformError()),
+		streamString: () => {
+			throw new Error("streamString not implemented in mock");
 		},
 		streamLines: () => {
 			throw new Error("streamLines not implemented in mock");
@@ -84,28 +81,28 @@ function buildExecutorMethods(responses: Record<string, CommandResponse>) {
 	};
 }
 
-const makeTestExecutor = (responses: Record<string, CommandResponse>) =>
+const makeTestSpawner = (responses: Record<string, CommandResponse>) =>
 	Layer.succeed(
-		CommandExecutor.CommandExecutor,
-		buildExecutorMethods(responses) as unknown as CommandExecutor.CommandExecutor,
+		ChildProcessSpawner.ChildProcessSpawner,
+		buildSpawnerMethods(responses) as unknown as ChildProcessSpawner.ChildProcessSpawner["Service"],
 	);
 
 const makeTestPM = (type: "npm" | "pnpm" | "yarn" | "bun") =>
-	Layer.succeed(
-		PackageManagerDetector,
-		PackageManagerDetector.of({
-			detect: (_root: string) =>
-				Effect.succeed({ type, version: undefined, runtime: type === "bun" ? ("bun" as const) : ("node" as const) }),
-		}),
-	);
+	Layer.succeed(PackageManagerDetector, {
+		detect: (_root: string) =>
+			Effect.succeed(
+				DetectedPackageManager.make({
+					name: type,
+					version: Option.none(),
+					runtime: type === "bun" ? ("bun" as const) : ("node" as const),
+				}),
+			),
+	});
 
 const makeTestRoot = (root: string) =>
-	Layer.succeed(
-		WorkspaceRoot,
-		WorkspaceRoot.of({
-			find: (_cwd: string) => Effect.succeed(root),
-		}),
-	);
+	Layer.succeed(WorkspaceRoot, {
+		find: (_cwd: string) => Effect.succeed(root),
+	});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -117,7 +114,7 @@ function makeLayer(
 	root = "/workspace",
 ) {
 	return ToolDiscoveryLive.pipe(
-		Layer.provide(makeTestExecutor(responses)),
+		Layer.provide(makeTestSpawner(responses)),
 		Layer.provide(makeTestPM(pm)),
 		Layer.provide(makeTestRoot(root)),
 	);
@@ -132,30 +129,30 @@ function runExit<A, E>(layer: Layer.Layer<ToolDiscovery>, effect: Effect.Effect<
 }
 
 /**
- * Build a counting executor that tracks invocation count.
+ * Build a counting spawner that tracks invocation count.
  */
-function makeCountingExecutor(responses: Record<string, CommandResponse>) {
+function makeCountingSpawner(responses: Record<string, CommandResponse>) {
 	let callCount = 0;
-	const methods = buildExecutorMethods(responses);
+	const methods = buildSpawnerMethods(responses);
 
 	const counted = {
 		...methods,
-		exitCode: (cmd: Command.Command) => {
+		exitCode: (cmd: ChildProcess.Command) => {
 			callCount++;
-			return (methods.exitCode as (c: Command.Command) => Effect.Effect<number, SystemError>)(cmd);
+			return methods.exitCode(cmd);
 		},
-		string: (cmd: Command.Command) => {
+		string: (cmd: ChildProcess.Command) => {
 			callCount++;
-			return (methods.string as (c: Command.Command) => Effect.Effect<string, SystemError>)(cmd);
+			return methods.string(cmd);
 		},
 	};
 
-	const executor = Layer.succeed(
-		CommandExecutor.CommandExecutor,
-		counted as unknown as CommandExecutor.CommandExecutor,
+	const spawner = Layer.succeed(
+		ChildProcessSpawner.ChildProcessSpawner,
+		counted as unknown as ChildProcessSpawner.ChildProcessSpawner["Service"],
 	);
 
-	return { executor, getCallCount: () => callCount };
+	return { spawner, getCallCount: () => callCount };
 }
 
 // ---------------------------------------------------------------------------
@@ -247,13 +244,13 @@ describe("ToolDiscovery.resolve", () => {
 	});
 
 	it("caches results on second call", async () => {
-		const { executor, getCallCount } = makeCountingExecutor({
+		const { spawner, getCallCount } = makeCountingSpawner({
 			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
 			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
 		});
 
 		const layer = ToolDiscoveryLive.pipe(
-			Layer.provide(executor),
+			Layer.provide(spawner),
 			Layer.provide(makeTestPM("pnpm")),
 			Layer.provide(makeTestRoot("/workspace")),
 		);
@@ -363,13 +360,13 @@ describe("ToolDiscovery.isAvailable", () => {
 
 describe("ToolDiscovery.clearCache", () => {
 	it("forces re-resolution after clearing", async () => {
-		const { executor, getCallCount } = makeCountingExecutor({
+		const { spawner, getCallCount } = makeCountingSpawner({
 			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
 			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
 		});
 
 		const layer = ToolDiscoveryLive.pipe(
-			Layer.provide(executor),
+			Layer.provide(spawner),
 			Layer.provide(makeTestPM("pnpm")),
 			Layer.provide(makeTestRoot("/workspace")),
 		);

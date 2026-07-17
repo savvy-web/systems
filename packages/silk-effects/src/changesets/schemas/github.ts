@@ -54,9 +54,9 @@ function isValidUrl(value: string): boolean {
  *
  * @public
  */
-export const UsernameSchema = Schema.String.pipe(
-	Schema.pattern(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, {
-		message: () =>
+export const UsernameSchema = Schema.String.check(
+	Schema.isPattern(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, {
+		message:
 			'Invalid GitHub username format. Usernames must contain only alphanumeric characters and hyphens, and cannot start or end with a hyphen. Example: "octocat" or "my-user-123"',
 	}),
 );
@@ -85,7 +85,7 @@ export const UsernameSchema = Schema.String.pipe(
  *
  * @public
  */
-export const IssueNumberSchema = PositiveInteger.annotations({
+export const IssueNumberSchema = PositiveInteger.annotate({
 	title: "IssueNumber",
 	description: "GitHub issue or pull request number",
 });
@@ -123,16 +123,16 @@ export const IssueNumberSchema = PositiveInteger.annotations({
  *
  * @public
  */
-export const UrlOrMarkdownLinkSchema = Schema.String.pipe(
-	Schema.filter(
-		(value) => {
+export const UrlOrMarkdownLinkSchema = Schema.String.check(
+	Schema.makeFilter(
+		(value: string) => {
 			if (isValidUrl(value)) return true;
 
 			const match = MARKDOWN_LINK_PATTERN.exec(value);
 			return match?.[2] ? isValidUrl(match[2]) : false;
 		},
 		{
-			message: () =>
+			message:
 				'Value must be a valid URL or a markdown link. Expected a plain URL (e.g., "https://github.com/owner/repo/pull/42") or a markdown link (e.g., "[#42](https://github.com/owner/repo/pull/42)")',
 		},
 	),

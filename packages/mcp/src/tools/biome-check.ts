@@ -11,10 +11,10 @@ import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { Lint } from "@savvy-web/silk-effects";
-import { ParseResult, Schema } from "effect";
+import { Schema, SchemaGetter } from "effect";
 
 /** Normalized diagnostic severity. */
-export const BiomeSeverity = Schema.Literal("error", "warning", "info");
+export const BiomeSeverity = Schema.Literals(["error", "warning", "info"]);
 
 /** A single normalized Biome diagnostic. */
 export const BiomeDiagnostic = Schema.Struct({
@@ -25,7 +25,7 @@ export const BiomeDiagnostic = Schema.Struct({
 	message: Schema.String,
 	/** Present only when `strict` upgraded this diagnostic; holds the project-configured severity. */
 	originalSeverity: Schema.optional(BiomeSeverity),
-}).annotations({ identifier: "BiomeDiagnostic" });
+}).annotate({ identifier: "BiomeDiagnostic" });
 
 export type BiomeDiagnosticType = Schema.Schema.Type<typeof BiomeDiagnostic>;
 
@@ -40,7 +40,7 @@ export const BiomeCheckResult = Schema.Struct({
 	diagnostics: Schema.Array(BiomeDiagnostic),
 	wrote: Schema.Boolean,
 	guidance: Schema.String,
-}).annotations({
+}).annotate({
 	identifier: "BiomeCheckResult",
 	title: "biome_check result",
 	description: "Structured Biome diagnostics, with a flag for whether a --write pass ran.",
@@ -63,7 +63,7 @@ const GUIDANCE_STRICT_NOTE =
 const GitlabDiagnostic = Schema.Struct({
 	description: Schema.String,
 	check_name: Schema.String,
-	severity: Schema.Literal("info", "minor", "major", "critical", "blocker"),
+	severity: Schema.Literals(["info", "minor", "major", "critical", "blocker"]),
 	location: Schema.Struct({ path: Schema.String, lines: Schema.Struct({ begin: Schema.Number }) }),
 });
 const GitlabArray = Schema.Array(GitlabDiagnostic);
@@ -154,14 +154,12 @@ const renderMarkdown = (data: BiomeCheckResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const BiomeCheckAsMarkdown = Schema.transformOrFail(BiomeCheckResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "BiomeCheckAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const BiomeCheckAsMarkdown = BiomeCheckResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "BiomeCheckAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link runBiomeCheck} handler. */
 export interface BiomeCheckArgs {

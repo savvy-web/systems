@@ -4,9 +4,9 @@
  * @internal
  */
 import { isDeepStrictEqual } from "node:util";
-import { FileSystem } from "@effect/platform";
-import type { PlatformError } from "@effect/platform/Error";
-import type { SectionParseError } from "@savvy-web/silk-effects";
+import type { JsoncParseError } from "@effected/jsonc";
+import { Jsonc } from "@effected/jsonc";
+import type { ConfigDiscoveryShape, SectionParseError } from "@savvy-web/silk-effects";
 import {
 	CheckResult,
 	ConfigDiscovery,
@@ -19,9 +19,8 @@ import {
 	savvyBasePreamble,
 	savvyHooksHygiene,
 } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
-import type { JsoncParseError } from "jsonc-effect";
-import { parse } from "jsonc-effect";
+import { Effect, FileSystem } from "effect";
+import type { PlatformError } from "effect/PlatformError";
 import { BIOME_VERSION } from "./biome-version.js";
 
 /** Unicode checkmark symbol. */
@@ -78,7 +77,7 @@ function findConfigFile(fs: FileSystem.FileSystem) {
  * @param names - Config file names to search for (in priority order)
  * @returns The config file path or null
  */
-function findConfig(discovery: ConfigDiscovery["Type"], names: readonly string[]) {
+function findConfig(discovery: ConfigDiscoveryShape, names: readonly string[]) {
 	return Effect.gen(function* () {
 		for (const name of names) {
 			const result = yield* discovery.find(name);
@@ -108,7 +107,7 @@ function extractConfigPathFromManaged(managedContent: string): string | null {
  */
 function checkMarkdownlintConfig(content: string) {
 	return Effect.gen(function* () {
-		const parsed = (yield* parse(content)) as Record<string, unknown>;
+		const parsed = (yield* Jsonc.parse(content)) as Record<string, unknown>;
 		const schemaMatches = parsed.$schema === Lint.MARKDOWNLINT_SCHEMA;
 		const existingConfig = parsed.config as Record<string, unknown> | undefined;
 		const configMatches = existingConfig !== undefined && isDeepStrictEqual(existingConfig, Lint.MARKDOWNLINT_CONFIG);
@@ -137,7 +136,7 @@ function checkBiomeSchemas() {
 
 		for (const configPath of configPaths) {
 			const content = yield* fs.readFileString(configPath);
-			const parsed = (yield* parse(content)) as Record<string, unknown>;
+			const parsed = (yield* Jsonc.parse(content)) as Record<string, unknown>;
 			const currentSchema = parsed.$schema as string | undefined;
 
 			if (currentSchema === expectedSchema) {
@@ -266,7 +265,7 @@ export function runLintCheck(opts: {
 
 		// Check biome schemas
 		const biomeSchemaStatus = yield* checkBiomeSchemas().pipe(
-			Effect.catchAll(() =>
+			Effect.catch(() =>
 				Effect.succeed({
 					statuses: [] as { path: string; matches: boolean }[],
 					warnings: [`${WARNING}  Could not check biome $schema URLs.`],

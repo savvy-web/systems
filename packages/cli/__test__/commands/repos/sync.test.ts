@@ -41,7 +41,7 @@ function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Promi
 	const captureLogger = Logger.make(({ message }) => {
 		sink.push(Array.isArray(message) ? message.join(" ") : String(message));
 	});
-	const captured = Layer.provideMerge(layer, Logger.replace(Logger.defaultLogger, captureLogger));
+	const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
 	return Effect.runPromise(runReposSync(cwd).pipe(Effect.provide(captured))).then(() => sink);
 }
 

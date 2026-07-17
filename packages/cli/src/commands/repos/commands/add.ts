@@ -23,26 +23,23 @@
  * @internal
  */
 
-import { Args, Command, Options } from "@effect/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Option } from "effect";
+import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option/arg definitions */
-const urlArg = Args.text({ name: "url" });
-const refOption = Options.text("ref").pipe(Options.withDescription("Ref (tag, branch, or commit) to check out"));
-const purposeOption = Options.text("purpose").pipe(Options.withDescription("Why this repo is vendored"));
-const nameOption = Options.text("name").pipe(
-	Options.withDescription("Vendored directory name; defaults to the URL's last path segment"),
-	Options.optional,
+const urlArg = Argument.string("url");
+const refOption = Flag.string("ref").pipe(Flag.withDescription("Ref (tag, branch, or commit) to check out"));
+const purposeOption = Flag.string("purpose").pipe(Flag.withDescription("Why this repo is vendored"));
+const nameOption = Flag.string("name").pipe(
+	Flag.withDescription("Vendored directory name; defaults to the URL's last path segment"),
+	Flag.optional,
 );
-const sparseOption = Options.text("sparse").pipe(
-	Options.withDescription("Sparse-checkout path; repeatable"),
-	Options.repeated,
+const sparseOption = Flag.string("sparse").pipe(
+	Flag.withDescription("Sparse-checkout path; repeatable"),
+	Flag.atLeast(0),
 );
-const cwdOption = Options.directory("cwd").pipe(
-	Options.withDescription("Repo root to add within"),
-	Options.withDefault("."),
-);
+const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to add within"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

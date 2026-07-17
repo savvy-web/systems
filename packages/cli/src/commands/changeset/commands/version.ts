@@ -9,17 +9,17 @@
  * @internal
  */
 
-import { Command, Options } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 import { requireValidConfig } from "../utils/config-gate.js";
 
 /* v8 ignore start -- CLI option definitions; handler tested via runVersion */
-const dryRunOption = Options.boolean("dry-run").pipe(
-	Options.withAlias("n"),
-	Options.withDescription("Compute and report the release without writing anything"),
-	Options.withDefault(false),
+const dryRunOption = Flag.boolean("dry-run").pipe(
+	Flag.withAlias("n"),
+	Flag.withDescription("Compute and report the release without writing anything"),
+	Flag.withDefault(false),
 );
 /* v8 ignore stop */
 

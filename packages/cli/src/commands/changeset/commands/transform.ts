@@ -31,27 +31,27 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { Args, Command, Options } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Argument, Command, Flag } from "effect/unstable/cli";
 
 import { requireValidConfig } from "../utils/config-gate.js";
 
 const { ChangelogTransformer } = Changesets;
 
 /* v8 ignore start -- CLI option definitions; handler tested via runTransform */
-const fileArg = Args.file({ name: "file" }).pipe(Args.withDefault("CHANGELOG.md"));
+const fileArg = Argument.file("file").pipe(Argument.withDefault("CHANGELOG.md"));
 
-const dryRunOption = Options.boolean("dry-run").pipe(
-	Options.withAlias("n"),
-	Options.withDescription("Print transformed output instead of writing"),
-	Options.withDefault(false),
+const dryRunOption = Flag.boolean("dry-run").pipe(
+	Flag.withAlias("n"),
+	Flag.withDescription("Print transformed output instead of writing"),
+	Flag.withDefault(false),
 );
 
-const checkOption = Options.boolean("check").pipe(
-	Options.withAlias("c"),
-	Options.withDescription("Exit 1 if file would change (for CI)"),
-	Options.withDefault(false),
+const checkOption = Flag.boolean("check").pipe(
+	Flag.withAlias("c"),
+	Flag.withDescription("Exit 1 if file would change (for CI)"),
+	Flag.withDefault(false),
 );
 /* v8 ignore stop */
 

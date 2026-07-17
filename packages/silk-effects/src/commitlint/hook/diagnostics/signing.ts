@@ -1,14 +1,21 @@
 /**
  * GPG / SSH signing diagnostic.
  *
+ * @remarks
+ * The `git config` reads run through `@effected/git`'s `configGet`
+ * (Option-shaped: an unset key is `Option.none`). The `gpg` /
+ * `gpg-connect-agent` probes are not git, so they stay hand-rolled on
+ * `effect/unstable/process` `ChildProcess`; every probe degrades to its v3
+ * fallback value (`keyResolves: false`, `agentResponsive: false`) on any
+ * failure, and the diagnostic as a whole degrades to
+ * {@link FALLBACK_DIAGNOSTIC}, preserving the never-fails contract.
+ *
  * @internal
  */
-import { execFile } from "node:child_process";
 import { stat } from "node:fs/promises";
-import { promisify } from "node:util";
-import { Effect } from "effect";
-
-const execFileP = promisify(execFile);
+import { Git } from "@effected/git";
+import { Effect, Option } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 export interface SigningDiagnostic {
 	format: "gpg" | "ssh" | "none";
@@ -67,16 +74,6 @@ export function buildSigningDiagnostic(raw: RawSigningInputs): SigningDiagnostic
 	};
 }
 
-async function gitConfig(key: string): Promise<string | null> {
-	try {
-		const { stdout } = await execFileP("git", ["config", "--get", key]);
-		const v = stdout.trim();
-		return v.length > 0 ? v : null;
-	} catch {
-		return null;
-	}
-}
-
 const FALLBACK_DIAGNOSTIC: SigningDiagnostic = {
 	format: "none",
 	autoSignEnabled: false,
@@ -86,12 +83,26 @@ const FALLBACK_DIAGNOSTIC: SigningDiagnostic = {
 	warnings: ["signing diagnostic unavailable"],
 };
 
-export function readSigningDiagnostic(): Effect.Effect<SigningDiagnostic> {
-	return Effect.tryPromise(async () => {
-		const gpgFormat = await gitConfig("gpg.format");
-		const commitGpgsign = await gitConfig("commit.gpgsign");
-		const signingKey = await gitConfig("user.signingkey");
-		const sshAllowedSignersFile = await gitConfig("gpg.ssh.allowedSignersFile");
+/** `git config --get <key>`, degraded to null when unset or unreadable. */
+const gitConfig = (key: string): Effect.Effect<string | null, never, Git> =>
+	Effect.gen(function* () {
+		const git = yield* Git;
+		const value = yield* git.configGet(process.cwd(), key);
+		return Option.getOrNull(value);
+	}).pipe(Effect.orElseSucceed(() => null));
+
+export function readSigningDiagnostic(): Effect.Effect<
+	SigningDiagnostic,
+	never,
+	Git | ChildProcessSpawner.ChildProcessSpawner
+> {
+	return Effect.gen(function* () {
+		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+		const gpgFormat = yield* gitConfig("gpg.format");
+		const commitGpgsign = yield* gitConfig("commit.gpgsign");
+		const signingKey = yield* gitConfig("user.signingkey");
+		const sshAllowedSignersFile = yield* gitConfig("gpg.ssh.allowedSignersFile");
 
 		const isSsh = gpgFormat === "ssh";
 		let keyResolves = false;
@@ -99,30 +110,29 @@ export function readSigningDiagnostic(): Effect.Effect<SigningDiagnostic> {
 
 		if (signingKey) {
 			if (isSsh) {
-				try {
+				keyResolves = yield* Effect.tryPromise(async () => {
 					await stat(signingKey);
-					keyResolves = true;
-				} catch {
-					keyResolves = false;
-				}
+					return true;
+				}).pipe(Effect.orElseSucceed(() => false));
 			} else {
-				try {
-					const { stdout } = await execFileP("gpg", ["--list-secret-keys", "--with-colons", signingKey]);
-					keyResolves = stdout.trim().length > 0;
-					keyExpiry = parseGpgKeyExpiry(stdout);
-				} catch {
-					keyResolves = false;
-				}
+				// A missing gpg binary or unknown key degrades to keyResolves: false.
+				const stdout = yield* spawner
+					.string(ChildProcess.make("gpg", ["--list-secret-keys", "--with-colons", signingKey]))
+					.pipe(Effect.orElseSucceed(() => ""));
+				keyResolves = stdout.trim().length > 0;
+				keyExpiry = parseGpgKeyExpiry(stdout);
 			}
 		}
 
 		let agentResponsive = true;
 		if (!isSsh) {
-			try {
-				await execFileP("gpg-connect-agent", ["/bye"], { timeout: 1000 });
-			} catch {
-				agentResponsive = false;
-			}
+			// Mirrors the v3 `execFile("gpg-connect-agent", ["/bye"], { timeout: 1000 })`
+			// probe: any non-zero exit, spawn failure, or timeout reads as unresponsive.
+			agentResponsive = yield* spawner.exitCode(ChildProcess.make("gpg-connect-agent", ["/bye"])).pipe(
+				Effect.timeout("1 second"),
+				Effect.map((code) => code === 0),
+				Effect.orElseSucceed(() => false),
+			);
 		}
 
 		return buildSigningDiagnostic({

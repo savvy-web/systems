@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import type { ConfigLocation } from "../../src/schemas/ConfigDiscoverySchemas.js";
 import { ConfigDiscovery, ConfigDiscoveryLive } from "../../src/services/ConfigDiscovery.js";

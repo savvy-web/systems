@@ -1,16 +1,13 @@
 import { resolve } from "node:path";
-import { Path } from "@effect/platform";
-import { NodeFileSystem } from "@effect/platform-node";
+import { NodeFileSystem, NodePath } from "@effect/platform-node";
+import {
+	DetectedPackageManager,
+	PackageManagerDetector,
+	WorkspaceDiscovery,
+	WorkspaceRoot,
+} from "@effected/workspaces";
 import { Effect, Layer, Logger, Option } from "effect";
 import { describe, expect, it } from "vitest";
-import {
-	DependencyGraphLive,
-	PackageManagerDetector,
-	PackageManagerDetectorLive,
-	TopologicalSorterLive,
-	WorkspaceDiscoveryLive,
-	WorkspaceRoot,
-} from "workspaces-effect";
 import type { AnalyzedWorkspace } from "../../src/schemas/WorkspaceAnalysisSchemas.js";
 import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
 import { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "../../src/services/SilkWorkspaceAnalyzer.js";
@@ -24,7 +21,7 @@ import { VersioningStrategyLive } from "../../src/services/VersioningStrategy.js
 const FIXTURES = resolve(import.meta.dirname, "fixtures/workspaces");
 const fixtureRoot = (...segments: string[]) => resolve(FIXTURES, ...segments);
 
-const platform = Layer.mergeAll(NodeFileSystem.layer, Path.layer, Logger.replace(Logger.defaultLogger, Logger.none));
+const platform = Layer.mergeAll(NodeFileSystem.layer, NodePath.layer, Logger.layer([]));
 
 /**
  * Create a mock PackageManagerDetector for fixtures that lack lockfiles.
@@ -33,7 +30,7 @@ const platform = Layer.mergeAll(NodeFileSystem.layer, Path.layer, Logger.replace
  */
 const mockPM = (type: "npm" | "pnpm" | "yarn" | "bun" = "npm", runtime: "node" | "bun" = "node") =>
 	Layer.succeed(PackageManagerDetector, {
-		detect: () => Effect.succeed({ type, version: undefined, runtime }),
+		detect: () => Effect.succeed(DetectedPackageManager.make({ name: type, version: Option.none(), runtime })),
 	});
 
 /**
@@ -47,19 +44,20 @@ const makeTestLayer = (fixturePath: string, pmLayer?: Layer.Layer<PackageManager
 		find: () => Effect.succeed(fixturePath),
 	});
 
-	const discovery = WorkspaceDiscoveryLive.pipe(Layer.provide(Layer.merge(mockRoot, platform)));
+	// The kit discovery is root-bound at layer build: cwd resolves through the
+	// mocked WorkspaceRoot, so each fixture gets its own discovery layer.
+	const discovery = WorkspaceDiscovery.layer({ cwd: fixturePath }).pipe(Layer.provide(Layer.merge(mockRoot, platform)));
 
-	const pm = pmLayer ?? PackageManagerDetectorLive.pipe(Layer.provide(platform));
+	const pm = pmLayer ?? PackageManagerDetector.layer.pipe(Layer.provide(platform));
 
 	const changesetReader = ChangesetConfigReaderLive.pipe(Layer.provide(platform));
 
 	const versioning = VersioningStrategyLive.pipe(Layer.provide(changesetReader));
 
-	const depGraph = DependencyGraphLive.pipe(Layer.provide(discovery));
-	const topoSorter = TopologicalSorterLive.pipe(Layer.provide(depGraph));
-
+	// Topological ordering is a pure DependencyGraph value inside the analyzer
+	// in v4 — no sorter layers to wire.
 	return SilkWorkspaceAnalyzerLive.pipe(
-		Layer.provide(Layer.mergeAll(platform, discovery, topoSorter, pm, changesetReader, versioning, TagStrategyLive)),
+		Layer.provide(Layer.mergeAll(platform, discovery, pm, changesetReader, versioning, TagStrategyLive)),
 	);
 };
 

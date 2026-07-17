@@ -1,15 +1,15 @@
 /**
  * `Changesets.DepsRegen` service — lift the `deps regen` / `deps detect`
- * orchestration out of the CLI into a `Context.Tag` service with a
+ * orchestration out of the CLI into a `Context.Service` with a
  * `plan()` / `execute()` split.
  *
  * @remarks
  * `plan()` computes the cumulative dependency diff (merge-base → working
  * tree by default, or between two explicit refs) by snapshotting both
- * sides through `PointInTimeWorkspace`, which resolves `catalog:` /
- * `workspace:` specifiers against each ref's own catalogs and package
- * versions before diffing. It drops `devDependency` rows (unless
- * `includeDevDeps`), and returns a complete {@link RegenPlan}
+ * sides through `@effected/workspaces`' `WorkspaceSnapshots`, which
+ * resolves `catalog:` / `workspace:` specifiers against each ref's own
+ * catalogs and package versions before diffing. It drops `devDependency`
+ * rows (unless `includeDevDeps`), and returns a complete {@link RegenPlan}
  * (target filenames + stale-changeset deletes) WITHOUT touching the
  * filesystem. `execute()` applies a plan — writing the fresh changesets
  * first, then deleting the stale pure-dependency ones (so an interrupted
@@ -33,18 +33,21 @@
  */
 
 import { basename, join, resolve } from "node:path";
-import type { CommandExecutor, Path } from "@effect/platform";
-import { FileSystem } from "@effect/platform";
-import { Context, Effect, Layer, Option } from "effect";
-import type { PointInTimeReadError, WorkspaceDiscoveryError } from "workspaces-effect";
-import {
-	PointInTimeWorkspace,
-	PointInTimeWorkspaceLive,
-	PublishabilityDetector,
-	WorkspaceDiscovery,
-	WorkspaceDiscoveryLive,
-	WorkspaceRootLive,
-} from "workspaces-effect";
+import { Git } from "@effected/git";
+import type {
+	PublishabilityDetectorShape,
+	WorkspaceDiscoveryFailure,
+	WorkspaceDiscoveryShape,
+	WorkspaceSnapshotAtFailure,
+	WorkspaceSnapshotWorktreeFailure,
+	WorkspaceSnapshotsShape,
+	WorkspacesOptions,
+} from "@effected/workspaces";
+import { PublishabilityDetector, WorkspaceDiscovery, WorkspaceSnapshots, Workspaces } from "@effected/workspaces";
+import type { Path } from "effect";
+import { Context, Effect, FileSystem, Layer, Option } from "effect";
+import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { ChangesetConfigShape } from "../../services/ChangesetConfig.js";
 import { ChangesetConfig, ChangesetConfigLive } from "../../services/ChangesetConfig.js";
 import { ChangesetConfigReaderLive } from "../../services/ChangesetConfigReader.js";
 import { PublishabilityDetectorAdaptiveLive } from "../../services/SilkPublishability.js";
@@ -55,6 +58,7 @@ import { computeWorkspaceDependencyDiffs } from "../utils/dep-diff.js";
 import { serializeDependencyTableToMarkdown, sortDependencyRows } from "../utils/dependency-table.js";
 import { gitListChangesetFilesAtRef, gitMergeBase } from "../utils/git.js";
 import { listPublishablePackageNames } from "../utils/publishability.js";
+import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector, ConfigInspectorLive } from "./config-inspector.js";
 
 /* ----------------------------------------------------------------- *
@@ -174,8 +178,10 @@ const listChangesetFiles = (
 		Effect.map((names) =>
 			names.filter((f) => f.endsWith(".md") && f !== "README.md").map((f) => join(changesetDir, f)),
 		),
-		Effect.catchAll((e) =>
-			e._tag === "SystemError" && e.reason === "NotFound"
+		Effect.catch((e) =>
+			// v4 FileSystem failures arrive as PlatformError wrapping a SystemError
+			// whose _tag carries the normalized reason ("NotFound" et al.).
+			e._tag === "PlatformError" && e.reason._tag === "NotFound"
 				? Effect.succeed([] as ReadonlyArray<string>)
 				: Effect.fail(new ChangesetIOError({ path: changesetDir, operation: "list", reason: String(e) })),
 		),
@@ -309,10 +315,26 @@ export interface DepsRegenOptions {
 	readonly from?: string;
 	/**
 	 * Newer ref to diff to. Defaults to the working tree (staged + unstaged
-	 * + untracked) via `PointInTimeWorkspace.worktree`.
+	 * + untracked) via `WorkspaceSnapshots.worktree`.
 	 */
 	readonly to?: string;
 }
+
+/**
+ * Every failure {@link DepsRegenShape.plan} can surface: this package's
+ * {@link GitError} (merge-base resolution) and {@link ChangesetIOError}
+ * (an unreadable `.changeset` directory), plus `@effected/workspaces`'
+ * typed discovery and snapshot failures (a snapshot read failing for
+ * either ref, a catalog-assembly failure, or an unfindable root).
+ *
+ * @public
+ */
+export type DepsRegenPlanError =
+	| GitError
+	| ChangesetIOError
+	| WorkspaceDiscoveryFailure
+	| WorkspaceSnapshotAtFailure
+	| WorkspaceSnapshotWorktreeFailure;
 
 /**
  * Effect service interface for the deps regen/detect orchestration.
@@ -326,14 +348,10 @@ export interface DepsRegenShape {
 	 * stale/mixed changesets.
 	 *
 	 * @param options - See {@link DepsRegenOptions}.
-	 * @returns An Effect yielding the plan, or failing with {@link GitError},
-	 *   `WorkspaceDiscoveryError`, {@link ChangesetIOError} (an unreadable
-	 *   `.changeset` directory or a genuinely unreadable changeset file list),
-	 *   or `PointInTimeReadError` (a snapshot read failed for either ref).
+	 * @returns An Effect yielding the plan, or failing with
+	 *   {@link DepsRegenPlanError}.
 	 */
-	readonly plan: (
-		options: DepsRegenOptions,
-	) => Effect.Effect<RegenPlan, GitError | WorkspaceDiscoveryError | ChangesetIOError | PointInTimeReadError, never>;
+	readonly plan: (options: DepsRegenOptions) => Effect.Effect<RegenPlan, DepsRegenPlanError, never>;
 	/**
 	 * Apply a {@link RegenPlan}: write fresh changesets first, then delete
 	 * stale ones. Writes fail loudly with {@link ChangesetIOError}; deletion
@@ -345,13 +363,6 @@ export interface DepsRegenShape {
 	 */
 	readonly execute: (plan: RegenPlan) => Effect.Effect<RegenResult, ChangesetIOError, never>;
 }
-
-const _tag = Context.Tag("Changesets/DepsRegen");
-
-/**
- * @internal
- */
-export const DepsRegenBase = _tag<DepsRegen, DepsRegenShape>();
 
 /**
  * Effect service tag for {@link DepsRegenShape}.
@@ -370,7 +381,7 @@ export const DepsRegenBase = _tag<DepsRegen, DepsRegenShape>();
  *
  * @public
  */
-export class DepsRegen extends DepsRegenBase {}
+export class DepsRegen extends Context.Service<DepsRegen, DepsRegenShape>()("Changesets/DepsRegen") {}
 
 /* ----------------------------------------------------------------- *
  * Live layer
@@ -382,19 +393,18 @@ export class DepsRegen extends DepsRegenBase {}
  * requirement-free (`R = never`).
  */
 function makeShape(
-	pit: typeof PointInTimeWorkspace.Service,
-	inspector: typeof ConfigInspector.Service,
-	discovery: typeof WorkspaceDiscovery.Service,
-	detector: typeof PublishabilityDetector.Service,
-	config: typeof ChangesetConfig.Service,
+	snapshots: WorkspaceSnapshotsShape,
+	inspector: ConfigInspectorShape,
+	discovery: WorkspaceDiscoveryShape,
+	detector: PublishabilityDetectorShape,
+	config: ChangesetConfigShape,
 	fs: FileSystem.FileSystem,
+	provideGit: Layer.Layer<Git>,
 ): DepsRegenShape {
 	const provideDetector = Layer.succeed(PublishabilityDetector, detector);
 	const fileExists = (p: string): Effect.Effect<boolean> => fs.exists(p).pipe(Effect.orElseSucceed(() => false));
 
-	const plan = (
-		options: DepsRegenOptions,
-	): Effect.Effect<RegenPlan, GitError | WorkspaceDiscoveryError | ChangesetIOError | PointInTimeReadError, never> =>
+	const plan = (options: DepsRegenOptions): Effect.Effect<RegenPlan, DepsRegenPlanError, never> =>
 		Effect.gen(function* () {
 			const resolvedCwd = resolve(options.cwd);
 			const changesetDir = join(resolvedCwd, ".changeset");
@@ -434,16 +444,16 @@ function makeShape(
 						);
 					baseBranch = inspected.baseBranch;
 				}
-				fromRef = yield* gitMergeBase(resolvedCwd, baseBranch);
+				fromRef = yield* gitMergeBase(resolvedCwd, baseBranch).pipe(Effect.provide(provideGit));
 			}
 
 			// Snapshots: before = from ref, after = to ref (or working tree). Each
 			// side carries its own catalogs and package versions, so rows leave the
-			// diff already resolved.
-			const before = yield* pit.at(fromRef, { cwd: resolvedCwd });
-			const after = options.to
-				? yield* pit.at(options.to, { cwd: resolvedCwd })
-				: yield* pit.worktree({ cwd: resolvedCwd });
+			// diff already resolved. The kit's WorkspaceSnapshots resolves its root
+			// from the layer it was built with (`{ cwd }` option) — single-root by
+			// design, so `options.cwd` must sit inside that workspace.
+			const before = yield* snapshots.at(fromRef);
+			const after = options.to ? yield* snapshots.at(options.to) : yield* snapshots.worktree();
 
 			const rawDiffs = computeWorkspaceDependencyDiffs(before, after);
 			const explicitTargets = new Set<string>([
@@ -460,7 +470,7 @@ function makeShape(
 			// failure — a malformed workspace must surface as an error rather
 			// than masquerade as "no packages publishable" (which would silently
 			// produce an empty plan).
-			const livePackages = yield* discovery.listPackages(resolvedCwd);
+			const livePackages = yield* discovery.listPackages();
 			const publishable = yield* listPublishablePackageNames(livePackages, resolvedCwd).pipe(
 				Effect.provide(provideDetector),
 			);
@@ -515,7 +525,7 @@ function makeShape(
 			// when `fromRef` isn't a real, readable git ref (e.g. the synthetic
 			// refs used by unit tests against a bare tmpdir), this resolves to an
 			// empty set and the filter becomes a no-op.
-			const atMergeBase = yield* gitListChangesetFilesAtRef(resolvedCwd, fromRef);
+			const atMergeBase = yield* gitListChangesetFilesAtRef(resolvedCwd, fromRef).pipe(Effect.provide(provideGit));
 			const authoredOnBranch = (file: string): boolean => !atMergeBase.has(basename(file));
 
 			// With explicit targets, only delete pure changesets for those packages
@@ -569,8 +579,9 @@ function makeShape(
 /**
  * Live layer for {@link DepsRegen}.
  *
- * Requires `PointInTimeWorkspace`, `WorkspaceDiscovery`,
- * `PublishabilityDetector` (all from `workspaces-effect`),
+ * Requires `WorkspaceSnapshots`, `WorkspaceDiscovery`,
+ * `PublishabilityDetector` (all from `@effected/workspaces`),
+ * `Git` (from `@effected/git`, backing merge-base resolution),
  * {@link ConfigInspector}, {@link ChangesetConfig}, and
  * `FileSystem.FileSystem` (resolved once at construction and closed over by
  * the shape, keeping `plan`/`execute` themselves requirement-free).
@@ -580,22 +591,24 @@ function makeShape(
 export const DepsRegenLive: Layer.Layer<
 	DepsRegen,
 	never,
-	| PointInTimeWorkspace
+	| WorkspaceSnapshots
 	| ConfigInspector
 	| WorkspaceDiscovery
 	| PublishabilityDetector
 	| ChangesetConfig
+	| Git
 	| FileSystem.FileSystem
 > = Layer.effect(
 	DepsRegen,
 	Effect.gen(function* () {
-		const pit = yield* PointInTimeWorkspace;
+		const snapshots = yield* WorkspaceSnapshots;
 		const inspector = yield* ConfigInspector;
 		const discovery = yield* WorkspaceDiscovery;
 		const detector = yield* PublishabilityDetector;
 		const config = yield* ChangesetConfig;
 		const fs = yield* FileSystem.FileSystem;
-		return makeShape(pit, inspector, discovery, detector, config, fs);
+		const git = yield* Git;
+		return makeShape(snapshots, inspector, discovery, detector, config, fs, Layer.succeed(Git, git));
 	}),
 );
 
@@ -603,19 +616,49 @@ export const DepsRegenLive: Layer.Layer<
  * Batteries-included default layer
  * ----------------------------------------------------------------- */
 
-// Shared sub-graphs — single const per layer value so Layer memoization
-// (by reference) constructs each service exactly once across the branches
-// below, rather than once per branch that needs it.
-const WorkspaceGraph = Layer.mergeAll(WorkspaceRootLive, WorkspaceDiscoveryLive.pipe(Layer.provide(WorkspaceRootLive)));
+// Shared sub-graph — single const so Layer memoization (by reference)
+// constructs the config chain exactly once across the branches below.
 const ConfigGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
 
 /**
+ * Build the batteries-included {@link DepsRegen} layer over a
+ * `@effected/workspaces` kit graph bound to `options.cwd`.
+ *
+ * @remarks
+ * The kit's root-consuming services (`WorkspaceDiscovery`,
+ * `WorkspaceSnapshots`, `WorkspaceRoot`) resolve their workspace root from
+ * the layer they were built with — single-root by design. {@link DepsRegenDefault}
+ * is this builder bound with no options (root from `process.cwd()`, read
+ * lazily); pass an explicit `cwd` when planning against a different root
+ * (fixtures, multi-repo hosts).
+ *
+ * `Workspaces.layerWithGit` mints a fresh layer reference per call, so the
+ * graph is bound ONCE per builder call and shared across every internal
+ * branch — layer memoization by reference constructs each kit service
+ * exactly once.
+ *
+ * @public
+ */
+export function makeDepsRegenDefault(
+	options?: WorkspacesOptions,
+): Layer.Layer<DepsRegen, never, FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner> {
+	const kitGraph = Workspaces.layerWithGit(options);
+	return DepsRegenLive.pipe(
+		Layer.provide(ConfigInspectorLive.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, kitGraph)))),
+		Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(Layer.mergeAll(ConfigGraph, kitGraph)))),
+		Layer.provide(ConfigGraph),
+		Layer.provide(kitGraph),
+	);
+}
+
+/**
  * Batteries-included {@link DepsRegen} layer: silk's opinionated default
- * composition of the full dependency graph. Only the platform services
- * remain — note that {@link PointInTimeWorkspace} reads git history, so
- * this layer genuinely requires `CommandExecutor` in addition to
+ * composition of the full dependency graph, root-bound to `process.cwd()`
+ * (see {@link makeDepsRegenDefault} for an explicit root). Only the platform
+ * services remain — note that `WorkspaceSnapshots` reads git history, so
+ * this layer genuinely requires `ChildProcessSpawner` in addition to
  * `FileSystem`/`Path`: provide a git-capable platform layer
- * (`NodeContext.layer`), not a bare filesystem-only layer.
+ * (`NodeServices.layer`), not a bare filesystem-only layer.
  *
  * Gating uses silk's adaptive publishability detector
  * ({@link PublishabilityDetectorAdaptiveLive}), so the default semantics
@@ -626,11 +669,11 @@ const ConfigGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReader
  *
  * @example
  * ```typescript
- * import { NodeContext } from "@effect/platform-node";
+ * import { NodeServices } from "@effect/platform-node";
  * import { Layer } from "effect";
  * import { Changesets } from "@savvy-web/silk-effects";
  *
- * const depsRegen = Changesets.DepsRegenDefault.pipe(Layer.provide(NodeContext.layer));
+ * const depsRegen = Changesets.DepsRegenDefault.pipe(Layer.provide(NodeServices.layer));
  * ```
  *
  * @public
@@ -638,11 +681,5 @@ const ConfigGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReader
 export const DepsRegenDefault: Layer.Layer<
 	DepsRegen,
 	never,
-	FileSystem.FileSystem | Path.Path | CommandExecutor.CommandExecutor
-> = DepsRegenLive.pipe(
-	Layer.provide(PointInTimeWorkspaceLive.pipe(Layer.provide(WorkspaceGraph))),
-	Layer.provide(ConfigInspectorLive.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, WorkspaceGraph)))),
-	Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(ConfigGraph))),
-	Layer.provide(ConfigGraph),
-	Layer.provide(WorkspaceGraph),
-);
+	FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner
+> = makeDepsRegenDefault();

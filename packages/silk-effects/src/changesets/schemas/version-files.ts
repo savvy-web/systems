@@ -54,9 +54,9 @@ import { Schema } from "effect";
  *
  * @public
  */
-export const JsonPathSchema = Schema.String.pipe(
-	Schema.pattern(/^\$\.[^.]/, {
-		message: () => 'JSONPath must start with "$." followed by a property (e.g., "$.version", "$.metadata.version")',
+export const JsonPathSchema = Schema.String.check(
+	Schema.isPattern(/^\$\.[^.]/, {
+		message: 'JSONPath must start with "$." followed by a property (e.g., "$.version", "$.metadata.version")',
 	}),
 );
 
@@ -88,7 +88,7 @@ export const JsonPathSchema = Schema.String.pipe(
  */
 export const VersionFileConfigSchema = Schema.Struct({
 	/** Glob pattern to match JSON files. */
-	glob: Schema.String.pipe(Schema.minLength(1)),
+	glob: Schema.String.check(Schema.isMinLength(1)),
 	/** JSONPath expressions to locate version fields. Defaults to `["$.version"]`. */
 	paths: Schema.optional(Schema.Array(JsonPathSchema)),
 });
@@ -143,11 +143,11 @@ export const VersionFilesSchema = Schema.Array(VersionFileConfigSchema);
  */
 export const LegacyVersionFileConfigSchema = Schema.Struct({
 	/** Glob pattern to match JSON files. */
-	glob: Schema.String.pipe(Schema.minLength(1)),
+	glob: Schema.String.check(Schema.isMinLength(1)),
 	/** JSONPath expressions to locate version fields. Defaults to `["$.version"]`. */
 	paths: Schema.optional(Schema.Array(JsonPathSchema)),
 	/** Workspace package name to source the version from, bypassing path-based resolution. */
-	package: Schema.optional(Schema.String.pipe(Schema.minLength(1))),
+	package: Schema.optional(Schema.String.check(Schema.isMinLength(1))),
 });
 
 /**

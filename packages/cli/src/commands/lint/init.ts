@@ -6,8 +6,8 @@
 import { chmod } from "node:fs/promises";
 import { dirname } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { FileSystem } from "@effect/platform";
-import type { PlatformError } from "@effect/platform/Error";
+import type { JsoncFormattingOptions } from "@effected/jsonc";
+import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import type { SectionWriteError } from "@savvy-web/silk-effects";
 import {
 	BiomeSchemaSync,
@@ -18,9 +18,8 @@ import {
 	savvyBasePreamble,
 	savvyHooksHygiene,
 } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
-import type { JsoncFormattingOptions } from "jsonc-effect";
-import { applyEdits, modify, parse } from "jsonc-effect";
+import { Effect, FileSystem } from "effect";
+import type { PlatformError } from "effect/PlatformError";
 import { BIOME_VERSION } from "./biome-version.js";
 
 /** Unicode checkmark symbol. */
@@ -121,17 +120,17 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 		// is compared but only warned on (it may carry intentional local rule
 		// overrides). $schema and ignores are safe to apply automatically.
 		const existingText = yield* fs.readFileString(Lint.MARKDOWNLINT_CONFIG_PATH);
-		const existingParsed = (yield* parse(existingText)) as Record<string, unknown>;
+		const existingParsed = (yield* Jsonc.parse(existingText)) as Record<string, unknown>;
 
 		let updatedText = existingText;
 		const applied: string[] = [];
 
 		// Always update $schema silently
 		if (existingParsed.$schema !== Lint.MARKDOWNLINT_SCHEMA) {
-			const edits = yield* modify(updatedText, ["$schema"], Lint.MARKDOWNLINT_SCHEMA, {
+			const edits = yield* JsoncModifier.modify(updatedText, ["$schema"], Lint.MARKDOWNLINT_SCHEMA, {
 				formattingOptions: JSONC_FORMAT,
 			});
-			updatedText = yield* applyEdits(updatedText, edits);
+			updatedText = JsoncEdit.applyAll(updatedText, edits);
 			applied.push("$schema");
 		}
 
@@ -143,10 +142,10 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 		const missingIgnores = Lint.MARKDOWNLINT_TEMPLATE.ignores.filter((glob) => !existingIgnores.includes(glob));
 		if (missingIgnores.length > 0) {
 			const mergedIgnores = [...existingIgnores, ...missingIgnores];
-			const edits = yield* modify(updatedText, ["ignores"], mergedIgnores, {
+			const edits = yield* JsoncModifier.modify(updatedText, ["ignores"], mergedIgnores, {
 				formattingOptions: JSONC_FORMAT,
 			});
-			updatedText = yield* applyEdits(updatedText, edits);
+			updatedText = JsoncEdit.applyAll(updatedText, edits);
 			applied.push(`ignores (+${missingIgnores.length})`);
 		}
 

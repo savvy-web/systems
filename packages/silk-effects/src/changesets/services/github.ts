@@ -50,20 +50,6 @@ export interface GitHubServiceShape {
 	readonly getInfo: (params: { commit: string; repo: string }) => Effect.Effect<GitHubCommitInfo, GitHubApiError>;
 }
 
-const _tag = Context.Tag("GitHubService");
-
-/**
- * Base class for GitHubService.
- *
- * @privateRemarks
- * This export is required for api-extractor documentation generation.
- * Effect's Context.Tag creates an anonymous base class that must be
- * explicitly exported to avoid "forgotten export" warnings. Do not delete.
- *
- * @internal
- */
-export const GitHubServiceBase = _tag<GitHubService, GitHubServiceShape>();
-
 /**
  * Effect service tag for GitHub API operations.
  *
@@ -72,7 +58,7 @@ export const GitHubServiceBase = _tag<GitHubService, GitHubServiceShape>();
  * service instance.
  *
  * @remarks
- * This tag follows the standard Effect `Context.Tag` pattern. Two layers
+ * This tag follows the standard Effect `Context.Service` pattern. Two layers
  * are provided out of the box:
  *
  * - {@link GitHubLive} — production layer backed by the GitHub REST API
@@ -119,11 +105,10 @@ export const GitHubServiceBase = _tag<GitHubService, GitHubServiceShape>();
  * @see {@link GitHubServiceShape} for the service interface
  * @see {@link GitHubLive} for the production layer
  * @see {@link makeGitHubTest} for creating test layers
- * @see {@link GitHubServiceBase} for the api-extractor base class
  *
  * @public
  */
-export class GitHubService extends GitHubServiceBase {}
+export class GitHubService extends Context.Service<GitHubService, GitHubServiceShape>()("GitHubService") {}
 
 /**
  * Production layer for {@link GitHubService}.

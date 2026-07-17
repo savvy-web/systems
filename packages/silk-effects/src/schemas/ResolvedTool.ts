@@ -1,9 +1,9 @@
-import { Command } from "@effect/platform";
 import { Equal, Hash, Schema } from "effect";
+import { ChildProcess } from "effect/unstable/process";
 import { ToolCommand } from "../utils/ToolCommand.js";
 import { ToolSource as ToolSourceSchema } from "./ToolResults.js";
 
-const PackageManager = Schema.Literal("npm", "pnpm", "yarn", "bun");
+const PackageManager = Schema.Literals(["npm", "pnpm", "yarn", "bun"]);
 
 /**
  * Result of resolving a {@link ToolDefinition}.
@@ -16,9 +16,9 @@ const PackageManager = Schema.Literal("npm", "pnpm", "yarn", "bun");
 export class ResolvedTool extends Schema.TaggedClass<ResolvedTool>()("ResolvedTool", {
 	name: Schema.String,
 	source: ToolSourceSchema,
-	version: Schema.OptionFromSelf(Schema.String),
-	globalVersion: Schema.OptionFromSelf(Schema.String),
-	localVersion: Schema.OptionFromSelf(Schema.String),
+	version: Schema.Option(Schema.String),
+	globalVersion: Schema.Option(Schema.String),
+	localVersion: Schema.Option(Schema.String),
 	packageManager: PackageManager,
 	mismatch: Schema.Boolean,
 }) {
@@ -36,31 +36,31 @@ export class ResolvedTool extends Schema.TaggedClass<ResolvedTool>()("ResolvedTo
 
 	exec(...args: string[]): ToolCommand {
 		if (this.source === "global") {
-			return new ToolCommand(Command.make(this.name, ...args));
+			return new ToolCommand(ChildProcess.make(this.name, args));
 		}
 
 		switch (this.packageManager) {
 			case "pnpm":
-				return new ToolCommand(Command.make("pnpm", "exec", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("pnpm", ["exec", this.name, ...args]));
 			case "npm":
-				return new ToolCommand(Command.make("npx", "--no", "--", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("npx", ["--no", "--", this.name, ...args]));
 			case "yarn":
-				return new ToolCommand(Command.make("yarn", "exec", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("yarn", ["exec", this.name, ...args]));
 			case "bun":
-				return new ToolCommand(Command.make("bun", "x", "--no-install", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("bun", ["x", "--no-install", this.name, ...args]));
 		}
 	}
 
 	dlx(...args: string[]): ToolCommand {
 		switch (this.packageManager) {
 			case "pnpm":
-				return new ToolCommand(Command.make("pnpm", "dlx", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("pnpm", ["dlx", this.name, ...args]));
 			case "npm":
-				return new ToolCommand(Command.make("npx", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("npx", [this.name, ...args]));
 			case "yarn":
-				return new ToolCommand(Command.make("yarn", "dlx", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("yarn", ["dlx", this.name, ...args]));
 			case "bun":
-				return new ToolCommand(Command.make("bun", "x", this.name, ...args));
+				return new ToolCommand(ChildProcess.make("bun", ["x", this.name, ...args]));
 		}
 	}
 
@@ -71,8 +71,8 @@ export class ResolvedTool extends Schema.TaggedClass<ResolvedTool>()("ResolvedTo
 
 	[Hash.symbol](): number {
 		let h = Hash.hash(this.name);
-		h = Hash.combine(h)(Hash.hash(this.source));
-		h = Hash.combine(h)(Hash.hash(this.version));
-		return Hash.cached(this)(h);
+		h = Hash.combine(h, Hash.hash(this.source));
+		h = Hash.combine(h, Hash.hash(this.version));
+		return Hash.optimize(h);
 	}
 }

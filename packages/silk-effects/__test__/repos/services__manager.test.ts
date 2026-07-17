@@ -11,9 +11,9 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CommandExecutor } from "@effect/platform";
-import { NodeContext } from "@effect/platform-node";
-import { Effect, Layer, Stream } from "effect";
+import { NodeServices } from "@effect/platform-node";
+import { Git, GitCommandError } from "@effected/git";
+import { Cause, Effect, Layer, Option } from "effect";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ReposManifestFile } from "../../src/repos/schemas/manifest.js";
 import type {
@@ -58,15 +58,11 @@ describe("ReposManager.status — stubbed executor", () => {
 			write: () => Effect.succeed(undefined),
 		} as never);
 
-		// A fake process that exits 0 with empty stdout — runGit is
-		// exit-code-aware, so the stub must model start/exitCode/stdout/stderr.
-		const executorStub = Layer.succeed(CommandExecutor.CommandExecutor, {
-			start: () =>
-				Effect.succeed({
-					exitCode: Effect.succeed(0),
-					stdout: Stream.empty,
-					stderr: Stream.empty,
-				}),
+		// A Git stub whose ls-tree lists nothing — the path isn't tracked at
+		// HEAD, and the repo dir is absent so `status` is never consulted.
+		const gitStub = Layer.succeed(Git, {
+			lsTree: () => Effect.succeed([]),
+			status: () => Effect.succeed([]),
 		} as never);
 
 		const root = mkdtempSync(join(tmpdir(), "repos-manager-status-"));
@@ -78,8 +74,8 @@ describe("ReposManager.status — stubbed executor", () => {
 			}).pipe(
 				Effect.provide(ReposManagerLive),
 				Effect.provide(configStoreStub),
-				Effect.provide(executorStub),
-				Effect.provide(NodeContext.layer),
+				Effect.provide(gitStub),
+				Effect.provide(NodeServices.layer),
 			) as Effect.Effect<ReposStatusReport>,
 		);
 
@@ -159,7 +155,11 @@ describe("ReposManager.sync / status — real git", () => {
 			write: () => Effect.succeed(undefined),
 		} as never);
 
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreReal), Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreReal),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -247,7 +247,11 @@ describe("ReposManager.sync / status — real git", () => {
 			write: () => Effect.succeed(undefined),
 		} as never);
 
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreReal), Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreReal),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -296,7 +300,11 @@ describe("ReposManager.sync / status — real git", () => {
 			write: () => Effect.succeed(undefined),
 		} as never);
 
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreReal), Layer.provide(NodeContext.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreReal),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromiseExit(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -368,8 +376,12 @@ describe("ReposManager.add / pin — real git", () => {
 		const name = "spec";
 		const upstreamUrl = `file://${up}`;
 
-		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreLayer),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -467,6 +479,10 @@ describe("ReposManager.add / pin — real git", () => {
 
 		const root = mkdtempSync(join(tmpdir(), "repos-manager-pin-missing-"));
 
+		// `pin` fails at the manifest lookup before any git call, so an empty
+		// Git stub satisfies `ReposManagerLive`'s requirement without spawning.
+		const gitStub = Layer.succeed(Git, {} as never);
+
 		const pinExit = await Effect.runPromiseExit(
 			Effect.gen(function* () {
 				const manager = yield* ReposManager;
@@ -474,13 +490,17 @@ describe("ReposManager.add / pin — real git", () => {
 			}).pipe(
 				Effect.provide(ReposManagerLive),
 				Effect.provide(configStoreStub),
-				Effect.provide(NodeContext.layer),
+				Effect.provide(gitStub),
+				Effect.provide(NodeServices.layer),
 			) as Effect.Effect<unknown, unknown>,
 		);
 
 		expect(pinExit._tag).toBe("Failure");
-		if (pinExit._tag === "Failure" && pinExit.cause._tag === "Fail") {
-			expect(pinExit.cause.error).toMatchObject({ _tag: "RepoNotFoundError", name: "does-not-exist" });
+		if (pinExit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(pinExit.cause))).toMatchObject({
+				_tag: "RepoNotFoundError",
+				name: "does-not-exist",
+			});
 		}
 	});
 
@@ -494,8 +514,12 @@ describe("ReposManager.add / pin — real git", () => {
 		});
 		const upstreamUrl = `file://${join(upstreamBareDir, "myrepo.git")}`;
 
-		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreLayer),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -539,8 +563,12 @@ describe("ReposManager.add / pin — real git", () => {
 		const stableSha = git(up, "rev-parse", "stable").trim();
 		expect(stableSha).not.toBe(git(up, "rev-parse", "1.0.0^{commit}").trim());
 
-		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreLayer),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -586,8 +614,12 @@ describe("ReposManager.add / pin — real git", () => {
 
 		const host = makeHost();
 
-		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreLayer),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -668,8 +700,12 @@ describe("ReposManager.add / pin — real git", () => {
 		const name = "spec";
 		const upstreamUrl = `file://${up}`;
 
-		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreLayer),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 		const runExit = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -690,11 +726,13 @@ describe("ReposManager.add / pin — real git", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({ _tag: "GitSubmoduleError" });
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({ _tag: "GitSubmoduleError" });
 			// The reason carries git's stderr naming the missing ref — before the
 			// exit-code-aware runner, this pin "succeeded" silently.
-			expect((exit.cause.error as { reason: string }).reason).toContain("no-such-ref-xyz");
+			expect((Option.getOrThrow(Cause.findErrorOption(exit.cause)) as { reason: string }).reason).toContain(
+				"no-such-ref-xyz",
+			);
 		}
 	});
 
@@ -703,8 +741,12 @@ describe("ReposManager.add / pin — real git", () => {
 		const host = makeHost();
 		const upstreamUrl = `file://${up}`;
 
-		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreLayer),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const runExit = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromiseExit(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 
@@ -721,9 +763,12 @@ describe("ReposManager.add / pin — real git", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
-			expect((exit.cause.error as { reason: string }).reason).toContain("../evil");
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({
+				_tag: "ReposConfigError",
+				kind: "invalid",
+			});
+			expect((Option.getOrThrow(Cause.findErrorOption(exit.cause)) as { reason: string }).reason).toContain("../evil");
 		}
 
 		// No side effects: no manifest ever created, and no git changes staged
@@ -739,8 +784,12 @@ describe("ReposManager.add / pin — real git", () => {
 		const name = "spec";
 		const upstreamUrl = `file://${up}`;
 
-		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeContext.layer));
-		const managerLayer = ReposManagerLive.pipe(Layer.provide(configStoreLayer), Layer.provide(NodeContext.layer));
+		const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+		const managerLayer = ReposManagerLive.pipe(
+			Layer.provide(configStoreLayer),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(NodeServices.layer),
+		);
 		const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
 			Effect.runPromise(effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>);
 		const runExit = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -764,9 +813,14 @@ describe("ReposManager.add / pin — real git", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
-			expect((exit.cause.error as { reason: string }).reason).toContain("already vendored");
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({
+				_tag: "ReposConfigError",
+				kind: "invalid",
+			});
+			expect((Option.getOrThrow(Cause.findErrorOption(exit.cause)) as { reason: string }).reason).toContain(
+				"already vendored",
+			);
 		}
 
 		const manifestAfter = readFileSync(manifestPath, "utf8");
@@ -787,11 +841,17 @@ describe("ReposManager.status — propagates git failures", () => {
 			write: () => Effect.succeed(undefined),
 		} as never);
 
-		// An executor whose every invocation fails: before the fix, status
+		// A Git service whose every invocation fails: before the fix, status
 		// swallowed this via orElseSucceed and reported commit null / dirty
 		// false as if everything were fine.
-		const failingExecutorStub = Layer.succeed(CommandExecutor.CommandExecutor, {
-			start: () => Effect.fail(new Error("git exploded")),
+		const gitFailure = GitCommandError.make({
+			args: ["ls-tree", "HEAD"],
+			cwd: root,
+			stderr: "git exploded",
+		});
+		const failingGitStub = Layer.succeed(Git, {
+			lsTree: () => Effect.fail(gitFailure),
+			status: () => Effect.fail(gitFailure),
 		} as never);
 
 		const exit = await Effect.runPromiseExit(
@@ -801,14 +861,14 @@ describe("ReposManager.status — propagates git failures", () => {
 			}).pipe(
 				Effect.provide(ReposManagerLive),
 				Effect.provide(configStoreStub),
-				Effect.provide(failingExecutorStub),
-				Effect.provide(NodeContext.layer),
+				Effect.provide(failingGitStub),
+				Effect.provide(NodeServices.layer),
 			) as Effect.Effect<unknown, unknown>,
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({ _tag: "GitSubmoduleError" });
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({ _tag: "GitSubmoduleError" });
 		}
 	});
 });
@@ -829,12 +889,17 @@ describe("ReposManager.note", () => {
 		return { configStore, getManifest: () => manifest };
 	}
 
+	// `note` operates on the manifest only — no git command ever runs — so an
+	// empty Git stub satisfies `ReposManagerLive`'s requirement without spawning.
+	const gitStub = Layer.succeed(Git, {} as never);
+
 	function run<A, E>(effect: Effect.Effect<A, E, ReposManager>, configStore: Layer.Layer<ReposConfigStore>) {
 		return Effect.runPromise(
 			effect.pipe(
 				Effect.provide(ReposManagerLive),
 				Effect.provide(configStore),
-				Effect.provide(NodeContext.layer),
+				Effect.provide(gitStub),
+				Effect.provide(NodeServices.layer),
 			) as Effect.Effect<A, E>,
 		);
 	}
@@ -844,7 +909,8 @@ describe("ReposManager.note", () => {
 			effect.pipe(
 				Effect.provide(ReposManagerLive),
 				Effect.provide(configStore),
-				Effect.provide(NodeContext.layer),
+				Effect.provide(gitStub),
+				Effect.provide(NodeServices.layer),
 			) as Effect.Effect<unknown, unknown>,
 		);
 	}
@@ -891,8 +957,8 @@ describe("ReposManager.note", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({
 				_tag: "ReposConfigError",
 				reason: "note limit (10) reached for spec; promote or remove notes first",
 			});
@@ -938,8 +1004,12 @@ describe("ReposManager.note", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({ _tag: "NoteNotFoundError", name: "spec", id: "does-not-exist" });
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({
+				_tag: "NoteNotFoundError",
+				name: "spec",
+				id: "does-not-exist",
+			});
 		}
 	});
 
@@ -981,8 +1051,12 @@ describe("ReposManager.note", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({ _tag: "NoteNotFoundError", name: "spec", id: "does-not-exist" });
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({
+				_tag: "NoteNotFoundError",
+				name: "spec",
+				id: "does-not-exist",
+			});
 		}
 	});
 
@@ -1067,8 +1141,11 @@ describe("ReposManager.note", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
-			expect(exit.cause.error).toMatchObject({ _tag: "RepoNotFoundError", name: "does-not-exist" });
+		if (exit._tag === "Failure") {
+			expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({
+				_tag: "RepoNotFoundError",
+				name: "does-not-exist",
+			});
 		}
 	});
 });

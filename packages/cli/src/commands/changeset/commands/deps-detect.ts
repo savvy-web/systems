@@ -22,37 +22,35 @@
  * @internal
  */
 
-import { Command, Options } from "@effect/cli";
+import { resolve } from "node:path";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 type WorkspaceDependencyDiff = Changesets.WorkspaceDependencyDiff;
 const { DepsRegen, serializeDependencyTableToMarkdown } = Changesets;
 
 /* v8 ignore start -- CLI option definitions */
-const fromOption = Options.text("from").pipe(
-	Options.withDescription("Older ref to diff from (defaults to merge-base with base branch)"),
-	Options.optional,
+const fromOption = Flag.string("from").pipe(
+	Flag.withDescription("Older ref to diff from (defaults to merge-base with base branch)"),
+	Flag.optional,
 );
-const toOption = Options.text("to").pipe(
-	Options.withDescription("Newer ref to diff to (defaults to working tree)"),
-	Options.optional,
+const toOption = Flag.string("to").pipe(
+	Flag.withDescription("Newer ref to diff to (defaults to working tree)"),
+	Flag.optional,
 );
-const cwdOption = Options.directory("cwd").pipe(
-	Options.withDescription("Project root (defaults to the current working directory)"),
-	Options.withDefault("."),
+const cwdOption = Flag.directory("cwd").pipe(
+	Flag.withDescription("Project root (defaults to the current working directory)"),
+	Flag.withDefault("."),
 );
-const packageOption = Options.text("package").pipe(
-	Options.withDescription("Restrict output to a single workspace package"),
-	Options.optional,
+const packageOption = Flag.string("package").pipe(
+	Flag.withDescription("Restrict output to a single workspace package"),
+	Flag.optional,
 );
-const jsonOption = Options.boolean("json").pipe(
-	Options.withDescription("Emit JSON (default)"),
-	Options.withDefault(false),
-);
-const markdownOption = Options.boolean("markdown").pipe(
-	Options.withDescription("Emit one CSH005 markdown block per workspace package"),
-	Options.withDefault(false),
+const jsonOption = Flag.boolean("json").pipe(Flag.withDescription("Emit JSON (default)"), Flag.withDefault(false));
+const markdownOption = Flag.boolean("markdown").pipe(
+	Flag.withDescription("Emit one CSH005 markdown block per workspace package"),
+	Flag.withDefault(false),
 );
 /* v8 ignore stop */
 
@@ -98,16 +96,13 @@ export function runDepsDetect(
 				...(Option.isSome(to) ? { to: to.value } : {}),
 			})
 			.pipe(
-				Effect.catchTags({
-					GitError: (err) => {
+				// Any plan failure (git, IO, discovery, snapshot) exits non-zero; the
+				// typed error still propagates for runMain to report.
+				Effect.tapError(() =>
+					Effect.sync(() => {
 						process.exitCode = 1;
-						return Effect.fail(err);
-					},
-					GitReadError: (err) => {
-						process.exitCode = 1;
-						return Effect.fail(err);
-					},
-				}),
+					}),
+				),
 			);
 
 		const diffs = plan.toWrite.map((entry) => entry.diff);
@@ -135,5 +130,9 @@ export const depsDetectCommand = Command.make(
 		json: jsonOption,
 		markdown: markdownOption,
 	},
-	({ from, to, cwd, package: pkg, json, markdown }) => runDepsDetect(cwd, from, to, pkg, json, markdown),
+	({ from, to, cwd, package: pkg, json, markdown }) =>
+		// Root-bound per invocation to the parsed --cwd (see deps-regen for why).
+		runDepsDetect(cwd, from, to, pkg, json, markdown).pipe(
+			Effect.provide(Changesets.makeDepsRegenDefault({ cwd: resolve(cwd) })),
+		),
 ).pipe(Command.withDescription("Compute the dependency diff between two refs"));

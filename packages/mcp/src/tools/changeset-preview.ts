@@ -6,13 +6,13 @@
  * @packageDocumentation
  */
 
+import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, ParseResult, Schema } from "effect";
-import type { WorkspaceRootNotFoundError } from "workspaces-effect";
-import { WorkspaceRoot } from "workspaces-effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 
 /** The `changeset_preview` result — the silk-effects preview shape. */
-export const ChangesetPreviewResult = Changesets.ChangesetPreviewSchema.annotations({
+export const ChangesetPreviewResult = Changesets.ChangesetPreviewSchema.annotate({
 	identifier: "ChangesetPreviewResult",
 	title: "changeset_preview result",
 	description: "Read-only preview of the next release: version bumps + rendered CHANGELOG blocks.",
@@ -41,14 +41,12 @@ const renderMarkdown = (data: ChangesetPreviewResultType): string => {
 };
 
 /** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetPreviewAsMarkdown = Schema.transformOrFail(ChangesetPreviewResult, Schema.String, {
-	strict: true,
-	decode: (data) => ParseResult.succeed(renderMarkdown(data)),
-	encode: (text, _options, ast) =>
-		ParseResult.fail(
-			new ParseResult.Forbidden(ast, text, "ChangesetPreviewAsMarkdown is one-way: markdown cannot be parsed back."),
-		),
-});
+export const ChangesetPreviewAsMarkdown = ChangesetPreviewResult.pipe(
+	Schema.decodeTo(Schema.String, {
+		decode: SchemaGetter.transform(renderMarkdown),
+		encode: SchemaGetter.forbidden(() => "ChangesetPreviewAsMarkdown is one-way: markdown cannot be parsed back."),
+	}),
+);
 
 /** Arguments for the {@link changesetPreview} handler. */
 export interface ChangesetPreviewArgs {

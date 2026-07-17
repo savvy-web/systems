@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runChangesetCheck } from "../../src/commands/changeset/commands/check.js";
 
-const silentLogger = Logger.replace(Logger.defaultLogger, Logger.none);
+const silentLogger = Logger.layer([]);
 
 describe("check command – runChangesetCheck handler", () => {
 	let tempDir: string;

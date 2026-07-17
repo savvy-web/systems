@@ -6,10 +6,9 @@ import { Schema } from "effect";
  * (`.repos/<name>`) without escaping the `.repos/` directory.
  * @public
  */
-export const RepoName = Schema.String.pipe(
-	Schema.pattern(/^(?!\.{1,2}$)[A-Za-z0-9][A-Za-z0-9._-]*$/),
-	Schema.annotations({ identifier: "RepoName" }),
-);
+export const RepoName = Schema.String.check(Schema.isPattern(/^(?!\.{1,2}$)[A-Za-z0-9][A-Za-z0-9._-]*$/)).annotate({
+	identifier: "RepoName",
+});
 /** @public */
 export type RepoName = typeof RepoName.Type;
 
@@ -21,7 +20,7 @@ export const RepoNote = Schema.Struct({
 	id: Schema.String,
 	date: Schema.String,
 	ref: Schema.String,
-	note: Schema.String.pipe(Schema.minLength(1)),
+	note: Schema.String.check(Schema.isMinLength(1)),
 });
 /** @public */
 export type RepoNote = typeof RepoNote.Type;
@@ -32,7 +31,7 @@ export type RepoNote = typeof RepoNote.Type;
  */
 export const RepoOrientation = Schema.Struct({
 	layout: Schema.optional(Schema.String),
-	keyPaths: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+	keyPaths: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 	startHere: Schema.optional(Schema.String),
 });
 /** @public */
@@ -43,9 +42,9 @@ export type RepoOrientation = typeof RepoOrientation.Type;
  * @public
  */
 export const RepoEntry = Schema.Struct({
-	url: Schema.String.pipe(Schema.minLength(1)),
-	ref: Schema.String.pipe(Schema.minLength(1)),
-	purpose: Schema.String.pipe(Schema.minLength(1)),
+	url: Schema.String.check(Schema.isMinLength(1)),
+	ref: Schema.String.check(Schema.isMinLength(1)),
+	purpose: Schema.String.check(Schema.isMinLength(1)),
 	sparse: Schema.optional(Schema.Array(Schema.String)),
 	orientation: Schema.optional(RepoOrientation),
 	notes: Schema.optional(Schema.Array(RepoNote)),
@@ -74,8 +73,8 @@ const isRepoName = Schema.is(RepoName);
  * @public
  */
 export const ReposManifestFile = Schema.Struct({
-	repos: Schema.Record({ key: Schema.String, value: RepoEntry }).pipe(
-		Schema.filter((repos) => {
+	repos: Schema.Record(Schema.String, RepoEntry).check(
+		Schema.makeFilter((repos: Record<string, unknown>) => {
 			const badKey = Object.keys(repos).find((key) => !isRepoName(key));
 			return badKey === undefined
 				? undefined

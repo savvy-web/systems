@@ -81,7 +81,7 @@ function collectLogs(cwd: string, json: boolean, layer: Layer.Layer<Repos.ReposM
 	const captureLogger = Logger.make(({ message }) => {
 		sink.push(Array.isArray(message) ? message.join(" ") : String(message));
 	});
-	const captured = Layer.provideMerge(layer, Logger.replace(Logger.defaultLogger, captureLogger));
+	const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
 	return Effect.runPromise(runReposStatus(cwd, json).pipe(Effect.provide(captured))).then(() => sink);
 }
 

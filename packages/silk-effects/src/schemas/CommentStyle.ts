@@ -10,7 +10,7 @@ import { Schema } from "effect";
  * @since 0.1.0
  * @public
  */
-export const CommentStyle = Schema.Literal("#", "//");
+export const CommentStyle = Schema.Literals(["#", "//"]);
 /**
  * @since 0.1.0
  * @public

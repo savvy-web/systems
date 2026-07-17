@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { findWorkspaceRootSync, getWorkspacePackagesSync } from "workspaces-effect";
 import { ConfigDiscovery, ConfigDiscoveryLive, Lint } from "../../src/index.js";
 
 const {
@@ -20,11 +20,11 @@ const {
 
 import { resetWorkspaceCache } from "../../src/lint/utils/Workspace.js";
 
-// Mock workspaces-effect so workspace detection does not interfere with tests.
+// Mock @effected/workspaces so workspace detection does not interfere with tests.
 // By default the mocks return null (not in a workspace), which causes
 // isWorkspacePackagePath() to fall back to permissive mode (returns true for all paths).
-vi.mock("workspaces-effect", async (importOriginal) => {
-	const mod = await importOriginal<typeof import("workspaces-effect")>();
+vi.mock("@effected/workspaces", async (importOriginal) => {
+	const mod = await importOriginal<typeof import("@effected/workspaces")>();
 	return {
 		...mod,
 		findWorkspaceRootSync: vi.fn((): string | null => null),
@@ -139,7 +139,7 @@ describe("Handler classes", () => {
 		});
 
 		it("should filter to workspace roots only via fmtCommand", async () => {
-			const { findWorkspaceRootSync, getWorkspacePackagesSync } = await import("workspaces-effect");
+			const { findWorkspaceRootSync, getWorkspacePackagesSync } = await import("@effected/workspaces");
 			const { resetWorkspaceCache } = await import("../../src/lint/utils/Workspace.js");
 
 			vi.mocked(findWorkspaceRootSync).mockReturnValue("/repo");
@@ -386,7 +386,7 @@ describe("Handler classes", () => {
 			expect(PnpmWorkspace.glob).toBe("pnpm-workspace.yaml");
 		});
 
-		it("should sort and format in-place", () => {
+		it("should sort and format in-place", async () => {
 			// Create a backup of the actual file
 			const filepath = "pnpm-workspace.yaml";
 			const original = readFileSync(filepath, "utf-8");
@@ -396,8 +396,9 @@ describe("Handler classes", () => {
 				const unsorted = "onlyBuiltDependencies:\n  - zlib\n  - abc\npackages:\n  - z-pkg\n  - a-pkg\n";
 				writeFileSync(filepath, unsorted, "utf-8");
 
+				// v4: the handler is async (kit stringify + prettier normalization)
 				const handler = PnpmWorkspace.create();
-				const result = handler([]);
+				const result = await handler([]);
 
 				// Sorting/formatting is done in-place; lint-staged auto-stages modified files
 				expect(result).toEqual([]);
@@ -428,7 +429,7 @@ describe("Handler classes", () => {
 			expect(Object.keys(sorted)[0]).toBe("packages");
 		});
 
-		it("should handle skipSort option", () => {
+		it("should handle skipSort option", async () => {
 			const filepath = "pnpm-workspace.yaml";
 			const original = readFileSync(filepath, "utf-8");
 
@@ -437,7 +438,7 @@ describe("Handler classes", () => {
 				writeFileSync(filepath, content, "utf-8");
 
 				const handler = PnpmWorkspace.create({ skipSort: true });
-				const result = handler([]);
+				const result = await handler([]);
 				// Should still format (skipFormat defaults to false)
 				expect(result).toEqual([]);
 			} finally {
@@ -445,7 +446,7 @@ describe("Handler classes", () => {
 			}
 		});
 
-		it("should return empty when both skipSort and skipFormat are true", () => {
+		it("should return empty when both skipSort and skipFormat are true", async () => {
 			const filepath = "pnpm-workspace.yaml";
 			const original = readFileSync(filepath, "utf-8");
 
@@ -454,7 +455,7 @@ describe("Handler classes", () => {
 				writeFileSync(filepath, content, "utf-8");
 
 				const handler = PnpmWorkspace.create({ skipSort: true, skipFormat: true });
-				const result = handler([]);
+				const result = await handler([]);
 				expect(result).toEqual([]);
 				// Content should be unchanged
 				expect(readFileSync(filepath, "utf-8")).toBe(content);
@@ -463,27 +464,28 @@ describe("Handler classes", () => {
 			}
 		});
 
-		it("should throw on invalid YAML when skipLint is false", () => {
+		it("should throw on invalid YAML when skipLint is false", async () => {
 			const filepath = "pnpm-workspace.yaml";
 			const original = readFileSync(filepath, "utf-8");
 
 			try {
 				writeFileSync(filepath, ":\n  invalid: [\nyaml", "utf-8");
+				// v4: the handler is async, so the throw surfaces as a rejection.
 				const handler = PnpmWorkspace.create();
-				expect(() => handler([])).toThrow("Invalid YAML");
+				await expect(handler([])).rejects.toThrow("Invalid YAML");
 			} finally {
 				writeFileSync(filepath, original, "utf-8");
 			}
 		});
 
-		it("should return empty on invalid YAML when skipLint is true", () => {
+		it("should return empty on invalid YAML when skipLint is true", async () => {
 			const filepath = "pnpm-workspace.yaml";
 			const original = readFileSync(filepath, "utf-8");
 
 			try {
 				writeFileSync(filepath, ":\n  invalid: [\nyaml", "utf-8");
 				const handler = PnpmWorkspace.create({ skipLint: true });
-				const result = handler([]);
+				const result = await handler([]);
 				expect(result).toEqual([]);
 			} finally {
 				writeFileSync(filepath, original, "utf-8");

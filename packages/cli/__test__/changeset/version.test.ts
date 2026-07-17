@@ -9,12 +9,11 @@ vi.mock("../../src/commands/changeset/utils/config-gate.js", () => ({
 
 /** A logger that collects emitted messages so tests can assert on the command's output. */
 const captureLogger = (sink: string[]) =>
-	Logger.replace(
-		Logger.defaultLogger,
+	Logger.layer([
 		Logger.make(({ message }) => {
 			sink.push(Array.isArray(message) ? message.map(String).join(" ") : String(message));
 		}),
-	);
+	]);
 
 /** A ReleasePlanner test layer that records how `apply` was invoked. */
 const recordingPlanner = (result: Changesets.AppliedRelease, calls: Array<{ root: string; dryRun: boolean }>) =>

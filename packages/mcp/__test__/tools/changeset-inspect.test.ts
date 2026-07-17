@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import {
@@ -70,14 +70,14 @@ describe("changesetInspect handler", () => {
 	it("projects branch mode and renders markdown", async () => {
 		const data = await run(changesetInspect({ mode: "branch" }, "/repo"));
 		expect(data.mode).toBe("branch");
-		const md = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
 		expect(md).toContain("@scope/foo");
 	});
 
 	it("projects config mode", async () => {
 		const data = await run(changesetInspect({ mode: "config" }, "/repo"));
 		expect(data.mode).toBe("config");
-		const md = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
 		expect(md).toContain("changeset config");
 	});
 
@@ -88,7 +88,7 @@ describe("changesetInspect handler", () => {
 			expect(data.result).toHaveLength(1);
 			expect(data.result[0].path).toBe("packages/foo/x.ts");
 		}
-		const md = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
 		expect(md).toContain("packages/foo/x.ts");
 	});
 
@@ -111,7 +111,7 @@ describe("changesetInspect handler", () => {
 	});
 
 	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeSync(ChangesetInspectAsMarkdown)("anything")).toThrow();
+		expect(() => Schema.encodeUnknownSync(ChangesetInspectAsMarkdown)("anything")).toThrow();
 	});
 
 	it("escapes repo-derived values as inert code spans (prompt-injection hardening)", () => {
@@ -125,7 +125,7 @@ describe("changesetInspect handler", () => {
 				unmappedFiles: ["evil`whoami`.ts"],
 			},
 		};
-		const md = Schema.decodeSync(ChangesetInspectAsMarkdown)(data);
+		const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
 		// The raw, unescaped backtick form must not survive into the transcript.
 		expect(md).not.toContain("evil`whoami`.ts");
 		// Backticks are escaped inside a code span.

@@ -1,17 +1,18 @@
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
-import { Effect, Layer } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { NodeServices } from "@effect/platform-node";
+import { Git } from "@effected/git";
 import {
 	CatalogSet,
 	PackageStateSnapshot,
-	PointInTimeWorkspace,
 	PublishabilityDetector,
 	WorkspaceDiscovery,
+	WorkspaceSnapshots,
 	WorkspaceStateSnapshot,
-} from "workspaces-effect";
+} from "@effected/workspaces";
+import { Effect, Layer } from "effect";
+import { describe, expect, it, vi } from "vitest";
 import type { ChangesetIOError } from "../../src/changesets/errors.js";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
 import type { RegenPlan } from "../../src/changesets/services/deps-regen.js";
@@ -47,13 +48,13 @@ const wss = (
 	});
 
 /**
- * A `PointInTimeWorkspace` stub. `at("BEFORE")` → before snapshot; any other
+ * A `WorkspaceSnapshots` stub. `at("BEFORE")` → before snapshot; any other
  * ref (including the `to` ref used in these tests) and `worktree()` → after
  * snapshot. Canned snapshots carry their own catalogs, so specifier
  * resolution is exercised end-to-end without a live resolver.
  */
-const pitStub = (before: WorkspaceStateSnapshot, after: WorkspaceStateSnapshot): Layer.Layer<PointInTimeWorkspace> =>
-	Layer.succeed(PointInTimeWorkspace, {
+const pitStub = (before: WorkspaceStateSnapshot, after: WorkspaceStateSnapshot): Layer.Layer<WorkspaceSnapshots> =>
+	Layer.succeed(WorkspaceSnapshots, {
 		at: (ref: string) => Effect.succeed(ref === "BEFORE" ? before : after),
 		worktree: () => Effect.succeed(after),
 	} as never);
@@ -120,7 +121,7 @@ describe("DepsRegen plan/execute", () => {
 		DetectorLayer,
 		configStub({ versionPrivate: false, ignored: [] }),
 	);
-	const live = DepsRegenLive.pipe(Layer.provide(deps));
+	const live = DepsRegenLive.pipe(Layer.provide(deps), Layer.provide(Git.layer));
 
 	const cannedDiff: WorkspaceDependencyDiff = {
 		package: "@x/a",
@@ -151,7 +152,7 @@ describe("DepsRegen plan/execute", () => {
 		});
 
 		const { plan, result } = await Effect.runPromise(
-			program.pipe(Effect.provide(live), Effect.provide(NodeContext.layer)),
+			program.pipe(Effect.provide(live), Effect.provide(NodeServices.layer)),
 		);
 
 		expect(plan.toWrite).toHaveLength(1);
@@ -199,7 +200,7 @@ describe("DepsRegen plan/execute", () => {
 			DetectorLayerMulti,
 			configStub({ versionPrivate: false, ignored: [] }),
 		);
-		const liveMulti = DepsRegenLive.pipe(Layer.provide(depsMulti));
+		const liveMulti = DepsRegenLive.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
 
 		// Force every `pickRandomTriplet()` pick to be identical so a filename
 		// collision between the two changed packages is deterministic rather
@@ -210,7 +211,7 @@ describe("DepsRegen plan/execute", () => {
 				const svc = yield* DepsRegen;
 				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
 			});
-			const plan = await Effect.runPromise(program.pipe(Effect.provide(liveMulti), Effect.provide(NodeContext.layer)));
+			const plan = await Effect.runPromise(program.pipe(Effect.provide(liveMulti), Effect.provide(NodeServices.layer)));
 
 			expect(plan.toWrite).toHaveLength(2);
 			const basenames = plan.toWrite.map((w) => basename(w.file));
@@ -231,7 +232,7 @@ describe("DepsRegen plan/execute", () => {
 			Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				return yield* svc.execute(plan).pipe(Effect.flip);
-			}).pipe(Effect.provide(live), Effect.provide(NodeContext.layer)),
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer)),
 		);
 		expect(result._tag).toBe("ChangesetIOError");
 		expect((result as ChangesetIOError).operation).toBe("write");
@@ -248,7 +249,7 @@ describe("DepsRegen plan/execute", () => {
 			Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				return yield* svc.execute(plan);
-			}).pipe(Effect.provide(live), Effect.provide(NodeContext.layer)),
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer)),
 		);
 		expect(result.written).toEqual([join(dir, "calm-owls-sing.md")]);
 		expect(result.deleted).toEqual([]);
@@ -299,7 +300,7 @@ describe("DepsRegen — devDependency-only diffs must not delete pure changesets
 		DevDepDetectorLayer,
 		configStub({ versionPrivate: false, ignored: [] }),
 	);
-	const devDepLive = DepsRegenLive.pipe(Layer.provide(devDeps));
+	const devDepLive = DepsRegenLive.pipe(Layer.provide(devDeps), Layer.provide(Git.layer));
 
 	it("plan() excludes the pre-existing pure changeset from toDelete, and execute() leaves it on disk", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "depsregen-devdep-"));
@@ -319,7 +320,7 @@ describe("DepsRegen — devDependency-only diffs must not delete pure changesets
 		});
 
 		const { plan, result } = await Effect.runPromise(
-			program.pipe(Effect.provide(devDepLive), Effect.provide(NodeContext.layer)),
+			program.pipe(Effect.provide(devDepLive), Effect.provide(NodeServices.layer)),
 		);
 
 		expect(plan.toWrite).toHaveLength(0);
@@ -392,12 +393,12 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 			GatingDetectorLayer,
 			config,
 		);
-		const live = DepsRegenLive.pipe(Layer.provide(deps));
+		const live = DepsRegenLive.pipe(Layer.provide(deps), Layer.provide(Git.layer));
 		const program = Effect.gen(function* () {
 			const svc = yield* DepsRegen;
 			return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER", ...options });
 		});
-		return Effect.runPromise(program.pipe(Effect.provide(live), Effect.provide(NodeContext.layer)));
+		return Effect.runPromise(program.pipe(Effect.provide(live), Effect.provide(NodeServices.layer)));
 	};
 
 	const writtenPackages = (plan: RegenPlan) => plan.toWrite.map((w) => w.package).sort();

@@ -20,19 +20,16 @@
  * @internal
  */
 
-import { Command, Options } from "@effect/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Console, Effect } from "effect";
+import { Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option definitions */
-const jsonOption = Options.boolean("json").pipe(
-	Options.withDescription("Emit the structured drift report as JSON"),
-	Options.withDefault(false),
+const jsonOption = Flag.boolean("json").pipe(
+	Flag.withDescription("Emit the structured drift report as JSON"),
+	Flag.withDefault(false),
 );
-const cwdOption = Options.directory("cwd").pipe(
-	Options.withDescription("Repo root to inspect"),
-	Options.withDefault("."),
-);
+const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to inspect"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { SilkWorkspaceAnalyzer, WorkspaceAnalysis } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import { workspaceInfo } from "../../src/tools/workspace-info.js";
 

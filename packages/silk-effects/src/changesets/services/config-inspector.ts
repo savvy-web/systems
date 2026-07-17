@@ -33,10 +33,12 @@
  */
 
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { FileSystem } from "@effect/platform";
-import { Context, Effect, Layer, Schema } from "effect";
-import { globSync } from "tinyglobby";
-import { WorkspaceDiscovery } from "workspaces-effect";
+import { GlobPattern, GlobPatternOptions } from "@effected/glob";
+import { descend } from "@effected/walker";
+import type { WorkspaceDiscoveryShape } from "@effected/workspaces";
+import { WorkspaceDiscovery } from "@effected/workspaces";
+import { Context, Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
+import type { ChangesetConfigReaderShape } from "../../services/ChangesetConfigReader.js";
 import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";
 import type { RawPackageJson } from "../../services/SilkPublishability.js";
 import { SilkPublishability, readTargetsBinding } from "../../services/SilkPublishability.js";
@@ -48,13 +50,13 @@ import type { VersionFileConfig } from "../schemas/version-files.js";
 /** A `versionFiles` entry expanded to its absolute target paths. @public */
 export const ResolvedVersionFileSchema = Schema.Struct({
 	glob: Schema.String,
-	paths: Schema.Array(Schema.String).annotations({
+	paths: Schema.Array(Schema.String).annotate({
 		description: 'JSONPath expressions to update (defaults to ["$.version"]).',
 	}),
 	matchedFiles: Schema.Array(Schema.String),
-}).annotations({ identifier: "ResolvedVersionFile" });
+}).annotate({ identifier: "ResolvedVersionFile" });
 /** A `versionFiles` entry expanded to its absolute target paths. @public */
-export type ResolvedVersionFile = Schema.Schema.Type<typeof ResolvedVersionFileSchema>;
+export type ResolvedVersionFile = typeof ResolvedVersionFileSchema.Type;
 
 /** A package's resolved release surface. @public */
 export const ResolvedPackageScopeSchema = Schema.Struct({
@@ -64,44 +66,44 @@ export const ResolvedPackageScopeSchema = Schema.Struct({
 	additionalScopes: Schema.Array(Schema.String),
 	additionalScopeFiles: Schema.Array(Schema.String),
 	versionFiles: Schema.Array(ResolvedVersionFileSchema),
-}).annotations({ identifier: "ResolvedPackageScope" });
+}).annotate({ identifier: "ResolvedPackageScope" });
 /** A package's resolved release surface. @public */
-export type ResolvedPackageScope = Schema.Schema.Type<typeof ResolvedPackageScopeSchema>;
+export type ResolvedPackageScope = typeof ResolvedPackageScopeSchema.Type;
 
 /** Structured representation of a resolved `.changeset/config.json`. @public */
 export const InspectedConfigSchema = Schema.Struct({
 	configPath: Schema.String,
-	projectDir: Schema.String.annotations({
+	projectDir: Schema.String.annotate({
 		description: "Absolute project root (the directory containing .changeset/).",
 	}),
 	changelog: Schema.NullOr(Schema.String),
 	baseBranch: Schema.String,
-	access: Schema.Literal("public", "restricted"),
+	access: Schema.Literals(["public", "restricted"]),
 	ignore: Schema.Array(Schema.String),
 	packages: Schema.Array(ResolvedPackageScopeSchema),
 	legacyVersionFilesUsed: Schema.Boolean,
-}).annotations({ identifier: "InspectedConfig" });
+}).annotate({ identifier: "InspectedConfig" });
 /** Structured representation of a resolved `.changeset/config.json`. @public */
-export type InspectedConfig = Schema.Schema.Type<typeof InspectedConfigSchema>;
+export type InspectedConfig = typeof InspectedConfigSchema.Type;
 
 /** Reason a path was attributed to a package (or left unmapped). @public */
-export const ClassificationReasonSchema = Schema.Union(
+export const ClassificationReasonSchema = Schema.Union([
 	Schema.Literal("workspace"),
 	Schema.Struct({ kind: Schema.Literal("additionalScope"), glob: Schema.String }),
 	Schema.Struct({ kind: Schema.Literal("versionFile"), glob: Schema.String }),
 	Schema.Null,
-).annotations({ identifier: "ClassificationReason" });
+]).annotate({ identifier: "ClassificationReason" });
 /** Reason a path was attributed to a package (or left unmapped). @public */
-export type ClassificationReason = Schema.Schema.Type<typeof ClassificationReasonSchema>;
+export type ClassificationReason = typeof ClassificationReasonSchema.Type;
 
 /** The result of classifying a single path against a resolved config. @public */
 export const ClassificationSchema = Schema.Struct({
 	path: Schema.String,
 	package: Schema.NullOr(Schema.String),
 	reason: ClassificationReasonSchema,
-}).annotations({ identifier: "Classification" });
+}).annotate({ identifier: "Classification" });
 /** The result of classifying a single path against a resolved config. @public */
-export type Classification = Schema.Schema.Type<typeof ClassificationSchema>;
+export type Classification = typeof ClassificationSchema.Type;
 
 /**
  * Effect service interface for inspecting a project's changeset config.
@@ -145,19 +147,6 @@ export interface ConfigInspectorShape {
 	readonly refresh: () => Effect.Effect<void>;
 }
 
-const _tag = Context.Tag("ConfigInspector");
-
-/**
- * Base class for {@link ConfigInspector}.
- *
- * @privateRemarks
- * Effect's `Context.Tag` creates an anonymous base class that api-extractor
- * cannot follow without an explicit export. Do not delete.
- *
- * @internal
- */
-export const ConfigInspectorBase = _tag<ConfigInspector, ConfigInspectorShape>();
-
 /**
  * Effect service tag for {@link ConfigInspectorShape}.
  *
@@ -177,7 +166,7 @@ export const ConfigInspectorBase = _tag<ConfigInspector, ConfigInspectorShape>()
  *
  * @public
  */
-export class ConfigInspector extends ConfigInspectorBase {}
+export class ConfigInspector extends Context.Service<ConfigInspector, ConfigInspectorShape>()("ConfigInspector") {}
 
 /* ----------------------------------------------------------------- *
  * Internal helpers
@@ -267,16 +256,66 @@ function normalizeLegacyOptions(
 	return { normalized, legacyUsed: true };
 }
 
+/** Match dotfiles, mirroring the former tinyglobby `dot: true` behavior. */
+const GLOB_OPTIONS = GlobPatternOptions.make({ dot: true });
+
+/**
+ * Compile `glob` via `@effected/glob`, folding a compile-guard trip
+ * (over-length pattern, brace-expansion budget, nesting depth) into a
+ * {@link ConfigurationError} naming the offending glob on the typed channel.
+ */
+function compileGlob(glob: string): Effect.Effect<GlobPattern, ConfigurationError> {
+	return GlobPattern.compile(glob, GLOB_OPTIONS).pipe(
+		Effect.mapError(
+			(error) =>
+				new ConfigurationError({
+					field: "glob",
+					reason: `Invalid glob pattern ${JSON.stringify(glob)}: ${error.message}`,
+				}),
+		),
+	);
+}
+
+/**
+ * Pure attribution helper: does `glob` (under this service's `dot: true`
+ * semantics) match the repo-relative POSIX path `rel`? An uncompilable
+ * pattern matches nothing.
+ */
+function globMatchesRel(glob: string, rel: string): boolean {
+	const result = Effect.runSync(Effect.result(GlobPattern.compile(glob, GLOB_OPTIONS)));
+	return Result.isSuccess(result) && result.success.matches(rel);
+}
+
 /**
  * Materialize a glob against `cwd` and return the matched file paths as
- * repo-relative strings. Honors negation patterns and ignores `node_modules`.
+ * repo-relative POSIX strings, sorted by relative path. Matches dotfiles (the
+ * former tinyglobby `dot: true` semantics); the walk is `@effected/walker`'s
+ * `descend` (literal fast path, `enumerationPrefix` bounding,
+ * `node_modules`/`.git` pruning), with `onUnreadable: "skip"` preserving the
+ * previous silent-skip policy for unreadable directories. The one remaining
+ * `DescendError` (depth cap) folds into a {@link ConfigurationError} naming
+ * the glob — this service's single typed failure. `descend`'s `Path`
+ * requirement is satisfied internally with the core POSIX `Path.layer` (this
+ * module already speaks POSIX-relative match paths).
  */
-function materializeGlob(glob: string, cwd: string): ReadonlyArray<string> {
-	return globSync(glob, {
-		cwd,
-		ignore: ["**/node_modules/**"],
-		dot: true,
-	});
+function materializeGlob(
+	glob: string,
+	cwd: string,
+): Effect.Effect<ReadonlyArray<string>, ConfigurationError, FileSystem.FileSystem> {
+	return compileGlob(glob).pipe(
+		Effect.flatMap((pattern) =>
+			descend(pattern, { cwd, onUnreadable: "skip" }).pipe(
+				Effect.mapError(
+					(error) =>
+						new ConfigurationError({
+							field: "glob",
+							reason: `Failed to materialize glob ${JSON.stringify(glob)}: ${error.message}`,
+						}),
+				),
+				Effect.provide(Path.layer),
+			),
+		),
+	);
 }
 
 /**
@@ -293,47 +332,58 @@ function isInside(parent: string, child: string): boolean {
  * options with workspace info.
  */
 function buildResolvedScopes(params: {
-	readonly options: Schema.Schema.Type<typeof ChangesetOptionsSchema>;
+	readonly options: typeof ChangesetOptionsSchema.Type;
 	readonly workspaces: ReadonlyArray<{ name: string; path: string; version: string }>;
 	readonly projectDir: string;
 	readonly configPath: string;
-}): ReadonlyArray<ResolvedPackageScope> {
-	const { options, workspaces, projectDir, configPath } = params;
-	const packages = options.packages ?? {};
-	const workspacesByName = new Map(workspaces.map((w) => [w.name, w] as const));
+}): Effect.Effect<ReadonlyArray<ResolvedPackageScope>, ConfigurationError, FileSystem.FileSystem> {
+	return Effect.gen(function* () {
+		const { options, workspaces, projectDir, configPath } = params;
+		const packages = options.packages ?? {};
+		const workspacesByName = new Map(workspaces.map((w) => [w.name, w] as const));
 
-	const scopes: ResolvedPackageScope[] = [];
-	for (const [pkgName, scope] of Object.entries(packages)) {
-		const ws = workspacesByName.get(pkgName);
-		if (!ws) {
-			throw new ConfigurationError({
-				field: `packages["${pkgName}"]`,
-				reason:
-					`Unknown package "${pkgName}" in ${configPath}. ` +
-					`Known workspace packages: ${workspaces.map((w) => w.name).join(", ") || "(none)"}.`,
+		const scopes: ResolvedPackageScope[] = [];
+		for (const [pkgName, scope] of Object.entries(packages)) {
+			const ws = workspacesByName.get(pkgName);
+			if (!ws) {
+				return yield* Effect.fail(
+					new ConfigurationError({
+						field: `packages["${pkgName}"]`,
+						reason:
+							`Unknown package "${pkgName}" in ${configPath}. ` +
+							`Known workspace packages: ${workspaces.map((w) => w.name).join(", ") || "(none)"}.`,
+					}),
+				);
+			}
+
+			const additionalScopes: ReadonlyArray<string> = scope.additionalScopes ?? [];
+			const additionalScopeFiles: string[] = [];
+			for (const g of additionalScopes) {
+				additionalScopeFiles.push(...(yield* materializeGlob(g, projectDir)));
+			}
+			const versionFileEntries = scope.versionFiles ?? ([] as ReadonlyArray<VersionFileConfig>);
+			const resolvedVersionFiles: ResolvedVersionFile[] = [];
+			for (const entry of versionFileEntries) {
+				const matched = yield* materializeGlob(entry.glob, projectDir);
+				resolvedVersionFiles.push({
+					glob: entry.glob,
+					paths: entry.paths ?? ["$.version"],
+					matchedFiles: matched.map((rel) => join(projectDir, rel)),
+				});
+			}
+
+			scopes.push({
+				name: pkgName,
+				workspaceDir: ws.path,
+				version: ws.version,
+				additionalScopes,
+				additionalScopeFiles: additionalScopeFiles.map((rel) => join(projectDir, rel)),
+				versionFiles: resolvedVersionFiles,
 			});
 		}
 
-		const additionalScopes: ReadonlyArray<string> = scope.additionalScopes ?? [];
-		const additionalScopeFiles = additionalScopes.flatMap((g) => materializeGlob(g, projectDir));
-		const versionFileEntries = scope.versionFiles ?? ([] as ReadonlyArray<VersionFileConfig>);
-		const resolvedVersionFiles: ResolvedVersionFile[] = versionFileEntries.map((entry) => ({
-			glob: entry.glob,
-			paths: entry.paths ?? ["$.version"],
-			matchedFiles: materializeGlob(entry.glob, projectDir).map((rel) => join(projectDir, rel)),
-		}));
-
-		scopes.push({
-			name: pkgName,
-			workspaceDir: ws.path,
-			version: ws.version,
-			additionalScopes,
-			additionalScopeFiles: additionalScopeFiles.map((rel) => join(projectDir, rel)),
-			versionFiles: resolvedVersionFiles,
-		});
-	}
-
-	return scopes;
+		return scopes;
+	});
 }
 
 /**
@@ -351,10 +401,10 @@ function readRawPackageJson(
 	const pkgJsonPath = join(pkgDir, "package.json");
 	return fs.readFileString(pkgJsonPath).pipe(
 		Effect.flatMap((content) => Effect.try(() => JSON.parse(content) as RawPackageJson)),
-		Effect.catchAll((err) => {
-			// Effect's FileSystem surfaces a missing file as a SystemError with
-			// `reason: "NotFound"`. Treat only that as skippable.
-			if ((err as { reason?: unknown }).reason === "NotFound") {
+		Effect.catch((err) => {
+			// v4's FileSystem surfaces a missing file as a PlatformError wrapping a
+			// SystemError whose `_tag` is "NotFound". Treat only that as skippable.
+			if ((err as { reason?: { _tag?: unknown } }).reason?._tag === "NotFound") {
 				return Effect.succeed<RawPackageJson | null>(null);
 			}
 			return Effect.fail(
@@ -513,8 +563,8 @@ function configErrorFromParseError(parseError: unknown, configPath: string): Con
  * repeat `inspect`/`classify` calls reuse the materialized state.
  */
 function makeShape(
-	reader: typeof ChangesetConfigReader.Service,
-	discovery: typeof WorkspaceDiscovery.Service,
+	reader: ChangesetConfigReaderShape,
+	discovery: WorkspaceDiscoveryShape,
 	fs: FileSystem.FileSystem,
 ): ConfigInspectorShape {
 	const cache = new Map<string, InspectedConfig>();
@@ -569,11 +619,14 @@ function makeShape(
 				throw e;
 			}
 
-			const decodedOptions = yield* Schema.decodeUnknown(ChangesetOptionsSchema)(normalized).pipe(
+			const decodedOptions = yield* Schema.decodeUnknownEffect(ChangesetOptionsSchema)(normalized).pipe(
 				Effect.mapError((parseError) => configErrorFromParseError(parseError, configPath)),
 			);
 
-			const workspaceList = yield* discovery.listPackages(projectDir).pipe(
+			// The kit's discovery is bound to the root its layer was built with
+			// (`WorkspaceDiscovery.layer({ cwd })`) — the inspector is single-root
+			// by design, so `projectDir` must match that root.
+			const workspaceList = yield* discovery.listPackages().pipe(
 				Effect.mapError(
 					(err) =>
 						new ConfigurationError({
@@ -593,14 +646,13 @@ function makeShape(
 
 			let scopes: ReadonlyArray<ResolvedPackageScope>;
 			if (hasExplicitPackages) {
-				let explicitScopes: ReadonlyArray<ResolvedPackageScope>;
+				const explicitScopes: ReadonlyArray<ResolvedPackageScope> = yield* buildResolvedScopes({
+					options: decodedOptions,
+					workspaces,
+					projectDir,
+					configPath,
+				}).pipe(Effect.provideService(FileSystem.FileSystem, fs));
 				try {
-					explicitScopes = buildResolvedScopes({
-						options: decodedOptions,
-						workspaces,
-						projectDir,
-						configPath,
-					});
 					checkConflicts(explicitScopes, workspaces, projectDir, configPath);
 				} catch (e) {
 					if (e instanceof ConfigurationError) return yield* Effect.fail(e);
@@ -678,13 +730,15 @@ function classifyOne(inspected: InspectedConfig, path: string): Classification {
 	// is a reasonable proxy when materialization fingerprints don't help).
 	for (const s of inspected.packages) {
 		if (s.additionalScopeFiles.includes(abs)) {
-			// Pick the glob that produced the match. Materialization order
-			// preserves config order; the first matching glob is good enough.
-			const glob = s.additionalScopes.find((g) =>
-				materializeGlob(g, inspected.projectDir)
-					.map((rel) => join(inspected.projectDir, rel))
-					.includes(abs),
-			);
+			// Pick the glob that produced the match by PURE pattern matching
+			// against the projectDir-relative POSIX path: `abs` is already known
+			// to be a walk artifact (member of additionalScopeFiles), so
+			// membership implies its pattern matches. The previous re-walk added
+			// filesystem IO to a pure classification and made
+			// `makeConfigInspectorTest` secretly filesystem-dependent. Config
+			// order is preserved; the first matching glob is good enough.
+			const rel = relative(inspected.projectDir, abs).replaceAll("\\", "/");
+			const glob = s.additionalScopes.find((g) => globMatchesRel(g, rel));
 			return {
 				path,
 				package: s.name,

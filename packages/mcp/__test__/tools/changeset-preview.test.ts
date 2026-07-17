@@ -1,7 +1,7 @@
+import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspaceRoot } from "workspaces-effect";
 
 import {
 	ChangesetPreviewAsMarkdown,
@@ -43,7 +43,7 @@ describe("changeset_preview tool", () => {
 	});
 
 	it("renders markdown with a bump table and the changelog block", () => {
-		const text = Schema.decodeSync(ChangesetPreviewAsMarkdown)({ ...fixed });
+		const text = Schema.decodeUnknownSync(ChangesetPreviewAsMarkdown)({ ...fixed });
 		expect(text).toContain("@scope/a");
 		expect(text).toContain("1.0.0");
 		expect(text).toContain("1.1.0");
@@ -51,6 +51,6 @@ describe("changeset_preview tool", () => {
 	});
 
 	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeSync(ChangesetPreviewAsMarkdown)("# nope")).toThrow();
+		expect(() => Schema.encodeUnknownSync(ChangesetPreviewAsMarkdown)("# nope")).toThrow();
 	});
 });

@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { globSync } from "tinyglobby";
+import { descend } from "@effected/walker";
+import { Effect, FileSystem } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VersionFiles } from "../../src/changesets/utils/version-files.js";
@@ -10,9 +11,29 @@ vi.mock("node:fs", () => ({
 	writeFileSync: vi.fn(),
 }));
 
-vi.mock("tinyglobby", () => ({
-	globSync: vi.fn(),
+// The kit walk is mocked the way the hand-rolled walkGlob (and tinyglobby's
+// globSync before it) used to be: expandGlob compiles the pattern for real,
+// then the walk itself is canned.
+vi.mock("@effected/walker", () => ({
+	descend: vi.fn(),
 }));
+
+/** Can one walk result (all patterns). */
+const canWalk = (paths: ReadonlyArray<string>) => {
+	vi.mocked(descend).mockReturnValue(Effect.succeed(paths));
+};
+
+/** Can successive walk results (one per compiled pattern, in call order). */
+const canWalkOnce = (...results: ReadonlyArray<ReadonlyArray<string>>) => {
+	for (const paths of results) {
+		vi.mocked(descend).mockReturnValueOnce(Effect.succeed(paths));
+	}
+};
+
+// The canned walk never touches the filesystem service, so a noop
+// FileSystem discharges the R the real `descend` would need.
+const run = <A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>): Promise<A> =>
+	Effect.runPromise(effect.pipe(Effect.provide(FileSystem.layerNoop({}))) as Effect.Effect<A, E, never>);
 
 afterEach(() => {
 	vi.resetAllMocks();
@@ -180,29 +201,29 @@ describe("VersionFiles.resolveVersion", () => {
 });
 
 describe("VersionFiles.resolveGlobs", () => {
-	it("resolves glob patterns to absolute paths", () => {
-		vi.mocked(globSync).mockReturnValue(["plugin.json", "sub/manifest.json"]);
+	it("resolves glob patterns to absolute paths", async () => {
+		canWalk(["plugin.json", "sub/manifest.json"]);
 
 		const configs = [{ glob: "**/*.json" }];
-		const result = VersionFiles.resolveGlobs(configs, "/project");
+		const result = await run(VersionFiles.resolveGlobs(configs, "/project"));
 
 		expect(result).toHaveLength(2);
 		expect(result[0][0]).toBe(join(resolve("/project"), "plugin.json"));
 		expect(result[1][0]).toBe(join(resolve("/project"), "sub/manifest.json"));
 	});
 
-	it("handles multiple configs", () => {
-		vi.mocked(globSync).mockReturnValueOnce(["a.json"]).mockReturnValueOnce(["b.json", "c.json"]);
+	it("handles multiple configs", async () => {
+		canWalkOnce(["a.json"], ["b.json", "c.json"]);
 
 		const configs = [{ glob: "a.json" }, { glob: "**/b*.json" }];
-		const result = VersionFiles.resolveGlobs(configs, "/project");
+		const result = await run(VersionFiles.resolveGlobs(configs, "/project"));
 
 		expect(result).toHaveLength(3);
 	});
 
-	it("returns empty array when no files match", () => {
-		vi.mocked(globSync).mockReturnValue([]);
-		expect(VersionFiles.resolveGlobs([{ glob: "missing.json" }], "/project")).toHaveLength(0);
+	it("returns empty array when no files match", async () => {
+		canWalk([]);
+		expect(await run(VersionFiles.resolveGlobs([{ glob: "missing.json" }], "/project"))).toHaveLength(0);
 	});
 });
 
@@ -446,57 +467,57 @@ describe("VersionFiles.updateFile", () => {
 });
 
 describe("VersionFiles.processVersionFiles", () => {
-	it("orchestrates full flow: discover, resolve, update", () => {
+	it("orchestrates full flow: discover, resolve, update", async () => {
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("package.json")) return JSON.stringify({ name: "my-project", version: "1.5.0" });
 			if (s.endsWith("plugin.json")) return '{\n  "version": "1.0.0"\n}\n';
 			throw new Error("ENOENT");
 		});
-		vi.mocked(globSync).mockReturnValue(["plugin.json"]);
+		canWalk(["plugin.json"]);
 
 		const configs = [{ glob: "plugin.json", paths: ["$.version"] }];
-		const result = VersionFiles.processVersionFiles("/project", configs);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs));
 
 		expect(result).toHaveLength(1);
 		expect(result[0].version).toBe("1.5.0");
 		expect(vi.mocked(writeFileSync)).toHaveBeenCalled();
 	});
 
-	it("uses dry-run mode without writing files", () => {
+	it("uses dry-run mode without writing files", async () => {
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("package.json")) return JSON.stringify({ name: "my-project", version: "1.5.0" });
 			if (s.endsWith("plugin.json")) return JSON.stringify({ version: "1.0.0" });
 			throw new Error("ENOENT");
 		});
-		vi.mocked(globSync).mockReturnValue(["plugin.json"]);
+		canWalk(["plugin.json"]);
 
 		const configs = [{ glob: "plugin.json" }];
-		const result = VersionFiles.processVersionFiles("/project", configs, true);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs, true));
 
 		expect(result).toHaveLength(1);
 		expect(result[0].version).toBe("1.5.0");
 		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
 	});
 
-	it("defaults paths to $.version when not specified", () => {
+	it("defaults paths to $.version when not specified", async () => {
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("package.json")) return JSON.stringify({ name: "root", version: "2.0.0" });
 			if (s.endsWith("test.json")) return JSON.stringify({ version: "1.0.0" });
 			throw new Error("ENOENT");
 		});
-		vi.mocked(globSync).mockReturnValue(["test.json"]);
+		canWalk(["test.json"]);
 
 		const configs = [{ glob: "test.json" }];
-		const result = VersionFiles.processVersionFiles("/project", configs, true);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs, true));
 
 		expect(result).toHaveLength(1);
 		expect(result[0].jsonPaths).toEqual(["$.version"]);
 	});
 
-	it("reports a pending insert in dry-run mode when a wildcard-free leaf is missing", () => {
+	it("reports a pending insert in dry-run mode when a wildcard-free leaf is missing", async () => {
 		// Parity with the real run: updateFile would INSERT $.version into this
 		// file, so the preview must report it rather than silently omitting it.
 		vi.mocked(readFileSync).mockImplementation((p) => {
@@ -505,10 +526,10 @@ describe("VersionFiles.processVersionFiles", () => {
 			if (s.endsWith("other.json")) return JSON.stringify({ unrelated: "field" });
 			throw new Error("ENOENT");
 		});
-		vi.mocked(globSync).mockReturnValue(["other.json"]);
+		canWalk(["other.json"]);
 
 		const configs = [{ glob: "other.json", paths: ["$.version"] }];
-		const result = VersionFiles.processVersionFiles("/project", configs, true);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs, true));
 
 		expect(result).toHaveLength(1);
 		expect(result[0].version).toBe("2.0.0");
@@ -516,74 +537,76 @@ describe("VersionFiles.processVersionFiles", () => {
 		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
 	});
 
-	it("skips files with no wildcard matches in dry-run mode", () => {
+	it("skips files with no wildcard matches in dry-run mode", async () => {
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("package.json")) return JSON.stringify({ name: "root", version: "2.0.0" });
 			if (s.endsWith("other.json")) return JSON.stringify({ packages: [] });
 			throw new Error("ENOENT");
 		});
-		vi.mocked(globSync).mockReturnValue(["other.json"]);
+		canWalk(["other.json"]);
 
 		const configs = [{ glob: "other.json", paths: ["$.packages[*].version"] }];
-		const result = VersionFiles.processVersionFiles("/project", configs, true);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs, true));
 
 		expect(result).toHaveLength(0);
 	});
 
-	it("skips same-value files in dry-run mode, matching the real run's no-op", () => {
+	it("skips same-value files in dry-run mode, matching the real run's no-op", async () => {
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("package.json")) return JSON.stringify({ name: "root", version: "2.0.0" });
 			if (s.endsWith("other.json")) return JSON.stringify({ version: "2.0.0" });
 			throw new Error("ENOENT");
 		});
-		vi.mocked(globSync).mockReturnValue(["other.json"]);
+		canWalk(["other.json"]);
 
 		const configs = [{ glob: "other.json", paths: ["$.version"] }];
-		const result = VersionFiles.processVersionFiles("/project", configs, true);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs, true));
 
 		expect(result).toHaveLength(0);
 	});
 
-	it("wraps per-file errors with file path context", () => {
+	it("wraps per-file errors with file path context", async () => {
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("package.json")) return JSON.stringify({ name: "root", version: "1.0.0" });
 			throw new Error("EACCES: permission denied");
 		});
-		vi.mocked(globSync).mockReturnValue(["plugin.json"]);
+		canWalk(["plugin.json"]);
 
 		const configs = [{ glob: "plugin.json" }];
-		expect(() => VersionFiles.processVersionFiles("/project", configs)).toThrow(
+		// The wrapped per-file error is a defect (the legacy path's caller-bug
+		// posture, matching the previous synchronous throw).
+		await expect(run(VersionFiles.processVersionFiles("/project", configs))).rejects.toThrow(
 			"Failed to update /project/plugin.json: EACCES: permission denied",
 		);
 	});
 
-	it("uses explicit package name to source version instead of path matching", () => {
+	it("uses explicit package name to source version instead of path matching", async () => {
 		const packages = [{ name: "@savvy-web/changesets", version: "1.2.0", path: "/project/package" }];
 		vi.mocked(readFileSync).mockImplementation((p) => {
 			const s = String(p);
 			if (s.endsWith("plugin.json")) return '{\n\t"version": "0.0.0"\n}\n';
 			throw new Error("ENOENT");
 		});
-		vi.mocked(globSync).mockReturnValue(["plugin/.claude-plugin/plugin.json"]);
+		canWalk(["plugin/.claude-plugin/plugin.json"]);
 
 		const configs = [
 			{ glob: "plugin/.claude-plugin/plugin.json", paths: ["$.version"], package: "@savvy-web/changesets" },
 		];
-		const result = VersionFiles.processVersionFiles("/project", configs, false, packages);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs, false, packages));
 
 		expect(result).toHaveLength(1);
 		expect(result[0].version).toBe("1.2.0");
 	});
 
-	it("returns empty array when no globs match", () => {
+	it("returns empty array when no globs match", async () => {
 		vi.mocked(readFileSync).mockReturnValue(JSON.stringify({ name: "root", version: "1.0.0" }));
-		vi.mocked(globSync).mockReturnValue([]);
+		canWalk([]);
 
 		const configs = [{ glob: "nonexistent.json" }];
-		const result = VersionFiles.processVersionFiles("/project", configs);
+		const result = await run(VersionFiles.processVersionFiles("/project", configs));
 
 		expect(result).toHaveLength(0);
 	});

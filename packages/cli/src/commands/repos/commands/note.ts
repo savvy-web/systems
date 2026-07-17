@@ -28,9 +28,9 @@
  * @internal
  */
 
-import { Args, Command, Options } from "@effect/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /**
  * Note handler; exported for tests.
@@ -61,36 +61,41 @@ export const runReposNote = (cwd: string, name: string, op: Parameters<Repos.Rep
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposNote */
-const nameArg = Args.text({ name: "name" });
-const noteTextArg = Args.text({ name: "text" });
-const noteIdArg = Args.text({ name: "id" });
-const intoOption = Options.choice("into", ["layout", "startHere"]).pipe(
-	Options.withDescription("Curated orientation field to promote the note into"),
+const nameArg = Argument.string("name");
+const noteTextArg = Argument.string("text");
+const noteIdArg = Argument.string("id");
+const intoOption = Flag.choice("into", ["layout", "startHere"]).pipe(
+	Flag.withDescription("Curated orientation field to promote the note into"),
 );
-const cwdOption = Options.directory("cwd").pipe(
-	Options.withDescription("Repo root whose manifest holds the notes"),
-	Options.withDefault("."),
+const cwdOption = Flag.directory("cwd").pipe(
+	Flag.withDescription("Repo root whose manifest holds the notes"),
+	Flag.withDefault("."),
 );
 
-const _noteGroup = Command.make("note", { name: nameArg, cwd: cwdOption });
+// v4's unstable/cli shares parent config with subcommands via
+// `Command.withSharedFlags` — FLAGS only, so the v3 parent-positional grammar
+// (`note <name> add <text>`) cannot be expressed. The repo name moves into
+// each leaf: `note add <name> <text>`, `note remove <name> <id>`,
+// `note promote <name> <id> --into <field>`.
+const _noteGroup = Command.make("note").pipe(Command.withSharedFlags({ cwd: cwdOption }));
 
-const addLeaf = Command.make("add", { note: noteTextArg }, ({ note }) =>
+const addLeaf = Command.make("add", { name: nameArg, note: noteTextArg }, ({ name, note }) =>
 	Effect.gen(function* () {
-		const { name, cwd } = yield* _noteGroup;
+		const { cwd } = yield* _noteGroup;
 		yield* runReposNote(cwd, name, { op: "add", note });
 	}),
 ).pipe(Command.withDescription("Append an agent note to a vendored repo"));
 
-const removeLeaf = Command.make("remove", { id: noteIdArg }, ({ id }) =>
+const removeLeaf = Command.make("remove", { name: nameArg, id: noteIdArg }, ({ name, id }) =>
 	Effect.gen(function* () {
-		const { name, cwd } = yield* _noteGroup;
+		const { cwd } = yield* _noteGroup;
 		yield* runReposNote(cwd, name, { op: "remove", id });
 	}),
 ).pipe(Command.withDescription("Remove an agent note from a vendored repo"));
 
-const promoteLeaf = Command.make("promote", { id: noteIdArg, into: intoOption }, ({ id, into }) =>
+const promoteLeaf = Command.make("promote", { name: nameArg, id: noteIdArg, into: intoOption }, ({ name, id, into }) =>
 	Effect.gen(function* () {
-		const { name, cwd } = yield* _noteGroup;
+		const { cwd } = yield* _noteGroup;
 		yield* runReposNote(cwd, name, { op: "promote", id, into });
 	}),
 ).pipe(Command.withDescription("Promote an agent note into curated orientation (layout or startHere)"));
@@ -102,20 +107,6 @@ const _noteCommand = _noteGroup.pipe(
 
 /**
  * The `savvy repos note` command group.
- *
- * @remarks
- * Typed as `unknown` at the export boundary to avoid TypeScript declaration-emit
- * errors from Effect's internal types (TS4023), matching the `reposCommand`
- * export pattern.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const noteCommand: Command.Command<"note", any, any, any> = _noteCommand as Command.Command<
-	"note",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+export const noteCommand = _noteCommand;
 /* v8 ignore stop */

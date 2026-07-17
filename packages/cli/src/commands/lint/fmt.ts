@@ -9,20 +9,19 @@
  * @internal
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { Args, Command } from "@effect/cli";
+import { Yaml, YamlStringifyOptions } from "@effected/yaml";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { parse, stringify } from "yaml";
+import { Argument, Command } from "effect/unstable/cli";
 
-/** Default YAML stringify options matching PnpmWorkspace handler. */
-const YAML_STRINGIFY_OPTIONS = {
+/** Default YAML stringify options matching PnpmWorkspace handler (plain scalars = the v3 singleQuote:false posture). */
+const YAML_STRINGIFY_OPTIONS = YamlStringifyOptions.make({
 	indent: 2,
 	lineWidth: 0,
-	singleQuote: false,
-} as const;
+});
 
 /** Repeated file path arguments. */
-const filesArg = Args.repeated(Args.file({ name: "files", exists: "yes" }));
+const filesArg = Argument.file("files", { mustExist: true }).pipe(Argument.variadic());
 
 /** Sort package.json files with sort-package-json. */
 const packageJsonCommand = Command.make("package-json", { files: filesArg }, ({ files }) =>
@@ -39,7 +38,7 @@ const packageJsonCommand = Command.make("package-json", { files: filesArg }, ({ 
 
 /** Sort and format pnpm-workspace.yaml. */
 const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
-	Effect.sync(() => {
+	Effect.gen(function* () {
 		const filepath = "pnpm-workspace.yaml";
 
 		if (!existsSync(filepath)) {
@@ -47,9 +46,9 @@ const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
 		}
 
 		const content = readFileSync(filepath, "utf-8");
-		const parsed = parse(content) as Lint.PnpmWorkspaceContent;
+		const parsed = (yield* Yaml.parse(content)) as Lint.PnpmWorkspaceContent;
 		const sorted = Lint.PnpmWorkspace.sortContent(parsed);
-		const formatted = stringify(sorted, YAML_STRINGIFY_OPTIONS);
+		const formatted = yield* Yaml.stringify(sorted, YAML_STRINGIFY_OPTIONS);
 		writeFileSync(filepath, formatted, "utf-8");
 	}),
 );
@@ -75,13 +74,4 @@ const _fmtCommand = Command.make("fmt").pipe(
  * Typed as `unknown` at the export boundary to avoid TypeScript declaration-emit
  * errors from Effect's internal types. The cast is for declaration emit only.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Effect Command type infers unexportable internal types from effect
-export const fmtCommand: Command.Command<"fmt", any, any, any> = _fmtCommand as Command.Command<
-	"fmt",
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any,
-	// biome-ignore lint/suspicious/noExplicitAny: required to suppress TS4023 unexportable-type errors
-	any
->;
+export const fmtCommand = _fmtCommand;

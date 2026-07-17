@@ -1,7 +1,10 @@
-import { FileSystem } from "@effect/platform";
-import { Context, Effect, Layer, Option } from "effect";
-import type { CyclicDependencyError, PackageManagerDetectionError, WorkspaceDiscoveryError } from "workspaces-effect";
-import { PackageManagerDetector, TopologicalSorter, WorkspaceDiscovery } from "workspaces-effect";
+import type {
+	CyclicDependencyError,
+	PackageManagerDetectionFailure,
+	WorkspaceDiscoveryFailure,
+} from "@effected/workspaces";
+import { DependencyGraph, PackageManagerDetector, WorkspaceDiscovery } from "@effected/workspaces";
+import { Context, Effect, FileSystem, Layer, Option } from "effect";
 import type { VersioningDetectionError } from "../errors/VersioningDetectionError.js";
 import { WorkspaceAnalysisError } from "../errors/WorkspaceAnalysisError.js";
 import type { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
@@ -12,6 +15,27 @@ import type { RawPackageJson } from "./SilkPublishability.js";
 import { SilkPublishability, readTargetsBinding } from "./SilkPublishability.js";
 import { TagStrategy } from "./TagStrategy.js";
 import { VersioningStrategy } from "./VersioningStrategy.js";
+
+/**
+ * The {@link SilkWorkspaceAnalyzer} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface SilkWorkspaceAnalyzerShape {
+	/**
+	 * Analyze a workspace root and produce a full {@link WorkspaceAnalysis}.
+	 *
+	 * @param root - Absolute path to the workspace root directory. Must match
+	 *   the root that the `WorkspaceDiscovery` layer was initialised with. The analyzer
+	 *   is single-root by design — build a fresh layer per workspace root.
+	 * @returns An `Effect` that succeeds with a {@link WorkspaceAnalysis}, or
+	 *   fails with {@link WorkspaceAnalysisError}.
+	 *
+	 * @since 0.2.0
+	 */
+	readonly analyze: (root: string) => Effect.Effect<WorkspaceAnalysis, WorkspaceAnalysisError>;
+}
 
 /**
  * Service that performs a full workspace analysis — discovering packages,
@@ -40,23 +64,9 @@ import { VersioningStrategy } from "./VersioningStrategy.js";
  * @since 0.2.0
  * @public
  */
-export class SilkWorkspaceAnalyzer extends Context.Tag("@savvy-web/silk-effects/SilkWorkspaceAnalyzer")<
-	SilkWorkspaceAnalyzer,
-	{
-		/**
-		 * Analyze a workspace root and produce a full {@link WorkspaceAnalysis}.
-		 *
-		 * @param root - Absolute path to the workspace root directory. Must match
-		 *   the root that the `WorkspaceRoot` layer was initialised with. The analyzer
-		 *   is single-root by design — build a fresh layer per workspace root.
-		 * @returns An `Effect` that succeeds with a {@link WorkspaceAnalysis}, or
-		 *   fails with {@link WorkspaceAnalysisError}.
-		 *
-		 * @since 0.2.0
-		 */
-		readonly analyze: (root: string) => Effect.Effect<WorkspaceAnalysis, WorkspaceAnalysisError>;
-	}
->() {}
+export class SilkWorkspaceAnalyzer extends Context.Service<SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerShape>()(
+	"@savvy-web/silk-effects/SilkWorkspaceAnalyzer",
+) {}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -164,7 +174,6 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 	never,
 	| FileSystem.FileSystem
 	| WorkspaceDiscovery
-	| TopologicalSorter
 	| PackageManagerDetector
 	| ChangesetConfigReader
 	| VersioningStrategy
@@ -174,7 +183,6 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const discovery = yield* WorkspaceDiscovery;
-		const sorter = yield* TopologicalSorter;
 		const pmDetector = yield* PackageManagerDetector;
 		const configReader = yield* ChangesetConfigReader;
 		const versioningStrategy = yield* VersioningStrategy;
@@ -185,7 +193,7 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 				// 1. Detect package manager and runtime
 				const pm = yield* pmDetector.detect(root).pipe(
 					Effect.mapError(
-						(err: PackageManagerDetectionError) =>
+						(err: PackageManagerDetectionFailure) =>
 							new WorkspaceAnalysisError({
 								root,
 								reason: `Package manager detection failed: ${String(err)}`,
@@ -193,12 +201,12 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 					),
 				);
 
-				// 2. Discover workspace packages — pass root so discovery resolves
-				// the correct workspace even when the layer was built from a
-				// different working directory (e.g. during tests).
-				const packages = yield* discovery.listPackages(root).pipe(
+				// 2. Discover workspace packages. The kit's discovery is bound to
+				// the root its layer was built with (`WorkspaceDiscovery.layer({ cwd })`)
+				// — the analyzer is single-root by design, so `root` must match it.
+				const packages = yield* discovery.listPackages().pipe(
 					Effect.mapError(
-						(err: WorkspaceDiscoveryError) =>
+						(err: WorkspaceDiscoveryFailure) =>
 							new WorkspaceAnalysisError({
 								root,
 								reason: `Workspace discovery failed: ${String(err)}`,
@@ -206,8 +214,12 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 					),
 				);
 
-				// 3. Get topological sort order (dependencies first)
-				const topoOrder = yield* sorter.sort().pipe(
+				// 3. Get topological sort order (dependencies first) over the
+				// discovered packages — a pure DependencyGraph value, no service.
+				// `make` accepts the ReadonlyArray directly (kit round 3 verified
+				// Schema.$Array's make-input is ReadonlyArray on beta.98).
+				const graph = DependencyGraph.make({ packages });
+				const topoOrder = yield* graph.sort().pipe(
 					Effect.mapError(
 						(err: CyclicDependencyError) =>
 							new WorkspaceAnalysisError({
@@ -331,8 +343,10 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 					root,
 					runtime: pm.runtime,
 					packageManager: {
-						type: pm.type,
-						version: pm.version,
+						type: pm.name,
+						// Conditional spread: v4 constructors validate, and the kit
+						// reports the version as an Option — never pass explicit undefined.
+						...(Option.isSome(pm.version) ? { version: pm.version.value } : {}),
 					},
 					workspaces: analyzedWorkspaces,
 					changesetConfig,

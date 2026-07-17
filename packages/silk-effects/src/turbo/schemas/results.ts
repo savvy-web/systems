@@ -5,9 +5,9 @@ export const PackageCacheStatus = Schema.Struct({
 	package: Schema.String,
 	taskId: Schema.String,
 	hash: Schema.String,
-	status: Schema.Literal("HIT", "MISS"),
+	status: Schema.Literals(["HIT", "MISS"]),
 	timeSaved: Schema.Number,
-}).annotations({ identifier: "PackageCacheStatus" });
+}).annotate({ identifier: "PackageCacheStatus" });
 
 /** The hash-contributor breakdown explaining a single MISS. */
 export const MissExplanation = Schema.Struct({
@@ -18,7 +18,7 @@ export const MissExplanation = Schema.Struct({
 	hashedEnvVars: Schema.Array(Schema.String),
 	externalDependenciesHash: Schema.String,
 	dependsOn: Schema.Array(Schema.String),
-}).annotations({ identifier: "MissExplanation" });
+}).annotate({ identifier: "MissExplanation" });
 
 /** Global-hash component summary (every task inherits this). */
 export const GlobalHashSummary = Schema.Struct({
@@ -27,7 +27,7 @@ export const GlobalHashSummary = Schema.Struct({
 	externalDependenciesHash: Schema.String,
 	internalDependenciesHash: Schema.String,
 	globalEnvVars: Schema.Array(Schema.String),
-}).annotations({ identifier: "GlobalHashSummary" });
+}).annotate({ identifier: "GlobalHashSummary" });
 
 /** Result of `TurboInspector.diagnoseCache`. */
 export const CacheDiagnosis = Schema.Struct({
@@ -38,14 +38,14 @@ export const CacheDiagnosis = Schema.Struct({
 	statuses: Schema.Array(PackageCacheStatus),
 	explanations: Schema.Array(MissExplanation),
 	global: GlobalHashSummary,
-}).annotations({ identifier: "CacheDiagnosis" });
+}).annotate({ identifier: "CacheDiagnosis" });
 
 /** One node in the task graph. */
 export const GraphNode = Schema.Struct({
 	taskId: Schema.String,
 	package: Schema.String,
 	dependsOn: Schema.Array(Schema.String),
-}).annotations({ identifier: "GraphNode" });
+}).annotate({ identifier: "GraphNode" });
 
 /** Result of `TurboInspector.taskGraph`. */
 export const TaskGraphResult = Schema.Struct({
@@ -53,14 +53,14 @@ export const TaskGraphResult = Schema.Struct({
 	nodeCount: Schema.Number,
 	nodes: Schema.Array(GraphNode),
 	criticalPath: Schema.Array(Schema.String),
-}).annotations({ identifier: "TaskGraphResult" });
+}).annotate({ identifier: "TaskGraphResult" });
 
 /** Result of `TurboInspector.affected`. */
 export const AffectedResult = Schema.Struct({
 	base: Schema.String,
 	packages: Schema.Array(Schema.String),
 	dependents: Schema.Array(Schema.String),
-}).annotations({ identifier: "AffectedResult" });
+}).annotate({ identifier: "AffectedResult" });
 
 export type CacheDiagnosisType = Schema.Schema.Type<typeof CacheDiagnosis>;
 export type TaskGraphResultType = Schema.Schema.Type<typeof TaskGraphResult>;

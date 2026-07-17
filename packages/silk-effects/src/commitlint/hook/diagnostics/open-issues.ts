@@ -1,14 +1,18 @@
 /**
  * Open-issue lookup via gh CLI, cached on disk.
  *
+ * @remarks
+ * The `gh` invocations are not git, so they stay hand-rolled — the spawn
+ * mechanism moved from promisified `node:child_process.execFile` onto
+ * `effect/unstable/process` `ChildProcess`. Any failure (gh missing, not
+ * logged in, no repo, malformed JSON) degrades to `null`, preserving the
+ * never-fails contract of the v3 implementation.
+ *
  * @internal
  */
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { Effect } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { readCache, writeCache } from "./cache.js";
-
-const execFileP = promisify(execFile);
 
 export interface OpenIssue {
 	number: number;
@@ -27,24 +31,41 @@ export function readOpenIssuesFromCache(
 	return readCache<OpenIssue[]>(cachePath, ttlSeconds);
 }
 
-export function fetchAndCacheOpenIssues(cachePath: string): Effect.Effect<OpenIssue[] | null> {
+export function fetchAndCacheOpenIssues(
+	cachePath: string,
+): Effect.Effect<OpenIssue[] | null, never, ChildProcessSpawner.ChildProcessSpawner> {
 	return Effect.gen(function* () {
-		const repoResult = yield* Effect.tryPromise(() =>
-			execFileP("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]),
+		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+		const repoStdout = yield* spawner.string(
+			ChildProcess.make("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]),
 		);
-		const repo = repoResult.stdout.trim();
+		const repo = repoStdout.trim();
 		if (!repo) return null;
 
-		const listResult = yield* Effect.tryPromise(() =>
-			execFileP("gh", ["issue", "list", "--repo", repo, "--state", "open", "--limit", "20", "--json", "number,title"]),
+		const listStdout = yield* spawner.string(
+			ChildProcess.make("gh", [
+				"issue",
+				"list",
+				"--repo",
+				repo,
+				"--state",
+				"open",
+				"--limit",
+				"20",
+				"--json",
+				"number,title",
+			]),
 		);
-		const parsed = JSON.parse(listResult.stdout) as OpenIssue[];
+		const parsed = yield* Effect.try(() => JSON.parse(listStdout) as OpenIssue[]);
 		yield* writeCache(cachePath, parsed);
 		return parsed;
 	}).pipe(Effect.orElseSucceed(() => null));
 }
 
-export function readOrFetchOpenIssues(cachePath: string): Effect.Effect<OpenIssue[] | null> {
+export function readOrFetchOpenIssues(
+	cachePath: string,
+): Effect.Effect<OpenIssue[] | null, never, ChildProcessSpawner.ChildProcessSpawner> {
 	return Effect.gen(function* () {
 		const cached = yield* readOpenIssuesFromCache(cachePath);
 		if (cached !== null) return cached;

@@ -9,6 +9,28 @@ import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
 export type ChangesetMode = "silk" | "vanilla" | "none";
 
 /**
+ * The {@link ChangesetConfig} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface ChangesetConfigShape {
+	readonly mode: (root: string) => Effect.Effect<ChangesetMode>;
+	readonly versionPrivate: (root: string) => Effect.Effect<boolean>;
+	readonly ignorePatterns: (root: string) => Effect.Effect<ReadonlyArray<string>>;
+	readonly isIgnored: (name: string, root: string) => Effect.Effect<boolean>;
+	readonly fixed: (root: string) => Effect.Effect<ReadonlyArray<ReadonlyArray<string>>>;
+	/**
+	 * Drop the cached read for every previously-read root. Callers that hold
+	 * this service across multiple logical operations in a single process
+	 * (e.g. a long-lived MCP server) must call this before an operation that
+	 * needs to observe an on-disk edit made since the last accessor call —
+	 * the cache never expires on its own.
+	 */
+	readonly refresh: () => Effect.Effect<void>;
+}
+
+/**
  * Accessor service over a workspace root's `.changeset/config.json`.
  *
  * @remarks
@@ -19,24 +41,9 @@ export type ChangesetMode = "silk" | "vanilla" | "none";
  * @since 0.4.0
  * @public
  */
-export class ChangesetConfig extends Context.Tag("@savvy-web/silk-effects/ChangesetConfig")<
-	ChangesetConfig,
-	{
-		readonly mode: (root: string) => Effect.Effect<ChangesetMode>;
-		readonly versionPrivate: (root: string) => Effect.Effect<boolean>;
-		readonly ignorePatterns: (root: string) => Effect.Effect<ReadonlyArray<string>>;
-		readonly isIgnored: (name: string, root: string) => Effect.Effect<boolean>;
-		readonly fixed: (root: string) => Effect.Effect<ReadonlyArray<ReadonlyArray<string>>>;
-		/**
-		 * Drop the cached read for every previously-read root. Callers that hold
-		 * this service across multiple logical operations in a single process
-		 * (e.g. a long-lived MCP server) must call this before an operation that
-		 * needs to observe an on-disk edit made since the last accessor call —
-		 * the cache never expires on its own.
-		 */
-		readonly refresh: () => Effect.Effect<void>;
-	}
->() {
+export class ChangesetConfig extends Context.Service<ChangesetConfig, ChangesetConfigShape>()(
+	"@savvy-web/silk-effects/ChangesetConfig",
+) {
 	/**
 	 * The one ignore matcher: exact name match, or `@scope/*` wildcard.
 	 *
@@ -60,7 +67,7 @@ const isSilk = (cfg: ChangesetConfigFile | SilkChangesetConfigFile): boolean =>
  *
  * @remarks
  * Requires `ChangesetConfigReader` (which requires `FileSystem`). Provide
- * `ChangesetConfigReaderLive` + a platform layer (`NodeContext.layer`).
+ * `ChangesetConfigReaderLive` + a platform layer (`NodeServices.layer`).
  *
  * @since 0.4.0
  * @public

@@ -26,9 +26,9 @@
 
 import { fileURLToPath } from "node:url";
 import { NodeFileSystem } from "@effect/platform-node";
+import { WorkspacePackage } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { WorkspacePackage } from "workspaces-effect";
 import { ChangesetConfig, ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
 import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
 import {
@@ -208,6 +208,9 @@ const resolveWorkspacePackage = (workspace: string, subPath: string, name: strin
 		Effect.provide(
 			Layer.mergeAll(
 				platform,
+				// The kit detect contract lost its root param; the adaptive detector
+				// derives the changeset root per package from its own discovery
+				// coordinates (path + relativePath), so no WorkspaceRoot is needed.
 				PublishabilityDetectorAdaptiveLive.pipe(
 					Layer.provide(
 						Layer.mergeAll(

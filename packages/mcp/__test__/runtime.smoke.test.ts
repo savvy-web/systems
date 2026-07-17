@@ -1,14 +1,16 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeContext } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
 import { Changesets, SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { SilkRuntimeLive } from "../src/runtime.js";
+import { makeSilkRuntimeLayer } from "../src/runtime.js";
 
-const AppLayer = SilkRuntimeLive.pipe(Layer.provide(NodeContext.layer));
+// The runtime is root-bound at layer build (single-root semantics), so the
+// app layer is built per fixture root.
+const appLayer = (root: string) => makeSilkRuntimeLayer(root).pipe(Layer.provide(NodeServices.layer));
 
 function setupFixture(): string {
 	const dir = mkdtempSync(join(tmpdir(), "mcp-runtime-"));
@@ -37,7 +39,7 @@ describe("SilkRuntimeLive – layer completeness", () => {
 			Effect.gen(function* () {
 				const analyzer = yield* SilkWorkspaceAnalyzer;
 				return yield* analyzer.analyze(dir);
-			}).pipe(Effect.provide(AppLayer)),
+			}).pipe(Effect.provide(appLayer(dir))),
 		);
 		expect(analysis._tag).toBe("WorkspaceAnalysis");
 		expect(analysis.root).toBe(dir);
@@ -49,7 +51,7 @@ describe("SilkRuntimeLive – layer completeness", () => {
 			Effect.gen(function* () {
 				const inspector = yield* Turbo.TurboInspector;
 				return typeof inspector.diagnoseCache;
-			}).pipe(Effect.provide(AppLayer)),
+			}).pipe(Effect.provide(appLayer(dir))),
 		);
 		expect(resolved).toBe("function");
 	});
@@ -59,7 +61,7 @@ describe("SilkRuntimeLive – layer completeness", () => {
 			Effect.gen(function* () {
 				const svc = yield* Changesets.DepsRegen;
 				return typeof svc.plan === "function" && typeof svc.execute === "function";
-			}).pipe(Effect.provide(AppLayer)),
+			}).pipe(Effect.provide(appLayer(dir))),
 		);
 		expect(resolved).toBe(true);
 	});

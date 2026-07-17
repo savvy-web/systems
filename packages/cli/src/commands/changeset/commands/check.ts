@@ -21,15 +21,15 @@
  */
 
 import { resolve } from "node:path";
-import { Args, Command } from "@effect/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { Argument, Command } from "effect/unstable/cli";
 
 type LintMessage = Changesets.LintMessage;
 const { ChangesetLinter } = Changesets;
 
 /* v8 ignore next */
-const dirArg = Args.directory({ name: "dir" }).pipe(Args.withDefault(".changeset"));
+const dirArg = Argument.directory("dir").pipe(Argument.withDefault(".changeset"));
 
 /**
  * Run the check validation pipeline on all changeset files in `dir`.

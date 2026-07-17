@@ -1,6 +1,5 @@
-import { FileSystem } from "@effect/platform";
-import { Context, Effect, Layer } from "effect";
-import { parse as parseJsonc } from "jsonc-effect";
+import { Jsonc } from "@effected/jsonc";
+import { Context, Effect, FileSystem, Layer } from "effect";
 import { BiomeSyncError } from "../errors/BiomeSyncError.js";
 import type { BiomeSyncResult } from "../schemas/BiomeConfig.js";
 
@@ -48,6 +47,43 @@ function findBiomeConfigs(cwd: string, fs: FileSystem.FileSystem): Effect.Effect
 }
 
 /**
+ * The {@link BiomeSchemaSync} service shape.
+ *
+ * @since 3.2.0
+ * @public
+ */
+export interface BiomeSchemaSyncShape {
+	/**
+	 * Update the `$schema` URL in all located Biome config files to match `version`.
+	 *
+	 * @param version - Target Biome version (range operators are stripped automatically).
+	 * @param options - Optional `cwd` and `gitignore` overrides.
+	 * @returns An `Effect` that succeeds with a {@link BiomeSyncResult} or fails with {@link BiomeSyncError}.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly sync: (
+		version: string,
+		options?: { cwd?: string; gitignore?: boolean },
+	) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
+
+	/**
+	 * Check whether the `$schema` URL in Biome config files is current, without writing any changes.
+	 *
+	 * @param version - Target Biome version (range operators are stripped automatically).
+	 * @param options - Optional `cwd` and `gitignore` overrides.
+	 * @returns An `Effect` that succeeds with a {@link BiomeSyncResult} or fails with {@link BiomeSyncError}.
+	 *   Files that would be updated appear in `updated`; no disk writes occur.
+	 *
+	 * @since 0.1.0
+	 */
+	readonly check: (
+		version: string,
+		options?: { cwd?: string; gitignore?: boolean },
+	) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
+}
+
+/**
  * Service that keeps the `$schema` URL in Biome config files in sync with a target version.
  *
  * @remarks
@@ -63,7 +99,7 @@ function findBiomeConfigs(cwd: string, fs: FileSystem.FileSystem): Effect.Effect
  *     return yield* syncer.sync("^1.9.3");
  *   }).pipe(
  *     Effect.provide(BiomeSchemaSyncLive),
- *     Effect.provide(NodeContext.layer),
+ *     Effect.provide(NodeServices.layer),
  *   )
  * );
  * ```
@@ -71,46 +107,16 @@ function findBiomeConfigs(cwd: string, fs: FileSystem.FileSystem): Effect.Effect
  * @since 0.1.0
  * @public
  */
-export class BiomeSchemaSync extends Context.Tag("@savvy-web/silk-effects/BiomeSchemaSync")<
-	BiomeSchemaSync,
-	{
-		/**
-		 * Update the `$schema` URL in all located Biome config files to match `version`.
-		 *
-		 * @param version - Target Biome version (range operators are stripped automatically).
-		 * @param options - Optional `cwd` and `gitignore` overrides.
-		 * @returns An `Effect` that succeeds with a {@link BiomeSyncResult} or fails with {@link BiomeSyncError}.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly sync: (
-			version: string,
-			options?: { cwd?: string; gitignore?: boolean },
-		) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
-
-		/**
-		 * Check whether the `$schema` URL in Biome config files is current, without writing any changes.
-		 *
-		 * @param version - Target Biome version (range operators are stripped automatically).
-		 * @param options - Optional `cwd` and `gitignore` overrides.
-		 * @returns An `Effect` that succeeds with a {@link BiomeSyncResult} or fails with {@link BiomeSyncError}.
-		 *   Files that would be updated appear in `updated`; no disk writes occur.
-		 *
-		 * @since 0.1.0
-		 */
-		readonly check: (
-			version: string,
-			options?: { cwd?: string; gitignore?: boolean },
-		) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
-	}
->() {}
+export class BiomeSchemaSync extends Context.Service<BiomeSchemaSync, BiomeSchemaSyncShape>()(
+	"@savvy-web/silk-effects/BiomeSchemaSync",
+) {}
 
 /**
  * Live implementation of {@link BiomeSchemaSync}.
  *
  * @remarks
- * Requires `FileSystem` from `@effect/platform`. Provide `NodeContext.layer` or
- * `BunContext.layer` to satisfy this dependency.
+ * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
+ * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
  *
  * @since 0.1.0
  * @public
@@ -148,7 +154,7 @@ export const BiomeSchemaSyncLive: Layer.Layer<BiomeSchemaSync, never, FileSystem
 						),
 					);
 
-					const parsed = (yield* parseJsonc(raw).pipe(
+					const parsed = (yield* Jsonc.parse(raw).pipe(
 						Effect.mapError(
 							/* v8 ignore next 4 -- error path requires a JSONC parse failure */
 							(e) =>
