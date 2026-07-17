@@ -88,7 +88,12 @@ describe("detectGitHubRepo", () => {
 		await expect(
 			detectWith(
 				Effect.fail(
-					GitCommandError.make({ args: ["remote", "get-url", "origin"], cwd: "/project", stderr: "not a git repo" }),
+					GitCommandError.make({
+						kind: "failed",
+						args: ["remote", "get-url", "origin"],
+						cwd: "/project",
+						stderr: "not a git repo",
+					}),
 				),
 			),
 		).resolves.toBeNull();

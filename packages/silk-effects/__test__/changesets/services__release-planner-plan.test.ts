@@ -3,7 +3,7 @@ import { NodeServices } from "@effect/platform-node";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
-import { makeReleaseFixture } from "./fixtures/release-fixture.js";
+import { makeReleaseFixture } from "./support/release-fixture.js";
 
 const roots: string[] = [];
 afterEach(() => {

@@ -4,7 +4,7 @@
  * Uses the @changesets/cli default changelog (always resolvable) so tests
  * validate the mechanism, not silk's specific formatter (tested elsewhere).
  */
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 

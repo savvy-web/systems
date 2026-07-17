@@ -45,7 +45,7 @@
 		"@cyclonedx/cyclonedx-library": "^10.1.0",
 		"@effected/jsonc": "^0.2.0",
 		"@effected/semver": "^0.1.0",
-		"@effected/yaml": "^0.2.0",
+		"@effected/yaml": "^0.3.0",
 		"@octokit/auth-app": "^8.2.0",
 		"@octokit/rest": "^22.0.1",
 		"@sigstore/bundle": "^5.0.0",

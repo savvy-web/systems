@@ -7,7 +7,7 @@ import { NodeServices } from "@effect/platform-node";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
-import { makeReleaseFixture, readFixtureChangelog } from "./fixtures/release-fixture.js";
+import { makeReleaseFixture, readFixtureChangelog } from "./support/release-fixture.js";
 
 // Derive the monorepo node_modules from this test file's location:
 // __test__/changesets/ -> __test__/ -> silk-effects/ -> packages/ -> systems/

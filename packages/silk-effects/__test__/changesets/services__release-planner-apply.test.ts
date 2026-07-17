@@ -4,7 +4,7 @@ import { NodeServices } from "@effect/platform-node";
 import { Cause, Effect, Exit, Result } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { Changesets } from "../../src/index.js";
-import { makeReleaseFixture, readFixtureChangelog } from "./fixtures/release-fixture.js";
+import { makeReleaseFixture, readFixtureChangelog } from "./support/release-fixture.js";
 
 const roots: string[] = [];
 afterEach(() => {

@@ -845,6 +845,7 @@ describe("ReposManager.status — propagates git failures", () => {
 		// swallowed this via orElseSucceed and reported commit null / dirty
 		// false as if everything were fine.
 		const gitFailure = GitCommandError.make({
+			kind: "failed",
 			args: ["ls-tree", "HEAD"],
 			cwd: root,
 			stderr: "git exploded",
