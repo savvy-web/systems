@@ -1,9 +1,9 @@
-import { FiberRef, Inspectable, LogLevel, Logger } from "effect";
+import { Context, Inspectable, LogLevel, Logger } from "effect";
 import * as WorkflowCommand from "./WorkflowCommand.js";
 
 /**
  * Internal mechanics for the {@link "./Step.js" | Step} primitive — the
- * mutable buffer object, the FiberRef-tracked step stack, and the
+ * mutable buffer object, the context-tracked step stack, and the
  * helpers that render buffered output.
  *
  * Not part of the public API. Re-exported only through the `Step.*`
@@ -52,7 +52,7 @@ export interface BufferedLine {
  * without throwing.
  *
  * `buffer` is the step's debug buffer — held on the frame rather than
- * in a separate FiberRef so the parent step can read the child's
+ * in a separate reference so the parent step can read the child's
  * spill if the child fails.
  *
  * @internal
@@ -76,15 +76,19 @@ export interface StepFrame {
  * Stack of active steps in the current fiber. Outermost first; newest
  * pushed onto the end. Empty when no `withStep` is active.
  *
- * `FiberRef.unsafeMake` is the only constructor that returns a
- * `FiberRef` directly (not an `Effect`) so this module-level state
- * can be exported without entering a Scope. The ref is forked per
- * `Effect.fork`, so concurrent steps don't pollute each other's
- * stacks.
+ * A `Context.Reference` with an empty-stack default, so this
+ * module-level state can be exported without entering a Scope and read
+ * without explicit provision. Child fibers inherit the parent's
+ * context, so concurrent steps don't pollute each other's stacks —
+ * each `withStep` provides its own extended stack to its own scope
+ * only.
  *
  * @internal
  */
-export const StepStack: FiberRef.FiberRef<ReadonlyArray<StepFrame>> = FiberRef.unsafeMake<ReadonlyArray<StepFrame>>([]);
+export const StepStack: Context.Reference<ReadonlyArray<StepFrame>> = Context.Reference<ReadonlyArray<StepFrame>>(
+	"github-action-effects/StepStack",
+	{ defaultValue: () => [] },
+);
 
 /**
  * Convert any `Effect.log*` payload into a flat string. Mirrors the
@@ -108,11 +112,11 @@ export const formatMessage = (message: unknown): string => {
  * @internal
  */
 export const emitPassThrough = (logLevel: LogLevel.LogLevel, text: string): void => {
-	if (LogLevel.greaterThanEqual(logLevel, LogLevel.Error)) {
+	if (LogLevel.isGreaterThanOrEqualTo(logLevel, "Error")) {
 		WorkflowCommand.issue("error", {}, text);
-	} else if (LogLevel.greaterThanEqual(logLevel, LogLevel.Warning)) {
+	} else if (LogLevel.isGreaterThanOrEqualTo(logLevel, "Warn")) {
 		WorkflowCommand.issue("warning", {}, text);
-	} else if (LogLevel.greaterThanEqual(logLevel, LogLevel.Info)) {
+	} else if (LogLevel.isGreaterThanOrEqualTo(logLevel, "Info")) {
 		process.stdout.write(`${text}\n`);
 	} else {
 		WorkflowCommand.issue("debug", {}, text);
@@ -128,7 +132,7 @@ export const emitPassThrough = (logLevel: LogLevel.LogLevel, text: string): void
  *
  * The logger's behaviour table:
  *
- * - **Warning / Error / Fatal** — always pass through. They map to
+ * - **Warn / Error / Fatal** — always pass through. They map to
  *   GitHub Actions annotations whose UI affordance would be lost if
  *   buffered.
  * - **Info / Debug** — pushed into the step's `buffer.entries` array.
@@ -142,12 +146,12 @@ export const makeStepBufferingLogger = (buffer: StepBuffer): Logger.Logger<unkno
 		const text = formatMessage(message);
 
 		// Warnings and errors are pass-through even inside a step.
-		if (LogLevel.greaterThanEqual(logLevel, LogLevel.Warning)) {
+		if (LogLevel.isGreaterThanOrEqualTo(logLevel, "Warn")) {
 			emitPassThrough(logLevel, text);
 			return;
 		}
 
-		const level: BufferedLine["level"] = LogLevel.greaterThanEqual(logLevel, LogLevel.Info) ? "info" : "debug";
+		const level: BufferedLine["level"] = LogLevel.isGreaterThanOrEqualTo(logLevel, "Info") ? "info" : "debug";
 		buffer.entries.push({ level, text, timestamp: Date.now() });
 	});
 

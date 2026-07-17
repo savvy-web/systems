@@ -42,7 +42,7 @@ describe("Action.run", () => {
 	});
 
 	it("accepts additional layers via options", async () => {
-		class MyService extends Context.Tag("TestMyService")<MyService, { readonly value: string }>() {}
+		class MyService extends Context.Service<MyService, { readonly value: string }>()("TestMyService") {}
 		const MyServiceLive = Layer.succeed(MyService, { value: "hello" });
 
 		const program = Effect.flatMap(MyService, (svc) =>

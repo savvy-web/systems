@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, FiberRef, HashSet } from "effect";
+import { Cause, Effect, Exit, Logger, Option } from "effect";
 import { ActionLogger } from "../services/ActionLogger.js";
 import type { BufferedLine, StepBuffer, StepFrame } from "./StepRuntime.js";
 import { StepStack, emitFailure, emitLine, emitSuccess, indent, makeStepBufferingLogger } from "./StepRuntime.js";
@@ -53,8 +53,8 @@ export interface WithStepOptions<A> {
  * cause for defects.
  */
 const renderErrorMessage = (cause: Cause.Cause<unknown>): string => {
-	const failure = Cause.failureOption(cause);
-	if (failure._tag === "Some") {
+	const failure = Cause.findErrorOption(cause);
+	if (Option.isSome(failure)) {
 		const value: unknown = failure.value;
 		if (value instanceof Error) return value.message;
 		if (typeof value === "string") return value;
@@ -110,7 +110,7 @@ const resolveSummary = <A>(frame: StepFrame, result: A, options?: WithStepOption
  * to {@link success}.
  *
  * Nested `withStep` calls track depth automatically via the
- * fiber-local step stack. The outermost step is depth 0; each child
+ * context-tracked step stack. The outermost step is depth 0; each child
  * indents by two spaces.
  *
  * @public
@@ -121,7 +121,7 @@ export const withStep = <A, E, R>(
 	options?: WithStepOptions<A>,
 ): Effect.Effect<A, E, R> =>
 	Effect.gen(function* () {
-		const stack = yield* FiberRef.get(StepStack);
+		const stack = yield* StepStack;
 		const buffer: StepBuffer = { entries: [] };
 		const frame: StepFrame = {
 			name,
@@ -133,15 +133,15 @@ export const withStep = <A, E, R>(
 		};
 
 		// Install the step's buffering logger as the sole logger for
-		// this scope. Using `FiberRef.locallyWith(currentLoggers, ...)`
-		// (rather than `Logger.replace(Logger.defaultLogger, ...)`)
+		// this scope. Overriding `Logger.CurrentLoggers` for the inner
+		// scope (rather than layering `Logger.layer` over the runtime)
 		// guarantees that pre-installed loggers (e.g. `ActionsLogger`
 		// in `ActionsRuntime.Default`) don't fire alongside us and
-		// double-print buffered debug lines. The HashSet is restored
+		// double-print buffered debug lines. The logger set is restored
 		// automatically when the inner scope exits.
 		const buffered = effect.pipe(
-			Effect.locally(FiberRef.currentLoggers, HashSet.make(makeStepBufferingLogger(buffer))),
-			Effect.locally(StepStack, [...stack, frame]),
+			Effect.provideService(Logger.CurrentLoggers, new Set([makeStepBufferingLogger(buffer)])),
+			Effect.provideService(StepStack, [...stack, frame]),
 		);
 
 		const exit = yield* Effect.exit(buffered);
@@ -181,7 +181,7 @@ export const withStep = <A, E, R>(
  */
 export const success = (line: string): Effect.Effect<void> =>
 	Effect.gen(function* () {
-		const stack = yield* FiberRef.get(StepStack);
+		const stack = yield* StepStack;
 		if (stack.length === 0) {
 			yield* Effect.logDebug("Step.success called outside a withStep envelope; ignoring.");
 			return;
@@ -217,7 +217,7 @@ export const success = (line: string): Effect.Effect<void> =>
  * Step.withStep(`publish ${name} → ${registry}`, Effect.gen(function* () {
  *   const outcome = yield* publishSvc.publishTarball(tarball, opts).pipe(
  *     Effect.map(() => ({ ok: true as const })),
- *     Effect.catchAll((e) => Effect.succeed({ ok: false as const, error: e.message })),
+ *     Effect.catch((e) => Effect.succeed({ ok: false as const, error: e.message })),
  *   )
  *   if (!outcome.ok) {
  *     yield* Step.failure("publish-failed")
@@ -232,7 +232,7 @@ export const success = (line: string): Effect.Effect<void> =>
  */
 export const failure = (line: string): Effect.Effect<void> =>
 	Effect.gen(function* () {
-		const stack = yield* FiberRef.get(StepStack);
+		const stack = yield* StepStack;
 		if (stack.length === 0) {
 			yield* Effect.logDebug("Step.failure called outside a withStep envelope; ignoring.");
 			return;
@@ -265,7 +265,7 @@ export const failure = (line: string): Effect.Effect<void> =>
  */
 export const line = (icon: string, text: string): Effect.Effect<void> =>
 	Effect.gen(function* () {
-		const stack = yield* FiberRef.get(StepStack);
+		const stack = yield* StepStack;
 		emitLine(stack.length, icon, text);
 	});
 
@@ -313,7 +313,7 @@ export const collapse = <A>(
 	reducer: (results: ReadonlyArray<CollapseResult<A>>) => string | null,
 ): Effect.Effect<ReadonlyArray<A>, unknown> =>
 	Effect.gen(function* () {
-		const parentStack = yield* FiberRef.get(StepStack);
+		const parentStack = yield* StepStack;
 		const depth = parentStack.length;
 
 		interface ChildOutcome {
@@ -339,8 +339,8 @@ export const collapse = <A>(
 						};
 						const exit = yield* Effect.exit(
 							step.effect.pipe(
-								Effect.locally(FiberRef.currentLoggers, HashSet.make(makeStepBufferingLogger(buffer))),
-								Effect.locally(StepStack, [...parentStack, frame]),
+								Effect.provideService(Logger.CurrentLoggers, new Set([makeStepBufferingLogger(buffer)])),
+								Effect.provideService(StepStack, [...parentStack, frame]),
 							),
 						);
 						return { frame, exit };

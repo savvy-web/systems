@@ -13,7 +13,7 @@ export interface ConfigLoaderTestState {
 }
 
 const makeTestConfigLoader = (state: ConfigLoaderTestState): typeof ConfigLoader.Service => ({
-	loadJson: <T>(path: string, schema: Schema.Schema<T>) => {
+	loadJson: <T>(path: string, schema: Schema.Codec<T>) => {
 		const content = state.files.get(path);
 		if (content === undefined) {
 			return Effect.fail(
@@ -34,7 +34,7 @@ const makeTestConfigLoader = (state: ConfigLoaderTestState): typeof ConfigLoader
 				}),
 		}).pipe(
 			Effect.flatMap((data) =>
-				Schema.decodeUnknown(schema)(data).pipe(
+				Schema.decodeUnknownEffect(schema)(data).pipe(
 					Effect.mapError(
 						(error) =>
 							new ConfigLoaderError({
@@ -48,7 +48,7 @@ const makeTestConfigLoader = (state: ConfigLoaderTestState): typeof ConfigLoader
 		);
 	},
 
-	loadJsonc: <T>(path: string, schema: Schema.Schema<T>) => {
+	loadJsonc: <T>(path: string, schema: Schema.Codec<T>) => {
 		const content = state.files.get(path);
 		if (content === undefined) {
 			return Effect.fail(
@@ -71,7 +71,7 @@ const makeTestConfigLoader = (state: ConfigLoaderTestState): typeof ConfigLoader
 				}),
 		}).pipe(
 			Effect.flatMap((data) =>
-				Schema.decodeUnknown(schema)(data).pipe(
+				Schema.decodeUnknownEffect(schema)(data).pipe(
 					Effect.mapError(
 						(error) =>
 							new ConfigLoaderError({
@@ -85,7 +85,7 @@ const makeTestConfigLoader = (state: ConfigLoaderTestState): typeof ConfigLoader
 		);
 	},
 
-	loadYaml: <T>(path: string, schema: Schema.Schema<T>) => {
+	loadYaml: <T>(path: string, schema: Schema.Codec<T>) => {
 		const content = state.files.get(path);
 		if (content === undefined) {
 			return Effect.fail(
@@ -111,7 +111,7 @@ const makeTestConfigLoader = (state: ConfigLoaderTestState): typeof ConfigLoader
 			else if (rawValue !== "" && !Number.isNaN(Number(rawValue))) result[key] = Number(rawValue);
 			else result[key] = rawValue;
 		}
-		return Schema.decodeUnknown(schema)(result).pipe(
+		return Schema.decodeUnknownEffect(schema)(result).pipe(
 			Effect.mapError(
 				(error) =>
 					new ConfigLoaderError({

@@ -21,8 +21,8 @@
  * layer in tests — no `node:fetch` import means no undici in the bundle.
  */
 
-import { FileSystem, HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
-import { Effect, Layer, Redacted, Schema } from "effect";
+import { Effect, FileSystem, Layer, Redacted, Schema } from "effect";
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 import { OidcTokenError } from "../errors/OidcTokenError.js";
 import { OidcTokenIssuer } from "../services/OidcTokenIssuer.js";
 

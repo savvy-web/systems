@@ -1,4 +1,5 @@
-import { Clock, Duration, Effect, Fiber, Ref, TestClock, TestContext } from "effect";
+import { Clock, Duration, Effect, Fiber, Ref } from "effect";
+import { TestClock } from "effect/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import { resilienceSchedule, withResilience } from "../../src/layers/resilience.js";
@@ -32,10 +33,10 @@ const nonRetryableError = () =>
 /** Run an effect that uses TestClock-driven delays; advance the clock then join. */
 const runWithClock = <A, E>(effect: Effect.Effect<A, E>, advance = Duration.seconds(600)) =>
 	Effect.gen(function* () {
-		const fiber = yield* Effect.fork(effect);
+		const fiber = yield* Effect.forkChild(effect);
 		yield* TestClock.adjust(advance);
 		return yield* Fiber.join(fiber);
-	}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+	}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 describe("resilienceSchedule", () => {
 	it("does not retry non-retryable errors (single attempt)", async () => {

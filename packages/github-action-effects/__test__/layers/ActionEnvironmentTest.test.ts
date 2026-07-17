@@ -1,5 +1,5 @@
-import type { FileSystem } from "@effect/platform";
 import { NodeFileSystem } from "@effect/platform-node";
+import type { FileSystem } from "effect";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import { ActionEnvironmentTest } from "../../src/layers/ActionEnvironmentTest.js";

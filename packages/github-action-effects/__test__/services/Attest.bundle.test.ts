@@ -10,7 +10,6 @@
  * is exercised end-to-end in the integration repo run, not here.
  */
 
-import type { Context } from "effect";
 import { Cause, Effect, Exit, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import type { InTotoStatement } from "../../src/testing.js";
@@ -110,7 +109,7 @@ describe("Attest.buildBundle — step 3: orchestration", () => {
 
 		expect(Exit.isFailure(exit)).toBe(true);
 		if (Exit.isFailure(exit)) {
-			const failure = Cause.failureOption(exit.cause);
+			const failure = Cause.findErrorOption(exit.cause);
 			expect(failure._tag).toBe("Some");
 			if (failure._tag === "Some") {
 				expect(failure.value._tag).toBe("AttestError");
@@ -133,10 +132,10 @@ describe("Attest.buildBundle — step 3: orchestration", () => {
 				predicate: {},
 			});
 		});
-		type RequiredContext = Effect.Effect.Context<typeof program>;
-		const hasAttest: Context.Tag.Identifier<Attest> = null as never as Context.Tag.Identifier<Attest>;
-		const hasSigner: Context.Tag.Identifier<SigstoreSigner> = null as never as Context.Tag.Identifier<SigstoreSigner>;
-		const hasOidc: Context.Tag.Identifier<OidcTokenIssuer> = null as never as Context.Tag.Identifier<OidcTokenIssuer>;
+		type RequiredContext = Effect.Services<typeof program>;
+		const hasAttest: Attest = null as never as Attest;
+		const hasSigner: SigstoreSigner = null as never as SigstoreSigner;
+		const hasOidc: OidcTokenIssuer = null as never as OidcTokenIssuer;
 		const _required: RequiredContext = hasAttest as unknown as RequiredContext;
 		void hasSigner;
 		void hasOidc;

@@ -1,7 +1,6 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer, Schema } from "effect";
-import { parse as parseJsonc } from "jsonc-effect";
-import { parse as parseYaml } from "yaml-effect";
+import { Jsonc } from "@effected/jsonc";
+import { Yaml } from "@effected/yaml";
+import { Effect, FileSystem, Layer, Schema } from "effect";
 import { ConfigLoaderError } from "../errors/ConfigLoaderError.js";
 import { ConfigLoader } from "../services/ConfigLoader.js";
 
@@ -17,8 +16,8 @@ const readFile = (fs: FileSystem.FileSystem, path: string): Effect.Effect<string
 		),
 	);
 
-const validate = <T>(path: string, schema: Schema.Schema<T>, data: unknown): Effect.Effect<T, ConfigLoaderError> =>
-	Schema.decodeUnknown(schema)(data).pipe(
+const validate = <T>(path: string, schema: Schema.Codec<T>, data: unknown): Effect.Effect<T, ConfigLoaderError> =>
+	Schema.decodeUnknownEffect(schema)(data).pipe(
 		Effect.mapError(
 			(error) =>
 				new ConfigLoaderError({
@@ -37,7 +36,7 @@ const validate = <T>(path: string, schema: Schema.Schema<T>, data: unknown): Eff
 export const ConfigLoaderLive: Layer.Layer<ConfigLoader, never, FileSystem.FileSystem> = Layer.effect(
 	ConfigLoader,
 	Effect.map(FileSystem.FileSystem, (fs) => ({
-		loadJson: <T>(path: string, schema: Schema.Schema<T>) =>
+		loadJson: <T>(path: string, schema: Schema.Codec<T>) =>
 			readFile(fs, path).pipe(
 				Effect.flatMap((content) =>
 					Effect.try({
@@ -53,10 +52,10 @@ export const ConfigLoaderLive: Layer.Layer<ConfigLoader, never, FileSystem.FileS
 				Effect.flatMap((data) => validate(path, schema, data)),
 			),
 
-		loadJsonc: <T>(path: string, schema: Schema.Schema<T>) =>
+		loadJsonc: <T>(path: string, schema: Schema.Codec<T>) =>
 			readFile(fs, path).pipe(
 				Effect.flatMap((content) =>
-					parseJsonc(content).pipe(
+					Jsonc.parse(content).pipe(
 						Effect.mapError(
 							(error) =>
 								new ConfigLoaderError({
@@ -70,10 +69,10 @@ export const ConfigLoaderLive: Layer.Layer<ConfigLoader, never, FileSystem.FileS
 				Effect.flatMap((data) => validate(path, schema, data)),
 			),
 
-		loadYaml: <T>(path: string, schema: Schema.Schema<T>) =>
+		loadYaml: <T>(path: string, schema: Schema.Codec<T>) =>
 			readFile(fs, path).pipe(
 				Effect.flatMap((content) =>
-					parseYaml(content).pipe(
+					Yaml.parse(content).pipe(
 						Effect.mapError(
 							(error) =>
 								new ConfigLoaderError({
@@ -90,7 +89,7 @@ export const ConfigLoaderLive: Layer.Layer<ConfigLoader, never, FileSystem.FileS
 		exists: (path: string) =>
 			fs.access(path).pipe(
 				Effect.map(() => true),
-				Effect.catchAll(() => Effect.succeed(false)),
+				Effect.catch(() => Effect.succeed(false)),
 			),
 	})),
 );

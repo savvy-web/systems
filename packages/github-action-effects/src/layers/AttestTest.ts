@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import type { AttestError } from "../errors/AttestError.js";
 import type { AttestInput, AttestationRecord, InTotoStatement } from "../schemas/Attestation.js";
 import { SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE, SigstoreBundle } from "../schemas/Attestation.js";

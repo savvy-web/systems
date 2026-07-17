@@ -1,4 +1,4 @@
-import { Effect, Exit, Layer, LogLevel, Logger } from "effect";
+import { Effect, Exit, Layer, Logger, References } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionsLogger } from "../../src/runtime/ActionsLogger.js";
 import * as Step from "../../src/runtime/Step.js";
@@ -9,10 +9,7 @@ import * as Step from "../../src/runtime/Step.js";
  * outside Step) follow the live runtime's behaviour. Minimum log
  * level is `All` so debug lines are observed.
  */
-const baseLoggerLayer = Layer.merge(
-	Logger.replace(Logger.defaultLogger, ActionsLogger),
-	Logger.minimumLogLevel(LogLevel.All),
-);
+const baseLoggerLayer = Layer.merge(Logger.layer([ActionsLogger]), Layer.succeed(References.MinimumLogLevel, "All"));
 
 const run = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
 	Effect.runPromise(Effect.provide(effect, baseLoggerLayer) as Effect.Effect<A, E, never>);

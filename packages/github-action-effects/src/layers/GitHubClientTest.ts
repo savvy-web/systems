@@ -1,4 +1,4 @@
-import { Chunk, Effect, Layer, Stream } from "effect";
+import { Effect, Layer, Stream } from "effect";
 import { GitHubClientError } from "../errors/GitHubClientError.js";
 import type { GitHubClient } from "../services/GitHubClient.js";
 import { GitHubClient as GitHubClientTag } from "../services/GitHubClient.js";
@@ -97,7 +97,7 @@ const makeTestClient = (state: GitHubClientTestState): typeof GitHubClient.Servi
 		}
 		// Replay one recorded page per chunk so consumers can takeWhile / take and
 		// stop early without consuming later pages.
-		return Stream.fromIterable(pages).pipe(Stream.mapConcatChunk((page) => Chunk.fromIterable(page as T[])));
+		return Stream.fromIterable(pages).pipe(Stream.flatMap((page) => Stream.fromIterable(page as T[])));
 	},
 
 	repo: Effect.succeed(state.repo),

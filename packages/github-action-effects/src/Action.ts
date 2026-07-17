@@ -60,8 +60,8 @@ export const Action = {
 	 */
 	run: ((program: Effect.Effect<void, unknown, CoreServices>, options?: ActionRunOptions): Promise<void> => {
 		// `ActionsRuntime.Default` and any user-supplied `options.layer` may
-		// each surface their own remaining context requirements (e.g.
-		// `FileSystem` from `@effect/platform`); `Layer.mergeAll` widens the
+		// each surface their own remaining context requirements (e.g. the
+		// core `effect` `FileSystem`); `Layer.mergeAll` widens the
 		// requires-channel to the union of both sides. The annotation accepts
 		// `any` in every slot — this is a deliberate type-erasure seam at the
 		// run boundary so callers do not have to construct a single concrete
@@ -78,7 +78,7 @@ export const Action = {
 
 		const runnable = bufferedProgram.pipe(
 			Effect.provide(fullLayer),
-			Effect.catchAllCause((cause) => {
+			Effect.catchCause((cause) => {
 				const message = Action.formatCause(cause);
 
 				// Extract JS stack trace if available

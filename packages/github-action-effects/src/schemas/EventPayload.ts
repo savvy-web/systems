@@ -55,7 +55,7 @@ export const WebhookPayload = Schema.Struct({
 	ref: Schema.optional(Schema.String),
 	before: Schema.optional(Schema.String),
 	after: Schema.optional(Schema.String),
-}).annotations({ identifier: "WebhookPayload" });
+}).annotate({ identifier: "WebhookPayload" });
 
 /**
  * Inferred type for `WebhookPayload`.

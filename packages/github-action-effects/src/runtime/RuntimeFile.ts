@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect } from "effect";
+import { Effect, FileSystem } from "effect";
 import { RuntimeEnvironmentError } from "../errors/RuntimeEnvironmentError.js";
 
 /**
@@ -55,7 +54,7 @@ export const append = (
 				(error) =>
 					new RuntimeEnvironmentError({
 						variable: envVar,
-						message: `Failed to write to file at ${filePath}: ${error.description ?? String(error)}`,
+						message: `Failed to write to file at ${filePath}: ${error.message}`,
 					}),
 			),
 		);

@@ -134,9 +134,10 @@ export const WorkflowDispatchLive: Layer.Layer<WorkflowDispatch, never, GitHubCl
 				return yield* pollOnce.pipe(
 					Effect.retry({
 						while: (error) => error.operation === POLL_PENDING,
-						schedule: Schedule.spaced(intervalMs).pipe(Schedule.intersect(Schedule.recurs(maxAttempts))),
+						schedule: Schedule.spaced(intervalMs),
+						times: maxAttempts,
 					}),
-					Effect.catchAll((error) => {
+					Effect.catch((error) => {
 						if (error.operation === POLL_PENDING) {
 							return Effect.fail(
 								new WorkflowDispatchError({

@@ -1,5 +1,5 @@
 /**
- * Item-4 test: `Schema.encode(SigstoreBundle)` produces the same wire shape as
+ * Item-4 test: `Schema.encodeEffect(SigstoreBundle)` produces the same wire shape as
  * the prior `JSON.parse(JSON.stringify(bundle))` round-trip used in `AttestLive`.
  */
 
@@ -25,13 +25,13 @@ describe("SigstoreBundle encode", () => {
 	it("encodes the SigstoreBundle to the same wire shape as the JSON round-trip", () => {
 		const bundle = stubBundle();
 		const jsonRoundTrip = JSON.parse(JSON.stringify(bundle));
-		const encoded = Effect.runSync(Schema.encode(SigstoreBundle)(bundle));
+		const encoded = Effect.runSync(Schema.encodeEffect(SigstoreBundle)(bundle));
 		expect(encoded).toEqual(jsonRoundTrip);
 	});
 
 	it("preserves the mediaType literal and the opaque material/envelope payloads", () => {
 		const bundle = stubBundle();
-		const encoded = Effect.runSync(Schema.encode(SigstoreBundle)(bundle)) as Record<string, unknown>;
+		const encoded = Effect.runSync(Schema.encodeEffect(SigstoreBundle)(bundle)) as Record<string, unknown>;
 		expect(encoded.mediaType).toBe(SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE);
 		expect(encoded.verificationMaterial).toEqual(bundle.verificationMaterial);
 		expect(encoded.dsseEnvelope).toEqual(bundle.dsseEnvelope);

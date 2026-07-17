@@ -57,7 +57,7 @@ describe("GitHubGraphQLLive", () => {
 		const result = await Effect.runPromise(
 			GitHubGraphQL.pipe(
 				Effect.flatMap((gql) => gql.query("GetViewer", "{ viewer { login } }")),
-				Effect.catchAll((error) => Effect.succeed(error)),
+				Effect.catch((error) => Effect.succeed(error)),
 				Effect.provide(layer),
 			),
 		);
@@ -82,7 +82,7 @@ describe("GitHubGraphQLLive", () => {
 		const result = await Effect.runPromise(
 			GitHubGraphQL.pipe(
 				Effect.flatMap((gql) => gql.mutation("EnableAutoMerge", "mutation { enableAutoMerge { id } }")),
-				Effect.catchAll((error) => Effect.succeed(error)),
+				Effect.catch((error) => Effect.succeed(error)),
 				Effect.provide(layer),
 			),
 		);
@@ -110,7 +110,7 @@ describe("GitHubGraphQLLive", () => {
 		const result = await Effect.runPromise(
 			GitHubGraphQL.pipe(
 				Effect.flatMap((gql) => gql.query("GetRepo", "{ repository { name } }")),
-				Effect.catchAll((error) => Effect.succeed(error)),
+				Effect.catch((error) => Effect.succeed(error)),
 				Effect.provide(layer),
 			),
 		);

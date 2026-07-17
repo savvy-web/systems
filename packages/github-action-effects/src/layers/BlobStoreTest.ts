@@ -19,7 +19,7 @@ const makeTestStore = (state: BlobStoreTestState): typeof BlobStore.Service => (
 	get: (key) =>
 		Effect.sync(
 			(): Option.Option<Uint8Array> =>
-				Option.fromNullable(state.entries.get(key)).pipe(Option.map((bytes) => new Uint8Array(bytes))),
+				Option.fromNullishOr(state.entries.get(key)).pipe(Option.map((bytes) => new Uint8Array(bytes))),
 		),
 	has: (key) => Effect.sync(() => state.entries.has(key)),
 });

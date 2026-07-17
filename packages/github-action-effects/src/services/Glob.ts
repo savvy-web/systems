@@ -63,6 +63,33 @@ export interface HashFilesOptions {
 }
 
 /**
+ * Service shape for {@link Glob}.
+ *
+ * @public
+ */
+export interface GlobShape {
+	/**
+	 * Resolve newline- (or comma-) separated glob patterns to absolute paths,
+	 * in deterministic lexicographically-sorted order. Honors `!` exclude
+	 * patterns and `~` HOME expansion, and skips blank lines and `#` comments.
+	 * Returns `[]` when nothing matches.
+	 */
+	readonly glob: (patterns: string, options?: GlobOptions) => Effect.Effect<ReadonlyArray<string>, GlobError>;
+
+	/**
+	 * Compute the `@actions/glob`-compatible SHA-256 hash-of-hashes over the
+	 * files matched by `patterns`: each matched file is streamed through its
+	 * own SHA-256, and the binary digests are fed — in sorted glob order —
+	 * into one accumulating SHA-256 whose final hex digest is returned.
+	 *
+	 * Files outside the workspace root are skipped. Returns `Option.none()`
+	 * when no file matched (the toolkit returns `""`; recover that verbatim
+	 * with `Option.getOrElse(() => "")`).
+	 */
+	readonly hashFiles: (patterns: string, options?: HashFilesOptions) => Effect.Effect<Option.Option<string>, GlobError>;
+}
+
+/**
  * Service for resolving glob patterns and computing `@actions/glob`-compatible
  * file hashes.
  *
@@ -72,30 +99,4 @@ export interface HashFilesOptions {
  *
  * @public
  */
-export class Glob extends Context.Tag("github-action-effects/Glob")<
-	Glob,
-	{
-		/**
-		 * Resolve newline- (or comma-) separated glob patterns to absolute paths,
-		 * in deterministic lexicographically-sorted order. Honors `!` exclude
-		 * patterns and `~` HOME expansion, and skips blank lines and `#` comments.
-		 * Returns `[]` when nothing matches.
-		 */
-		readonly glob: (patterns: string, options?: GlobOptions) => Effect.Effect<ReadonlyArray<string>, GlobError>;
-
-		/**
-		 * Compute the `@actions/glob`-compatible SHA-256 hash-of-hashes over the
-		 * files matched by `patterns`: each matched file is streamed through its
-		 * own SHA-256, and the binary digests are fed — in sorted glob order —
-		 * into one accumulating SHA-256 whose final hex digest is returned.
-		 *
-		 * Files outside the workspace root are skipped. Returns `Option.none()`
-		 * when no file matched (the toolkit returns `""`; recover that verbatim
-		 * with `Option.getOrElse(() => "")`).
-		 */
-		readonly hashFiles: (
-			patterns: string,
-			options?: HashFilesOptions,
-		) => Effect.Effect<Option.Option<string>, GlobError>;
-	}
->() {}
+export class Glob extends Context.Service<Glob, GlobShape>()("github-action-effects/Glob") {}

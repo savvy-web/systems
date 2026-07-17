@@ -19,37 +19,40 @@ export interface IssueData {
 }
 
 /**
+ * Service shape for {@link GitHubIssue}.
+ *
+ * @public
+ */
+export interface GitHubIssueShape {
+	/** List issues, optionally filtered by state, labels, or milestone. */
+	readonly list: (options?: {
+		readonly state?: "open" | "closed" | "all";
+		readonly labels?: Array<string>;
+		readonly milestone?: number;
+		readonly perPage?: number;
+		readonly maxPages?: number;
+	}) => Effect.Effect<Array<IssueData>, GitHubIssueError>;
+
+	/** Close an issue with an optional reason. */
+	readonly close: (issueNumber: number, reason?: "completed" | "not_planned") => Effect.Effect<void, GitHubIssueError>;
+
+	/** Add a comment to an issue. */
+	readonly comment: (issueNumber: number, body: string) => Effect.Effect<{ id: number }, GitHubIssueError>;
+
+	/** Get a single issue by number. */
+	readonly get: (issueNumber: number) => Effect.Effect<IssueData, GitHubIssueError>;
+
+	/** Get issues linked to a pull request via closing references. */
+	readonly getLinkedIssues: (
+		prNumber: number,
+	) => Effect.Effect<Array<{ number: number; title: string }>, GitHubIssueError>;
+}
+
+/**
  * Service for GitHub Issue operations.
  *
  * @public
  */
-export class GitHubIssue extends Context.Tag("github-action-effects/GitHubIssue")<
-	GitHubIssue,
-	{
-		/** List issues, optionally filtered by state, labels, or milestone. */
-		readonly list: (options?: {
-			readonly state?: "open" | "closed" | "all";
-			readonly labels?: Array<string>;
-			readonly milestone?: number;
-			readonly perPage?: number;
-			readonly maxPages?: number;
-		}) => Effect.Effect<Array<IssueData>, GitHubIssueError>;
-
-		/** Close an issue with an optional reason. */
-		readonly close: (
-			issueNumber: number,
-			reason?: "completed" | "not_planned",
-		) => Effect.Effect<void, GitHubIssueError>;
-
-		/** Add a comment to an issue. */
-		readonly comment: (issueNumber: number, body: string) => Effect.Effect<{ id: number }, GitHubIssueError>;
-
-		/** Get a single issue by number. */
-		readonly get: (issueNumber: number) => Effect.Effect<IssueData, GitHubIssueError>;
-
-		/** Get issues linked to a pull request via closing references. */
-		readonly getLinkedIssues: (
-			prNumber: number,
-		) => Effect.Effect<Array<{ number: number; title: string }>, GitHubIssueError>;
-	}
->() {}
+export class GitHubIssue extends Context.Service<GitHubIssue, GitHubIssueShape>()(
+	"github-action-effects/GitHubIssue",
+) {}

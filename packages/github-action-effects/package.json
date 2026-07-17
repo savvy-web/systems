@@ -43,31 +43,26 @@
 	"dependencies": {
 		"@azure/storage-blob": "^12.33.0",
 		"@cyclonedx/cyclonedx-library": "^10.1.0",
+		"@effected/jsonc": "^0.1.0",
+		"@effected/semver": "^0.1.0",
+		"@effected/yaml": "^0.1.0",
 		"@octokit/auth-app": "^8.2.0",
 		"@octokit/rest": "^22.0.1",
 		"@sigstore/bundle": "^5.0.0",
-		"@sigstore/sign": "^5.0.0",
-		"jsonc-effect": "^0.3.1",
-		"semver-effect": "^0.3.1",
-		"yaml-effect": "^0.7.2"
+		"@sigstore/sign": "^5.0.0"
 	},
 	"devDependencies": {
-		"@effect/cluster": "catalog:silk",
-		"@effect/platform": "catalog:silk",
-		"@effect/platform-node": "catalog:silk",
-		"@effect/rpc": "catalog:silk",
-		"@effect/sql": "catalog:silk",
+		"@effect/platform-node": "catalog:effect",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
-		"effect": "catalog:silk",
+		"effect": "catalog:effect",
 		"tsx": "catalog:silk",
 		"typescript": "catalog:silk",
 		"vitest": "catalog:silk"
 	},
 	"peerDependencies": {
-		"@effect/platform": "catalog:silkPeers",
-		"@effect/platform-node": "catalog:silkPeers",
-		"effect": "catalog:silkPeers"
+		"@effect/platform-node": "catalog:effectPeers",
+		"effect": "catalog:effectPeers"
 	},
 	"peerDependenciesMeta": {
 		"@effect/platform": {

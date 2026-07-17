@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import type { RuntimeEnvironmentError } from "../../src/errors/RuntimeEnvironmentError.js";
 import { append, prepareValue } from "../../src/runtime/RuntimeFile.js";
@@ -142,6 +141,7 @@ describe("append", () => {
 					module: "FileSystem" as const,
 					method: "writeFileString",
 					description: "permission denied",
+					message: "permission denied",
 				}),
 		} as unknown as FileSystem.FileSystem;
 

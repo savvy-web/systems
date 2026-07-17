@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
-import { HttpClient, HttpClientResponse } from "@effect/platform";
 import { Cause, Effect, Exit, Layer, Option } from "effect";
+import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArtifactError } from "../../src/errors/ArtifactError.js";
 import { ArtifactLive } from "../../src/layers/ArtifactLive.js";
@@ -102,7 +102,7 @@ const runExit = <A, E>(effect: Effect.Effect<A, E, Artifact>) =>
 
 const extractError = (exit: Exit.Exit<unknown, ArtifactError>): ArtifactError | undefined => {
 	if (Exit.isFailure(exit)) {
-		const option = Cause.failureOption(exit.cause);
+		const option = Cause.findErrorOption(exit.cause);
 		if (Option.isSome(option)) return option.value;
 	}
 	return undefined;

@@ -203,14 +203,14 @@ describe("CommandRunnerLive", () => {
 
 			await Effect.runPromise(
 				Effect.gen(function* () {
-					const fiber = yield* Effect.fork(
+					const fiber = yield* Effect.forkChild(
 						Effect.flatMap(CommandRunner, (svc) => svc.exec("node", ["-e", script])).pipe(
 							Effect.provide(CommandRunnerLive),
 						),
 					);
 					// Poll until the child has booted and written its PID — robust to
 					// scheduling jitter under the full (forks-pool) suite.
-					yield* Effect.async<void>((resume) => {
+					yield* Effect.callback<void>((resume) => {
 						const start = Date.now();
 						const tick = setInterval(() => {
 							if (fs.existsSync(pidFile) || Date.now() - start > 5000) {
@@ -242,7 +242,7 @@ describe("CommandRunnerLive", () => {
 		it("increments the command-execution counter once per exec", async () => {
 			// The counter is incremented on the per-command tagged variant, so the
 			// snapshot must read the same tagged metric.
-			const tagged = commandExecutions.pipe(Metric.tagged("command", "echo"));
+			const tagged = commandExecutions.pipe(Metric.withAttributes({ command: "echo" }));
 			const before = await Effect.runPromise(Metric.value(tagged));
 			await run(Effect.flatMap(CommandRunner, (svc) => svc.exec("echo", ["one"])));
 			await run(Effect.flatMap(CommandRunner, (svc) => svc.exec("echo", ["two"])));

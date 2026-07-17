@@ -1,5 +1,6 @@
-import { HttpClient, HttpClientError, HttpClientResponse } from "@effect/platform";
-import { Data, Duration, Effect, Exit, Fiber, Layer, Redacted, TestClock, TestContext } from "effect";
+import { Cause, Data, Duration, Effect, Exit, Fiber, Layer, Option, Redacted } from "effect";
+import { TestClock } from "effect/testing";
+import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CONFLICT, makeTwirpRetrySchedule, twirpCall } from "../../../src/layers/internal/twirp.js";
 
@@ -51,11 +52,12 @@ const mockHttp: Layer.Layer<HttpClient.HttpClient> = Layer.succeed(
 			const reply = replies.shift() ?? { status: 500 };
 			if (reply.transportError !== undefined) {
 				return yield* Effect.fail(
-					new HttpClientError.RequestError({
-						request,
-						reason: "Transport",
-						cause: new Error(reply.transportError),
-						description: reply.transportError,
+					new HttpClientError.HttpClientError({
+						reason: new HttpClientError.TransportError({
+							request,
+							cause: new Error(reply.transportError),
+							description: reply.transportError,
+						}),
 					}),
 				);
 			}
@@ -119,7 +121,7 @@ describe("twirpCall", () => {
 		const exit = await run(call("ListArtifacts"));
 		expect(Exit.isFailure(exit)).toBe(true);
 		if (Exit.isFailure(exit)) {
-			const reason = (exit.cause as { error?: TestError }).error?.reason ?? "";
+			const reason = Option.getOrUndefined(Cause.findErrorOption(exit.cause))?.reason ?? "";
 			expect(reason).toContain("ListArtifacts failed");
 			expect(reason).toContain("HTTP 400");
 		}
@@ -130,7 +132,7 @@ describe("twirpCall", () => {
 		const exit = await run(call("ListArtifacts"));
 		expect(Exit.isFailure(exit)).toBe(true);
 		if (Exit.isFailure(exit)) {
-			const reason = (exit.cause as { error?: TestError }).error?.reason ?? "";
+			const reason = Option.getOrUndefined(Cause.findErrorOption(exit.cause))?.reason ?? "";
 			expect(reason).toContain("ListArtifacts failed");
 			expect(reason).toContain("ECONNRESET");
 		}
@@ -143,10 +145,10 @@ describe("makeTwirpRetrySchedule", () => {
 
 	const runWithClock = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient>) =>
 		Effect.gen(function* () {
-			const fiber = yield* Effect.fork(Effect.provide(effect, mockHttp));
+			const fiber = yield* Effect.forkChild(Effect.provide(effect, mockHttp));
 			yield* TestClock.adjust(Duration.seconds(120));
 			return yield* Fiber.join(fiber);
-		}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+		}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 	it("retries on HTTP 503 then succeeds", async () => {
 		replies = [{ status: 503 }, { status: 503 }, { status: 200, body: { ok: true } }];

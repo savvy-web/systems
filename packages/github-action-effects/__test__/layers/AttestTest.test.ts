@@ -139,7 +139,7 @@ describe("AttestTest — step 7", () => {
 
 		expect(Exit.isFailure(exit)).toBe(true);
 		if (Exit.isFailure(exit)) {
-			const f = Cause.failureOption(exit.cause);
+			const f = Cause.findErrorOption(exit.cause);
 			expect(f._tag).toBe("Some");
 			if (f._tag === "Some") {
 				expect(f.value._tag).toBe("AttestError");

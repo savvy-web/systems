@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { HttpClient } from "@effect/platform";
-import { Config, Effect, Schema } from "effect";
+import { Config, Effect, References, Schema } from "effect";
+import { HttpClient } from "effect/unstable/http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionsRuntime } from "../../src/runtime/ActionsRuntime.js";
 import { ActionLogger } from "../../src/services/ActionLogger.js";
@@ -135,8 +135,7 @@ describe("ActionsRuntime", () => {
 		});
 
 		it("Effect.logDebug emits ::debug:: workflow command when minimum log level is All", async () => {
-			const { Logger: EffectLogger, LogLevel } = await import("effect");
-			const program = Effect.logDebug("debug message").pipe(EffectLogger.withMinimumLogLevel(LogLevel.All));
+			const program = Effect.logDebug("debug message").pipe(Effect.provideService(References.MinimumLogLevel, "All"));
 			await runWithDefault(program);
 
 			expect(captured.join("")).toContain("::debug::debug message");

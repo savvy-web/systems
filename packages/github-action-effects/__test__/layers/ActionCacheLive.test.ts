@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { HttpClient, HttpClientError, HttpClientResponse } from "@effect/platform";
-import { Cause, Duration, Effect, Exit, Fiber, Layer, Option, TestClock, TestContext } from "effect";
+import { Cause, Duration, Effect, Exit, Fiber, Layer, Option } from "effect";
+import { TestClock } from "effect/testing";
+import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionCacheError } from "../../src/errors/ActionCacheError.js";
 import { ActionCacheLive } from "../../src/layers/ActionCacheLive.js";
@@ -96,11 +97,12 @@ const mockHttpLayer: Layer.Layer<HttpClient.HttpClient> = Layer.succeed(
 				// the underlying cause text (e.g. `ECONNRESET`) the retry schedule
 				// keys off via `reason.includes(...)`.
 				return yield* Effect.fail(
-					new HttpClientError.RequestError({
-						request,
-						reason: "Transport",
-						cause: new Error(reply.transportError),
-						description: reply.transportError,
+					new HttpClientError.HttpClientError({
+						reason: new HttpClientError.TransportError({
+							request,
+							cause: new Error(reply.transportError),
+							description: reply.transportError,
+						}),
 					}),
 				);
 			}
@@ -127,7 +129,7 @@ const runLiveExit = <A, E>(effect: Effect.Effect<A, E, ActionCache>) =>
 
 const extractError = (exit: Exit.Exit<unknown, ActionCacheError>): ActionCacheError | undefined => {
 	if (Exit.isFailure(exit)) {
-		const option = Cause.failureOption(exit.cause);
+		const option = Cause.findErrorOption(exit.cause);
 		if (Option.isSome(option)) {
 			return option.value;
 		}
@@ -395,10 +397,10 @@ describe("ActionCacheLive", () => {
 		// need TestClock to advance instantly.
 		const runWithClock = <A, E>(effect: Effect.Effect<A, E, ActionCache>) =>
 			Effect.gen(function* () {
-				const fiber = yield* Effect.fork(Effect.provide(effect, liveLayer));
+				const fiber = yield* Effect.forkChild(Effect.provide(effect, liveLayer));
 				yield* TestClock.adjust(Duration.seconds(120));
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 		it("retries Twirp calls on HTTP 503 then succeeds", async () => {
 			// CreateCacheEntry: 503, 503, then 200 — must succeed after retries.

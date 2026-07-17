@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, FileSystem, Layer, Schema } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import type { ConfigLoaderError } from "../../src/errors/ConfigLoaderError.js";
 import { ConfigLoaderLive } from "../../src/layers/ConfigLoaderLive.js";

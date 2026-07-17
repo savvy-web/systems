@@ -1,4 +1,4 @@
-import { Effect, FiberRef, Layer, LogLevel } from "effect";
+import { Effect, Layer, LogLevel, References } from "effect";
 import type { Scope } from "effect/Scope";
 import type { AnnotationProperties } from "../runtime/WorkflowCommand.js";
 import { ActionLogger } from "../services/ActionLogger.js";
@@ -57,15 +57,15 @@ export const ActionLoggerTest = {
 
 			withBuffer: <A, E, R>(label: string, effect: Effect.Effect<A, E, R>) =>
 				Effect.gen(function* () {
-					const minLevel = yield* FiberRef.get(FiberRef.currentMinimumLogLevel);
+					const minLevel = yield* References.MinimumLogLevel;
 
 					// When minimum log level is Debug or lower, pass through without buffering
-					if (LogLevel.lessThanEqual(minLevel, LogLevel.Debug)) {
+					if (LogLevel.isLessThanOrEqualTo(minLevel, "Debug")) {
 						return yield* effect;
 					}
 
 					return yield* effect.pipe(
-						Effect.tapErrorCause(() =>
+						Effect.tapCause(() =>
 							Effect.sync(() => {
 								state.flushedBuffers.push({ label, entries: [] });
 							}),

@@ -1,4 +1,4 @@
-import { Effect, FiberRef, Layer, LogLevel, Logger } from "effect";
+import { Context, Effect, Layer, LogLevel, Logger, References } from "effect";
 import type { Scope } from "effect/Scope";
 import * as WorkflowCommand from "../runtime/WorkflowCommand.js";
 import { ActionLogger } from "../services/ActionLogger.js";
@@ -18,9 +18,12 @@ interface BufferState {
 
 /**
  * Holds the active buffer for the current fiber, or `null` when not buffering.
- * `withBuffer` sets it via `Effect.locally`; `group` reads it to flush on error.
+ * `withBuffer` sets it via `Effect.provideService`; `group` reads it to flush
+ * on error.
  */
-const activeBuffer = FiberRef.unsafeMake<BufferState | null>(null);
+const ActiveBuffer = Context.Reference<BufferState | null>("github-action-effects/ActionLoggerLive/ActiveBuffer", {
+	defaultValue: () => null,
+});
 
 /** Write buffered entries to stdout, then clear them so they are not reprinted. */
 const flushBuffer = (state: BufferState): void => {
@@ -46,9 +49,9 @@ export const ActionLoggerLive: Layer.Layer<ActionLogger> = Layer.succeed(ActionL
 			Effect.sync(() => WorkflowCommand.issue("group", {}, name)),
 			() =>
 				effect.pipe(
-					Effect.tapErrorCause(() =>
+					Effect.tapCause(() =>
 						Effect.gen(function* () {
-							const state = yield* FiberRef.get(activeBuffer);
+							const state = yield* ActiveBuffer;
 							if (state !== null) {
 								flushBuffer(state);
 							}
@@ -60,10 +63,10 @@ export const ActionLoggerLive: Layer.Layer<ActionLogger> = Layer.succeed(ActionL
 
 	withBuffer: <A, E, R>(label: string, effect: Effect.Effect<A, E, R>) =>
 		Effect.gen(function* () {
-			const minLevel = yield* FiberRef.get(FiberRef.currentMinimumLogLevel);
+			const minLevel = yield* References.MinimumLogLevel;
 
 			// When minimum log level is Debug or lower, pass through without buffering
-			if (LogLevel.lessThanEqual(minLevel, LogLevel.Debug)) {
+			if (LogLevel.isLessThanOrEqualTo(minLevel, "Debug")) {
 				return yield* effect;
 			}
 
@@ -72,9 +75,9 @@ export const ActionLoggerLive: Layer.Layer<ActionLogger> = Layer.succeed(ActionL
 
 			const bufferingLogger = Logger.make(({ logLevel, message }) => {
 				const text = formatMessage(message);
-				if (LogLevel.greaterThanEqual(logLevel, LogLevel.Warning)) {
+				if (LogLevel.isGreaterThanOrEqualTo(logLevel, "Warn")) {
 					/* v8 ignore next 2 -- error vs warning branch, both tested via withBuffer */
-					const cmd = LogLevel.greaterThanEqual(logLevel, LogLevel.Error) ? "error" : "warning";
+					const cmd = LogLevel.isGreaterThanOrEqualTo(logLevel, "Error") ? "error" : "warning";
 					WorkflowCommand.issue(cmd, {}, text);
 				} else {
 					state.entries.push(text);
@@ -82,10 +85,10 @@ export const ActionLoggerLive: Layer.Layer<ActionLogger> = Layer.succeed(ActionL
 			});
 
 			return yield* effect.pipe(
-				Logger.withMinimumLogLevel(LogLevel.All),
-				Effect.provide(Logger.replace(Logger.defaultLogger, bufferingLogger)),
-				Effect.locally(activeBuffer, state),
-				Effect.tapErrorCause(() => Effect.sync(() => flushBuffer(state))),
+				Effect.provideService(References.MinimumLogLevel, "All"),
+				Effect.provide(Logger.layer([bufferingLogger])),
+				Effect.provideService(ActiveBuffer, state),
+				Effect.tapCause(() => Effect.sync(() => flushBuffer(state))),
 			);
 		}) as Effect.Effect<A, E, Exclude<R, Scope>>,
 

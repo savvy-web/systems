@@ -61,7 +61,7 @@ describe("DryRun", () => {
 					),
 				),
 				Effect.provide(DryRunLive(true)),
-				Effect.provide(Logger.replace(Logger.defaultLogger, Logger.none)),
+				Effect.provide(Logger.layer([])),
 			),
 		);
 		expect(result).toBe("skipped");
@@ -73,7 +73,7 @@ describe("DryRun", () => {
 			DryRun.pipe(
 				Effect.flatMap((dr) => dr.guard("delete-branch", Effect.succeed("done"), "skipped")),
 				Effect.provide(DryRunLive(true)),
-				Effect.provide(Logger.replace(Logger.defaultLogger, Logger.none)),
+				Effect.provide(Logger.layer([])),
 			),
 		);
 		// If it doesn't throw, the log was emitted without error

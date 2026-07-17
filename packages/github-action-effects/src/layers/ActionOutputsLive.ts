@@ -1,6 +1,5 @@
 import { delimiter } from "node:path";
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, FileSystem, Layer, Schema } from "effect";
 import { ActionOutputError } from "../errors/ActionOutputError.js";
 import type { RuntimeEnvironmentError } from "../errors/RuntimeEnvironmentError.js";
 import * as RuntimeFile from "../runtime/RuntimeFile.js";
@@ -30,8 +29,8 @@ export const ActionOutputsLive: Layer.Layer<ActionOutputs, never, FileSystem.Fil
 					Effect.catchTag("ActionOutputError", (e) => Effect.die(e)),
 				),
 
-			setJson: <A, I>(name: string, value: A, schema: Schema.Schema<A, I, never>) =>
-				Schema.encode(schema)(value).pipe(
+			setJson: <A, I>(name: string, value: A, schema: Schema.Codec<A, I>) =>
+				Schema.encodeEffect(schema)(value).pipe(
 					Effect.flatMap((encoded) => appendToFile("GITHUB_OUTPUT", name, JSON.stringify(encoded))),
 					Effect.asVoid,
 					Effect.mapError(
@@ -62,7 +61,7 @@ export const ActionOutputsLive: Layer.Layer<ActionOutputs, never, FileSystem.Fil
 						(error) =>
 							new ActionOutputError({
 								outputName: "summary",
-								reason: `Failed to write step summary: ${error.description ?? String(error)}`,
+								reason: `Failed to write step summary: ${error.message}`,
 							}),
 					),
 				);

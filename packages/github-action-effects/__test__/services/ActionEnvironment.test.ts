@@ -1,4 +1,4 @@
-import { Effect, Exit, Option } from "effect";
+import { Cause, Effect, Exit, Option } from "effect";
 import { describe, expect, it } from "vitest";
 import { ActionEnvironmentError } from "../../src/errors/ActionEnvironmentError.js";
 import { ActionEnvironmentTest } from "../../src/layers/ActionEnvironmentTest.js";
@@ -55,7 +55,7 @@ describe("ActionEnvironment", () => {
 			expect(Exit.isFailure(exit)).toBe(true);
 			if (Exit.isFailure(exit)) {
 				const cause = exit.cause;
-				const error = cause._tag === "Fail" ? cause.error : undefined;
+				const error = Option.getOrUndefined(Cause.findErrorOption(cause));
 				expect(error).toBeInstanceOf(ActionEnvironmentError);
 				if (error instanceof ActionEnvironmentError) {
 					expect(error.variable).toBe("NOT_SET");

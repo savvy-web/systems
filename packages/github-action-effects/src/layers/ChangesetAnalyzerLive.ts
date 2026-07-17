@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { ChangesetError } from "../errors/ChangesetError.js";
 import type { BumpType, Changeset, ChangesetFile } from "../schemas/Changeset.js";
 import { ChangesetAnalyzer } from "../services/ChangesetAnalyzer.js";
@@ -144,7 +143,7 @@ export const ChangesetAnalyzerLive: Layer.Layer<ChangesetAnalyzer, never, FileSy
 				const changesetDir = dir ?? DEFAULT_DIR;
 				return listChangesetFiles(changesetDir).pipe(
 					Effect.map((files) => files.length > 0),
-					Effect.catchAll(() => Effect.succeed(false)),
+					Effect.catch(() => Effect.succeed(false)),
 				);
 			},
 

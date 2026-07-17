@@ -4,6 +4,33 @@ import type { TokenPermissionError } from "../errors/TokenPermissionError.js";
 import type { PermissionCheckResult, PermissionLevel } from "../schemas/TokenPermission.js";
 
 /**
+ * Service shape for {@link TokenPermissionChecker}.
+ *
+ * @public
+ */
+export interface TokenPermissionCheckerShape {
+	/** Compare granted permissions against requirements and return the result. */
+	readonly check: (
+		requirements: Record<string, PermissionLevel>,
+	) => Effect.Effect<PermissionCheckResult, TokenPermissionError>;
+
+	/** Fail if any required permissions are missing. */
+	readonly assertSufficient: (
+		requirements: Record<string, PermissionLevel>,
+	) => Effect.Effect<PermissionCheckResult, TokenPermissionError>;
+
+	/** Fail if any required permissions are missing OR extra permissions are present. */
+	readonly assertExact: (
+		requirements: Record<string, PermissionLevel>,
+	) => Effect.Effect<PermissionCheckResult, TokenPermissionError>;
+
+	/** Log warnings for over-scoped permissions; never fails. */
+	readonly warnOverPermissioned: (
+		requirements: Record<string, PermissionLevel>,
+	) => Effect.Effect<PermissionCheckResult, never>;
+}
+
+/**
  * Service for checking GitHub token permissions.
  *
  * Provides three enforcement modes:
@@ -14,27 +41,6 @@ import type { PermissionCheckResult, PermissionLevel } from "../schemas/TokenPer
  *
  * @public
  */
-export class TokenPermissionChecker extends Context.Tag("github-action-effects/TokenPermissionChecker")<
-	TokenPermissionChecker,
-	{
-		/** Compare granted permissions against requirements and return the result. */
-		readonly check: (
-			requirements: Record<string, PermissionLevel>,
-		) => Effect.Effect<PermissionCheckResult, TokenPermissionError>;
-
-		/** Fail if any required permissions are missing. */
-		readonly assertSufficient: (
-			requirements: Record<string, PermissionLevel>,
-		) => Effect.Effect<PermissionCheckResult, TokenPermissionError>;
-
-		/** Fail if any required permissions are missing OR extra permissions are present. */
-		readonly assertExact: (
-			requirements: Record<string, PermissionLevel>,
-		) => Effect.Effect<PermissionCheckResult, TokenPermissionError>;
-
-		/** Log warnings for over-scoped permissions; never fails. */
-		readonly warnOverPermissioned: (
-			requirements: Record<string, PermissionLevel>,
-		) => Effect.Effect<PermissionCheckResult, never>;
-	}
->() {}
+export class TokenPermissionChecker extends Context.Service<TokenPermissionChecker, TokenPermissionCheckerShape>()(
+	"github-action-effects/TokenPermissionChecker",
+) {}

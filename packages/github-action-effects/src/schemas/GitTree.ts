@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-const TreeMode = Schema.Literal("100644", "100755", "040000");
+const TreeMode = Schema.Literals(["100644", "100755", "040000"]);
 
 /**
  * A tree entry that adds or updates a file.
@@ -11,7 +11,7 @@ export const TreeEntryContent = Schema.Struct({
 	path: Schema.String,
 	mode: TreeMode,
 	content: Schema.String,
-}).annotations({ identifier: "TreeEntryContent" });
+}).annotate({ identifier: "TreeEntryContent" });
 
 /**
  * A tree entry that deletes a file (sha: null).
@@ -22,7 +22,7 @@ export const TreeEntryDeletion = Schema.Struct({
 	path: Schema.String,
 	mode: TreeMode,
 	sha: Schema.Null,
-}).annotations({ identifier: "TreeEntryDeletion" });
+}).annotate({ identifier: "TreeEntryDeletion" });
 
 /**
  * A single entry in a Git tree object.
@@ -30,7 +30,7 @@ export const TreeEntryDeletion = Schema.Struct({
  *
  * @public
  */
-export const TreeEntry = Schema.Union(TreeEntryContent, TreeEntryDeletion).annotations({
+export const TreeEntry = Schema.Union([TreeEntryContent, TreeEntryDeletion]).annotate({
 	identifier: "TreeEntry",
 });
 /** @public */
@@ -44,7 +44,7 @@ export type TreeEntry = typeof TreeEntry.Type;
 export const FileChangeContent = Schema.Struct({
 	path: Schema.String,
 	content: Schema.String,
-}).annotations({ identifier: "FileChangeContent" });
+}).annotate({ identifier: "FileChangeContent" });
 
 /**
  * A file change that deletes a file (sha: null).
@@ -54,7 +54,7 @@ export const FileChangeContent = Schema.Struct({
 export const FileChangeDeletion = Schema.Struct({
 	path: Schema.String,
 	sha: Schema.Null,
-}).annotations({ identifier: "FileChangeDeletion" });
+}).annotate({ identifier: "FileChangeDeletion" });
 
 /**
  * A file change for the commitFiles convenience method.
@@ -62,7 +62,7 @@ export const FileChangeDeletion = Schema.Struct({
  *
  * @public
  */
-export const FileChange = Schema.Union(FileChangeContent, FileChangeDeletion).annotations({
+export const FileChange = Schema.Union([FileChangeContent, FileChangeDeletion]).annotate({
 	identifier: "FileChange",
 });
 /** @public */

@@ -2,8 +2,7 @@
  * Attest service tag.
  */
 
-import type { FileSystem } from "@effect/platform";
-import type { Effect } from "effect";
+import type { Effect, FileSystem } from "effect";
 import { Context } from "effect";
 import type { AttestError } from "../errors/AttestError.js";
 import type { AttestInput, InTotoStatement, SigstoreBundle } from "../schemas/Attestation.js";
@@ -84,7 +83,7 @@ export interface ProvenanceAttestationInput {
 }
 
 /**
- * Attest service surface. Implementation lives in `AttestLive`.
+ * Service shape for {@link Attest}.
  *
  * @remarks
  * The Effect signatures land incrementally; for step 1 only
@@ -94,127 +93,131 @@ export interface ProvenanceAttestationInput {
  *
  * @public
  */
-export class Attest extends Context.Tag("github-action-effects/Attest")<
-	Attest,
-	{
-		/**
-		 * Build a {@link InTotoStatement} from subjects + predicate. Pure;
-		 * runs synchronously aside from the Effect wrapping.
-		 */
-		readonly buildStatement: (input: AttestInput) => Effect.Effect<InTotoStatement, AttestError>;
+export interface AttestShape {
+	/**
+	 * Build a {@link InTotoStatement} from subjects + predicate. Pure;
+	 * runs synchronously aside from the Effect wrapping.
+	 */
+	readonly buildStatement: (input: AttestInput) => Effect.Effect<InTotoStatement, AttestError>;
 
-		/**
-		 * Write an in-toto statement or Sigstore bundle to a local JSON
-		 * file. Used during development to inspect what would be uploaded.
-		 * Requires {@link FileSystem.FileSystem} so it composes with
-		 * `NodeFileSystem.layer` in production and `FileSystem`'s test
-		 * implementation in tests.
-		 */
-		readonly save: (
-			data: InTotoStatement | SigstoreBundle,
-			path: string,
-		) => Effect.Effect<void, AttestError, FileSystem.FileSystem>;
+	/**
+	 * Write an in-toto statement or Sigstore bundle to a local JSON
+	 * file. Used during development to inspect what would be uploaded.
+	 * Requires `FileSystem.FileSystem` so it composes with
+	 * `NodeFileSystem.layer` in production and `FileSystem`'s test
+	 * implementation in tests.
+	 */
+	readonly save: (
+		data: InTotoStatement | SigstoreBundle,
+		path: string,
+	) => Effect.Effect<void, AttestError, FileSystem.FileSystem>;
 
-		/**
-		 * Build a signed Sigstore bundle (no upload).
-		 *
-		 * @remarks
-		 * Delegates to {@link SigstoreSigner} which fetches an OIDC token
-		 * via {@link OidcTokenIssuer}, signs the in-toto statement through
-		 * Fulcio, and witnesses it on Rekor. The returned
-		 * {@link SigstoreBundle} is what the GitHub attestations API
-		 * accepts as the `bundle` field of the upload payload.
-		 */
-		readonly buildBundle: (
-			input: AttestInput,
-		) => Effect.Effect<SigstoreBundle, AttestError, SigstoreSigner | OidcTokenIssuer>;
+	/**
+	 * Build a signed Sigstore bundle (no upload).
+	 *
+	 * @remarks
+	 * Delegates to {@link SigstoreSigner} which fetches an OIDC token
+	 * via {@link OidcTokenIssuer}, signs the in-toto statement through
+	 * Fulcio, and witnesses it on Rekor. The returned
+	 * {@link SigstoreBundle} is what the GitHub attestations API
+	 * accepts as the `bundle` field of the upload payload.
+	 */
+	readonly buildBundle: (
+		input: AttestInput,
+	) => Effect.Effect<SigstoreBundle, AttestError, SigstoreSigner | OidcTokenIssuer>;
 
-		/**
-		 * Full end-to-end attestation: build the in-toto statement, sign it
-		 * via {@link SigstoreSigner}, and POST the resulting Sigstore bundle
-		 * to `POST /repos/{owner}/{repo}/attestations`. Returns the local
-		 * statement + bundle plus the GitHub-issued attestation id and a
-		 * UI URL pointing at the attestation listing.
-		 */
-		readonly attest: (
-			input: AttestInput,
-		) => Effect.Effect<
-			import("../schemas/Attestation.js").AttestationRecord,
-			AttestError,
-			SigstoreSigner | OidcTokenIssuer | import("./GitHubClient.js").GitHubClient
-		>;
+	/**
+	 * Full end-to-end attestation: build the in-toto statement, sign it
+	 * via {@link SigstoreSigner}, and POST the resulting Sigstore bundle
+	 * to `POST /repos/{owner}/{repo}/attestations`. Returns the local
+	 * statement + bundle plus the GitHub-issued attestation id and a
+	 * UI URL pointing at the attestation listing.
+	 */
+	readonly attest: (
+		input: AttestInput,
+	) => Effect.Effect<
+		import("../schemas/Attestation.js").AttestationRecord,
+		AttestError,
+		SigstoreSigner | OidcTokenIssuer | import("./GitHubClient.js").GitHubClient
+	>;
 
-		/**
-		 * Generate a CycloneDX SBOM, then attest the artifact with it as
-		 * the predicate ({@link CYCLONEDX_BOM} predicateType).
-		 *
-		 * @remarks
-		 * Composes {@link Sbom} (BOM generation) with `attest`
-		 * (sign + upload). The artifact subject is derived from
-		 * `rootName` + `rootVersion` + `subjectSha256` — that's the
-		 * identity GitHub records against the attestation.
-		 */
-		readonly sbom: (
-			input: SbomAttestationInput,
-		) => Effect.Effect<
-			import("../schemas/Attestation.js").AttestationRecord,
-			AttestError,
-			Sbom | SigstoreSigner | OidcTokenIssuer | import("./GitHubClient.js").GitHubClient
-		>;
+	/**
+	 * Generate a CycloneDX SBOM, then attest the artifact with it as
+	 * the predicate ({@link CYCLONEDX_BOM} predicateType).
+	 *
+	 * @remarks
+	 * Composes {@link Sbom} (BOM generation) with `attest`
+	 * (sign + upload). The artifact subject is derived from
+	 * `rootName` + `rootVersion` + `subjectSha256` — that's the
+	 * identity GitHub records against the attestation.
+	 */
+	readonly sbom: (
+		input: SbomAttestationInput,
+	) => Effect.Effect<
+		import("../schemas/Attestation.js").AttestationRecord,
+		AttestError,
+		Sbom | SigstoreSigner | OidcTokenIssuer | import("./GitHubClient.js").GitHubClient
+	>;
 
-		/**
-		 * Attest an artifact with a caller-supplied SLSA Provenance v1
-		 * predicate.
-		 *
-		 * @remarks
-		 * The caller is responsible for assembling the SLSA predicate
-		 * (the runner's buildDefinition + runDetails); this method just
-		 * wraps it in the in-toto envelope and uploads.
-		 */
-		readonly provenance: (
-			input: ProvenanceAttestationInput,
-		) => Effect.Effect<
-			import("../schemas/Attestation.js").AttestationRecord,
-			AttestError,
-			SigstoreSigner | OidcTokenIssuer | import("./GitHubClient.js").GitHubClient
-		>;
+	/**
+	 * Attest an artifact with a caller-supplied SLSA Provenance v1
+	 * predicate.
+	 *
+	 * @remarks
+	 * The caller is responsible for assembling the SLSA predicate
+	 * (the runner's buildDefinition + runDetails); this method just
+	 * wraps it in the in-toto envelope and uploads.
+	 */
+	readonly provenance: (
+		input: ProvenanceAttestationInput,
+	) => Effect.Effect<
+		import("../schemas/Attestation.js").AttestationRecord,
+		AttestError,
+		SigstoreSigner | OidcTokenIssuer | import("./GitHubClient.js").GitHubClient
+	>;
 
-		/**
-		 * List existing attestations for a tarball digest.
-		 *
-		 * @remarks
-		 * Hits `GET /repos/{owner}/{repo}/attestations/sha256:{hex}` pinned
-		 * to REST API version `2026-03-10` (the legacy shape is deprecated;
-		 * Sunset 2028-03-10). That version omits the inline Sigstore bundle,
-		 * so `predicateType` is recovered one of two ways:
-		 *
-		 * - When `options.predicateType` is supplied the server narrows the
-		 *   list via the `predicate_type` query parameter (which accepts the
-		 *   freeform URI), and every returned entry is that type — no bundle
-		 *   fetch needed. This is the orchestrator's path ("is there a
-		 *   provenance attestation already?" / "...an SBOM attestation?").
-		 * - Without a filter each entry's `bundle_url` is fetched and its
-		 *   in-toto `predicateType` decoded (e.g. `https://slsa.dev/provenance/v1`
-		 *   for provenance, `https://cyclonedx.org/bom` for SBOM); entries
-		 *   whose bundle cannot be decoded are dropped.
-		 *
-		 * Returns an empty array when the subject has no attestations or the
-		 * API returns a 404 — only true errors (auth, network, rate limit)
-		 * surface as {@link AttestError}.
-		 *
-		 * The orchestrator uses presence to decide whether to skip a
-		 * write — reuse the existing URL when found, otherwise call
-		 * `provenance` or `sbom` to write a fresh one. This
-		 * keeps recovery runs idempotent against the artifact attestation
-		 * store.
-		 *
-		 * @param subjectSha256 - Hex-encoded SHA-256 of the artifact (no
-		 *   `sha256:` prefix; the implementation adds it).
-		 * @param options - Optional client-side filter.
-		 */
-		readonly listForSubject: (
-			subjectSha256: string,
-			options?: { readonly predicateType?: string },
-		) => Effect.Effect<ReadonlyArray<AttestationListEntry>, AttestError, import("./GitHubClient.js").GitHubClient>;
-	}
->() {}
+	/**
+	 * List existing attestations for a tarball digest.
+	 *
+	 * @remarks
+	 * Hits `GET /repos/{owner}/{repo}/attestations/sha256:{hex}` pinned
+	 * to REST API version `2026-03-10` (the legacy shape is deprecated;
+	 * Sunset 2028-03-10). That version omits the inline Sigstore bundle,
+	 * so `predicateType` is recovered one of two ways:
+	 *
+	 * - When `options.predicateType` is supplied the server narrows the
+	 *   list via the `predicate_type` query parameter (which accepts the
+	 *   freeform URI), and every returned entry is that type — no bundle
+	 *   fetch needed. This is the orchestrator's path ("is there a
+	 *   provenance attestation already?" / "...an SBOM attestation?").
+	 * - Without a filter each entry's `bundle_url` is fetched and its
+	 *   in-toto `predicateType` decoded (e.g. `https://slsa.dev/provenance/v1`
+	 *   for provenance, `https://cyclonedx.org/bom` for SBOM); entries
+	 *   whose bundle cannot be decoded are dropped.
+	 *
+	 * Returns an empty array when the subject has no attestations or the
+	 * API returns a 404 — only true errors (auth, network, rate limit)
+	 * surface as {@link AttestError}.
+	 *
+	 * The orchestrator uses presence to decide whether to skip a
+	 * write — reuse the existing URL when found, otherwise call
+	 * `provenance` or `sbom` to write a fresh one. This
+	 * keeps recovery runs idempotent against the artifact attestation
+	 * store.
+	 *
+	 * @param subjectSha256 - Hex-encoded SHA-256 of the artifact (no
+	 *   `sha256:` prefix; the implementation adds it).
+	 * @param options - Optional client-side filter.
+	 */
+	readonly listForSubject: (
+		subjectSha256: string,
+		options?: { readonly predicateType?: string },
+	) => Effect.Effect<ReadonlyArray<AttestationListEntry>, AttestError, import("./GitHubClient.js").GitHubClient>;
+}
+
+/**
+ * Attest service surface. Implementation lives in `AttestLive`.
+ *
+ * @public
+ */
+export class Attest extends Context.Service<Attest, AttestShape>()("github-action-effects/Attest") {}

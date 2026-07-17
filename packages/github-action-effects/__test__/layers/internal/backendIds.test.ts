@@ -1,4 +1,4 @@
-import { Effect, Exit } from "effect";
+import { Cause, Effect, Exit, Option } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ArtifactError } from "../../../src/errors/ArtifactError.js";
 import { getBackendIdsFromToken } from "../../../src/layers/internal/backendIds.js";
@@ -17,7 +17,7 @@ const makeToken = (payload: Record<string, unknown>): string => {
 const run = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.exit(effect));
 
 const extractError = (exit: Exit.Exit<unknown, ArtifactError>): ArtifactError | undefined =>
-	Exit.isFailure(exit) ? (exit.cause as { error?: ArtifactError }).error : undefined;
+	Exit.isFailure(exit) ? Option.getOrUndefined(Cause.findErrorOption(exit.cause)) : undefined;
 
 afterEach(() => {
 	delete process.env.ACTIONS_RUNTIME_TOKEN;

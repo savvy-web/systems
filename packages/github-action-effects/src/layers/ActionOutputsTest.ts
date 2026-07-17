@@ -49,8 +49,8 @@ export const ActionOutputsTest = {
 					state.outputs.push({ name, value });
 				}),
 
-			setJson: <A, I>(name: string, value: A, schema: Schema.Schema<A, I, never>) =>
-				Schema.encode(schema)(value).pipe(
+			setJson: <A, I>(name: string, value: A, schema: Schema.Codec<A, I>) =>
+				Schema.encodeEffect(schema)(value).pipe(
 					Effect.tap((encoded) =>
 						Effect.sync(() => {
 							state.outputs.push({ name, value: JSON.stringify(encoded) });

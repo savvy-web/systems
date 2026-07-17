@@ -41,7 +41,7 @@ export class InTotoSubject extends Schema.Class<InTotoSubject>("InTotoSubject")(
 	 * One or more algorithm → hex digest mappings for the artifact.
 	 * SHA-256 is conventionally provided as `{ sha256: "<64 hex chars>" }`.
 	 */
-	digest: Schema.Record({ key: Schema.String, value: Schema.String }),
+	digest: Schema.Record(Schema.String, Schema.String),
 }) {}
 
 /**

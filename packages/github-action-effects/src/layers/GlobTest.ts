@@ -17,7 +17,7 @@ export interface GlobTestState {
 const makeTestGlob = (state: GlobTestState): typeof Glob.Service => ({
 	glob: (patterns) => Effect.succeed(state.matches.get(patterns) ?? []),
 
-	hashFiles: (patterns) => Effect.succeed(Option.fromNullable(state.hashes.get(patterns))),
+	hashFiles: (patterns) => Effect.succeed(Option.fromNullishOr(state.hashes.get(patterns))),
 });
 
 /**

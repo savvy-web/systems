@@ -17,28 +17,34 @@ export interface InstallOptions {
 }
 
 /**
+ * Service shape for {@link PackageManagerAdapter}.
+ *
+ * @public
+ */
+export interface PackageManagerAdapterShape {
+	/** Detect the package manager used by the project. */
+	readonly detect: () => Effect.Effect<PackageManagerInfo, PackageManagerError>;
+
+	/** Install project dependencies using the detected package manager. */
+	readonly install: (options?: InstallOptions) => Effect.Effect<void, PackageManagerError>;
+
+	/** Get cache directory paths for the detected package manager. */
+	readonly getCachePaths: () => Effect.Effect<Array<string>, PackageManagerError>;
+
+	/** Get lockfile paths for the detected package manager. */
+	readonly getLockfilePaths: () => Effect.Effect<Array<string>, PackageManagerError>;
+
+	/** Execute a command via the detected package manager. */
+	readonly exec: (args: Array<string>, options?: ExecOptions) => Effect.Effect<ExecOutput, PackageManagerError>;
+}
+
+/**
  * Service for unified package manager operations.
  *
  * Supports npm, pnpm, yarn, bun, and deno with automatic detection.
  *
  * @public
  */
-export class PackageManagerAdapter extends Context.Tag("github-action-effects/PackageManagerAdapter")<
-	PackageManagerAdapter,
-	{
-		/** Detect the package manager used by the project. */
-		readonly detect: () => Effect.Effect<PackageManagerInfo, PackageManagerError>;
-
-		/** Install project dependencies using the detected package manager. */
-		readonly install: (options?: InstallOptions) => Effect.Effect<void, PackageManagerError>;
-
-		/** Get cache directory paths for the detected package manager. */
-		readonly getCachePaths: () => Effect.Effect<Array<string>, PackageManagerError>;
-
-		/** Get lockfile paths for the detected package manager. */
-		readonly getLockfilePaths: () => Effect.Effect<Array<string>, PackageManagerError>;
-
-		/** Execute a command via the detected package manager. */
-		readonly exec: (args: Array<string>, options?: ExecOptions) => Effect.Effect<ExecOutput, PackageManagerError>;
-	}
->() {}
+export class PackageManagerAdapter extends Context.Service<PackageManagerAdapter, PackageManagerAdapterShape>()(
+	"github-action-effects/PackageManagerAdapter",
+) {}

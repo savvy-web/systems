@@ -1,4 +1,5 @@
-import { Duration, Effect, Exit, Fiber, Layer, Stream, TestClock, TestContext } from "effect";
+import { Duration, Effect, Exit, Fiber, Layer, Stream } from "effect";
+import { TestClock } from "effect/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import { WorkflowDispatchLive } from "../../src/layers/WorkflowDispatchLive.js";
@@ -227,7 +228,7 @@ describe("WorkflowDispatchLive", () => {
 			});
 
 			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.fork(
+				const fiber = yield* Effect.forkChild(
 					Effect.provide(
 						Effect.flatMap(WorkflowDispatch, (svc) =>
 							svc.dispatchAndWait("deploy.yml", "main", undefined, { intervalMs: 10_000, timeoutMs: 300_000 }),
@@ -238,7 +239,7 @@ describe("WorkflowDispatchLive", () => {
 				// Two pending polls are spaced 10s apart.
 				yield* TestClock.adjust(Duration.seconds(30));
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 			expect(exit._tag).toBe("Success");
 			if (Exit.isSuccess(exit)) {
@@ -256,7 +257,7 @@ describe("WorkflowDispatchLive", () => {
 			);
 
 			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.fork(
+				const fiber = yield* Effect.forkChild(
 					Effect.provide(
 						Effect.flatMap(WorkflowDispatch, (svc) =>
 							svc.dispatchAndWait("deploy.yml", "main", undefined, { intervalMs: 10_000, timeoutMs: 30_000 }),
@@ -267,7 +268,7 @@ describe("WorkflowDispatchLive", () => {
 				// Advance well past the timeout budget.
 				yield* TestClock.adjust(Duration.seconds(120));
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 			expect(Exit.isFailure(exit)).toBe(true);
 			if (Exit.isFailure(exit)) {

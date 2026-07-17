@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import type { CycloneDXBom, SbomInput } from "../services/Sbom.js";
 import { Sbom } from "../services/Sbom.js";
 

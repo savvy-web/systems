@@ -8,10 +8,10 @@ import { IoUtil } from "../../src/utils/IoUtil.js";
 
 const isWindows = process.platform === "win32";
 
-const runFs = <A, E>(effect: Effect.Effect<A, E, import("@effect/platform").FileSystem.FileSystem>) =>
+const runFs = <A, E>(effect: Effect.Effect<A, E, import("effect").FileSystem.FileSystem>) =>
 	Effect.runPromise(Effect.provide(effect, NodeFileSystem.layer));
 
-const runFsExit = <A, E>(effect: Effect.Effect<A, E, import("@effect/platform").FileSystem.FileSystem>) =>
+const runFsExit = <A, E>(effect: Effect.Effect<A, E, import("effect").FileSystem.FileSystem>) =>
 	Effect.runPromiseExit(Effect.provide(effect, NodeFileSystem.layer));
 
 let dirA: string;

@@ -5,7 +5,7 @@ import { Schema } from "effect";
  *
  * @public
  */
-export const PackageManagerName = Schema.Literal("npm", "pnpm", "yarn", "bun", "deno");
+export const PackageManagerName = Schema.Literals(["npm", "pnpm", "yarn", "bun", "deno"]);
 
 /**
  * Type for supported package manager names.

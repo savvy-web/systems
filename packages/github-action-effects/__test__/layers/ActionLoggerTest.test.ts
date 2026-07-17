@@ -1,4 +1,4 @@
-import { Effect, LogLevel, Logger } from "effect";
+import { Effect, References } from "effect";
 import { describe, expect, it } from "vitest";
 import { ActionLoggerTest } from "../../src/layers/ActionLoggerTest.js";
 import { ActionLogger } from "../../src/services/ActionLogger.js";
@@ -57,7 +57,7 @@ describe("ActionLoggerTest", () => {
 			const result = await Effect.runPromise(
 				Effect.provide(
 					Effect.flatMap(ActionLogger, (svc) => svc.withBuffer("test", Effect.succeed("ok"))).pipe(
-						Logger.withMinimumLogLevel(LogLevel.Debug),
+						Effect.provideService(References.MinimumLogLevel, "Debug"),
 					),
 					ActionLoggerTest.layer(state),
 				),
@@ -72,7 +72,7 @@ describe("ActionLoggerTest", () => {
 				Effect.exit(
 					Effect.provide(
 						Effect.flatMap(ActionLogger, (svc) => svc.withBuffer("fail-op", Effect.fail("boom"))).pipe(
-							Logger.withMinimumLogLevel(LogLevel.Info),
+							Effect.provideService(References.MinimumLogLevel, "Info"),
 						),
 						ActionLoggerTest.layer(state),
 					),

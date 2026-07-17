@@ -23,19 +23,25 @@ export interface StorageRecordInput {
 }
 
 /**
+ * Service shape for {@link GitHubArtifactMetadata}.
+ *
+ * @public
+ */
+export interface GitHubArtifactMetadataShape {
+	/**
+	 * Create an artifact-metadata storage record linking an attestation to a
+	 * published GitHub Packages artifact. Returns the created record IDs.
+	 */
+	readonly createStorageRecord: (
+		input: StorageRecordInput,
+	) => Effect.Effect<ReadonlyArray<number>, GitHubArtifactMetadataError>;
+}
+
+/**
  * Service for GitHub Packages artifact-metadata operations.
  *
  * @public
  */
-export class GitHubArtifactMetadata extends Context.Tag("github-action-effects/GitHubArtifactMetadata")<
-	GitHubArtifactMetadata,
-	{
-		/**
-		 * Create an artifact-metadata storage record linking an attestation to a
-		 * published GitHub Packages artifact. Returns the created record IDs.
-		 */
-		readonly createStorageRecord: (
-			input: StorageRecordInput,
-		) => Effect.Effect<ReadonlyArray<number>, GitHubArtifactMetadataError>;
-	}
->() {}
+export class GitHubArtifactMetadata extends Context.Service<GitHubArtifactMetadata, GitHubArtifactMetadataShape>()(
+	"github-action-effects/GitHubArtifactMetadata",
+) {}

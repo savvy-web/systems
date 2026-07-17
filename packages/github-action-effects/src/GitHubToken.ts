@@ -1,4 +1,3 @@
-import type { ConfigError } from "effect";
 import { Config, Effect, Exit, Layer, Option, Redacted } from "effect";
 import type { ActionStateError } from "./errors/ActionStateError.js";
 import type { GitHubAppError } from "./errors/GitHubAppError.js";
@@ -37,7 +36,7 @@ const provision = (
 	options?: ProvisionOptions,
 ): Effect.Effect<
 	InstallationToken,
-	GitHubAppError | TokenPermissionError | ActionStateError | ConfigError.ConfigError,
+	GitHubAppError | TokenPermissionError | ActionStateError | Config.ConfigError,
 	ActionState | GitHubApp | ActionOutputs
 > =>
 	Effect.gen(function* () {
@@ -94,7 +93,7 @@ const provision = (
 	});
 
 const client = (): Layer.Layer<GitHubClient, ActionStateError, ActionState> =>
-	Layer.unwrapEffect(
+	Layer.unwrap(
 		Effect.gen(function* () {
 			const state = yield* ActionState;
 			const token = yield* state.get(STATE_KEY, InstallationToken);

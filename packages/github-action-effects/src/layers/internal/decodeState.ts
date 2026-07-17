@@ -9,9 +9,9 @@ import { ActionStateError } from "../../errors/ActionStateError.js";
 export const encodeState = <A, I>(
 	key: string,
 	value: A,
-	schema: Schema.Schema<A, I, never>,
+	schema: Schema.Codec<A, I>,
 ): Effect.Effect<string, ActionStateError> =>
-	Schema.encode(schema)(value).pipe(
+	Schema.encodeEffect(schema)(value).pipe(
 		Effect.map((encoded) => JSON.stringify(encoded)),
 		Effect.mapError(
 			(error) =>
@@ -31,7 +31,7 @@ export const encodeState = <A, I>(
 export const decodeState = <A, I>(
 	key: string,
 	raw: string,
-	schema: Schema.Schema<A, I, never>,
+	schema: Schema.Codec<A, I>,
 ): Effect.Effect<A, ActionStateError> =>
 	Effect.try({
 		try: () => JSON.parse(raw) as unknown,
@@ -43,7 +43,7 @@ export const decodeState = <A, I>(
 			}),
 	}).pipe(
 		Effect.flatMap((parsed) =>
-			Schema.decode(schema)(parsed as I).pipe(
+			Schema.decodeUnknownEffect(schema)(parsed).pipe(
 				Effect.mapError(
 					(parseError) =>
 						new ActionStateError({

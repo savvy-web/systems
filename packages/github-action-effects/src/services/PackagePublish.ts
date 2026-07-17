@@ -139,162 +139,165 @@ export interface PublishTarballResult {
 }
 
 /**
+ * Service shape for {@link PackagePublish}.
+ *
+ * @public
+ */
+export interface PackagePublishShape {
+	/** Configure npm authentication for a registry. */
+	readonly setupAuth: (registry: string, token: Redacted.Redacted<string>) => Effect.Effect<void, PackagePublishError>;
+
+	/**
+	 * Pack a package directory into a tarball and capture its size, file count, and integrity digest.
+	 *
+	 * @remarks
+	 * `packageManager` selects the npm executor — same dispatch as `publish`
+	 * (`pnpm dlx npm` etc.) so the pack runs through the identical npm the publish
+	 * will. Defaults to bare `npm`.
+	 */
+	readonly pack: (
+		packageDir: string,
+		options?: {
+			readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+		},
+	) => Effect.Effect<PackResult, PackagePublishError>;
+
+	/** Publish a package to a registry. */
+	readonly publish: (
+		packageDir: string,
+		options?: {
+			readonly registry?: string;
+			readonly tag?: string;
+			readonly access?: "public" | "restricted";
+			readonly provenance?: boolean;
+			/**
+			 * Active package manager — controls how `npm publish` is
+			 * invoked. `"npm"` runs the runner's bundled `npm`, `"pnpm"`
+			 * runs `pnpm dlx npm`, `"yarn"` runs `yarn npm`, `"bun"`
+			 * runs `bun x npm`. The non-npm dispatchers fetch a fresh
+			 * `npm` rather than using the runner's bundled version,
+			 * which is critical for OIDC trusted publishing (requires
+			 * npm ≥ 11.5.1; GitHub-hosted runners on Node 24 ship npm
+			 * 10.x). Default `"npm"` preserves prior behaviour.
+			 */
+			readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+		},
+	) => Effect.Effect<void, PackagePublishError>;
+
+	/**
+	 * Publish a previously-packed tarball to a registry.
+	 *
+	 * @remarks
+	 * Unlike `publish`, which takes a directory and lets `npm`
+	 * pack it implicitly, `publishTarball` accepts the absolute path
+	 * to a `.tgz` from a prior `pack` call and uploads its
+	 * bytes directly — no second pack happens. Two targets pointing
+	 * at the same tarball upload byte-identical content, which is
+	 * what makes the integrity-compare branch of a recovery run
+	 * meaningful: the digest the caller compared against the
+	 * registry is also the digest of what gets uploaded.
+	 *
+	 * `registry` is required because the whole point of this method
+	 * is "upload this specific tarball to that specific registry";
+	 * an absent registry would invite a silent default-registry
+	 * dispatch, which is exactly the bug this method exists to fix.
+	 */
+	readonly publishTarball: (
+		tarballPath: string,
+		options: {
+			readonly registry: string;
+			readonly access?: "public" | "restricted";
+			readonly provenance?: boolean;
+			readonly tag?: string;
+			readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+			/**
+			 * Force classic `_authToken` auth by stripping the GitHub Actions OIDC env so
+			 * npm does not attempt (and fail) tokenless trusted publishing. Required for
+			 * GitHub Packages and as the bootstrap path for npm packages that have no
+			 * trusted publisher configured yet.
+			 */
+			readonly tokenAuth?: boolean;
+		},
+	) => Effect.Effect<PublishTarballResult, PackagePublishError>;
+
+	/** Verify a published package's integrity hash matches the expected digest. */
+	readonly verifyIntegrity: (
+		packageName: string,
+		version: string,
+		expectedDigest: string,
+	) => Effect.Effect<boolean, PackagePublishError>;
+
+	/** Publish a package to multiple registries in sequence. */
+	readonly publishToRegistries: (
+		packageDir: string,
+		registries: Array<RegistryTarget>,
+	) => Effect.Effect<void, PackagePublishError>;
+
+	/**
+	 * Publish a package only when its exact version is not already on the
+	 * registry.
+	 *
+	 * @remarks
+	 * Skips when an identical version is already published (the registry
+	 * integrity hash matches `input.digest`); fails with a content-mismatch
+	 * {@link PackagePublishError} when the published version differs.
+	 * Authentication is the caller's responsibility, as for `publish`.
+	 *
+	 * Assumes the package name already exists on the registry: the version
+	 * lookup errors for a name that has never been published, so a brand-new
+	 * package's first publish must be routed through a separate path by the
+	 * caller, not through `publishIdempotent`.
+	 *
+	 * @deprecated The fused probe-then-publish dispatch hardcoded the
+	 *   wrong registry (the npm default) and could not recover from a
+	 *   partial publish across multiple registries. New callers should
+	 *   compose `pack`, `NpmRegistry.getPublishedIntegrity`,
+	 *   and `publishTarball` themselves. This method is kept for
+	 *   the migration window; removal lands in a follow-up.
+	 */
+	readonly publishIdempotent: (
+		input: IdempotentPublishInput,
+	) => Effect.Effect<IdempotentPublishResult, PackagePublishError>;
+
+	/**
+	 * Validate that a package can be packed for publishing via
+	 * `npm pack --dry-run`, reporting the resulting tarball size and file count
+	 * without writing the tarball or publishing anything.
+	 *
+	 * @remarks
+	 * This validates PACKABILITY and SIZING only. `npm pack --dry-run` does not
+	 * contact the registry, so it does NOT verify auth, reachability, or
+	 * version conflicts — `ok: true` means the package packs cleanly, not that
+	 * a registry would accept the publish. A non-zero `npm` exit (e.g. an
+	 * invalid `package.json` or `files` glob) is reported as `ok: false` in the
+	 * result, not as an error — a failed dry-run is a valid outcome. The error
+	 * channel is reserved for a structural failure (npm could not be spawned,
+	 * or its `--json` output could not be parsed).
+	 *
+	 * `packageManager` selects the npm executor and should match the value
+	 * passed to `publish`, so the dry-run packs with the same npm the
+	 * live publish will run (`pnpm dlx npm` fetches a fresh npm that can
+	 * behave differently from the runner's bundled one). The other options do
+	 * not affect the underlying `npm pack --dry-run` and are accepted only for
+	 * call-site symmetry with `publish`.
+	 */
+	readonly dryRun: (
+		packageDir: string,
+		options?: {
+			readonly registry?: string;
+			readonly tag?: string;
+			readonly access?: "public" | "restricted";
+			readonly provenance?: boolean;
+			readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+		},
+	) => Effect.Effect<DryRunResult, PackagePublishError>;
+}
+
+/**
  * Service for npm package publishing workflow.
  *
  * @public
  */
-export class PackagePublish extends Context.Tag("github-action-effects/PackagePublish")<
-	PackagePublish,
-	{
-		/** Configure npm authentication for a registry. */
-		readonly setupAuth: (
-			registry: string,
-			token: Redacted.Redacted<string>,
-		) => Effect.Effect<void, PackagePublishError>;
-
-		/**
-		 * Pack a package directory into a tarball and capture its size, file count, and integrity digest.
-		 *
-		 * @remarks
-		 * `packageManager` selects the npm executor — same dispatch as `publish`
-		 * (`pnpm dlx npm` etc.) so the pack runs through the identical npm the publish
-		 * will. Defaults to bare `npm`.
-		 */
-		readonly pack: (
-			packageDir: string,
-			options?: {
-				readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
-			},
-		) => Effect.Effect<PackResult, PackagePublishError>;
-
-		/** Publish a package to a registry. */
-		readonly publish: (
-			packageDir: string,
-			options?: {
-				readonly registry?: string;
-				readonly tag?: string;
-				readonly access?: "public" | "restricted";
-				readonly provenance?: boolean;
-				/**
-				 * Active package manager — controls how `npm publish` is
-				 * invoked. `"npm"` runs the runner's bundled `npm`, `"pnpm"`
-				 * runs `pnpm dlx npm`, `"yarn"` runs `yarn npm`, `"bun"`
-				 * runs `bun x npm`. The non-npm dispatchers fetch a fresh
-				 * `npm` rather than using the runner's bundled version,
-				 * which is critical for OIDC trusted publishing (requires
-				 * npm ≥ 11.5.1; GitHub-hosted runners on Node 24 ship npm
-				 * 10.x). Default `"npm"` preserves prior behaviour.
-				 */
-				readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
-			},
-		) => Effect.Effect<void, PackagePublishError>;
-
-		/**
-		 * Publish a previously-packed tarball to a registry.
-		 *
-		 * @remarks
-		 * Unlike `publish`, which takes a directory and lets `npm`
-		 * pack it implicitly, `publishTarball` accepts the absolute path
-		 * to a `.tgz` from a prior `pack` call and uploads its
-		 * bytes directly — no second pack happens. Two targets pointing
-		 * at the same tarball upload byte-identical content, which is
-		 * what makes the integrity-compare branch of a recovery run
-		 * meaningful: the digest the caller compared against the
-		 * registry is also the digest of what gets uploaded.
-		 *
-		 * `registry` is required because the whole point of this method
-		 * is "upload this specific tarball to that specific registry";
-		 * an absent registry would invite a silent default-registry
-		 * dispatch, which is exactly the bug this method exists to fix.
-		 */
-		readonly publishTarball: (
-			tarballPath: string,
-			options: {
-				readonly registry: string;
-				readonly access?: "public" | "restricted";
-				readonly provenance?: boolean;
-				readonly tag?: string;
-				readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
-				/**
-				 * Force classic `_authToken` auth by stripping the GitHub Actions OIDC env so
-				 * npm does not attempt (and fail) tokenless trusted publishing. Required for
-				 * GitHub Packages and as the bootstrap path for npm packages that have no
-				 * trusted publisher configured yet.
-				 */
-				readonly tokenAuth?: boolean;
-			},
-		) => Effect.Effect<PublishTarballResult, PackagePublishError>;
-
-		/** Verify a published package's integrity hash matches the expected digest. */
-		readonly verifyIntegrity: (
-			packageName: string,
-			version: string,
-			expectedDigest: string,
-		) => Effect.Effect<boolean, PackagePublishError>;
-
-		/** Publish a package to multiple registries in sequence. */
-		readonly publishToRegistries: (
-			packageDir: string,
-			registries: Array<RegistryTarget>,
-		) => Effect.Effect<void, PackagePublishError>;
-
-		/**
-		 * Publish a package only when its exact version is not already on the
-		 * registry.
-		 *
-		 * @remarks
-		 * Skips when an identical version is already published (the registry
-		 * integrity hash matches `input.digest`); fails with a content-mismatch
-		 * {@link PackagePublishError} when the published version differs.
-		 * Authentication is the caller's responsibility, as for `publish`.
-		 *
-		 * Assumes the package name already exists on the registry: the version
-		 * lookup errors for a name that has never been published, so a brand-new
-		 * package's first publish must be routed through a separate path by the
-		 * caller, not through `publishIdempotent`.
-		 *
-		 * @deprecated The fused probe-then-publish dispatch hardcoded the
-		 *   wrong registry (the npm default) and could not recover from a
-		 *   partial publish across multiple registries. New callers should
-		 *   compose `pack`, `NpmRegistry.getPublishedIntegrity`,
-		 *   and `publishTarball` themselves. This method is kept for
-		 *   the migration window; removal lands in a follow-up.
-		 */
-		readonly publishIdempotent: (
-			input: IdempotentPublishInput,
-		) => Effect.Effect<IdempotentPublishResult, PackagePublishError>;
-
-		/**
-		 * Validate that a package can be packed for publishing via
-		 * `npm pack --dry-run`, reporting the resulting tarball size and file count
-		 * without writing the tarball or publishing anything.
-		 *
-		 * @remarks
-		 * This validates PACKABILITY and SIZING only. `npm pack --dry-run` does not
-		 * contact the registry, so it does NOT verify auth, reachability, or
-		 * version conflicts — `ok: true` means the package packs cleanly, not that
-		 * a registry would accept the publish. A non-zero `npm` exit (e.g. an
-		 * invalid `package.json` or `files` glob) is reported as `ok: false` in the
-		 * result, not as an error — a failed dry-run is a valid outcome. The error
-		 * channel is reserved for a structural failure (npm could not be spawned,
-		 * or its `--json` output could not be parsed).
-		 *
-		 * `packageManager` selects the npm executor and should match the value
-		 * passed to `publish`, so the dry-run packs with the same npm the
-		 * live publish will run (`pnpm dlx npm` fetches a fresh npm that can
-		 * behave differently from the runner's bundled one). The other options do
-		 * not affect the underlying `npm pack --dry-run` and are accepted only for
-		 * call-site symmetry with `publish`.
-		 */
-		readonly dryRun: (
-			packageDir: string,
-			options?: {
-				readonly registry?: string;
-				readonly tag?: string;
-				readonly access?: "public" | "restricted";
-				readonly provenance?: boolean;
-				readonly packageManager?: "npm" | "pnpm" | "yarn" | "bun";
-			},
-		) => Effect.Effect<DryRunResult, PackagePublishError>;
-	}
->() {}
+export class PackagePublish extends Context.Service<PackagePublish, PackagePublishShape>()(
+	"github-action-effects/PackagePublish",
+) {}

@@ -1,4 +1,4 @@
-import { Effect, Layer, LogLevel, Logger, Option } from "effect";
+import { Effect, Layer, Option, References } from "effect";
 import { describe, expect, it } from "vitest";
 import { CommandRunnerError } from "../../src/errors/CommandRunnerError.js";
 import { NpmRegistryLive } from "../../src/layers/NpmRegistryLive.js";
@@ -79,7 +79,7 @@ const runIntegrityProbe = (
 		return yield* reg.getPublishedIntegrity(pkg, version, options);
 	});
 	return Effect.runPromise(
-		program.pipe(Effect.provide(layer), Logger.withMinimumLogLevel(LogLevel.None)) as Effect.Effect<
+		program.pipe(Effect.provide(layer), Effect.provideService(References.MinimumLogLevel, "None")) as Effect.Effect<
 			Option.Option<string>,
 			never,
 			never
@@ -102,11 +102,11 @@ const runIntegrityProbeError = (
 		return yield* reg.getPublishedIntegrity(pkg, version, options);
 	});
 	return Effect.runPromise(
-		program.pipe(Effect.provide(layer), Effect.flip, Logger.withMinimumLogLevel(LogLevel.None)) as Effect.Effect<
-			unknown,
-			never,
-			never
-		>,
+		program.pipe(
+			Effect.provide(layer),
+			Effect.flip,
+			Effect.provideService(References.MinimumLogLevel, "None"),
+		) as Effect.Effect<unknown, never, never>,
 	);
 };
 
@@ -323,7 +323,7 @@ describe("NpmRegistryLive", () => {
 		const result = await Effect.runPromise(
 			NpmRegistry.pipe(
 				Effect.flatMap((reg) => reg.getLatestVersion("nonexistent")),
-				Effect.catchAll((error) => Effect.succeed(error)),
+				Effect.catch((error) => Effect.succeed(error)),
 				Effect.provide(layer),
 			),
 		);
@@ -333,7 +333,7 @@ describe("NpmRegistryLive", () => {
 
 	describe("getPublishedIntegrity", () => {
 		// Structured log lines emitted by getPublishedIntegrity are silenced
-		// inside the helpers (see `Logger.withMinimumLogLevel(LogLevel.None)`).
+		// inside the helpers (see `Effect.provideService(References.MinimumLogLevel, "None")`).
 		// The logs themselves are validated indirectly via the layer's
 		// emission to the runner during real runs.
 

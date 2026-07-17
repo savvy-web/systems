@@ -10,13 +10,14 @@ const mapError =
 		new GitBranchError({ branch, operation, reason: error.reason });
 
 /** Retry schedule for transient GitHub API errors (3 retries, exponential backoff from 1s). */
-const retrySchedule = Schedule.intersect(Schedule.exponential(Duration.seconds(1)), Schedule.recurs(3));
+const retrySchedule = Schedule.exponential(Duration.seconds(1));
 
 /** Retry an effect when the GitHubClientError is marked retryable. */
 const retryOnTransient = <A>(effect: Effect.Effect<A, GitHubClientError>): Effect.Effect<A, GitHubClientError> =>
 	effect.pipe(
 		Effect.retry({
 			schedule: retrySchedule,
+			times: 3,
 			while: (error) => error.retryable,
 		}),
 	);
@@ -62,7 +63,7 @@ export const GitBranchLive: Layer.Layer<GitBranch, never, GitHubClient> = Layer.
 				),
 			).pipe(
 				Effect.map(() => true),
-				Effect.catchAll((error) => {
+				Effect.catch((error) => {
 					if (error.status === 404) {
 						return Effect.succeed(false);
 					}

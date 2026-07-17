@@ -1,4 +1,4 @@
-import { HashMap, Inspectable, LogLevel, Logger, Option } from "effect";
+import { Inspectable, LogLevel, Logger, References } from "effect";
 import * as WorkflowCommand from "./WorkflowCommand.js";
 
 /**
@@ -6,7 +6,7 @@ import * as WorkflowCommand from "./WorkflowCommand.js";
  *
  * - Debug / Trace  → `::debug::message`
  * - Info           → plain text to stdout (no command prefix)
- * - Warning        → `::warning::message`
+ * - Warn           → `::warning::message`
  * - Error / Fatal  → `::error::message`
  *
  * Annotations `file`, `line`, and `col` are forwarded as workflow command
@@ -20,21 +20,22 @@ export const ActionsLogger: Logger.Logger<unknown, void> = Logger.make((options)
 	const level = options.logLevel;
 
 	// Collect annotation properties: file, line, col
+	const annotations = options.fiber.getRef(References.CurrentLogAnnotations);
 	const properties: Record<string, string> = {};
 	for (const key of ["file", "line", "col"] as const) {
-		const value = HashMap.get(options.annotations, key);
-		if (Option.isSome(value)) {
-			properties[key] = String(value.value);
+		const value = annotations[key];
+		if (value !== undefined) {
+			properties[key] = String(value);
 		}
 	}
 
-	if (LogLevel.greaterThanEqual(level, LogLevel.Error)) {
+	if (LogLevel.isGreaterThanOrEqualTo(level, "Error")) {
 		// Error and Fatal
 		WorkflowCommand.issue("error", properties, message);
-	} else if (LogLevel.greaterThanEqual(level, LogLevel.Warning)) {
-		// Warning
+	} else if (LogLevel.isGreaterThanOrEqualTo(level, "Warn")) {
+		// Warn
 		WorkflowCommand.issue("warning", properties, message);
-	} else if (LogLevel.greaterThanEqual(level, LogLevel.Info)) {
+	} else if (LogLevel.isGreaterThanOrEqualTo(level, "Info")) {
 		// Info — plain text, no workflow command prefix
 		process.stdout.write(`${message}\n`);
 	} else {

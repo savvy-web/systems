@@ -5,7 +5,7 @@ import { Schema } from "effect";
  *
  * @public
  */
-export const PermissionLevel = Schema.Literal("read", "write", "admin");
+export const PermissionLevel = Schema.Literals(["read", "write", "admin"]);
 
 /**
  * Decoded type for PermissionLevel.
@@ -55,8 +55,8 @@ export type ExtraPermission = typeof ExtraPermission.Type;
  * @public
  */
 export const PermissionCheckResult = Schema.Struct({
-	granted: Schema.Record({ key: Schema.String, value: PermissionLevel }),
-	required: Schema.Record({ key: Schema.String, value: PermissionLevel }),
+	granted: Schema.Record(Schema.String, PermissionLevel),
+	required: Schema.Record(Schema.String, PermissionLevel),
 	missing: Schema.Array(PermissionGap),
 	extra: Schema.Array(ExtraPermission),
 	satisfied: Schema.Boolean,

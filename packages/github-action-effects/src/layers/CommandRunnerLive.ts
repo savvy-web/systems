@@ -41,7 +41,7 @@ const spawnCapture = (
 	args: ReadonlyArray<string>,
 	options: ExecOptions | undefined,
 ): Effect.Effect<ExecOutput, CommandRunnerError> =>
-	Effect.async<ExecOutput, CommandRunnerError>((resume) => {
+	Effect.callback<ExecOutput, CommandRunnerError>((resume) => {
 		const isWindows = process.platform === "win32";
 		const spawnOpts: SpawnOptions = {
 			stdio: "pipe",
@@ -101,7 +101,7 @@ const spawnCapture = (
 		// Count one execution per spawn (the funnel for all four public methods)
 		// and wrap the call in a span. Both are inert without a metric reader /
 		// tracer; the counter increments regardless of success or failure.
-		Effect.ensuring(Metric.update(commandExecutions.pipe(Metric.tagged("command", command)), 1)),
+		Effect.ensuring(Metric.update(commandExecutions.pipe(Metric.withAttributes({ command: command })), 1)),
 		Effect.withSpan("CommandRunner.exec", { attributes: { command, argc: args.length } }),
 	);
 
@@ -158,7 +158,7 @@ export const CommandRunnerLive: Layer.Layer<CommandRunner> = Layer.succeed(
 					}),
 				),
 				Effect.flatMap((parsed) =>
-					Schema.decodeUnknown(schema)(parsed).pipe(
+					Schema.decodeUnknownEffect(schema)(parsed).pipe(
 						Effect.mapError(
 							() =>
 								new CommandRunnerError({

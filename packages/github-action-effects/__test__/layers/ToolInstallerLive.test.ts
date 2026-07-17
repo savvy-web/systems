@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { get as httpsGet } from "node:https";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Duration, Effect, Fiber, Option, Schedule, TestClock, TestContext } from "effect";
+import { Duration, Effect, Fiber, Option, Schedule } from "effect";
+import { TestClock } from "effect/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToolInstallerError } from "../../src/errors/ToolInstallerError.js";
 import { ToolInstallerLive, isRetryableDownloadError } from "../../src/layers/ToolInstallerLive.js";
@@ -592,7 +593,7 @@ describe("ToolInstallerLive", () => {
 
 			await Effect.runPromise(
 				Effect.gen(function* () {
-					const fiber = yield* Effect.fork(
+					const fiber = yield* Effect.forkChild(
 						Effect.flatMap(ToolInstaller, (svc) => svc.download("https://example.com/tool.tar.gz")).pipe(
 							Effect.provide(ToolInstallerLive),
 						),
@@ -626,9 +627,11 @@ describe("ToolInstallerLive", () => {
 				statusCode: 404,
 			});
 
-		const downloadSchedule = Schedule.intersect(Schedule.exponential("1 second"), Schedule.recurs(2)).pipe(
-			Schedule.whileInput(isRetryableDownloadError),
-		);
+		const downloadSchedule = {
+			schedule: Schedule.exponential("1 second"),
+			times: 2,
+			while: isRetryableDownloadError,
+		};
 
 		it("treats 5xx / 408 / 429 / transient transport errors as retryable", () => {
 			expect(isRetryableDownloadError(make503())).toBe(true);
@@ -672,11 +675,11 @@ describe("ToolInstallerLive", () => {
 			}).pipe(Effect.retry(downloadSchedule));
 
 			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.fork(effect);
+				const fiber = yield* Effect.forkChild(effect);
 				// Cover 1s + 2s of backoff.
 				yield* TestClock.adjust(Duration.seconds(5));
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 			expect(exit._tag).toBe("Success");
 			expect(attempts).toBe(3);
@@ -690,10 +693,10 @@ describe("ToolInstallerLive", () => {
 			}).pipe(Effect.retry(downloadSchedule));
 
 			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.fork(effect);
+				const fiber = yield* Effect.forkChild(effect);
 				yield* TestClock.adjust(Duration.seconds(10));
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 			expect(exit._tag).toBe("Failure");
 			expect(attempts).toBe(3);

@@ -1,4 +1,5 @@
-import { Cause, Duration, Effect, Exit, Fiber, Layer, Stream, TestClock, TestContext } from "effect";
+import { Cause, Duration, Effect, Exit, Fiber, Layer, Stream } from "effect";
+import { TestClock } from "effect/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import { GitBranchLive } from "../../src/layers/GitBranchLive.js";
@@ -91,11 +92,11 @@ const runWithTestClock = <A, E>(
 	retryLayer: Layer.Layer<GitBranch, never, never>,
 ): Promise<Exit.Exit<A, E>> =>
 	Effect.gen(function* () {
-		const fiber = yield* Effect.fork(Effect.provide(effect, retryLayer));
+		const fiber = yield* Effect.forkChild(Effect.provide(effect, retryLayer));
 		// Advance clock enough to cover all retry delays (1s + 2s + 4s = 7s)
 		yield* TestClock.adjust(Duration.seconds(10));
 		return yield* Fiber.join(fiber);
-	}).pipe(Effect.exit, Effect.provide(TestContext.TestContext), Effect.runPromise);
+	}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
 
 beforeEach(() => {
 	vi.clearAllMocks();

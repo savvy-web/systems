@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { BlobClient, BlockBlobClient } from "@azure/storage-blob";
-import { HttpClient } from "@effect/platform";
 import { Effect, Layer, Option, Redacted } from "effect";
+import { HttpClient } from "effect/unstable/http";
 import { ArtifactError } from "../errors/ArtifactError.js";
 import type { ArtifactItem } from "../services/Artifact.js";
 import { Artifact } from "../services/Artifact.js";
@@ -261,7 +261,7 @@ const cleanupFile = (filePath: string) =>
 	});
 
 const findByName = (artifacts: ReadonlyArray<ArtifactItem>, name: string): Option.Option<ArtifactItem> =>
-	Option.fromNullable(artifacts.find((a) => a.name === name));
+	Option.fromNullishOr(artifacts.find((a) => a.name === name));
 
 // ---------------------------------------------------------------------------
 // Live layer

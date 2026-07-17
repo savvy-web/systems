@@ -6,7 +6,7 @@ import { TokenPermissionChecker } from "../../src/services/TokenPermissionChecke
 
 const extractError = (exit: Exit.Exit<unknown, TokenPermissionError>): TokenPermissionError => {
 	if (!Exit.isFailure(exit)) throw new Error("Expected failure");
-	const failure = Cause.failureOption(exit.cause);
+	const failure = Cause.findErrorOption(exit.cause);
 	if (failure._tag !== "Some") throw new Error("Expected fail cause");
 	return failure.value;
 };

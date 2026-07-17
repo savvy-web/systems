@@ -1,5 +1,5 @@
-import { HttpClient, HttpClientResponse } from "@effect/platform";
 import { Effect, Layer, Option, Redacted } from "effect";
+import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { describe, expect, it } from "vitest";
 import { S3BlobStoreLive } from "../../src/layers/S3BlobStoreLive.js";
 import { BlobStore } from "../../src/services/BlobStore.js";

@@ -8,7 +8,7 @@ import { Schema } from "effect";
 export const NpmPackageInfo = Schema.Struct({
 	name: Schema.String,
 	version: Schema.String,
-	distTags: Schema.Record({ key: Schema.String, value: Schema.String }),
+	distTags: Schema.Record(Schema.String, Schema.String),
 	integrity: Schema.UndefinedOr(Schema.String),
 	tarball: Schema.UndefinedOr(Schema.String),
 });

@@ -16,9 +16,9 @@ export interface ResilienceOptions {
 	/** Max retry attempts for `retryable` errors. Default `4`. */
 	readonly maxRetries?: number;
 	/** Base delay for the exponential schedule. Default `Duration.seconds(1)`. */
-	readonly baseDelay?: Duration.DurationInput;
+	readonly baseDelay?: Duration.Input;
 	/** Cap on any single backoff delay. Default `Duration.seconds(30)`. */
-	readonly maxDelay?: Duration.DurationInput;
+	readonly maxDelay?: Duration.Input;
 }
 
 const DEFAULT_MAX_RETRIES = 4;
@@ -43,22 +43,30 @@ const DEFAULT_MAX_DELAY = Duration.seconds(30);
  * a standalone backoff; reach for `withResilience` directly when server-advised
  * `Retry-After` / `x-ratelimit-reset` delays must be honored.
  *
- * The per-interval cap is expressed with `Schedule.map((d) => Duration.min(d, cap))`
+ * The per-interval cap is expressed with `Schedule.map(({ output }) => Duration.min(output, cap))`
  * rather than `Schedule.either(Schedule.spaced(cap))`: `Duration.min` caps each
  * computed delay deterministically, which the cap test pins directly.
  *
  * @public
  */
-export const resilienceSchedule = (options?: ResilienceOptions): Schedule.Schedule<unknown, GitHubClientError> => {
+export const resilienceSchedule = (
+	options?: ResilienceOptions,
+): {
+	readonly schedule: Schedule.Schedule<Duration.Duration, unknown>;
+	readonly times: number;
+	readonly while: (e: GitHubClientError) => boolean;
+} => {
 	const max = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
 	const base = options?.baseDelay ?? DEFAULT_BASE_DELAY;
-	const cap = Duration.decode(options?.maxDelay ?? DEFAULT_MAX_DELAY);
-	return Schedule.exponential(base).pipe(
-		Schedule.map((d) => Duration.min(d, cap)),
-		Schedule.jittered,
-		Schedule.whileInput((e: GitHubClientError) => e.retryable),
-		Schedule.compose(Schedule.recurs(max)),
-	);
+	const cap = Duration.fromInputUnsafe(options?.maxDelay ?? DEFAULT_MAX_DELAY);
+	return {
+		schedule: Schedule.exponential(base).pipe(
+			Schedule.map(({ output }) => Duration.min(output, cap)),
+			Schedule.jittered,
+		),
+		times: max,
+		while: (e: GitHubClientError) => e.retryable,
+	};
 };
 
 /** Compute the exponential, jittered, capped backoff for a given retry attempt (0-based). */
@@ -84,12 +92,12 @@ export const withResilience = <T>(
 		return effect;
 	}
 	const max = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
-	const baseMs = Duration.toMillis(Duration.decode(options?.baseDelay ?? DEFAULT_BASE_DELAY));
-	const capMs = Duration.toMillis(Duration.decode(options?.maxDelay ?? DEFAULT_MAX_DELAY));
+	const baseMs = Duration.toMillis(Duration.fromInputUnsafe(options?.baseDelay ?? DEFAULT_BASE_DELAY));
+	const capMs = Duration.toMillis(Duration.fromInputUnsafe(options?.maxDelay ?? DEFAULT_MAX_DELAY));
 
 	const loop = (attempt: number): Effect.Effect<T, GitHubClientError> =>
 		effect.pipe(
-			Effect.catchAll((error) => {
+			Effect.catch((error) => {
 				if (!error.retryable || attempt >= max) {
 					return Effect.fail(error);
 				}
