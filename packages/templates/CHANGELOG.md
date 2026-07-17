@@ -1,5 +1,13 @@
 # @savvy-web/templates
 
+## 1.0.1
+
+### Dependencies
+
+* | Dependency     | Type       | Action  | From   | To     |                                                          |
+  | -------------- | ---------- | ------- | ------ | ------ | -------------------------------------------------------- |
+  | @effected/yaml | dependency | updated | ^0.2.0 | ^0.3.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 1.0.0
 
 ### Breaking Changes
