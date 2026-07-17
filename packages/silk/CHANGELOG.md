@@ -1,5 +1,30 @@
 # @savvy-web/silk
 
+## 3.0.0
+
+### Breaking Changes
+
+* The install target re-exports `@savvy-web/silk-effects`' v4 surface; consumers pick up the v4 `effect` generation and the reshaped service, schema, and error types. [#312][#312]
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 1.6.1 | 2.0.0 |
+| @savvy-web/mcp       | dependency | updated | 1.8.1 | 2.0.0 |
+
+* | Dependency       | Type       | Action  | From    | To             |                                                                       |
+  | ---------------- | ---------- | ------- | ------- | -------------- | --------------------------------------------------------------------- |
+  | @effect/platform | dependency | removed | ^0.96.2 | —              |                                                                       |
+  | effect           | dependency | updated | ^3.21.4 | catalog:effect | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
 ## 2.5.0
 
 ### Features

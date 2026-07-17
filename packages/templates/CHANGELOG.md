@@ -1,5 +1,29 @@
 # @savvy-web/templates
 
+## 1.0.0
+
+### Breaking Changes
+
+* The package peers on `effect@4` (`catalog:effectPeers`); consumers must provide the v4 runtime.
+
+### Dependencies
+
+* | Dependency     | Type           | Action  | From    | To                  |                                                                       |
+  | -------------- | -------------- | ------- | ------- | ------------------- | --------------------------------------------------------------------- |
+  | yaml-effect    | dependency     | removed | ^0.7.2  | —                   |                                                                       |
+  | effect         | peerDependency | updated | ^3.21.0 | catalog:effectPeers |                                                                       |
+  | @effected/yaml | dependency     | added   | —       | ^0.2.0              | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Other
+
+* YAML serialization adopts `@effected/yaml`. [#312][#312]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
 ## 0.1.8
 
 ### Dependencies

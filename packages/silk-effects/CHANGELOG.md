@@ -1,5 +1,44 @@
 # @savvy-web/silk-effects
 
+## 4.0.0
+
+### Breaking Changes
+
+* The library now targets `effect@4` and peers on `catalog:effectPeers`; the `@effect/platform` peer is dropped because its abstractions moved into core `effect`.
+* All 19 services convert from `Context.Tag` to class-based `Context.Service`, and each now exports a companion `*Shape` interface for structural consumers.
+* Result schemas, tagged errors, and value objects are rebuilt on the v4 `Schema` surface; consumers that embed these types (notably the MCP tool contracts) must update to the v4 shapes.
+
+### Dependencies
+
+* | Dependency             | Type           | Action  | From    | To                  |                                                                       |
+  | ---------------------- | -------------- | ------- | ------- | ------------------- | --------------------------------------------------------------------- |
+  | jsonc-effect           | dependency     | removed | ^0.3.1  | —                   |                                                                       |
+  | semver-effect          | dependency     | removed | ^0.3.1  | —                   |                                                                       |
+  | tinyglobby             | dependency     | removed | ^0.2.17 | —                   |                                                                       |
+  | workspaces-effect      | dependency     | removed | ^2.1.0  | —                   |                                                                       |
+  | yaml                   | dependency     | removed | ^2.9.0  | —                   |                                                                       |
+  | yaml-effect            | dependency     | removed | ^0.7.2  | —                   |                                                                       |
+  | @effect/platform       | peerDependency | removed | ^0.96.0 | —                   |                                                                       |
+  | effect                 | peerDependency | updated | ^3.21.0 | catalog:effectPeers |                                                                       |
+  | @effected/git          | dependency     | added   | —       | ^0.3.0              |                                                                       |
+  | @effected/glob         | dependency     | added   | —       | ^0.1.0              |                                                                       |
+  | @effected/jsonc        | dependency     | added   | —       | ^0.2.0              |                                                                       |
+  | @effected/package-json | dependency     | added   | —       | ^0.3.0              |                                                                       |
+  | @effected/walker       | dependency     | added   | —       | ^0.2.0              |                                                                       |
+  | @effected/workspaces   | dependency     | added   | —       | ^0.3.0              |                                                                       |
+  | @effected/yaml         | dependency     | added   | —       | ^0.2.0              | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Other
+
+* Git invocation unifies onto `@effected/git`, including the repos manager's full mutating tier; workspace discovery moves to `@effected/workspaces` with deterministic per-package root derivation.
+* Glob, JSONC, YAML, and directory walking adopt `@effected/glob`, `@effected/jsonc`, `@effected/yaml`, and `@effected/walker`, retiring the hand-rolled glob walker for `Walker.descend`. [#312][#312]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
 ## 3.3.1
 
 ### Dependencies

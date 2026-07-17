@@ -1,5 +1,23 @@
 # @savvy-web/tsdown-plugins
 
+## 2.1.0
+
+### Features
+
+* Emit a trailing `default` exports condition mirroring the `import` target on every generated TypeScript export, so `require(esm)` resolves the ESM artifact on every supported Node runtime instead of failing with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Dual-format entries keep their dedicated CJS artifact under `require`, which wins by condition order. [#312][#312]
+
+### Dependencies
+
+* | Dependency           | Type       | Action  | From   | To     |                                                                       |
+  | -------------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.2.0 | ^0.3.0 | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
 ## 2.0.0
 
 ### Breaking Changes
