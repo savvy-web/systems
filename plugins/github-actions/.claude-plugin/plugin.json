@@ -1,6 +1,6 @@
 {
 	"name": "github-actions",
-	"version": "2.4.4",
+	"version": "2.5.0",
 	"description": "Savvy Web GitHub Actions assistant — Effect-based action development conventions and knowledge, served via the shared savvy MCP",
 	"author": {
 		"name": "C. Spencer Beggs",
