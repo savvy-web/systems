@@ -1,5 +1,9 @@
-export type { ManifestLike } from "workspaces-effect";
-export { CatalogAssemblyError, CatalogResolutionError } from "workspaces-effect";
+export {
+	CatalogAssemblyError,
+	DependencyResolutionError,
+	ManifestDecodeError,
+	UnresolvedDependencyError,
+} from "@effected/npm";
 export type { BuildTargetGroupsOptions, CssOptions, EntryOverride, TsdownBuild } from "./build/build-target-groups.js";
 export { buildTargetGroups } from "./build/build-target-groups.js";
 export { cjsDefaultInterop } from "./build/cjs-default-interop.js";
@@ -18,6 +22,7 @@ export type {
 	TargetGroupId,
 } from "./build/target-groups.js";
 export { deriveTargetGroupOptions } from "./build/target-groups.js";
+export type { ManifestLike } from "./catalog/resolve-catalogs.js";
 export { resolveManifest } from "./catalog/resolve-catalogs.js";
 export type { NextVersions } from "./changesets/next-versions.js";
 export { resolveNextVersions } from "./changesets/next-versions.js";

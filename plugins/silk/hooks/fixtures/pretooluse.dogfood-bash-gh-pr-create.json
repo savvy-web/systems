@@ -1,0 +1,8 @@
+{
+	"session_id": "test-dogfood-bash-gh-pr-create",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "gh pr create --title \"feat: thing\" --body \"desc\""
+	}
+}

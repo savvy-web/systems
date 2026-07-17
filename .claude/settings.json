@@ -12,6 +12,7 @@
 	"enableAllProjectMcpServers": true,
 	"enabledPlugins": {
 		"design-docs@spencerbeggs": true,
+		"effected@spencerbeggs": true,
 		"vitest-agent@spencerbeggs": true
 	},
 	"plansDirectory": ".claude/plans"

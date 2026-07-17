@@ -145,6 +145,8 @@ catalogs:
     turbo: ^2.10.4
     typescript: ^7.0.0
     vitest: ^4.1.0
+configDependencies:
+  "@effected/pnpm-plugin-effect": 0.1.0+sha512-Jm+hlFZS4b50w6Ly9nrYlAfrHLr5KKrB27XWeziFEungqLyKePUuTCN72IJLg5wvmvW0S0qgVT3CEAdYjFBaUA==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info

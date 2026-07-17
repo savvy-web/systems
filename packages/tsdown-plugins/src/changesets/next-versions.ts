@@ -1,5 +1,7 @@
 import { getReleasePlan } from "@changesets/get-release-plan";
-import { getPackages } from "@manypkg/get-packages";
+import { NodeFileSystem, NodePath } from "@effect/platform-node";
+import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
+import { Effect, Layer } from "effect";
 
 /**
  * Result of resolving next release versions for a workspace.
@@ -13,38 +15,49 @@ export interface NextVersions {
 	readonly versions: ReadonlyMap<string, string>;
 }
 
+/** Bound once: the platform layer is stateless and layers memoize by reference. */
+const platform = Layer.mergeAll(NodeFileSystem.layer, NodePath.layer);
+
 /**
  * Resolve the next release version of every workspace package from pending changesets.
  *
- * Walks up from `cwd` to the monorepo root via `@manypkg/get-packages`, seeds the map with
- * each package's CURRENT version, then overlays `newVersion` for changeset-affected packages
- * via `@changesets/get-release-plan`. Never rejects: any failure (not a workspace, missing
- * `.changeset/config.json`, parse error) degrades to current versions (or an empty map).
+ * Walks up from `cwd` to the monorepo root via `@effected/workspaces`' `WorkspaceDiscovery`,
+ * seeds the map with each package's CURRENT version, then overlays `newVersion` for
+ * changeset-affected packages via `@changesets/get-release-plan`. Never rejects: any failure
+ * (not a workspace, missing `.changeset/config.json`, parse error) degrades to current
+ * versions (or an empty map).
  * @public
  */
 export async function resolveNextVersions(cwd: string): Promise<NextVersions> {
 	try {
-		const packages = await getPackages(cwd);
-		// tool type "root" means getPackages found no workspace manager (pnpm/yarn/lerna/etc.),
-		// treating the cwd as a standalone root with itself as the only "package". That is not
-		// a multi-package workspace, so return an empty map rather than exposing the root pkg.
-		if (packages.tool.type === "root") {
-			return { root: packages.rootDir, versions: new Map() };
-		}
+		const packages = await Effect.runPromise(
+			Effect.gen(function* () {
+				const discovery = yield* WorkspaceDiscovery;
+				return yield* discovery.listPackages();
+			}).pipe(
+				// A fresh composite layer per call: `cwd` differs per invocation and layers
+				// memoize by reference, so root discovery must not be shared across calls.
+				Effect.provide(Workspaces.layer({ cwd }).pipe(Layer.provide(platform))),
+			),
+		);
+		// listPackages is root-first; the root package's path is the monorepo root.
+		const rootDir = packages[0]?.isRootWorkspace ? packages[0].path : cwd;
 		const versions = new Map<string, string>();
-		for (const p of packages.packages) {
-			const { name, version } = p.packageJson;
-			if (name && version) versions.set(name, version);
+		for (const p of packages) {
+			// Parity with the previous @manypkg/get-packages behavior: the root package was
+			// never part of packages[] and therefore never seeded into the versions map.
+			if (p.isRootWorkspace) continue;
+			versions.set(p.name, p.version);
 		}
 		try {
-			const plan = await getReleasePlan(packages.rootDir);
+			const plan = await getReleasePlan(rootDir);
 			// plan.releases includes type:"none" entries (unbumped dependents) whose newVersion equals
 			// the current version, so overlaying every release is safe.
 			for (const r of plan.releases) versions.set(r.name, r.newVersion);
 		} catch {
 			// No `.changeset/config.json` (or unreadable): keep current versions.
 		}
-		return { root: packages.rootDir, versions };
+		return { root: rootDir, versions };
 	} catch {
 		// Not a workspace / cannot enumerate packages: optimistic becomes a full no-op.
 		return { root: cwd, versions: new Map() };

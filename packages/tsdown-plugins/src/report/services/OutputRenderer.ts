@@ -6,7 +6,7 @@ import type { BuildReport } from "../schema.js";
 import type { OutputFormat } from "./FormatSelector.js";
 
 /** @public */
-export class OutputRenderer extends Context.Tag("@savvy-web/tsdown-plugins/OutputRenderer")<
+export class OutputRenderer extends Context.Service<
 	OutputRenderer,
 	{
 		readonly render: (
@@ -15,4 +15,4 @@ export class OutputRenderer extends Context.Tag("@savvy-web/tsdown-plugins/Outpu
 			ctx: FormatterContext,
 		) => Effect.Effect<ReadonlyArray<RenderedOutput>>;
 	}
->() {}
+>()("@savvy-web/tsdown-plugins/OutputRenderer") {}

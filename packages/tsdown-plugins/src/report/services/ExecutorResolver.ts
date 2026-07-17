@@ -7,7 +7,7 @@ import type { Environment } from "./EnvironmentDetector.js";
 export type Executor = "human" | "agent" | "ci";
 
 /** @public */
-export class ExecutorResolver extends Context.Tag("@savvy-web/tsdown-plugins/ExecutorResolver")<
+export class ExecutorResolver extends Context.Service<
 	ExecutorResolver,
 	{ readonly resolve: (env: Environment) => Effect.Effect<Executor> }
->() {}
+>()("@savvy-web/tsdown-plugins/ExecutorResolver") {}

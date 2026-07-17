@@ -1,6 +1,7 @@
 // packages/tsdown-plugins/src/manifest/emit-manifest.ts
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { DependencySpecifier } from "@effected/npm";
 import type { Plugin } from "rolldown";
 import type { ManifestLike } from "../catalog/resolve-catalogs.js";
 import { resolveManifest } from "../catalog/resolve-catalogs.js";
@@ -34,7 +35,7 @@ export interface BuildEmittedManifestOptions {
 const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const;
 
 const isCatalogOrWorkspaceSpec = (spec: unknown): boolean =>
-	typeof spec === "string" && (spec.startsWith("catalog:") || spec.startsWith("workspace:"));
+	typeof spec === "string" && (DependencySpecifier.isCatalog(spec) || DependencySpecifier.isWorkspace(spec));
 
 /**
  * Whether any of `pkg`'s four dependency fields carries at least one `catalog:`/`workspace:`
@@ -58,7 +59,7 @@ export async function buildEmittedManifest(options: BuildEmittedManifestOptions)
 	const shouldResolve = (targetGroup.isProd || devManifest === "resolve") && manifestNeedsCatalogResolution(pkg);
 	let base: Json = pkg;
 	if (shouldResolve) {
-		// resolveManifest delegates to workspaces-effect's CatalogResolver (returns a Promise)
+		// resolveManifest delegates to @effected/workspaces' resolvers (returns a Promise)
 		// and discovers the workspace from process.cwd(). ManifestLike and Json are
 		// structurally compatible records, so the casts are safe at this boundary.
 		base = (await resolveManifest(pkg as unknown as ManifestLike)) as unknown as Json;

@@ -92,6 +92,26 @@
 				]
 			},
 			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/dogfood-guard.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
+				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/dogfood-guard.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
 				"matcher": "Write|Edit|NotebookEdit",
 				"hooks": [
 					{

@@ -72,9 +72,9 @@ RUN="$(package_manager_exec "$package_manager") savvy changeset"
 CONTEXT=$(cat <<CONTEXT
 <silk_capabilities>
 This is a Silk Suite workspace. The silk plugin gives you a savvy-mcp server (10
-structured tools), 3 domain agents, 8 skills, a Biome LSP, and a build monitor —
-all of which already know this repo's package boundaries, conventions and
-exclusion rules.
+structured tools), 3 domain agents, 9 skills, a Biome LSP, and two background
+monitors — all of which already know this repo's package boundaries,
+conventions and exclusion rules.
 
 USE THEM. Shelling out to git/pnpm/turbo/biome to reconstruct what a tool returns
 in one call is slower, lossier, and gets the repo-specific rules wrong. Answering
@@ -150,8 +150,12 @@ are cheap; a wrong answer derived from parsed stdout is not.
   /silk:turbo            Turborepo config, dependsOn, --affected/--filter,
                          anti-patterns. Lighter than the turborepo agent.
   /silk:repos            vendored reference repos under .repos/.
-  A background monitor (tsdoc-diagnostics) surfaces ae-*/tsdoc-* diagnostics
-  from dist/<target>/issues.json as builds change them.
+  /silk:dogfood          the cross-repo dogfood-loop command: mailbox, JSONL
+                         journal, link/unlink. --init/--send/--status/
+                         --watch/--adopt/--exit.
+  Two background monitors: tsdoc-diagnostics surfaces ae-*/tsdoc- diagnostics
+  from dist/<target>/issues.json as builds change them; dogfood-mail surfaces
+  incoming .claude/dogfood/ mail and journal turn-flips (ball changes).
 </skills>
 
 <biome>
@@ -165,6 +169,14 @@ Biome is wired in twice, and neither way is Bash.
 Bash biome still works and is never blocked — it is the escape hatch for a flag
 the tool lacks. Reaching for it first draws a one-time PreToolUse nudge.
 </biome>
+
+<terminal>
+The it2 CLI (installed separately) lets you control terminal sessions and panes
+directly — split panes, send text to a session, read a pane's buffer, set badges.
+Clean up after yourself: when idle agent sessions or panes you or a subagent
+spawned are no longer in use (e.g. two idle agents left in split panes after a
+task finishes), close or remove them rather than leaving clutter behind.
+</terminal>
 
 <active_hooks>
   PreToolUse  Bash / Read|Write|Edit / MCP-git — commit guards. A \`git commit\` or

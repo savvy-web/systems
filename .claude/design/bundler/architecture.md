@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-07-11
-last-synced: 2026-07-11
+updated: 2026-07-16
+last-synced: 2026-07-16
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -311,9 +311,9 @@ The build loop is a **composable helper, not locked in the orchestrator**, so th
 
 ## Catalog resolution and the process.cwd() constraint
 
-For a prod manifest the bundler must resolve `catalog:`/`workspace:` specifiers to concrete ranges. It **delegates this entirely** to `workspaces-effect`'s `CatalogResolver` (via `resolveManifest` in `tsdown-plugins`). The bundler owns no catalog-source logic.
+For a prod manifest the bundler must resolve `catalog:`/`workspace:` specifiers to concrete ranges. It **delegates this entirely** to `resolveManifest` in `tsdown-plugins` (which in turn delegates to `@effected/workspaces`). The bundler owns no catalog-source logic.
 
-The load-bearing constraint that flows from that delegation: `CatalogResolver` has no cwd parameter — it discovers the workspace root from **`process.cwd()`**. The bundler satisfies this because `savvy.build.ts` self-executes in the package directory (`node savvy.build.ts` runs with cwd = the package), and catalogs are workspace-wide, so any cwd inside the target workspace yields the same catalog set. Resolving a manifest for a workspace *other* than `process.cwd()`'s is out of scope. This delegation is also the fix for the long-standing `catalog:silkPeers`/state-file ordering bug: `CatalogResolver` assembles catalogs durably (inline `pnpm-workspace.yaml` + config-dependency hook-replay + lockfile) without depending on the transient `.pnpm-workspace-state-v1.json`. See the delegation detail in `../tsdown-plugins/architecture.md`.
+The load-bearing constraint that flows from that delegation: the resolver has no cwd parameter — it discovers the workspace root from **`process.cwd()`**. The bundler satisfies this because `savvy.build.ts` self-executes in the package directory (`node savvy.build.ts` runs with cwd = the package), and catalogs are workspace-wide, so any cwd inside the target workspace yields the same catalog set. Resolving a manifest for a workspace *other* than `process.cwd()`'s is out of scope. This delegation is also the fix for the long-standing `catalog:silkPeers`/state-file ordering bug: the resolver assembles catalogs durably (inline `pnpm-workspace.yaml` + config-dependency hook-replay + lockfile) without depending on the transient `.pnpm-workspace-state-v1.json`. See the delegation detail in `../tsdown-plugins/architecture.md`, including the error-surface rename the kit migration brought (`CatalogResolutionError` → `UnresolvedDependencyError`) — the bundler re-exports nothing of it and is unaffected.
 
 ## Boundaries and Invariants
 
@@ -325,6 +325,7 @@ The load-bearing constraint that flows from that delegation: `CatalogResolver` h
 - **Config validation runs first.** `ConfigValidator.validate` gates every target path; the rules live in tsdown-plugins (`resolveTargets`, the exe/meta checks) and the bundler only assembles the `ValidationInput`. It is structural-shape validation only.
 - **The build log is unified from a collector, rendered inside a try/catch.** `runBuild` instantiates a `BuildCollector` (owned by tsdown-plugins) and threads it through `buildTargetGroups`, each `runGenerateMeta` (via `onMessage`) and the exe builds; it renders ONE log from `collector.snapshot(packageName)`, not a hardcoded `BuildReport`. The render boundary is a try/catch wrapping only the build/meta/exe body (config validation stays outside, so a validation failure renders no half-report); on failure the catch renders the collected diagnostics then rethrows. `--verbose` switches the quiet summary to a per-pass file table. The two self-hosting escape-hatch scripts render the same unified log. See [build, defineBuild and runBuild](#build-definebuild-and-runbuild).
 - **`tsdown` is a regular dependency, not a peer.** Consumers never carry `tsdown`/`@rslib/core` in their own dependency tree — they install one devDependency. `@tsdown/exe` is a bundler runtime dependency (lazily imported by tsdown for `--target exe`), again not a peer.
+- **Effect is v4 (`catalog:effect`) and stays a regular dependency, never a peer.** The v4 migration was a **manifest-only change here** — zero source edits: `effect` moved `catalog:silk` → `catalog:effect`, the `@effect/platform` devDependency was dropped (v4 absorbed it into core) and `@effect/platform-node` moved to `catalog:effect`. The three `Effect.provide`/`Effect.flatMap` call sites needed nothing because a v4 tag is still a first-class `Effect`. The heavy lifting — the `@effected/*` kit swap, the retired `@effect/*` seal — is `tsdown-plugins`', which is exactly what the thin-orchestrator split is for. See `../tsdown-plugins/architecture.md`.
 - **Self-hosting is complete.** Every in-repo package builds via the bundler stack; `@savvy-web/rslib-builder` and `@rslib/core` are decommissioned from `systems`. The two upstream packages (`tsdown-plugins`, `bundler`) self-build through escape-hatch `savvy.build.ts` files; everything else uses the front door — see [Self-hosting: the bootstrap ladder](#self-hosting-the-bootstrap-ladder).
 - **The bundling-posture knobs are pure wiring.** `bundleNodeModules`/`bundle`/`bundledPackages`/`dtsExternals` are conditional-spread onto `buildTargetGroups`; the dts-posture mirror, the cjs-default-interop plugin and the node-builtin default-interop plugin live in tsdown-plugins. See [Bundling-posture knobs](#bundling-posture-knobs).
 - **`define` is pure wiring; the version-key fix lives in tsdown-plugins.** `defineBuild({ define })` is conditional-spread onto `buildTargetGroups` and merged after the auto-version key in both passes (a same-named user key wins). See [The orchestrator to tsdown boundary](#the-orchestrator-to-tsdown-boundary).
@@ -347,4 +348,4 @@ rslib-builder's maintained `@rslib/core` peerDependency drifted out of sync and 
 
 ### Why delegate catalog resolution
 
-`workspaces-effect`'s generic `CatalogResolver` solves the state-file ordering bug durably and generically, so the bundler delegates and owns no catalog-source logic — removing a whole milestone of cross-repo `pnpm-plugin-silk` work. The cost is the `process.cwd()` workspace-discovery constraint described above.
+A generic, well-tested resolver (`@effected/workspaces`, formerly `workspaces-effect`) solves the state-file ordering bug durably, so the bundler delegates and owns no catalog-source logic — removing a whole milestone of cross-repo `pnpm-plugin-silk` work. The cost is the `process.cwd()` workspace-discovery constraint described above. Delegating through `tsdown-plugins` rather than depending on the resolver directly is what made the Effect v4 provider swap a zero-change event here.

@@ -28,7 +28,7 @@ export interface ValidationInput {
  *
  * @public
  */
-export class ConfigValidator extends Context.Tag("@savvy-web/tsdown-plugins/ConfigValidator")<
+export class ConfigValidator extends Context.Service<
 	ConfigValidator,
 	{ readonly validate: (input: ValidationInput) => Effect.Effect<void, ConfigValidationError> }
->() {}
+>()("@savvy-web/tsdown-plugins/ConfigValidator") {}

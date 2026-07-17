@@ -38,6 +38,9 @@ setup() {
 	[[ "$ctx" == *"biome_check"* ]]
 	[[ "$ctx" == *"changeset_inspect"* ]]
 	[[ "$ctx" == *"/silk:commit-create"* ]]
+	[[ "$ctx" == *"/silk:dogfood"* ]]
+	[[ "$ctx" == *"dogfood-mail"* ]]
+	[[ "$ctx" == *"it2"* ]]
 }
 
 @test "writes the per-session silk-hook.sh env file with the 5 SILK_* exports" {
