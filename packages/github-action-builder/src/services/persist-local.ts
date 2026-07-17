@@ -62,7 +62,7 @@ export type PersistLocalResult = typeof PersistLocalResultSchema.Type;
 // =============================================================================
 
 /**
- * PersistLocalService interface for copying build output locally.
+ * Service shape for copying build output locally.
  *
  * @remarks
  * This service handles:
@@ -72,9 +72,12 @@ export type PersistLocalResult = typeof PersistLocalResultSchema.Type;
  * - Validating action.yml runs paths resolve in the destination
  * - Generating act boilerplate files
  *
+ * Use this interface to type structural implementations (e.g. test mocks);
+ * use the {@link PersistLocalService} class as the service key.
+ *
  * @public
  */
-export interface PersistLocalService {
+export interface PersistLocalServiceShape {
 	/**
 	 * Persist build output to the local action directory.
 	 *
@@ -97,8 +100,10 @@ export interface PersistLocalService {
 }
 
 /**
- * PersistLocalService tag for dependency injection.
+ * PersistLocalService key for dependency injection.
  *
  * @public
  */
-export const PersistLocalService = Context.GenericTag<PersistLocalService>("PersistLocalService");
+export class PersistLocalService extends Context.Service<PersistLocalService, PersistLocalServiceShape>()(
+	"PersistLocalService",
+) {}

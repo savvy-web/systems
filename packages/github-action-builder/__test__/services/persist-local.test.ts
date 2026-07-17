@@ -219,13 +219,13 @@ runs:
 		const program = Effect.gen(function* () {
 			const service = yield* PersistLocalService;
 			return yield* service.persist(config, { cwd: testDir });
-		}).pipe(Effect.either);
+		}).pipe(Effect.result);
 
 		const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
 
-		expect(result._tag).toBe("Left");
-		if (result._tag === "Left") {
-			expect(result.left._tag).toBe("ActionYmlPathError");
+		expect(result._tag).toBe("Failure");
+		if (result._tag === "Failure") {
+			expect(result.failure._tag).toBe("ActionYmlPathError");
 		}
 	});
 

@@ -4,24 +4,20 @@
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
+import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /**
  * Action name positional argument.
  */
-const actionNameArg = Args.text({ name: "action-name" }).pipe(
-	Args.withDescription("Name of the GitHub Action (also the output directory)"),
+const actionNameArg = Argument.string("action-name").pipe(
+	Argument.withDescription("Name of the GitHub Action (also the output directory)"),
 );
 
 /**
  * Force overwrite option.
  */
-const forceOption = Options.boolean("force").pipe(
-	Options.withAlias("f"),
-	Options.withDescription("Overwrite existing files"),
-	Options.withDefault(false),
-);
+const forceOption = Flag.boolean("force").pipe(Flag.withAlias("f"), Flag.withDescription("Overwrite existing files"));
 
 /**
  * Get current package version (replaced at build time).

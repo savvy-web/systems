@@ -116,17 +116,17 @@ export default {
 				const result = yield* configService.detectEntries(testDir);
 				return result;
 			}).pipe(
-				Effect.either, // Convert to Either to catch errors
+				Effect.result, // Convert to Result to catch errors
 			);
 
 			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
 
-			// Either Left means failure, Right means success
-			if (result._tag === "Left") {
-				expect(result.left._tag).toBe("MainEntryMissing");
+			// Result Failure means failure, Success means success
+			if (result._tag === "Failure") {
+				expect(result.failure._tag).toBe("MainEntryMissing");
 			} else {
 				// If detectEntries returns a result object instead of failing
-				expect(result.right.success).toBe(false);
+				expect(result.success.success).toBe(false);
 			}
 		});
 
@@ -156,14 +156,14 @@ export default {
 					workers: { "turbo-server": "src/turbo-server.ts" },
 				});
 				return result;
-			}).pipe(Effect.either);
+			}).pipe(Effect.result);
 
 			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
 
-			expect(result._tag).toBe("Left");
-			if (result._tag === "Left") {
-				expect(result.left._tag).toBe("WorkerEntryMissing");
-				expect((result.left as { workerName: string }).workerName).toBe("turbo-server");
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure._tag).toBe("WorkerEntryMissing");
+				expect((result.failure as { workerName: string }).workerName).toBe("turbo-server");
 			}
 		});
 
@@ -176,14 +176,14 @@ export default {
 					workers: { main: "src/main-worker.ts" },
 				});
 				return result;
-			}).pipe(Effect.either);
+			}).pipe(Effect.result);
 
 			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
 
-			expect(result._tag).toBe("Left");
-			if (result._tag === "Left") {
-				expect(result.left._tag).toBe("WorkerEntryInvalidName");
-				expect((result.left as { workerName: string }).workerName).toBe("main");
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure._tag).toBe("WorkerEntryInvalidName");
+				expect((result.failure as { workerName: string }).workerName).toBe("main");
 			}
 		});
 
@@ -194,13 +194,13 @@ export default {
 					workers: { "../escape": "src/escape.ts" },
 				});
 				return result;
-			}).pipe(Effect.either);
+			}).pipe(Effect.result);
 
 			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
 
-			expect(result._tag).toBe("Left");
-			if (result._tag === "Left") {
-				expect(result.left._tag).toBe("WorkerEntryInvalidName");
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure._tag).toBe("WorkerEntryInvalidName");
 			}
 		});
 	});
@@ -275,14 +275,14 @@ export default {
 				// Enable strict mode - warnings should become errors
 				const result = yield* validationService.validate(config, { cwd: testDir, strict: true });
 				return result;
-			}).pipe(Effect.either);
+			}).pipe(Effect.result);
 
 			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
 
 			// In strict mode with warnings, should fail with ValidationFailed
-			expect(result._tag).toBe("Left");
-			if (result._tag === "Left") {
-				expect(result.left._tag).toBe("ValidationFailed");
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure._tag).toBe("ValidationFailed");
 			}
 		});
 

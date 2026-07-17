@@ -8,7 +8,7 @@
  */
 import type { PathLike as NodePathLike } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { Schema } from "effect";
+import { Schema, SchemaTransformation } from "effect";
 
 /**
  * Re-export Node.js PathLike type for convenience.
@@ -48,15 +48,15 @@ export function pathLikeToString(pathLike: PathLike): string {
  *
  * @internal
  */
-export const PathLikeSchema = Schema.transform(
-	Schema.Union(Schema.String, Schema.instanceOf(Buffer), Schema.instanceOf(URL)),
-	Schema.String,
-	{
-		strict: true,
-		decode: (pathLike) => pathLikeToString(pathLike),
-		/* v8 ignore next */
-		encode: (s) => s,
-	},
+export const PathLikeSchema = Schema.Union([Schema.String, Schema.instanceOf(Buffer), Schema.instanceOf(URL)]).pipe(
+	Schema.decodeTo(
+		Schema.String,
+		SchemaTransformation.transform({
+			decode: (pathLike) => pathLikeToString(pathLike),
+			/* v8 ignore next */
+			encode: (s) => s,
+		}),
+	),
 );
 
 /**

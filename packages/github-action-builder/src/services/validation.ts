@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides validation of configuration, entry points, and action.yml
- * using Effect's service pattern with Context.Tag.
+ * using Effect's service pattern with Context.Service.
  *
  * @internal
  */
@@ -122,7 +122,7 @@ export type ActionYmlResult = typeof ActionYmlResultSchema.Type;
 // =============================================================================
 
 /**
- * ValidationService interface for validation capabilities.
+ * Service shape for validation capabilities.
  *
  * @remarks
  * This service handles:
@@ -131,29 +131,12 @@ export type ActionYmlResult = typeof ActionYmlResultSchema.Type;
  * - Formatting validation results for display
  * - CI-aware strict mode handling
  *
- * @example Using ValidationService with Effect
- * ```typescript
- * import { Effect } from "effect";
- * import { AppLayer, ConfigService, ValidationService } from "@savvy-web/github-action-builder";
- *
- * const program = Effect.gen(function* () {
- *   const configService = yield* ConfigService;
- *   const validationService = yield* ValidationService;
- *
- *   const { config } = yield* configService.load();
- *   const result = yield* validationService.validate(config);
- *
- *   if (!result.valid) {
- *     console.error("Validation failed:", result.errors);
- *   }
- * });
- *
- * Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
- * ```
+ * Use this interface to type structural implementations (e.g. test mocks);
+ * use the {@link ValidationService} class as the service key.
  *
  * @public
  */
-export interface ValidationService {
+export interface ValidationServiceShape {
 	/**
 	 * Validate configuration and project structure.
 	 *
@@ -196,8 +179,30 @@ export interface ValidationService {
 }
 
 /**
- * ValidationService tag for dependency injection.
+ * ValidationService key for dependency injection.
+ *
+ * @example Using ValidationService with Effect
+ * ```typescript
+ * import { Effect } from "effect";
+ * import { AppLayer, ConfigService, ValidationService } from "@savvy-web/github-action-builder";
+ *
+ * const program = Effect.gen(function* () {
+ *   const configService = yield* ConfigService;
+ *   const validationService = yield* ValidationService;
+ *
+ *   const { config } = yield* configService.load();
+ *   const result = yield* validationService.validate(config);
+ *
+ *   if (!result.valid) {
+ *     console.error("Validation failed:", result.errors);
+ *   }
+ * });
+ *
+ * Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+ * ```
  *
  * @public
  */
-export const ValidationService = Context.GenericTag<ValidationService>("ValidationService");
+export class ValidationService extends Context.Service<ValidationService, ValidationServiceShape>()(
+	"ValidationService",
+) {}

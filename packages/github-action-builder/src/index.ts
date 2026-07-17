@@ -123,7 +123,13 @@ export {
 // Build Service Types
 // =============================================================================
 
-export type { BuildResult, BuildRunnerOptions, BundleResult, BundleStats } from "./services/build.js";
+export type {
+	BuildResult,
+	BuildRunnerOptions,
+	BuildServiceShape,
+	BundleResult,
+	BundleStats,
+} from "./services/build.js";
 export {
 	BuildResultSchema,
 	BuildRunnerOptionsSchema,
@@ -136,7 +142,13 @@ export {
 // Config Service Types
 // =============================================================================
 
-export type { DetectEntriesResult, DetectedEntry, LoadConfigOptions, LoadConfigResult } from "./services/config.js";
+export type {
+	ConfigServiceShape,
+	DetectEntriesResult,
+	DetectedEntry,
+	LoadConfigOptions,
+	LoadConfigResult,
+} from "./services/config.js";
 export {
 	ConfigService,
 	DetectEntriesResultSchema,
@@ -153,6 +165,7 @@ export type {
 	ValidateOptions,
 	ValidationErrorItem,
 	ValidationResult,
+	ValidationServiceShape,
 	ValidationWarning,
 } from "./services/validation.js";
 export {
@@ -168,7 +181,11 @@ export {
 // Persist Local Service Types
 // =============================================================================
 
-export type { PersistLocalResult, PersistLocalRunnerOptions } from "./services/persist-local.js";
+export type {
+	PersistLocalResult,
+	PersistLocalRunnerOptions,
+	PersistLocalServiceShape,
+} from "./services/persist-local.js";
 export {
 	PersistLocalResultSchema,
 	PersistLocalRunnerOptionsSchema,
