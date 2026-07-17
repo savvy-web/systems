@@ -1,27 +1,22 @@
-/**
- * Minimal JSONPath get/set for version file updates.
- *
- * @remarks
- * Implements a subset of the JSONPath specification sufficient for
- * reading and writing version fields in JSON configuration files.
- * The parser tokenizes a JSONPath string into {@link Segment} objects,
- * then the get/set functions traverse or mutate an object graph
- * using a breadth-first expansion strategy (each segment fans out
- * the current set of matched nodes).
- *
- * Supported syntax:
- * - `$.foo.bar` — nested property access
- * - `$.foo[*].bar` — array wildcard (iterate all elements)
- * - `$.foo[0].bar` — array index access
- *
- * Not supported: recursive descent (`..`), filter expressions, or
- * script expressions.
- *
- * @see {@link VersionFiles} for the public utility that uses JSONPath
- *   to update version fields in workspace files
- *
- * @internal
- */
+// Minimal JSONPath get/set for version file updates.
+//
+// Implements a subset of the JSONPath specification sufficient for
+// reading and writing version fields in JSON configuration files.
+// The parser tokenizes a JSONPath string into `Segment` objects,
+// then the get/set functions traverse or mutate an object graph
+// using a breadth-first expansion strategy (each segment fans out
+// the current set of matched nodes).
+//
+// Supported syntax:
+// - `$.foo.bar` — nested property access
+// - `$.foo[*].bar` — array wildcard (iterate all elements)
+// - `$.foo[0].bar` — array index access
+//
+// Not supported: recursive descent (`..`), filter expressions, or
+// script expressions.
+//
+// See `VersionFiles` for the public utility that uses JSONPath
+// to update version fields in workspace files.
 
 /**
  * A single segment in a parsed JSONPath expression.

@@ -1,16 +1,11 @@
-/**
- * Simple logging utility for changelog generation.
- *
- * @remarks
- * Provides environment-aware warning output:
- * - **GitHub Actions**: emits `::warning::` annotations that surface in
- *   the Actions UI
- * - **Local development**: falls back to `console.warn`
- * - **Test environment**: suppressed entirely when `process.env.VITEST`
- *   is set, preventing noisy test output
- *
- * @internal
- */
+// Simple logging utility for changelog generation.
+//
+// Provides environment-aware warning output:
+// - GitHub Actions: emits `::warning::` annotations that surface in
+//   the Actions UI
+// - Local development: falls back to `console.warn`
+// - Test environment: suppressed entirely when `process.env.VITEST`
+//   is set, preventing noisy test output
 
 /**
  * Log a warning message.

@@ -1,6 +1,4 @@
-/**
- * Type definitions for \@savvy-web/lint-staged.
- */
+// Type definitions for @savvy-web/lint-staged.
 
 /**
  * A lint-staged handler function.

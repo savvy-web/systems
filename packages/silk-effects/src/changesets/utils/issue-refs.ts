@@ -1,16 +1,11 @@
-/**
- * GitHub issue reference parsing from commit messages.
- *
- * @remarks
- * Extracts categorized issue references (`Closes`, `Fixes`, `Refs`) from
- * commit message bodies. Supports multiple formats including with/without
- * colons, singular/plural keywords, and comma-separated issue lists.
- * Input is truncated to 10,000 characters to prevent ReDoS on adversarial input.
- *
- * @see {@link Changelog} for the public API that consumes issue references
- *
- * @internal
- */
+// GitHub issue reference parsing from commit messages.
+//
+// Extracts categorized issue references (`Closes`, `Fixes`, `Refs`) from
+// commit message bodies. Supports multiple formats including with/without
+// colons, singular/plural keywords, and comma-separated issue lists.
+// Input is truncated to 10,000 characters to prevent ReDoS on adversarial input.
+//
+// See `Changelog` for the public API that consumes issue references.
 
 /**
  * Matches "closes #123" or "close: #456, #789" patterns (case-insensitive).

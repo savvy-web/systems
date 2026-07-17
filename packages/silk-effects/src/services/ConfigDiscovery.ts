@@ -9,24 +9,24 @@ import type { ConfigLocation } from "../schemas/ConfigDiscoverySchemas.js";
  */
 export interface ConfigDiscoveryShape {
 	/**
-	 * Return the highest-priority {@link ConfigLocation} for the given config file name,
+	 * Return the highest-priority {@link (ConfigLocation:type)} for the given config file name,
 	 * or `null` when none of the candidate paths exist.
 	 *
 	 * @param name - Config file name (e.g. `"biome.json"`).
 	 * @param options - Optional `cwd` override for path resolution.
-	 * @returns An `Effect` that always succeeds with a {@link ConfigLocation} or `null`.
+	 * @returns An `Effect` that always succeeds with a {@link (ConfigLocation:type)} or `null`.
 	 *
 	 * @since 0.1.0
 	 */
 	readonly find: (name: string, options?: { cwd?: string }) => Effect.Effect<ConfigLocation | null>;
 
 	/**
-	 * Return all existing {@link ConfigLocation} entries for the given config file name,
+	 * Return all existing {@link (ConfigLocation:type)} entries for the given config file name,
 	 * ordered from highest to lowest priority.
 	 *
 	 * @param name - Config file name (e.g. `"biome.json"`).
 	 * @param options - Optional `cwd` override for path resolution.
-	 * @returns An `Effect` that always succeeds with an array of {@link ConfigLocation} records.
+	 * @returns An `Effect` that always succeeds with an array of {@link (ConfigLocation:type)} records.
 	 *
 	 * @since 0.1.0
 	 */

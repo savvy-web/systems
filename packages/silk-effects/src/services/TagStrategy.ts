@@ -14,7 +14,7 @@ export interface TagStrategyShape {
 	 * Determine the appropriate tag strategy type from a versioning strategy result.
 	 *
 	 * @param versioningResult - The result of `VersioningStrategy.detect`.
-	 * @returns An `Effect` that always succeeds with a {@link TagStrategyType}.
+	 * @returns An `Effect` that always succeeds with a {@link (TagStrategyType:type)}.
 	 *
 	 * @since 0.1.0
 	 */
@@ -25,7 +25,7 @@ export interface TagStrategyShape {
 	 *
 	 * @param name - The package name (e.g. `"@my-org/pkg"` or `"my-pkg"`).
 	 * @param version - The semver version string (e.g. `"1.2.3"`). Must not be empty.
-	 * @param strategy - The {@link TagStrategyType} to apply.
+	 * @param strategy - The {@link (TagStrategyType:type)} to apply.
 	 * @returns An `Effect` that resolves to the formatted tag string, or fails with
 	 *   {@link TagFormatError} when `version` is empty.
 	 *

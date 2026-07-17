@@ -1,21 +1,15 @@
-/**
- * Conventional commit message parsing.
- *
- * Implements a parser for the
- * {@link https://www.conventionalcommits.org/ | Conventional Commits}
- * specification, extracting type, scope, breaking-change indicator,
- * description, and body from commit messages.
- *
- * @remarks
- * The parser uses a single regex pass for the first line, then splits
- * remaining lines to extract the body. Non-conventional messages are
- * returned with only the `description` field populated (set to the
- * full message text).
- *
- * @see {@link Changelog} for the public API that consumes parsed commits
- *
- * @internal
- */
+// Conventional commit message parsing.
+//
+// Implements a parser for the Conventional Commits specification
+// (https://www.conventionalcommits.org/), extracting type, scope,
+// breaking-change indicator, description, and body from commit messages.
+//
+// The parser uses a single regex pass for the first line, then splits
+// remaining lines to extract the body. Non-conventional messages are
+// returned with only the `description` field populated (set to the
+// full message text).
+//
+// See `Changelog` for the public API that consumes parsed commits.
 
 /**
  * Matches conventional commit format: `type(scope)!: description`.

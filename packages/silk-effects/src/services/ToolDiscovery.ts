@@ -23,7 +23,7 @@ export interface ToolDiscoveryShape {
 	readonly resolve: (definition: ToolDefinition) => Effect.Effect<ResolvedTool, ToolResolutionError>;
 
 	/**
-	 * Like {@link resolve} but maps failures to {@link ToolNotFoundError}.
+	 * Like {@link ToolDiscoveryShape.resolve} but maps failures to {@link ToolNotFoundError}.
 	 * Accepts an optional custom error message.
 	 *
 	 * @since 0.2.0

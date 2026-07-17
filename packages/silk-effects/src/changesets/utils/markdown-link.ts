@@ -1,17 +1,12 @@
-/**
- * Markdown link extraction utilities.
- *
- * @remarks
- * Handles the inconsistency where `\@changesets/get-github-info` sometimes
- * returns markdown-formatted links (e.g., `[#17](https://...)`) instead
- * of plain URLs. Provides a regex pattern and extraction function to
- * normalize these values.
- *
- * @see {@link Changelog} for the public API that uses link extraction
- *   during changelog generation
- *
- * @internal
- */
+// Markdown link extraction utilities.
+//
+// Handles the inconsistency where `@changesets/get-github-info` sometimes
+// returns markdown-formatted links (e.g., `[#17](https://...)`) instead
+// of plain URLs. Provides a regex pattern and extraction function to
+// normalize these values.
+//
+// See `Changelog` for the public API that uses link extraction
+// during changelog generation.
 
 /**
  * Pattern matching markdown link format: `[text](url)`.

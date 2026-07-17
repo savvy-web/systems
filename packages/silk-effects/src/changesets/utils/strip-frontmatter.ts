@@ -1,22 +1,17 @@
-/**
- * Utility for stripping YAML frontmatter from changeset files.
- *
- * @remarks
- * Changeset `.md` files produced by `\@changesets/cli` contain YAML
- * frontmatter (delimited by `---`) specifying which packages are
- * affected and their version bump types. This frontmatter must be
- * removed before remark-lint processing, as remark-parse does not
- * handle YAML frontmatter natively without `remark-frontmatter`.
- *
- * The regex used is non-greedy (`[\s\S]*?`) to match only the first
- * frontmatter block and avoid stripping content after a second `---`
- * delimiter that might appear in the document body.
- *
- * @see {@link ChangesetLinter} for the public API that uses frontmatter
- *   stripping during changeset validation
- *
- * @internal
- */
+// Utility for stripping YAML frontmatter from changeset files.
+//
+// Changeset `.md` files produced by `@changesets/cli` contain YAML
+// frontmatter (delimited by `---`) specifying which packages are
+// affected and their version bump types. This frontmatter must be
+// removed before remark-lint processing, as remark-parse does not
+// handle YAML frontmatter natively without `remark-frontmatter`.
+//
+// The regex used is non-greedy (`[\s\S]*?`) to match only the first
+// frontmatter block and avoid stripping content after a second `---`
+// delimiter that might appear in the document body.
+//
+// See `ChangesetLinter` for the public API that uses frontmatter
+// stripping during changeset validation.
 
 /**
  * Strip leading YAML frontmatter from a markdown string.

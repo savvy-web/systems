@@ -58,7 +58,7 @@ export interface BiomeSchemaSyncShape {
 	 *
 	 * @param version - Target Biome version (range operators are stripped automatically).
 	 * @param options - Optional `cwd` and `gitignore` overrides.
-	 * @returns An `Effect` that succeeds with a {@link BiomeSyncResult} or fails with {@link BiomeSyncError}.
+	 * @returns An `Effect` that succeeds with a {@link (BiomeSyncResult:type)} or fails with {@link BiomeSyncError}.
 	 *
 	 * @since 0.1.0
 	 */
@@ -72,7 +72,7 @@ export interface BiomeSchemaSyncShape {
 	 *
 	 * @param version - Target Biome version (range operators are stripped automatically).
 	 * @param options - Optional `cwd` and `gitignore` overrides.
-	 * @returns An `Effect` that succeeds with a {@link BiomeSyncResult} or fails with {@link BiomeSyncError}.
+	 * @returns An `Effect` that succeeds with a {@link (BiomeSyncResult:type)} or fails with {@link BiomeSyncError}.
 	 *   Files that would be updated appear in `updated`; no disk writes occur.
 	 *
 	 * @since 0.1.0

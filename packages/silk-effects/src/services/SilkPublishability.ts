@@ -403,7 +403,7 @@ export const readTargetsBinding = (fs: FileSystem.FileSystem, pkgPath: string): 
 	);
 
 /**
- * Override of `@effected/workspaces`' {@link PublishabilityDetector} Tag with pure silk rules.
+ * Override of `@effected/workspaces`' `PublishabilityDetector` Tag with pure silk rules.
  *
  * @remarks Requires `FileSystem` (captured at layer build); `detect` reads the raw
  * `package.json` from `pkg.packageJsonPath` and applies `SilkPublishability.detect`.
@@ -449,7 +449,7 @@ const packageRoot = (pkg: WorkspacePackage): string => {
 };
 
 /**
- * Ignore-aware override of {@link PublishabilityDetector}. `detect` short-circuits to `[]`
+ * Ignore-aware override of `PublishabilityDetector`. `detect` short-circuits to `[]`
  * for changeset-ignored packages, then dispatches on `ChangesetConfig.mode`:
  * `none` → `[]`; `silk` → `SilkPublishability.detect`; `vanilla` → the library default.
  *

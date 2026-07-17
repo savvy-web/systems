@@ -1,16 +1,12 @@
-/**
- * Utilities for filtering staged file lists.
- *
- * @example
- * ```typescript
- * import { Filter } from '@savvy-web/silk/lint';
- *
- * const handler = (filenames: readonly string[]) => {
- *   const filtered = Filter.exclude(filenames, ['dist/', '__fixtures__']);
- *   return filtered.length > 0 ? `biome check ${Filter.shellEscape(filtered)}` : [];
- * };
- * ```
- */
+// Utilities for filtering staged file lists.
+//
+// Example:
+//   import { Filter } from '@savvy-web/silk/lint';
+//
+//   const handler = (filenames: readonly string[]) => {
+//     const filtered = Filter.exclude(filenames, ['dist/', '__fixtures__']);
+//     return filtered.length > 0 ? `biome check ${Filter.shellEscape(filtered)}` : [];
+//   };
 
 /**
  * Static utility class for filtering file lists.
