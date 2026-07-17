@@ -177,17 +177,6 @@ minimumReleaseAgeExclude:
 - xdg-effect
 - yaml-effect
 overrides:
-  '@effected/git': file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg
-  '@effected/glob': file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg
-  '@effected/jsonc': file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg
-  '@effected/lockfiles': file:../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg
-  '@effected/npm': file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg
-  '@effected/package-json': file:../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg
-  '@effected/semver': file:../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg
-  '@effected/tsconfig-json': file:../../spencerbeggs/effected/packages/tsconfig-json/dist/prod/npm/pkg
-  '@effected/walker': file:../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg
-  '@effected/workspaces': file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg
-  '@effected/yaml': file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg
   '@microsoft/api-extractor>typescript': ^6.0.3
 peerDependencyRules:
   allowedVersions:

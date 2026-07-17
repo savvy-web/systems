@@ -48,10 +48,10 @@ catalogs:
       version: 2.1.6
     '@tsdown/css':
       specifier: ^0.22.7
-      version: 0.22.8
+      version: 0.22.9
     '@tsdown/exe':
       specifier: ^0.22.7
-      version: 0.22.8
+      version: 0.22.9
     '@types/bun':
       specifier: ^1.3.14
       version: 1.3.14
@@ -93,7 +93,7 @@ catalogs:
       version: 1.2.0
     tsdown:
       specifier: ^0.22.7
-      version: 0.22.8
+      version: 0.22.9
     tsx:
       specifier: ^4.23.1
       version: 4.23.1
@@ -118,17 +118,6 @@ catalogs:
       version: 19.2.7
 
 overrides:
-  '@effected/git': file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg
-  '@effected/glob': file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg
-  '@effected/jsonc': file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg
-  '@effected/lockfiles': file:../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg
-  '@effected/npm': file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg
-  '@effected/package-json': file:../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg
-  '@effected/semver': file:../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg
-  '@effected/tsconfig-json': file:../../spencerbeggs/effected/packages/tsconfig-json/dist/prod/npm/pkg
-  '@effected/walker': file:../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg
-  '@effected/workspaces': file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg
-  '@effected/yaml': file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg
   '@microsoft/api-extractor>typescript': ^6.0.3
 
 pnpmfileChecksum: sha256-3NPPZrG1Z2qgSj+a8OoEtT7cu4Dp2ku+dSBnUhBKA3Y=
@@ -172,7 +161,7 @@ importers:
         version: 3.1.0
       tsdown:
         specifier: catalog:silk
-        version: 0.22.8(@tsdown/css@0.22.8)(@tsdown/exe@0.22.8)(tsx@4.23.1)(typescript@6.0.3)
+        version: 0.22.9(@tsdown/css@0.22.9)(@tsdown/exe@0.22.9)(tsx@4.23.1)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -199,7 +188,7 @@ importers:
         version: link:../tsdown-plugins/dist/dev/pkg
       '@tsdown/exe':
         specifier: catalog:silk
-        version: 0.22.8(tsdown@0.22.8)
+        version: 0.22.9(tsdown@0.22.9)
       effect:
         specifier: catalog:effect
         version: 4.0.0-beta.98
@@ -208,14 +197,14 @@ importers:
         version: 1.2.0
       tsdown:
         specifier: catalog:silk
-        version: 0.22.8(@tsdown/css@0.22.8)(@tsdown/exe@0.22.8)(tsx@4.23.1)(typescript@7.0.2)
+        version: 0.22.9(@tsdown/css@0.22.9)(@tsdown/exe@0.22.9)(tsx@4.23.1)(typescript@7.0.2)
     devDependencies:
       '@effect/platform-node':
         specifier: catalog:effect
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
       '@tsdown/css':
         specifier: catalog:silk
-        version: 0.22.8(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.8)(tsx@4.23.1)(yaml@2.9.0)
+        version: 0.22.9(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.9)(tsx@4.23.1)(yaml@2.9.0)
       '@types/node':
         specifier: catalog:silk
         version: 26.1.1
@@ -280,17 +269,17 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
       '@effected/git':
-        specifier: file:../../../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.3.0
+        version: 0.3.0(effect@4.0.0-beta.98)
       '@effected/jsonc':
-        specifier: file:../../../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       '@effected/workspaces':
-        specifier: file:../../../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg(@effected/jsonc@file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.3.0
+        version: 0.3.0(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/yaml':
-        specifier: file:../../../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       '@savvy-web/silk-effects':
         specifier: workspace:*
         version: link:../silk-effects/dist/dev/pkg
@@ -321,8 +310,8 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
       '@effected/yaml':
-        specifier: file:../../../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       '@rsbuild/core':
         specifier: catalog:silk
         version: 2.1.6
@@ -362,14 +351,14 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0(ajv-formats@3.0.1(ajv@8.20.0))(ajv@8.20.0)(spdx-expression-parse@4.0.0)
       '@effected/jsonc':
-        specifier: file:../../../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       '@effected/semver':
-        specifier: file:../../../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.1.0
+        version: 0.1.0(effect@4.0.0-beta.98)
       '@effected/yaml':
-        specifier: file:../../../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       '@octokit/auth-app':
         specifier: ^8.2.0
         version: 8.2.0
@@ -412,8 +401,8 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
       '@effected/workspaces':
-        specifier: file:../../../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.3.0
+        version: 0.3.0(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -476,7 +465,7 @@ importers:
         version: link:../tsdown-plugins/dist/dev/pkg
       '@tsdown/css':
         specifier: catalog:silk
-        version: 0.22.8(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.8)(tsx@4.23.1)(yaml@2.9.0)
+        version: 0.22.9(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.9)(tsx@4.23.1)(yaml@2.9.0)
       '@types/react-dom':
         specifier: catalog:silkPeers
         version: 19.2.3(@types/react@19.2.17)
@@ -593,26 +582,26 @@ importers:
         specifier: ^5.0.0-next.7
         version: 5.0.0-next.7
       '@effected/git':
-        specifier: file:../../../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.3.0
+        version: 0.3.0(effect@4.0.0-beta.98)
       '@effected/glob':
-        specifier: file:../../../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.1.0
+        version: 0.1.0(effect@4.0.0-beta.98)
       '@effected/jsonc':
-        specifier: file:../../../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       '@effected/package-json':
-        specifier: file:../../../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.3.0
+        version: 0.3.0(effect@4.0.0-beta.98)
       '@effected/walker':
-        specifier: file:../../../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg(@effected/glob@file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(@effected/glob@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/workspaces':
-        specifier: file:../../../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg(@effected/jsonc@file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.3.0
+        version: 0.3.0(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/yaml':
-        specifier: file:../../../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       '@manypkg/get-packages':
         specifier: ^3.1.0
         version: 3.1.0
@@ -697,8 +686,8 @@ importers:
   packages/templates:
     dependencies:
       '@effected/yaml':
-        specifier: file:../../../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-beta.98)
       sort-package-json:
         specifier: ^4.0.0
         version: 4.0.0
@@ -732,14 +721,14 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
       '@effected/npm':
-        specifier: file:../../../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/tsconfig-json':
-        specifier: file:../../../../spencerbeggs/effected/packages/tsconfig-json/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/tsconfig-json/dist/prod/npm/pkg(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/walker@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.2.0
+        version: 0.2.1(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/walker@0.2.0(@effected/glob@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/workspaces':
-        specifier: file:../../../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+        specifier: ^0.3.0
+        version: 0.3.0(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@microsoft/api-extractor':
         specifier: ^7.58.9
         version: 7.58.10(@types/node@26.1.1)
@@ -763,7 +752,7 @@ importers:
         version: 4.2.0
       tsdown:
         specifier: catalog:silk
-        version: 0.22.8(@tsdown/css@0.22.8)(@tsdown/exe@0.22.8)(tsx@4.23.1)(typescript@6.0.3)
+        version: 0.22.9(@tsdown/css@0.22.9)(@tsdown/exe@0.22.9)(tsx@4.23.1)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1276,49 +1265,43 @@ packages:
       '@effect/rpc': ^0.75.1
       effect: ^3.21.2
 
-  '@effected/git@file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg, type: directory}
+  '@effected/git@0.3.0':
+    resolution: {integrity: sha512-4PDzuRHsAeHfpSF8E0sHFUhJo4aDqw83M9PzzacHbTsayo9Quj8smFwQXYeVAz6Kvv/6zv1cQb9XQiCC3J7V0A==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/glob@file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg, type: directory}
+  '@effected/glob@0.1.0':
+    resolution: {integrity: sha512-M3W08O0afyLpYhnsB/i2UZlxhAdQGF1AH6tN1Wy1ypN5hWFOJhenq/to/MfK9pHKQ74O34Ex+3mVYSdsGtCbYQ==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/jsonc@0.1.0':
-    resolution: {integrity: sha512-I++rXB4IIzdlooW6cm1nx17N5FX2GSE6rZjEoTEJgUVyPNYApZ4CBAnxHq33MggYZ5urAy+sWeNno33FvzOS2A==}
+  '@effected/jsonc@0.2.0':
+    resolution: {integrity: sha512-n1EmqncycMVHDq7y/lUrp+gPlAYeZbQPdEAs/7MdADr2drkZ8zZmowG82JXgLhWeCtHtVjfKmSWaI+hK1LZfjw==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/jsonc@file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg, type: directory}
+  '@effected/lockfiles@0.1.2':
+    resolution: {integrity: sha512-DXSweOn4XLARiZnmWl4s4yu7C06RxFv9HS/cV/SddPzYcOv7mCbIoNQ3k0aOOfNOggzaxOHpfFImRZ3oraKpUg==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
-      effect: 4.0.0-beta.98
-
-  '@effected/lockfiles@file:../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg, type: directory}
-    engines: {node: '>=24.11.0'}
-    peerDependencies:
-      '@effected/jsonc': 0.1.0
+      '@effected/jsonc': 0.2.0
       '@effected/npm': 0.2.0
       '@effected/semver': 0.1.0
-      '@effected/yaml': 0.1.0
+      '@effected/yaml': 0.2.0
       effect: 4.0.0-beta.98
 
-  '@effected/npm@file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg, type: directory}
+  '@effected/npm@0.2.0':
+    resolution: {integrity: sha512-Z/XT0irt68mgDFinTEBgNsNSWxhpB2Ng8ttlF7SAf0yxDEEox+jFw6/p8h+eHixQ374F+T5EURML9jUE5kPToQ==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       '@effected/semver': 0.1.0
       effect: 4.0.0-beta.98
 
-  '@effected/package-json@file:../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg, type: directory}
+  '@effected/package-json@0.3.0':
+    resolution: {integrity: sha512-uLDhuEWl5df2aZg0fhqJmbc7EHNtojaN5lpMJLoljrXzR6Ryf+WCM1ICejjOspHTTTUn+ytPfed4kXaefPnXIw==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
@@ -1329,41 +1312,35 @@ packages:
     peerDependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/semver@file:../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg, type: directory}
+  '@effected/tsconfig-json@0.2.1':
+    resolution: {integrity: sha512-izTYe6weqOnkn83g+h0oKWaS2VR0AnNB2yRZoUADLSMkomvJq7K3FdQsGYyFIXof5MopPBrhYTRfm9HUCpVdEQ==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
+      '@effected/jsonc': 0.2.0
+      '@effected/walker': 0.2.0
       effect: 4.0.0-beta.98
 
-  '@effected/tsconfig-json@file:../../spencerbeggs/effected/packages/tsconfig-json/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/tsconfig-json/dist/prod/npm/pkg, type: directory}
-    engines: {node: '>=24.11.0'}
-    peerDependencies:
-      '@effected/jsonc': 0.1.0
-      '@effected/walker': 0.1.0
-      effect: 4.0.0-beta.98
-
-  '@effected/walker@0.1.0':
-    resolution: {integrity: sha512-lUD9s5eWlVwYJVRYcwiXSXJzeb5klgjEG+0ynSJBvBqmSU8uoVz3ulS+5qw2zWwo8MeRODNzoQf7Flwsfm/6Mg==}
-    engines: {node: '>=24.11.0'}
-    peerDependencies:
-      effect: 4.0.0-beta.98
-
-  '@effected/walker@file:../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg, type: directory}
+  '@effected/walker@0.2.0':
+    resolution: {integrity: sha512-nSpgKOa6ixI/+oTBveMeo3kkT+fx3HvpG3enZlMpupO8xwTXY3b5Z35zstcDpukRN+froZ0FNTaosbgTycumaw==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       '@effected/glob': 0.1.0
       effect: 4.0.0-beta.98
 
-  '@effected/workspaces@file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg, type: directory}
+  '@effected/workspaces@0.3.0':
+    resolution: {integrity: sha512-8XwDcizGDwt8tYXyJRhtlDxRYX/s8hdLeanTcOP7y53uvYktUI9fRS0oZRihWhomrMnP/CmgaLRE/jetF/0pGg==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/yaml@file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg, type: directory}
+  '@effected/yaml@0.1.0':
+    resolution: {integrity: sha512-PEhAtcpcTf2nbHShSq/51Abf83pm+3XwbBE24eAWy9miRGS/vBV+8zGOfYsgQAeZwS5IuOTBY1NcGs823GnJxQ==}
+    engines: {node: '>=24.11.0'}
+    peerDependencies:
+      effect: 4.0.0-beta.98
+
+  '@effected/yaml@0.2.0':
+    resolution: {integrity: sha512-QJ6LKlNvoNDEwtQiXPIgx6mM1XYC16E9KgDpuoq2IxbeKgMr7spo/NzxsQ26vSrSjfnj+yC4ba8aaNRTUd8quQ==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.98
@@ -2874,8 +2851,8 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
-  '@tsdown/css@0.22.8':
-    resolution: {integrity: sha512-A5AI1CMD5Su7DK0gv2uR/c+KOaNWLQvgZqQ5bSH79eh+qRBUwZjU0pf0JI0qQI5Dym5mxgy96CKeV29VRJI55w==}
+  '@tsdown/css@0.22.9':
+    resolution: {integrity: sha512-FxWI31j8RyKQJvkLbaeLVnSwnaisTVNluVnInN7SE6KDSjp2pyTn5SZ9xETVHegSGd+qUs3khMjTCxq9yRojtQ==}
     engines: {node: ^22.18.0 || >=24.11.0}
     peerDependencies:
       postcss: ^8.4.0
@@ -2883,7 +2860,7 @@ packages:
       postcss-modules: ^6.0.0
       sass: '*'
       sass-embedded: '*'
-      tsdown: 0.22.8
+      tsdown: 0.22.9
     peerDependenciesMeta:
       postcss:
         optional: true
@@ -2896,11 +2873,11 @@ packages:
       sass-embedded:
         optional: true
 
-  '@tsdown/exe@0.22.8':
-    resolution: {integrity: sha512-Yc6MRoOsuegHwexcnxaxVjhYkH4I7L6kt2+weiU8nVONjXC0WCjGNNv3+rRM3xOkFwPAioJ7SbO1oTRArBv1Eg==}
+  '@tsdown/exe@0.22.9':
+    resolution: {integrity: sha512-UeYilEib/I5j9AKKeSyCACWmt4hM6LPmnt501sM1BdxFFwZqLa/42Ssbyb426aPEFUEebbqCZNfB5N29Idnr+A==}
     engines: {node: ^22.18.0 || >=24.11.0}
     peerDependencies:
-      tsdown: 0.22.8
+      tsdown: 0.22.9
 
   '@turbo/darwin-64@2.10.5':
     resolution: {integrity: sha512-ENvPwy3x5yS7MwNYHeWjqOBXkwIMp39Pd+/zXC6PoiNzF8EIvvLZOZZ+ny6L9x4WgS5vxUii2LM5gM+zjPdnWw==}
@@ -4380,8 +4357,8 @@ packages:
       '@types/react':
         optional: true
 
-  ink@7.1.0:
-    resolution: {integrity: sha512-VWE6/yeLtFCJBNLflyI2OSylyXK1Rc24LuXup8Qt+icwkmmycFNdbn8IkSp6Frc0h1iA0NOvvi1ajW44U/w3Qg==}
+  ink@7.1.1:
+    resolution: {integrity: sha512-Y43xxa1ZSPvpmfLHcN5o+OdP8Rf8ykkNJEuKYOUNZKT8wXVNLFTtEm1nSDMQkfBH+YANF4Xuu0hhZ4ejqAtN2w==}
     engines: {node: '>=22'}
     peerDependencies:
       '@types/react': '>=19.2.0'
@@ -5149,8 +5126,8 @@ packages:
     resolution: {integrity: sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==}
     engines: {node: '>= 0.4'}
 
-  obug@2.1.3:
-    resolution: {integrity: sha512-9miFgM2OFba7hB+pRgvtV84pYTBaoTHohvmIgiRt6dRIzbwEOIaNaP+dIlGs2fNFoB0SeISs0Jz5WFVRid6Xyg==}
+  obug@2.1.4:
+    resolution: {integrity: sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA==}
     engines: {node: '>=12.20.0'}
 
   on-finished@2.4.1:
@@ -5986,14 +5963,14 @@ packages:
       '@swc/wasm':
         optional: true
 
-  tsdown@0.22.8:
-    resolution: {integrity: sha512-6FOLlr1iLcE3LheqQt13hVUWtTduJNwF2akPskPe8Tf1hr+N5UULHzrNZYTMNwL6lr2UyQ8iefVBB6tdqp1PCQ==}
+  tsdown@0.22.9:
+    resolution: {integrity: sha512-/0QEjQEhOU1t1YxOIAGzFN7bIssd8P0pBpkOmNLCQi3c5UtrcMF5bvq3f30xHJNW9QCA9aUNcNAorMr2CTd6Lg==}
     engines: {node: ^22.18.0 || >=24.11.0}
     hasBin: true
     peerDependencies:
       '@arethetypeswrong/core': ^0.18.1
-      '@tsdown/css': 0.22.8
-      '@tsdown/exe': 0.22.8
+      '@tsdown/css': 0.22.9
+      '@tsdown/exe': 0.22.9
       '@vitejs/devtools': '*'
       publint: ^0.3.8
       tsx: '*'
@@ -7052,47 +7029,35 @@ snapshots:
       '@effect/rpc': 0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)
       effect: 3.22.0
 
-  '@effected/git@file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg(effect@4.0.0-beta.98)':
+  '@effected/git@0.3.0(effect@4.0.0-beta.98)':
     dependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/glob@file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98)':
+  '@effected/glob@0.1.0(effect@4.0.0-beta.98)':
     dependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/jsonc@0.1.0(effect@4.0.0-beta.98)':
+  '@effected/jsonc@0.2.0(effect@4.0.0-beta.98)':
     dependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/jsonc@file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98)':
+  '@effected/lockfiles@0.1.2(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/npm@0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(@effected/yaml@0.2.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
     dependencies:
-      effect: 4.0.0-beta.98
-
-  '@effected/lockfiles@file:../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/npm@file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(@effected/yaml@file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
-    dependencies:
-      '@effected/jsonc': 0.1.0(effect@4.0.0-beta.98)
-      '@effected/npm': file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+      '@effected/jsonc': 0.2.0(effect@4.0.0-beta.98)
+      '@effected/npm': 0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       '@effected/semver': 0.1.0(effect@4.0.0-beta.98)
-      '@effected/yaml': file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+      '@effected/yaml': 0.2.0(effect@4.0.0-beta.98)
       effect: 4.0.0-beta.98
 
-  '@effected/lockfiles@file:../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg(@effected/jsonc@file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98))(@effected/npm@file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(@effected/yaml@file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
-    dependencies:
-      '@effected/jsonc': file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/npm': file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/semver': 0.1.0(effect@4.0.0-beta.98)
-      '@effected/yaml': file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      effect: 4.0.0-beta.98
-
-  '@effected/npm@file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
+  '@effected/npm@0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
     dependencies:
       '@effected/semver': 0.1.0(effect@4.0.0-beta.98)
       effect: 4.0.0-beta.98
 
-  '@effected/package-json@file:../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg(effect@4.0.0-beta.98)':
+  '@effected/package-json@0.3.0(effect@4.0.0-beta.98)':
     dependencies:
-      '@effected/npm': file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/semver': file:../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+      '@effected/npm': 0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+      '@effected/semver': 0.1.0(effect@4.0.0-beta.98)
       effect: 4.0.0-beta.98
       spdx-expression-parse: 4.0.0
 
@@ -7100,34 +7065,26 @@ snapshots:
     dependencies:
       effect: 4.0.0-beta.98
 
-  '@effected/semver@file:../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg(effect@4.0.0-beta.98)':
+  '@effected/tsconfig-json@0.2.1(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/walker@0.2.0(@effected/glob@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
     dependencies:
+      '@effected/jsonc': 0.2.0(effect@4.0.0-beta.98)
+      '@effected/walker': 0.2.0(@effected/glob@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
       effect: 4.0.0-beta.98
 
-  '@effected/tsconfig-json@file:../../spencerbeggs/effected/packages/tsconfig-json/dist/prod/npm/pkg(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/walker@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
+  '@effected/walker@0.2.0(@effected/glob@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
     dependencies:
-      '@effected/jsonc': 0.1.0(effect@4.0.0-beta.98)
-      '@effected/walker': 0.1.0(effect@4.0.0-beta.98)
+      '@effected/glob': 0.1.0(effect@4.0.0-beta.98)
       effect: 4.0.0-beta.98
 
-  '@effected/walker@0.1.0(effect@4.0.0-beta.98)':
+  '@effected/workspaces@0.3.0(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
     dependencies:
-      effect: 4.0.0-beta.98
-
-  '@effected/walker@file:../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg(@effected/glob@file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
-    dependencies:
-      '@effected/glob': file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      effect: 4.0.0-beta.98
-
-  '@effected/workspaces@file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
-    dependencies:
-      '@effected/git': file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/glob': file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/lockfiles': file:../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg(@effected/jsonc@0.1.0(effect@4.0.0-beta.98))(@effected/npm@file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(@effected/yaml@file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/npm': file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/package-json': file:../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/walker': file:../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg(@effected/glob@file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/yaml': file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+      '@effected/git': 0.3.0(effect@4.0.0-beta.98)
+      '@effected/glob': 0.1.0(effect@4.0.0-beta.98)
+      '@effected/lockfiles': 0.1.2(@effected/jsonc@0.2.0(effect@4.0.0-beta.98))(@effected/npm@0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(@effected/yaml@0.2.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+      '@effected/npm': 0.2.0(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+      '@effected/package-json': 0.3.0(effect@4.0.0-beta.98)
+      '@effected/walker': 0.2.0(@effected/glob@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
+      '@effected/yaml': 0.2.0(effect@4.0.0-beta.98)
       '@pnpm/catalogs.config': 1100.0.2
       '@pnpm/catalogs.protocol-parser': 1100.0.0
       '@pnpm/catalogs.resolver': 1100.0.0
@@ -7137,25 +7094,11 @@ snapshots:
       - '@effected/jsonc'
       - '@effected/semver'
 
-  '@effected/workspaces@file:../../spencerbeggs/effected/packages/workspaces/dist/prod/npm/pkg(@effected/jsonc@file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)':
+  '@effected/yaml@0.1.0(effect@4.0.0-beta.98)':
     dependencies:
-      '@effected/git': file:../../spencerbeggs/effected/packages/git/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/glob': file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/lockfiles': file:../../spencerbeggs/effected/packages/lockfiles/dist/prod/npm/pkg(@effected/jsonc@file:../../spencerbeggs/effected/packages/jsonc/dist/prod/npm/pkg(effect@4.0.0-beta.98))(@effected/npm@file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98))(@effected/semver@0.1.0(effect@4.0.0-beta.98))(@effected/yaml@file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/npm': file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg(@effected/semver@0.1.0(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/package-json': file:../../spencerbeggs/effected/packages/package-json/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/walker': file:../../spencerbeggs/effected/packages/walker/dist/prod/npm/pkg(@effected/glob@file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg(effect@4.0.0-beta.98))(effect@4.0.0-beta.98)
-      '@effected/yaml': file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@pnpm/catalogs.config': 1100.0.2
-      '@pnpm/catalogs.protocol-parser': 1100.0.0
-      '@pnpm/catalogs.resolver': 1100.0.0
-      '@pnpm/catalogs.types': 1100.0.0
       effect: 4.0.0-beta.98
-    transitivePeerDependencies:
-      - '@effected/jsonc'
-      - '@effected/semver'
 
-  '@effected/yaml@file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)':
+  '@effected/yaml@0.2.0(effect@4.0.0-beta.98)':
     dependencies:
       effect: 4.0.0-beta.98
 
@@ -8642,12 +8585,12 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
-  '@tsdown/css@0.22.8(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.8)(tsx@4.23.1)(yaml@2.9.0)':
+  '@tsdown/css@0.22.9(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.9)(tsx@4.23.1)(yaml@2.9.0)':
     dependencies:
       lightningcss: 1.32.0
       postcss-load-config: 6.0.1(jiti@2.7.0)(postcss@8.5.19)(tsx@4.23.1)(yaml@2.9.0)
-      rolldown: 1.1.5
-      tsdown: 0.22.8(@tsdown/css@0.22.8)(@tsdown/exe@0.22.8)(tsx@4.23.1)(typescript@6.0.3)
+      rolldown: 1.2.0
+      tsdown: 0.22.9(@tsdown/css@0.22.9)(@tsdown/exe@0.22.9)(tsx@4.23.1)(typescript@6.0.3)
     optionalDependencies:
       postcss: 8.5.19
     transitivePeerDependencies:
@@ -8655,12 +8598,12 @@ snapshots:
       - tsx
       - yaml
 
-  '@tsdown/exe@0.22.8(tsdown@0.22.8)':
+  '@tsdown/exe@0.22.9(tsdown@0.22.9)':
     dependencies:
-      obug: 2.1.3
+      obug: 2.1.4
       semver: 7.8.5
       tinyexec: 1.2.4
-      tsdown: 0.22.8(@tsdown/css@0.22.8)(@tsdown/exe@0.22.8)(tsx@4.23.1)(typescript@6.0.3)
+      tsdown: 0.22.9(@tsdown/css@0.22.9)(@tsdown/exe@0.22.9)(tsx@4.23.1)(typescript@6.0.3)
 
   '@turbo/darwin-64@2.10.5':
     optional: true
@@ -8913,9 +8856,9 @@ snapshots:
       '@effect/sql-sqlite-node': 0.52.0(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(effect@3.22.0)
       '@effect/workflow': 0.18.2(@effect/experimental@0.60.0(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0)(ioredis@5.11.1))(@effect/platform@0.96.3(effect@3.22.0))(@effect/rpc@0.75.1(@effect/platform@0.96.3(effect@3.22.0))(effect@3.22.0))(effect@3.22.0)
       '@vitest-agent/sdk': 1.3.4(ioredis@5.11.1)
-      '@vitest-agent/ui': 1.1.2(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(ioredis@5.11.1)(react@19.2.7)
+      '@vitest-agent/ui': 1.1.2(ink@7.1.1(@types/react@19.2.17)(react@19.2.7))(ioredis@5.11.1)(react@19.2.7)
       effect: 3.22.0
-      ink: 7.1.0(@types/react@19.2.17)(react@19.2.7)
+      ink: 7.1.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
       vitest: 4.1.10(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
     optionalDependencies:
@@ -8973,11 +8916,11 @@ snapshots:
       '@vitest-agent/sidecar-linux-x64': 1.0.2
       '@vitest-agent/sidecar-win32-x64': 1.0.2
 
-  '@vitest-agent/ui@1.1.2(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(ioredis@5.11.1)(react@19.2.7)':
+  '@vitest-agent/ui@1.1.2(ink@7.1.1(@types/react@19.2.17)(react@19.2.7))(ioredis@5.11.1)(react@19.2.7)':
     dependencies:
       '@vitest-agent/sdk': 1.3.4(ioredis@5.11.1)
       effect: 3.22.0
-      ink: 7.1.0(@types/react@19.2.17)(react@19.2.7)
+      ink: 7.1.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
     transitivePeerDependencies:
       - bufferutil
@@ -8995,7 +8938,7 @@ snapshots:
       istanbul-lib-report: 3.0.1
       istanbul-reports: 3.2.0
       magicast: 0.5.3
-      obug: 2.1.3
+      obug: 2.1.4
       tinyrainbow: 3.1.0
       vitest: 4.1.10(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
     transitivePeerDependencies:
@@ -9010,7 +8953,7 @@ snapshots:
       istanbul-lib-report: 3.0.1
       istanbul-reports: 3.2.0
       magicast: 0.5.3
-      obug: 2.1.3
+      obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.0
       vitest: 4.1.10(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
@@ -10189,14 +10132,14 @@ snapshots:
 
   ini@7.0.0: {}
 
-  ink-tab@5.2.0(@types/react@19.2.17)(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
+  ink-tab@5.2.0(@types/react@19.2.17)(ink@7.1.1(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
     dependencies:
-      ink: 7.1.0(@types/react@19.2.17)(react@19.2.7)
+      ink: 7.1.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
     optionalDependencies:
       '@types/react': 19.2.17
 
-  ink@7.1.0(@types/react@19.2.17)(react@19.2.7):
+  ink@7.1.1(@types/react@19.2.17)(react@19.2.7):
     dependencies:
       '@alcalzone/ansi-tokenize': 0.3.0
       ansi-escapes: 7.3.0
@@ -11241,7 +11184,7 @@ snapshots:
 
   object-inspect@1.13.4: {}
 
-  obug@2.1.3: {}
+  obug@2.1.4: {}
 
   on-finished@2.4.1:
     dependencies:
@@ -11700,12 +11643,12 @@ snapshots:
 
   rfdc@1.4.1: {}
 
-  rolldown-plugin-dts@0.27.9(rolldown@1.1.5)(typescript@6.0.3):
+  rolldown-plugin-dts@0.27.9(rolldown@1.2.0)(typescript@6.0.3):
     dependencies:
       dts-resolver: 3.0.0
       get-tsconfig: 5.0.0-beta.5
-      obug: 2.1.3
-      rolldown: 1.1.5
+      obug: 2.1.4
+      rolldown: 1.2.0
       yuku-ast: 0.1.7
       yuku-codegen: 0.6.4
       yuku-parser: 0.6.4
@@ -11714,12 +11657,12 @@ snapshots:
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-plugin-dts@0.27.9(rolldown@1.1.5)(typescript@7.0.2):
+  rolldown-plugin-dts@0.27.9(rolldown@1.2.0)(typescript@7.0.2):
     dependencies:
       dts-resolver: 3.0.0
       get-tsconfig: 5.0.0-beta.5
-      obug: 2.1.3
-      rolldown: 1.1.5
+      obug: 2.1.4
+      rolldown: 1.2.0
       yuku-ast: 0.1.7
       yuku-codegen: 0.6.4
       yuku-parser: 0.6.4
@@ -11731,11 +11674,11 @@ snapshots:
   rolldown-pnpm-config@0.4.0(@types/react@19.2.17)(ioredis@5.11.1)(rolldown@1.2.0):
     dependencies:
       '@effect/platform-node': 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
-      '@effected/semver': file:../../spencerbeggs/effected/packages/semver/dist/prod/npm/pkg(effect@4.0.0-beta.98)
-      '@effected/yaml': file:../../spencerbeggs/effected/packages/yaml/dist/prod/npm/pkg(effect@4.0.0-beta.98)
+      '@effected/semver': 0.1.0(effect@4.0.0-beta.98)
+      '@effected/yaml': 0.1.0(effect@4.0.0-beta.98)
       effect: 4.0.0-beta.98
-      ink: 7.1.0(@types/react@19.2.17)(react@19.2.7)
-      ink-tab: 5.2.0(@types/react@19.2.17)(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
+      ink: 7.1.1(@types/react@19.2.17)(react@19.2.7)
+      ink-tab: 5.2.0(@types/react@19.2.17)(ink@7.1.1(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       oxc-parser: 0.140.0
       react: 19.2.7
       std-env: 4.2.0
@@ -12179,7 +12122,7 @@ snapshots:
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
 
-  tsdown@0.22.8(@tsdown/css@0.22.8)(@tsdown/exe@0.22.8)(tsx@4.23.1)(typescript@6.0.3):
+  tsdown@0.22.9(@tsdown/css@0.22.9)(@tsdown/exe@0.22.9)(tsx@4.23.1)(typescript@6.0.3):
     dependencies:
       ansis: 4.3.1
       cac: 7.0.0
@@ -12187,18 +12130,18 @@ snapshots:
       empathic: 2.0.1
       hookable: 6.1.1
       import-without-cache: 0.4.0
-      obug: 2.1.3
+      obug: 2.1.4
       picomatch: 4.0.5
-      rolldown: 1.1.5
-      rolldown-plugin-dts: 0.27.9(rolldown@1.1.5)(typescript@6.0.3)
+      rolldown: 1.2.0
+      rolldown-plugin-dts: 0.27.9(rolldown@1.2.0)(typescript@6.0.3)
       semver: 7.8.5
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tree-kill: 1.2.2
       unconfig-core: 7.5.0
     optionalDependencies:
-      '@tsdown/css': 0.22.8(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.8)(tsx@4.23.1)(yaml@2.9.0)
-      '@tsdown/exe': 0.22.8(tsdown@0.22.8)
+      '@tsdown/css': 0.22.9(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.9)(tsx@4.23.1)(yaml@2.9.0)
+      '@tsdown/exe': 0.22.9(tsdown@0.22.9)
       tsx: 4.23.1
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -12207,7 +12150,7 @@ snapshots:
       - oxc-resolver
       - vue-tsc
 
-  tsdown@0.22.8(@tsdown/css@0.22.8)(@tsdown/exe@0.22.8)(tsx@4.23.1)(typescript@7.0.2):
+  tsdown@0.22.9(@tsdown/css@0.22.9)(@tsdown/exe@0.22.9)(tsx@4.23.1)(typescript@7.0.2):
     dependencies:
       ansis: 4.3.1
       cac: 7.0.0
@@ -12215,18 +12158,18 @@ snapshots:
       empathic: 2.0.1
       hookable: 6.1.1
       import-without-cache: 0.4.0
-      obug: 2.1.3
+      obug: 2.1.4
       picomatch: 4.0.5
-      rolldown: 1.1.5
-      rolldown-plugin-dts: 0.27.9(rolldown@1.1.5)(typescript@7.0.2)
+      rolldown: 1.2.0
+      rolldown-plugin-dts: 0.27.9(rolldown@1.2.0)(typescript@7.0.2)
       semver: 7.8.5
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tree-kill: 1.2.2
       unconfig-core: 7.5.0
     optionalDependencies:
-      '@tsdown/css': 0.22.8(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.8)(tsx@4.23.1)(yaml@2.9.0)
-      '@tsdown/exe': 0.22.8(tsdown@0.22.8)
+      '@tsdown/css': 0.22.9(jiti@2.7.0)(postcss@8.5.19)(tsdown@0.22.9)(tsx@4.23.1)(yaml@2.9.0)
+      '@tsdown/exe': 0.22.9(tsdown@0.22.9)
       tsx: 4.23.1
       typescript: 7.0.2
     transitivePeerDependencies:
@@ -12449,7 +12392,7 @@ snapshots:
       es-module-lexer: 2.3.1
       expect-type: 1.4.0
       magic-string: 0.30.21
-      obug: 2.1.3
+      obug: 2.1.4
       pathe: 2.0.3
       picomatch: 4.0.5
       std-env: 4.2.0
