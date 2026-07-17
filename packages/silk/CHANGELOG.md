@@ -1,5 +1,19 @@
 # @savvy-web/silk
 
+## 3.0.2
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.0.1 | 2.0.1 |
+| @savvy-web/mcp       | dependency | updated | 2.0.1 | 2.0.1 |
+
+* | Dependency | Type           | Action  | From    | To      |                                                          |
+  | ---------- | -------------- | ------- | ------- | ------- | -------------------------------------------------------- |
+  | turbo      | peerDependency | updated | ^2.10.4 | ^2.10.5 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 3.0.1
 
 ### Dependencies

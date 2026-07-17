@@ -1,5 +1,13 @@
 # @savvy-web/github-action-builder
 
+## 2.0.2
+
+### Dependencies
+
+* | Dependency    | Type       | Action  | From   | To     |                                                          |
+  | ------------- | ---------- | ------- | ------ | ------ | -------------------------------------------------------- |
+  | @rsbuild/core | dependency | updated | ^2.1.5 | ^2.1.6 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 2.0.1
 
 ### Dependencies
