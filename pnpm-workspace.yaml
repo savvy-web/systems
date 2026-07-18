@@ -1,6 +1,6 @@
 packages:
-- e2e/*
-- packages/*
+  - e2e/*
+  - packages/*
 allowBuilds:
   '@parcel/watcher': true
   better-sqlite3: true
@@ -152,30 +152,30 @@ linkWorkspacePackages: deep
 loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-- '@effected/*'
-- '@oxc-parser/*'
-- '@oxc-project/*'
-- '@savvy-web/*'
-- '@spencerbeggs/*'
-- '@typescript/*'
-- '@vitest-agent/*'
-- api-extractor-llms
-- config-file-effect
-- json-schema-effect
-- jsonc-effect
-- oxc-parser
-- package-json-effect
-- reposets
-- rolldown-pnpm-config
-- rspress-plugin-api-extractor
-- runtime-resolver
-- semver-effect
-- std-osc8
-- type-registry-effect
-- vitest-bats
-- workspaces-effect
-- xdg-effect
-- yaml-effect
+  - '@effected/*'
+  - '@oxc-parser/*'
+  - '@oxc-project/*'
+  - '@savvy-web/*'
+  - '@spencerbeggs/*'
+  - '@typescript/*'
+  - '@vitest-agent/*'
+  - api-extractor-llms
+  - config-file-effect
+  - json-schema-effect
+  - jsonc-effect
+  - oxc-parser
+  - package-json-effect
+  - reposets
+  - rolldown-pnpm-config
+  - rspress-plugin-api-extractor
+  - runtime-resolver
+  - semver-effect
+  - std-osc8
+  - type-registry-effect
+  - vitest-bats
+  - workspaces-effect
+  - xdg-effect
+  - yaml-effect
 overrides:
   '@microsoft/api-extractor>typescript': ^6.0.3
 peerDependencyRules:
@@ -190,26 +190,26 @@ peerDependencyRules:
     ink-tab>ink: ^7.0.0
     tsdown>typescript: ^5.0.0 || ^6.0.0 || ^7.0.0
 publicHoistPattern:
-- '@changesets/cli'
-- '@commitlint/cli'
-- '@commitlint/config-conventional'
-- '@commitlint/cz-commitlint'
-- '@types/bun'
-- '@types/node'
-- '@types/react'
-- '@types/react-dom'
-- '@typescript/native-preview'
-- '@vitest-agent/cli'
-- '@vitest-agent/mcp'
-- '@vitest/coverage-istanbul'
-- '@vitest/coverage-v8'
-- husky
-- lint-staged
-- markdownlint-cli2
-- markdownlint-cli2-formatter-codequality
-- tsx
-- turbo
-- typescript
-- vitest
+  - '@changesets/cli'
+  - '@commitlint/cli'
+  - '@commitlint/config-conventional'
+  - '@commitlint/cz-commitlint'
+  - '@types/bun'
+  - '@types/node'
+  - '@types/react'
+  - '@types/react-dom'
+  - '@typescript/native-preview'
+  - '@vitest-agent/cli'
+  - '@vitest-agent/mcp'
+  - '@vitest/coverage-istanbul'
+  - '@vitest/coverage-v8'
+  - husky
+  - lint-staged
+  - markdownlint-cli2
+  - markdownlint-cli2-formatter-codequality
+  - tsx
+  - turbo
+  - typescript
+  - vitest
 strictDepBuilds: true
 verifyDepsBeforeRun: false
