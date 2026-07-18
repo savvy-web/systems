@@ -1,10 +1,11 @@
 import { Command } from "effect/unstable/cli";
 
 import { hookCommand } from "./hook.js";
+import { lintCommand } from "./lint.js";
 
 /* v8 ignore start -- CLI registration; each command tested via exported handler */
 const _commitCommand = Command.make("commit").pipe(
-	Command.withSubcommands([hookCommand]),
+	Command.withSubcommands([hookCommand, lintCommand]),
 	Command.withDescription("Commit standards: config, checks, and Claude hook handlers"),
 );
 

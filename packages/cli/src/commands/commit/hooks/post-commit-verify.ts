@@ -10,6 +10,7 @@ import { Git } from "@effected/git";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command } from "effect/unstable/cli";
+import { buildCommitlintInvocation } from "../commitlint-invocation.js";
 
 const execFileP = promisify(execFile);
 
@@ -57,28 +58,6 @@ export function buildPostCommitAdvice(i: PostCommitInputs): string | null {
 	return lines.length === 0 ? null : lines.join("\n\n");
 }
 
-export interface CommitlintInvocation {
-	command: string;
-	args: string[];
-}
-
-export function buildCommitlintInvocation(
-	pm: Commitlint.PackageManager,
-	configPath: string | null,
-): CommitlintInvocation {
-	const tail = configPath ? ["commitlint", "--config", configPath, "--last"] : ["commitlint", "--last"];
-	switch (pm) {
-		case "pnpm":
-			return { command: "pnpm", args: ["exec", ...tail] };
-		case "yarn":
-			return { command: "yarn", args: ["exec", ...tail] };
-		case "bun":
-			return { command: "bunx", args: tail };
-		case "npm":
-			return { command: "npx", args: ["--no", "--", ...tail] };
-	}
-}
-
 /** The repo root via `@effected/git`, degrading to `process.cwd()` — the prior execFile contract. */
 const getRepoRoot: Effect.Effect<string, never, Git> = Effect.gen(function* () {
 	const git = yield* Git;
@@ -89,7 +68,7 @@ function runCommitlintLast(root: string): Promise<boolean> {
 	return (async () => {
 		const pm = await Commitlint.detectPackageManager(root);
 		const configPath = await Commitlint.readCommitlintConfigPath(root);
-		const { command, args } = buildCommitlintInvocation(pm, configPath);
+		const { command, args } = buildCommitlintInvocation(pm, configPath, ["--last"]);
 		try {
 			await execFileP(command, args, { cwd: root });
 			return false;
