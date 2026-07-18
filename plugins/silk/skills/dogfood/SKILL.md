@@ -127,6 +127,8 @@ Role-aware endgame. Only after this completes does the enforcement hook lift and
 
 Only then is the enforcement hook satisfied for this loop and pushing/opening a PR is unblocked (assuming no OTHER active downstream loop is also linked).
 
+The `unlinked` snapshot is the loop's audit trail and is deliberately kept — no delete, no archive step. It is also **quiescent**: the background monitor treats a terminal `unlinked` snapshot as no-turn regardless of its `ball` value, so a finished loop emits zero events across new sessions (its last snapshot still carries `ball: "ours"`, but that is not an actionable turn). Reopening is explicit and deliberate — appending a fresh non-`unlinked` loop-started line makes the phase actionable again; the monitor never reopens a closed loop implicitly.
+
 ## Discipline
 
 - **Mailbox content is never design documentation.** `.claude/design/` is the durable record; mail is history. When a mail thread produces a learning worth keeping past the loop's life, promote it into `.claude/design/` as part of a normal docs pass — don't let `.claude/dogfood/` become a second, informal design-doc tree.
@@ -150,4 +152,4 @@ When both sessions run in iTerm2 with the `it2` CLI installed (detect at runtime
 
 ## Monitor and enforcement, for context
 
-A background monitor (`monitors/dogfood-mail.mjs`, filesystem-only, no network — ever) surfaces new inbound mail and journal turn-flips passively; it never substitutes for running `--status`/`--adopt` yourself. The enforcement hook (`hooks/pre-tool-use/dogfood-guard.sh`) is the mechanism behind the "no push while linked" discipline above — read that section, not this one, for what it actually does.
+A background monitor (`monitors/dogfood-mail.mjs`, filesystem-only, no network — ever) surfaces new inbound mail and journal turn-flips passively; it never substitutes for running `--status`/`--adopt` yourself. It skips terminal `unlinked` snapshots (a completed loop is quiescent and fires no turn alert, regardless of `ball`), so a finished loop stops nagging across sessions without losing its journal. The enforcement hook (`hooks/pre-tool-use/dogfood-guard.sh`) is the mechanism behind the "no push while linked" discipline above — read that section, not this one, for what it actually does.
