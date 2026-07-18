@@ -1,5 +1,29 @@
 # @savvy-web/silk
 
+## 3.0.3
+
+### Bug Fixes
+
+* Hardens the bundled `changeset-manager` agent so it no longer stalls or silently drops files when dispatched without an interactive surface.
+
+  * The `AskUserQuestion` step is now conditional — it asks when the tool is available and otherwise escalates genuinely ambiguous files to the dispatching agent via `SendMessage` instead of silently excluding them.
+  * A brand-new workspace package is treated as a first-class content changeset with its own single-package `minor` entry, and the content pass now runs before the dependency pass so a new package is announced before any dependency edge that references it.
+  * The report step now enumerates every changed package that received no changeset along with the rationale, so an early stop can never be mistaken for "nothing needed". [#317][#317]
+
+- The dogfood-mail monitor no longer re-fires the "your turn" alert for a finished loop whose journal ends on the terminal `unlinked` phase, so a completed loop stays quiescent across new sessions. Appending a fresh loop line reopens it deliberately. [#317][#317]
+
+### Dependencies
+
+| Dependency     | Type       | Action  | From  | To    |
+| -------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/cli | dependency | updated | 2.0.1 | 2.1.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#317]: https://github.com/savvy-web/systems/pull/317
+
 ## 3.0.2
 
 ### Dependencies
