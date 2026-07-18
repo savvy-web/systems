@@ -41,7 +41,7 @@ let cachedPaths: string[] | typeof UNRESOLVED = UNRESOLVED;
  */
 export function getWorkspaceRoot(): string | null {
 	if (cachedRoot !== UNRESOLVED) return cachedRoot;
-	cachedRoot = findWorkspaceRootSync(nodeSyncOps);
+	cachedRoot = findWorkspaceRootSync(process.cwd(), nodeSyncOps);
 	return cachedRoot;
 }
 
