@@ -130,7 +130,18 @@ export function diagnose(current, prev) {
 		const before = prev.journals.get(journal.id);
 		const signature = JSON.stringify(journal.snapshot);
 		const alreadyNotified = before?.signature === signature;
-		if (journal.snapshot && !alreadyNotified && journal.snapshot.ball === "ours") {
+		// A terminal `unlinked` snapshot is quiescent: the loop is done, so it
+		// is not an actionable turn regardless of `ball`. The journal is kept
+		// after `unlinked` (a future collaboration continues it), and the
+		// per-process notify-dedupe resets every session, so without this gate
+		// a finished loop re-fires the turn alert on each new session
+		// (issue #314). Appending a fresh non-`unlinked` loop line reopens it.
+		if (
+			journal.snapshot &&
+			!alreadyNotified &&
+			journal.snapshot.ball === "ours" &&
+			journal.snapshot.phase !== "unlinked"
+		) {
 			lines.push(`dogfood: ball is ours in loop "${journal.id}" (phase: ${journal.snapshot.phase ?? "?"})`);
 		}
 		nextJournals.set(journal.id, { signature });

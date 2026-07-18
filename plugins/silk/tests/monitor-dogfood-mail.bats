@@ -63,6 +63,15 @@ write_mail() {
 	[ -z "$output" ]
 }
 
+@test "terminal unlinked snapshot with ball ours: no turn alert (issue #314)" {
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"unlinked","ball":"ours","round":3}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "journal present, ball is ours: turn alert names loop and phase" {
 	make_project >/dev/null
 	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
