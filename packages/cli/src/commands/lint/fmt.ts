@@ -9,16 +9,10 @@
  * @internal
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { Yaml, YamlStringifyOptions } from "@effected/yaml";
+import { Yaml } from "@effected/yaml";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/unstable/cli";
-
-/** Default YAML stringify options matching PnpmWorkspace handler (plain scalars = the v3 singleQuote:false posture). */
-const YAML_STRINGIFY_OPTIONS = YamlStringifyOptions.make({
-	indent: 2,
-	lineWidth: 0,
-});
 
 /** Repeated file path arguments. */
 const filesArg = Argument.file("files", { mustExist: true }).pipe(Argument.variadic());
@@ -48,7 +42,10 @@ const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
 		const content = readFileSync(filepath, "utf-8");
 		const parsed = (yield* Yaml.parse(content)) as Lint.PnpmWorkspaceContent;
 		const sorted = Lint.PnpmWorkspace.sortContent(parsed);
-		const formatted = yield* Yaml.stringify(sorted, YAML_STRINGIFY_OPTIONS);
+		// Formatting lives in silk-effects so this path and the lint-staged
+		// handler cannot drift; it normalizes @effected/yaml's unindented
+		// sequences and single-quoted scalars back to the repo's byte format.
+		const formatted = yield* Effect.promise(() => Lint.PnpmWorkspace.formatContent(sorted, filepath));
 		writeFileSync(filepath, formatted, "utf-8");
 	}),
 );

@@ -1,6 +1,7 @@
 import type { Changesets } from "@savvy-web/silk-effects";
-import type { Cause } from "effect";
+import type { Cause, FileSystem, Path } from "effect";
 import { Command } from "effect/unstable/cli";
+import type { ChildProcessSpawner } from "effect/unstable/process";
 
 import { checkCommand } from "./commands/check.js";
 import { configValidateCommand } from "./commands/config-validate.js";
@@ -45,6 +46,10 @@ const _changesetCommand = Command.make("changeset").pipe(
  * reference effect's non-exported `Inspectable` module (TS4023). The
  * annotation preserves the exact Error/Requirements channels, so the root
  * layer graph stays compiler-validated.
+ *
+ * The requirements channel names the subcommands' services rather than `never`:
+ * `Command.withSubcommands` propagates each subcommand's requirements up into
+ * the group's `R`, which the root assembly discharges via `AppLive`.
  */
 export const changesetCommand: Command.Command<
 	"changeset",
@@ -55,7 +60,11 @@ export const changesetCommand: Command.Command<
 	| Changesets.ReleasePlanError
 	| Cause.UnknownError
 	| Changesets.DepsRegenPlanError,
-	never
+	| ChildProcessSpawner.ChildProcessSpawner
+	| Changesets.ConfigInspector
+	| FileSystem.FileSystem
+	| Path.Path
+	| Changesets.ReleasePlanner
 > = _changesetCommand;
 /* v8 ignore stop */
 
