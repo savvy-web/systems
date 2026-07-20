@@ -23,13 +23,17 @@ const _reposCommand = Command.make("repos").pipe(
  * reference effect's non-exported `Inspectable` module (TS4023). The
  * annotation preserves the exact Error/Requirements channels, so the root
  * layer graph stays compiler-validated.
+ *
+ * The requirements channel names `Repos.ReposManager` rather than `never`:
+ * `Command.withSubcommands` propagates each subcommand's requirements up into
+ * the group's `R`, which the root assembly discharges via `AppLive`.
  */
 export const reposCommand: Command.Command<
 	"repos",
 	Record<string, never>,
 	Record<string, never>,
 	Repos.GitSubmoduleError,
-	never
+	Repos.ReposManager
 > = _reposCommand;
 /* v8 ignore stop */
 

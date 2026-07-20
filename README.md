@@ -8,14 +8,16 @@ Coordination hub and shared libraries for the [Silk Suite](https://github.com/or
 
 Shared [Effect](https://effect.website/) library providing Silk Suite conventions. Platform-agnostic -- consumers provide their own runtime layer.
 
-| Module | What it does |
-| ------ | ------------ |
-| [publish](./packages/silk-effects/docs/publish.md) | Multi-registry target resolution and publishability detection |
-| [versioning](./packages/silk-effects/docs/versioning.md) | Changeset config reading with Silk detection, strategy determination |
-| [tags](./packages/silk-effects/docs/tags.md) | Git tag format (single vs scoped) based on versioning strategy |
-| [hooks](./packages/silk-effects/docs/hooks.md) | Managed sections in user-editable files with BEGIN/END markers |
-| [config](./packages/silk-effects/docs/config.md) | Config file discovery with `lib/configs/` priority convention |
-| [biome](./packages/silk-effects/docs/biome.md) | Biome `$schema` URL synchronization across config files |
+| Topic | What it does |
+| ----- | ------------ |
+| [Publishability](./packages/silk-effects/docs/publishability.md) | Multi-registry target resolution and publishability detection |
+| [Changeset config](./packages/silk-effects/docs/changeset-config.md) | Reading and decoding `.changeset/config.json` with Silk detection |
+| [Versioning strategy](./packages/silk-effects/docs/versioning-strategy.md) | Classifying workspace versioning as single, fixed-group or independent |
+| [Tag strategy](./packages/silk-effects/docs/tag-strategy.md) | Git tag format (single vs scoped) based on versioning strategy |
+| [Managed sections](./packages/silk-effects/docs/managed-section.md) | Managed sections in user-editable files with BEGIN/END markers |
+| [Config discovery](./packages/silk-effects/docs/config-discovery.md) | Config file discovery with `lib/configs/` priority convention |
+| [Biome sync](./packages/silk-effects/docs/biome-sync.md) | Biome `$schema` URL synchronization across config files |
+| [Tool discovery](./packages/silk-effects/docs/tool-discovery.md) | Locating CLI tools, extracting versions and enforcing constraints |
 
 ```bash
 pnpm add @savvy-web/silk-effects effect @effect/platform @effect/platform-node

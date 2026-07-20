@@ -123,6 +123,34 @@ export class PnpmWorkspace {
 	}
 
 	/**
+	 * Stringify sorted workspace content to the repo's canonical YAML byte format.
+	 *
+	 * @remarks
+	 * The single source of truth for pnpm-workspace.yaml formatting. Both
+	 * {@link create} and the `savvy lint fmt pnpm-workspace` CLI subcommand route
+	 * through here so the two paths cannot drift.
+	 *
+	 * `@effected/yaml` emits block sequences without the leading two-space
+	 * indentation and prefers single-quoted scalars; Prettier's YAML printer
+	 * normalizes both back to the v3 `yaml` posture (indented sequences,
+	 * double-quoted scalars). Do NOT write `EffectedYaml.stringify` output
+	 * directly — that regresses the file on every format pass.
+	 *
+	 * @param content - Sorted pnpm-workspace.yaml content
+	 * @param filepath - Path used to resolve Prettier config
+	 * @returns The formatted YAML source
+	 */
+	static async formatContent(content: PnpmWorkspaceContent, filepath: string = PnpmWorkspace.glob): Promise<string> {
+		const stringified = Effect.runSync(EffectedYaml.stringify(content, DEFAULT_STRINGIFY_OPTIONS));
+		const prettierConfig = await resolveConfig(filepath);
+		return format(stringified, {
+			...prettierConfig,
+			filepath,
+			parser: "yaml",
+		});
+	}
+
+	/**
 	 * Create a handler that returns a CLI command to sort/format pnpm-workspace.yaml.
 	 *
 	 * @remarks
@@ -181,15 +209,7 @@ export class PnpmWorkspace {
 
 			// Format and write back (unless both sort and format are skipped)
 			if (!skipSort || !skipFormat) {
-				const stringified = Effect.runSync(EffectedYaml.stringify(parsed, DEFAULT_STRINGIFY_OPTIONS));
-				// Normalize sequence indentation to the v3 `yaml` byte format
-				// (see DEFAULT_STRINGIFY_OPTIONS remarks).
-				const prettierConfig = await resolveConfig(filepath);
-				const formatted = await format(stringified, {
-					...prettierConfig,
-					filepath,
-					parser: "yaml",
-				});
+				const formatted = await PnpmWorkspace.formatContent(parsed, filepath);
 				writeFileSync(filepath, formatted, "utf-8");
 
 				return [];

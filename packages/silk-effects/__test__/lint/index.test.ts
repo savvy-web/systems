@@ -386,6 +386,22 @@ describe("Handler classes", () => {
 			expect(PnpmWorkspace.glob).toBe("pnpm-workspace.yaml");
 		});
 
+		// Regression guard: @effected/yaml emits unindented block sequences and
+		// single-quoted scalars. formatContent normalizes both back to the repo's
+		// byte format via Prettier. Writing raw kit output reformats the whole
+		// workspace file on every `savvy lint fmt pnpm-workspace` run.
+		it("should normalize kit output to indented sequences and double quotes", async () => {
+			const formatted = await PnpmWorkspace.formatContent({
+				packages: ["e2e/*", "packages/*"],
+				allowedDeprecatedVersions: { "@types/acorn": "*" },
+			});
+
+			expect(formatted).toContain("  - e2e/*");
+			expect(formatted).not.toContain("\n- e2e/*");
+			expect(formatted).toContain('"@types/acorn": "*"');
+			expect(formatted).not.toContain("'@types/acorn'");
+		});
+
 		it("should sort and format in-place", async () => {
 			// Create a backup of the actual file
 			const filepath = "pnpm-workspace.yaml";

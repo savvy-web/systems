@@ -11,10 +11,11 @@
 - Depends only on `@savvy-web/silk-effects` within the repo; must NOT import `@savvy-web/silk` or `@savvy-web/mcp` (the cli↔silk↔mcp non-import invariant).
 - NO `peerDependencies` block: the Effect closure is sealed as regular `dependencies` (same posture as mcp and tsdown-plugins, #228). When adding a new `@effect/*` dep, declare its required peers as regular deps too.
 - Changeset inspection lives in the MCP tools, not the CLI.
+- `savvy lint fmt <name>` subcommands own argument parsing and file I/O ONLY. The formatting itself lives in silk-effects (e.g. `Lint.PnpmWorkspace.formatContent`) so the CLI and the lint-staged handler cannot drift; never inline a second copy of a format step here.
 - `savvy lint`/`savvy check` sync each consumer `biome.json(c)` `$schema` URL to the hand-pinned `BIOME_VERSION` const in `src/commands/lint/biome-version.ts`. On a Biome upgrade, bump it alongside `@savvy-web/silk`'s peer range and Biome asset `$schema` (see that package's CLAUDE.md).
 
 ## Design
 
-Load for the command tree, runtime layer stack, and the native-apply refactor:
+Load for the command tree, runtime layer stack, the native-apply refactor, and why some command groups carry a hand-written type annotation:
 → `@../../.claude/design/cli/architecture.md`
-Load when adding a command, changing the runtime layer stack in `src/cli/index.ts`, or touching `savvy changeset version`.
+Load when adding a command, changing the runtime layer stack in `src/cli/index.ts`, hitting a TS4023 error on a command group, or touching `savvy changeset version`.

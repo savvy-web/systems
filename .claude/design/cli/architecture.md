@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-07-11
-last-synced: 2026-07-11
+updated: 2026-07-20
+last-synced: 2026-07-20
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -17,7 +17,7 @@ dependencies:
 
 # @savvy-web/cli architecture
 
-The `savvy` binary — the single command host for the Silk Suite's everyday dev tooling. A thin command shell over `@savvy-web/silk-effects`, built on `@effect/cli` and `@effect/platform-node`.
+The `savvy` binary — the single command host for the Silk Suite's everyday dev tooling. A thin command shell over `@savvy-web/silk-effects`, built on Effect v4's in-core `effect/unstable/cli` and `@effect/platform-node`.
 
 ## Table of contents
 
@@ -30,7 +30,7 @@ The `savvy` binary — the single command host for the Silk Suite's everyday dev
 
 ## Overview
 
-`@savvy-web/cli` owns the `savvy` binary and the statically-defined command tree. Almost all of its business logic lives elsewhere: every command handler imports the work it does from `@savvy-web/silk-effects`, and the package exists mainly to wire those handlers into a single `@effect/cli` tree and provide the runtime layer stack that satisfies their service requirements. The lone exception is `savvy clean`, whose filesystem artifact removal has no `silk-effects` equivalent and lives in `src/commands/clean.ts` (see [The clean command](#the-clean-command)).
+`@savvy-web/cli` owns the `savvy` binary and the statically-defined command tree. Almost all of its business logic lives elsewhere: every command handler imports the work it does from `@savvy-web/silk-effects`, and the package exists mainly to wire those handlers into a single `effect/unstable/cli` tree and provide the runtime layer stack that satisfies their service requirements. The lone exception is `savvy clean`, whose filesystem artifact removal has no `silk-effects` equivalent and lives in `src/commands/clean.ts` (see [The clean command](#the-clean-command)).
 
 **Package:** `@savvy-web/cli`, in `packages/cli`.
 
@@ -77,21 +77,19 @@ Three safety properties are load-bearing and must survive any edit. Containment:
 This is the load-bearing part of the package. The whole runtime layer stack is assembled once in `runCli()` (`src/cli/index.ts`) and is the union of the three source CLIs' stacks with every inter-layer dependency wired. Read that file before touching layer wiring; the structure below is the topology, not a re-listing of every service.
 
 ```text
-AppLive = mergeAll(ToolDiscovery, VersioningStrategy, Inspector+Analyzer, DepsRegenGroup)
+AppLive = mergeAll(ToolDiscovery, VersioningStrategy, Inspector+Analyzer, ReposGroup)
             provideMerge(BaseLive)
-            provideMerge(NodeContext.layer)
+            provideMerge(NodeServices.layer)
 
 Inspector+Analyzer = BranchAnalyzer
                        provideMerge(ReleasePlanner)
                        provideMerge(ConfigInspector)
 
-DepsRegenGroup = Changesets.DepsRegen
-                   provide(Inspector+Analyzer)         ← shares the one ConfigInspector instance
-                   provide(PointInTimeWorkspace over WorkspaceLive)
-                   provide(PublishabilityDetector)
-                   provide(ChangesetConfig over ChangesetConfigReader)
+ReposGroup = Repos.ReposManager
+               provide(Repos.ReposConfigStore)
+               provide(Git)
 
-BaseLive  = WorkspaceLive + ChangesetConfigReader + leaf silk-effects services
+BaseLive  = WorkspaceLive + Git + ChangesetConfigReader + leaf silk-effects services
             (ManagedSection, BiomeSchemaSync, ConfigDiscovery,
              SilkPublishabilityDetector)
 
@@ -99,23 +97,27 @@ WorkspaceLive = WorkspaceRoot + PackageManagerDetector
                 + WorkspaceDiscovery(provided WorkspaceRoot)
 ```
 
-Two structural choices matter:
+Three structural choices matter:
 
-- **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer`, the surviving `config validate` handler, `ReleasePlanner` and now `Changesets.DepsRegen` — the `classify`/`config show`/`analyze-branch`/`release-surface` CLI commands are gone, so `ConfigInspector` is otherwise consumed by the MCP tools `changeset_inspect`/`changeset_validate`) is never constructed twice per run. `Changesets.ReleasePlanner` backs `savvy changeset version`, which now natively applies the release — bumping versions, transforming CHANGELOGs and updating versionFiles via `ReleasePlanner.apply` — rather than shelling out to a `changeset` binary or detecting the package manager; `--dry-run` is a true no-write report. See `../silk-effects/architecture.md`. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeContext.layer` already satisfies it. See `../silk-effects/architecture.md`.
-- **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio rather than pulling in the heavier `WorkspacesLive`, which would also fork `DependencyGraph` / `PublishabilityDetector` background work the CLI does not need. `savvy changeset deps regen`/`deps detect` are the one exception that needs `PointInTimeWorkspace` and `PublishabilityDetector` from `workspaces-effect` plus `ChangesetConfig` (for `Changesets.DepsRegen` — see `../silk-effects/architecture.md`), so those are composed by hand into `DepsRegenGroupLive`: `PointInTimeWorkspaceLive` is provided `WorkspaceLive` (for its `WorkspaceRoot`/`WorkspaceDiscovery` needs, with `CommandExecutor` flowing up to `NodeContext.layer` since it reads git history), and `ChangesetConfigLive` is provided its own `ChangesetConfigReaderLive` — rather than pulling in `WorkspacesLive` for every command. The old `CatalogResolverLive`/`LockfileReaderLive`/`WorkspaceSnapshotReaderLive` wiring is gone: per-ref catalog resolution now lives inside `PointInTimeWorkspace`.
+- **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer`, the surviving `config validate` handler, `ReleasePlanner` and now `Changesets.DepsRegen` — the `classify`/`config show`/`analyze-branch`/`release-surface` CLI commands are gone, so `ConfigInspector` is otherwise consumed by the MCP tools `changeset_inspect`/`changeset_validate`) is never constructed twice per run. `Changesets.ReleasePlanner` backs `savvy changeset version`, which now natively applies the release — bumping versions, transforming CHANGELOGs and updating versionFiles via `ReleasePlanner.apply` — rather than shelling out to a `changeset` binary or detecting the package manager; `--dry-run` is a true no-write report. See `../silk-effects/architecture.md`. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeServices.layer` already satisfies it. See `../silk-effects/architecture.md`.
+- **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio from `@effected/workspaces` rather than pulling in a batteries-included workspace layer, which would also fork `DependencyGraph` / `PublishabilityDetector` background work most commands do not need. `Git.layer` (from `@effected/git`) is likewise built once in `BaseLive` and re-exposed, because it backs `BranchAnalyzer`, `ReposManager`, the commit hooks and `detectGitHubRepo` alike.
+- **`DepsRegen` is deliberately NOT in `AppLive`.** Its graph is root-bound at layer *build* time, so binding it once at startup would freeze it to the CLI's launch cwd and ignore a command's `--cwd`. The `savvy changeset deps regen`/`deps detect` handlers instead compose `Changesets.makeDepsRegenDefault({ cwd })` per invocation against their parsed cwd, with platform services flowing up to `NodeServices.layer`. Any future service whose layer construction captures a root belongs on this per-invocation path, not in `AppLive`. See `../silk-effects/architecture.md`.
 
 The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
 
-### Why runtime smoke tests verify completeness, not the type-checker
+### Why some command groups carry a hand-written type annotation
 
-The command groups are exported typed as `Command.Command<"name", any, any, any>`. The `any` R-channel is deliberate: Effect's `@effect/cli` command types infer internal types that cannot survive TypeScript declaration emit (TS4023 "cannot be named" errors). Casting to `any` is the escape hatch.
+A command group built by piping `Command.make` through `Command.withSubcommands` infers a type that references effect's non-exported `Inspectable` module, which cannot survive TypeScript declaration emit (TS4023 "cannot be named"). The fix is to build the group into a private `_nameCommand` and re-export it under an explicit `Command.Command<...>` annotation — see `src/commands/changeset/index.ts` and `src/commands/repos/index.ts`, the two groups that hit this. Sibling groups whose inferred types happen to name only exported modules (`commit`, `lint`) need no annotation and have none; add one only when declaration emit actually fails.
 
-The consequence: because the R-channel is `any`, the type-checker cannot prove that `AppLive` supplies every service the handlers require. The cast in `runCli` restores the fully-provided shape, but the real layer-completeness gate is the runtime smoke tests, not `tsc` (`types:check`). If a handler yields a tag no layer provides, the type-checker stays silent and the CLI fails at runtime — so the smoke tests that run each command are the contract that the layer stack is complete. Treat them as such when adding a command that needs a new service.
+The annotation is exact, never `any`: it restates the group's real Error and Requirements channels so the root layer graph stays compiler-validated. `runCli` provides `AppLive` with no casts, so `tsc` (`types:check`) — not the runtime smoke tests — is the gate that proves every service a handler yields is supplied.
+
+**A group's requirements channel is the union of its subcommands' requirements, not `never`.** `Command.withSubcommands` propagates each subcommand's `R` up into the parent (`R | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>`), so `changesetCommand` names `ChildProcessSpawner | ConfigInspector | FileSystem | Path | ReleasePlanner` and `reposCommand` names `Repos.ReposManager`. Earlier Effect v4 betas erased subcommand requirements at the group boundary, so these annotations previously read `never`; a beta bump that changes the propagation rule surfaces as a type error on exactly these two exports, and the fix is to widen the annotation to match — the layer graph itself does not change, since `AppLive` already discharged those services. Note the qualified `ChildProcessSpawner.ChildProcessSpawner`: `effect/unstable/process` re-exports it as a namespace and the package exports map offers no deeper subpath.
 
 ## Boundaries and invariants
 
 - **`@savvy-web/cli` never imports `@savvy-web/silk`.** All logic comes from `silk-effects`. This is grep-guarded.
 - The real tools (`@biomejs/biome`, `husky`, `@commitlint/*`, `@changesets/cli`, `lint-staged`, `markdownlint-cli2`) are not direct deps; `silk` co-installs them as peers and pnpm's public-hoist-pattern makes them resolvable when `savvy` shells out.
+- **`savvy lint fmt <name>` owns argument parsing only — never a second copy of the formatting.** Each `fmt` subcommand (`src/commands/lint/fmt.ts`) is the CLI half of a `Lint` handler that lint-staged also invokes directly, so any byte-format step written into the subcommand rather than the handler makes the same file format differently depending on which path ran. `fmt pnpm-workspace` is the case that regressed: it wrote raw `@effected/yaml` stringify output while the handler normalized through Prettier. It now calls `Lint.PnpmWorkspace.formatContent`, the shared static in silk-effects. When adding a `fmt` subcommand, sort/stringify/normalize belongs behind one silk-effects export both callers share. See `../silk-effects/architecture.md`.
 - **`savvy lint`/`savvy check` sync each consumer `biome.json(c)` `$schema` URL to a hardcoded `BIOME_VERSION` const** (`src/commands/lint/biome-version.ts`), via `silk-effects`' `BiomeSchemaSync` service (`check` reports drift, `lint`/`init` writes it). The version source is a plain compiled-in constant, not the never-populated `__BIOME_PEER_VERSION__` env var the path previously read — that env var was always empty, so the sync was a dead no-op until the const replaced it; the path is now active. `BIOME_VERSION` is one of the three coupled Biome-version spots that move together on an upgrade (alongside `@savvy-web/silk`'s Biome asset `$schema` and its `@biomejs/biome` peer range) — see `../silk/architecture.md` and `packages/silk/CLAUDE.md`.
 - `silk` depends on `cli` as an exact-pinned regular dependency (install-target wiring), so installing `silk` pulls the `savvy` bin. That arrow points at install topology only — `silk`'s code never imports `cli`.
 
