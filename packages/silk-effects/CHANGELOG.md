@@ -1,5 +1,36 @@
 # @savvy-web/silk-effects
 
+## 4.1.0
+
+### Features
+
+* Added `Lint.PnpmWorkspace.formatContent(content, filepath?)` — a public static that stringifies sorted `pnpm-workspace.yaml` content and normalizes it through Prettier's YAML printer to the repo's canonical byte format (2-space block-sequence indent, double-quoted scalars).
+
+  `Lint` handlers have two entry points that must never drift from each other: the lint-staged `create()` handler and the `savvy lint fmt <name>` CLI subcommand. `formatContent` is now the single source of truth both call, so the two paths always produce identical bytes for the same file.
+
+  ````typescript
+  import { Lint } from "@savvy-web/silk-effects";
+
+  const formatted = await Lint.PnpmWorkspace.formatContent(sortedContent, "pnpm-workspace.yaml");
+  ``` [#328](https://github.com/savvy-web/systems/pull/328) Thanks [@spencerbeggs](https://github.com/spencerbeggs)!
+  ````
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                              |
+  | ---------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/git          | dependency | updated | ^0.4.0 | ^0.4.1 |                                                                              |
+  | @effected/glob         | dependency | updated | ^0.1.1 | ^0.1.2 |                                                                              |
+  | @effected/jsonc        | dependency | updated | ^0.3.0 | ^0.4.0 |                                                                              |
+  | @effected/package-json | dependency | updated | ^0.3.0 | ^0.3.1 |                                                                              |
+  | @effected/walker       | dependency | updated | ^0.2.1 | ^0.2.2 |                                                                              |
+  | @effected/workspaces   | dependency | updated | ^0.4.0 | ^0.4.1 |                                                                              |
+  | @effected/yaml         | dependency | updated | ^0.3.1 | ^0.4.0 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#326]: https://github.com/savvy-web/systems/pull/326
+
 ## 4.0.1
 
 ### Dependencies
