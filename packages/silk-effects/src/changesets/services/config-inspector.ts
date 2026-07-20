@@ -34,7 +34,7 @@
 
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { GlobPattern, GlobPatternOptions } from "@effected/glob";
-import { descend } from "@effected/walker";
+import { compileAndExpand } from "@effected/walker";
 import type { WorkspaceDiscoveryShape } from "@effected/workspaces";
 import { WorkspaceDiscovery } from "@effected/workspaces";
 import { Context, Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
@@ -260,29 +260,13 @@ function normalizeLegacyOptions(
 const GLOB_OPTIONS = GlobPatternOptions.make({ dot: true });
 
 /**
- * Compile `glob` via `@effected/glob`, folding a compile-guard trip
- * (over-length pattern, brace-expansion budget, nesting depth) into a
- * {@link ConfigurationError} naming the offending glob on the typed channel.
- */
-function compileGlob(glob: string): Effect.Effect<GlobPattern, ConfigurationError> {
-	return GlobPattern.compile(glob, GLOB_OPTIONS).pipe(
-		Effect.mapError(
-			(error) =>
-				new ConfigurationError({
-					field: "glob",
-					reason: `Invalid glob pattern ${JSON.stringify(glob)}: ${error.message}`,
-				}),
-		),
-	);
-}
-
 /**
  * Pure attribution helper: does `glob` (under this service's `dot: true`
  * semantics) match the repo-relative POSIX path `rel`? An uncompilable
  * pattern matches nothing.
  */
 function globMatchesRel(glob: string, rel: string): boolean {
-	const result = Effect.runSync(Effect.result(GlobPattern.compile(glob, GLOB_OPTIONS)));
+	const result = GlobPattern.compileResult(glob, GLOB_OPTIONS);
 	return Result.isSuccess(result) && result.success.matches(rel);
 }
 
@@ -302,19 +286,18 @@ function materializeGlob(
 	glob: string,
 	cwd: string,
 ): Effect.Effect<ReadonlyArray<string>, ConfigurationError, FileSystem.FileSystem> {
-	return compileGlob(glob).pipe(
-		Effect.flatMap((pattern) =>
-			descend(pattern, { cwd, onUnreadable: "skip" }).pipe(
-				Effect.mapError(
-					(error) =>
-						new ConfigurationError({
-							field: "glob",
-							reason: `Failed to materialize glob ${JSON.stringify(glob)}: ${error.message}`,
-						}),
-				),
-				Effect.provide(Path.layer),
-			),
+	return compileAndExpand(glob, { cwd, onUnreadable: "skip", glob: GLOB_OPTIONS }).pipe(
+		Effect.mapError(
+			(error) =>
+				new ConfigurationError({
+					field: "glob",
+					reason:
+						error.stage === "compile"
+							? `Invalid glob pattern ${JSON.stringify(glob)}: ${error.cause.message}`
+							: `Failed to materialize glob ${JSON.stringify(glob)}: ${error.cause.message}`,
+				}),
 		),
+		Effect.provide(Path.layer),
 	);
 }
 

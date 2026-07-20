@@ -45,7 +45,7 @@ const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
 		// Formatting lives in silk-effects so this path and the lint-staged
 		// handler cannot drift; it normalizes @effected/yaml's unindented
 		// sequences and single-quoted scalars back to the repo's byte format.
-		const formatted = yield* Effect.promise(() => Lint.PnpmWorkspace.formatContent(sorted, filepath));
+		const formatted = yield* Effect.promise(() => Lint.PnpmWorkspace.formatContent(sorted));
 		writeFileSync(filepath, formatted, "utf-8");
 	}),
 );

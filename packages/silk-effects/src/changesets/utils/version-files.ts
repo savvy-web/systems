@@ -21,12 +21,12 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { GlobPattern } from "@effected/glob";
+import { GlobPatternOptions } from "@effected/glob";
 import { Jsonc, JsoncEdit, JsoncFormattingOptions, JsoncModifier } from "@effected/jsonc";
-import type { DescendError } from "@effected/walker";
-import { descend } from "@effected/walker";
+import type { GlobExpansionError } from "@effected/walker";
+import { compileAndExpand } from "@effected/walker";
 import type { FileSystem } from "effect";
-import { Effect, Option, Path, Schema } from "effect";
+import { Effect, Path, Schema } from "effect";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import type { LegacyVersionFileConfig } from "../schemas/version-files.js";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
@@ -245,7 +245,7 @@ export class VersionFiles {
 	static resolveGlobs(
 		configs: readonly LegacyVersionFileConfig[],
 		cwd: string,
-	): Effect.Effect<Array<[string, LegacyVersionFileConfig]>, DescendError, FileSystem.FileSystem> {
+	): Effect.Effect<Array<[string, LegacyVersionFileConfig]>, GlobExpansionError, FileSystem.FileSystem> {
 		return Effect.gen(function* () {
 			const results: Array<[string, LegacyVersionFileConfig]> = [];
 			const resolvedCwd = resolve(cwd);
@@ -456,7 +456,7 @@ export class VersionFiles {
 		configs: readonly LegacyVersionFileConfig[],
 		dryRun = false,
 		packages: ReadonlyArray<{ name: string; version: string; path: string }> = [],
-	): Effect.Effect<VersionFileUpdate[], DescendError, FileSystem.FileSystem> {
+	): Effect.Effect<VersionFileUpdate[], GlobExpansionError, FileSystem.FileSystem> {
 		return Effect.gen(function* () {
 			const workspaces = VersionFiles.discoverVersions(cwd, packages);
 			const rootVersion = workspaces.find((ws) => ws.path === resolve(cwd))?.version ?? "0.0.0";
@@ -548,19 +548,30 @@ export class VersionFiles {
 }
 
 /**
+ * Match dotfiles, matching `ConfigInspector`'s glob dialect.
+ *
+ * @remarks
+ * This module previously compiled with minimatch DEFAULTS while
+ * `ConfigInspector` compiled with `dot: true`, so a wildcard segment matching
+ * a dotted directory was attributed to a package but never materialized (or
+ * the reverse). The two paths must agree: attribution and materialization
+ * answer the same question about the same glob.
+ */
+const GLOB_OPTIONS = GlobPatternOptions.make({ dot: true });
+
+/**
  * Expand a glob pattern against the filesystem, returning matching FILE paths
  * relative to `cwd` (POSIX separators), sorted by relative path.
  *
  * @remarks
- * The walk is `@effected/walker`'s `descend` (literal fast path,
+ * The walk is `@effected/walker`'s `compileAndExpand` (literal fast path,
  * `enumerationPrefix` bounding, `node_modules`/`.git` pruning), with
  * `onUnreadable: "skip"` preserving this module's silent-skip policy for
- * unreadable directories. Matching semantics are minimatch DEFAULTS via the
- * compiled pattern — notably, wildcards do not match dotfiles, same as the
- * previous `tinyglobby` defaults. An uncompilable pattern expands to no
- * matches. `descend`'s `Path` requirement is satisfied internally with the
- * core POSIX `Path.layer` — this module already speaks POSIX relative match
- * paths and node-bound absolute paths throughout.
+ * unreadable directories. Matching semantics are {@link GLOB_OPTIONS} —
+ * wildcards DO match dotfiles, aligning this module with `ConfigInspector`. An
+ * uncompilable pattern expands to no matches. The `Path` requirement is
+ * satisfied internally with the core POSIX `Path.layer` — this module already
+ * speaks POSIX relative match paths and node-bound absolute paths throughout.
  *
  * @param source - The glob pattern, repo-relative
  * @param cwd - Absolute directory the pattern is resolved against
@@ -571,13 +582,12 @@ export class VersionFiles {
 function expandGlob(
 	source: string,
 	cwd: string,
-): Effect.Effect<ReadonlyArray<string>, DescendError, FileSystem.FileSystem> {
-	return Effect.option(GlobPattern.compile(source)).pipe(
-		Effect.flatMap(
-			Option.match({
-				onNone: () => Effect.succeed<ReadonlyArray<string>>([]),
-				onSome: (pattern) => descend(pattern, { cwd, onUnreadable: "skip" }),
-			}),
+): Effect.Effect<ReadonlyArray<string>, GlobExpansionError, FileSystem.FileSystem> {
+	return compileAndExpand(source, { cwd, onUnreadable: "skip", glob: GLOB_OPTIONS }).pipe(
+		// An uncompilable pattern expands to nothing, matching the previous
+		// `Effect.option` behavior; a descent failure still propagates.
+		Effect.catch((error) =>
+			error.stage === "compile" ? Effect.succeed<ReadonlyArray<string>>([]) : Effect.fail(error),
 		),
 		Effect.provide(Path.layer),
 	);

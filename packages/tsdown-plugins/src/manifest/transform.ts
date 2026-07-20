@@ -1,5 +1,5 @@
 // packages/tsdown-plugins/src/manifest/transform.ts
-import sortPackageJson from "sort-package-json";
+import { PackageJsonFormat } from "@effected/package-json";
 import { ambientOutName, classifyDtsExport, mixedDtsExportError } from "../entry/ambient-dts.js";
 import { createEntryName } from "../entry/extract.js";
 
@@ -308,5 +308,5 @@ export function transformManifest(pkg: Json, options: TransformManifestOptions =
 	if (result.bin) result.bin = transformBin(result.bin);
 	if (options.transform) result = options.transform(result);
 	if (result.bin) result.bin = normalizeBinPaths(result.bin);
-	return sortPackageJson(result as never) as unknown as Json;
+	return PackageJsonFormat.sortValue(result as never) as unknown as Json;
 }

@@ -429,35 +429,15 @@ export const SilkPublishabilityDetectorLive: Layer.Layer<PublishabilityDetector,
 	);
 
 /**
- * The workspace root a package was discovered against, derived from its own
- * coordinates: `relativePath` is the package directory relative to the
- * discovery root (POSIX, `"."` for the root package), so ascending one level
- * per path segment from `pkg.path` lands exactly on that root.
- *
- * @remarks
- * Derivation is deliberate — probing the filesystem for workspace markers
- * (`WorkspaceRoot.find`) can walk PAST the intended root when that root
- * carries no marker (a fixture tree, a bare directory) and land on an
- * enclosing workspace, silently swapping in that outer root's
- * `.changeset/config.json` and dropping the ignore/mode gating (the #209
- * regression class). The discovery root needs no probing: whoever built the
- * `WorkspacePackage` already knew it.
- */
-const packageRoot = (pkg: WorkspacePackage): string => {
-	const segments = pkg.relativePath.split("/").filter((segment) => segment !== "" && segment !== ".");
-	return segments.length === 0 ? pkg.path : join(pkg.path, ...segments.map(() => ".."));
-};
-
-/**
  * Ignore-aware override of `PublishabilityDetector`. `detect` short-circuits to `[]`
  * for changeset-ignored packages, then dispatches on `ChangesetConfig.mode`:
  * `none` → `[]`; `silk` → `SilkPublishability.detect`; `vanilla` → the library default.
  *
  * @remarks Requires `FileSystem` and {@link ChangesetConfig} at build.
  * The kit's `detect` contract no longer receives the workspace root, so the changeset
- * lookups derive it per package from the package's own discovery coordinates
- * (`pkg.path` ascended by `pkg.relativePath` — never a filesystem marker walk,
- * which could escape an unmarked root and read the wrong `.changeset/config.json`).
+ * lookups read it from `pkg.workspaceRoot` — the discovery root the package was found
+ * against, never a filesystem marker walk, which could escape an unmarked root and read
+ * the wrong `.changeset/config.json`.
  *
  * @since 0.4.0
  * @public
@@ -476,7 +456,13 @@ export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
 		return {
 			detect: (pkg: WorkspacePackage) =>
 				Effect.gen(function* () {
-					const root = packageRoot(pkg);
+					// The discovery root the package was found against, carried on the
+					// package itself. Never a filesystem marker walk: `WorkspaceRoot.find`
+					// can walk PAST the intended root when that root carries no marker (a
+					// fixture tree, a bare directory), silently reading an enclosing
+					// workspace's `.changeset/config.json` and dropping the ignore/mode
+					// gating — the #209 regression class.
+					const root = pkg.workspaceRoot;
 					if (yield* config.isIgnored(pkg.name, root)) return [];
 					const mode = yield* config.mode(root);
 					if (mode === "none") return [];

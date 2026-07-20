@@ -56,6 +56,7 @@ const resolveFixture = (name: string) =>
 			path: dir,
 			packageJsonPath: fileURLToPath(new URL(`fixtures/publishability/${name}/package.json`, import.meta.url)),
 			relativePath: ".",
+			workspaceRoot: dir,
 		});
 		const config = yield* ChangesetConfig;
 		const publishTargets = yield* SilkPublishability.resolveTargets(pkg, dir);
@@ -202,6 +203,7 @@ const resolveWorkspacePackage = (workspace: string, subPath: string, name: strin
 				new URL(`fixtures/publishability/${workspace}/${subPath}/package.json`, import.meta.url),
 			),
 			relativePath: subPath,
+			workspaceRoot: root,
 		});
 		return yield* SilkPublishability.resolveTargets(pkg, root);
 	}).pipe(
