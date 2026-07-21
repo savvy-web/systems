@@ -1,5 +1,23 @@
 # @savvy-web/cli
 
+## 2.1.2
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 4.1.0 | 4.2.0 |
+
+* | Dependency           | Type       | Action  | From   | To     |                                                                       |
+  | -------------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | @effected/jsonc      | dependency | updated | ^0.4.0 | ^0.5.0 |                                                                       |
+  | @effected/workspaces | dependency | updated | ^0.4.1 | ^0.5.2 |                                                                       |
+  | @effected/yaml       | dependency | updated | ^0.4.0 | ^0.5.0 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#336]: https://github.com/savvy-web/systems/pull/336
+
 ## 2.1.1
 
 ### Bug Fixes
