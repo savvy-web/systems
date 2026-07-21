@@ -171,7 +171,7 @@ Logging runs through `ActionsLogger`, an Effect Logger that maps each log level 
 
 The buffered-transcript pattern defers verbose output until the wrapped effect settles:
 
-1. A temporary logger is installed that writes everything to `::debug::` and captures messages in an in-memory buffer.
+1. A temporary logger captures lower-than-warning messages in an in-memory buffer.
 2. Warning and above messages are emitted immediately.
 3. When the effect exits — success, failure, defect or interruption — the buffer is flushed to stdout with labeled delimiters (via `Effect.onExit`), then cleared.
 4. When `RUNNER_DEBUG=1` (the runner's step-debug signal, read at run time) or the ambient minimum log level is `Debug` or lower, buffering is bypassed and logs pass through live.

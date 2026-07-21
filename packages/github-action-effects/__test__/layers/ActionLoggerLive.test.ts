@@ -45,6 +45,7 @@ describe("ActionLoggerLive", () => {
 
 		afterEach(() => {
 			writeSpy.mockRestore();
+			vi.unstubAllEnvs();
 		});
 
 		it("at debug minimum log level, passes through without buffering", async () => {
@@ -60,6 +61,8 @@ describe("ActionLoggerLive", () => {
 		});
 
 		it("at info minimum log level, flushes the buffered transcript to stdout on success", async () => {
+			// Pin the runner's step-debug signal off so ambient RUNNER_DEBUG=1 cannot bypass buffering.
+			vi.stubEnv("RUNNER_DEBUG", "0");
 			const result = await Effect.runPromise(
 				Effect.provide(
 					Effect.flatMap(ActionLogger, (svc) =>
@@ -97,6 +100,8 @@ describe("ActionLoggerLive", () => {
 
 			it("passes through unbuffered when RUNNER_DEBUG=1, even at an ambient Info minimum log level", async () => {
 				vi.stubEnv("RUNNER_DEBUG", "1");
+				// Live (unbuffered) output goes through the ambient console logger, not process.stdout.write.
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 				const result = await Effect.runPromise(
 					Effect.provide(
 						Effect.flatMap(ActionLogger, (svc) =>
@@ -106,7 +111,10 @@ describe("ActionLoggerLive", () => {
 					),
 				);
 				expect(result).toBe("ok");
-				// Unbuffered output must never be wrapped in a "Buffered output" transcript.
+				// The live line must actually be emitted, never wrapped in a "Buffered output" transcript.
+				const logged = logSpy.mock.calls.map((c: unknown[]) => c.map(String).join(" "));
+				logSpy.mockRestore();
+				expect(logged.some((s: string) => s.includes("live debug line"))).toBe(true);
 				const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
 				expect(written.some((s: string) => s.includes("Buffered output"))).toBe(false);
 			});
