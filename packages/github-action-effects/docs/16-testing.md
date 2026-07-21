@@ -75,7 +75,7 @@ const layer = ActionLoggerTest.layer(state)
 | --- | --- | --- |
 | `entries` | `Array<{ level: string, message: string }>` | Individual log entries |
 | `groups` | `Array<{ name: string, entries: Array<{ level, message }> }>` | Log groups opened via `group` |
-| `flushedBuffers` | `Array<{ label: string, entries: Array<string> }>` | Buffers flushed on failure via `withBuffer` |
+| `flushedBuffers` | `Array<{ label: string, entries: Array<string> }>` | Buffers flushed on exit via `withBuffer` |
 
 ### ActionStateTest
 
@@ -261,7 +261,7 @@ describe("log groups", () => {
 })
 ```
 
-### Testing buffer-on-failure
+### Testing buffered transcripts
 
 ```typescript
 import { Effect } from "effect"
@@ -287,17 +287,19 @@ describe("withBuffer", () => {
     expect(state.flushedBuffers[0]?.label).toBe("operation")
   })
 
-  it("discards buffer on success", async () => {
+  it("records a flush on success too", async () => {
     const state = ActionLoggerTest.empty()
     await Effect.gen(function* () {
       const logger = yield* ActionLogger
       yield* logger.withBuffer("ok-op", Effect.succeed("done"))
     }).pipe(Effect.provide(ActionLoggerTest.layer(state)), Effect.runPromise)
 
-    expect(state.flushedBuffers).toHaveLength(0)
+    expect(state.flushedBuffers).toHaveLength(1)
   })
 })
 ```
+
+Like the live layer, the test layer flushes on every exit — success, failure, or interruption — and passes through unbuffered when `RUNNER_DEBUG=1` is set, so assertions written against `flushedBuffers` mirror production behavior.
 
 ## Testing GitHubClient consumers
 

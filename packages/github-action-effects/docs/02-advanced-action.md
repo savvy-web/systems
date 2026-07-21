@@ -4,7 +4,7 @@ This tutorial builds a GitHub Action with `pre`, `main` and `post` phases. Along
 
 - **GitHub App authentication** — provision one installation token in `pre`, use it in `main`, revoke it in `post`
 - **ActionState** — transfer typed data between phases
-- **Buffer-on-failure logging** — capture verbose output, flush only on error
+- **Buffered logging** — capture verbose output per package, flush it as a labeled transcript on exit
 
 ## The action.yml
 
@@ -245,7 +245,7 @@ Action.run(
 1. **State from pre** — `state.get("timing", TimingState)` reads and Schema-decodes the timing data `pre.ts` saved. A missing or invalid key fails with an `ActionStateError`.
 2. **GitHubToken.client()** — builds a `GitHubClient` from the token `provision` persisted in `pre`. It merges into the action layer alongside the other Live layers.
 3. **ErrorAccumulator** — `forEachAccumulate` runs every package without short-circuiting. It collects failed publishes next to the successes, so the summary covers all of them.
-4. **Buffer-on-failure** — `logger.withBuffer` captures verbose output per package. A successful package discards its buffer; a failed one flushes it so you can see what happened.
+4. **Buffered logging** — `logger.withBuffer` captures verbose output per package and flushes it as a labeled transcript when that package's publish exits, so each package's trail stays contiguous in the log instead of interleaving.
 5. **DryRun.guard** — when `dry-run` is `"true"`, the `publisher.publish` call is skipped and the fallback value (`undefined`) takes its place.
 
 ## Phase 3: post.ts

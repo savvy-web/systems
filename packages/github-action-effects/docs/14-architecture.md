@@ -129,12 +129,12 @@ Each service is defined as a TypeScript interface paired with a `Context.Tag` fo
 
 ### ActionLogger
 
-Covers the two GitHub Actions logging operations the Effect Logger leaves out — collapsible groups and buffer-on-failure:
+Covers the two GitHub Actions logging operations the Effect Logger leaves out — collapsible groups and buffered transcripts:
 
 | Method | Signature | Description |
 | --- | --- | --- |
 | `group` | `(name, effect) => Effect<A, E, R>` | Run an effect inside a collapsible log group |
-| `withBuffer` | `(label, effect) => Effect<A, E, R>` | Run an effect with buffered logging (buffer-on-failure pattern) |
+| `withBuffer` | `(label, effect) => Effect<A, E, R>` | Run an effect with buffered logging, flushing the transcript on exit |
 | `notice` | `(message, properties?) => Effect<void>` | Emit a `::notice::` annotation (mirrors `@actions/core.notice`) |
 
 `ActionLogger` has no annotation methods. Workflow annotations come from logging through Effect itself: call `Effect.logError` or `Effect.logWarning` with `file`, `line` and `col` log annotations, and `ActionsLogger` turns those into `::error file=...,line=...::` and `::warning file=...::` workflow commands. See the `ActionsLogger` section above for the level-to-command mapping.
@@ -169,12 +169,12 @@ Logging runs through `ActionsLogger`, an Effect Logger that maps each log level 
 
 ### withBuffer
 
-The buffer-on-failure pattern keeps the log quiet on success and verbose on failure:
+The buffered-transcript pattern defers verbose output until the wrapped effect settles:
 
 1. A temporary logger is installed that writes everything to `::debug::` and captures messages in an in-memory buffer.
 2. Warning and above messages are emitted immediately.
-3. On success, the buffer is discarded — the user sees only warnings and errors.
-4. On failure (via `tapErrorCause`), the buffer is flushed to stdout with labeled delimiters, giving full context for debugging.
+3. When the effect exits — success, failure, defect or interruption — the buffer is flushed to stdout with labeled delimiters (via `Effect.onExit`), then cleared.
+4. When `RUNNER_DEBUG=1` (the runner's step-debug signal, read at run time) or the ambient minimum log level is `Debug` or lower, buffering is bypassed and logs pass through live.
 
 ## Error types
 

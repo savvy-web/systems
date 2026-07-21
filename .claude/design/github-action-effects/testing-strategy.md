@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: testing
 created: 2026-03-06
-updated: 2026-06-25
-last-synced: 2026-06-25
+updated: 2026-07-21
+last-synced: 2026-07-21
 completeness: 88
 related:
   - ./index.md
@@ -58,7 +58,7 @@ Each service has a Test layer with in-memory backing, exercised through the Effe
 
 Coverage spans every service, the runtime modules, the namespace and utility objects and the schemas. The exact assertions live in the `*.test.ts` files under `__test__/`; the regression-prone areas worth knowing about are:
 
-- **`ActionLogger`** — the per-group flush regression: a failure inside a group flushes within that group, with no double-flush across nested groups or the outer `withBuffer` boundary (see [layers.md](./layers.md#load-bearing-layer-notes)).
+- **`ActionLogger`** — the flush regressions: `withBuffer` flushes its transcript on success as well as failure (a clean run must not silently discard Info-level logging), the `RUNNER_DEBUG=1` run-time bypass passes through unbuffered, and a failure inside a group flushes within that group with no double-flush across nested groups or the outer `withBuffer` boundary (see [layers.md](./layers.md#load-bearing-layer-notes)).
 - **`GitHubClient`** — the three construction modes, pagination termination and the retryable classification (429/5xx/secondary-rate-limit 403 vs a bare 403).
 - **`GitHubToken`** — `provision`/`client`/`dispose` across phases, including the no-op `dispose` when nothing was persisted.
 - **`ActionCache` / `Artifact`** — the V2 Twirp save/restore path with archive create/extract and cache-miss handling.

@@ -15,8 +15,8 @@ export interface ActionLoggerShape {
 
 	/**
 	 * Run an effect with buffered logging. At `info` level, verbose output
-	 * is captured in memory. On success the buffer is discarded. On failure
-	 * the buffer is flushed before the error is reported.
+	 * is captured in memory and flushed to stdout when the effect exits,
+	 * whether it succeeds, fails, or is interrupted.
 	 */
 	readonly withBuffer: <A, E, R>(label: string, effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>;
 

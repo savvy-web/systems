@@ -54,7 +54,7 @@ These services are provided automatically by `ActionsRuntime.Default` and `Actio
 
 ### ActionLogger
 
-`ActionLogger` adds three operations on top of the built-in Effect logger: collapsible log groups, buffer-on-failure logging and `::notice::` annotations. Its methods are `group`, `withBuffer` and `notice`.
+`ActionLogger` adds three operations on top of the built-in Effect logger: collapsible log groups, buffered transcript logging and `::notice::` annotations. Its methods are `group`, `withBuffer` and `notice`.
 
 ```typescript
 import { Effect } from "effect"

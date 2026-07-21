@@ -83,12 +83,12 @@ const program = Effect.gen(function* () {
     ]
   }))
 
-  // 3. Use buffer-on-failure for noisy operations
+  // 3. Use buffered logging for noisy operations
   yield* logger.withBuffer("detailed-analysis", Effect.gen(function* () {
     for (const r of results) {
       yield* Effect.log(`Analyzing ${r.name}...`)  // buffered
     }
-    // If this fails, all buffered lines flush to the log automatically
+    // The buffered lines flush as a labeled transcript when this effect exits
   }))
 
   // 4. Set typed outputs
