@@ -1,5 +1,5 @@
 import { Effect, References } from "effect";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ActionLoggerTest } from "../../src/layers/ActionLoggerTest.js";
 import { ActionLogger } from "../../src/services/ActionLogger.js";
 
@@ -52,6 +52,10 @@ describe("ActionLoggerTest", () => {
 	});
 
 	describe("withBuffer", () => {
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
 		it("at debug minimum log level, passes through without buffering", async () => {
 			const state = ActionLoggerTest.empty();
 			const result = await Effect.runPromise(
@@ -83,12 +87,30 @@ describe("ActionLoggerTest", () => {
 			expect(state.flushedBuffers[0]?.label).toBe("fail-op");
 		});
 
-		it("at info minimum log level, does not flush on success", async () => {
+		it("at info minimum log level, records a flush on success, mirroring the live layer", async () => {
+			// Pin the runner's step-debug signal off so ambient RUNNER_DEBUG=1 cannot bypass buffering.
+			vi.stubEnv("RUNNER_DEBUG", "0");
 			const state = ActionLoggerTest.empty();
 			await run(
 				state,
 				Effect.flatMap(ActionLogger, (svc) => svc.withBuffer("ok-op", Effect.succeed("done"))),
 			);
+			expect(state.flushedBuffers).toHaveLength(1);
+			expect(state.flushedBuffers[0]?.label).toBe("ok-op");
+		});
+
+		it("passes through unbuffered when RUNNER_DEBUG=1, mirroring the live layer", async () => {
+			vi.stubEnv("RUNNER_DEBUG", "1");
+			const state = ActionLoggerTest.empty();
+			const result = await Effect.runPromise(
+				Effect.provide(
+					Effect.flatMap(ActionLogger, (svc) => svc.withBuffer("debug-op", Effect.succeed("live"))).pipe(
+						Effect.provideService(References.MinimumLogLevel, "Info"),
+					),
+					ActionLoggerTest.layer(state),
+				),
+			);
+			expect(result).toBe("live");
 			expect(state.flushedBuffers).toHaveLength(0);
 		});
 	});

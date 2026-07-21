@@ -75,9 +75,9 @@ const program = Effect.gen(function* () {
 
 When a grouped effect fails, the buffered verbose lines inside it are flushed before the `::endgroup::`, so the failing group keeps its context instead of collapsing it away.
 
-## Buffered logging: quiet on success, verbose on failure
+## Buffered logging: labeled transcripts
 
-`ActionLogger.withBuffer(label, effect)` captures `info`-level output in memory while the effect runs. On success the buffer is discarded — the reader sees only warnings and errors. On failure the buffer is flushed with labeled delimiters, so the full trail that led to the failure is right there. `Action.run` already wraps your whole program in `withBuffer`, so you get this behaviour for free at the top level; reach for it explicitly to scope a buffer to a sub-phase.
+`ActionLogger.withBuffer(label, effect)` captures `info`-level output in memory while the effect runs and flushes it with labeled delimiters when the effect exits — success, failure, defect or interruption. The transcript stays contiguous under its label instead of interleaving with concurrent work, and on failure the full trail that led to the error sits right next to it. When the runner has step-debug enabled (`RUNNER_DEBUG=1`), buffering is bypassed entirely and lines print live. `Action.run` already wraps your whole program in `withBuffer`, so you get this behaviour for free at the top level; reach for it explicitly to scope a buffer to a sub-phase.
 
 ```typescript
 import { Effect } from "effect"
@@ -86,7 +86,7 @@ import { ActionLogger } from "@savvy-web/github-action-effects"
 const program = Effect.gen(function* () {
   const logger = yield* ActionLogger
   yield* logger.withBuffer("analysis", Effect.gen(function* () {
-    yield* Effect.log("step 1 of 4")   // discarded on success, flushed on failure
+    yield* Effect.log("step 1 of 4")   // captured, flushed when the effect exits
     yield* Effect.log("step 2 of 4")
     // ...
   }))

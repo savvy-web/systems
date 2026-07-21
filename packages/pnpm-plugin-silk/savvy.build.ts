@@ -209,18 +209,18 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rspress/core": {
-							range: "^2.0.17",
+							range: "^2.0.18",
 							peer: "^2.0.0",
 							strategy: "lock-minor",
 						},
 						"@tsdown/exe": {
-							range: "^0.22.9",
-							peer: "^0.22.9",
+							range: "^0.22.12",
+							peer: "^0.22.12",
 							strategy: "lock",
 						},
 						"@tsdown/css": {
-							range: "^0.22.9",
-							peer: "^0.22.9",
+							range: "^0.22.12",
+							peer: "^0.22.12",
 							strategy: "lock",
 						},
 						"@types/bun": {
@@ -268,13 +268,13 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.0.8",
-							peer: "^17.0.8",
+							range: "^17.1.0",
+							peer: "^17.1.0",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
-							range: "^0.23.0",
-							peer: "^0.23.0",
+							range: "^0.23.1",
+							peer: "^0.23.1",
 							strategy: "lock",
 						},
 						"markdownlint-cli2-formatter-codequality": {
@@ -298,7 +298,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsdown: {
-							range: "^0.22.9",
+							range: "^0.22.12",
 							peer: "^0.22.0",
 							strategy: "lock-minor",
 						},

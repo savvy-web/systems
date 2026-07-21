@@ -49,7 +49,7 @@ const program = Effect.gen(function* () {
 
 | Service | Purpose |
 | --- | --- |
-| ActionLogger | Collapsible log groups (group), buffer-on-failure logging (withBuffer) and `::notice::` annotations (notice) |
+| ActionLogger | Collapsible log groups (group), buffered transcript logging (withBuffer) and `::notice::` annotations (notice) |
 | ActionOutputs | Typed outputs (set, setJson, summary, exportVariable, addPath, setFailed, setSecret) |
 | ActionState | Schema-serialized state for multi-phase actions (save, get, getOptional) |
 | ActionEnvironment | Typed access to `GITHUB_*` and `RUNNER_*` env vars, plus the parsed webhook payload (`payload`, `repo`, `issue`, `isDebug`) |

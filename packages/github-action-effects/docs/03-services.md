@@ -54,7 +54,7 @@ These services are provided automatically by `ActionsRuntime.Default` and `Actio
 
 ### ActionLogger
 
-`ActionLogger` adds three operations on top of the built-in Effect logger: collapsible log groups, buffer-on-failure logging and `::notice::` annotations. Its methods are `group`, `withBuffer` and `notice`.
+`ActionLogger` adds three operations on top of the built-in Effect logger: collapsible log groups, buffered transcript logging and `::notice::` annotations. Its methods are `group`, `withBuffer` and `notice`.
 
 ```typescript
 import { Effect } from "effect"
@@ -70,12 +70,12 @@ const program = Effect.gen(function* () {
     return 42
   }))
 
-  // Buffer-on-failure: captures verbose logs, flushes only on error
+  // Buffered transcript: captures verbose logs, flushes them when the effect exits
   yield* logger.withBuffer("analysis", Effect.gen(function* () {
     yield* Effect.log("Step 1...")
     yield* Effect.log("Step 2...")
-    // If this succeeds, buffered logs are discarded
-    // If this fails, buffered logs flush for debugging
+    // The buffered transcript flushes on every exit - success or failure -
+    // so the labeled log block is always available for debugging
   }))
 
   // Notice annotation — there is no Effect log level between Info and Warning,

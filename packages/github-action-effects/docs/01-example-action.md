@@ -83,12 +83,12 @@ const program = Effect.gen(function* () {
     ]
   }))
 
-  // 3. Use buffer-on-failure for noisy operations
+  // 3. Use buffered logging for noisy operations
   yield* logger.withBuffer("detailed-analysis", Effect.gen(function* () {
     for (const r of results) {
       yield* Effect.log(`Analyzing ${r.name}...`)  // buffered
     }
-    // If this fails, all buffered lines flush to the log automatically
+    // The buffered lines flush as a labeled transcript when this effect exits
   }))
 
   // 4. Set typed outputs
@@ -130,7 +130,7 @@ Action.run(program)
 
 1. **Inputs** — `Config.string("package-name")` reads `INPUT_PACKAGE-NAME` from the environment. `Config.integer` and `Config.boolean` parse and validate automatically. `Config.withDefault` provides fallback values.
 2. **Groups** — `logger.group` wraps the effect in a collapsible section in the Actions UI. The return value passes through.
-3. **Buffer-on-failure** — `logger.withBuffer` captures verbose output. On success the buffer is silently discarded. On failure it flushes before the error propagates, giving full context.
+3. **Buffered transcripts** — `logger.withBuffer` captures verbose output and flushes it as a labeled transcript when the effect exits — success, failure, defect or interruption — so a failing run keeps its full context and a clean run keeps its step log.
 4. **Outputs** — `set` for strings, `setJson` for schema-validated JSON. Values appear in `${{ steps.id.outputs.status }}` in downstream workflow steps.
 5. **Step summary** — `outputs.summary` writes markdown to the job summary. `GithubMarkdown.*` helpers build tables, headings, details blocks and so on.
 6. **Annotations** — log through Effect at warning or error level and the `ActionsLogger` maps it to a `::warning::` or `::error::` workflow command. Log annotations like `file` and `line` become command properties, so the message appears inline on the PR diff at that location.

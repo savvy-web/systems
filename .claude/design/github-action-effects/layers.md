@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-06-23
-last-synced: 2026-06-23
+updated: 2026-07-21
+last-synced: 2026-07-21
 completeness: 90
 related:
   - ./index.md
@@ -61,7 +61,7 @@ The single convenience layer for action I/O. It merges the `INPUT_*` ConfigProvi
 
 Most layers are unremarkable Effect plumbing. These few carry behavior a first-time editor needs to know:
 
-- **`ActionLoggerLive`** holds the active buffer in a module-level `FiberRef<BufferState | null>` so `withBuffer` and `group` share one fiber-scoped buffer. A failing group flushes its buffered diagnostics *inside* the group (before `::endgroup::`) and clears them, so each buffered chunk prints exactly once — the innermost failing boundary wins, and the outer `withBuffer` flush is the catch-all. See `src/layers/ActionLoggerLive.ts`.
+- **`ActionLoggerLive`** holds the active buffer in a module-level `FiberRef<BufferState | null>` so `withBuffer` and `group` share one fiber-scoped buffer. `withBuffer` flushes the buffered transcript on *every* exit (success, failure or interruption) via `Effect.onExit`, not only on failure. A failing group still flushes its buffered diagnostics *inside* the group (before `::endgroup::`) and clears them, so each buffered chunk prints exactly once — the innermost failing boundary wins and the outer `withBuffer` exit flush is a no-op for already-flushed entries. `withBuffer` also bypasses buffering entirely when `process.env.RUNNER_DEBUG === "1"` (read at run time, since the ambient `MinimumLogLevel` Debug check is unreachable for consumers who provide their log level inside the wrapped program — either signal bypasses). See `src/layers/ActionLoggerLive.ts`.
 - **`ActionCacheLive`** drives the V2 Twirp cache protocol: `tar -P` (absolute-names) for archives (tolerating tar exit 1, failing on 2+), `CreateCacheEntry` → Azure Blob upload → `FinalizeCacheEntryUpload` to save, `GetCacheEntryDownloadURL` → Azure Blob download to restore. Twirp calls retry with exponential backoff on 5xx/network; the Azure SDK retries internally. See `src/layers/ActionCacheLive.ts`.
 - **`GitHubClientLive`** is the namespace object with the three construction modes (below) and the `retryable` error-mapping logic.
 - **`RateLimiterLive`** reads rate-limit headers cached in a shared `RateLimitState` `Ref` (written by `GitHubClient` on each response) rather than issuing a pre-flight `GET /rate_limit`. `RateLimitState` is an internal service tag, not part of the public barrel.

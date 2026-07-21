@@ -45,6 +45,7 @@ describe("ActionLoggerLive", () => {
 
 		afterEach(() => {
 			writeSpy.mockRestore();
+			vi.unstubAllEnvs();
 		});
 
 		it("at debug minimum log level, passes through without buffering", async () => {
@@ -59,7 +60,9 @@ describe("ActionLoggerLive", () => {
 			expect(result).toBe(42);
 		});
 
-		it("at info minimum log level, buffers and discards on success", async () => {
+		it("at info minimum log level, flushes the buffered transcript to stdout on success", async () => {
+			// Pin the runner's step-debug signal off so ambient RUNNER_DEBUG=1 cannot bypass buffering.
+			vi.stubEnv("RUNNER_DEBUG", "0");
 			const result = await Effect.runPromise(
 				Effect.provide(
 					Effect.flatMap(ActionLogger, (svc) =>
@@ -69,9 +72,9 @@ describe("ActionLoggerLive", () => {
 				),
 			);
 			expect(result).toBe("ok");
-			// The verbose log should NOT have been written to stdout
+			// A successful run must still print its buffered transcript.
 			const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
-			expect(written.some((s: string) => s.includes("verbose line"))).toBe(false);
+			expect(written.some((s: string) => s.includes("verbose line"))).toBe(true);
 		});
 
 		it("at info minimum log level, flushes buffer to stdout on failure", async () => {
@@ -88,6 +91,53 @@ describe("ActionLoggerLive", () => {
 			expect(exit._tag).toBe("Failure");
 			const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
 			expect(written.some((s: string) => s.includes("Buffered output"))).toBe(true);
+		});
+
+		describe("RUNNER_DEBUG bypass", () => {
+			afterEach(() => {
+				vi.unstubAllEnvs();
+			});
+
+			it("passes through unbuffered when RUNNER_DEBUG=1, even at an ambient Info minimum log level", async () => {
+				vi.stubEnv("RUNNER_DEBUG", "1");
+				// Live (unbuffered) output goes through the ambient console logger, not process.stdout.write.
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				const result = await Effect.runPromise(
+					Effect.provide(
+						Effect.flatMap(ActionLogger, (svc) =>
+							svc.withBuffer("test", Effect.log("live debug line").pipe(Effect.map(() => "ok"))),
+						).pipe(Effect.provideService(References.MinimumLogLevel, "Info")),
+						ActionLoggerLive,
+					),
+				);
+				expect(result).toBe("ok");
+				// The live line must actually be emitted, never wrapped in a "Buffered output" transcript.
+				const logged = logSpy.mock.calls.map((c: unknown[]) => c.map(String).join(" "));
+				logSpy.mockRestore();
+				expect(logged.some((s: string) => s.includes("live debug line"))).toBe(true);
+				const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+				expect(written.some((s: string) => s.includes("Buffered output"))).toBe(false);
+			});
+
+			it('still buffers normally when RUNNER_DEBUG is not exactly "1" (e.g. "0")', async () => {
+				vi.stubEnv("RUNNER_DEBUG", "0");
+				const exit = await Effect.runPromise(
+					Effect.exit(
+						Effect.provide(
+							Effect.flatMap(ActionLogger, (svc) =>
+								svc.withBuffer(
+									"fail-op",
+									Effect.log("still-buffered line").pipe(Effect.flatMap(() => Effect.fail("boom"))),
+								),
+							).pipe(Effect.provideService(References.MinimumLogLevel, "Info")),
+							ActionLoggerLive,
+						),
+					),
+				);
+				expect(exit._tag).toBe("Failure");
+				const written = writeSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+				expect(written.some((s: string) => s.includes("Buffered output"))).toBe(true);
+			});
 		});
 	});
 

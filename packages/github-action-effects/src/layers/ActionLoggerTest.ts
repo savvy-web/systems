@@ -58,14 +58,15 @@ export const ActionLoggerTest = {
 			withBuffer: <A, E, R>(label: string, effect: Effect.Effect<A, E, R>) =>
 				Effect.gen(function* () {
 					const minLevel = yield* References.MinimumLogLevel;
+					const runnerDebug = process.env.RUNNER_DEBUG === "1";
 
-					// When minimum log level is Debug or lower, pass through without buffering
-					if (LogLevel.isLessThanOrEqualTo(minLevel, "Debug")) {
+					// When minimum log level is Debug or lower, or step debug is on, pass through without buffering
+					if (LogLevel.isLessThanOrEqualTo(minLevel, "Debug") || runnerDebug) {
 						return yield* effect;
 					}
 
 					return yield* effect.pipe(
-						Effect.tapCause(() =>
+						Effect.onExit(() =>
 							Effect.sync(() => {
 								state.flushedBuffers.push({ label, entries: [] });
 							}),

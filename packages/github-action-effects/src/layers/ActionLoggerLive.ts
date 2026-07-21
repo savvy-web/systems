@@ -65,8 +65,16 @@ export const ActionLoggerLive: Layer.Layer<ActionLogger> = Layer.succeed(ActionL
 		Effect.gen(function* () {
 			const minLevel = yield* References.MinimumLogLevel;
 
-			// When minimum log level is Debug or lower, pass through without buffering
-			if (LogLevel.isLessThanOrEqualTo(minLevel, "Debug")) {
+			// Consumers typically provide their own MinimumLogLevel INSIDE the
+			// wrapped effect (below this ambient read), so that check alone can
+			// never see it in practice. RUNNER_DEBUG is the runner's own
+			// step-debug signal and must be read at run time, not module load,
+			// so it reflects the environment the action is actually running in.
+			const runnerDebug = process.env.RUNNER_DEBUG === "1";
+
+			// When minimum log level is Debug or lower, or the runner has step
+			// debug logging enabled, pass through without buffering
+			if (LogLevel.isLessThanOrEqualTo(minLevel, "Debug") || runnerDebug) {
 				return yield* effect;
 			}
 
@@ -88,7 +96,11 @@ export const ActionLoggerLive: Layer.Layer<ActionLogger> = Layer.succeed(ActionL
 				Effect.provideService(References.MinimumLogLevel, "All"),
 				Effect.provide(Logger.layer([bufferingLogger])),
 				Effect.provideService(ActiveBuffer, state),
-				Effect.tapCause(() => Effect.sync(() => flushBuffer(state))),
+				// Flush on every exit -- success, failure, defect, or interruption --
+				// so a clean run still prints its transcript. flushBuffer clears
+				// state.entries after writing, so a prior in-flight flush (e.g. the
+				// sibling `group` implementation's tapCause) makes this a no-op.
+				Effect.onExit(() => Effect.sync(() => flushBuffer(state))),
 			);
 		}) as Effect.Effect<A, E, Exclude<R, Scope>>,
 
