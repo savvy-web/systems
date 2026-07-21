@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.24.2
+
+### Other
+
+* Bump minor dependencies to latest. [#342][#342]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#342]: https://github.com/savvy-web/systems/pull/342
+
 ## 0.24.1
 
 ### Other

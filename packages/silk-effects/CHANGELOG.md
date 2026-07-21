@@ -1,5 +1,18 @@
 # @savvy-web/silk-effects
 
+## 4.2.1
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                       |
+  | ---------------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | @effected/package-json | dependency | updated | ^0.4.1 | ^0.4.2 |                                                                       |
+  | @effected/workspaces   | dependency | updated | ^0.5.2 | ^0.6.0 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#342]: https://github.com/savvy-web/systems/pull/342
+
 ## 4.2.0
 
 ### Bug Fixes
