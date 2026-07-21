@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { descend } from "@effected/walker";
+import { compileAndExpand } from "@effected/walker";
 import { Effect, FileSystem } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -11,22 +11,23 @@ vi.mock("node:fs", () => ({
 	writeFileSync: vi.fn(),
 }));
 
-// The kit walk is mocked the way the hand-rolled walkGlob (and tinyglobby's
-// globSync before it) used to be: expandGlob compiles the pattern for real,
-// then the walk itself is canned.
+// The kit expansion is mocked the way the hand-rolled walkGlob (and
+// tinyglobby's globSync before it) used to be. `compileAndExpand` folds
+// compilation and the walk into one call, so canning it cans both — no test
+// here exercises an uncompilable pattern, so nothing is lost.
 vi.mock("@effected/walker", () => ({
-	descend: vi.fn(),
+	compileAndExpand: vi.fn(),
 }));
 
-/** Can one walk result (all patterns). */
+/** Can one expansion result (all patterns). */
 const canWalk = (paths: ReadonlyArray<string>) => {
-	vi.mocked(descend).mockReturnValue(Effect.succeed(paths));
+	vi.mocked(compileAndExpand).mockReturnValue(Effect.succeed(paths));
 };
 
-/** Can successive walk results (one per compiled pattern, in call order). */
+/** Can successive expansion results (one per pattern, in call order). */
 const canWalkOnce = (...results: ReadonlyArray<ReadonlyArray<string>>) => {
 	for (const paths of results) {
-		vi.mocked(descend).mockReturnValueOnce(Effect.succeed(paths));
+		vi.mocked(compileAndExpand).mockReturnValueOnce(Effect.succeed(paths));
 	}
 };
 

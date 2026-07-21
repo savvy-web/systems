@@ -7,7 +7,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { Yaml as EffectedYaml, YamlStringifyOptions } from "@effected/yaml";
 import { Effect, Result } from "effect";
-import { format, resolveConfig } from "prettier";
 import type { LintStagedHandler, PnpmWorkspaceOptions } from "../types.js";
 import { Command } from "../utils/Command.js";
 
@@ -25,18 +24,21 @@ export interface PnpmWorkspaceContent {
  * Default YAML stringify options for consistent formatting.
  *
  * @remarks
- * `lineWidth: 0` disables line wrapping, matching the v3 `yaml` package
- * behavior. `@effected/yaml` emits block sequences without the extra
- * two-space indentation the v3 `yaml` package used, so the stringified
- * output is normalized through Prettier's YAML printer below — probed
- * byte-identical to the v3 `yaml.stringify(..., { indent: 2, lineWidth: 0,
- * singleQuote: false })` output on this repo's real `pnpm-workspace.yaml`
- * and on hostile synthetic shapes (quoted keys, block scalars, nested
- * sequences of maps).
+ * `lineWidth: 0` disables line wrapping, `indentSequences: true` indents block
+ * sequences one level under their key, and `quoteStyle: "double"` selects the
+ * quote character for plain scalars that require quoting. Together these
+ * reproduce the v3 `yaml.stringify(..., { indent: 2, lineWidth: 0,
+ * singleQuote: false })` byte format directly — probed byte-identical to the
+ * previous Prettier-normalized output on this repo's real
+ * `pnpm-workspace.yaml` and on hostile synthetic shapes (scoped package keys,
+ * block scalars, nested sequences of maps), which is what let the Prettier
+ * post-process be removed.
  */
 const DEFAULT_STRINGIFY_OPTIONS = new YamlStringifyOptions({
 	indent: 2,
 	lineWidth: 0, // Disable line wrapping
+	indentSequences: true,
+	quoteStyle: "double",
 });
 
 /**
@@ -130,24 +132,19 @@ export class PnpmWorkspace {
 	 * {@link create} and the `savvy lint fmt pnpm-workspace` CLI subcommand route
 	 * through here so the two paths cannot drift.
 	 *
-	 * `@effected/yaml` emits block sequences without the leading two-space
-	 * indentation and prefers single-quoted scalars; Prettier's YAML printer
-	 * normalizes both back to the v3 `yaml` posture (indented sequences,
-	 * double-quoted scalars). Do NOT write `EffectedYaml.stringify` output
-	 * directly — that regresses the file on every format pass.
+	 * {@link DEFAULT_STRINGIFY_OPTIONS} produces the repo's byte format directly.
+	 * The former Prettier post-process — which existed only to re-indent block
+	 * sequences and re-quote scalars — is gone: `indentSequences` and
+	 * `quoteStyle` now express both, so there is no second printer to drift from.
+	 *
+	 * Still `async` for source compatibility with existing callers; it performs
+	 * no asynchronous work and can become synchronous in the next major.
 	 *
 	 * @param content - Sorted pnpm-workspace.yaml content
-	 * @param filepath - Path used to resolve Prettier config
 	 * @returns The formatted YAML source
 	 */
-	static async formatContent(content: PnpmWorkspaceContent, filepath: string = PnpmWorkspace.glob): Promise<string> {
-		const stringified = Effect.runSync(EffectedYaml.stringify(content, DEFAULT_STRINGIFY_OPTIONS));
-		const prettierConfig = await resolveConfig(filepath);
-		return format(stringified, {
-			...prettierConfig,
-			filepath,
-			parser: "yaml",
-		});
+	static async formatContent(content: PnpmWorkspaceContent): Promise<string> {
+		return Effect.runSync(EffectedYaml.stringify(content, DEFAULT_STRINGIFY_OPTIONS));
 	}
 
 	/**
@@ -209,7 +206,7 @@ export class PnpmWorkspace {
 
 			// Format and write back (unless both sort and format are skipped)
 			if (!skipSort || !skipFormat) {
-				const formatted = await PnpmWorkspace.formatContent(parsed, filepath);
+				const formatted = await PnpmWorkspace.formatContent(parsed);
 				writeFileSync(filepath, formatted, "utf-8");
 
 				return [];

@@ -168,6 +168,7 @@ const makePkg = (path: string, isRoot: boolean): WorkspacePackage =>
 		path,
 		packageJsonPath: join(path, "package.json"),
 		relativePath: isRoot ? "." : "pkg",
+		workspaceRoot: isRoot ? path : join(path, ".."),
 	});
 
 const discoveryLayer = (pkgs: ReadonlyArray<WorkspacePackage>) =>

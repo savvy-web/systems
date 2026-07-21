@@ -3,8 +3,8 @@ status: current
 module: templates
 category: architecture
 created: 2026-03-31
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-07-20
+last-synced: 2026-07-20
 completeness: 90
 related:
   - ../cli/architecture.md
@@ -99,7 +99,7 @@ Key properties:
 
 There are ten template modules. For each, the options schema in the module's `index.ts` is authoritative about its fields; this section records only what each produces and the constraints that are not obvious from the schema.
 
-- **package-json** (`createPackageJson`) — emits `package.json`. Uses `sort-package-json` for field ordering and omits empty or undefined fields.
+- **package-json** (`createPackageJson`) — emits `package.json`. Uses `@effected/package-json`'s `PackageJsonFormat.sortValue` (the total value-to-value sorter) for field ordering and omits empty or undefined fields.
 - **tsconfig** (`createTsConfig`) — emits `tsconfig.json`. `extends` is always normalized to an array. Minimal output; most config lives in the extended base.
 - **biome** (`createBiome`) — emits `biome.jsonc`. The required `version` drives the `$schema` URL.
 - **turbo** (`createTurboRoot`, `createTurboWorkspace`) — two functions because root and workspace `turbo.json` have different schemas. The workspace form emits `extends: ["//"]`.
@@ -116,7 +116,7 @@ There are ten template modules. For each, the options schema in the module's `in
 
 ## Dependencies
 
-Runtime dependencies are `sort-package-json` (package.json field ordering) and `js-yaml` (YAML serialization). `effect` is a peer dependency, used only for Schema validation at the boundary.
+Runtime dependencies are `@effected/package-json` (package.json field ordering via `PackageJsonFormat.sortValue`) and `js-yaml` (YAML serialization). `effect` is a peer dependency, used only for Schema validation at the boundary. A dormant `sort-package-json` declaration remains in `package.json` but is no longer imported.
 
 This package has no platform dependencies. Unlike `@savvy-web/silk-effects` it does not depend on `@effect/platform`, `workspaces-effect` or any other Effect service package. Those require Layer composition, which is overkill for pure content generation — templates serialize in-memory objects with `JSON.stringify`, `js-yaml` and string construction directly.
 

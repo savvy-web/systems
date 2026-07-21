@@ -43,6 +43,7 @@ const makeWsPkg = (
 		path: dir,
 		packageJsonPath: join(dir, "package.json"),
 		relativePath: ".",
+		workspaceRoot: dir,
 		private: opts.private ?? false,
 		// Conditional spread: v4 constructors validate, and `publishConfig` is an
 		// exact-optional key — never pass explicit undefined.

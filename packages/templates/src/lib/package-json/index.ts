@@ -1,5 +1,5 @@
+import { PackageJsonFormat } from "@effected/package-json";
 import { Effect, Schema } from "effect";
-import { sortPackageJson } from "sort-package-json";
 import type { TemplateEntry } from "../types.js";
 
 const Author = Schema.Struct({
@@ -99,7 +99,7 @@ export function createPackageJson(options: unknown): TemplateEntry[] {
 	if (opts.publishConfig) pkg.publishConfig = opts.publishConfig;
 	if (opts.keywords && opts.keywords.length > 0) pkg.keywords = opts.keywords;
 
-	const sorted = sortPackageJson(pkg);
+	const sorted = PackageJsonFormat.sortValue(pkg);
 	const content = JSON.stringify(sorted, null, "\t");
 
 	return [{ name: "package-json", filename: "package.json", content }];

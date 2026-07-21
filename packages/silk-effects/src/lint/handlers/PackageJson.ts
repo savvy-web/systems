@@ -1,11 +1,12 @@
 /**
  * Handler for package.json files.
  *
- * Sorts fields with sort-package-json and formats with Biome.
+ * Sorts fields with @effected/package-json and formats with Biome.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import sortPackageJson from "sort-package-json";
+import { PackageJsonFormat } from "@effected/package-json";
+import { Result } from "effect";
 import type { LintStagedHandler, PackageJsonOptions } from "../types.js";
 import { Command } from "../utils/Command.js";
 import { Filter } from "../utils/Filter.js";
@@ -14,7 +15,7 @@ import { isWorkspacePackagePath } from "../utils/Workspace.js";
 /**
  * Handler for package.json files.
  *
- * Sorts fields with sort-package-json and formats with Biome.
+ * Sorts fields with @effected/package-json and formats with Biome.
  *
  * @example
  * ```typescript
@@ -104,15 +105,24 @@ export class PackageJson {
 	 * Sort the keys of a package.json document string.
 	 *
 	 * @remarks
-	 * Pure transform over the file contents using `sort-package-json`. Used by
-	 * the `savvy lint fmt package-json` subcommand so the CLI does not depend on
-	 * `sort-package-json` directly.
+	 * Pure transform over the file contents using `@effected/package-json`'s
+	 * `PackageJsonFormat.formatToString` — the tolerant text path, which sorts
+	 * canonically without decoding through the strict `Package` schema (so a
+	 * private or version-less root is sorted rather than rejected). Byte-verified
+	 * identical to the previous `sort-package-json` output on this repo's
+	 * manifests. Used by the `savvy lint fmt package-json` subcommand so the CLI
+	 * does not depend on a sorter directly.
+	 *
+	 * Unparseable content is returned UNCHANGED rather than throwing: a formatter
+	 * must not mangle a file it cannot read, and the surrounding Biome pass
+	 * reports the syntax error.
 	 *
 	 * @param content - The raw package.json file contents
-	 * @returns The sorted package.json file contents
+	 * @returns The sorted package.json file contents, or `content` if unparseable
 	 */
 	static sortContent(content: string): string {
-		return sortPackageJson(content);
+		const result = PackageJsonFormat.formatToString(content);
+		return Result.isSuccess(result) ? result.success : content;
 	}
 
 	/**
@@ -137,7 +147,7 @@ export class PackageJson {
 			if (!skipSort) {
 				for (const filepath of filtered) {
 					const content = readFileSync(filepath, "utf-8");
-					const sorted = sortPackageJson(content);
+					const sorted = PackageJson.sortContent(content);
 					if (sorted !== content) {
 						writeFileSync(filepath, sorted, "utf-8");
 					}
