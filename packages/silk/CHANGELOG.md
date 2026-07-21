@@ -1,5 +1,24 @@
 # @savvy-web/silk
 
+## 3.0.6
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.1.2 | 2.1.3 |
+| @savvy-web/mcp       | dependency | updated | 2.0.3 | 2.0.4 |
+
+* | Dependency        | Type           | Action  | From    | To      |                                                                       |
+  | ----------------- | -------------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | lint-staged       | peerDependency | updated | ^17.0.8 | ^17.1.0 |                                                                       |
+  | markdownlint-cli2 | peerDependency | updated | ^0.23.0 | ^0.23.1 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#342]: https://github.com/savvy-web/systems/pull/342
+
 ## 3.0.5
 
 ### Dependencies
