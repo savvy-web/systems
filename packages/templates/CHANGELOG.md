@@ -1,5 +1,25 @@
 # @savvy-web/templates
 
+## 1.0.3
+
+### Refactoring
+
+* Replaced `sort-package-json` with `@effected/package-json`'s `PackageJsonFormat.sortValue` for scaffolded `package.json` sorting (byte-identical output) [#336][#336]
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                       |
+  | ---------------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | sort-package-json      | dependency | removed | ^4.0.0 | —      |                                                                       |
+  | @effected/yaml         | dependency | updated | ^0.4.0 | ^0.5.0 |                                                                       |
+  | @effected/package-json | dependency | added   | —      | ^0.4.1 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#336]: https://github.com/savvy-web/systems/pull/336
+
 ## 1.0.2
 
 ### Dependencies

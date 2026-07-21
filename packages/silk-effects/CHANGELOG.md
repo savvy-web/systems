@@ -1,5 +1,40 @@
 # @savvy-web/silk-effects
 
+## 4.2.0
+
+### Bug Fixes
+
+* `Lint.PnpmWorkspace.formatContent` no longer post-processes its output through Prettier. It now stringifies directly via `@effected/yaml` with `quoteStyle: "double"` and `indentSequences: true`, producing the repo's byte format in one pass. This fixes a formatter regression where scoped package keys in `pnpm-workspace.yaml` were rewritten from double to single quotes (`"@parcel/watcher"` -> `'@parcel/watcher'`) on every `savvy lint fmt pnpm-workspace` run, causing churn on every format pass.
+
+  `formatContent` also dropped its now-unused `filepath` parameter, since there is no longer a second printer (Prettier) that needed it to resolve config.
+
+  * Fixed scoped-package-key quote-style churn in `pnpm-workspace.yaml` formatting
+  * `PnpmWorkspace.formatContent(content)` no longer takes a `filepath` argument
+
+### Refactoring
+
+* Replaced `sort-package-json` with `@effected/package-json`'s `PackageJsonFormat.sortValue`/`formatToString` (byte-identical output)
+* `SilkPublishability` now reads `WorkspacePackage.workspaceRoot` from the discovered package instead of deriving it internally
+* Changeset glob and version-file matching moved to `@effected/glob`'s `compileResult` and `@effected/walker`'s `compileAndExpand`, fixing a latent dot-glob dialect divergence between attribution and materialization (wildcard segments matching dotted directories now agree across both paths) [#336][#336]
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                       |
+  | ---------------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | sort-package-json      | dependency | removed | ^4.0.0 | —      |                                                                       |
+  | @effected/glob         | dependency | updated | ^0.1.2 | ^0.2.0 |                                                                       |
+  | @effected/jsonc        | dependency | updated | ^0.4.0 | ^0.5.0 |                                                                       |
+  | @effected/package-json | dependency | updated | ^0.3.1 | ^0.4.1 |                                                                       |
+  | @effected/walker       | dependency | updated | ^0.2.2 | ^0.3.1 |                                                                       |
+  | @effected/workspaces   | dependency | updated | ^0.4.1 | ^0.5.2 |                                                                       |
+  | @effected/yaml         | dependency | updated | ^0.4.0 | ^0.5.0 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#336]: https://github.com/savvy-web/systems/pull/336
+
 ## 4.1.0
 
 ### Features
