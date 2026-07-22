@@ -1,5 +1,17 @@
 # @savvy-web/tsdown-plugins
 
+## 2.1.6
+
+### Dependencies
+
+* | Dependency               | Type       | Action  | From     | To       |                                                                              |
+  | ------------------------ | ---------- | ------- | -------- | -------- | ---------------------------------------------------------------------------- |
+  | @microsoft/api-extractor | dependency | updated | ^7.58.11 | ^7.58.12 | [#349][#349] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#349]: https://github.com/savvy-web/systems/pull/349
+
 ## 2.1.5
 
 ### Dependencies

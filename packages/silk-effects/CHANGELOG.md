@@ -1,5 +1,17 @@
 # @savvy-web/silk-effects
 
+## 4.2.2
+
+### Dependencies
+
+* | Dependency | Type       | Action  | From   | To     |                                                                              |
+  | ---------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | prettier   | dependency | updated | ^3.9.5 | ^3.9.6 | [#349][#349] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#349]: https://github.com/savvy-web/systems/pull/349
+
 ## 4.2.1
 
 ### Dependencies
