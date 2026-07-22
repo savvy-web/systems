@@ -1,5 +1,23 @@
 # @savvy-web/silk
 
+## 3.1.1
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.1.3 | 2.1.4 |
+| @savvy-web/mcp       | dependency | updated | 2.0.4 | 2.0.5 |
+
+* | Dependency | Type       | Action  | From   | To     |                                                                              |
+  | ---------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | prettier   | dependency | updated | ^3.9.5 | ^3.9.6 | [#349][#349] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#349]: https://github.com/savvy-web/systems/pull/349
+
 ## 3.1.0
 
 ### Features
