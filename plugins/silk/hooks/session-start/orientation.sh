@@ -46,6 +46,45 @@ plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
 # it fails open to npm. Reader hooks pick it up through SILK_PACKAGE_MANAGER.
 package_manager=$(detect_package_manager "$project_dir")
 
+# it2 pane-orchestration gate (savvy-web/systems, 2026-07-21 design): env +
+# `command -v it2` ONLY — no it2 subprocess here. This hook fires on every
+# resume/compact, and invoking it2 risks its first-use iTerm2 API-authorization
+# dialog or a hang. TERMINAL_BLOCK stays empty unless BOTH the terminal program
+# is iTerm2 (TERM_PROGRAM or the locale-derived LC_TERMINAL) AND the it2 CLI is
+# actually on PATH; either check failing means no block, no cost.
+TERMINAL_BLOCK=""
+if { [ "${TERM_PROGRAM:-}" = "iTerm.app" ] || [ "${LC_TERMINAL:-}" = "iTerm2" ]; } \
+	&& command -v it2 &>/dev/null; then
+	# No apostrophes in this body: bash <4 (still /bin/bash on a stock macOS
+	# install) misparses a single-quote heredoc nested inside a command
+	# substitution when the body carries an odd number of `'` characters,
+	# swallowing the real terminator and failing the whole script with
+	# "unexpected EOF while looking for matching `''" (verified locally against
+	# /bin/bash 3.2.57). Contraction-free wording sidesteps the bug outright
+	# instead of depending on an accidental even count.
+	terminal_body=$(cat <<'TERMINAL'
+<terminal>
+You are in iTerm2 with it2 available: you can drive terminal panes and windows
+directly, not just the shell you were spawned in. Proactively orchestrate for
+subagents you spawn: split a pane per subagent, badge it with a session-id
+prefix, and manage windows for the user, keeping the layout legible without
+rearranging beyond what the work needs. Match split direction and grid shape
+to the window geometry; see /silk:it2 for the rules.
+
+Dismiss subagents you no longer need to retask (shut them down instead of
+leaving them idle) and close their it2 pane when you do; never leave an idle
+agent or an orphaned pane behind. /silk:it2 has the full layout playbook and
+commands.
+</terminal>
+TERMINAL
+)
+	# Deliberate string concatenation (not command substitution) so the leading
+	# and trailing blank-line padding survives — command substitution strips
+	# trailing newlines, which would collapse the spacing around the block
+	# inside the CONTEXT heredoc below.
+	TERMINAL_BLOCK=$'\n'"${terminal_body}"$'\n'
+fi
+
 if [ -n "$session_id" ]; then
 	env_dir="${HOME}/.claude/session-env/${session_id}"
 	mkdir -p "$env_dir"
@@ -72,13 +111,13 @@ RUN="$(package_manager_exec "$package_manager") savvy changeset"
 CONTEXT=$(cat <<CONTEXT
 <silk_capabilities>
 This is a Silk Suite workspace. The silk plugin gives you a savvy-mcp server (10
-structured tools), 3 domain agents, 9 skills, a Biome LSP, and two background
-monitors — all of which already know this repo's package boundaries,
-conventions and exclusion rules.
+structured tools), 3 domain agents, 10 skills, a Biome LSP, and two background
+monitors — all of which already know the package boundaries, conventions and
+exclusion rules of this repo.
 
 USE THEM. Shelling out to git/pnpm/turbo/biome to reconstruct what a tool returns
 in one call is slower, lossier, and gets the repo-specific rules wrong. Answering
-from memory about this repo's layout, release state, or lint policy is guessing.
+from memory about the layout, release state, or lint policy of this repo is guessing.
 When a question falls in a capability below, open that capability first. The tools
 are cheap; a wrong answer derived from parsed stdout is not.
 
@@ -125,8 +164,8 @@ are cheap; a wrong answer derived from parsed stdout is not.
       is needed — you do not have to wait for a slash command.
   turborepo — multi-step cache diagnosis, turbo.json refactors, CI cache setup.
       Drives turbo_inspect and interprets the hash contributors.
-  tsdoctor — drives a package's ae-*/tsdoc-* API Extractor diagnostics to zero
-      off dist/prod/issues.json, then rebuilds to confirm. Dispatch it the moment
+  tsdoctor — drives ae-*/tsdoc-* API Extractor diagnostics for a package to
+      zero off dist/prod/issues.json, then rebuilds to confirm. Dispatch it the moment
       a build reports API Extractor issues; do not hand-patch TSDoc comments and
       never add warning suppressions.
 </agents>
@@ -153,6 +192,10 @@ are cheap; a wrong answer derived from parsed stdout is not.
   /silk:dogfood          the cross-repo dogfood-loop command: mailbox, JSONL
                          journal, link/unlink. --init/--send/--status/
                          --watch/--adopt/--exit.
+  /silk:it2              iTerm2 pane orchestration for subagents: split-
+                         direction semantics, layout heuristics, geometry
+                         queries, badging, dismiss-and-close discipline.
+                         Only useful when the <terminal> block below appears.
   Two background monitors: tsdoc-diagnostics surfaces ae-*/tsdoc- diagnostics
   from dist/<target>/issues.json as builds change them; dogfood-mail surfaces
   incoming .claude/dogfood/ mail and journal turn-flips (ball changes).
@@ -169,15 +212,7 @@ Biome is wired in twice, and neither way is Bash.
 Bash biome still works and is never blocked — it is the escape hatch for a flag
 the tool lacks. Reaching for it first draws a one-time PreToolUse nudge.
 </biome>
-
-<terminal>
-The it2 CLI (installed separately) lets you control terminal sessions and panes
-directly — split panes, send text to a session, read a pane's buffer, set badges.
-Clean up after yourself: when idle agent sessions or panes you or a subagent
-spawned are no longer in use (e.g. two idle agents left in split panes after a
-task finishes), close or remove them rather than leaving clutter behind.
-</terminal>
-
+${TERMINAL_BLOCK}
 <active_hooks>
   PreToolUse  Bash / Read|Write|Edit / MCP-git — commit guards. A \`git commit\` or
       \`gh pr create|edit\` is intercepted and checked against the commitlint

@@ -158,3 +158,117 @@ setup() {
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 }
+
+# it2 pane-orchestration gate (savvy-web/systems, 2026-07-21 design):
+# TERMINAL_BLOCK renders only when TERM_PROGRAM/LC_TERMINAL say iTerm2 AND
+# `it2` is on PATH. No it2 subprocess runs anywhere in the hook or these
+# tests — a stub is enough since only `command -v it2` is exercised.
+
+# path_without_it2 — echo $PATH with every component that contains an `it2`
+# executable stripped, so the "it2 absent" scenario stays honest even on a
+# dev machine that happens to have a real it2 installed (e.g. via `go
+# install`), rather than depending on a hardcoded, environment-specific path.
+path_without_it2() {
+	local dir out=""
+	local IFS=':'
+	local -a dirs
+	read -ra dirs <<< "$PATH"
+	for dir in "${dirs[@]}"; do
+		[ -x "${dir}/it2" ] && continue
+		out="${out:+${out}:}${dir}"
+	done
+	printf '%s' "$out"
+}
+
+@test "it2 gate holds (TERM_PROGRAM=iTerm.app + stubbed it2): proactive terminal block present" {
+	make_project >/dev/null
+	use_stub_bin
+	write_stub it2 <<'STUB'
+#!/bin/sh
+exit 0
+STUB
+	export TERM_PROGRAM=iTerm.app
+	unset LC_TERMINAL
+	local envelope
+	envelope="$(envelope_with_cwd "${FIXTURES_DIR}/sessionstart.orientation.json")"
+	run bash -c "cat '${envelope}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	local ctx
+	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
+	[[ "$ctx" == *"<terminal>"* ]]
+	[[ "$ctx" == *"</terminal>"* ]]
+	[[ "$ctx" == *"Proactively orchestrate"* ]]
+	[[ "$ctx" == *"Dismiss subagents"* ]]
+	[[ "$ctx" == *"/silk:it2"* ]]
+}
+
+@test "it2 gate holds via LC_TERMINAL=iTerm2 (TERM_PROGRAM unset)" {
+	make_project >/dev/null
+	use_stub_bin
+	write_stub it2 <<'STUB'
+#!/bin/sh
+exit 0
+STUB
+	unset TERM_PROGRAM
+	export LC_TERMINAL=iTerm2
+	local envelope
+	envelope="$(envelope_with_cwd "${FIXTURES_DIR}/sessionstart.orientation.json")"
+	run bash -c "cat '${envelope}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	local ctx
+	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
+	[[ "$ctx" == *"<terminal>"* ]]
+}
+
+@test "not in iTerm2 (TERM_PROGRAM unset): no terminal block, clean single blank line" {
+	make_project >/dev/null
+	unset TERM_PROGRAM LC_TERMINAL
+	local envelope
+	envelope="$(envelope_with_cwd "${FIXTURES_DIR}/sessionstart.orientation.json")"
+	run bash -c "cat '${envelope}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	local ctx
+	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
+	# Assert against the CLOSING tag / body text, not the bare word "<terminal>"
+	# — the always-on skill index mentions "<terminal>" in prose (pointing at
+	# this gated block), so that substring alone is present in every case.
+	[[ "$ctx" != *"</terminal>"* ]]
+	[[ "$ctx" != *"Proactively orchestrate"* ]]
+	[[ "$ctx" == *$'</biome>\n\n<active_hooks>'* ]]
+}
+
+@test "TERM_PROGRAM set to something other than iTerm.app: no terminal block" {
+	make_project >/dev/null
+	export TERM_PROGRAM=vscode
+	unset LC_TERMINAL
+	local envelope
+	envelope="$(envelope_with_cwd "${FIXTURES_DIR}/sessionstart.orientation.json")"
+	run bash -c "cat '${envelope}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	local ctx
+	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
+	# Assert against the CLOSING tag / body text, not the bare word "<terminal>"
+	# — the always-on skill index mentions "<terminal>" in prose (pointing at
+	# this gated block), so that substring alone is present in every case.
+	[[ "$ctx" != *"</terminal>"* ]]
+	[[ "$ctx" != *"Proactively orchestrate"* ]]
+}
+
+@test "in iTerm2 but it2 absent from PATH: no terminal block" {
+	make_project >/dev/null
+	export TERM_PROGRAM=iTerm.app
+	unset LC_TERMINAL
+	export PATH
+	PATH="$(path_without_it2)"
+	local envelope
+	envelope="$(envelope_with_cwd "${FIXTURES_DIR}/sessionstart.orientation.json")"
+	run bash -c "cat '${envelope}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	local ctx
+	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
+	# Assert against the CLOSING tag / body text, not the bare word "<terminal>"
+	# — the always-on skill index mentions "<terminal>" in prose (pointing at
+	# this gated block), so that substring alone is present in every case.
+	[[ "$ctx" != *"</terminal>"* ]]
+	[[ "$ctx" != *"Proactively orchestrate"* ]]
+}
