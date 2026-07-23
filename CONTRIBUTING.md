@@ -22,6 +22,7 @@ pnpm install
 | --- | --- |
 | `pnpm build` | Build all packages |
 | `pnpm test` | Run tests |
+| `pnpm test:hooks` | Run the Claude Code plugin hook suites (bats + `shellcheck`) for `plugins/silk` and `plugins/github-actions` |
 | `pnpm typecheck` | Type-check all packages via Turbo |
 | `pnpm lint` | Run Biome checks (no auto-fix) |
 | `pnpm lint:fix` | Run Biome with auto-fix (safe fixes only) |
@@ -32,7 +33,7 @@ pnpm install
 - **Formatter:** Biome -- tabs, no trailing commas
 - **Linting:** Biome with strict rules including `useNodejsImportProtocol`
 - **TypeScript:** Strict mode, ES modules with `.js` extensions required
-- **Testing:** Vitest via `@vitest-agent/plugin`
+- **Testing:** Vitest via `@vitest-agent/plugin`; plugin hook scripts are covered by bats and `shellcheck` (see [`plugins/silk/tests/README.md`](./plugins/silk/tests/README.md) for the harness conventions and the `bats`/`shellcheck`/`jq` prerequisites)
 - **Imports:** Use `node:` protocol for Node.js built-ins; separate type imports
 
 ## Pre-commit hooks

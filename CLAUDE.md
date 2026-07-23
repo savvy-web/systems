@@ -30,7 +30,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/github-acti
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all twelve packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other ten via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
 - **Effect:** the whole repo is on Effect v4 (`catalog:effect` / `catalog:effectPeers`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency (`effect`/`effectPeers`; the `effect3` catalogs remain for any consumer still on v3). `effect` core source is vendored at `.repos/effect-smol` (pinned to the catalog tag) — the authority for v4 APIs. That directory is now checked out from `Effect-TS/effect` itself, NOT the archived `effect-smol` repo: v4 development moved back to the main monorepo, and the `.repos/` directory name was kept deliberately. `.repos/config.json` is the live record of url/ref/sparse paths. The suite consumes the `@effected/*` kit (git, glob, jsonc, package-json, semver, walker, workspaces, yaml) from the npm registry
 - **Linting:** Biome, markdownlint
-- **Testing:** Vitest via `@vitest-agent/plugin`; built-artifact e2e harness in `e2e/*`
+- **Testing:** Vitest via `@vitest-agent/plugin`; built-artifact e2e harness in `e2e/*`; plugin hook shell suites (bats + shellcheck) under `plugins/*/tests`, run together by `pnpm test:hooks`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
 - **Releases:** `@savvy-web/changesets`
 
@@ -115,3 +115,7 @@ Design docs live in `.claude/design/` (tracked). Per-package design pointers liv
 **`plugins/silk` — the merged Claude Code plugin:**
 → `@./.claude/design/silk/plugin.md`
 Load when working on `plugins/silk` (skills, agents, monitors, hooks, MCP wiring).
+
+**`plugins/github-actions` — the action-engineering Claude Code plugin:**
+→ `@./.claude/design/github-actions/plugin.md`
+Load when working on `plugins/github-actions` (the `action-engineer` agent, the twelve-skill suite, the orientation hook, the bats tests). Its skills address an agent in a STANDALONE action repo cloned from `github-action-template`, not this monorepo — cite only paths that resolve under `node_modules/@savvy-web/…`, never sibling-repo or monorepo `file:line` references.
