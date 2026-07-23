@@ -102,7 +102,7 @@ claude plugin add marketplace savvy-web/systems
 **Available plugins:**
 
 - **silk** -- Companion for `@savvy-web/silk`: changeset, commit, lint and Turborepo conventions, skills and agents, the bundled `savvy-mcp` server and live Biome diagnostics
-- **github-actions** -- Effect-based GitHub Actions conventions served via the shared `savvy-mcp` server
+- **github-actions** -- An `action-engineer` agent and a twelve-skill suite for building Node.js 24 GitHub Actions on `@savvy-web/github-action-effects` and `@savvy-web/github-action-builder`, plus the shared `savvy-mcp` server
 - **changesets** -- Companion for `@savvy-web/changesets`: structured changeset files
 - **vitest** -- Companion for `@savvy-web/vitest`: well-structured test files
 - **lint-staged** -- Companion for `@savvy-web/lint-staged`: lint-staged configuration
@@ -113,6 +113,12 @@ claude plugin add marketplace savvy-web/systems
 The silk plugin runs the Biome language server (`biome lsp-proxy`), so Biome lint and format diagnostics surface automatically while you work across JavaScript, TypeScript, JSON, CSS and GraphQL files. Biome must be available for the language server to start: install it globally on PATH (recommended -- `brew install biome` or `npm i -g @biomejs/biome`) or add it as a project devDependency so `node_modules/.bin/biome` resolves. Without Biome the language server exits with an actionable message telling you to install it, surfaced in the `/plugin` Errors tab.
 
 For on-demand checks the bundled `savvy-mcp` server exposes the `biome_check` tool: run Biome over any path and get structured diagnostics back, optionally applying fixes with `write` (safe) or `unsafe`. It complements the always-on LSP, which is read-only. Running Biome through Bash still works and draws a one-time, non-blocking nudge toward `biome_check`.
+
+### Action engineering in the github-actions plugin
+
+The github-actions plugin targets a standalone action repo, not this monorepo: it teaches the `@savvy-web/github-action-effects` + `@savvy-web/github-action-builder` stack. Hand a whole action task to the `action-engineer` agent and it starts with the plugin's twelve skills already loaded. If you work inline instead, read the `action-engineering` skill first -- it routes each job to the service and skill that covers it, and names the capabilities the library deliberately does not have.
+
+The remaining eleven skills cover scaffolding from [github-action-template](https://github.com/savvy-web/github-action-template), `action.config.ts` builds, entry points and Layer wiring, inputs, machine-readable output contracts, GitHub App authentication, the GitHub API client, check runs and job summaries and PR comments, run logging, tagged errors and cross-phase state, and testing.
 
 ## Ecosystem
 
@@ -141,6 +147,7 @@ Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
 
 - [pnpm-module-template](https://github.com/savvy-web/pnpm-module-template) -- Single package starter with full Silk Suite integration
 - [pnpm-monorepo-template](https://github.com/savvy-web/pnpm-monorepo-template) -- Multi-package monorepo scaffold
+- [github-action-template](https://github.com/savvy-web/github-action-template) -- Node.js 24 GitHub Action starter wired for `@savvy-web/github-action-effects` and `@savvy-web/github-action-builder`
 
 ## Requirements
 

@@ -3,6 +3,12 @@
 	"refs": [
 		{
 			"source": "CLAUDE.md",
+			"target": ".claude/design/github-actions/plugin.md",
+			"hash": "62363a682bbe787ac6659f4821f4d393838ab6689db3c098429f4354c37dbdcf",
+			"recordedAt": "2026-07-23"
+		},
+		{
+			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
 			"hash": "a0e15a8a63bb89f5d55bc033184d678b8eb347e8c59137209500dc14ff46f812",
 			"recordedAt": "2026-07-21"
