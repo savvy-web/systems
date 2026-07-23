@@ -1,7 +1,8 @@
 {
+	"$schema": "https://www.schemastore.org/claude-code-marketplace.json",
 	"name": "savvy-web-systems",
 	"owner": {
-		"name": "Savvy Web",
+		"name": "Savvy Web Systems",
 		"email": "spencer@savvyweb.systems"
 	},
 	"metadata": {
@@ -10,14 +11,24 @@
 	"plugins": [
 		{
 			"name": "silk",
-			"source": "./plugins/silk",
+			"source": {
+				"source": "git-subdir",
+				"url": "https://github.com/savvy-web/systems.git",
+				"path": "plugins/silk",
+				"sha": "792a0246f0b9e2d50f23cb70b8fc1b4659369bef"
+			},
 			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 			"category": "developer-tools",
 			"tags": ["silk-suite", "changesets", "commitlint", "biome", "code-quality"]
 		},
 		{
 			"name": "github-actions",
-			"source": "./plugins/github-actions",
+			"source": {
+				"source": "git-subdir",
+				"url": "https://github.com/savvy-web/systems.git",
+				"path": "plugins/github-actions",
+				"sha": "792a0246f0b9e2d50f23cb70b8fc1b4659369bef"
+			},
 			"description": "Savvy Web GitHub Actions assistant — an action-engineer agent and skill suite for building Node.js 24 actions with @savvy-web/github-action-effects and @savvy-web/github-action-builder, plus the shared savvy MCP",
 			"category": "developer-tools",
 			"tags": ["github-actions", "workflows", "automation", "ci-cd", "effect"]
