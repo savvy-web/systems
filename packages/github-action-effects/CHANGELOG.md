@@ -1,5 +1,19 @@
 # @savvy-web/github-action-effects
 
+## 3.0.5
+
+### Dependencies
+
+* | Dependency       | Type       | Action  | From   | To     |                                                                              |
+  | ---------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/jsonc  | dependency | updated | ^0.5.0 | ^0.5.1 |                                                                              |
+  | @effected/semver | dependency | updated | ^0.2.0 | ^0.2.1 |                                                                              |
+  | @effected/yaml   | dependency | updated | ^0.5.0 | ^0.5.1 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#364]: https://github.com/savvy-web/systems/pull/364
+
 ## 3.0.4
 
 ### Bug Fixes

@@ -1,5 +1,23 @@
 # @savvy-web/silk-effects
 
+## 4.2.4
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                              |
+  | ---------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/git          | dependency | updated | ^0.4.1 | ^0.4.2 |                                                                              |
+  | @effected/glob         | dependency | updated | ^0.2.0 | ^0.2.1 |                                                                              |
+  | @effected/jsonc        | dependency | updated | ^0.5.0 | ^0.5.1 |                                                                              |
+  | @effected/package-json | dependency | updated | ^0.5.0 | ^0.5.1 |                                                                              |
+  | @effected/walker       | dependency | updated | ^0.3.1 | ^0.3.2 |                                                                              |
+  | @effected/workspaces   | dependency | updated | ^0.6.1 | ^0.6.2 |                                                                              |
+  | @effected/yaml         | dependency | updated | ^0.5.0 | ^0.5.1 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#364]: https://github.com/savvy-web/systems/pull/364
+
 ## 4.2.3
 
 ### Dependencies
