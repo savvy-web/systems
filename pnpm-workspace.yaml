@@ -210,7 +210,7 @@ catalogs:
     typescript: ^7.0.0
     vitest: ^4.1.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.3.0+sha512-LVEj0O0kGvLK6iFYUOZXyLxSs4c/p+SZjt1o9EzrETSEfE+tc9IQsHkxW3sp8ydBh9TloeM+wC6Kf7P3DQBTcQ==
+  "@effected/pnpm-plugin-effect": 0.3.1+sha512-e3HjGx6AQ4dGCLu8ApbFMm49NYmJ/fiC2sptSyeQRsw94VjdfCYWF73i1pa2SlFqRmeHcrYCK7KsWYZlXX9m1A==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
