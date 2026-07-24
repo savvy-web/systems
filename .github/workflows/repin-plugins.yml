@@ -1,0 +1,50 @@
+name: Repin Claude Code Plugins
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Name of the plugin to repin
+        required: false
+        type: string
+      sha:
+        description: Commit SHA to repin to
+        required: false
+        type: string
+      path:
+        description: The path to the plugin root in the repository
+        required: false
+        type: string
+      json:
+        description: JSON string of the plugin's marketplace.json file
+        required: false
+        type: string
+  repository_dispatch:
+    types: [plugin-release]
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: repin-plugins
+  cancel-in-progress: false
+jobs:
+  repin:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: spencerbeggs/claude-code-marketplace-manager@v1
+        with:
+          app-client-id: ${{ secrets.APP_CLIENT_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.name || github.event.client_payload.name }}
+          sha: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.event.client_payload.sha }}
+          path: ${{ github.event_name == 'workflow_dispatch' && inputs.path || github.event.client_payload.path }}
+          json: ${{ github.event_name == 'workflow_dispatch' && inputs.json || github.event.client_payload.json }}
+          # main's "workflow" ruleset restricts PRs to allowed_merge_methods: [squash] —
+          # rebase/merge are rejected by the auto-merge GraphQL call at runtime.
+          # auto-merge: "squash"
+          mode: "commit"
