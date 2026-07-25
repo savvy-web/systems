@@ -64,6 +64,11 @@ const meta: MetaOptions = {
 
 const tsconfigPath = writeResolvedTsconfig({ cwd });
 
+// The terminal failure, captured so the finally block can stamp the issues artifact with the build
+// outcome (issue #254). The artifact is written on every terminal path, and a crashed build can leave
+// every diagnostic bucket empty — byte-identical to a clean gate unless buildOk says otherwise.
+let buildFailure: unknown;
+
 try {
 	await buildTargetGroups({
 		cwd,
@@ -115,6 +120,10 @@ try {
 		// paths. dev keeps them.
 		removeDeclarationMaps(join(cwd, "dist/prod/npm/pkg"));
 	}
+} catch (err) {
+	// Record the outcome for the artifact stamp below, then let it propagate unchanged.
+	buildFailure = err;
+	throw err;
 } finally {
 	// Always render the report — even if the build threw — so captured diagnostics are surfaced
 	// before the error propagates (parity with the front-door runBuild).
@@ -125,10 +134,24 @@ try {
 		}).pipe(Effect.provide(ReportPipelineLive)),
 	);
 	for (const out of rendered as ReadonlyArray<RenderedOutput>) process.stdout.write(`${out.content}\n`);
-	// Persist the structured diagnostics artifact for every target — matches run.ts:500/505.
+	// Persist the structured diagnostics artifact for every target, stamped with the build outcome
+	// so a crashed self-build cannot read as a clean gate — matches the front door's run.ts.
 	// Best-effort: a write failure must never mask the build outcome.
 	try {
-		writeIssuesArtifact({ cwd, target, reports: collector.snapshot(pkg.name) });
+		writeIssuesArtifact({
+			cwd,
+			target,
+			reports: collector.snapshot(pkg.name),
+			buildOk: buildFailure === undefined,
+			...(buildFailure !== undefined
+				? {
+						failure:
+							buildFailure instanceof Error
+								? { name: buildFailure.name, message: buildFailure.message }
+								: { message: String(buildFailure) },
+					}
+				: {}),
+		});
 	} catch {
 		// intentionally swallowed
 	}

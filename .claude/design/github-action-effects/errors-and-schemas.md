@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-06-12
-last-synced: 2026-06-12
+updated: 2026-07-24
+last-synced: 2026-07-24
 completeness: 90
 related:
   - ./index.md
@@ -47,6 +47,8 @@ Services that depend on `GitHubClient` map the underlying `GitHubClientError` to
 - `retryable` is `true` for 429 (rate limit), any 5xx and a 403 that carries a server-advised retry signal (a `Retry-After` header, or `x-ratelimit-remaining: 0` plus `x-ratelimit-reset` — a GitHub secondary rate limit).
 - A bare 403 (a genuine permission denial) stays non-retryable.
 - `retryAfterMs` carries the server-advised delay when present.
+
+**A wrapping error may enrich, not just rename.** The domain wrapper is where a transport-level signal becomes a domain discriminant the caller can match on directly. `GitBranchError` is the reference case: alongside `branch`/`operation`/`reason` it carries an optional `status` (the underlying HTTP status, preserved through the wrap) and an optional `alreadyExists`, set by `GitBranchLive`'s `mapError` when the `GitHubClientError` was a 422 — occasionally a 409 — whose reason names an existing reference. That is the benign create-race outcome, and the discriminant exists so a caller stops inferring it from a re-query of branch state or from string-matching a message. Both fields are optional so the shape stays additive for existing callers. The rule generalizes: when a wrapper drops information a caller provably needs, add a field rather than making the caller round-trip to the API for it — and route every failure path through the shared `mapError` so no branch constructs the error bare and silently omits the discriminant.
 
 `RuntimeEnvironmentError` is raised by `RuntimeFile` when a required environment file variable (`GITHUB_OUTPUT`, `GITHUB_STATE`, etc.) is unset. Consuming layers map it to their own domain error — for example `ActionOutputsLive` maps it to `ActionOutputError`.
 

@@ -53,7 +53,19 @@ export default defineConfig({
 - **Bundled declarations** — each target runs two `tsdown` passes: a JavaScript pass that preserves per-module output, then a declaration-only pass that rolls every re-exported type into a single `.d.ts` per public entry (`deriveDtsPassOptions`). Per-module JavaScript stays intact while consumers keep reaching re-exported types through your published subpaths.
 - **API Extractor meta** — `runMetaPass` is the single meta-generation orchestrator the bundler front door and both self-hosting escape hatches share: it derives the export paths, applies the optimistic next-version forward-look and drives API Extractor over a package's emitted `.d.ts` to write an api-model bundle (`.api.json`, `tsdoc-metadata.json`, resolved `tsconfig.json`). `generateMeta` is the lower-level pass it wraps, and `normalizeMetaOptions` fills the `MetaOptions` defaults that drive it.
 - **Output reporter** — `renderReport` plus the `BuildReport` schema and a set of formatters (terminal, JSON, markdown, CI annotations, silent) render a build report for humans, agents or CI.
-- **Issues artifact** — `writeIssuesArtifact` (with the pure `flattenIssues` and `serializeIssues` behind it) writes a deduplicated `dist/<target>/issues.json` on every build, collecting the build's warnings, errors and suppressed diagnostics in a stable JSON shape (`BuildIssues`/`PlainDiagnostic`) so an agent or CI script reads the diagnostics straight from disk instead of parsing terminal output.
+- **Issues artifact** — `writeIssuesArtifact` (with the pure `flattenIssues` and `serializeIssues` behind it) writes a deduplicated `dist/<target>/issues.json` on every build, successful or failed, collecting the build's warnings, errors and suppressed diagnostics in a stable JSON shape (`BuildIssues`/`PlainDiagnostic`) so an agent or CI script reads the diagnostics straight from disk instead of parsing terminal output. The artifact lands through a temp file and a rename, so a concurrent reader sees the previous file or the complete new one, never a half-written one.
+
+## Reading the issues artifact
+
+`dist/<target>/issues.json` is written on every terminal path — the build that finished and the build that blew up both leave one behind. Read the `buildOk` field before you read anything else: a crashed build leaves `warnings`, `errors` and `suppressed` empty, which is byte-for-byte what a clean build writes, so empty buckets alone prove nothing. When `buildOk` is `false`, the optional `failure` object carries the terminal error's `name` and `message` (truncated at 2000 characters).
+
+```bash
+jq -c '{ ok: .buildOk, errors: (.errors | length) }' dist/prod/issues.json
+# {"ok":true,"errors":0}    a build that ran to completion with no diagnostics
+# {"ok":false,"errors":0}   a build that died before it could report any
+```
+
+An artifact produced before the field existed has no `buildOk` at all. Treat a missing value as unknown, not as a pass. If you drive `writeIssuesArtifact` yourself from a hand-written config, it defaults `buildOk` to `true` — pass `buildOk: false` (and a `failure`) explicitly from your own error path, or your artifact will claim a clean gate the build never reached.
 
 ## Effect
 

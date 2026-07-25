@@ -37,10 +37,10 @@ Mail lands in the RECEIVING repo at `.claude/dogfood/<sender-id>/`. Both repos g
 
 | Kind | Direction | One-line contract |
 | --- | --- | --- |
-| `briefing` | either, round 0, `--init` only | Generated protocol boot for the counterpart's session. |
+| `briefing` | either, round 0 or a reopened loop's opening round, `--init` only | Generated protocol boot for the counterpart's session. |
 | `request` | downstream → upstream | Asks with exact `file:line` cites; long-lived item-status table both sides keep current. |
 | `handoff` | upstream → downstream | Exact export signatures/error unions from built `.d.ts`, behavior changes, "intentionally not done" section. |
-| `status` | either | Cheap one-liner that only flips ball/phase. |
+| `status` | either | Cheap one-liner that only flips ball/phase; also a relay's downstream-notification vehicle (see Discipline). |
 | `findings` | downstream → upstream | Adoption results: clean, friction, discrepancies, confirmations. |
 | `release` | upstream → downstream | The exit trigger — package names, versions, registry. |
 
@@ -134,8 +134,9 @@ The `unlinked` snapshot is the loop's audit trail and is deliberately kept — n
 - **Mailbox content is never design documentation.** `.claude/design/` is the durable record; mail is history. When a mail thread produces a learning worth keeping past the loop's life, promote it into `.claude/design/` as part of a normal docs pass — don't let `.claude/dogfood/` become a second, informal design-doc tree.
 - **No push, no PR, while downstream and linked.** This is the whole reason the enforcement hook exists (`hooks/pre-tool-use/dogfood-guard.sh`) — a `file:../../` override path in `pnpm-workspace.yaml` or the lockfile resolves only on this machine, and publishing it breaks CI and every other clone. The hook denies `git push` / `gh pr create` / `gh pr edit` (Bash) and the GitKraken MCP `git_push` / `pull_request_create` equivalents whenever ANY journal shows `role: "downstream"` and a phase other than `unlinked`. There is no bypass flag — if the hook is genuinely wrong (e.g. the loop is stale and should have been force-exited), append a `correction` snapshot rather than routing around it. The upstream role is not push-guarded — its branch is expected to go to PR mid-loop (`upstream-pr`); its own "no release until the loop exits" discipline is enforced by `--exit`'s role-aware ordering, not by this hook.
 - **Handoff precision is a contract, not a courtesy.** Read exports and error unions from the built `.d.ts`, not from source or from memory of what was intended — the downstream verifies against installed types and treats drift as a defect.
+- **Verifying a change is present in a build output has a stated method — don't rely on instinct.** Search recursively (`rg <symbol> <dir>` or `grep -r`, never a non-recursive `<dir>/*.js` glob — `@savvy-web/bundler` emits per-module chunks under subdirectories, and a top-level glob misses all of them). Cite the module path where the symbol lives when reporting presence or absence, not a match count — a path is checkable by the other side, a count isn't. Before reporting a fix as missing from an artifact, grep for a symbol known to be present as a control, confirming the search would have found the real thing. Prefer the published `.d.ts` or `package.json` `exports` map for API-surface claims — chunk layout is a build-tool detail that changes. This exact mistake, a non-recursive glob read as "the fix is missing," happened twice in one round, 2026-07-25, by two different sessions — it costs a false rebuild request and a retraction, not a code fix.
 - **`request`/`findings` append, they don't fragment.** A long-lived item-status table that both sides keep current across rounds beats a new file per round that loses the running status.
-- **`status` mail is cheap — send it.** Its only job is making a turn change land; err toward sending one on any milestone rather than letting the counterpart's session sit idle guessing.
+- **`status` mail is cheap — send it.** Its only job is making a turn change land; err toward sending one on any milestone rather than letting the counterpart's session sit idle guessing. **A relay owes its downstream a status too.** When this repo is simultaneously downstream in one loop and upstream in another over the same change, progress in the upstream loop is a milestone in the downstream loop, not only the upstream one — send the downstream loop's counterpart a `status` when the upstream loop's counterpart ships, when adoption starts, and when this tree is safe to build against again. A downstream holding a `file:` link against this repo's build has no way to know the tree is mid-migration otherwise.
 
 ## Optional it2 transport layer
 

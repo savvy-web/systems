@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import type { GitHubClientTestState } from "../../src/layers/GitHubClientTest.js";
 import { GitHubClientTest } from "../../src/layers/GitHubClientTest.js";
-import type { GitHubClient as GitHubClientService } from "../../src/services/GitHubClient.js";
+import type { GitHubClient as GitHubClientService, GitHubOctokit } from "../../src/services/GitHubClient.js";
 import { GitHubClient } from "../../src/services/GitHubClient.js";
 
 // -- Shared provide helper --
@@ -56,6 +56,49 @@ describe("GitHubClient", () => {
 				const error = exit.cause;
 				expect(String(error)).toContain("GitHubClientError");
 			}
+		});
+
+		// Regression contract for issue #361: the callback parameter must accept
+		// a `GitHubOctokit` annotation (previously rejected by the `unknown`
+		// typing's contravariance) while `unknown`-annotated legacy callbacks
+		// keep compiling. The annotations below ARE the assertion — this file
+		// failing types:check is the regression signal.
+		it("accepts a GitHubOctokit-annotated callback (#361)", async () => {
+			const state: GitHubClientTestState = {
+				restResponses: new Map([["repos.get", { data: { default_branch: "main" } }]]),
+				graphqlResponses: new Map(),
+				paginateResponses: new Map(),
+				repo: { owner: "test-owner", repo: "test-repo" },
+			};
+
+			const result = await run(
+				state,
+				Effect.flatMap(GitHubClient, (svc) =>
+					svc.rest("repos.get", (octokit: GitHubOctokit) =>
+						octokit.rest.repos.get({ owner: "test-owner", repo: "test-repo" }).then((r) => ({
+							data: { default_branch: r.data.default_branch },
+						})),
+					),
+				),
+			);
+			expect(result).toEqual({ default_branch: "main" });
+		});
+
+		it("still accepts an unknown-annotated callback", async () => {
+			const state: GitHubClientTestState = {
+				restResponses: new Map([["repos.get", { data: { full_name: "owner/repo" } }]]),
+				graphqlResponses: new Map(),
+				paginateResponses: new Map(),
+				repo: { owner: "test-owner", repo: "test-repo" },
+			};
+
+			const result = await run(
+				state,
+				Effect.flatMap(GitHubClient, (svc) =>
+					svc.rest("repos.get", async (_octokit: unknown) => ({ data: { full_name: "ignored" } })),
+				),
+			);
+			expect(result).toEqual({ full_name: "owner/repo" });
 		});
 	});
 

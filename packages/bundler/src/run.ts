@@ -85,9 +85,25 @@ export interface RunOptions {
 		target: "dev" | "prod";
 		reports: ReadonlyArray<BuildReport>;
 		now?: () => Date;
+		buildOk?: boolean | undefined;
+		failure?: { name?: string | undefined; message: string } | undefined;
 	}) => string | undefined;
 	/** Injectable ambient-.d.ts copier (defaults to copyAmbientDts). */
 	readonly copyAmbientDts?: ((o: CopyAmbientDtsOptions) => void) | undefined;
+}
+
+/** Reduce a thrown value to the `{ name?, message }` shape the issues artifact stamps on a failed build. */
+function describeFailure(err: unknown): { name?: string; message: string } {
+	if (err instanceof Error) {
+		return err.name !== "" ? { name: err.name, message: err.message } : { message: err.message };
+	}
+	if (typeof err === "object" && err !== null) {
+		const rec = err as { _tag?: unknown; name?: unknown; message?: unknown };
+		const name = typeof rec._tag === "string" ? rec._tag : typeof rec.name === "string" ? rec.name : undefined;
+		const message = typeof rec.message === "string" ? rec.message : String(err);
+		return name !== undefined ? { name, message } : { message };
+	}
+	return { message: String(err) };
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
@@ -173,243 +189,259 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	const packageName = options.readPackageName ? options.readPackageName() : (pkg.name ?? "unknown");
 	const collector = new BuildCollector();
 
-	const readJsx = options.readTsconfigJsx ?? ((): TsconfigJsx => readTsconfigJsx(cwd));
-	const jsx: JsxConfig | undefined = resolveJsxConfig(readJsx(), config.jsx);
-	const writeTsconfig =
-		options.writeTsconfig ??
-		((c: string) =>
-			writeResolvedTsconfig({
-				cwd: c,
-				...(jsx?.runtime === "automatic" ? { jsx: "react-jsx", jsxImportSource: jsx.importSource } : {}),
-				...(jsx?.runtime === "classic" ? { jsx: "react" } : {}),
-			}));
-	const tsconfigPath = writeTsconfig(cwd);
-	const exportsMap = options.readExports ? options.readExports() : (pkg.exports as Record<string, string> | undefined);
-	const readPublishTargets =
-		options.readPublishTargets ??
-		(() => {
-			// Only the new map form (Record) drives multi-target; ignore legacy array-form targets.
-			const declared = (pkg.publishConfig as { targets?: unknown } | undefined)?.targets;
-			return declared !== undefined && !Array.isArray(declared) && typeof declared === "object"
-				? (declared as PublishTargets)
-				: undefined;
-		});
-	const publishTargets = readPublishTargets();
-	const writeBinding = options.writeTargetsBinding ?? realWriteTargetsBinding;
-
-	// Fast-fail config validation: run BEFORE any build branch so every target path is gated.
-	const osCpuForValidate = options.readOsCpu
-		? options.readOsCpu()
-		: { os: (pkg.os as string[] | undefined) ?? [], cpu: (pkg.cpu as string[] | undefined) ?? [] };
-	await Effect.runPromise(
-		Effect.flatMap(ConfigValidator, (v) =>
-			v.validate({
-				baseName: packageName,
-				hasExports: exportsMap !== undefined && Object.keys(exportsMap).length > 0,
-				...(publishTargets !== undefined ? { targets: publishTargets } : {}),
-				...(config.exe !== undefined ? { exe: config.exe } : {}),
-				osCpu: osCpuForValidate,
-				...(config.meta !== undefined && config.meta !== false ? { meta: config.meta } : {}),
-				...(config.looseFiles !== undefined ? { looseFiles: config.looseFiles } : {}),
-			}),
-		).pipe(Effect.provide(ConfigValidatorLive)),
-	);
-
-	// Resolve the SEA spec once (per-platform package = one spec, one target). The emitted filename is
-	// computed (not read from disk) so `--no-exe` can program the same manifest without a build, and the
-	// exe entry source is excluded from the JS pass so a pure-binary package emits no dead JS.
-	const exeSpecs = config.exe !== undefined ? normalizeExeOptions(config.exe, osCpuForValidate) : [];
-	// A package's exports["."] resolves to exactly one SEA, so the manifest rewrite and source
-	// exclusion below read exeSpecs[0]/targets[0]. Enforce that singleton here rather than let a
-	// multi-spec/multi-target config silently program the manifest for only the first binary while
-	// runExeBuild compiles them all. Cross-platform binaries ship as separate per-platform packages.
-	if (config.exe !== undefined && (exeSpecs.length !== 1 || (exeSpecs[0]?.targets.length ?? 0) !== 1)) {
-		throw new Error(
-			`exe build requires exactly one binary with one target (got ${exeSpecs.length} spec(s), ${exeSpecs[0]?.targets.length ?? 0} target(s) on the first). A package's exports["."] resolves to a single SEA — cross-platform binaries must each ship as their own per-platform package.`,
-		);
-	}
-	const exeSpec = exeSpecs[0];
-	const exeTarget = exeSpec?.targets[0];
-	const exeFileName = exeSpec && exeTarget ? computeExeFileName(exeSpec.fileName, exeTarget) : undefined;
-	const exeEntrySource = exeSpec?.entry ?? "./src/bin.ts";
-	const exeRewrite =
-		config.exe !== undefined && exeFileName !== undefined
-			? { source: exeEntrySource, fileName: exeFileName, dir: "bin" }
-			: undefined;
-
-	// Use the (potentially injectable) exportsMap so tests can fake exports without a real package.json.
-	// In production exportsMap === pkg.exports; the injectable unifies the source of truth for all callers.
-	const entries = packageJsonEntries({
-		pkg: { exports: exportsMap ?? pkg.exports, bin: pkg.bin },
-		...(config.exe !== undefined ? { excludeSources: [exeEntrySource] } : {}),
-	});
-	const hasJsEntries = Object.keys(entries).length > 0;
-
-	// Fast-fail outSubdir-override validation: run before any early-return branch so every target
-	// path rejects a bad outSubdir override consistently.
-	validateSubdirOverrides(config.overrides, entries, packageName);
-
-	// Ambient types-only .d.ts exports: validated on every target path (mixed-export + collision),
-	// copied into each built pkg dir on dev/prod below. exportsAsIndexes is never set by the build.
-	const ambient = extractAmbientDts({ exports: exportsMap ?? pkg.exports, bin: pkg.bin }, {});
-	assertNoEntryCollisions(Object.keys(entries), ambient);
-	// A types-only package (only ambient .d.ts exports, no JS entries, no SEA) has nothing for the
-	// JS pass to build — tsdown would throw an opaque "No input files". Fail loud with an actionable
-	// error instead; a package must ship at least one JS or exe entry alongside its ambient declarations.
-	if (ambient.length > 0 && !hasJsEntries && config.exe === undefined) {
-		throw new ConfigValidationError({
-			path: "exports",
-			reason:
-				"a types-only package with only ambient .d.ts exports is not supported — add at least one JS entry (or an exe) alongside the ambient declarations",
-		});
-	}
-
-	// --target meta is SOFT-DEPRECATED: meta is now emitted by --target prod (per group, with
-	// resolved + optionally optimistic deps). Warn and no-op so external escape-hatch scripts that
-	// still pass --target meta do not hard-fail. Full removal (flag + build:meta task/scripts) lands
-	// in a follow-up branch.
-	if (target === "meta") {
-		const writeMetaOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
-		writeMetaOutput({
-			target: "stdout",
-			contentType: "text/plain",
-			content: `meta: --target meta is deprecated and now a no-op; meta is emitted by --target prod (${packageName}).`,
-		});
-		return;
-	}
-
-	// --target exe: compile SEA binaries via @tsdown/exe. No tsdown library build.
-	if (target === "exe") {
-		if (config.exe === undefined) {
-			throw new Error("`savvy build --target exe` requires an `exe` option in the build config");
-		}
-		const exe = options.runExeBuild ?? realRunExeBuild;
-		await exe({
-			cwd,
-			outDir: join(cwd, "dist", "dev", "pkg", "bin"),
-			specs: exeSpecs,
-			collector,
-			groupId: "dev",
-			verbose,
-		});
-		const writeExeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
-		writeExeOutput({
-			target: "stdout",
-			contentType: "text/plain",
-			content: `exe: compiled ${exeSpecs.length} binary/binaries for ${packageName}`,
-		});
-		return;
-	}
-
-	// Per-entry format overrides: pin specific export paths to their own format/bundling.
-	// Entries come from packageJsonEntries (the authoritative, filtered entry map: it drops
-	// non-.ts exports, resolves object exports, rewrites /dist/*.js -> /src/*.ts, skips .json,
-	// and includes bin). Override export paths are flattened to entry names via createEntryName.
-	let overridePartitions: EntryOverride[] = [];
-	let baseEntries: Record<string, string> = entries;
-	let dualExports: ReadonlySet<string> | undefined;
-	// Export paths of overrides that build into an isolated `<group>/pkg/<outSubdir>/` sub-package.
-	// Threaded to buildTargetGroups so the manifest maps each to `<subdir>/index.*`.
-	const subdirExports = new Set<string>();
-	if (config.overrides) {
-		const partitions: EntryOverride[] = [];
-		const overriddenEntryNames = new Set<string>();
-		const baseFormatHasCjs = (config.format ?? ["esm"]).includes("cjs");
-		const dualExportKeys = new Set<string>();
-		const exportPathByEntry = deriveExportPaths(entries, exportsMap); // entryName -> export key
-		for (const ov of config.overrides) {
-			// An outSubdir partition is an isolated single-export sub-package — pin exactly one export.
-			if (ov.outSubdir !== undefined && ov.entries.length !== 1) {
-				throw new Error(
-					`overrides: outSubdir "${ov.outSubdir}" must pin exactly one export path (got ${ov.entries.length})`,
-				);
-			}
-			const partEntry: Record<string, string> = {};
-			for (const exportPath of ov.entries) {
-				// Require the canonical package.json exports-key form. A non-canonical value like
-				// "changesets/markdownlint" would still flatten to a valid entry name and build the
-				// JS, but its dualExports key would not match the manifest's "./"-prefixed export key,
-				// silently dropping the require condition. Fail loudly instead.
-				if (exportPath !== "." && !exportPath.startsWith("./")) {
-					throw new Error(
-						`overrides: entry "${exportPath}" must be a canonical export path — use "." for the root or a "./"-prefixed subpath (e.g. "./changesets/markdownlint")`,
-					);
-				}
-				const flatName = createEntryName(exportPath, false);
-				const src = entries[flatName];
-				if (src === undefined) {
-					throw new Error(
-						`overrides: export path "${exportPath}" (entry "${flatName}") is not a build entry of ${packageName}`,
-					);
-				}
-				// An outSubdir partition emits a barrel at `<subdir>/index.*`, so its output entry KEY
-				// must be "index". The source lookup still uses the flattened name (the base entry key).
-				const entryName = ov.outSubdir !== undefined ? "index" : flatName;
-				partEntry[entryName] = src;
-				overriddenEntryNames.add(flatName);
-				if (ov.outSubdir !== undefined) subdirExports.add(exportPath);
-				if ((ov.format ?? config.format ?? ["esm"]).includes("cjs")) dualExportKeys.add(exportPath);
-			}
-			partitions.push({
-				entry: partEntry,
-				...(ov.format !== undefined ? { format: ov.format } : {}),
-				...(ov.externals !== undefined ? { externals: ov.externals } : {}),
-				...(ov.bundle !== undefined ? { bundle: ov.bundle } : {}),
-				...(ov.bundleNodeModules !== undefined ? { bundleNodeModules: ov.bundleNodeModules } : {}),
-				...(ov.bundledPackages !== undefined ? { bundledPackages: ov.bundledPackages } : {}),
-				...(ov.dtsExternals !== undefined ? { dtsExternals: ov.dtsExternals } : {}),
-				...(ov.platform !== undefined ? { platform: ov.platform } : {}),
-				...(ov.css !== undefined ? { css: ov.css } : {}),
-				...(ov.outSubdir !== undefined ? { outSubdir: ov.outSubdir } : {}),
-			});
-		}
-		const onlyBase: Record<string, string> = {};
-		for (const [name, src] of Object.entries(entries)) {
-			if (overriddenEntryNames.has(name)) continue;
-			onlyBase[name] = src;
-			if (baseFormatHasCjs) dualExportKeys.add(exportPathByEntry[name] ?? (name === "index" ? "." : `./${name}`));
-		}
-		overridePartitions = partitions;
-		baseEntries = onlyBase;
-		dualExports = dualExportKeys;
-	}
-
-	// Normalize after validation (which already surfaced any structural error). Pure; never throws here.
-	const looseFiles = config.looseFiles !== undefined ? normalizeLooseFiles(config.looseFiles) : undefined;
-
-	// dev: one dev group named after the base; npm: all resolved prod groups (meta already returned above).
-	const { groups, resolution } =
-		target === "dev"
-			? { groups: [{ id: "dev", name: packageName }] as ReadonlyArray<BuildGroupSpec>, resolution: undefined }
-			: deriveProdGroups(publishTargets, packageName);
-
-	const explicitFormat = config.output?.format;
-	const writeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
-	const renderAndWrite = async (): Promise<void> => {
-		const rendered = await Effect.runPromise(
-			renderReport(collector.snapshot(packageName), {
-				...(explicitFormat !== undefined ? { explicitFormat } : {}),
-				verbose,
-				noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
-			}).pipe(Effect.provide(ReportPipelineLive)),
-		);
-		for (const output of rendered) writeOutput(output);
-	};
-
 	// Persist the structured diagnostics artifact on every terminal path — success AND failure.
 	// A failed build is exactly when an agent wants to read why, so write it before rethrowing too.
+	// The build outcome is stamped onto the artifact (`buildOk`, plus `failure` when there is an
+	// error): a crashed build can leave every diagnostic bucket empty, which without the stamp is
+	// byte-identical to a clean gate, so a reader must gate on `buildOk`, not on `errors.length`.
 	// Best-effort: a write failure (read-only fs, missing parent, permissions) must never compound
 	// or mask the build outcome — the dist build product (on success) is already emitted by here.
-	const writeIssuesBestEffort = (): void => {
+	const writeIssuesBestEffort = (err?: unknown): void => {
 		if (target !== "dev" && target !== "prod") return;
 		try {
-			(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
+			(options.writeIssues ?? writeIssuesArtifact)({
+				cwd,
+				target,
+				reports: collector.snapshot(packageName),
+				buildOk: err === undefined,
+				...(err !== undefined ? { failure: describeFailure(err) } : {}),
+			});
 		} catch {
 			// intentionally swallowed — see above
 		}
 	};
 
+	// Rendering is set up further down (it needs the resolved format/verbose flags), so a failure
+	// before that point reaches the terminal handler with this still undefined — it is declared here
+	// so the handler can check for it instead of crashing inside the error path.
+	let renderAndWrite: (() => Promise<void>) | undefined;
+
 	try {
+		const readJsx = options.readTsconfigJsx ?? ((): TsconfigJsx => readTsconfigJsx(cwd));
+		const jsx: JsxConfig | undefined = resolveJsxConfig(readJsx(), config.jsx);
+		const writeTsconfig =
+			options.writeTsconfig ??
+			((c: string) =>
+				writeResolvedTsconfig({
+					cwd: c,
+					...(jsx?.runtime === "automatic" ? { jsx: "react-jsx", jsxImportSource: jsx.importSource } : {}),
+					...(jsx?.runtime === "classic" ? { jsx: "react" } : {}),
+				}));
+		const tsconfigPath = writeTsconfig(cwd);
+		const exportsMap = options.readExports
+			? options.readExports()
+			: (pkg.exports as Record<string, string> | undefined);
+		const readPublishTargets =
+			options.readPublishTargets ??
+			(() => {
+				// Only the new map form (Record) drives multi-target; ignore legacy array-form targets.
+				const declared = (pkg.publishConfig as { targets?: unknown } | undefined)?.targets;
+				return declared !== undefined && !Array.isArray(declared) && typeof declared === "object"
+					? (declared as PublishTargets)
+					: undefined;
+			});
+		const publishTargets = readPublishTargets();
+		const writeBinding = options.writeTargetsBinding ?? realWriteTargetsBinding;
+
+		// Fast-fail config validation: run BEFORE any build branch so every target path is gated.
+		const osCpuForValidate = options.readOsCpu
+			? options.readOsCpu()
+			: { os: (pkg.os as string[] | undefined) ?? [], cpu: (pkg.cpu as string[] | undefined) ?? [] };
+		await Effect.runPromise(
+			Effect.flatMap(ConfigValidator, (v) =>
+				v.validate({
+					baseName: packageName,
+					hasExports: exportsMap !== undefined && Object.keys(exportsMap).length > 0,
+					...(publishTargets !== undefined ? { targets: publishTargets } : {}),
+					...(config.exe !== undefined ? { exe: config.exe } : {}),
+					osCpu: osCpuForValidate,
+					...(config.meta !== undefined && config.meta !== false ? { meta: config.meta } : {}),
+					...(config.looseFiles !== undefined ? { looseFiles: config.looseFiles } : {}),
+				}),
+			).pipe(Effect.provide(ConfigValidatorLive)),
+		);
+
+		// Resolve the SEA spec once (per-platform package = one spec, one target). The emitted filename is
+		// computed (not read from disk) so `--no-exe` can program the same manifest without a build, and the
+		// exe entry source is excluded from the JS pass so a pure-binary package emits no dead JS.
+		const exeSpecs = config.exe !== undefined ? normalizeExeOptions(config.exe, osCpuForValidate) : [];
+		// A package's exports["."] resolves to exactly one SEA, so the manifest rewrite and source
+		// exclusion below read exeSpecs[0]/targets[0]. Enforce that singleton here rather than let a
+		// multi-spec/multi-target config silently program the manifest for only the first binary while
+		// runExeBuild compiles them all. Cross-platform binaries ship as separate per-platform packages.
+		if (config.exe !== undefined && (exeSpecs.length !== 1 || (exeSpecs[0]?.targets.length ?? 0) !== 1)) {
+			throw new Error(
+				`exe build requires exactly one binary with one target (got ${exeSpecs.length} spec(s), ${exeSpecs[0]?.targets.length ?? 0} target(s) on the first). A package's exports["."] resolves to a single SEA — cross-platform binaries must each ship as their own per-platform package.`,
+			);
+		}
+		const exeSpec = exeSpecs[0];
+		const exeTarget = exeSpec?.targets[0];
+		const exeFileName = exeSpec && exeTarget ? computeExeFileName(exeSpec.fileName, exeTarget) : undefined;
+		const exeEntrySource = exeSpec?.entry ?? "./src/bin.ts";
+		const exeRewrite =
+			config.exe !== undefined && exeFileName !== undefined
+				? { source: exeEntrySource, fileName: exeFileName, dir: "bin" }
+				: undefined;
+
+		// Use the (potentially injectable) exportsMap so tests can fake exports without a real package.json.
+		// In production exportsMap === pkg.exports; the injectable unifies the source of truth for all callers.
+		const entries = packageJsonEntries({
+			pkg: { exports: exportsMap ?? pkg.exports, bin: pkg.bin },
+			...(config.exe !== undefined ? { excludeSources: [exeEntrySource] } : {}),
+		});
+		const hasJsEntries = Object.keys(entries).length > 0;
+
+		// Fast-fail outSubdir-override validation: run before any early-return branch so every target
+		// path rejects a bad outSubdir override consistently.
+		validateSubdirOverrides(config.overrides, entries, packageName);
+
+		// Ambient types-only .d.ts exports: validated on every target path (mixed-export + collision),
+		// copied into each built pkg dir on dev/prod below. exportsAsIndexes is never set by the build.
+		const ambient = extractAmbientDts({ exports: exportsMap ?? pkg.exports, bin: pkg.bin }, {});
+		assertNoEntryCollisions(Object.keys(entries), ambient);
+		// A types-only package (only ambient .d.ts exports, no JS entries, no SEA) has nothing for the
+		// JS pass to build — tsdown would throw an opaque "No input files". Fail loud with an actionable
+		// error instead; a package must ship at least one JS or exe entry alongside its ambient declarations.
+		if (ambient.length > 0 && !hasJsEntries && config.exe === undefined) {
+			throw new ConfigValidationError({
+				path: "exports",
+				reason:
+					"a types-only package with only ambient .d.ts exports is not supported — add at least one JS entry (or an exe) alongside the ambient declarations",
+			});
+		}
+
+		// --target meta is SOFT-DEPRECATED: meta is now emitted by --target prod (per group, with
+		// resolved + optionally optimistic deps). Warn and no-op so external escape-hatch scripts that
+		// still pass --target meta do not hard-fail. Full removal (flag + build:meta task/scripts) lands
+		// in a follow-up branch.
+		if (target === "meta") {
+			const writeMetaOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
+			writeMetaOutput({
+				target: "stdout",
+				contentType: "text/plain",
+				content: `meta: --target meta is deprecated and now a no-op; meta is emitted by --target prod (${packageName}).`,
+			});
+			return;
+		}
+
+		// --target exe: compile SEA binaries via @tsdown/exe. No tsdown library build.
+		if (target === "exe") {
+			if (config.exe === undefined) {
+				throw new Error("`savvy build --target exe` requires an `exe` option in the build config");
+			}
+			const exe = options.runExeBuild ?? realRunExeBuild;
+			await exe({
+				cwd,
+				outDir: join(cwd, "dist", "dev", "pkg", "bin"),
+				specs: exeSpecs,
+				collector,
+				groupId: "dev",
+				verbose,
+			});
+			const writeExeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
+			writeExeOutput({
+				target: "stdout",
+				contentType: "text/plain",
+				content: `exe: compiled ${exeSpecs.length} binary/binaries for ${packageName}`,
+			});
+			return;
+		}
+
+		// Per-entry format overrides: pin specific export paths to their own format/bundling.
+		// Entries come from packageJsonEntries (the authoritative, filtered entry map: it drops
+		// non-.ts exports, resolves object exports, rewrites /dist/*.js -> /src/*.ts, skips .json,
+		// and includes bin). Override export paths are flattened to entry names via createEntryName.
+		let overridePartitions: EntryOverride[] = [];
+		let baseEntries: Record<string, string> = entries;
+		let dualExports: ReadonlySet<string> | undefined;
+		// Export paths of overrides that build into an isolated `<group>/pkg/<outSubdir>/` sub-package.
+		// Threaded to buildTargetGroups so the manifest maps each to `<subdir>/index.*`.
+		const subdirExports = new Set<string>();
+		if (config.overrides) {
+			const partitions: EntryOverride[] = [];
+			const overriddenEntryNames = new Set<string>();
+			const baseFormatHasCjs = (config.format ?? ["esm"]).includes("cjs");
+			const dualExportKeys = new Set<string>();
+			const exportPathByEntry = deriveExportPaths(entries, exportsMap); // entryName -> export key
+			for (const ov of config.overrides) {
+				// An outSubdir partition is an isolated single-export sub-package — pin exactly one export.
+				if (ov.outSubdir !== undefined && ov.entries.length !== 1) {
+					throw new Error(
+						`overrides: outSubdir "${ov.outSubdir}" must pin exactly one export path (got ${ov.entries.length})`,
+					);
+				}
+				const partEntry: Record<string, string> = {};
+				for (const exportPath of ov.entries) {
+					// Require the canonical package.json exports-key form. A non-canonical value like
+					// "changesets/markdownlint" would still flatten to a valid entry name and build the
+					// JS, but its dualExports key would not match the manifest's "./"-prefixed export key,
+					// silently dropping the require condition. Fail loudly instead.
+					if (exportPath !== "." && !exportPath.startsWith("./")) {
+						throw new Error(
+							`overrides: entry "${exportPath}" must be a canonical export path — use "." for the root or a "./"-prefixed subpath (e.g. "./changesets/markdownlint")`,
+						);
+					}
+					const flatName = createEntryName(exportPath, false);
+					const src = entries[flatName];
+					if (src === undefined) {
+						throw new Error(
+							`overrides: export path "${exportPath}" (entry "${flatName}") is not a build entry of ${packageName}`,
+						);
+					}
+					// An outSubdir partition emits a barrel at `<subdir>/index.*`, so its output entry KEY
+					// must be "index". The source lookup still uses the flattened name (the base entry key).
+					const entryName = ov.outSubdir !== undefined ? "index" : flatName;
+					partEntry[entryName] = src;
+					overriddenEntryNames.add(flatName);
+					if (ov.outSubdir !== undefined) subdirExports.add(exportPath);
+					if ((ov.format ?? config.format ?? ["esm"]).includes("cjs")) dualExportKeys.add(exportPath);
+				}
+				partitions.push({
+					entry: partEntry,
+					...(ov.format !== undefined ? { format: ov.format } : {}),
+					...(ov.externals !== undefined ? { externals: ov.externals } : {}),
+					...(ov.bundle !== undefined ? { bundle: ov.bundle } : {}),
+					...(ov.bundleNodeModules !== undefined ? { bundleNodeModules: ov.bundleNodeModules } : {}),
+					...(ov.bundledPackages !== undefined ? { bundledPackages: ov.bundledPackages } : {}),
+					...(ov.dtsExternals !== undefined ? { dtsExternals: ov.dtsExternals } : {}),
+					...(ov.platform !== undefined ? { platform: ov.platform } : {}),
+					...(ov.css !== undefined ? { css: ov.css } : {}),
+					...(ov.outSubdir !== undefined ? { outSubdir: ov.outSubdir } : {}),
+				});
+			}
+			const onlyBase: Record<string, string> = {};
+			for (const [name, src] of Object.entries(entries)) {
+				if (overriddenEntryNames.has(name)) continue;
+				onlyBase[name] = src;
+				if (baseFormatHasCjs) dualExportKeys.add(exportPathByEntry[name] ?? (name === "index" ? "." : `./${name}`));
+			}
+			overridePartitions = partitions;
+			baseEntries = onlyBase;
+			dualExports = dualExportKeys;
+		}
+
+		// Normalize after validation (which already surfaced any structural error). Pure; never throws here.
+		const looseFiles = config.looseFiles !== undefined ? normalizeLooseFiles(config.looseFiles) : undefined;
+
+		// dev: one dev group named after the base; npm: all resolved prod groups (meta already returned above).
+		const { groups, resolution } =
+			target === "dev"
+				? { groups: [{ id: "dev", name: packageName }] as ReadonlyArray<BuildGroupSpec>, resolution: undefined }
+				: deriveProdGroups(publishTargets, packageName);
+
+		const explicitFormat = config.output?.format;
+		const writeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
+		renderAndWrite = async (): Promise<void> => {
+			const rendered = await Effect.runPromise(
+				renderReport(collector.snapshot(packageName), {
+					...(explicitFormat !== undefined ? { explicitFormat } : {}),
+					verbose,
+					noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
+				}).pipe(Effect.provide(ReportPipelineLive)),
+			);
+			for (const output of rendered) writeOutput(output);
+		};
+
 		// A pure-binary (exe-only) package has no JS entries; running tsdown would throw "No input files".
 		// Skip the library build — the manifest is emitted standalone in the exe step below.
 		if (hasJsEntries || config.exe === undefined) {
@@ -539,14 +571,25 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			}
 		}
 	} catch (err) {
-		// Surface whatever diagnostics were captured before the failure, then rethrow.
-		await renderAndWrite();
-		writeIssuesBestEffort();
+		// Terminal failure path. Persist the artifact FIRST: a rendering failure must never cost us the
+		// structured diagnostics, which is exactly what a reader wants when the build crashed. Rendering
+		// is best-effort here too — if it throws, the ORIGINAL build error is what propagates, so the
+		// exit code and the surfaced error are unchanged by anything in this handler.
+		writeIssuesBestEffort(err);
+		if (renderAndWrite !== undefined) {
+			try {
+				await renderAndWrite();
+			} catch {
+				// intentionally swallowed — the build error below is the real outcome
+			}
+		}
 		throw err;
 	}
 
-	await renderAndWrite();
+	// Terminal success path: artifact first, then render. A render failure still propagates (the build
+	// log is part of the contract), but only after the artifact is on disk.
 	writeIssuesBestEffort();
+	if (renderAndWrite !== undefined) await renderAndWrite();
 }
 
 /**

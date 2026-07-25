@@ -86,8 +86,9 @@ A workflow re-run should not write a release twice, publish the same tarball twi
 
 - **Probe then publish.** Pack the package once, compare its integrity digest against what the registry already has and upload only when they differ. See [publishing packages](./11-publishing.md#probe-then-publish).
 - **List before you attest.** `Attest.listForSubject(sha256Hex)` returns the attestations already written for a digest, so the orchestrator reuses an existing attestation URL instead of writing a fresh one. See [generating SLSA attestations](./10-slsa-attestations.md#idempotent-recovery).
+- **Treat a branch create race as success.** `GitBranch.create` fails with a `GitBranchError` whose `alreadyExists` field is `true` when GitHub rejects the ref because it is already there, so a concurrent or repeated run recovers on the error instead of asking the API again. See [GitTag, GitBranch, GitCommit](./03-services.md#gittag-gitbranch-gitcommit).
 
-Both come down to the same idea: read the current state, then act only on the delta. That is what lets a partially-failed run recover cleanly on a retry.
+They come down to the same idea: read the current state, then act only on the delta. That is what lets a partially-failed run recover cleanly on a retry.
 
 ## Handle secrets as Redacted, mask generated ones
 

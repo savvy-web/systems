@@ -231,28 +231,30 @@ Low-level Octokit wrapper for REST and GraphQL calls.
 
 ```typescript
 import { Effect } from "effect"
+import type { GitHubOctokit } from "@savvy-web/github-action-effects"
 import { GitHubClient, GitHubClientLive } from "@savvy-web/github-action-effects"
 
 const program = Effect.gen(function* () {
   const client = yield* GitHubClient
 
-  // REST API call. The callback receives `octokit: unknown`, so narrow it with
-  // a structural cast (or `octokit as Octokit` from @octokit/rest) before use.
-  const release = yield* client.rest("getLatestRelease", (octokit) =>
-    (octokit as { rest: { repos: { getLatestRelease: (p: unknown) => Promise<{ data: { id: number } }> } } })
-      .rest.repos.getLatestRelease({ owner: "org", repo: "repo" }),
+  // REST API call. Annotate the callback parameter as `GitHubOctokit` and the
+  // response types come back typed — no structural cast needed.
+  const release = yield* client.rest("getLatestRelease", (octokit: GitHubOctokit) =>
+    octokit.rest.repos.getLatestRelease({ owner: "org", repo: "repo" }),
   )
+  // release.id is a number, release.tag_name a string, and so on
 
   // Paginated REST call — eager, collects every page into one array
-  const issues = yield* client.paginate("listIssues", (octokit, page, perPage) =>
-    (octokit as { rest: { issues: { listForRepo: (p: unknown) => Promise<{ data: Array<{ number: number }> }> } } })
-      .rest.issues.listForRepo({ owner: "org", repo: "repo", page, per_page: perPage }),
+  const issues = yield* client.paginate("listIssues", (octokit: GitHubOctokit, page, perPage) =>
+    octokit.rest.issues.listForRepo({ owner: "org", repo: "repo", page, per_page: perPage }),
   )
 
   // Repository context
   const { owner, repo } = yield* client.repo
 }).pipe(Effect.provide(GitHubClientLive.fromEnv()))
 ```
+
+`GitHubOctokit` is the instance type the layers construct and pass to the `rest`, `paginate` and `paginateStream` callbacks: `@octokit/rest`'s `Octokit` with the rest-endpoint-methods and paginate plugins applied. The annotation is optional — the parameter accepts an unannotated callback too — but without it you are back to casting the handle yourself.
 
 `GitHubClientLive` is a namespace of three layer constructors, not a bare layer. All three are functions:
 
@@ -293,17 +295,17 @@ For the pre/main/post pattern where one token is shared across phases, use the [
 
 ```typescript
 import { Effect, Stream } from "effect"
+import type { GitHubOctokit } from "@savvy-web/github-action-effects"
 import { GitHubClient, GitHubClientLive } from "@savvy-web/github-action-effects"
 
 const program = Effect.gen(function* () {
   const client = yield* GitHubClient
 
   // Walk issues newest-first, stopping at the first one closed before a cutoff.
-  const recent = yield* client.paginateStream<{ number: number; closed_at: string | null }>(
+  const recent = yield* client.paginateStream(
     "listIssues",
-    (octokit, page, perPage) =>
-      (octokit as { rest: { issues: { listForRepo: (p: unknown) => Promise<{ data: Array<{ number: number; closed_at: string | null }> }> } } })
-        .rest.issues.listForRepo({ owner: "org", repo: "repo", state: "all", page, per_page: perPage }),
+    (octokit: GitHubOctokit, page, perPage) =>
+      octokit.rest.issues.listForRepo({ owner: "org", repo: "repo", state: "all", page, per_page: perPage }),
   ).pipe(
     Stream.takeWhile((issue) => issue.closed_at === null || issue.closed_at > "2026-01-01"),
     Stream.runCollect,
@@ -500,6 +502,27 @@ const program = Effect.gen(function* () {
     { path: "obsolete.config.js", sha: null },  // delete a file
   ])
 })
+```
+
+Every `GitBranch` failure is a `GitBranchError` carrying the `branch`, the `operation` and a human-readable `reason`, plus two optional fields lifted from the underlying API response: `status`, the HTTP status code, and `alreadyExists`, which is `true` when GitHub rejected a ref create with a 422 or 409 naming a reference that is already there. Match on `alreadyExists` to treat the create race as a success rather than issuing a second call to find out whether the branch exists.
+
+```typescript
+import { Effect } from "effect"
+import { GitBranch } from "@savvy-web/github-action-effects"
+
+const ensureBranch = (name: string, sha: string) =>
+  Effect.gen(function* () {
+    const branches = yield* GitBranch
+    yield* branches.create(name, sha)
+  }).pipe(
+    Effect.catchTag("GitBranchError", (error) =>
+      error.alreadyExists
+        ? Effect.logInfo(`${name} already exists — reusing it`)
+        : Effect.fail(error),
+    ),
+  )
+// Second run of ensureBranch("release/v1", sha) logs:
+// release/v1 already exists — reusing it
 ```
 
 ### GitHubApp

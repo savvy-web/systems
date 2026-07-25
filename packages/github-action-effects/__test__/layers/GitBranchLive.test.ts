@@ -1,6 +1,7 @@
 import { Cause, Duration, Effect, Exit, Fiber, Layer, Stream } from "effect";
 import { TestClock } from "effect/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { GitBranchError } from "../../src/errors/GitBranchError.js";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import { GitBranchLive } from "../../src/layers/GitBranchLive.js";
 import { GitBranch } from "../../src/services/GitBranch.js";
@@ -132,6 +133,59 @@ describe("GitBranchLive", () => {
 		});
 	});
 
+	describe("already-exists discriminant", () => {
+		const runCreateExit = (branch: string, sha: string) => {
+			const layer = Layer.provide(GitBranchLive, Layer.succeed(GitHubClient, makeMockClient()));
+			return Effect.runPromise(
+				Effect.exit(
+					Effect.provide(
+						Effect.flatMap(GitBranch, (svc) => svc.create(branch, sha)),
+						layer,
+					),
+				),
+			);
+		};
+
+		const squashed = (exit: Exit.Exit<void, unknown>): GitBranchError => {
+			expect(Exit.isFailure(exit)).toBe(true);
+			if (!Exit.isFailure(exit)) {
+				throw new Error("expected failure exit");
+			}
+			return Cause.squash(exit.cause) as GitBranchError;
+		};
+
+		it("sets alreadyExists and status on a 422 Reference already exists create failure", async () => {
+			mockCreateRef.mockRejectedValue(Object.assign(new Error("Reference already exists"), { status: 422 }));
+			const error = squashed(await runCreateExit("racy-branch", "sha123"));
+			expect(error._tag).toBe("GitBranchError");
+			expect(error.branch).toBe("racy-branch");
+			expect(error.operation).toBe("create");
+			expect(error.status).toBe(422);
+			expect(error.alreadyExists).toBe(true);
+		});
+
+		it("sets alreadyExists on a 409 already-exists create failure", async () => {
+			mockCreateRef.mockRejectedValue(Object.assign(new Error("Reference already exists"), { status: 409 }));
+			const error = squashed(await runCreateExit("racy-branch", "sha123"));
+			expect(error.status).toBe(409);
+			expect(error.alreadyExists).toBe(true);
+		});
+
+		it("does not set alreadyExists for a 422 with an unrelated message", async () => {
+			mockCreateRef.mockRejectedValue(Object.assign(new Error("Reference cannot be updated"), { status: 422 }));
+			const error = squashed(await runCreateExit("branch", "sha123"));
+			expect(error.status).toBe(422);
+			expect(error.alreadyExists).toBe(false);
+		});
+
+		it("does not set alreadyExists for a non-422/409 failure, but carries the status", async () => {
+			mockCreateRef.mockRejectedValue(Object.assign(new Error("Reference already exists"), { status: 403 }));
+			const error = squashed(await runCreateExit("branch", "sha123"));
+			expect(error.status).toBe(403);
+			expect(error.alreadyExists).toBe(false);
+		});
+	});
+
 	describe("exists", () => {
 		it("returns true when ref exists", async () => {
 			mockGetRef.mockResolvedValue({ data: { object: { sha: "abc" } } });
@@ -183,6 +237,12 @@ describe("GitBranchLive", () => {
 				),
 			);
 			expect(exit._tag).toBe("Failure");
+			if (Exit.isFailure(exit)) {
+				const error = Cause.squash(exit.cause) as GitBranchError;
+				expect(error._tag).toBe("GitBranchError");
+				expect(error.status).toBe(500);
+				expect(error.alreadyExists).toBe(false);
+			}
 		});
 
 		it("returns false on 404", async () => {

@@ -287,7 +287,7 @@ export type { BotIdentity, GitHubAppShape, InstallationToken as InstallationToke
 export { GitHubApp, InstallationToken } from "./services/GitHubApp.js";
 export type { GitHubArtifactMetadataShape, StorageRecordInput } from "./services/GitHubArtifactMetadata.js";
 export { GitHubArtifactMetadata } from "./services/GitHubArtifactMetadata.js";
-export type { GitHubClientShape } from "./services/GitHubClient.js";
+export type { GitHubClientShape, GitHubOctokit } from "./services/GitHubClient.js";
 export { GitHubClient } from "./services/GitHubClient.js";
 export type {
 	CommitComparison,

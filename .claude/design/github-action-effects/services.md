@@ -3,8 +3,8 @@ status: current
 module: github-action-effects
 category: architecture
 created: 2026-03-06
-updated: 2026-06-23
-last-synced: 2026-06-23
+updated: 2026-07-24
+last-synced: 2026-07-24
 completeness: 92
 related:
   - ./index.md
@@ -119,7 +119,8 @@ The public API groups related functions under namespace objects to keep the barr
 
 Most service methods are self-explanatory from their file. The behaviors below are non-obvious and worth knowing before editing the caller.
 
-- **`GitHubClient`** — `retryable` on `GitHubClientError` is true for 429, any 5xx and a 403 carrying a secondary-rate-limit signal; a bare 403 stays non-retryable. The three construction modes are documented in [layers.md](./layers.md#githubclientlive-construction-modes). See [errors-and-schemas.md](./errors-and-schemas.md#error-hierarchy).
+- **`GitHubClient`** — `retryable` on `GitHubClientError` is true for 429, any 5xx and a 403 carrying a secondary-rate-limit signal; a bare 403 stays non-retryable. The three construction modes are documented in [layers.md](./layers.md#githubclientlive-construction-modes). See [errors-and-schemas.md](./errors-and-schemas.md#error-hierarchy) and [the octokit callback typing](#the-octokit-callback-typing) below.
+- **`GitBranch`** — its `mapError` enriches every `GitHubClientError` it wraps with the underlying `status` and a derived `alreadyExists` discriminant (a 422, occasionally 409, whose reason says "already exists"), so a caller handling the benign ref-create race matches on a field instead of re-querying branch state to infer intent. `exists` keeps its own 404-to-`false` short-circuit but now routes its remaining failures through the same `mapError`, so no path constructs a bare `GitBranchError` that silently lacks the discriminant. See [errors-and-schemas.md](./errors-and-schemas.md#error-hierarchy).
 - **`GitHubCommit` vs `GitCommit`** — `GitHubCommit` reads the commit graph over `repos.getCommit`/`listCommits`/`compareCommits`; `GitCommit` *writes* via the Git Data API. `GitHubCommit.compare` paginates by commit, so a single-commit comparison truncates to the first 300 files — use `changedFiles` (paginates by the commit's files) for the full set on large squash merges.
 - **`GitTag.resolve`** unwraps annotated tags: when the ref type is `tag` it dereferences to the target commit SHA, so the result is always a commit SHA.
 - **`CheckRun`** caps annotations at 50 per API call; `create` returns a `CheckRunData` record (not just an id).
@@ -133,6 +134,16 @@ Most service methods are self-explanatory from their file. The behaviors below a
 - **`BlobStore`** is a generic key→bytes store (`get`/`put`/`has`) — one byte buffer per caller-supplied key, unlike `ActionCache` which tars a path-set under one key. It is the abstraction for per-artifact remote caching; pick a backend layer rather than the service directly. See [layers.md](./layers.md#blobstore-backends) for the GitHub-cache and S3 backends and their tradeoffs.
 - **`Glob`** wraps `node:fs.globSync`; several `@actions/glob` options are accepted for parity but are documented no-ops because `globSync` has no equivalent — see the `GlobOptions` doc comments in `src/services/Glob.ts`.
 - **`GitHubApp.resolveAppIdentity`** makes two requests (`GET /app` with the App JWT, then `GET /users/<slug>[bot]`); passing an installation token runs the public `GET /users` lookup authenticated (5000 req/hr) instead of unauthenticated (60 req/hr). `botIdentity` delegates to `formatBotIdentity` — see [errors-and-schemas.md](./errors-and-schemas.md#shared-internal-helpers).
+
+### The octokit callback typing
+
+`GitHubClientShape` exposes three callback-taking methods — `rest`, `paginate`, `paginateStream` — whose first parameter is the constructed Octokit instance. That instance's type is now a public export, **`GitHubOctokit`** (`src/services/GitHubClient.ts`, re-exported from the barrel): `@octokit/rest`'s `Octokit` with the rest-endpoint-methods and paginate plugins applied. A consumer annotates its callback parameter with it (`client.rest("repos.get", (octokit: GitHubOctokit) => …)`) instead of hand-rolling a cast interface, which is the whole point of the export.
+
+The callback parameters themselves are typed `any`, not `GitHubOctokit`, and that is a deliberate trade-off rather than an oversight:
+
+- The previous `unknown` typing made the *shape* honest but the *call site* unusable — under TypeScript's contravariant parameter checking, `unknown` REJECTS a callback that annotates the parameter as `GitHubOctokit`, so no consumer could name the type it was being handed.
+- Tightening the parameter to `GitHubOctokit` outright is the correct end state but breaks the other direction: the Live and Test layer implementations (and external test doubles) still annotate the parameter as `unknown`, and a narrower parameter type rejects those implementations. Retyping them is deferred to a per-layer cleanup pass.
+- `any` is the only type assignable in both directions, so it is the interim that unblocks consumers without a coordinated retype. Each of the three sites carries an explicit `biome-ignore` pointing at the note in the source file — treat those ignores as the marker for the cleanup pass, not as ambient permission for `any` elsewhere in the package.
 
 ---
 

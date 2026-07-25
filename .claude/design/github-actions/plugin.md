@@ -3,8 +3,8 @@ status: current
 module: github-actions
 category: architecture
 created: 2026-07-23
-updated: 2026-07-23
-last-synced: 2026-07-23
+updated: 2026-07-24
+last-synced: 2026-07-24
 completeness: 85
 related:
   - ../silk/plugin.md
@@ -219,6 +219,16 @@ so the agent recognizes the trap instead of rediscovering it:
 The rule the plugin encodes from those cases is short: **when docs and source disagree, the source wins — and when
 you find a new disagreement, report it.** `src/index.ts` is the authoritative export inventory, which is why the
 authority ladder starts at the installed package rather than at any prose.
+
+That rule cuts both ways: the vendored references are themselves a dated copy, and `@savvy-web/github-action-effects`
+has since moved under two of them. `github-api`'s `references/service-signatures.md` still shows
+`fn: (octokit: unknown)` for `GitHubClient.rest`/`paginate`/`paginateStream`, and `action-engineering`'s
+`references/error-taxonomy.md` still lists `GitBranchError` as `branch`/`operation`/`reason` only. The package now
+exports a `GitHubOctokit` type for those callbacks to be annotated with, and `GitBranchError` carries optional
+`status`/`alreadyExists` fields (see `../github-action-effects/services.md` and
+`../github-action-effects/errors-and-schemas.md`). Both are outstanding re-sync items for the vendored references —
+recorded here rather than silently patched, because the provenance-banner mechanism is what is supposed to catch
+this class of drift and a design doc is the right place to note when it has accrued.
 
 ## Source access outside the monorepo
 

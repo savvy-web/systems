@@ -121,6 +121,108 @@ write_mail() {
 	[[ "$output" == *'dogfood: ball is ours in loop "effected"'* ]]
 }
 
+# --- issue #339: turn-flips caused by the session's own journal appends ------
+# The monitor must not re-announce a turn to the very session that already
+# learned about the triggering mail from an earlier mail event. A flip citing
+# mail the monitor has not already surfaced (a genuine inbound turn) must
+# still fire.
+
+@test "own-append turn-flip citing already-surfaced mail: no turn alert (issue #339)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-20-handoff-round-1.md" handoff 1 "Round 1 handoff"
+
+	local harness="${BATS_TEST_TMPDIR}/self-echo.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+
+	const root = process.env.CLAUDE_PROJECT_DIR;
+	let prev = { journals: new Map(), mailboxes: new Map() };
+
+	const c1 = await scan();
+	const r1 = diagnose(c1, prev);
+	prev = r1.next;
+	console.log("TICK1:" + r1.lines.length);
+
+	// The session reads the mail and appends its own turn-flip snapshot
+	// citing it as lastMail.in -- the self-echo this fix suppresses.
+	appendFileSync(
+		join(root, ".claude", "dogfood", "effected.jsonl"),
+		JSON.stringify({
+			at: "2026-07-20T01:00:00Z",
+			event: "mail-received",
+			role: "downstream",
+			phase: "adopting",
+			ball: "ours",
+			round: 1,
+			lastMail: { in: ".claude/dogfood/effected/2026-07-20-handoff-round-1.md" },
+		}) + "\n",
+	);
+
+	const c2 = await scan();
+	const r2 = diagnose(c2, prev);
+	console.log("TICK2:" + r2.lines.length);
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:1"* ]]
+	[[ "$output" == *"TICK2:0"* ]]
+}
+
+@test "inbound flip citing not-yet-surfaced mail: turn alert still emits (issue #339)" {
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-20T00:00:00Z","event":"loop-started","role":"downstream","phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+
+	local harness="${BATS_TEST_TMPDIR}/genuine-flip.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+
+	const root = process.env.CLAUDE_PROJECT_DIR;
+	let prev = { journals: new Map(), mailboxes: new Map() };
+
+	const c1 = await scan();
+	const r1 = diagnose(c1, prev);
+	prev = r1.next;
+	console.log("TICK1:" + r1.lines.length);
+
+	// A brand new mail file this monitor has never surfaced, and the journal
+	// already reflecting it in the same tick -- not a self-echo of anything
+	// this monitor already told the session about.
+	mkdirSync(join(root, ".claude", "dogfood", "effected"), { recursive: true });
+	writeFileSync(
+		join(root, ".claude", "dogfood", "effected", "2026-07-21-request-round-2.md"),
+		"---\nfrom: effected\nto: savvy-web-systems\nkind: request\nround: 2\n---\n\n# Round 2 request\n\nBody text.\n",
+	);
+	appendFileSync(
+		join(root, ".claude", "dogfood", "effected.jsonl"),
+		JSON.stringify({
+			at: "2026-07-21T00:00:00Z",
+			event: "mail-received",
+			role: "downstream",
+			phase: "adopting",
+			ball: "ours",
+			round: 2,
+			lastMail: { in: ".claude/dogfood/effected/2026-07-21-request-round-2.md" },
+		}) + "\n",
+	);
+
+	const c2 = await scan();
+	const r2 = diagnose(c2, prev);
+	console.log("TICK2:" + r2.lines.length);
+	for (const line of r2.lines) console.log(line);
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:0"* ]]
+	[[ "$output" == *'dogfood: ball is ours in loop "effected"'* ]]
+}
+
 @test "multiple loops: independent turn alerts and mail" {
 	make_project >/dev/null
 	write_journal_line "$CLAUDE_PROJECT_DIR" effected \

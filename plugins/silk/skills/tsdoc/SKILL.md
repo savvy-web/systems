@@ -46,6 +46,7 @@ Types come from TypeScript, not from doc comments. Never restate a type in a tag
 | `tsdoc-undefined-tag` | fix the tag, or register it in `savvy.build.ts` | `references/custom-tags.md` |
 | `@` in prose flagged | backtick-wrap or `\@`-escape scoped names like `@savvy-web/x` | `references/diagnostics.md` |
 | other `tsdoc-*` | fix the syntax (hyphens, braces, escapes) | `references/diagnostics.md` |
+| verbatim code/type transcription in a doc block | wrap it in a fenced ```ts code block, not backslash escapes | `references/diagnostics.md` |
 | "what tags may I use?" | the standard set, all enabled | `references/supported-tags.md` |
 | documenting a `@public` export | summary + each property; `@remarks`/`@privateRemarks`; compilable `@example` | `references/doc-quality.md` |
 
@@ -85,16 +86,22 @@ The `{@link PackageDescriptor}` above resolves only because `PackageDescriptor` 
 
 ## Verify your work
 
-The build writes structured diagnostics to `dist/<target>/issues.json` (the `ae-*`/`tsdoc-*` ones live in `dist/prod/issues.json`, since the API Extractor pass is prod-only). Build, then read the artifact:
+The build writes structured diagnostics to `dist/<target>/issues.json` (the `ae-*`/`tsdoc-*` ones live in `dist/prod/issues.json`, since the API Extractor pass is prod-only). The artifact is written on **every** terminal path, including a crash — a build that blew up mid-pass still leaves the file behind with all three diagnostic buckets empty, so emptiness alone is no longer proof of a clean build. Build, then read `buildOk` before the diagnostic buckets:
 
 ```bash
 pnpm turbo run build:prod --filter <package> --force >/dev/null 2>&1
-jq '{warnings: [.warnings[] | select((.code // "") | test("^(ae-|tsdoc-)"))],
+jq '{buildOk: .buildOk, failure: .failure,
+     warnings: [.warnings[] | select((.code // "") | test("^(ae-|tsdoc-)"))],
      errors:   [.errors[]   | select((.code // "") | test("^(ae-|tsdoc-)"))]}' \
   <package-dir>/dist/prod/issues.json
 ```
 
-A present file with empty `warnings`/`errors` (after the filter) means clean. An absent file means the package was not built. `generatedAt` is the artifact's timestamp — rebuild before trusting it after an edit. Reach for `suppressWarnings` (`references/custom-tags.md`) only for genuine false positives.
+- **`buildOk: false`** — the build crashed (`failure.name`/`failure.message` say why). The filtered `warnings`/`errors` are not trustworthy evidence of a clean surface; fix the crash and rebuild before looking at diagnostics at all.
+- **`buildOk` absent** — the artifact predates this field (written by an older build). Treat this as *unknown*, not as a pass — rebuild to get a current artifact with the stamp.
+- **`buildOk: true` with empty filtered `warnings`/`errors`** — clean.
+- An absent `issues.json` file means the package was not built at all.
+
+`generatedAt` is the artifact's timestamp — rebuild before trusting it after an edit. Reach for `suppressWarnings` (`references/custom-tags.md`) only for genuine false positives.
 
 **Locate by `file:line`, falling back to the symbol name.** `ae-*`/`tsdoc-*` entries in `issues.json` now carry accurate `file`/`line`/`column` fields pointing at the true source declaration: the meta pass runs a second, diagnostics-only API Extractor run over a per-module declaration tree where each `.d.ts.map` references only its own source file, so positions resolve correctly. Navigate to the reported `file:line` to find the declaration to fix.
 

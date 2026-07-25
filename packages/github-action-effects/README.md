@@ -52,18 +52,21 @@ Action.run(program);
 
 ```typescript
 import { Effect } from "effect";
+import type { GitHubOctokit } from "@savvy-web/github-action-effects";
 import { Action, GitHubClient, GitHubClientLive } from "@savvy-web/github-action-effects";
 
 const program = Effect.gen(function* () {
   const client = yield* GitHubClient;
   const { owner, repo } = yield* client.repo;
-  return yield* client.rest("issues.list", (octokit) =>
+  return yield* client.rest("issues.list", (octokit: GitHubOctokit) =>
     octokit.rest.issues.listForRepo({ owner, repo }),
   );
 }).pipe(Effect.provide(GitHubClientLive.fromEnv()));
 
 Action.run(program);
 ```
+
+`GitHubOctokit` is the instance type the layers hand to the `rest`, `paginate` and `paginateStream` callbacks — `@octokit/rest`'s `Octokit` with the rest-endpoint-methods and paginate plugins applied. Annotate the callback parameter with it and the whole Octokit surface, including the response types, is typed; the annotation is optional and nothing breaks if you leave it off.
 
 The repo-scoped token is often too weak for permission-sensitive work. When that happens, pass `fromToken` a token you constructed yourself, or use `fromApp` to act as a GitHub App installation.
 
@@ -90,12 +93,13 @@ Action.run(
 ```typescript
 // main.ts — build a GitHubClient from the persisted token
 import { Effect } from "effect";
+import type { GitHubOctokit } from "@savvy-web/github-action-effects";
 import { Action, GitHubClient, GitHubToken } from "@savvy-web/github-action-effects";
 
 const program = Effect.gen(function* () {
   const client = yield* GitHubClient;
   const { owner, repo } = yield* client.repo;
-  return yield* client.rest("repos.get", (octokit) =>
+  return yield* client.rest("repos.get", (octokit: GitHubOctokit) =>
     octokit.rest.repos.get({ owner, repo }),
   );
 }).pipe(Effect.provide(GitHubToken.client()));

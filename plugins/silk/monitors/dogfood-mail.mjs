@@ -15,7 +15,7 @@
 // without starting the interval, same `--once` single-shot mode.
 import { globSync, realpathSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
@@ -151,32 +151,21 @@ export async function scan() {
  * per journal id, the last-notified snapshot signature (turn alerts) and,
  * per mailbox id, the set of mail filenames already notified (new-mail
  * alerts) so a quiet poll (nothing new) never re-emits.
+ *
+ * Mailboxes are scanned before journals so the journal loop can check a
+ * turn-flip's `lastMail.in` against mail this monitor already surfaced in an
+ * EARLIER tick (`prev.mailboxes`, not this tick's own new notifications --
+ * issue #339). A flip whose triggering line cites already-surfaced mail is
+ * the local session's own journal append echoing mail it has already been
+ * told about; it carries no new information and is suppressed regardless of
+ * who authored the line. A flip citing mail this monitor has not already
+ * surfaced -- a genuine inbound turn, including one this same tick is
+ * surfacing mail for the first time -- still fires.
  */
 export function diagnose(current, prev) {
 	const lines = [];
 	const nextJournals = new Map();
 	const nextMailboxes = new Map();
-
-	for (const journal of current.journals) {
-		const before = prev.journals.get(journal.id);
-		const signature = JSON.stringify(journal.snapshot);
-		const alreadyNotified = before?.signature === signature;
-		// A terminal `unlinked` snapshot is quiescent: the loop is done, so it
-		// is not an actionable turn regardless of `ball`. The journal is kept
-		// after `unlinked` (a future collaboration continues it), and the
-		// per-process notify-dedupe resets every session, so without this gate
-		// a finished loop re-fires the turn alert on each new session
-		// (issue #314). Appending a fresh non-`unlinked` loop line reopens it.
-		if (
-			journal.snapshot &&
-			!alreadyNotified &&
-			journal.snapshot.ball === "ours" &&
-			journal.snapshot.phase !== "unlinked"
-		) {
-			lines.push(`dogfood: ball is ours in loop "${journal.id}" (phase: ${journal.snapshot.phase ?? "?"})`);
-		}
-		nextJournals.set(journal.id, { signature });
-	}
 
 	for (const mailbox of current.mailboxes) {
 		const journal = current.journals.find((j) => j.id === mailbox.id);
@@ -209,6 +198,31 @@ export function diagnose(current, prev) {
 			}
 		}
 		nextMailboxes.set(mailbox.id, { notified });
+	}
+
+	for (const journal of current.journals) {
+		const before = prev.journals.get(journal.id);
+		const signature = JSON.stringify(journal.snapshot);
+		const alreadyNotified = before?.signature === signature;
+		const lastMailIn = journal.snapshot?.lastMail?.in;
+		const priorNotified = prev.mailboxes.get(journal.id)?.notified;
+		const selfEcho = Boolean(lastMailIn) && (priorNotified?.has(basename(lastMailIn)) ?? false);
+		// A terminal `unlinked` snapshot is quiescent: the loop is done, so it
+		// is not an actionable turn regardless of `ball`. The journal is kept
+		// after `unlinked` (a future collaboration continues it), and the
+		// per-process notify-dedupe resets every session, so without this gate
+		// a finished loop re-fires the turn alert on each new session
+		// (issue #314). Appending a fresh non-`unlinked` loop line reopens it.
+		if (
+			journal.snapshot &&
+			!alreadyNotified &&
+			journal.snapshot.ball === "ours" &&
+			journal.snapshot.phase !== "unlinked" &&
+			!selfEcho
+		) {
+			lines.push(`dogfood: ball is ours in loop "${journal.id}" (phase: ${journal.snapshot.phase ?? "?"})`);
+		}
+		nextJournals.set(journal.id, { signature });
 	}
 
 	return { lines, next: { journals: nextJournals, mailboxes: nextMailboxes } };
