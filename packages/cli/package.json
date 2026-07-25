@@ -33,10 +33,10 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:effect",
-		"@effected/git": "^0.4.2",
+		"@effected/git": "^0.5.0",
 		"@effected/jsonc": "^0.5.1",
-		"@effected/workspaces": "^0.7.0",
-		"@effected/yaml": "^0.5.1",
+		"@effected/workspaces": "^0.8.0",
+		"@effected/yaml": "^0.6.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect"
 	},
