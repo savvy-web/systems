@@ -4,14 +4,14 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/github-actions/plugin.md",
-			"hash": "62363a682bbe787ac6659f4821f4d393838ab6689db3c098429f4354c37dbdcf",
-			"recordedAt": "2026-07-23"
+			"hash": "75d314d1daa5447bc9bc22c36e4ef0818fba3f154f04cd9fbda049704928999f",
+			"recordedAt": "2026-07-24"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "a0e15a8a63bb89f5d55bc033184d678b8eb347e8c59137209500dc14ff46f812",
-			"recordedAt": "2026-07-21"
+			"hash": "8d2b9b9f1e4b0195d491ec94e2bd986870f47123c3383d2462acdc91a368eabc",
+			"recordedAt": "2026-07-24"
 		},
 		{
 			"source": "e2e/CLAUDE.md",
@@ -22,8 +22,8 @@
 		{
 			"source": "packages/bundler/CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "8b176a73241999e0418a188a1899ecee3de98c317b262d456180da81d684bd77",
-			"recordedAt": "2026-07-16"
+			"hash": "a9c69dc59c79bd16c228b0e7f6b1a919bc6613e825cb637581d60d81aff7fe29",
+			"recordedAt": "2026-07-24"
 		},
 		{
 			"source": "packages/changelog/CLAUDE.md",
@@ -70,8 +70,8 @@
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
 			"target": ".claude/design/silk-effects/architecture.md",
-			"hash": "a55abb2ba04a60eeaab27da6984a18e8dcd0399f89e38bb45870a69c63a8142b",
-			"recordedAt": "2026-07-20"
+			"hash": "2f9324a44eb8a9d351b22211b15b3c87d2d82163933e836a5b4d68812fb01768",
+			"recordedAt": "2026-07-24"
 		},
 		{
 			"source": "packages/silk/CLAUDE.md",
@@ -88,8 +88,8 @@
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "8f9835dd5970f9707adc24adb548d60c6f27ac2faafb5c1cc402528f06d4fcc7",
-			"recordedAt": "2026-07-20"
+			"hash": "91d8d56f257fddc3659ccba6a9b29adf434ca7a7b3b320a37b6123fc51ff96ff",
+			"recordedAt": "2026-07-24"
 		}
 	]
 }

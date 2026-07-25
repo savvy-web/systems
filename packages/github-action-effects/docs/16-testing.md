@@ -329,6 +329,7 @@ To stub API responses, build the state and record them. The state has four field
 ```typescript
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
+import type { GitHubOctokit } from "@savvy-web/github-action-effects"
 import { GitHubClient, GitHubClientTest } from "@savvy-web/github-action-effects/testing"
 import type { GitHubClientTestState } from "@savvy-web/github-action-effects/testing"
 
@@ -344,7 +345,7 @@ describe("rest calls", () => {
     const result = await Effect.gen(function* () {
       const client = yield* GitHubClient
       const { owner, repo } = yield* client.repo
-      return yield* client.rest("repos.get", (octokit: any) =>
+      return yield* client.rest("repos.get", (octokit: GitHubOctokit) =>
         octokit.rest.repos.get({ owner, repo }),
       )
     }).pipe(Effect.provide(GitHubClientTest.layer(state)), Effect.runPromise)

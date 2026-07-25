@@ -213,7 +213,7 @@ Every error class in `src/errors/` extends `Data.TaggedError("Tag")<{ ... }>` di
 
 `AttestLive` uploads through `client.rest(..., (octokit) => ...)`, then guards the handle with `isOctokitLike(octokit)` before calling `octokit.request(...)`. If the provided client is not Octokit-shaped, it throws `"GitHubClient did not provide an Octokit-compatible client"`.
 
-The trade-off is deliberate. The `GitHubClient` interface is intentionally Octokit-agnostic — most call sites work through `client.rest` / `client.paginate` and never touch a concrete Octokit type. The attestation upload is the one path that needs the raw `octokit.request(route, params)` shape, because `POST /repos/{owner}/{repo}/attestations` is not on a typed Octokit method. Rather than widen the public `GitHubClient` interface to expose Octokit internals everywhere, `AttestLive` narrows the type at runtime in the one place that needs it. The cost is a runtime guard instead of a compile-time guarantee; the benefit is a client interface that stays free of `@octokit/rest` types.
+The trade-off is deliberate. The `GitHubClient` interface does not force a concrete Octokit type on anyone: the callback parameter is permissive, and a caller who wants the typed surface annotates it as the exported `GitHubOctokit` (`@octokit/rest`'s `Octokit` with the rest-endpoint-methods and paginate plugins) at the call site. The attestation upload is the one path that needs the raw `octokit.request(route, params)` shape, because `POST /repos/{owner}/{repo}/attestations` is not on a typed Octokit method. Rather than make every implementation of the interface commit to an Octokit type, `AttestLive` narrows the handle at runtime in the one place that needs it. The cost is a runtime guard instead of a compile-time guarantee; the benefit is an interface a test double can satisfy without importing `@octokit/rest`.
 
 ## The Action.run type-erasure boundary
 
@@ -371,12 +371,13 @@ See [services guide](./03-services.md) for usage examples of each service.
 
 ```typescript
 import { Effect, Redacted } from "effect"
+import type { GitHubOctokit } from "@savvy-web/github-action-effects"
 import { GitHubClient, GitHubClientLive } from "@savvy-web/github-action-effects"
 
 const program = Effect.gen(function* () {
   const client = yield* GitHubClient
   const { owner, repo } = yield* client.repo
-  return yield* client.rest("repos.get", (octokit) =>
+  return yield* client.rest("repos.get", (octokit: GitHubOctokit) =>
     octokit.rest.repos.get({ owner, repo }),
   )
 }).pipe(Effect.provide(GitHubClientLive.fromToken(Redacted.make(process.env.MY_TOKEN ?? ""))))

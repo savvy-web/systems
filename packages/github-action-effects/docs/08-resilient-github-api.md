@@ -10,14 +10,15 @@ You do not opt in. `GitHubClientLive.fromEnv()` already gives you the resilient 
 
 ```typescript
 import { Effect } from "effect"
+import type { GitHubOctokit } from "@savvy-web/github-action-effects"
 import { GitHubClient, GitHubClientLive } from "@savvy-web/github-action-effects"
 
 const program = Effect.gen(function* () {
   const client = yield* GitHubClient
   const { owner, repo } = yield* client.repo
   // A transient 503 here is retried automatically before the effect fails.
-  const data = yield* client.rest("repos.get", (octokit) =>
-    (octokit as { rest: { repos: { get: (p: unknown) => Promise<{ data: { default_branch: string } }> } } }).rest.repos.get({ owner, repo }),
+  const data = yield* client.rest("repos.get", (octokit: GitHubOctokit) =>
+    octokit.rest.repos.get({ owner, repo }),
   )
   yield* Effect.log(`default branch: ${data.default_branch}`)
   // default branch: main   (whatever the repo's default is)
@@ -120,6 +121,7 @@ const program = Effect.gen(function* () {
 
 ```typescript
 import { Effect, Stream } from "effect"
+import type { GitHubOctokit } from "@savvy-web/github-action-effects"
 import { GitHubClient } from "@savvy-web/github-action-effects"
 
 const program = Effect.gen(function* () {
@@ -128,16 +130,14 @@ const program = Effect.gen(function* () {
 
   // Find the first open PR labeled "release" without paging the whole list.
   const first = yield* client
-    .paginateStream<{ number: number; labels: Array<{ name: string }> }>(
-      "pulls.list",
-      (octokit, page, perPage) =>
-        (octokit as { rest: { pulls: { list: (p: unknown) => Promise<{ data: Array<{ number: number; labels: Array<{ name: string }> }> }> } } }).rest.pulls.list({
-          owner,
-          repo,
-          state: "open",
-          per_page: perPage,
-          page,
-        }),
+    .paginateStream("pulls.list", (octokit: GitHubOctokit, page, perPage) =>
+      octokit.rest.pulls.list({
+        owner,
+        repo,
+        state: "open",
+        per_page: perPage,
+        page,
+      }),
     )
     .pipe(
       Stream.filter((pr) => pr.labels.some((l) => l.name === "release")),

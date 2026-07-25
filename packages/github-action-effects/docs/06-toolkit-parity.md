@@ -100,18 +100,21 @@ PathUtils.toPosixPath("a\\b")
 
 ```typescript
 import { Effect, Redacted } from "effect"
+import type { GitHubOctokit } from "@savvy-web/github-action-effects"
 import { GitHubClient, GitHubClientLive } from "@savvy-web/github-action-effects"
 
 const program = Effect.gen(function* () {
   const client = yield* GitHubClient
   const { owner, repo } = yield* client.repo
-  const data = yield* client.rest("repos.get", (octokit) =>
-    (octokit as { rest: { repos: { get: (p: unknown) => Promise<{ data: unknown }> } } }).rest.repos.get({ owner, repo }),
+  const data = yield* client.rest("repos.get", (octokit: GitHubOctokit) =>
+    octokit.rest.repos.get({ owner, repo }),
   )
-  yield* Effect.log(`default branch: ${(data as { default_branch: string }).default_branch}`)
+  yield* Effect.log(`default branch: ${data.default_branch}`)
   // default branch: main   (whatever the repo's default is)
 }).pipe(Effect.provide(GitHubClientLive.fromToken(Redacted.make(process.env.MY_TOKEN ?? ""))))
 ```
+
+Annotating the callback parameter as `GitHubOctokit` — the exported instance type of the client the layer builds — gets you the same typed Octokit surface `getOctokit` returned, response types included.
 
 The resilience and pagination behaviour is its own guide — see [resilient GitHub API calls](./08-resilient-github-api.md). For the three credential sources (`fromEnv`, `fromToken`, `fromApp`), see [building a GitHubClient layer](./14-architecture.md#building-a-githubclient-layer).
 
