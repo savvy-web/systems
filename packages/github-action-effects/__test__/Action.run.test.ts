@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import { Context, Effect, Layer } from "effect";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Action } from "../src/Action.js";
 
 const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);

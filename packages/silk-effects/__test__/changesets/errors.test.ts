@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 
 import {
 	ChangesetValidationError,
@@ -34,14 +34,16 @@ describe("ChangesetValidationError", () => {
 		expect(err._tag).toBe("ChangesetValidationError");
 	});
 
-	it("works as an Effect error", () => {
-		const program = Effect.fail(
-			new ChangesetValidationError({
-				issues: [{ path: "test", message: "fail" }],
-			}),
-		).pipe(Effect.catchTag("ChangesetValidationError", (e) => Effect.succeed(e.issues.length)));
-		expect(Effect.runSync(program)).toBe(1);
-	});
+	it.effect("works as an Effect error", () =>
+		Effect.gen(function* () {
+			const program = Effect.fail(
+				new ChangesetValidationError({
+					issues: [{ path: "test", message: "fail" }],
+				}),
+			).pipe(Effect.catchTag("ChangesetValidationError", (e) => Effect.succeed(e.issues.length)));
+			expect(yield* program).toBe(1);
+		}),
+	);
 });
 
 describe("GitHubApiError", () => {
@@ -132,10 +134,12 @@ describe("ConfigurationError", () => {
 		expect(err._tag).toBe("ConfigurationError");
 	});
 
-	it("works with Effect.catchTag", () => {
-		const program = Effect.fail(new ConfigurationError({ field: "repo", reason: "missing" })).pipe(
-			Effect.catchTag("ConfigurationError", (e) => Effect.succeed(e.field)),
-		);
-		expect(Effect.runSync(program)).toBe("repo");
-	});
+	it.effect("works with Effect.catchTag", () =>
+		Effect.gen(function* () {
+			const program = Effect.fail(new ConfigurationError({ field: "repo", reason: "missing" })).pipe(
+				Effect.catchTag("ConfigurationError", (e) => Effect.succeed(e.field)),
+			);
+			expect(yield* program).toBe("repo");
+		}),
+	);
 });

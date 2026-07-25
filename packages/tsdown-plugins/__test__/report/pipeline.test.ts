@@ -1,7 +1,7 @@
 // packages/tsdown-plugins/__test__/report/pipeline.test.ts
 
+import { expect, layer } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 import { ReportPipelineLive, renderReport } from "../../src/report/pipeline.js";
 import type { BuildReport } from "../../src/report/schema.js";
 
@@ -20,29 +20,25 @@ const report: BuildReport = {
 	],
 };
 
-const run = <A>(eff: Effect.Effect<A, never, never>) => Effect.runPromise(eff);
+layer(ReportPipelineLive)("report pipeline", (it) => {
+	it.effect("explicit format wins over environment", () =>
+		Effect.gen(function* () {
+			const out = yield* renderReport([report], { explicitFormat: "json", env: "terminal", noColor: true });
+			expect(out[0].contentType).toBe("application/json");
+		}),
+	);
 
-describe("report pipeline", () => {
-	it("explicit format wins over environment", async () => {
-		const out = await run(
-			renderReport([report], { explicitFormat: "json", env: "terminal", noColor: true }).pipe(
-				Effect.provide(ReportPipelineLive),
-			),
-		);
-		expect(out[0].contentType).toBe("application/json");
-	});
+	it.effect("ci-github + ci executor -> ci-annotations", () =>
+		Effect.gen(function* () {
+			const out = yield* renderReport([report], { env: "ci-github", noColor: true });
+			expect(out.length === 0 || out[0].content.includes("::") || out[0].content === "").toBe(true);
+		}),
+	);
 
-	it("ci-github + ci executor -> ci-annotations", async () => {
-		const out = await run(
-			renderReport([report], { env: "ci-github", noColor: true }).pipe(Effect.provide(ReportPipelineLive)),
-		);
-		expect(out.length === 0 || out[0].content.includes("::") || out[0].content === "").toBe(true);
-	});
-
-	it("terminal env with a TTY-human executor -> terminal", async () => {
-		const out = await run(
-			renderReport([report], { env: "terminal", noColor: true }).pipe(Effect.provide(ReportPipelineLive)),
-		);
-		expect(out[0]?.contentType).toBe("text/plain");
-	});
+	it.effect("terminal env with a TTY-human executor -> terminal", () =>
+		Effect.gen(function* () {
+			const out = yield* renderReport([report], { env: "terminal", noColor: true });
+			expect(out[0]?.contentType).toBe("text/plain");
+		}),
+	);
 });

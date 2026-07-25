@@ -3,16 +3,16 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, layer } from "@effect/vitest";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AppLayer } from "../../src/layers/app.js";
 import { BuildService } from "../../src/services/build.js";
 import { ConfigService } from "../../src/services/config.js";
 import { ValidationService } from "../../src/services/validation.js";
 
-describe("Effect Services", () => {
-	const testDir = resolve(process.cwd(), ".test-fixtures-services");
+const testDir = resolve(process.cwd(), ".test-fixtures-services");
 
+layer(AppLayer)("Effect Services", (it) => {
 	beforeEach(() => {
 		mkdirSync(resolve(testDir, "src"), { recursive: true });
 		writeFileSync(
@@ -39,211 +39,167 @@ runs:
 	});
 
 	describe("ConfigService", () => {
-		it("loads default config when no config file exists", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("loads default config when no config file exists", () =>
+			Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const result = yield* configService.load({ cwd: testDir });
-				return result;
-			});
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(result.usingDefaults).toBe(true);
+				expect(result.config.entries.main).toBe("src/main.ts");
+			}),
+		);
 
-			expect(result.usingDefaults).toBe(true);
-			expect(result.config.entries.main).toBe("src/main.ts");
-		});
-
-		it("loads config from file when it exists", async () => {
-			writeFileSync(
-				resolve(testDir, "action.config.ts"),
-				`
+		it.effect("loads config from file when it exists", () =>
+			Effect.gen(function* () {
+				writeFileSync(
+					resolve(testDir, "action.config.ts"),
+					`
 export default {
   entries: { main: "src/custom.ts" },
   build: { minify: false },
 };
 `,
-			);
+				);
 
-			const program = Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const result = yield* configService.load({ cwd: testDir });
-				return result;
-			});
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(result.usingDefaults).toBe(false);
+				expect(result.config.entries.main).toBe("src/custom.ts");
+				expect(result.config.build.minify).toBe(false);
+			}),
+		);
 
-			expect(result.usingDefaults).toBe(false);
-			expect(result.config.entries.main).toBe("src/custom.ts");
-			expect(result.config.build.minify).toBe(false);
-		});
-
-		it("resolves partial config with defaults", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("resolves partial config with defaults", () =>
+			Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const config = yield* configService.resolve({
 					build: { minify: false },
 				});
-				return config;
-			});
 
-			const config = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(config.entries.main).toBe("src/main.ts"); // default
+				expect(config.build.minify).toBe(false); // overridden
+			}),
+		);
 
-			expect(config.entries.main).toBe("src/main.ts"); // default
-			expect(config.build.minify).toBe(false); // overridden
-		});
+		it.effect("detects entries in project", () =>
+			Effect.gen(function* () {
+				writeFileSync(resolve(testDir, "src/pre.ts"), "export {};");
+				writeFileSync(resolve(testDir, "src/post.ts"), "export {};");
 
-		it("detects entries in project", async () => {
-			writeFileSync(resolve(testDir, "src/pre.ts"), "export {};");
-			writeFileSync(resolve(testDir, "src/post.ts"), "export {};");
-
-			const program = Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const result = yield* configService.detectEntries(testDir);
-				return result;
-			});
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(result.success).toBe(true);
+				expect(result.entries).toHaveLength(3);
+				expect(result.entries.map((e) => e.type).sort()).toEqual(["main", "post", "pre"]);
+			}),
+		);
 
-			expect(result.success).toBe(true);
-			expect(result.entries).toHaveLength(3);
-			expect(result.entries.map((e) => e.type).sort()).toEqual(["main", "post", "pre"]);
-		});
+		it.effect("fails when main entry is missing", () =>
+			Effect.gen(function* () {
+				rmSync(resolve(testDir, "src/main.ts"));
 
-		it("fails when main entry is missing", async () => {
-			rmSync(resolve(testDir, "src/main.ts"));
-
-			const program = Effect.gen(function* () {
 				const configService = yield* ConfigService;
-				const result = yield* configService.detectEntries(testDir);
-				return result;
-			}).pipe(
-				Effect.result, // Convert to Result to catch errors
-			);
+				const error = yield* Effect.flip(configService.detectEntries(testDir));
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(error._tag).toBe("MainEntryMissing");
+			}),
+		);
 
-			// Result Failure means failure, Success means success
-			if (result._tag === "Failure") {
-				expect(result.failure._tag).toBe("MainEntryMissing");
-			} else {
-				// If detectEntries returns a result object instead of failing
-				expect(result.success.success).toBe(false);
-			}
-		});
+		it.effect("detects worker entries when worker source files exist", () =>
+			Effect.gen(function* () {
+				writeFileSync(resolve(testDir, "src/turbo-server.ts"), "export {};");
 
-		it("detects worker entries when worker source files exist", async () => {
-			writeFileSync(resolve(testDir, "src/turbo-server.ts"), "export {};");
-
-			const program = Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const result = yield* configService.detectEntries(testDir, {
 					workers: { "turbo-server": "src/turbo-server.ts" },
 				});
-				return result;
-			});
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(result.success).toBe(true);
+				const workerEntry = result.entries.find((e) => e.type === "turbo-server");
+				expect(workerEntry).toBeDefined();
+				expect(workerEntry?.output).toBe("dist/turbo-server.js");
+			}),
+		);
 
-			expect(result.success).toBe(true);
-			const workerEntry = result.entries.find((e) => e.type === "turbo-server");
-			expect(workerEntry).toBeDefined();
-			expect(workerEntry?.output).toBe("dist/turbo-server.js");
-		});
-
-		it("fails with WorkerEntryMissing when a worker source file does not exist", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("fails with WorkerEntryMissing when a worker source file does not exist", () =>
+			Effect.gen(function* () {
 				const configService = yield* ConfigService;
-				const result = yield* configService.detectEntries(testDir, {
-					workers: { "turbo-server": "src/turbo-server.ts" },
-				});
-				return result;
-			}).pipe(Effect.result);
+				const error = yield* Effect.flip(
+					configService.detectEntries(testDir, {
+						workers: { "turbo-server": "src/turbo-server.ts" },
+					}),
+				);
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(error._tag).toBe("WorkerEntryMissing");
+				expect((error as { workerName: string }).workerName).toBe("turbo-server");
+			}),
+		);
 
-			expect(result._tag).toBe("Failure");
-			if (result._tag === "Failure") {
-				expect(result.failure._tag).toBe("WorkerEntryMissing");
-				expect((result.failure as { workerName: string }).workerName).toBe("turbo-server");
-			}
-		});
+		it.effect("fails with WorkerEntryInvalidName for a reserved lifecycle worker name", () =>
+			Effect.gen(function* () {
+				writeFileSync(resolve(testDir, "src/main-worker.ts"), "export {};");
 
-		it("fails with WorkerEntryInvalidName for a reserved lifecycle worker name", async () => {
-			writeFileSync(resolve(testDir, "src/main-worker.ts"), "export {};");
-
-			const program = Effect.gen(function* () {
 				const configService = yield* ConfigService;
-				const result = yield* configService.detectEntries(testDir, {
-					workers: { main: "src/main-worker.ts" },
-				});
-				return result;
-			}).pipe(Effect.result);
+				const error = yield* Effect.flip(
+					configService.detectEntries(testDir, {
+						workers: { main: "src/main-worker.ts" },
+					}),
+				);
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(error._tag).toBe("WorkerEntryInvalidName");
+				expect((error as { workerName: string }).workerName).toBe("main");
+			}),
+		);
 
-			expect(result._tag).toBe("Failure");
-			if (result._tag === "Failure") {
-				expect(result.failure._tag).toBe("WorkerEntryInvalidName");
-				expect((result.failure as { workerName: string }).workerName).toBe("main");
-			}
-		});
-
-		it("fails with WorkerEntryInvalidName for a path-unsafe worker name", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("fails with WorkerEntryInvalidName for a path-unsafe worker name", () =>
+			Effect.gen(function* () {
 				const configService = yield* ConfigService;
-				const result = yield* configService.detectEntries(testDir, {
-					workers: { "../escape": "src/escape.ts" },
-				});
-				return result;
-			}).pipe(Effect.result);
+				const error = yield* Effect.flip(
+					configService.detectEntries(testDir, {
+						workers: { "../escape": "src/escape.ts" },
+					}),
+				);
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
-
-			expect(result._tag).toBe("Failure");
-			if (result._tag === "Failure") {
-				expect(result.failure._tag).toBe("WorkerEntryInvalidName");
-			}
-		});
+				expect(error._tag).toBe("WorkerEntryInvalidName");
+			}),
+		);
 	});
 
 	describe("ValidationService", () => {
-		it("validates valid project structure", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("validates valid project structure", () =>
+			Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const validationService = yield* ValidationService;
 
 				const { config } = yield* configService.load({ cwd: testDir });
 				// Explicitly disable strict mode for predictable test behavior
 				const result = yield* validationService.validate(config, { cwd: testDir, strict: false });
-				return result;
-			});
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(result.valid).toBe(true);
+				expect(result.errors).toHaveLength(0);
+			}),
+		);
 
-			expect(result.valid).toBe(true);
-			expect(result.errors).toHaveLength(0);
-		});
+		it.effect("returns warning when action.yml is missing", () =>
+			Effect.gen(function* () {
+				rmSync(resolve(testDir, "action.yml"));
 
-		it("returns warning when action.yml is missing", async () => {
-			rmSync(resolve(testDir, "action.yml"));
-
-			const program = Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const validationService = yield* ValidationService;
 
 				const { config } = yield* configService.load({ cwd: testDir });
 				// Explicitly disable strict mode for predictable test behavior
 				const result = yield* validationService.validate(config, { cwd: testDir, strict: false });
-				return result;
-			});
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				// Should have warning about missing action.yml
+				expect(result.warnings.length + result.errors.length).toBeGreaterThan(0);
+			}),
+		);
 
-			// Should have warning about missing action.yml
-			expect(result.warnings.length + result.errors.length).toBeGreaterThan(0);
-		});
-
-		it("formats validation result", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("formats validation result", () =>
+			Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const validationService = yield* ValidationService;
 
@@ -251,59 +207,46 @@ export default {
 				// Explicitly disable strict mode for predictable test behavior
 				const result = yield* validationService.validate(config, { cwd: testDir, strict: false });
 				const formatted = validationService.formatResult(result);
-				return { formatted, result };
-			});
 
-			const { formatted, result } = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(typeof formatted).toBe("string");
+				// Format includes either "passed" for valid results or warnings/errors
+				expect(formatted.length).toBeGreaterThan(0);
+				if (result.valid && result.warnings.length === 0) {
+					expect(formatted).toContain("passed");
+				}
+			}),
+		);
 
-			expect(typeof formatted).toBe("string");
-			// Format includes either "passed" for valid results or warnings/errors
-			expect(formatted.length).toBeGreaterThan(0);
-			if (result.valid && result.warnings.length === 0) {
-				expect(formatted).toContain("passed");
-			}
-		});
+		it.effect("fails with ValidationFailed in strict mode when warnings exist", () =>
+			Effect.gen(function* () {
+				rmSync(resolve(testDir, "action.yml"));
 
-		it("fails with ValidationFailed in strict mode when warnings exist", async () => {
-			rmSync(resolve(testDir, "action.yml"));
-
-			const program = Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const validationService = yield* ValidationService;
 
 				const { config } = yield* configService.load({ cwd: testDir });
 				// Enable strict mode - warnings should become errors
-				const result = yield* validationService.validate(config, { cwd: testDir, strict: true });
-				return result;
-			}).pipe(Effect.result);
+				const error = yield* Effect.flip(validationService.validate(config, { cwd: testDir, strict: true }));
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
+				expect(error._tag).toBe("ValidationFailed");
+			}),
+		);
 
-			// In strict mode with warnings, should fail with ValidationFailed
-			expect(result._tag).toBe("Failure");
-			if (result._tag === "Failure") {
-				expect(result.failure._tag).toBe("ValidationFailed");
-			}
-		});
-
-		it("isStrict returns correct value based on config", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("isStrict returns correct value based on config", () =>
+			Effect.gen(function* () {
 				const validationService = yield* ValidationService;
 				const explicitTrue = yield* validationService.isStrict(true);
 				const explicitFalse = yield* validationService.isStrict(false);
-				return { explicitTrue, explicitFalse };
-			});
 
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
-
-			expect(result.explicitTrue).toBe(true);
-			expect(result.explicitFalse).toBe(false);
-		});
+				expect(explicitTrue).toBe(true);
+				expect(explicitFalse).toBe(false);
+			}),
+		);
 	});
 
 	describe("BuildService", () => {
-		it("provides formatResult method", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("provides formatResult method", () =>
+			Effect.gen(function* () {
 				const buildService = yield* BuildService;
 				const mockResult = {
 					success: true,
@@ -320,72 +263,50 @@ export default {
 					],
 					duration: 100,
 				};
-				return buildService.formatResult(mockResult);
-			});
+				const formatted = buildService.formatResult(mockResult);
 
-			const formatted = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
-
-			expect(typeof formatted).toBe("string");
-			expect(formatted).toContain("Build");
-		});
+				expect(typeof formatted).toBe("string");
+				expect(formatted).toContain("Build");
+			}),
+		);
 	});
 
 	describe("Layer Composition", () => {
-		it("AppLayer provides all services", async () => {
-			const program = Effect.gen(function* () {
+		it.effect("AppLayer provides all services", () =>
+			Effect.gen(function* () {
 				const configService = yield* ConfigService;
 				const validationService = yield* ValidationService;
 				const buildService = yield* BuildService;
 
-				return {
-					hasConfig: typeof configService.load === "function",
-					hasValidation: typeof validationService.validate === "function",
-					hasBuild: typeof buildService.build === "function",
-				};
-			});
-
-			const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
-
-			expect(result.hasConfig).toBe(true);
-			expect(result.hasValidation).toBe(true);
-			expect(result.hasBuild).toBe(true);
-		});
+				expect(typeof configService.load).toBe("function");
+				expect(typeof validationService.validate).toBe("function");
+				expect(typeof buildService.build).toBe("function");
+			}),
+		);
 	});
 });
 
-describe("BuildService.formatBytes", () => {
-	it("formats bytes", async () => {
-		const program = Effect.gen(function* () {
+layer(AppLayer)("BuildService.formatBytes", (it) => {
+	it.effect("formats bytes", () =>
+		Effect.gen(function* () {
 			const buildService = yield* BuildService;
-			return buildService.formatBytes(500);
-		});
-		const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
-		expect(result).toBe("500 B");
-	});
+			expect(buildService.formatBytes(500)).toBe("500 B");
+		}),
+	);
 
-	it("formats kilobytes", async () => {
-		const program = Effect.gen(function* () {
+	it.effect("formats kilobytes", () =>
+		Effect.gen(function* () {
 			const buildService = yield* BuildService;
-			return {
-				kb: buildService.formatBytes(1024),
-				kb15: buildService.formatBytes(1536),
-			};
-		});
-		const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
-		expect(result.kb).toBe("1.0 KB");
-		expect(result.kb15).toBe("1.5 KB");
-	});
+			expect(buildService.formatBytes(1024)).toBe("1.0 KB");
+			expect(buildService.formatBytes(1536)).toBe("1.5 KB");
+		}),
+	);
 
-	it("formats megabytes", async () => {
-		const program = Effect.gen(function* () {
+	it.effect("formats megabytes", () =>
+		Effect.gen(function* () {
 			const buildService = yield* BuildService;
-			return {
-				mb: buildService.formatBytes(1024 * 1024),
-				mb15: buildService.formatBytes(1.5 * 1024 * 1024),
-			};
-		});
-		const result = await Effect.runPromise(program.pipe(Effect.provide(AppLayer)));
-		expect(result.mb).toBe("1.0 MB");
-		expect(result.mb15).toBe("1.5 MB");
-	});
+			expect(buildService.formatBytes(1024 * 1024)).toBe("1.0 MB");
+			expect(buildService.formatBytes(1.5 * 1024 * 1024)).toBe("1.5 MB");
+		}),
+	);
 });

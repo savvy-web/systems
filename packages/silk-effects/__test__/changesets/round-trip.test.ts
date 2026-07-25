@@ -3,8 +3,8 @@
  * and consistent with lint rules.
  */
 
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { ChangesetLinter } from "../../src/changesets/api/linter.js";
 import { ChangelogTransformer } from "../../src/changesets/api/transformer.js";
@@ -36,11 +36,11 @@ function extractH3Headings(content: string): string[] {
 }
 
 describe("Round-trip: lint → format → transform", () => {
-	it("transformed output has valid category headings", async () => {
-		const changesetContent = "## Features\n\n- Added auth\n\n## Bug Fixes\n\n- Fixed crash";
+	it.effect("transformed output has valid category headings", () =>
+		Effect.gen(function* () {
+			const changesetContent = "## Features\n\n- Added auth\n\n## Bug Fixes\n\n- Fixed crash";
 
-		const entry = await Effect.runPromise(
-			getReleaseLine(
+			const entry = yield* getReleaseLine(
 				{
 					id: "rt-1",
 					summary: changesetContent,
@@ -49,23 +49,23 @@ describe("Round-trip: lint → format → transform", () => {
 				},
 				"minor",
 				OPTIONS,
-			).pipe(Effect.provide(testLayer)),
-		);
+			).pipe(Effect.provide(testLayer));
 
-		const raw = `## 1.0.0\n\n${entry}\n`;
-		const result = ChangelogTransformer.transformContent(raw);
+			const raw = `## 1.0.0\n\n${entry}\n`;
+			const result = ChangelogTransformer.transformContent(raw);
 
-		// All h3 headings should be valid category names
-		const headings = extractH3Headings(result);
-		expect(headings.length).toBeGreaterThan(0);
-		for (const heading of headings) {
-			expect(isValidHeading(heading)).toBe(true);
-		}
-	});
+			// All h3 headings should be valid category names
+			const headings = extractH3Headings(result);
+			expect(headings.length).toBeGreaterThan(0);
+			for (const heading of headings) {
+				expect(isValidHeading(heading)).toBe(true);
+			}
+		}),
+	);
 
-	it("transform is idempotent", async () => {
-		const entry = await Effect.runPromise(
-			getReleaseLine(
+	it.effect("transform is idempotent", () =>
+		Effect.gen(function* () {
+			const entry = yield* getReleaseLine(
 				{
 					id: "rt-2",
 					summary:
@@ -75,26 +75,26 @@ describe("Round-trip: lint → format → transform", () => {
 				},
 				"minor",
 				OPTIONS,
-			).pipe(Effect.provide(testLayer)),
-		);
+			).pipe(Effect.provide(testLayer));
 
-		const raw = `## 1.0.0\n\n${entry}\n`;
-		const first = ChangelogTransformer.transformContent(raw);
-		const second = ChangelogTransformer.transformContent(first);
+			const raw = `## 1.0.0\n\n${entry}\n`;
+			const first = ChangelogTransformer.transformContent(raw);
+			const second = ChangelogTransformer.transformContent(first);
 
-		expect(second).toBe(first);
-	});
+			expect(second).toBe(first);
+		}),
+	);
 
-	it("lint, format, transform cycle produces valid headings", async () => {
-		const changesetContent = "## Features\n\n- Added login system\n\n## Documentation\n\n- Updated README";
+	it.effect("lint, format, transform cycle produces valid headings", () =>
+		Effect.gen(function* () {
+			const changesetContent = "## Features\n\n- Added login system\n\n## Documentation\n\n- Updated README";
 
-		// Step 1: Verify changeset passes lint
-		const lintMessages = ChangesetLinter.validateContent(changesetContent);
-		expect(lintMessages).toHaveLength(0);
+			// Step 1: Verify changeset passes lint
+			const lintMessages = ChangesetLinter.validateContent(changesetContent);
+			expect(lintMessages).toHaveLength(0);
 
-		// Step 2: Format via getReleaseLine
-		const entry = await Effect.runPromise(
-			getReleaseLine(
+			// Step 2: Format via getReleaseLine
+			const entry = yield* getReleaseLine(
 				{
 					id: "rt-3",
 					summary: changesetContent,
@@ -103,35 +103,37 @@ describe("Round-trip: lint → format → transform", () => {
 				},
 				"minor",
 				OPTIONS,
-			).pipe(Effect.provide(testLayer)),
-		);
-
-		// Step 3: Assemble and transform
-		const raw = `## 1.0.0\n\n${entry}\n`;
-		const result = ChangelogTransformer.transformContent(raw);
-
-		// Step 4: All section headings in the output are valid categories
-		const headings = extractH3Headings(result);
-		expect(headings.length).toBeGreaterThan(0);
-		for (const heading of headings) {
-			expect(isValidHeading(heading)).toBe(true);
-		}
-
-		// Verify both original sections survived
-		expect(headings).toContain("Features");
-		expect(headings).toContain("Documentation");
-	});
-
-	it("collapses byte-identical entries from two changesets into one item", async () => {
-		const mk = (id: string) =>
-			getReleaseLine(
-				{ id, summary: "## Bug Fixes\n\n- Fixed the crash", releases: [{ name: "pkg", type: "patch" }] },
-				"patch",
-				OPTIONS,
 			).pipe(Effect.provide(testLayer));
-		const [a, b] = await Effect.runPromise(Effect.all([mk("dup-1"), mk("dup-2")]));
-		const result = ChangelogTransformer.transformContent(`## 1.0.1\n\n${a}\n\n${b}\n`);
-		const occurrences = (result.match(/Fixed the crash/g) || []).length;
-		expect(occurrences).toBe(1);
-	});
+
+			// Step 3: Assemble and transform
+			const raw = `## 1.0.0\n\n${entry}\n`;
+			const result = ChangelogTransformer.transformContent(raw);
+
+			// Step 4: All section headings in the output are valid categories
+			const headings = extractH3Headings(result);
+			expect(headings.length).toBeGreaterThan(0);
+			for (const heading of headings) {
+				expect(isValidHeading(heading)).toBe(true);
+			}
+
+			// Verify both original sections survived
+			expect(headings).toContain("Features");
+			expect(headings).toContain("Documentation");
+		}),
+	);
+
+	it.effect("collapses byte-identical entries from two changesets into one item", () =>
+		Effect.gen(function* () {
+			const mk = (id: string) =>
+				getReleaseLine(
+					{ id, summary: "## Bug Fixes\n\n- Fixed the crash", releases: [{ name: "pkg", type: "patch" }] },
+					"patch",
+					OPTIONS,
+				).pipe(Effect.provide(testLayer));
+			const [a, b] = yield* Effect.all([mk("dup-1"), mk("dup-2")]);
+			const result = ChangelogTransformer.transformContent(`## 1.0.1\n\n${a}\n\n${b}\n`);
+			const occurrences = (result.match(/Fixed the crash/g) || []).length;
+			expect(occurrences).toBe(1);
+		}),
+	);
 });

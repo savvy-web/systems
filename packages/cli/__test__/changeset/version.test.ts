@@ -1,6 +1,11 @@
+import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
-import { afterEach, describe, expect, it, vi } from "vitest";
+// `vi` is imported from `vitest` directly, NOT from `@effect/vitest`: vitest
+// hoists `vi.mock(...)` above all imports, so a `vi` bound through the
+// `@effect/vitest` re-export is not yet initialized when the hoisted call runs
+// ("Cannot access '__vi_import_N__' before initialization").
+import { vi } from "vitest";
 import { runVersion } from "../../src/commands/changeset/commands/version.js";
 
 vi.mock("../../src/commands/changeset/utils/config-gate.js", () => ({
@@ -39,40 +44,45 @@ const applied: Changesets.AppliedRelease = {
 describe("runVersion", () => {
 	afterEach(() => vi.restoreAllMocks());
 
-	it("delegates to ReleasePlanner.apply and reports each release", async () => {
-		const calls: Array<{ root: string; dryRun: boolean }> = [];
-		const logs: string[] = [];
-		await Effect.runPromise(
-			runVersion(false).pipe(
+	it.effect("delegates to ReleasePlanner.apply and reports each release", () =>
+		Effect.gen(function* () {
+			const calls: Array<{ root: string; dryRun: boolean }> = [];
+			const logs: string[] = [];
+			yield* runVersion(false).pipe(
 				Effect.provide(recordingPlanner(applied, calls)),
 				Effect.provide(captureLogger(logs)),
-			) as Effect.Effect<void>,
-		);
-		// Asserts observable behavior: the command invoked apply for the cwd and logged the bump.
-		expect(calls).toEqual([{ root: process.cwd(), dryRun: false }]);
-		expect(logs.join("\n")).toContain("@scope/a: 1.0.0 -> 1.1.0");
-	});
+			) as Effect.Effect<void>;
+			// Asserts observable behavior: the command invoked apply for the cwd and logged the bump.
+			expect(calls).toEqual([{ root: process.cwd(), dryRun: false }]);
+			expect(logs.join("\n")).toContain("@scope/a: 1.0.0 -> 1.1.0");
+		}),
+	);
 
-	it("passes the dry-run flag through to apply", async () => {
-		const calls: Array<{ root: string; dryRun: boolean }> = [];
-		await Effect.runPromise(
-			runVersion(true).pipe(
+	it.effect("passes the dry-run flag through to apply", () =>
+		Effect.gen(function* () {
+			const calls: Array<{ root: string; dryRun: boolean }> = [];
+			yield* runVersion(true).pipe(
 				Effect.provide(recordingPlanner({ ...applied, dryRun: true, touchedFiles: [] }, calls)),
 				Effect.provide(captureLogger([])),
-			) as Effect.Effect<void>,
-		);
-		expect(calls[0]?.dryRun).toBe(true);
-	});
+			) as Effect.Effect<void>;
+			expect(calls[0]?.dryRun).toBe(true);
+		}),
+	);
 
-	it("reports no pending changesets when the plan is empty", async () => {
-		const logs: string[] = [];
-		const empty: Changesets.AppliedRelease = { dryRun: false, touchedFiles: [], releases: [], versionFileUpdates: [] };
-		await Effect.runPromise(
-			runVersion(false).pipe(
+	it.effect("reports no pending changesets when the plan is empty", () =>
+		Effect.gen(function* () {
+			const logs: string[] = [];
+			const empty: Changesets.AppliedRelease = {
+				dryRun: false,
+				touchedFiles: [],
+				releases: [],
+				versionFileUpdates: [],
+			};
+			yield* runVersion(false).pipe(
 				Effect.provide(recordingPlanner(empty, [])),
 				Effect.provide(captureLogger(logs)),
-			) as Effect.Effect<void>,
-		);
-		expect(logs.join("\n")).toContain("No pending changesets.");
-	});
+			) as Effect.Effect<void>;
+			expect(logs.join("\n")).toContain("No pending changesets.");
+		}),
+	);
 });

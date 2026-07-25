@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 import { BiomeSyncError } from "../../src/errors/BiomeSyncError.js";
 import {
 	BiomeSchemaSync,
@@ -29,10 +29,13 @@ const makeTestFs = (files: Record<string, string>) =>
 
 const CWD = "/project";
 
+// Per-test provide is REQUIRED here, not an unoptimised leftover: the mocked filesystem is
+// built from — and mutated through — the per-test `files` record, so the layer genuinely
+// varies test by test and cannot be hoisted into a suite-boundary `layer(...)` block.
 function runWith(files: Record<string, string>, effect: Effect.Effect<unknown, unknown, BiomeSchemaSync>) {
 	const testFs = makeTestFs(files);
 	const layer = BiomeSchemaSyncLive.pipe(Layer.provide(testFs));
-	return Effect.runPromise(Effect.provide(effect, layer));
+	return Effect.provide(effect, layer);
 }
 
 // ---------------------------------------------------------------------------
@@ -80,88 +83,114 @@ describe("buildSchemaUrl", () => {
 // ---------------------------------------------------------------------------
 
 describe("BiomeSchemaSync.check", () => {
-	it("reports biome.json as current when schema URL matches", async () => {
-		const files = {
-			[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" }),
-		};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({
-			current: [`${CWD}/biome.json`],
-			updated: [],
-			skipped: [],
-		});
-	});
+	it.effect("reports biome.json as current when schema URL matches", () =>
+		Effect.gen(function* () {
+			const files = {
+				[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" }),
+			};
+			const result = yield* runWith(
+				files,
+				BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))),
+			);
+			expect(result).toMatchObject({
+				current: [`${CWD}/biome.json`],
+				updated: [],
+				skipped: [],
+			});
+		}),
+	);
 
-	it("reports biome.json as needing update when schema URL has wrong version", async () => {
-		const files = {
-			[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" }),
-		};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({
-			updated: [`${CWD}/biome.json`],
-			current: [],
-			skipped: [],
-		});
-	});
+	it.effect("reports biome.json as needing update when schema URL has wrong version", () =>
+		Effect.gen(function* () {
+			const files = {
+				[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" }),
+			};
+			const result = yield* runWith(
+				files,
+				BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))),
+			);
+			expect(result).toMatchObject({
+				updated: [`${CWD}/biome.json`],
+				current: [],
+				skipped: [],
+			});
+		}),
+	);
 
-	it("does NOT write files even when update is needed", async () => {
-		const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" });
-		const files = {
-			[`${CWD}/biome.json`]: originalContent,
-		};
-		await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))));
-		// File content should be unchanged
-		expect(files[`${CWD}/biome.json`]).toBe(originalContent);
-	});
+	it.effect("does NOT write files even when update is needed", () =>
+		Effect.gen(function* () {
+			const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" });
+			const files = {
+				[`${CWD}/biome.json`]: originalContent,
+			};
+			yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))));
+			// File content should be unchanged
+			expect(files[`${CWD}/biome.json`]).toBe(originalContent);
+		}),
+	);
 
-	it("reports biome.json as skipped when no $schema field", async () => {
-		const files = {
-			[`${CWD}/biome.json`]: JSON.stringify({ formatter: { enabled: true } }),
-		};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({
-			skipped: [`${CWD}/biome.json`],
-			updated: [],
-			current: [],
-		});
-	});
+	it.effect("reports biome.json as skipped when no $schema field", () =>
+		Effect.gen(function* () {
+			const files = {
+				[`${CWD}/biome.json`]: JSON.stringify({ formatter: { enabled: true } }),
+			};
+			const result = yield* runWith(
+				files,
+				BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))),
+			);
+			expect(result).toMatchObject({
+				skipped: [`${CWD}/biome.json`],
+				updated: [],
+				current: [],
+			});
+		}),
+	);
 
-	it("reports biome.json as skipped when $schema is not a biomejs.dev URL", async () => {
-		const files = {
-			[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://example.com/schema.json" }),
-		};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({
-			skipped: [`${CWD}/biome.json`],
-			updated: [],
-			current: [],
-		});
-	});
+	it.effect("reports biome.json as skipped when $schema is not a biomejs.dev URL", () =>
+		Effect.gen(function* () {
+			const files = {
+				[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://example.com/schema.json" }),
+			};
+			const result = yield* runWith(
+				files,
+				BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))),
+			);
+			expect(result).toMatchObject({
+				skipped: [`${CWD}/biome.json`],
+				updated: [],
+				current: [],
+			});
+		}),
+	);
 
-	it("handles biome.jsonc as well as biome.json", async () => {
-		const files = {
-			[`${CWD}/biome.jsonc`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" }),
-		};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({
-			current: [`${CWD}/biome.jsonc`],
-			updated: [],
-			skipped: [],
-		});
-	});
+	it.effect("handles biome.jsonc as well as biome.json", () =>
+		Effect.gen(function* () {
+			const files = {
+				[`${CWD}/biome.jsonc`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" }),
+			};
+			const result = yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("2.4.9", { cwd: CWD }))));
+			expect(result).toMatchObject({
+				current: [`${CWD}/biome.jsonc`],
+				updated: [],
+				skipped: [],
+			});
+		}),
+	);
 
-	it("handles both biome.json and biome.jsonc together", async () => {
-		const files = {
-			[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" }),
-			[`${CWD}/biome.jsonc`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" }),
-		};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({
-			current: [`${CWD}/biome.json`],
-			updated: [`${CWD}/biome.jsonc`],
-			skipped: [],
-		});
-	});
+	it.effect("handles both biome.json and biome.jsonc together", () =>
+		Effect.gen(function* () {
+			const files = {
+				[`${CWD}/biome.json`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" }),
+				[`${CWD}/biome.jsonc`]: JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" }),
+			};
+			const result = yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("2.4.9", { cwd: CWD }))));
+			expect(result).toMatchObject({
+				current: [`${CWD}/biome.json`],
+				updated: [`${CWD}/biome.jsonc`],
+				skipped: [],
+			});
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -169,36 +198,42 @@ describe("BiomeSchemaSync.check", () => {
 // ---------------------------------------------------------------------------
 
 describe("BiomeSchemaSync.sync", () => {
-	it("writes updated content when schema URL has wrong version", async () => {
-		const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" });
-		const files = {
-			[`${CWD}/biome.json`]: originalContent,
-		};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("^2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({
-			updated: [`${CWD}/biome.json`],
-			current: [],
-			skipped: [],
-		});
-		// File should be updated
-		expect(files[`${CWD}/biome.json`]).toContain("https://biomejs.dev/schemas/2.4.9/schema.json");
-		expect(files[`${CWD}/biome.json`]).not.toContain("2.4.0");
-	});
+	it.effect("writes updated content when schema URL has wrong version", () =>
+		Effect.gen(function* () {
+			const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" });
+			const files = {
+				[`${CWD}/biome.json`]: originalContent,
+			};
+			const result = yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("^2.4.9", { cwd: CWD }))));
+			expect(result).toMatchObject({
+				updated: [`${CWD}/biome.json`],
+				current: [],
+				skipped: [],
+			});
+			// File should be updated
+			expect(files[`${CWD}/biome.json`]).toContain("https://biomejs.dev/schemas/2.4.9/schema.json");
+			expect(files[`${CWD}/biome.json`]).not.toContain("2.4.0");
+		}),
+	);
 
-	it("does not write when schema is already current", async () => {
-		const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" });
-		const files = {
-			[`${CWD}/biome.json`]: originalContent,
-		};
-		await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD }))));
-		expect(files[`${CWD}/biome.json`]).toBe(originalContent);
-	});
+	it.effect("does not write when schema is already current", () =>
+		Effect.gen(function* () {
+			const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" });
+			const files = {
+				[`${CWD}/biome.json`]: originalContent,
+			};
+			yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD }))));
+			expect(files[`${CWD}/biome.json`]).toBe(originalContent);
+		}),
+	);
 
-	it("reports empty result when no biome configs found", async () => {
-		const files: Record<string, string> = {};
-		const result = await runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD }))));
-		expect(result).toMatchObject({ updated: [], skipped: [], current: [] });
-	});
+	it.effect("reports empty result when no biome configs found", () =>
+		Effect.gen(function* () {
+			const files: Record<string, string> = {};
+			const result = yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD }))));
+			expect(result).toMatchObject({ updated: [], skipped: [], current: [] });
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------

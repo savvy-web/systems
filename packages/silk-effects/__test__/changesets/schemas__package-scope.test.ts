@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { GlobSchema, PackageScopeSchema, PackagesRecordSchema } from "../../src/changesets/schemas/package-scope.js";
 

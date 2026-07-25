@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Duration, Effect, Exit, Fiber, Layer, Option } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { vi } from "vitest";
 import type { ActionCacheError } from "../../src/errors/ActionCacheError.js";
 import { ActionCacheLive } from "../../src/layers/ActionCacheLive.js";
 import { ActionCacheTest } from "../../src/layers/ActionCacheTest.js";
@@ -124,8 +125,7 @@ const liveLayer = ActionCacheLive.pipe(Layer.provide(mockHttpLayer));
 // Helpers
 // ---------------------------------------------------------------------------
 
-const runLiveExit = <A, E>(effect: Effect.Effect<A, E, ActionCache>) =>
-	Effect.runPromise(Effect.exit(Effect.provide(effect, liveLayer)));
+const runLiveExit = <A, E>(effect: Effect.Effect<A, E, ActionCache>) => Effect.exit(Effect.provide(effect, liveLayer));
 
 const extractError = (exit: Exit.Exit<unknown, ActionCacheError>): ActionCacheError | undefined => {
 	if (Exit.isFailure(exit)) {
@@ -160,14 +160,16 @@ beforeEach(() => {
 
 describe("ActionCacheLive", () => {
 	describe("save", () => {
-		it("fails with ActionCacheError when env vars are missing", async () => {
-			const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "my-key")));
-			expect(Exit.isFailure(exit)).toBe(true);
-			const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-			expect(error).toBeDefined();
-			expect(error?._tag).toBe("ActionCacheError");
-			expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
-		});
+		it.effect("fails with ActionCacheError when env vars are missing", () =>
+			Effect.gen(function* () {
+				const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "my-key")));
+				expect(Exit.isFailure(exit)).toBe(true);
+				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+				expect(error).toBeDefined();
+				expect(error?._tag).toBe("ActionCacheError");
+				expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
+			}),
+		);
 
 		describe("with env vars set", () => {
 			beforeEach(() => {
@@ -188,190 +190,216 @@ describe("ActionCacheLive", () => {
 				vi.clearAllMocks();
 			});
 
-			it("does not put the runtime token in the request body and uses a Bearer header (S9)", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-				);
+			it.effect("does not put the runtime token in the request body and uses a Bearer header (S9)", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+					);
 
-				await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(twirpCaptured[0]?.headers.authorization).toBe("Bearer test-token");
-				expect(JSON.stringify(twirpCaptured[0]?.body)).not.toContain("test-token");
-			});
+					expect(twirpCaptured[0]?.headers.authorization).toBe("Bearer test-token");
+					expect(JSON.stringify(twirpCaptured[0]?.body)).not.toContain("test-token");
+				}),
+			);
 
-			it("expands relative glob patterns before passing to tar", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-				);
+			it.effect("expands relative glob patterns before passing to tar", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+					);
 
-				mockedGlobSync.mockReturnValueOnce(["project/.yarn/cache"] as unknown as string[]);
-				mockedGlobSync.mockReturnValueOnce(["project/node_modules"] as unknown as string[]);
+					mockedGlobSync.mockReturnValueOnce(["project/.yarn/cache"] as unknown as string[]);
+					mockedGlobSync.mockReturnValueOnce(["project/node_modules"] as unknown as string[]);
 
-				const exit = await runLiveExit(
-					Effect.flatMap(ActionCache, (svc) =>
-						svc.save(["/home/runner/.cache", "**/.yarn/cache", "**/node_modules"], "glob-key"),
-					),
-				);
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) =>
+							svc.save(["/home/runner/.cache", "**/.yarn/cache", "**/node_modules"], "glob-key"),
+						),
+					);
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-				expect(mockedGlobSync).toHaveBeenCalledTimes(2);
-				const tarArgs = mockedExecFileSync.mock.calls[0]?.[1] as string[];
-				expect(tarArgs).toContain("/home/runner/.cache");
-				expect(tarArgs).toContain("project/.yarn/cache");
-				expect(tarArgs).toContain("project/node_modules");
-				expect(tarArgs).not.toContain("**/.yarn/cache");
-			});
+					expect(Exit.isSuccess(exit)).toBe(true);
+					expect(mockedGlobSync).toHaveBeenCalledTimes(2);
+					const tarArgs = mockedExecFileSync.mock.calls[0]?.[1] as string[];
+					expect(tarArgs).toContain("/home/runner/.cache");
+					expect(tarArgs).toContain("project/.yarn/cache");
+					expect(tarArgs).toContain("project/node_modules");
+					expect(tarArgs).not.toContain("**/.yarn/cache");
+				}),
+			);
 
-			it("resolves tilde paths to HOME before passing to tar", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-				);
+			it.effect("resolves tilde paths to HOME before passing to tar", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+					);
 
-				const exit = await runLiveExit(
-					Effect.flatMap(ActionCache, (svc) => svc.save(["~/.bun/install/cache", "~/.cache/deno"], "tilde-key")),
-				);
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.save(["~/.bun/install/cache", "~/.cache/deno"], "tilde-key")),
+					);
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-				const tarArgs = mockedExecFileSync.mock.calls[0]?.[1] as string[];
-				expect(tarArgs).toContain("/home/runner/.bun/install/cache");
-				expect(tarArgs).toContain("/home/runner/.cache/deno");
-				expect(tarArgs).not.toContain("~/.bun/install/cache");
-			});
+					expect(Exit.isSuccess(exit)).toBe(true);
+					const tarArgs = mockedExecFileSync.mock.calls[0]?.[1] as string[];
+					expect(tarArgs).toContain("/home/runner/.bun/install/cache");
+					expect(tarArgs).toContain("/home/runner/.cache/deno");
+					expect(tarArgs).not.toContain("~/.bun/install/cache");
+				}),
+			);
 
-			it("filters out non-existent paths", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-				);
-				mockedExistsSync.mockImplementation((p) => p !== "/home/runner/.bun/install/cache");
+			it.effect("filters out non-existent paths", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+					);
+					mockedExistsSync.mockImplementation((p) => p !== "/home/runner/.bun/install/cache");
 
-				const exit = await runLiveExit(
-					Effect.flatMap(ActionCache, (svc) => svc.save(["~/.bun/install/cache", "/opt/real-path"], "filter-key")),
-				);
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.save(["~/.bun/install/cache", "/opt/real-path"], "filter-key")),
+					);
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-				const tarArgs = mockedExecFileSync.mock.calls[0]?.[1] as string[];
-				expect(tarArgs).toContain("/opt/real-path");
-				expect(tarArgs).not.toContain("/home/runner/.bun/install/cache");
-			});
+					expect(Exit.isSuccess(exit)).toBe(true);
+					const tarArgs = mockedExecFileSync.mock.calls[0]?.[1] as string[];
+					expect(tarArgs).toContain("/opt/real-path");
+					expect(tarArgs).not.toContain("/home/runner/.bun/install/cache");
+				}),
+			);
 
-			it("succeeds with full CreateCacheEntry → upload → FinalizeCacheEntry flow", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-				);
+			it.effect("succeeds with full CreateCacheEntry → upload → FinalizeCacheEntry flow", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+					);
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-				expect(twirpCaptured).toHaveLength(2);
-				expect(twirpCaptured[0]?.url).toContain("twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry");
-				expect(twirpCaptured[0]?.body).toMatchObject({ key: "test-key" });
-				expect(twirpCaptured[1]?.url).toContain(
-					"twirp/github.actions.results.api.v1.CacheService/FinalizeCacheEntryUpload",
-				);
-				expect(twirpCaptured[1]?.body).toMatchObject({ key: "test-key", size_bytes: "100" });
-				expect(mockUploadFile).toHaveBeenCalled();
-			});
+					expect(Exit.isSuccess(exit)).toBe(true);
+					expect(twirpCaptured).toHaveLength(2);
+					expect(twirpCaptured[0]?.url).toContain("twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry");
+					expect(twirpCaptured[0]?.body).toMatchObject({ key: "test-key" });
+					expect(twirpCaptured[1]?.url).toContain(
+						"twirp/github.actions.results.api.v1.CacheService/FinalizeCacheEntryUpload",
+					);
+					expect(twirpCaptured[1]?.body).toMatchObject({ key: "test-key", size_bytes: "100" });
+					expect(mockUploadFile).toHaveBeenCalled();
+				}),
+			);
 
-			it("cleans up temp archive on successful save", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-				);
+			it.effect("cleans up temp archive on successful save", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+					);
 
-				await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(mockedUnlinkSync).toHaveBeenCalled();
-			});
+					expect(mockedUnlinkSync).toHaveBeenCalled();
+				}),
+			);
 
-			it("fails when archive creation (tar) throws", async () => {
-				mockedExecFileSync.mockImplementation(() => {
-					throw new Error("tar not found");
-				});
+			it.effect("fails when archive creation (tar) throws", () =>
+				Effect.gen(function* () {
+					mockedExecFileSync.mockImplementation(() => {
+						throw new Error("tar not found");
+					});
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("Failed to create archive");
-				expect(error?.reason).toContain("tar not found");
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("Failed to create archive");
+					expect(error?.reason).toContain("tar not found");
+				}),
+			);
 
-			it("treats HTTP 409 on CreateCacheEntry as silent success (cache already exists)", async () => {
-				queueReplies({ status: 409 });
+			it.effect("treats HTTP 409 on CreateCacheEntry as silent success (cache already exists)", () =>
+				Effect.gen(function* () {
+					queueReplies({ status: 409 });
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-				expect(mockUploadFile).not.toHaveBeenCalled();
-				expect(twirpCaptured).toHaveLength(1);
-			});
+					expect(Exit.isSuccess(exit)).toBe(true);
+					expect(mockUploadFile).not.toHaveBeenCalled();
+					expect(twirpCaptured).toHaveLength(1);
+				}),
+			);
 
-			it("fails when CreateCacheEntry returns non-ok HTTP status", async () => {
-				// 400 is non-retryable so the schedule does not delay.
-				queueReplies({ status: 400 });
+			it.effect("fails when CreateCacheEntry returns non-ok HTTP status", () =>
+				Effect.gen(function* () {
+					// 400 is non-retryable so the schedule does not delay.
+					queueReplies({ status: 400 });
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.operation).toBe("save");
-				expect(error?.reason).toContain("CreateCacheEntry failed");
-				expect(error?.reason).toContain("HTTP 400");
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.operation).toBe("save");
+					expect(error?.reason).toContain("CreateCacheEntry failed");
+					expect(error?.reason).toContain("HTTP 400");
+				}),
+			);
 
-			it("fails when CreateCacheEntry returns ok but no upload URL", async () => {
-				queueReplies({ status: 200, body: { ok: false } });
+			it.effect("fails when CreateCacheEntry returns ok but no upload URL", () =>
+				Effect.gen(function* () {
+					queueReplies({ status: 200, body: { ok: false } });
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("CreateCacheEntry did not return a signed upload URL");
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("CreateCacheEntry did not return a signed upload URL");
+				}),
+			);
 
-			it("fails when Azure upload rejects", async () => {
-				queueReplies({ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } });
-				mockUploadFile.mockRejectedValueOnce(new Error("Azure upload timeout"));
+			it.effect("fails when Azure upload rejects", () =>
+				Effect.gen(function* () {
+					queueReplies({ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } });
+					mockUploadFile.mockRejectedValueOnce(new Error("Azure upload timeout"));
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("Archive upload failed");
-				expect(error?.reason).toContain("Azure upload timeout");
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("Archive upload failed");
+					expect(error?.reason).toContain("Azure upload timeout");
+				}),
+			);
 
-			it("fails when FinalizeCacheEntryUpload returns non-ok HTTP status", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 400 },
-				);
+			it.effect("fails when FinalizeCacheEntryUpload returns non-ok HTTP status", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 400 },
+					);
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("FinalizeCacheEntryUpload failed");
-				expect(error?.reason).toContain("HTTP 400");
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("FinalizeCacheEntryUpload failed");
+					expect(error?.reason).toContain("HTTP 400");
+				}),
+			);
 
-			it("fails when FinalizeCacheEntryUpload returns ok:false at HTTP 200", async () => {
-				queueReplies(
-					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-					{ status: 200, body: { ok: false } },
-				);
+			it.effect("fails when FinalizeCacheEntryUpload returns ok:false at HTTP 200", () =>
+				Effect.gen(function* () {
+					queueReplies(
+						{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+						{ status: 200, body: { ok: false } },
+					);
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
+					const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "test-key")));
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("FinalizeCacheEntryUpload did not confirm success");
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("FinalizeCacheEntryUpload did not confirm success");
+				}),
+			);
 		});
 	});
 
@@ -400,59 +428,69 @@ describe("ActionCacheLive", () => {
 				const fiber = yield* Effect.forkChild(Effect.provide(effect, liveLayer));
 				yield* TestClock.adjust(Duration.seconds(120));
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
+			}).pipe(Effect.exit);
 
-		it("retries Twirp calls on HTTP 503 then succeeds", async () => {
-			// CreateCacheEntry: 503, 503, then 200 — must succeed after retries.
-			queueReplies(
-				{ status: 503 },
-				{ status: 503 },
-				{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-				{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-			);
+		it.effect("retries Twirp calls on HTTP 503 then succeeds", () =>
+			Effect.gen(function* () {
+				// CreateCacheEntry: 503, 503, then 200 — must succeed after retries.
+				queueReplies(
+					{ status: 503 },
+					{ status: 503 },
+					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+				);
 
-			const exit = await runWithClock(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "retry-key")));
+				const exit = yield* runWithClock(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "retry-key")));
 
-			expect(exit._tag).toBe("Success");
-			// 2 failed CreateCacheEntry + 1 success + 1 finalize.
-			expect(twirpCaptured).toHaveLength(4);
-		});
+				expect(exit._tag).toBe("Success");
+				// 2 failed CreateCacheEntry + 1 success + 1 finalize.
+				expect(twirpCaptured).toHaveLength(4);
+			}),
+		);
 
-		it("retries Twirp calls on an ECONNRESET transport fault then succeeds", async () => {
-			queueReplies(
-				{ status: 0, transportError: "read ECONNRESET" },
-				{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-				{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-			);
+		it.effect("retries Twirp calls on an ECONNRESET transport fault then succeeds", () =>
+			Effect.gen(function* () {
+				queueReplies(
+					{ status: 0, transportError: "read ECONNRESET" },
+					{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+					{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+				);
 
-			const exit = await runWithClock(
-				Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "econnreset-key")),
-			);
+				const exit = yield* runWithClock(
+					Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "econnreset-key")),
+				);
 
-			expect(exit._tag).toBe("Success");
-			expect(twirpCaptured).toHaveLength(3);
-		});
+				expect(exit._tag).toBe("Success");
+				expect(twirpCaptured).toHaveLength(3);
+			}),
+		);
 
-		it("gives up after exhausting the retry budget on persistent 503", async () => {
-			// Always 503: 1 initial + 4 recurs = 5 attempts, then fail.
-			queueReplies({ status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }, { status: 503 });
+		it.effect("gives up after exhausting the retry budget on persistent 503", () =>
+			Effect.gen(function* () {
+				// Always 503: 1 initial + 4 recurs = 5 attempts, then fail.
+				queueReplies({ status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }, { status: 503 });
 
-			const exit = await runWithClock(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "always-503")));
+				const exit = yield* runWithClock(
+					Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules"], "always-503")),
+				);
 
-			expect(exit._tag).toBe("Failure");
-			const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-			expect(error?.reason).toContain("HTTP 503");
-			expect(twirpCaptured).toHaveLength(5);
-		});
+				expect(exit._tag).toBe("Failure");
+				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+				expect(error?.reason).toContain("HTTP 503");
+				expect(twirpCaptured).toHaveLength(5);
+			}),
+		);
 	});
 
 	describe("restore", () => {
-		it("fails with ActionCacheError when env vars are missing", async () => {
-			const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")));
-			expect(Exit.isFailure(exit)).toBe(true);
-			const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-			expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
-		});
+		it.effect("fails with ActionCacheError when env vars are missing", () =>
+			Effect.gen(function* () {
+				const exit = yield* runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")));
+				expect(Exit.isFailure(exit)).toBe(true);
+				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+				expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
+			}),
+		);
 
 		describe("with env vars set", () => {
 			beforeEach(() => {
@@ -469,141 +507,167 @@ describe("ActionCacheLive", () => {
 				vi.clearAllMocks();
 			});
 
-			it("returns None on cache miss (ok: false)", async () => {
-				queueReplies({ status: 200, body: { ok: false } });
+			it.effect("returns None on cache miss (ok: false)", () =>
+				Effect.gen(function* () {
+					queueReplies({ status: 200, body: { ok: false } });
 
-				const exit = await runLiveExit(
-					Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "missing-key")),
-				);
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "missing-key")),
+					);
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(Option.isNone(exit.value as Option.Option<string>)).toBe(true);
-				}
-			});
-
-			it("returns Some with matched_key on cache hit", async () => {
-				queueReplies({
-					status: 200,
-					body: {
-						ok: true,
-						signed_download_url: "https://azure.example.com/download",
-						matched_key: "my-key-abc",
-					},
-				});
-
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")));
-
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					const result = exit.value as Option.Option<string>;
-					expect(Option.isSome(result)).toBe(true);
-					if (Option.isSome(result)) {
-						expect(result.value).toBe("my-key-abc");
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(Option.isNone(exit.value as Option.Option<string>)).toBe(true);
 					}
-				}
-				expect(mockDownloadToFile).toHaveBeenCalled();
-				const expectedFlags = process.platform === "win32" ? "xzPkf" : "xzPf";
-				expect(mockedExecFileSync).toHaveBeenCalledWith(
-					"tar",
-					expect.arrayContaining([expectedFlags]),
-					expect.any(Object),
-				);
-			});
+				}),
+			);
 
-			it("returns Some with primaryKey when response has no matched_key", async () => {
-				queueReplies({
-					status: 200,
-					body: { ok: true, signed_download_url: "https://azure.example.com/download" },
-				});
+			it.effect("returns Some with matched_key on cache hit", () =>
+				Effect.gen(function* () {
+					queueReplies({
+						status: 200,
+						body: {
+							ok: true,
+							signed_download_url: "https://azure.example.com/download",
+							matched_key: "my-key-abc",
+						},
+					});
 
-				const exit = await runLiveExit(
-					Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "primary-key")),
-				);
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")),
+					);
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					const result = exit.value as Option.Option<string>;
-					expect(Option.isSome(result)).toBe(true);
-					if (Option.isSome(result)) {
-						expect(result.value).toBe("primary-key");
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						const result = exit.value as Option.Option<string>;
+						expect(Option.isSome(result)).toBe(true);
+						if (Option.isSome(result)) {
+							expect(result.value).toBe("my-key-abc");
+						}
 					}
-				}
-			});
+					expect(mockDownloadToFile).toHaveBeenCalled();
+					const expectedFlags = process.platform === "win32" ? "xzPkf" : "xzPf";
+					expect(mockedExecFileSync).toHaveBeenCalledWith(
+						"tar",
+						expect.arrayContaining([expectedFlags]),
+						expect.any(Object),
+					);
+				}),
+			);
 
-			it("fails when GetCacheEntryDownloadURL returns non-ok HTTP status", async () => {
-				queueReplies({ status: 400 });
+			it.effect("returns Some with primaryKey when response has no matched_key", () =>
+				Effect.gen(function* () {
+					queueReplies({
+						status: 200,
+						body: { ok: true, signed_download_url: "https://azure.example.com/download" },
+					});
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")));
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "primary-key")),
+					);
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("GetCacheEntryDownloadURL failed");
-				expect(error?.reason).toContain("HTTP 400");
-			});
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						const result = exit.value as Option.Option<string>;
+						expect(Option.isSome(result)).toBe(true);
+						if (Option.isSome(result)) {
+							expect(result.value).toBe("primary-key");
+						}
+					}
+				}),
+			);
 
-			it("fails when Azure download rejects", async () => {
-				queueReplies({
-					status: 200,
-					body: { ok: true, signed_download_url: "https://azure.example.com/download", matched_key: "my-key" },
-				});
-				mockDownloadToFile.mockRejectedValueOnce(new Error("Azure download timeout"));
+			it.effect("fails when GetCacheEntryDownloadURL returns non-ok HTTP status", () =>
+				Effect.gen(function* () {
+					queueReplies({ status: 400 });
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")));
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")),
+					);
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("Archive download failed");
-				expect(error?.reason).toContain("Azure download timeout");
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("GetCacheEntryDownloadURL failed");
+					expect(error?.reason).toContain("HTTP 400");
+				}),
+			);
 
-			it("tolerates tar exit code 1 (non-fatal file-exists warnings)", async () => {
-				queueReplies({
-					status: 200,
-					body: { ok: true, signed_download_url: "https://azure.example.com/download", matched_key: "my-key" },
-				});
-				mockedExecFileSync.mockImplementation(() => {
-					const err = new Error("tar: file exists, not overwritten") as Error & { status: number };
-					err.status = 1;
-					throw err;
-				});
+			it.effect("fails when Azure download rejects", () =>
+				Effect.gen(function* () {
+					queueReplies({
+						status: 200,
+						body: { ok: true, signed_download_url: "https://azure.example.com/download", matched_key: "my-key" },
+					});
+					mockDownloadToFile.mockRejectedValueOnce(new Error("Azure download timeout"));
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")));
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")),
+					);
 
-				expect(Exit.isSuccess(exit)).toBe(true);
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("Archive download failed");
+					expect(error?.reason).toContain("Azure download timeout");
+				}),
+			);
 
-			it("fails when tar extraction exits with code 2 (fatal error)", async () => {
-				queueReplies({
-					status: 200,
-					body: { ok: true, signed_download_url: "https://azure.example.com/download", matched_key: "my-key" },
-				});
-				mockedExecFileSync.mockImplementation(() => {
-					const err = new Error("tar: fatal error") as Error & { status: number };
-					err.status = 2;
-					throw err;
-				});
+			it.effect("tolerates tar exit code 1 (non-fatal file-exists warnings)", () =>
+				Effect.gen(function* () {
+					queueReplies({
+						status: 200,
+						body: { ok: true, signed_download_url: "https://azure.example.com/download", matched_key: "my-key" },
+					});
+					mockedExecFileSync.mockImplementation(() => {
+						const err = new Error("tar: file exists, not overwritten") as Error & { status: number };
+						err.status = 1;
+						throw err;
+					});
 
-				const exit = await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")));
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")),
+					);
 
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
-				expect(error?.reason).toContain("Failed to extract archive");
-			});
+					expect(Exit.isSuccess(exit)).toBe(true);
+				}),
+			);
 
-			it("sends restore_keys in the Twirp request body", async () => {
-				queueReplies({ status: 200, body: { ok: false } });
+			it.effect("fails when tar extraction exits with code 2 (fatal error)", () =>
+				Effect.gen(function* () {
+					queueReplies({
+						status: 200,
+						body: { ok: true, signed_download_url: "https://azure.example.com/download", matched_key: "my-key" },
+					});
+					mockedExecFileSync.mockImplementation(() => {
+						const err = new Error("tar: fatal error") as Error & { status: number };
+						err.status = 2;
+						throw err;
+					});
 
-				await runLiveExit(
-					Effect.flatMap(ActionCache, (svc) =>
-						svc.restore(["node_modules"], "primary-key", ["restore-key-1", "restore-key-2"]),
-					),
-				);
+					const exit = yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) => svc.restore(["node_modules"], "my-key")),
+					);
 
-				const body = twirpCaptured[0]?.body as { key: string; restore_keys: string[] };
-				expect(body.key).toBe("primary-key");
-				expect(body.restore_keys).toEqual(["restore-key-1", "restore-key-2"]);
-			});
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ActionCacheError>);
+					expect(error?.reason).toContain("Failed to extract archive");
+				}),
+			);
+
+			it.effect("sends restore_keys in the Twirp request body", () =>
+				Effect.gen(function* () {
+					queueReplies({ status: 200, body: { ok: false } });
+
+					yield* runLiveExit(
+						Effect.flatMap(ActionCache, (svc) =>
+							svc.restore(["node_modules"], "primary-key", ["restore-key-1", "restore-key-2"]),
+						),
+					);
+
+					const body = twirpCaptured[0]?.body as { key: string; restore_keys: string[] };
+					expect(body.key).toBe("primary-key");
+					expect(body.restore_keys).toEqual(["restore-key-1", "restore-key-2"]);
+				}),
+			);
 		});
 	});
 });
@@ -618,29 +682,33 @@ describe("version hash", () => {
 		return createHash("sha256").update(components.join("|")).digest("hex");
 	};
 
-	it("sends version matching @actions/cache format (paths|gzip|1.0)", async () => {
-		vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
-		vi.stubEnv("ACTIONS_RUNTIME_TOKEN", "test-token");
-		vi.mocked(execFileSync).mockReturnValue(Buffer.from(""));
-		vi.mocked(statSync).mockReturnValue({ size: 100 } as ReturnType<typeof statSync>);
-		vi.mocked(unlinkSync).mockReturnValue(undefined);
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(globSync).mockImplementation((pattern) => [pattern] as unknown as string[]);
-		mockUploadFile.mockResolvedValue(undefined);
+	it.effect("sends version matching @actions/cache format (paths|gzip|1.0)", () =>
+		Effect.gen(function* () {
+			vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
+			vi.stubEnv("ACTIONS_RUNTIME_TOKEN", "test-token");
+			vi.mocked(execFileSync).mockReturnValue(Buffer.from(""));
+			vi.mocked(statSync).mockReturnValue({ size: 100 } as ReturnType<typeof statSync>);
+			vi.mocked(unlinkSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(globSync).mockImplementation((pattern) => [pattern] as unknown as string[]);
+			mockUploadFile.mockResolvedValue(undefined);
 
-		queueReplies(
-			{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-			{ status: 200, body: { ok: true } },
-		);
+			queueReplies(
+				{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+				{ status: 200, body: { ok: true } },
+			);
 
-		await runLiveExit(Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules", ".cache"], "version-test-key")));
+			yield* runLiveExit(
+				Effect.flatMap(ActionCache, (svc) => svc.save(["node_modules", ".cache"], "version-test-key")),
+			);
 
-		const body = twirpCaptured[0]?.body as { version: string };
-		const expectedVersion = computeVersion(["node_modules", ".cache"]);
-		expect(body.version).toBe(expectedVersion);
+			const body = twirpCaptured[0]?.body as { version: string };
+			const expectedVersion = computeVersion(["node_modules", ".cache"]);
+			expect(body.version).toBe(expectedVersion);
 
-		vi.unstubAllEnvs();
-	});
+			vi.unstubAllEnvs();
+		}),
+	);
 
 	it("version is NOT order-independent (matches upstream behavior)", () => {
 		const hash1 = computeVersion(["a", "b"]);
@@ -655,52 +723,60 @@ describe("version hash", () => {
 
 describe("ActionCacheTest round-trip", () => {
 	const run = <A, E>(state: ReturnType<typeof ActionCacheTest.empty>, effect: Effect.Effect<A, E, ActionCache>) =>
-		Effect.runPromise(Effect.provide(effect, ActionCacheTest.layer(state)));
+		Effect.provide(effect, ActionCacheTest.layer(state));
 
-	it("save then restore returns Some with matched key", async () => {
-		const state = ActionCacheTest.empty();
-		await run(
-			state,
-			Effect.flatMap(ActionCache, (svc) => svc.save(["path/a"], "my-key")),
-		);
-		const result = await run(
-			state,
-			Effect.flatMap(ActionCache, (svc) => svc.restore(["path/a"], "my-key")),
-		);
-		expect(Option.isSome(result)).toBe(true);
-		if (Option.isSome(result)) {
-			expect(result.value).toBe("my-key");
-		}
-	});
+	it.effect("save then restore returns Some with matched key", () =>
+		Effect.gen(function* () {
+			const state = ActionCacheTest.empty();
+			yield* run(
+				state,
+				Effect.flatMap(ActionCache, (svc) => svc.save(["path/a"], "my-key")),
+			);
+			const result = yield* run(
+				state,
+				Effect.flatMap(ActionCache, (svc) => svc.restore(["path/a"], "my-key")),
+			);
+			expect(Option.isSome(result)).toBe(true);
+			if (Option.isSome(result)) {
+				expect(result.value).toBe("my-key");
+			}
+		}),
+	);
 
-	it("restore returns None on cache miss", async () => {
-		const state = ActionCacheTest.empty();
-		const result = await run(
-			state,
-			Effect.flatMap(ActionCache, (svc) => svc.restore(["path/a"], "missing-key")),
-		);
-		expect(Option.isNone(result)).toBe(true);
-	});
+	it.effect("restore returns None on cache miss", () =>
+		Effect.gen(function* () {
+			const state = ActionCacheTest.empty();
+			const result = yield* run(
+				state,
+				Effect.flatMap(ActionCache, (svc) => svc.restore(["path/a"], "missing-key")),
+			);
+			expect(Option.isNone(result)).toBe(true);
+		}),
+	);
 
-	it("restore with restore keys finds prefix match", async () => {
-		const state = ActionCacheTest.empty();
-		state.entries.set("cache-abc123", ["path/a"]);
-		const result = await run(
-			state,
-			Effect.flatMap(ActionCache, (svc) => svc.restore(["path/a"], "cache-xyz", ["cache-"])),
-		);
-		expect(Option.isSome(result)).toBe(true);
-		if (Option.isSome(result)) {
-			expect(result.value).toBe("cache-abc123");
-		}
-	});
+	it.effect("restore with restore keys finds prefix match", () =>
+		Effect.gen(function* () {
+			const state = ActionCacheTest.empty();
+			state.entries.set("cache-abc123", ["path/a"]);
+			const result = yield* run(
+				state,
+				Effect.flatMap(ActionCache, (svc) => svc.restore(["path/a"], "cache-xyz", ["cache-"])),
+			);
+			expect(Option.isSome(result)).toBe(true);
+			if (Option.isSome(result)) {
+				expect(result.value).toBe("cache-abc123");
+			}
+		}),
+	);
 
-	it("save stores paths in state", async () => {
-		const state = ActionCacheTest.empty();
-		await run(
-			state,
-			Effect.flatMap(ActionCache, (svc) => svc.save(["path/a", "path/b"], "my-key")),
-		);
-		expect(state.entries.get("my-key")).toEqual(["path/a", "path/b"]);
-	});
+	it.effect("save stores paths in state", () =>
+		Effect.gen(function* () {
+			const state = ActionCacheTest.empty();
+			yield* run(
+				state,
+				Effect.flatMap(ActionCache, (svc) => svc.save(["path/a", "path/b"], "my-key")),
+			);
+			expect(state.entries.get("my-key")).toEqual(["path/a", "path/b"]);
+		}),
+	);
 });

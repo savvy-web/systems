@@ -1,6 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runReposNote } from "../../../src/commands/repos/commands/note.js";
 
@@ -45,13 +45,16 @@ function collectLogs(
 	name: string,
 	op: Parameters<Repos.ReposManagerShape["note"]>[2],
 	layer: Layer.Layer<Repos.ReposManager>,
-): Promise<string[]> {
-	const sink: string[] = [];
-	const captureLogger = Logger.make(({ message }) => {
-		sink.push(Array.isArray(message) ? message.join(" ") : String(message));
+): Effect.Effect<string[]> {
+	return Effect.gen(function* () {
+		const sink: string[] = [];
+		const captureLogger = Logger.make(({ message }) => {
+			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
+		});
+		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
+		yield* runReposNote(cwd, name, op).pipe(Effect.provide(captured));
+		return sink;
 	});
-	const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
-	return Effect.runPromise(runReposNote(cwd, name, op).pipe(Effect.provide(captured))).then(() => sink);
 }
 
 describe("runReposNote (adapter)", () => {
@@ -66,90 +69,104 @@ describe("runReposNote (adapter)", () => {
 		process.exitCode = savedExitCode;
 	});
 
-	it("passes {op: 'add', note} through to ReposManager.note", async () => {
-		let captured: unknown;
-		const layer = makeStubLayer((root, name, op) => {
-			captured = { root, name, op };
-			return Effect.succeed(addResult);
-		});
+	it.effect("passes {op: 'add', note} through to ReposManager.note", () =>
+		Effect.gen(function* () {
+			let captured: unknown;
+			const layer = makeStubLayer((root, name, op) => {
+				captured = { root, name, op };
+				return Effect.succeed(addResult);
+			});
 
-		await collectLogs("/repo", "foo", { op: "add", note: "discovered the entry point" }, layer);
+			yield* collectLogs("/repo", "foo", { op: "add", note: "discovered the entry point" }, layer);
 
-		expect(captured).toEqual({
-			root: "/repo",
-			name: "foo",
-			op: { op: "add", note: "discovered the entry point" },
-		});
-	});
+			expect(captured).toEqual({
+				root: "/repo",
+				name: "foo",
+				op: { op: "add", note: "discovered the entry point" },
+			});
+		}),
+	);
 
-	it("passes {op: 'promote', id, into: 'startHere'} through to ReposManager.note", async () => {
-		let captured: unknown;
-		const layer = makeStubLayer((root, name, op) => {
-			captured = { root, name, op };
-			return Effect.succeed(promoteResult);
-		});
+	it.effect("passes {op: 'promote', id, into: 'startHere'} through to ReposManager.note", () =>
+		Effect.gen(function* () {
+			let captured: unknown;
+			const layer = makeStubLayer((root, name, op) => {
+				captured = { root, name, op };
+				return Effect.succeed(promoteResult);
+			});
 
-		await collectLogs("/repo", "foo", { op: "promote", id: "n-5678", into: "startHere" }, layer);
+			yield* collectLogs("/repo", "foo", { op: "promote", id: "n-5678", into: "startHere" }, layer);
 
-		expect(captured).toEqual({
-			root: "/repo",
-			name: "foo",
-			op: { op: "promote", id: "n-5678", into: "startHere" },
-		});
-	});
+			expect(captured).toEqual({
+				root: "/repo",
+				name: "foo",
+				op: { op: "promote", id: "n-5678", into: "startHere" },
+			});
+		}),
+	);
 
-	it("logs the ReposNoteResult on success", async () => {
-		const layer = makeStubLayer(() => Effect.succeed(addResult));
+	it.effect("logs the ReposNoteResult on success", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(addResult));
 
-		const logs = await collectLogs("/repo", "foo", { op: "add", note: "discovered the entry point" }, layer);
+			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "discovered the entry point" }, layer);
 
-		expect(logs.some((l) => l.includes("foo") && l.includes("add") && l.includes("n-1234") && l.includes("1"))).toBe(
-			true,
-		);
-		expect(process.exitCode).toBeUndefined();
-	});
+			expect(logs.some((l) => l.includes("foo") && l.includes("add") && l.includes("n-1234") && l.includes("1"))).toBe(
+				true,
+			);
+			expect(process.exitCode).toBeUndefined();
+		}),
+	);
 
-	it("logs the error and sets exitCode 1 on RepoNotFoundError", async () => {
-		const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
+	it.effect("logs the error and sets exitCode 1 on RepoNotFoundError", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
 
-		const logs = await collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
+			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
 
-		expect(logs.some((l) => l.includes("no vendored repo named"))).toBe(true);
-		expect(process.exitCode).toBe(1);
-	});
+			expect(logs.some((l) => l.includes("no vendored repo named"))).toBe(true);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
 
-	it("logs the error and sets exitCode 1 on NoteNotFoundError", async () => {
-		const layer = makeStubLayer(() => Effect.fail(new NoteNotFoundError({ name: "foo", id: "n-9999" })));
+	it.effect("logs the error and sets exitCode 1 on NoteNotFoundError", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.fail(new NoteNotFoundError({ name: "foo", id: "n-9999" })));
 
-		const logs = await collectLogs("/repo", "foo", { op: "remove", id: "n-9999" }, layer);
+			const logs = yield* collectLogs("/repo", "foo", { op: "remove", id: "n-9999" }, layer);
 
-		expect(logs.some((l) => l.includes('no note "n-9999" on vendored repo "foo"'))).toBe(true);
-		expect(process.exitCode).toBe(1);
-	});
+			expect(logs.some((l) => l.includes('no note "n-9999" on vendored repo "foo"'))).toBe(true);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
 
-	it("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", async () => {
-		const layer = makeStubLayer(() =>
-			Effect.fail(
-				new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
-			),
-		);
+	it.effect("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
+				),
+			);
 
-		const logs = await collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
+			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
 
-		expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-		expect(process.exitCode).toBeUndefined();
-	});
+			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(process.exitCode).toBeUndefined();
+		}),
+	);
 
-	it("logs the error and sets exitCode 1 on ReposConfigError kind invalid", async () => {
-		const layer = makeStubLayer(() =>
-			Effect.fail(
-				new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" }),
-			),
-		);
+	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" }),
+				),
+			);
 
-		const logs = await collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
+			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
 
-		expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
-		expect(process.exitCode).toBe(1);
-	});
+			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
 });

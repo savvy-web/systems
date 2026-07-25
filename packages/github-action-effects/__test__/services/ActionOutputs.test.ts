@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { ActionOutputsTest } from "../../src/layers/ActionOutputsTest.js";
 import { ActionOutputs } from "../../src/services/ActionOutputs.js";
 
@@ -10,7 +10,7 @@ const use = <A, E>(fn: (svc: Effect.Success<typeof ActionOutputs>) => Effect.Eff
 
 const runWithOutputs = <A, E>(effect: Effect.Effect<A, E, ActionOutputs>) => {
 	const state = ActionOutputsTest.empty();
-	return Effect.runPromise(Effect.provide(effect, ActionOutputsTest.layer(state))).then((result) => ({
+	return Effect.map(Effect.provide(effect, ActionOutputsTest.layer(state)), (result) => ({
 		result,
 		state,
 	}));
@@ -18,10 +18,12 @@ const runWithOutputs = <A, E>(effect: Effect.Effect<A, E, ActionOutputs>) => {
 
 describe("ActionOutputs", () => {
 	describe("set", () => {
-		it("captures a string output", async () => {
-			const { state } = await runWithOutputs(use((svc) => svc.set("result", "success")));
-			expect(state.outputs).toEqual([{ name: "result", value: "success" }]);
-		});
+		it.effect("captures a string output", () =>
+			Effect.gen(function* () {
+				const { state } = yield* runWithOutputs(use((svc) => svc.set("result", "success")));
+				expect(state.outputs).toEqual([{ name: "result", value: "success" }]);
+			}),
+		);
 	});
 
 	describe("setJson", () => {
@@ -30,50 +32,64 @@ describe("ActionOutputs", () => {
 			label: Schema.String,
 		});
 
-		it("serializes and captures JSON output", async () => {
-			const { state } = await runWithOutputs(use((svc) => svc.setJson("data", { count: 42, label: "test" }, MySchema)));
-			expect(state.outputs).toHaveLength(1);
-			const first = state.outputs[0];
-			expect(first).toBeDefined();
-			expect(JSON.parse(first?.value ?? "")).toEqual({
-				count: 42,
-				label: "test",
-			});
-		});
+		it.effect("serializes and captures JSON output", () =>
+			Effect.gen(function* () {
+				const { state } = yield* runWithOutputs(
+					use((svc) => svc.setJson("data", { count: 42, label: "test" }, MySchema)),
+				);
+				expect(state.outputs).toHaveLength(1);
+				const first = state.outputs[0];
+				expect(first).toBeDefined();
+				expect(JSON.parse(first?.value ?? "")).toEqual({
+					count: 42,
+					label: "test",
+				});
+			}),
+		);
 	});
 
 	describe("summary", () => {
-		it("captures summary content", async () => {
-			const { state } = await runWithOutputs(use((svc) => svc.summary("## Build Report\n\nAll good.")));
-			expect(state.summaries).toEqual(["## Build Report\n\nAll good."]);
-		});
+		it.effect("captures summary content", () =>
+			Effect.gen(function* () {
+				const { state } = yield* runWithOutputs(use((svc) => svc.summary("## Build Report\n\nAll good.")));
+				expect(state.summaries).toEqual(["## Build Report\n\nAll good."]);
+			}),
+		);
 	});
 
 	describe("exportVariable", () => {
-		it("captures exported variables", async () => {
-			const { state } = await runWithOutputs(use((svc) => svc.exportVariable("MY_VAR", "value")));
-			expect(state.variables).toEqual([{ name: "MY_VAR", value: "value" }]);
-		});
+		it.effect("captures exported variables", () =>
+			Effect.gen(function* () {
+				const { state } = yield* runWithOutputs(use((svc) => svc.exportVariable("MY_VAR", "value")));
+				expect(state.variables).toEqual([{ name: "MY_VAR", value: "value" }]);
+			}),
+		);
 	});
 
 	describe("addPath", () => {
-		it("captures added paths", async () => {
-			const { state } = await runWithOutputs(use((svc) => svc.addPath("/usr/local/bin")));
-			expect(state.paths).toEqual(["/usr/local/bin"]);
-		});
+		it.effect("captures added paths", () =>
+			Effect.gen(function* () {
+				const { state } = yield* runWithOutputs(use((svc) => svc.addPath("/usr/local/bin")));
+				expect(state.paths).toEqual(["/usr/local/bin"]);
+			}),
+		);
 	});
 
 	describe("setFailed", () => {
-		it("captures failure message", async () => {
-			const { state } = await runWithOutputs(use((svc) => svc.setFailed("Something went wrong")));
-			expect(state.failed).toEqual(["Something went wrong"]);
-		});
+		it.effect("captures failure message", () =>
+			Effect.gen(function* () {
+				const { state } = yield* runWithOutputs(use((svc) => svc.setFailed("Something went wrong")));
+				expect(state.failed).toEqual(["Something went wrong"]);
+			}),
+		);
 	});
 
 	describe("setSecret", () => {
-		it("captures secret value", async () => {
-			const { state } = await runWithOutputs(use((svc) => svc.setSecret("ghs_abc123")));
-			expect(state.secrets).toEqual(["ghs_abc123"]);
-		});
+		it.effect("captures secret value", () =>
+			Effect.gen(function* () {
+				const { state } = yield* runWithOutputs(use((svc) => svc.setSecret("ghs_abc123")));
+				expect(state.secrets).toEqual(["ghs_abc123"]);
+			}),
+		);
 	});
 });

@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 import type { RuntimeEnvironmentError } from "../../src/errors/RuntimeEnvironmentError.js";
 import { append, prepareValue } from "../../src/runtime/RuntimeFile.js";
 
@@ -55,10 +55,10 @@ const makeMockFs = (state: MockFsState): FileSystem.FileSystem => {
 const makeTestLayer = (state: MockFsState) => Layer.succeed(FileSystem.FileSystem, makeMockFs(state));
 
 const run = <A>(state: MockFsState, effect: Effect.Effect<A, RuntimeEnvironmentError, FileSystem.FileSystem>) =>
-	Effect.runPromise(Effect.provide(effect, makeTestLayer(state)));
+	Effect.provide(effect, makeTestLayer(state));
 
 const runFail = <A>(state: MockFsState, effect: Effect.Effect<A, RuntimeEnvironmentError, FileSystem.FileSystem>) =>
-	Effect.runPromise(Effect.flip(Effect.provide(effect, makeTestLayer(state))));
+	Effect.flip(Effect.provide(effect, makeTestLayer(state)));
 
 // -- Tests --
 
@@ -84,78 +84,86 @@ describe("prepareValue", () => {
 });
 
 describe("append", () => {
-	it("appends a single-line key-value pair to the file at the env var path", async () => {
-		const state: MockFsState = { files: {} };
-		process.env.TEST_OUTPUT_FILE = "/tmp/test-output";
+	it.effect("appends a single-line key-value pair to the file at the env var path", () =>
+		Effect.gen(function* () {
+			const state: MockFsState = { files: {} };
+			process.env.TEST_OUTPUT_FILE = "/tmp/test-output";
 
-		await run(state, append("TEST_OUTPUT_FILE", "myKey", "myValue"));
+			yield* run(state, append("TEST_OUTPUT_FILE", "myKey", "myValue"));
 
-		expect(state.files["/tmp/test-output"]).toBe("myKey=myValue\n");
+			expect(state.files["/tmp/test-output"]).toBe("myKey=myValue\n");
 
-		delete process.env.TEST_OUTPUT_FILE;
-	});
+			delete process.env.TEST_OUTPUT_FILE;
+		}),
+	);
 
-	it("appends multiple values to the same file", async () => {
-		const state: MockFsState = { files: {} };
-		process.env.TEST_OUTPUT_FILE = "/tmp/test-multi";
+	it.effect("appends multiple values to the same file", () =>
+		Effect.gen(function* () {
+			const state: MockFsState = { files: {} };
+			process.env.TEST_OUTPUT_FILE = "/tmp/test-multi";
 
-		await run(
-			state,
-			Effect.flatMap(append("TEST_OUTPUT_FILE", "key1", "val1"), () => append("TEST_OUTPUT_FILE", "key2", "val2")),
-		);
+			yield* run(
+				state,
+				Effect.flatMap(append("TEST_OUTPUT_FILE", "key1", "val1"), () => append("TEST_OUTPUT_FILE", "key2", "val2")),
+			);
 
-		expect(state.files["/tmp/test-multi"]).toBe("key1=val1\nkey2=val2\n");
+			expect(state.files["/tmp/test-multi"]).toBe("key1=val1\nkey2=val2\n");
 
-		delete process.env.TEST_OUTPUT_FILE;
-	});
+			delete process.env.TEST_OUTPUT_FILE;
+		}),
+	);
 
-	it("returns RuntimeEnvironmentError when env var is undefined", async () => {
-		const state: MockFsState = { files: {} };
-		delete process.env.MISSING_ENV_VAR;
+	it.effect("returns RuntimeEnvironmentError when env var is undefined", () =>
+		Effect.gen(function* () {
+			const state: MockFsState = { files: {} };
+			delete process.env.MISSING_ENV_VAR;
 
-		const error = await runFail(state, append("MISSING_ENV_VAR", "key", "value"));
+			const error = yield* runFail(state, append("MISSING_ENV_VAR", "key", "value"));
 
-		expect(error._tag).toBe("RuntimeEnvironmentError");
-		expect(error.variable).toBe("MISSING_ENV_VAR");
-	});
+			expect(error._tag).toBe("RuntimeEnvironmentError");
+			expect(error.variable).toBe("MISSING_ENV_VAR");
+		}),
+	);
 
-	it("appends multiline value using delimiter format", async () => {
-		const state: MockFsState = { files: {} };
-		process.env.TEST_OUTPUT_FILE = "/tmp/test-multiline";
+	it.effect("appends multiline value using delimiter format", () =>
+		Effect.gen(function* () {
+			const state: MockFsState = { files: {} };
+			process.env.TEST_OUTPUT_FILE = "/tmp/test-multiline";
 
-		await run(state, append("TEST_OUTPUT_FILE", "myKey", "line1\nline2"));
+			yield* run(state, append("TEST_OUTPUT_FILE", "myKey", "line1\nline2"));
 
-		const content = state.files["/tmp/test-multiline"] ?? "";
-		expect(content).toMatch(/^myKey<<ghadelimiter_[a-f0-9-]+\nline1\nline2\nghadelimiter_[a-f0-9-]+\n$/);
+			const content = state.files["/tmp/test-multiline"] ?? "";
+			expect(content).toMatch(/^myKey<<ghadelimiter_[a-f0-9-]+\nline1\nline2\nghadelimiter_[a-f0-9-]+\n$/);
 
-		delete process.env.TEST_OUTPUT_FILE;
-	});
+			delete process.env.TEST_OUTPUT_FILE;
+		}),
+	);
 
-	it("returns RuntimeEnvironmentError when file write fails", async () => {
-		const failingFs = {
-			...makeMockFs({ files: {} }),
-			writeFileString: () =>
-				Effect.fail({
-					_tag: "SystemError" as const,
-					reason: "Unknown" as const,
-					module: "FileSystem" as const,
-					method: "writeFileString",
-					description: "permission denied",
-					message: "permission denied",
-				}),
-		} as unknown as FileSystem.FileSystem;
+	it.effect("returns RuntimeEnvironmentError when file write fails", () =>
+		Effect.gen(function* () {
+			const failingFs = {
+				...makeMockFs({ files: {} }),
+				writeFileString: () =>
+					Effect.fail({
+						_tag: "SystemError" as const,
+						reason: "Unknown" as const,
+						module: "FileSystem" as const,
+						method: "writeFileString",
+						description: "permission denied",
+						message: "permission denied",
+					}),
+			} as unknown as FileSystem.FileSystem;
 
-		const failLayer = Layer.succeed(FileSystem.FileSystem, failingFs);
-		process.env.TEST_WRITE_FAIL = "/tmp/fail-path";
+			const failLayer = Layer.succeed(FileSystem.FileSystem, failingFs);
+			process.env.TEST_WRITE_FAIL = "/tmp/fail-path";
 
-		const error = await Effect.runPromise(
-			append("TEST_WRITE_FAIL", "key", "value").pipe(Effect.provide(failLayer), Effect.flip),
-		);
+			const error = yield* append("TEST_WRITE_FAIL", "key", "value").pipe(Effect.provide(failLayer), Effect.flip);
 
-		expect(error._tag).toBe("RuntimeEnvironmentError");
-		expect(error.message).toContain("Failed to write to file");
-		expect(error.message).toContain("permission denied");
+			expect(error._tag).toBe("RuntimeEnvironmentError");
+			expect(error.message).toContain("Failed to write to file");
+			expect(error.message).toContain("permission denied");
 
-		delete process.env.TEST_WRITE_FAIL;
-	});
+			delete process.env.TEST_WRITE_FAIL;
+		}),
+	);
 });

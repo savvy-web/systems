@@ -2,9 +2,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeFileSystem } from "@effect/platform-node";
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { BiomeSchemaSyncLive, Lint, ManagedSectionLive, savvyBasePreamble } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runLintInit } from "../../src/commands/lint/init.js";
 
 const TestLayer = Layer.provideMerge(Layer.merge(ManagedSectionLive, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
@@ -83,97 +83,106 @@ describe("runLintInit Effect program", () => {
 		rmSync(testDir, { recursive: true, force: true });
 	});
 
-	it("creates pre-commit, hygiene hooks, and config file from scratch", async () => {
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+	it.effect("creates pre-commit, hygiene hooks, and config file from scratch", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
-		expect(preCommit).toContain(BEGIN_BASE);
-		expect(preCommit).toContain(END_BASE);
-		expect(preCommit).toContain(BEGIN_LINT);
-		expect(preCommit).toContain(END_LINT);
-		expect(preCommit).toContain("#!/usr/bin/env sh");
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			expect(preCommit).toContain(BEGIN_BASE);
+			expect(preCommit).toContain(END_BASE);
+			expect(preCommit).toContain(BEGIN_LINT);
+			expect(preCommit).toContain(END_LINT);
+			expect(preCommit).toContain("#!/usr/bin/env sh");
 
-		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
-			const content = readFileSync(join(testDir, hook), "utf8");
-			expect(content).toContain(BEGIN_HOOKS);
-			expect(content).toContain(END_HOOKS);
-			expect(content).toContain("git config core.fileMode false");
-			expect(content).toContain("#!/usr/bin/env sh");
-		}
+			for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
+				const content = readFileSync(join(testDir, hook), "utf8");
+				expect(content).toContain(BEGIN_HOOKS);
+				expect(content).toContain(END_HOOKS);
+				expect(content).toContain("git config core.fileMode false");
+				expect(content).toContain("#!/usr/bin/env sh");
+			}
 
-		const configContent = readFileSync(join(testDir, "lint-staged.config.ts"), "utf8");
-		expect(configContent).toContain("Preset.silk()");
-	});
+			const configContent = readFileSync(join(testDir, "lint-staged.config.ts"), "utf8");
+			expect(configContent).toContain("Preset.silk()");
+		}),
+	);
 
-	it("writes savvy-base before savvy-lint in pre-commit", async () => {
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+	it.effect("writes savvy-base before savvy-lint in pre-commit", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
-		const baseIdx = preCommit.indexOf(BEGIN_BASE);
-		const lintIdx = preCommit.indexOf(BEGIN_LINT);
-		expect(baseIdx).toBeGreaterThanOrEqual(0);
-		expect(lintIdx).toBeGreaterThanOrEqual(0);
-		expect(baseIdx).toBeLessThan(lintIdx);
-		expect(preCommit).toContain('pm_exec lint-staged --config "$ROOT/lint-staged.config.ts"');
-	});
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			const baseIdx = preCommit.indexOf(BEGIN_BASE);
+			const lintIdx = preCommit.indexOf(BEGIN_LINT);
+			expect(baseIdx).toBeGreaterThanOrEqual(0);
+			expect(lintIdx).toBeGreaterThanOrEqual(0);
+			expect(baseIdx).toBeLessThan(lintIdx);
+			expect(preCommit).toContain('pm_exec lint-staged --config "$ROOT/lint-staged.config.ts"');
+		}),
+	);
 
-	it("preserves custom shell above the pre-commit managed sections", async () => {
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		writeFileSync(join(testDir, ".husky/pre-commit"), "#!/usr/bin/env sh\n# my custom hook\necho 'before'\n");
+	it.effect("preserves custom shell above the pre-commit managed sections", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			writeFileSync(join(testDir, ".husky/pre-commit"), "#!/usr/bin/env sh\n# my custom hook\necho 'before'\n");
 
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
-		expect(preCommit).toContain("# my custom hook");
-		expect(preCommit).toContain("echo 'before'");
-		expect(preCommit).toContain(BEGIN_BASE);
-		expect(preCommit).toContain(BEGIN_LINT);
-	});
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			expect(preCommit).toContain("# my custom hook");
+			expect(preCommit).toContain("echo 'before'");
+			expect(preCommit).toContain(BEGIN_BASE);
+			expect(preCommit).toContain(BEGIN_LINT);
+		}),
+	);
 
-	it("force-overwrites entire pre-commit file but not hygiene hooks", async () => {
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		writeFileSync(join(testDir, ".husky/pre-commit"), "#!/usr/bin/env sh\n# custom\n");
-		// pre-existing user content in post-checkout that --force must preserve
-		writeFileSync(
-			join(testDir, ".husky/post-checkout"),
-			"#!/usr/bin/env sh\n# user hygiene preamble\necho 'keep me'\n",
-		);
+	it.effect("force-overwrites entire pre-commit file but not hygiene hooks", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			writeFileSync(join(testDir, ".husky/pre-commit"), "#!/usr/bin/env sh\n# custom\n");
+			// pre-existing user content in post-checkout that --force must preserve
+			writeFileSync(
+				join(testDir, ".husky/post-checkout"),
+				"#!/usr/bin/env sh\n# user hygiene preamble\necho 'keep me'\n",
+			);
 
-		const handler = runLintInit({
-			force: true,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+			const handler = runLintInit({
+				force: true,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
-		expect(preCommit).not.toContain("# custom");
-		expect(preCommit).toContain(BEGIN_BASE);
-		expect(preCommit).toContain(BEGIN_LINT);
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			expect(preCommit).not.toContain("# custom");
+			expect(preCommit).toContain(BEGIN_BASE);
+			expect(preCommit).toContain(BEGIN_LINT);
 
-		const postCheckout = readFileSync(join(testDir, ".husky/post-checkout"), "utf8");
-		expect(postCheckout).toContain("echo 'keep me'");
-		expect(postCheckout).toContain(BEGIN_HOOKS);
-	});
+			const postCheckout = readFileSync(join(testDir, ".husky/post-checkout"), "utf8");
+			expect(postCheckout).toContain("echo 'keep me'");
+			expect(postCheckout).toContain(BEGIN_HOOKS);
+		}),
+	);
 
-	it("migrates legacy SAVVY-LINT hygiene section in post-checkout and post-merge", async () => {
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		const legacyHygiene = `#!/usr/bin/env sh
+	it.effect("migrates legacy SAVVY-LINT hygiene section in post-checkout and post-merge", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			const legacyHygiene = `#!/usr/bin/env sh
 # Post-checkout hook with savvy-lint managed section
 # Custom hooks can go above or below the managed section
 
@@ -187,28 +196,30 @@ git ls-files -z '*.sh' | xargs -0 -r chmod +x 2>/dev/null || true
 fi
 ${END_LINT}
 `;
-		writeFileSync(join(testDir, ".husky/post-checkout"), legacyHygiene);
-		writeFileSync(join(testDir, ".husky/post-merge"), legacyHygiene);
+			writeFileSync(join(testDir, ".husky/post-checkout"), legacyHygiene);
+			writeFileSync(join(testDir, ".husky/post-merge"), legacyHygiene);
 
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
-			const content = readFileSync(join(testDir, hook), "utf8");
-			expect(content).toContain(BEGIN_HOOKS);
-			expect(content).toContain(END_HOOKS);
-			expect(content).not.toContain(BEGIN_LINT);
-			expect(content).not.toContain(END_LINT);
-		}
-	});
+			for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
+				const content = readFileSync(join(testDir, hook), "utf8");
+				expect(content).toContain(BEGIN_HOOKS);
+				expect(content).toContain(END_HOOKS);
+				expect(content).not.toContain(BEGIN_LINT);
+				expect(content).not.toContain(END_LINT);
+			}
+		}),
+	);
 
-	it("rewrites legacy pre-commit SAVVY-LINT block into ordered savvy-base + savvy-lint sections", async () => {
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		const legacyPreCommit = `#!/usr/bin/env sh
+	it.effect("rewrites legacy pre-commit SAVVY-LINT block into ordered savvy-base + savvy-lint sections", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			const legacyPreCommit = `#!/usr/bin/env sh
 # Pre-commit hook with savvy-lint managed section
 # Custom hooks can go above or below the managed section
 
@@ -233,108 +244,121 @@ esac
 fi
 ${END_LINT}
 `;
-		writeFileSync(join(testDir, ".husky/pre-commit"), legacyPreCommit);
+			writeFileSync(join(testDir, ".husky/pre-commit"), legacyPreCommit);
 
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
-		const baseIdx = preCommit.indexOf(BEGIN_BASE);
-		const lintIdx = preCommit.indexOf(BEGIN_LINT);
-		expect(baseIdx).toBeGreaterThanOrEqual(0);
-		expect(lintIdx).toBeGreaterThan(baseIdx);
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			const baseIdx = preCommit.indexOf(BEGIN_BASE);
+			const lintIdx = preCommit.indexOf(BEGIN_LINT);
+			expect(baseIdx).toBeGreaterThanOrEqual(0);
+			expect(lintIdx).toBeGreaterThan(baseIdx);
 
-		// The savvy-lint section content must be replaced with the new one-liner —
-		// the old multi-line case body should no longer appear inside it.
-		const lintSection = preCommit.slice(preCommit.indexOf(BEGIN_LINT), preCommit.indexOf(END_LINT) + END_LINT.length);
-		expect(lintSection).not.toMatch(/case "\$PM" in/);
-		expect(lintSection).not.toMatch(/\bbunx\b/);
-		expect(lintSection).toContain('in_ci || pm_exec lint-staged --config "$ROOT/lint-staged.config.ts"');
-	});
+			// The savvy-lint section content must be replaced with the new one-liner —
+			// the old multi-line case body should no longer appear inside it.
+			const lintSection = preCommit.slice(preCommit.indexOf(BEGIN_LINT), preCommit.indexOf(END_LINT) + END_LINT.length);
+			expect(lintSection).not.toMatch(/case "\$PM" in/);
+			expect(lintSection).not.toMatch(/\bbunx\b/);
+			expect(lintSection).toContain('in_ci || pm_exec lint-staged --config "$ROOT/lint-staged.config.ts"');
+		}),
+	);
 
-	it("is idempotent across repeated runs", async () => {
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-		const first = {
-			preCommit: readFileSync(join(testDir, ".husky/pre-commit"), "utf8"),
-			postCheckout: readFileSync(join(testDir, ".husky/post-checkout"), "utf8"),
-			postMerge: readFileSync(join(testDir, ".husky/post-merge"), "utf8"),
-			postCommit: readFileSync(join(testDir, ".husky/post-commit"), "utf8"),
-		};
+	it.effect("is idempotent across repeated runs", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
+			const first = {
+				preCommit: readFileSync(join(testDir, ".husky/pre-commit"), "utf8"),
+				postCheckout: readFileSync(join(testDir, ".husky/post-checkout"), "utf8"),
+				postMerge: readFileSync(join(testDir, ".husky/post-merge"), "utf8"),
+				postCommit: readFileSync(join(testDir, ".husky/post-commit"), "utf8"),
+			};
 
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-		const second = {
-			preCommit: readFileSync(join(testDir, ".husky/pre-commit"), "utf8"),
-			postCheckout: readFileSync(join(testDir, ".husky/post-checkout"), "utf8"),
-			postMerge: readFileSync(join(testDir, ".husky/post-merge"), "utf8"),
-			postCommit: readFileSync(join(testDir, ".husky/post-commit"), "utf8"),
-		};
+			yield* Effect.provide(handler, TestLayer);
+			const second = {
+				preCommit: readFileSync(join(testDir, ".husky/pre-commit"), "utf8"),
+				postCheckout: readFileSync(join(testDir, ".husky/post-checkout"), "utf8"),
+				postMerge: readFileSync(join(testDir, ".husky/post-merge"), "utf8"),
+				postCommit: readFileSync(join(testDir, ".husky/post-commit"), "utf8"),
+			};
 
-		expect(second.preCommit).toBe(first.preCommit);
-		expect(second.postCheckout).toBe(first.postCheckout);
-		expect(second.postMerge).toBe(first.postMerge);
-		expect(second.postCommit).toBe(first.postCommit);
-	});
+			expect(second.preCommit).toBe(first.preCommit);
+			expect(second.postCheckout).toBe(first.postCheckout);
+			expect(second.postMerge).toBe(first.postMerge);
+			expect(second.postCommit).toBe(first.postCommit);
+		}),
+	);
 
-	it("union-merges missing template ignores into an existing markdownlint config without force", async () => {
-		// Pre-existing config: missing several default ignores (incl. **/.git),
-		// carries a user-added ignore, and has a drifted config rule.
-		const existing = {
-			...Lint.MARKDOWNLINT_TEMPLATE,
-			ignores: ["**/node_modules", "**/my-vendor"],
-			config: { ...Lint.MARKDOWNLINT_CONFIG, MD013: true },
-		};
-		mkdirSync(join(testDir, "lib/configs"), { recursive: true });
-		writeFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), `${JSON.stringify(existing, null, "\t")}\n`);
+	it.effect("union-merges missing template ignores into an existing markdownlint config without force", () =>
+		Effect.gen(function* () {
+			// Pre-existing config: missing several default ignores (incl. **/.git),
+			// carries a user-added ignore, and has a drifted config rule.
+			const existing = {
+				...Lint.MARKDOWNLINT_TEMPLATE,
+				ignores: ["**/node_modules", "**/my-vendor"],
+				config: { ...Lint.MARKDOWNLINT_CONFIG, MD013: true },
+			};
+			mkdirSync(join(testDir, "lib/configs"), { recursive: true });
+			writeFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), `${JSON.stringify(existing, null, "\t")}\n`);
 
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "silk",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		const merged = JSON.parse(readFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), "utf8"));
-		// The new default exclude is appended.
-		expect(merged.ignores).toContain("**/.git");
-		// The user-added entry survives.
-		expect(merged.ignores).toContain("**/my-vendor");
-		// Pre-existing default is not duplicated.
-		expect(merged.ignores.filter((g: string) => g === "**/node_modules")).toHaveLength(1);
-		// Drifted config rules are left as-is (warn-only, never auto-overwritten).
-		expect(merged.config.MD013).toBe(true);
-	});
+			const merged = JSON.parse(readFileSync(join(testDir, Lint.MARKDOWNLINT_CONFIG_PATH), "utf8"));
+			// The new default exclude is appended.
+			expect(merged.ignores).toContain("**/.git");
+			// The user-added entry survives.
+			expect(merged.ignores).toContain("**/my-vendor");
+			// Pre-existing default is not duplicated.
+			expect(merged.ignores.filter((g: string) => g === "**/node_modules")).toHaveLength(1);
+			// Drifted config rules are left as-is (warn-only, never auto-overwritten).
+			expect(merged.config.MD013).toBe(true);
+		}),
+	);
 
-	it("skips hygiene hooks for minimal preset", async () => {
-		const handler = runLintInit({
-			force: false,
-			config: "lint-staged.config.ts",
-			preset: "minimal",
-		});
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+	it.effect("skips hygiene hooks for minimal preset", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "minimal",
+			});
+			yield* Effect.provide(handler, TestLayer);
 
-		const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
-		expect(preCommit).toContain(BEGIN_LINT);
-		expect(() => readFileSync(join(testDir, ".husky/post-checkout"), "utf8")).toThrow();
-		expect(() => readFileSync(join(testDir, ".husky/post-merge"), "utf8")).toThrow();
-		expect(() => readFileSync(join(testDir, ".husky/post-commit"), "utf8")).toThrow();
-	});
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			expect(preCommit).toContain(BEGIN_LINT);
+			expect(() => readFileSync(join(testDir, ".husky/post-checkout"), "utf8")).toThrow();
+			expect(() => readFileSync(join(testDir, ".husky/post-merge"), "utf8")).toThrow();
+			expect(() => readFileSync(join(testDir, ".husky/post-commit"), "utf8")).toThrow();
+		}),
+	);
 
-	it("rejects absolute config paths", async () => {
-		const handler = runLintInit({
-			force: false,
-			config: "/absolute/path/lint-staged.config.ts",
-			preset: "silk",
-		});
-		const result = await Effect.runPromiseExit(Effect.provide(handler, TestLayer));
-		expect(result._tag).toBe("Failure");
-	});
+	it.effect("rejects absolute config paths", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "/absolute/path/lint-staged.config.ts",
+				preset: "silk",
+			});
+			// `Effect.flip` proves the rejection arrives through the TYPED error
+			// channel; the old `runPromiseExit` + `_tag === "Failure"` check would
+			// also have passed if the path had escaped as a defect.
+			const error = yield* Effect.flip(Effect.provide(handler, TestLayer));
+			expect(error).toBeInstanceOf(Error);
+			expect(error.message).toBe("Config path must be relative to repository root, not absolute");
+		}),
+	);
 });

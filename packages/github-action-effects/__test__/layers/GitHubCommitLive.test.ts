@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 import type { GitHubClientTestState, RestResponse } from "../../src/layers/GitHubClientTest.js";
 import { GitHubClientTest } from "../../src/layers/GitHubClientTest.js";
 import { GitHubCommitLive } from "../../src/layers/GitHubCommitLive.js";
@@ -16,9 +16,9 @@ const clientState = (overrides: {
 });
 
 describe("GitHubCommitLive", () => {
-	it("get maps a commit to CommitDetail with parents", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("get maps a commit to CommitDetail with parents", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubCommit;
 				return yield* svc.get("sha1");
 			}).pipe(
@@ -41,19 +41,19 @@ describe("GitHubCommitLive", () => {
 						}),
 					),
 				),
-			),
-		);
-		expect(result).toEqual({
-			sha: "sha1",
-			message: "feat: x",
-			author: "Ann",
-			parents: [{ sha: "parent-sha" }],
-		});
-	});
+			);
+			expect(result).toEqual({
+				sha: "sha1",
+				message: "feat: x",
+				author: "Ann",
+				parents: [{ sha: "parent-sha" }],
+			});
+		}),
+	);
 
-	it("list maps paginated commits to CommitSummary[]", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("list maps paginated commits to CommitSummary[]", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubCommit;
 				return yield* svc.list("main");
 			}).pipe(
@@ -65,14 +65,14 @@ describe("GitHubCommitLive", () => {
 						}),
 					),
 				),
-			),
-		);
-		expect(result).toEqual([{ sha: "c1", message: "m1", author: "A" }]);
-	});
+			);
+			expect(result).toEqual([{ sha: "c1", message: "m1", author: "A" }]);
+		}),
+	);
 
-	it("compare maps a comparison to commits and files", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("compare maps a comparison to commits and files", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubCommit;
 				return yield* svc.compare("base", "head");
 			}).pipe(
@@ -94,21 +94,21 @@ describe("GitHubCommitLive", () => {
 						}),
 					),
 				),
-			),
-		);
-		expect(result).toEqual({
-			commits: [{ sha: "c1", message: "m1", author: "Unknown" }],
-			files: [{ filename: "a/package.json", status: "modified" }],
-		});
-	});
+			);
+			expect(result).toEqual({
+				commits: [{ sha: "c1", message: "m1", author: "Unknown" }],
+				files: [{ filename: "a/package.json", status: "modified" }],
+			});
+		}),
+	);
 
-	it("changedFiles aggregates files across all paginated getCommit pages", async () => {
-		// Regression: a squash-merged release commit changed 554 files; the
-		// compareCommits endpoint paginates by commit and caps a single-commit
-		// comparison at 300 files, dropping packages whose package.json sorts
-		// past #300. changedFiles must surface every page's files.
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("changedFiles aggregates files across all paginated getCommit pages", () =>
+		Effect.gen(function* () {
+			// Regression: a squash-merged release commit changed 554 files; the
+			// compareCommits endpoint paginates by commit and caps a single-commit
+			// comparison at 300 files, dropping packages whose package.json sorts
+			// past #300. changedFiles must surface every page's files.
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubCommit;
 				return yield* svc.changedFiles("squash-sha");
 			}).pipe(
@@ -128,35 +128,35 @@ describe("GitHubCommitLive", () => {
 						}),
 					),
 				),
-			),
-		);
-		expect(result).toEqual([
-			{ filename: "packages/cli/package.json", status: "modified" },
-			{ filename: "packages/silk/package.json", status: "modified" },
-		]);
-	});
+			);
+			expect(result).toEqual([
+				{ filename: "packages/cli/package.json", status: "modified" },
+				{ filename: "packages/silk/package.json", status: "modified" },
+			]);
+		}),
+	);
 
-	it("changedFiles wraps client errors as GitHubCommitError carrying the ref", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("changedFiles wraps client errors as GitHubCommitError carrying the ref", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubCommit;
 				return yield* svc.changedFiles("squash-sha");
-			}).pipe(Effect.provide(GitHubCommitLive), Effect.provide(GitHubClientTest.layer(clientState({}))), Effect.flip),
-		);
-		expect(result._tag).toBe("GitHubCommitError");
-		expect(result.operation).toBe("changedFiles");
-		expect(result.ref).toBe("squash-sha");
-	});
+			}).pipe(Effect.provide(GitHubCommitLive), Effect.provide(GitHubClientTest.layer(clientState({}))), Effect.flip);
+			expect(result._tag).toBe("GitHubCommitError");
+			expect(result.operation).toBe("changedFiles");
+			expect(result.ref).toBe("squash-sha");
+		}),
+	);
 
-	it("compare wraps client errors as GitHubCommitError carrying the base...head ref", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("compare wraps client errors as GitHubCommitError carrying the base...head ref", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubCommit;
 				return yield* svc.compare("base", "head");
-			}).pipe(Effect.provide(GitHubCommitLive), Effect.provide(GitHubClientTest.layer(clientState({}))), Effect.flip),
-		);
-		expect(result._tag).toBe("GitHubCommitError");
-		expect(result.operation).toBe("compare");
-		expect(result.ref).toBe("base...head");
-	});
+			}).pipe(Effect.provide(GitHubCommitLive), Effect.provide(GitHubClientTest.layer(clientState({}))), Effect.flip);
+			expect(result._tag).toBe("GitHubCommitError");
+			expect(result.operation).toBe("compare");
+			expect(result.ref).toBe("base...head");
+		}),
+	);
 });

@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 import { closesTrailerRule, hasClosingTrailer } from "../../../../src/commitlint/hook/rules/closes-trailer.js";
 
 describe("hasClosingTrailer", () => {
@@ -28,45 +28,45 @@ describe("hasClosingTrailer", () => {
 });
 
 describe("closesTrailerRule", () => {
-	it("advises when branch ticket is not closed in body and is open", async () => {
-		const hit = await Effect.runPromise(
-			closesTrailerRule.check(
+	it.effect("advises when branch ticket is not closed in body and is open", () =>
+		Effect.gen(function* () {
+			const hit = yield* closesTrailerRule.check(
 				{ message: "subj\n\nbody" },
 				{
 					branchInfo: { branch: "fix/123-improve", inferredTicketId: 123 },
 					openIssues: [{ number: 123, title: "thing" }],
 				},
-			),
-		);
-		expect(hit?.severity).toBe("advise");
-		expect(hit?.message).toContain("#123");
-	});
+			);
+			expect(hit?.severity).toBe("advise");
+			expect(hit?.message).toContain("#123");
+		}),
+	);
 
-	it("returns null when ticket is already closed in body", async () => {
-		expect(
-			await Effect.runPromise(
-				closesTrailerRule.check(
+	it.effect("returns null when ticket is already closed in body", () =>
+		Effect.gen(function* () {
+			expect(
+				yield* closesTrailerRule.check(
 					{ message: "subj\n\nbody\n\nCloses #123" },
 					{
 						branchInfo: { branch: "fix/123-improve", inferredTicketId: 123 },
 						openIssues: [{ number: 123, title: "x" }],
 					},
 				),
-			),
-		).toBeNull();
-	});
+			).toBeNull();
+		}),
+	);
 
-	it("returns null when no inferred ticket id", async () => {
-		expect(
-			await Effect.runPromise(
-				closesTrailerRule.check(
+	it.effect("returns null when no inferred ticket id", () =>
+		Effect.gen(function* () {
+			expect(
+				yield* closesTrailerRule.check(
 					{ message: "subj\n\nbody" },
 					{
 						branchInfo: { branch: "feat/clarity", inferredTicketId: null },
 						openIssues: [],
 					},
 				),
-			),
-		).toBeNull();
-	});
+			).toBeNull();
+		}),
+	);
 });

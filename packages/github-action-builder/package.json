@@ -56,6 +56,7 @@
 		"picocolors": "^1.1.1"
 	},
 	"devDependencies": {
+		"@effect/vitest": "catalog:effect",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"tsx": "catalog:silk",

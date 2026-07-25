@@ -1,6 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Option } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runDepsRegen } from "../../../src/commands/changeset/commands/deps-regen.js";
 
@@ -66,20 +66,28 @@ function collectStdout(
 	layer: Layer.Layer<Changesets.DepsRegen>,
 	base: Option.Option<string> = Option.none(),
 	pkg: Option.Option<string> = Option.none(),
-): Promise<string> {
-	let out = "";
-	const original = console.log;
-	// biome-ignore lint/suspicious/noExplicitAny: console.log spy for capture
-	console.log = ((...args: any[]): void => {
-		out += `${args.map((a) => (typeof a === "string" ? a : String(a))).join(" ")}\n`;
-	}) as typeof console.log;
-	return Effect.runPromise(runDepsRegen(cwd, base, pkg, dryRun, json).pipe(Effect.provide(layer)))
-		.then(() => out)
-		.finally(() => {
-			console.log = original;
-		});
+) {
+	return Effect.gen(function* () {
+		let out = "";
+		const original = console.log;
+		// biome-ignore lint/suspicious/noExplicitAny: console.log spy for capture
+		console.log = ((...args: any[]): void => {
+			out += `${args.map((a) => (typeof a === "string" ? a : String(a))).join(" ")}\n`;
+		}) as typeof console.log;
+		yield* Effect.ensuring(
+			runDepsRegen(cwd, base, pkg, dryRun, json).pipe(Effect.provide(layer)),
+			Effect.sync(() => {
+				console.log = original;
+			}),
+		);
+		return out;
+	});
 }
 
+// `it.live` throughout: `collectStdout` spies on the REAL `console.log`, and
+// `it.effect` installs `TestConsole`, which captures Effect's `Console.log`
+// writes so they never reach the spy (leaving `out` empty and the JSON.parse
+// assertions failing).
 describe("savvy changeset deps regen (adapter)", () => {
 	let savedExitCode: typeof process.exitCode;
 
@@ -92,45 +100,51 @@ describe("savvy changeset deps regen (adapter)", () => {
 		process.exitCode = savedExitCode;
 	});
 
-	it("produces a dry-run plan with no devDependency rows and does not call execute", async () => {
-		let executeCalled = false;
-		const layer = makeStubLayer(() => {
-			executeCalled = true;
-		});
+	it.live("produces a dry-run plan with no devDependency rows and does not call execute", () =>
+		Effect.gen(function* () {
+			let executeCalled = false;
+			const layer = makeStubLayer(() => {
+				executeCalled = true;
+			});
 
-		const out = await collectStdout("/repo", true, true, layer);
-		const rendered: Changesets.RegenPlan = JSON.parse(out);
+			const out = yield* collectStdout("/repo", true, true, layer);
+			const rendered: Changesets.RegenPlan = JSON.parse(out);
 
-		expect(rendered).toEqual(cannedPlan);
-		for (const entry of rendered.toWrite) {
-			expect(entry.diff.rows.some((row) => row.type === "devDependency")).toBe(false);
-		}
-		expect(executeCalled).toBe(false);
-	});
+			expect(rendered).toEqual(cannedPlan);
+			for (const entry of rendered.toWrite) {
+				expect(entry.diff.rows.some((row) => row.type === "devDependency")).toBe(false);
+			}
+			expect(executeCalled).toBe(false);
+		}),
+	);
 
-	it("forwards cwd, base, and package to DepsRegen.plan", async () => {
-		let received: Changesets.DepsRegenOptions | undefined;
-		const layer = makeStubLayer(undefined, (options) => {
-			received = options;
-		});
+	it.live("forwards cwd, base, and package to DepsRegen.plan", () =>
+		Effect.gen(function* () {
+			let received: Changesets.DepsRegenOptions | undefined;
+			const layer = makeStubLayer(undefined, (options) => {
+				received = options;
+			});
 
-		await collectStdout("/repo", true, true, layer, Option.some("develop"), Option.some("@scope/foo"));
+			yield* collectStdout("/repo", true, true, layer, Option.some("develop"), Option.some("@scope/foo"));
 
-		expect(received).toMatchObject({ cwd: "/repo", base: "develop", package: "@scope/foo" });
-	});
+			expect(received).toMatchObject({ cwd: "/repo", base: "develop", package: "@scope/foo" });
+		}),
+	);
 
-	it("calls execute with the plan when --dry-run is not set", async () => {
-		let receivedPlan: Changesets.RegenPlan | undefined;
-		const layer = Layer.succeed(DepsRegen, {
-			plan: () => Effect.succeed(cannedPlan),
-			execute: (plan) => {
-				receivedPlan = plan;
-				return Effect.succeed(cannedResult);
-			},
-		});
+	it.live("calls execute with the plan when --dry-run is not set", () =>
+		Effect.gen(function* () {
+			let receivedPlan: Changesets.RegenPlan | undefined;
+			const layer = Layer.succeed(DepsRegen, {
+				plan: () => Effect.succeed(cannedPlan),
+				execute: (plan) => {
+					receivedPlan = plan;
+					return Effect.succeed(cannedResult);
+				},
+			});
 
-		await collectStdout("/repo", false, true, layer);
+			yield* collectStdout("/repo", false, true, layer);
 
-		expect(receivedPlan).toEqual(cannedPlan);
-	});
+			expect(receivedPlan).toEqual(cannedPlan);
+		}),
+	);
 });

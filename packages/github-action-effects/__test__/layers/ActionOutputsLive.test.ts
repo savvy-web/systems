@@ -1,6 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import type { Exit } from "effect";
 import { Cause, Effect, FileSystem, Layer, Option, Result, Schema } from "effect";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionOutputsLive } from "../../src/layers/ActionOutputsLive.js";
 import { ActionOutputs } from "../../src/services/ActionOutputs.js";
 
@@ -78,25 +78,19 @@ const makeFaultyTestLayer = (state: MockFsState) => Layer.succeed(FileSystem.Fil
 // so an explicit `as Effect<..., never>` at each runner site keeps the test
 // helpers callable without leaking type variance noise into every invocation.
 const run = <A, E>(state: MockFsState, effect: Effect.Effect<A, E, ActionOutputs>) =>
-	Effect.runPromise(
-		Effect.provide(effect, ActionOutputsLive.pipe(Layer.provide(makeTestLayer(state)))) as Effect.Effect<A, E, never>,
-	);
+	Effect.provide(effect, ActionOutputsLive.pipe(Layer.provide(makeTestLayer(state)))) as Effect.Effect<A, E, never>;
 
 const runExit = <A, E>(state: MockFsState, effect: Effect.Effect<A, E, ActionOutputs>) =>
-	Effect.runPromise(
-		Effect.exit(Effect.provide(effect, ActionOutputsLive.pipe(Layer.provide(makeTestLayer(state))))) as Effect.Effect<
-			Exit.Exit<A, E>,
-			never,
-			never
-		>,
-	);
+	Effect.exit(Effect.provide(effect, ActionOutputsLive.pipe(Layer.provide(makeTestLayer(state))))) as Effect.Effect<
+		Exit.Exit<A, E>,
+		never,
+		never
+	>;
 
 const runExitFaulty = <A, E>(state: MockFsState, effect: Effect.Effect<A, E, ActionOutputs>) =>
-	Effect.runPromise(
-		Effect.exit(
-			Effect.provide(effect, ActionOutputsLive.pipe(Layer.provide(makeFaultyTestLayer(state)))),
-		) as Effect.Effect<Exit.Exit<A, E>, never, never>,
-	);
+	Effect.exit(
+		Effect.provide(effect, ActionOutputsLive.pipe(Layer.provide(makeFaultyTestLayer(state)))),
+	) as Effect.Effect<Exit.Exit<A, E>, never, never>;
 
 // -- Tests --
 
@@ -116,192 +110,220 @@ describe("ActionOutputsLive", () => {
 	});
 
 	describe("set", () => {
-		it("appends key=value to GITHUB_OUTPUT file", async () => {
-			const state: MockFsState = { files: {} };
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.set("key", "value")),
-			);
-			expect(state.files["/tmp/github-output"]).toBe("key=value\n");
-		});
+		it.effect("appends key=value to GITHUB_OUTPUT file", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.set("key", "value")),
+				);
+				expect(state.files["/tmp/github-output"]).toBe("key=value\n");
+			}),
+		);
 
-		it("appends multiline value using delimiter format to GITHUB_OUTPUT", async () => {
-			const state: MockFsState = { files: {} };
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.set("key", "multi\nline")),
-			);
-			const content = state.files["/tmp/github-output"] ?? "";
-			expect(content).toMatch(/^key<<ghadelimiter_[a-f0-9-]+\nmulti\nline\nghadelimiter_[a-f0-9-]+\n$/);
-		});
+		it.effect("appends multiline value using delimiter format to GITHUB_OUTPUT", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.set("key", "multi\nline")),
+				);
+				const content = state.files["/tmp/github-output"] ?? "";
+				expect(content).toMatch(/^key<<ghadelimiter_[a-f0-9-]+\nmulti\nline\nghadelimiter_[a-f0-9-]+\n$/);
+			}),
+		);
 
-		it("dies with ActionOutputError when GITHUB_OUTPUT is not set", async () => {
-			delete process.env.GITHUB_OUTPUT;
-			const state: MockFsState = { files: {} };
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.set("key", "value")),
-			);
-			expect(exit._tag).toBe("Failure");
-			if (exit._tag === "Failure") {
-				expect(Cause.hasDies(exit.cause)).toBe(true);
-				const defect = Result.getOrThrow(Cause.findDefect(exit.cause)) as { _tag: string; outputName: string };
-				expect(defect._tag).toBe("ActionOutputError");
-				expect(defect.outputName).toBe("key");
-			}
-		});
+		it.effect("dies with ActionOutputError when GITHUB_OUTPUT is not set", () =>
+			Effect.gen(function* () {
+				delete process.env.GITHUB_OUTPUT;
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.set("key", "value")),
+				);
+				expect(exit._tag).toBe("Failure");
+				if (exit._tag === "Failure") {
+					expect(Cause.hasDies(exit.cause)).toBe(true);
+					const defect = Result.getOrThrow(Cause.findDefect(exit.cause)) as { _tag: string; outputName: string };
+					expect(defect._tag).toBe("ActionOutputError");
+					expect(defect.outputName).toBe("key");
+				}
+			}),
+		);
 	});
 
 	describe("setJson", () => {
-		it("serializes and appends JSON output to GITHUB_OUTPUT", async () => {
-			const state: MockFsState = { files: {} };
-			const MySchema = Schema.Struct({ a: Schema.Number });
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.setJson("key", { a: 1 }, MySchema)),
-			);
-			expect(state.files["/tmp/github-output"]).toBe('key={"a":1}\n');
-		});
+		it.effect("serializes and appends JSON output to GITHUB_OUTPUT", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const MySchema = Schema.Struct({ a: Schema.Number });
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.setJson("key", { a: 1 }, MySchema)),
+				);
+				expect(state.files["/tmp/github-output"]).toBe('key={"a":1}\n');
+			}),
+		);
 
-		it("fails with ActionOutputError on schema validation error", async () => {
-			const state: MockFsState = { files: {} };
-			const MySchema = Schema.Struct({ count: Schema.Number });
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.setJson("data", { count: "bad" as unknown as number }, MySchema)),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails with ActionOutputError on schema validation error", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const MySchema = Schema.Struct({ count: Schema.Number });
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.setJson("data", { count: "bad" as unknown as number }, MySchema)),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 
-		it("fails with ActionOutputError when GITHUB_OUTPUT is not set (RuntimeEnvironmentError branch)", async () => {
-			delete process.env.GITHUB_OUTPUT;
-			const state: MockFsState = { files: {} };
-			const MySchema = Schema.Struct({ a: Schema.Number });
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.setJson("out", { a: 1 }, MySchema)),
-			);
-			expect(exit._tag).toBe("Failure");
-			if (exit._tag === "Failure") {
-				const first = Option.getOrThrow(Cause.findErrorOption(exit.cause)) as {
-					_tag: string;
-					outputName: string;
-					reason: string;
-				};
-				expect(first._tag).toBe("ActionOutputError");
-				expect(first.outputName).toBe("out");
-				expect(first.reason).toContain("GITHUB_OUTPUT");
-			}
-		});
+		it.effect("fails with ActionOutputError when GITHUB_OUTPUT is not set (RuntimeEnvironmentError branch)", () =>
+			Effect.gen(function* () {
+				delete process.env.GITHUB_OUTPUT;
+				const state: MockFsState = { files: {} };
+				const MySchema = Schema.Struct({ a: Schema.Number });
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.setJson("out", { a: 1 }, MySchema)),
+				);
+				expect(exit._tag).toBe("Failure");
+				if (exit._tag === "Failure") {
+					const first = Option.getOrThrow(Cause.findErrorOption(exit.cause)) as {
+						_tag: string;
+						outputName: string;
+						reason: string;
+					};
+					expect(first._tag).toBe("ActionOutputError");
+					expect(first.outputName).toBe("out");
+					expect(first.reason).toContain("GITHUB_OUTPUT");
+				}
+			}),
+		);
 	});
 
 	describe("summary", () => {
-		it("appends content to GITHUB_STEP_SUMMARY file", async () => {
-			const state: MockFsState = { files: {} };
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.summary("# Title")),
-			);
-			expect(state.files["/tmp/github-step-summary"]).toBe("# Title");
-		});
+		it.effect("appends content to GITHUB_STEP_SUMMARY file", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.summary("# Title")),
+				);
+				expect(state.files["/tmp/github-step-summary"]).toBe("# Title");
+			}),
+		);
 
-		it("fails with ActionOutputError when GITHUB_STEP_SUMMARY is not set", async () => {
-			delete process.env.GITHUB_STEP_SUMMARY;
-			const state: MockFsState = { files: {} };
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.summary("# Title")),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails with ActionOutputError when GITHUB_STEP_SUMMARY is not set", () =>
+			Effect.gen(function* () {
+				delete process.env.GITHUB_STEP_SUMMARY;
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.summary("# Title")),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 
-		it("fails with ActionOutputError when the summary file write fails", async () => {
-			const state: MockFsState = { files: {} };
-			const exit = await runExitFaulty(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.summary("# Title")),
-			);
-			expect(exit._tag).toBe("Failure");
-			if (exit._tag === "Failure") {
-				const first = Option.getOrThrow(Cause.findErrorOption(exit.cause)) as {
-					_tag: string;
-					outputName: string;
-					reason: string;
-				};
-				expect(first._tag).toBe("ActionOutputError");
-				expect(first.outputName).toBe("summary");
-				expect(first.reason).toContain("Failed to write step summary");
-			}
-		});
+		it.effect("fails with ActionOutputError when the summary file write fails", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExitFaulty(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.summary("# Title")),
+				);
+				expect(exit._tag).toBe("Failure");
+				if (exit._tag === "Failure") {
+					const first = Option.getOrThrow(Cause.findErrorOption(exit.cause)) as {
+						_tag: string;
+						outputName: string;
+						reason: string;
+					};
+					expect(first._tag).toBe("ActionOutputError");
+					expect(first.outputName).toBe("summary");
+					expect(first.reason).toContain("Failed to write step summary");
+				}
+			}),
+		);
 	});
 
 	describe("exportVariable", () => {
-		it("appends to GITHUB_ENV file and sets process.env", async () => {
-			const state: MockFsState = { files: {} };
-			delete process.env.FOO;
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.exportVariable("FOO", "bar")),
-			);
-			expect(state.files["/tmp/github-env"]).toBe("FOO=bar\n");
-			expect(process.env.FOO).toBe("bar");
-			delete process.env.FOO;
-		});
+		it.effect("appends to GITHUB_ENV file and sets process.env", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				delete process.env.FOO;
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.exportVariable("FOO", "bar")),
+				);
+				expect(state.files["/tmp/github-env"]).toBe("FOO=bar\n");
+				expect(process.env.FOO).toBe("bar");
+				delete process.env.FOO;
+			}),
+		);
 	});
 
 	describe("addPath", () => {
-		it("appends path to GITHUB_PATH file and prepends to process.env.PATH", async () => {
-			const state: MockFsState = { files: {} };
-			const originalPath = process.env.PATH ?? "";
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.addPath("/bin")),
-			);
-			expect(state.files["/tmp/github-path"]).toBe("/bin\n");
-			expect(process.env.PATH).toBe(`/bin:${originalPath}`);
-			process.env.PATH = originalPath;
-		});
+		it.effect("appends path to GITHUB_PATH file and prepends to process.env.PATH", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const originalPath = process.env.PATH ?? "";
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.addPath("/bin")),
+				);
+				expect(state.files["/tmp/github-path"]).toBe("/bin\n");
+				expect(process.env.PATH).toBe(`/bin:${originalPath}`);
+				process.env.PATH = originalPath;
+			}),
+		);
 
-		it("only updates process.env.PATH when GITHUB_PATH is not set", async () => {
-			delete process.env.GITHUB_PATH;
-			const state: MockFsState = { files: {} };
-			const originalPath = process.env.PATH ?? "";
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.addPath("/custom/bin")),
-			);
-			expect(Object.keys(state.files)).toHaveLength(0);
-			expect(process.env.PATH).toBe(`/custom/bin:${originalPath}`);
-			process.env.PATH = originalPath;
-		});
+		it.effect("only updates process.env.PATH when GITHUB_PATH is not set", () =>
+			Effect.gen(function* () {
+				delete process.env.GITHUB_PATH;
+				const state: MockFsState = { files: {} };
+				const originalPath = process.env.PATH ?? "";
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.addPath("/custom/bin")),
+				);
+				expect(Object.keys(state.files)).toHaveLength(0);
+				expect(process.env.PATH).toBe(`/custom/bin:${originalPath}`);
+				process.env.PATH = originalPath;
+			}),
+		);
 	});
 
 	describe("setSecret", () => {
-		it("writes ::add-mask:: command to stdout", async () => {
-			const state: MockFsState = { files: {} };
-			const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.setSecret("token")),
-			);
-			expect(writeSpy).toHaveBeenCalledWith("::add-mask::token\n");
-			writeSpy.mockRestore();
-		});
+		it.effect("writes ::add-mask:: command to stdout", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.setSecret("token")),
+				);
+				expect(writeSpy).toHaveBeenCalledWith("::add-mask::token\n");
+				writeSpy.mockRestore();
+			}),
+		);
 	});
 
 	describe("setFailed", () => {
-		it("writes ::error:: command to stdout and sets process.exitCode to 1", async () => {
-			const state: MockFsState = { files: {} };
-			const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-			const originalExitCode = process.exitCode;
-			await run(
-				state,
-				Effect.flatMap(ActionOutputs, (svc) => svc.setFailed("msg")),
-			);
-			expect(writeSpy).toHaveBeenCalledWith("::error::msg\n");
-			expect(process.exitCode).toBe(1);
-			writeSpy.mockRestore();
-			process.exitCode = originalExitCode;
-		});
+		it.effect("writes ::error:: command to stdout and sets process.exitCode to 1", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+				const originalExitCode = process.exitCode;
+				yield* run(
+					state,
+					Effect.flatMap(ActionOutputs, (svc) => svc.setFailed("msg")),
+				);
+				expect(writeSpy).toHaveBeenCalledWith("::error::msg\n");
+				expect(process.exitCode).toBe(1);
+				writeSpy.mockRestore();
+				process.exitCode = originalExitCode;
+			}),
+		);
 	});
 });

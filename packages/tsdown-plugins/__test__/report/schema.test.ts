@@ -1,6 +1,7 @@
 // packages/tsdown-plugins/__test__/report/schema.test.ts
+
+import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { BuildReport, DiagnosticEntry } from "../../src/report/schema.js";
 
 describe("BuildReport schema", () => {

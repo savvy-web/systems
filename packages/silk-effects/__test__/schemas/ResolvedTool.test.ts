@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Equal, Hash, Option } from "effect";
-import { describe, expect, it } from "vitest";
 import { ResolvedTool } from "../../src/schemas/ResolvedTool.js";
 import { ToolCommand } from "../../src/utils/ToolCommand.js";
 

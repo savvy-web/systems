@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { RepoName, ReposManifestFile } from "../../src/repos/schemas/manifest.js";
 
 const valid = {

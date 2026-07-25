@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { getDependencyReleaseLine } from "../../src/changesets/changelog/getDependencyReleaseLine.js";
 import { getReleaseLine } from "../../src/changesets/changelog/getReleaseLine.js";
@@ -31,48 +31,52 @@ const ChangelogLive = Layer.succeed(ChangelogService, {
 const TestLayer = Layer.mergeAll(ChangelogLive, testGitHubLayer, MarkdownLive);
 
 describe("ChangelogService (Effect service layer)", () => {
-	it("formatReleaseLine via service returns formatted output", async () => {
-		const program = Effect.gen(function* () {
-			const changelog = yield* ChangelogService;
-			return yield* changelog.formatReleaseLine(
-				{
-					id: "svc-1",
-					summary: "feat: add feature via service",
-					releases: [{ name: "pkg", type: "minor" }],
-					commit: "abc1234567890",
-				},
-				"minor",
-				OPTIONS,
-			);
-		});
-
-		const result = await Effect.runPromise(program.pipe(Effect.provide(TestLayer)));
-		expect(typeof result).toBe("string");
-		expect(result).toContain("add feature via service");
-	});
-
-	it("formatDependencyReleaseLine via service returns formatted output", async () => {
-		const program = Effect.gen(function* () {
-			const changelog = yield* ChangelogService;
-			return yield* changelog.formatDependencyReleaseLine(
-				[{ id: "svc-2", summary: "bump deps", releases: [], commit: "abc1234567890" }],
-				[
+	it.effect("formatReleaseLine via service returns formatted output", () =>
+		Effect.gen(function* () {
+			const program = Effect.gen(function* () {
+				const changelog = yield* ChangelogService;
+				return yield* changelog.formatReleaseLine(
 					{
-						name: "dep-pkg",
-						type: "patch",
-						oldVersion: "1.0.0",
-						newVersion: "1.0.1",
-						changesets: [],
-						packageJson: { name: "dep-pkg", version: "1.0.1" },
-						dir: "/packages/dep-pkg",
+						id: "svc-1",
+						summary: "feat: add feature via service",
+						releases: [{ name: "pkg", type: "minor" }],
+						commit: "abc1234567890",
 					},
-				],
-				OPTIONS,
-			);
-		});
+					"minor",
+					OPTIONS,
+				);
+			});
 
-		const result = await Effect.runPromise(program.pipe(Effect.provide(TestLayer)));
-		expect(typeof result).toBe("string");
-		expect(result).toContain("dep-pkg");
-	});
+			const result = yield* program.pipe(Effect.provide(TestLayer));
+			expect(typeof result).toBe("string");
+			expect(result).toContain("add feature via service");
+		}),
+	);
+
+	it.effect("formatDependencyReleaseLine via service returns formatted output", () =>
+		Effect.gen(function* () {
+			const program = Effect.gen(function* () {
+				const changelog = yield* ChangelogService;
+				return yield* changelog.formatDependencyReleaseLine(
+					[{ id: "svc-2", summary: "bump deps", releases: [], commit: "abc1234567890" }],
+					[
+						{
+							name: "dep-pkg",
+							type: "patch",
+							oldVersion: "1.0.0",
+							newVersion: "1.0.1",
+							changesets: [],
+							packageJson: { name: "dep-pkg", version: "1.0.1" },
+							dir: "/packages/dep-pkg",
+						},
+					],
+					OPTIONS,
+				);
+			});
+
+			const result = yield* program.pipe(Effect.provide(TestLayer));
+			expect(typeof result).toBe("string");
+			expect(result).toContain("dep-pkg");
+		}),
+	);
 });

@@ -58,6 +58,7 @@
 		"@changesets/types": "^7.0.0-next.6",
 		"@commitlint/types": "^21.2.0",
 		"@effect/platform-node": "catalog:effect",
+		"@effect/vitest": "catalog:effect",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/mdast": "^4.0.4",
 		"@types/node": "catalog:silk",

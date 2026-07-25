@@ -13,9 +13,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Workspaces } from "@effected/workspaces";
 import { Effect, Layer, Schema } from "effect";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// `vi` stays on the plain "vitest" entrypoint: vitest hoists its mock wiring above all
+// imports, and a re-exported binding is not initialized in time.
+import { vi } from "vitest";
 import { ConfigurationError } from "../../src/changesets/errors.js";
 import type { ConfigInspector as ConfigInspectorTag } from "../../src/changesets/services/config-inspector.js";
 import {
@@ -127,29 +130,31 @@ function makeConfig(extraChangelogOptions: Record<string, unknown> = {}): Record
 	};
 }
 
+// Per-test provide is REQUIRED throughout this file — do NOT hoist `testLive` into a
+// suite-boundary `layer(...)` block. Two independent reasons:
+//   1. `testLive(cwd)` is a per-fixture factory bound to a tmpdir (see its comment above);
+//      sharing one across fixtures is already called out as wrong.
+//   2. ConfigInspector holds a never-self-expiring per-root cache, and the `refresh` suite
+//      below pins what a SECOND inspect() sees "in the same runtime". A shared layer would
+//      leak that cache across tests and dissolve the exact boundary those tests cover — while
+//      staying green.
 const runInspect = (cwd: string) =>
-	Effect.runPromise(
-		Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			return yield* inspector.inspect(cwd);
-		}).pipe(Effect.provide(testLive(cwd))),
-	);
+	Effect.gen(function* () {
+		const inspector = yield* ConfigInspector;
+		return yield* inspector.inspect(cwd);
+	}).pipe(Effect.provide(testLive(cwd)));
 
 const runInspectFail = (cwd: string) =>
-	Effect.runPromise(
-		Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			return yield* inspector.inspect(cwd);
-		}).pipe(Effect.provide(testLive(cwd)), Effect.flip),
-	);
+	Effect.gen(function* () {
+		const inspector = yield* ConfigInspector;
+		return yield* inspector.inspect(cwd);
+	}).pipe(Effect.provide(testLive(cwd)), Effect.flip);
 
 const runClassify = (cwd: string, paths: ReadonlyArray<string>) =>
-	Effect.runPromise(
-		Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			return yield* inspector.classify(cwd, paths);
-		}).pipe(Effect.provide(testLive(cwd))),
-	);
+	Effect.gen(function* () {
+		const inspector = yield* ConfigInspector;
+		return yield* inspector.classify(cwd, paths);
+	}).pipe(Effect.provide(testLive(cwd)));
 
 describe("ConfigInspector.inspect", () => {
 	const dirs: string[] = [];
@@ -166,194 +171,214 @@ describe("ConfigInspector.inspect", () => {
 		}
 	});
 
-	it("returns InspectedConfig for a minimal new-shape config", async () => {
-		const dir = setupFixture({
-			rootName: "@scope/root",
-			configJson: makeConfig(),
-		});
-		dirs.push(dir);
+	it.effect("returns InspectedConfig for a minimal new-shape config", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				rootName: "@scope/root",
+				configJson: makeConfig(),
+			});
+			dirs.push(dir);
 
-		const result = await runInspect(dir);
-		expect(result.configPath).toBe(join(dir, ".changeset", "config.json"));
-		expect(result.changelog).toBe("@savvy-web/changesets/changelog");
-		expect(result.baseBranch).toBe("main");
-		expect(result.access).toBe("restricted");
-		expect(result.legacyVersionFilesUsed).toBe(false);
-		expect(result.packages).toEqual([]);
-	});
+			const result = yield* runInspect(dir);
+			expect(result.configPath).toBe(join(dir, ".changeset", "config.json"));
+			expect(result.changelog).toBe("@savvy-web/changesets/changelog");
+			expect(result.baseBranch).toBe("main");
+			expect(result.access).toBe("restricted");
+			expect(result.legacyVersionFilesUsed).toBe(false);
+			expect(result.packages).toEqual([]);
+		}),
+	);
 
-	it("resolves a packages entry to its workspace directory", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "2.0.0" }],
-			configJson: makeConfig({
-				packages: {
-					"@scope/foo": { additionalScopes: ["plugin/**"] },
-				},
-			}),
-			extraFiles: [{ path: "plugin/SKILL.md", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("resolves a packages entry to its workspace directory", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "2.0.0" }],
+				configJson: makeConfig({
+					packages: {
+						"@scope/foo": { additionalScopes: ["plugin/**"] },
+					},
+				}),
+				extraFiles: [{ path: "plugin/SKILL.md", content: "" }],
+			});
+			dirs.push(dir);
 
-		const result = await runInspect(dir);
-		expect(result.packages).toHaveLength(1);
-		const scope = result.packages[0];
-		expect(scope.name).toBe("@scope/foo");
-		expect(scope.workspaceDir).toBe(join(dir, "packages/foo"));
-		expect(scope.version).toBe("2.0.0");
-		expect(scope.additionalScopes).toEqual(["plugin/**"]);
-		expect(scope.additionalScopeFiles).toEqual([join(dir, "plugin/SKILL.md")]);
-	});
+			const result = yield* runInspect(dir);
+			expect(result.packages).toHaveLength(1);
+			const scope = result.packages[0];
+			expect(scope.name).toBe("@scope/foo");
+			expect(scope.workspaceDir).toBe(join(dir, "packages/foo"));
+			expect(scope.version).toBe("2.0.0");
+			expect(scope.additionalScopes).toEqual(["plugin/**"]);
+			expect(scope.additionalScopeFiles).toEqual([join(dir, "plugin/SKILL.md")]);
+		}),
+	);
 
-	it("rejects a packages entry that does not resolve to a workspace package", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({ packages: { "@scope/ghost": {} } }),
-		});
-		dirs.push(dir);
+	it.effect("rejects a packages entry that does not resolve to a workspace package", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({ packages: { "@scope/ghost": {} } }),
+			});
+			dirs.push(dir);
 
-		const err = await runInspectFail(dir);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		const cfgErr = err as ConfigurationError;
-		expect(cfgErr.field).toContain("@scope/ghost");
-		expect(cfgErr.reason).toContain("Unknown package");
-	});
+			const err = yield* runInspectFail(dir);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			const cfgErr = err as ConfigurationError;
+			expect(cfgErr.field).toContain("@scope/ghost");
+			expect(cfgErr.reason).toContain("Unknown package");
+		}),
+	);
 
-	it("rejects configs that declare both `packages` and the deprecated `versionFiles`", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({
-				packages: { "@scope/foo": {} },
-				versionFiles: [{ glob: "plugin.json", package: "@scope/foo" }],
-			}),
-		});
-		dirs.push(dir);
+	it.effect("rejects configs that declare both `packages` and the deprecated `versionFiles`", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({
+					packages: { "@scope/foo": {} },
+					versionFiles: [{ glob: "plugin.json", package: "@scope/foo" }],
+				}),
+			});
+			dirs.push(dir);
 
-		const err = await runInspectFail(dir);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		expect((err as ConfigurationError).reason).toMatch(/both `packages` and the deprecated/);
-	});
+			const err = yield* runInspectFail(dir);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			expect((err as ConfigurationError).reason).toMatch(/both `packages` and the deprecated/);
+		}),
+	);
 
-	it("normalizes the legacy `versionFiles[]` shape and emits a deprecation warning", async () => {
-		const warn = vi.spyOn(console, "warn");
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({
-				versionFiles: [{ glob: "plugin/.claude-plugin/plugin.json", paths: ["$.version"], package: "@scope/foo" }],
-			}),
-			extraFiles: [
-				{
-					path: "plugin/.claude-plugin/plugin.json",
-					content: JSON.stringify({ name: "p", version: "0.0.0" }, null, 2),
-				},
-			],
-		});
-		dirs.push(dir);
+	it.effect("normalizes the legacy `versionFiles[]` shape and emits a deprecation warning", () =>
+		Effect.gen(function* () {
+			const warn = vi.spyOn(console, "warn");
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({
+					versionFiles: [{ glob: "plugin/.claude-plugin/plugin.json", paths: ["$.version"], package: "@scope/foo" }],
+				}),
+				extraFiles: [
+					{
+						path: "plugin/.claude-plugin/plugin.json",
+						content: JSON.stringify({ name: "p", version: "0.0.0" }, null, 2),
+					},
+				],
+			});
+			dirs.push(dir);
 
-		const result = await runInspect(dir);
-		expect(result.legacyVersionFilesUsed).toBe(true);
-		expect(warn).toHaveBeenCalledTimes(1);
-		expect(warn.mock.calls[0]?.[0]).toMatch(/DEPRECATION/);
-		expect(warn.mock.calls[0]?.[0]).toMatch(/Removed in 1\.0\.0/);
+			const result = yield* runInspect(dir);
+			expect(result.legacyVersionFilesUsed).toBe(true);
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn.mock.calls[0]?.[0]).toMatch(/DEPRECATION/);
+			expect(warn.mock.calls[0]?.[0]).toMatch(/Removed in 1\.0\.0/);
 
-		// The normalized scope shows up exactly as if the user had written
-		// the new shape directly.
-		const scope = result.packages.find((p) => p.name === "@scope/foo");
-		expect(scope?.versionFiles).toHaveLength(1);
-		expect(scope?.versionFiles[0].glob).toBe("plugin/.claude-plugin/plugin.json");
-		expect(scope?.versionFiles[0].paths).toEqual(["$.version"]);
-		expect(scope?.versionFiles[0].matchedFiles).toEqual([join(dir, "plugin/.claude-plugin/plugin.json")]);
-	});
+			// The normalized scope shows up exactly as if the user had written
+			// the new shape directly.
+			const scope = result.packages.find((p) => p.name === "@scope/foo");
+			expect(scope?.versionFiles).toHaveLength(1);
+			expect(scope?.versionFiles[0].glob).toBe("plugin/.claude-plugin/plugin.json");
+			expect(scope?.versionFiles[0].paths).toEqual(["$.version"]);
+			expect(scope?.versionFiles[0].matchedFiles).toEqual([join(dir, "plugin/.claude-plugin/plugin.json")]);
+		}),
+	);
 
-	it("rejects a legacy entry that has no `package` field", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({
-				versionFiles: [{ glob: "plugin.json", paths: ["$.version"] }],
-			}),
-		});
-		dirs.push(dir);
+	it.effect("rejects a legacy entry that has no `package` field", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({
+					versionFiles: [{ glob: "plugin.json", paths: ["$.version"] }],
+				}),
+			});
+			dirs.push(dir);
 
-		const err = await runInspectFail(dir);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		expect((err as ConfigurationError).reason).toMatch(/no `package` field/);
-	});
+			const err = yield* runInspectFail(dir);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			expect((err as ConfigurationError).reason).toMatch(/no `package` field/);
+		}),
+	);
 
-	it("detects additionalScopes overlap between two packages", async () => {
-		const dir = setupFixture({
-			workspacePackages: [
-				{ relPath: "packages/a", name: "@scope/a", version: "1.0.0" },
-				{ relPath: "packages/b", name: "@scope/b", version: "1.0.0" },
-			],
-			configJson: makeConfig({
-				packages: {
-					"@scope/a": { additionalScopes: ["shared/**"] },
-					"@scope/b": { additionalScopes: ["shared/**"] },
-				},
-			}),
-			extraFiles: [{ path: "shared/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("detects additionalScopes overlap between two packages", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "packages/a", name: "@scope/a", version: "1.0.0" },
+					{ relPath: "packages/b", name: "@scope/b", version: "1.0.0" },
+				],
+				configJson: makeConfig({
+					packages: {
+						"@scope/a": { additionalScopes: ["shared/**"] },
+						"@scope/b": { additionalScopes: ["shared/**"] },
+					},
+				}),
+				extraFiles: [{ path: "shared/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const err = await runInspectFail(dir);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		expect((err as ConfigurationError).reason).toMatch(/Overlap/);
-		expect((err as ConfigurationError).reason).toMatch(/@scope\/a.*@scope\/b|@scope\/b.*@scope\/a/);
-	});
+			const err = yield* runInspectFail(dir);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			expect((err as ConfigurationError).reason).toMatch(/Overlap/);
+			expect((err as ConfigurationError).reason).toMatch(/@scope\/a.*@scope\/b|@scope\/b.*@scope\/a/);
+		}),
+	);
 
-	it("detects additionalScopes shadowing a different package's workspace directory", async () => {
-		const dir = setupFixture({
-			workspacePackages: [
-				{ relPath: "packages/a", name: "@scope/a", version: "1.0.0" },
-				{ relPath: "packages/b", name: "@scope/b", version: "1.0.0" },
-			],
-			configJson: makeConfig({
-				packages: {
-					"@scope/a": { additionalScopes: ["packages/b/**"] },
-				},
-			}),
-			extraFiles: [{ path: "packages/b/internal.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("detects additionalScopes shadowing a different package's workspace directory", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "packages/a", name: "@scope/a", version: "1.0.0" },
+					{ relPath: "packages/b", name: "@scope/b", version: "1.0.0" },
+				],
+				configJson: makeConfig({
+					packages: {
+						"@scope/a": { additionalScopes: ["packages/b/**"] },
+					},
+				}),
+				extraFiles: [{ path: "packages/b/internal.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const err = await runInspectFail(dir);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		expect((err as ConfigurationError).reason).toMatch(/Shadowing/);
-	});
+			const err = yield* runInspectFail(dir);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			expect((err as ConfigurationError).reason).toMatch(/Shadowing/);
+		}),
+	);
 
-	it("detects versionFiles target conflicts across packages", async () => {
-		const dir = setupFixture({
-			workspacePackages: [
-				{ relPath: "packages/a", name: "@scope/a", version: "1.0.0" },
-				{ relPath: "packages/b", name: "@scope/b", version: "1.0.0" },
-			],
-			configJson: makeConfig({
-				packages: {
-					"@scope/a": { versionFiles: [{ glob: "shared/manifest.json", paths: ["$.version"] }] },
-					"@scope/b": { versionFiles: [{ glob: "shared/manifest.json", paths: ["$.version"] }] },
-				},
-			}),
-			extraFiles: [{ path: "shared/manifest.json", content: JSON.stringify({ version: "0.0.0" }) }],
-		});
-		dirs.push(dir);
+	it.effect("detects versionFiles target conflicts across packages", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "packages/a", name: "@scope/a", version: "1.0.0" },
+					{ relPath: "packages/b", name: "@scope/b", version: "1.0.0" },
+				],
+				configJson: makeConfig({
+					packages: {
+						"@scope/a": { versionFiles: [{ glob: "shared/manifest.json", paths: ["$.version"] }] },
+						"@scope/b": { versionFiles: [{ glob: "shared/manifest.json", paths: ["$.version"] }] },
+					},
+				}),
+				extraFiles: [{ path: "shared/manifest.json", content: JSON.stringify({ version: "0.0.0" }) }],
+			});
+			dirs.push(dir);
 
-		const err = await runInspectFail(dir);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		expect((err as ConfigurationError).reason).toMatch(/Conflict/);
-	});
+			const err = yield* runInspectFail(dir);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			expect((err as ConfigurationError).reason).toMatch(/Conflict/);
+		}),
+	);
 
-	it("rejects invalid options that fail schema validation (e.g., bad glob)", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({
-				packages: { "@scope/foo": { additionalScopes: ["/absolute"] } },
-			}),
-		});
-		dirs.push(dir);
+	it.effect("rejects invalid options that fail schema validation (e.g., bad glob)", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({
+					packages: { "@scope/foo": { additionalScopes: ["/absolute"] } },
+				}),
+			});
+			dirs.push(dir);
 
-		const err = await runInspectFail(dir);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		expect((err as ConfigurationError).field).toBe("options");
-	});
+			const err = yield* runInspectFail(dir);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			expect((err as ConfigurationError).field).toBe("options");
+		}),
+	);
 });
 
 describe("ConfigInspector.classify", () => {
@@ -371,146 +396,162 @@ describe("ConfigInspector.classify", () => {
 		}
 	});
 
-	it("returns reason='workspace' for files inside a package's workspace directory", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({ packages: { "@scope/foo": {} } }),
-			extraFiles: [{ path: "packages/foo/src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("returns reason='workspace' for files inside a package's workspace directory", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({ packages: { "@scope/foo": {} } }),
+				extraFiles: [{ path: "packages/foo/src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["packages/foo/src/index.ts"]);
-		expect(result.package).toBe("@scope/foo");
-		expect(result.reason).toBe("workspace");
-	});
+			const [result] = yield* runClassify(dir, ["packages/foo/src/index.ts"]);
+			expect(result.package).toBe("@scope/foo");
+			expect(result.reason).toBe("workspace");
+		}),
+	);
 
-	it("returns reason='additionalScope' for files matched by an additionalScopes glob", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({
-				packages: { "@scope/foo": { additionalScopes: ["plugin/**"] } },
-			}),
-			extraFiles: [{ path: "plugin/SKILL.md", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("returns reason='additionalScope' for files matched by an additionalScopes glob", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({
+					packages: { "@scope/foo": { additionalScopes: ["plugin/**"] } },
+				}),
+				extraFiles: [{ path: "plugin/SKILL.md", content: "" }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["plugin/SKILL.md"]);
-		expect(result.package).toBe("@scope/foo");
-		expect(result.reason).toEqual({ kind: "additionalScope", glob: "plugin/**" });
-	});
+			const [result] = yield* runClassify(dir, ["plugin/SKILL.md"]);
+			expect(result.package).toBe("@scope/foo");
+			expect(result.reason).toEqual({ kind: "additionalScope", glob: "plugin/**" });
+		}),
+	);
 
 	// Regression: pulling a private root into the release surface (#360) gave
 	// it a workspaceDir equal to the project root, which contains every file in
 	// the repo. Directory containment must not let that root outrank a more
 	// specific claim, or a config's additionalScopes/versionFiles are silently
 	// shadowed for every path outside a sub-package directory.
-	it("prefers additionalScopes over a versioned root package whose directory contains everything", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: {
-				...makeConfig({ packages: { "@scope/foo": { additionalScopes: ["plugin/**"] } } }),
-				privatePackages: { version: true },
-			},
-			extraFiles: [{ path: "plugin/SKILL.md", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("prefers additionalScopes over a versioned root package whose directory contains everything", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: {
+					...makeConfig({ packages: { "@scope/foo": { additionalScopes: ["plugin/**"] } } }),
+					privatePackages: { version: true },
+				},
+				extraFiles: [{ path: "plugin/SKILL.md", content: "" }],
+			});
+			dirs.push(dir);
 
-		const inspected = await runInspect(dir);
-		expect(inspected.packages.map((p) => p.name)).toContain("test-root");
+			const inspected = yield* runInspect(dir);
+			expect(inspected.packages.map((p) => p.name)).toContain("test-root");
 
-		const [result] = await runClassify(dir, ["plugin/SKILL.md"]);
-		expect(result.package).toBe("@scope/foo");
-		expect(result.reason).toEqual({ kind: "additionalScope", glob: "plugin/**" });
-	});
+			const [result] = yield* runClassify(dir, ["plugin/SKILL.md"]);
+			expect(result.package).toBe("@scope/foo");
+			expect(result.reason).toEqual({ kind: "additionalScope", glob: "plugin/**" });
+		}),
+	);
 
-	it("leaves a path outside the project directory unmapped even when a root scope exists", async () => {
-		const dir = setupFixture({
-			rootName: "private-action",
-			configJson: { ...makeConfig(), privatePackages: { version: true } },
-			extraFiles: [{ path: "src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("leaves a path outside the project directory unmapped even when a root scope exists", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				rootName: "private-action",
+				configJson: { ...makeConfig(), privatePackages: { version: true } },
+				extraFiles: [{ path: "src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const [outside, absolute, inside] = await runClassify(dir, ["../outside-file.ts", "/etc/hosts", "src/index.ts"]);
-		expect(outside?.package).toBeNull();
-		expect(absolute?.package).toBeNull();
-		// The control: a path genuinely inside the project still reaches the root fallback.
-		expect(inside?.package).toBe("private-action");
-	});
+			const [outside, absolute, inside] = yield* runClassify(dir, ["../outside-file.ts", "/etc/hosts", "src/index.ts"]);
+			expect(outside?.package).toBeNull();
+			expect(absolute?.package).toBeNull();
+			// The control: a path genuinely inside the project still reaches the root fallback.
+			expect(inside?.package).toBe("private-action");
+		}),
+	);
 
-	it("prefers versionFiles over a versioned root package whose directory contains everything", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: {
-				...makeConfig({
+	it.effect("prefers versionFiles over a versioned root package whose directory contains everything", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: {
+					...makeConfig({
+						packages: {
+							"@scope/foo": { versionFiles: [{ glob: "extras/manifest.json", paths: ["$.version"] }] },
+						},
+					}),
+					privatePackages: { version: true },
+				},
+				extraFiles: [{ path: "extras/manifest.json", content: JSON.stringify({ version: "0.0.0" }) }],
+			});
+			dirs.push(dir);
+
+			const [result] = yield* runClassify(dir, ["extras/manifest.json"]);
+			expect(result.package).toBe("@scope/foo");
+			expect(result.reason).toEqual({ kind: "versionFile", glob: "extras/manifest.json" });
+		}),
+	);
+
+	it.effect("returns reason='versionFile' for files matched by a versionFiles glob (outside additionalScopes)", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({
 					packages: {
-						"@scope/foo": { versionFiles: [{ glob: "extras/manifest.json", paths: ["$.version"] }] },
+						"@scope/foo": {
+							versionFiles: [{ glob: "extras/manifest.json", paths: ["$.version"] }],
+						},
 					},
 				}),
-				privatePackages: { version: true },
-			},
-			extraFiles: [{ path: "extras/manifest.json", content: JSON.stringify({ version: "0.0.0" }) }],
-		});
-		dirs.push(dir);
+				extraFiles: [{ path: "extras/manifest.json", content: JSON.stringify({ version: "0.0.0" }) }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["extras/manifest.json"]);
-		expect(result.package).toBe("@scope/foo");
-		expect(result.reason).toEqual({ kind: "versionFile", glob: "extras/manifest.json" });
-	});
+			const [result] = yield* runClassify(dir, ["extras/manifest.json"]);
+			expect(result.package).toBe("@scope/foo");
+			expect(result.reason).toEqual({ kind: "versionFile", glob: "extras/manifest.json" });
+		}),
+	);
 
-	it("returns reason='versionFile' for files matched by a versionFiles glob (outside additionalScopes)", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({
-				packages: {
-					"@scope/foo": {
-						versionFiles: [{ glob: "extras/manifest.json", paths: ["$.version"] }],
-					},
-				},
-			}),
-			extraFiles: [{ path: "extras/manifest.json", content: JSON.stringify({ version: "0.0.0" }) }],
-		});
-		dirs.push(dir);
+	it.effect("returns reason=null and package=null for unmapped paths", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({
+					packages: { "@scope/foo": { additionalScopes: ["plugin/**"] } },
+				}),
+				extraFiles: [
+					{ path: "plugin/SKILL.md", content: "" },
+					{ path: "unrelated/notes.md", content: "" },
+				],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["extras/manifest.json"]);
-		expect(result.package).toBe("@scope/foo");
-		expect(result.reason).toEqual({ kind: "versionFile", glob: "extras/manifest.json" });
-	});
+			const results = yield* runClassify(dir, ["plugin/SKILL.md", "unrelated/notes.md"]);
+			expect(results[0].package).toBe("@scope/foo");
+			expect(results[1].package).toBeNull();
+			expect(results[1].reason).toBeNull();
+		}),
+	);
 
-	it("returns reason=null and package=null for unmapped paths", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({
-				packages: { "@scope/foo": { additionalScopes: ["plugin/**"] } },
-			}),
-			extraFiles: [
-				{ path: "plugin/SKILL.md", content: "" },
-				{ path: "unrelated/notes.md", content: "" },
-			],
-		});
-		dirs.push(dir);
+	it.effect("preserves input order in the output array", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+				configJson: makeConfig({ packages: { "@scope/foo": {} } }),
+				extraFiles: [
+					{ path: "packages/foo/a.ts", content: "" },
+					{ path: "packages/foo/b.ts", content: "" },
+					{ path: "outside.txt", content: "" },
+				],
+			});
+			dirs.push(dir);
 
-		const results = await runClassify(dir, ["plugin/SKILL.md", "unrelated/notes.md"]);
-		expect(results[0].package).toBe("@scope/foo");
-		expect(results[1].package).toBeNull();
-		expect(results[1].reason).toBeNull();
-	});
-
-	it("preserves input order in the output array", async () => {
-		const dir = setupFixture({
-			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
-			configJson: makeConfig({ packages: { "@scope/foo": {} } }),
-			extraFiles: [
-				{ path: "packages/foo/a.ts", content: "" },
-				{ path: "packages/foo/b.ts", content: "" },
-				{ path: "outside.txt", content: "" },
-			],
-		});
-		dirs.push(dir);
-
-		const results = await runClassify(dir, ["outside.txt", "packages/foo/b.ts", "packages/foo/a.ts"]);
-		expect(results.map((r) => r.path)).toEqual(["outside.txt", "packages/foo/b.ts", "packages/foo/a.ts"]);
-	});
+			const results = yield* runClassify(dir, ["outside.txt", "packages/foo/b.ts", "packages/foo/a.ts"]);
+			expect(results.map((r) => r.path)).toEqual(["outside.txt", "packages/foo/b.ts", "packages/foo/a.ts"]);
+		}),
+	);
 });
 
 describe("ConfigInspector.classify — empty-packages release-surface fallback", () => {
@@ -528,150 +569,180 @@ describe("ConfigInspector.classify — empty-packages release-surface fallback",
 		}
 	});
 
-	it("attributes a file to a publishable workspace package when packages is empty", async () => {
-		// setupFixture already writes package/package.json (with name +
-		// publishConfig); classify a source file inside the package dir so the
-		// fixture does not clobber that manifest and break WorkspaceDiscovery.
-		const dir = setupFixture({
-			workspacePackages: [
-				{ relPath: "package", name: "@savvy-web/rslib-builder", version: "0.2.0", publishConfig: { access: "public" } },
-			],
-			configJson: makeConfig(),
-			extraFiles: [{ path: "package/src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("attributes a file to a publishable workspace package when packages is empty", () =>
+		Effect.gen(function* () {
+			// setupFixture already writes package/package.json (with name +
+			// publishConfig); classify a source file inside the package dir so the
+			// fixture does not clobber that manifest and break WorkspaceDiscovery.
+			const dir = setupFixture({
+				workspacePackages: [
+					{
+						relPath: "package",
+						name: "@savvy-web/rslib-builder",
+						version: "0.2.0",
+						publishConfig: { access: "public" },
+					},
+				],
+				configJson: makeConfig(),
+				extraFiles: [{ path: "package/src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["package/src/index.ts"]);
-		expect(result.package).toBe("@savvy-web/rslib-builder");
-		expect(result.reason).toBe("workspace");
-	});
+			const [result] = yield* runClassify(dir, ["package/src/index.ts"]);
+			expect(result.package).toBe("@savvy-web/rslib-builder");
+			expect(result.reason).toBe("workspace");
+		}),
+	);
 
-	it("does NOT attribute root-level files to a private root that has no publishConfig", async () => {
-		const dir = setupFixture({
-			workspacePackages: [
-				{ relPath: "package", name: "@savvy-web/rslib-builder", version: "0.2.0", publishConfig: { access: "public" } },
-			],
-			configJson: makeConfig(),
-			extraFiles: [{ path: "README.md", content: "# root" }],
-		});
-		dirs.push(dir);
+	it.effect("does NOT attribute root-level files to a private root that has no publishConfig", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{
+						relPath: "package",
+						name: "@savvy-web/rslib-builder",
+						version: "0.2.0",
+						publishConfig: { access: "public" },
+					},
+				],
+				configJson: makeConfig(),
+				extraFiles: [{ path: "README.md", content: "# root" }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["README.md"]);
-		expect(result.package).toBeNull();
-		expect(result.reason).toBeNull();
-	});
+			const [result] = yield* runClassify(dir, ["README.md"]);
+			expect(result.package).toBeNull();
+			expect(result.reason).toBeNull();
+		}),
+	);
 
-	it("attributes files to a publishable single-root package", async () => {
-		const dir = setupFixture({
-			rootName: "silk-update-action",
-			rootPublishConfig: { access: "public" },
-			configJson: makeConfig(),
-			extraFiles: [{ path: "src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("attributes files to a publishable single-root package", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				rootName: "silk-update-action",
+				rootPublishConfig: { access: "public" },
+				configJson: makeConfig(),
+				extraFiles: [{ path: "src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["src/index.ts"]);
-		expect(result.package).toBe("silk-update-action");
-		expect(result.reason).toBe("workspace");
-	});
+			const [result] = yield* runClassify(dir, ["src/index.ts"]);
+			expect(result.package).toBe("silk-update-action");
+			expect(result.reason).toBe("workspace");
+		}),
+	);
 
-	it("leaves files unmapped when a single-root repo's root has no publishConfig and privatePackages is absent", async () => {
-		const dir = setupFixture({
-			rootName: "private-thing",
-			configJson: makeConfig(),
-			extraFiles: [{ path: "src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect(
+		"leaves files unmapped when a single-root repo's root has no publishConfig and privatePackages is absent",
+		() =>
+			Effect.gen(function* () {
+				const dir = setupFixture({
+					rootName: "private-thing",
+					configJson: makeConfig(),
+					extraFiles: [{ path: "src/index.ts", content: "" }],
+				});
+				dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["src/index.ts"]);
-		expect(result.package).toBeNull();
-	});
+				const [result] = yield* runClassify(dir, ["src/index.ts"]);
+				expect(result.package).toBeNull();
+			}),
+	);
 
 	// #360 — a private single-root repo (no publishConfig) whose changeset
 	// config sets `privatePackages.version: true` IS a release surface:
 	// changesets versions private packages in that mode, so the root package
 	// must appear in packages[] and attribute its files.
-	it("attributes files to a private single-root package when privatePackages.version is true (#360)", async () => {
-		const dir = setupFixture({
-			rootName: "private-action",
-			configJson: { ...makeConfig(), privatePackages: { version: true } },
-			extraFiles: [{ path: "src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("attributes files to a private single-root package when privatePackages.version is true (#360)", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				rootName: "private-action",
+				configJson: { ...makeConfig(), privatePackages: { version: true } },
+				extraFiles: [{ path: "src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const inspected = await runInspect(dir);
-		expect(inspected.packages.map((p) => p.name)).toEqual(["private-action"]);
+			const inspected = yield* runInspect(dir);
+			expect(inspected.packages.map((p) => p.name)).toEqual(["private-action"]);
 
-		const [result] = await runClassify(dir, ["src/index.ts"]);
-		expect(result.package).toBe("private-action");
-		expect(result.reason).toBe("workspace");
-	});
+			const [result] = yield* runClassify(dir, ["src/index.ts"]);
+			expect(result.package).toBe("private-action");
+			expect(result.reason).toBe("workspace");
+		}),
+	);
 
-	it("leaves files unmapped when privatePackages.version is false", async () => {
-		const dir = setupFixture({
-			rootName: "private-thing",
-			configJson: { ...makeConfig(), privatePackages: { version: false, tag: true } },
-			extraFiles: [{ path: "src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("leaves files unmapped when privatePackages.version is false", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				rootName: "private-thing",
+				configJson: { ...makeConfig(), privatePackages: { version: false, tag: true } },
+				extraFiles: [{ path: "src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["src/index.ts"]);
-		expect(result.package).toBeNull();
-		expect(result.reason).toBeNull();
-	});
+			const [result] = yield* runClassify(dir, ["src/index.ts"]);
+			expect(result.package).toBeNull();
+			expect(result.reason).toBeNull();
+		}),
+	);
 
-	it("leaves files unmapped when privatePackages is false", async () => {
-		const dir = setupFixture({
-			rootName: "private-thing",
-			configJson: { ...makeConfig(), privatePackages: false },
-			extraFiles: [{ path: "src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("leaves files unmapped when privatePackages is false", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				rootName: "private-thing",
+				configJson: { ...makeConfig(), privatePackages: false },
+				extraFiles: [{ path: "src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["src/index.ts"]);
-		expect(result.package).toBeNull();
-		expect(result.reason).toBeNull();
-	});
+			const [result] = yield* runClassify(dir, ["src/index.ts"]);
+			expect(result.package).toBeNull();
+			expect(result.reason).toBeNull();
+		}),
+	);
 
 	// The gate change is general, not single-root-specific: a private,
 	// unpublishable workspace PACKAGE also joins the release surface when
 	// privatePackages.version is true.
-	it("includes a private workspace package in the fallback surface when privatePackages.version is true", async () => {
-		const dir = setupFixture({
-			workspacePackages: [
-				{ relPath: "package", name: "@scope/pub", version: "0.2.0", publishConfig: { access: "public" } },
-				{ relPath: "internal", name: "@scope/internal", version: "0.0.1" },
-			],
-			configJson: { ...makeConfig(), privatePackages: { version: true } },
-			extraFiles: [{ path: "internal/src/index.ts", content: "" }],
-		});
-		dirs.push(dir);
+	it.effect("includes a private workspace package in the fallback surface when privatePackages.version is true", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "package", name: "@scope/pub", version: "0.2.0", publishConfig: { access: "public" } },
+					{ relPath: "internal", name: "@scope/internal", version: "0.0.1" },
+				],
+				configJson: { ...makeConfig(), privatePackages: { version: true } },
+				extraFiles: [{ path: "internal/src/index.ts", content: "" }],
+			});
+			dirs.push(dir);
 
-		const inspected = await runInspect(dir);
-		expect(inspected.packages.map((p) => p.name).sort()).toEqual(["@scope/internal", "@scope/pub", "test-root"]);
+			const inspected = yield* runInspect(dir);
+			expect(inspected.packages.map((p) => p.name).sort()).toEqual(["@scope/internal", "@scope/pub", "test-root"]);
 
-		const [result] = await runClassify(dir, ["internal/src/index.ts"]);
-		expect(result.package).toBe("@scope/internal");
-		expect(result.reason).toBe("workspace");
-	});
+			const [result] = yield* runClassify(dir, ["internal/src/index.ts"]);
+			expect(result.package).toBe("@scope/internal");
+			expect(result.reason).toBe("workspace");
+		}),
+	);
 
-	it("includes an ignored-but-configured package as a valid target", async () => {
-		const dir = setupFixture({
-			workspacePackages: [
-				{ relPath: "package", name: "@scope/held", version: "0.1.0", publishConfig: { access: "public" } },
-			],
-			configJson: makeConfig(),
-			extraFiles: [{ path: "package/index.ts", content: "" }],
-		});
-		const cfgPath = join(dir, ".changeset", "config.json");
-		const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-		cfg.ignore = ["@scope/held"];
-		writeFileSync(cfgPath, `${JSON.stringify(cfg, null, 2)}\n`);
-		dirs.push(dir);
+	it.effect("includes an ignored-but-configured package as a valid target", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "package", name: "@scope/held", version: "0.1.0", publishConfig: { access: "public" } },
+				],
+				configJson: makeConfig(),
+				extraFiles: [{ path: "package/index.ts", content: "" }],
+			});
+			const cfgPath = join(dir, ".changeset", "config.json");
+			const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
+			cfg.ignore = ["@scope/held"];
+			writeFileSync(cfgPath, `${JSON.stringify(cfg, null, 2)}\n`);
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["package/index.ts"]);
-		expect(result.package).toBe("@scope/held");
-	});
+			const [result] = yield* runClassify(dir, ["package/index.ts"]);
+			expect(result.package).toBe("@scope/held");
+		}),
+	);
 });
 
 describe("ConfigInspector — explicit `packages` augments release-surface discovery (#127)", () => {
@@ -710,26 +781,30 @@ describe("ConfigInspector — explicit `packages` augments release-surface disco
 		});
 	}
 
-	it("classifies a file in a publishable package that the `packages` record does not list", async () => {
-		const dir = setupSingleAnnotatedFixture();
-		dirs.push(dir);
+	it.effect("classifies a file in a publishable package that the `packages` record does not list", () =>
+		Effect.gen(function* () {
+			const dir = setupSingleAnnotatedFixture();
+			dirs.push(dir);
 
-		const [result] = await runClassify(dir, ["packages/bundler/src/index.ts"]);
-		expect(result.package).toBe("@scope/bundler");
-		expect(result.reason).toBe("workspace");
-	});
+			const [result] = yield* runClassify(dir, ["packages/bundler/src/index.ts"]);
+			expect(result.package).toBe("@scope/bundler");
+			expect(result.reason).toBe("workspace");
+		}),
+	);
 
-	it("inspect() lists both the annotated package and the discovered release-surface packages", async () => {
-		const dir = setupSingleAnnotatedFixture();
-		dirs.push(dir);
+	it.effect("inspect() lists both the annotated package and the discovered release-surface packages", () =>
+		Effect.gen(function* () {
+			const dir = setupSingleAnnotatedFixture();
+			dirs.push(dir);
 
-		const result = await runInspect(dir);
-		expect(result.packages.map((p) => p.name).sort()).toEqual(["@scope/bundler", "@scope/silk"]);
-		// The annotated package keeps its versionFiles richness.
-		expect(result.packages.find((p) => p.name === "@scope/silk")?.versionFiles).toHaveLength(1);
-		// The discovered package carries no versionFiles/additionalScopes.
-		expect(result.packages.find((p) => p.name === "@scope/bundler")?.versionFiles).toEqual([]);
-	});
+			const result = yield* runInspect(dir);
+			expect(result.packages.map((p) => p.name).sort()).toEqual(["@scope/bundler", "@scope/silk"]);
+			// The annotated package keeps its versionFiles richness.
+			expect(result.packages.find((p) => p.name === "@scope/silk")?.versionFiles).toHaveLength(1);
+			// The discovered package carries no versionFiles/additionalScopes.
+			expect(result.packages.find((p) => p.name === "@scope/bundler")?.versionFiles).toEqual([]);
+		}),
+	);
 });
 
 describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () => {
@@ -749,75 +824,91 @@ describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () =
 		});
 	}
 
-	it("without refresh, a second inspect() in the same runtime still serves the cached (stale) result", async () => {
-		const dir = setupBaseBranchFixture();
-		dirs.push(dir);
+	it.effect("without refresh, a second inspect() in the same runtime still serves the cached (stale) result", () =>
+		Effect.gen(function* () {
+			const dir = setupBaseBranchFixture();
+			dirs.push(dir);
 
-		const program = Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			const first = yield* inspector.inspect(dir);
+			const program = Effect.gen(function* () {
+				const inspector = yield* ConfigInspector;
+				const first = yield* inspector.inspect(dir);
 
-			const configPath = join(dir, ".changeset", "config.json");
-			const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
-			raw.baseBranch = "develop";
-			writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
+				const configPath = join(dir, ".changeset", "config.json");
+				const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+				raw.baseBranch = "develop";
+				writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
 
-			const second = yield* inspector.inspect(dir);
-			return { first, second };
-		});
+				const second = yield* inspector.inspect(dir);
+				return { first, second };
+			});
 
-		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(testLive(dir))));
-		expect(first.baseBranch).toBe("main");
-		expect(second.baseBranch).toBe("main");
-	});
+			// ONE `testLive(dir)` for BOTH inspect() calls inside `program` — that single shared
+			// service instance (and its cache) IS the boundary under test. Do not split or hoist it.
+			const { first, second } = yield* program.pipe(Effect.provide(testLive(dir)));
+			expect(first.baseBranch).toBe("main");
+			expect(second.baseBranch).toBe("main");
+		}),
+	);
 
-	it("after refresh(), inspect() reflects an on-disk edit made since the last inspect() in the same runtime", async () => {
-		const dir = setupBaseBranchFixture();
-		dirs.push(dir);
+	it.effect(
+		"after refresh(), inspect() reflects an on-disk edit made since the last inspect() in the same runtime",
+		() =>
+			Effect.gen(function* () {
+				const dir = setupBaseBranchFixture();
+				dirs.push(dir);
 
-		const program = Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			const first = yield* inspector.inspect(dir);
+				const program = Effect.gen(function* () {
+					const inspector = yield* ConfigInspector;
+					const first = yield* inspector.inspect(dir);
 
-			const configPath = join(dir, ".changeset", "config.json");
-			const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
-			raw.baseBranch = "develop";
-			writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
+					const configPath = join(dir, ".changeset", "config.json");
+					const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+					raw.baseBranch = "develop";
+					writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
 
-			yield* inspector.refresh();
-			const second = yield* inspector.inspect(dir);
-			return { first, second };
-		});
+					yield* inspector.refresh();
+					const second = yield* inspector.inspect(dir);
+					return { first, second };
+				});
 
-		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(testLive(dir))));
-		expect(first.baseBranch).toBe("main");
-		expect(second.baseBranch).toBe("develop");
-	});
+				// ONE `testLive(dir)` for BOTH inspect() calls inside `program` — that single shared
+				// service instance (and its cache) IS the boundary under test. Do not split or hoist it.
+				const { first, second } = yield* program.pipe(Effect.provide(testLive(dir)));
+				expect(first.baseBranch).toBe("main");
+				expect(second.baseBranch).toBe("develop");
+			}),
+	);
 
-	it("after refresh(), inspect() also reflects a newly-added workspace package (WorkspaceDiscovery staleness)", async () => {
-		const dir = setupBaseBranchFixture();
-		dirs.push(dir);
+	it.effect(
+		"after refresh(), inspect() also reflects a newly-added workspace package (WorkspaceDiscovery staleness)",
+		() =>
+			Effect.gen(function* () {
+				const dir = setupBaseBranchFixture();
+				dirs.push(dir);
 
-		const program = Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			const first = yield* inspector.inspect(dir);
+				const program = Effect.gen(function* () {
+					const inspector = yield* ConfigInspector;
+					const first = yield* inspector.inspect(dir);
 
-			mkdirSync(join(dir, "packages", "bar"), { recursive: true });
-			writeFileSync(
-				join(dir, "packages", "bar", "package.json"),
-				JSON.stringify({ name: "@scope/bar", version: "1.0.0", publishConfig: { access: "public" } }, null, 2),
-			);
-			writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/foo"\n  - "packages/bar"\n');
+					mkdirSync(join(dir, "packages", "bar"), { recursive: true });
+					writeFileSync(
+						join(dir, "packages", "bar", "package.json"),
+						JSON.stringify({ name: "@scope/bar", version: "1.0.0", publishConfig: { access: "public" } }, null, 2),
+					);
+					writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/foo"\n  - "packages/bar"\n');
 
-			yield* inspector.refresh();
-			const second = yield* inspector.inspect(dir);
-			return { first, second };
-		});
+					yield* inspector.refresh();
+					const second = yield* inspector.inspect(dir);
+					return { first, second };
+				});
 
-		const { first, second } = await Effect.runPromise(program.pipe(Effect.provide(testLive(dir))));
-		expect(first.packages.map((p) => p.name)).toEqual(["@scope/foo"]);
-		expect(second.packages.map((p) => p.name).sort()).toEqual(["@scope/bar", "@scope/foo"]);
-	});
+				// ONE `testLive(dir)` for BOTH inspect() calls inside `program` — that single shared
+				// service instance (and its cache) IS the boundary under test. Do not split or hoist it.
+				const { first, second } = yield* program.pipe(Effect.provide(testLive(dir)));
+				expect(first.packages.map((p) => p.name)).toEqual(["@scope/foo"]);
+				expect(second.packages.map((p) => p.name).sort()).toEqual(["@scope/bar", "@scope/foo"]);
+			}),
+	);
 });
 
 describe("InspectedConfigSchema", () => {

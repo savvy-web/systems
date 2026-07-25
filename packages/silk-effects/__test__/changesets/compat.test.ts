@@ -3,8 +3,8 @@
  * silk-release-action's extractVersionSection logic.
  */
 
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { ChangelogTransformer } from "../../src/changesets/api/transformer.js";
 import { getReleaseLine } from "../../src/changesets/changelog/getReleaseLine.js";
@@ -58,9 +58,9 @@ function extractVersionSection(changelogContent: string, version: string): strin
 	return contentLines.join("\n").trim();
 }
 
-async function buildChangelog(version: string, summary: string): Promise<string> {
-	const entry = await Effect.runPromise(
-		getReleaseLine(
+const buildChangelog = (version: string, summary: string): Effect.Effect<string> =>
+	Effect.gen(function* () {
+		const entry = yield* getReleaseLine(
 			{
 				id: "compat-cs",
 				summary,
@@ -69,50 +69,49 @@ async function buildChangelog(version: string, summary: string): Promise<string>
 			},
 			"minor",
 			OPTIONS,
-		).pipe(Effect.provide(testLayer)),
-	);
-	return ChangelogTransformer.transformContent(`## ${version}\n\n${entry}\n`);
-}
-
-describe("silk-release-action compatibility", () => {
-	it("version heading extraction matches regex", async () => {
-		const changelog = await buildChangelog("1.0.0", "feat: add feature");
-
-		const section = extractVersionSection(changelog, "1.0.0");
-		expect(section).not.toBeNull();
-		expect(section).toContain("add feature");
+		).pipe(Effect.provide(testLayer));
+		return ChangelogTransformer.transformContent(`## ${version}\n\n${entry}\n`);
 	});
 
-	it("section boundary detection with multiple versions", async () => {
-		const entry1 = await Effect.runPromise(
-			getReleaseLine(
+describe("silk-release-action compatibility", () => {
+	it.effect("version heading extraction matches regex", () =>
+		Effect.gen(function* () {
+			const changelog = yield* buildChangelog("1.0.0", "feat: add feature");
+
+			const section = extractVersionSection(changelog, "1.0.0");
+			expect(section).not.toBeNull();
+			expect(section).toContain("add feature");
+		}),
+	);
+
+	it.effect("section boundary detection with multiple versions", () =>
+		Effect.gen(function* () {
+			const entry1 = yield* getReleaseLine(
 				{ id: "v2", summary: "feat: new thing", releases: [{ name: "pkg", type: "minor" }], commit: "abc1234567890" },
 				"minor",
 				OPTIONS,
-			).pipe(Effect.provide(testLayer)),
-		);
+			).pipe(Effect.provide(testLayer));
 
-		const entry2 = await Effect.runPromise(
-			getReleaseLine(
+			const entry2 = yield* getReleaseLine(
 				{ id: "v1", summary: "fix: old fix", releases: [{ name: "pkg", type: "patch" }] },
 				"patch",
 				OPTIONS,
-			).pipe(Effect.provide(testLayer)),
-		);
+			).pipe(Effect.provide(testLayer));
 
-		const raw = `## 2.0.0\n\n${entry1}\n\n## 1.0.0\n\n${entry2}\n`;
-		const changelog = ChangelogTransformer.transformContent(raw);
+			const raw = `## 2.0.0\n\n${entry1}\n\n## 1.0.0\n\n${entry2}\n`;
+			const changelog = ChangelogTransformer.transformContent(raw);
 
-		const v2 = extractVersionSection(changelog, "2.0.0");
-		const v1 = extractVersionSection(changelog, "1.0.0");
+			const v2 = extractVersionSection(changelog, "2.0.0");
+			const v1 = extractVersionSection(changelog, "1.0.0");
 
-		expect(v2).not.toBeNull();
-		expect(v1).not.toBeNull();
-		expect(v2).toContain("new thing");
-		expect(v2).not.toContain("old fix");
-		expect(v1).toContain("old fix");
-		expect(v1).not.toContain("new thing");
-	});
+			expect(v2).not.toBeNull();
+			expect(v1).not.toBeNull();
+			expect(v2).toContain("new thing");
+			expect(v2).not.toContain("old fix");
+			expect(v1).toContain("old fix");
+			expect(v1).not.toContain("new thing");
+		}),
+	);
 
 	it("multi-version document extracts each independently", () => {
 		const changelog = ChangelogTransformer.transformContent(

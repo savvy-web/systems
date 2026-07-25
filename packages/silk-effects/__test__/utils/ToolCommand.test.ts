@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { ChildProcess } from "effect/unstable/process";
-import { describe, expect, it } from "vitest";
 import { ToolCommand } from "../../src/utils/ToolCommand.js";
 
 describe("ToolCommand", () => {

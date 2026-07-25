@@ -1,7 +1,7 @@
+import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "../../src/tools/turbo-inspect.js";
@@ -51,33 +51,38 @@ const TurboInspectorTest = Layer.succeed(
 	}),
 );
 
-const run = <A, E>(eff: Effect.Effect<A, E, Turbo.TurboInspector | WorkspaceRoot>) =>
-	Effect.runPromise(eff.pipe(Effect.provide(TurboInspectorTest), Effect.provide(WorkspaceRootTest)));
+const TestLayer = Layer.mergeAll(TurboInspectorTest, WorkspaceRootTest);
 
-describe("turboInspect handler", () => {
-	it("projects the cache mode and renders markdown", async () => {
-		const data = await run(turboInspect({ mode: "cache", task: "build:dev" }, "/repo"));
-		expect(data.mode).toBe("cache");
-		const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
-		expect(md).toContain("turbo cache");
-		expect(md).toContain("Misses");
-	});
+layer(TestLayer)("turboInspect handler", (it) => {
+	it.effect("projects the cache mode and renders markdown", () =>
+		Effect.gen(function* () {
+			const data = yield* turboInspect({ mode: "cache", task: "build:dev" }, "/repo");
+			expect(data.mode).toBe("cache");
+			const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
+			expect(md).toContain("turbo cache");
+			expect(md).toContain("Misses");
+		}),
+	);
 
-	it("projects the graph mode", async () => {
-		const data = await run(turboInspect({ mode: "graph" }, "/repo"));
-		expect(data.mode).toBe("graph");
-		const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
-		expect(md).toContain("turbo task graph");
-		expect(md).toContain("a#build:dev");
-	});
+	it.effect("projects the graph mode", () =>
+		Effect.gen(function* () {
+			const data = yield* turboInspect({ mode: "graph" }, "/repo");
+			expect(data.mode).toBe("graph");
+			const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
+			expect(md).toContain("turbo task graph");
+			expect(md).toContain("a#build:dev");
+		}),
+	);
 
-	it("projects the affected mode", async () => {
-		const data = await run(turboInspect({ mode: "affected", base: "main" }, "/repo"));
-		expect(data.mode).toBe("affected");
-		const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
-		expect(md).toContain("turbo affected");
-		expect(md).toContain("- a");
-	});
+	it.effect("projects the affected mode", () =>
+		Effect.gen(function* () {
+			const data = yield* turboInspect({ mode: "affected", base: "main" }, "/repo");
+			expect(data.mode).toBe("affected");
+			const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
+			expect(md).toContain("turbo affected");
+			expect(md).toContain("- a");
+		}),
+	);
 
 	it("forbids encoding markdown back to the structured result", () => {
 		expect(() => Schema.encodeUnknownSync(TurboInspectAsMarkdown)("anything")).toThrow();

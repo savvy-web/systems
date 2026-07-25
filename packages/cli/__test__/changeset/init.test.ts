@@ -1,10 +1,14 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Git, GitCommandError } from "@effected/git";
 import { Jsonc } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Effect, Layer, Logger, Option } from "effect";
-import { afterEach, describe, expect, it, vi } from "vitest";
+// `vi` comes from `vitest` directly, NOT from `@effect/vitest`: vitest hoists
+// `vi.mock(...)` above all imports, so a `vi` bound through the re-export is
+// not yet initialized when the hoisted call runs.
+import { vi } from "vitest";
 import type { CheckIssue } from "../../src/commands/changeset/commands/init.js";
 import {
 	InitError,
@@ -65,70 +69,84 @@ const gitRemoteStub = (result: Effect.Effect<Option.Option<string>, GitCommandEr
 
 /** Run detectGitHubRepo against a stubbed Git service. */
 const detectWith = (result: Effect.Effect<Option.Option<string>, GitCommandError>) =>
-	Effect.runPromise(detectGitHubRepo("/project").pipe(Effect.provide(gitRemoteStub(result))));
+	detectGitHubRepo("/project").pipe(Effect.provide(gitRemoteStub(result)));
 
 describe("detectGitHubRepo", () => {
-	it("parses HTTPS remote URL", async () => {
-		await expect(detectWith(Effect.succeed(Option.some("https://github.com/savvy-web/changesets.git")))).resolves.toBe(
-			"savvy-web/changesets",
-		);
-	});
+	it.effect("parses HTTPS remote URL", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.some("https://github.com/savvy-web/changesets.git")))).toBe(
+				"savvy-web/changesets",
+			);
+		}),
+	);
 
-	it("parses SSH remote URL", async () => {
-		await expect(detectWith(Effect.succeed(Option.some("git@github.com:savvy-web/changesets.git")))).resolves.toBe(
-			"savvy-web/changesets",
-		);
-	});
+	it.effect("parses SSH remote URL", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.some("git@github.com:savvy-web/changesets.git")))).toBe(
+				"savvy-web/changesets",
+			);
+		}),
+	);
 
-	it("parses HTTPS URL without .git suffix", async () => {
-		await expect(detectWith(Effect.succeed(Option.some("https://github.com/owner/repo")))).resolves.toBe("owner/repo");
-	});
+	it.effect("parses HTTPS URL without .git suffix", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.some("https://github.com/owner/repo")))).toBe("owner/repo");
+		}),
+	);
 
-	it("returns null when git command fails", async () => {
-		await expect(
-			detectWith(
-				Effect.fail(
-					GitCommandError.make({
-						kind: "failed",
-						args: ["remote", "get-url", "origin"],
-						cwd: "/project",
-						stderr: "not a git repo",
-					}),
+	it.effect("returns null when git command fails", () =>
+		Effect.gen(function* () {
+			expect(
+				yield* detectWith(
+					Effect.fail(
+						GitCommandError.make({
+							kind: "failed",
+							args: ["remote", "get-url", "origin"],
+							cwd: "/project",
+							stderr: "not a git repo",
+						}),
+					),
 				),
-			),
-		).resolves.toBeNull();
-	});
+			).toBeNull();
+		}),
+	);
 
-	it("returns null when no origin remote exists", async () => {
-		await expect(detectWith(Effect.succeed(Option.none()))).resolves.toBeNull();
-	});
+	it.effect("returns null when no origin remote exists", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.none()))).toBeNull();
+		}),
+	);
 
-	it("returns null for non-GitHub remote", async () => {
-		await expect(detectWith(Effect.succeed(Option.some("https://gitlab.com/owner/repo.git")))).resolves.toBeNull();
-	});
+	it.effect("returns null for non-GitHub remote", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.some("https://gitlab.com/owner/repo.git")))).toBeNull();
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
 // resolveWorkspaceRoot
 // ---------------------------------------------------------------------------
 describe("resolveWorkspaceRoot", () => {
-	it("returns project root from WorkspaceRoot service", async () => {
-		const layer = Layer.succeed(WorkspaceRoot, {
-			find: () => Effect.succeed("/monorepo/root"),
-		});
-		const result = await Effect.runPromise(
-			resolveWorkspaceRoot("/monorepo/root/packages/foo").pipe(Effect.provide(layer)),
-		);
-		expect(result).toBe("/monorepo/root");
-	});
+	it.effect("returns project root from WorkspaceRoot service", () =>
+		Effect.gen(function* () {
+			const layer = Layer.succeed(WorkspaceRoot, {
+				find: () => Effect.succeed("/monorepo/root"),
+			});
+			const result = yield* resolveWorkspaceRoot("/monorepo/root/packages/foo").pipe(Effect.provide(layer));
+			expect(result).toBe("/monorepo/root");
+		}),
+	);
 
-	it("falls back to cwd when WorkspaceRoot fails", async () => {
-		const layer = Layer.succeed(WorkspaceRoot, {
-			find: () => Effect.fail({ _tag: "WorkspaceRootNotFoundError" as const, reason: "not found" } as never),
-		});
-		const result = await Effect.runPromise(resolveWorkspaceRoot("/standalone/project").pipe(Effect.provide(layer)));
-		expect(result).toBe("/standalone/project");
-	});
+	it.effect("falls back to cwd when WorkspaceRoot fails", () =>
+		Effect.gen(function* () {
+			const layer = Layer.succeed(WorkspaceRoot, {
+				find: () => Effect.fail({ _tag: "WorkspaceRootNotFoundError" as const, reason: "not found" } as never),
+			});
+			const result = yield* resolveWorkspaceRoot("/standalone/project").pipe(Effect.provide(layer));
+			expect(result).toBe("/standalone/project");
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -191,29 +209,33 @@ describe("InitError", () => {
 // ensureChangesetDir (Effect function)
 // ---------------------------------------------------------------------------
 describe("ensureChangesetDir", () => {
-	it("creates .changeset directory and returns its path", async () => {
-		vi.mocked(mkdirSync).mockReturnValue(undefined);
+	it.effect("creates .changeset directory and returns its path", () =>
+		Effect.gen(function* () {
+			vi.mocked(mkdirSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(ensureChangesetDir("/project"));
+			const result = yield* ensureChangesetDir("/project");
 
-		expect(result).toBe(join("/project", ".changeset"));
-		expect(mkdirSync).toHaveBeenCalledWith(join("/project", ".changeset"), { recursive: true });
-	});
+			expect(result).toBe(join("/project", ".changeset"));
+			expect(mkdirSync).toHaveBeenCalledWith(join("/project", ".changeset"), { recursive: true });
+		}),
+	);
 
-	it("returns InitError when mkdirSync throws", async () => {
-		vi.mocked(mkdirSync).mockImplementation(() => {
-			throw new Error("EACCES: permission denied");
-		});
+	it.effect("returns InitError when mkdirSync throws", () =>
+		Effect.gen(function* () {
+			vi.mocked(mkdirSync).mockImplementation(() => {
+				throw new Error("EACCES: permission denied");
+			});
 
-		const result = await Effect.runPromise(ensureChangesetDir("/readonly").pipe(Effect.result));
+			const result = yield* ensureChangesetDir("/readonly").pipe(Effect.result);
 
-		expect(result._tag).toBe("Failure");
-		if (result._tag === "Failure") {
-			expect(result.failure).toBeInstanceOf(InitError);
-			expect(result.failure.step).toBe(".changeset directory");
-			expect(result.failure.reason).toBe("EACCES: permission denied");
-		}
-	});
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure).toBeInstanceOf(InitError);
+				expect(result.failure.step).toBe(".changeset directory");
+				expect(result.failure.reason).toBe("EACCES: permission denied");
+			}
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -223,135 +245,147 @@ describe("handleConfig", () => {
 	const changesetDir = "/project/.changeset";
 	const configPath = join(changesetDir, "config.json");
 
-	it("creates new config.json when file does not exist", async () => {
-		vi.mocked(existsSync).mockReturnValue(false);
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+	it.effect("creates new config.json when file does not exist", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(false);
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleConfig(changesetDir, "savvy-web/changesets", false));
+			const result = yield* handleConfig(changesetDir, "savvy-web/changesets", false);
 
-		expect(result).toBe("Created .changeset/config.json");
-		expect(writeFileSync).toHaveBeenCalledOnce();
+			expect(result).toBe("Created .changeset/config.json");
+			expect(writeFileSync).toHaveBeenCalledOnce();
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const written = getWritten(calls, 0);
-		const config = JSON.parse(written);
-		expect(config.$schema).toContain("@changesets/config");
-		expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "savvy-web/changesets" }]);
-		expect(config.commit).toBe(false);
-		expect(config.access).toBe("restricted");
-		expect(config.baseBranch).toBe("main");
-		expect(config.updateInternalDependencies).toBe("patch");
-		expect(config.ignore).toEqual([]);
-		expect(config.privatePackages).toEqual({ tag: true, version: true });
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const written = getWritten(calls, 0);
+			const config = JSON.parse(written);
+			expect(config.$schema).toContain("@changesets/config");
+			expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "savvy-web/changesets" }]);
+			expect(config.commit).toBe(false);
+			expect(config.access).toBe("restricted");
+			expect(config.baseBranch).toBe("main");
+			expect(config.updateInternalDependencies).toBe("patch");
+			expect(config.ignore).toEqual([]);
+			expect(config.privatePackages).toEqual({ tag: true, version: true });
+		}),
+	);
 
-	it("patches changelog key in existing config.json", async () => {
-		const existing = {
-			$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
-			changelog: "@changesets/cli/changelog",
-			commit: true,
-			access: "public",
-			baseBranch: "develop",
-		};
+	it.effect("patches changelog key in existing config.json", () =>
+		Effect.gen(function* () {
+			const existing = {
+				$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+				changelog: "@changesets/cli/changelog",
+				commit: true,
+				access: "public",
+				baseBranch: "develop",
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleConfig(changesetDir, "org/repo", false));
+			const result = yield* handleConfig(changesetDir, "org/repo", false);
 
-		expect(result).toBe("Patched changelog in .changeset/config.json");
+			expect(result).toBe("Patched changelog in .changeset/config.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const config = JSON.parse(getWritten(calls, 0));
-		expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "org/repo" }]);
-		// Preserved existing values
-		expect(config.commit).toBe(true);
-		expect(config.access).toBe("public");
-		expect(config.baseBranch).toBe("develop");
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const config = JSON.parse(getWritten(calls, 0));
+			expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "org/repo" }]);
+			// Preserved existing values
+			expect(config.commit).toBe(true);
+			expect(config.access).toBe("public");
+			expect(config.baseBranch).toBe("develop");
+		}),
+	);
 
-	it("preserves versionFiles when patching existing config", async () => {
-		const existing = {
-			$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
-			changelog: [
-				"@savvy-web/changesets/changelog",
-				{
-					repo: "savvy-web/old-repo",
-					versionFiles: [{ glob: "plugin.json", paths: ["$.version"], package: "@savvy-web/changesets" }],
-				},
-			],
-			commit: false,
-			access: "restricted",
-			baseBranch: "main",
-		};
+	it.effect("preserves versionFiles when patching existing config", () =>
+		Effect.gen(function* () {
+			const existing = {
+				$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+				changelog: [
+					"@savvy-web/changesets/changelog",
+					{
+						repo: "savvy-web/old-repo",
+						versionFiles: [{ glob: "plugin.json", paths: ["$.version"], package: "@savvy-web/changesets" }],
+					},
+				],
+				commit: false,
+				access: "restricted",
+				baseBranch: "main",
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleConfig(changesetDir, "savvy-web/changesets", false));
+			const result = yield* handleConfig(changesetDir, "savvy-web/changesets", false);
 
-		expect(result).toBe("Patched changelog in .changeset/config.json");
+			expect(result).toBe("Patched changelog in .changeset/config.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const config = JSON.parse(getWritten(calls, 0));
-		// repo updated
-		expect(config.changelog[1].repo).toBe("savvy-web/changesets");
-		// versionFiles preserved
-		expect(config.changelog[1].versionFiles).toEqual([
-			{ glob: "plugin.json", paths: ["$.version"], package: "@savvy-web/changesets" },
-		]);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const config = JSON.parse(getWritten(calls, 0));
+			// repo updated
+			expect(config.changelog[1].repo).toBe("savvy-web/changesets");
+			// versionFiles preserved
+			expect(config.changelog[1].versionFiles).toEqual([
+				{ glob: "plugin.json", paths: ["$.version"], package: "@savvy-web/changesets" },
+			]);
+		}),
+	);
 
-	it("overwrites config.json with defaults when --force is true", async () => {
-		const existing = {
-			changelog: "@changesets/cli/changelog",
-			commit: true,
-			baseBranch: "develop",
-		};
+	it.effect("overwrites config.json with defaults when --force is true", () =>
+		Effect.gen(function* () {
+			const existing = {
+				changelog: "@changesets/cli/changelog",
+				commit: true,
+				baseBranch: "develop",
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleConfig(changesetDir, "org/repo", true));
+			const result = yield* handleConfig(changesetDir, "org/repo", true);
 
-		expect(result).toBe("Overwrote .changeset/config.json");
+			expect(result).toBe("Overwrote .changeset/config.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const config = JSON.parse(getWritten(calls, 0));
-		// Force writes full defaults — existing commit/baseBranch are replaced
-		expect(config.commit).toBe(false);
-		expect(config.baseBranch).toBe("main");
-		expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "org/repo" }]);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const config = JSON.parse(getWritten(calls, 0));
+			// Force writes full defaults — existing commit/baseBranch are replaced
+			expect(config.commit).toBe(false);
+			expect(config.baseBranch).toBe("main");
+			expect(config.changelog).toEqual(["@savvy-web/changelog", { repo: "org/repo" }]);
+		}),
+	);
 
-	it("returns InitError when writeFileSync throws", async () => {
-		vi.mocked(existsSync).mockReturnValue(false);
-		vi.mocked(writeFileSync).mockImplementation(() => {
-			throw new Error("ENOSPC: no space left on device");
-		});
+	it.effect("returns InitError when writeFileSync throws", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(false);
+			vi.mocked(writeFileSync).mockImplementation(() => {
+				throw new Error("ENOSPC: no space left on device");
+			});
 
-		const result = await Effect.runPromise(handleConfig(changesetDir, "org/repo", false).pipe(Effect.result));
+			const result = yield* handleConfig(changesetDir, "org/repo", false).pipe(Effect.result);
 
-		expect(result._tag).toBe("Failure");
-		if (result._tag === "Failure") {
-			expect(result.failure).toBeInstanceOf(InitError);
-			expect(result.failure.step).toBe(".changeset/config.json");
-			expect(result.failure.reason).toBe("ENOSPC: no space left on device");
-		}
-	});
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure).toBeInstanceOf(InitError);
+				expect(result.failure.step).toBe(".changeset/config.json");
+				expect(result.failure.reason).toBe("ENOSPC: no space left on device");
+			}
+		}),
+	);
 
-	it("writes to the correct path", async () => {
-		vi.mocked(existsSync).mockReturnValue(false);
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+	it.effect("writes to the correct path", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(false);
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleConfig(changesetDir, "owner/repo", false));
+			yield* handleConfig(changesetDir, "owner/repo", false);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		expect(getWrittenPath(calls, 0)).toBe(configPath);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			expect(getWrittenPath(calls, 0)).toBe(configPath);
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -361,239 +395,261 @@ describe("handleBaseMarkdownlint", () => {
 	const root = "/project";
 	const baseConfigPath = join(root, "lib/configs/.markdownlint-cli2.jsonc");
 
-	it("returns warning when no config file is found", async () => {
-		vi.mocked(existsSync).mockReturnValue(false);
+	it.effect("returns warning when no config file is found", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(false);
 
-		const result = await Effect.runPromise(handleBaseMarkdownlint(root));
+			const result = yield* handleBaseMarkdownlint(root);
 
-		expect(result).toContain("Warning:");
-		expect(result).toContain("no markdownlint config found");
-		expect(writeFileSync).not.toHaveBeenCalled();
-	});
+			expect(result).toContain("Warning:");
+			expect(result).toContain("no markdownlint config found");
+			expect(writeFileSync).not.toHaveBeenCalled();
+		}),
+	);
 
-	it("patches existing config with customRules and disabled rules", async () => {
-		const baseConfig = {
-			customRules: ["some-other-plugin"],
-			config: { default: true },
-		};
+	it.effect("patches existing config with customRules and disabled rules", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: ["some-other-plugin"],
+				config: { default: true },
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleBaseMarkdownlint(root));
+			const result = yield* handleBaseMarkdownlint(root);
 
-		expect(result).toBe("Updated lib/configs/.markdownlint-cli2.jsonc");
+			expect(result).toBe("Updated lib/configs/.markdownlint-cli2.jsonc");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		expect(getWrittenPath(calls, 0)).toBe(baseConfigPath);
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		expect(parsed.customRules).toContain("some-other-plugin");
-		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
-		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-content-structure"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-uncategorized-content"]).toBe(false);
-		// Preserved existing config
-		expect((parsed.config as Record<string, unknown>).default).toBe(true);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			expect(getWrittenPath(calls, 0)).toBe(baseConfigPath);
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			expect(parsed.customRules).toContain("some-other-plugin");
+			expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
+			expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-content-structure"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-uncategorized-content"]).toBe(false);
+			// Preserved existing config
+			expect((parsed.config as Record<string, unknown>).default).toBe(true);
+		}),
+	);
 
-	it("creates customRules array when missing", async () => {
-		const baseConfig = {
-			config: { default: true },
-		};
+	it.effect("creates customRules array when missing", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				config: { default: true },
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		expect(Array.isArray(parsed.customRules)).toBe(true);
-		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			expect(Array.isArray(parsed.customRules)).toBe(true);
+			expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
+		}),
+	);
 
-	it("creates config object when missing", async () => {
-		const baseConfig = {
-			customRules: [],
-		};
+	it.effect("creates config object when missing", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: [],
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		expect(typeof parsed.config).toBe("object");
-		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-content-structure"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-uncategorized-content"]).toBe(false);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			expect(typeof parsed.config).toBe("object");
+			expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-content-structure"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-uncategorized-content"]).toBe(false);
+		}),
+	);
 
-	it("creates config object when config is null", async () => {
-		const baseConfig = {
-			customRules: [],
-			config: null,
-		};
+	it.effect("creates config object when config is null", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: [],
+				config: null,
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		expect(typeof parsed.config).toBe("object");
-		expect(parsed.config).not.toBeNull();
-		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			expect(typeof parsed.config).toBe("object");
+			expect(parsed.config).not.toBeNull();
+			expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(false);
+		}),
+	);
 
-	it("does not duplicate customRules entry when already present", async () => {
-		const baseConfig = {
-			customRules: ["@savvy-web/silk/changesets/markdownlint"],
-			config: {
-				"changeset-heading-hierarchy": false,
-				"changeset-required-sections": false,
-				"changeset-content-structure": false,
-				"changeset-uncategorized-content": false,
-			},
-		};
+	it.effect("does not duplicate customRules entry when already present", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: ["@savvy-web/silk/changesets/markdownlint"],
+				config: {
+					"changeset-heading-hierarchy": false,
+					"changeset-required-sections": false,
+					"changeset-content-structure": false,
+					"changeset-uncategorized-content": false,
+				},
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		const count = (parsed.customRules as string[]).filter(
-			(r: string) => r === "@savvy-web/silk/changesets/markdownlint",
-		).length;
-		expect(count).toBe(1);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			const count = (parsed.customRules as string[]).filter(
+				(r: string) => r === "@savvy-web/silk/changesets/markdownlint",
+			).length;
+			expect(count).toBe(1);
+		}),
+	);
 
-	it("migrates a legacy @savvy-web/changesets/markdownlint entry to the silk shim", async () => {
-		const baseConfig = {
-			customRules: ["some-other-plugin", "@savvy-web/changesets/markdownlint"],
-			config: {
-				"changeset-heading-hierarchy": false,
-				"changeset-required-sections": false,
-				"changeset-content-structure": false,
-				"changeset-uncategorized-content": false,
-				"changeset-dependency-table-format": false,
-			},
-		};
+	it.effect("migrates a legacy @savvy-web/changesets/markdownlint entry to the silk shim", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: ["some-other-plugin", "@savvy-web/changesets/markdownlint"],
+				config: {
+					"changeset-heading-hierarchy": false,
+					"changeset-required-sections": false,
+					"changeset-content-structure": false,
+					"changeset-uncategorized-content": false,
+					"changeset-dependency-table-format": false,
+				},
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		const rules = parsed.customRules as string[];
-		// Unrelated plugins are preserved.
-		expect(rules).toContain("some-other-plugin");
-		// The silk shim is registered, and the pre-merge standalone entry is removed.
-		expect(rules).toContain("@savvy-web/silk/changesets/markdownlint");
-		expect(rules).not.toContain("@savvy-web/changesets/markdownlint");
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			const rules = parsed.customRules as string[];
+			// Unrelated plugins are preserved.
+			expect(rules).toContain("some-other-plugin");
+			// The silk shim is registered, and the pre-merge standalone entry is removed.
+			expect(rules).toContain("@savvy-web/silk/changesets/markdownlint");
+			expect(rules).not.toContain("@savvy-web/changesets/markdownlint");
+		}),
+	);
 
-	it("dedupes a config that already lists both the silk shim and the legacy entry", async () => {
-		const baseConfig = {
-			customRules: ["@savvy-web/silk/changesets/markdownlint", "@savvy-web/changesets/markdownlint"],
-			config: {
-				"changeset-heading-hierarchy": false,
-				"changeset-required-sections": false,
-				"changeset-content-structure": false,
-				"changeset-uncategorized-content": false,
-				"changeset-dependency-table-format": false,
-			},
-		};
+	it.effect("dedupes a config that already lists both the silk shim and the legacy entry", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: ["@savvy-web/silk/changesets/markdownlint", "@savvy-web/changesets/markdownlint"],
+				config: {
+					"changeset-heading-hierarchy": false,
+					"changeset-required-sections": false,
+					"changeset-content-structure": false,
+					"changeset-uncategorized-content": false,
+					"changeset-dependency-table-format": false,
+				},
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		expect(parsed.customRules).toEqual(["@savvy-web/silk/changesets/markdownlint"]);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			expect(parsed.customRules).toEqual(["@savvy-web/silk/changesets/markdownlint"]);
+		}),
+	);
 
-	it("does not overwrite existing rule values in config", async () => {
-		const baseConfig = {
-			customRules: [],
-			config: {
-				"changeset-heading-hierarchy": true,
-			},
-		};
+	it.effect("does not overwrite existing rule values in config", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: [],
+				config: {
+					"changeset-heading-hierarchy": true,
+				},
+			};
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const parsed = Effect.runSync(Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
-		// Should not overwrite the existing true value
-		expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(true);
-		// Should add missing rules
-		expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-content-structure"]).toBe(false);
-		expect((parsed.config as Record<string, unknown>)["changeset-uncategorized-content"]).toBe(false);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const parsed = (yield* Jsonc.parse(getWritten(calls, 0))) as Record<string, unknown>;
+			// Should not overwrite the existing true value
+			expect((parsed.config as Record<string, unknown>)["changeset-heading-hierarchy"]).toBe(true);
+			// Should add missing rules
+			expect((parsed.config as Record<string, unknown>)["changeset-required-sections"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-content-structure"]).toBe(false);
+			expect((parsed.config as Record<string, unknown>)["changeset-uncategorized-content"]).toBe(false);
+		}),
+	);
 
-	it("preserves JSONC comments in base config", async () => {
-		const jsonc = `{
+	it.effect("preserves JSONC comments in base config", () =>
+		Effect.gen(function* () {
+			const jsonc = `{
 	// Custom rules
 	"customRules": [],
 	/* Config block */
 	"config": { "default": true }
 }`;
 
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(jsonc);
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(jsonc);
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		await Effect.runPromise(handleBaseMarkdownlint(root));
+			yield* handleBaseMarkdownlint(root);
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const written = getWritten(calls, 0);
-		// Comments are preserved in the output
-		expect(written).toContain("// Custom rules");
-		expect(written).toContain("/* Config block */");
-		// Values are still correct
-		const parsed = Effect.runSync(Jsonc.parse(written)) as Record<string, unknown>;
-		expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
-		expect((parsed.config as Record<string, unknown>).default).toBe(true);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const written = getWritten(calls, 0);
+			// Comments are preserved in the output
+			expect(written).toContain("// Custom rules");
+			expect(written).toContain("/* Config block */");
+			// Values are still correct
+			const parsed = (yield* Jsonc.parse(written)) as Record<string, unknown>;
+			expect(parsed.customRules).toContain("@savvy-web/silk/changesets/markdownlint");
+			expect((parsed.config as Record<string, unknown>).default).toBe(true);
+		}),
+	);
 
-	it("returns InitError when readFileSync throws", async () => {
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockImplementation(() => {
-			throw new Error("EACCES: permission denied");
-		});
+	it.effect("returns InitError when readFileSync throws", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockImplementation(() => {
+				throw new Error("EACCES: permission denied");
+			});
 
-		const result = await Effect.runPromise(handleBaseMarkdownlint(root).pipe(Effect.result));
+			const result = yield* handleBaseMarkdownlint(root).pipe(Effect.result);
 
-		expect(result._tag).toBe("Failure");
-		if (result._tag === "Failure") {
-			expect(result.failure).toBeInstanceOf(InitError);
-			expect(result.failure.step).toBe("markdownlint config");
-			expect(result.failure.reason).toBe("EACCES: permission denied");
-		}
-	});
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure).toBeInstanceOf(InitError);
+				expect(result.failure.step).toBe("markdownlint config");
+				expect(result.failure.reason).toBe("EACCES: permission denied");
+			}
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -605,164 +661,178 @@ describe("handleChangesetMarkdownlint", () => {
 	const mdlintPath = join(changesetDir, ".markdownlint.json");
 	const baseConfigPath = join(root, "lib/configs/.markdownlint-cli2.jsonc");
 
-	it("creates new file with extends when base config exists", async () => {
-		vi.mocked(existsSync).mockImplementation((p) => {
-			if (String(p) === baseConfigPath) return true;
-			if (String(p) === mdlintPath) return false;
-			return false;
-		});
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+	it.effect("creates new file with extends when base config exists", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockImplementation((p) => {
+				if (String(p) === baseConfigPath) return true;
+				if (String(p) === mdlintPath) return false;
+				return false;
+			});
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false));
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, false);
 
-		expect(result).toBe("Created .changeset/.markdownlint.json");
+			expect(result).toBe("Created .changeset/.markdownlint.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		expect(getWrittenPath(calls, 0)).toBe(mdlintPath);
-		const mdlint = JSON.parse(getWritten(calls, 0));
-		expect(mdlint.extends).toBe("../lib/configs/.markdownlint-cli2.jsonc");
-		expect(mdlint.default).toBe(false);
-		expect(mdlint.MD041).toBe(false);
-		expect(mdlint["changeset-heading-hierarchy"]).toBe(true);
-		expect(mdlint["changeset-required-sections"]).toBe(true);
-		expect(mdlint["changeset-content-structure"]).toBe(true);
-		expect(mdlint["changeset-uncategorized-content"]).toBe(true);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			expect(getWrittenPath(calls, 0)).toBe(mdlintPath);
+			const mdlint = JSON.parse(getWritten(calls, 0));
+			expect(mdlint.extends).toBe("../lib/configs/.markdownlint-cli2.jsonc");
+			expect(mdlint.default).toBe(false);
+			expect(mdlint.MD041).toBe(false);
+			expect(mdlint["changeset-heading-hierarchy"]).toBe(true);
+			expect(mdlint["changeset-required-sections"]).toBe(true);
+			expect(mdlint["changeset-content-structure"]).toBe(true);
+			expect(mdlint["changeset-uncategorized-content"]).toBe(true);
+		}),
+	);
 
-	it("creates new file without extends when base config does not exist", async () => {
-		vi.mocked(existsSync).mockReturnValue(false);
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+	it.effect("creates new file without extends when base config does not exist", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(false);
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false));
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, false);
 
-		expect(result).toBe("Created .changeset/.markdownlint.json");
+			expect(result).toBe("Created .changeset/.markdownlint.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const mdlint = JSON.parse(getWritten(calls, 0));
-		expect(mdlint.extends).toBeUndefined();
-		expect(mdlint.default).toBe(false);
-		expect(mdlint.MD041).toBe(false);
-		expect(mdlint["changeset-heading-hierarchy"]).toBe(true);
-		expect(mdlint["changeset-required-sections"]).toBe(true);
-		expect(mdlint["changeset-content-structure"]).toBe(true);
-		expect(mdlint["changeset-uncategorized-content"]).toBe(true);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const mdlint = JSON.parse(getWritten(calls, 0));
+			expect(mdlint.extends).toBeUndefined();
+			expect(mdlint.default).toBe(false);
+			expect(mdlint.MD041).toBe(false);
+			expect(mdlint["changeset-heading-hierarchy"]).toBe(true);
+			expect(mdlint["changeset-required-sections"]).toBe(true);
+			expect(mdlint["changeset-content-structure"]).toBe(true);
+			expect(mdlint["changeset-uncategorized-content"]).toBe(true);
+		}),
+	);
 
-	it("patches existing file by merging rule keys", async () => {
-		const existing = {
-			extends: "../some/other/config.json",
-			default: true,
-			MD041: true,
-			"some-other-rule": true,
-		};
+	it.effect("patches existing file by merging rule keys", () =>
+		Effect.gen(function* () {
+			const existing = {
+				extends: "../some/other/config.json",
+				default: true,
+				MD041: true,
+				"some-other-rule": true,
+			};
 
-		vi.mocked(existsSync).mockImplementation((p) => {
-			if (String(p) === mdlintPath) return true;
-			if (String(p) === baseConfigPath) return false;
-			return false;
-		});
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			vi.mocked(existsSync).mockImplementation((p) => {
+				if (String(p) === mdlintPath) return true;
+				if (String(p) === baseConfigPath) return false;
+				return false;
+			});
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false));
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, false);
 
-		expect(result).toBe("Patched rules in .changeset/.markdownlint.json");
+			expect(result).toBe("Patched rules in .changeset/.markdownlint.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const mdlint = JSON.parse(getWritten(calls, 0));
-		// Preserved existing values
-		expect(mdlint.extends).toBe("../some/other/config.json");
-		expect(mdlint.default).toBe(true);
-		expect(mdlint.MD041).toBe(true);
-		expect(mdlint["some-other-rule"]).toBe(true);
-		// Merged our rules
-		expect(mdlint["changeset-heading-hierarchy"]).toBe(true);
-		expect(mdlint["changeset-required-sections"]).toBe(true);
-		expect(mdlint["changeset-content-structure"]).toBe(true);
-		expect(mdlint["changeset-uncategorized-content"]).toBe(true);
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const mdlint = JSON.parse(getWritten(calls, 0));
+			// Preserved existing values
+			expect(mdlint.extends).toBe("../some/other/config.json");
+			expect(mdlint.default).toBe(true);
+			expect(mdlint.MD041).toBe(true);
+			expect(mdlint["some-other-rule"]).toBe(true);
+			// Merged our rules
+			expect(mdlint["changeset-heading-hierarchy"]).toBe(true);
+			expect(mdlint["changeset-required-sections"]).toBe(true);
+			expect(mdlint["changeset-content-structure"]).toBe(true);
+			expect(mdlint["changeset-uncategorized-content"]).toBe(true);
+		}),
+	);
 
-	it("overwrites file with defaults when --force is true", async () => {
-		const existing = {
-			extends: "../some/other/config.json",
-			default: true,
-			"some-other-rule": true,
-		};
+	it.effect("overwrites file with defaults when --force is true", () =>
+		Effect.gen(function* () {
+			const existing = {
+				extends: "../some/other/config.json",
+				default: true,
+				"some-other-rule": true,
+			};
 
-		// Even though the file exists, force should overwrite
-		vi.mocked(existsSync).mockImplementation((p) => {
-			if (String(p) === mdlintPath) return true;
-			// No base config
-			if (String(p) === baseConfigPath) return false;
-			return false;
-		});
-		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+			// Even though the file exists, force should overwrite
+			vi.mocked(existsSync).mockImplementation((p) => {
+				if (String(p) === mdlintPath) return true;
+				// No base config
+				if (String(p) === baseConfigPath) return false;
+				return false;
+			});
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(existing));
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, true));
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, true);
 
-		expect(result).toBe("Overwrote .changeset/.markdownlint.json");
+			expect(result).toBe("Overwrote .changeset/.markdownlint.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const mdlint = JSON.parse(getWritten(calls, 0));
-		// Force writes full defaults — existing values are replaced
-		expect(mdlint.default).toBe(false);
-		expect(mdlint["some-other-rule"]).toBeUndefined();
-		// No extends since base config doesn't exist
-		expect(mdlint.extends).toBeUndefined();
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const mdlint = JSON.parse(getWritten(calls, 0));
+			// Force writes full defaults — existing values are replaced
+			expect(mdlint.default).toBe(false);
+			expect(mdlint["some-other-rule"]).toBeUndefined();
+			// No extends since base config doesn't exist
+			expect(mdlint.extends).toBeUndefined();
+		}),
+	);
 
-	it("overwrites file with extends when --force is true and base config exists", async () => {
-		vi.mocked(existsSync).mockImplementation((p) => {
-			if (String(p) === mdlintPath) return true;
-			if (String(p) === baseConfigPath) return true;
-			return false;
-		});
-		vi.mocked(writeFileSync).mockReturnValue(undefined);
+	it.effect("overwrites file with extends when --force is true and base config exists", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockImplementation((p) => {
+				if (String(p) === mdlintPath) return true;
+				if (String(p) === baseConfigPath) return true;
+				return false;
+			});
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, true));
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, true);
 
-		expect(result).toBe("Overwrote .changeset/.markdownlint.json");
+			expect(result).toBe("Overwrote .changeset/.markdownlint.json");
 
-		const calls = vi.mocked(writeFileSync).mock.calls;
-		const mdlint = JSON.parse(getWritten(calls, 0));
-		expect(mdlint.extends).toBe("../lib/configs/.markdownlint-cli2.jsonc");
-	});
+			const calls = vi.mocked(writeFileSync).mock.calls;
+			const mdlint = JSON.parse(getWritten(calls, 0));
+			expect(mdlint.extends).toBe("../lib/configs/.markdownlint-cli2.jsonc");
+		}),
+	);
 
-	it("returns InitError when writeFileSync throws", async () => {
-		vi.mocked(existsSync).mockReturnValue(false);
-		vi.mocked(writeFileSync).mockImplementation(() => {
-			throw new Error("ENOSPC: no space left on device");
-		});
+	it.effect("returns InitError when writeFileSync throws", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(false);
+			vi.mocked(writeFileSync).mockImplementation(() => {
+				throw new Error("ENOSPC: no space left on device");
+			});
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.result));
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.result);
 
-		expect(result._tag).toBe("Failure");
-		if (result._tag === "Failure") {
-			expect(result.failure).toBeInstanceOf(InitError);
-			expect(result.failure.step).toBe(".changeset/.markdownlint.json");
-			expect(result.failure.reason).toBe("ENOSPC: no space left on device");
-		}
-	});
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure).toBeInstanceOf(InitError);
+				expect(result.failure.step).toBe(".changeset/.markdownlint.json");
+				expect(result.failure.reason).toBe("ENOSPC: no space left on device");
+			}
+		}),
+	);
 
-	it("returns InitError when readFileSync throws during patch", async () => {
-		vi.mocked(existsSync).mockImplementation((p) => {
-			if (String(p) === mdlintPath) return true;
-			if (String(p) === baseConfigPath) return false;
-			return false;
-		});
-		vi.mocked(readFileSync).mockImplementation(() => {
-			throw new Error("EACCES: permission denied");
-		});
+	it.effect("returns InitError when readFileSync throws during patch", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockImplementation((p) => {
+				if (String(p) === mdlintPath) return true;
+				if (String(p) === baseConfigPath) return false;
+				return false;
+			});
+			vi.mocked(readFileSync).mockImplementation(() => {
+				throw new Error("EACCES: permission denied");
+			});
 
-		const result = await Effect.runPromise(handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.result));
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, false).pipe(Effect.result);
 
-		expect(result._tag).toBe("Failure");
-		if (result._tag === "Failure") {
-			expect(result.failure).toBeInstanceOf(InitError);
-			expect(result.failure.step).toBe(".changeset/.markdownlint.json");
-		}
-	});
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure).toBeInstanceOf(InitError);
+				expect(result.failure.step).toBe(".changeset/.markdownlint.json");
+			}
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -1149,64 +1219,72 @@ describe("warnIfLegacyVersionFiles", () => {
 	const changesetDir = "/project/.changeset";
 	const configPath = "/project/.changeset/config.json";
 
-	it("silently returns when the config file does not exist", async () => {
-		vi.mocked(existsSync).mockImplementation((p) => p !== configPath);
-		await expect(Effect.runPromise(warnIfLegacyVersionFiles(changesetDir))).resolves.toBeUndefined();
-	});
+	it.effect("silently returns when the config file does not exist", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockImplementation((p) => p !== configPath);
+			expect(yield* warnIfLegacyVersionFiles(changesetDir)).toBeUndefined();
+		}),
+	);
 
-	it("silently returns when the config uses the new `packages` shape", async () => {
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(
-			JSON.stringify({
-				changelog: [
-					"@savvy-web/changesets/changelog",
-					{
-						repo: "owner/repo",
-						packages: { "@scope/foo": { versionFiles: [{ glob: "plugin.json" }] } },
-					},
-				],
-			}),
-		);
-		await expect(Effect.runPromise(warnIfLegacyVersionFiles(changesetDir))).resolves.toBeUndefined();
-	});
+	it.effect("silently returns when the config uses the new `packages` shape", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(
+				JSON.stringify({
+					changelog: [
+						"@savvy-web/changesets/changelog",
+						{
+							repo: "owner/repo",
+							packages: { "@scope/foo": { versionFiles: [{ glob: "plugin.json" }] } },
+						},
+					],
+				}),
+			);
+			expect(yield* warnIfLegacyVersionFiles(changesetDir)).toBeUndefined();
+		}),
+	);
 
-	it("returns silently when readFileSync throws (config unparseable)", async () => {
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockImplementation(() => {
-			throw new Error("ENOENT");
-		});
-		// Should NOT throw; this is a fail-safe path.
-		await expect(Effect.runPromise(warnIfLegacyVersionFiles(changesetDir))).resolves.toBeUndefined();
-	});
+	it.effect("returns silently when readFileSync throws (config unparseable)", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockImplementation(() => {
+				throw new Error("ENOENT");
+			});
+			// Should NOT throw; this is a fail-safe path.
+			expect(yield* warnIfLegacyVersionFiles(changesetDir)).toBeUndefined();
+		}),
+	);
 
-	it("returns silently for malformed JSON", async () => {
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue("not json {");
-		await expect(Effect.runPromise(warnIfLegacyVersionFiles(changesetDir))).resolves.toBeUndefined();
-	});
+	it.effect("returns silently for malformed JSON", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue("not json {");
+			expect(yield* warnIfLegacyVersionFiles(changesetDir)).toBeUndefined();
+		}),
+	);
 
-	it("emits a logWarning when the legacy shape is present", async () => {
-		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockReturnValue(
-			JSON.stringify({
-				changelog: [
-					"@savvy-web/changesets/changelog",
-					{
-						repo: "owner/repo",
-						versionFiles: [{ glob: "plugin.json", package: "@scope/foo" }],
-					},
-				],
-			}),
-		);
-		// Effect's logger emits to a default appender; assertion-by-side-effect
-		// would require intercepting the logger. The simpler observation is
-		// that the Effect resolves to void without throwing, which means the
-		// detection branch ran and emitted a warning. We've already covered
-		// the message shape via `legacyVersionFilesWarning`.
-		await expect(
-			Effect.runPromise(warnIfLegacyVersionFiles(changesetDir).pipe(Effect.provide(Logger.layer([])))),
-		).resolves.toBeUndefined();
-	});
+	it.effect("emits a logWarning when the legacy shape is present", () =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(
+				JSON.stringify({
+					changelog: [
+						"@savvy-web/changesets/changelog",
+						{
+							repo: "owner/repo",
+							versionFiles: [{ glob: "plugin.json", package: "@scope/foo" }],
+						},
+					],
+				}),
+			);
+			// Effect's logger emits to a default appender; assertion-by-side-effect
+			// would require intercepting the logger. The simpler observation is
+			// that the Effect resolves to void without throwing, which means the
+			// detection branch ran and emitted a warning. We've already covered
+			// the message shape via `legacyVersionFilesWarning`.
+			expect(yield* warnIfLegacyVersionFiles(changesetDir).pipe(Effect.provide(Logger.layer([])))).toBeUndefined();
+		}),
+	);
 });
 
 describe("checkConfig — legacy versionFiles detection", () => {

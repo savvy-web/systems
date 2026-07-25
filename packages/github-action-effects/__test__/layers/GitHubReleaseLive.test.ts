@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import { Effect, Layer, Stream } from "effect";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import { GitHubReleaseLive } from "../../src/layers/GitHubReleaseLive.js";
 import { GitHubClient } from "../../src/services/GitHubClient.js";
@@ -76,10 +76,9 @@ const mockClient: typeof GitHubClient.Service = {
 
 const testLayer = Layer.provide(GitHubReleaseLive, Layer.succeed(GitHubClient, mockClient));
 
-const run = <A, E>(effect: Effect.Effect<A, E, GitHubRelease>) => Effect.runPromise(Effect.provide(effect, testLayer));
+const run = <A, E>(effect: Effect.Effect<A, E, GitHubRelease>) => Effect.provide(effect, testLayer);
 
-const runExit = <A, E>(effect: Effect.Effect<A, E, GitHubRelease>) =>
-	Effect.runPromise(Effect.exit(Effect.provide(effect, testLayer)));
+const runExit = <A, E>(effect: Effect.Effect<A, E, GitHubRelease>) => Effect.exit(Effect.provide(effect, testLayer));
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -87,275 +86,305 @@ beforeEach(() => {
 
 describe("GitHubReleaseLive", () => {
 	describe("create", () => {
-		it("calls repos.createRelease and returns mapped data", async () => {
-			mockCreateRelease.mockResolvedValue({
-				data: {
-					id: 42,
-					tag_name: "v1.0.0",
-					name: "Release 1.0.0",
-					body: "Notes",
-					draft: false,
-					prerelease: false,
-					upload_url: "https://uploads.github.com/releases/42/assets",
-				},
-			});
-			const result = await run(
-				Effect.flatMap(GitHubRelease, (svc) => svc.create({ tag: "v1.0.0", name: "Release 1.0.0", body: "Notes" })),
-			);
-			expect(result.id).toBe(42);
-			expect(result.tag).toBe("v1.0.0");
-			expect(result.name).toBe("Release 1.0.0");
-			expect(mockCreateRelease).toHaveBeenCalledWith(
-				expect.objectContaining({
-					owner: "test-owner",
-					repo: "test-repo",
-					tag_name: "v1.0.0",
-				}),
-			);
-		});
+		it.effect("calls repos.createRelease and returns mapped data", () =>
+			Effect.gen(function* () {
+				mockCreateRelease.mockResolvedValue({
+					data: {
+						id: 42,
+						tag_name: "v1.0.0",
+						name: "Release 1.0.0",
+						body: "Notes",
+						draft: false,
+						prerelease: false,
+						upload_url: "https://uploads.github.com/releases/42/assets",
+					},
+				});
+				const result = yield* run(
+					Effect.flatMap(GitHubRelease, (svc) => svc.create({ tag: "v1.0.0", name: "Release 1.0.0", body: "Notes" })),
+				);
+				expect(result.id).toBe(42);
+				expect(result.tag).toBe("v1.0.0");
+				expect(result.name).toBe("Release 1.0.0");
+				expect(mockCreateRelease).toHaveBeenCalledWith(
+					expect.objectContaining({
+						owner: "test-owner",
+						repo: "test-repo",
+						tag_name: "v1.0.0",
+					}),
+				);
+			}),
+		);
 
-		it("fails on API error", async () => {
-			mockCreateRelease.mockRejectedValue(new Error("api error"));
-			const exit = await runExit(
-				Effect.flatMap(GitHubRelease, (svc) => svc.create({ tag: "v1.0.0", name: "R", body: "" })),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on API error", () =>
+			Effect.gen(function* () {
+				mockCreateRelease.mockRejectedValue(new Error("api error"));
+				const exit = yield* runExit(
+					Effect.flatMap(GitHubRelease, (svc) => svc.create({ tag: "v1.0.0", name: "R", body: "" })),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("uploadAsset", () => {
-		it("calls repos.uploadReleaseAsset and returns mapped data", async () => {
-			mockUploadReleaseAsset.mockResolvedValue({
-				data: {
-					id: 101,
-					name: "dist.tar.gz",
-					browser_download_url: "https://github.com/releases/download/dist.tar.gz",
-					size: 2048,
-				},
-			});
-			const result = await run(
-				Effect.flatMap(GitHubRelease, (svc) => svc.uploadAsset(42, "dist.tar.gz", "binary-data", "application/gzip")),
-			);
-			expect(result.id).toBe(101);
-			expect(result.name).toBe("dist.tar.gz");
-			expect(result.size).toBe(2048);
-			expect(mockUploadReleaseAsset).toHaveBeenCalledWith(
-				expect.objectContaining({
-					owner: "test-owner",
-					repo: "test-repo",
-					release_id: 42,
-					name: "dist.tar.gz",
-				}),
-			);
-		});
+		it.effect("calls repos.uploadReleaseAsset and returns mapped data", () =>
+			Effect.gen(function* () {
+				mockUploadReleaseAsset.mockResolvedValue({
+					data: {
+						id: 101,
+						name: "dist.tar.gz",
+						browser_download_url: "https://github.com/releases/download/dist.tar.gz",
+						size: 2048,
+					},
+				});
+				const result = yield* run(
+					Effect.flatMap(GitHubRelease, (svc) => svc.uploadAsset(42, "dist.tar.gz", "binary-data", "application/gzip")),
+				);
+				expect(result.id).toBe(101);
+				expect(result.name).toBe("dist.tar.gz");
+				expect(result.size).toBe(2048);
+				expect(mockUploadReleaseAsset).toHaveBeenCalledWith(
+					expect.objectContaining({
+						owner: "test-owner",
+						repo: "test-repo",
+						release_id: 42,
+						name: "dist.tar.gz",
+					}),
+				);
+			}),
+		);
 	});
 
 	describe("getByTag", () => {
-		it("calls repos.getReleaseByTag and returns mapped data", async () => {
-			mockGetReleaseByTag.mockResolvedValue({
-				data: {
-					id: 42,
-					tag_name: "v1.0.0",
-					name: "Release 1.0.0",
-					body: "Notes",
-					draft: false,
-					prerelease: false,
-					upload_url: "https://uploads.github.com/releases/42/assets",
-				},
-			});
-			const result = await run(Effect.flatMap(GitHubRelease, (svc) => svc.getByTag("v1.0.0")));
-			expect(result.tag).toBe("v1.0.0");
-			expect(mockGetReleaseByTag).toHaveBeenCalledWith(
-				expect.objectContaining({
-					owner: "test-owner",
-					repo: "test-repo",
-					tag: "v1.0.0",
-				}),
-			);
-		});
+		it.effect("calls repos.getReleaseByTag and returns mapped data", () =>
+			Effect.gen(function* () {
+				mockGetReleaseByTag.mockResolvedValue({
+					data: {
+						id: 42,
+						tag_name: "v1.0.0",
+						name: "Release 1.0.0",
+						body: "Notes",
+						draft: false,
+						prerelease: false,
+						upload_url: "https://uploads.github.com/releases/42/assets",
+					},
+				});
+				const result = yield* run(Effect.flatMap(GitHubRelease, (svc) => svc.getByTag("v1.0.0")));
+				expect(result.tag).toBe("v1.0.0");
+				expect(mockGetReleaseByTag).toHaveBeenCalledWith(
+					expect.objectContaining({
+						owner: "test-owner",
+						repo: "test-repo",
+						tag: "v1.0.0",
+					}),
+				);
+			}),
+		);
 
-		it("fails on API error", async () => {
-			mockGetReleaseByTag.mockRejectedValue(new Error("not found"));
-			const exit = await runExit(Effect.flatMap(GitHubRelease, (svc) => svc.getByTag("v99.0.0")));
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on API error", () =>
+			Effect.gen(function* () {
+				mockGetReleaseByTag.mockRejectedValue(new Error("not found"));
+				const exit = yield* runExit(Effect.flatMap(GitHubRelease, (svc) => svc.getByTag("v99.0.0")));
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("create with optional params", () => {
-		it("passes draft, prerelease, and generateReleaseNotes when provided", async () => {
-			mockCreateRelease.mockResolvedValue({
-				data: {
-					id: 43,
-					tag_name: "v2.0.0",
-					name: "Release 2.0.0",
-					body: "Notes",
-					draft: true,
-					prerelease: true,
-					upload_url: "https://uploads.github.com/releases/43/assets",
-				},
-			});
-			const result = await run(
-				Effect.flatMap(GitHubRelease, (svc) =>
-					svc.create({
-						tag: "v2.0.0",
+		it.effect("passes draft, prerelease, and generateReleaseNotes when provided", () =>
+			Effect.gen(function* () {
+				mockCreateRelease.mockResolvedValue({
+					data: {
+						id: 43,
+						tag_name: "v2.0.0",
 						name: "Release 2.0.0",
 						body: "Notes",
 						draft: true,
 						prerelease: true,
-						generateReleaseNotes: true,
+						upload_url: "https://uploads.github.com/releases/43/assets",
+					},
+				});
+				const result = yield* run(
+					Effect.flatMap(GitHubRelease, (svc) =>
+						svc.create({
+							tag: "v2.0.0",
+							name: "Release 2.0.0",
+							body: "Notes",
+							draft: true,
+							prerelease: true,
+							generateReleaseNotes: true,
+						}),
+					),
+				);
+				expect(result.draft).toBe(true);
+				expect(result.prerelease).toBe(true);
+				expect(mockCreateRelease).toHaveBeenCalledWith(
+					expect.objectContaining({
+						draft: true,
+						prerelease: true,
+						generate_release_notes: true,
 					}),
-				),
-			);
-			expect(result.draft).toBe(true);
-			expect(result.prerelease).toBe(true);
-			expect(mockCreateRelease).toHaveBeenCalledWith(
-				expect.objectContaining({
-					draft: true,
-					prerelease: true,
-					generate_release_notes: true,
-				}),
-			);
-		});
+				);
+			}),
+		);
 
-		it("maps null name and body to empty strings", async () => {
-			mockCreateRelease.mockResolvedValue({
-				data: {
-					id: 44,
-					tag_name: "v3.0.0",
-					name: null,
-					body: null,
-					draft: false,
-					prerelease: false,
-					upload_url: "https://uploads.github.com/releases/44/assets",
-				},
-			});
-			const result = await run(
-				Effect.flatMap(GitHubRelease, (svc) => svc.create({ tag: "v3.0.0", name: "R", body: "" })),
-			);
-			expect(result.name).toBe("");
-			expect(result.body).toBe("");
-		});
+		it.effect("maps null name and body to empty strings", () =>
+			Effect.gen(function* () {
+				mockCreateRelease.mockResolvedValue({
+					data: {
+						id: 44,
+						tag_name: "v3.0.0",
+						name: null,
+						body: null,
+						draft: false,
+						prerelease: false,
+						upload_url: "https://uploads.github.com/releases/44/assets",
+					},
+				});
+				const result = yield* run(
+					Effect.flatMap(GitHubRelease, (svc) => svc.create({ tag: "v3.0.0", name: "R", body: "" })),
+				);
+				expect(result.name).toBe("");
+				expect(result.body).toBe("");
+			}),
+		);
 	});
 
 	describe("uploadAsset error mapping", () => {
-		it("maps error without tag field", async () => {
-			mockUploadReleaseAsset.mockRejectedValue(new Error("upload failed"));
-			const exit = await runExit(
-				Effect.flatMap(GitHubRelease, (svc) => svc.uploadAsset(42, "file.zip", "data", "application/zip")),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("maps error without tag field", () =>
+			Effect.gen(function* () {
+				mockUploadReleaseAsset.mockRejectedValue(new Error("upload failed"));
+				const exit = yield* runExit(
+					Effect.flatMap(GitHubRelease, (svc) => svc.uploadAsset(42, "file.zip", "data", "application/zip")),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("list", () => {
-		it("passes perPage and maxPages pagination options", async () => {
-			mockListReleases.mockResolvedValue({ data: [] });
-			await run(Effect.flatMap(GitHubRelease, (svc) => svc.list({ perPage: 5, maxPages: 1 })));
-			expect(mockListReleases).toHaveBeenCalled();
-		});
+		it.effect("passes perPage and maxPages pagination options", () =>
+			Effect.gen(function* () {
+				mockListReleases.mockResolvedValue({ data: [] });
+				yield* run(Effect.flatMap(GitHubRelease, (svc) => svc.list({ perPage: 5, maxPages: 1 })));
+				expect(mockListReleases).toHaveBeenCalled();
+			}),
+		);
 
-		it("omits pagination options when not provided", async () => {
-			mockListReleases.mockResolvedValue({ data: [] });
-			await run(Effect.flatMap(GitHubRelease, (svc) => svc.list()));
-			expect(mockListReleases).toHaveBeenCalled();
-		});
+		it.effect("omits pagination options when not provided", () =>
+			Effect.gen(function* () {
+				mockListReleases.mockResolvedValue({ data: [] });
+				yield* run(Effect.flatMap(GitHubRelease, (svc) => svc.list()));
+				expect(mockListReleases).toHaveBeenCalled();
+			}),
+		);
 
-		it("fails on API error", async () => {
-			mockListReleases.mockRejectedValue(new Error("api error"));
-			const exit = await runExit(Effect.flatMap(GitHubRelease, (svc) => svc.list()));
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on API error", () =>
+			Effect.gen(function* () {
+				mockListReleases.mockRejectedValue(new Error("api error"));
+				const exit = yield* runExit(Effect.flatMap(GitHubRelease, (svc) => svc.list()));
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 
-		it("calls repos.listReleases via paginate and returns mapped data", async () => {
-			mockListReleases.mockResolvedValue({
-				data: [
-					{
-						id: 1,
-						tag_name: "v1.0.0",
-						name: "R1",
-						body: "",
-						draft: false,
-						prerelease: false,
-						upload_url: "https://uploads.github.com/releases/1/assets",
-					},
-					{
-						id: 2,
-						tag_name: "v2.0.0",
-						name: "R2",
-						body: "",
-						draft: false,
-						prerelease: false,
-						upload_url: "https://uploads.github.com/releases/2/assets",
-					},
-				],
-			});
-			const result = await run(Effect.flatMap(GitHubRelease, (svc) => svc.list()));
-			expect(result).toHaveLength(2);
-			expect(result[0]?.tag).toBe("v1.0.0");
-			expect(result[1]?.tag).toBe("v2.0.0");
-		});
+		it.effect("calls repos.listReleases via paginate and returns mapped data", () =>
+			Effect.gen(function* () {
+				mockListReleases.mockResolvedValue({
+					data: [
+						{
+							id: 1,
+							tag_name: "v1.0.0",
+							name: "R1",
+							body: "",
+							draft: false,
+							prerelease: false,
+							upload_url: "https://uploads.github.com/releases/1/assets",
+						},
+						{
+							id: 2,
+							tag_name: "v2.0.0",
+							name: "R2",
+							body: "",
+							draft: false,
+							prerelease: false,
+							upload_url: "https://uploads.github.com/releases/2/assets",
+						},
+					],
+				});
+				const result = yield* run(Effect.flatMap(GitHubRelease, (svc) => svc.list()));
+				expect(result).toHaveLength(2);
+				expect(result[0]?.tag).toBe("v1.0.0");
+				expect(result[1]?.tag).toBe("v2.0.0");
+			}),
+		);
 	});
 
 	describe("updateRelease", () => {
-		it("updates a release body and returns the updated release", async () => {
-			mockUpdateRelease.mockResolvedValue({
-				data: {
-					id: 42,
-					tag_name: "v1.0.0",
-					name: "Release 1.0.0",
-					body: "new body",
-					draft: false,
-					prerelease: false,
-					upload_url: "https://uploads.github.com/releases/42/assets",
-				},
-			});
-			const result = await run(Effect.flatMap(GitHubRelease, (svc) => svc.updateRelease(42, { body: "new body" })));
-			expect(result.body).toBe("new body");
-			expect(mockUpdateRelease).toHaveBeenCalledWith(
-				expect.objectContaining({
-					owner: "test-owner",
-					repo: "test-repo",
-					release_id: 42,
-					body: "new body",
-				}),
-			);
-		});
+		it.effect("updates a release body and returns the updated release", () =>
+			Effect.gen(function* () {
+				mockUpdateRelease.mockResolvedValue({
+					data: {
+						id: 42,
+						tag_name: "v1.0.0",
+						name: "Release 1.0.0",
+						body: "new body",
+						draft: false,
+						prerelease: false,
+						upload_url: "https://uploads.github.com/releases/42/assets",
+					},
+				});
+				const result = yield* run(Effect.flatMap(GitHubRelease, (svc) => svc.updateRelease(42, { body: "new body" })));
+				expect(result.body).toBe("new body");
+				expect(mockUpdateRelease).toHaveBeenCalledWith(
+					expect.objectContaining({
+						owner: "test-owner",
+						repo: "test-repo",
+						release_id: 42,
+						body: "new body",
+					}),
+				);
+			}),
+		);
 
-		it("fails on API error", async () => {
-			mockUpdateRelease.mockRejectedValue(new Error("api error"));
-			const exit = await runExit(Effect.flatMap(GitHubRelease, (svc) => svc.updateRelease(42, { body: "x" })));
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on API error", () =>
+			Effect.gen(function* () {
+				mockUpdateRelease.mockRejectedValue(new Error("api error"));
+				const exit = yield* runExit(Effect.flatMap(GitHubRelease, (svc) => svc.updateRelease(42, { body: "x" })));
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("listReleaseAssets", () => {
-		it("returns the release's assets", async () => {
-			mockListReleaseAssets.mockResolvedValue({
-				data: [
-					{
-						id: 1,
-						name: "dist.tar.gz",
-						browser_download_url: "https://github.com/releases/download/v1.0.0/dist.tar.gz",
-						size: 2048,
-					},
-					{
-						id: 2,
-						name: "checksums.txt",
-						browser_download_url: "https://github.com/releases/download/v1.0.0/checksums.txt",
-						size: 128,
-					},
-				],
-			});
-			const result = await run(Effect.flatMap(GitHubRelease, (svc) => svc.listReleaseAssets(42)));
-			expect(result).toHaveLength(2);
-			expect(result[0]?.url).toBe("https://github.com/releases/download/v1.0.0/dist.tar.gz");
-			expect(mockListReleaseAssets).toHaveBeenCalledWith(
-				expect.objectContaining({
-					owner: "test-owner",
-					repo: "test-repo",
-					release_id: 42,
-				}),
-			);
-		});
+		it.effect("returns the release's assets", () =>
+			Effect.gen(function* () {
+				mockListReleaseAssets.mockResolvedValue({
+					data: [
+						{
+							id: 1,
+							name: "dist.tar.gz",
+							browser_download_url: "https://github.com/releases/download/v1.0.0/dist.tar.gz",
+							size: 2048,
+						},
+						{
+							id: 2,
+							name: "checksums.txt",
+							browser_download_url: "https://github.com/releases/download/v1.0.0/checksums.txt",
+							size: 128,
+						},
+					],
+				});
+				const result = yield* run(Effect.flatMap(GitHubRelease, (svc) => svc.listReleaseAssets(42)));
+				expect(result).toHaveLength(2);
+				expect(result[0]?.url).toBe("https://github.com/releases/download/v1.0.0/dist.tar.gz");
+				expect(mockListReleaseAssets).toHaveBeenCalledWith(
+					expect.objectContaining({
+						owner: "test-owner",
+						repo: "test-repo",
+						release_id: 42,
+					}),
+				);
+			}),
+		);
 	});
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import { formatBotIdentity } from "../../src/utils/botIdentity.js";
 
 describe("formatBotIdentity", () => {

@@ -1,6 +1,6 @@
+import { describe, expect, it } from "@effect/vitest";
 import type { Exit } from "effect";
 import { Cause, Effect, FileSystem, Layer, Option } from "effect";
-import { describe, expect, it } from "vitest";
 import { ChangesetConfigError } from "../../src/errors/ChangesetConfigError.js";
 import { VersioningDetectionError } from "../../src/errors/VersioningDetectionError.js";
 import { ChangesetConfigReader, ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
@@ -27,17 +27,23 @@ function makeLayer(files: Record<string, string>) {
 	return ChangesetConfigReaderLive.pipe(Layer.provide(testFs));
 }
 
-function runWith<A, E>(files: Record<string, string>, effect: Effect.Effect<A, E, ChangesetConfigReader>): Promise<A> {
+// Per-test provide is REQUIRED in both helpers, not an unoptimised leftover: `makeLayer`
+// builds the mocked filesystem from the per-test `files` record, so the layer genuinely
+// varies test by test and cannot be hoisted into a suite-boundary `layer(...)` block.
+function runWith<A, E>(
+	files: Record<string, string>,
+	effect: Effect.Effect<A, E, ChangesetConfigReader>,
+): Effect.Effect<A, E> {
 	const layer = makeLayer(files);
-	return Effect.runPromise(Effect.provide(effect, layer));
+	return Effect.provide(effect, layer);
 }
 
 function runExitWith<A, E>(
 	files: Record<string, string>,
 	effect: Effect.Effect<A, E, ChangesetConfigReader>,
-): Promise<Exit.Exit<A, E>> {
+): Effect.Effect<Exit.Exit<A, E>> {
 	const layer = makeLayer(files);
-	return Effect.runPromiseExit(Effect.provide(effect, layer));
+	return Effect.exit(Effect.provide(effect, layer));
 }
 
 const ROOT = "/project";
@@ -49,140 +55,173 @@ const CONFIG_PATH = `${ROOT}/.changeset/config.json`;
 
 describe("ChangesetConfigReader", () => {
 	describe("standard config", () => {
-		it("reads standard config with baseBranch", async () => {
-			const config = {
-				baseBranch: "main",
-				access: "public",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("reads standard config with baseBranch", () =>
+			Effect.gen(function* () {
+				const config = {
+					baseBranch: "main",
+					access: "public",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect(result.baseBranch).toBe("main");
-			expect(result.access).toBe("public");
-		});
+				expect(result.baseBranch).toBe("main");
+				expect(result.access).toBe("public");
+			}),
+		);
 
-		it("reads fixed groups from standard config", async () => {
-			const config = {
-				fixed: [["@scope/pkg-a", "@scope/pkg-b"]],
-				baseBranch: "main",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("reads fixed groups from standard config", () =>
+			Effect.gen(function* () {
+				const config = {
+					fixed: [["@scope/pkg-a", "@scope/pkg-b"]],
+					baseBranch: "main",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect(result.fixed).toEqual([["@scope/pkg-a", "@scope/pkg-b"]]);
-		});
+				expect(result.fixed).toEqual([["@scope/pkg-a", "@scope/pkg-b"]]);
+			}),
+		);
 
-		it("standard config does NOT have _isSilk", async () => {
-			const config = {
-				changelog: "@changesets/cli/changelog",
-				baseBranch: "main",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("standard config does NOT have _isSilk", () =>
+			Effect.gen(function* () {
+				const config = {
+					changelog: "@changesets/cli/changelog",
+					baseBranch: "main",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect((result as { _isSilk?: boolean })._isSilk).toBeUndefined();
-		});
+				expect((result as { _isSilk?: boolean })._isSilk).toBeUndefined();
+			}),
+		);
 	});
 
 	describe("Silk config detection", () => {
-		it("detects Silk config when changelog is string containing @savvy-web/changesets", async () => {
-			const config = {
-				changelog: "@savvy-web/changesets/changelog",
-				baseBranch: "main",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("detects Silk config when changelog is string containing @savvy-web/changesets", () =>
+			Effect.gen(function* () {
+				const config = {
+					changelog: "@savvy-web/changesets/changelog",
+					baseBranch: "main",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
-		});
+				expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+			}),
+		);
 
-		it("detects Silk config when changelog is array with @savvy-web/changesets as first element", async () => {
-			const config = {
-				changelog: ["@savvy-web/changesets/changelog", { repo: "savvy-web/systems" }],
-				baseBranch: "main",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("detects Silk config when changelog is array with @savvy-web/changesets as first element", () =>
+			Effect.gen(function* () {
+				const config = {
+					changelog: ["@savvy-web/changesets/changelog", { repo: "savvy-web/systems" }],
+					baseBranch: "main",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
-		});
+				expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+			}),
+		);
 
-		it("detects Silk config for the consolidated @savvy-web/silk/changesets/changelog string adapter", async () => {
-			const config = {
-				changelog: "@savvy-web/silk/changesets/changelog",
-				baseBranch: "main",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("detects Silk config for the consolidated @savvy-web/silk/changesets/changelog string adapter", () =>
+			Effect.gen(function* () {
+				const config = {
+					changelog: "@savvy-web/silk/changesets/changelog",
+					baseBranch: "main",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
-		});
+				expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+			}),
+		);
 
-		it("detects Silk config when changelog array uses @savvy-web/silk/changesets/changelog as first element", async () => {
-			const config = {
-				changelog: ["@savvy-web/silk/changesets/changelog", { repo: "savvy-web/systems" }],
-				baseBranch: "main",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect(
+			"detects Silk config when changelog array uses @savvy-web/silk/changesets/changelog as first element",
+			() =>
+				Effect.gen(function* () {
+					const config = {
+						changelog: ["@savvy-web/silk/changesets/changelog", { repo: "savvy-web/systems" }],
+						baseBranch: "main",
+					};
+					const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+					const result = yield* runWith(
+						files,
+						ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))),
+					);
 
-			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
-		});
+					expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+				}),
+		);
 
-		it("detects Silk config when changelog is the string @savvy-web/changelog", async () => {
-			const config = {
-				baseBranch: "main",
-				changelog: "@savvy-web/changelog",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("detects Silk config when changelog is the string @savvy-web/changelog", () =>
+			Effect.gen(function* () {
+				const config = {
+					baseBranch: "main",
+					changelog: "@savvy-web/changelog",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
-		});
+				expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+			}),
+		);
 
-		it("detects Silk config when changelog array uses @savvy-web/changelog as first element", async () => {
-			const config = {
-				changelog: ["@savvy-web/changelog", { repo: "savvy-web/systems" }],
-				baseBranch: "main",
-			};
-			const files = { [CONFIG_PATH]: JSON.stringify(config) };
+		it.effect("detects Silk config when changelog array uses @savvy-web/changelog as first element", () =>
+			Effect.gen(function* () {
+				const config = {
+					changelog: ["@savvy-web/changelog", { repo: "savvy-web/systems" }],
+					baseBranch: "main",
+				};
+				const files = { [CONFIG_PATH]: JSON.stringify(config) };
 
-			const result = await runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const result = yield* runWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
 
-			expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
-		});
+				expect((result as { _isSilk?: boolean })._isSilk).toBe(true);
+			}),
+		);
 	});
 
 	describe("error cases", () => {
-		it("fails with ChangesetConfigError when file is missing", async () => {
-			const files: Record<string, string> = {};
+		it.effect("fails with ChangesetConfigError when file is missing", () =>
+			Effect.gen(function* () {
+				const files: Record<string, string> = {};
 
-			const exit = await runExitWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const exit = yield* runExitWith(
+					files,
+					ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))),
+				);
 
-			expect(exit._tag).toBe("Failure");
-			if (exit._tag === "Failure") {
-				// v4 Cause is a collection of reasons; extract the typed error.
-				const error = Option.getOrThrow(Cause.findErrorOption(exit.cause));
-				expect((error as { _tag: string })._tag).toBe("ChangesetConfigError");
-				expect((error as { path: string }).path).toContain(".changeset/config.json");
-			}
-		});
+				expect(exit._tag).toBe("Failure");
+				if (exit._tag === "Failure") {
+					// v4 Cause is a collection of reasons; extract the typed error.
+					const error = Option.getOrThrow(Cause.findErrorOption(exit.cause));
+					expect((error as { _tag: string })._tag).toBe("ChangesetConfigError");
+					expect((error as { path: string }).path).toContain(".changeset/config.json");
+				}
+			}),
+		);
 
-		it("fails with ChangesetConfigError when JSON is invalid", async () => {
-			const files = { [CONFIG_PATH]: "not valid json {{{" };
+		it.effect("fails with ChangesetConfigError when JSON is invalid", () =>
+			Effect.gen(function* () {
+				const files = { [CONFIG_PATH]: "not valid json {{{" };
 
-			const exit = await runExitWith(files, ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))));
+				const exit = yield* runExitWith(
+					files,
+					ChangesetConfigReader.pipe(Effect.andThen((reader) => reader.read(ROOT))),
+				);
 
-			expect(exit._tag).toBe("Failure");
-		});
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 });
 

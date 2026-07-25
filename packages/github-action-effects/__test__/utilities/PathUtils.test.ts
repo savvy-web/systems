@@ -1,5 +1,5 @@
 import { sep } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import { PathUtils } from "../../src/utils/PathUtils.js";
 
 describe("PathUtils", () => {

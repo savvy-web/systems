@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import { NpmRegistryError } from "../../src/errors/NpmRegistryError.js";
 
 describe("NpmRegistryError", () => {

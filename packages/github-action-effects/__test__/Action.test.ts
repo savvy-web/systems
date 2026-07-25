@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Cause, Data } from "effect";
-import { describe, expect, it } from "vitest";
 import { Action } from "../src/Action.js";
 
 describe("Action.formatCause", () => {

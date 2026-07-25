@@ -1,6 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runReposSync } from "../../../src/commands/repos/commands/sync.js";
 
@@ -36,13 +36,16 @@ function makeStubLayer(
 }
 
 /** Run `runReposSync` against a stub layer, collecting every `Effect.log` line. */
-function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Promise<string[]> {
-	const sink: string[] = [];
-	const captureLogger = Logger.make(({ message }) => {
-		sink.push(Array.isArray(message) ? message.join(" ") : String(message));
+function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Effect.Effect<string[]> {
+	return Effect.gen(function* () {
+		const sink: string[] = [];
+		const captureLogger = Logger.make(({ message }) => {
+			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
+		});
+		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
+		yield* runReposSync(cwd).pipe(Effect.provide(captured));
+		return sink;
 	});
-	const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
-	return Effect.runPromise(runReposSync(cwd).pipe(Effect.provide(captured))).then(() => sink);
 }
 
 describe("runReposSync (adapter)", () => {
@@ -57,64 +60,78 @@ describe("runReposSync (adapter)", () => {
 		process.exitCode = savedExitCode;
 	});
 
-	it("logs one line per clearedLocks/initialized/sparseApplied entry, exit undefined", async () => {
-		const layer = makeStubLayer(() => Effect.succeed(activeReport));
+	it.effect("logs one line per clearedLocks/initialized/sparseApplied entry, exit undefined", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(activeReport));
 
-		const logs = await collectLogs("/repo", layer);
+			const logs = yield* collectLogs("/repo", layer);
 
-		expect(logs.some((l) => l.includes("foo: cleared stale lock"))).toBe(true);
-		expect(logs.some((l) => l.includes("bar: initialized"))).toBe(true);
-		expect(logs.some((l) => l.includes("baz: sparse-checkout applied"))).toBe(true);
-		expect(process.exitCode).toBeUndefined();
-	});
+			expect(logs.some((l) => l.includes("foo: cleared stale lock"))).toBe(true);
+			expect(logs.some((l) => l.includes("bar: initialized"))).toBe(true);
+			expect(logs.some((l) => l.includes("baz: sparse-checkout applied"))).toBe(true);
+			expect(process.exitCode).toBeUndefined();
+		}),
+	);
 
-	it("logs the up-to-date fallback when all buckets are empty", async () => {
-		const layer = makeStubLayer(() => Effect.succeed(emptyReport));
+	it.effect("logs the up-to-date fallback when all buckets are empty", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(emptyReport));
 
-		const logs = await collectLogs("/repo", layer);
+			const logs = yield* collectLogs("/repo", layer);
 
-		expect(logs.some((l) => l.includes("all vendored repos up to date"))).toBe(true);
-		expect(process.exitCode).toBeUndefined();
-	});
+			expect(logs.some((l) => l.includes("all vendored repos up to date"))).toBe(true);
+			expect(process.exitCode).toBeUndefined();
+		}),
+	);
 
-	it("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", async () => {
-		const layer = makeStubLayer(() =>
-			Effect.fail(new ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" })),
-		);
+	it.effect("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
+				),
+			);
 
-		const logs = await collectLogs("/repo", layer);
+			const logs = yield* collectLogs("/repo", layer);
 
-		expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-		expect(process.exitCode).toBeUndefined();
-	});
+			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(process.exitCode).toBeUndefined();
+		}),
+	);
 
-	it("logs the error and sets exitCode 1 on ReposConfigError kind invalid", async () => {
-		const layer = makeStubLayer(() =>
-			Effect.fail(new ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" })),
-		);
+	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" }),
+				),
+			);
 
-		const logs = await collectLogs("/repo", layer);
+			const logs = yield* collectLogs("/repo", layer);
 
-		expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
-		expect(process.exitCode).toBe(1);
-	});
+			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
 
-	it("logs the error message and sets exitCode 1 on GitSubmoduleError", async () => {
-		const layer = makeStubLayer(() =>
-			Effect.fail(
-				new GitSubmoduleError({
-					command: "git submodule update --init --depth 1 -- .repos/foo",
-					cwd: "/repo",
-					reason: "fatal: could not fetch",
-				}),
-			),
-		);
+	it.effect("logs the error message and sets exitCode 1 on GitSubmoduleError", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new GitSubmoduleError({
+						command: "git submodule update --init --depth 1 -- .repos/foo",
+						cwd: "/repo",
+						reason: "fatal: could not fetch",
+					}),
+				),
+			);
 
-		const logs = await collectLogs("/repo", layer);
+			const logs = yield* collectLogs("/repo", layer);
 
-		expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch"))).toBe(
-			true,
-		);
-		expect(process.exitCode).toBe(1);
-	});
+			expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch"))).toBe(
+				true,
+			);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
 });

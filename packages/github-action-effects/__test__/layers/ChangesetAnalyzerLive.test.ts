@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 import { ChangesetAnalyzerLive } from "../../src/layers/ChangesetAnalyzerLive.js";
 import { ChangesetAnalyzer } from "../../src/services/ChangesetAnalyzer.js";
 
@@ -73,7 +73,7 @@ const makeTestLayer = (files: Record<string, MockFileEntry>) =>
 	Layer.provide(ChangesetAnalyzerLive, Layer.succeed(FileSystem.FileSystem, makeMockFs(files)));
 
 const run = <A, E>(files: Record<string, MockFileEntry>, effect: Effect.Effect<A, E, ChangesetAnalyzer>) =>
-	Effect.runPromise(Effect.provide(effect, makeTestLayer(files)));
+	Effect.provide(effect, makeTestLayer(files));
 
 const CHANGESET_CONTENT = `---
 "@scope/package-a": minor
@@ -85,102 +85,114 @@ Summary text goes here.
 
 describe("ChangesetAnalyzerLive", () => {
 	describe("parseAll", () => {
-		it("reads and parses changeset files", async () => {
-			const files = {
-				".changeset/brave-cloud-42.md": { content: CHANGESET_CONTENT },
-			};
+		it.effect("reads and parses changeset files", () =>
+			Effect.gen(function* () {
+				const files = {
+					".changeset/brave-cloud-42.md": { content: CHANGESET_CONTENT },
+				};
 
-			const result = await run(
-				files,
-				Effect.flatMap(ChangesetAnalyzer, (svc) => svc.parseAll()),
-			);
-			expect(result).toHaveLength(1);
-			expect(result[0]).toMatchObject({
-				id: "brave-cloud-42",
-				packages: [
-					{ name: "@scope/package-a", bump: "minor" },
-					{ name: "@scope/package-b", bump: "patch" },
-				],
-				summary: "Summary text goes here.",
-			});
-		});
+				const result = yield* run(
+					files,
+					Effect.flatMap(ChangesetAnalyzer, (svc) => svc.parseAll()),
+				);
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({
+					id: "brave-cloud-42",
+					packages: [
+						{ name: "@scope/package-a", bump: "minor" },
+						{ name: "@scope/package-b", bump: "patch" },
+					],
+					summary: "Summary text goes here.",
+				});
+			}),
+		);
 
-		it("skips README.md", async () => {
-			const files = {
-				".changeset/README.md": { content: "# Changesets\n\nHello" },
-				".changeset/brave-cloud-42.md": { content: CHANGESET_CONTENT },
-			};
+		it.effect("skips README.md", () =>
+			Effect.gen(function* () {
+				const files = {
+					".changeset/README.md": { content: "# Changesets\n\nHello" },
+					".changeset/brave-cloud-42.md": { content: CHANGESET_CONTENT },
+				};
 
-			const result = await run(
-				files,
-				Effect.flatMap(ChangesetAnalyzer, (svc) => svc.parseAll()),
-			);
-			expect(result).toHaveLength(1);
-			expect(result[0].id).toBe("brave-cloud-42");
-		});
+				const result = yield* run(
+					files,
+					Effect.flatMap(ChangesetAnalyzer, (svc) => svc.parseAll()),
+				);
+				expect(result).toHaveLength(1);
+				expect(result[0].id).toBe("brave-cloud-42");
+			}),
+		);
 
-		it("handles empty directory", async () => {
-			const files = {
-				".changeset/README.md": { content: "# Changesets" },
-			};
+		it.effect("handles empty directory", () =>
+			Effect.gen(function* () {
+				const files = {
+					".changeset/README.md": { content: "# Changesets" },
+				};
 
-			const result = await run(
-				files,
-				Effect.flatMap(ChangesetAnalyzer, (svc) => svc.parseAll()),
-			);
-			expect(result).toHaveLength(0);
-		});
+				const result = yield* run(
+					files,
+					Effect.flatMap(ChangesetAnalyzer, (svc) => svc.parseAll()),
+				);
+				expect(result).toHaveLength(0);
+			}),
+		);
 	});
 
 	describe("hasChangesets", () => {
-		it("detects files", async () => {
-			const files = {
-				".changeset/brave-cloud-42.md": { content: CHANGESET_CONTENT },
-			};
+		it.effect("detects files", () =>
+			Effect.gen(function* () {
+				const files = {
+					".changeset/brave-cloud-42.md": { content: CHANGESET_CONTENT },
+				};
 
-			const result = await run(
-				files,
-				Effect.flatMap(ChangesetAnalyzer, (svc) => svc.hasChangesets()),
-			);
-			expect(result).toBe(true);
-		});
+				const result = yield* run(
+					files,
+					Effect.flatMap(ChangesetAnalyzer, (svc) => svc.hasChangesets()),
+				);
+				expect(result).toBe(true);
+			}),
+		);
 
-		it("returns false when only README.md exists", async () => {
-			const files = {
-				".changeset/README.md": { content: "# Changesets" },
-			};
+		it.effect("returns false when only README.md exists", () =>
+			Effect.gen(function* () {
+				const files = {
+					".changeset/README.md": { content: "# Changesets" },
+				};
 
-			const result = await run(
-				files,
-				Effect.flatMap(ChangesetAnalyzer, (svc) => svc.hasChangesets()),
-			);
-			expect(result).toBe(false);
-		});
+				const result = yield* run(
+					files,
+					Effect.flatMap(ChangesetAnalyzer, (svc) => svc.hasChangesets()),
+				);
+				expect(result).toBe(false);
+			}),
+		);
 	});
 
 	describe("generate", () => {
-		it("creates valid changeset file", async () => {
-			const files = {};
+		it.effect("creates valid changeset file", () =>
+			Effect.gen(function* () {
+				const files = {};
 
-			const result = await run(
-				files,
-				Effect.flatMap(ChangesetAnalyzer, (svc) =>
-					svc.generate(
-						[
-							{ name: "@scope/pkg-a", bump: "minor" },
-							{ name: "@scope/pkg-b", bump: "patch" },
-						],
-						"Add new feature",
+				const result = yield* run(
+					files,
+					Effect.flatMap(ChangesetAnalyzer, (svc) =>
+						svc.generate(
+							[
+								{ name: "@scope/pkg-a", bump: "minor" },
+								{ name: "@scope/pkg-b", bump: "patch" },
+							],
+							"Add new feature",
+						),
 					),
-				),
-			);
+				);
 
-			expect(result.path).toMatch(/^\.changeset\/.+\.md$/);
-			expect(result.content).toContain('"@scope/pkg-a": minor');
-			expect(result.content).toContain('"@scope/pkg-b": patch');
-			expect(result.content).toContain("Add new feature");
-			// Verify frontmatter structure
-			expect(result.content).toMatch(/^---\n.*\n---\n\n/s);
-		});
+				expect(result.path).toMatch(/^\.changeset\/.+\.md$/);
+				expect(result.content).toContain('"@scope/pkg-a": minor');
+				expect(result.content).toContain('"@scope/pkg-b": patch');
+				expect(result.content).toContain("Add new feature");
+				// Verify frontmatter structure
+				expect(result.content).toMatch(/^---\n.*\n---\n\n/s);
+			}),
+		);
 	});
 });

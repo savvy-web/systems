@@ -18,4 +18,4 @@
 
 Load for the command tree, runtime layer stack, the native-apply refactor, and why some command groups carry a hand-written type annotation:
 → `@../../.claude/design/cli/architecture.md`
-Load when adding a command, changing the runtime layer stack in `src/cli/index.ts`, hitting a TS4023 error on a command group, or touching `savvy changeset version`.
+Load when adding a command, changing the runtime layer stack in `src/cli/index.ts`, hitting a TS4023 error on a command group, touching `savvy changeset version`, or adding a handler test — the "Testing the command handlers" section covers the sanctioned `layer(Logger.layer([]))` silencing block and why an output assertion's capture mechanism decides `it.effect` vs `it.live`.

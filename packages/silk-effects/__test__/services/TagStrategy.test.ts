@@ -1,97 +1,77 @@
-import { Cause, Effect, Exit, Option } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, layer } from "@effect/vitest";
+import { Effect } from "effect";
 import { TagFormatError } from "../../src/errors/TagFormatError.js";
 import type { VersioningStrategyResult } from "../../src/schemas/VersioningSchemas.js";
 import { TagStrategy, TagStrategyLive } from "../../src/services/TagStrategy.js";
-
-const run = <A, E>(effect: Effect.Effect<A, E, TagStrategy>) =>
-	Effect.runPromise(effect.pipe(Effect.provide(TagStrategyLive)));
-
-const runExit = <A, E>(effect: Effect.Effect<A, E, TagStrategy>) =>
-	Effect.runPromiseExit(effect.pipe(Effect.provide(TagStrategyLive)));
 
 function makeVersioningResult(type: VersioningStrategyResult["type"]): VersioningStrategyResult {
 	return { type, fixedGroups: [], publishablePackages: [] };
 }
 
-describe("TagStrategy", () => {
+layer(TagStrategyLive)("TagStrategy", (it) => {
 	describe("determine", () => {
-		it("returns 'single' for single strategy type", async () => {
-			const result = await run(
-				Effect.gen(function* () {
-					const strategy = yield* TagStrategy;
-					return yield* strategy.determine(makeVersioningResult("single"));
-				}),
-			);
-			expect(result).toBe("single");
-		});
+		it.effect("returns 'single' for single strategy type", () =>
+			Effect.gen(function* () {
+				const strategy = yield* TagStrategy;
+				const result = yield* strategy.determine(makeVersioningResult("single"));
+				expect(result).toBe("single");
+			}),
+		);
 
-		it("returns 'single' for fixed-group strategy type", async () => {
-			const result = await run(
-				Effect.gen(function* () {
-					const strategy = yield* TagStrategy;
-					return yield* strategy.determine(makeVersioningResult("fixed-group"));
-				}),
-			);
-			expect(result).toBe("single");
-		});
+		it.effect("returns 'single' for fixed-group strategy type", () =>
+			Effect.gen(function* () {
+				const strategy = yield* TagStrategy;
+				const result = yield* strategy.determine(makeVersioningResult("fixed-group"));
+				expect(result).toBe("single");
+			}),
+		);
 
-		it("returns 'scoped' for independent strategy type", async () => {
-			const result = await run(
-				Effect.gen(function* () {
-					const strategy = yield* TagStrategy;
-					return yield* strategy.determine(makeVersioningResult("independent"));
-				}),
-			);
-			expect(result).toBe("scoped");
-		});
+		it.effect("returns 'scoped' for independent strategy type", () =>
+			Effect.gen(function* () {
+				const strategy = yield* TagStrategy;
+				const result = yield* strategy.determine(makeVersioningResult("independent"));
+				expect(result).toBe("scoped");
+			}),
+		);
 	});
 
 	describe("formatTag", () => {
-		it("formats single tag as bare version (strict SemVer 2.0.0, no v prefix)", async () => {
-			const result = await run(
-				Effect.gen(function* () {
-					const strategy = yield* TagStrategy;
-					return yield* strategy.formatTag("my-pkg", "1.2.3", "single");
-				}),
-			);
-			expect(result).toBe("1.2.3");
-		});
+		it.effect("formats single tag as bare version (strict SemVer 2.0.0, no v prefix)", () =>
+			Effect.gen(function* () {
+				const strategy = yield* TagStrategy;
+				const result = yield* strategy.formatTag("my-pkg", "1.2.3", "single");
+				expect(result).toBe("1.2.3");
+			}),
+		);
 
-		it("formats scoped tag for scoped package as @scope/pkg@1.2.3", async () => {
-			const result = await run(
-				Effect.gen(function* () {
-					const strategy = yield* TagStrategy;
-					return yield* strategy.formatTag("@scope/pkg", "1.2.3", "scoped");
-				}),
-			);
-			expect(result).toBe("@scope/pkg@1.2.3");
-		});
+		it.effect("formats scoped tag for scoped package as @scope/pkg@1.2.3", () =>
+			Effect.gen(function* () {
+				const strategy = yield* TagStrategy;
+				const result = yield* strategy.formatTag("@scope/pkg", "1.2.3", "scoped");
+				expect(result).toBe("@scope/pkg@1.2.3");
+			}),
+		);
 
-		it("formats scoped tag for unscoped package as pkg@1.2.3", async () => {
-			const result = await run(
-				Effect.gen(function* () {
-					const strategy = yield* TagStrategy;
-					return yield* strategy.formatTag("my-pkg", "1.2.3", "scoped");
-				}),
-			);
-			expect(result).toBe("my-pkg@1.2.3");
-		});
+		it.effect("formats scoped tag for unscoped package as pkg@1.2.3", () =>
+			Effect.gen(function* () {
+				const strategy = yield* TagStrategy;
+				const result = yield* strategy.formatTag("my-pkg", "1.2.3", "scoped");
+				expect(result).toBe("my-pkg@1.2.3");
+			}),
+		);
 
-		it("fails with TagFormatError for empty version", async () => {
-			const exit = await runExit(
-				Effect.gen(function* () {
-					const strategy = yield* TagStrategy;
-					return yield* strategy.formatTag("my-pkg", "", "single");
-				}),
-			);
-			expect(exit._tag).toBe("Failure");
-			if (Exit.isFailure(exit)) {
-				// v4 Cause is a collection of reasons; extract the typed error.
-				const error = Option.getOrThrow(Cause.findErrorOption(exit.cause));
+		// `Effect.flip` replaces the previous runExit + Exit.isFailure guard. The
+		// dropped is-a-Failure assertion is subsumed structurally: flip FAILS the
+		// test if the effect succeeds. The two remaining assertions now run
+		// unconditionally instead of inside a guard that silently skipped them on
+		// a success — strictly stronger.
+		it.effect("fails with TagFormatError for empty version", () =>
+			Effect.gen(function* () {
+				const strategy = yield* TagStrategy;
+				const error = yield* Effect.flip(strategy.formatTag("my-pkg", "", "single"));
 				expect(error).toBeInstanceOf(TagFormatError);
 				expect(error._tag).toBe("TagFormatError");
-			}
-		});
+			}),
+		);
 	});
 });

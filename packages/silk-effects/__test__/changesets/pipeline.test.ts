@@ -1,9 +1,9 @@
+import { expect, layer } from "@effect/vitest";
 import { Effect } from "effect";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
-import { describe, expect, it } from "vitest";
 
 import { ChangelogTransformer } from "../../src/changesets/api/transformer.js";
 import { getDependencyReleaseLine } from "../../src/changesets/changelog/getDependencyReleaseLine.js";
@@ -44,144 +44,153 @@ const testLayer = makeGitHubTest(
 	]),
 );
 
-function runReleaseLine(changeset: NewChangesetWithCommit) {
-	return Effect.runPromise(getReleaseLine(changeset, "minor", OPTIONS).pipe(Effect.provide(testLayer)));
-}
+/** The release-line effect; the GitHub layer is provided at the suite boundary. */
+const releaseLine = (changeset: NewChangesetWithCommit) => getReleaseLine(changeset, "minor", OPTIONS);
 
 function assembleChangelog(version: string, ...entries: string[]): string {
 	return `## ${version}\n\n${entries.join("\n\n")}\n`;
 }
 
-describe("Full pipeline integration", () => {
-	it("single changeset, flat text passes through transformer", async () => {
-		const entry = await runReleaseLine({
-			id: "cs-1",
-			summary: "feat: add authentication",
-			releases: [{ name: "pkg", type: "minor" }],
-			commit: "aaa1234567890",
-		});
+layer(testLayer)("Full pipeline integration", (it) => {
+	it.effect("single changeset, flat text passes through transformer", () =>
+		Effect.gen(function* () {
+			const entry = yield* releaseLine({
+				id: "cs-1",
+				summary: "feat: add authentication",
+				releases: [{ name: "pkg", type: "minor" }],
+				commit: "aaa1234567890",
+			});
 
-		const raw = assembleChangelog("1.0.0", entry);
-		const result = ChangelogTransformer.transformContent(raw);
+			const raw = assembleChangelog("1.0.0", entry);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		expect(result).toContain("## 1.0.0");
-		expect(result).toContain("add authentication");
-	});
+			expect(result).toContain("## 1.0.0");
+			expect(result).toContain("add authentication");
+		}),
+	);
 
-	it("single changeset, section-aware preserves order", async () => {
-		const entry = await runReleaseLine({
-			id: "cs-2",
-			summary: "## Features\n\n- Added login\n\n## Bug Fixes\n\n- Fixed logout",
-			releases: [{ name: "pkg", type: "minor" }],
-			commit: "aaa1234567890",
-		});
+	it.effect("single changeset, section-aware preserves order", () =>
+		Effect.gen(function* () {
+			const entry = yield* releaseLine({
+				id: "cs-2",
+				summary: "## Features\n\n- Added login\n\n## Bug Fixes\n\n- Fixed logout",
+				releases: [{ name: "pkg", type: "minor" }],
+				commit: "aaa1234567890",
+			});
 
-		const raw = assembleChangelog("1.0.0", entry);
-		const result = ChangelogTransformer.transformContent(raw);
+			const raw = assembleChangelog("1.0.0", entry);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		expect(result).toContain("## 1.0.0");
-		expect(result).toContain("### Features");
-		expect(result).toContain("### Bug Fixes");
-		expect(result).toContain("Added login");
-		expect(result).toContain("Fixed logout");
+			expect(result).toContain("## 1.0.0");
+			expect(result).toContain("### Features");
+			expect(result).toContain("### Bug Fixes");
+			expect(result).toContain("Added login");
+			expect(result).toContain("Fixed logout");
 
-		// Features should come before Bug Fixes (priority order)
-		const featIdx = result.indexOf("### Features");
-		const fixIdx = result.indexOf("### Bug Fixes");
-		expect(featIdx).toBeLessThan(fixIdx);
-	});
+			// Features should come before Bug Fixes (priority order)
+			const featIdx = result.indexOf("### Features");
+			const fixIdx = result.indexOf("### Bug Fixes");
+			expect(featIdx).toBeLessThan(fixIdx);
+		}),
+	);
 
-	it("multiple changesets, duplicate sections merged", async () => {
-		const entry1 = await runReleaseLine({
-			id: "cs-3a",
-			summary: "## Features\n\n- Added search",
-			releases: [{ name: "pkg", type: "minor" }],
-			commit: "aaa1234567890",
-		});
+	it.effect("multiple changesets, duplicate sections merged", () =>
+		Effect.gen(function* () {
+			const entry1 = yield* releaseLine({
+				id: "cs-3a",
+				summary: "## Features\n\n- Added search",
+				releases: [{ name: "pkg", type: "minor" }],
+				commit: "aaa1234567890",
+			});
 
-		const entry2 = await runReleaseLine({
-			id: "cs-3b",
-			summary: "## Features\n\n- Added filter",
-			releases: [{ name: "pkg", type: "minor" }],
-			commit: "bbb1234567890",
-		});
+			const entry2 = yield* releaseLine({
+				id: "cs-3b",
+				summary: "## Features\n\n- Added filter",
+				releases: [{ name: "pkg", type: "minor" }],
+				commit: "bbb1234567890",
+			});
 
-		const raw = assembleChangelog("1.0.0", entry1, entry2);
-		const result = ChangelogTransformer.transformContent(raw);
+			const raw = assembleChangelog("1.0.0", entry1, entry2);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		// Should have only one ### Features heading after merge
-		const matches = result.match(/### Features/g);
-		expect(matches).toHaveLength(1);
+			// Should have only one ### Features heading after merge
+			const matches = result.match(/### Features/g);
+			expect(matches).toHaveLength(1);
 
-		expect(result).toContain("Added search");
-		expect(result).toContain("Added filter");
-	});
+			expect(result).toContain("Added search");
+			expect(result).toContain("Added filter");
+		}),
+	);
 
-	it("multiple changesets, mixed categories reordered", async () => {
-		// Bug fix first, feature second — assembles in "wrong" order
-		const fixEntry = await runReleaseLine({
-			id: "cs-4a",
-			summary: "## Bug Fixes\n\n- Fixed crash",
-			releases: [{ name: "pkg", type: "patch" }],
-			commit: "aaa1234567890",
-		});
+	it.effect("multiple changesets, mixed categories reordered", () =>
+		Effect.gen(function* () {
+			// Bug fix first, feature second — assembles in "wrong" order
+			const fixEntry = yield* releaseLine({
+				id: "cs-4a",
+				summary: "## Bug Fixes\n\n- Fixed crash",
+				releases: [{ name: "pkg", type: "patch" }],
+				commit: "aaa1234567890",
+			});
 
-		const featEntry = await runReleaseLine({
-			id: "cs-4b",
-			summary: "## Features\n\n- Added dashboard",
-			releases: [{ name: "pkg", type: "minor" }],
-			commit: "bbb1234567890",
-		});
+			const featEntry = yield* releaseLine({
+				id: "cs-4b",
+				summary: "## Features\n\n- Added dashboard",
+				releases: [{ name: "pkg", type: "minor" }],
+				commit: "bbb1234567890",
+			});
 
-		// Assemble with Bug Fixes before Features
-		const raw = assembleChangelog("1.0.0", fixEntry, featEntry);
-		const result = ChangelogTransformer.transformContent(raw);
+			// Assemble with Bug Fixes before Features
+			const raw = assembleChangelog("1.0.0", fixEntry, featEntry);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		// Transformer should reorder: Features (priority 2) before Bug Fixes (priority 3)
-		const featIdx = result.indexOf("### Features");
-		const fixIdx = result.indexOf("### Bug Fixes");
-		expect(featIdx).toBeGreaterThan(-1);
-		expect(fixIdx).toBeGreaterThan(-1);
-		expect(featIdx).toBeLessThan(fixIdx);
-	});
+			// Transformer should reorder: Features (priority 2) before Bug Fixes (priority 3)
+			const featIdx = result.indexOf("### Features");
+			const fixIdx = result.indexOf("### Bug Fixes");
+			expect(featIdx).toBeGreaterThan(-1);
+			expect(fixIdx).toBeGreaterThan(-1);
+			expect(featIdx).toBeLessThan(fixIdx);
+		}),
+	);
 
-	it("breaking changes float to top", async () => {
-		const featEntry = await runReleaseLine({
-			id: "cs-5a",
-			summary: "## Features\n\n- Added widget",
-			releases: [{ name: "pkg", type: "minor" }],
-			commit: "aaa1234567890",
-		});
+	it.effect("breaking changes float to top", () =>
+		Effect.gen(function* () {
+			const featEntry = yield* releaseLine({
+				id: "cs-5a",
+				summary: "## Features\n\n- Added widget",
+				releases: [{ name: "pkg", type: "minor" }],
+				commit: "aaa1234567890",
+			});
 
-		const breakingEntry = await runReleaseLine({
-			id: "cs-5b",
-			summary: "## Breaking Changes\n\n- Removed legacy API",
-			releases: [{ name: "pkg", type: "major" }],
-			commit: "bbb1234567890",
-		});
+			const breakingEntry = yield* releaseLine({
+				id: "cs-5b",
+				summary: "## Breaking Changes\n\n- Removed legacy API",
+				releases: [{ name: "pkg", type: "major" }],
+				commit: "bbb1234567890",
+			});
 
-		// Assemble with Features before Breaking Changes
-		const raw = assembleChangelog("2.0.0", featEntry, breakingEntry);
-		const result = ChangelogTransformer.transformContent(raw);
+			// Assemble with Features before Breaking Changes
+			const raw = assembleChangelog("2.0.0", featEntry, breakingEntry);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		// Breaking Changes (priority 1) should come before Features (priority 2)
-		const breakingIdx = result.indexOf("### Breaking Changes");
-		const featIdx = result.indexOf("### Features");
-		expect(breakingIdx).toBeGreaterThan(-1);
-		expect(featIdx).toBeGreaterThan(-1);
-		expect(breakingIdx).toBeLessThan(featIdx);
-	});
+			// Breaking Changes (priority 1) should come before Features (priority 2)
+			const breakingIdx = result.indexOf("### Breaking Changes");
+			const featIdx = result.indexOf("### Features");
+			expect(breakingIdx).toBeGreaterThan(-1);
+			expect(featIdx).toBeGreaterThan(-1);
+			expect(breakingIdx).toBeLessThan(featIdx);
+		}),
+	);
 
-	it("dependency update integration", async () => {
-		const releaseEntry = await runReleaseLine({
-			id: "cs-6a",
-			summary: "feat: add feature",
-			releases: [{ name: "pkg", type: "minor" }],
-			commit: "aaa1234567890",
-		});
+	it.effect("dependency update integration", () =>
+		Effect.gen(function* () {
+			const releaseEntry = yield* releaseLine({
+				id: "cs-6a",
+				summary: "feat: add feature",
+				releases: [{ name: "pkg", type: "minor" }],
+				commit: "aaa1234567890",
+			});
 
-		const depEntry = await Effect.runPromise(
-			getDependencyReleaseLine(
+			const depEntry = yield* getDependencyReleaseLine(
 				[{ id: "cs-6b", summary: "bump deps", releases: [], commit: "bbb1234567890" }],
 				[
 					{
@@ -195,52 +204,57 @@ describe("Full pipeline integration", () => {
 					},
 				],
 				OPTIONS,
-			).pipe(Effect.provide(testLayer)),
-		);
+			);
 
-		const raw = assembleChangelog("1.0.0", releaseEntry, depEntry);
-		const result = ChangelogTransformer.transformContent(raw);
+			const raw = assembleChangelog("1.0.0", releaseEntry, depEntry);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		expect(result).toContain("## 1.0.0");
-		expect(result).toContain("add feature");
-		// remark-stringify escapes @ to \@
-		expect(result).toContain("some-lib");
-		expect(result).toContain("2.0.0");
-	});
+			expect(result).toContain("## 1.0.0");
+			expect(result).toContain("add feature");
+			// remark-stringify escapes @ to \@
+			expect(result).toContain("some-lib");
+			expect(result).toContain("2.0.0");
+		}),
+	);
 
-	it("issue references in flat text", async () => {
-		const entry = await runReleaseLine({
-			id: "cs-7",
-			summary: "fix: resolve crash\n\nCloses #123, Fixes #456",
-			releases: [{ name: "pkg", type: "patch" }],
-			commit: "aaa1234567890",
-		});
+	it.effect("issue references in flat text", () =>
+		Effect.gen(function* () {
+			const entry = yield* releaseLine({
+				id: "cs-7",
+				summary: "fix: resolve crash\n\nCloses #123, Fixes #456",
+				releases: [{ name: "pkg", type: "patch" }],
+				commit: "aaa1234567890",
+			});
 
-		const raw = assembleChangelog("1.0.1", entry);
-		const result = ChangelogTransformer.transformContent(raw);
+			const raw = assembleChangelog("1.0.1", entry);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		expect(result).toContain("[#123]");
-		expect(result).toContain("[#456]");
-	});
+			expect(result).toContain("[#123]");
+			expect(result).toContain("[#456]");
+		}),
+	);
 
-	it("preamble + sections preserved through pipeline", async () => {
-		const entry = await runReleaseLine({
-			id: "cs-8",
-			summary: "Major overhaul of the system\n\n## Features\n\n- New architecture\n\n## Bug Fixes\n\n- Legacy compat",
-			releases: [{ name: "pkg", type: "major" }],
-			commit: "aaa1234567890",
-		});
+	it.effect("preamble + sections preserved through pipeline", () =>
+		Effect.gen(function* () {
+			const entry = yield* releaseLine({
+				id: "cs-8",
+				summary: "Major overhaul of the system\n\n## Features\n\n- New architecture\n\n## Bug Fixes\n\n- Legacy compat",
+				releases: [{ name: "pkg", type: "major" }],
+				commit: "aaa1234567890",
+			});
 
-		const raw = assembleChangelog("2.0.0", entry);
-		const result = ChangelogTransformer.transformContent(raw);
+			const raw = assembleChangelog("2.0.0", entry);
+			const result = ChangelogTransformer.transformContent(raw);
 
-		expect(result).toContain("Major overhaul");
-		expect(result).toContain("### Features");
-		expect(result).toContain("### Bug Fixes");
-		expect(result).toContain("New architecture");
-		expect(result).toContain("Legacy compat");
-	});
+			expect(result).toContain("Major overhaul");
+			expect(result).toContain("### Features");
+			expect(result).toContain("### Bug Fixes");
+			expect(result).toContain("New architecture");
+			expect(result).toContain("Legacy compat");
+		}),
+	);
 
+	// Pure — no Effect. Stays a plain `it()` inside the layer block.
 	it("round-trips dependency table through lint → format → transform", () => {
 		const changeset = `## Dependencies
 

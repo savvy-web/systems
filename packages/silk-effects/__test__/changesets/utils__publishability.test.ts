@@ -15,10 +15,10 @@
  * asserted instead.
  */
 
+import { describe, expect, it } from "@effect/vitest";
 import type { PublishTarget, WorkspacePackage } from "@effected/workspaces";
 import { PublishabilityDetector } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { listPublishablePackageNames } from "../../src/changesets/utils/publishability.js";
 
@@ -45,57 +45,73 @@ const mockDetector = (
 	packagesSeen: string[] = [],
 ): Layer.Layer<PublishabilityDetector> =>
 	Layer.succeed(PublishabilityDetector, {
-		detect: (p: WorkspacePackage) => {
-			packagesSeen.push(p.name);
-			return Effect.succeed(publishable.has(p.name) ? [target()] : []);
-		},
+		// `Effect.suspend` so the recorder fires when the effect RUNS, not when
+		// `detect(p)` is merely called. The eager form would log a package whose
+		// detect effect was constructed but never executed, which is exactly what
+		// the "exactly once per package" assertion below exists to catch.
+		detect: (p: WorkspacePackage) =>
+			Effect.suspend(() => {
+				packagesSeen.push(p.name);
+				return Effect.succeed(publishable.has(p.name) ? [target()] : []);
+			}),
 	});
 
-const run = (
+// The layer is built per call from `publishable`, so it varies per test and
+// cannot move to a suite-boundary `layer(...)` — which also means the recorder
+// cannot accumulate across tests and needs no `beforeEach` reset.
+const provide = (
 	packages: ReadonlyArray<WorkspacePackage>,
 	publishable: ReadonlySet<string>,
 	root: string = PROJECT_ROOT,
-): Promise<ReadonlySet<string>> =>
-	Effect.runPromise(listPublishablePackageNames(packages, root).pipe(Effect.provide(mockDetector(publishable))));
+): Effect.Effect<ReadonlySet<string>> =>
+	listPublishablePackageNames(packages, root).pipe(Effect.provide(mockDetector(publishable)));
 
 describe("listPublishablePackageNames", () => {
-	it("returns only the names the detector reports as publishable", async () => {
-		const packages = [pkg("@scope/foo"), pkg("@scope/bar"), pkg("root")];
-		const result = await run(packages, new Set(["@scope/foo", "@scope/bar"]));
+	it.effect("returns only the names the detector reports as publishable", () =>
+		Effect.gen(function* () {
+			const packages = [pkg("@scope/foo"), pkg("@scope/bar"), pkg("root")];
+			const result = yield* provide(packages, new Set(["@scope/foo", "@scope/bar"]));
 
-		expect(result).toEqual(new Set(["@scope/foo", "@scope/bar"]));
-		expect(result.has("root")).toBe(false);
-	});
+			expect(result).toEqual(new Set(["@scope/foo", "@scope/bar"]));
+			expect(result.has("root")).toBe(false);
+		}),
+	);
 
-	it("returns an empty set when no package is publishable", async () => {
-		const packages = [pkg("@scope/foo"), pkg("root")];
-		const result = await run(packages, new Set());
+	it.effect("returns an empty set when no package is publishable", () =>
+		Effect.gen(function* () {
+			const packages = [pkg("@scope/foo"), pkg("root")];
+			const result = yield* provide(packages, new Set());
 
-		expect(result.size).toBe(0);
-	});
+			expect(result.size).toBe(0);
+		}),
+	);
 
-	it("returns an empty set for an empty package list", async () => {
-		const result = await run([], new Set(["@scope/foo"]));
+	it.effect("returns an empty set for an empty package list", () =>
+		Effect.gen(function* () {
+			const result = yield* provide([], new Set(["@scope/foo"]));
 
-		expect(result.size).toBe(0);
-	});
+			expect(result.size).toBe(0);
+		}),
+	);
 
-	it("includes every package when all are publishable", async () => {
-		const packages = [pkg("@scope/a"), pkg("@scope/b")];
-		const result = await run(packages, new Set(["@scope/a", "@scope/b"]));
+	it.effect("includes every package when all are publishable", () =>
+		Effect.gen(function* () {
+			const packages = [pkg("@scope/a"), pkg("@scope/b")];
+			const result = yield* provide(packages, new Set(["@scope/a", "@scope/b"]));
 
-		expect(result).toEqual(new Set(["@scope/a", "@scope/b"]));
-	});
+			expect(result).toEqual(new Set(["@scope/a", "@scope/b"]));
+		}),
+	);
 
-	it("consults the detector exactly once per package, in order", async () => {
-		const packages = [pkg("@scope/a"), pkg("@scope/b")];
-		const packagesSeen: string[] = [];
-		await Effect.runPromise(
-			listPublishablePackageNames(packages, PROJECT_ROOT).pipe(
+	it.effect("consults the detector exactly once per package, in order", () =>
+		Effect.gen(function* () {
+			const packages = [pkg("@scope/a"), pkg("@scope/b")];
+			const packagesSeen: string[] = [];
+			yield* listPublishablePackageNames(packages, PROJECT_ROOT).pipe(
 				Effect.provide(mockDetector(new Set(["@scope/a", "@scope/b"]), packagesSeen)),
-			),
-		);
+			);
 
-		expect(packagesSeen).toEqual(["@scope/a", "@scope/b"]);
-	});
+			expect(packagesSeen).toEqual(["@scope/a", "@scope/b"]);
+		}),
+	);
 });

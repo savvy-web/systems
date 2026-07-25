@@ -10,8 +10,8 @@
  * predicate type selection, and BOM-as-predicate composition.
  */
 
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 import type { InTotoStatement } from "../../src/testing.js";
 import {
 	Attest,
@@ -62,12 +62,12 @@ const githubClientLayer = GitHubClientTest.layer({
 });
 
 describe("Attest.sbom — step 6", () => {
-	it("attaches a CycloneDX BOM as predicate and uses CYCLONEDX_BOM predicateType", async () => {
-		const calls: SignerCalls = { statements: [] };
-		const layer = Layer.mergeAll(AttestLive, SbomLive, stubSignerLayer(calls), noopOidcLayer, githubClientLayer);
+	it.effect("attaches a CycloneDX BOM as predicate and uses CYCLONEDX_BOM predicateType", () =>
+		Effect.gen(function* () {
+			const calls: SignerCalls = { statements: [] };
+			const layer = Layer.mergeAll(AttestLive, SbomLive, stubSignerLayer(calls), noopOidcLayer, githubClientLayer);
 
-		const record = await Effect.runPromise(
-			Effect.gen(function* () {
+			const record = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.sbom({
 					rootName: "@savvy-web/example",
@@ -80,83 +80,83 @@ describe("Attest.sbom — step 6", () => {
 					],
 					inFlightPackages: [{ name: "@savvy-web/package-2", version: "1.0.0", license: "MIT" }],
 				});
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(record.attestationId).toBe(7);
-		expect(record.attestationUrl).toBe("https://github.com/savvy-web/silk-integration/attestations/7");
+			expect(record.attestationId).toBe(7);
+			expect(record.attestationUrl).toBe("https://github.com/savvy-web/silk-integration/attestations/7");
 
-		expect(calls.statements).toHaveLength(1);
-		const statement = calls.statements[0];
-		expect(statement.predicateType).toBe(CYCLONEDX_BOM);
-		expect(statement.subject).toHaveLength(1);
-		expect(statement.subject[0].name).toBe("pkg:npm/@savvy-web/example@1.0.0");
-		expect(statement.subject[0].digest).toEqual({ sha256: "a".repeat(64) });
+			expect(calls.statements).toHaveLength(1);
+			const statement = calls.statements[0];
+			expect(statement.predicateType).toBe(CYCLONEDX_BOM);
+			expect(statement.subject).toHaveLength(1);
+			expect(statement.subject[0].name).toBe("pkg:npm/@savvy-web/example@1.0.0");
+			expect(statement.subject[0].digest).toEqual({ sha256: "a".repeat(64) });
 
-		const predicate = statement.predicate as {
-			bomFormat: string;
-			specVersion: string;
-			components: Array<{ name: string; version: string }>;
-		};
-		expect(predicate.bomFormat).toBe("CycloneDX");
-		expect(predicate.specVersion).toBe("1.5");
-		const sibling = predicate.components.find((c) => c.name === "@savvy-web/package-2");
-		expect(sibling?.version).toBe("1.0.0");
-	});
+			const predicate = statement.predicate as {
+				bomFormat: string;
+				specVersion: string;
+				components: Array<{ name: string; version: string }>;
+			};
+			expect(predicate.bomFormat).toBe("CycloneDX");
+			expect(predicate.specVersion).toBe("1.5");
+			const sibling = predicate.components.find((c) => c.name === "@savvy-web/package-2");
+			expect(sibling?.version).toBe("1.0.0");
+		}),
+	);
 });
 
 describe("Attest.provenance — step 6", () => {
-	it("wraps a caller-supplied SLSA predicate with SLSA_PROVENANCE_V1 predicateType", async () => {
-		const calls: SignerCalls = { statements: [] };
-		const layer = Layer.mergeAll(AttestLive, stubSignerLayer(calls), noopOidcLayer, githubClientLayer);
+	it.effect("wraps a caller-supplied SLSA predicate with SLSA_PROVENANCE_V1 predicateType", () =>
+		Effect.gen(function* () {
+			const calls: SignerCalls = { statements: [] };
+			const layer = Layer.mergeAll(AttestLive, stubSignerLayer(calls), noopOidcLayer, githubClientLayer);
 
-		const slsaPredicate = {
-			buildDefinition: {
-				buildType: "https://github.com/savvy-web/silk-release-action/release/v1",
-				externalParameters: { workflow: { ref: "refs/heads/main" } },
-			},
-			runDetails: {
-				builder: { id: "https://github.com/actions/runner" },
-				metadata: { invocationId: "abc-123" },
-			},
-		};
+			const slsaPredicate = {
+				buildDefinition: {
+					buildType: "https://github.com/savvy-web/silk-release-action/release/v1",
+					externalParameters: { workflow: { ref: "refs/heads/main" } },
+				},
+				runDetails: {
+					builder: { id: "https://github.com/actions/runner" },
+					metadata: { invocationId: "abc-123" },
+				},
+			};
 
-		const record = await Effect.runPromise(
-			Effect.gen(function* () {
+			const record = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.provenance({
 					subjectName: "pkg:npm/@savvy-web/example@1.0.0",
 					subjectSha256: "b".repeat(64),
 					predicate: slsaPredicate,
 				});
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(record.attestationId).toBe(7);
+			expect(record.attestationId).toBe(7);
 
-		expect(calls.statements).toHaveLength(1);
-		const statement = calls.statements[0];
-		expect(statement.predicateType).toBe(SLSA_PROVENANCE_V1);
-		expect(statement.subject[0].name).toBe("pkg:npm/@savvy-web/example@1.0.0");
-		expect(statement.subject[0].digest).toEqual({ sha256: "b".repeat(64) });
-		expect(statement.predicate).toEqual(slsaPredicate);
-	});
+			expect(calls.statements).toHaveLength(1);
+			const statement = calls.statements[0];
+			expect(statement.predicateType).toBe(SLSA_PROVENANCE_V1);
+			expect(statement.subject[0].name).toBe("pkg:npm/@savvy-web/example@1.0.0");
+			expect(statement.subject[0].digest).toEqual({ sha256: "b".repeat(64) });
+			expect(statement.predicate).toEqual(slsaPredicate);
+		}),
+	);
 
-	it("strips a leading sha256: prefix from the digest", async () => {
-		const calls: SignerCalls = { statements: [] };
-		const layer = Layer.mergeAll(AttestLive, stubSignerLayer(calls), noopOidcLayer, githubClientLayer);
+	it.effect("strips a leading sha256: prefix from the digest", () =>
+		Effect.gen(function* () {
+			const calls: SignerCalls = { statements: [] };
+			const layer = Layer.mergeAll(AttestLive, stubSignerLayer(calls), noopOidcLayer, githubClientLayer);
 
-		await Effect.runPromise(
-			Effect.gen(function* () {
+			yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.provenance({
 					subjectName: "pkg:npm/x@1.0.0",
 					subjectSha256: `sha256:${"c".repeat(64)}`,
 					predicate: { buildDefinition: {}, runDetails: {} },
 				});
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(calls.statements[0].subject[0].digest).toEqual({ sha256: "c".repeat(64) });
-	});
+			expect(calls.statements[0].subject[0].digest).toEqual({ sha256: "c".repeat(64) });
+		}),
+	);
 });

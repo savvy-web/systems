@@ -6,10 +6,11 @@ category: architecture
 type: architecture
 completeness: 95
 created: 2026-01-29
-updated: 2026-07-03
-last-synced: 2026-07-03
+updated: 2026-07-25
+last-synced: 2026-07-25
 related:
   - ../github-action-effects/index.md
+  - ../testing/effect-vitest.md
 dependencies: []
 authors:
   - C. Spencer Beggs
@@ -96,7 +97,7 @@ All errors use `Data.TaggedError` for type-safe pattern matching via `Effect.cat
 
 ## Testing
 
-Unit tests live under a sibling `__test__/` directory mirroring `src/` (`*.test.ts`). Integration tests under `__test__/integration/` (`*.int.test.ts`, discovered and classified as an `:int` project by the root `@vitest-agent/plugin`) build a fixture via `GitHubAction.create()` then run the emitted `dist/main.js` with Node to assert runtime behavior — covering the `node-commonjs` interop, user externals not being bundled, the throwing ignore stub, inline license comments and idempotent (reproducible) output. See the fixtures under `__test__/integration/fixtures/` for the exact scenarios.
+Unit tests live under a sibling `__test__/` directory mirroring `src/` (`*.test.ts`). The handful that run Effect programs — the service and schema tests — use `@effect/vitest` per the suite-wide conventions in [../testing/effect-vitest.md](../testing/effect-vitest.md); the rest, including the integration harness below, have no Effect surface and stay on plain `vitest`. Integration tests under `__test__/integration/` (`*.int.test.ts`, discovered and classified as an `:int` project by the root `@vitest-agent/plugin`) build a fixture via `GitHubAction.create()` then run the emitted `dist/main.js` with Node to assert runtime behavior — covering the `node-commonjs` interop, user externals not being bundled, the throwing ignore stub, inline license comments and idempotent (reproducible) output. See the fixtures under `__test__/integration/fixtures/` for the exact scenarios.
 
 ## Rationale
 

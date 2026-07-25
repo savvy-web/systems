@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Redacted, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { InstallationToken } from "../../src/services/GitHubApp.js";
 
 describe("InstallationToken", () => {

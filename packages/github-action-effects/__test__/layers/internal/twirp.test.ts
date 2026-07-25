@@ -1,7 +1,7 @@
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Data, Duration, Effect, Exit, Fiber, Layer, Option, Redacted } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
-import { beforeEach, describe, expect, it } from "vitest";
 import { CONFLICT, makeTwirpRetrySchedule, twirpCall } from "../../../src/layers/internal/twirp.js";
 
 // ---------------------------------------------------------------------------
@@ -73,8 +73,7 @@ const mockHttp: Layer.Layer<HttpClient.HttpClient> = Layer.succeed(
 	),
 );
 
-const run = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient>) =>
-	Effect.runPromise(Effect.exit(Effect.provide(effect, mockHttp)));
+const run = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient>) => Effect.exit(Effect.provide(effect, mockHttp));
 
 beforeEach(() => {
 	replies = [];
@@ -96,47 +95,55 @@ const call = <T>(method: string, body: Record<string, unknown> = {}) =>
 	});
 
 describe("twirpCall", () => {
-	it("posts to /twirp/<service>/<method> with bearer auth", async () => {
-		replies = [{ status: 200, body: { ok: true } }];
-		const exit = await run(call("CreateArtifact", { name: "x" }));
-		expect(Exit.isSuccess(exit)).toBe(true);
-		expect(captured[0]?.url).toContain("twirp/github.actions.results.api.v1.ArtifactService/CreateArtifact");
-		expect(captured[0]?.headers.authorization).toBe("Bearer test-token");
-		expect(captured[0]?.body).toMatchObject({ name: "x" });
-		// The runtime token must not leak into the request body.
-		expect(JSON.stringify(captured[0]?.body)).not.toContain("test-token");
-	});
+	it.effect("posts to /twirp/<service>/<method> with bearer auth", () =>
+		Effect.gen(function* () {
+			replies = [{ status: 200, body: { ok: true } }];
+			const exit = yield* run(call("CreateArtifact", { name: "x" }));
+			expect(Exit.isSuccess(exit)).toBe(true);
+			expect(captured[0]?.url).toContain("twirp/github.actions.results.api.v1.ArtifactService/CreateArtifact");
+			expect(captured[0]?.headers.authorization).toBe("Bearer test-token");
+			expect(captured[0]?.body).toMatchObject({ name: "x" });
+			// The runtime token must not leak into the request body.
+			expect(JSON.stringify(captured[0]?.body)).not.toContain("test-token");
+		}),
+	);
 
-	it("returns the CONFLICT sentinel on HTTP 409", async () => {
-		replies = [{ status: 409 }];
-		const exit = await run(call("CreateArtifact"));
-		expect(Exit.isSuccess(exit)).toBe(true);
-		if (Exit.isSuccess(exit)) {
-			expect(exit.value).toBe(CONFLICT);
-		}
-	});
+	it.effect("returns the CONFLICT sentinel on HTTP 409", () =>
+		Effect.gen(function* () {
+			replies = [{ status: 409 }];
+			const exit = yield* run(call("CreateArtifact"));
+			expect(Exit.isSuccess(exit)).toBe(true);
+			if (Exit.isSuccess(exit)) {
+				expect(exit.value).toBe(CONFLICT);
+			}
+		}),
+	);
 
-	it("fails on a non-ok status, preserving the `HTTP <status>` substring", async () => {
-		replies = [{ status: 400 }];
-		const exit = await run(call("ListArtifacts"));
-		expect(Exit.isFailure(exit)).toBe(true);
-		if (Exit.isFailure(exit)) {
-			const reason = Option.getOrUndefined(Cause.findErrorOption(exit.cause))?.reason ?? "";
-			expect(reason).toContain("ListArtifacts failed");
-			expect(reason).toContain("HTTP 400");
-		}
-	});
+	it.effect("fails on a non-ok status, preserving the `HTTP <status>` substring", () =>
+		Effect.gen(function* () {
+			replies = [{ status: 400 }];
+			const exit = yield* run(call("ListArtifacts"));
+			expect(Exit.isFailure(exit)).toBe(true);
+			if (Exit.isFailure(exit)) {
+				const reason = Option.getOrUndefined(Cause.findErrorOption(exit.cause))?.reason ?? "";
+				expect(reason).toContain("ListArtifacts failed");
+				expect(reason).toContain("HTTP 400");
+			}
+		}),
+	);
 
-	it("preserves the transport-fault message (ECONNRESET) for the retry schedule", async () => {
-		replies = [{ status: 0, transportError: "read ECONNRESET" }];
-		const exit = await run(call("ListArtifacts"));
-		expect(Exit.isFailure(exit)).toBe(true);
-		if (Exit.isFailure(exit)) {
-			const reason = Option.getOrUndefined(Cause.findErrorOption(exit.cause))?.reason ?? "";
-			expect(reason).toContain("ListArtifacts failed");
-			expect(reason).toContain("ECONNRESET");
-		}
-	});
+	it.effect("preserves the transport-fault message (ECONNRESET) for the retry schedule", () =>
+		Effect.gen(function* () {
+			replies = [{ status: 0, transportError: "read ECONNRESET" }];
+			const exit = yield* run(call("ListArtifacts"));
+			expect(Exit.isFailure(exit)).toBe(true);
+			if (Exit.isFailure(exit)) {
+				const reason = Option.getOrUndefined(Cause.findErrorOption(exit.cause))?.reason ?? "";
+				expect(reason).toContain("ListArtifacts failed");
+				expect(reason).toContain("ECONNRESET");
+			}
+		}),
+	);
 });
 
 describe("makeTwirpRetrySchedule", () => {
@@ -148,19 +155,23 @@ describe("makeTwirpRetrySchedule", () => {
 			const fiber = yield* Effect.forkChild(Effect.provide(effect, mockHttp));
 			yield* TestClock.adjust(Duration.seconds(120));
 			return yield* Fiber.join(fiber);
-		}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
+		}).pipe(Effect.exit);
 
-	it("retries on HTTP 503 then succeeds", async () => {
-		replies = [{ status: 503 }, { status: 503 }, { status: 200, body: { ok: true } }];
-		const exit = await runWithClock(retryingCall("CreateArtifact"));
-		expect(exit._tag).toBe("Success");
-		expect(captured).toHaveLength(3);
-	});
+	it.effect("retries on HTTP 503 then succeeds", () =>
+		Effect.gen(function* () {
+			replies = [{ status: 503 }, { status: 503 }, { status: 200, body: { ok: true } }];
+			const exit = yield* runWithClock(retryingCall("CreateArtifact"));
+			expect(exit._tag).toBe("Success");
+			expect(captured).toHaveLength(3);
+		}),
+	);
 
-	it("gives up after exhausting the retry budget on persistent 503", async () => {
-		replies = [{ status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }];
-		const exit = await runWithClock(retryingCall("CreateArtifact"));
-		expect(exit._tag).toBe("Failure");
-		expect(captured).toHaveLength(5);
-	});
+	it.effect("gives up after exhausting the retry budget on persistent 503", () =>
+		Effect.gen(function* () {
+			replies = [{ status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }];
+			const exit = yield* runWithClock(retryingCall("CreateArtifact"));
+			expect(exit._tag).toBe("Failure");
+			expect(captured).toHaveLength(5);
+		}),
+	);
 });

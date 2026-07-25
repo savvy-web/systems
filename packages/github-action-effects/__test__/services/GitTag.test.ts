@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit } from "effect";
-import { describe, expect, it } from "vitest";
 import { GitTagError } from "../../src/errors/GitTagError.js";
 import { GitTagTest } from "../../src/layers/GitTagTest.js";
 import { GitTag } from "../../src/services/GitTag.js";
@@ -10,10 +10,10 @@ const provide = <A, E>(layer: ReturnType<typeof GitTagTest.empty>["layer"], effe
 	Effect.provide(effect, layer);
 
 const run = <A, E>(layer: ReturnType<typeof GitTagTest.empty>["layer"], effect: Effect.Effect<A, E, GitTag>) =>
-	Effect.runPromise(provide(layer, effect));
+	provide(layer, effect);
 
 const runExit = <A, E>(layer: ReturnType<typeof GitTagTest.empty>["layer"], effect: Effect.Effect<A, E, GitTag>) =>
-	Effect.runPromise(Effect.exit(provide(layer, effect)));
+	Effect.exit(provide(layer, effect));
 
 // -- Service method shorthands --
 
@@ -24,57 +24,69 @@ const resolve = (tag: string) => Effect.flatMap(GitTag, (svc) => svc.resolve(tag
 
 describe("GitTag", () => {
 	describe("create", () => {
-		it("creates a tag", async () => {
-			const { state, layer } = GitTagTest.empty();
-			await run(layer, create("v1.0.0", "abc123"));
-			expect(state.tags.get("v1.0.0")).toBe("abc123");
-			expect(state.createCalls).toEqual([{ tag: "v1.0.0", sha: "abc123" }]);
-		});
+		it.effect("creates a tag", () =>
+			Effect.gen(function* () {
+				const { state, layer } = GitTagTest.empty();
+				yield* run(layer, create("v1.0.0", "abc123"));
+				expect(state.tags.get("v1.0.0")).toBe("abc123");
+				expect(state.createCalls).toEqual([{ tag: "v1.0.0", sha: "abc123" }]);
+			}),
+		);
 	});
 
 	describe("delete", () => {
-		it("deletes a tag", async () => {
-			const { state, layer } = GitTagTest.empty();
-			state.tags.set("v1.0.0", "abc123");
-			await run(layer, del("v1.0.0"));
-			expect(state.tags.has("v1.0.0")).toBe(false);
-			expect(state.deleteCalls).toEqual(["v1.0.0"]);
-		});
+		it.effect("deletes a tag", () =>
+			Effect.gen(function* () {
+				const { state, layer } = GitTagTest.empty();
+				state.tags.set("v1.0.0", "abc123");
+				yield* run(layer, del("v1.0.0"));
+				expect(state.tags.has("v1.0.0")).toBe(false);
+				expect(state.deleteCalls).toEqual(["v1.0.0"]);
+			}),
+		);
 
-		it("fails to delete unknown tag", async () => {
-			const { layer } = GitTagTest.empty();
-			const exit = await runExit(layer, del("v999.0.0"));
-			expect(Exit.isFailure(exit)).toBe(true);
-		});
+		it.effect("fails to delete unknown tag", () =>
+			Effect.gen(function* () {
+				const { layer } = GitTagTest.empty();
+				const exit = yield* runExit(layer, del("v999.0.0"));
+				expect(Exit.isFailure(exit)).toBe(true);
+			}),
+		);
 	});
 
 	describe("list", () => {
-		it("lists with prefix filter", async () => {
-			const { state, layer } = GitTagTest.empty();
-			state.tags.set("v1.0.0", "sha1");
-			state.tags.set("v1.1.0", "sha2");
-			state.tags.set("v2.0.0", "sha3");
-			const result = await run(layer, list("v1."));
-			expect(result).toEqual([
-				{ tag: "v1.0.0", sha: "sha1" },
-				{ tag: "v1.1.0", sha: "sha2" },
-			]);
-		});
+		it.effect("lists with prefix filter", () =>
+			Effect.gen(function* () {
+				const { state, layer } = GitTagTest.empty();
+				state.tags.set("v1.0.0", "sha1");
+				state.tags.set("v1.1.0", "sha2");
+				state.tags.set("v2.0.0", "sha3");
+				const result = yield* run(layer, list("v1."));
+				expect(result).toEqual([
+					{ tag: "v1.0.0", sha: "sha1" },
+					{ tag: "v1.1.0", sha: "sha2" },
+				]);
+			}),
+		);
 	});
 
 	describe("resolve", () => {
-		it("resolves a tag to SHA", async () => {
-			const { state, layer } = GitTagTest.empty();
-			state.tags.set("v1.0.0", "abc123");
-			const sha = await run(layer, resolve("v1.0.0"));
-			expect(sha).toBe("abc123");
-		});
+		it.effect("resolves a tag to SHA", () =>
+			Effect.gen(function* () {
+				const { state, layer } = GitTagTest.empty();
+				state.tags.set("v1.0.0", "abc123");
+				const sha = yield* run(layer, resolve("v1.0.0"));
+				expect(sha).toBe("abc123");
+			}),
+		);
 
-		it("fails to resolve unknown tag", async () => {
-			const { layer } = GitTagTest.empty();
-			const exit = await runExit(layer, resolve("v999.0.0"));
-			expect(Exit.isFailure(exit)).toBe(true);
-		});
+		it.effect("fails to resolve unknown tag", () =>
+			Effect.gen(function* () {
+				const { layer } = GitTagTest.empty();
+				const exit = yield* runExit(layer, resolve("v999.0.0"));
+				expect(Exit.isFailure(exit)).toBe(true);
+			}),
+		);
 	});
 
 	describe("GitTagError", () => {

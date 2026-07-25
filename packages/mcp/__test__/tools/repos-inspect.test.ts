@@ -1,7 +1,7 @@
+import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import { ReposInspectAsMarkdown, ReposInspectResult, reposInspect } from "../../src/tools/repos-inspect.js";
@@ -55,30 +55,31 @@ const ReposConfigStoreTest = Layer.succeed(
 	}),
 );
 
-const run = <A, E>(eff: Effect.Effect<A, E, Repos.ReposManager | Repos.ReposConfigStore | WorkspaceRoot>) =>
-	Effect.runPromise(
-		eff.pipe(Effect.provide(ReposManagerTest), Effect.provide(ReposConfigStoreTest), Effect.provide(WorkspaceRootTest)),
+const TestLayer = Layer.mergeAll(ReposManagerTest, ReposConfigStoreTest, WorkspaceRootTest);
+
+layer(TestLayer)("reposInspect handler", (it) => {
+	it.effect("projects status mode and renders markdown", () =>
+		Effect.gen(function* () {
+			const data = yield* reposInspect({ mode: "status" }, "/repo");
+			expect(data.mode).toBe("status");
+			const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
+			expect(md).toContain("foo");
+			expect(md).toContain("abc123");
+		}),
 	);
 
-describe("reposInspect handler", () => {
-	it("projects status mode and renders markdown", async () => {
-		const data = await run(reposInspect({ mode: "status" }, "/repo"));
-		expect(data.mode).toBe("status");
-		const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
-		expect(md).toContain("foo");
-		expect(md).toContain("abc123");
-	});
-
-	it("projects config mode and renders markdown", async () => {
-		const data = await run(reposInspect({ mode: "config" }, "/repo"));
-		expect(data.mode).toBe("config");
-		if (data.mode === "config") {
-			expect(data.result.repos.foo.url).toBe("https://example.com/foo.git");
-		}
-		const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
-		expect(md).toContain("repos config");
-		expect(md).toContain("vendor lib");
-	});
+	it.effect("projects config mode and renders markdown", () =>
+		Effect.gen(function* () {
+			const data = yield* reposInspect({ mode: "config" }, "/repo");
+			expect(data.mode).toBe("config");
+			if (data.mode === "config") {
+				expect(data.result.repos.foo.url).toBe("https://example.com/foo.git");
+			}
+			const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
+			expect(md).toContain("repos config");
+			expect(md).toContain("vendor lib");
+		}),
+	);
 
 	it("forbids encoding markdown back", () => {
 		expect(() => Schema.encodeUnknownSync(ReposInspectAsMarkdown)("anything")).toThrow();
