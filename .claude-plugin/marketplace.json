@@ -15,7 +15,7 @@
 				"source": "git-subdir",
 				"url": "https://github.com/savvy-web/systems.git",
 				"path": "plugins/silk",
-				"sha": "39b5eb3a9f949e9275100496b9538f0678a248a7"
+				"sha": "b12afc3e1ba3745e08dbc482607a05c6ff4bba43"
 			},
 			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 			"category": "developer-tools",
@@ -27,7 +27,7 @@
 				"source": "git-subdir",
 				"url": "https://github.com/savvy-web/systems.git",
 				"path": "plugins/github-actions",
-				"sha": "7e51499448bfdeea7e40480b0ebf3b35058440bd"
+				"sha": "b12afc3e1ba3745e08dbc482607a05c6ff4bba43"
 			},
 			"description": "Savvy Web GitHub Actions assistant — an action-engineer agent and skill suite for building Node.js 24 actions with @savvy-web/github-action-effects and @savvy-web/github-action-builder, plus the shared savvy MCP",
 			"category": "developer-tools",
