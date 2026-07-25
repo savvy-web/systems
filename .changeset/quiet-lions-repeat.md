@@ -28,7 +28,10 @@ The dependency diff now resolves specifiers per lockfile importer, which answers
 
 The markdownlint implementation of CSH005 validated the raw source of a dependency table cell, while the remark implementation validated the parsed value. A cell containing a markdown escape therefore got two different verdicts: a changeset written by the older serializer, carrying `\~0.2.0`, passed `savvy changeset check` and the pre-commit hook while failing `markdownlint`.
 
-The markdownlint rule now resolves CommonMark backslash escapes before validating, so both implementations judge the value a reader actually sees.
+The markdownlint rules now resolve CommonMark backslash escapes before validating, so both implementations judge the value a reader actually sees.
+
+Escape resolution lives in the shared token extractors rather than in one rule, so heading-based rules are aligned too — CSH002 previously compared a raw heading against the category list while its remark counterpart compared the parsed one.
 
 * Affects existing changesets written before the escaping fix above; regenerating one clears it either way
 * A value that is genuinely invalid once unescaped is still reported
+* Only ASCII punctuation is unescaped, per CommonMark, so a backslash before a space stays literal

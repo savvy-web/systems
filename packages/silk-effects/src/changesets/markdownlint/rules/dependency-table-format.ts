@@ -1,7 +1,7 @@
 import type { MicromarkToken, Rule } from "markdownlint";
 
 import { VERSION_RE } from "../../schemas/dependency-table.js";
-import { RULE_DOCS, getHeadingLevel, getHeadingText } from "./utils.js";
+import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./utils.js";
 
 /**
  * markdownlint rule: `changeset-dependency-table-format` (CSH005).
@@ -67,31 +67,6 @@ const VALID_TYPES = new Set([
 const VALID_ACTIONS = new Set(["added", "updated", "removed"]);
 
 const EXPECTED_HEADERS = ["dependency", "type", "action", "from", "to"];
-
-/**
- * CommonMark backslash escapes: a backslash is literal unless it precedes an
- * ASCII punctuation character, in which case the pair denotes that character.
- */
-const BACKSLASH_ESCAPE_RE = /\\([!-/:-@[-`{-~])/g;
-
-/**
- * Resolve CommonMark backslash escapes in raw cell source.
- *
- * @remarks
- * The micromark token carries the cell's RAW source text, escapes intact, while
- * the sibling remark rule validates the parsed mdast tree where the parser has
- * already resolved them. Without this step the two implementations of CSH005
- * disagree about the same file: a legacy table cell written as `\~0.2.0` by the
- * old dependency-table serializer parses to `~0.2.0` and passes the remark rule
- * and every changeset-validation entry point, while failing here against
- * `VERSION_RE` (issue #367). Resolving escapes first makes this rule judge the
- * value a reader — and the rest of the toolchain — actually sees.
- *
- * @internal
- */
-function unescapeMarkdown(raw: string): string {
-	return raw.replace(BACKSLASH_ESCAPE_RE, "$1");
-}
 
 /**
  * Extract text from a `tableHeader` or `tableData` cell token.
