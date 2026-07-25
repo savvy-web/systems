@@ -1,7 +1,7 @@
 # Error taxonomy — @savvy-web/github-action-effects
 
-> Distilled from `@savvy-web/github-action-effects@3.0.4` source
-> (`src/errors/*.ts`), 2026-07-23. Field shapes are verbatim from source. On
+> Distilled from `@savvy-web/github-action-effects@3.0.5` source
+> (`src/errors/*.ts`), 2026-07-24. Field shapes are verbatim from source. On
 > version skew the installed source wins — re-verify before relying on this.
 
 41 tagged errors, one per file, all `Data.TaggedError("Tag")<{...}>`
@@ -33,7 +33,7 @@ path that does not fail the effect.
 | `CheckRunError` | `name`, `operation: "create" \| "update" \| "complete" \| "get"`, `reason` |
 | `CommandRunnerError` | `command`, `args: ReadonlyArray<string>`, `exitCode: number \| undefined`, `stderr: string \| undefined`, `stdout?: string \| undefined`, `reason` |
 | `ConfigLoaderError` | `path`, `operation: "read" \| "parse" \| "validate"`, `reason` |
-| `GitBranchError` | `branch`, `operation: "create" \| "delete" \| "get" \| "reset"`, `reason` |
+| `GitBranchError` | `branch`, `operation: "create" \| "delete" \| "get" \| "reset"`, `reason`, `status?: number`, `alreadyExists?: boolean` |
 | `GitCommitError` | `operation: "tree" \| "commit" \| "ref"`, `reason` |
 | `GitHubAppError` | `operation: "jwt" \| "token" \| "revoke" \| "identity"`, `reason` |
 | `GitHubArtifactMetadataError` | `operation: "createStorageRecord"`, `reason`, `retryable: boolean` |
@@ -62,6 +62,12 @@ path that does not fail the effect.
 | `ToolInstallerError` | `tool`, `version`, `operation: "download" \| "extract" \| "cache" \| "path" \| "chmod"`, `reason`, `statusCode?: number \| undefined` |
 | `WorkflowDispatchError` | `workflow`, `operation: "dispatch" \| "poll" \| "poll-pending" \| "status"`, `reason` |
 | `WorkspaceDetectorError` | `operation: "detect" \| "list" \| "get"`, `reason` |
+
+`GitBranchError.alreadyExists` is `true` when the underlying GitHub API
+failure was a 422/409 response whose reason names an existing reference —
+match on it in a `catchTag`/`catchIf` to detect a benign create-race
+collision directly, without a second API round-trip to re-query branch
+state.
 
 ## Retryability
 

@@ -26,15 +26,41 @@ const mockHttpClient = (
 		),
 	);
 
-const { octokitAuthCalls, mockAuth } = vi.hoisted(() => ({
+const { octokitAuthCalls, octokitLogLines, mockAuth } = vi.hoisted(() => ({
 	octokitAuthCalls: [] as unknown[],
+	octokitLogLines: [] as string[],
 	mockAuth: vi.fn(),
 }));
+/**
+ * Mock `@octokit/rest` with a real-Octokit subclass that:
+ *
+ * 1. records the constructor `auth` so the Redacted-unwrap boundary (S6/S11)
+ *    can be asserted;
+ * 2. injects a stubbed `fetch` via Octokit's `request.fetch` option so no
+ *    request ever leaves the process — `client.graphql` calls receive a
+ *    deterministic fixture 401 (`Bad credentials`) instead of hitting
+ *    api.github.com (issue #172);
+ * 3. replaces the layer's `silentOctokitLog` with a recording sink so the
+ *    `@octokit/plugin-request-log` failure line (`POST /graphql - 401 ...`)
+ *    lands in `octokitLogLines` instead of leaking to stdout as a
+ *    `::debug::` workflow command.
+ */
 vi.mock("@octokit/rest", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@octokit/rest")>();
+	const fixture401: typeof fetch = () =>
+		Promise.resolve(
+			new Response(JSON.stringify({ message: "Bad credentials", documentation_url: "https://docs.github.com" }), {
+				status: 401,
+				headers: { "content-type": "application/json" },
+			}),
+		);
+	const record = (message: string): void => {
+		octokitLogLines.push(message);
+	};
+	const recordingLog = { debug: record, info: record, warn: record, error: record };
 	class RecordingOctokit extends actual.Octokit {
 		constructor(options?: ConstructorParameters<typeof actual.Octokit>[0]) {
-			super(options);
+			super({ ...options, log: recordingLog, request: { ...options?.request, fetch: fixture401 } });
 			octokitAuthCalls.push(options?.auth);
 		}
 	}
@@ -45,6 +71,7 @@ vi.mock("@octokit/auth-app", () => ({ createAppAuth: () => mockAuth }));
 beforeEach(() => {
 	process.env.GITHUB_TOKEN = "fake-token";
 	process.env.GITHUB_REPOSITORY = "owner/repo";
+	octokitLogLines.length = 0;
 });
 
 afterEach(() => {
@@ -168,9 +195,26 @@ describe("GitHubClientLive", () => {
 		});
 
 		describe("graphql", () => {
-			it("wraps graphql errors", async () => {
+			it("wraps graphql errors from the stubbed fetch's fixture 401", async () => {
 				const exit = await runExit(Effect.flatMap(GitHubClient, (client) => client.graphql("{ viewer { login } }")));
 				expect(exit._tag).toBe("Failure");
+				if (Exit.isFailure(exit)) {
+					const err = Cause.squash(exit.cause) as {
+						_tag?: string;
+						operation: string;
+						status?: number;
+						reason: string;
+						retryable: boolean;
+					};
+					expect(err._tag).toBe("GitHubClientError");
+					expect(err.operation).toBe("graphql");
+					expect(err.status).toBe(401);
+					expect(err.reason).toContain("Bad credentials");
+					expect(err.retryable).toBe(false);
+				}
+				// The request-log plugin's failure line was routed into the mock's
+				// recording sink, not leaked to stdout as a ::debug:: command.
+				expect(octokitLogLines.length).toBeGreaterThan(0);
 			});
 		});
 
@@ -528,8 +572,8 @@ describe("GitHubClientLive", () => {
 		});
 
 		it("graphql failures route through the resilient wrapper", async () => {
-			// graphql shares the withResilience wrapper. The mocked octokit.graphql
-			// rejects without a status (network error) → non-retryable → fails fast.
+			// graphql shares the withResilience wrapper. The stubbed fetch returns a
+			// fixture 401 (non-retryable) → fails fast without retries.
 			const exit = await runWithClock(
 				Effect.provide(
 					Effect.flatMap(GitHubClient, (client) => client.graphql("{ viewer { login } }")),
@@ -537,6 +581,12 @@ describe("GitHubClientLive", () => {
 				),
 			);
 			expect(exit._tag).toBe("Failure");
+			if (Exit.isFailure(exit)) {
+				const err = Cause.squash(exit.cause) as { status?: number; reason: string; retryable: boolean };
+				expect(err.status).toBe(401);
+				expect(err.reason).toContain("Bad credentials");
+				expect(err.retryable).toBe(false);
+			}
 		});
 	});
 

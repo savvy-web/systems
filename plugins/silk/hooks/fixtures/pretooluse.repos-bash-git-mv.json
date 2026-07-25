@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-bash-git-mv",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "git mv .repos/effect-smol .repos/effect"
+	}
+}

@@ -7,16 +7,16 @@ Every mail file is Markdown, named `YYYY-MM-DD-<kind>[-<slug>].md`, written into
 from: effected            # sender repo id (root package.json "name")
 to: savvy-web-systems     # receiver repo id
 kind: handoff             # briefing | request | handoff | status | findings | release
-round: 2                  # monotonic per loop, shared by both sides; briefing is round 0
+round: 2                  # monotonic per loop, shared by both sides; briefing is round 0 (or the current round when reopening a closed loop)
 in-reply-to: 2026-07-16-request-round-2.md   # optional, receiver-relative filename
 ---
 ```
 
 Six kinds. Each section below is both the content contract and a fill-in-the-blanks template.
 
-## `briefing` (either direction, round 0, `--init` only)
+## `briefing` (either direction, round 0 or a reopened loop's opening round, `--init` only)
 
-The protocol boot for the counterpart's session. Generated, not hand-written — `--init` produces it from the local role/packages/paths it just resolved.
+The protocol boot for the counterpart's session. Generated, not hand-written — `--init` produces it from the local role/packages/paths it just resolved. A loop that closed with a terminal `unlinked` line and is later reopened (a fresh non-`unlinked` `loop-started` append, per the journal's reopening rule) also boots via `briefing` rather than any other kind — the counterpart session is starting from nothing and needs the same mailbox/journal/role/push-guard content either way. The difference is framing: a reopen briefing carries the CURRENT round number, never `round: 0`, and opens with a short summary of the prior loop's terminal state (what shipped, why it closed) before repeating the standard boot content below.
 
 ```markdown
 ---
@@ -92,6 +92,8 @@ round: 1
 ## `handoff` (upstream → downstream)
 
 Per package: new/renamed/removed exports with EXACT signatures and error unions (read from the built `.d.ts`, not source), behavior changes — especially anything formerly silently tolerant that now fails typed — and an "intentionally not done" section. Precision is contractual: the downstream verifies against installed `.d.ts` and flags drift as a defect.
+
+**Verifying a claim against the artifact, not just against source, is the same discipline.** Search recursively (`rg <symbol> <dir>`, never a non-recursive `<dir>/*.js` glob — `@savvy-web/bundler`-style per-module chunk layouts put the symbol in a nested path a top-level glob can't see). Cite the module path the symbol lives in, not a match count. Grep for a known-present control symbol before reporting one as absent, to confirm the search itself works. This exact mistake, a non-recursive glob misread as "the fix is missing," happened twice in one round, 2026-07-25 — treat it as settled, not a one-off.
 
 ````markdown
 ---

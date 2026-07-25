@@ -399,6 +399,50 @@ describe("ConfigInspector.classify", () => {
 		expect(result.reason).toEqual({ kind: "additionalScope", glob: "plugin/**" });
 	});
 
+	// Regression: pulling a private root into the release surface (#360) gave
+	// it a workspaceDir equal to the project root, which contains every file in
+	// the repo. Directory containment must not let that root outrank a more
+	// specific claim, or a config's additionalScopes/versionFiles are silently
+	// shadowed for every path outside a sub-package directory.
+	it("prefers additionalScopes over a versioned root package whose directory contains everything", async () => {
+		const dir = setupFixture({
+			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+			configJson: {
+				...makeConfig({ packages: { "@scope/foo": { additionalScopes: ["plugin/**"] } } }),
+				privatePackages: { version: true },
+			},
+			extraFiles: [{ path: "plugin/SKILL.md", content: "" }],
+		});
+		dirs.push(dir);
+
+		const inspected = await runInspect(dir);
+		expect(inspected.packages.map((p) => p.name)).toContain("test-root");
+
+		const [result] = await runClassify(dir, ["plugin/SKILL.md"]);
+		expect(result.package).toBe("@scope/foo");
+		expect(result.reason).toEqual({ kind: "additionalScope", glob: "plugin/**" });
+	});
+
+	it("prefers versionFiles over a versioned root package whose directory contains everything", async () => {
+		const dir = setupFixture({
+			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
+			configJson: {
+				...makeConfig({
+					packages: {
+						"@scope/foo": { versionFiles: [{ glob: "extras/manifest.json", paths: ["$.version"] }] },
+					},
+				}),
+				privatePackages: { version: true },
+			},
+			extraFiles: [{ path: "extras/manifest.json", content: JSON.stringify({ version: "0.0.0" }) }],
+		});
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["extras/manifest.json"]);
+		expect(result.package).toBe("@scope/foo");
+		expect(result.reason).toEqual({ kind: "versionFile", glob: "extras/manifest.json" });
+	});
+
 	it("returns reason='versionFile' for files matched by a versionFiles glob (outside additionalScopes)", async () => {
 		const dir = setupFixture({
 			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],
@@ -516,7 +560,7 @@ describe("ConfigInspector.classify — empty-packages release-surface fallback",
 		expect(result.reason).toBe("workspace");
 	});
 
-	it("leaves files unmapped when a single-root repo's root has no publishConfig", async () => {
+	it("leaves files unmapped when a single-root repo's root has no publishConfig and privatePackages is absent", async () => {
 		const dir = setupFixture({
 			rootName: "private-thing",
 			configJson: makeConfig(),
@@ -526,6 +570,74 @@ describe("ConfigInspector.classify — empty-packages release-surface fallback",
 
 		const [result] = await runClassify(dir, ["src/index.ts"]);
 		expect(result.package).toBeNull();
+	});
+
+	// #360 — a private single-root repo (no publishConfig) whose changeset
+	// config sets `privatePackages.version: true` IS a release surface:
+	// changesets versions private packages in that mode, so the root package
+	// must appear in packages[] and attribute its files.
+	it("attributes files to a private single-root package when privatePackages.version is true (#360)", async () => {
+		const dir = setupFixture({
+			rootName: "private-action",
+			configJson: { ...makeConfig(), privatePackages: { version: true } },
+			extraFiles: [{ path: "src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const inspected = await runInspect(dir);
+		expect(inspected.packages.map((p) => p.name)).toEqual(["private-action"]);
+
+		const [result] = await runClassify(dir, ["src/index.ts"]);
+		expect(result.package).toBe("private-action");
+		expect(result.reason).toBe("workspace");
+	});
+
+	it("leaves files unmapped when privatePackages.version is false", async () => {
+		const dir = setupFixture({
+			rootName: "private-thing",
+			configJson: { ...makeConfig(), privatePackages: { version: false, tag: true } },
+			extraFiles: [{ path: "src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["src/index.ts"]);
+		expect(result.package).toBeNull();
+		expect(result.reason).toBeNull();
+	});
+
+	it("leaves files unmapped when privatePackages is false", async () => {
+		const dir = setupFixture({
+			rootName: "private-thing",
+			configJson: { ...makeConfig(), privatePackages: false },
+			extraFiles: [{ path: "src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const [result] = await runClassify(dir, ["src/index.ts"]);
+		expect(result.package).toBeNull();
+		expect(result.reason).toBeNull();
+	});
+
+	// The gate change is general, not single-root-specific: a private,
+	// unpublishable workspace PACKAGE also joins the release surface when
+	// privatePackages.version is true.
+	it("includes a private workspace package in the fallback surface when privatePackages.version is true", async () => {
+		const dir = setupFixture({
+			workspacePackages: [
+				{ relPath: "package", name: "@scope/pub", version: "0.2.0", publishConfig: { access: "public" } },
+				{ relPath: "internal", name: "@scope/internal", version: "0.0.1" },
+			],
+			configJson: { ...makeConfig(), privatePackages: { version: true } },
+			extraFiles: [{ path: "internal/src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const inspected = await runInspect(dir);
+		expect(inspected.packages.map((p) => p.name).sort()).toEqual(["@scope/internal", "@scope/pub", "test-root"]);
+
+		const [result] = await runClassify(dir, ["internal/src/index.ts"]);
+		expect(result.package).toBe("@scope/internal");
+		expect(result.reason).toBe("workspace");
 	});
 
 	it("includes an ignored-but-configured package as a valid target", async () => {

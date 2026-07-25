@@ -56,11 +56,19 @@ COMMAND=$(jq -r '.tool_input.command // empty' <<< "$HOOK_ENVELOPE")
 [[ "$COMMAND" != *.repos* ]] && exit 0
 
 # --- Git leg -------------------------------------------------------------
-# Only fires when git is explicitly pointed at a tree under .repos/ via -C,
-# --git-dir=, or --work-tree=. A command that merely mentions .repos as a
-# pathspec (`git log -- .repos/x` run from elsewhere) falls through to the
-# non-git leg below.
-GIT_REPOS_RE='(^|[^[:alnum:]_])git[[:space:]].*(-C[[:space:]]+[^[:space:]]*\.repos/|--git-dir=[^[:space:]]*/\.repos/|--work-tree=[^[:space:]]*/\.repos/)'
+# Fires for any git invocation that targets .repos/ *within its own clause*
+# -- via -C/--git-dir=/--work-tree=, or a bare pathspec argument
+# (`git rm --cached .repos/x`, `git mv .repos/x .repos/y`). "Own clause"
+# means: no ;/&/| between the "git" word and the ".repos/" mention, so a
+# trailing chained command (`git status && rm -rf .repos/x`) does NOT
+# engage this leg on the strength of the earlier, unrelated git call --
+# that rm still reaches the non-git leg below. A command that merely
+# mentions .repos in a LATER, unrelated clause than "git" falls through to
+# the non-git leg the same way. Once this leg fires it owns the decision
+# for the whole command (git-subcommand policy, not the generic word
+# matchers) -- consistent with the pre-existing -C/--git-dir/--work-tree
+# behavior this leg already had.
+GIT_REPOS_RE='(^|[^[:alnum:]_])git[[:space:]][^;&|]*\.repos/'
 if [[ "$COMMAND" =~ $GIT_REPOS_RE ]]; then
 	SUBCOMMAND=""
 	SUBCOMMAND_RE='git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:space:]]+|--git-dir=[^[:space:]]+[[:space:]]+|--work-tree=[^[:space:]]+[[:space:]]+)*([a-zA-Z-]+)'
@@ -74,6 +82,22 @@ if [[ "$COMMAND" =~ $GIT_REPOS_RE ]]; then
 		exit 0
 	fi
 	if grep -Fxq "$SUBCOMMAND" "$READ_OPS_FILE" 2>/dev/null; then
+		exit 0
+	fi
+	# Sanctioned index/rename primitives for re-pointing a vendored repo's
+	# gitlink -- neither touches vendored *content*, both are recovery
+	# steps the guard should not stand in front of:
+	#   - `git rm --cached <path>`: index-only removal of the gitlink,
+	#     reads/writes nothing inside the vendored tree. Bare `git rm`
+	#     (no --cached) deletes the working-tree entry too and stays
+	#     denied below.
+	#   - `git mv`: renames the gitlink path in the index and working
+	#     tree in one atomic git-tracked step.
+	if [ "$SUBCOMMAND" = "rm" ] \
+		&& [[ "$COMMAND" =~ (^|[[:space:]])--cached([[:space:]]|$) ]]; then
+		exit 0
+	fi
+	if [ "$SUBCOMMAND" = "mv" ]; then
 		exit 0
 	fi
 	emit_deny "git writes inside .repos/** are denied; re-pin via repos_manage (action: pin)."

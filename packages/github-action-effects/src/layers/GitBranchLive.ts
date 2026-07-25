@@ -4,10 +4,20 @@ import type { GitHubClientError } from "../errors/GitHubClientError.js";
 import { GitBranch } from "../services/GitBranch.js";
 import { GitHubClient } from "../services/GitHubClient.js";
 
+/** GitHub signals a ref-create race with a 422 (occasionally 409) "Reference already exists" response. */
+const isAlreadyExists = (error: GitHubClientError): boolean =>
+	(error.status === 422 || error.status === 409) && error.reason.toLowerCase().includes("already exists");
+
 const mapError =
 	(branch: string, operation: "create" | "delete" | "get" | "reset") =>
 	(error: GitHubClientError): GitBranchError =>
-		new GitBranchError({ branch, operation, reason: error.reason });
+		new GitBranchError({
+			branch,
+			operation,
+			reason: error.reason,
+			status: error.status,
+			alreadyExists: isAlreadyExists(error),
+		});
 
 /** Retry schedule for transient GitHub API errors (3 retries, exponential backoff from 1s). */
 const retrySchedule = Schedule.exponential(Duration.seconds(1));
@@ -67,7 +77,7 @@ export const GitBranchLive: Layer.Layer<GitBranch, never, GitHubClient> = Layer.
 					if (error.status === 404) {
 						return Effect.succeed(false);
 					}
-					return Effect.fail(new GitBranchError({ branch: name, operation: "get", reason: error.reason }));
+					return Effect.fail(mapError(name, "get")(error));
 				}),
 			),
 

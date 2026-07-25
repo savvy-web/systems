@@ -85,9 +85,25 @@ export interface RunOptions {
 		target: "dev" | "prod";
 		reports: ReadonlyArray<BuildReport>;
 		now?: () => Date;
+		buildOk?: boolean | undefined;
+		failure?: { name?: string | undefined; message: string } | undefined;
 	}) => string | undefined;
 	/** Injectable ambient-.d.ts copier (defaults to copyAmbientDts). */
 	readonly copyAmbientDts?: ((o: CopyAmbientDtsOptions) => void) | undefined;
+}
+
+/** Reduce a thrown value to the `{ name?, message }` shape the issues artifact stamps on a failed build. */
+function describeFailure(err: unknown): { name?: string; message: string } {
+	if (err instanceof Error) {
+		return err.name !== "" ? { name: err.name, message: err.message } : { message: err.message };
+	}
+	if (typeof err === "object" && err !== null) {
+		const rec = err as { _tag?: unknown; name?: unknown; message?: unknown };
+		const name = typeof rec._tag === "string" ? rec._tag : typeof rec.name === "string" ? rec.name : undefined;
+		const message = typeof rec.message === "string" ? rec.message : String(err);
+		return name !== undefined ? { name, message } : { message };
+	}
+	return { message: String(err) };
 }
 
 /** Read and parse package.json at cwd, returning an empty object on any error. */
@@ -398,12 +414,21 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 
 	// Persist the structured diagnostics artifact on every terminal path — success AND failure.
 	// A failed build is exactly when an agent wants to read why, so write it before rethrowing too.
+	// The build outcome is stamped onto the artifact (`buildOk`, plus `failure` when there is an
+	// error): a crashed build can leave every diagnostic bucket empty, which without the stamp is
+	// byte-identical to a clean gate, so a reader must gate on `buildOk`, not on `errors.length`.
 	// Best-effort: a write failure (read-only fs, missing parent, permissions) must never compound
 	// or mask the build outcome — the dist build product (on success) is already emitted by here.
-	const writeIssuesBestEffort = (): void => {
+	const writeIssuesBestEffort = (err?: unknown): void => {
 		if (target !== "dev" && target !== "prod") return;
 		try {
-			(options.writeIssues ?? writeIssuesArtifact)({ cwd, target, reports: collector.snapshot(packageName) });
+			(options.writeIssues ?? writeIssuesArtifact)({
+				cwd,
+				target,
+				reports: collector.snapshot(packageName),
+				buildOk: err === undefined,
+				...(err !== undefined ? { failure: describeFailure(err) } : {}),
+			});
 		} catch {
 			// intentionally swallowed — see above
 		}
@@ -541,7 +566,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 	} catch (err) {
 		// Surface whatever diagnostics were captured before the failure, then rethrow.
 		await renderAndWrite();
-		writeIssuesBestEffort();
+		writeIssuesBestEffort(err);
 		throw err;
 	}
 

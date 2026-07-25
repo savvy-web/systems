@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-bash-rm-rf",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "rm -rf .repos/effect-smol"
+	}
+}

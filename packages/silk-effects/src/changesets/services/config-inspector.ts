@@ -402,17 +402,23 @@ function readRawPackageJson(
 
 /**
  * Build resolved scopes from the discovered workspace packages, keeping only
- * those that are a release surface (declare publishConfig that yields at least
- * one publish target). Used both when `.changeset/config.json` declares no
- * explicit `packages` record AND to augment an explicit record with the
- * remaining workspace packages it does not list (so the record annotates the
- * listed packages without shrinking the release surface). The changeset
- * `ignore` list is intentionally NOT consulted here — an ignored package still
- * declares publishConfig and remains a valid changeset target.
+ * those that are a release surface: a package that declares publishConfig
+ * yielding at least one publish target, OR — when the changeset config sets
+ * `privatePackages.version: true` (`versionPrivate`) — any workspace package
+ * at all, since changesets versions private packages too in that mode (#360:
+ * a private single-root repo with `privatePackages.version: true` previously
+ * produced an empty release surface and left every file unmapped). Used both
+ * when `.changeset/config.json` declares no explicit `packages` record AND to
+ * augment an explicit record with the remaining workspace packages it does
+ * not list (so the record annotates the listed packages without shrinking the
+ * release surface). The changeset `ignore` list is intentionally NOT
+ * consulted here — an ignored package still declares publishConfig and
+ * remains a valid changeset target.
  */
 function buildFallbackScopes(
 	fs: FileSystem.FileSystem,
 	workspaces: ReadonlyArray<{ name: string; path: string; version: string }>,
+	versionPrivate: boolean,
 ): Effect.Effect<ReadonlyArray<ResolvedPackageScope>, ConfigurationError> {
 	return Effect.forEach(workspaces, (ws) =>
 		Effect.gen(function* () {
@@ -420,7 +426,7 @@ function buildFallbackScopes(
 			if (raw === null) return [] as ResolvedPackageScope[];
 			const binding = yield* readTargetsBinding(fs, ws.path);
 			const targets = SilkPublishability.detect(ws.name, raw, binding);
-			if (targets.length === 0) return [] as ResolvedPackageScope[];
+			if (targets.length === 0 && !versionPrivate) return [] as ResolvedPackageScope[];
 			return [
 				{
 					name: ws.name,
@@ -627,6 +633,14 @@ function makeShape(
 
 			const hasExplicitPackages = Object.keys(decodedOptions.packages ?? {}).length > 0;
 
+			// `privatePackages.version: true` means changesets versions private
+			// packages too, so an unpublishable package is still a release
+			// surface. Mirrors ChangesetConfig.versionPrivate — the truth-table
+			// is `pp !== undefined && pp !== false && pp.version === true`.
+			const privatePackages = config.privatePackages;
+			const versionPrivate =
+				privatePackages !== undefined && privatePackages !== false && privatePackages.version === true;
+
 			let scopes: ReadonlyArray<ResolvedPackageScope>;
 			if (hasExplicitPackages) {
 				const explicitScopes: ReadonlyArray<ResolvedPackageScope> = yield* buildResolvedScopes({
@@ -651,10 +665,10 @@ function makeShape(
 				// their richer explicit scopes and are excluded from the fallback.
 				const explicitNames = new Set(explicitScopes.map((s) => s.name));
 				const remaining = workspaces.filter((w) => !explicitNames.has(w.name));
-				const discoveredScopes = yield* buildFallbackScopes(fs, remaining);
+				const discoveredScopes = yield* buildFallbackScopes(fs, remaining, versionPrivate);
 				scopes = [...explicitScopes, ...discoveredScopes];
 			} else {
-				scopes = yield* buildFallbackScopes(fs, workspaces);
+				scopes = yield* buildFallbackScopes(fs, workspaces, versionPrivate);
 			}
 
 			const inspected: InspectedConfig = {
@@ -696,8 +710,22 @@ function makeShape(
 function classifyOne(inspected: InspectedConfig, path: string): Classification {
 	const abs = resolve(inspected.projectDir, path);
 	// 1. Workspace match — file is inside a package's workspace directory.
+	//
+	// A root-as-package scope (workspaceDir === projectDir) is deliberately
+	// held back from this pass and only applied at the end. Every file in the
+	// repo is "inside" the root by definition, so letting it compete here would
+	// make it win containment for any path outside a sub-package directory and
+	// silently shadow the additionalScopes and versionFiles a config declared
+	// for that path. `checkConflicts` already carves the root out of shadowing
+	// validation for the same reason: the root represents the whole repo, not a
+	// sub-package whose directory claims ownership.
 	let bestWorkspace: { pkg: string; depth: number } | null = null;
+	let rootScope: string | null = null;
 	for (const s of inspected.packages) {
+		if (s.workspaceDir === inspected.projectDir) {
+			rootScope = s.name;
+			continue;
+		}
 		if (isInside(s.workspaceDir, abs)) {
 			const depth = s.workspaceDir.length;
 			if (!bestWorkspace || depth > bestWorkspace.depth) {
@@ -737,6 +765,14 @@ function classifyOne(inspected: InspectedConfig, path: string): Classification {
 				return { path, package: s.name, reason: { kind: "versionFile", glob: vf.glob } };
 			}
 		}
+	}
+
+	// 4. Root-as-package fallback — a versioned root package owns whatever no
+	// sub-package directory, additionalScope or versionFile claimed. This is
+	// what makes a single-package repo whose only package IS the root attribute
+	// its files at all, without letting the root outrank a more specific claim.
+	if (rootScope) {
+		return { path, package: rootScope, reason: "workspace" };
 	}
 
 	return { path, package: null, reason: null };

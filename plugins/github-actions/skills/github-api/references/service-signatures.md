@@ -1,15 +1,15 @@
 # GitHub API services — signatures
 
-> Distilled from `@savvy-web/github-action-effects@3.0.4` source
+> Distilled from `@savvy-web/github-action-effects@3.0.5` source
 > (`src/services/*.ts`, `src/layers/*.ts`) and production actions built on
-> this stack, 2026-07-23. On version skew the installed source wins —
+> this stack, 2026-07-24. On version skew the installed source wins —
 > re-verify before relying on this. Layers follow the `<Service>Live` naming;
 > unless noted, each Live layer requires `GitHubClient`.
 
 ## GitHubClient (`services/GitHubClient.ts`)
 
 ```typescript
-rest: <T>(operation: string, fn: (octokit: unknown) => Promise<{ data: T }>)
+rest: <T>(operation: string, fn: (octokit: any) => Promise<{ data: T }>)
  => Effect<T, GitHubClientError>
 graphql: <T>(query: string, variables?: Record<string, unknown>)
  => Effect<T, GitHubClientError>
@@ -18,6 +18,20 @@ paginate: <T>(operation, fn: (octokit, page, perPage) => Promise<{ data: T[] }>,
 paginateStream: <T>(operation, fn, options?) => Stream<T, GitHubClientError>
 repo: Effect<{ owner: string; repo: string }, GitHubClientError>   // from GITHUB_REPOSITORY
 ```
+
+The `octokit` callback parameters above are typed `any` at the service boundary (an
+interim posture — do not read into it). **Annotate the callback parameter yourself
+with the exported `GitHubOctokit` type** to get type-safe access to the full Octokit
+surface (`@octokit/rest`'s `Octokit`, with the rest-endpoint-methods and paginate
+plugins applied):
+
+```typescript
+import type { GitHubOctokit } from "@savvy-web/github-action-effects";
+
+client.rest("repos.get", (octokit: GitHubOctokit) => octokit.rest.repos.get({ owner, repo }));
+```
+
+Same pattern for `paginate`/`paginateStream`'s first callback parameter.
 
 Error: `GitHubClientError { operation, status?, reason, retryable, retryAfterMs? }`.
 

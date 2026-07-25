@@ -104,6 +104,36 @@ _reason() {
 	[ -z "$output" ]
 }
 
+@test "git rm --cached .repos/<repo> (index-only gitlink removal): silent no-op" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-rm-cached.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "git rm .repos/<repo> (no --cached, deletes working-tree file too): deny" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-rm-no-cached.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "git mv .repos/<repo> .repos/<repo> (sanctioned rename primitive): silent no-op" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-mv.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "bare rm -rf .repos/<repo> (no git involved): deny" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-rm-rf.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "git status && rm -rf .repos/<repo> (rm in a later, unrelated clause): deny" {
+	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-then-chained-rm.json' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
 @test "non-Bash tool_name: silent no-op" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-mcp-write.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]

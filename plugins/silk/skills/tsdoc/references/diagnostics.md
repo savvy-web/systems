@@ -114,6 +114,8 @@ One non-obvious case: a symbol your package *re-exports from a dependency* (e.g.
 - `tsdoc-unnecessary-backslash` / `tsdoc-escape-*` — stray escapes.
 - `tsdoc-inline-tag-missing-braces` / `tsdoc-malformed-inline-tag` — inline tags like `{@link X}` must be brace-wrapped and well-formed.
 
+**Verbatim source transcriptions need a fenced code block, not escapes.** Pasting a real code/type snippet into a TSDoc block as prose — a type alias, a config object, a generic signature like `MapLike<T>` — hands the parser bare `{}`/`<>`, which it reads as TSDoc syntax and flags as `tsdoc-escape-right-brace`, `tsdoc-escape-greater-than`, or an HTML-element warning. Backslash-escaping each brace is not the fix and does not scale past a character or two. Put the transcription inside a fenced ```ts block instead — TSDoc does not parse fenced contents, so braces and generics pass through untouched.
+
 ```ts
 // before: JSDoc habits → tsdoc-param-tag-missing-hyphen + tsdoc-undefined-tag
 /**
