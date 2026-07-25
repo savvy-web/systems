@@ -1,5 +1,18 @@
 # @savvy-web/templates
 
+## 1.0.7
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                              |
+  | ---------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/package-json | dependency | updated | ^0.5.1 | ^0.5.2 |                                                                              |
+  | @effected/yaml         | dependency | updated | ^0.5.1 | ^0.6.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#375]: https://github.com/savvy-web/systems/pull/375
+
 ## 1.0.6
 
 ### Dependencies

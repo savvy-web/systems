@@ -1,5 +1,23 @@
 # @savvy-web/bundler
 
+## 2.0.11
+
+### Bug Fixes
+
+* `runBuild` (and the bundler's own `savvy.build.ts` self-build) now passes the caught build error into the issues-artifact writer, stamping `buildOk: false` (plus a `failure` description) when a build crashes, instead of leaving the artifact looking like a clean pass. [#373][#373]
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From  | To    |
+| ------------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.1.9 | 2.2.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#373]: https://github.com/savvy-web/systems/pull/373
+
 ## 2.0.10
 
 ### Dependencies
