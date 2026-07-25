@@ -21,12 +21,10 @@
 import { Schema } from "effect";
 import type { Table, TableCell, TableRow } from "mdast";
 import { toString as mdastToString } from "mdast-util-to-string";
-import remarkGfm from "remark-gfm";
-import remarkStringify from "remark-stringify";
-import { unified } from "unified";
 
 import type { DependencyTableRow } from "../schemas/dependency-table.js";
 import { DependencyTableRowSchema } from "../schemas/dependency-table.js";
+import { literalText, stringifyMarkdown } from "./remark-pipeline.js";
 
 /**
  * Ordered column headers for dependency tables.
@@ -110,6 +108,12 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 /**
  * Create a table cell with a text node.
  *
+ * @remarks
+ * The cell text is marked literal, so stringification writes it verbatim
+ * instead of escaping characters that could open a markdown construct. See
+ * {@link literalText} — without it `~0.2.1` is written as `\~0.2.1` and
+ * `some_pkg` as `some\_pkg`.
+ *
  * @param text - The cell text content
  * @returns An MDAST `TableCell` node
  *
@@ -118,7 +122,7 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 function makeCell(text: string): TableCell {
 	return {
 		type: "tableCell",
-		children: [{ type: "text", value: text }],
+		children: [literalText(text)],
 	};
 }
 
@@ -200,8 +204,7 @@ export function serializeDependencyTable(rows: DependencyTableRow[]): Table {
  */
 export function serializeDependencyTableToMarkdown(rows: DependencyTableRow[]): string {
 	const table = serializeDependencyTable(rows);
-	const tree = { type: "root" as const, children: [table] };
-	return unified().use(remarkGfm).use(remarkStringify).stringify(tree).trim();
+	return stringifyMarkdown({ type: "root", children: [table] }).trim();
 }
 
 /**

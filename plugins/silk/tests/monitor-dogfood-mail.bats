@@ -157,3 +157,60 @@ write_mail() {
 	[[ "$output" == *"TICK1:2"* ]]
 	[[ "$output" == *"TICK2:0"* ]]
 }
+
+# --- issue #344: an unresolvable lastMail.in must not replay the mailbox ------
+# Both cases previously fell back to a watermark of 0, so every file in the
+# mailbox counted as newer and a reopened loop replayed the whole archive of the
+# preceding collaboration. The fallback is now the current loop's `loop-started`
+# time, so mail predating this collaboration is never new to it.
+
+@test "reopened loop with lastMail.in null: prior collaboration's mail is not replayed (issue #344)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-20-handoff-round-4.md" handoff 4 "Old handoff from the closed loop"
+	touch -t 202607200000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-07-20-handoff-round-4.md"
+	# previous collaboration closed, then a fresh one opened with no mail yet
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-20T12:00:00Z","event":"unlinked","role":"downstream","phase":"unlinked","ball":"ours","round":4,"lastMail":{"in":".claude/dogfood/effected/2026-07-20-handoff-round-4.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-24T23:00:00Z","event":"loop-started","role":"downstream","phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"dogfood mail from"* ]]
+}
+
+@test "reopened loop with lastMail.in null: mail arriving after loop-started IS surfaced (issue #344)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-20-handoff-round-4.md" handoff 4 "Old handoff from the closed loop"
+	touch -t 202607200000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-07-20-handoff-round-4.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-25-request-round-1.md" request 1 "Fresh request in the new loop"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-24T23:00:00Z","event":"loop-started","role":"downstream","phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: request (round 1) — Fresh request in the new loop'* ]]
+	[[ "$output" != *"Old handoff from the closed loop"* ]]
+}
+
+@test "lastMail.in naming a nonexistent file: falls back to loop-started, not to everything (issue #344)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-20-handoff-round-4.md" handoff 4 "Old handoff from the closed loop"
+	touch -t 202607200000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-07-20-handoff-round-4.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-24T23:00:00Z","event":"loop-started","role":"downstream","phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	# a hand-authored append citing a filename that does not exist
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-25T01:00:00Z","event":"mail-received","role":"downstream","phase":"handoff","ball":"ours","round":1,"lastMail":{"in":".claude/dogfood/effected/typo-does-not-exist.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"Old handoff from the closed loop"* ]]
+}
+
+@test "journal with no loop-started line: unresolvable pointer still degrades to surfacing mail" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-25-request-round-1.md" request 1 "Request with no loop-started anywhere"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-25T01:00:00Z","event":"mail-received","role":"downstream","phase":"handoff","ball":"ours","round":1,"lastMail":{"in":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: request (round 1) — Request with no loop-started anywhere'* ]]
+}

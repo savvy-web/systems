@@ -12,6 +12,7 @@ import {
 	serializeDependencyTableToMarkdown,
 	sortDependencyRows,
 } from "../../src/changesets/utils/dependency-table.js";
+import { parseMarkdown, stringifyMarkdown } from "../../src/changesets/utils/remark-pipeline.js";
 
 /** Parse markdown into MDAST and extract first table node. */
 function getTable(md: string): Table {
@@ -242,5 +243,61 @@ describe("sortDependencyRows", () => {
 		];
 		const result = sortDependencyRows(rows);
 		expect(result.map((r) => r.dependency)).toEqual(["axios", "moment", "zlib"]);
+	});
+});
+
+describe("dependency table cells are emitted literally", () => {
+	/** Cells whose characters remark-stringify would otherwise escape. */
+	const ESCAPE_BAIT: DependencyTableRow[] = [
+		{ dependency: "@effected/semver", type: "dependency", action: "updated", from: "~0.2.0", to: "~0.2.1" },
+		{ dependency: "some_pkg", type: "dependency", action: "updated", from: "1.0.0", to: "2.0.0" },
+	];
+
+	it("does not escape ~ in version specifiers or _ in package names", () => {
+		const md = serializeDependencyTableToMarkdown(ESCAPE_BAIT);
+		expect(md).not.toContain("\\~");
+		expect(md).not.toContain("\\_");
+		expect(md).toContain("~0.2.0");
+		expect(md).toContain("~0.2.1");
+		expect(md).toContain("some_pkg");
+	});
+
+	it("round-trips cell values byte-identically through markdown", () => {
+		const md = serializeDependencyTableToMarkdown(ESCAPE_BAIT);
+		expect(parseDependencyTable(getTable(md))).toEqual(ESCAPE_BAIT);
+	});
+
+	it("does not compound escapes when a corrupted value is re-serialized", () => {
+		// A value already carrying the legacy backslash must not gain another layer.
+		// Such a value cannot round-trip through parse — VERSION_RE rejects it — so
+		// only the write side is assertable here.
+		const corrupted: DependencyTableRow[] = [
+			{ dependency: "@effected/semver", type: "dependency", action: "updated", from: "\\~0.2.0", to: "~0.2.1" },
+		];
+		const md = serializeDependencyTableToMarkdown(corrupted);
+		expect(md).not.toContain("\\\\\\~");
+		expect(md).toContain("\\\\~0.2.0");
+	});
+
+	it("escapes a pipe so it cannot break out of its cell", () => {
+		const withPipe: DependencyTableRow[] = [
+			{ dependency: "weird|name", type: "dependency", action: "updated", from: "1.0.0", to: "2.0.0" },
+		];
+		const md = serializeDependencyTableToMarkdown(withPipe);
+		expect(parseDependencyTable(getTable(md))[0]?.dependency).toBe("weird|name");
+	});
+
+	it("still escapes markdown in ordinary prose outside a table", () => {
+		const tree = parseMarkdown("bumped some_snake_case today\n");
+		expect(stringifyMarkdown(tree)).toContain("some\\_snake\\_case");
+	});
+
+	it("emits literal cells when the table node is stringified as part of a document", () => {
+		// The aggregate-dependency-tables plugin inserts the mdast node into a
+		// changeset AST, which is stringified through the shared pipeline.
+		const table = serializeDependencyTable(ESCAPE_BAIT);
+		const md = stringifyMarkdown({ type: "root", children: [table] });
+		expect(md).not.toContain("\\~");
+		expect(md).not.toContain("\\_");
 	});
 });

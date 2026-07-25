@@ -1,7 +1,7 @@
 import type { MicromarkToken, Rule } from "markdownlint";
 
 import { VERSION_RE } from "../../schemas/dependency-table.js";
-import { RULE_DOCS, getHeadingLevel, getHeadingText } from "./utils.js";
+import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./utils.js";
 
 /**
  * markdownlint rule: `changeset-dependency-table-format` (CSH005).
@@ -75,13 +75,13 @@ const EXPECTED_HEADERS = ["dependency", "type", "action", "from", "to"];
  * The `tableContent` token has a `.text` property with the cell value.
  *
  * @param cell - A GFM table cell token (header or data)
- * @returns The trimmed text content of the cell, or an empty string
+ * @returns The trimmed, escape-resolved text content of the cell, or an empty string
  *
  * @internal
  */
 function getCellText(cell: AnyToken): string {
 	const content = (cell.children as AnyToken[]).find((c) => c.type === "tableContent");
-	return content ? content.text.trim() : "";
+	return content ? unescapeMarkdown(content.text.trim()) : "";
 }
 
 /**

@@ -47,6 +47,37 @@ function lastValidJsonlLine(text) {
 	return null;
 }
 
+/**
+ * Timestamp (ms) of the CURRENT collaboration's opening line -- the `at` of the
+ * last `loop-started` snapshot in the journal.
+ *
+ * A journal outlives any one collaboration: a reopened loop appends a fresh
+ * `loop-started` after the previous terminal `unlinked`, so the LAST one marks
+ * where the current loop began and everything above it belongs to a closed
+ * collaboration. Used as the fallback watermark for new-mail detection when the
+ * journal's `lastMail.in` pointer cannot be resolved (issue #344), so already
+ * processed mail from a previous loop is never re-announced as new.
+ *
+ * Returns null when no `loop-started` line is present or its `at` is unparseable.
+ */
+function loopStartedAtMs(text) {
+	const lines = text.split("\n");
+	for (let i = lines.length - 1; i >= 0; i--) {
+		const line = lines[i].trim();
+		if (!line) continue;
+		try {
+			const parsed = JSON.parse(line);
+			if (parsed?.event === "loop-started" && typeof parsed.at === "string") {
+				const ms = Date.parse(parsed.at);
+				return Number.isNaN(ms) ? null : ms;
+			}
+		} catch {
+			// malformed line -- walk back, same posture as lastValidJsonlLine
+		}
+	}
+	return null;
+}
+
 /** Split light YAML frontmatter (`---\nkey: value\n---`) off a mail file. */
 function parseMailFile(text) {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
@@ -78,7 +109,7 @@ async function scanJournals() {
 		try {
 			const text = await readFile(path, "utf8");
 			const snapshot = lastValidJsonlLine(text);
-			journals.push({ id, path, snapshot });
+			journals.push({ id, path, snapshot, loopStartedAtMs: loopStartedAtMs(text) });
 		} catch {
 			// unreadable journal -- skip, same fail-open posture as the hook
 		}
@@ -150,12 +181,23 @@ export function diagnose(current, prev) {
 	for (const mailbox of current.mailboxes) {
 		const journal = current.journals.find((j) => j.id === mailbox.id);
 		const lastMailIn = journal?.snapshot?.lastMail?.in;
-		let threshold = 0;
+		// Watermark for "new mail". The journal's `lastMail.in` pointer is the
+		// precise answer, but it is absent on a loop that has received nothing
+		// yet and stale if a hand-authored append names a file that does not
+		// exist. Both cases previously fell back to 0, which made every file in
+		// the mailbox newer than the watermark -- so reopening a loop replayed
+		// the entire archive of the previous collaboration as unread (#344).
+		//
+		// Falling back to the current loop's `loop-started` time bounds it
+		// correctly: mail predating this collaboration cannot be new to it, and
+		// `lastMail.in: null` stays honest for a freshly opened loop instead of
+		// having to be back-dated to a previous loop's file to silence the noise.
+		let threshold = journal?.loopStartedAtMs ?? 0;
 		if (lastMailIn) {
 			try {
 				threshold = statSync(join(ROOT, lastMailIn)).mtimeMs;
 			} catch {
-				threshold = 0;
+				// dangling pointer -- keep the loop-started watermark
 			}
 		}
 		const before = prev.mailboxes.get(mailbox.id);

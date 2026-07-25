@@ -38,7 +38,39 @@ export function getHeadingLevel(heading: MicromarkToken): number {
 }
 
 /**
+ * CommonMark backslash escapes: a backslash is literal unless it precedes an
+ * ASCII punctuation character, in which case the pair denotes that character.
+ */
+const BACKSLASH_ESCAPE_RE = /\\([!-/:-@[-`{-~])/g;
+
+/**
+ * Resolve CommonMark backslash escapes in raw micromark source text.
+ *
+ * @remarks
+ * Every rule in this directory has a sibling remark implementation that reads
+ * the parsed mdast tree, where the parser has already resolved escapes, via
+ * `mdast-util-to-string`. Micromark tokens instead carry RAW source. Comparing
+ * raw text against a value the parsed form would produce makes the two
+ * implementations of one documented rule disagree about the same file
+ * (issue #367).
+ *
+ * Applied at the shared extractors below so both implementations judge the
+ * value a reader actually sees, rather than per-rule where the next extractor
+ * added would silently reintroduce the split.
+ *
+ * @internal
+ */
+export function unescapeMarkdown(raw: string): string {
+	return raw.replace(BACKSLASH_ESCAPE_RE, "$1");
+}
+
+/**
  * Get the plain text content of an `atxHeading` token.
+ *
+ * @remarks
+ * Escape-resolved, so a heading compares equal to the same heading as the
+ * remark rules see it. `getHeadingLevel` needs no equivalent — it counts
+ * sequence characters rather than reading text.
  *
  * @param heading - The `atxHeading` micromark token
  * @returns The heading text, or empty string if no text token found
@@ -47,5 +79,5 @@ export function getHeadingLevel(heading: MicromarkToken): number {
  */
 export function getHeadingText(heading: MicromarkToken): string {
 	const textToken = heading.children.find((c) => c.type === "atxHeadingText");
-	return textToken ? textToken.text : "";
+	return textToken ? unescapeMarkdown(textToken.text) : "";
 }

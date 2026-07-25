@@ -275,8 +275,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1(effect@4.0.0-beta.101)
       '@effected/workspaces':
-        specifier: ^0.6.2
-        version: 0.6.2(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+        specifier: ^0.7.0
+        version: 0.7.0(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@effected/yaml':
         specifier: ^0.5.1
         version: 0.5.1(effect@4.0.0-beta.101)
@@ -401,8 +401,8 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.101(effect@4.0.0-beta.101)(ioredis@5.11.1(supports-color@8.1.1))
       '@effected/workspaces':
-        specifier: ^0.6.2
-        version: 0.6.2(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+        specifier: ^0.7.0
+        version: 0.7.0(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(supports-color@8.1.1)(zod@4.4.3)
@@ -597,8 +597,8 @@ importers:
         specifier: ^0.3.2
         version: 0.3.2(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@effected/workspaces':
-        specifier: ^0.6.2
-        version: 0.6.2(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+        specifier: ^0.7.0
+        version: 0.7.0(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@effected/yaml':
         specifier: ^0.5.1
         version: 0.5.1(effect@4.0.0-beta.101)
@@ -727,8 +727,8 @@ importers:
         specifier: ^0.3.1
         version: 0.3.1(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/walker@0.3.2(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@effected/workspaces':
-        specifier: ^0.6.2
-        version: 0.6.2(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+        specifier: ^0.7.0
+        version: 0.7.0(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@microsoft/api-extractor':
         specifier: ^7.58.12
         version: 7.58.12(@types/node@26.1.1)
@@ -1261,6 +1261,12 @@ packages:
 
   '@effected/workspaces@0.6.2':
     resolution: {integrity: sha512-TgA5Nf+SPktOx/qEtipwdNJArLd+app2SXgJbz3k2PwfZ77xFpfFpsqzmaKChDVyeVgfa1pPhekgCP9UIzSGzw==}
+    engines: {node: '>=24.11.0'}
+    peerDependencies:
+      effect: 4.0.0-beta.101
+
+  '@effected/workspaces@0.7.0':
+    resolution: {integrity: sha512-xY2aGuwULE6j9n+vP0wm/977UsXMLIC4ncyvPON3T4sN7RSYZ5k64kSe6OAkfphXadvLbjUMpeiRZxMq2m+3zw==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-beta.101
@@ -6595,6 +6601,24 @@ snapshots:
       effect: 4.0.0-beta.101
 
   '@effected/workspaces@0.6.2(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)':
+    dependencies:
+      '@effected/git': 0.4.2(effect@4.0.0-beta.101)
+      '@effected/glob': 0.2.1(effect@4.0.0-beta.101)
+      '@effected/lockfiles': 0.1.10(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/npm@0.3.1(@effected/semver@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(@effected/semver@0.2.1(effect@4.0.0-beta.101))(@effected/yaml@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+      '@effected/npm': 0.3.1(@effected/semver@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+      '@effected/package-json': 0.5.1(effect@4.0.0-beta.101)
+      '@effected/semver': 0.2.1(effect@4.0.0-beta.101)
+      '@effected/walker': 0.3.2(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+      '@effected/yaml': 0.5.1(effect@4.0.0-beta.101)
+      '@pnpm/catalogs.config': 1100.0.3
+      '@pnpm/catalogs.protocol-parser': 1100.0.1
+      '@pnpm/catalogs.resolver': 1100.0.1
+      '@pnpm/catalogs.types': 1100.0.1
+      effect: 4.0.0-beta.101
+    transitivePeerDependencies:
+      - '@effected/jsonc'
+
+  '@effected/workspaces@0.7.0(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)':
     dependencies:
       '@effected/git': 0.4.2(effect@4.0.0-beta.101)
       '@effected/glob': 0.2.1(effect@4.0.0-beta.101)

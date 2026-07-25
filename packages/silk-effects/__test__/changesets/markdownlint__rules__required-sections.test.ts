@@ -97,3 +97,21 @@ describe("markdownlint/required-sections", () => {
 		expect(messages[0]).toContain(RULE_DOCS.CSH002);
 	});
 });
+
+// --- issue #367: shared extractors resolve escapes -----------------------------
+// getHeadingText reads RAW micromark source while the sibling remark rule reads
+// the parsed tree via mdast-util-to-string. Both must judge the same heading.
+describe("markdownlint/required-sections: backslash escapes in headings", () => {
+	it("does not treat a backslash before a space as an escape", () => {
+		// CommonMark escapes ASCII punctuation only, so `\ ` is a literal
+		// backslash and this is genuinely a different heading.
+		expect(check("## Bug Fixes\n\nContent\n")).toEqual([]);
+		expect(check("## Bug\\ Fixes\n\nContent\n")).not.toEqual([]);
+	});
+
+	it("treats an escaped-punctuation heading the same as its parsed form", () => {
+		// `\_` parses to `_`, so an escaped and unescaped heading are one heading.
+		expect(check("## Other\n\nContent\n")).toEqual([]);
+		expect(check("## Bug\\_Fixes\n\nContent\n")).toEqual(check("## Bug_Fixes\n\nContent\n"));
+	});
+});
