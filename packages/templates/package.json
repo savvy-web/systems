@@ -29,8 +29,8 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/package-json": "^0.5.1",
-		"@effected/yaml": "^0.5.1"
+		"@effected/package-json": "^0.5.2",
+		"@effected/yaml": "^0.6.0"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
