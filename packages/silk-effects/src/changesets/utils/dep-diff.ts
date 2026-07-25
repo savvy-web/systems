@@ -56,11 +56,24 @@ export interface WorkspaceDependencyDiff {
 }
 
 /**
- * Resolve a specifier against the snapshot it belongs to, falling back to
- * the raw specifier string when the snapshot cannot resolve it.
+ * Resolve a specifier against the snapshot it belongs to, scoped to the
+ * importer that declared it, falling back to the raw specifier string when
+ * the snapshot cannot resolve it.
+ *
+ * @remarks
+ * Uses `resolveIn` rather than the workspace-wide `resolve`. Both consult the
+ * ref's own lockfile importer entries when a `catalog:` specifier is not in the
+ * catalog set — which is what makes hook-injected catalogs (`catalog:effect:peers`,
+ * injected by a config-dependency pnpmfile and recorded in neither
+ * `pnpm-workspace.yaml` nor the lockfile's `catalogs:` block) resolvable at all.
+ * The workspace-wide form abstains whenever two importers disagree on a
+ * dependency's version, which in a multi-package repo reproduces the original
+ * defect: both sides fall back to the identical raw specifier, compare equal,
+ * and emit no row. Scoping to the declaring importer answers precisely where
+ * the workspace-wide form cannot.
  */
-const resolveOrRaw = (snapshot: WorkspaceStateSnapshot, dep: string, spec: string): string =>
-	Option.getOrElse(snapshot.resolve(dep, spec), () => spec);
+const resolveOrRaw = (snapshot: WorkspaceStateSnapshot, importerPath: string, dep: string, spec: string): string =>
+	Option.getOrElse(snapshot.resolveIn(importerPath, dep, spec), () => spec);
 
 /**
  * Drop no-net-change field moves: the same dependency removed from one field
@@ -116,6 +129,12 @@ export function computeWorkspaceDependencyDiffs(
 		const beforePkg = Option.getOrNull(before.package(afterPkg.name));
 		const rows: DependencyTableRow[] = [];
 
+		// Lockfile importer keys. A package that moved directories between refs
+		// keys to its own path on each side, so the before snapshot is queried
+		// with the path it had at that ref.
+		const afterImporter = afterPkg.relativePath;
+		const beforeImporter = beforePkg?.relativePath ?? afterImporter;
+
 		for (const [field, type] of DEP_TYPE_MAP) {
 			const beforeRecord = (beforePkg?.[field] ?? {}) as Readonly<Record<string, string>>;
 			const afterRecord = afterPkg[field] as Readonly<Record<string, string>>;
@@ -123,13 +142,13 @@ export function computeWorkspaceDependencyDiffs(
 
 			for (const [name, beforeSpec] of Object.entries(beforeRecord)) {
 				seen.add(name);
-				const from = resolveOrRaw(before, name, beforeSpec);
+				const from = resolveOrRaw(before, beforeImporter, name, beforeSpec);
 				const afterSpec = afterRecord[name];
 				if (afterSpec === undefined) {
 					rows.push({ dependency: name, type, action: "removed", from, to: EM_DASH });
 					continue;
 				}
-				const to = resolveOrRaw(after, name, afterSpec);
+				const to = resolveOrRaw(after, afterImporter, name, afterSpec);
 				if (from !== to) rows.push({ dependency: name, type, action: "updated", from, to });
 			}
 
@@ -140,7 +159,7 @@ export function computeWorkspaceDependencyDiffs(
 					type,
 					action: "added",
 					from: EM_DASH,
-					to: resolveOrRaw(after, name, afterSpec),
+					to: resolveOrRaw(after, afterImporter, name, afterSpec),
 				});
 			}
 		}

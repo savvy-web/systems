@@ -124,3 +124,93 @@ describe("computeWorkspaceDependencyDiffs (catalog-aware)", () => {
 		});
 	});
 });
+
+// --- importer-scoped resolution ----------------------------------------------
+// A catalog injected at install time by a pnpmfile hook is recorded in neither
+// pnpm-workspace.yaml nor the lockfile's `catalogs:` block, so it is absent from
+// the catalog set and resolution falls through to the ref's own lockfile importer
+// entries. The workspace-wide `resolve` abstains whenever two importers disagree
+// on a version; `resolveIn` answers per declaring importer, which is the case a
+// single-importer repo cannot exercise.
+describe("computeWorkspaceDependencyDiffs (importer-scoped resolution)", () => {
+	const HOOK_CATALOG = "catalog:effect:peers";
+
+	/** Two importers, each with its own recorded version of `effect`. */
+	const multiImporterSnap = (aVersion: string, pkgVersion: string) =>
+		new WorkspaceStateSnapshot({
+			packages: [
+				new PackageStateSnapshot({
+					name: "@x/a",
+					version: "9.9.9",
+					relativePath: "packages/a",
+					dependencies: { effect: HOOK_CATALOG },
+				}),
+				new PackageStateSnapshot({
+					name: "@x/pkg",
+					version: "1.0.0",
+					relativePath: "packages/pkg",
+					dependencies: { effect: HOOK_CATALOG },
+				}),
+			],
+			// deliberately empty: a hook-injected catalog is not in the catalog set
+			catalogs: CatalogSet.empty(),
+			importerVersions: {
+				"packages/a": { effect: aVersion },
+				"packages/pkg": { effect: pkgVersion },
+			},
+		});
+
+	it("emits a row for the moving importer when importers disagree on the version", () => {
+		// @x/a holds beta.50 on both sides; only @x/pkg moves. The disagreement
+		// between the two importers is what makes a workspace-wide resolver abstain.
+		const before = multiImporterSnap("4.0.0-beta.50", "4.0.0-beta.99");
+		const after = multiImporterSnap("4.0.0-beta.50", "4.0.0-beta.101");
+
+		const diffs = computeWorkspaceDependencyDiffs(before, after);
+		const pkg = diffs.find((d) => d.package === "@x/pkg");
+
+		expect(pkg?.rows).toEqual([
+			{ dependency: "effect", type: "dependency", action: "updated", from: "4.0.0-beta.99", to: "4.0.0-beta.101" },
+		]);
+	});
+
+	it("emits no row for an importer whose own version did not move", () => {
+		const before = multiImporterSnap("4.0.0-beta.50", "4.0.0-beta.99");
+		const after = multiImporterSnap("4.0.0-beta.50", "4.0.0-beta.101");
+
+		expect(computeWorkspaceDependencyDiffs(before, after).find((d) => d.package === "@x/a")).toBeUndefined();
+	});
+
+	it("resolves a hook-injected catalog that is absent from the catalog set", () => {
+		// The reported defect: unresolvable on both sides means the raw specifiers
+		// compare equal and no row is emitted for a real version movement.
+		const before = multiImporterSnap("4.0.0-beta.99", "4.0.0-beta.99");
+		const after = multiImporterSnap("4.0.0-beta.101", "4.0.0-beta.101");
+
+		const rows = computeWorkspaceDependencyDiffs(before, after).flatMap((d) => d.rows);
+		expect(rows).not.toHaveLength(0);
+		for (const row of rows) {
+			expect(row.from).not.toBe(HOOK_CATALOG);
+			expect(row.to).not.toBe(HOOK_CATALOG);
+		}
+	});
+
+	it("still falls back to the raw specifier when no importer entry exists", () => {
+		const bare = (dep: string) =>
+			new WorkspaceStateSnapshot({
+				packages: [
+					new PackageStateSnapshot({
+						name: "@x/pkg",
+						version: "1.0.0",
+						relativePath: "packages/pkg",
+						dependencies: { effect: dep },
+					}),
+				],
+				catalogs: CatalogSet.empty(),
+			});
+		const [diff] = computeWorkspaceDependencyDiffs(bare("^1.0.0"), bare(HOOK_CATALOG));
+		expect(diff?.rows).toEqual([
+			{ dependency: "effect", type: "dependency", action: "updated", from: "^1.0.0", to: HOOK_CATALOG },
+		]);
+	});
+});

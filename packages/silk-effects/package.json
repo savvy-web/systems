@@ -39,7 +39,7 @@
 		"@effected/jsonc": "^0.5.1",
 		"@effected/package-json": "^0.5.1",
 		"@effected/walker": "^0.3.2",
-		"@effected/workspaces": "^0.6.2",
+		"@effected/workspaces": "^0.7.0",
 		"@effected/yaml": "^0.5.1",
 		"@manypkg/get-packages": "^3.1.0",
 		"mdast-util-heading-range": "^4.0.0",
