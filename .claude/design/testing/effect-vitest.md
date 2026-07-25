@@ -1,0 +1,258 @@
+---
+status: current
+module: testing
+category: testing
+created: 2026-07-25
+updated: 2026-07-25
+last-synced: 2026-07-25
+completeness: 90
+related:
+  - ../github-action-effects/testing-strategy.md
+  - ../silk-effects/architecture.md
+  - ../e2e/architecture.md
+  - ../tsdown-plugins/architecture.md
+dependencies: []
+---
+
+# Suite-wide test conventions — `@effect/vitest`
+
+The repo-wide testing contract for Effect code: which test entry point to reach for, how layers get provided,
+how failures are asserted, and the `TestEnv` behaviors that silently change what a test observes.
+
+This doc covers conventions that hold across every package. Package-specific testing topology lives in that
+package's own design doc — see [Related Documentation](#related-documentation).
+
+## Contents
+
+- [Overview](#overview)
+- [Where `@effect/vitest` applies](#where-effectvitest-applies)
+- [The four test entry points](#the-four-test-entry-points)
+- [Layer provision: per-test is the default](#layer-provision-per-test-effectprovide-is-the-default)
+- [Failure assertions](#failure-assertions)
+- [Importing `vi`](#importing-vi)
+- [What `TestEnv` replaces](#what-testenv-replaces)
+- [The type-variance seam](#the-type-variance-seam)
+- [Current State](#current-state)
+- [Rationale](#rationale)
+- [Related Documentation](#related-documentation)
+
+---
+
+## Overview
+
+Test files that run Effect programs use `@effect/vitest` (`catalog:effect`), not plain `vitest` plus a manual
+`Effect.runPromise`. The library supplies vitest-integrated test entry points (`it.effect`, `it.live`, `layer`)
+that build and tear down an Effect runtime per test, so a test body is an `Effect.gen` block rather than a
+promise-returning closure over a hand-rolled runner.
+
+The migration to this shape was **test-only** — no `src/` file changed anywhere — and held exact baseline
+parity, which is the bar any future conversion of the remaining files should also meet.
+
+---
+
+## Where `@effect/vitest` applies
+
+**The rule is per-file, not per-package: a test file that runs an Effect uses `@effect/vitest`; a test file with
+no Effect surface stays on plain `vitest`.** Roughly half the suite is in each camp, and that split is expected
+rather than unfinished work — pure-function tests (formatters, path math, schema shape assertions, config
+validators) gain nothing from an Effect runtime and should not pay for one.
+
+Consequently `@effect/vitest` is a devDependency of exactly the packages that have at least one Effect-running
+test file: `cli`, `github-action-builder`, `github-action-effects`, `mcp`, `silk-effects`, `templates` and
+`tsdown-plugins`. The packages whose tests never enter the Effect runtime (`bundler`, `changelog`,
+`rspress-builder`, `silk`, and the `e2e/*` harnesses) carry no such dependency — even where the package's
+*source* is Effect-based, as the bundler's is, because that Effect surface runs behind a promise boundary the
+tests call across.
+
+Re-derive both facts rather than trusting a transcribed list:
+
+```bash
+# Files on @effect/vitest, by package
+grep -rl "@effect/vitest" --include="*.test.ts" packages e2e | cut -d/ -f2 | sort | uniq -c
+
+# Should print nothing: a live Effect runner left behind in a test file
+grep -rn "Effect\.runPromise\|Effect\.runSync\|runPromiseExit" --include="*.test.ts" packages e2e
+```
+
+The second command is the invariant worth keeping green. The only surviving mentions of those runners in test
+files are inside comments explaining what the test used to do.
+
+---
+
+## The four test entry points
+
+| Entry point | Use when |
+| --- | --- |
+| `it.effect` | The default. Test body is an `Effect.gen` block; runs against `TestEnv` (test clock, test console). |
+| `it.live` | The body needs a **real** clock or a **real** console — see below. |
+| `layer(...)` | A whole `describe`-group shares one built layer. Deliberately rare; see [Layer provision](#layer-provision-per-test-effectprovide-is-the-default). |
+| plain `it` | No Effect surface at all. Import from `"vitest"`. |
+
+`it.live` exists for two specific failure modes, both of which present as a *hang to the 5s timeout* or a
+*silently empty spy*, never as a clear error:
+
+- **Real elapsed time.** Under `it.effect` the ambient `TestClock` is frozen at the epoch. A test that leans on
+  a duration actually passing (a retry `baseDelay` elapsing, a debounce firing) and never calls
+  `TestClock.adjust` will sleep forever. Tests that *do* drive the clock explicitly should stay on `it.effect`;
+  `it.live` is for the ones where advancing it by hand would defeat the point.
+- **Real stdout/stderr.** A helper that spies on `process.stdout.write` only sees output that bypasses Effect's
+  `Console` ref. See [What `TestEnv` replaces](#what-testenv-replaces) for the discrimination.
+
+---
+
+## Layer provision: per-test `Effect.provide` is the default
+
+**Provide layers per test with `Effect.provide` inside the test body. Reach for a suite-boundary `layer(...)`
+block only when the layer is genuinely constant across the group *and* holds no state whose lifetime is itself
+under test.**
+
+The distinction is not stylistic. `layer(...)` **memoizes** the built layer across every test in the group;
+per-test `Effect.provide` does not. So a test double with mutable in-memory backing — the near-universal shape
+of a `*Test` layer in this repo, where a captured-calls array or an outputs list is the assertion target —
+accumulates state across tests under `layer(...)`, and the resulting cross-test bleed shows up as
+order-dependent failures far from their cause. Per-test provision gives each test a fresh double for free.
+
+The canonical shape is a small per-file helper that builds fresh state and provides it:
+
+```typescript
+const runWithOutputs = <A, E>(effect: Effect.Effect<A, E, ActionOutputs>) => {
+  const state = ActionOutputsTest.empty();
+  return Effect.map(Effect.provide(effect, ActionOutputsTest.layer(state)), (result) => ({ result, state }));
+};
+```
+
+Two shapes justify `layer(...)`, and the suite uses both.
+
+**The layer is stateless.** The common case, concentrated in `cli`: `layer(Logger.layer([]))` wrapping a group
+only to silence the command's INFO logging. An empty logger set carries nothing from one test to the next, so
+memoization is unobservable. The second precondition still has to hold and is asserted in-file at each site —
+the group must not depend on ambient process state either. These suites never `chdir`; each test drives a
+freshly-created temp dir passed in as an argument.
+
+**The layer is expensive to build and the group is read-only against it.**
+`packages/mcp/__test__/runtime.smoke.test.ts` is the worked example and documents the three conditions in-file:
+
+- The MCP runtime is **root-bound at layer build** (single-root semantics), so the app layer is built once for
+  one fixture root and shared — sharing is the point, not an optimization.
+- Every test in the group is **read-only** against that fixture. A test that mutated it would need its own root.
+- The fixture is created in `beforeAll` and the layer wrapped in `Layer.suspend`, so layer construction is
+  deferred to build time — which `layer(...)` performs in its own nested `beforeAll`, i.e. *after* the fixture
+  hook. Building at module scope instead turns a setup failure into a load-time throw, which zeroes the whole
+  package (`0/0 passed`, exit 0) rather than reporting a named hook failure.
+
+That last point generalizes: prefer a failure that names a hook over one that empties a file's test count.
+
+---
+
+## Failure assertions
+
+**Assert a failure with `Effect.flip` and check the error's `_tag`/fields.** `flip` swaps the error and success
+channels, so the test only proceeds if the failure arrived on the **typed** channel:
+
+```typescript
+const error = yield* Effect.flip(Effect.provide(handler, TestLayer));
+expect(error.kind).toBe("invalid");
+```
+
+This is strictly stronger than the `runPromiseExit` + `Exit.isFailure` shape it replaced, which also passed when
+the error escaped as a **defect** — exactly the regression a typed-error codebase most wants to catch. It also
+removes the nested `is-a-Failure` / `is-a-Some` guards that shape required, which had a failure mode of their
+own: an assertion nested under a guard is *silently skipped* whenever the guard does not hold, so a test could
+report green having asserted nothing.
+
+**Defects** — where the point of the test is that something escapes the typed channel — use `Effect.exit` and
+inspect the `Cause`, with an explicit `throw` on the non-failure branch so a passing effect cannot fall through
+as a pass. `Cause.pretty` gives a readable message.
+
+---
+
+## Importing `vi`
+
+**Any file that calls `vi.mock` must import `vi` from `"vitest"`, never from the `@effect/vitest` re-export.**
+Vitest hoists `vi.mock` calls above the import statements; the hoisting transform recognizes the specifier
+`"vitest"`, and a `vi` that arrived through the re-export is not in scope at the hoisted position.
+
+For `vi.fn` and `vi.spyOn` — which are not hoisted — importing `vi` alongside `describe`/`it`/`expect` from
+`@effect/vitest` is fine, and the suite does both. The rule that matters is the `vi.mock` one; when in doubt,
+importing `vi` from `"vitest"` is always correct.
+
+---
+
+## What `TestEnv` replaces
+
+Under `it.effect`, `@effect/vitest` provides a `TestEnv` that swaps out two ambient services, and both swaps
+change what a test can observe:
+
+- **`TestClock`** — frozen at the epoch, advanced only by `TestClock.adjust`/`sleep` calls the test makes. See
+  [The four test entry points](#the-four-test-entry-points).
+- **`TestConsole`** — replaces the `Console` ref. This is the subtle one, because **whether a logging test still
+  sees output depends on how the code under test writes it.** Effect's default logger writes *through* the
+  `Console` ref, so a test asserting on default-logger output under `it.effect` will be captured by
+  `TestConsole` and go silent. Code that installs its own logger writing straight to `process.stderr.write`
+  bypasses the ref, so `vi.spyOn(process.stderr, "write")` still sees it and the test can stay on `it.effect`.
+  `packages/silk-effects/__test__/commitlint/hook/silence-logger.test.ts` documents this discrimination in-file
+  for `HookSilencer`, citing the line in the logger source that settles it.
+
+The general rule: decide `it.effect`-vs-`it.live` for a logging test by **verifying against the code under
+test** which write path it takes, and confirm by mutation (make it fail) rather than by inference.
+
+---
+
+## The type-variance seam
+
+`tsgo`'s narrowing of layer composition can leak `any` through `Effect.provide`, so a fully-provided effect does
+not always typecheck as `R = never` at the call site. Where this bites, the convention is a **single cast helper
+at the top of the file**, commented with why it exists, rather than per-call-site cast noise
+(`packages/github-action-effects/__test__/runtime/ActionsRuntime.test.ts` is the reference). Keep the cast at
+the seam; do not let it spread into the test bodies, and re-check whether it is still needed on TypeScript and
+Effect upgrades.
+
+---
+
+## Current State
+
+229 of the suite's 408 test files are on `@effect/vitest` across seven packages; the remaining 179 have no
+Effect surface and stay on plain `vitest`. No test file runs a live `Effect.runPromise`/`runSync`/
+`runPromiseExit`. Suite-boundary `layer(...)` blocks are used in roughly two dozen places, all in `mcp` and
+`cli` — a stateless silencing logger in most of them, the root-bound MCP runtime in the smoke tests. The suite
+runs in the forks pool under the root `@vitest-agent/plugin` (`vitest.config.ts`).
+
+**Not yet done, and tracked — do not read this doc as describing it as finished.**
+[savvy-web/systems#378](https://github.com/savvy-web/systems/issues/378) covers replacing the duplicate `*Test`
+double layers with service-owned `Layer.mock` (and, with them gone, the `./testing` subpath they justify — see
+[the github-action-effects testing strategy](../github-action-effects/testing-strategy.md#testing-subpath-export)),
+plus the `Live`-naming cleanup across the layer set. Until that lands, the `*Test`-layer patterns described here
+remain the working convention.
+
+---
+
+## Rationale
+
+**Why `@effect/vitest` rather than hand-rolled runners.** The per-file `run`/`runExit`/`runWith` closures it
+replaced were near-identical, individually divergent, and each one was a place for the runtime's error handling
+to differ from its neighbors. Roughly forty of them were deleted in the conversion. Pushing runtime construction
+into the test framework makes the test body the only thing a test file has to get right, and gives the whole
+suite one place where `TestEnv` semantics are defined.
+
+**Why per-test provision is the default rather than the exception.** The memoization difference is invisible in
+a passing suite and expensive in a failing one: state bled through a memoized layer produces failures whose
+cause is in a different test. Defaulting to the non-memoizing form means the ordinary case is correct without
+anyone reasoning about layer lifetimes, and the cases that genuinely need sharing declare themselves — the
+`layer(...)` call is the signal to go read why.
+
+**Why `flip` over exit-inspection.** A typed-error codebase's most valuable test property is that errors arrive
+where the types say they will. `flip` asserts exactly that and nothing else; exit-inspection asserts the weaker
+"something went wrong", which a defect also satisfies. The nested-guard skipping problem made the weaker form
+worse than its weakness suggested.
+
+---
+
+## Related Documentation
+
+- [`github-action-effects` testing strategy](../github-action-effects/testing-strategy.md) — the `./testing`
+  subpath contract, test-layer topology and coverage requirements for the largest converted package
+- [`silk-effects` architecture](../silk-effects/architecture.md#testing-strategy) — fixture-tree integration
+  tests
+- [`e2e` architecture](../e2e/architecture.md) — the built-artifact harness, which stays on plain `vitest`
+- [`tsdown-plugins` architecture](../tsdown-plugins/architecture.md) — `.repos/effect` as the authority on
+  what Effect v4 exports, including the vendored `@effect/vitest` reference implementation

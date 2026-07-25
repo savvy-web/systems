@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "@effect/vitest";
 
 beforeEach(() => {
 	vi.spyOn(console, "log").mockImplementation(() => {});

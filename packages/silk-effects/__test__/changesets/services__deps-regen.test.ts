@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
+import { describe, expect, it } from "@effect/vitest";
 import { Git } from "@effected/git";
 import {
 	CatalogSet,
@@ -12,7 +13,9 @@ import {
 	WorkspaceStateSnapshot,
 } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { describe, expect, it, vi } from "vitest";
+// `vi` stays on the plain "vitest" entrypoint: vitest hoists its mock wiring above all
+// imports, and a re-exported binding is not initialized in time.
+import { vi } from "vitest";
 import type { ChangesetIOError } from "../../src/changesets/errors.js";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
 import type { RegenPlan } from "../../src/changesets/services/deps-regen.js";
@@ -129,132 +132,138 @@ describe("DepsRegen plan/execute", () => {
 		rows: [{ dependency: "effect", type: "dependency", action: "updated", from: "3.18.0", to: "3.19.0" }],
 	};
 
-	it("plans stale deletes + fresh writes (resolving catalog: rows), then execute applies them", async () => {
-		const dir = mkdtempSync(join(tmpdir(), "depsregen-"));
-		const csDir = join(dir, ".changeset");
-		mkdirSync(csDir);
-		const staleFile = join(csDir, "stale-old-changeset.md");
-		writeFileSync(
-			staleFile,
-			["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
-		);
-		const mixedFile = join(csDir, "mixed.md");
-		writeFileSync(
-			mixedFile,
-			["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "x", "", "## Features", "", "y", ""].join("\n"),
-		);
+	it.effect("plans stale deletes + fresh writes (resolving catalog: rows), then execute applies them", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			const staleFile = join(csDir, "stale-old-changeset.md");
+			writeFileSync(
+				staleFile,
+				["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
+			);
+			const mixedFile = join(csDir, "mixed.md");
+			writeFileSync(
+				mixedFile,
+				["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "x", "", "## Features", "", "y", ""].join(
+					"\n",
+				),
+			);
 
-		const program = Effect.gen(function* () {
-			const svc = yield* DepsRegen;
-			const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
-			const result = yield* svc.execute(plan);
-			return { plan, result };
-		});
-
-		const { plan, result } = await Effect.runPromise(
-			program.pipe(Effect.provide(live), Effect.provide(NodeServices.layer)),
-		);
-
-		expect(plan.toWrite).toHaveLength(1);
-		expect(plan.toWrite[0]?.package).toBe("@scope/foo");
-		const rows = plan.toWrite[0]?.diff.rows ?? [];
-		expect(rows.find((r) => r.dependency === "@savvy-web/cli")?.to).toBe("1.2.3");
-		expect(plan.toDelete.map((d) => d.file)).toContain(staleFile);
-		expect(plan.skippedMixed).toContain(mixedFile);
-
-		expect(result.deleted).toContain(staleFile);
-		expect(existsSync(staleFile)).toBe(false);
-		expect(result.written).toHaveLength(1);
-		expect(existsSync(result.written[0] as string)).toBe(true);
-	});
-
-	it("plan() picks DISTINCT changeset filenames for two changed packages, even under a forced RNG collision", async () => {
-		const dir = mkdtempSync(join(tmpdir(), "depsregen-multi-"));
-		const csDir = join(dir, ".changeset");
-		mkdirSync(csDir);
-
-		const mkMultiSnap = (effectVersion: string) =>
-			wss([
-				{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: effectVersion } },
-				{ name: "@scope/bar", relativePath: "packages/bar", dependencies: { effect: effectVersion } },
-			]);
-		const beforeMulti = mkMultiSnap("3.18.0");
-		const afterMulti = mkMultiSnap("3.19.0");
-
-		const DiscoveryLayerMulti = Layer.succeed(WorkspaceDiscovery, {
-			listPackages: () =>
-				Effect.succeed([
-					{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" },
-					{ name: "@scope/bar", path: "/x/packages/bar", version: "1.0.0" },
-				]),
-			refresh: () => Effect.void,
-		} as never);
-		const DetectorLayerMulti = Layer.succeed(PublishabilityDetector, {
-			detect: () => Effect.succeed([{}]),
-		} as never);
-
-		const depsMulti = Layer.mergeAll(
-			pitStub(beforeMulti, afterMulti),
-			InspectorLayer,
-			DiscoveryLayerMulti,
-			DetectorLayerMulti,
-			configStub({ versionPrivate: false, ignored: [] }),
-		);
-		const liveMulti = DepsRegenLive.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
-
-		// Force every `pickRandomTriplet()` pick to be identical so a filename
-		// collision between the two changed packages is deterministic rather
-		// than left to chance (1-in-1000 odds would make this test flaky).
-		const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
-		try {
 			const program = Effect.gen(function* () {
 				const svc = yield* DepsRegen;
-				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
 			});
-			const plan = await Effect.runPromise(program.pipe(Effect.provide(liveMulti), Effect.provide(NodeServices.layer)));
 
-			expect(plan.toWrite).toHaveLength(2);
-			const basenames = plan.toWrite.map((w) => basename(w.file));
-			expect(new Set(basenames).size).toBe(basenames.length);
-		} finally {
-			randomSpy.mockRestore();
-		}
-	});
+			const { plan, result } = yield* program.pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
 
-	it("execute fails loudly with ChangesetIOError when a write cannot land", async () => {
-		const dir = mkdtempSync(join(tmpdir(), "depsregen-io-"));
-		const plan: RegenPlan = {
-			toDelete: [],
-			toWrite: [{ file: join(dir, "no-such-subdir", "brave-dogs-laugh.md"), package: "@x/a", diff: cannedDiff }],
-			skippedMixed: [],
-		};
-		const result = await Effect.runPromise(
+			expect(plan.toWrite).toHaveLength(1);
+			expect(plan.toWrite[0]?.package).toBe("@scope/foo");
+			const rows = plan.toWrite[0]?.diff.rows ?? [];
+			expect(rows.find((r) => r.dependency === "@savvy-web/cli")?.to).toBe("1.2.3");
+			expect(plan.toDelete.map((d) => d.file)).toContain(staleFile);
+			expect(plan.skippedMixed).toContain(mixedFile);
+
+			expect(result.deleted).toContain(staleFile);
+			expect(existsSync(staleFile)).toBe(false);
+			expect(result.written).toHaveLength(1);
+			expect(existsSync(result.written[0] as string)).toBe(true);
+		}),
+	);
+
+	it.effect(
+		"plan() picks DISTINCT changeset filenames for two changed packages, even under a forced RNG collision",
+		() =>
 			Effect.gen(function* () {
+				const dir = mkdtempSync(join(tmpdir(), "depsregen-multi-"));
+				const csDir = join(dir, ".changeset");
+				mkdirSync(csDir);
+
+				const mkMultiSnap = (effectVersion: string) =>
+					wss([
+						{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: effectVersion } },
+						{ name: "@scope/bar", relativePath: "packages/bar", dependencies: { effect: effectVersion } },
+					]);
+				const beforeMulti = mkMultiSnap("3.18.0");
+				const afterMulti = mkMultiSnap("3.19.0");
+
+				const DiscoveryLayerMulti = Layer.succeed(WorkspaceDiscovery, {
+					listPackages: () =>
+						Effect.succeed([
+							{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" },
+							{ name: "@scope/bar", path: "/x/packages/bar", version: "1.0.0" },
+						]),
+					refresh: () => Effect.void,
+				} as never);
+				const DetectorLayerMulti = Layer.succeed(PublishabilityDetector, {
+					detect: () => Effect.succeed([{}]),
+				} as never);
+
+				const depsMulti = Layer.mergeAll(
+					pitStub(beforeMulti, afterMulti),
+					InspectorLayer,
+					DiscoveryLayerMulti,
+					DetectorLayerMulti,
+					configStub({ versionPrivate: false, ignored: [] }),
+				);
+				const liveMulti = DepsRegenLive.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
+
+				// Force every `pickRandomTriplet()` pick to be identical so a filename
+				// collision between the two changed packages is deterministic rather
+				// than left to chance (1-in-1000 odds would make this test flaky).
+				const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+				try {
+					const program = Effect.gen(function* () {
+						const svc = yield* DepsRegen;
+						return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+					});
+					const plan = yield* program.pipe(Effect.provide(liveMulti), Effect.provide(NodeServices.layer));
+
+					expect(plan.toWrite).toHaveLength(2);
+					const basenames = plan.toWrite.map((w) => basename(w.file));
+					expect(new Set(basenames).size).toBe(basenames.length);
+				} finally {
+					randomSpy.mockRestore();
+				}
+			}),
+	);
+
+	it.effect("execute fails loudly with ChangesetIOError when a write cannot land", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-io-"));
+			const plan: RegenPlan = {
+				toDelete: [],
+				toWrite: [{ file: join(dir, "no-such-subdir", "brave-dogs-laugh.md"), package: "@x/a", diff: cannedDiff }],
+				skippedMixed: [],
+			};
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				return yield* svc.execute(plan).pipe(Effect.flip);
-			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer)),
-		);
-		expect(result._tag).toBe("ChangesetIOError");
-		expect((result as ChangesetIOError).operation).toBe("write");
-	});
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+			expect(result._tag).toBe("ChangesetIOError");
+			expect((result as ChangesetIOError).operation).toBe("write");
+		}),
+	);
 
-	it("execute tolerates delete failures and still reports written files", async () => {
-		const dir = mkdtempSync(join(tmpdir(), "depsregen-io-"));
-		const plan: RegenPlan = {
-			toDelete: [{ file: join(dir, "never-existed.md"), package: "@x/a" }],
-			toWrite: [{ file: join(dir, "calm-owls-sing.md"), package: "@x/a", diff: cannedDiff }],
-			skippedMixed: [],
-		};
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("execute tolerates delete failures and still reports written files", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-io-"));
+			const plan: RegenPlan = {
+				toDelete: [{ file: join(dir, "never-existed.md"), package: "@x/a" }],
+				toWrite: [{ file: join(dir, "calm-owls-sing.md"), package: "@x/a", diff: cannedDiff }],
+				skippedMixed: [],
+			};
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				return yield* svc.execute(plan);
-			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer)),
-		);
-		expect(result.written).toEqual([join(dir, "calm-owls-sing.md")]);
-		expect(result.deleted).toEqual([]);
-		expect(existsSync(join(dir, "calm-owls-sing.md"))).toBe(true);
-	});
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+			expect(result.written).toEqual([join(dir, "calm-owls-sing.md")]);
+			expect(result.deleted).toEqual([]);
+			expect(existsSync(join(dir, "calm-owls-sing.md"))).toBe(true);
+		}),
+	);
 });
 
 describe("DepsRegen — devDependency-only diffs must not delete pure changesets (#258)", () => {
@@ -302,32 +311,32 @@ describe("DepsRegen — devDependency-only diffs must not delete pure changesets
 	);
 	const devDepLive = DepsRegenLive.pipe(Layer.provide(devDeps), Layer.provide(Git.layer));
 
-	it("plan() excludes the pre-existing pure changeset from toDelete, and execute() leaves it on disk", async () => {
-		const dir = mkdtempSync(join(tmpdir(), "depsregen-devdep-"));
-		const csDir = join(dir, ".changeset");
-		mkdirSync(csDir);
-		const preExisting = join(csDir, "pre-existing-foo.md");
-		writeFileSync(
-			preExisting,
-			["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
-		);
+	it.effect("plan() excludes the pre-existing pure changeset from toDelete, and execute() leaves it on disk", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-devdep-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			const preExisting = join(csDir, "pre-existing-foo.md");
+			writeFileSync(
+				preExisting,
+				["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
+			);
 
-		const program = Effect.gen(function* () {
-			const svc = yield* DepsRegen;
-			const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
-			const result = yield* svc.execute(plan);
-			return { plan, result };
-		});
+			const program = Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
+			});
 
-		const { plan, result } = await Effect.runPromise(
-			program.pipe(Effect.provide(devDepLive), Effect.provide(NodeServices.layer)),
-		);
+			const { plan, result } = yield* program.pipe(Effect.provide(devDepLive), Effect.provide(NodeServices.layer));
 
-		expect(plan.toWrite).toHaveLength(0);
-		expect(plan.toDelete.map((d) => d.file)).not.toContain(preExisting);
-		expect(result.deleted).not.toContain(preExisting);
-		expect(existsSync(preExisting)).toBe(true);
-	});
+			expect(plan.toWrite).toHaveLength(0);
+			expect(plan.toDelete.map((d) => d.file)).not.toContain(preExisting);
+			expect(result.deleted).not.toContain(preExisting);
+			expect(existsSync(preExisting)).toBe(true);
+		}),
+	);
 });
 
 describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
@@ -377,14 +386,16 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 		return dir;
 	};
 
-	const runGatingPlan = async (
+	// Per-test provide is REQUIRED: `config` is a parameter — each gating case supplies a
+	// different mocked ChangesetConfig — and the fixture dir is rebuilt per call.
+	const runGatingPlan = (
 		config: Layer.Layer<ChangesetConfig>,
 		options: {
 			readonly package?: string;
 			readonly packages?: ReadonlyArray<string>;
 			readonly exclude?: ReadonlyArray<string>;
 		} = {},
-	): Promise<RegenPlan> => {
+	): Effect.Effect<RegenPlan> => {
 		const dir = makeGatingFixture();
 		const deps = Layer.mergeAll(
 			GatingPitLayer,
@@ -398,81 +409,105 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 			const svc = yield* DepsRegen;
 			return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER", ...options });
 		});
-		return Effect.runPromise(program.pipe(Effect.provide(live), Effect.provide(NodeServices.layer)));
+		return program.pipe(Effect.provide(live), Effect.provide(NodeServices.layer)) as Effect.Effect<RegenPlan>;
 	};
 
 	const writtenPackages = (plan: RegenPlan) => plan.toWrite.map((w) => w.package).sort();
 	const deletedPackages = (plan: RegenPlan) => plan.toDelete.map((d) => d.package).sort();
 
-	it("case 1: versionPrivate false, no ignores -> only the publishable package (today's behavior)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }));
-		expect(writtenPackages(plan)).toEqual(["@x/pub"]);
-		expect(deletedPackages(plan)).toEqual(["@x/pub"]);
-	});
+	it.effect("case 1: versionPrivate false, no ignores -> only the publishable package (today's behavior)", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: false, ignored: [] }));
+			expect(writtenPackages(plan)).toEqual(["@x/pub"]);
+			expect(deletedPackages(plan)).toEqual(["@x/pub"]);
+		}),
+	);
 
-	it("case 2: versionPrivate true, no ignores -> both packages", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: true, ignored: [] }));
-		expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
-		expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
-	});
+	it.effect("case 2: versionPrivate true, no ignores -> both packages", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: true, ignored: [] }));
+			expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+			expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+		}),
+	);
 
-	it("case 3: versionPrivate true, @x/pub ignored -> only @x/priv (ignore beats publishable)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: true, ignored: ["@x/pub"] }));
-		expect(writtenPackages(plan)).toEqual(["@x/priv"]);
-		expect(deletedPackages(plan)).toEqual(["@x/priv"]);
-	});
+	it.effect("case 3: versionPrivate true, @x/pub ignored -> only @x/priv (ignore beats publishable)", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: true, ignored: ["@x/pub"] }));
+			expect(writtenPackages(plan)).toEqual(["@x/priv"]);
+			expect(deletedPackages(plan)).toEqual(["@x/priv"]);
+		}),
+	);
 
-	it("case 4: versionPrivate true, @x/priv ignored -> only @x/pub (ignore beats versionPrivate)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: true, ignored: ["@x/priv"] }));
-		expect(writtenPackages(plan)).toEqual(["@x/pub"]);
-		expect(deletedPackages(plan)).toEqual(["@x/pub"]);
-	});
+	it.effect("case 4: versionPrivate true, @x/priv ignored -> only @x/pub (ignore beats versionPrivate)", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: true, ignored: ["@x/priv"] }));
+			expect(writtenPackages(plan)).toEqual(["@x/pub"]);
+			expect(deletedPackages(plan)).toEqual(["@x/pub"]);
+		}),
+	);
 
-	it("case 5: explicit --package @x/priv, versionPrivate false, no ignores -> @x/priv (explicit package bypasses versionable)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), { package: "@x/priv" });
-		expect(writtenPackages(plan)).toEqual(["@x/priv"]);
-		expect(deletedPackages(plan)).toEqual(["@x/priv"]);
-	});
+	it.effect(
+		"case 5: explicit --package @x/priv, versionPrivate false, no ignores -> @x/priv (explicit package bypasses versionable)",
+		() =>
+			Effect.gen(function* () {
+				const plan = yield* runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), { package: "@x/priv" });
+				expect(writtenPackages(plan)).toEqual(["@x/priv"]);
+				expect(deletedPackages(plan)).toEqual(["@x/priv"]);
+			}),
+	);
 
-	it("case 6: explicit --package @x/priv, @x/priv ignored -> nothing written or deleted (ignore beats explicit package)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: ["@x/priv"] }), {
-			package: "@x/priv",
-		});
-		expect(writtenPackages(plan)).toEqual([]);
-		expect(deletedPackages(plan)).toEqual([]);
-	});
+	it.effect(
+		"case 6: explicit --package @x/priv, @x/priv ignored -> nothing written or deleted (ignore beats explicit package)",
+		() =>
+			Effect.gen(function* () {
+				const plan = yield* runGatingPlan(configStub({ versionPrivate: false, ignored: ["@x/priv"] }), {
+					package: "@x/priv",
+				});
+				expect(writtenPackages(plan)).toEqual([]);
+				expect(deletedPackages(plan)).toEqual([]);
+			}),
+	);
 
-	it("case 7: packages batch include targets both in one call, bypassing versionable (#231)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
-			packages: ["@x/pub", "@x/priv"],
-		});
-		expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
-		expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
-	});
+	it.effect("case 7: packages batch include targets both in one call, bypassing versionable (#231)", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
+				packages: ["@x/pub", "@x/priv"],
+			});
+			expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+			expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+		}),
+	);
 
-	it("case 8: repo-wide run with exclude skips the package AND leaves its stale changeset alone (#231)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: true, ignored: [] }), {
-			exclude: ["@x/priv"],
-		});
-		expect(writtenPackages(plan)).toEqual(["@x/pub"]);
-		expect(deletedPackages(plan)).toEqual(["@x/pub"]);
-	});
+	it.effect("case 8: repo-wide run with exclude skips the package AND leaves its stale changeset alone (#231)", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: true, ignored: [] }), {
+				exclude: ["@x/priv"],
+			});
+			expect(writtenPackages(plan)).toEqual(["@x/pub"]);
+			expect(deletedPackages(plan)).toEqual(["@x/pub"]);
+		}),
+	);
 
-	it("case 9: exclude wins over an explicit packages include (#231)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
-			packages: ["@x/pub", "@x/priv"],
-			exclude: ["@x/priv"],
-		});
-		expect(writtenPackages(plan)).toEqual(["@x/pub"]);
-		expect(deletedPackages(plan)).toEqual(["@x/pub"]);
-	});
+	it.effect("case 9: exclude wins over an explicit packages include (#231)", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
+				packages: ["@x/pub", "@x/priv"],
+				exclude: ["@x/priv"],
+			});
+			expect(writtenPackages(plan)).toEqual(["@x/pub"]);
+			expect(deletedPackages(plan)).toEqual(["@x/pub"]);
+		}),
+	);
 
-	it("case 10: package and packages union into one target set (#231)", async () => {
-		const plan = await runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
-			package: "@x/pub",
-			packages: ["@x/priv"],
-		});
-		expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
-		expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
-	});
+	it.effect("case 10: package and packages union into one target set (#231)", () =>
+		Effect.gen(function* () {
+			const plan = yield* runGatingPlan(configStub({ versionPrivate: false, ignored: [] }), {
+				package: "@x/pub",
+				packages: ["@x/priv"],
+			});
+			expect(writtenPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+			expect(deletedPackages(plan)).toEqual(["@x/priv", "@x/pub"]);
+		}),
+	);
 });

@@ -1,13 +1,12 @@
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Config, ConfigProvider, Effect, Option } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ActionInput } from "../../src/runtime/ActionInput.js";
 import { ActionsConfigProvider } from "../../src/runtime/ActionsConfigProvider.js";
 
-const run = <A>(config: Config.Config<A>) =>
-	Effect.runPromise(Effect.provide(config, ConfigProvider.layer(ActionsConfigProvider)));
+const run = <A>(config: Config.Config<A>) => Effect.provide(config, ConfigProvider.layer(ActionsConfigProvider));
 
 const runExit = <A>(config: Config.Config<A>) =>
-	Effect.runPromiseExit(Effect.provide(config, ConfigProvider.layer(ActionsConfigProvider)));
+	Effect.exit(Effect.provide(config, ConfigProvider.layer(ActionsConfigProvider)));
 
 let envKeysSet: string[] = [];
 
@@ -28,119 +27,150 @@ afterEach(() => {
 });
 
 describe("ActionInput.boolean (YAML 1.2 Core Schema)", () => {
-	it("accepts 'true' → true", async () => {
-		setEnv("INPUT_FLAG", "true");
-		expect(await run(ActionInput.boolean("flag"))).toBe(true);
-	});
+	it.effect("accepts 'true' → true", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "true");
+			expect(yield* run(ActionInput.boolean("flag"))).toBe(true);
+		}),
+	);
 
-	it("accepts 'True' → true", async () => {
-		setEnv("INPUT_FLAG", "True");
-		expect(await run(ActionInput.boolean("flag"))).toBe(true);
-	});
+	it.effect("accepts 'True' → true", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "True");
+			expect(yield* run(ActionInput.boolean("flag"))).toBe(true);
+		}),
+	);
 
-	it("accepts 'TRUE' → true", async () => {
-		setEnv("INPUT_FLAG", "TRUE");
-		expect(await run(ActionInput.boolean("flag"))).toBe(true);
-	});
+	it.effect("accepts 'TRUE' → true", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "TRUE");
+			expect(yield* run(ActionInput.boolean("flag"))).toBe(true);
+		}),
+	);
 
-	it("accepts 'false' → false", async () => {
-		setEnv("INPUT_FLAG", "false");
-		expect(await run(ActionInput.boolean("flag"))).toBe(false);
-	});
+	it.effect("accepts 'false' → false", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "false");
+			expect(yield* run(ActionInput.boolean("flag"))).toBe(false);
+		}),
+	);
 
-	it("accepts 'False' → false", async () => {
-		setEnv("INPUT_FLAG", "False");
-		expect(await run(ActionInput.boolean("flag"))).toBe(false);
-	});
+	it.effect("accepts 'False' → false", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "False");
+			expect(yield* run(ActionInput.boolean("flag"))).toBe(false);
+		}),
+	);
 
-	it("accepts 'FALSE' → false", async () => {
-		setEnv("INPUT_FLAG", "FALSE");
-		expect(await run(ActionInput.boolean("flag"))).toBe(false);
-	});
+	it.effect("accepts 'FALSE' → false", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "FALSE");
+			expect(yield* run(ActionInput.boolean("flag"))).toBe(false);
+		}),
+	);
 
-	it("tolerates surrounding whitespace (toolkit trims before the check)", async () => {
-		setEnv("INPUT_FLAG", "  true  ");
-		expect(await run(ActionInput.boolean("flag"))).toBe(true);
-	});
+	it.effect("tolerates surrounding whitespace (toolkit trims before the check)", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "  true  ");
+			expect(yield* run(ActionInput.boolean("flag"))).toBe(true);
+		}),
+	);
 
-	const expectInvalidData = async (value: string) => {
-		setEnv("INPUT_FLAG", value);
-		const exit = await runExit(ActionInput.boolean("flag"));
-		expect(exit._tag).toBe("Failure");
-		const maybeError = exit._tag === "Failure" ? Cause.findErrorOption(exit.cause) : Option.none();
-		if (Option.isSome(maybeError)) {
-			expect(maybeError.value).toBeInstanceOf(Config.ConfigError);
-		} else {
-			throw new Error(`expected a Fail cause, got ${JSON.stringify(exit)}`);
-		}
-	};
+	const expectInvalidData = (value: string) =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", value);
+			const exit = yield* runExit(ActionInput.boolean("flag"));
+			expect(exit._tag).toBe("Failure");
+			const maybeError = exit._tag === "Failure" ? Cause.findErrorOption(exit.cause) : Option.none();
+			if (Option.isSome(maybeError)) {
+				expect(maybeError.value).toBeInstanceOf(Config.ConfigError);
+			} else {
+				throw new Error(`expected a Fail cause, got ${JSON.stringify(exit)}`);
+			}
+		});
 
-	it("rejects 'yes' with ConfigError.InvalidData", () => expectInvalidData("yes"));
-	it("rejects 'on' with ConfigError.InvalidData", () => expectInvalidData("on"));
-	it("rejects '1' with ConfigError.InvalidData", () => expectInvalidData("1"));
-	it("rejects '0' with ConfigError.InvalidData", () => expectInvalidData("0"));
-	it("rejects 'no' with ConfigError.InvalidData", () => expectInvalidData("no"));
-	it("rejects 'off' with ConfigError.InvalidData", () => expectInvalidData("off"));
-	it("rejects 'tRue' (mixed case) with ConfigError.InvalidData", () => expectInvalidData("tRue"));
+	it.effect("rejects 'yes' with ConfigError.InvalidData", () => expectInvalidData("yes"));
+	it.effect("rejects 'on' with ConfigError.InvalidData", () => expectInvalidData("on"));
+	it.effect("rejects '1' with ConfigError.InvalidData", () => expectInvalidData("1"));
+	it.effect("rejects '0' with ConfigError.InvalidData", () => expectInvalidData("0"));
+	it.effect("rejects 'no' with ConfigError.InvalidData", () => expectInvalidData("no"));
+	it.effect("rejects 'off' with ConfigError.InvalidData", () => expectInvalidData("off"));
+	it.effect("rejects 'tRue' (mixed case) with ConfigError.InvalidData", () => expectInvalidData("tRue"));
 
-	it("error message cites the YAML 1.2 Core Schema list", async () => {
-		setEnv("INPUT_FLAG", "yes");
-		const exit = await runExit(ActionInput.boolean("flag"));
-		expect(exit._tag).toBe("Failure");
-		const maybeMsgError = exit._tag === "Failure" ? Cause.findErrorOption(exit.cause) : Option.none();
-		if (Option.isSome(maybeMsgError)) {
-			const message = (maybeMsgError.value as Config.ConfigError).message;
-			expect(message).toContain("Input does not meet YAML 1.2");
-			expect(message).toContain("Core Schema");
-			expect(message).toContain("true | True | TRUE | false | False | FALSE");
-		} else {
-			throw new Error("expected a Fail cause");
-		}
-	});
+	it.effect("error message cites the YAML 1.2 Core Schema list", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_FLAG", "yes");
+			const exit = yield* runExit(ActionInput.boolean("flag"));
+			expect(exit._tag).toBe("Failure");
+			const maybeMsgError = exit._tag === "Failure" ? Cause.findErrorOption(exit.cause) : Option.none();
+			if (Option.isSome(maybeMsgError)) {
+				const message = (maybeMsgError.value as Config.ConfigError).message;
+				expect(message).toContain("Input does not meet YAML 1.2");
+				expect(message).toContain("Core Schema");
+				expect(message).toContain("true | True | TRUE | false | False | FALSE");
+			} else {
+				throw new Error("expected a Fail cause");
+			}
+		}),
+	);
 
-	it("composes with Config.withDefault when input is unset", async () => {
-		delete process.env.INPUT_FLAG;
-		const result = await run(Config.withDefault(ActionInput.boolean("flag"), false));
-		expect(result).toBe(false);
-	});
+	it.effect("composes with Config.withDefault when input is unset", () =>
+		Effect.gen(function* () {
+			delete process.env.INPUT_FLAG;
+			const result = yield* run(Config.withDefault(ActionInput.boolean("flag"), false));
+			expect(result).toBe(false);
+		}),
+	);
 });
 
 describe("ActionInput.multiline", () => {
-	it("splits on newlines", async () => {
-		setEnv("INPUT_PATHS", "a\nb\nc");
-		expect(await run(ActionInput.multiline("paths"))).toEqual(["a", "b", "c"]);
-	});
+	it.effect("splits on newlines", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_PATHS", "a\nb\nc");
+			expect(yield* run(ActionInput.multiline("paths"))).toEqual(["a", "b", "c"]);
+		}),
+	);
 
-	it("drops empty lines", async () => {
-		setEnv("INPUT_PATHS", "a\n\nb\n");
-		expect(await run(ActionInput.multiline("paths"))).toEqual(["a", "b"]);
-	});
+	it.effect("drops empty lines", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_PATHS", "a\n\nb\n");
+			expect(yield* run(ActionInput.multiline("paths"))).toEqual(["a", "b"]);
+		}),
+	);
 
-	it("trims each line", async () => {
-		setEnv("INPUT_PATHS", "  a  \n b ");
-		expect(await run(ActionInput.multiline("paths"))).toEqual(["a", "b"]);
-	});
+	it.effect("trims each line", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_PATHS", "  a  \n b ");
+			expect(yield* run(ActionInput.multiline("paths"))).toEqual(["a", "b"]);
+		}),
+	);
 
-	it("returns single-element array for single line", async () => {
-		setEnv("INPUT_PATHS", "solo");
-		expect(await run(ActionInput.multiline("paths"))).toEqual(["solo"]);
-	});
+	it.effect("returns single-element array for single line", () =>
+		Effect.gen(function* () {
+			setEnv("INPUT_PATHS", "solo");
+			expect(yield* run(ActionInput.multiline("paths"))).toEqual(["solo"]);
+		}),
+	);
 
-	it("missing input is a ConfigError (not [])", async () => {
-		delete process.env.INPUT_PATHS;
-		const exit = await runExit(ActionInput.multiline("paths"));
-		expect(exit._tag).toBe("Failure");
-		const maybeMissing = exit._tag === "Failure" ? Cause.findErrorOption(exit.cause) : Option.none();
-		if (Option.isSome(maybeMissing)) {
-			expect(maybeMissing.value).toBeInstanceOf(Config.ConfigError);
-		} else {
-			throw new Error("expected a Fail cause");
-		}
-	});
+	it.effect("missing input is a ConfigError (not [])", () =>
+		Effect.gen(function* () {
+			delete process.env.INPUT_PATHS;
+			const exit = yield* runExit(ActionInput.multiline("paths"));
+			expect(exit._tag).toBe("Failure");
+			const maybeMissing = exit._tag === "Failure" ? Cause.findErrorOption(exit.cause) : Option.none();
+			if (Option.isSome(maybeMissing)) {
+				expect(maybeMissing.value).toBeInstanceOf(Config.ConfigError);
+			} else {
+				throw new Error("expected a Fail cause");
+			}
+		}),
+	);
 
-	it("composes with Config.withDefault to produce []", async () => {
-		delete process.env.INPUT_PATHS;
-		const result = await run(Config.withDefault(ActionInput.multiline("paths"), [] as ReadonlyArray<string>));
-		expect(result).toEqual([]);
-	});
+	it.effect("composes with Config.withDefault to produce []", () =>
+		Effect.gen(function* () {
+			delete process.env.INPUT_PATHS;
+			const result = yield* run(Config.withDefault(ActionInput.multiline("paths"), [] as ReadonlyArray<string>));
+			expect(result).toEqual([]);
+		}),
+	);
 });

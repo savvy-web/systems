@@ -33,7 +33,7 @@ pnpm install
 - **Formatter:** Biome -- tabs, no trailing commas
 - **Linting:** Biome with strict rules including `useNodejsImportProtocol`
 - **TypeScript:** Strict mode, ES modules with `.js` extensions required
-- **Testing:** Vitest via `@vitest-agent/plugin`; plugin hook scripts are covered by bats and `shellcheck` (see [`plugins/silk/tests/README.md`](./plugins/silk/tests/README.md) for the harness conventions and the `bats`/`shellcheck`/`jq` prerequisites)
+- **Testing:** Vitest via `@vitest-agent/plugin`. A test file that runs an Effect imports `describe`/`it`/`expect` from `@effect/vitest`; a file with no Effect surface stays on plain `vitest`. Any file calling `vi.mock` must import `vi` from `"vitest"` — vitest hoists `vi.mock` above the imports and the transform recognises only that specifier — while `vi.fn`/`vi.spyOn` work from either. Plugin hook scripts are covered by bats and `shellcheck` (see [`plugins/silk/tests/README.md`](./plugins/silk/tests/README.md) for the harness conventions and the `bats`/`shellcheck`/`jq` prerequisites)
 - **Imports:** Use `node:` protocol for Node.js built-ins; separate type imports
 
 ## Pre-commit hooks

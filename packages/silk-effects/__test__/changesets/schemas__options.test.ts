@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { ConfigurationError } from "../../src/changesets/errors.js";
 import { ChangesetOptionsSchema, RepoSchema, validateChangesetOptions } from "../../src/changesets/schemas/options.js";
@@ -142,50 +142,69 @@ describe("ChangesetOptionsSchema", () => {
 });
 
 describe("validateChangesetOptions", () => {
-	const run = (input: unknown) => Effect.runSync(validateChangesetOptions(input));
-	const runFail = (input: unknown) => Effect.runSync(validateChangesetOptions(input).pipe(Effect.flip));
+	// Both helpers return the Effect itself; the tests `yield*` it under `it.effect`.
+	// `runFail` keeps `Effect.flip`, so a typed ConfigurationError arrives as the success
+	// value — a defect would still escape and fail the test loudly rather than be asserted on.
+	const run = (input: unknown) => validateChangesetOptions(input);
+	const runFail = (input: unknown) => validateChangesetOptions(input).pipe(Effect.flip);
 
-	it("succeeds with valid options", () => {
-		const opts = run({ repo: "owner/repo" });
-		expect(opts.repo).toBe("owner/repo");
-	});
+	it.effect("succeeds with valid options", () =>
+		Effect.gen(function* () {
+			const opts = yield* run({ repo: "owner/repo" });
+			expect(opts.repo).toBe("owner/repo");
+		}),
+	);
 
-	it("succeeds with extended options", () => {
-		const opts = run({ repo: "owner/repo", commitLinks: true });
-		expect(opts.commitLinks).toBe(true);
-	});
+	it.effect("succeeds with extended options", () =>
+		Effect.gen(function* () {
+			const opts = yield* run({ repo: "owner/repo", commitLinks: true });
+			expect(opts.commitLinks).toBe(true);
+		}),
+	);
 
-	it("fails on null input", () => {
-		const err = runFail(null);
-		expect(err).toBeInstanceOf(ConfigurationError);
-		expect(err.field).toBe("options");
-		expect(err.reason).toContain("Configuration is required");
-	});
+	it.effect("fails on null input", () =>
+		Effect.gen(function* () {
+			const err = yield* runFail(null);
+			expect(err).toBeInstanceOf(ConfigurationError);
+			expect(err.field).toBe("options");
+			expect(err.reason).toContain("Configuration is required");
+		}),
+	);
 
-	it("fails on undefined input", () => {
-		const err = runFail(undefined);
-		expect(err.field).toBe("options");
-	});
+	it.effect("fails on undefined input", () =>
+		Effect.gen(function* () {
+			const err = yield* runFail(undefined);
+			expect(err.field).toBe("options");
+		}),
+	);
 
-	it("fails on non-object input", () => {
-		const err = runFail("not an object");
-		expect(err.reason).toContain("must be an object");
-	});
+	it.effect("fails on non-object input", () =>
+		Effect.gen(function* () {
+			const err = yield* runFail("not an object");
+			expect(err.reason).toContain("must be an object");
+		}),
+	);
 
-	it("fails on missing repo", () => {
-		const err = runFail({});
-		expect(err.field).toBe("repo");
-		expect(err.reason).toContain("Repository name is required");
-	});
+	it.effect("fails on missing repo", () =>
+		Effect.gen(function* () {
+			const err = yield* runFail({});
+			expect(err.field).toBe("repo");
+			expect(err.reason).toContain("Repository name is required");
+		}),
+	);
 
-	it("fails on invalid repo format", () => {
-		const err = runFail({ repo: "invalid" });
-		expect(err.field).toBe("repo");
-		expect(err.reason).toContain("Invalid repository format");
-	});
+	it.effect("fails on invalid repo format", () =>
+		Effect.gen(function* () {
+			const err = yield* runFail({ repo: "invalid" });
+			expect(err.field).toBe("repo");
+			expect(err.reason).toContain("Invalid repository format");
+		}),
+	);
 
-	it("preserves prior art error message for null", () => {
-		const err = runFail(null);
-		expect(err.reason).toContain("@savvy-web/changesets");
-	});
+	it.effect("preserves prior art error message for null", () =>
+		Effect.gen(function* () {
+			const err = yield* runFail(null);
+			expect(err.reason).toContain("@savvy-web/changesets");
+		}),
+	);
 });

@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit } from "effect";
-import { describe, expect, it } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import type { GitHubClientTestState } from "../../src/layers/GitHubClientTest.js";
 import { GitHubClientTest } from "../../src/layers/GitHubClientTest.js";
@@ -15,12 +15,11 @@ const provideEmpty = <A, E>(effect: Effect.Effect<A, E, GitHubClientService>) =>
 	Effect.provide(effect, GitHubClientTest.empty());
 
 const run = <A, E>(state: GitHubClientTestState, effect: Effect.Effect<A, E, GitHubClientService>) =>
-	Effect.runPromise(provide(state, effect));
+	provide(state, effect);
 
-const runEmpty = <A, E>(effect: Effect.Effect<A, E, GitHubClientService>) => Effect.runPromise(provideEmpty(effect));
+const runEmpty = <A, E>(effect: Effect.Effect<A, E, GitHubClientService>) => provideEmpty(effect);
 
-const runExitEmpty = <A, E>(effect: Effect.Effect<A, E, GitHubClientService>) =>
-	Effect.runPromise(Effect.exit(provideEmpty(effect)));
+const runExitEmpty = <A, E>(effect: Effect.Effect<A, E, GitHubClientService>) => Effect.exit(provideEmpty(effect));
 
 // -- Service method shorthands --
 
@@ -34,111 +33,127 @@ const repo = Effect.flatMap(GitHubClient, (svc) => svc.repo);
 
 describe("GitHubClient", () => {
 	describe("rest", () => {
-		it("returns data from recorded response", async () => {
-			const state: GitHubClientTestState = {
-				restResponses: new Map([["repos.get", { data: { full_name: "owner/repo" } }]]),
-				graphqlResponses: new Map(),
-				paginateResponses: new Map(),
-				repo: { owner: "test-owner", repo: "test-repo" },
-			};
+		it.effect("returns data from recorded response", () =>
+			Effect.gen(function* () {
+				const state: GitHubClientTestState = {
+					restResponses: new Map([["repos.get", { data: { full_name: "owner/repo" } }]]),
+					graphqlResponses: new Map(),
+					paginateResponses: new Map(),
+					repo: { owner: "test-owner", repo: "test-repo" },
+				};
 
-			const result = await run(
-				state,
-				rest("repos.get", async () => ({ data: { full_name: "ignored" } })),
-			);
-			expect(result).toEqual({ full_name: "owner/repo" });
-		});
+				const result = yield* run(
+					state,
+					rest("repos.get", async () => ({ data: { full_name: "ignored" } })),
+				);
+				expect(result).toEqual({ full_name: "owner/repo" });
+			}),
+		);
 
-		it("fails on unrecorded operation", async () => {
-			const exit = await runExitEmpty(rest("repos.get", async () => ({ data: {} })));
-			expect(Exit.isFailure(exit)).toBe(true);
-			if (Exit.isFailure(exit)) {
-				const error = exit.cause;
-				expect(String(error)).toContain("GitHubClientError");
-			}
-		});
+		it.effect("fails on unrecorded operation", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExitEmpty(rest("repos.get", async () => ({ data: {} })));
+				expect(Exit.isFailure(exit)).toBe(true);
+				if (Exit.isFailure(exit)) {
+					const error = exit.cause;
+					expect(String(error)).toContain("GitHubClientError");
+				}
+			}),
+		);
 
 		// Regression contract for issue #361: the callback parameter must accept
 		// a `GitHubOctokit` annotation (previously rejected by the `unknown`
 		// typing's contravariance) while `unknown`-annotated legacy callbacks
 		// keep compiling. The annotations below ARE the assertion — this file
 		// failing types:check is the regression signal.
-		it("accepts a GitHubOctokit-annotated callback (#361)", async () => {
-			const state: GitHubClientTestState = {
-				restResponses: new Map([["repos.get", { data: { default_branch: "main" } }]]),
-				graphqlResponses: new Map(),
-				paginateResponses: new Map(),
-				repo: { owner: "test-owner", repo: "test-repo" },
-			};
+		it.effect("accepts a GitHubOctokit-annotated callback (#361)", () =>
+			Effect.gen(function* () {
+				const state: GitHubClientTestState = {
+					restResponses: new Map([["repos.get", { data: { default_branch: "main" } }]]),
+					graphqlResponses: new Map(),
+					paginateResponses: new Map(),
+					repo: { owner: "test-owner", repo: "test-repo" },
+				};
 
-			const result = await run(
-				state,
-				Effect.flatMap(GitHubClient, (svc) =>
-					svc.rest("repos.get", (octokit: GitHubOctokit) =>
-						octokit.rest.repos.get({ owner: "test-owner", repo: "test-repo" }).then((r) => ({
-							data: { default_branch: r.data.default_branch },
-						})),
+				const result = yield* run(
+					state,
+					Effect.flatMap(GitHubClient, (svc) =>
+						svc.rest("repos.get", (octokit: GitHubOctokit) =>
+							octokit.rest.repos.get({ owner: "test-owner", repo: "test-repo" }).then((r) => ({
+								data: { default_branch: r.data.default_branch },
+							})),
+						),
 					),
-				),
-			);
-			expect(result).toEqual({ default_branch: "main" });
-		});
+				);
+				expect(result).toEqual({ default_branch: "main" });
+			}),
+		);
 
-		it("still accepts an unknown-annotated callback", async () => {
-			const state: GitHubClientTestState = {
-				restResponses: new Map([["repos.get", { data: { full_name: "owner/repo" } }]]),
-				graphqlResponses: new Map(),
-				paginateResponses: new Map(),
-				repo: { owner: "test-owner", repo: "test-repo" },
-			};
+		it.effect("still accepts an unknown-annotated callback", () =>
+			Effect.gen(function* () {
+				const state: GitHubClientTestState = {
+					restResponses: new Map([["repos.get", { data: { full_name: "owner/repo" } }]]),
+					graphqlResponses: new Map(),
+					paginateResponses: new Map(),
+					repo: { owner: "test-owner", repo: "test-repo" },
+				};
 
-			const result = await run(
-				state,
-				Effect.flatMap(GitHubClient, (svc) =>
-					svc.rest("repos.get", async (_octokit: unknown) => ({ data: { full_name: "ignored" } })),
-				),
-			);
-			expect(result).toEqual({ full_name: "owner/repo" });
-		});
+				const result = yield* run(
+					state,
+					Effect.flatMap(GitHubClient, (svc) =>
+						svc.rest("repos.get", async (_octokit: unknown) => ({ data: { full_name: "ignored" } })),
+					),
+				);
+				expect(result).toEqual({ full_name: "owner/repo" });
+			}),
+		);
 	});
 
 	describe("graphql", () => {
-		it("returns data from recorded response", async () => {
-			const query = "query { viewer { login } }";
-			const state: GitHubClientTestState = {
-				restResponses: new Map(),
-				graphqlResponses: new Map([[query, { viewer: { login: "test-user" } }]]),
-				paginateResponses: new Map(),
-				repo: { owner: "test-owner", repo: "test-repo" },
-			};
+		it.effect("returns data from recorded response", () =>
+			Effect.gen(function* () {
+				const query = "query { viewer { login } }";
+				const state: GitHubClientTestState = {
+					restResponses: new Map(),
+					graphqlResponses: new Map([[query, { viewer: { login: "test-user" } }]]),
+					paginateResponses: new Map(),
+					repo: { owner: "test-owner", repo: "test-repo" },
+				};
 
-			const result = await run(state, graphql<{ viewer: { login: string } }>(query));
-			expect(result).toEqual({ viewer: { login: "test-user" } });
-		});
+				const result = yield* run(state, graphql<{ viewer: { login: string } }>(query));
+				expect(result).toEqual({ viewer: { login: "test-user" } });
+			}),
+		);
 
-		it("fails on unrecorded query", async () => {
-			const exit = await runExitEmpty(graphql("query { viewer { login } }"));
-			expect(Exit.isFailure(exit)).toBe(true);
-		});
+		it.effect("fails on unrecorded query", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExitEmpty(graphql("query { viewer { login } }"));
+				expect(Exit.isFailure(exit)).toBe(true);
+			}),
+		);
 	});
 
 	describe("repo", () => {
-		it("returns owner and repo from test state", async () => {
-			const state: GitHubClientTestState = {
-				restResponses: new Map(),
-				graphqlResponses: new Map(),
-				paginateResponses: new Map(),
-				repo: { owner: "my-org", repo: "my-repo" },
-			};
+		it.effect("returns owner and repo from test state", () =>
+			Effect.gen(function* () {
+				const state: GitHubClientTestState = {
+					restResponses: new Map(),
+					graphqlResponses: new Map(),
+					paginateResponses: new Map(),
+					repo: { owner: "my-org", repo: "my-repo" },
+				};
 
-			const result = await run(state, repo);
-			expect(result).toEqual({ owner: "my-org", repo: "my-repo" });
-		});
+				const result = yield* run(state, repo);
+				expect(result).toEqual({ owner: "my-org", repo: "my-repo" });
+			}),
+		);
 
-		it("returns defaults from empty()", async () => {
-			const result = await runEmpty(repo);
-			expect(result).toEqual({ owner: "test-owner", repo: "test-repo" });
-		});
+		it.effect("returns defaults from empty()", () =>
+			Effect.gen(function* () {
+				const result = yield* runEmpty(repo);
+				expect(result).toEqual({ owner: "test-owner", repo: "test-repo" });
+			}),
+		);
 	});
 
 	describe("GitHubClientError", () => {

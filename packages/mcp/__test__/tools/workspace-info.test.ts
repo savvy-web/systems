@@ -1,6 +1,6 @@
+import { describe, expect, it } from "@effect/vitest";
 import { AnalyzedWorkspace, WorkspaceAnalysis } from "@savvy-web/silk-effects";
 import { Schema } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, toWorkspaceInfoResult } from "../../src/tools/workspace-info.js";
 

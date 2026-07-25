@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit } from "effect";
-import { describe, expect, it } from "vitest";
 import { GitBranchError } from "../../src/errors/GitBranchError.js";
 import { GitBranchTest } from "../../src/layers/GitBranchTest.js";
 import { GitBranch } from "../../src/services/GitBranch.js";
@@ -10,10 +10,10 @@ const provide = <A, E>(state: ReturnType<typeof GitBranchTest.empty>, effect: Ef
 	Effect.provide(effect, GitBranchTest.layer(state));
 
 const run = <A, E>(state: ReturnType<typeof GitBranchTest.empty>, effect: Effect.Effect<A, E, GitBranch>) =>
-	Effect.runPromise(provide(state, effect));
+	provide(state, effect);
 
 const runExit = <A, E>(state: ReturnType<typeof GitBranchTest.empty>, effect: Effect.Effect<A, E, GitBranch>) =>
-	Effect.runPromise(Effect.exit(provide(state, effect)));
+	Effect.exit(provide(state, effect));
 
 // -- Service method shorthands --
 
@@ -29,59 +29,73 @@ const reset = (name: string, sha: string) => Effect.flatMap(GitBranch, (svc) => 
 
 describe("GitBranch", () => {
 	describe("create", () => {
-		it("adds a branch to the map", async () => {
-			const state = GitBranchTest.empty();
-			await run(state, create("feature/new", "abc123"));
-			expect(state.branches.get("feature/new")).toBe("abc123");
-		});
+		it.effect("adds a branch to the map", () =>
+			Effect.gen(function* () {
+				const state = GitBranchTest.empty();
+				yield* run(state, create("feature/new", "abc123"));
+				expect(state.branches.get("feature/new")).toBe("abc123");
+			}),
+		);
 	});
 
 	describe("exists", () => {
-		it("returns true for existing branch", async () => {
-			const state = GitBranchTest.empty();
-			state.branches.set("main", "sha1");
-			const result = await run(state, exists("main"));
-			expect(result).toBe(true);
-		});
+		it.effect("returns true for existing branch", () =>
+			Effect.gen(function* () {
+				const state = GitBranchTest.empty();
+				state.branches.set("main", "sha1");
+				const result = yield* run(state, exists("main"));
+				expect(result).toBe(true);
+			}),
+		);
 
-		it("returns false for missing branch", async () => {
-			const state = GitBranchTest.empty();
-			const result = await run(state, exists("missing"));
-			expect(result).toBe(false);
-		});
+		it.effect("returns false for missing branch", () =>
+			Effect.gen(function* () {
+				const state = GitBranchTest.empty();
+				const result = yield* run(state, exists("missing"));
+				expect(result).toBe(false);
+			}),
+		);
 	});
 
 	describe("delete", () => {
-		it("removes a branch from the map", async () => {
-			const state = GitBranchTest.empty();
-			state.branches.set("feature/old", "sha1");
-			await run(state, del("feature/old"));
-			expect(state.branches.has("feature/old")).toBe(false);
-		});
+		it.effect("removes a branch from the map", () =>
+			Effect.gen(function* () {
+				const state = GitBranchTest.empty();
+				state.branches.set("feature/old", "sha1");
+				yield* run(state, del("feature/old"));
+				expect(state.branches.has("feature/old")).toBe(false);
+			}),
+		);
 	});
 
 	describe("getSha", () => {
-		it("returns the SHA for an existing branch", async () => {
-			const state = GitBranchTest.empty();
-			state.branches.set("main", "abc123");
-			const sha = await run(state, getSha("main"));
-			expect(sha).toBe("abc123");
-		});
+		it.effect("returns the SHA for an existing branch", () =>
+			Effect.gen(function* () {
+				const state = GitBranchTest.empty();
+				state.branches.set("main", "abc123");
+				const sha = yield* run(state, getSha("main"));
+				expect(sha).toBe("abc123");
+			}),
+		);
 
-		it("fails for a missing branch", async () => {
-			const state = GitBranchTest.empty();
-			const exit = await runExit(state, getSha("missing"));
-			expect(Exit.isFailure(exit)).toBe(true);
-		});
+		it.effect("fails for a missing branch", () =>
+			Effect.gen(function* () {
+				const state = GitBranchTest.empty();
+				const exit = yield* runExit(state, getSha("missing"));
+				expect(Exit.isFailure(exit)).toBe(true);
+			}),
+		);
 	});
 
 	describe("reset", () => {
-		it("updates the SHA of an existing branch", async () => {
-			const state = GitBranchTest.empty();
-			state.branches.set("main", "old-sha");
-			await run(state, reset("main", "new-sha"));
-			expect(state.branches.get("main")).toBe("new-sha");
-		});
+		it.effect("updates the SHA of an existing branch", () =>
+			Effect.gen(function* () {
+				const state = GitBranchTest.empty();
+				state.branches.set("main", "old-sha");
+				yield* run(state, reset("main", "new-sha"));
+				expect(state.branches.get("main")).toBe("new-sha");
+			}),
+		);
 	});
 
 	describe("GitBranchError", () => {

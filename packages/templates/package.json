@@ -33,6 +33,7 @@
 		"@effected/yaml": "^0.6.0"
 	},
 	"devDependencies": {
+		"@effect/vitest": "catalog:effect",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:effect",

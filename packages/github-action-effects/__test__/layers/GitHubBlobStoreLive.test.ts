@@ -1,6 +1,7 @@
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit, Layer, Option } from "effect";
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { vi } from "vitest";
 import { GitHubBlobStoreLive } from "../../src/layers/GitHubBlobStoreLive.js";
 import { BlobStore } from "../../src/services/BlobStore.js";
 
@@ -118,52 +119,58 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("GitHubBlobStoreLive", () => {
-	it("put issues CreateCacheEntry + FinalizeCacheEntryUpload for the key", async () => {
-		vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
-		vi.stubEnv("ACTIONS_RUNTIME_TOKEN", "test-token");
+	it.effect("put issues CreateCacheEntry + FinalizeCacheEntryUpload for the key", () =>
+		Effect.gen(function* () {
+			vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
+			vi.stubEnv("ACTIONS_RUNTIME_TOKEN", "test-token");
 
-		queueReplies(
-			{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
-			{ status: 200, body: { ok: true, entry_id: "entry-1" } },
-		);
+			queueReplies(
+				{ status: 200, body: { ok: true, signed_upload_url: "https://azure.example.com/upload" } },
+				{ status: 200, body: { ok: true, entry_id: "entry-1" } },
+			);
 
-		const program = Effect.flatMap(BlobStore, (s) => s.put("h1", new Uint8Array([9])));
-		await Effect.runPromise(program.pipe(Effect.provide(liveLayer)));
+			const program = Effect.flatMap(BlobStore, (s) => s.put("h1", new Uint8Array([9])));
+			yield* program.pipe(Effect.provide(liveLayer));
 
-		expect(twirpCaptured).toHaveLength(2);
-		expect(twirpCaptured[0]?.url).toContain("twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry");
-		expect(twirpCaptured[1]?.url).toContain(
-			"twirp/github.actions.results.api.v1.CacheService/FinalizeCacheEntryUpload",
-		);
-		expect(twirpCaptured[0]?.body).toMatchObject({ key: "h1" });
+			expect(twirpCaptured).toHaveLength(2);
+			expect(twirpCaptured[0]?.url).toContain("twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry");
+			expect(twirpCaptured[1]?.url).toContain(
+				"twirp/github.actions.results.api.v1.CacheService/FinalizeCacheEntryUpload",
+			);
+			expect(twirpCaptured[0]?.body).toMatchObject({ key: "h1" });
 
-		vi.unstubAllEnvs();
-	});
+			vi.unstubAllEnvs();
+		}),
+	);
 
-	it("get returns none on cache miss (ok:false)", async () => {
-		vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
-		vi.stubEnv("ACTIONS_RUNTIME_TOKEN", "test-token");
+	it.effect("get returns none on cache miss (ok:false)", () =>
+		Effect.gen(function* () {
+			vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
+			vi.stubEnv("ACTIONS_RUNTIME_TOKEN", "test-token");
 
-		queueReplies({ status: 200, body: { ok: false } });
+			queueReplies({ status: 200, body: { ok: false } });
 
-		const program = Effect.flatMap(BlobStore, (s) => s.get("missing-key"));
-		const result = await Effect.runPromise(program.pipe(Effect.provide(liveLayer)));
+			const program = Effect.flatMap(BlobStore, (s) => s.get("missing-key"));
+			const result = yield* program.pipe(Effect.provide(liveLayer));
 
-		expect(Option.isNone(result)).toBe(true);
+			expect(Option.isNone(result)).toBe(true);
 
-		vi.unstubAllEnvs();
-	});
+			vi.unstubAllEnvs();
+		}),
+	);
 
-	it("fails with BlobStoreError when env vars are missing", async () => {
-		// Force the vars absent regardless of the ambient environment (these can be set on a
-		// real Actions runner); afterEach's unstubAllEnvs restores them.
-		vi.stubEnv("ACTIONS_RESULTS_URL", undefined);
-		vi.stubEnv("ACTIONS_RUNTIME_TOKEN", undefined);
-		const program = Effect.flatMap(BlobStore, (s) => s.put("k", new Uint8Array([1])));
-		const exit = await Effect.runPromise(Effect.exit(program.pipe(Effect.provide(liveLayer))));
-		expect(Exit.isFailure(exit)).toBe(true);
-		const error = Exit.isFailure(exit) ? Option.getOrUndefined(Cause.findErrorOption(exit.cause)) : undefined;
-		expect(error?._tag).toBe("BlobStoreError");
-		expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
-	});
+	it.effect("fails with BlobStoreError when env vars are missing", () =>
+		Effect.gen(function* () {
+			// Force the vars absent regardless of the ambient environment (these can be set on a
+			// real Actions runner); afterEach's unstubAllEnvs restores them.
+			vi.stubEnv("ACTIONS_RESULTS_URL", undefined);
+			vi.stubEnv("ACTIONS_RUNTIME_TOKEN", undefined);
+			const program = Effect.flatMap(BlobStore, (s) => s.put("k", new Uint8Array([1])));
+			const exit = yield* Effect.exit(program.pipe(Effect.provide(liveLayer)));
+			expect(Exit.isFailure(exit)).toBe(true);
+			const error = Exit.isFailure(exit) ? Option.getOrUndefined(Cause.findErrorOption(exit.cause)) : undefined;
+			expect(error?._tag).toBe("BlobStoreError");
+			expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
+		}),
+	);
 });

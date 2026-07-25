@@ -1,7 +1,7 @@
+import { beforeEach, describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
-import { beforeEach, describe, expect, it } from "vitest";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import {
@@ -53,62 +53,69 @@ const ConfigInspectorTest = Layer.succeed(
 	}),
 );
 
-const run = <A, E>(eff: Effect.Effect<A, E, Changesets.BranchAnalyzer | Changesets.ConfigInspector | WorkspaceRoot>) =>
-	Effect.runPromise(
-		eff.pipe(
-			Effect.provide(BranchAnalyzerTest),
-			Effect.provide(ConfigInspectorTest),
-			Effect.provide(WorkspaceRootTest),
-		),
-	);
+const TestLayer = Layer.mergeAll(BranchAnalyzerTest, ConfigInspectorTest, WorkspaceRootTest);
 
-describe("changesetInspect handler", () => {
+layer(TestLayer)("changesetInspect handler", (it) => {
+	// The suite-boundary layer is built ONCE for the group, so the stub's
+	// call counter is cumulative across tests — reset it per test.
 	beforeEach(() => {
 		configInspectorRefreshCalls = 0;
 	});
 
-	it("projects branch mode and renders markdown", async () => {
-		const data = await run(changesetInspect({ mode: "branch" }, "/repo"));
-		expect(data.mode).toBe("branch");
-		const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
-		expect(md).toContain("@scope/foo");
-	});
+	it.effect("projects branch mode and renders markdown", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetInspect({ mode: "branch" }, "/repo");
+			expect(data.mode).toBe("branch");
+			const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
+			expect(md).toContain("@scope/foo");
+		}),
+	);
 
-	it("projects config mode", async () => {
-		const data = await run(changesetInspect({ mode: "config" }, "/repo"));
-		expect(data.mode).toBe("config");
-		const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
-		expect(md).toContain("changeset config");
-	});
+	it.effect("projects config mode", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetInspect({ mode: "config" }, "/repo");
+			expect(data.mode).toBe("config");
+			const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
+			expect(md).toContain("changeset config");
+		}),
+	);
 
-	it("projects classify mode for arbitrary paths", async () => {
-		const data = await run(changesetInspect({ mode: "classify", paths: ["packages/foo/x.ts"] }, "/repo"));
-		expect(data.mode).toBe("classify");
-		if (data.mode === "classify") {
-			expect(data.result).toHaveLength(1);
-			expect(data.result[0].path).toBe("packages/foo/x.ts");
-		}
-		const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
-		expect(md).toContain("packages/foo/x.ts");
-	});
+	it.effect("projects classify mode for arbitrary paths", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetInspect({ mode: "classify", paths: ["packages/foo/x.ts"] }, "/repo");
+			expect(data.mode).toBe("classify");
+			if (data.mode === "classify") {
+				expect(data.result).toHaveLength(1);
+				expect(data.result[0].path).toBe("packages/foo/x.ts");
+			}
+			const md = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
+			expect(md).toContain("packages/foo/x.ts");
+		}),
+	);
 
 	// #229: the long-lived savvy-mcp server holds one ConfigInspector for its
 	// whole process lifetime; every call must refresh its cache first so an
 	// on-disk edit made since the last tool call is observed.
-	it("refreshes the ConfigInspector cache before serving config mode", async () => {
-		await run(changesetInspect({ mode: "config" }, "/repo"));
-		expect(configInspectorRefreshCalls).toBe(1);
-	});
+	it.effect("refreshes the ConfigInspector cache before serving config mode", () =>
+		Effect.gen(function* () {
+			yield* changesetInspect({ mode: "config" }, "/repo");
+			expect(configInspectorRefreshCalls).toBe(1);
+		}),
+	);
 
-	it("refreshes the ConfigInspector cache before serving classify mode", async () => {
-		await run(changesetInspect({ mode: "classify", paths: [] }, "/repo"));
-		expect(configInspectorRefreshCalls).toBe(1);
-	});
+	it.effect("refreshes the ConfigInspector cache before serving classify mode", () =>
+		Effect.gen(function* () {
+			yield* changesetInspect({ mode: "classify", paths: [] }, "/repo");
+			expect(configInspectorRefreshCalls).toBe(1);
+		}),
+	);
 
-	it("refreshes the ConfigInspector cache before serving branch mode", async () => {
-		await run(changesetInspect({ mode: "branch" }, "/repo"));
-		expect(configInspectorRefreshCalls).toBe(1);
-	});
+	it.effect("refreshes the ConfigInspector cache before serving branch mode", () =>
+		Effect.gen(function* () {
+			yield* changesetInspect({ mode: "branch" }, "/repo");
+			expect(configInspectorRefreshCalls).toBe(1);
+		}),
+	);
 
 	it("forbids encoding markdown back", () => {
 		expect(() => Schema.encodeUnknownSync(ChangesetInspectAsMarkdown)("anything")).toThrow();

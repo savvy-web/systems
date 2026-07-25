@@ -26,9 +26,9 @@
 
 import { fileURLToPath } from "node:url";
 import { NodeFileSystem } from "@effect/platform-node";
+import { describe, expect, it } from "@effect/vitest";
 import { WorkspacePackage } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 import { ChangesetConfig, ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
 import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
 import {
@@ -73,121 +73,172 @@ const resolveFixture = (name: string) =>
 	);
 
 describe("publishability fixture harness", () => {
-	it("should resolve one public target from the package root when the package is not private (public-package fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("public-package"));
-		expect(publishTargets).toHaveLength(1);
-		expect(publishTargets[0].registry).toBe("https://registry.npmjs.org/");
-		expect(publishTargets[0].directory).toBe(".");
-		expect(publishTargets[0].access).toBe("public");
-		expect(publishTargets[0].provenance).toBe(true);
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should resolve one public target from the package root when the package is not private (public-package fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("public-package");
+				expect(publishTargets).toHaveLength(1);
+				expect(publishTargets[0].registry).toBe("https://registry.npmjs.org/");
+				expect(publishTargets[0].directory).toBe(".");
+				expect(publishTargets[0].access).toBe("public");
+				expect(publishTargets[0].provenance).toBe(true);
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should resolve no targets and be non-versionable when the package is private with no publishConfig (private-fully-private fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-fully-private"));
-		expect(publishTargets).toHaveLength(0);
-		expect(versionable).toBe(false);
-	});
+	it.effect(
+		"should resolve no targets and be non-versionable when the package is private with no publishConfig (private-fully-private fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-fully-private");
+				expect(publishTargets).toHaveLength(0);
+				expect(versionable).toBe(false);
+			}),
+	);
 
-	it("should resolve no targets but stay versionable when privatePackages.version is enabled (private-versiononly fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-versiononly"));
-		expect(publishTargets).toHaveLength(0);
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should resolve no targets but stay versionable when privatePackages.version is enabled (private-versiononly fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-versiononly");
+				expect(publishTargets).toHaveLength(0);
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should resolve one public target at dist/npm when a private package declares publishConfig.access public (private-access-public fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-access-public"));
-		expect(publishTargets).toHaveLength(1);
-		expect(publishTargets[0].registry).toBe("https://registry.npmjs.org/");
-		expect(publishTargets[0].directory).toBe("dist/npm");
-		expect(publishTargets[0].access).toBe("public");
-		expect(publishTargets[0].provenance).toBe(true);
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should resolve one public target at dist/npm when a private package declares publishConfig.access public (private-access-public fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-access-public");
+				expect(publishTargets).toHaveLength(1);
+				expect(publishTargets[0].registry).toBe("https://registry.npmjs.org/");
+				expect(publishTargets[0].directory).toBe("dist/npm");
+				expect(publishTargets[0].access).toBe("public");
+				expect(publishTargets[0].provenance).toBe(true);
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should resolve one restricted target at dist/npm when a private package declares publishConfig.access restricted (private-access-restricted fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-access-restricted"));
-		expect(publishTargets).toHaveLength(1);
-		expect(publishTargets[0].registry).toBe("https://registry.npmjs.org/");
-		expect(publishTargets[0].directory).toBe("dist/npm");
-		expect(publishTargets[0].access).toBe("restricted");
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should resolve one restricted target at dist/npm when a private package declares publishConfig.access restricted (private-access-restricted fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-access-restricted");
+				expect(publishTargets).toHaveLength(1);
+				expect(publishTargets[0].registry).toBe("https://registry.npmjs.org/");
+				expect(publishTargets[0].directory).toBe("dist/npm");
+				expect(publishTargets[0].access).toBe("restricted");
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should drop the detected target and stay versionable via privatePackages.version when publishConfig.access has no directory (private-access-no-build fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-access-no-build"));
-		expect(publishTargets).toHaveLength(0);
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should drop the detected target and stay versionable via privatePackages.version when publishConfig.access has no directory (private-access-no-build fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-access-no-build");
+				expect(publishTargets).toHaveLength(0);
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should resolve one github target at its group's dist/prod dir when a private package declares github: true (private-target-with-directory fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-target-with-directory"));
-		expect(publishTargets).toHaveLength(1);
-		expect(publishTargets[0].directory).toBe("dist/prod/github/pkg");
-		expect(publishTargets[0].registry).toBe("https://npm.pkg.github.com");
-		expect(publishTargets[0].access).toBe("public");
-		expect(publishTargets[0].provenance).toBe(true);
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should resolve one github target at its group's dist/prod dir when a private package declares github: true (private-target-with-directory fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-target-with-directory");
+				expect(publishTargets).toHaveLength(1);
+				expect(publishTargets[0].directory).toBe("dist/prod/github/pkg");
+				expect(publishTargets[0].registry).toBe("https://npm.pkg.github.com");
+				expect(publishTargets[0].access).toBe("public");
+				expect(publishTargets[0].provenance).toBe(true);
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should collapse npm: true + github: true into one group deployed to two registries when a private package declares both well-known targets (private-multi-target fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-multi-target"));
-		expect(publishTargets).toHaveLength(2);
-		const registries = publishTargets.map((t) => t.registry).sort();
-		expect(registries).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
-		// Both registry targets deploy the same scoped-name group's bytes.
-		for (const target of publishTargets) {
-			expect(target.directory).toBe("dist/prod/npm/pkg");
-			expect(target.access).toBe("public");
-			expect(target.provenance).toBe(true);
-		}
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should collapse npm: true + github: true into one group deployed to two registries when a private package declares both well-known targets (private-multi-target fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-multi-target");
+				expect(publishTargets).toHaveLength(2);
+				const registries = publishTargets.map((t) => t.registry).sort();
+				expect(registries).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
+				// Both registry targets deploy the same scoped-name group's bytes.
+				for (const target of publishTargets) {
+					expect(target.directory).toBe("dist/prod/npm/pkg");
+					expect(target.access).toBe("public");
+					expect(target.provenance).toBe(true);
+				}
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should resolve the well-known npm and github keys to their canonical registries from the binding (private-shorthand-targets fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-shorthand-targets"));
-		expect(publishTargets).toHaveLength(2);
-		const registries = publishTargets.map((t) => t.registry).sort();
-		expect(registries).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
-		for (const target of publishTargets) {
-			expect(target.directory).toBe("dist/prod/npm/pkg");
-			expect(target.access).toBe("public");
-		}
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should resolve the well-known npm and github keys to their canonical registries from the binding (private-shorthand-targets fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-shorthand-targets");
+				expect(publishTargets).toHaveLength(2);
+				const registries = publishTargets.map((t) => t.registry).sort();
+				expect(registries).toEqual(["https://npm.pkg.github.com", "https://registry.npmjs.org"]);
+				for (const target of publishTargets) {
+					expect(target.directory).toBe("dist/prod/npm/pkg");
+					expect(target.access).toBe("public");
+				}
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should reuse the npm group's bytes for a from-target pointed at a custom registry (private-mixed-access fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-mixed-access"));
-		expect(publishTargets).toHaveLength(2);
-		const registries = publishTargets.map((t) => t.registry).sort();
-		expect(registries).toEqual(["https://mirror.example.com", "https://registry.npmjs.org"]);
-		// The `from: "npm"` mirror target deploys the same group bytes as npm.
-		for (const target of publishTargets) {
-			expect(target.directory).toBe("dist/prod/npm/pkg");
-			expect(target.access).toBe("public");
-		}
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should reuse the npm group's bytes for a from-target pointed at a custom registry (private-mixed-access fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-mixed-access");
+				expect(publishTargets).toHaveLength(2);
+				const registries = publishTargets.map((t) => t.registry).sort();
+				expect(registries).toEqual(["https://mirror.example.com", "https://registry.npmjs.org"]);
+				// The `from: "npm"` mirror target deploys the same group bytes as npm.
+				for (const target of publishTargets) {
+					expect(target.directory).toBe("dist/prod/npm/pkg");
+					expect(target.access).toBe("public");
+				}
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should resolve both registry targets at the collapsed group's dist/prod dir when a non-private source declares npm + github (public-multi-target fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("public-multi-target"));
-		expect(publishTargets).toHaveLength(2);
-		// The binding's target order is preserved (npm, then github); both deploy the
-		// single collapsed scoped-name group's bytes.
-		expect(publishTargets.map((t) => t.registry)).toEqual(["https://registry.npmjs.org", "https://npm.pkg.github.com"]);
-		for (const target of publishTargets) {
-			expect(target.directory).toBe("dist/prod/npm/pkg");
-			expect(target.access).toBe("public");
-			expect(target.provenance).toBe(true);
-		}
-		expect(versionable).toBe(true);
-	});
+	it.effect(
+		"should resolve both registry targets at the collapsed group's dist/prod dir when a non-private source declares npm + github (public-multi-target fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("public-multi-target");
+				expect(publishTargets).toHaveLength(2);
+				// The binding's target order is preserved (npm, then github); both deploy the
+				// single collapsed scoped-name group's bytes.
+				expect(publishTargets.map((t) => t.registry)).toEqual([
+					"https://registry.npmjs.org",
+					"https://npm.pkg.github.com",
+				]);
+				for (const target of publishTargets) {
+					expect(target.directory).toBe("dist/prod/npm/pkg");
+					expect(target.access).toBe("public");
+					expect(target.provenance).toBe(true);
+				}
+				expect(versionable).toBe(true);
+			}),
+	);
 
-	it("should drop the detected target and be non-versionable when the built target package.json is private (private-target-built-private fixture)", async () => {
-		const { publishTargets, versionable } = await Effect.runPromise(resolveFixture("private-target-built-private"));
-		expect(publishTargets).toHaveLength(0);
-		expect(versionable).toBe(false);
-	});
+	it.effect(
+		"should drop the detected target and be non-versionable when the built target package.json is private (private-target-built-private fixture)",
+		() =>
+			Effect.gen(function* () {
+				const { publishTargets, versionable } = yield* resolveFixture("private-target-built-private");
+				expect(publishTargets).toHaveLength(0);
+				expect(versionable).toBe(false);
+			}),
+	);
 });
 
 /** Resolve one sub-package of a workspace fixture against the fixture root. */
@@ -227,26 +278,26 @@ const resolveWorkspacePackage = (workspace: string, subPath: string, name: strin
 	);
 
 describe("changeset ignore (ignore-monorepo fixture)", () => {
-	it("resolves the main package to exactly one targetGroup / one target", async () => {
-		const targets = await Effect.runPromise(
-			resolveWorkspacePackage("ignore-monorepo", "package", "@fixture/ignore-main"),
-		);
-		expect(targets).toHaveLength(1);
-		expect(targets[0].directory).toBe("dist/prod/npm/pkg");
-		expect(targets[0].registry).toBe("https://registry.npmjs.org");
-	});
+	it.effect("resolves the main package to exactly one targetGroup / one target", () =>
+		Effect.gen(function* () {
+			const targets = yield* resolveWorkspacePackage("ignore-monorepo", "package", "@fixture/ignore-main");
+			expect(targets).toHaveLength(1);
+			expect(targets[0].directory).toBe("dist/prod/npm/pkg");
+			expect(targets[0].registry).toBe("https://registry.npmjs.org");
+		}),
+	);
 
-	it("excludes a @libraries/* example package despite its publishConfig.targets", async () => {
-		const targets = await Effect.runPromise(
-			resolveWorkspacePackage("ignore-monorepo", "examples/lib", "@libraries/example"),
-		);
-		expect(targets).toHaveLength(0);
-	});
+	it.effect("excludes a @libraries/* example package despite its publishConfig.targets", () =>
+		Effect.gen(function* () {
+			const targets = yield* resolveWorkspacePackage("ignore-monorepo", "examples/lib", "@libraries/example");
+			expect(targets).toHaveLength(0);
+		}),
+	);
 
-	it("excludes a @rspress/* example package despite its publishConfig.targets", async () => {
-		const targets = await Effect.runPromise(
-			resolveWorkspacePackage("ignore-monorepo", "examples/site", "@rspress/example"),
-		);
-		expect(targets).toHaveLength(0);
-	});
+	it.effect("excludes a @rspress/* example package despite its publishConfig.targets", () =>
+		Effect.gen(function* () {
+			const targets = yield* resolveWorkspacePackage("ignore-monorepo", "examples/site", "@rspress/example");
+			expect(targets).toHaveLength(0);
+		}),
+	);
 });

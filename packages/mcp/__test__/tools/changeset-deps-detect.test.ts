@@ -1,7 +1,7 @@
+import { beforeEach, expect, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 
 import { ChangesetDepsDetectAsMarkdown, changesetDepsDetect } from "../../src/tools/changeset-deps-detect.js";
 
@@ -32,48 +32,60 @@ const cannedPlan = {
 	skippedMixed: [],
 } as unknown as Changesets.RegenPlan;
 
+/**
+ * Recorder for the options the handler forwards to `plan()`. The suite-boundary
+ * layer is built ONCE for the group, so this is cumulative across tests and is
+ * reset per test in `beforeEach`. The assignment is wrapped in `Effect.suspend`
+ * so it records when the effect RUNS, not when it is merely constructed.
+ */
 let capturedPlanOptions: Changesets.DepsRegenOptions | undefined;
 
 const DepsRegenStub = Layer.succeed(
 	Changesets.DepsRegen,
 	Changesets.DepsRegen.of({
-		plan: (options) => {
-			capturedPlanOptions = options;
-			return Effect.succeed(cannedPlan);
-		},
+		plan: (options) =>
+			Effect.suspend(() => {
+				capturedPlanOptions = options;
+				return Effect.succeed(cannedPlan);
+			}),
 		execute: (p) => Effect.succeed({ deleted: [], written: [], skippedMixed: p.skippedMixed }),
 	}),
 );
 
 const TestLayer = Layer.merge(WorkspaceRootTest, DepsRegenStub);
 
-const run = <A, E>(eff: Effect.Effect<A, E, WorkspaceRoot | Changesets.DepsRegen>) =>
-	Effect.runPromise(eff.pipe(Effect.provide(TestLayer)));
-
-describe("changesetDepsDetect handler", () => {
-	it("maps the plan's toWrite into { root, packages: [{ package, relativePath, rows }] }, keeping devDeps", async () => {
-		const data = await run(changesetDepsDetect({}, ROOT));
-		// The detect path must forward includeDevDeps:true so the service keeps devDeps.
-		expect(capturedPlanOptions).toMatchObject({ cwd: ROOT, includeDevDeps: true });
-		expect(data.root).toBe(ROOT);
-		expect(data.packages).toHaveLength(1);
-		const pkg = data.packages[0];
-		expect(pkg?.package).toBe("@scope/foo");
-		expect(pkg?.relativePath).toBe("packages/foo");
-		expect(pkg?.rows).toHaveLength(2);
-		// devDependency row is retained on the detect path
-		expect(pkg?.rows.some((r) => r.type === "devDependency")).toBe(true);
-		expect(pkg?.rows[0]?.dependency).toBe("effect");
+layer(TestLayer)("changesetDepsDetect handler", (it) => {
+	beforeEach(() => {
+		capturedPlanOptions = undefined;
 	});
 
-	it("renders the structured result as markdown including the devDependency row", async () => {
-		const data = await run(changesetDepsDetect({}, ROOT));
-		const md = Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown)(data);
-		expect(md).toContain("@scope/foo");
-		expect(md).toContain("packages/foo");
-		expect(md).toContain("effect");
-		expect(md).toContain("typescript");
-	});
+	it.effect("maps the plan's toWrite into { root, packages: [{ package, relativePath, rows }] }, keeping devDeps", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetDepsDetect({}, ROOT);
+			// The detect path must forward includeDevDeps:true so the service keeps devDeps.
+			expect(capturedPlanOptions).toMatchObject({ cwd: ROOT, includeDevDeps: true });
+			expect(data.root).toBe(ROOT);
+			expect(data.packages).toHaveLength(1);
+			const pkg = data.packages[0];
+			expect(pkg?.package).toBe("@scope/foo");
+			expect(pkg?.relativePath).toBe("packages/foo");
+			expect(pkg?.rows).toHaveLength(2);
+			// devDependency row is retained on the detect path
+			expect(pkg?.rows.some((r) => r.type === "devDependency")).toBe(true);
+			expect(pkg?.rows[0]?.dependency).toBe("effect");
+		}),
+	);
+
+	it.effect("renders the structured result as markdown including the devDependency row", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetDepsDetect({}, ROOT);
+			const md = Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown)(data);
+			expect(md).toContain("@scope/foo");
+			expect(md).toContain("packages/foo");
+			expect(md).toContain("effect");
+			expect(md).toContain("typescript");
+		}),
+	);
 
 	it("forbids encoding markdown back", () => {
 		expect(() => Schema.encodeUnknownSync(ChangesetDepsDetectAsMarkdown)("anything")).toThrow();

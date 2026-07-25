@@ -15,8 +15,8 @@
  * synchronously so we cover both code paths.
  */
 
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer, Stream } from "effect";
-import { describe, expect, it } from "vitest";
 import {
 	Attest,
 	AttestLive,
@@ -165,137 +165,137 @@ const noopSigner: Layer.Layer<SigstoreSigner> = Layer.succeed(SigstoreSigner, {
 describe("Attest.listForSubject — live implementation", () => {
 	const SUBJECT = "abc123".padEnd(64, "0");
 
-	it("returns every attestation when no predicateType filter is provided (decoding each bundle_url)", async () => {
-		const layer = Layer.mergeAll(
-			AttestLive,
-			noopSigner,
-			noopOidc,
-			attestationServer(
-				[
+	it.effect("returns every attestation when no predicateType filter is provided (decoding each bundle_url)", () =>
+		Effect.gen(function* () {
+			const layer = Layer.mergeAll(
+				AttestLive,
+				noopSigner,
+				noopOidc,
+				attestationServer(
+					[
+						{ id: 1, predicateType: SLSA_PROVENANCE_V1 },
+						{ id: 2, predicateType: CYCLONEDX_BOM },
+					],
+					{ repo: { owner: "acme", repo: "widgets" } },
+				),
+			);
+
+			const entries = yield* Effect.gen(function* () {
+				const attest = yield* Attest;
+				return yield* attest.listForSubject(SUBJECT);
+			}).pipe(Effect.provide(layer));
+
+			expect(entries).toHaveLength(2);
+			expect(entries[0]?.attestationUrl).toBe("https://github.com/acme/widgets/attestations/1");
+			expect(entries[0]?.predicateType).toBe(SLSA_PROVENANCE_V1);
+			expect(entries[1]?.attestationUrl).toBe("https://github.com/acme/widgets/attestations/2");
+			expect(entries[1]?.predicateType).toBe(CYCLONEDX_BOM);
+		}),
+	);
+
+	it.effect("filters by predicateType via the server-side predicate_type query", () =>
+		Effect.gen(function* () {
+			const layer = Layer.mergeAll(
+				AttestLive,
+				noopSigner,
+				noopOidc,
+				attestationServer([
 					{ id: 1, predicateType: SLSA_PROVENANCE_V1 },
 					{ id: 2, predicateType: CYCLONEDX_BOM },
-				],
-				{ repo: { owner: "acme", repo: "widgets" } },
-			),
-		);
+					{ id: 3, predicateType: SLSA_PROVENANCE_V1 },
+				]),
+			);
 
-		const entries = await Effect.runPromise(
-			Effect.gen(function* () {
-				const attest = yield* Attest;
-				return yield* attest.listForSubject(SUBJECT);
-			}).pipe(Effect.provide(layer)),
-		);
-
-		expect(entries).toHaveLength(2);
-		expect(entries[0]?.attestationUrl).toBe("https://github.com/acme/widgets/attestations/1");
-		expect(entries[0]?.predicateType).toBe(SLSA_PROVENANCE_V1);
-		expect(entries[1]?.attestationUrl).toBe("https://github.com/acme/widgets/attestations/2");
-		expect(entries[1]?.predicateType).toBe(CYCLONEDX_BOM);
-	});
-
-	it("filters by predicateType via the server-side predicate_type query", async () => {
-		const layer = Layer.mergeAll(
-			AttestLive,
-			noopSigner,
-			noopOidc,
-			attestationServer([
-				{ id: 1, predicateType: SLSA_PROVENANCE_V1 },
-				{ id: 2, predicateType: CYCLONEDX_BOM },
-				{ id: 3, predicateType: SLSA_PROVENANCE_V1 },
-			]),
-		);
-
-		const entries = await Effect.runPromise(
-			Effect.gen(function* () {
+			const entries = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT, { predicateType: SLSA_PROVENANCE_V1 });
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(entries).toHaveLength(2);
-		expect(entries.every((e) => e.predicateType === SLSA_PROVENANCE_V1)).toBe(true);
-		expect(entries.map((e) => e.attestationUrl)).toEqual([
-			"https://github.com/savvy-web/silk-release-action/attestations/1",
-			"https://github.com/savvy-web/silk-release-action/attestations/3",
-		]);
-	});
+			expect(entries).toHaveLength(2);
+			expect(entries.every((e) => e.predicateType === SLSA_PROVENANCE_V1)).toBe(true);
+			expect(entries.map((e) => e.attestationUrl)).toEqual([
+				"https://github.com/savvy-web/silk-release-action/attestations/1",
+				"https://github.com/savvy-web/silk-release-action/attestations/3",
+			]);
+		}),
+	);
 
-	it("pins X-GitHub-Api-Version 2026-03-10 and forwards predicate_type without fetching bundles", async () => {
-		const calls: CapturedRequest[] = [];
-		const layer = Layer.mergeAll(
-			AttestLive,
-			noopSigner,
-			noopOidc,
-			attestationServer([{ id: 1, predicateType: SLSA_PROVENANCE_V1 }], { calls }),
-		);
+	it.effect("pins X-GitHub-Api-Version 2026-03-10 and forwards predicate_type without fetching bundles", () =>
+		Effect.gen(function* () {
+			const calls: CapturedRequest[] = [];
+			const layer = Layer.mergeAll(
+				AttestLive,
+				noopSigner,
+				noopOidc,
+				attestationServer([{ id: 1, predicateType: SLSA_PROVENANCE_V1 }], { calls }),
+			);
 
-		await Effect.runPromise(
-			Effect.gen(function* () {
+			yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT, { predicateType: SLSA_PROVENANCE_V1 });
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		// Only the list request fires — the server-side filter means no
-		// per-entry bundle_url fetch on the filtered path.
-		expect(calls).toHaveLength(1);
-		const list = calls[0];
-		expect(list?.route).toBe("GET /repos/{owner}/{repo}/attestations/{subject_digest}");
-		expect(list?.params.subject_digest).toBe(`sha256:${SUBJECT}`);
-		expect(list?.params.predicate_type).toBe(SLSA_PROVENANCE_V1);
-		expect((list?.params.headers as Record<string, string>)["X-GitHub-Api-Version"]).toBe("2026-03-10");
-	});
+			// Only the list request fires — the server-side filter means no
+			// per-entry bundle_url fetch on the filtered path.
+			expect(calls).toHaveLength(1);
+			const list = calls[0];
+			expect(list?.route).toBe("GET /repos/{owner}/{repo}/attestations/{subject_digest}");
+			expect(list?.params.subject_digest).toBe(`sha256:${SUBJECT}`);
+			expect(list?.params.predicate_type).toBe(SLSA_PROVENANCE_V1);
+			expect((list?.params.headers as Record<string, string>)["X-GitHub-Api-Version"]).toBe("2026-03-10");
+		}),
+	);
 
-	it("pins X-GitHub-Api-Version 2026-03-10 on both the list and the bundle_url fetch", async () => {
-		const calls: CapturedRequest[] = [];
-		const layer = Layer.mergeAll(
-			AttestLive,
-			noopSigner,
-			noopOidc,
-			attestationServer([{ id: 1, predicateType: SLSA_PROVENANCE_V1 }], { calls }),
-		);
+	it.effect("pins X-GitHub-Api-Version 2026-03-10 on both the list and the bundle_url fetch", () =>
+		Effect.gen(function* () {
+			const calls: CapturedRequest[] = [];
+			const layer = Layer.mergeAll(
+				AttestLive,
+				noopSigner,
+				noopOidc,
+				attestationServer([{ id: 1, predicateType: SLSA_PROVENANCE_V1 }], { calls }),
+			);
 
-		await Effect.runPromise(
-			Effect.gen(function* () {
+			yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT);
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		// List + one bundle fetch, both pinned and the list unfiltered.
-		expect(calls).toHaveLength(2);
-		expect(calls[0]?.params.predicate_type).toBeUndefined();
-		expect(calls[1]?.route).toBe("GET {bundle_url}");
-		for (const call of calls) {
-			expect((call.params.headers as Record<string, string>)["X-GitHub-Api-Version"]).toBe("2026-03-10");
-		}
-	});
+			// List + one bundle fetch, both pinned and the list unfiltered.
+			expect(calls).toHaveLength(2);
+			expect(calls[0]?.params.predicate_type).toBeUndefined();
+			expect(calls[1]?.route).toBe("GET {bundle_url}");
+			for (const call of calls) {
+				expect((call.params.headers as Record<string, string>)["X-GitHub-Api-Version"]).toBe("2026-03-10");
+			}
+		}),
+	);
 
-	it("returns [] when the API responds with an empty attestations array", async () => {
-		const layer = Layer.mergeAll(AttestLive, noopSigner, noopOidc, fixedGitHubClient({ attestations: [] }));
+	it.effect("returns [] when the API responds with an empty attestations array", () =>
+		Effect.gen(function* () {
+			const layer = Layer.mergeAll(AttestLive, noopSigner, noopOidc, fixedGitHubClient({ attestations: [] }));
 
-		const entries = await Effect.runPromise(
-			Effect.gen(function* () {
+			const entries = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT);
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(entries).toEqual([]);
-	});
+			expect(entries).toEqual([]);
+		}),
+	);
 
-	it("returns [] on a 404 (subject has no attestations at all)", async () => {
-		const layer = Layer.mergeAll(AttestLive, noopSigner, noopOidc, throwingGitHubClient(404));
+	it.effect("returns [] on a 404 (subject has no attestations at all)", () =>
+		Effect.gen(function* () {
+			const layer = Layer.mergeAll(AttestLive, noopSigner, noopOidc, throwingGitHubClient(404));
 
-		const entries = await Effect.runPromise(
-			Effect.gen(function* () {
+			const entries = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT);
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(entries).toEqual([]);
-	});
+			expect(entries).toEqual([]);
+		}),
+	);
 });
 
 // ─── AttestTest.listForSubject ─────────────────────────────────────
@@ -303,53 +303,53 @@ describe("Attest.listForSubject — live implementation", () => {
 describe("Attest.listForSubject — test layer", () => {
 	const SUBJECT = "deadbeef".padEnd(64, "0");
 
-	it("returns the seeded entries for a subject", async () => {
-		const state = makeAttestTestState();
-		state.seedAttestations.set(SUBJECT, [
-			{ attestationUrl: "https://github.com/acme/repo/attestations/1", predicateType: SLSA_PROVENANCE_V1 },
-			{ attestationUrl: "https://github.com/acme/repo/attestations/2", predicateType: CYCLONEDX_BOM },
-		]);
+	it.effect("returns the seeded entries for a subject", () =>
+		Effect.gen(function* () {
+			const state = makeAttestTestState();
+			state.seedAttestations.set(SUBJECT, [
+				{ attestationUrl: "https://github.com/acme/repo/attestations/1", predicateType: SLSA_PROVENANCE_V1 },
+				{ attestationUrl: "https://github.com/acme/repo/attestations/2", predicateType: CYCLONEDX_BOM },
+			]);
 
-		const entries = await Effect.runPromise(
-			Effect.gen(function* () {
+			const entries = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT);
-			}).pipe(Effect.provide(Layer.merge(AttestTest.layer(state), GitHubClientTest.empty()))),
-		);
+			}).pipe(Effect.provide(Layer.merge(AttestTest.layer(state), GitHubClientTest.empty())));
 
-		expect(entries).toHaveLength(2);
-		expect(state.listForSubjectCalls).toEqual([{ subjectSha256: SUBJECT, predicateType: undefined }]);
-	});
+			expect(entries).toHaveLength(2);
+			expect(state.listForSubjectCalls).toEqual([{ subjectSha256: SUBJECT, predicateType: undefined }]);
+		}),
+	);
 
-	it("filters seeded entries by predicateType when requested", async () => {
-		const state = makeAttestTestState();
-		state.seedAttestations.set(SUBJECT, [
-			{ attestationUrl: "u1", predicateType: SLSA_PROVENANCE_V1 },
-			{ attestationUrl: "u2", predicateType: CYCLONEDX_BOM },
-		]);
+	it.effect("filters seeded entries by predicateType when requested", () =>
+		Effect.gen(function* () {
+			const state = makeAttestTestState();
+			state.seedAttestations.set(SUBJECT, [
+				{ attestationUrl: "u1", predicateType: SLSA_PROVENANCE_V1 },
+				{ attestationUrl: "u2", predicateType: CYCLONEDX_BOM },
+			]);
 
-		const entries = await Effect.runPromise(
-			Effect.gen(function* () {
+			const entries = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT, { predicateType: CYCLONEDX_BOM });
-			}).pipe(Effect.provide(Layer.merge(AttestTest.layer(state), GitHubClientTest.empty()))),
-		);
+			}).pipe(Effect.provide(Layer.merge(AttestTest.layer(state), GitHubClientTest.empty())));
 
-		expect(entries).toEqual([{ attestationUrl: "u2", predicateType: CYCLONEDX_BOM }]);
-		expect(state.listForSubjectCalls).toEqual([{ subjectSha256: SUBJECT, predicateType: CYCLONEDX_BOM }]);
-	});
+			expect(entries).toEqual([{ attestationUrl: "u2", predicateType: CYCLONEDX_BOM }]);
+			expect(state.listForSubjectCalls).toEqual([{ subjectSha256: SUBJECT, predicateType: CYCLONEDX_BOM }]);
+		}),
+	);
 
-	it("returns [] for an unseeded subject", async () => {
-		const state = makeAttestTestState();
+	it.effect("returns [] for an unseeded subject", () =>
+		Effect.gen(function* () {
+			const state = makeAttestTestState();
 
-		const entries = await Effect.runPromise(
-			Effect.gen(function* () {
+			const entries = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.listForSubject(SUBJECT);
-			}).pipe(Effect.provide(Layer.merge(AttestTest.layer(state), GitHubClientTest.empty()))),
-		);
+			}).pipe(Effect.provide(Layer.merge(AttestTest.layer(state), GitHubClientTest.empty())));
 
-		expect(entries).toEqual([]);
-		expect(state.listForSubjectCalls).toHaveLength(1);
-	});
+			expect(entries).toEqual([]);
+			expect(state.listForSubjectCalls).toHaveLength(1);
+		}),
+	);
 });

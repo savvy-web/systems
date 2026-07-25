@@ -1,7 +1,8 @@
 import { Readable } from "node:stream";
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit, Layer, Option } from "effect";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { vi } from "vitest";
 import type { ArtifactError } from "../../src/errors/ArtifactError.js";
 import { ArtifactLive } from "../../src/layers/ArtifactLive.js";
 import { Artifact } from "../../src/services/Artifact.js";
@@ -97,8 +98,7 @@ const mockHttpLayer: Layer.Layer<HttpClient.HttpClient> = Layer.succeed(
 
 const liveLayer = ArtifactLive.pipe(Layer.provide(mockHttpLayer));
 
-const runExit = <A, E>(effect: Effect.Effect<A, E, Artifact>) =>
-	Effect.runPromise(Effect.exit(Effect.provide(effect, liveLayer)));
+const runExit = <A, E>(effect: Effect.Effect<A, E, Artifact>) => Effect.exit(Effect.provide(effect, liveLayer));
 
 const extractError = (exit: Exit.Exit<unknown, ArtifactError>): ArtifactError | undefined => {
 	if (Exit.isFailure(exit)) {
@@ -132,22 +132,26 @@ describe("ArtifactLive", () => {
 			vi.unstubAllEnvs();
 		});
 
-		it("fails with ArtifactError when env vars are missing", async () => {
-			const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
-			expect(Exit.isFailure(exit)).toBe(true);
-			const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-			expect(error?._tag).toBe("ArtifactError");
-			expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
-		});
+		it.effect("fails with ArtifactError when env vars are missing", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
+				expect(Exit.isFailure(exit)).toBe(true);
+				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+				expect(error?._tag).toBe("ArtifactError");
+				expect(error?.reason).toContain("ACTIONS_RESULTS_URL");
+			}),
+		);
 
-		it("fails when the runtime token lacks an Actions.Results scope", async () => {
-			vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
-			vi.stubEnv("ACTIONS_RUNTIME_TOKEN", `${b64url({ alg: "HS256" })}.${b64url({ scp: "Actions.Other:x" })}.sig`);
-			const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
-			expect(Exit.isFailure(exit)).toBe(true);
-			const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-			expect(error?.reason).toContain("Actions.Results");
-		});
+		it.effect("fails when the runtime token lacks an Actions.Results scope", () =>
+			Effect.gen(function* () {
+				vi.stubEnv("ACTIONS_RESULTS_URL", "https://results.example.com/");
+				vi.stubEnv("ACTIONS_RUNTIME_TOKEN", `${b64url({ alg: "HS256" })}.${b64url({ scp: "Actions.Other:x" })}.sig`);
+				const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
+				expect(Exit.isFailure(exit)).toBe(true);
+				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+				expect(error?.reason).toContain("Actions.Results");
+			}),
+		);
 	});
 
 	describe("with env vars set", () => {
@@ -171,286 +175,344 @@ describe("ArtifactLive", () => {
 		});
 
 		describe("listArtifacts", () => {
-			it("maps a ListArtifacts Twirp response to ArtifactItem[]", async () => {
-				queue({
-					status: 200,
-					body: {
-						artifacts: [
-							{ databaseId: "11", name: "logs", size: "100", createdAt: "2026-01-01T00:00:00Z" },
-							{ databaseId: "12", name: "dist", size: "200" },
-						],
-					},
-				});
+			it.effect("maps a ListArtifacts Twirp response to ArtifactItem[]", () =>
+				Effect.gen(function* () {
+					queue({
+						status: 200,
+						body: {
+							artifacts: [
+								{ databaseId: "11", name: "logs", size: "100", createdAt: "2026-01-01T00:00:00Z" },
+								{ databaseId: "12", name: "dist", size: "200" },
+							],
+						},
+					});
 
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(exit.value).toEqual([
-						{ id: 11, name: "logs", size: 100, createdAt: "2026-01-01T00:00:00Z" },
-						{ id: 12, name: "dist", size: 200 },
-					]);
-				}
-				expect(twirpCaptured[0]?.url).toContain("twirp/github.actions.results.api.v1.ArtifactService/ListArtifacts");
-				expect(twirpCaptured[0]?.body).toMatchObject({
-					workflowRunBackendId: "run-1",
-					workflowJobRunBackendId: "job-1",
-				});
-			});
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(exit.value).toEqual([
+							{ id: 11, name: "logs", size: 100, createdAt: "2026-01-01T00:00:00Z" },
+							{ id: 12, name: "dist", size: 200 },
+						]);
+					}
+					expect(twirpCaptured[0]?.url).toContain("twirp/github.actions.results.api.v1.ArtifactService/ListArtifacts");
+					expect(twirpCaptured[0]?.body).toMatchObject({
+						workflowRunBackendId: "run-1",
+						workflowJobRunBackendId: "job-1",
+					});
+				}),
+			);
 
-			it("returns [] when the backend lists none", async () => {
-				queue({ status: 200, body: { artifacts: [] } });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(exit.value).toEqual([]);
-				}
-			});
+			it.effect("returns [] when the backend lists none", () =>
+				Effect.gen(function* () {
+					queue({ status: 200, body: { artifacts: [] } });
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(exit.value).toEqual([]);
+					}
+				}),
+			);
 
-			it("fails with ArtifactError on a non-ok Twirp response", async () => {
-				queue({ status: 400 });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.operation).toBe("list");
-				expect(error?.reason).toContain("HTTP 400");
-			});
+			it.effect("fails with ArtifactError on a non-ok Twirp response", () =>
+				Effect.gen(function* () {
+					queue({ status: 400 });
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts()));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.operation).toBe("list");
+					expect(error?.reason).toContain("HTTP 400");
+				}),
+			);
 		});
 
 		describe("getArtifact", () => {
-			it("returns Option.some(item) for a matching name", async () => {
-				queue({
-					status: 200,
-					body: { artifacts: [{ databaseId: "5", name: "dist", size: "9" }] },
-				});
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.getArtifact("dist")));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					const opt = exit.value as Option.Option<{ id: number }>;
-					expect(Option.isSome(opt)).toBe(true);
-					if (Option.isSome(opt)) expect(opt.value.id).toBe(5);
-				}
-			});
+			it.effect("returns Option.some(item) for a matching name", () =>
+				Effect.gen(function* () {
+					queue({
+						status: 200,
+						body: { artifacts: [{ databaseId: "5", name: "dist", size: "9" }] },
+					});
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.getArtifact("dist")));
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						const opt = exit.value as Option.Option<{ id: number }>;
+						expect(Option.isSome(opt)).toBe(true);
+						if (Option.isSome(opt)) expect(opt.value.id).toBe(5);
+					}
+				}),
+			);
 
-			it("returns Option.none() when no artifact matches the name", async () => {
-				queue({
-					status: 200,
-					body: { artifacts: [{ databaseId: "5", name: "other", size: "9" }] },
-				});
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.getArtifact("dist")));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(Option.isNone(exit.value as Option.Option<unknown>)).toBe(true);
-				}
-			});
+			it.effect("returns Option.none() when no artifact matches the name", () =>
+				Effect.gen(function* () {
+					queue({
+						status: 200,
+						body: { artifacts: [{ databaseId: "5", name: "other", size: "9" }] },
+					});
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.getArtifact("dist")));
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(Option.isNone(exit.value as Option.Option<unknown>)).toBe(true);
+					}
+				}),
+			);
 		});
 
 		describe("uploadArtifact", () => {
-			it("runs CreateArtifact → blob upload → FinalizeArtifact and returns {id,size}", async () => {
-				queue(
-					{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
-					{ status: 200, body: { ok: true, artifactId: "42" } },
-				);
+			it.effect("runs CreateArtifact → blob upload → FinalizeArtifact and returns {id,size}", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
+						{ status: 200, body: { ok: true, artifactId: "42" } },
+					);
 
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(exit.value).toEqual({ id: 42, size: 1234 });
-				}
-				expect(twirpCaptured[0]?.url).toContain("ArtifactService/CreateArtifact");
-				// version 7 requires a mime_type (the backend 400s without it).
-				expect(twirpCaptured[0]?.body).toMatchObject({ name: "dist", version: 7, mimeType: "application/zip" });
-				expect(mockUploadFile).toHaveBeenCalled();
-				expect(twirpCaptured[1]?.url).toContain("ArtifactService/FinalizeArtifact");
-				const finalizeBody = twirpCaptured[1]?.body as { name: string; size: string; hash: string };
-				expect(finalizeBody.name).toBe("dist");
-				expect(finalizeBody.size).toBe("1234");
-				expect(finalizeBody.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
-			});
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")),
+					);
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(exit.value).toEqual({ id: 42, size: 1234 });
+					}
+					expect(twirpCaptured[0]?.url).toContain("ArtifactService/CreateArtifact");
+					// version 7 requires a mime_type (the backend 400s without it).
+					expect(twirpCaptured[0]?.body).toMatchObject({ name: "dist", version: 7, mimeType: "application/zip" });
+					expect(mockUploadFile).toHaveBeenCalled();
+					expect(twirpCaptured[1]?.url).toContain("ArtifactService/FinalizeArtifact");
+					const finalizeBody = twirpCaptured[1]?.body as { name: string; size: string; hash: string };
+					expect(finalizeBody.name).toBe("dist");
+					expect(finalizeBody.size).toBe("1234");
+					expect(finalizeBody.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+				}),
+			);
 
-			it("forwards retentionDays as an expiresAt on FinalizeArtifact", async () => {
-				queue(
-					{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
-					{ status: 200, body: { ok: true, artifactId: "42" } },
-				);
-				const before = Date.now();
-				const exit = await runExit(
-					Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work", { retentionDays: 5 })),
-				);
-				expect(Exit.isSuccess(exit)).toBe(true);
-				const finalizeBody = twirpCaptured[1]?.body as { expiresAt?: string };
-				expect(finalizeBody.expiresAt).toBeDefined();
-				const expiresMs = Date.parse(finalizeBody.expiresAt as string);
-				// ~5 days out from now.
-				expect(expiresMs).toBeGreaterThan(before + 4 * 86_400_000);
-				expect(expiresMs).toBeLessThan(before + 6 * 86_400_000);
-			});
+			it.effect("forwards retentionDays as an expiresAt on FinalizeArtifact", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
+						{ status: 200, body: { ok: true, artifactId: "42" } },
+					);
+					const before = Date.now();
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work", { retentionDays: 5 })),
+					);
+					expect(Exit.isSuccess(exit)).toBe(true);
+					const finalizeBody = twirpCaptured[1]?.body as { expiresAt?: string };
+					expect(finalizeBody.expiresAt).toBeDefined();
+					const expiresMs = Date.parse(finalizeBody.expiresAt as string);
+					// ~5 days out from now.
+					expect(expiresMs).toBeGreaterThan(before + 4 * 86_400_000);
+					expect(expiresMs).toBeLessThan(before + 6 * 86_400_000);
+				}),
+			);
 
-			it("passes compressionLevel to the POSIX zip flags", async () => {
-				if (process.platform === "win32") return; // POSIX `zip` only
-				queue(
-					{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
-					{ status: 200, body: { ok: true, artifactId: "42" } },
-				);
-				await runExit(
-					Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work", { compressionLevel: 1 })),
-				);
-				const zipCall = mockedExecFileSync.mock.calls.find((c) => c[0] === "zip");
-				expect(zipCall).toBeDefined();
-				expect((zipCall?.[1] as ReadonlyArray<string>)[0]).toBe("-1");
-			});
+			it.effect("passes compressionLevel to the POSIX zip flags", () =>
+				Effect.gen(function* () {
+					if (process.platform === "win32") return; // POSIX `zip` only
+					queue(
+						{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
+						{ status: 200, body: { ok: true, artifactId: "42" } },
+					);
+					yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work", { compressionLevel: 1 })),
+					);
+					const zipCall = mockedExecFileSync.mock.calls.find((c) => c[0] === "zip");
+					expect(zipCall).toBeDefined();
+					expect((zipCall?.[1] as ReadonlyArray<string>)[0]).toBe("-1");
+				}),
+			);
 
-			it("fails when no files are provided", async () => {
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", [], "/work")));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.operation).toBe("upload");
-				expect(error?.reason).toContain("No files provided");
-			});
+			it.effect("fails when no files are provided", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", [], "/work")));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.operation).toBe("upload");
+					expect(error?.reason).toContain("No files provided");
+				}),
+			);
 
-			it("fails with 'artifact already exists' when CreateArtifact returns ok:false", async () => {
-				queue({ status: 200, body: { ok: false } });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.operation).toBe("upload");
-				expect(error?.reason).toContain("already exists");
-			});
+			it.effect("fails with 'artifact already exists' when CreateArtifact returns ok:false", () =>
+				Effect.gen(function* () {
+					queue({ status: 200, body: { ok: false } });
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")),
+					);
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.operation).toBe("upload");
+					expect(error?.reason).toContain("already exists");
+				}),
+			);
 
-			it("fails with 'artifact already exists' when CreateArtifact 409s", async () => {
-				queue({ status: 409 });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("already exists");
-			});
+			it.effect("fails with 'artifact already exists' when CreateArtifact 409s", () =>
+				Effect.gen(function* () {
+					queue({ status: 409 });
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")),
+					);
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("already exists");
+				}),
+			);
 
-			it("cleans up the temp zip after a successful upload", async () => {
-				queue(
-					{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
-					{ status: 200, body: { ok: true, artifactId: "42" } },
-				);
-				await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
-				expect(mockedUnlinkSync).toHaveBeenCalled();
-			});
+			it.effect("cleans up the temp zip after a successful upload", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
+						{ status: 200, body: { ok: true, artifactId: "42" } },
+					);
+					yield* runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
+					expect(mockedUnlinkSync).toHaveBeenCalled();
+				}),
+			);
 
-			it("fails when blob upload rejects", async () => {
-				queue({ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } });
-				mockUploadFile.mockRejectedValueOnce(new Error("Azure upload timeout"));
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("upload failed");
-				expect(error?.reason).toContain("Azure upload timeout");
-			});
+			it.effect("fails when blob upload rejects", () =>
+				Effect.gen(function* () {
+					queue({ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } });
+					mockUploadFile.mockRejectedValueOnce(new Error("Azure upload timeout"));
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")),
+					);
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("upload failed");
+					expect(error?.reason).toContain("Azure upload timeout");
+				}),
+			);
 
-			it("fails when FinalizeArtifact returns ok:false", async () => {
-				queue(
-					{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
-					{ status: 200, body: { ok: false } },
-				);
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("FinalizeArtifact did not confirm success");
-			});
+			it.effect("fails when FinalizeArtifact returns ok:false", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { ok: true, signedUploadUrl: "https://azure.example.com/up" } },
+						{ status: 200, body: { ok: false } },
+					);
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")),
+					);
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("FinalizeArtifact did not confirm success");
+				}),
+			);
 
-			it("fails when CreateArtifact returns ok but no upload URL", async () => {
-				queue({ status: 200, body: { ok: true } });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("did not return a signed upload URL");
-			});
+			it.effect("fails when CreateArtifact returns ok but no upload URL", () =>
+				Effect.gen(function* () {
+					queue({ status: 200, body: { ok: true } });
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work")),
+					);
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("did not return a signed upload URL");
+				}),
+			);
 
-			it("fails when retentionDays is not positive", async () => {
-				const exit = await runExit(
-					Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work", { retentionDays: 0 })),
-				);
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("retentionDays");
-			});
+			it.effect("fails when retentionDays is not positive", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(
+						Effect.flatMap(Artifact, (svc) => svc.uploadArtifact("dist", ["a.txt"], "/work", { retentionDays: 0 })),
+					);
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("retentionDays");
+				}),
+			);
 		});
 
 		describe("downloadArtifact", () => {
-			it("resolves a signed URL, downloads, and unzips to the dest path", async () => {
-				queue(
-					{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
-					{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
-				);
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, { path: "/dest" })));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(exit.value).toEqual({ downloadPath: "/dest" });
-				}
-				expect(twirpCaptured[1]?.url).toContain("ArtifactService/GetSignedArtifactURL");
-				expect(twirpCaptured[1]?.body).toMatchObject({ name: "dist" });
-				expect(mockDownloadToFile).toHaveBeenCalled();
-				// unzip shells out
-				expect(mockedExecFileSync).toHaveBeenCalled();
-			});
+			it.effect("resolves a signed URL, downloads, and unzips to the dest path", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
+						{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
+					);
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, { path: "/dest" })));
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(exit.value).toEqual({ downloadPath: "/dest" });
+					}
+					expect(twirpCaptured[1]?.url).toContain("ArtifactService/GetSignedArtifactURL");
+					expect(twirpCaptured[1]?.body).toMatchObject({ name: "dist" });
+					expect(mockDownloadToFile).toHaveBeenCalled();
+					// unzip shells out
+					expect(mockedExecFileSync).toHaveBeenCalled();
+				}),
+			);
 
-			it("fails with ArtifactError when GetSignedArtifactURL is non-ok", async () => {
-				queue({ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } }, { status: 400 });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.operation).toBe("download");
-				expect(error?.reason).toContain("HTTP 400");
-			});
+			it.effect("fails with ArtifactError when GetSignedArtifactURL is non-ok", () =>
+				Effect.gen(function* () {
+					queue({ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } }, { status: 400 });
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.operation).toBe("download");
+					expect(error?.reason).toContain("HTTP 400");
+				}),
+			);
 
-			it("cleans up the temp zip after extraction", async () => {
-				queue(
-					{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
-					{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
-				);
-				await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, { path: "/dest" })));
-				expect(mockedUnlinkSync).toHaveBeenCalled();
-			});
+			it.effect("cleans up the temp zip after extraction", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
+						{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
+					);
+					yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, { path: "/dest" })));
+					expect(mockedUnlinkSync).toHaveBeenCalled();
+				}),
+			);
 
-			it("fails when the artifact id is not found in the run", async () => {
-				queue({ status: 200, body: { artifacts: [{ databaseId: "9", name: "other", size: "1" }] } });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("not found");
-			});
+			it.effect("fails when the artifact id is not found in the run", () =>
+				Effect.gen(function* () {
+					queue({ status: 200, body: { artifacts: [{ databaseId: "9", name: "other", size: "1" }] } });
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("not found");
+				}),
+			);
 
-			it("fails when GetSignedArtifactURL returns no signed URL", async () => {
-				queue(
-					{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
-					{ status: 200, body: {} },
-				);
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("did not return a signed URL");
-			});
+			it.effect("fails when GetSignedArtifactURL returns no signed URL", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
+						{ status: 200, body: {} },
+					);
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("did not return a signed URL");
+				}),
+			);
 
-			it("downloads to a fresh temp dir when no path is given", async () => {
-				queue(
-					{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
-					{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
-				);
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(exit.value.downloadPath).toContain("artifact-download-");
-				}
-			});
+			it.effect("downloads to a fresh temp dir when no path is given", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
+						{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
+					);
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7)));
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(exit.value.downloadPath).toContain("artifact-download-");
+					}
+				}),
+			);
 
-			it("fails when the blob download rejects", async () => {
-				queue(
-					{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
-					{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
-				);
-				mockDownloadToFile.mockRejectedValueOnce(new Error("Azure download timeout"));
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, { path: "/dest" })));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("download failed");
-				expect(error?.reason).toContain("Azure download timeout");
-			});
+			it.effect("fails when the blob download rejects", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { artifacts: [{ databaseId: "7", name: "dist", size: "9" }] } },
+						{ status: 200, body: { signedUrl: "https://azure.example.com/down" } },
+					);
+					mockDownloadToFile.mockRejectedValueOnce(new Error("Azure download timeout"));
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, { path: "/dest" })));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("download failed");
+					expect(error?.reason).toContain("Azure download timeout");
+				}),
+			);
 		});
 
 		describe("findBy (cross-run/cross-repo)", () => {
@@ -461,52 +523,64 @@ describe("ArtifactLive", () => {
 				repositoryName: "repo",
 			} as const;
 
-			it("listArtifacts(findBy) fails as not yet implemented", async () => {
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts(findBy)));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.reason).toContain("not yet implemented");
-			});
+			it.effect("listArtifacts(findBy) fails as not yet implemented", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.listArtifacts(findBy)));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.reason).toContain("not yet implemented");
+				}),
+			);
 
-			it("getArtifact(name, findBy) fails as not yet implemented", async () => {
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.getArtifact("dist", findBy)));
-				expect(Exit.isFailure(exit)).toBe(true);
-			});
+			it.effect("getArtifact(name, findBy) fails as not yet implemented", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.getArtifact("dist", findBy)));
+					expect(Exit.isFailure(exit)).toBe(true);
+				}),
+			);
 
-			it("downloadArtifact(id, opts, findBy) fails as not yet implemented", async () => {
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, undefined, findBy)));
-				expect(Exit.isFailure(exit)).toBe(true);
-			});
+			it.effect("downloadArtifact(id, opts, findBy) fails as not yet implemented", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.downloadArtifact(7, undefined, findBy)));
+					expect(Exit.isFailure(exit)).toBe(true);
+				}),
+			);
 
-			it("deleteArtifact(name, findBy) fails as not yet implemented", async () => {
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.deleteArtifact("dist", findBy)));
-				expect(Exit.isFailure(exit)).toBe(true);
-			});
+			it.effect("deleteArtifact(name, findBy) fails as not yet implemented", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.deleteArtifact("dist", findBy)));
+					expect(Exit.isFailure(exit)).toBe(true);
+				}),
+			);
 		});
 
 		describe("deleteArtifact", () => {
-			it("calls DeleteArtifact and returns the deleted id", async () => {
-				queue(
-					{ status: 200, body: { artifacts: [{ databaseId: "3", name: "dist", size: "9" }] } },
-					{ status: 200, body: { ok: true, artifactId: "3" } },
-				);
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.deleteArtifact("dist")));
-				expect(Exit.isSuccess(exit)).toBe(true);
-				if (Exit.isSuccess(exit)) {
-					expect(exit.value).toEqual({ id: 3 });
-				}
-				expect(twirpCaptured[1]?.url).toContain("ArtifactService/DeleteArtifact");
-				expect(twirpCaptured[1]?.body).toMatchObject({ name: "dist" });
-			});
+			it.effect("calls DeleteArtifact and returns the deleted id", () =>
+				Effect.gen(function* () {
+					queue(
+						{ status: 200, body: { artifacts: [{ databaseId: "3", name: "dist", size: "9" }] } },
+						{ status: 200, body: { ok: true, artifactId: "3" } },
+					);
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.deleteArtifact("dist")));
+					expect(Exit.isSuccess(exit)).toBe(true);
+					if (Exit.isSuccess(exit)) {
+						expect(exit.value).toEqual({ id: 3 });
+					}
+					expect(twirpCaptured[1]?.url).toContain("ArtifactService/DeleteArtifact");
+					expect(twirpCaptured[1]?.body).toMatchObject({ name: "dist" });
+				}),
+			);
 
-			it("fails when the named artifact does not exist", async () => {
-				queue({ status: 200, body: { artifacts: [] } });
-				const exit = await runExit(Effect.flatMap(Artifact, (svc) => svc.deleteArtifact("dist")));
-				expect(Exit.isFailure(exit)).toBe(true);
-				const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
-				expect(error?.operation).toBe("delete");
-				expect(error?.reason).toContain("not found");
-			});
+			it.effect("fails when the named artifact does not exist", () =>
+				Effect.gen(function* () {
+					queue({ status: 200, body: { artifacts: [] } });
+					const exit = yield* runExit(Effect.flatMap(Artifact, (svc) => svc.deleteArtifact("dist")));
+					expect(Exit.isFailure(exit)).toBe(true);
+					const error = extractError(exit as Exit.Exit<unknown, ArtifactError>);
+					expect(error?.operation).toBe("delete");
+					expect(error?.reason).toContain("not found");
+				}),
+			);
 		});
 	});
 });

@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Data, Effect, Exit, Redacted, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { GitHubAppError } from "../../src/errors/GitHubAppError.js";
 import { GitHubAppTest } from "../../src/layers/GitHubAppTest.js";
 import { GitHubApp, InstallationToken } from "../../src/services/GitHubApp.js";
@@ -10,10 +10,10 @@ const provide = <A, E>(state: ReturnType<typeof GitHubAppTest.empty>, effect: Ef
 	Effect.provide(effect, GitHubAppTest.layer(state));
 
 const run = <A, E>(state: ReturnType<typeof GitHubAppTest.empty>, effect: Effect.Effect<A, E, GitHubApp>) =>
-	Effect.runPromise(provide(state, effect));
+	provide(state, effect);
 
 const runExit = <A, E>(state: ReturnType<typeof GitHubAppTest.empty>, effect: Effect.Effect<A, E, GitHubApp>) =>
-	Effect.runPromise(Effect.exit(provide(state, effect)));
+	Effect.exit(provide(state, effect));
 
 // -- Service method shorthands --
 
@@ -30,97 +30,113 @@ const withToken = <A, E, R>(
 
 describe("GitHubApp", () => {
 	describe("generateToken", () => {
-		it("returns the configured token", async () => {
-			const state = GitHubAppTest.empty();
-			const result = await run(state, generateToken("app-1", "private-key"));
-			expect(result).toEqual(state.tokenToReturn);
-		});
+		it.effect("returns the configured token", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
+				const result = yield* run(state, generateToken("app-1", "private-key"));
+				expect(result).toEqual(state.tokenToReturn);
+			}),
+		);
 
-		it("records the call", async () => {
-			const state = GitHubAppTest.empty();
-			await run(state, generateToken("app-1", "private-key", 42));
-			expect(state.generateCalls).toHaveLength(1);
-			expect(state.generateCalls[0]?.appId).toBe("app-1");
-			expect(state.generateCalls[0]?.installationId).toBe(42);
-			expect(Redacted.value(state.generateCalls[0]?.privateKey as Redacted.Redacted<string>)).toBe("private-key");
-		});
+		it.effect("records the call", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
+				yield* run(state, generateToken("app-1", "private-key", 42));
+				expect(state.generateCalls).toHaveLength(1);
+				expect(state.generateCalls[0]?.appId).toBe("app-1");
+				expect(state.generateCalls[0]?.installationId).toBe(42);
+				expect(Redacted.value(state.generateCalls[0]?.privateKey as Redacted.Redacted<string>)).toBe("private-key");
+			}),
+		);
 	});
 
 	describe("revokeToken", () => {
-		it("records the call", async () => {
-			const state = GitHubAppTest.empty();
-			await run(state, revokeToken("ghs_abc123"));
-			expect(state.revokeCalls).toHaveLength(1);
-			expect(Redacted.value(state.revokeCalls[0] as Redacted.Redacted<string>)).toBe("ghs_abc123");
-		});
+		it.effect("records the call", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
+				yield* run(state, revokeToken("ghs_abc123"));
+				expect(state.revokeCalls).toHaveLength(1);
+				expect(Redacted.value(state.revokeCalls[0] as Redacted.Redacted<string>)).toBe("ghs_abc123");
+			}),
+		);
 	});
 
 	describe("withToken", () => {
-		it("brackets correctly: generate → use → revoke", async () => {
-			const state = GitHubAppTest.empty();
-			const result = await run(
-				state,
-				withToken("app-1", "pk", (token) => Effect.succeed(`used:${Redacted.value(token)}`)),
-			);
-			expect(result).toBe(`used:${Redacted.value(state.tokenToReturn.token)}`);
-			expect(state.generateCalls).toHaveLength(1);
-			expect(state.revokeCalls).toHaveLength(1);
-			expect(state.revokeCalls[0]).toBe(state.tokenToReturn.token);
-		});
+		it.effect("brackets correctly: generate → use → revoke", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
+				const result = yield* run(
+					state,
+					withToken("app-1", "pk", (token) => Effect.succeed(`used:${Redacted.value(token)}`)),
+				);
+				expect(result).toBe(`used:${Redacted.value(state.tokenToReturn.token)}`);
+				expect(state.generateCalls).toHaveLength(1);
+				expect(state.revokeCalls).toHaveLength(1);
+				expect(state.revokeCalls[0]).toBe(state.tokenToReturn.token);
+			}),
+		);
 
-		it("revokes on failure", async () => {
-			const state = GitHubAppTest.empty();
+		it.effect("revokes on failure", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
 
-			class TestError extends Data.TaggedError("TestError")<{ readonly message: string }> {}
+				class TestError extends Data.TaggedError("TestError")<{ readonly message: string }> {}
 
-			const exit = await runExit(
-				state,
-				withToken("app-1", "pk", (_token) => Effect.fail(new TestError({ message: "boom" }))),
-			);
+				const exit = yield* runExit(
+					state,
+					withToken("app-1", "pk", (_token) => Effect.fail(new TestError({ message: "boom" }))),
+				);
 
-			expect(Exit.isFailure(exit)).toBe(true);
-			expect(state.generateCalls).toHaveLength(1);
-			expect(state.revokeCalls).toHaveLength(1);
-			expect(state.revokeCalls[0]).toBe(state.tokenToReturn.token);
-		});
+				expect(Exit.isFailure(exit)).toBe(true);
+				expect(state.generateCalls).toHaveLength(1);
+				expect(state.revokeCalls).toHaveLength(1);
+				expect(state.revokeCalls[0]).toBe(state.tokenToReturn.token);
+			}),
+		);
 
-		it("propagates inner effect errors", async () => {
-			const state = GitHubAppTest.empty();
+		it.effect("propagates inner effect errors", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
 
-			class MyError extends Data.TaggedError("MyError")<{ readonly code: number }> {}
+				class MyError extends Data.TaggedError("MyError")<{ readonly code: number }> {}
 
-			const exit = await runExit(
-				state,
-				withToken("app-1", "pk", (_token) => Effect.fail(new MyError({ code: 42 }))),
-			);
+				const exit = yield* runExit(
+					state,
+					withToken("app-1", "pk", (_token) => Effect.fail(new MyError({ code: 42 }))),
+				);
 
-			expect(Exit.isFailure(exit)).toBe(true);
-			if (Exit.isFailure(exit)) {
-				expect(String(exit.cause)).toContain("MyError");
-			}
-		});
+				expect(Exit.isFailure(exit)).toBe(true);
+				if (Exit.isFailure(exit)) {
+					expect(String(exit.cause)).toContain("MyError");
+				}
+			}),
+		);
 	});
 
 	describe("botIdentity", () => {
-		it("returns a verified identity when both appSlug and appUserId are provided", async () => {
-			const state = GitHubAppTest.empty();
-			const result = await run(
-				state,
-				Effect.flatMap(GitHubApp, (svc) => Effect.succeed(svc.botIdentity({ appSlug: "my-app", appUserId: 99 }))),
-			);
-			expect(result.name).toBe("my-app[bot]");
-			expect(result.email).toBe("99+my-app[bot]@users.noreply.github.com");
-		});
+		it.effect("returns a verified identity when both appSlug and appUserId are provided", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
+				const result = yield* run(
+					state,
+					Effect.flatMap(GitHubApp, (svc) => Effect.succeed(svc.botIdentity({ appSlug: "my-app", appUserId: 99 }))),
+				);
+				expect(result.name).toBe("my-app[bot]");
+				expect(result.email).toBe("99+my-app[bot]@users.noreply.github.com");
+			}),
+		);
 
-		it("returns default github-actions bot when no source is given", async () => {
-			const state = GitHubAppTest.empty();
-			const result = await run(
-				state,
-				Effect.flatMap(GitHubApp, (svc) => Effect.succeed(svc.botIdentity())),
-			);
-			expect(result.name).toBe("github-actions[bot]");
-			expect(result.email).toBe("41898282+github-actions[bot]@users.noreply.github.com");
-		});
+		it.effect("returns default github-actions bot when no source is given", () =>
+			Effect.gen(function* () {
+				const state = GitHubAppTest.empty();
+				const result = yield* run(
+					state,
+					Effect.flatMap(GitHubApp, (svc) => Effect.succeed(svc.botIdentity())),
+				);
+				expect(result.name).toBe("github-actions[bot]");
+				expect(result.email).toBe("41898282+github-actions[bot]@users.noreply.github.com");
+			}),
+		);
 	});
 
 	describe("GitHubAppError", () => {

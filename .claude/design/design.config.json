@@ -179,6 +179,17 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"testing": {
+			"path": ".",
+			"designDocsPath": ".claude/design/testing",
+			"categories": ["testing"],
+			"maintainer": "C. Spencer Beggs",
+			"userDocs": {
+				"readme": null,
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"skills": {

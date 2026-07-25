@@ -1,5 +1,5 @@
-import { Effect, Exit } from "effect";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "@effect/vitest";
+import { Effect } from "effect";
 
 import { runInit } from "../src/commands/init.js";
 
@@ -12,29 +12,32 @@ beforeEach(() => {
 });
 
 describe("savvy init orchestrator", () => {
-	it("runs changeset, commit, and lint init in order and succeeds", async () => {
-		const calls: string[] = [];
-		const exit = await Effect.runPromiseExit(
-			runInit({
+	it.effect("runs changeset, commit, and lint init in order and succeeds", () =>
+		Effect.gen(function* () {
+			const calls: string[] = [];
+			yield* runInit({
 				changeset: Effect.sync(() => calls.push("changeset")),
 				commit: Effect.sync(() => calls.push("commit")),
 				lint: Effect.sync(() => calls.push("lint")),
-			}),
-		);
-		expect(Exit.isSuccess(exit)).toBe(true);
-		expect(calls).toEqual(["changeset", "commit", "lint"]);
-	});
+			});
+			expect(calls).toEqual(["changeset", "commit", "lint"]);
+		}),
+	);
 
-	it("short-circuits: stops at the first failing step", async () => {
-		const calls: string[] = [];
-		const exit = await Effect.runPromiseExit(
-			runInit({
-				changeset: Effect.sync(() => calls.push("changeset")),
-				commit: Effect.fail(new Error("commit failed")),
-				lint: Effect.sync(() => calls.push("lint")),
-			}),
-		);
-		expect(Exit.isFailure(exit)).toBe(true);
-		expect(calls).toEqual(["changeset"]); // lint never runs
-	});
+	it.effect("short-circuits: stops at the first failing step", () =>
+		Effect.gen(function* () {
+			const calls: string[] = [];
+			// `Effect.flip` proves the step's error reaches the TYPED channel.
+			const error = yield* Effect.flip(
+				runInit({
+					changeset: Effect.sync(() => calls.push("changeset")),
+					commit: Effect.fail(new Error("commit failed")),
+					lint: Effect.sync(() => calls.push("lint")),
+				}),
+			);
+			expect(error).toBeInstanceOf(Error);
+			expect(error.message).toBe("commit failed");
+			expect(calls).toEqual(["changeset"]); // lint never runs
+		}),
+	);
 });

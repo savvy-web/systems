@@ -13,4 +13,4 @@
 
 Load for the runtime layer and the tool implementations:
 → `@../../.claude/design/mcp/architecture.md`
-Load when adding a tool or changing the runtime layer.
+Load when adding a tool, changing the runtime layer, or touching `__test__/runtime.smoke.test.ts` — the runtime is root-bound at layer build, which makes that suite the repo's canonical suite-boundary `layer(...)` case with two ordering constraints (fixture in `beforeAll`, layer wrapped in `Layer.suspend`).

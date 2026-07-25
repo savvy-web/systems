@@ -41,6 +41,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@effect/vitest": "catalog:effect",
 		"@modelcontextprotocol/inspector": "^1.0.0",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",

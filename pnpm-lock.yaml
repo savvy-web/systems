@@ -30,6 +30,9 @@ catalogs:
     '@effect/platform-node':
       specifier: 4.0.0-beta.101
       version: 4.0.0-beta.101
+    '@effect/vitest':
+      specifier: 4.0.0-beta.101
+      version: 4.0.0-beta.101
     effect:
       specifier: 4.0.0-beta.101
       version: 4.0.0-beta.101
@@ -287,6 +290,9 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.101
     devDependencies:
+      '@effect/vitest':
+        specifier: catalog:effect
+        version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
@@ -325,6 +331,9 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
     devDependencies:
+      '@effect/vitest':
+        specifier: catalog:effect
+        version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
@@ -375,6 +384,9 @@ importers:
       '@effect/platform-node':
         specifier: catalog:effect
         version: 4.0.0-beta.101(effect@4.0.0-beta.101)(ioredis@5.11.1(supports-color@8.1.1))
+      '@effect/vitest':
+        specifier: catalog:effect
+        version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
@@ -416,6 +428,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@effect/vitest':
+        specifier: catalog:effect
+        version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@modelcontextprotocol/inspector':
         specifier: ^1.0.0
         version: 1.0.0(@types/node@26.1.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(supports-color@8.1.1)(typescript@7.0.2)
@@ -648,6 +663,9 @@ importers:
       '@effect/platform-node':
         specifier: catalog:effect
         version: 4.0.0-beta.101(effect@4.0.0-beta.101)(ioredis@5.11.1(supports-color@8.1.1))
+      '@effect/vitest':
+        specifier: catalog:effect
+        version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
@@ -689,6 +707,9 @@ importers:
         specifier: ^0.6.0
         version: 0.6.0(effect@4.0.0-beta.101)
     devDependencies:
+      '@effect/vitest':
+        specifier: catalog:effect
+        version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
@@ -754,6 +775,9 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
     devDependencies:
+      '@effect/vitest':
+        specifier: catalog:effect
+        version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@types/node':
         specifier: catalog:silk
         version: 26.1.1
@@ -1167,6 +1191,12 @@ packages:
     resolution: {integrity: sha512-RLvbKeEPkU6GEocEalOnDbRcJb6ZMigVDMe1ECSj9H0SGeY/Zdxi8f9KX3v8tNJjav3toXCwZAl4vKZ0uZYewQ==}
     peerDependencies:
       effect: ^4.0.0-beta.101
+
+  '@effect/vitest@4.0.0-beta.101':
+    resolution: {integrity: sha512-F5Ur8pZYti0xkZFyb4hPZt8RrKQ1XBoC28ZkKxc7N1iPbhE9fWOvlWA1NC2XlN2wWG08yb5g5jR53LdOxjlhpQ==}
+    peerDependencies:
+      effect: ^4.0.0-beta.101
+      vitest: ^3.0.0 || ^4.0.0
 
   '@effected/config-file@0.1.9':
     resolution: {integrity: sha512-0zBGI8O288I1Kqx//0C59dlLkw/o8sGaKihATDVo15y0BMjb12dYRYou3GcbIl+SQ1zmqY8AKyj42xrvY3sL9w==}
@@ -6504,6 +6534,11 @@ snapshots:
   '@effect/sql-sqlite-node@4.0.0-beta.101(effect@4.0.0-beta.101)':
     dependencies:
       effect: 4.0.0-beta.101
+
+  '@effect/vitest@4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)':
+    dependencies:
+      effect: 4.0.0-beta.101
+      vitest: 4.1.10(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
 
   '@effected/config-file@0.1.9(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/toml@0.3.1(effect@4.0.0-beta.101))(@effected/walker@0.3.2(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(@effected/yaml@0.6.0(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)':
     dependencies:

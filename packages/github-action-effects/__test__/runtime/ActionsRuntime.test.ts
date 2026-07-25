@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import { Config, Effect, References, Schema } from "effect";
 import { HttpClient } from "effect/unstable/http";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionsRuntime } from "../../src/runtime/ActionsRuntime.js";
 import { ActionLogger } from "../../src/services/ActionLogger.js";
 import { ActionOutputs } from "../../src/services/ActionOutputs.js";
@@ -14,20 +14,15 @@ import { ActionState } from "../../src/services/ActionState.js";
 // `Effect.runPromise` wants `R: never` but `tsgo`'s narrowing of layer
 // composition leaks `any` through `Effect.provide`. Cast at the seam so each
 // call site doesn't carry the type-variance noise.
-const run = <A>(effect: Effect.Effect<A, unknown, never> | Effect.Effect<A, unknown, unknown>): Promise<A> =>
-	Effect.runPromise(effect as Effect.Effect<A, unknown, never>);
+const run = <A>(effect: Effect.Effect<A, unknown, never> | Effect.Effect<A, unknown, unknown>) =>
+	effect as Effect.Effect<A, unknown, never>;
 
-const runWithDefault = <A, E, R>(effect: Effect.Effect<A, E, R>): Promise<A> =>
+const runWithDefault = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 	// Cast is safe: ActionsRuntime.Default satisfies all R requirements in these tests.
 	// Two casts because `tsgo` leaks `any` from the layer composition through both
 	// the input effect's R-channel and the provided effect's R-channel.
-	Effect.runPromise(
-		Effect.provide(effect as unknown as Effect.Effect<A, E, never>, ActionsRuntime.Default) as Effect.Effect<
-			A,
-			E,
-			never
-		>,
-	);
+
+	Effect.provide(effect as unknown as Effect.Effect<A, E, never>, ActionsRuntime.Default) as Effect.Effect<A, E, never>;
 
 // Temp file management
 
@@ -105,113 +100,139 @@ describe("ActionsRuntime", () => {
 	});
 
 	describe("ConfigProvider integration", () => {
-		it("reads INPUT_NAME when Config.string('name') is used", async () => {
-			setEnv("INPUT_NAME", "my-action");
+		it.effect("reads INPUT_NAME when Config.string('name') is used", () =>
+			Effect.gen(function* () {
+				setEnv("INPUT_NAME", "my-action");
 
-			const program = Config.string("name");
-			const result = await runWithDefault(program);
+				const program = Config.string("name");
+				const result = yield* runWithDefault(program);
 
-			expect(result).toBe("my-action");
+				expect(result).toBe("my-action");
 
-			deleteEnv("INPUT_NAME");
-		});
+				deleteEnv("INPUT_NAME");
+			}),
+		);
 
-		it("returns an error when the input env var is missing", async () => {
-			deleteEnv("INPUT_NAME");
+		it.effect("returns an error when the input env var is missing", () =>
+			Effect.gen(function* () {
+				deleteEnv("INPUT_NAME");
 
-			const program = Config.string("name");
-			const exit = await run(Effect.exit(Effect.provide(program, ActionsRuntime.Default)));
+				const program = Config.string("name");
+				const exit = yield* run(Effect.exit(Effect.provide(program, ActionsRuntime.Default)));
 
-			expect(exit._tag).toBe("Failure");
-		});
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("Logger integration", () => {
-		it("Effect.log emits plain text to stdout (Info level)", async () => {
-			const program = Effect.log("hello from runtime");
-			await runWithDefault(program);
+		it.effect("Effect.log emits plain text to stdout (Info level)", () =>
+			Effect.gen(function* () {
+				const program = Effect.log("hello from runtime");
+				yield* runWithDefault(program);
 
-			expect(captured.join("")).toContain("hello from runtime");
-		});
+				expect(captured.join("")).toContain("hello from runtime");
+			}),
+		);
 
-		it("Effect.logDebug emits ::debug:: workflow command when minimum log level is All", async () => {
-			const program = Effect.logDebug("debug message").pipe(Effect.provideService(References.MinimumLogLevel, "All"));
-			await runWithDefault(program);
+		it.effect("Effect.logDebug emits ::debug:: workflow command when minimum log level is All", () =>
+			Effect.gen(function* () {
+				const program = Effect.logDebug("debug message").pipe(Effect.provideService(References.MinimumLogLevel, "All"));
+				yield* runWithDefault(program);
 
-			expect(captured.join("")).toContain("::debug::debug message");
-		});
+				expect(captured.join("")).toContain("::debug::debug message");
+			}),
+		);
 
-		it("Effect.logWarning emits ::warning:: workflow command", async () => {
-			const program = Effect.logWarning("warn message");
-			await runWithDefault(program);
+		it.effect("Effect.logWarning emits ::warning:: workflow command", () =>
+			Effect.gen(function* () {
+				const program = Effect.logWarning("warn message");
+				yield* runWithDefault(program);
 
-			expect(captured.join("")).toContain("::warning::warn message");
-		});
+				expect(captured.join("")).toContain("::warning::warn message");
+			}),
+		);
 
-		it("Effect.logError emits ::error:: workflow command", async () => {
-			const program = Effect.logError("error message");
-			await runWithDefault(program);
+		it.effect("Effect.logError emits ::error:: workflow command", () =>
+			Effect.gen(function* () {
+				const program = Effect.logError("error message");
+				yield* runWithDefault(program);
 
-			expect(captured.join("")).toContain("::error::error message");
-		});
+				expect(captured.join("")).toContain("::error::error message");
+			}),
+		);
 	});
 
 	describe("ActionOutputs integration", () => {
-		it("set writes key=value to GITHUB_OUTPUT file", async () => {
-			const program = Effect.flatMap(ActionOutputs, (svc) => svc.set("result", "success"));
-			await runWithDefault(program);
+		it.effect("set writes key=value to GITHUB_OUTPUT file", () =>
+			Effect.gen(function* () {
+				const program = Effect.flatMap(ActionOutputs, (svc) => svc.set("result", "success"));
+				yield* runWithDefault(program);
 
-			const content = fs.readFileSync(outputFile, "utf8");
-			expect(content).toBe("result=success\n");
-		});
+				const content = fs.readFileSync(outputFile, "utf8");
+				expect(content).toBe("result=success\n");
+			}),
+		);
 
-		it("setJson writes JSON-encoded value to GITHUB_OUTPUT file", async () => {
-			const MySchema = Schema.Struct({ count: Schema.Number });
-			const program = Effect.flatMap(ActionOutputs, (svc) => svc.setJson("data", { count: 42 }, MySchema));
-			await runWithDefault(program);
+		it.effect("setJson writes JSON-encoded value to GITHUB_OUTPUT file", () =>
+			Effect.gen(function* () {
+				const MySchema = Schema.Struct({ count: Schema.Number });
+				const program = Effect.flatMap(ActionOutputs, (svc) => svc.setJson("data", { count: 42 }, MySchema));
+				yield* runWithDefault(program);
 
-			const content = fs.readFileSync(outputFile, "utf8");
-			expect(content).toBe('data={"count":42}\n');
-		});
+				const content = fs.readFileSync(outputFile, "utf8");
+				expect(content).toBe('data={"count":42}\n');
+			}),
+		);
 	});
 
 	describe("ActionState integration", () => {
-		it("save writes encoded state to GITHUB_STATE file", async () => {
-			const MySchema = Schema.Struct({ token: Schema.String });
-			const program = Effect.flatMap(ActionState, (svc) => svc.save("auth", { token: "abc" }, MySchema));
-			await runWithDefault(program);
+		it.effect("save writes encoded state to GITHUB_STATE file", () =>
+			Effect.gen(function* () {
+				const MySchema = Schema.Struct({ token: Schema.String });
+				const program = Effect.flatMap(ActionState, (svc) => svc.save("auth", { token: "abc" }, MySchema));
+				yield* runWithDefault(program);
 
-			const content = fs.readFileSync(stateFile, "utf8");
-			expect(content).toBe(`auth=${JSON.stringify({ token: "abc" })}\n`);
-		});
+				const content = fs.readFileSync(stateFile, "utf8");
+				expect(content).toBe(`auth=${JSON.stringify({ token: "abc" })}\n`);
+			}),
+		);
 
-		it("getOptional returns None when state env var is not set", async () => {
-			const MySchema = Schema.Struct({ token: Schema.String });
-			const program = Effect.flatMap(ActionState, (svc) => svc.getOptional("missing", MySchema));
-			const result = await runWithDefault(program);
+		it.effect("getOptional returns None when state env var is not set", () =>
+			Effect.gen(function* () {
+				const MySchema = Schema.Struct({ token: Schema.String });
+				const program = Effect.flatMap(ActionState, (svc) => svc.getOptional("missing", MySchema));
+				const result = yield* runWithDefault(program);
 
-			expect(result._tag).toBe("None");
-		});
+				expect(result._tag).toBe("None");
+			}),
+		);
 	});
 
 	describe("ActionLogger integration", () => {
-		it("group emits ::group:: and ::endgroup:: workflow commands", async () => {
-			const program = Effect.flatMap(ActionLogger, (logger) => logger.group("my-group", Effect.void));
-			await runWithDefault(program);
+		it.effect("group emits ::group:: and ::endgroup:: workflow commands", () =>
+			Effect.gen(function* () {
+				const program = Effect.flatMap(ActionLogger, (logger) => logger.group("my-group", Effect.void));
+				yield* runWithDefault(program);
 
-			const output = captured.join("");
-			expect(output).toContain("::group::my-group");
-			expect(output).toContain("::endgroup::");
-		});
+				const output = captured.join("");
+				expect(output).toContain("::group::my-group");
+				expect(output).toContain("::endgroup::");
+			}),
+		);
 	});
 
 	describe("HttpClient integration", () => {
-		it("provides HttpClient.HttpClient so Oidc/GitHubApp/ActionCache resolve through ActionsRuntime.Default", async () => {
-			// Resolving the HttpClient service confirms FetchHttpClient.layer is
-			// merged into the common path; the migrated layers depend on it.
-			const client = await runWithDefault(Effect.map(HttpClient.HttpClient, (c) => c));
-			expect(client).toBeDefined();
-			expect(typeof client.execute).toBe("function");
-		});
+		it.effect(
+			"provides HttpClient.HttpClient so Oidc/GitHubApp/ActionCache resolve through ActionsRuntime.Default",
+			() =>
+				Effect.gen(function* () {
+					// Resolving the HttpClient service confirms FetchHttpClient.layer is
+					// merged into the common path; the migrated layers depend on it.
+					const client = yield* runWithDefault(Effect.map(HttpClient.HttpClient, (c) => c));
+					expect(client).toBeDefined();
+					expect(typeof client.execute).toBe("function");
+				}),
+		);
 	});
 });

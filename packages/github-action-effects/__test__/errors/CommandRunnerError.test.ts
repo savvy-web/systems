@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import { CommandRunnerError } from "../../src/errors/CommandRunnerError.js";
 
 describe("CommandRunnerError", () => {

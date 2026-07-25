@@ -1,8 +1,8 @@
+import { describe, expect, it } from "@effect/vitest";
 import { DetectedPackageManager, PackageManagerDetector, WorkspaceRoot } from "@effected/workspaces";
 import { Effect, Layer, Option, PlatformError } from "effect";
 import type { ChildProcess } from "effect/unstable/process";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { describe, expect, it } from "vitest";
 import { ToolDefinition } from "../../src/schemas/ToolDefinition.js";
 import { ResolutionPolicy, SourceRequirement, VersionExtractor } from "../../src/schemas/ToolResults.js";
 import { ToolDiscovery, ToolDiscoveryLive } from "../../src/services/ToolDiscovery.js";
@@ -120,12 +120,17 @@ function makeLayer(
 	);
 }
 
-function run<A, E>(layer: Layer.Layer<ToolDiscovery>, effect: Effect.Effect<A, E, ToolDiscovery>): Promise<A> {
-	return Effect.runPromise(Effect.provide(effect, layer));
-}
-
-function runExit<A, E>(layer: Layer.Layer<ToolDiscovery>, effect: Effect.Effect<A, E, ToolDiscovery>) {
-	return Effect.runPromiseExit(Effect.provide(effect, layer));
+/**
+ * Provide the per-test ToolDiscovery layer. The layer is a parameter — every
+ * test builds its own from a distinct spawner — so it cannot move to a
+ * suite-boundary `layer(...)`, and the counting spawner below therefore cannot
+ * accumulate across tests and needs no `beforeEach` reset.
+ */
+function provide<A, E>(
+	layer: Layer.Layer<ToolDiscovery>,
+	effect: Effect.Effect<A, E, ToolDiscovery>,
+): Effect.Effect<A, E> {
+	return Effect.provide(effect, layer);
 }
 
 /**
@@ -135,16 +140,22 @@ function makeCountingSpawner(responses: Record<string, CommandResponse>) {
 	let callCount = 0;
 	const methods = buildSpawnerMethods(responses);
 
+	// `Effect.suspend` so each increment happens when the spawn effect RUNS, not
+	// when the method is called to build it. The eager form would count a command
+	// that was only described, which is precisely what the cache tests below
+	// distinguish (a cache hit must build no new spawn AND run none).
 	const counted = {
 		...methods,
-		exitCode: (cmd: ChildProcess.Command) => {
-			callCount++;
-			return methods.exitCode(cmd);
-		},
-		string: (cmd: ChildProcess.Command) => {
-			callCount++;
-			return methods.string(cmd);
-		},
+		exitCode: (cmd: ChildProcess.Command) =>
+			Effect.suspend(() => {
+				callCount++;
+				return methods.exitCode(cmd);
+			}),
+		string: (cmd: ChildProcess.Command) =>
+			Effect.suspend(() => {
+				callCount++;
+				return methods.string(cmd);
+			}),
 	};
 
 	const spawner = Layer.succeed(
@@ -160,118 +171,133 @@ function makeCountingSpawner(responses: Record<string, CommandResponse>) {
 // ---------------------------------------------------------------------------
 
 describe("ToolDiscovery.resolve", () => {
-	it("resolves a tool found only globally", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("resolves a tool found only globally", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
-		);
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
+			);
 
-		expect(result.source).toBe("global");
-		expect(result.mismatch).toBe(false);
-		expect(Option.isSome(result.globalVersion)).toBe(true);
-		expect(Option.getOrElse(result.globalVersion, () => "")).toBe("1.9.0");
-		expect(Option.isNone(result.localVersion)).toBe(true);
-	});
+			expect(result.source).toBe("global");
+			expect(result.mismatch).toBe(false);
+			expect(Option.isSome(result.globalVersion)).toBe(true);
+			expect(Option.getOrElse(result.globalVersion, () => "")).toBe("1.9.0");
+			expect(Option.isNone(result.localVersion)).toBe(true);
+		}),
+	);
 
-	it("resolves a tool found only locally", async () => {
-		const layer = makeLayer({
-			"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("resolves a tool found only locally", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
-		);
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
+			);
 
-		expect(result.source).toBe("local");
-		expect(result.mismatch).toBe(false);
-		expect(Option.isNone(result.globalVersion)).toBe(true);
-		expect(Option.isSome(result.localVersion)).toBe(true);
-		expect(Option.getOrElse(result.localVersion, () => "")).toBe("1.9.0");
-	});
+			expect(result.source).toBe("local");
+			expect(result.mismatch).toBe(false);
+			expect(Option.isNone(result.globalVersion)).toBe(true);
+			expect(Option.isSome(result.localVersion)).toBe(true);
+			expect(Option.getOrElse(result.localVersion, () => "")).toBe("1.9.0");
+		}),
+	);
 
-	it("resolves both with same version — prefers local, no mismatch", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-			"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("resolves both with same version — prefers local, no mismatch", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+				"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
-		);
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
+			);
 
-		expect(result.source).toBe("local");
-		expect(result.mismatch).toBe(false);
-		expect(Option.getOrElse(result.version, () => "")).toBe("1.9.0");
-	});
+			expect(result.source).toBe("local");
+			expect(result.mismatch).toBe(false);
+			expect(Option.getOrElse(result.version, () => "")).toBe("1.9.0");
+		}),
+	);
 
-	it("resolves both with different versions — reports mismatch", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.8.0\n", exitCode: 0 },
-			"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("resolves both with different versions — reports mismatch", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.8.0\n", exitCode: 0 },
+				"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
-		);
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "biome" })))),
+			);
 
-		expect(result.mismatch).toBe(true);
-		expect(result.source).toBe("local");
-		expect(Option.getOrElse(result.version, () => "")).toBe("1.9.0");
-	});
+			expect(result.mismatch).toBe(true);
+			expect(result.source).toBe("local");
+			expect(Option.getOrElse(result.version, () => "")).toBe("1.9.0");
+		}),
+	);
 
-	it("fails when tool is not found anywhere", async () => {
-		const layer = makeLayer({});
+	// `Effect.flip` replaces runExit plus a defensive is-a-Failure guard, and
+	// tightens the assertion: the old form stringified the whole Cause and
+	// substring-matched it, which would also pass on a DEFECT carrying that text.
+	// flip proves the failure arrives on the typed channel as that error.
+	it.effect("fails when tool is not found anywhere", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({});
 
-		const exit = await runExit(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "nonexistent" })))),
-		);
+			const error = yield* Effect.flip(
+				provide(
+					layer,
+					ToolDiscovery.pipe(Effect.andThen((td) => td.resolve(ToolDefinition.make({ name: "nonexistent" })))),
+				),
+			);
 
-		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure") {
-			expect(JSON.stringify(exit.cause)).toContain("ToolResolutionError");
-		}
-	});
+			expect(error._tag).toBe("ToolResolutionError");
+		}),
+	);
 
-	it("caches results on second call", async () => {
-		const { spawner, getCallCount } = makeCountingSpawner({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("caches results on second call", () =>
+		Effect.gen(function* () {
+			const { spawner, getCallCount } = makeCountingSpawner({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const layer = ToolDiscoveryLive.pipe(
-			Layer.provide(spawner),
-			Layer.provide(makeTestPM("pnpm")),
-			Layer.provide(makeTestRoot("/workspace")),
-		);
+			const layer = ToolDiscoveryLive.pipe(
+				Layer.provide(spawner),
+				Layer.provide(makeTestPM("pnpm")),
+				Layer.provide(makeTestRoot("/workspace")),
+			);
 
-		const def = ToolDefinition.make({ name: "biome" });
+			const def = ToolDefinition.make({ name: "biome" });
 
-		const [r1, r2, countAfterFirst] = await run(
-			layer,
-			Effect.gen(function* () {
-				const td = yield* ToolDiscovery;
-				const first = yield* td.resolve(def);
-				const afterFirst = getCallCount();
-				const second = yield* td.resolve(def);
-				return [first, second, afterFirst] as const;
-			}),
-		);
+			const [r1, r2, countAfterFirst] = yield* provide(
+				layer,
+				Effect.gen(function* () {
+					const td = yield* ToolDiscovery;
+					const first = yield* td.resolve(def);
+					const afterFirst = getCallCount();
+					const second = yield* td.resolve(def);
+					return [first, second, afterFirst] as const;
+				}),
+			);
 
-		expect(r1.name).toBe(r2.name);
-		expect(r1.source).toBe(r2.source);
-		expect(getCallCount()).toBe(countAfterFirst);
-	});
+			expect(r1.name).toBe(r2.name);
+			expect(r1.source).toBe(r2.source);
+			expect(getCallCount()).toBe(countAfterFirst);
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -279,49 +305,53 @@ describe("ToolDiscovery.resolve", () => {
 // ---------------------------------------------------------------------------
 
 describe("ToolDiscovery.require", () => {
-	it("returns ResolvedTool when found", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("returns ResolvedTool when found", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.require(ToolDefinition.make({ name: "biome" })))),
-		);
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(Effect.andThen((td) => td.require(ToolDefinition.make({ name: "biome" })))),
+			);
 
-		expect(result.name).toBe("biome");
-	});
+			expect(result.name).toBe("biome");
+		}),
+	);
 
-	it("fails with ToolNotFoundError when not found", async () => {
-		const layer = makeLayer({});
+	it.effect("fails with ToolNotFoundError when not found", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({});
 
-		const exit = await runExit(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.require(ToolDefinition.make({ name: "nonexistent" })))),
-		);
+			const error = yield* Effect.flip(
+				provide(
+					layer,
+					ToolDiscovery.pipe(Effect.andThen((td) => td.require(ToolDefinition.make({ name: "nonexistent" })))),
+				),
+			);
 
-		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure") {
-			expect(JSON.stringify(exit.cause)).toContain("ToolNotFoundError");
-		}
-	});
+			expect(error._tag).toBe("ToolNotFoundError");
+		}),
+	);
 
-	it("includes custom message in ToolNotFoundError", async () => {
-		const layer = makeLayer({});
+	it.effect("includes custom message in ToolNotFoundError", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({});
 
-		const exit = await runExit(
-			layer,
-			ToolDiscovery.pipe(
-				Effect.andThen((td) => td.require(ToolDefinition.make({ name: "missing" }), "Please install missing")),
-			),
-		);
+			const error = yield* Effect.flip(
+				provide(
+					layer,
+					ToolDiscovery.pipe(
+						Effect.andThen((td) => td.require(ToolDefinition.make({ name: "missing" }), "Please install missing")),
+					),
+				),
+			);
 
-		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure") {
-			expect(JSON.stringify(exit.cause)).toContain("Please install missing");
-		}
-	});
+			expect(JSON.stringify(error)).toContain("Please install missing");
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -329,29 +359,33 @@ describe("ToolDiscovery.require", () => {
 // ---------------------------------------------------------------------------
 
 describe("ToolDiscovery.isAvailable", () => {
-	it("returns true when tool is found globally", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-		});
+	it.effect("returns true when tool is found globally", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+			});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.isAvailable(ToolDefinition.make({ name: "biome" })))),
-		);
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(Effect.andThen((td) => td.isAvailable(ToolDefinition.make({ name: "biome" })))),
+			);
 
-		expect(result).toBe(true);
-	});
+			expect(result).toBe(true);
+		}),
+	);
 
-	it("returns false when tool is not found", async () => {
-		const layer = makeLayer({});
+	it.effect("returns false when tool is not found", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(Effect.andThen((td) => td.isAvailable(ToolDefinition.make({ name: "nonexistent" })))),
-		);
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(Effect.andThen((td) => td.isAvailable(ToolDefinition.make({ name: "nonexistent" })))),
+			);
 
-		expect(result).toBe(false);
-	});
+			expect(result).toBe(false);
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -359,32 +393,34 @@ describe("ToolDiscovery.isAvailable", () => {
 // ---------------------------------------------------------------------------
 
 describe("ToolDiscovery.clearCache", () => {
-	it("forces re-resolution after clearing", async () => {
-		const { spawner, getCallCount } = makeCountingSpawner({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("forces re-resolution after clearing", () =>
+		Effect.gen(function* () {
+			const { spawner, getCallCount } = makeCountingSpawner({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const layer = ToolDiscoveryLive.pipe(
-			Layer.provide(spawner),
-			Layer.provide(makeTestPM("pnpm")),
-			Layer.provide(makeTestRoot("/workspace")),
-		);
+			const layer = ToolDiscoveryLive.pipe(
+				Layer.provide(spawner),
+				Layer.provide(makeTestPM("pnpm")),
+				Layer.provide(makeTestRoot("/workspace")),
+			);
 
-		const def = ToolDefinition.make({ name: "biome" });
+			const def = ToolDefinition.make({ name: "biome" });
 
-		await run(
-			layer,
-			Effect.gen(function* () {
-				const td = yield* ToolDiscovery;
-				yield* td.resolve(def);
-				const countAfterFirst = getCallCount();
-				yield* td.clearCache;
-				yield* td.resolve(def);
-				expect(getCallCount()).toBeGreaterThan(countAfterFirst);
-			}),
-		);
-	});
+			yield* provide(
+				layer,
+				Effect.gen(function* () {
+					const td = yield* ToolDiscovery;
+					yield* td.resolve(def);
+					const countAfterFirst = getCallCount();
+					yield* td.clearCache;
+					yield* td.resolve(def);
+					expect(getCallCount()).toBeGreaterThan(countAfterFirst);
+				}),
+			);
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -392,82 +428,85 @@ describe("ToolDiscovery.clearCache", () => {
 // ---------------------------------------------------------------------------
 
 describe("ToolDiscovery SourceRequirement", () => {
-	it("OnlyLocal — fails when only found globally", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("OnlyLocal — fails when only found globally", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const exit = await runExit(
-			layer,
-			ToolDiscovery.pipe(
-				Effect.andThen((td) =>
-					td.resolve(
-						ToolDefinition.make({
-							name: "biome",
-							source: SourceRequirement.OnlyLocal(),
-						}),
+			const error = yield* Effect.flip(
+				provide(
+					layer,
+					ToolDiscovery.pipe(
+						Effect.andThen((td) =>
+							td.resolve(
+								ToolDefinition.make({
+									name: "biome",
+									source: SourceRequirement.OnlyLocal(),
+								}),
+							),
+						),
 					),
 				),
-			),
-		);
+			);
 
-		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure") {
-			expect(JSON.stringify(exit.cause)).toContain("required locally");
-		}
-	});
+			expect(JSON.stringify(error)).toContain("required locally");
+		}),
+	);
 
-	it("OnlyGlobal — fails when only found locally", async () => {
-		const layer = makeLayer({
-			"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("OnlyGlobal — fails when only found locally", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const exit = await runExit(
-			layer,
-			ToolDiscovery.pipe(
-				Effect.andThen((td) =>
-					td.resolve(
-						ToolDefinition.make({
-							name: "biome",
-							source: SourceRequirement.OnlyGlobal(),
-						}),
+			const error = yield* Effect.flip(
+				provide(
+					layer,
+					ToolDiscovery.pipe(
+						Effect.andThen((td) =>
+							td.resolve(
+								ToolDefinition.make({
+									name: "biome",
+									source: SourceRequirement.OnlyGlobal(),
+								}),
+							),
+						),
 					),
 				),
-			),
-		);
+			);
 
-		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure") {
-			expect(JSON.stringify(exit.cause)).toContain("required globally");
-		}
-	});
+			expect(JSON.stringify(error)).toContain("required globally");
+		}),
+	);
 
-	it("Both — fails when only one found", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("Both — fails when only one found", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const exit = await runExit(
-			layer,
-			ToolDiscovery.pipe(
-				Effect.andThen((td) =>
-					td.resolve(
-						ToolDefinition.make({
-							name: "biome",
-							source: SourceRequirement.Both(),
-						}),
+			const error = yield* Effect.flip(
+				provide(
+					layer,
+					ToolDiscovery.pipe(
+						Effect.andThen((td) =>
+							td.resolve(
+								ToolDefinition.make({
+									name: "biome",
+									source: SourceRequirement.Both(),
+								}),
+							),
+						),
 					),
 				),
-			),
-		);
+			);
 
-		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure") {
-			expect(JSON.stringify(exit.cause)).toContain("both globally and locally");
-		}
-	});
+			expect(JSON.stringify(error)).toContain("both globally and locally");
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -475,32 +514,33 @@ describe("ToolDiscovery SourceRequirement", () => {
 // ---------------------------------------------------------------------------
 
 describe("ToolDiscovery ResolutionPolicy", () => {
-	it("RequireMatch — fails when versions differ", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "1.8.0\n", exitCode: 0 },
-			"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("RequireMatch — fails when versions differ", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "1.8.0\n", exitCode: 0 },
+				"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const exit = await runExit(
-			layer,
-			ToolDiscovery.pipe(
-				Effect.andThen((td) =>
-					td.resolve(
-						ToolDefinition.make({
-							name: "biome",
-							policy: ResolutionPolicy.RequireMatch(),
-						}),
+			const error = yield* Effect.flip(
+				provide(
+					layer,
+					ToolDiscovery.pipe(
+						Effect.andThen((td) =>
+							td.resolve(
+								ToolDefinition.make({
+									name: "biome",
+									policy: ResolutionPolicy.RequireMatch(),
+								}),
+							),
+						),
 					),
 				),
-			),
-		);
+			);
 
-		expect(exit._tag).toBe("Failure");
-		if (exit._tag === "Failure") {
-			expect(JSON.stringify(exit.cause)).toContain("Version mismatch");
-		}
-	});
+			expect(JSON.stringify(error)).toContain("Version mismatch");
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -508,54 +548,58 @@ describe("ToolDiscovery ResolutionPolicy", () => {
 // ---------------------------------------------------------------------------
 
 describe("ToolDiscovery VersionExtractor", () => {
-	it("None — version is Option.none()", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
-		});
+	it.effect("None — version is Option.none()", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"pnpm exec biome --version": { stdout: "1.9.0\n", exitCode: 0 },
+			});
 
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(
-				Effect.andThen((td) =>
-					td.resolve(
-						ToolDefinition.make({
-							name: "biome",
-							versionExtractor: VersionExtractor.None(),
-						}),
-					),
-				),
-			),
-		);
-
-		expect(Option.isNone(result.version)).toBe(true);
-		expect(Option.isNone(result.globalVersion)).toBe(true);
-		expect(Option.isNone(result.localVersion)).toBe(true);
-	});
-
-	it("Flag with custom parse — applies parse function", async () => {
-		const layer = makeLayer({
-			"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
-			"biome --version": { stdout: "biome v1.9.0\n", exitCode: 0 },
-		});
-
-		const result = await run(
-			layer,
-			ToolDiscovery.pipe(
-				Effect.andThen((td) =>
-					td.resolve(
-						ToolDefinition.make({
-							name: "biome",
-							versionExtractor: VersionExtractor.Flag({
-								flag: "--version",
-								parse: (s) => s.replace(/^biome v/, "").trim(),
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(
+					Effect.andThen((td) =>
+						td.resolve(
+							ToolDefinition.make({
+								name: "biome",
+								versionExtractor: VersionExtractor.None(),
 							}),
-						}),
+						),
 					),
 				),
-			),
-		);
+			);
 
-		expect(Option.getOrElse(result.globalVersion, () => "")).toBe("1.9.0");
-	});
+			expect(Option.isNone(result.version)).toBe(true);
+			expect(Option.isNone(result.globalVersion)).toBe(true);
+			expect(Option.isNone(result.localVersion)).toBe(true);
+		}),
+	);
+
+	it.effect("Flag with custom parse — applies parse function", () =>
+		Effect.gen(function* () {
+			const layer = makeLayer({
+				"command -v biome": { stdout: "/usr/local/bin/biome", exitCode: 0 },
+				"biome --version": { stdout: "biome v1.9.0\n", exitCode: 0 },
+			});
+
+			const result = yield* provide(
+				layer,
+				ToolDiscovery.pipe(
+					Effect.andThen((td) =>
+						td.resolve(
+							ToolDefinition.make({
+								name: "biome",
+								versionExtractor: VersionExtractor.Flag({
+									flag: "--version",
+									parse: (s) => s.replace(/^biome v/, "").trim(),
+								}),
+							}),
+						),
+					),
+				),
+			);
+
+			expect(Option.getOrElse(result.globalVersion, () => "")).toBe("1.9.0");
+		}),
+	);
 });

@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 import { SectionDefinition } from "../../src/schemas/SectionDefinition.js";
 import { ManagedSection, ManagedSectionLive } from "../../src/services/ManagedSection.js";
 
@@ -16,10 +16,14 @@ const makeTestFs = (files: Record<string, string>) =>
 			}),
 	} as unknown as FileSystem.FileSystem);
 
+// Per-test provide is REQUIRED here, not an unoptimised leftover: the layer closes over the
+// caller's `files` record, so each test (and each call within a test) needs its own build.
+// Hoisting this into a suite-boundary `layer(...)` block would memoise one filesystem across
+// every test and silently share mutable state between them.
 function runWith<A, E>(files: Record<string, string>, effect: Effect.Effect<A, E, ManagedSection>) {
 	const testFs = makeTestFs(files);
 	const layer = ManagedSectionLive.pipe(Layer.provide(testFs));
-	return Effect.runPromise(Effect.provide(effect, layer));
+	return Effect.provide(effect, layer);
 }
 
 // ── Fixtures ────────────────────────────────────────────────────
@@ -49,93 +53,115 @@ const syncMany = (files: Record<string, string>, path: string, blocks: ReadonlyA
 // ── Acceptance scenarios ────────────────────────────────────────
 
 describe("ManagedSection.syncMany", () => {
-	it("scenario 1: writes [A, B] in order into a new/empty file", async () => {
-		const files: Record<string, string> = {};
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Created", "Created"]);
-		expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("scenario 1: writes [A, B] in order into a new/empty file", () =>
+		Effect.gen(function* () {
+			const files: Record<string, string> = {};
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Created", "Created"]);
+			expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("scenario 1b: handles an existing empty-string file", async () => {
-		const files = { "/hook": "" };
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Created", "Created"]);
-		expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("scenario 1b: handles an existing empty-string file", () =>
+		Effect.gen(function* () {
+			const files = { "/hook": "" };
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Created", "Created"]);
+			expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("scenario 2: inserts missing A immediately before its declared sibling B", async () => {
-		const files = { "/hook": `userTop\n\n${B_SEC}\n` };
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Created", "Unchanged"]);
-		expect(files["/hook"]).toBe(`userTop\n\n${A_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("scenario 2: inserts missing A immediately before its declared sibling B", () =>
+		Effect.gen(function* () {
+			const files = { "/hook": `userTop\n\n${B_SEC}\n` };
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Created", "Unchanged"]);
+			expect(files["/hook"]).toBe(`userTop\n\n${A_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("scenario 3: updates in place, preserving order and intervening user content", async () => {
-		const files = {
-			"/hook": `${A_BEGIN}\noldA\n${A_END}\n\nuserMid\n\n${B_BEGIN}\noldB\n${B_END}\n`,
-		};
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Updated", "Updated"]);
-		expect(files["/hook"]).toBe(`${A_SEC}\n\nuserMid\n\n${B_SEC}\n`);
-	});
+	it.effect("scenario 3: updates in place, preserving order and intervening user content", () =>
+		Effect.gen(function* () {
+			const files = {
+				"/hook": `${A_BEGIN}\noldA\n${A_END}\n\nuserMid\n\n${B_BEGIN}\noldB\n${B_END}\n`,
+			};
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Updated", "Updated"]);
+			expect(files["/hook"]).toBe(`${A_SEC}\n\nuserMid\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("scenario 4: normalizes out-of-order [B, A] to declared order [A, B]", async () => {
-		const files = { "/hook": `${B_SEC}\n\n${A_SEC}\n` };
-		const results = await syncMany(files, "/hook", [A, B]);
-		// Content already matches, so the reorder reports Unchanged.
-		expect(tags(results)).toEqual(["Unchanged", "Unchanged"]);
-		expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("scenario 4: normalizes out-of-order [B, A] to declared order [A, B]", () =>
+		Effect.gen(function* () {
+			const files = { "/hook": `${B_SEC}\n\n${A_SEC}\n` };
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			// Content already matches, so the reorder reports Unchanged.
+			expect(tags(results)).toEqual(["Unchanged", "Unchanged"]);
+			expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("scenario 5: preserves an unrelated section and manages A, B in declared order", async () => {
-		const files = { "/hook": `${X_SEC}\n` };
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Created", "Created"]);
-		expect(files["/hook"]).toContain(X_SEC);
-		expect(files["/hook"]).toBe(`${X_SEC}\n\n${A_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("scenario 5: preserves an unrelated section and manages A, B in declared order", () =>
+		Effect.gen(function* () {
+			const files = { "/hook": `${X_SEC}\n` };
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Created", "Created"]);
+			expect(files["/hook"]).toContain(X_SEC);
+			expect(files["/hook"]).toBe(`${X_SEC}\n\n${A_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("scenario 6: a second identical call is idempotent (all Unchanged, no rewrite)", async () => {
-		const files: Record<string, string> = {};
-		await syncMany(files, "/hook", [A, B]);
-		const afterFirst = files["/hook"];
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Unchanged", "Unchanged"]);
-		expect(files["/hook"]).toBe(afterFirst);
-	});
+	it.effect("scenario 6: a second identical call is idempotent (all Unchanged, no rewrite)", () =>
+		Effect.gen(function* () {
+			const files: Record<string, string> = {};
+			yield* syncMany(files, "/hook", [A, B]);
+			const afterFirst = files["/hook"];
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Unchanged", "Unchanged"]);
+			expect(files["/hook"]).toBe(afterFirst);
+		}),
+	);
 
 	// ── Robustness beyond the listed scenarios ───────────────────
 
-	it("appends a missing block after its present predecessor when no later sibling exists", async () => {
-		const files = { "/hook": `${A_SEC}\n` };
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Unchanged", "Created"]);
-		expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("appends a missing block after its present predecessor when no later sibling exists", () =>
+		Effect.gen(function* () {
+			const files = { "/hook": `${A_SEC}\n` };
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Unchanged", "Created"]);
+			expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("reorders target sections around an unrelated section left in place", async () => {
-		const files = { "/hook": `${B_SEC}\n\n${X_SEC}\n\n${A_SEC}\n` };
-		const results = await syncMany(files, "/hook", [A, B]);
-		expect(tags(results)).toEqual(["Unchanged", "Unchanged"]);
-		expect(files["/hook"]).toBe(`${A_SEC}\n\n${X_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("reorders target sections around an unrelated section left in place", () =>
+		Effect.gen(function* () {
+			const files = { "/hook": `${B_SEC}\n\n${X_SEC}\n\n${A_SEC}\n` };
+			const results = yield* syncMany(files, "/hook", [A, B]);
+			expect(tags(results)).toEqual(["Unchanged", "Unchanged"]);
+			expect(files["/hook"]).toBe(`${A_SEC}\n\n${X_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("works with the dual API (data-last)", async () => {
-		const files: Record<string, string> = {};
-		const results = await runWith(
-			files,
-			Effect.andThen(ManagedSection, (s) => s.syncMany([A, B])("/hook")),
-		);
-		expect(tags(results)).toEqual(["Created", "Created"]);
-		expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
-	});
+	it.effect("works with the dual API (data-last)", () =>
+		Effect.gen(function* () {
+			const files: Record<string, string> = {};
+			const results = yield* runWith(
+				files,
+				Effect.andThen(ManagedSection, (s) => s.syncMany([A, B])("/hook")),
+			);
+			expect(tags(results)).toEqual(["Created", "Created"]);
+			expect(files["/hook"]).toBe(`${A_SEC}\n\n${B_SEC}\n`);
+		}),
+	);
 
-	it("returns Updated with a diff when an existing section's content drifts", async () => {
-		const files = { "/hook": `${A_BEGIN}\noldA\n${A_END}\n` };
-		const results = await syncMany(files, "/hook", [A]);
-		expect(results[0]._tag).toBe("Updated");
-		if (results[0]._tag === "Updated") {
-			expect(results[0].diff._tag).toBe("Changed");
-		}
-	});
+	it.effect("returns Updated with a diff when an existing section's content drifts", () =>
+		Effect.gen(function* () {
+			const files = { "/hook": `${A_BEGIN}\noldA\n${A_END}\n` };
+			const results = yield* syncMany(files, "/hook", [A]);
+			expect(results[0]._tag).toBe("Updated");
+			if (results[0]._tag === "Updated") {
+				expect(results[0].diff._tag).toBe("Changed");
+			}
+		}),
+	);
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import { findUnresolvedSpecifiers } from "../../src/utils/publishable-manifest.js";
 
 describe("findUnresolvedSpecifiers", () => {

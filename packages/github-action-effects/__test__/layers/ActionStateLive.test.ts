@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Option, Schema } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ActionStateLive } from "../../src/layers/ActionStateLive.js";
 import { ActionState } from "../../src/services/ActionState.js";
 
@@ -53,10 +53,10 @@ const makeMockFs = (state: MockFsState): FileSystem.FileSystem =>
 const makeTestLayer = (state: MockFsState) => Layer.succeed(FileSystem.FileSystem, makeMockFs(state));
 
 const run = <A, E>(state: MockFsState, effect: Effect.Effect<A, E, ActionState>) =>
-	Effect.runPromise(Effect.provide(effect, ActionStateLive.pipe(Layer.provide(makeTestLayer(state)))));
+	Effect.provide(effect, ActionStateLive.pipe(Layer.provide(makeTestLayer(state))));
 
 const runExit = <A, E>(state: MockFsState, effect: Effect.Effect<A, E, ActionState>) =>
-	Effect.runPromise(Effect.exit(Effect.provide(effect, ActionStateLive.pipe(Layer.provide(makeTestLayer(state))))));
+	Effect.exit(Effect.provide(effect, ActionStateLive.pipe(Layer.provide(makeTestLayer(state)))));
 
 // -- Tests --
 
@@ -79,119 +79,141 @@ describe("ActionStateLive", () => {
 	});
 
 	describe("save", () => {
-		it("encodes and appends to GITHUB_STATE file", async () => {
-			const state: MockFsState = { files: {} };
-			await run(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.save("auth", { token: "abc", count: 1 }, TestSchema)),
-			);
-			expect(state.files["/tmp/github-state"]).toBe(`auth=${JSON.stringify({ token: "abc", count: 1 })}\n`);
-		});
+		it.effect("encodes and appends to GITHUB_STATE file", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				yield* run(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.save("auth", { token: "abc", count: 1 }, TestSchema)),
+				);
+				expect(state.files["/tmp/github-state"]).toBe(`auth=${JSON.stringify({ token: "abc", count: 1 })}\n`);
+			}),
+		);
 
-		it("encodes Date via Schema.DateFromString", async () => {
-			const state: MockFsState = { files: {} };
-			const date = new Date("2026-01-15T00:00:00.000Z");
-			await run(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.save("started", date, Schema.DateFromString)),
-			);
-			expect(state.files["/tmp/github-state"]).toBe(`started=${JSON.stringify("2026-01-15T00:00:00.000Z")}\n`);
-		});
+		it.effect("encodes Date via Schema.DateFromString", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const date = new Date("2026-01-15T00:00:00.000Z");
+				yield* run(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.save("started", date, Schema.DateFromString)),
+				);
+				expect(state.files["/tmp/github-state"]).toBe(`started=${JSON.stringify("2026-01-15T00:00:00.000Z")}\n`);
+			}),
+		);
 
-		it("fails when GITHUB_STATE is not set", async () => {
-			delete process.env.GITHUB_STATE;
-			const state: MockFsState = { files: {} };
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.save("auth", { token: "abc", count: 1 }, TestSchema)),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails when GITHUB_STATE is not set", () =>
+			Effect.gen(function* () {
+				delete process.env.GITHUB_STATE;
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.save("auth", { token: "abc", count: 1 }, TestSchema)),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("get", () => {
-		it("reads and decodes state from process.env", async () => {
-			process.env.STATE_auth = JSON.stringify({ token: "xyz", count: 42 });
-			const state: MockFsState = { files: {} };
-			const result = await run(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.get("auth", TestSchema)),
-			);
-			expect(result).toEqual({ token: "xyz", count: 42 });
-		});
+		it.effect("reads and decodes state from process.env", () =>
+			Effect.gen(function* () {
+				process.env.STATE_auth = JSON.stringify({ token: "xyz", count: 42 });
+				const state: MockFsState = { files: {} };
+				const result = yield* run(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.get("auth", TestSchema)),
+				);
+				expect(result).toEqual({ token: "xyz", count: 42 });
+			}),
+		);
 
-		it("decodes DateFromString from process.env", async () => {
-			process.env.STATE_started = JSON.stringify("2026-01-15T00:00:00.000Z");
-			const state: MockFsState = { files: {} };
-			const result = await run(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.get("started", Schema.DateFromString)),
-			);
-			expect(result).toBeInstanceOf(Date);
-			expect(result.toISOString()).toBe("2026-01-15T00:00:00.000Z");
-		});
+		it.effect("decodes DateFromString from process.env", () =>
+			Effect.gen(function* () {
+				process.env.STATE_started = JSON.stringify("2026-01-15T00:00:00.000Z");
+				const state: MockFsState = { files: {} };
+				const result = yield* run(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.get("started", Schema.DateFromString)),
+				);
+				expect(result).toBeInstanceOf(Date);
+				expect(result.toISOString()).toBe("2026-01-15T00:00:00.000Z");
+			}),
+		);
 
-		it("fails on missing key (env var not set)", async () => {
-			const state: MockFsState = { files: {} };
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.get("missing", TestSchema)),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on missing key (env var not set)", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.get("missing", TestSchema)),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 
-		it("fails on invalid JSON", async () => {
-			process.env.STATE_bad = "not-json";
-			const state: MockFsState = { files: {} };
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.get("bad", TestSchema)),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on invalid JSON", () =>
+			Effect.gen(function* () {
+				process.env.STATE_bad = "not-json";
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.get("bad", TestSchema)),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 
-		it("fails on schema mismatch", async () => {
-			process.env.STATE_auth = JSON.stringify({ wrong: "shape" });
-			const state: MockFsState = { files: {} };
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.get("auth", TestSchema)),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on schema mismatch", () =>
+			Effect.gen(function* () {
+				process.env.STATE_auth = JSON.stringify({ wrong: "shape" });
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.get("auth", TestSchema)),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("getOptional", () => {
-		it("returns Some for present state", async () => {
-			process.env.STATE_auth = JSON.stringify({ token: "abc", count: 1 });
-			const state: MockFsState = { files: {} };
-			const result = await run(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.getOptional("auth", TestSchema)),
-			);
-			expect(Option.isSome(result)).toBe(true);
-			if (Option.isSome(result)) {
-				expect(result.value).toEqual({ token: "abc", count: 1 });
-			}
-		});
+		it.effect("returns Some for present state", () =>
+			Effect.gen(function* () {
+				process.env.STATE_auth = JSON.stringify({ token: "abc", count: 1 });
+				const state: MockFsState = { files: {} };
+				const result = yield* run(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.getOptional("auth", TestSchema)),
+				);
+				expect(Option.isSome(result)).toBe(true);
+				if (Option.isSome(result)) {
+					expect(result.value).toEqual({ token: "abc", count: 1 });
+				}
+			}),
+		);
 
-		it("returns None for missing key (env var not set)", async () => {
-			const state: MockFsState = { files: {} };
-			const result = await run(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.getOptional("missing", TestSchema)),
-			);
-			expect(Option.isNone(result)).toBe(true);
-		});
+		it.effect("returns None for missing key (env var not set)", () =>
+			Effect.gen(function* () {
+				const state: MockFsState = { files: {} };
+				const result = yield* run(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.getOptional("missing", TestSchema)),
+				);
+				expect(Option.isNone(result)).toBe(true);
+			}),
+		);
 
-		it("fails on invalid JSON", async () => {
-			process.env.STATE_bad = "bad-json";
-			const state: MockFsState = { files: {} };
-			const exit = await runExit(
-				state,
-				Effect.flatMap(ActionState, (svc) => svc.getOptional("bad", TestSchema)),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on invalid JSON", () =>
+			Effect.gen(function* () {
+				process.env.STATE_bad = "bad-json";
+				const state: MockFsState = { files: {} };
+				const exit = yield* runExit(
+					state,
+					Effect.flatMap(ActionState, (svc) => svc.getOptional("bad", TestSchema)),
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 });

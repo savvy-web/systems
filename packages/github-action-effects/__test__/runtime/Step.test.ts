@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import { Effect, Exit, Layer, Logger, References } from "effect";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionsLogger } from "../../src/runtime/ActionsLogger.js";
 import * as Step from "../../src/runtime/Step.js";
 
@@ -11,11 +11,11 @@ import * as Step from "../../src/runtime/Step.js";
  */
 const baseLoggerLayer = Layer.merge(Logger.layer([ActionsLogger]), Layer.succeed(References.MinimumLogLevel, "All"));
 
-const run = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
-	Effect.runPromise(Effect.provide(effect, baseLoggerLayer) as Effect.Effect<A, E, never>);
+const run = <A, E>(effect: Effect.Effect<A, E>) =>
+	Effect.provide(effect, baseLoggerLayer) as Effect.Effect<A, E, never>;
 
-const runExit = <A, E>(effect: Effect.Effect<A, E>): Promise<Exit.Exit<A, E>> =>
-	Effect.runPromiseExit(Effect.provide(effect, baseLoggerLayer) as Effect.Effect<A, E, never>);
+const runExit = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<Exit.Exit<A, E>> =>
+	Effect.exit(Effect.provide(effect, baseLoggerLayer) as Effect.Effect<A, E, never>);
 
 beforeEach(() => {
 	vi.spyOn(console, "log").mockImplementation(() => {});
@@ -48,52 +48,62 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("withStep — happy path", () => {
-		it("emits exactly one info line (the success line), debug not printed", async () => {
-			await run(
-				Step.withStep(
-					"pack",
-					Effect.gen(function* () {
-						yield* Effect.logDebug("verbose pack detail A");
-						yield* Effect.logDebug("verbose pack detail B");
-						yield* Step.success("24.9 kB · 11 files");
-						return 42;
+		it.effect("emits exactly one info line (the success line), debug not printed", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep(
+						"pack",
+						Effect.gen(function* () {
+							yield* Effect.logDebug("verbose pack detail A");
+							yield* Effect.logDebug("verbose pack detail B");
+							yield* Step.success("24.9 kB · 11 files");
+							return 42;
+						}),
+					),
+				);
+
+				const out = output();
+				// The library now prepends `✅ <name>: ` automatically — the
+				// caller passes only the outcome.
+				expect(out).toContain("✅ pack: 24.9 kB · 11 files");
+				expect(out).not.toContain("verbose pack detail A");
+				expect(out).not.toContain("verbose pack detail B");
+			}),
+		);
+
+		it.effect("withStep returns the wrapped effect's result unchanged", () =>
+			Effect.gen(function* () {
+				const result = yield* run(
+					Step.withStep("compute", Effect.succeed(7).pipe(Effect.tap(() => Step.success("done")))),
+				);
+				expect(result).toBe(7);
+			}),
+		);
+
+		it.effect("renders a custom success icon when options.icon is set; failure still uses ❌", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep("pack", Effect.succeed(0).pipe(Effect.tap(() => Step.success("13.1 kB · 6 files"))), {
+						icon: "📦",
 					}),
-				),
-			);
+				);
+				const out = output();
+				expect(out).toContain("📦 pack: 13.1 kB · 6 files");
+				expect(out).not.toContain("✅ pack");
+			}),
+		);
 
-			const out = output();
-			// The library now prepends `✅ <name>: ` automatically — the
-			// caller passes only the outcome.
-			expect(out).toContain("✅ pack: 24.9 kB · 11 files");
-			expect(out).not.toContain("verbose pack detail A");
-			expect(out).not.toContain("verbose pack detail B");
-		});
-
-		it("withStep returns the wrapped effect's result unchanged", async () => {
-			const result = await run(
-				Step.withStep("compute", Effect.succeed(7).pipe(Effect.tap(() => Step.success("done")))),
-			);
-			expect(result).toBe(7);
-		});
-
-		it("renders a custom success icon when options.icon is set; failure still uses ❌", async () => {
-			await run(
-				Step.withStep("pack", Effect.succeed(0).pipe(Effect.tap(() => Step.success("13.1 kB · 6 files"))), {
-					icon: "📦",
-				}),
-			);
-			const out = output();
-			expect(out).toContain("📦 pack: 13.1 kB · 6 files");
-			expect(out).not.toContain("✅ pack");
-		});
-
-		it("a step with a custom icon still renders ❌ on failure", async () => {
-			const exit = await runExit(Step.withStep("provenance", Effect.fail(new Error("attest failed")), { icon: "🔏" }));
-			expect(Exit.isFailure(exit)).toBe(true);
-			const out = output();
-			expect(out).toContain("❌ provenance: attest failed");
-			expect(out).not.toContain("🔏 provenance");
-		});
+		it.effect("a step with a custom icon still renders ❌ on failure", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExit(
+					Step.withStep("provenance", Effect.fail(new Error("attest failed")), { icon: "🔏" }),
+				);
+				expect(Exit.isFailure(exit)).toBe(true);
+				const out = output();
+				expect(out).toContain("❌ provenance: attest failed");
+				expect(out).not.toContain("🔏 provenance");
+			}),
+		);
 	});
 
 	// -----------------------------------------------------------------
@@ -101,21 +111,23 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("line — standalone display row", () => {
-		it("emits an icon + text row indented under the enclosing step, with no name/colon", async () => {
-			await run(
-				Step.withStep(
-					"Publish · @scope/pkg",
-					Effect.gen(function* () {
-						yield* Step.line("🔏", "provenance  https://search.sigstore.dev/?logIndex=1822519034");
-						yield* Step.success("1 target");
-					}),
-				),
-			);
-			const out = output();
-			// Rendered one level under the depth-0 group → two-space indent, no `:` prefix.
-			expect(out).toContain("  🔏 provenance  https://search.sigstore.dev/?logIndex=1822519034");
-			expect(out).not.toContain("🔏 provenance:");
-		});
+		it.effect("emits an icon + text row indented under the enclosing step, with no name/colon", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep(
+						"Publish · @scope/pkg",
+						Effect.gen(function* () {
+							yield* Step.line("🔏", "provenance  https://search.sigstore.dev/?logIndex=1822519034");
+							yield* Step.success("1 target");
+						}),
+					),
+				);
+				const out = output();
+				// Rendered one level under the depth-0 group → two-space indent, no `:` prefix.
+				expect(out).toContain("  🔏 provenance  https://search.sigstore.dev/?logIndex=1822519034");
+				expect(out).not.toContain("🔏 provenance:");
+			}),
+		);
 	});
 
 	// -----------------------------------------------------------------
@@ -123,39 +135,43 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("withStep — failure path", () => {
-		it("emits the failure header, spills the buffer, propagates the original error", async () => {
-			const exit = await runExit(
-				Step.withStep(
-					"publish",
-					Effect.gen(function* () {
-						yield* Effect.logDebug("probe https://npm.pkg.github.com/: starting");
-						yield* Effect.logDebug("probe https://npm.pkg.github.com/: HTTP 200");
-						return yield* Effect.fail(new Error("integrity mismatch — local sha512-ABC ≠ remote sha512-XYZ"));
-					}),
-				),
-			);
+		it.effect("emits the failure header, spills the buffer, propagates the original error", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExit(
+					Step.withStep(
+						"publish",
+						Effect.gen(function* () {
+							yield* Effect.logDebug("probe https://npm.pkg.github.com/: starting");
+							yield* Effect.logDebug("probe https://npm.pkg.github.com/: HTTP 200");
+							return yield* Effect.fail(new Error("integrity mismatch — local sha512-ABC ≠ remote sha512-XYZ"));
+						}),
+					),
+				);
 
-			expect(Exit.isFailure(exit)).toBe(true);
-			const out = output();
-			// Failure header carries the rendered error message after
-			// the step name.
-			expect(out).toContain("❌ publish: integrity mismatch — local sha512-ABC ≠ remote sha512-XYZ");
-			expect(out).toContain("│ [DEBUG] probe https://npm.pkg.github.com/: starting");
-			expect(out).toContain("│ [DEBUG] probe https://npm.pkg.github.com/: HTTP 200");
-			expect(out).toContain("└ Error: integrity mismatch — local sha512-ABC ≠ remote sha512-XYZ");
-		});
+				expect(Exit.isFailure(exit)).toBe(true);
+				const out = output();
+				// Failure header carries the rendered error message after
+				// the step name.
+				expect(out).toContain("❌ publish: integrity mismatch — local sha512-ABC ≠ remote sha512-XYZ");
+				expect(out).toContain("│ [DEBUG] probe https://npm.pkg.github.com/: starting");
+				expect(out).toContain("│ [DEBUG] probe https://npm.pkg.github.com/: HTTP 200");
+				expect(out).toContain("└ Error: integrity mismatch — local sha512-ABC ≠ remote sha512-XYZ");
+			}),
+		);
 
-		it("omits the '└ Error:' trailer when the step buffered no lines", async () => {
-			const exit = await runExit(Step.withStep("bare-fail", Effect.fail(new Error("boom"))));
+		it.effect("omits the '└ Error:' trailer when the step buffered no lines", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExit(Step.withStep("bare-fail", Effect.fail(new Error("boom"))));
 
-			expect(Exit.isFailure(exit)).toBe(true);
-			const out = output();
-			// The header still carries the error message...
-			expect(out).toContain("❌ bare-fail: boom");
-			// ...but with no spill lines to close, the trailer would just
-			// repeat the header — so it is suppressed.
-			expect(out).not.toContain("└ Error:");
-		});
+				expect(Exit.isFailure(exit)).toBe(true);
+				const out = output();
+				// The header still carries the error message...
+				expect(out).toContain("❌ bare-fail: boom");
+				// ...but with no spill lines to close, the trailer would just
+				// repeat the header — so it is suppressed.
+				expect(out).not.toContain("└ Error:");
+			}),
+		);
 	});
 
 	// -----------------------------------------------------------------
@@ -163,49 +179,55 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("failure — non-throwing failed step", () => {
-		it("renders the ❌ block and spills the buffer, but returns the value", async () => {
-			const result = await run(
-				Step.withStep(
-					"publish",
-					Effect.gen(function* () {
-						yield* Effect.logDebug("probe https://registry.npmjs.org/: HTTP 404");
-						yield* Step.failure("publish-failed");
-						return "still-a-value";
-					}),
-				),
-			);
+		it.effect("renders the ❌ block and spills the buffer, but returns the value", () =>
+			Effect.gen(function* () {
+				const result = yield* run(
+					Step.withStep(
+						"publish",
+						Effect.gen(function* () {
+							yield* Effect.logDebug("probe https://registry.npmjs.org/: HTTP 404");
+							yield* Step.failure("publish-failed");
+							return "still-a-value";
+						}),
+					),
+				);
 
-			// The wrapped effect resolves normally so the caller's loop continues.
-			expect(result).toBe("still-a-value");
-			const out = output();
-			// Rendered as a failure, not a success.
-			expect(out).toContain("❌ publish: publish-failed");
-			expect(out).toContain("│ [DEBUG] probe https://registry.npmjs.org/: HTTP 404");
-			expect(out).not.toContain("✅ publish");
-		});
+				// The wrapped effect resolves normally so the caller's loop continues.
+				expect(result).toBe("still-a-value");
+				const out = output();
+				// Rendered as a failure, not a success.
+				expect(out).toContain("❌ publish: publish-failed");
+				expect(out).toContain("│ [DEBUG] probe https://registry.npmjs.org/: HTTP 404");
+				expect(out).not.toContain("✅ publish");
+			}),
+		);
 
-		it("failure wins when both success and failure are called on the same step", async () => {
-			await run(
-				Step.withStep(
-					"publish",
-					Effect.gen(function* () {
-						yield* Step.success("published");
-						yield* Step.failure("publish-failed");
-						return null;
-					}),
-				),
-			);
+		it.effect("failure wins when both success and failure are called on the same step", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep(
+						"publish",
+						Effect.gen(function* () {
+							yield* Step.success("published");
+							yield* Step.failure("publish-failed");
+							return null;
+						}),
+					),
+				);
 
-			const out = output();
-			expect(out).toContain("❌ publish: publish-failed");
-			expect(out).not.toContain("✅ publish");
-		});
+				const out = output();
+				expect(out).toContain("❌ publish: publish-failed");
+				expect(out).not.toContain("✅ publish");
+			}),
+		);
 
-		it("is a no-op outside a withStep envelope", async () => {
-			await run(Step.failure("orphan"));
-			const out = output();
-			expect(out).not.toContain("❌");
-		});
+		it.effect("is a no-op outside a withStep envelope", () =>
+			Effect.gen(function* () {
+				yield* run(Step.failure("orphan"));
+				const out = output();
+				expect(out).not.toContain("❌");
+			}),
+		);
 	});
 
 	// -----------------------------------------------------------------
@@ -213,36 +235,42 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("withStep — success fallback", () => {
-		it("uses options.defaultSummary when Step.success was never called", async () => {
-			await run(
-				Step.withStep("probe", Effect.succeed({ count: 3 }), { defaultSummary: (r) => `probed ${r.count} targets` }),
-			);
-			// Library prepends `✅ <name>: `.
-			expect(output()).toContain("✅ probe: probed 3 targets");
-		});
+		it.effect("uses options.defaultSummary when Step.success was never called", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep("probe", Effect.succeed({ count: 3 }), { defaultSummary: (r) => `probed ${r.count} targets` }),
+				);
+				// Library prepends `✅ <name>: `.
+				expect(output()).toContain("✅ probe: probed 3 targets");
+			}),
+		);
 
-		it("falls back to '✅ <name>' when neither success nor defaultSummary is set", async () => {
-			await run(Step.withStep("bare", Effect.succeed(null)));
-			const out = output();
-			expect(out).toContain("✅ bare");
-			// The bare fallback has no trailing colon (no outcome to show).
-			expect(out).not.toContain("✅ bare:");
-		});
+		it.effect("falls back to '✅ <name>' when neither success nor defaultSummary is set", () =>
+			Effect.gen(function* () {
+				yield* run(Step.withStep("bare", Effect.succeed(null)));
+				const out = output();
+				expect(out).toContain("✅ bare");
+				// The bare fallback has no trailing colon (no outcome to show).
+				expect(out).not.toContain("✅ bare:");
+			}),
+		);
 
-		it("Step.success takes precedence over defaultSummary", async () => {
-			await run(
-				Step.withStep(
-					"override",
-					Effect.gen(function* () {
-						yield* Step.success("explicit success line");
-						return 1;
-					}),
-					{ defaultSummary: () => "default summary" },
-				),
-			);
-			expect(output()).toContain("✅ override: explicit success line");
-			expect(output()).not.toContain("default summary");
-		});
+		it.effect("Step.success takes precedence over defaultSummary", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep(
+						"override",
+						Effect.gen(function* () {
+							yield* Step.success("explicit success line");
+							return 1;
+						}),
+						{ defaultSummary: () => "default summary" },
+					),
+				);
+				expect(output()).toContain("✅ override: explicit success line");
+				expect(output()).not.toContain("default summary");
+			}),
+		);
 	});
 
 	// -----------------------------------------------------------------
@@ -250,74 +278,78 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("withStep — nested", () => {
-		it("indents nested success lines under the parent", async () => {
-			await run(
-				Step.withStep(
-					"parent",
-					Effect.gen(function* () {
-						yield* Step.withStep(
-							"child-a",
-							Effect.gen(function* () {
-								yield* Step.success("done");
-								return 1;
-							}),
-						);
-						yield* Step.withStep(
-							"child-b",
-							Effect.gen(function* () {
-								yield* Step.success("done");
-								return 2;
-							}),
-						);
-						yield* Step.success("done");
-						return null;
-					}),
-				),
-			);
+		it.effect("indents nested success lines under the parent", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep(
+						"parent",
+						Effect.gen(function* () {
+							yield* Step.withStep(
+								"child-a",
+								Effect.gen(function* () {
+									yield* Step.success("done");
+									return 1;
+								}),
+							);
+							yield* Step.withStep(
+								"child-b",
+								Effect.gen(function* () {
+									yield* Step.success("done");
+									return 2;
+								}),
+							);
+							yield* Step.success("done");
+							return null;
+						}),
+					),
+				);
 
-			const out = output();
-			// Children indent by two spaces under the parent (depth 1).
-			expect(out).toContain("  ✅ child-a: done");
-			expect(out).toContain("  ✅ child-b: done");
-			// Parent is depth 0 — no leading indent.
-			expect(out).toMatch(/(^|\n)✅ parent: done/);
-		});
+				const out = output();
+				// Children indent by two spaces under the parent (depth 1).
+				expect(out).toContain("  ✅ child-a: done");
+				expect(out).toContain("  ✅ child-b: done");
+				// Parent is depth 0 — no leading indent.
+				expect(out).toMatch(/(^|\n)✅ parent: done/);
+			}),
+		);
 
-		it("child failure prints its spill at the child's depth, then propagates to parent", async () => {
-			const exit = await runExit(
-				Step.withStep(
-					"parent",
-					Effect.gen(function* () {
-						yield* Step.withStep(
-							"child",
-							Effect.gen(function* () {
-								yield* Effect.logDebug("child detail 1");
-								yield* Effect.logDebug("child detail 2");
-								return yield* Effect.fail(new Error("child failed"));
-							}),
-						);
-						// Unreachable — child propagates.
-						yield* Step.success("✅ parent done");
-						return null;
-					}),
-				),
-			);
+		it.effect("child failure prints its spill at the child's depth, then propagates to parent", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExit(
+					Step.withStep(
+						"parent",
+						Effect.gen(function* () {
+							yield* Step.withStep(
+								"child",
+								Effect.gen(function* () {
+									yield* Effect.logDebug("child detail 1");
+									yield* Effect.logDebug("child detail 2");
+									return yield* Effect.fail(new Error("child failed"));
+								}),
+							);
+							// Unreachable — child propagates.
+							yield* Step.success("✅ parent done");
+							return null;
+						}),
+					),
+				);
 
-			expect(Exit.isFailure(exit)).toBe(true);
-			const out = output();
-			// Child failure header is indented one level under the parent,
-			// and the error message is appended after the step name.
-			expect(out).toContain("  ❌ child: child failed");
-			// Child buffer lines are at the child's depth + 3-space prefix.
-			expect(out).toContain("     │ [DEBUG] child detail 1");
-			expect(out).toContain("     │ [DEBUG] child detail 2");
-			expect(out).toContain("     └ Error: child failed");
-			// Parent emits its OWN failure block since the child's
-			// failure propagated out of the parent's body. The parent's
-			// own buffer is empty (it logged nothing of its own).
-			expect(out).toContain("❌ parent: child failed");
-			expect(out).toContain("└ Error: child failed");
-		});
+				expect(Exit.isFailure(exit)).toBe(true);
+				const out = output();
+				// Child failure header is indented one level under the parent,
+				// and the error message is appended after the step name.
+				expect(out).toContain("  ❌ child: child failed");
+				// Child buffer lines are at the child's depth + 3-space prefix.
+				expect(out).toContain("     │ [DEBUG] child detail 1");
+				expect(out).toContain("     │ [DEBUG] child detail 2");
+				expect(out).toContain("     └ Error: child failed");
+				// Parent emits its OWN failure block since the child's
+				// failure propagated out of the parent's body. The parent's
+				// own buffer is empty (it logged nothing of its own).
+				expect(out).toContain("❌ parent: child failed");
+				expect(out).toContain("└ Error: child failed");
+			}),
+		);
 	});
 
 	// -----------------------------------------------------------------
@@ -325,75 +357,81 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("Step.collapse", () => {
-		it("all-success → emits ONE info line (the reducer's output)", async () => {
-			const results = await run(
-				Step.collapse(
-					[
-						{ name: "probe a", effect: Effect.succeed("present") },
-						{ name: "probe b", effect: Effect.succeed("present") },
-					],
-					(rs) => `✅ Probe ${rs.length} registries: ${rs.map((r) => `${r.name}=${r.result}`).join(", ")}`,
-				),
-			);
+		it.effect("all-success → emits ONE info line (the reducer's output)", () =>
+			Effect.gen(function* () {
+				const results = yield* run(
+					Step.collapse(
+						[
+							{ name: "probe a", effect: Effect.succeed("present") },
+							{ name: "probe b", effect: Effect.succeed("present") },
+						],
+						(rs) => `✅ Probe ${rs.length} registries: ${rs.map((r) => `${r.name}=${r.result}`).join(", ")}`,
+					),
+				);
 
-			expect(results).toEqual(["present", "present"]);
-			const out = output();
-			expect(out).toContain("✅ Probe 2 registries: probe a=present, probe b=present");
-			// Individual lines should NOT appear.
-			expect(out).not.toContain("✅ probe a");
-			expect(out).not.toContain("✅ probe b");
-		});
+				expect(results).toEqual(["present", "present"]);
+				const out = output();
+				expect(out).toContain("✅ Probe 2 registries: probe a=present, probe b=present");
+				// Individual lines should NOT appear.
+				expect(out).not.toContain("✅ probe a");
+				expect(out).not.toContain("✅ probe b");
+			}),
+		);
 
-		it("mixed outcomes → collapse abandoned; each child emits independently; failure propagates", async () => {
-			const exit = await runExit(
-				Step.collapse(
-					[
-						{ name: "probe a", effect: Effect.succeed("present") },
-						{
-							name: "probe b",
-							effect: Effect.gen(function* () {
-								yield* Effect.logDebug("probe b detail");
-								return yield* Effect.fail(new Error("probe b failed"));
-							}),
+		it.effect("mixed outcomes → collapse abandoned; each child emits independently; failure propagates", () =>
+			Effect.gen(function* () {
+				const exit = yield* runExit(
+					Step.collapse(
+						[
+							{ name: "probe a", effect: Effect.succeed("present") },
+							{
+								name: "probe b",
+								effect: Effect.gen(function* () {
+									yield* Effect.logDebug("probe b detail");
+									return yield* Effect.fail(new Error("probe b failed"));
+								}),
+							},
+						],
+						() => "✅ all probes happy",
+					),
+				);
+
+				expect(Exit.isFailure(exit)).toBe(true);
+				const out = output();
+				// Collapsed line must NOT appear.
+				expect(out).not.toContain("✅ all probes happy");
+				// Each child's own line shows up.
+				expect(out).toContain("✅ probe a");
+				expect(out).toContain("❌ probe b");
+				expect(out).toContain("│ [DEBUG] probe b detail");
+				expect(out).toContain("└ Error: probe b failed");
+			}),
+		);
+
+		it.effect("reducer-returns-null → collapse abandoned even on all-success", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.collapse(
+						[
+							{ name: "probe a", effect: Effect.succeed("present") },
+							{ name: "probe b", effect: Effect.succeed("not-published") },
+						],
+						(rs) => {
+							// Divergent results — opt out of collapse.
+							const distinct = new Set(rs.map((r) => r.result));
+							return distinct.size === 1 ? `✅ all ${rs.length}: ${[...distinct][0]}` : null;
 						},
-					],
-					() => "✅ all probes happy",
-				),
-			);
+					),
+				);
 
-			expect(Exit.isFailure(exit)).toBe(true);
-			const out = output();
-			// Collapsed line must NOT appear.
-			expect(out).not.toContain("✅ all probes happy");
-			// Each child's own line shows up.
-			expect(out).toContain("✅ probe a");
-			expect(out).toContain("❌ probe b");
-			expect(out).toContain("│ [DEBUG] probe b detail");
-			expect(out).toContain("└ Error: probe b failed");
-		});
-
-		it("reducer-returns-null → collapse abandoned even on all-success", async () => {
-			await run(
-				Step.collapse(
-					[
-						{ name: "probe a", effect: Effect.succeed("present") },
-						{ name: "probe b", effect: Effect.succeed("not-published") },
-					],
-					(rs) => {
-						// Divergent results — opt out of collapse.
-						const distinct = new Set(rs.map((r) => r.result));
-						return distinct.size === 1 ? `✅ all ${rs.length}: ${[...distinct][0]}` : null;
-					},
-				),
-			);
-
-			const out = output();
-			// No collapsed line.
-			expect(out).not.toContain("✅ all");
-			// Each child emits its own.
-			expect(out).toContain("✅ probe a");
-			expect(out).toContain("✅ probe b");
-		});
+				const out = output();
+				// No collapsed line.
+				expect(out).not.toContain("✅ all");
+				// Each child emits its own.
+				expect(out).toContain("✅ probe a");
+				expect(out).toContain("✅ probe b");
+			}),
+		);
 	});
 
 	// -----------------------------------------------------------------
@@ -401,38 +439,44 @@ describe("Step", () => {
 	// -----------------------------------------------------------------
 
 	describe("pass-through", () => {
-		it("Effect.logWarning inside withStep prints live, NOT buffered", async () => {
-			await run(
-				Step.withStep(
-					"work",
-					Effect.gen(function* () {
-						yield* Effect.logWarning("careful now");
-						yield* Step.success("done");
-						return null;
-					}),
-				),
-			);
+		it.effect("Effect.logWarning inside withStep prints live, NOT buffered", () =>
+			Effect.gen(function* () {
+				yield* run(
+					Step.withStep(
+						"work",
+						Effect.gen(function* () {
+							yield* Effect.logWarning("careful now");
+							yield* Step.success("done");
+							return null;
+						}),
+					),
+				);
 
-			const out = output();
-			// Warning emerges as a `::warning::` workflow command.
-			expect(out).toContain("::warning::careful now");
-			// And it appears in the output (live), not at the end.
-			const warningIndex = out.indexOf("::warning::careful now");
-			const successIndex = out.indexOf("✅ work: done");
-			expect(warningIndex).toBeGreaterThanOrEqual(0);
-			expect(successIndex).toBeGreaterThanOrEqual(0);
-			expect(warningIndex).toBeLessThan(successIndex);
-		});
+				const out = output();
+				// Warning emerges as a `::warning::` workflow command.
+				expect(out).toContain("::warning::careful now");
+				// And it appears in the output (live), not at the end.
+				const warningIndex = out.indexOf("::warning::careful now");
+				const successIndex = out.indexOf("✅ work: done");
+				expect(warningIndex).toBeGreaterThanOrEqual(0);
+				expect(successIndex).toBeGreaterThanOrEqual(0);
+				expect(warningIndex).toBeLessThan(successIndex);
+			}),
+		);
 
-		it("Effect.logInfo OUTSIDE withStep prints live", async () => {
-			await run(Effect.logInfo("hello"));
-			expect(output()).toContain("hello");
-		});
+		it.effect("Effect.logInfo OUTSIDE withStep prints live", () =>
+			Effect.gen(function* () {
+				yield* run(Effect.logInfo("hello"));
+				expect(output()).toContain("hello");
+			}),
+		);
 
-		it("Step.success outside a withStep envelope is a no-op", async () => {
-			// Should not throw and should produce no success-line output.
-			await run(Step.success("stray success"));
-			expect(output()).not.toContain("stray success");
-		});
+		it.effect("Step.success outside a withStep envelope is a no-op", () =>
+			Effect.gen(function* () {
+				// Should not throw and should produce no success-line output.
+				yield* run(Step.success("stray success"));
+				expect(output()).not.toContain("stray success");
+			}),
+		);
 	});
 });

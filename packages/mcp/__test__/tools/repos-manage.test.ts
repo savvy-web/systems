@@ -1,7 +1,7 @@
+import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Cause, Effect, Exit, Layer, Schema } from "effect";
-import { describe, expect, it } from "vitest";
+import { Effect, Layer, Schema } from "effect";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import { ReposManageAsMarkdown, ReposManageResult, reposManage } from "../../src/tools/repos-manage.js";
@@ -47,107 +47,128 @@ const ReposManagerTest = Layer.succeed(
 	}),
 );
 
-const run = <A, E>(eff: Effect.Effect<A, E, Repos.ReposManager | WorkspaceRoot>) =>
-	Effect.runPromise(eff.pipe(Effect.provide(ReposManagerTest), Effect.provide(WorkspaceRootTest)));
+const TestLayer = Layer.mergeAll(ReposManagerTest, WorkspaceRootTest);
 
-const runExit = <A, E>(eff: Effect.Effect<A, E, Repos.ReposManager | WorkspaceRoot>) =>
-	Effect.runPromiseExit(eff.pipe(Effect.provide(ReposManagerTest), Effect.provide(WorkspaceRootTest)));
+layer(TestLayer)("reposManage handler — action dispatch", (it) => {
+	it.effect("dispatches sync", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "sync" }, "/repo");
+			expect(data.action).toBe("sync");
+			if (data.action === "sync") {
+				expect(data.result.initialized).toEqual(["foo"]);
+			}
+		}),
+	);
 
-describe("reposManage handler — action dispatch", () => {
-	it("dispatches sync", async () => {
-		const data = await run(reposManage({ action: "sync" }, "/repo"));
-		expect(data.action).toBe("sync");
-		if (data.action === "sync") {
-			expect(data.result.initialized).toEqual(["foo"]);
-		}
-	});
+	it.effect("dispatches pin", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "pin", name: "foo", ref: "v2" }, "/repo");
+			expect(data.action).toBe("pin");
+			if (data.action === "pin") {
+				expect(data.result.name).toBe("foo");
+				expect(data.result.ref).toBe("v2");
+			}
+		}),
+	);
 
-	it("dispatches pin", async () => {
-		const data = await run(reposManage({ action: "pin", name: "foo", ref: "v2" }, "/repo"));
-		expect(data.action).toBe("pin");
-		if (data.action === "pin") {
-			expect(data.result.name).toBe("foo");
-			expect(data.result.ref).toBe("v2");
-		}
-	});
+	it.effect("dispatches add", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage(
+				{ action: "add", url: "https://example.com/foo.git", ref: "main", purpose: "vendor lib" },
+				"/repo",
+			);
+			expect(data.action).toBe("add");
+			if (data.action === "add") {
+				expect(data.result.ref).toBe("main");
+			}
+		}),
+	);
 
-	it("dispatches add", async () => {
-		const data = await run(
-			reposManage({ action: "add", url: "https://example.com/foo.git", ref: "main", purpose: "vendor lib" }, "/repo"),
-		);
-		expect(data.action).toBe("add");
-		if (data.action === "add") {
-			expect(data.result.ref).toBe("main");
-		}
-	});
-
-	it("dispatches note", async () => {
-		const data = await run(reposManage({ action: "note", name: "foo", op: "add", note: "hello" }, "/repo"));
-		expect(data.action).toBe("note");
-		if (data.action === "note") {
-			expect(data.result.op).toBe("add");
-			expect(data.result.id).toBe("n-1234");
-		}
-	});
+	it.effect("dispatches note", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "note", name: "foo", op: "add", note: "hello" }, "/repo");
+			expect(data.action).toBe("note");
+			if (data.action === "note") {
+				expect(data.result.op).toBe("add");
+				expect(data.result.id).toBe("n-1234");
+			}
+		}),
+	);
 });
 
-describe("reposManage handler — request validation", () => {
-	it("rejects pin without ref, naming the missing field", async () => {
-		const exit = await runExit(reposManage({ action: "pin", name: "foo" }, "/repo"));
-		expect(Exit.isFailure(exit)).toBe(true);
-		const message = Cause.pretty(Exit.isFailure(exit) ? exit.cause : Cause.empty);
-		expect(message).toContain("ref");
-	});
+// `Effect.flip` (not `Effect.exit`) is the assertion here on purpose: it proves
+// the rejection arrives through the TYPED error channel as a `SchemaError`. An
+// `Exit.isFailure` check would also pass if the decode escaped as a defect.
+layer(TestLayer)("reposManage handler — request validation", (it) => {
+	it.effect("rejects pin without ref, naming the missing field", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(reposManage({ action: "pin", name: "foo" }, "/repo"));
+			expect(error._tag).toBe("SchemaError");
+			expect(error.message).toContain("ref");
+		}),
+	);
 
-	it("rejects note op=promote without into/id", async () => {
-		const exit = await runExit(reposManage({ action: "note", name: "foo", op: "promote" }, "/repo"));
-		expect(Exit.isFailure(exit)).toBe(true);
-	});
+	it.effect("rejects note op=promote without into/id", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(reposManage({ action: "note", name: "foo", op: "promote" }, "/repo"));
+			expect(error._tag).toBe("SchemaError");
+		}),
+	);
 
-	it("rejects note op=add without note text", async () => {
-		const exit = await runExit(reposManage({ action: "note", name: "foo", op: "add" }, "/repo"));
-		expect(Exit.isFailure(exit)).toBe(true);
-	});
+	it.effect("rejects note op=add without note text", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(reposManage({ action: "note", name: "foo", op: "add" }, "/repo"));
+			expect(error._tag).toBe("SchemaError");
+		}),
+	);
 
-	it("rejects note op=remove without id", async () => {
-		const exit = await runExit(reposManage({ action: "note", name: "foo", op: "remove" }, "/repo"));
-		expect(Exit.isFailure(exit)).toBe(true);
-	});
+	it.effect("rejects note op=remove without id", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(reposManage({ action: "note", name: "foo", op: "remove" }, "/repo"));
+			expect(error._tag).toBe("SchemaError");
+		}),
+	);
 });
 
-describe("reposManage handler — pin markdown transcript", () => {
-	it("surfaces commitMessage and staleNoteIds prominently, neutralizing backtick injection via delimiter runs", async () => {
-		const data = await run(reposManage({ action: "pin", name: "foo", ref: "main" }, "/repo"));
-		const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-		// The transcript must have a dedicated commit-message section...
-		expect(md.toLowerCase()).toContain("commit message");
-		expect(md).toContain("chore(repos): pin");
-		// ...with the backtick-carrying message wrapped in a delimiter run
-		// strictly longer than any backtick run it contains (1-backtick runs
-		// inside -> 2-backtick delimiter, space-padded for the trailing
-		// backtick), so the embedded backticks cannot terminate the span.
-		const commitLine = md.split("\n").find((line) => line.includes("rm -rf /")) ?? "";
-		expect(commitLine).toBe("`` chore(repos): pin `foo` to main; `rm -rf /` ``");
-		const runs = commitLine.match(/`+/g) ?? [];
-		const longest = Math.max(...runs.map((run) => run.length));
-		const embedded = ("chore(repos): pin `foo` to main; `rm -rf /`".match(/`+/g) ?? []).map((run) => run.length);
-		expect(longest).toBeGreaterThan(Math.max(...embedded));
-		// staleNoteIds must be surfaced as the review/commit cue.
-		expect(md.toLowerCase()).toContain("stale");
-		expect(md).toContain("n-aaaa");
-		expect(md).toContain("n-bbbb");
-	});
+layer(TestLayer)("reposManage handler — pin markdown transcript", (it) => {
+	it.effect(
+		"surfaces commitMessage and staleNoteIds prominently, neutralizing backtick injection via delimiter runs",
+		() =>
+			Effect.gen(function* () {
+				const data = yield* reposManage({ action: "pin", name: "foo", ref: "main" }, "/repo");
+				const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+				// The transcript must have a dedicated commit-message section...
+				expect(md.toLowerCase()).toContain("commit message");
+				expect(md).toContain("chore(repos): pin");
+				// ...with the backtick-carrying message wrapped in a delimiter run
+				// strictly longer than any backtick run it contains (1-backtick runs
+				// inside -> 2-backtick delimiter, space-padded for the trailing
+				// backtick), so the embedded backticks cannot terminate the span.
+				const commitLine = md.split("\n").find((line) => line.includes("rm -rf /")) ?? "";
+				expect(commitLine).toBe("`` chore(repos): pin `foo` to main; `rm -rf /` ``");
+				const runs = commitLine.match(/`+/g) ?? [];
+				const longest = Math.max(...runs.map((run) => run.length));
+				const embedded = ("chore(repos): pin `foo` to main; `rm -rf /`".match(/`+/g) ?? []).map((run) => run.length);
+				expect(longest).toBeGreaterThan(Math.max(...embedded));
+				// staleNoteIds must be surfaced as the review/commit cue.
+				expect(md.toLowerCase()).toContain("stale");
+				expect(md).toContain("n-aaaa");
+				expect(md).toContain("n-bbbb");
+			}),
+	);
 
-	it("keeps a heading-injection note payload inert in the note transcript", async () => {
-		const data = await run(reposManage({ action: "note", name: "`## heading", op: "add", note: "x" }, "/repo"));
-		const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-		// The payload renders inside a longer backtick run and never lands at
-		// the start of a line as a live markdown heading.
-		expect(md).toContain("`` `## heading ``");
-		for (const line of md.split("\n")) {
-			expect(line.startsWith("## heading")).toBe(false);
-		}
-	});
+	it.effect("keeps a heading-injection note payload inert in the note transcript", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "note", name: "`## heading", op: "add", note: "x" }, "/repo");
+			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+			// The payload renders inside a longer backtick run and never lands at
+			// the start of a line as a live markdown heading.
+			expect(md).toContain("`` `## heading ``");
+			for (const line of md.split("\n")) {
+				expect(line.startsWith("## heading")).toBe(false);
+			}
+		}),
+	);
 });
 
 describe("repos_manage effect->zod bridge", () => {

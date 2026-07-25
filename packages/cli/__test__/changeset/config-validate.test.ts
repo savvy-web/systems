@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Workspaces } from "@effected/workspaces";
 import { ChangesetConfigReaderLive, Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const WorkspacesKitLive = Workspaces.layer();
 
@@ -43,41 +43,47 @@ describe("config validate – runConfigValidate handler", () => {
 		process.exitCode = savedExitCode;
 	});
 
-	it("exits 0 on a valid config", async () => {
-		dir = setupFixture({
-			configJson: {
-				changelog: ["@savvy-web/changesets/changelog", { repo: "owner/repo" }],
-				baseBranch: "main",
-			},
-		});
-		await Effect.runPromise(runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger)));
-		expect(process.exitCode).toBeUndefined();
-	});
+	it.effect("exits 0 on a valid config", () =>
+		Effect.gen(function* () {
+			dir = setupFixture({
+				configJson: {
+					changelog: ["@savvy-web/changesets/changelog", { repo: "owner/repo" }],
+					baseBranch: "main",
+				},
+			});
+			yield* runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger));
+			expect(process.exitCode).toBeUndefined();
+		}),
+	);
 
-	it("exits 1 on an unknown package key", async () => {
-		dir = setupFixture({
-			configJson: {
-				changelog: ["@savvy-web/changesets/changelog", { repo: "owner/repo", packages: { "@scope/ghost": {} } }],
-			},
-		});
-		await Effect.runPromise(runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger)));
-		expect(process.exitCode).toBe(1);
-	});
+	it.effect("exits 1 on an unknown package key", () =>
+		Effect.gen(function* () {
+			dir = setupFixture({
+				configJson: {
+					changelog: ["@savvy-web/changesets/changelog", { repo: "owner/repo", packages: { "@scope/ghost": {} } }],
+				},
+			});
+			yield* runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger));
+			expect(process.exitCode).toBe(1);
+		}),
+	);
 
-	it("exits 1 on dual-shape", async () => {
-		dir = setupFixture({
-			configJson: {
-				changelog: [
-					"@savvy-web/changesets/changelog",
-					{
-						repo: "owner/repo",
-						packages: {},
-						versionFiles: [{ glob: "x.json", package: "@scope/foo" }],
-					},
-				],
-			},
-		});
-		await Effect.runPromise(runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger)));
-		expect(process.exitCode).toBe(1);
-	});
+	it.effect("exits 1 on dual-shape", () =>
+		Effect.gen(function* () {
+			dir = setupFixture({
+				configJson: {
+					changelog: [
+						"@savvy-web/changesets/changelog",
+						{
+							repo: "owner/repo",
+							packages: {},
+							versionFiles: [{ glob: "x.json", package: "@scope/foo" }],
+						},
+					],
+				},
+			});
+			yield* runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger));
+			expect(process.exitCode).toBe(1);
+		}),
+	);
 });

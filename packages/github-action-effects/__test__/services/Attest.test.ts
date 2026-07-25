@@ -9,8 +9,8 @@
  * silk-integration repo run, not here.
  */
 
+import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit, Layer, Stream } from "effect";
-import { describe, expect, it } from "vitest";
 import type { InTotoStatement } from "../../src/testing.js";
 import {
 	Attest,
@@ -58,96 +58,96 @@ const makeGitHubClientLayer = (
 	});
 
 describe("Attest.attest — step 4: end-to-end upload", () => {
-	it("builds, signs, and POSTs the attestation, returning the full record", async () => {
-		const layer = Layer.mergeAll(
-			AttestLive,
-			stubSignerLayer,
-			noopOidcLayer,
-			makeGitHubClientLayer({ data: 42 }, { owner: "savvy-web", repo: "silk-integration" }),
-		);
+	it.effect("builds, signs, and POSTs the attestation, returning the full record", () =>
+		Effect.gen(function* () {
+			const layer = Layer.mergeAll(
+				AttestLive,
+				stubSignerLayer,
+				noopOidcLayer,
+				makeGitHubClientLayer({ data: 42 }, { owner: "savvy-web", repo: "silk-integration" }),
+			);
 
-		const record = await Effect.runPromise(
-			Effect.gen(function* () {
+			const record = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.attest({
 					subjects: [subject(npmPurl("@savvy-web/example", "1.0.0"), "a".repeat(64))],
 					predicateType: SLSA_PROVENANCE_V1,
 					predicate: { buildType: "https://example.com/build" },
 				});
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(record.attestationId).toBe(42);
-		expect(record.attestationUrl).toBe("https://github.com/savvy-web/silk-integration/attestations/42");
-		expect(record.statement.subject[0].name).toBe("pkg:npm/@savvy-web/example@1.0.0");
-		expect(record.bundle.mediaType).toBe(SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE);
-		const material = record.bundle.verificationMaterial as { subjectName: string };
-		expect(material.subjectName).toBe("pkg:npm/@savvy-web/example@1.0.0");
-	});
+			expect(record.attestationId).toBe(42);
+			expect(record.attestationUrl).toBe("https://github.com/savvy-web/silk-integration/attestations/42");
+			expect(record.statement.subject[0].name).toBe("pkg:npm/@savvy-web/example@1.0.0");
+			expect(record.bundle.mediaType).toBe(SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE);
+			const material = record.bundle.verificationMaterial as { subjectName: string };
+			expect(material.subjectName).toBe("pkg:npm/@savvy-web/example@1.0.0");
+		}),
+	);
 
-	it("maps GitHubClient failures to AttestError(reason: upload)", async () => {
-		const failingClientLayer: Layer.Layer<GitHubClient> = Layer.succeed(GitHubClient, {
-			rest: () =>
-				Effect.fail(
-					new GitHubClientError({
-						operation: "repos.createAttestation",
-						status: 403,
-						reason: "permission denied: missing attestations:write",
-						retryable: false,
-						retryAfterMs: undefined,
-					}),
-				),
-			graphql: () => Effect.die("graphql should not be called"),
-			paginate: () => Effect.die("paginate should not be called"),
-			paginateStream: () => Stream.die("paginateStream should not be called"),
-			repo: Effect.succeed({ owner: "savvy-web", repo: "silk-integration" }),
-		});
+	it.effect("maps GitHubClient failures to AttestError(reason: upload)", () =>
+		Effect.gen(function* () {
+			const failingClientLayer: Layer.Layer<GitHubClient> = Layer.succeed(GitHubClient, {
+				rest: () =>
+					Effect.fail(
+						new GitHubClientError({
+							operation: "repos.createAttestation",
+							status: 403,
+							reason: "permission denied: missing attestations:write",
+							retryable: false,
+							retryAfterMs: undefined,
+						}),
+					),
+				graphql: () => Effect.die("graphql should not be called"),
+				paginate: () => Effect.die("paginate should not be called"),
+				paginateStream: () => Stream.die("paginateStream should not be called"),
+				repo: Effect.succeed({ owner: "savvy-web", repo: "silk-integration" }),
+			});
 
-		const layer = Layer.mergeAll(AttestLive, stubSignerLayer, noopOidcLayer, failingClientLayer);
+			const layer = Layer.mergeAll(AttestLive, stubSignerLayer, noopOidcLayer, failingClientLayer);
 
-		const exit = await Effect.runPromise(
-			Effect.gen(function* () {
+			const exit = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.attest({
 					subjects: [subject("pkg:npm/x@1.0.0", "b".repeat(64))],
 					predicateType: SLSA_PROVENANCE_V1,
 					predicate: {},
 				});
-			}).pipe(Effect.provide(layer), Effect.exit),
-		);
+			}).pipe(Effect.provide(layer), Effect.exit);
 
-		expect(Exit.isFailure(exit)).toBe(true);
-		if (Exit.isFailure(exit)) {
-			const failure = Cause.findErrorOption(exit.cause);
-			expect(failure._tag).toBe("Some");
-			if (failure._tag === "Some") {
-				expect(failure.value._tag).toBe("AttestError");
-				expect(failure.value.reason).toBe("upload");
-				expect(failure.value.message).toContain("permission denied");
+			expect(Exit.isFailure(exit)).toBe(true);
+			if (Exit.isFailure(exit)) {
+				const failure = Cause.findErrorOption(exit.cause);
+				expect(failure._tag).toBe("Some");
+				if (failure._tag === "Some") {
+					expect(failure.value._tag).toBe("AttestError");
+					expect(failure.value.reason).toBe("upload");
+					expect(failure.value.message).toContain("permission denied");
+				}
 			}
-		}
-	});
+		}),
+	);
 
-	it("uses the GitHubClient repo context for the attestation URL", async () => {
-		const layer = Layer.mergeAll(
-			AttestLive,
-			stubSignerLayer,
-			noopOidcLayer,
-			makeGitHubClientLayer({ data: 99 }, { owner: "acme", repo: "widgets" }),
-		);
+	it.effect("uses the GitHubClient repo context for the attestation URL", () =>
+		Effect.gen(function* () {
+			const layer = Layer.mergeAll(
+				AttestLive,
+				stubSignerLayer,
+				noopOidcLayer,
+				makeGitHubClientLayer({ data: 99 }, { owner: "acme", repo: "widgets" }),
+			);
 
-		const record = await Effect.runPromise(
-			Effect.gen(function* () {
+			const record = yield* Effect.gen(function* () {
 				const attest = yield* Attest;
 				return yield* attest.attest({
 					subjects: [subject("pkg:npm/x@1.0.0", "c".repeat(64))],
 					predicateType: SLSA_PROVENANCE_V1,
 					predicate: {},
 				});
-			}).pipe(Effect.provide(layer)),
-		);
+			}).pipe(Effect.provide(layer));
 
-		expect(record.attestationId).toBe(99);
-		expect(record.attestationUrl).toBe("https://github.com/acme/widgets/attestations/99");
-	});
+			expect(record.attestationId).toBe(99);
+			expect(record.attestationUrl).toBe("https://github.com/acme/widgets/attestations/99");
+		}),
+	);
 });

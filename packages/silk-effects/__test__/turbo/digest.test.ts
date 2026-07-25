@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { TurboDigest } from "../../src/turbo/digest.js";
 import { TurboDryRun } from "../../src/turbo/schemas/DryRun.js";
 

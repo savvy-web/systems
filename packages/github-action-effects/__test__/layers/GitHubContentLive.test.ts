@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 import type { GitHubClientTestState, RestResponse } from "../../src/layers/GitHubClientTest.js";
 import { GitHubClientTest } from "../../src/layers/GitHubClientTest.js";
 import { GitHubContentLive } from "../../src/layers/GitHubContentLive.js";
@@ -14,10 +14,10 @@ const clientState = (rest: Array<[string, RestResponse]>): GitHubClientTestState
 });
 
 describe("GitHubContentLive", () => {
-	it("getFile decodes a base64 file to UTF-8 text", async () => {
-		const text = JSON.stringify({ version: "1.2.3" });
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("getFile decodes a base64 file to UTF-8 text", () =>
+		Effect.gen(function* () {
+			const text = JSON.stringify({ version: "1.2.3" });
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubContent;
 				return yield* svc.getFile("pkg/package.json", "base-sha");
 			}).pipe(
@@ -32,46 +32,46 @@ describe("GitHubContentLive", () => {
 						]),
 					),
 				),
-			),
-		);
-		expect(JSON.parse(result)).toEqual({ version: "1.2.3" });
-	});
+			);
+			expect(JSON.parse(result)).toEqual({ version: "1.2.3" });
+		}),
+	);
 
-	it("getFile fails when the path resolves to a directory", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("getFile fails when the path resolves to a directory", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubContent;
 				return yield* svc.getFile("some/dir", "base-sha");
 			}).pipe(
 				Effect.provide(GitHubContentLive),
 				Effect.provide(GitHubClientTest.layer(clientState([["repos.getContent", { data: [{ type: "file" }] }]]))),
 				Effect.flip,
-			),
-		);
-		expect(result._tag).toBe("GitHubContentError");
-		expect(result.operation).toBe("getFile");
-		expect(result.path).toBe("some/dir");
-	});
+			);
+			expect(result._tag).toBe("GitHubContentError");
+			expect(result.operation).toBe("getFile");
+			expect(result.path).toBe("some/dir");
+		}),
+	);
 
-	it("getFile fails when the path resolves to a submodule", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("getFile fails when the path resolves to a submodule", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubContent;
 				return yield* svc.getFile("some/submodule", "base-sha");
 			}).pipe(
 				Effect.provide(GitHubContentLive),
 				Effect.provide(GitHubClientTest.layer(clientState([["repos.getContent", { data: { type: "submodule" } }]]))),
 				Effect.flip,
-			),
-		);
-		expect(result._tag).toBe("GitHubContentError");
-		expect(result.operation).toBe("getFile");
-		expect(result.path).toBe("some/submodule");
-	});
+			);
+			expect(result._tag).toBe("GitHubContentError");
+			expect(result.operation).toBe("getFile");
+			expect(result.path).toBe("some/submodule");
+		}),
+	);
 
-	it("getFile fails when the content encoding is not base64", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("getFile fails when the content encoding is not base64", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubContent;
 				return yield* svc.getFile("big-file.bin", "base-sha");
 			}).pipe(
@@ -82,23 +82,23 @@ describe("GitHubContentLive", () => {
 					),
 				),
 				Effect.flip,
-			),
-		);
-		expect(result._tag).toBe("GitHubContentError");
-		expect(result.operation).toBe("getFile");
-		expect(result.path).toBe("big-file.bin");
-		expect(result.reason).toContain("none");
-	});
+			);
+			expect(result._tag).toBe("GitHubContentError");
+			expect(result.operation).toBe("getFile");
+			expect(result.path).toBe("big-file.bin");
+			expect(result.reason).toContain("none");
+		}),
+	);
 
-	it("getFile wraps a client error as GitHubContentError", async () => {
-		const result = await Effect.runPromise(
-			Effect.gen(function* () {
+	it.effect("getFile wraps a client error as GitHubContentError", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.gen(function* () {
 				const svc = yield* GitHubContent;
 				return yield* svc.getFile("missing.json", "base-sha");
-			}).pipe(Effect.provide(GitHubContentLive), Effect.provide(GitHubClientTest.layer(clientState([]))), Effect.flip),
-		);
-		expect(result._tag).toBe("GitHubContentError");
-		expect(result.operation).toBe("getFile");
-		expect(result.path).toBe("missing.json");
-	});
+			}).pipe(Effect.provide(GitHubContentLive), Effect.provide(GitHubClientTest.layer(clientState([]))), Effect.flip);
+			expect(result._tag).toBe("GitHubContentError");
+			expect(result.operation).toBe("getFile");
+			expect(result.path).toBe("missing.json");
+		}),
+	);
 });

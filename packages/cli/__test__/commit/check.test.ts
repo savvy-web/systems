@@ -2,10 +2,10 @@ import { execSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { ChangesetConfigReaderLive, ManagedSectionLive, VersioningStrategyLive } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runCommitCheck } from "../../src/commands/commit/check.js";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
 
@@ -72,77 +72,95 @@ describe("runCommitCheck Effect program", () => {
 		rmSync(testDir, { recursive: true, force: true });
 	});
 
-	it("runs without errors when no config exists", async () => {
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-	});
+	it.effect("runs without errors when no config exists", () =>
+		Effect.gen(function* () {
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
+		}),
+	);
 
-	it("runs when config file exists", async () => {
-		writeFileSync(join(testDir, "commitlint.config.ts"), "export default {};");
+	it.effect("runs when config file exists", () =>
+		Effect.gen(function* () {
+			writeFileSync(join(testDir, "commitlint.config.ts"), "export default {};");
 
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-	});
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
+		}),
+	);
 
-	it("runs when husky hook exists without managed section", async () => {
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\necho test\n");
+	it.effect("runs when husky hook exists without managed section", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\necho test\n");
 
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-	});
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
+		}),
+	);
 
-	it("runs when husky hook has managed section", async () => {
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		const configPath = "lib/configs/commitlint.config.ts";
-		const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\n${generateManagedContent(configPath)}\n${END_MARKER}\n`;
-		writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
+	it.effect("runs when husky hook has managed section", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			const configPath = "lib/configs/commitlint.config.ts";
+			const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\n${generateManagedContent(configPath)}\n${END_MARKER}\n`;
+			writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
 
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-	});
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
+		}),
+	);
 
-	it("runs when husky hook has outdated managed section", async () => {
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\nold outdated content\n${END_MARKER}\n`;
-		writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
+	it.effect("runs when husky hook has outdated managed section", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\nold outdated content\n${END_MARKER}\n`;
+			writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
 
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-	});
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
+		}),
+	);
 
-	it("runs when DCO file exists", async () => {
-		writeFileSync(join(testDir, "DCO"), "Developer Certificate of Origin Version 1.1");
-		writeFileSync(join(testDir, "commitlint.config.ts"), "export default {};");
-		mkdirSync(join(testDir, ".husky"), { recursive: true });
-		writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\n");
+	it.effect("runs when DCO file exists", () =>
+		Effect.gen(function* () {
+			writeFileSync(join(testDir, "DCO"), "Developer Certificate of Origin Version 1.1");
+			writeFileSync(join(testDir, "commitlint.config.ts"), "export default {};");
+			mkdirSync(join(testDir, ".husky"), { recursive: true });
+			writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\n");
 
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-	});
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
+		}),
+	);
 
-	it("detects various config file types", async () => {
-		writeFileSync(join(testDir, ".commitlintrc.json"), "{}");
+	it.effect("detects various config file types", () =>
+		Effect.gen(function* () {
+			writeFileSync(join(testDir, ".commitlintrc.json"), "{}");
 
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
-	});
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
+		}),
+	);
 
-	it("validates cleanly when fully initialized via init", async () => {
-		const init = runCommitInit({ force: false, config: "commitlint.config.ts" });
-		await Effect.runPromise(Effect.provide(init, TestLayer));
+	it.effect("validates cleanly when fully initialized via init", () =>
+		Effect.gen(function* () {
+			const init = runCommitInit({ force: false, config: "commitlint.config.ts" });
+			yield* Effect.provide(init, TestLayer);
 
-		const handler = runCommitCheck();
-		await Effect.runPromise(Effect.provide(handler, TestLayer));
+			const handler = runCommitCheck();
+			yield* Effect.provide(handler, TestLayer);
 
-		// init wrote all three hooks; check should find the base, commit, and hygiene sections present.
-		const fs = await import("node:fs");
-		const commitMsg = fs.readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
-		expect(commitMsg).toContain("# --- BEGIN SAVVY-BASE MANAGED SECTION ---");
-		expect(commitMsg).toContain("# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---");
-		for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
-			const hygiene = fs.readFileSync(join(testDir, hook), "utf8");
-			expect(hygiene).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
-		}
-	});
+			// init wrote all three hooks; check should find the base, commit, and hygiene sections present.
+			// A dynamic `import()` is a Promise, not an Effect — it has to be
+			// lifted with `Effect.promise` before it can be yielded.
+			const fs = yield* Effect.promise(() => import("node:fs"));
+			const commitMsg = fs.readFileSync(join(testDir, ".husky/commit-msg"), "utf8");
+			expect(commitMsg).toContain("# --- BEGIN SAVVY-BASE MANAGED SECTION ---");
+			expect(commitMsg).toContain("# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---");
+			for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
+				const hygiene = fs.readFileSync(join(testDir, hook), "utf8");
+				expect(hygiene).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
+			}
+		}),
+	);
 });

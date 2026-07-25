@@ -16,9 +16,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
+import { afterEach, describe, expect, it } from "@effect/vitest";
 import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { afterEach, describe, expect, it } from "vitest";
 import { ConfigInspectorLive } from "../../src/changesets/services/config-inspector.js";
 import {
 	DepsRegen,
@@ -50,13 +50,13 @@ function git(cwd: string, ...args: string[]): string {
 const liveFor = (cwd: string) => makeDepsRegenDefault({ cwd }).pipe(Layer.provide(NodeServices.layer));
 
 describe("DepsRegenDefault", () => {
-	it("resolves with only NodeServices.layer", async () => {
-		const svc = await Effect.runPromise(
-			DepsRegen.pipe(Effect.provide(DepsRegenDefault.pipe(Layer.provide(NodeServices.layer)))),
-		);
-		expect(typeof svc.plan).toBe("function");
-		expect(typeof svc.execute).toBe("function");
-	});
+	it.effect("resolves with only NodeServices.layer", () =>
+		Effect.gen(function* () {
+			const svc = yield* DepsRegen.pipe(Effect.provide(DepsRegenDefault.pipe(Layer.provide(NodeServices.layer))));
+			expect(typeof svc.plan).toBe("function");
+			expect(typeof svc.execute).toBe("function");
+		}),
+	);
 });
 
 describe("DepsRegenDefault — silk gating end-to-end (#209 semantics through the default graph)", () => {
@@ -151,21 +151,23 @@ describe("DepsRegenDefault — silk gating end-to-end (#209 semantics through th
 		return dir;
 	}
 
-	it("versions the non-ignored private package and leaves the ignored one alone, through the default graph", async () => {
-		const dir = makeFixture();
-		dirs.push(dir);
-
-		const plan = await Effect.runPromise(
+	it.effect(
+		"versions the non-ignored private package and leaves the ignored one alone, through the default graph",
+		() =>
 			Effect.gen(function* () {
-				const svc = yield* DepsRegen;
-				return yield* svc.plan({ cwd: dir });
-			}).pipe(Effect.provide(liveFor(dir))),
-		);
+				const dir = makeFixture();
+				dirs.push(dir);
 
-		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/priv-versioned"]);
-		expect(plan.toDelete.map((d) => d.package)).toEqual(["@fix/priv-versioned"]);
-		expect(plan.toDelete.map((d) => d.file)).toEqual([join(dir, ".changeset", "stale-priv-versioned.md")]);
-	});
+				const plan = yield* Effect.gen(function* () {
+					const svc = yield* DepsRegen;
+					return yield* svc.plan({ cwd: dir });
+				}).pipe(Effect.provide(liveFor(dir)));
+
+				expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/priv-versioned"]);
+				expect(plan.toDelete.map((d) => d.package)).toEqual(["@fix/priv-versioned"]);
+				expect(plan.toDelete.map((d) => d.file)).toEqual([join(dir, ".changeset", "stale-priv-versioned.md")]);
+			}),
+	);
 });
 
 describe("DepsRegenDefault — genuinely publishable package (regression: publishable set must not be silently empty)", () => {
@@ -252,21 +254,21 @@ describe("DepsRegenDefault — genuinely publishable package (regression: publis
 		return dir;
 	}
 
-	it("plans a fresh changeset AND deletes the stale one for a publishConfig.access:public package", async () => {
-		const dir = makePublishableFixture();
-		dirs.push(dir);
+	it.effect("plans a fresh changeset AND deletes the stale one for a publishConfig.access:public package", () =>
+		Effect.gen(function* () {
+			const dir = makePublishableFixture();
+			dirs.push(dir);
 
-		const plan = await Effect.runPromise(
-			Effect.gen(function* () {
+			const plan = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				return yield* svc.plan({ cwd: dir });
-			}).pipe(Effect.provide(liveFor(dir))),
-		);
+			}).pipe(Effect.provide(liveFor(dir)));
 
-		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/pub"]);
-		expect(plan.toDelete.map((d) => d.package)).toEqual(["@fix/pub"]);
-		expect(plan.toDelete.map((d) => d.file)).toEqual([join(dir, ".changeset", "stale-pub.md")]);
-	});
+			expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/pub"]);
+			expect(plan.toDelete.map((d) => d.package)).toEqual(["@fix/pub"]);
+			expect(plan.toDelete.map((d) => d.file)).toEqual([join(dir, ".changeset", "stale-pub.md")]);
+		}),
+	);
 });
 
 describe("DepsRegenDefault — worktree freshness (regression: stale WorkspaceDiscovery cache)", () => {
@@ -343,28 +345,28 @@ describe("DepsRegenDefault — worktree freshness (regression: stale WorkspaceDi
 		return dir;
 	}
 
-	it("sees manifest edits made after the workspace was already enumerated in the same process", async () => {
-		const dir = makeUnbumpedFixture();
-		dirs.push(dir);
+	it.effect("sees manifest edits made after the workspace was already enumerated in the same process", () =>
+		Effect.gen(function* () {
+			const dir = makeUnbumpedFixture();
+			dirs.push(dir);
 
-		// Mirror makeDepsRegenDefault's composition around ONE explicitly-shared
-		// kit graph const, merged back out so the test can prime the very same
-		// memoized WorkspaceDiscovery instance the DepsRegen graph reads —
-		// exercising plan()'s up-front refresh against a genuinely stale cache.
-		const kit = Workspaces.layerWithGit({ cwd: dir });
-		const configGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
-		const freshLive = Layer.mergeAll(
-			DepsRegenLive.pipe(
-				Layer.provide(ConfigInspectorLive.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, kit)))),
-				Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(Layer.mergeAll(configGraph, kit)))),
-				Layer.provide(configGraph),
-				Layer.provide(kit),
-			),
-			kit,
-		).pipe(Layer.provide(NodeServices.layer));
+			// Mirror makeDepsRegenDefault's composition around ONE explicitly-shared
+			// kit graph const, merged back out so the test can prime the very same
+			// memoized WorkspaceDiscovery instance the DepsRegen graph reads —
+			// exercising plan()'s up-front refresh against a genuinely stale cache.
+			const kit = Workspaces.layerWithGit({ cwd: dir });
+			const configGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
+			const freshLive = Layer.mergeAll(
+				DepsRegenLive.pipe(
+					Layer.provide(ConfigInspectorLive.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, kit)))),
+					Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(Layer.mergeAll(configGraph, kit)))),
+					Layer.provide(configGraph),
+					Layer.provide(kit),
+				),
+				kit,
+			).pipe(Layer.provide(NodeServices.layer));
 
-		const plan = await Effect.runPromise(
-			Effect.gen(function* () {
+			const plan = yield* Effect.gen(function* () {
 				// Prime the (memoized, shared) discovery cache before the edit.
 				const discovery = yield* WorkspaceDiscovery;
 				yield* discovery.listPackages();
@@ -377,11 +379,11 @@ describe("DepsRegenDefault — worktree freshness (regression: stale WorkspaceDi
 
 				const svc = yield* DepsRegen;
 				return yield* svc.plan({ cwd: dir });
-			}).pipe(Effect.provide(freshLive)),
-		);
+			}).pipe(Effect.provide(freshLive));
 
-		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/fresh"]);
-	});
+			expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/fresh"]);
+		}),
+	);
 });
 
 describe("DepsRegenDefault — merge-base authorship filter (regression: #258)", () => {
@@ -477,31 +479,33 @@ describe("DepsRegenDefault — merge-base authorship filter (regression: #258)",
 		return dir;
 	}
 
-	it("keeps the changeset already committed at the merge base, and only deletes the branch-authored stale one", async () => {
-		const dir = makeMergeBaseFixture();
-		dirs.push(dir);
-
-		const atMergeBasePath = join(dir, ".changeset", "at-merge-base.md");
-		const branchAuthoredPath = join(dir, ".changeset", "branch-authored.md");
-
-		const { plan, result } = await Effect.runPromise(
+	it.effect(
+		"keeps the changeset already committed at the merge base, and only deletes the branch-authored stale one",
+		() =>
 			Effect.gen(function* () {
-				const svc = yield* DepsRegen;
-				const plan = yield* svc.plan({ cwd: dir });
-				const result = yield* svc.execute(plan);
-				return { plan, result };
-			}).pipe(Effect.provide(liveFor(dir))),
-		);
+				const dir = makeMergeBaseFixture();
+				dirs.push(dir);
 
-		expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/mb"]);
-		expect(plan.toDelete.map((d) => d.file)).toEqual([branchAuthoredPath]);
-		expect(plan.toDelete.map((d) => d.file)).not.toContain(atMergeBasePath);
+				const atMergeBasePath = join(dir, ".changeset", "at-merge-base.md");
+				const branchAuthoredPath = join(dir, ".changeset", "branch-authored.md");
 
-		expect(result.deleted).toEqual([branchAuthoredPath]);
-		expect(existsSync(atMergeBasePath)).toBe(true);
-		expect(existsSync(branchAuthoredPath)).toBe(false);
-		expect(result.written).toHaveLength(1);
-	});
+				const { plan, result } = yield* Effect.gen(function* () {
+					const svc = yield* DepsRegen;
+					const plan = yield* svc.plan({ cwd: dir });
+					const result = yield* svc.execute(plan);
+					return { plan, result };
+				}).pipe(Effect.provide(liveFor(dir)));
+
+				expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/mb"]);
+				expect(plan.toDelete.map((d) => d.file)).toEqual([branchAuthoredPath]);
+				expect(plan.toDelete.map((d) => d.file)).not.toContain(atMergeBasePath);
+
+				expect(result.deleted).toEqual([branchAuthoredPath]);
+				expect(existsSync(atMergeBasePath)).toBe(true);
+				expect(existsSync(branchAuthoredPath)).toBe(false);
+				expect(result.written).toHaveLength(1);
+			}),
+	);
 });
 
 describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-lived process staleness)", () => {
@@ -582,13 +586,13 @@ describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-
 		return dir;
 	}
 
-	it("a second plan() in the same runtime sees an ignore-list edit made after the first plan() call", async () => {
-		const dir = makeIgnoreFixture();
-		dirs.push(dir);
-		const configPath = join(dir, ".changeset", "config.json");
+	it.effect("a second plan() in the same runtime sees an ignore-list edit made after the first plan() call", () =>
+		Effect.gen(function* () {
+			const dir = makeIgnoreFixture();
+			dirs.push(dir);
+			const configPath = join(dir, ".changeset", "config.json");
 
-		const { firstPlan, secondPlan } = await Effect.runPromise(
-			Effect.gen(function* () {
+			const { firstPlan, secondPlan } = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				const firstPlan = yield* svc.plan({ cwd: dir });
 
@@ -598,11 +602,11 @@ describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-
 
 				const secondPlan = yield* svc.plan({ cwd: dir });
 				return { firstPlan, secondPlan };
-			}).pipe(Effect.provide(liveFor(dir))),
-		);
+			}).pipe(Effect.provide(liveFor(dir)));
 
-		expect(firstPlan.toWrite.map((w) => w.package)).toEqual(["@fix/stale-ignore"]);
-		expect(secondPlan.toWrite.map((w) => w.package)).toEqual([]);
-		expect(secondPlan.toDelete.map((d) => d.package)).toEqual([]);
-	});
+			expect(firstPlan.toWrite.map((w) => w.package)).toEqual(["@fix/stale-ignore"]);
+			expect(secondPlan.toWrite.map((w) => w.package)).toEqual([]);
+			expect(secondPlan.toDelete.map((d) => d.package)).toEqual([]);
+		}),
+	);
 });

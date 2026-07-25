@@ -22,4 +22,4 @@ Shared Effect library for the Silk Suite, and the home of the dev-tooling busine
 
 Load for service patterns, value-object conventions, layer composition, and the full service inventory:
 → `@../../.claude/design/silk-effects/architecture.md`
-Load when implementing a new service, changing a result schema, or onboarding a consumer repo.
+Load when implementing a new service, changing a result schema, or onboarding a consumer repo. Its testing-strategy section covers the fixture-tree integration tests and the `TestConsole`-vs-`process.stderr` discrimination that decides whether a logging test can stay on `it.effect`.

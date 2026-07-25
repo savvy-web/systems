@@ -1,5 +1,6 @@
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { ConfigProvider, Effect, Layer, Logger, Redacted } from "effect";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { vi } from "vitest";
 import { GitHubToken } from "../src/GitHubToken.js";
 import { ActionOutputsTest } from "../src/layers/ActionOutputsTest.js";
 import { ActionStateTest } from "../src/layers/ActionStateTest.js";
@@ -57,139 +58,139 @@ beforeEach(() => {
 
 describe("GitHubToken", () => {
 	describe("provision", () => {
-		it("generates a token with explicit credentials and persists it", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_provisioned"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: { contents: "write" },
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
+		it.effect("generates a token with explicit credentials and persists it", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_provisioned"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: { contents: "write" },
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
 
-			const token = await Effect.runPromise(
-				Effect.provide(
+				const token = yield* Effect.provide(
 					GitHubToken.provision({ clientId: "Iv1.abc", privateKey: "pk", installationId: 7 }),
 					provisionLayer(state, appState, outputs),
-				),
-			);
+				);
 
-			expect(Redacted.value(token.token)).toBe("ghs_provisioned");
-			expect(state.entries.has(STATE_KEY)).toBe(true);
-			expect(appState.generateCalls).toHaveLength(1);
-			expect(appState.generateCalls[0]?.appId).toBe("Iv1.abc");
-			expect(appState.generateCalls[0]?.installationId).toBe(7);
-		});
+				expect(Redacted.value(token.token)).toBe("ghs_provisioned");
+				expect(state.entries.has(STATE_KEY)).toBe(true);
+				expect(appState.generateCalls).toHaveLength(1);
+				expect(appState.generateCalls[0]?.appId).toBe("Iv1.abc");
+				expect(appState.generateCalls[0]?.installationId).toBe(7);
+			}),
+		);
 
-		it("threads the redacted private key through provision without unwrapping early (S1)", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_redacted"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: {},
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
+		it.effect("threads the redacted private key through provision without unwrapping early (S1)", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_redacted"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: {},
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
 
-			await Effect.runPromise(
-				Effect.provide(
+				yield* Effect.provide(
 					GitHubToken.provision({ clientId: "Iv1.abc", privateKey: Redacted.make("pk"), installationId: 7 }),
 					provisionLayer(state, appState, outputs),
-				),
-			);
+				);
 
-			const passedKey = appState.generateCalls[0]?.privateKey;
-			expect(passedKey).toBeDefined();
-			expect(Redacted.isRedacted(passedKey)).toBe(true);
-			expect(Redacted.value(passedKey as Redacted.Redacted<string>)).toBe("pk");
-		});
+				const passedKey = appState.generateCalls[0]?.privateKey;
+				expect(passedKey).toBeDefined();
+				expect(Redacted.isRedacted(passedKey)).toBe(true);
+				expect(Redacted.value(passedKey as Redacted.Redacted<string>)).toBe("pk");
+			}),
+		);
 
-		it("masks the generated token via setSecret (S3 defense)", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_secret"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: {},
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
+		it.effect("masks the generated token via setSecret (S3 defense)", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_secret"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: {},
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
 
-			await Effect.runPromise(
-				Effect.provide(
+				yield* Effect.provide(
 					GitHubToken.provision({ clientId: "Iv1.abc", privateKey: "pk", installationId: 7 }),
 					provisionLayer(state, appState, outputs),
-				),
-			);
+				);
 
-			expect(outputs.secrets).toContain("ghs_secret");
-		});
+				expect(outputs.secrets).toContain("ghs_secret");
+			}),
+		);
 
-		it("persists the installation token as a Redacted field that round-trips through ActionState (S3)", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_roundtrip"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: {},
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
+		it.effect("persists the installation token as a Redacted field that round-trips through ActionState (S3)", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_roundtrip"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: {},
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
 
-			await Effect.runPromise(
-				Effect.provide(
+				yield* Effect.provide(
 					GitHubToken.provision({ clientId: "Iv1.abc", privateKey: "pk", installationId: 7 }),
 					provisionLayer(state, appState, outputs),
-				),
-			);
+				);
 
-			// The encoded GITHUB_STATE line still contains the raw token bytes
-			// (encode is transparent).
-			const persisted = JSON.parse(state.entries.get(STATE_KEY) ?? "{}");
-			expect(persisted.token).toBe("ghs_roundtrip");
+				// The encoded GITHUB_STATE line still contains the raw token bytes
+				// (encode is transparent).
+				const persisted = JSON.parse(state.entries.get(STATE_KEY) ?? "{}");
+				expect(persisted.token).toBe("ghs_roundtrip");
 
-			// Reading it back decodes the token into a Redacted wrapper.
-			const readBack = await Effect.runPromise(Effect.provide(GitHubToken.read(), ActionStateTest.layer(state)));
-			expect(Redacted.isRedacted(readBack.token)).toBe(true);
-			expect(Redacted.value(readBack.token)).toBe("ghs_roundtrip");
-		});
+				// Reading it back decodes the token into a Redacted wrapper.
+				const readBack = yield* Effect.provide(GitHubToken.read(), ActionStateTest.layer(state));
+				expect(Redacted.isRedacted(readBack.token)).toBe(true);
+				expect(Redacted.value(readBack.token)).toBe("ghs_roundtrip");
+			}),
+		);
 
-		it("reads credentials from Config when none are passed", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_from_config"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: {},
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
-			const configProvider = ConfigProvider.fromUnknown({
-				"app-client-id": "Iv1.config",
-				"app-private-key": "config-pk",
-			});
+		it.effect("reads credentials from Config when none are passed", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_from_config"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: {},
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
+				const configProvider = ConfigProvider.fromUnknown({
+					"app-client-id": "Iv1.config",
+					"app-private-key": "config-pk",
+				});
 
-			const token = await Effect.runPromise(
-				Effect.provide(
+				const token = yield* Effect.provide(
 					GitHubToken.provision({ installationId: 7 }).pipe(Effect.provide(ConfigProvider.layer(configProvider))),
 					provisionLayer(state, appState, outputs),
-				),
-			);
+				);
 
-			expect(Redacted.value(token.token)).toBe("ghs_from_config");
-			expect(appState.generateCalls[0]?.appId).toBe("Iv1.config");
-			expect(Redacted.value(appState.generateCalls[0]?.privateKey as Redacted.Redacted<string>)).toBe("config-pk");
-		});
+				expect(Redacted.value(token.token)).toBe("ghs_from_config");
+				expect(appState.generateCalls[0]?.appId).toBe("Iv1.config");
+				expect(Redacted.value(appState.generateCalls[0]?.privateKey as Redacted.Redacted<string>)).toBe("config-pk");
+			}),
+		);
 
-		it("passes the permission check when scopes are sufficient", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_ok"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: { contents: "write" },
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
+		it.effect("passes the permission check when scopes are sufficient", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_ok"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: { contents: "write" },
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
 
-			const token = await Effect.runPromise(
-				Effect.provide(
+				const token = yield* Effect.provide(
 					GitHubToken.provision({
 						clientId: "Iv1.abc",
 						privateKey: "pk",
@@ -197,24 +198,24 @@ describe("GitHubToken", () => {
 						permissions: { contents: "write" },
 					}),
 					provisionLayer(state, appState, outputs),
-				),
-			);
+				);
 
-			expect(Redacted.value(token.token)).toBe("ghs_ok");
-		});
+				expect(Redacted.value(token.token)).toBe("ghs_ok");
+			}),
+		);
 
-		it("revokes the generated token and fails when a required scope is missing", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_weak"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: { contents: "read" },
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
+		it.effect("revokes the generated token and fails when a required scope is missing", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_weak"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: { contents: "read" },
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
 
-			const exit = await Effect.runPromise(
-				Effect.exit(
+				const exit = yield* Effect.exit(
 					Effect.provide(
 						GitHubToken.provision({
 							clientId: "Iv1.abc",
@@ -224,120 +225,118 @@ describe("GitHubToken", () => {
 						}),
 						provisionLayer(state, appState, outputs),
 					),
-				),
-			);
+				);
 
-			expect(exit._tag).toBe("Failure");
-			expect(state.entries.has(STATE_KEY)).toBe(false);
-			expect(appState.revokeCalls.map((t) => Redacted.value(t))).toContain("ghs_weak");
-		});
+				expect(exit._tag).toBe("Failure");
+				expect(state.entries.has(STATE_KEY)).toBe(false);
+				expect(appState.revokeCalls.map((t) => Redacted.value(t))).toContain("ghs_weak");
+			}),
+		);
 
-		it("resolves and persists the App identity", async () => {
-			const appState = appStateWith(
-				{
-					token: Redacted.make("ghs_with_identity"),
+		it.effect("resolves and persists the App identity", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith(
+					{
+						token: Redacted.make("ghs_with_identity"),
+						expiresAt: "2099-01-01T00:00:00Z",
+						installationId: 7,
+						permissions: {},
+					},
+					{ appSlug: "acme-bot", appUserId: 123456, appName: "Acme Bot" },
+				);
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
+
+				const token = yield* Effect.provide(
+					GitHubToken.provision({ clientId: "Iv1.abc", privateKey: "pk", installationId: 7 }),
+					provisionLayer(state, appState, outputs),
+				);
+
+				expect(token.appSlug).toBe("acme-bot");
+				expect(token.appUserId).toBe(123456);
+				expect(token.appName).toBe("Acme Bot");
+
+				const persisted = JSON.parse(state.entries.get(STATE_KEY) ?? "{}");
+				expect(persisted.appSlug).toBe("acme-bot");
+				expect(persisted.appUserId).toBe(123456);
+			}),
+		);
+
+		it.effect("persists the token without identity when resolution fails", () =>
+			Effect.gen(function* () {
+				const appState = appStateWith({
+					token: Redacted.make("ghs_no_identity"),
 					expiresAt: "2099-01-01T00:00:00Z",
 					installationId: 7,
 					permissions: {},
-				},
-				{ appSlug: "acme-bot", appUserId: 123456, appName: "Acme Bot" },
-			);
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
+				});
+				const state = ActionStateTest.empty();
+				const outputs = ActionOutputsTest.empty();
 
-			const token = await Effect.runPromise(
-				Effect.provide(
+				const token = yield* Effect.provide(
 					GitHubToken.provision({ clientId: "Iv1.abc", privateKey: "pk", installationId: 7 }),
 					provisionLayer(state, appState, outputs),
-				),
-			);
+				);
 
-			expect(token.appSlug).toBe("acme-bot");
-			expect(token.appUserId).toBe(123456);
-			expect(token.appName).toBe("Acme Bot");
-
-			const persisted = JSON.parse(state.entries.get(STATE_KEY) ?? "{}");
-			expect(persisted.appSlug).toBe("acme-bot");
-			expect(persisted.appUserId).toBe(123456);
-		});
-
-		it("persists the token without identity when resolution fails", async () => {
-			const appState = appStateWith({
-				token: Redacted.make("ghs_no_identity"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: {},
-			});
-			const state = ActionStateTest.empty();
-			const outputs = ActionOutputsTest.empty();
-
-			const token = await Effect.runPromise(
-				Effect.provide(
-					GitHubToken.provision({ clientId: "Iv1.abc", privateKey: "pk", installationId: 7 }),
-					provisionLayer(state, appState, outputs),
-				),
-			);
-
-			expect(Redacted.value(token.token)).toBe("ghs_no_identity");
-			expect(token.appSlug).toBeUndefined();
-			expect(state.entries.has(STATE_KEY)).toBe(true);
-		});
+				expect(Redacted.value(token.token)).toBe("ghs_no_identity");
+				expect(token.appSlug).toBeUndefined();
+				expect(state.entries.has(STATE_KEY)).toBe(true);
+			}),
+		);
 	});
 
 	describe("client", () => {
 		const persist = (state: ReturnType<typeof ActionStateTest.empty>) =>
-			Effect.runPromise(
-				Effect.provide(
-					Effect.flatMap(ActionState, (s) =>
-						s.save(
-							STATE_KEY,
-							{
-								token: Redacted.make("ghs_persisted"),
-								expiresAt: "2099-01-01T00:00:00Z",
-								installationId: 7,
-								permissions: {},
-							},
-							InstallationTokenSchema,
-						),
+			Effect.provide(
+				Effect.flatMap(ActionState, (s) =>
+					s.save(
+						STATE_KEY,
+						{
+							token: Redacted.make("ghs_persisted"),
+							expiresAt: "2099-01-01T00:00:00Z",
+							installationId: 7,
+							permissions: {},
+						},
+						InstallationTokenSchema,
 					),
-					ActionStateTest.layer(state),
 				),
+				ActionStateTest.layer(state),
 			);
 
-		it("builds a GitHubClient from the persisted token", async () => {
-			const state = ActionStateTest.empty();
-			await persist(state);
+		it.effect("builds a GitHubClient from the persisted token", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				yield* persist(state);
 
-			const result = await Effect.runPromise(
-				Effect.provide(
+				const result = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (c) => c.rest("op", () => Promise.resolve({ data: "ok" }))),
 					GitHubToken.client().pipe(Layer.provide(ActionStateTest.layer(state))),
-				),
-			);
+				);
 
-			expect(result).toBe("ok");
-			expect(octokitAuthCalls).toContain("ghs_persisted");
-		});
+				expect(result).toBe("ok");
+				expect(octokitAuthCalls).toContain("ghs_persisted");
+			}),
+		);
 
-		it("fails when no token was provisioned", async () => {
-			const state = ActionStateTest.empty();
-			const exit = await Effect.runPromise(
-				Effect.exit(
+		it.effect("fails when no token was provisioned", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				const exit = yield* Effect.exit(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (c) => c.repo),
 						GitHubToken.client().pipe(Layer.provide(ActionStateTest.layer(state))),
 					),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("dispose", () => {
-		it("revokes the persisted token", async () => {
-			const state = ActionStateTest.empty();
-			await Effect.runPromise(
-				Effect.provide(
+		it.effect("revokes the persisted token", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				yield* Effect.provide(
 					Effect.flatMap(ActionState, (s) =>
 						s.save(
 							STATE_KEY,
@@ -351,40 +350,38 @@ describe("GitHubToken", () => {
 						),
 					),
 					ActionStateTest.layer(state),
-				),
-			);
-			const appState = GitHubAppTest.empty();
+				);
+				const appState = GitHubAppTest.empty();
 
-			await Effect.runPromise(
-				Effect.provide(
+				yield* Effect.provide(
 					GitHubToken.dispose(),
 					Layer.mergeAll(ActionStateTest.layer(state), GitHubAppTest.layer(appState)),
-				),
-			);
+				);
 
-			expect(appState.revokeCalls.map((t) => Redacted.value(t))).toContain("ghs_to_revoke");
-		});
+				expect(appState.revokeCalls.map((t) => Redacted.value(t))).toContain("ghs_to_revoke");
+			}),
+		);
 
-		it("is a no-op when no token was provisioned", async () => {
-			const state = ActionStateTest.empty();
-			const appState = GitHubAppTest.empty();
+		it.effect("is a no-op when no token was provisioned", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				const appState = GitHubAppTest.empty();
 
-			await Effect.runPromise(
-				Effect.provide(
+				yield* Effect.provide(
 					GitHubToken.dispose(),
 					Layer.mergeAll(ActionStateTest.layer(state), GitHubAppTest.layer(appState)),
-				),
-			);
+				);
 
-			expect(appState.revokeCalls).toHaveLength(0);
-		});
+				expect(appState.revokeCalls).toHaveLength(0);
+			}),
+		);
 	});
 
 	describe("read", () => {
-		it("returns the persisted installation token with identity fields", async () => {
-			const state = ActionStateTest.empty();
-			await Effect.runPromise(
-				Effect.provide(
+		it.effect("returns the persisted installation token with identity fields", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				yield* Effect.provide(
 					Effect.flatMap(ActionState, (s) =>
 						s.save(
 							STATE_KEY,
@@ -401,72 +398,72 @@ describe("GitHubToken", () => {
 						),
 					),
 					ActionStateTest.layer(state),
-				),
-			);
+				);
 
-			const token = await Effect.runPromise(Effect.provide(GitHubToken.read(), ActionStateTest.layer(state)));
+				const token = yield* Effect.provide(GitHubToken.read(), ActionStateTest.layer(state));
 
-			expect(Redacted.value(token.token)).toBe("ghs_persisted");
-			expect(token.appSlug).toBe("acme-bot");
-			expect(token.appUserId).toBe(123456);
-			expect(token.appName).toBe("Acme Bot");
-		});
+				expect(Redacted.value(token.token)).toBe("ghs_persisted");
+				expect(token.appSlug).toBe("acme-bot");
+				expect(token.appUserId).toBe(123456);
+				expect(token.appName).toBe("Acme Bot");
+			}),
+		);
 
-		it("fails when no token was provisioned", async () => {
-			const state = ActionStateTest.empty();
-			const exit = await Effect.runPromise(
-				Effect.exit(Effect.provide(GitHubToken.read(), ActionStateTest.layer(state))),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails when no token was provisioned", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				const exit = yield* Effect.exit(Effect.provide(GitHubToken.read(), ActionStateTest.layer(state)));
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("botIdentity", () => {
 		const persist = (state: ReturnType<typeof ActionStateTest.empty>, token: InstallationToken) =>
-			Effect.runPromise(
-				Effect.provide(
-					Effect.flatMap(ActionState, (s) => s.save(STATE_KEY, token, InstallationTokenSchema)),
-					ActionStateTest.layer(state),
-				),
+			Effect.provide(
+				Effect.flatMap(ActionState, (s) => s.save(STATE_KEY, token, InstallationTokenSchema)),
+				ActionStateTest.layer(state),
 			);
 
-		it("derives a verified identity from the persisted token", async () => {
-			const state = ActionStateTest.empty();
-			await persist(state, {
-				token: Redacted.make("ghs_persisted"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				appSlug: "acme-bot",
-				appUserId: 123456,
-				appName: "Acme Bot",
-				permissions: {},
-			});
+		it.effect("derives a verified identity from the persisted token", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				yield* persist(state, {
+					token: Redacted.make("ghs_persisted"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					appSlug: "acme-bot",
+					appUserId: 123456,
+					appName: "Acme Bot",
+					permissions: {},
+				});
 
-			const identity: BotIdentity = await Effect.runPromise(
-				Effect.provide(GitHubToken.botIdentity(), ActionStateTest.layer(state)),
-			);
+				const identity: BotIdentity = yield* Effect.provide(GitHubToken.botIdentity(), ActionStateTest.layer(state));
 
-			expect(identity).toEqual({
-				name: "acme-bot[bot]",
-				email: "123456+acme-bot[bot]@users.noreply.github.com",
-			});
-		});
+				expect(identity).toEqual({
+					name: "acme-bot[bot]",
+					email: "123456+acme-bot[bot]@users.noreply.github.com",
+				});
+			}),
+		);
 
-		it("falls back to github-actions[bot] when identity fields are absent", async () => {
-			const state = ActionStateTest.empty();
-			await persist(state, {
-				token: Redacted.make("ghs_persisted"),
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 7,
-				permissions: {},
-			});
+		it.effect("falls back to github-actions[bot] when identity fields are absent", () =>
+			Effect.gen(function* () {
+				const state = ActionStateTest.empty();
+				yield* persist(state, {
+					token: Redacted.make("ghs_persisted"),
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 7,
+					permissions: {},
+				});
 
-			const identity = await Effect.runPromise(Effect.provide(GitHubToken.botIdentity(), ActionStateTest.layer(state)));
+				const identity = yield* Effect.provide(GitHubToken.botIdentity(), ActionStateTest.layer(state));
 
-			expect(identity).toEqual({
-				name: "github-actions[bot]",
-				email: "41898282+github-actions[bot]@users.noreply.github.com",
-			});
-		});
+				expect(identity).toEqual({
+					name: "github-actions[bot]",
+					email: "41898282+github-actions[bot]@users.noreply.github.com",
+				});
+			}),
+		);
 	});
 });

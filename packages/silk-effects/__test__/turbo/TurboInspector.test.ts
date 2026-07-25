@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { expect, layer } from "@effect/vitest";
 import { Effect, Layer, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { TurboDigest } from "../../src/turbo/digest.js";
 import { TurboDryRun } from "../../src/turbo/schemas/DryRun.js";
 import { TurboInspector } from "../../src/turbo/services/TurboInspector.js";
@@ -18,18 +18,19 @@ const TurboInspectorTest = Layer.succeed(
 	}),
 );
 
-const run = <A, E>(eff: Effect.Effect<A, E, TurboInspector>) =>
-	Effect.runPromise(eff.pipe(Effect.provide(TurboInspectorTest)));
+layer(TurboInspectorTest)("TurboInspector (test layer)", (it) => {
+	it.effect("diagnoseCache returns hit/miss counts", () =>
+		Effect.gen(function* () {
+			const d = yield* Effect.flatMap(TurboInspector, (t) => t.diagnoseCache("build:dev", "/repo"));
+			expect(d.hits).toBe(1);
+			expect(d.misses).toBe(1);
+		}),
+	);
 
-describe("TurboInspector (test layer)", () => {
-	it("diagnoseCache returns hit/miss counts", async () => {
-		const d = await run(Effect.flatMap(TurboInspector, (t) => t.diagnoseCache("build:dev", "/repo")));
-		expect(d.hits).toBe(1);
-		expect(d.misses).toBe(1);
-	});
-
-	it("taskGraph returns the critical path", async () => {
-		const g = await run(Effect.flatMap(TurboInspector, (t) => t.taskGraph("/repo", "build:dev")));
-		expect(g.criticalPath.at(-1)).toBe("@savvy-web/bundler#build:dev");
-	});
+	it.effect("taskGraph returns the critical path", () =>
+		Effect.gen(function* () {
+			const g = yield* Effect.flatMap(TurboInspector, (t) => t.taskGraph("/repo", "build:dev"));
+			expect(g.criticalPath.at(-1)).toBe("@savvy-web/bundler#build:dev");
+		}),
+	);
 });

@@ -1,7 +1,8 @@
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Duration, Effect, Exit, Fiber, Layer, Metric, Option, Redacted, Ref, Stream } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { vi } from "vitest";
 import { GitHubClientLive } from "../../src/layers/GitHubClientLive.js";
 import { githubApiCalls } from "../../src/runtime/Telemetry.js";
 import { GitHubClient } from "../../src/services/GitHubClient.js";
@@ -83,266 +84,314 @@ describe("GitHubClientLive", () => {
 	describe("fromEnv", () => {
 		// Error-wrapping tests disable resilience so retryable failures fail fast;
 		// retry behavior has dedicated tests under the "resilience" describe.
+		//
+		// DO NOT collapse these helpers into an `@effect/vitest` `layer()` suite block.
+		// `GitHubClientLive.fromEnv(...)` is a layer-RETURNING function: each build
+		// constructs a new Octokit (recorded by the hoisted auth recorder above) and reads
+		// GITHUB_TOKEN from the environment at build time — which tests in this describe
+		// delete per test. A group-scoped `layer()` would freeze that env read and turn the
+		// recorder into a running total across the group, so per-test counts would silently
+		// become cumulative. Mutation-proved: making the recorder push a constant reddens
+		// the Redacted-boundary test with a single-element array, confirming one build per
+		// test rather than an accumulating one.
 		const run = <A, E>(effect: Effect.Effect<A, E, GitHubClient>) =>
-			Effect.runPromise(Effect.provide(effect, GitHubClientLive.fromEnv({ enabled: false })));
+			Effect.provide(effect, GitHubClientLive.fromEnv({ enabled: false }));
 
 		const runExit = <A, E>(effect: Effect.Effect<A, E, GitHubClient>) =>
-			Effect.runPromise(Effect.exit(Effect.provide(effect, GitHubClientLive.fromEnv({ enabled: false }))));
+			Effect.exit(Effect.provide(effect, GitHubClientLive.fromEnv({ enabled: false })));
 
-		it("fails when GITHUB_TOKEN is not set", async () => {
-			delete process.env.GITHUB_TOKEN;
-			const exit = await runExit(Effect.flatMap(GitHubClient, (client) => client.repo));
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails when GITHUB_TOKEN is not set", () =>
+			Effect.gen(function* () {
+				delete process.env.GITHUB_TOKEN;
+				const exit = yield* runExit(Effect.flatMap(GitHubClient, (client) => client.repo));
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 
 		describe("rest", () => {
-			it("calls the callback and extracts data", async () => {
-				const result = await run(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.op", () => Promise.resolve({ data: { id: 42 } }))),
-				);
-				expect(result).toEqual({ id: 42 });
-			});
+			it.effect("calls the callback and extracts data", () =>
+				Effect.gen(function* () {
+					const result = yield* run(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.rest("test.op", () => Promise.resolve({ data: { id: 42 } })),
+						),
+					);
+					expect(result).toEqual({ id: 42 });
+				}),
+			);
 
-			it("wraps errors with operation name", async () => {
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.fail", () => Promise.reject(new Error("boom")))),
-				);
-				expect(exit._tag).toBe("Failure");
-			});
+			it.effect("wraps errors with operation name", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) => client.rest("test.fail", () => Promise.reject(new Error("boom")))),
+					);
+					expect(exit._tag).toBe("Failure");
+				}),
+			);
 
-			it("marks 429 status as retryable", async () => {
-				const error = Object.assign(new Error("rate limited"), { status: 429 });
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.retry", () => Promise.reject(error))),
-				);
-				expect(exit._tag).toBe("Failure");
-				if (Exit.isFailure(exit)) {
-					const err = Cause.squash(exit.cause) as { retryable: boolean };
-					expect(err.retryable).toBe(true);
-				}
-			});
+			it.effect("marks 429 status as retryable", () =>
+				Effect.gen(function* () {
+					const error = Object.assign(new Error("rate limited"), { status: 429 });
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) => client.rest("test.retry", () => Promise.reject(error))),
+					);
+					expect(exit._tag).toBe("Failure");
+					if (Exit.isFailure(exit)) {
+						const err = Cause.squash(exit.cause) as { retryable: boolean };
+						expect(err.retryable).toBe(true);
+					}
+				}),
+			);
 
-			it("marks 500 status as retryable", async () => {
-				const error = Object.assign(new Error("server error"), { status: 500 });
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.500", () => Promise.reject(error))),
-				);
-				expect(exit._tag).toBe("Failure");
-				if (Exit.isFailure(exit)) {
-					const err = Cause.squash(exit.cause) as { retryable: boolean };
-					expect(err.retryable).toBe(true);
-				}
-			});
+			it.effect("marks 500 status as retryable", () =>
+				Effect.gen(function* () {
+					const error = Object.assign(new Error("server error"), { status: 500 });
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) => client.rest("test.500", () => Promise.reject(error))),
+					);
+					expect(exit._tag).toBe("Failure");
+					if (Exit.isFailure(exit)) {
+						const err = Cause.squash(exit.cause) as { retryable: boolean };
+						expect(err.retryable).toBe(true);
+					}
+				}),
+			);
 
-			it("marks a 403 carrying Retry-After as retryable (secondary rate limit)", async () => {
-				const error = Object.assign(new Error("secondary limit"), {
-					status: 403,
-					response: { headers: { "retry-after": "5" } },
-				});
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.403.retryAfter", () => Promise.reject(error))),
-				);
-				expect(exit._tag).toBe("Failure");
-				if (Exit.isFailure(exit)) {
-					const err = Cause.squash(exit.cause) as { retryable: boolean; retryAfterMs: number };
-					expect(err.retryable).toBe(true);
-					expect(err.retryAfterMs).toBe(5000);
-				}
-			});
+			it.effect("marks a 403 carrying Retry-After as retryable (secondary rate limit)", () =>
+				Effect.gen(function* () {
+					const error = Object.assign(new Error("secondary limit"), {
+						status: 403,
+						response: { headers: { "retry-after": "5" } },
+					});
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) => client.rest("test.403.retryAfter", () => Promise.reject(error))),
+					);
+					expect(exit._tag).toBe("Failure");
+					if (Exit.isFailure(exit)) {
+						const err = Cause.squash(exit.cause) as { retryable: boolean; retryAfterMs: number };
+						expect(err.retryable).toBe(true);
+						expect(err.retryAfterMs).toBe(5000);
+					}
+				}),
+			);
 
-			it("marks a 403 with x-ratelimit-remaining: 0 as retryable (secondary rate limit)", async () => {
-				const reset = Math.floor(Date.now() / 1000) + 30;
-				const error = Object.assign(new Error("secondary limit"), {
-					status: 403,
-					response: { headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": String(reset) } },
-				});
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.403.ratelimit", () => Promise.reject(error))),
-				);
-				expect(exit._tag).toBe("Failure");
-				if (Exit.isFailure(exit)) {
-					const err = Cause.squash(exit.cause) as { retryable: boolean };
-					expect(err.retryable).toBe(true);
-				}
-			});
+			it.effect("marks a 403 with x-ratelimit-remaining: 0 as retryable (secondary rate limit)", () =>
+				Effect.gen(function* () {
+					const reset = Math.floor(Date.now() / 1000) + 30;
+					const error = Object.assign(new Error("secondary limit"), {
+						status: 403,
+						response: { headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": String(reset) } },
+					});
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) => client.rest("test.403.ratelimit", () => Promise.reject(error))),
+					);
+					expect(exit._tag).toBe("Failure");
+					if (Exit.isFailure(exit)) {
+						const err = Cause.squash(exit.cause) as { retryable: boolean };
+						expect(err.retryable).toBe(true);
+					}
+				}),
+			);
 
-			it("marks a bare 403 (permission denial) as non-retryable", async () => {
-				const error = Object.assign(new Error("forbidden"), { status: 403 });
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.403.bare", () => Promise.reject(error))),
-				);
-				expect(exit._tag).toBe("Failure");
-				if (Exit.isFailure(exit)) {
-					const err = Cause.squash(exit.cause) as { retryable: boolean };
-					expect(err.retryable).toBe(false);
-				}
-			});
+			it.effect("marks a bare 403 (permission denial) as non-retryable", () =>
+				Effect.gen(function* () {
+					const error = Object.assign(new Error("forbidden"), { status: 403 });
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) => client.rest("test.403.bare", () => Promise.reject(error))),
+					);
+					expect(exit._tag).toBe("Failure");
+					if (Exit.isFailure(exit)) {
+						const err = Cause.squash(exit.cause) as { retryable: boolean };
+						expect(err.retryable).toBe(false);
+					}
+				}),
+			);
 
-			it("sanitizes HTML error responses", async () => {
-				const htmlError = Object.assign(new Error("<!DOCTYPE html><html><body>Unicorn!</body></html>"), {
-					status: 500,
-				});
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) => client.rest("test.html", () => Promise.reject(htmlError))),
-				);
-				expect(exit._tag).toBe("Failure");
-				if (Exit.isFailure(exit)) {
-					const error = Cause.squash(exit.cause) as { reason: string };
-					expect(error.reason).toBe("GitHub API returned 500 (server error)");
-					expect(error.reason).not.toContain("<!DOCTYPE");
-				}
-			});
+			it.effect("sanitizes HTML error responses", () =>
+				Effect.gen(function* () {
+					const htmlError = Object.assign(new Error("<!DOCTYPE html><html><body>Unicorn!</body></html>"), {
+						status: 500,
+					});
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) => client.rest("test.html", () => Promise.reject(htmlError))),
+					);
+					expect(exit._tag).toBe("Failure");
+					if (Exit.isFailure(exit)) {
+						const error = Cause.squash(exit.cause) as { reason: string };
+						expect(error.reason).toBe("GitHub API returned 500 (server error)");
+						expect(error.reason).not.toContain("<!DOCTYPE");
+					}
+				}),
+			);
 		});
 
 		describe("graphql", () => {
-			it("wraps graphql errors from the stubbed fetch's fixture 401", async () => {
-				const exit = await runExit(Effect.flatMap(GitHubClient, (client) => client.graphql("{ viewer { login } }")));
-				expect(exit._tag).toBe("Failure");
-				if (Exit.isFailure(exit)) {
-					const err = Cause.squash(exit.cause) as {
-						_tag?: string;
-						operation: string;
-						status?: number;
-						reason: string;
-						retryable: boolean;
-					};
-					expect(err._tag).toBe("GitHubClientError");
-					expect(err.operation).toBe("graphql");
-					expect(err.status).toBe(401);
-					expect(err.reason).toContain("Bad credentials");
-					expect(err.retryable).toBe(false);
-				}
-				// The request-log plugin's failure line was routed into the mock's
-				// recording sink, not leaked to stdout as a ::debug:: command.
-				expect(octokitLogLines.length).toBeGreaterThan(0);
-			});
+			it.effect("wraps graphql errors from the stubbed fetch's fixture 401", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(Effect.flatMap(GitHubClient, (client) => client.graphql("{ viewer { login } }")));
+					expect(exit._tag).toBe("Failure");
+					if (Exit.isFailure(exit)) {
+						const err = Cause.squash(exit.cause) as {
+							_tag?: string;
+							operation: string;
+							status?: number;
+							reason: string;
+							retryable: boolean;
+						};
+						expect(err._tag).toBe("GitHubClientError");
+						expect(err.operation).toBe("graphql");
+						expect(err.status).toBe(401);
+						expect(err.reason).toContain("Bad credentials");
+						expect(err.retryable).toBe(false);
+					}
+					// The request-log plugin's failure line was routed into the mock's
+					// recording sink, not leaked to stdout as a ::debug:: command.
+					expect(octokitLogLines.length).toBeGreaterThan(0);
+				}),
+			);
 		});
 
 		describe("paginate", () => {
-			it("collects results across multiple pages", async () => {
-				let callCount = 0;
-				const result = await run(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.paginate(
-							"test.paginate",
-							(_octokit, page) => {
-								callCount++;
-								if (page === 1) return Promise.resolve({ data: [1, 2, 3] });
-								if (page === 2) return Promise.resolve({ data: [4, 5, 6] });
-								return Promise.resolve({ data: [7] });
-							},
-							{ perPage: 3 },
+			it.effect("collects results across multiple pages", () =>
+				Effect.gen(function* () {
+					let callCount = 0;
+					const result = yield* run(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.paginate(
+								"test.paginate",
+								(_octokit, page) => {
+									callCount++;
+									if (page === 1) return Promise.resolve({ data: [1, 2, 3] });
+									if (page === 2) return Promise.resolve({ data: [4, 5, 6] });
+									return Promise.resolve({ data: [7] });
+								},
+								{ perPage: 3 },
+							),
 						),
-					),
-				);
-				expect(callCount).toBe(3);
-				expect(result).toEqual([1, 2, 3, 4, 5, 6, 7]);
-			});
+					);
+					expect(callCount).toBe(3);
+					expect(result).toEqual([1, 2, 3, 4, 5, 6, 7]);
+				}),
+			);
 
-			it("stops when response has fewer items than perPage", async () => {
-				let callCount = 0;
-				const result = await run(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.paginate(
-							"test.partial",
-							() => {
-								callCount++;
-								return Promise.resolve({ data: [1, 2] });
-							},
-							{ perPage: 5 },
+			it.effect("stops when response has fewer items than perPage", () =>
+				Effect.gen(function* () {
+					let callCount = 0;
+					const result = yield* run(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.paginate(
+								"test.partial",
+								() => {
+									callCount++;
+									return Promise.resolve({ data: [1, 2] });
+								},
+								{ perPage: 5 },
+							),
 						),
-					),
-				);
-				expect(callCount).toBe(1);
-				expect(result).toEqual([1, 2]);
-			});
+					);
+					expect(callCount).toBe(1);
+					expect(result).toEqual([1, 2]);
+				}),
+			);
 
-			it("stops when maxPages is reached", async () => {
-				let callCount = 0;
-				const result = await run(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.paginate(
-							"test.maxPages",
-							() => {
-								callCount++;
-								return Promise.resolve({ data: [1, 2, 3] });
-							},
-							{ perPage: 3, maxPages: 2 },
+			it.effect("stops when maxPages is reached", () =>
+				Effect.gen(function* () {
+					let callCount = 0;
+					const result = yield* run(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.paginate(
+								"test.maxPages",
+								() => {
+									callCount++;
+									return Promise.resolve({ data: [1, 2, 3] });
+								},
+								{ perPage: 3, maxPages: 2 },
+							),
 						),
-					),
-				);
-				expect(callCount).toBe(2);
-				expect(result).toEqual([1, 2, 3, 1, 2, 3]);
-			});
+					);
+					expect(callCount).toBe(2);
+					expect(result).toEqual([1, 2, 3, 1, 2, 3]);
+				}),
+			);
 
-			it("wraps pagination errors", async () => {
-				const exit = await runExit(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.paginate("test.paginateErr", () => Promise.reject(new Error("page fail"))),
-					),
-				);
-				expect(exit._tag).toBe("Failure");
-			});
+			it.effect("wraps pagination errors", () =>
+				Effect.gen(function* () {
+					const exit = yield* runExit(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.paginate("test.paginateErr", () => Promise.reject(new Error("page fail"))),
+						),
+					);
+					expect(exit._tag).toBe("Failure");
+				}),
+			);
 		});
 
 		describe("repo", () => {
-			it("parses GITHUB_REPOSITORY into owner and repo", async () => {
-				const result = await run(Effect.flatMap(GitHubClient, (client) => client.repo));
-				expect(result).toEqual({ owner: "owner", repo: "repo" });
-			});
+			it.effect("parses GITHUB_REPOSITORY into owner and repo", () =>
+				Effect.gen(function* () {
+					const result = yield* run(Effect.flatMap(GitHubClient, (client) => client.repo));
+					expect(result).toEqual({ owner: "owner", repo: "repo" });
+				}),
+			);
 
-			it("fails when GITHUB_REPOSITORY is not set", async () => {
-				delete process.env.GITHUB_REPOSITORY;
-				const exit = await runExit(Effect.flatMap(GitHubClient, (client) => client.repo));
-				expect(exit._tag).toBe("Failure");
-			});
+			it.effect("fails when GITHUB_REPOSITORY is not set", () =>
+				Effect.gen(function* () {
+					delete process.env.GITHUB_REPOSITORY;
+					const exit = yield* runExit(Effect.flatMap(GitHubClient, (client) => client.repo));
+					expect(exit._tag).toBe("Failure");
+				}),
+			);
 
-			it("fails when GITHUB_REPOSITORY is empty string", async () => {
-				process.env.GITHUB_REPOSITORY = "";
-				const exit = await runExit(Effect.flatMap(GitHubClient, (client) => client.repo));
-				expect(exit._tag).toBe("Failure");
-			});
+			it.effect("fails when GITHUB_REPOSITORY is empty string", () =>
+				Effect.gen(function* () {
+					process.env.GITHUB_REPOSITORY = "";
+					const exit = yield* runExit(Effect.flatMap(GitHubClient, (client) => client.repo));
+					expect(exit._tag).toBe("Failure");
+				}),
+			);
 
-			it("handles repository with no slash gracefully", async () => {
-				process.env.GITHUB_REPOSITORY = "noslash";
-				const result = await run(Effect.flatMap(GitHubClient, (client) => client.repo));
-				expect(result).toEqual({ owner: "noslash", repo: "" });
-			});
+			it.effect("handles repository with no slash gracefully", () =>
+				Effect.gen(function* () {
+					process.env.GITHUB_REPOSITORY = "noslash";
+					const result = yield* run(Effect.flatMap(GitHubClient, (client) => client.repo));
+					expect(result).toEqual({ owner: "noslash", repo: "" });
+				}),
+			);
 		});
 	});
 
 	describe("fromToken", () => {
-		it("builds a client from a Redacted token", async () => {
-			const result = await Effect.runPromise(
-				Effect.provide(
+		it.effect("builds a client from a Redacted token", () =>
+			Effect.gen(function* () {
+				const result = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) => client.rest("op", () => Promise.resolve({ data: { ok: true } }))),
 					GitHubClientLive.fromToken(Redacted.make("explicit-token")),
-				),
-			);
-			expect(result).toEqual({ ok: true });
-		});
+				);
+				expect(result).toEqual({ ok: true });
+			}),
+		);
 
-		it("does not require GITHUB_TOKEN to be set", async () => {
-			delete process.env.GITHUB_TOKEN;
-			const result = await Effect.runPromise(
-				Effect.provide(
+		it.effect("does not require GITHUB_TOKEN to be set", () =>
+			Effect.gen(function* () {
+				delete process.env.GITHUB_TOKEN;
+				const result = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) => client.rest("op", () => Promise.resolve({ data: "ok" }))),
 					GitHubClientLive.fromToken(Redacted.make("explicit")),
-				),
-			);
-			expect(result).toBe("ok");
-		});
+				);
+				expect(result).toBe("ok");
+			}),
+		);
 
-		it("unwraps the Redacted token only at the Octokit boundary (S6/S11)", async () => {
-			octokitAuthCalls.length = 0;
-			await Effect.runPromise(
-				Effect.provide(
+		it.effect("unwraps the Redacted token only at the Octokit boundary (S6/S11)", () =>
+			Effect.gen(function* () {
+				octokitAuthCalls.length = 0;
+				yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) => client.rest("op", () => Promise.resolve({ data: 1 }))),
 					GitHubClientLive.fromToken(Redacted.make("secret-token")),
-				),
-			);
-			expect(octokitAuthCalls).toContain("secret-token");
-		});
+				);
+				expect(octokitAuthCalls).toContain("secret-token");
+			}),
+		);
 	});
 
 	describe("fromApp", () => {
@@ -358,15 +407,15 @@ describe("GitHubClientLive", () => {
 			revokes.length = 0;
 		});
 
-		it("generates an installation token and builds a client", async () => {
-			mockAuth.mockResolvedValue({
-				token: "app-installation-token",
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 42,
-				permissions: { contents: "write" },
-			});
-			const result = await Effect.runPromise(
-				Effect.scoped(
+		it.effect("generates an installation token and builds a client", () =>
+			Effect.gen(function* () {
+				mockAuth.mockResolvedValue({
+					token: "app-installation-token",
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 42,
+					permissions: { contents: "write" },
+				});
+				const result = yield* Effect.scoped(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (client) => client.rest("op", () => Promise.resolve({ data: "done" }))),
 						Layer.provide(
@@ -374,20 +423,20 @@ describe("GitHubClientLive", () => {
 							httpLayer,
 						),
 					),
-				),
-			);
-			expect(result).toBe("done");
-		});
+				);
+				expect(result).toBe("done");
+			}),
+		);
 
-		it("accepts a Redacted private key", async () => {
-			mockAuth.mockResolvedValue({
-				token: "app-installation-token",
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 42,
-				permissions: {},
-			});
-			const result = await Effect.runPromise(
-				Effect.scoped(
+		it.effect("accepts a Redacted private key", () =>
+			Effect.gen(function* () {
+				mockAuth.mockResolvedValue({
+					token: "app-installation-token",
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 42,
+					permissions: {},
+				});
+				const result = yield* Effect.scoped(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (client) => client.rest("op", () => Promise.resolve({ data: 1 }))),
 						Layer.provide(
@@ -399,15 +448,15 @@ describe("GitHubClientLive", () => {
 							httpLayer,
 						),
 					),
-				),
-			);
-			expect(result).toBe(1);
-		});
+				);
+				expect(result).toBe(1);
+			}),
+		);
 
-		it("propagates GitHubAppError when token generation fails", async () => {
-			mockAuth.mockRejectedValue(new Error("bad credentials"));
-			const exit = await Effect.runPromise(
-				Effect.exit(
+		it.effect("propagates GitHubAppError when token generation fails", () =>
+			Effect.gen(function* () {
+				mockAuth.mockRejectedValue(new Error("bad credentials"));
+				const exit = yield* Effect.exit(
 					Effect.scoped(
 						Effect.provide(
 							Effect.flatMap(GitHubClient, (client) => client.repo),
@@ -417,14 +466,14 @@ describe("GitHubClientLive", () => {
 							),
 						),
 					),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-			if (Exit.isFailure(exit)) {
-				const err = Cause.squash(exit.cause) as { _tag?: string };
-				expect(err._tag).toBe("GitHubAppError");
-			}
-		});
+				);
+				expect(exit._tag).toBe("Failure");
+				if (Exit.isFailure(exit)) {
+					const err = Cause.squash(exit.cause) as { _tag?: string };
+					expect(err._tag).toBe("GitHubAppError");
+				}
+			}),
+		);
 	});
 
 	describe("resilience", () => {
@@ -434,108 +483,72 @@ describe("GitHubClientLive", () => {
 				const fiber = yield* Effect.forkChild(effect);
 				yield* TestClock.adjust(advance);
 				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
+			}).pipe(Effect.exit);
 
-		it("rest retries a transient 503 then succeeds (default-on)", async () => {
-			let attempts = 0;
-			const exit = await runWithClock(
-				Effect.provide(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.rest("op", () => {
-							attempts++;
-							if (attempts < 2) {
+		it.effect("rest retries a transient 503 then succeeds (default-on)", () =>
+			Effect.gen(function* () {
+				let attempts = 0;
+				const exit = yield* runWithClock(
+					Effect.provide(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.rest("op", () => {
+								attempts++;
+								if (attempts < 2) {
+									return Promise.reject(Object.assign(new Error("unavailable"), { status: 503 }));
+								}
+								return Promise.resolve({ data: "ok" });
+							}),
+						),
+						GitHubClientLive.fromToken(Redacted.make("t")),
+					),
+				);
+				expect(exit._tag).toBe("Success");
+				expect(attempts).toBe(2);
+			}),
+		);
+
+		it.effect("rest with resilience disabled does not retry", () =>
+			Effect.gen(function* () {
+				let attempts = 0;
+				const exit = yield* runWithClock(
+					Effect.provide(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.rest("op", () => {
+								attempts++;
 								return Promise.reject(Object.assign(new Error("unavailable"), { status: 503 }));
-							}
-							return Promise.resolve({ data: "ok" });
-						}),
+							}),
+						),
+						GitHubClientLive.fromToken(Redacted.make("t"), { enabled: false }),
 					),
-					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(exit._tag).toBe("Success");
-			expect(attempts).toBe(2);
-		});
+				);
+				expect(exit._tag).toBe("Failure");
+				expect(attempts).toBe(1);
+			}),
+		);
 
-		it("rest with resilience disabled does not retry", async () => {
-			let attempts = 0;
-			const exit = await runWithClock(
-				Effect.provide(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.rest("op", () => {
-							attempts++;
-							return Promise.reject(Object.assign(new Error("unavailable"), { status: 503 }));
-						}),
+		it.effect("rest does not retry non-retryable (404) errors", () =>
+			Effect.gen(function* () {
+				let attempts = 0;
+				const exit = yield* runWithClock(
+					Effect.provide(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.rest("op", () => {
+								attempts++;
+								return Promise.reject(Object.assign(new Error("not found"), { status: 404 }));
+							}),
+						),
+						GitHubClientLive.fromToken(Redacted.make("t")),
 					),
-					GitHubClientLive.fromToken(Redacted.make("t"), { enabled: false }),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-			expect(attempts).toBe(1);
-		});
+				);
+				expect(exit._tag).toBe("Failure");
+				expect(attempts).toBe(1);
+			}),
+		);
 
-		it("rest does not retry non-retryable (404) errors", async () => {
-			let attempts = 0;
-			const exit = await runWithClock(
-				Effect.provide(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.rest("op", () => {
-							attempts++;
-							return Promise.reject(Object.assign(new Error("not found"), { status: 404 }));
-						}),
-					),
-					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-			expect(attempts).toBe(1);
-		});
-
-		it("rest retries a 403 secondary rate limit that carries Retry-After, then succeeds", async () => {
-			let attempts = 0;
-			const exit = await runWithClock(
-				Effect.provide(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.rest("op", () => {
-							attempts++;
-							if (attempts < 2) {
-								return Promise.reject(
-									Object.assign(new Error("secondary limit"), {
-										status: 403,
-										response: { headers: { "retry-after": "5" } },
-									}),
-								);
-							}
-							return Promise.resolve({ data: "recovered" });
-						}),
-					),
-					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(exit._tag).toBe("Success");
-			expect(attempts).toBe(2);
-		});
-
-		it("rest does not retry a bare 403 (permission denial)", async () => {
-			let attempts = 0;
-			const exit = await runWithClock(
-				Effect.provide(
-					Effect.flatMap(GitHubClient, (client) =>
-						client.rest("op", () => {
-							attempts++;
-							return Promise.reject(Object.assign(new Error("forbidden"), { status: 403 }));
-						}),
-					),
-					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-			expect(attempts).toBe(1);
-		});
-
-		it("honors a Retry-After header as the retry delay", async () => {
-			let attempts = 0;
-			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.forkChild(
+		it.effect("rest retries a 403 secondary rate limit that carries Retry-After, then succeeds", () =>
+			Effect.gen(function* () {
+				let attempts = 0;
+				const exit = yield* runWithClock(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (client) =>
 							client.rest("op", () => {
@@ -543,7 +556,7 @@ describe("GitHubClientLive", () => {
 								if (attempts < 2) {
 									return Promise.reject(
 										Object.assign(new Error("secondary limit"), {
-											status: 429,
+											status: 403,
 											response: { headers: { "retry-after": "5" } },
 										}),
 									);
@@ -554,46 +567,96 @@ describe("GitHubClientLive", () => {
 						GitHubClientLive.fromToken(Redacted.make("t")),
 					),
 				);
-				// Less than the advised 5s: still pending.
-				yield* TestClock.adjust(Duration.seconds(4));
-				const stillRunning = fiber.pollUnsafe() === undefined;
-				// Past the advised delay: completes.
-				yield* TestClock.adjust(Duration.seconds(2));
-				const result = yield* Fiber.join(fiber);
-				return { stillRunning, result };
-			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
+				expect(exit._tag).toBe("Success");
+				expect(attempts).toBe(2);
+			}),
+		);
 
-			expect(exit._tag).toBe("Success");
-			if (Exit.isSuccess(exit)) {
-				expect(exit.value.stillRunning).toBe(true);
-				expect(exit.value.result).toBe("recovered");
-			}
-			expect(attempts).toBe(2);
-		});
+		it.effect("rest does not retry a bare 403 (permission denial)", () =>
+			Effect.gen(function* () {
+				let attempts = 0;
+				const exit = yield* runWithClock(
+					Effect.provide(
+						Effect.flatMap(GitHubClient, (client) =>
+							client.rest("op", () => {
+								attempts++;
+								return Promise.reject(Object.assign(new Error("forbidden"), { status: 403 }));
+							}),
+						),
+						GitHubClientLive.fromToken(Redacted.make("t")),
+					),
+				);
+				expect(exit._tag).toBe("Failure");
+				expect(attempts).toBe(1);
+			}),
+		);
 
-		it("graphql failures route through the resilient wrapper", async () => {
-			// graphql shares the withResilience wrapper. The stubbed fetch returns a
-			// fixture 401 (non-retryable) → fails fast without retries.
-			const exit = await runWithClock(
-				Effect.provide(
-					Effect.flatMap(GitHubClient, (client) => client.graphql("{ viewer { login } }")),
-					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-			if (Exit.isFailure(exit)) {
-				const err = Cause.squash(exit.cause) as { status?: number; reason: string; retryable: boolean };
-				expect(err.status).toBe(401);
-				expect(err.reason).toContain("Bad credentials");
-				expect(err.retryable).toBe(false);
-			}
-		});
+		it.effect("honors a Retry-After header as the retry delay", () =>
+			Effect.gen(function* () {
+				let attempts = 0;
+				const exit = yield* Effect.gen(function* () {
+					const fiber = yield* Effect.forkChild(
+						Effect.provide(
+							Effect.flatMap(GitHubClient, (client) =>
+								client.rest("op", () => {
+									attempts++;
+									if (attempts < 2) {
+										return Promise.reject(
+											Object.assign(new Error("secondary limit"), {
+												status: 429,
+												response: { headers: { "retry-after": "5" } },
+											}),
+										);
+									}
+									return Promise.resolve({ data: "recovered" });
+								}),
+							),
+							GitHubClientLive.fromToken(Redacted.make("t")),
+						),
+					);
+					// Less than the advised 5s: still pending.
+					yield* TestClock.adjust(Duration.seconds(4));
+					const stillRunning = fiber.pollUnsafe() === undefined;
+					// Past the advised delay: completes.
+					yield* TestClock.adjust(Duration.seconds(2));
+					const result = yield* Fiber.join(fiber);
+					return { stillRunning, result };
+				}).pipe(Effect.exit);
+
+				expect(exit._tag).toBe("Success");
+				if (Exit.isSuccess(exit)) {
+					expect(exit.value.stillRunning).toBe(true);
+					expect(exit.value.result).toBe("recovered");
+				}
+				expect(attempts).toBe(2);
+			}),
+		);
+
+		it.effect("graphql failures route through the resilient wrapper", () =>
+			Effect.gen(function* () {
+				// graphql shares the withResilience wrapper. The stubbed fetch returns a
+				// fixture 401 (non-retryable) → fails fast without retries.
+				const exit = yield* runWithClock(
+					Effect.provide(
+						Effect.flatMap(GitHubClient, (client) => client.graphql("{ viewer { login } }")),
+						GitHubClientLive.fromToken(Redacted.make("t")),
+					),
+				);
+				expect(exit._tag).toBe("Failure");
+				if (Exit.isFailure(exit)) {
+					const err = Cause.squash(exit.cause) as { status?: number; reason: string; retryable: boolean };
+					expect(err.status).toBe(401);
+					expect(err.reason).toContain("Bad credentials");
+					expect(err.retryable).toBe(false);
+				}
+			}),
+		);
 	});
 
 	describe("rate-limit snapshot", () => {
-		it("records x-ratelimit headers into RateLimitState on a successful rest call", async () => {
-			const snapshot = await Effect.runPromise(
-				Effect.gen(function* () {
+		it.effect("records x-ratelimit headers into RateLimitState on a successful rest call", () =>
+			Effect.gen(function* () {
+				const snapshot = yield* Effect.gen(function* () {
 					const ref = yield* RateLimitState;
 					yield* Effect.flatMap(GitHubClient, (client) =>
 						client.rest("op", () =>
@@ -608,33 +671,33 @@ describe("GitHubClientLive", () => {
 						),
 					);
 					return yield* Ref.get(ref);
-				}).pipe(Effect.provide(GitHubClientLive.fromToken(Redacted.make("t"))), Effect.provide(RateLimitState.Default)),
-			);
-			expect(Option.isSome(snapshot)).toBe(true);
-			if (Option.isSome(snapshot)) {
-				expect(snapshot.value.remaining).toBe(4321);
-				expect(snapshot.value.limit).toBe(5000);
-				expect(snapshot.value.resetEpochSeconds).toBe(1700000000);
-			}
-		});
+				}).pipe(Effect.provide(GitHubClientLive.fromToken(Redacted.make("t"))), Effect.provide(RateLimitState.Default));
+				expect(Option.isSome(snapshot)).toBe(true);
+				if (Option.isSome(snapshot)) {
+					expect(snapshot.value.remaining).toBe(4321);
+					expect(snapshot.value.limit).toBe(5000);
+					expect(snapshot.value.resetEpochSeconds).toBe(1700000000);
+				}
+			}),
+		);
 
-		it("leaves the snapshot untouched when no headers are present", async () => {
-			const snapshot = await Effect.runPromise(
-				Effect.gen(function* () {
+		it.effect("leaves the snapshot untouched when no headers are present", () =>
+			Effect.gen(function* () {
+				const snapshot = yield* Effect.gen(function* () {
 					const ref = yield* RateLimitState;
 					yield* Effect.flatMap(GitHubClient, (client) => client.rest("op", () => Promise.resolve({ data: "ok" })));
 					return yield* Ref.get(ref);
-				}).pipe(Effect.provide(GitHubClientLive.fromToken(Redacted.make("t"))), Effect.provide(RateLimitState.Default)),
-			);
-			expect(Option.isNone(snapshot)).toBe(true);
-		});
+				}).pipe(Effect.provide(GitHubClientLive.fromToken(Redacted.make("t"))), Effect.provide(RateLimitState.Default));
+				expect(Option.isNone(snapshot)).toBe(true);
+			}),
+		);
 	});
 
 	describe("paginateStream", () => {
-		it("emits pages lazily — Stream.take(1) fetches only page 1", async () => {
-			let callCount = 0;
-			const result = await Effect.runPromise(
-				Effect.provide(
+		it.effect("emits pages lazily — Stream.take(1) fetches only page 1", () =>
+			Effect.gen(function* () {
+				let callCount = 0;
+				const result = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) =>
 						Stream.runCollect(
 							client
@@ -651,16 +714,16 @@ describe("GitHubClientLive", () => {
 						),
 					),
 					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(result).toEqual([1]);
-			expect(callCount).toBe(1);
-		});
+				);
+				expect(result).toEqual([1]);
+				expect(callCount).toBe(1);
+			}),
+		);
 
-		it("stops at maxPages", async () => {
-			let callCount = 0;
-			const result = await Effect.runPromise(
-				Effect.provide(
+		it.effect("stops at maxPages", () =>
+			Effect.gen(function* () {
+				let callCount = 0;
+				const result = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) =>
 						Stream.runCollect(
 							client.paginateStream(
@@ -674,38 +737,36 @@ describe("GitHubClientLive", () => {
 						),
 					),
 					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(callCount).toBe(2);
-			expect(result).toEqual([1, 2, 3, 1, 2, 3]);
-		});
+				);
+				expect(callCount).toBe(2);
+				expect(result).toEqual([1, 2, 3, 1, 2, 3]);
+			}),
+		);
 
-		it("agrees with paginate on page boundaries", async () => {
-			const fn = (_o: unknown, page: number) => {
-				if (page === 1) return Promise.resolve({ data: [1, 2, 3] });
-				if (page === 2) return Promise.resolve({ data: [4, 5, 6] });
-				return Promise.resolve({ data: [7] });
-			};
-			const eager = await Effect.runPromise(
-				Effect.provide(
+		it.effect("agrees with paginate on page boundaries", () =>
+			Effect.gen(function* () {
+				const fn = (_o: unknown, page: number) => {
+					if (page === 1) return Promise.resolve({ data: [1, 2, 3] });
+					if (page === 2) return Promise.resolve({ data: [4, 5, 6] });
+					return Promise.resolve({ data: [7] });
+				};
+				const eager = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) => client.paginate("op", fn, { perPage: 3 })),
 					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			const streamed = await Effect.runPromise(
-				Effect.provide(
+				);
+				const streamed = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) => Stream.runCollect(client.paginateStream("op", fn, { perPage: 3 }))),
 					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(streamed).toEqual(eager);
-			expect(streamed).toEqual([1, 2, 3, 4, 5, 6, 7]);
-		});
+				);
+				expect(streamed).toEqual(eager);
+				expect(streamed).toEqual([1, 2, 3, 4, 5, 6, 7]);
+			}),
+		);
 
-		it("takeWhile stops fetching subsequent pages", async () => {
-			let callCount = 0;
-			const result = await Effect.runPromise(
-				Effect.provide(
+		it.effect("takeWhile stops fetching subsequent pages", () =>
+			Effect.gen(function* () {
+				let callCount = 0;
+				const result = yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) =>
 						Stream.runCollect(
 							client
@@ -723,97 +784,99 @@ describe("GitHubClientLive", () => {
 						),
 					),
 					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			expect(result).toEqual([1, 2, 3, 4]);
-			// page 3 is never fetched; at most 2 pages.
-			expect(callCount).toBeLessThanOrEqual(2);
-		});
+				);
+				expect(result).toEqual([1, 2, 3, 4]);
+				// page 3 is never fetched; at most 2 pages.
+				expect(callCount).toBeLessThanOrEqual(2);
+			}),
+		);
 
-		it("propagates errors through the stream", async () => {
-			const exit = await Effect.runPromise(
-				Effect.exit(
+		it.effect("propagates errors through the stream", () =>
+			Effect.gen(function* () {
+				const exit = yield* Effect.exit(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (client) =>
 							Stream.runCollect(client.paginateStream("op", () => Promise.reject(new Error("page fail")))),
 						),
 						GitHubClientLive.fromToken(Redacted.make("t")),
 					),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-		});
+				);
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("telemetry (item 5, on WS2's resilient client)", () => {
-		it("increments the GitHub-API counter per rest call, tagged by operation + outcome", async () => {
-			const successCounter = githubApiCalls.pipe(
-				Metric.withAttributes({ kind: "rest" }),
-				Metric.withAttributes({ operation: "tagged.op" }),
-				Metric.withAttributes({ outcome: "success" }),
-			);
-			const before = await Effect.runPromise(Metric.value(successCounter));
-			await Effect.runPromise(
-				Effect.provide(
+		it.effect("increments the GitHub-API counter per rest call, tagged by operation + outcome", () =>
+			Effect.gen(function* () {
+				const successCounter = githubApiCalls.pipe(
+					Metric.withAttributes({ kind: "rest" }),
+					Metric.withAttributes({ operation: "tagged.op" }),
+					Metric.withAttributes({ outcome: "success" }),
+				);
+				const before = yield* Metric.value(successCounter);
+				yield* Effect.provide(
 					Effect.flatMap(GitHubClient, (client) => client.rest("tagged.op", () => Promise.resolve({ data: 1 }))),
 					GitHubClientLive.fromToken(Redacted.make("t")),
-				),
-			);
-			const after = await Effect.runPromise(Metric.value(successCounter));
-			expect(after.count - before.count).toBe(1);
-		});
-
-		it("increments the failure-tagged counter once even across resilient retries", async () => {
-			const failureCounter = githubApiCalls.pipe(
-				Metric.withAttributes({ kind: "rest" }),
-				Metric.withAttributes({ operation: "retry.op" }),
-				Metric.withAttributes({ outcome: "failure" }),
-			);
-			const before = await Effect.runPromise(Metric.value(failureCounter));
-			let attempts = 0;
-			// Always-503 so WS2's resilience retries internally; the span/counter
-			// must wrap the OUTERMOST effect so the counter ticks exactly once.
-			const exit = await Effect.gen(function* () {
-				const fiber = yield* Effect.forkChild(
-					Effect.provide(
-						Effect.flatMap(GitHubClient, (client) =>
-							client.rest("retry.op", () => {
-								attempts++;
-								return Promise.reject(Object.assign(new Error("unavailable"), { status: 503 }));
-							}),
-						),
-						GitHubClientLive.fromToken(Redacted.make("t")),
-					),
 				);
-				yield* TestClock.adjust(Duration.seconds(600));
-				return yield* Fiber.join(fiber);
-			}).pipe(Effect.exit, Effect.provide(TestClock.layer()), Effect.runPromise);
+				const after = yield* Metric.value(successCounter);
+				expect(after.count - before.count).toBe(1);
+			}),
+		);
 
-			expect(exit._tag).toBe("Failure");
-			expect(attempts).toBeGreaterThan(1);
-			const after = await Effect.runPromise(Metric.value(failureCounter));
-			expect(after.count - before.count).toBe(1);
-		});
+		it.effect("increments the failure-tagged counter once even across resilient retries", () =>
+			Effect.gen(function* () {
+				const failureCounter = githubApiCalls.pipe(
+					Metric.withAttributes({ kind: "rest" }),
+					Metric.withAttributes({ operation: "retry.op" }),
+					Metric.withAttributes({ outcome: "failure" }),
+				);
+				const before = yield* Metric.value(failureCounter);
+				let attempts = 0;
+				// Always-503 so WS2's resilience retries internally; the span/counter
+				// must wrap the OUTERMOST effect so the counter ticks exactly once.
+				const exit = yield* Effect.gen(function* () {
+					const fiber = yield* Effect.forkChild(
+						Effect.provide(
+							Effect.flatMap(GitHubClient, (client) =>
+								client.rest("retry.op", () => {
+									attempts++;
+									return Promise.reject(Object.assign(new Error("unavailable"), { status: 503 }));
+								}),
+							),
+							GitHubClientLive.fromToken(Redacted.make("t")),
+						),
+					);
+					yield* TestClock.adjust(Duration.seconds(600));
+					return yield* Fiber.join(fiber);
+				}).pipe(Effect.exit);
+
+				expect(exit._tag).toBe("Failure");
+				expect(attempts).toBeGreaterThan(1);
+				const after = yield* Metric.value(failureCounter);
+				expect(after.count - before.count).toBe(1);
+			}),
+		);
 	});
 
 	describe("fromApp scope", () => {
-		it("revokes the installation token when the scope closes", async () => {
-			const revoked: Array<string> = [];
-			mockAuth.mockResolvedValue({
-				token: "scoped-installation-token",
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 42,
-				permissions: {},
-			});
-			// The revoke (DELETE /installation/token) now goes through HttpClient.
-			const httpLayer = mockHttpClient((method, url) => {
-				if (method === "DELETE" && url.includes("/installation/token")) {
-					revoked.push(url);
-				}
-			});
+		it.effect("revokes the installation token when the scope closes", () =>
+			Effect.gen(function* () {
+				const revoked: Array<string> = [];
+				mockAuth.mockResolvedValue({
+					token: "scoped-installation-token",
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 42,
+					permissions: {},
+				});
+				// The revoke (DELETE /installation/token) now goes through HttpClient.
+				const httpLayer = mockHttpClient((method, url) => {
+					if (method === "DELETE" && url.includes("/installation/token")) {
+						revoked.push(url);
+					}
+				});
 
-			await Effect.runPromise(
-				Effect.scoped(
+				yield* Effect.scoped(
 					Effect.provide(
 						Effect.flatMap(GitHubClient, (client) => client.rest("op", () => Promise.resolve({ data: "done" }))),
 						Layer.provide(
@@ -821,24 +884,24 @@ describe("GitHubClientLive", () => {
 							httpLayer,
 						),
 					),
-				),
-			);
+				);
 
-			expect(revoked.length).toBe(1);
-		});
+				expect(revoked.length).toBe(1);
+			}),
+		);
 
-		it("Layer.memoize builds the App client once across multiple provides", async () => {
-			mockAuth.mockResolvedValue({
-				token: "memoized-token",
-				expiresAt: "2099-01-01T00:00:00Z",
-				installationId: 42,
-				permissions: {},
-			});
-			const before = mockAuth.mock.calls.length;
-			const httpLayer = mockHttpClient(() => {});
+		it.effect("Layer.memoize builds the App client once across multiple provides", () =>
+			Effect.gen(function* () {
+				mockAuth.mockResolvedValue({
+					token: "memoized-token",
+					expiresAt: "2099-01-01T00:00:00Z",
+					installationId: 42,
+					permissions: {},
+				});
+				const before = mockAuth.mock.calls.length;
+				const httpLayer = mockHttpClient(() => {});
 
-			await Effect.runPromise(
-				Effect.gen(function* () {
+				yield* Effect.gen(function* () {
 					const shared = yield* Layer.build(
 						Layer.provide(
 							GitHubClientLive.fromApp({ clientId: "Iv1.abc", privateKey: Redacted.make("key"), installationId: 42 }),
@@ -851,11 +914,11 @@ describe("GitHubClientLive", () => {
 					yield* Effect.flatMap(GitHubClient, (client) => client.rest("b", () => Promise.resolve({ data: 2 }))).pipe(
 						Effect.provideContext(shared),
 					);
-				}).pipe(Effect.scoped),
-			);
+				}).pipe(Effect.scoped);
 
-			// generateToken (which calls mockAuth) ran exactly once for both provides.
-			expect(mockAuth.mock.calls.length - before).toBe(1);
-		});
+				// generateToken (which calls mockAuth) ran exactly once for both provides.
+				expect(mockAuth.mock.calls.length - before).toBe(1);
+			}),
+		);
 	});
 });

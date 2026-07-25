@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Equal, Hash } from "effect";
-import { describe, expect, it } from "vitest";
 import type { SectionValidationError } from "../../src/errors/SectionValidationError.js";
 import { SectionBlock } from "../../src/schemas/SectionBlock.js";
 import { SectionDefinition, ShellSectionDefinition } from "../../src/schemas/SectionDefinition.js";
@@ -100,20 +100,26 @@ describe("SectionDefinition", () => {
 	});
 
 	describe("generateEffect", () => {
-		it("returns a typed Effect block factory (instance)", async () => {
-			const def = SectionDefinition.make({ toolName: TOOL });
-			const factory = def.generateEffect((cfg: { name: string }) => Effect.succeed(`hello ${cfg.name}`));
-			const block = await Effect.runPromise(factory({ name: "world" }));
-			expect(block).toBeInstanceOf(SectionBlock);
-			expect(block.content).toBe("hello world");
-		});
+		it.effect("returns a typed Effect block factory (instance)", () =>
+			Effect.gen(function* () {
+				const def = SectionDefinition.make({ toolName: TOOL });
+				const factory = def.generateEffect((cfg: { name: string }) => Effect.succeed(`hello ${cfg.name}`));
+				const block = yield* factory({ name: "world" });
+				expect(block).toBeInstanceOf(SectionBlock);
+				expect(block.content).toBe("hello world");
+			}),
+		);
 
-		it("static generateEffect works data-first", async () => {
-			const def = SectionDefinition.make({ toolName: TOOL });
-			const factory = SectionDefinition.generateEffect(def, (cfg: { n: number }) => Effect.succeed(`count: ${cfg.n}`));
-			const block = await Effect.runPromise(factory({ n: 7 }));
-			expect(block.content).toBe("count: 7");
-		});
+		it.effect("static generateEffect works data-first", () =>
+			Effect.gen(function* () {
+				const def = SectionDefinition.make({ toolName: TOOL });
+				const factory = SectionDefinition.generateEffect(def, (cfg: { n: number }) =>
+					Effect.succeed(`count: ${cfg.n}`),
+				);
+				const block = yield* factory({ n: 7 });
+				expect(block.content).toBe("count: 7");
+			}),
+		);
 	});
 
 	describe("withValidation", () => {

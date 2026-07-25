@@ -14,4 +14,4 @@
 
 Load for the service inventory, layer composition, errors/schemas, integration points, and testing strategy (six docs):
 → `@../../.claude/design/github-action-effects/index.md`
-Load when adding a service, composing layers, or building a GitHub Action on these services.
+Load when adding a service, composing layers, or building a GitHub Action on these services. This package holds over half the suite's Effect-running test files; its `*Test` doubles are stateful by design, so provide them PER TEST (`.empty()` + `.layer(state)` inside the test body) and never from a suite-boundary `layer(...)` block.

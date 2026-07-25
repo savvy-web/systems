@@ -3,8 +3,8 @@
  * the prior `JSON.parse(JSON.stringify(bundle))` round-trip used in `AttestLive`.
  */
 
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE, SigstoreBundle } from "../../src/testing.js";
 
 const stubBundle = (): SigstoreBundle =>
@@ -22,18 +22,22 @@ const stubBundle = (): SigstoreBundle =>
 	});
 
 describe("SigstoreBundle encode", () => {
-	it("encodes the SigstoreBundle to the same wire shape as the JSON round-trip", () => {
-		const bundle = stubBundle();
-		const jsonRoundTrip = JSON.parse(JSON.stringify(bundle));
-		const encoded = Effect.runSync(Schema.encodeEffect(SigstoreBundle)(bundle));
-		expect(encoded).toEqual(jsonRoundTrip);
-	});
+	it.effect("encodes the SigstoreBundle to the same wire shape as the JSON round-trip", () =>
+		Effect.gen(function* () {
+			const bundle = stubBundle();
+			const jsonRoundTrip = JSON.parse(JSON.stringify(bundle));
+			const encoded = yield* Schema.encodeEffect(SigstoreBundle)(bundle);
+			expect(encoded).toEqual(jsonRoundTrip);
+		}),
+	);
 
-	it("preserves the mediaType literal and the opaque material/envelope payloads", () => {
-		const bundle = stubBundle();
-		const encoded = Effect.runSync(Schema.encodeEffect(SigstoreBundle)(bundle)) as Record<string, unknown>;
-		expect(encoded.mediaType).toBe(SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE);
-		expect(encoded.verificationMaterial).toEqual(bundle.verificationMaterial);
-		expect(encoded.dsseEnvelope).toEqual(bundle.dsseEnvelope);
-	});
+	it.effect("preserves the mediaType literal and the opaque material/envelope payloads", () =>
+		Effect.gen(function* () {
+			const bundle = stubBundle();
+			const encoded = (yield* Schema.encodeEffect(SigstoreBundle)(bundle)) as Record<string, unknown>;
+			expect(encoded.mediaType).toBe(SIGSTORE_BUNDLE_V0_3_MEDIA_TYPE);
+			expect(encoded.verificationMaterial).toEqual(bundle.verificationMaterial);
+			expect(encoded.dsseEnvelope).toEqual(bundle.dsseEnvelope);
+		}),
+	);
 });

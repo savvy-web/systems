@@ -1,34 +1,34 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Logger } from "effect";
-import { describe, expect, it } from "vitest";
 import { DryRunLive } from "../../src/layers/DryRunLive.js";
 import { DryRunTest } from "../../src/layers/DryRunTest.js";
 import { DryRun } from "../../src/services/DryRun.js";
 
 describe("DryRun", () => {
-	it("isDryRun returns true when enabled", async () => {
-		const result = await Effect.runPromise(
-			DryRun.pipe(
+	it.effect("isDryRun returns true when enabled", () =>
+		Effect.gen(function* () {
+			const result = yield* DryRun.pipe(
 				Effect.flatMap((dr) => dr.isDryRun),
 				Effect.provide(DryRunLive(true)),
-			),
-		);
-		expect(result).toBe(true);
-	});
+			);
+			expect(result).toBe(true);
+		}),
+	);
 
-	it("isDryRun returns false when disabled", async () => {
-		const result = await Effect.runPromise(
-			DryRun.pipe(
+	it.effect("isDryRun returns false when disabled", () =>
+		Effect.gen(function* () {
+			const result = yield* DryRun.pipe(
 				Effect.flatMap((dr) => dr.isDryRun),
 				Effect.provide(DryRunLive(false)),
-			),
-		);
-		expect(result).toBe(false);
-	});
+			);
+			expect(result).toBe(false);
+		}),
+	);
 
-	it("guard executes effect when not dry-run", async () => {
-		let executed = false;
-		const result = await Effect.runPromise(
-			DryRun.pipe(
+	it.effect("guard executes effect when not dry-run", () =>
+		Effect.gen(function* () {
+			let executed = false;
+			const result = yield* DryRun.pipe(
 				Effect.flatMap((dr) =>
 					dr.guard(
 						"create-branch",
@@ -40,16 +40,16 @@ describe("DryRun", () => {
 					),
 				),
 				Effect.provide(DryRunLive(false)),
-			),
-		);
-		expect(result).toBe("created");
-		expect(executed).toBe(true);
-	});
+			);
+			expect(result).toBe("created");
+			expect(executed).toBe(true);
+		}),
+	);
 
-	it("guard returns fallback when dry-run", async () => {
-		let executed = false;
-		const result = await Effect.runPromise(
-			DryRun.pipe(
+	it.effect("guard returns fallback when dry-run", () =>
+		Effect.gen(function* () {
+			let executed = false;
+			const result = yield* DryRun.pipe(
 				Effect.flatMap((dr) =>
 					dr.guard(
 						"create-branch",
@@ -62,27 +62,27 @@ describe("DryRun", () => {
 				),
 				Effect.provide(DryRunLive(true)),
 				Effect.provide(Logger.layer([])),
-			),
-		);
-		expect(result).toBe("skipped");
-		expect(executed).toBe(false);
-	});
+			);
+			expect(result).toBe("skipped");
+			expect(executed).toBe(false);
+		}),
+	);
 
-	it("guard logs dry-run label", async () => {
-		await Effect.runPromise(
-			DryRun.pipe(
+	it.effect("guard logs dry-run label", () =>
+		Effect.gen(function* () {
+			yield* DryRun.pipe(
 				Effect.flatMap((dr) => dr.guard("delete-branch", Effect.succeed("done"), "skipped")),
 				Effect.provide(DryRunLive(true)),
 				Effect.provide(Logger.layer([])),
-			),
-		);
-		// If it doesn't throw, the log was emitted without error
-	});
+			);
+			// If it doesn't throw, the log was emitted without error
+		}),
+	);
 
-	it("test layer records guarded labels", async () => {
-		const { state, layer } = DryRunTest.empty();
-		await Effect.runPromise(
-			DryRun.pipe(
+	it.effect("test layer records guarded labels", () =>
+		Effect.gen(function* () {
+			const { state, layer } = DryRunTest.empty();
+			yield* DryRun.pipe(
 				Effect.flatMap((dr) =>
 					Effect.all([
 						dr.guard("create-pr", Effect.succeed("pr"), "dry-pr"),
@@ -90,8 +90,8 @@ describe("DryRun", () => {
 					]),
 				),
 				Effect.provide(layer),
-			),
-		);
-		expect(state.guardedLabels).toEqual(["create-pr", "merge-pr"]);
-	});
+			);
+			expect(state.guardedLabels).toEqual(["create-pr", "merge-pr"]);
+		}),
+	);
 });

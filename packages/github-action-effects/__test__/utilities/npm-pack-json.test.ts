@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import { parseNpmPackJson } from "../../src/utils/npm-pack-json.js";
 
 describe("parseNpmPackJson", () => {

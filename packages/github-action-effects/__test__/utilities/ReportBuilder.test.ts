@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 import { ActionOutputsTest } from "../../src/layers/ActionOutputsTest.js";
 import { CheckRunTest } from "../../src/layers/CheckRunTest.js";
 import { PullRequestCommentTest } from "../../src/layers/PullRequestCommentTest.js";
@@ -67,56 +67,60 @@ describe("ReportBuilder", () => {
 	});
 
 	describe("toSummary", () => {
-		it("calls ActionOutputs.summary with rendered markdown", async () => {
-			const state = ActionOutputsTest.empty();
-			const report = ReportBuilder.create("Test Report").stat("Count", 42);
+		it.effect("calls ActionOutputs.summary with rendered markdown", () =>
+			Effect.gen(function* () {
+				const state = ActionOutputsTest.empty();
+				const report = ReportBuilder.create("Test Report").stat("Count", 42);
 
-			await Effect.runPromise(report.toSummary().pipe(Effect.provide(ActionOutputsTest.layer(state))));
+				yield* report.toSummary().pipe(Effect.provide(ActionOutputsTest.layer(state)));
 
-			expect(state.summaries).toHaveLength(1);
-			expect(state.summaries[0]).toContain("## Test Report");
-			expect(state.summaries[0]).toContain("| Count | 42 |");
-		});
+				expect(state.summaries).toHaveLength(1);
+				expect(state.summaries[0]).toContain("## Test Report");
+				expect(state.summaries[0]).toContain("| Count | 42 |");
+			}),
+		);
 	});
 
 	describe("toComment", () => {
-		it("calls PullRequestComment.upsert with rendered markdown", async () => {
-			const prState = PullRequestCommentTest.empty();
-			const report = ReportBuilder.create("PR Report").stat("Status", "pass");
+		it.effect("calls PullRequestComment.upsert with rendered markdown", () =>
+			Effect.gen(function* () {
+				const prState = PullRequestCommentTest.empty();
+				const report = ReportBuilder.create("PR Report").stat("Status", "pass");
 
-			await Effect.runPromise(
-				report.toComment(42, "test-key").pipe(Effect.provide(PullRequestCommentTest.layer(prState))),
-			);
+				yield* report.toComment(42, "test-key").pipe(Effect.provide(PullRequestCommentTest.layer(prState)));
 
-			const comments = prState.comments.get(42);
-			expect(comments).toHaveLength(1);
-			expect(comments?.[0]?.body).toContain("## PR Report");
-			expect(comments?.[0]?.body).toContain("| Status | pass |");
-		});
+				const comments = prState.comments.get(42);
+				expect(comments).toHaveLength(1);
+				expect(comments?.[0]?.body).toContain("## PR Report");
+				expect(comments?.[0]?.body).toContain("| Status | pass |");
+			}),
+		);
 	});
 
 	describe("toCheckRun", () => {
-		it("calls CheckRun.update with rendered markdown", async () => {
-			const checkState = CheckRunTest.empty();
+		it.effect("calls CheckRun.update with rendered markdown", () =>
+			Effect.gen(function* () {
+				const checkState = CheckRunTest.empty();
 
-			// Manually push a run record so update finds it
-			checkState.runs.push({
-				id: 99,
-				name: "test",
-				headSha: "abc",
-				htmlUrl: "https://github.com/test/checks/99",
-				status: "in_progress",
-				outputs: [],
-			});
+				// Manually push a run record so update finds it
+				checkState.runs.push({
+					id: 99,
+					name: "test",
+					headSha: "abc",
+					htmlUrl: "https://github.com/test/checks/99",
+					status: "in_progress",
+					outputs: [],
+				});
 
-			const report = ReportBuilder.create("Check Report").stat("Tests", 42);
-			await Effect.runPromise(report.toCheckRun(99).pipe(Effect.provide(CheckRunTest.layer(checkState))));
+				const report = ReportBuilder.create("Check Report").stat("Tests", 42);
+				yield* report.toCheckRun(99).pipe(Effect.provide(CheckRunTest.layer(checkState)));
 
-			expect(checkState.runs[0]?.outputs).toHaveLength(1);
-			expect(checkState.runs[0]?.outputs[0]?.title).toBe("Check Report");
-			expect(checkState.runs[0]?.outputs[0]?.text).toContain("## Check Report");
-			expect(checkState.runs[0]?.outputs[0]?.text).toContain("| Tests | 42 |");
-		});
+				expect(checkState.runs[0]?.outputs).toHaveLength(1);
+				expect(checkState.runs[0]?.outputs[0]?.title).toBe("Check Report");
+				expect(checkState.runs[0]?.outputs[0]?.text).toContain("## Check Report");
+				expect(checkState.runs[0]?.outputs[0]?.text).toContain("| Tests | 42 |");
+			}),
+		);
 	});
 
 	describe("immutability", () => {

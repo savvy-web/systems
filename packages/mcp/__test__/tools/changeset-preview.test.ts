@@ -1,7 +1,7 @@
+import { expect, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
-import { describe, expect, it } from "vitest";
 
 import {
 	ChangesetPreviewAsMarkdown,
@@ -31,16 +31,14 @@ const fixed: Changesets.ChangesetPreview = {
 
 const ReleasePlannerTest = Changesets.makeReleasePlannerTest({ preview: fixed });
 
-describe("changeset_preview tool", () => {
-	it("produces a structured result via the handler", async () => {
-		const data = await Effect.runPromise(
-			changesetPreview({ cwd: "/repo" }, "/repo").pipe(
-				Effect.provide(Layer.mergeAll(WorkspaceRootTest, ReleasePlannerTest)),
-			),
-		);
-		expect(Schema.decodeUnknownSync(ChangesetPreviewResult)(data)).toEqual(data);
-		expect(data.releases[0].newVersion).toBe("1.1.0");
-	});
+layer(Layer.mergeAll(WorkspaceRootTest, ReleasePlannerTest))("changeset_preview tool", (it) => {
+	it.effect("produces a structured result via the handler", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetPreview({ cwd: "/repo" }, "/repo");
+			expect(Schema.decodeUnknownSync(ChangesetPreviewResult)(data)).toEqual(data);
+			expect(data.releases[0].newVersion).toBe("1.1.0");
+		}),
+	);
 
 	it("renders markdown with a bump table and the changelog block", () => {
 		const text = Schema.decodeUnknownSync(ChangesetPreviewAsMarkdown)({ ...fixed });

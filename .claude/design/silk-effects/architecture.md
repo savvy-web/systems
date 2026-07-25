@@ -4,12 +4,13 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-07-24
-last-synced: 2026-07-24
+updated: 2026-07-25
+last-synced: 2026-07-25
 related:
   - ../silk/architecture.md
   - ../cli/architecture.md
   - ../mcp/architecture.md
+  - ../testing/effect-vitest.md
 dependencies: []
 ---
 
@@ -432,6 +433,8 @@ Four test approaches are used:
 - **Property-based tests**: use `fast-check` to lock down class invariants (e.g. `AnalyzedWorkspace` Equal/Hash consistency) independent of implementation details.
 - **Service tests**: provide mock layers and verify service contract behavior.
 - **Integration tests**: run `SilkWorkspaceAnalyzer.analyze` against the real fixture directories using the `@effect/platform-node` filesystem, catching schema-decode and service-composition errors that unit tests miss.
+
+Effect-running test files use `@effect/vitest` (`it.effect` bodies, per-test `Effect.provide`, `Effect.flip` for typed-failure assertions); the pure-function unit and property-based tests above have no Effect surface and stay on plain `vitest`. The suite-wide conventions — including the `TestConsole`-vs-`process.stderr` discrimination that `__test__/commitlint/hook/silence-logger.test.ts` turns on — are in [../testing/effect-vitest.md](../testing/effect-vitest.md).
 
 `Pretty.make` is wired on `AnalyzedWorkspace` and `WorkspaceAnalysis` for debugging and test-output readability.
 

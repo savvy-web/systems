@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import { Effect, Layer, Stream } from "effect";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubClientError } from "../../src/errors/GitHubClientError.js";
 import { CheckRunLive } from "../../src/layers/CheckRunLive.js";
 import { CheckRun } from "../../src/services/CheckRun.js";
@@ -35,10 +35,9 @@ const mockClient: typeof GitHubClient.Service = {
 
 const testLayer = Layer.provide(CheckRunLive, Layer.succeed(GitHubClient, mockClient));
 
-const run = <A, E>(effect: Effect.Effect<A, E, CheckRun>) => Effect.runPromise(Effect.provide(effect, testLayer));
+const run = <A, E>(effect: Effect.Effect<A, E, CheckRun>) => Effect.provide(effect, testLayer);
 
-const runExit = <A, E>(effect: Effect.Effect<A, E, CheckRun>) =>
-	Effect.runPromise(Effect.exit(Effect.provide(effect, testLayer)));
+const runExit = <A, E>(effect: Effect.Effect<A, E, CheckRun>) => Effect.exit(Effect.provide(effect, testLayer));
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -46,149 +45,189 @@ beforeEach(() => {
 
 describe("CheckRunLive", () => {
 	describe("create", () => {
-		it("calls checks.create and returns id", async () => {
-			mockCreate.mockResolvedValue({
-				data: { id: 123, name: "my-check", status: "in_progress", conclusion: null, html_url: "https://gh/checks/123" },
-			});
-			const result = await run(Effect.flatMap(CheckRun, (svc) => svc.create("my-check", "abc123")));
-			expect(result.id).toBe(123);
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					owner: "test-owner",
-					repo: "test-repo",
-					name: "my-check",
-					head_sha: "abc123",
-					status: "in_progress",
-				}),
-			);
-		});
+		it.effect("calls checks.create and returns id", () =>
+			Effect.gen(function* () {
+				mockCreate.mockResolvedValue({
+					data: {
+						id: 123,
+						name: "my-check",
+						status: "in_progress",
+						conclusion: null,
+						html_url: "https://gh/checks/123",
+					},
+				});
+				const result = yield* run(Effect.flatMap(CheckRun, (svc) => svc.create("my-check", "abc123")));
+				expect(result.id).toBe(123);
+				expect(mockCreate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						owner: "test-owner",
+						repo: "test-repo",
+						name: "my-check",
+						head_sha: "abc123",
+						status: "in_progress",
+					}),
+				);
+			}),
+		);
 
-		it("create returns CheckRunData with the html_url", async () => {
-			mockCreate.mockResolvedValue({
-				data: { id: 7, name: "build", status: "in_progress", conclusion: null, html_url: "https://gh/checks/7" },
-			});
-			const result = await run(Effect.flatMap(CheckRun, (svc) => svc.create("build", "sha123")));
-			expect(result.id).toBe(7);
-			expect(result.htmlUrl).toBe("https://gh/checks/7");
-		});
+		it.effect("create returns CheckRunData with the html_url", () =>
+			Effect.gen(function* () {
+				mockCreate.mockResolvedValue({
+					data: { id: 7, name: "build", status: "in_progress", conclusion: null, html_url: "https://gh/checks/7" },
+				});
+				const result = yield* run(Effect.flatMap(CheckRun, (svc) => svc.create("build", "sha123")));
+				expect(result.id).toBe(7);
+				expect(result.htmlUrl).toBe("https://gh/checks/7");
+			}),
+		);
 
-		it("fails on API error", async () => {
-			mockCreate.mockRejectedValue(new Error("api error"));
-			const exit = await runExit(Effect.flatMap(CheckRun, (svc) => svc.create("check", "sha")));
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on API error", () =>
+			Effect.gen(function* () {
+				mockCreate.mockRejectedValue(new Error("api error"));
+				const exit = yield* runExit(Effect.flatMap(CheckRun, (svc) => svc.create("check", "sha")));
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("get", () => {
-		it("get returns the check run's data", async () => {
-			mockGet.mockResolvedValue({
-				data: { id: 9, name: "build", status: "completed", conclusion: "success", html_url: "https://gh/checks/9" },
-			});
-			const result = await run(Effect.flatMap(CheckRun, (svc) => svc.get(9)));
-			expect(result.id).toBe(9);
-			expect(result.status).toBe("completed");
-			expect(result.conclusion).toBe("success");
-		});
+		it.effect("get returns the check run's data", () =>
+			Effect.gen(function* () {
+				mockGet.mockResolvedValue({
+					data: { id: 9, name: "build", status: "completed", conclusion: "success", html_url: "https://gh/checks/9" },
+				});
+				const result = yield* run(Effect.flatMap(CheckRun, (svc) => svc.get(9)));
+				expect(result.id).toBe(9);
+				expect(result.status).toBe("completed");
+				expect(result.conclusion).toBe("success");
+			}),
+		);
 
-		it("fails on API error", async () => {
-			mockGet.mockRejectedValue(new Error("not found"));
-			const exit = await runExit(Effect.flatMap(CheckRun, (svc) => svc.get(99)));
-			expect(exit._tag).toBe("Failure");
-		});
+		it.effect("fails on API error", () =>
+			Effect.gen(function* () {
+				mockGet.mockRejectedValue(new Error("not found"));
+				const exit = yield* runExit(Effect.flatMap(CheckRun, (svc) => svc.get(99)));
+				expect(exit._tag).toBe("Failure");
+			}),
+		);
 	});
 
 	describe("update", () => {
-		it("calls checks.update with formatted output", async () => {
-			mockUpdate.mockResolvedValue({ data: {} });
-			await run(Effect.flatMap(CheckRun, (svc) => svc.update(1, { title: "Test", summary: "Summary" })));
-			expect(mockUpdate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					check_run_id: 1,
-					output: { title: "Test", summary: "Summary" },
-				}),
-			);
-		});
+		it.effect("calls checks.update with formatted output", () =>
+			Effect.gen(function* () {
+				mockUpdate.mockResolvedValue({ data: {} });
+				yield* run(Effect.flatMap(CheckRun, (svc) => svc.update(1, { title: "Test", summary: "Summary" })));
+				expect(mockUpdate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						check_run_id: 1,
+						output: { title: "Test", summary: "Summary" },
+					}),
+				);
+			}),
+		);
 
-		it("includes text field when provided", async () => {
-			mockUpdate.mockResolvedValue({ data: {} });
-			await run(
-				Effect.flatMap(CheckRun, (svc) => svc.update(1, { title: "Test", summary: "Summary", text: "Detailed text" })),
-			);
-			const call = mockUpdate.mock.calls[0]?.[0];
-			expect(call.output.text).toBe("Detailed text");
-		});
+		it.effect("includes text field when provided", () =>
+			Effect.gen(function* () {
+				mockUpdate.mockResolvedValue({ data: {} });
+				yield* run(
+					Effect.flatMap(CheckRun, (svc) =>
+						svc.update(1, { title: "Test", summary: "Summary", text: "Detailed text" }),
+					),
+				);
+				const call = mockUpdate.mock.calls[0]?.[0];
+				expect(call.output.text).toBe("Detailed text");
+			}),
+		);
 
-		it("caps annotations at 50", async () => {
-			mockUpdate.mockResolvedValue({ data: {} });
-			const annotations = Array.from({ length: 60 }, (_, i) => ({
-				path: `file${i}.ts`,
-				start_line: 1,
-				end_line: 1,
-				annotation_level: "warning" as const,
-				message: `msg${i}`,
-			}));
-			await run(Effect.flatMap(CheckRun, (svc) => svc.update(1, { title: "T", summary: "S", annotations })));
-			const call = mockUpdate.mock.calls[0]?.[0];
-			expect(call.output.annotations).toHaveLength(50);
-		});
+		it.effect("caps annotations at 50", () =>
+			Effect.gen(function* () {
+				mockUpdate.mockResolvedValue({ data: {} });
+				const annotations = Array.from({ length: 60 }, (_, i) => ({
+					path: `file${i}.ts`,
+					start_line: 1,
+					end_line: 1,
+					annotation_level: "warning" as const,
+					message: `msg${i}`,
+				}));
+				yield* run(Effect.flatMap(CheckRun, (svc) => svc.update(1, { title: "T", summary: "S", annotations })));
+				const call = mockUpdate.mock.calls[0]?.[0];
+				expect(call.output.annotations).toHaveLength(50);
+			}),
+		);
 	});
 
 	describe("complete", () => {
-		it("marks check run as completed", async () => {
-			mockUpdate.mockResolvedValue({ data: {} });
-			await run(Effect.flatMap(CheckRun, (svc) => svc.complete(5, "success")));
-			expect(mockUpdate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					check_run_id: 5,
-					status: "completed",
-					conclusion: "success",
-				}),
-			);
-		});
+		it.effect("marks check run as completed", () =>
+			Effect.gen(function* () {
+				mockUpdate.mockResolvedValue({ data: {} });
+				yield* run(Effect.flatMap(CheckRun, (svc) => svc.complete(5, "success")));
+				expect(mockUpdate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						check_run_id: 5,
+						status: "completed",
+						conclusion: "success",
+					}),
+				);
+			}),
+		);
 
-		it("includes output when provided", async () => {
-			mockUpdate.mockResolvedValue({ data: {} });
-			await run(Effect.flatMap(CheckRun, (svc) => svc.complete(5, "failure", { title: "Failed", summary: "Bad" })));
-			expect(mockUpdate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					output: { title: "Failed", summary: "Bad" },
-				}),
-			);
-		});
+		it.effect("includes output when provided", () =>
+			Effect.gen(function* () {
+				mockUpdate.mockResolvedValue({ data: {} });
+				yield* run(Effect.flatMap(CheckRun, (svc) => svc.complete(5, "failure", { title: "Failed", summary: "Bad" })));
+				expect(mockUpdate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						output: { title: "Failed", summary: "Bad" },
+					}),
+				);
+			}),
+		);
 	});
 
 	describe("withCheckRun", () => {
-		it("creates, runs effect, and completes with success", async () => {
-			mockCreate.mockResolvedValue({
-				data: {
-					id: 10,
-					name: "bracket-check",
-					status: "in_progress",
-					conclusion: null,
-					html_url: "https://gh/checks/10",
-				},
-			});
-			mockUpdate.mockResolvedValue({ data: {} });
-			const result = await run(
-				Effect.flatMap(CheckRun, (svc) => svc.withCheckRun("bracket-check", "sha123", (_id) => Effect.succeed("done"))),
-			);
-			expect(result).toBe("done");
-			expect(mockCreate).toHaveBeenCalledTimes(1);
-			expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ conclusion: "success" }));
-		});
+		it.effect("creates, runs effect, and completes with success", () =>
+			Effect.gen(function* () {
+				mockCreate.mockResolvedValue({
+					data: {
+						id: 10,
+						name: "bracket-check",
+						status: "in_progress",
+						conclusion: null,
+						html_url: "https://gh/checks/10",
+					},
+				});
+				mockUpdate.mockResolvedValue({ data: {} });
+				const result = yield* run(
+					Effect.flatMap(CheckRun, (svc) =>
+						svc.withCheckRun("bracket-check", "sha123", (_id) => Effect.succeed("done")),
+					),
+				);
+				expect(result).toBe("done");
+				expect(mockCreate).toHaveBeenCalledTimes(1);
+				expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ conclusion: "success" }));
+			}),
+		);
 
-		it("completes with failure when effect fails", async () => {
-			mockCreate.mockResolvedValue({
-				data: { id: 11, name: "fail-check", status: "in_progress", conclusion: null, html_url: "https://gh/checks/11" },
-			});
-			mockUpdate.mockResolvedValue({ data: {} });
-			const exit = await runExit(
-				Effect.flatMap(CheckRun, (svc) =>
-					svc.withCheckRun("fail-check", "sha456", (_id) => Effect.fail(new Error("boom"))),
-				),
-			);
-			expect(exit._tag).toBe("Failure");
-			expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ conclusion: "failure" }));
-		});
+		it.effect("completes with failure when effect fails", () =>
+			Effect.gen(function* () {
+				mockCreate.mockResolvedValue({
+					data: {
+						id: 11,
+						name: "fail-check",
+						status: "in_progress",
+						conclusion: null,
+						html_url: "https://gh/checks/11",
+					},
+				});
+				mockUpdate.mockResolvedValue({ data: {} });
+				const exit = yield* runExit(
+					Effect.flatMap(CheckRun, (svc) =>
+						svc.withCheckRun("fail-check", "sha456", (_id) => Effect.fail(new Error("boom"))),
+					),
+				);
+				expect(exit._tag).toBe("Failure");
+				expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ conclusion: "failure" }));
+			}),
+		);
 	});
 });

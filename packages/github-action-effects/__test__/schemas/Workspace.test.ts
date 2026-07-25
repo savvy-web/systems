@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { WorkspaceInfo, WorkspacePackage, WorkspaceType } from "../../src/schemas/Workspace.js";
 
 describe("WorkspaceType", () => {

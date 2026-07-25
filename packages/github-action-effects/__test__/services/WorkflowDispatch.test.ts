@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
 import { WorkflowDispatchError } from "../../src/errors/WorkflowDispatchError.js";
 import { WorkflowDispatchTest } from "../../src/layers/WorkflowDispatchTest.js";
 import { WorkflowDispatch } from "../../src/services/WorkflowDispatch.js";
@@ -14,7 +14,7 @@ const provide = <A, E>(
 const run = <A, E>(
 	state: ReturnType<typeof WorkflowDispatchTest.empty>,
 	effect: Effect.Effect<A, E, WorkflowDispatch>,
-) => Effect.runPromise(provide(state, effect));
+) => provide(state, effect);
 
 // -- Service method shorthands --
 
@@ -28,83 +28,101 @@ const getRunStatus = (runId: number) => Effect.flatMap(WorkflowDispatch, (svc) =
 
 describe("WorkflowDispatch", () => {
 	describe("dispatch", () => {
-		it("records the dispatch", async () => {
-			const state = WorkflowDispatchTest.empty();
-			await run(state, dispatch("deploy.yml", "main"));
-			expect(state.dispatches).toHaveLength(1);
-			expect(state.dispatches[0]).toMatchObject({
-				workflow: "deploy.yml",
-				ref: "main",
-			});
-		});
+		it.effect("records the dispatch", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				yield* run(state, dispatch("deploy.yml", "main"));
+				expect(state.dispatches).toHaveLength(1);
+				expect(state.dispatches[0]).toMatchObject({
+					workflow: "deploy.yml",
+					ref: "main",
+				});
+			}),
+		);
 
-		it("records dispatch with inputs", async () => {
-			const state = WorkflowDispatchTest.empty();
-			await run(state, dispatch("deploy.yml", "main", { env: "staging" }));
-			expect(state.dispatches[0]).toMatchObject({
-				workflow: "deploy.yml",
-				ref: "main",
-				inputs: { env: "staging" },
-			});
-		});
+		it.effect("records dispatch with inputs", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				yield* run(state, dispatch("deploy.yml", "main", { env: "staging" }));
+				expect(state.dispatches[0]).toMatchObject({
+					workflow: "deploy.yml",
+					ref: "main",
+					inputs: { env: "staging" },
+				});
+			}),
+		);
 
-		it("records multiple dispatches", async () => {
-			const state = WorkflowDispatchTest.empty();
-			await run(state, dispatch("build.yml", "main"));
-			await run(state, dispatch("test.yml", "develop"));
-			expect(state.dispatches).toHaveLength(2);
-			expect(state.dispatches[0].workflow).toBe("build.yml");
-			expect(state.dispatches[1].workflow).toBe("test.yml");
-		});
+		it.effect("records multiple dispatches", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				yield* run(state, dispatch("build.yml", "main"));
+				yield* run(state, dispatch("test.yml", "develop"));
+				expect(state.dispatches).toHaveLength(2);
+				expect(state.dispatches[0].workflow).toBe("build.yml");
+				expect(state.dispatches[1].workflow).toBe("test.yml");
+			}),
+		);
 	});
 
 	describe("dispatchAndWait", () => {
-		it("returns configured conclusion", async () => {
-			const state = WorkflowDispatchTest.empty();
-			state.waitConclusion = "success";
-			const result = await run(state, dispatchAndWait("deploy.yml", "main"));
-			expect(result).toBe("success");
-		});
+		it.effect("returns configured conclusion", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				state.waitConclusion = "success";
+				const result = yield* run(state, dispatchAndWait("deploy.yml", "main"));
+				expect(result).toBe("success");
+			}),
+		);
 
-		it("records the dispatch", async () => {
-			const state = WorkflowDispatchTest.empty();
-			await run(state, dispatchAndWait("deploy.yml", "main", { env: "prod" }));
-			expect(state.dispatches).toHaveLength(1);
-			expect(state.dispatches[0]).toMatchObject({
-				workflow: "deploy.yml",
-				ref: "main",
-				inputs: { env: "prod" },
-			});
-		});
+		it.effect("records the dispatch", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				yield* run(state, dispatchAndWait("deploy.yml", "main", { env: "prod" }));
+				expect(state.dispatches).toHaveLength(1);
+				expect(state.dispatches[0]).toMatchObject({
+					workflow: "deploy.yml",
+					ref: "main",
+					inputs: { env: "prod" },
+				});
+			}),
+		);
 
-		it("returns failure conclusion when configured", async () => {
-			const state = WorkflowDispatchTest.empty();
-			state.waitConclusion = "failure";
-			const result = await run(state, dispatchAndWait("deploy.yml", "main"));
-			expect(result).toBe("failure");
-		});
+		it.effect("returns failure conclusion when configured", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				state.waitConclusion = "failure";
+				const result = yield* run(state, dispatchAndWait("deploy.yml", "main"));
+				expect(result).toBe("failure");
+			}),
+		);
 	});
 
 	describe("getRunStatus", () => {
-		it("returns status from map", async () => {
-			const state = WorkflowDispatchTest.empty();
-			state.statuses.set(42, { status: "completed", conclusion: "success" });
-			const result = await run(state, getRunStatus(42));
-			expect(result).toEqual({ status: "completed", conclusion: "success" });
-		});
+		it.effect("returns status from map", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				state.statuses.set(42, { status: "completed", conclusion: "success" });
+				const result = yield* run(state, getRunStatus(42));
+				expect(result).toEqual({ status: "completed", conclusion: "success" });
+			}),
+		);
 
-		it("returns default for unknown run ID", async () => {
-			const state = WorkflowDispatchTest.empty();
-			const result = await run(state, getRunStatus(999));
-			expect(result).toEqual({ status: "completed", conclusion: "unknown" });
-		});
+		it.effect("returns default for unknown run ID", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				const result = yield* run(state, getRunStatus(999));
+				expect(result).toEqual({ status: "completed", conclusion: "unknown" });
+			}),
+		);
 
-		it("returns in-progress status", async () => {
-			const state = WorkflowDispatchTest.empty();
-			state.statuses.set(7, { status: "in_progress", conclusion: null });
-			const result = await run(state, getRunStatus(7));
-			expect(result).toEqual({ status: "in_progress", conclusion: null });
-		});
+		it.effect("returns in-progress status", () =>
+			Effect.gen(function* () {
+				const state = WorkflowDispatchTest.empty();
+				state.statuses.set(7, { status: "in_progress", conclusion: null });
+				const result = yield* run(state, getRunStatus(7));
+				expect(result).toEqual({ status: "in_progress", conclusion: null });
+			}),
+		);
 	});
 
 	describe("WorkflowDispatchError", () => {

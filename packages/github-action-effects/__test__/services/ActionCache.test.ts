@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Effect, Option } from "effect";
-import { describe, expect, it } from "vitest";
 import { ActionCacheError } from "../../src/errors/ActionCacheError.js";
 import type { ActionCacheTestState } from "../../src/layers/ActionCacheTest.js";
 import { ActionCacheTest } from "../../src/layers/ActionCacheTest.js";
@@ -10,8 +10,7 @@ import { ActionCache } from "../../src/services/ActionCache.js";
 const provide = <A, E>(state: ActionCacheTestState, effect: Effect.Effect<A, E, ActionCache>) =>
 	Effect.provide(effect, ActionCacheTest.layer(state));
 
-const run = <A, E>(state: ActionCacheTestState, effect: Effect.Effect<A, E, ActionCache>) =>
-	Effect.runPromise(provide(state, effect));
+const run = <A, E>(state: ActionCacheTestState, effect: Effect.Effect<A, E, ActionCache>) => provide(state, effect);
 
 // -- Service method shorthands --
 
@@ -22,54 +21,66 @@ const restore = (paths: ReadonlyArray<string>, primaryKey: string, restoreKeys?:
 
 describe("ActionCache", () => {
 	describe("save", () => {
-		it("stores entry in test state", async () => {
-			const state = ActionCacheTest.empty();
-			await run(state, save(["path/a", "path/b"], "my-key"));
-			expect(state.entries.has("my-key")).toBe(true);
-			expect(state.entries.get("my-key")).toEqual(["path/a", "path/b"]);
-		});
+		it.effect("stores entry in test state", () =>
+			Effect.gen(function* () {
+				const state = ActionCacheTest.empty();
+				yield* run(state, save(["path/a", "path/b"], "my-key"));
+				expect(state.entries.has("my-key")).toBe(true);
+				expect(state.entries.get("my-key")).toEqual(["path/a", "path/b"]);
+			}),
+		);
 
-		it("overwrites existing entry with same key", async () => {
-			const state = ActionCacheTest.empty();
-			state.entries.set("my-key", ["old/path"]);
-			await run(state, save(["new/path"], "my-key"));
-			expect(state.entries.get("my-key")).toEqual(["new/path"]);
-		});
+		it.effect("overwrites existing entry with same key", () =>
+			Effect.gen(function* () {
+				const state = ActionCacheTest.empty();
+				state.entries.set("my-key", ["old/path"]);
+				yield* run(state, save(["new/path"], "my-key"));
+				expect(state.entries.get("my-key")).toEqual(["new/path"]);
+			}),
+		);
 	});
 
 	describe("restore", () => {
-		it("returns Some on exact key match", async () => {
-			const state = ActionCacheTest.empty();
-			state.entries.set("my-key", ["path/a"]);
-			const result = await run(state, restore(["path/a"], "my-key"));
-			expect(Option.isSome(result)).toBe(true);
-			if (Option.isSome(result)) {
-				expect(result.value).toBe("my-key");
-			}
-		});
+		it.effect("returns Some on exact key match", () =>
+			Effect.gen(function* () {
+				const state = ActionCacheTest.empty();
+				state.entries.set("my-key", ["path/a"]);
+				const result = yield* run(state, restore(["path/a"], "my-key"));
+				expect(Option.isSome(result)).toBe(true);
+				if (Option.isSome(result)) {
+					expect(result.value).toBe("my-key");
+				}
+			}),
+		);
 
-		it("returns Some on restore key prefix match", async () => {
-			const state = ActionCacheTest.empty();
-			state.entries.set("cache-abc123", ["path/a"]);
-			const result = await run(state, restore(["path/a"], "cache-xyz", ["cache-"]));
-			expect(Option.isSome(result)).toBe(true);
-			if (Option.isSome(result)) {
-				expect(result.value).toBe("cache-abc123");
-			}
-		});
+		it.effect("returns Some on restore key prefix match", () =>
+			Effect.gen(function* () {
+				const state = ActionCacheTest.empty();
+				state.entries.set("cache-abc123", ["path/a"]);
+				const result = yield* run(state, restore(["path/a"], "cache-xyz", ["cache-"]));
+				expect(Option.isSome(result)).toBe(true);
+				if (Option.isSome(result)) {
+					expect(result.value).toBe("cache-abc123");
+				}
+			}),
+		);
 
-		it("returns None on unknown key", async () => {
-			const state = ActionCacheTest.empty();
-			const result = await run(state, restore(["path/a"], "missing-key"));
-			expect(Option.isNone(result)).toBe(true);
-		});
+		it.effect("returns None on unknown key", () =>
+			Effect.gen(function* () {
+				const state = ActionCacheTest.empty();
+				const result = yield* run(state, restore(["path/a"], "missing-key"));
+				expect(Option.isNone(result)).toBe(true);
+			}),
+		);
 
-		it("returns None when no restore keys match", async () => {
-			const state = ActionCacheTest.empty();
-			state.entries.set("other-key", ["path/a"]);
-			const result = await run(state, restore(["path/a"], "missing", ["no-match-"]));
-			expect(Option.isNone(result)).toBe(true);
-		});
+		it.effect("returns None when no restore keys match", () =>
+			Effect.gen(function* () {
+				const state = ActionCacheTest.empty();
+				state.entries.set("other-key", ["path/a"]);
+				const result = yield* run(state, restore(["path/a"], "missing", ["no-match-"]));
+				expect(Option.isNone(result)).toBe(true);
+			}),
+		);
 	});
 
 	describe("ActionCacheError", () => {

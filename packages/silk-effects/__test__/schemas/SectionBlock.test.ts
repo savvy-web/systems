@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Equal, Hash } from "effect";
-import { describe, expect, it } from "vitest";
 import { SectionBlock } from "../../src/schemas/SectionBlock.js";
 
 const TOOL = "MY-TOOL";

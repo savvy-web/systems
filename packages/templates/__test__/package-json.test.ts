@@ -1,5 +1,5 @@
+import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
-import { describe, expect, it } from "vitest";
 import { PackageJsonOptions, createPackageJson } from "../src/lib/package-json/index.js";
 
 describe("package-json template", () => {

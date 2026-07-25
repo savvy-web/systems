@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
+import { describe, expect, it } from "@effect/vitest";
 import { Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { describe, expect, it } from "vitest";
 import { ToolDiscoveryLive } from "../../src/services/ToolDiscovery.js";
 import { TurboInspector, TurboInspectorLive } from "../../src/turbo/services/TurboInspector.js";
 
@@ -19,10 +19,12 @@ describe("TurboInspector (live layer)", () => {
 		Layer.provideMerge(NodeServices.layer),
 	);
 
-	it("diagnoseCache reports per-task statuses for the real monorepo", async () => {
-		const program = Effect.flatMap(TurboInspector, (t) => t.diagnoseCache("build:dev", repoRoot));
-		const d = await Effect.runPromise(program.pipe(Effect.provide(LiveStack)));
-		expect(d.totalTasks).toBeGreaterThan(0);
-		expect(d.statuses.length).toBe(d.totalTasks);
-	});
+	it.effect("diagnoseCache reports per-task statuses for the real monorepo", () =>
+		Effect.gen(function* () {
+			const program = Effect.flatMap(TurboInspector, (t) => t.diagnoseCache("build:dev", repoRoot));
+			const d = yield* program.pipe(Effect.provide(LiveStack));
+			expect(d.totalTasks).toBeGreaterThan(0);
+			expect(d.statuses.length).toBe(d.totalTasks);
+		}),
+	);
 });
