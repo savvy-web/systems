@@ -1,5 +1,29 @@
 # @savvy-web/tsdown-plugins
 
+## 2.2.0
+
+### Features
+
+* The build issues artifact (`dist/<target>/issues.json`) now stamps `buildOk: boolean`, plus an optional `failure: { name?, message }` when the build ended in a terminal error. The artifact is written on every terminal path — success and failure — so a crashed build (a blown-up API Extractor pass, a racing `rm -rf dist`) no longer reads as a clean gate with every diagnostic bucket simply empty; readers must gate on `buildOk`, not `errors.length`.
+* The artifact write is now atomic: the JSON lands in a sibling temp file that is renamed over the destination, so a concurrent reader never observes a torn or half-written file. [#373][#373]
+
+### Dependencies
+
+* | Dependency              | Type       | Action  | From   | To     |                                                                              |
+  | ----------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/npm           | dependency | updated | ^0.3.1 | ^0.4.0 |                                                                              |
+  | @effected/package-json  | dependency | updated | ^0.5.1 | ^0.5.2 |                                                                              |
+  | @effected/tsconfig-json | dependency | updated | ^0.3.1 | ^0.3.2 |                                                                              |
+  | @effected/workspaces    | dependency | updated | ^0.7.0 | ^0.8.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#373]: https://github.com/savvy-web/systems/pull/373
+
+[#375]: https://github.com/savvy-web/systems/pull/375
+
 ## 2.1.9
 
 ### Dependencies

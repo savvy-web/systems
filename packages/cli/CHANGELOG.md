@@ -1,5 +1,23 @@
 # @savvy-web/cli
 
+## 2.1.8
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 4.2.5 | 4.2.6 |
+
+* | Dependency           | Type       | Action  | From   | To     |                                                                              |
+  | -------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/git        | dependency | updated | ^0.4.2 | ^0.5.0 |                                                                              |
+  | @effected/workspaces | dependency | updated | ^0.7.0 | ^0.8.0 |                                                                              |
+  | @effected/yaml       | dependency | updated | ^0.5.1 | ^0.6.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#375]: https://github.com/savvy-web/systems/pull/375
+
 ## 2.1.7
 
 ### Dependencies

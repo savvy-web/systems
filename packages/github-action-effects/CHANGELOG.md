@@ -1,5 +1,33 @@
 # @savvy-web/github-action-effects
 
+## 3.1.0
+
+### Features
+
+* `GitHubOctokit` — the concrete Octokit instance type passed to `GitHubClient`'s `rest` / `paginate` / `paginateStream` callbacks. Annotate the callback parameter with it for full type safety instead of a hand-rolled cast interface:
+
+  ```ts
+  client.rest("repos.get", (octokit: GitHubOctokit) => octokit.rest.repos.get({ owner, repo }));
+  ```
+
+### Bug Fixes
+
+* `GitBranchError` gained optional `status` and `alreadyExists` fields. `GitBranchLive` now derives `alreadyExists: true` when a branch-create race resolves to a 422/409 "Reference already exists" response, so callers can match on the discriminant directly instead of re-querying branch state to infer intent. [#373][#373]
+
+### Dependencies
+
+* | Dependency     | Type       | Action  | From   | To     |                                                                              |
+  | -------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/yaml | dependency | updated | ^0.5.1 | ^0.6.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#373]: https://github.com/savvy-web/systems/pull/373
+
+[#375]: https://github.com/savvy-web/systems/pull/375
+
 ## 3.0.5
 
 ### Dependencies

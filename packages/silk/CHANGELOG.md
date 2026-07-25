@@ -1,5 +1,30 @@
 # @savvy-web/silk
 
+## 3.2.3
+
+### Bug Fixes
+
+* The dogfood mail monitor no longer announces a session's own journal append as an inbound turn — it now surfaces mailbox changes before evaluating journals and suppresses a flip whose triggering mail it had already surfaced on an earlier tick.
+* The `repos` pre-tool-use bash guard now recognizes a `git` invocation that names a vendored path within its own clause, instead of requiring an explicit directory flag, so sanctioned `git mv` and `git rm --cached` commands against vendored paths are no longer blocked. A plain `git rm` or a bare `rm` against a vendored path is still denied.
+
+### Documentation
+
+* The dogfood skill states the artifact-verification method — recursive search, citing the module path found, and checking a known-present control symbol before reporting an absence — and adds two protocol rules: a repo that is downstream in one loop and upstream in another owes its downstream a status when its own upstream ships, and a reopened loop may boot from a briefing carrying the current round rather than round zero. The tsdoc skill notes that a verbatim code or type transcription inside a doc comment needs a fenced block, since bare braces and angle brackets are read as TSDoc syntax. [#373][#373]
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.1.7 | 2.1.8 |
+| @savvy-web/mcp       | dependency | updated | 2.0.8 | 2.0.9 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#373]: https://github.com/savvy-web/systems/pull/373
+
 ## 3.2.2
 
 ### Bug Fixes
