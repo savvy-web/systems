@@ -113,8 +113,20 @@ describe("flattenIssues", () => {
 			failure: { name: "", message: "x".repeat(2500) },
 		});
 		expect(Object.keys(issues.failure ?? {})).toEqual(["message"]);
-		expect(issues.failure?.message).toHaveLength(2001);
+		// The ellipsis is inside the budget, not additional to it.
+		expect(issues.failure?.message).toHaveLength(2000);
 		expect(issues.failure?.message.endsWith("…")).toBe(true);
+	});
+
+	it("leaves a failure message exactly at the limit untruncated", () => {
+		const issues = flattenIssues([new BuildReport({ package: "@x/p", targetGroups: [] })], {
+			target: "prod",
+			generatedAt: "t",
+			buildOk: false,
+			failure: { message: "x".repeat(2000) },
+		});
+		expect(issues.failure?.message).toHaveLength(2000);
+		expect(issues.failure?.message.endsWith("…")).toBe(false);
 	});
 });
 

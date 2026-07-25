@@ -771,7 +771,11 @@ function classifyOne(inspected: InspectedConfig, path: string): Classification {
 	// sub-package directory, additionalScope or versionFile claimed. This is
 	// what makes a single-package repo whose only package IS the root attribute
 	// its files at all, without letting the root outrank a more specific claim.
-	if (rootScope) {
+	//
+	// Still containment-checked: `resolve` happily returns a path outside the
+	// project for a `../` or absolute input, and the root owning a file that
+	// isn't in the repo would be a worse answer than owning nothing.
+	if (rootScope && isInside(inspected.projectDir, abs)) {
 		return { path, package: rootScope, reason: "workspace" };
 	}
 

@@ -423,6 +423,21 @@ describe("ConfigInspector.classify", () => {
 		expect(result.reason).toEqual({ kind: "additionalScope", glob: "plugin/**" });
 	});
 
+	it("leaves a path outside the project directory unmapped even when a root scope exists", async () => {
+		const dir = setupFixture({
+			rootName: "private-action",
+			configJson: { ...makeConfig(), privatePackages: { version: true } },
+			extraFiles: [{ path: "src/index.ts", content: "" }],
+		});
+		dirs.push(dir);
+
+		const [outside, absolute, inside] = await runClassify(dir, ["../outside-file.ts", "/etc/hosts", "src/index.ts"]);
+		expect(outside?.package).toBeNull();
+		expect(absolute?.package).toBeNull();
+		// The control: a path genuinely inside the project still reaches the root fallback.
+		expect(inside?.package).toBe("private-action");
+	});
+
 	it("prefers versionFiles over a versioned root package whose directory contains everything", async () => {
 		const dir = setupFixture({
 			workspacePackages: [{ relPath: "packages/foo", name: "@scope/foo", version: "1.0.0" }],

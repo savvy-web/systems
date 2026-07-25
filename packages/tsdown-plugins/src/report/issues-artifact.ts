@@ -78,9 +78,11 @@ const MAX_FAILURE_MESSAGE = 2000;
 
 /** Normalize a caller-supplied failure into the stamped shape (message truncated, empty name dropped). */
 function toFailure(failure: { name?: string | undefined; message: string }): NonNullable<BuildIssues["failure"]> {
+	// The ellipsis counts toward the budget — slicing to the full limit and then
+	// appending would emit MAX_FAILURE_MESSAGE + 1 characters.
 	const message =
 		failure.message.length > MAX_FAILURE_MESSAGE
-			? `${failure.message.slice(0, MAX_FAILURE_MESSAGE)}…`
+			? `${failure.message.slice(0, MAX_FAILURE_MESSAGE - 1)}…`
 			: failure.message;
 	return failure.name !== undefined && failure.name !== "" ? { name: failure.name, message } : { message };
 }
