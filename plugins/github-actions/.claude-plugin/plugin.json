@@ -1,6 +1,6 @@
 {
 	"name": "github-actions",
-	"version": "3.2.3",
+	"version": "3.2.4",
 	"description": "Savvy Web GitHub Actions assistant — an action-engineer agent and skill suite for building Node.js 24 actions with @savvy-web/github-action-effects and @savvy-web/github-action-builder, plus the shared savvy MCP",
 	"author": {
 		"name": "C. Spencer Beggs",
