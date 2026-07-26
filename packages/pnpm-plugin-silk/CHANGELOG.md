@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.25.0
+
+### Features
+
+* Upgrade support dependencies
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.24.2
 
 ### Other
