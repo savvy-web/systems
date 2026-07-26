@@ -127,6 +127,25 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": ["**/*.tsx"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"useImportExtensions": {
+							"level": "on",
+							"options": {
+								"extensionMappings": {
+									"ts": ".js",
+									"tsx": "js",
+									"css": "css"
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	],
 	"root": true,
