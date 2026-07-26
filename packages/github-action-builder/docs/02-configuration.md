@@ -158,6 +158,8 @@ export default GitHubAction.create({
 
 When `true` (default), the bundled output is minified to reduce file size. Minification strips whitespace and shortens identifiers.
 
+Builds always run in production mode, so this option is the only thing that decides whether the output is minified — `NODE_ENV` does not enter into it and a local build produces the same bytes CI does. License notices from the bundled dependencies are folded back into the bundle rather than written to a `.LICENSE.txt` sidecar, so the attribution ships with the single file you commit.
+
 Disable for easier debugging:
 
 ```typescript

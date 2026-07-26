@@ -78,9 +78,13 @@ Three safety properties are load-bearing and must survive any edit. Containment:
 This is the load-bearing part of the package. The whole runtime layer stack is assembled once in `runCli()` (`src/cli/index.ts`) and is the union of the three source CLIs' stacks with every inter-layer dependency wired. Read that file before touching layer wiring; the structure below is the topology, not a re-listing of every service.
 
 ```text
-AppLive = mergeAll(ToolDiscovery, VersioningStrategy, Inspector+Analyzer, ReposGroup)
+AppLive = mergeAll(ToolDiscoveryGroup, Inspector+Analyzer, ReposGroup)
             provideMerge(BaseLive)
             provideMerge(NodeServices.layer)
+
+ToolDiscoveryGroup = ToolDiscovery.layer            ← @effected/commands
+                       provide(Workspaces.localExecLayer())
+                       provide(WorkspaceLive)
 
 Inspector+Analyzer = BranchAnalyzer
                        provideMerge(ReleasePlanner)
@@ -90,18 +94,20 @@ ReposGroup = Repos.ReposManager
                provide(Repos.ReposConfigStore)
                provide(Git)
 
-BaseLive  = WorkspaceLive + Git + ChangesetConfigReader + leaf silk-effects services
-            (ManagedSection, BiomeSchemaSync, ConfigDiscovery,
-             SilkPublishabilityDetector)
+BaseLive  = WorkspaceLive + Git + ChangesetConfigReader
+            + ManagedSection.layer (@effected/templates)
+            + leaf silk-effects services (BiomeSchemaSync, ConfigDiscovery,
+              SilkPublishabilityDetector)
 
 WorkspaceLive = WorkspaceRoot + PackageManagerDetector
                 + WorkspaceDiscovery(provided WorkspaceRoot)
 ```
 
-Three structural choices matter:
+Four structural choices matter:
 
 - **`provideMerge`, not `provide`.** Base services are merged so they are both fed to the upper services and re-exposed in the final context for handlers that yield those tags directly. A service built once via `provideMerge` (notably `Changesets.ConfigInspector`, shared by `BranchAnalyzer`, the surviving `config validate` handler, `ReleasePlanner` and now `Changesets.DepsRegen` — the `classify`/`config show`/`analyze-branch`/`release-surface` CLI commands are gone, so `ConfigInspector` is otherwise consumed by the MCP tools `changeset_inspect`/`changeset_validate`) is never constructed twice per run. `Changesets.ReleasePlanner` backs `savvy changeset version`, which now natively applies the release — bumping versions, transforming CHANGELOGs and updating versionFiles via `ReleasePlanner.apply` — rather than shelling out to a `changeset` binary or detecting the package manager; `--dry-run` is a true no-write report. See `../silk-effects/architecture.md`. `ConfigInspectorLive` requires `FileSystem` (alongside `ChangesetConfigReader` and `WorkspaceDiscovery`) for its release-surface fallback when no explicit `packages` record is configured; `NodeServices.layer` already satisfies it. See `../silk-effects/architecture.md`.
 - **Minimal workspace wiring.** `WorkspaceLive` hand-wires the `WorkspaceRoot` / `WorkspaceDiscovery` / `PackageManagerDetector` trio from `@effected/workspaces` rather than pulling in a batteries-included workspace layer, which would also fork `DependencyGraph` / `PublishabilityDetector` background work most commands do not need. `Git.layer` (from `@effected/git`) is likewise built once in `BaseLive` and re-exposed, because it backs `BranchAnalyzer`, `ReposManager`, the commit hooks and `detectGitHubRepo` alike.
+- **Tool discovery and section management are kit layers, not silk-effects layers.** `ToolDiscovery` comes from `@effected/commands` and its `LocalExec` contract — the argv prefix that runs a project-local binary — is satisfied by `@effected/workspaces`' `Workspaces.localExecLayer()`, which reads the already-wired `PackageManagerDetector` + `WorkspaceRoot`. Both `localExecLayer()` and `ToolDiscovery.layer` are bound to `const`s so the single reference memoizes into one discovery instance (and one probe cache) per process. `ManagedSection` likewise comes from `@effected/templates` as `ManagedSection.layer`. There is no `VersioningStrategyLive` any more: versioning classification is a pure kit value operation over `WorkspaceDiscovery` plus the silk `PublishabilityDetector`, so `savvy commit check`'s `detectReleaseFormat` calls `VersioningStrategy.detect({ fixedGroups })` — reading `fixedGroups` from the changeset config — with no layer of its own, and the hand-rolled publishability filter it used to apply is gone (the detector layer is now what decides what publishes). See `../silk-effects/architecture.md#what-the-kit-owns-now`.
 - **`DepsRegen` is deliberately NOT in `AppLive`.** Its graph is root-bound at layer *build* time, so binding it once at startup would freeze it to the CLI's launch cwd and ignore a command's `--cwd`. The `savvy changeset deps regen`/`deps detect` handlers instead compose `Changesets.makeDepsRegenDefault({ cwd })` per invocation against their parsed cwd, with platform services flowing up to `NodeServices.layer`. Any future service whose layer construction captures a root belongs on this per-invocation path, not in `AppLive`. See `../silk-effects/architecture.md`.
 
 The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
@@ -125,6 +131,7 @@ Handler tests run on `@effect/vitest` and provide stub layers per test; the suit
 
 - **`@savvy-web/cli` never imports `@savvy-web/silk`.** All logic comes from `silk-effects`. This is grep-guarded.
 - The real tools (`@biomejs/biome`, `husky`, `@commitlint/*`, `@changesets/cli`, `lint-staged`, `markdownlint-cli2`) are not direct deps; `silk` co-installs them as peers and pnpm's public-hoist-pattern makes them resolvable when `savvy` shells out.
+- **Every hook-section id the CLI declares is spelled UPPERCASE.** `@effected/templates` renders a `SectionId` key verbatim into its markers, and the markers already on disk in consumer repos are `SAVVY-COMMIT` / `SAVVY-LINT` / `SAVVY-BASE`. A lowercase key does not error — `check` reports `Absent` and `sync` appends a second block — so the hook silently grows a duplicate. `SECTION_DEF` in `src/commands/commit/init.ts` and the ids in silk-effects' `src/lint/cli/sections.ts` carry the uppercase spelling for exactly this reason; the shared helper in `SavvySections.ts` uppercases on the way in. See `../silk-effects/architecture.md#savvysections-shared-husky-hook-shells`. The status branching that goes with it is the kit's flat `CheckOutcome` (`UpToDate`/`Drifted`/`Absent`), not the old nested `Found` + `isUpToDate` pair, and multi-section writes go through `syncAll`.
 - **`savvy lint fmt <name>` owns argument parsing only — never a second copy of the formatting.** Each `fmt` subcommand (`src/commands/lint/fmt.ts`) is the CLI half of a `Lint` handler that lint-staged also invokes directly, so any byte-format step written into the subcommand rather than the handler makes the same file format differently depending on which path ran. `fmt pnpm-workspace` is the case that regressed: it wrote raw `@effected/yaml` stringify output while the handler applied the canonical byte-format step. It now calls `Lint.PnpmWorkspace.formatContent`, the shared static in silk-effects (which produces the repo's byte format directly from `@effected/yaml 0.5.0` — the former Prettier post-process is gone; see `../silk-effects/architecture.md`). When adding a `fmt` subcommand, sort/stringify/normalize belongs behind one silk-effects export both callers share. See `../silk-effects/architecture.md`.
 - **`savvy lint`/`savvy check` sync each consumer `biome.json(c)` `$schema` URL to a hardcoded `BIOME_VERSION` const** (`src/commands/lint/biome-version.ts`), via `silk-effects`' `BiomeSchemaSync` service (`check` reports drift, `lint`/`init` writes it). The version source is a plain compiled-in constant, not the never-populated `__BIOME_PEER_VERSION__` env var the path previously read — that env var was always empty, so the sync was a dead no-op until the const replaced it; the path is now active. `BIOME_VERSION` is one of the three coupled Biome-version spots that move together on an upgrade (alongside `@savvy-web/silk`'s Biome asset `$schema` and its `@biomejs/biome` peer range) — see `../silk/architecture.md` and `packages/silk/CLAUDE.md`.
 - `silk` depends on `cli` as an exact-pinned regular dependency (install-target wiring), so installing `silk` pulls the `savvy` bin. That arrow points at install topology only — `silk`'s code never imports `cli`.

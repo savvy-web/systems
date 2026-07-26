@@ -21,7 +21,6 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 		const mod = await import("../../src/changesets/index.js");
 		expect(mod.ChangelogService).toBeDefined();
 		expect(mod.GitHubService).toBeDefined();
-		expect(mod.MarkdownService).toBeDefined();
 	});
 
 	it("exports the DepsRegen surface (WorkspaceSnapshotReader/resolveDiffRows removed in #208)", async () => {
@@ -44,7 +43,6 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 	it("exports layers", async () => {
 		const mod = await import("../../src/changesets/index.js");
 		expect(mod.GitHubLive).toBeDefined();
-		expect(mod.MarkdownLive).toBeDefined();
 	});
 
 	it("exports tagged errors", async () => {

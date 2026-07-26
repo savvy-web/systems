@@ -451,7 +451,7 @@ export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
 	Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const config = yield* ChangesetConfig;
-		const vanilla = yield* Effect.provide(PublishabilityDetector, PublishabilityDetector.layer);
+		const vanilla = PublishabilityDetector.npm;
 
 		return {
 			detect: (pkg: WorkspacePackage) =>

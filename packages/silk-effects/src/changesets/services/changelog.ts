@@ -8,7 +8,7 @@
  * `Context.Tag` that wires those implementations into the Effect runtime.
  *
  * @remarks
- * Unlike {@link GitHubService} and {@link MarkdownService}, the
+ * Unlike {@link GitHubService}, the
  * `ChangelogService` does not ship a default `Layer` — it is an abstract
  * service whose concrete implementation is the Changesets API entry point
  * (`\@savvy-web/changesets/changelog`). Consumer code should depend on
@@ -25,7 +25,6 @@ import { Context } from "effect";
 import type { ChangesetOptions } from "../schemas/options.js";
 import type { ModCompWithPackage, NewChangesetWithCommit, VersionType } from "../vendor/types.js";
 import type { GitHubService } from "./github.js";
-import type { MarkdownService } from "./markdown.js";
 
 /**
  * Service interface for changelog formatting.
@@ -37,7 +36,7 @@ import type { MarkdownService } from "./markdown.js";
  * @remarks
  * Both methods return `Effect.Effect` values that require additional
  * services in their environment (`R` channel). `formatReleaseLine` needs
- * both {@link GitHubService} (for commit metadata) and {@link MarkdownService}
+ * {@link GitHubService} (for commit metadata)
  * (for markdown parsing), while `formatDependencyReleaseLine` only needs
  * {@link GitHubService}.
  *
@@ -56,7 +55,7 @@ export interface ChangelogServiceShape {
 		changeset: NewChangesetWithCommit,
 		versionType: VersionType,
 		options: ChangesetOptions,
-	) => Effect.Effect<string, never, GitHubService | MarkdownService>;
+	) => Effect.Effect<string, never, GitHubService>;
 
 	/**
 	 * Format dependency update release lines as a markdown table.
@@ -90,7 +89,7 @@ export interface ChangelogServiceShape {
  * ```typescript
  * import { Effect } from "effect";
  * import type { ChangesetOptions } from "\@savvy-web/changesets";
- * import { ChangelogService, GitHubLive, MarkdownLive } from "\@savvy-web/changesets";
+ * import { ChangelogService, GitHubLive } from "\@savvy-web/changesets";
  *
  * const program = Effect.gen(function* () {
  *   const changelog = yield* ChangelogService;

@@ -91,41 +91,7 @@ export const SilkChangesetConfigFile = Schema.Struct({
  */
 export type SilkChangesetConfigFile = typeof SilkChangesetConfigFile.Type;
 
-/**
- * Versioning strategy classification for a workspace.
- *
- * @remarks
- * - `"single"` — one publishable package; a single version tag is used.
- * - `"fixed-group"` — all publishable packages are in the same changesets fixed group.
- * - `"independent"` — multiple publishable packages with independent version bumps.
- *
- * @since 0.1.0
- * @public
- */
-export const VersioningStrategyType = Schema.Literals(["single", "fixed-group", "independent"]);
-/**
- * @since 0.1.0
- * @public
- */
-export type VersioningStrategyType = typeof VersioningStrategyType.Type;
-
-/**
- * Output of the versioning strategy detection, combining the strategy type with group metadata.
- *
- * @remarks
- * Produced by `VersioningStrategy.detect` and consumed by `TagStrategy.determine`
- * to decide on the appropriate git-tag format.
- *
- * @since 0.1.0
- * @public
- */
-export const VersioningStrategyResult = Schema.Struct({
-	type: VersioningStrategyType,
-	fixedGroups: Schema.Array(Schema.Array(Schema.String)),
-	publishablePackages: Schema.Array(Schema.String),
-});
-/**
- * @since 0.1.0
- * @public
- */
-export type VersioningStrategyResult = typeof VersioningStrategyResult.Type;
+// Versioning classification itself lives upstream: `VersioningStrategy`
+// (`classify`/`detect`/`tagsFor`) and `VersioningStrategyType` are value classes
+// in `@effected/workspaces`. This module keeps only the changesets config file
+// shapes, which are one release tool's schema and stay Silk's business.

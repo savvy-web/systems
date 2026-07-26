@@ -11,6 +11,7 @@
  * @packageDocumentation
  */
 
+import { ToolDiscovery } from "@effected/commands";
 import { Workspaces } from "@effected/workspaces";
 import {
 	ChangesetConfigLive,
@@ -19,10 +20,7 @@ import {
 	PublishabilityDetectorAdaptiveLive,
 	Repos,
 	SilkWorkspaceAnalyzerLive,
-	TagStrategyLive,
-	ToolDiscoveryLive,
 	Turbo,
-	VersioningStrategyLive,
 } from "@savvy-web/silk-effects";
 import type { FileSystem, Path } from "effect";
 import { Layer } from "effect";
@@ -61,12 +59,10 @@ export const makeSilkRuntimeLayer = (
 	const kitGraph = Workspaces.layerWithGit({ cwd });
 
 	// ChangesetConfigReaderLive is a shared const, so every consumer below
-	// memoizes onto the same reader instance.
-	const analyzerDeps = Layer.mergeAll(
-		ChangesetConfigReaderLive,
-		TagStrategyLive,
-		VersioningStrategyLive.pipe(Layer.provide(ChangesetConfigReaderLive)),
-	);
+	// memoizes onto the same reader instance. The analyzer's versioning and tag
+	// classification are pure `@effected/workspaces` value operations, so the
+	// reader is its only silk-side dependency.
+	const analyzerDeps = ChangesetConfigReaderLive;
 
 	/**
 	 * `BranchAnalyzer` + `ReleasePlanner` + the ONE shared `ConfigInspector`,
@@ -77,6 +73,16 @@ export const makeSilkRuntimeLayer = (
 		Layer.provideMerge(Changesets.ReleasePlannerLive),
 		Layer.provideMerge(Changesets.ConfigInspectorLive.pipe(Layer.provide(ChangesetConfigReaderLive))),
 	);
+
+	/**
+	 * `ToolDiscovery` from `@effected/commands`, which `TurboInspector` uses to
+	 * locate the `turbo` binary. Its `LocalExec` contract is implemented by
+	 * `Workspaces.localExecLayer({ cwd })`, whose own requirements
+	 * (`PackageManagerDetector`, `WorkspaceRoot`) come from `kitGraph` below —
+	 * one reference, so the whole runtime shares a single discovery instance and
+	 * its probe cache.
+	 */
+	const toolDiscovery = ToolDiscovery.layer.pipe(Layer.provide(Workspaces.localExecLayer({ cwd })));
 
 	const changesetConfig = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
 
@@ -99,7 +105,7 @@ export const makeSilkRuntimeLayer = (
 
 	return Layer.mergeAll(
 		SilkWorkspaceAnalyzerLive.pipe(Layer.provide(analyzerDeps)),
-		Turbo.TurboInspectorLive.pipe(Layer.provide(ToolDiscoveryLive)),
+		Turbo.TurboInspectorLive.pipe(Layer.provide(toolDiscovery)),
 		inspectorAndAnalyzer,
 		depsRegen,
 		repos,

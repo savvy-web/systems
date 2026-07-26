@@ -1,3 +1,4 @@
+import { CommentStyle, Section, SectionDialect, SectionId } from "@effected/templates";
 import { describe, expect, it } from "vitest";
 import {
 	SavvyBaseSection,
@@ -6,8 +7,19 @@ import {
 	savvyHooksHygiene,
 	savvyToolSection,
 } from "../../src/schemas/SavvySections.js";
-import { SectionBlock } from "../../src/schemas/SectionBlock.js";
-import { ShellSectionDefinition } from "../../src/schemas/SectionDefinition.js";
+
+/**
+ * Markers are rendered by the kit's default dialect. Asserting through it — rather
+ * than against a hand-written string — keeps these tests honest about what the
+ * migration actually has to preserve: the exact bytes already written into every
+ * consumer repo's hook files.
+ */
+const dialect = SectionDialect.default;
+const rendered = (section: Section): string => {
+	const result = dialect.render(section);
+	if (result._tag !== "Success") throw new Error(`render failed: ${String(result.failure)}`);
+	return result.success;
+};
 
 // ── Exact content snapshots (the consumer-facing contract) ──────
 
@@ -80,32 +92,34 @@ describe("savvyHooksHygiene", () => {
 });
 
 describe("SavvyBaseSection", () => {
-	it("is a ShellSectionDefinition with toolName savvy-base", () => {
-		expect(SavvyBaseSection).toBeInstanceOf(ShellSectionDefinition);
-		expect(SavvyBaseSection.toolName).toBe("savvy-base");
-		expect(SavvyBaseSection.commentStyle).toBe("#");
+	it("is a hash-commented SectionId whose key is the UPPERCASED tool name", () => {
+		expect(SavvyBaseSection).toBeInstanceOf(SectionId);
+		// The kit renders a key verbatim, so the uppercase spelling here is what
+		// keeps the emitted markers identical to the ones already on disk.
+		expect(SavvyBaseSection.key).toBe("SAVVY-BASE");
+		expect(SavvyBaseSection.commentStyle).toStrictEqual(CommentStyle.hash);
 	});
 
-	it("renders the preamble inside SAVVY-BASE markers", () => {
-		const block = SavvyBaseSection.block(savvyBasePreamble());
-		expect(block).toBeInstanceOf(SectionBlock);
-		expect(block.rendered).toContain("# --- BEGIN SAVVY-BASE MANAGED SECTION ---");
-		expect(block.rendered).toContain("# --- END SAVVY-BASE MANAGED SECTION ---");
-		expect(block.content).toBe(EXPECTED_PREAMBLE);
+	it("renders the preamble inside the pre-existing SAVVY-BASE markers", () => {
+		const section = SavvyBaseSection.section(savvyBasePreamble());
+		expect(section).toBeInstanceOf(Section);
+		expect(rendered(section)).toContain("# --- BEGIN SAVVY-BASE MANAGED SECTION ---");
+		expect(rendered(section)).toContain("# --- END SAVVY-BASE MANAGED SECTION ---");
+		expect(section.content).toBe(EXPECTED_PREAMBLE);
 	});
 });
 
 describe("SavvyHooksSection", () => {
-	it("is a ShellSectionDefinition with toolName savvy-hooks", () => {
-		expect(SavvyHooksSection).toBeInstanceOf(ShellSectionDefinition);
-		expect(SavvyHooksSection.toolName).toBe("savvy-hooks");
-		expect(SavvyHooksSection.commentStyle).toBe("#");
+	it("is a hash-commented SectionId whose key is the UPPERCASED tool name", () => {
+		expect(SavvyHooksSection).toBeInstanceOf(SectionId);
+		expect(SavvyHooksSection.key).toBe("SAVVY-HOOKS");
+		expect(SavvyHooksSection.commentStyle).toStrictEqual(CommentStyle.hash);
 	});
 
-	it("renders the hygiene block inside SAVVY-HOOKS markers", () => {
-		const block = SavvyHooksSection.block(savvyHooksHygiene());
-		expect(block.rendered).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
-		expect(block.content).toBe(EXPECTED_HYGIENE);
+	it("renders the hygiene block inside the pre-existing SAVVY-HOOKS markers", () => {
+		const section = SavvyHooksSection.section(savvyHooksHygiene());
+		expect(rendered(section)).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
+		expect(section.content).toBe(EXPECTED_HYGIENE);
 	});
 });
 
@@ -115,15 +129,15 @@ describe("savvyToolSection", () => {
 
 	it("builds an `in_ci || pm_exec <command>` shell section for savvy-commit", () => {
 		const block = savvyToolSection("savvy-commit", COMMIT_CMD);
-		expect(block).toBeInstanceOf(SectionBlock);
-		expect(block.toolName).toBe("savvy-commit");
-		expect(block.commentStyle).toBe("#");
+		expect(block).toBeInstanceOf(Section);
+		expect(block.key).toBe("SAVVY-COMMIT");
+		expect(block.commentStyle).toStrictEqual(CommentStyle.hash);
 		expect(block.content).toBe(`in_ci || pm_exec ${COMMIT_CMD}`);
 	});
 
 	it("builds the same shape for savvy-lint", () => {
 		const block = savvyToolSection("savvy-lint", LINT_CMD);
-		expect(block.toolName).toBe("savvy-lint");
+		expect(block.key).toBe("SAVVY-LINT");
 		expect(block.content).toBe(`in_ci || pm_exec ${LINT_CMD}`);
 	});
 
@@ -138,7 +152,7 @@ describe("savvyToolSection", () => {
 
 	it("renders inside markers derived from the tool name", () => {
 		const block = savvyToolSection("savvy-commit", COMMIT_CMD);
-		expect(block.rendered).toContain("# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---");
-		expect(block.rendered).toContain("# --- END SAVVY-COMMIT MANAGED SECTION ---");
+		expect(rendered(block)).toContain("# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---");
+		expect(rendered(block)).toContain("# --- END SAVVY-COMMIT MANAGED SECTION ---");
 	});
 });

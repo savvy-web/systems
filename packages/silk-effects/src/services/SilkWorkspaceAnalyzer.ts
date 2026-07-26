@@ -3,9 +3,8 @@ import type {
 	PackageManagerDetectionFailure,
 	WorkspaceDiscoveryFailure,
 } from "@effected/workspaces";
-import { DependencyGraph, PackageManagerDetector, WorkspaceDiscovery } from "@effected/workspaces";
+import { DependencyGraph, PackageManagerDetector, VersioningStrategy, WorkspaceDiscovery } from "@effected/workspaces";
 import { Context, Effect, FileSystem, Layer, Option } from "effect";
-import type { VersioningDetectionError } from "../errors/VersioningDetectionError.js";
 import { WorkspaceAnalysisError } from "../errors/WorkspaceAnalysisError.js";
 import type { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
 import { AnalyzedWorkspace, WorkspaceAnalysis } from "../schemas/WorkspaceAnalysisSchemas.js";
@@ -13,8 +12,6 @@ import { ChangesetConfig } from "./ChangesetConfig.js";
 import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
 import type { RawPackageJson } from "./SilkPublishability.js";
 import { SilkPublishability, readTargetsBinding } from "./SilkPublishability.js";
-import { TagStrategy } from "./TagStrategy.js";
-import { VersioningStrategy } from "./VersioningStrategy.js";
 
 /**
  * The {@link SilkWorkspaceAnalyzer} service shape.
@@ -43,10 +40,10 @@ export interface SilkWorkspaceAnalyzerShape {
  * wiring up fixed/linked release groups.
  *
  * @remarks
- * Orchestrates `WorkspaceDiscovery`, `PackageManagerDetector`,
- * {@link ChangesetConfigReader}, {@link VersioningStrategy}, and
- * {@link TagStrategy} to produce a complete {@link WorkspaceAnalysis} for a
- * given workspace root.
+ * Orchestrates `WorkspaceDiscovery`, `PackageManagerDetector` and
+ * {@link ChangesetConfigReader}, then classifies the result with
+ * `@effected/workspaces`' pure `VersioningStrategy` value class, to produce a
+ * complete {@link WorkspaceAnalysis} for a given workspace root.
  *
  * @example
  * ```typescript
@@ -163,8 +160,9 @@ function computeReleaseStatus(
  * Live implementation of {@link SilkWorkspaceAnalyzer}.
  *
  * @remarks
- * Requires `WorkspaceDiscovery`, `PackageManagerDetector`,
- * {@link ChangesetConfigReader}, {@link VersioningStrategy}, and {@link TagStrategy}.
+ * Requires `WorkspaceDiscovery`, `PackageManagerDetector` and
+ * {@link ChangesetConfigReader}. Versioning and tag classification are pure
+ * `@effected/workspaces` value operations, so neither adds a requirement.
  *
  * @since 0.2.0
  * @public
@@ -172,12 +170,7 @@ function computeReleaseStatus(
 export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 	SilkWorkspaceAnalyzer,
 	never,
-	| FileSystem.FileSystem
-	| WorkspaceDiscovery
-	| PackageManagerDetector
-	| ChangesetConfigReader
-	| VersioningStrategy
-	| TagStrategy
+	FileSystem.FileSystem | WorkspaceDiscovery | PackageManagerDetector | ChangesetConfigReader
 > = Layer.effect(
 	SilkWorkspaceAnalyzer,
 	Effect.gen(function* () {
@@ -185,8 +178,6 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 		const discovery = yield* WorkspaceDiscovery;
 		const pmDetector = yield* PackageManagerDetector;
 		const configReader = yield* ChangesetConfigReader;
-		const versioningStrategy = yield* VersioningStrategy;
-		const tagStrategy = yield* TagStrategy;
 
 		const analyze = (root: string): Effect.Effect<WorkspaceAnalysis, WorkspaceAnalysisError> =>
 			Effect.gen(function* () {
@@ -322,21 +313,19 @@ export const SilkWorkspaceAnalyzerLive: Layer.Layer<
 					}
 				}
 
-				// 8. Compute versioning strategy
+				// 8. Compute versioning strategy. `classify` is pure and total, and
+				// the fixed groups come from the config already read at step 4 —
+				// the kit deliberately takes them as a plain argument rather than
+				// reading one release tool's config file itself.
 				const publishableNames = analyzedWorkspaces.filter((w) => w.publishable).map((w) => w.name);
 
-				const versioning = yield* versioningStrategy.detect(publishableNames, root).pipe(
-					Effect.mapError(
-						(err: VersioningDetectionError) =>
-							new WorkspaceAnalysisError({
-								root,
-								reason: `Versioning strategy detection failed: ${String(err)}`,
-							}),
-					),
-				);
+				const versioning = VersioningStrategy.classify({
+					packages: publishableNames,
+					fixedGroups: changesetConfig?.fixed ?? [],
+				});
 
-				// 9. Compute tag strategy
-				const tagStrategyType = yield* tagStrategy.determine(versioning);
+				// 9. Tag strategy follows from the versioning classification.
+				const tagStrategyType = versioning.tagStyle;
 
 				// 10. Build the final WorkspaceAnalysis
 				return new WorkspaceAnalysis({

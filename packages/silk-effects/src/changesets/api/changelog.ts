@@ -16,8 +16,7 @@ import type { ModCompWithPackage, NewChangesetWithCommit, VersionType } from "..
  * Delegates to the Changesets-compatible `getReleaseLine` and
  * `getDependencyReleaseLine` functions. Internally, these use the
  * {@link ChangelogService} Effect service layer, which coordinates
- * the {@link GitHubService} (for commit/PR metadata) and
- * {@link MarkdownService} (for AST manipulation) to produce
+ * the {@link GitHubService} (for commit/PR metadata) to produce
  * structured changelog entries.
  *
  * @remarks

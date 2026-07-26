@@ -3,11 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeFileSystem } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { BiomeSchemaSyncLive, Lint, ManagedSectionLive } from "@savvy-web/silk-effects";
+import { ManagedSection } from "@effected/templates";
+import { BiomeSchemaSyncLive, Lint } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runLintInit } from "../../../src/commands/lint/init.js";
 
-const TestLayer = Layer.provideMerge(Layer.merge(ManagedSectionLive, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
+const TestLayer = Layer.provideMerge(Layer.merge(ManagedSection.layer, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
 	Layer.provide(Logger.layer([])),
 );
 

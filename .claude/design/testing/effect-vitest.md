@@ -7,7 +7,6 @@ updated: 2026-07-25
 last-synced: 2026-07-25
 completeness: 90
 related:
-  - ../github-action-effects/testing-strategy.md
   - ../silk-effects/architecture.md
   - ../e2e/architecture.md
   - ../tsdown-plugins/architecture.md
@@ -58,8 +57,7 @@ rather than unfinished work — pure-function tests (formatters, path math, sche
 validators) gain nothing from an Effect runtime and should not pay for one.
 
 Consequently `@effect/vitest` is a devDependency of exactly the packages that have at least one Effect-running
-test file: `cli`, `github-action-builder`, `github-action-effects`, `mcp`, `silk-effects`, `templates` and
-`tsdown-plugins`. The packages whose tests never enter the Effect runtime (`bundler`, `changelog`,
+test file: `cli`, `github-action-builder`, `mcp`, `silk-effects`, `templates` and `tsdown-plugins`. The packages whose tests never enter the Effect runtime (`bundler`, `changelog`,
 `rspress-builder`, `silk`, and the `e2e/*` harnesses) carry no such dependency — even where the package's
 *source* is Effect-based, as the bundler's is, because that Effect surface runs behind a promise boundary the
 tests call across.
@@ -202,27 +200,33 @@ test** which write path it takes, and confirm by mutation (make it fail) rather 
 
 `tsgo`'s narrowing of layer composition can leak `any` through `Effect.provide`, so a fully-provided effect does
 not always typecheck as `R = never` at the call site. Where this bites, the convention is a **single cast helper
-at the top of the file**, commented with why it exists, rather than per-call-site cast noise
-(`packages/github-action-effects/__test__/runtime/ActionsRuntime.test.ts` is the reference). Keep the cast at
+at the top of the file**, commented with why it exists, rather than per-call-site cast noise. Keep the cast at
 the seam; do not let it spread into the test bodies, and re-check whether it is still needed on TypeScript and
-Effect upgrades.
+Effect upgrades. The reference example used to live in `github-action-effects`, which has since been deleted —
+when the seam next bites, document the new instance in-file and cite it here rather than restating the rule
+from memory.
 
 ---
 
 ## Current State
 
-229 of the suite's 408 test files are on `@effect/vitest` across seven packages; the remaining 179 have no
-Effect surface and stay on plain `vitest`. No test file runs a live `Effect.runPromise`/`runSync`/
+95 of the suite's 271 test files are on `@effect/vitest` across six packages (`silk-effects` 53, `cli` 19,
+`mcp` 14, `tsdown-plugins` 4, `github-action-builder` 3, `templates` 2); the rest have no Effect surface and
+stay on plain `vitest`. Both numbers dropped sharply when `@savvy-web/github-action-effects` — by far the
+largest converted package — was deleted in the `@effected` github-split adoption, so re-derive them with the
+commands above rather than trusting this paragraph. No test file runs a live `Effect.runPromise`/`runSync`/
 `runPromiseExit`. Suite-boundary `layer(...)` blocks are used in roughly two dozen places, all in `mcp` and
 `cli` — a stateless silencing logger in most of them, the root-bound MCP runtime in the smoke tests. The suite
 runs in the forks pool under the root `@vitest-agent/plugin` (`vitest.config.ts`).
 
-**Not yet done, and tracked — do not read this doc as describing it as finished.**
-[savvy-web/systems#378](https://github.com/savvy-web/systems/issues/378) covers replacing the duplicate `*Test`
-double layers with service-owned `Layer.mock` (and, with them gone, the `./testing` subpath they justify — see
-[the github-action-effects testing strategy](../github-action-effects/testing-strategy.md#testing-subpath-export)),
-plus the `Live`-naming cleanup across the layer set. Until that lands, the `*Test`-layer patterns described here
-remain the working convention.
+**The `*Test`-double cleanup resolved by deletion, not by refactor.**
+[savvy-web/systems#378](https://github.com/savvy-web/systems/issues/378) proposed replacing the duplicated
+`*Test` double layers with service-owned `Layer.mock` and renaming the `*Live` layers in place. The
+github-split survey concluded the package's problems were structural rather than cosmetic, so the whole
+package went upstream to the `@effected` kit instead — taking the 38 hand-written doubles, the five mutually
+incompatible double conventions and the `./testing` subpath with it. What survives as guidance: **a new test
+double must fail loudly on an unstubbed member** (`Layer.mock`'s `UnimplementedError`, or an `Effect.die`),
+because the deleted doubles' lenient defaults kept two consumer tests green on a documented lie.
 
 ---
 
@@ -249,8 +253,9 @@ worse than its weakness suggested.
 
 ## Related Documentation
 
-- [`github-action-effects` testing strategy](../github-action-effects/testing-strategy.md) — the `./testing`
-  subpath contract, test-layer topology and coverage requirements for the largest converted package
+- [`github-action-effects` testing strategy](../_archive/github-action-effects/testing-strategy.md) —
+  **archived**; the `./testing` subpath contract and test-layer topology of the deleted package, kept for
+  history only
 - [`silk-effects` architecture](../silk-effects/architecture.md#testing-strategy) — fixture-tree integration
   tests
 - [`e2e` architecture](../e2e/architecture.md) — the built-artifact harness, which stays on plain `vitest`

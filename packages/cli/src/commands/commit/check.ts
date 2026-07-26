@@ -4,19 +4,19 @@
  * @internal
  */
 
-import { WorkspaceDiscovery } from "@effected/workspaces";
-import type { SectionParseError } from "@savvy-web/silk-effects";
+import type { SectionFileError, SectionParseError } from "@effected/templates";
+import { CheckOutcome, ManagedSection } from "@effected/templates";
+import type { PublishabilityDetector, WorkspaceDiscovery } from "@effected/workspaces";
+import { VersioningStrategy } from "@effected/workspaces";
 import {
-	CheckResult,
+	ChangesetConfigReader,
 	Commitlint,
-	ManagedSection,
 	SavvyBaseSection,
 	SavvyHooksSection,
-	VersioningStrategy,
 	savvyBasePreamble,
 	savvyHooksHygiene,
 } from "@savvy-web/silk-effects";
-import { Effect, FileSystem } from "effect";
+import { Effect, FileSystem, Option } from "effect";
 import type { PlatformError } from "effect/PlatformError";
 import {
 	CHECK_MARK,
@@ -99,25 +99,29 @@ function extractConfigPathFromManaged(managedContent: string): string | null {
 }
 
 /**
- * Detect the release format using silk-effects versioning service.
+ * Detect the release format from the workspace's versioning strategy.
+ *
+ * @remarks
+ * `VersioningStrategy.detect` (from `@effected/workspaces`) enumerates the
+ * workspace and asks the ambient `PublishabilityDetector` which packages
+ * publish — the CLI provides silk's own detector, so the "private plus
+ * publishConfig.access is publishable" convention is applied by that layer
+ * rather than by a filter written here. Fixed groups are a changesets concept,
+ * so they are read from the changeset config and handed in as a plain argument.
  *
  * @returns Effect yielding the release format string
  */
 const detectReleaseFormat = Effect.gen(function* () {
-	const versioning = yield* VersioningStrategy;
-	const discovery = yield* WorkspaceDiscovery;
+	const configReader = yield* ChangesetConfigReader;
 
-	const packages = yield* Effect.catch(discovery.listPackages(), () => Effect.succeed([]));
+	const config = yield* Effect.catch(configReader.read(process.cwd()), () => Effect.succeed(null));
+	const fixedGroups = config?.fixed ?? [];
 
-	const publishableNames = packages
-		.filter((pkg) => !pkg.private || pkg.publishConfig?.access !== undefined)
-		.map((pkg) => pkg.name);
-
-	const result = yield* Effect.catch(versioning.detect(publishableNames, process.cwd()), () =>
-		Effect.succeed({ type: "single" as const }),
+	const strategy = yield* Effect.catch(VersioningStrategy.detect({ fixedGroups }), () =>
+		Effect.succeed(VersioningStrategy.classify({ packages: [] })),
 	);
 
-	return STRATEGY_TO_FORMAT[result.type] ?? ("semver" as Commitlint.ReleaseFormat);
+	return STRATEGY_TO_FORMAT[strategy.type] ?? ("semver" as Commitlint.ReleaseFormat);
 });
 
 /**
@@ -132,8 +136,8 @@ const detectReleaseFormat = Effect.gen(function* () {
  */
 export function runCommitCheck(): Effect.Effect<
 	void,
-	SectionParseError | PlatformError,
-	ManagedSection | FileSystem.FileSystem | VersioningStrategy | WorkspaceDiscovery
+	SectionParseError | SectionFileError | PlatformError,
+	ManagedSection | FileSystem.FileSystem | ChangesetConfigReader | PublishabilityDetector | WorkspaceDiscovery
 > {
 	return Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -158,10 +162,10 @@ export function runCommitCheck(): Effect.Effect<
 		// Managed section status
 		let sectionsHealthy = true;
 		if (hasHuskyHook) {
-			const baseStatus = yield* ms.check(HUSKY_HOOK_PATH, SavvyBaseSection.block(savvyBasePreamble()));
-			if (CheckResult.$is("Found")(baseStatus) && baseStatus.isUpToDate) {
+			const baseStatus = yield* ms.check(HUSKY_HOOK_PATH, SavvyBaseSection.section(savvyBasePreamble()));
+			if (CheckOutcome.$is("UpToDate")(baseStatus)) {
 				yield* Effect.log(`${CHECK_MARK} Base section: up-to-date`);
-			} else if (CheckResult.$is("Found")(baseStatus)) {
+			} else if (CheckOutcome.$is("Drifted")(baseStatus)) {
 				sectionsHealthy = false;
 				yield* Effect.log(`${WARNING} Base section: outdated (run 'savvy init' to update)`);
 			} else {
@@ -170,11 +174,11 @@ export function runCommitCheck(): Effect.Effect<
 			}
 
 			const block = yield* ms.read(HUSKY_HOOK_PATH, SECTION_DEF);
-			if (block) {
-				const configPath = extractConfigPathFromManaged(block.content);
+			if (Option.isSome(block)) {
+				const configPath = extractConfigPathFromManaged(block.value.content);
 				if (configPath) {
 					const status = yield* ms.check(HUSKY_HOOK_PATH, savvyCommitBlock(configPath));
-					if (CheckResult.$is("Found")(status) && status.isUpToDate) {
+					if (CheckOutcome.$is("UpToDate")(status)) {
 						yield* Effect.log(`${CHECK_MARK} Commit section: up-to-date`);
 					} else {
 						sectionsHealthy = false;
@@ -198,10 +202,10 @@ export function runCommitCheck(): Effect.Effect<
 				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} not found (run 'savvy init' to add)`);
 				continue;
 			}
-			const hygieneStatus = yield* ms.check(hookPath, SavvyHooksSection.block(savvyHooksHygiene()));
-			if (CheckResult.$is("Found")(hygieneStatus) && hygieneStatus.isUpToDate) {
+			const hygieneStatus = yield* ms.check(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
+			if (CheckOutcome.$is("UpToDate")(hygieneStatus)) {
 				yield* Effect.log(`${CHECK_MARK} Hygiene hook: ${hookPath}`);
-			} else if (CheckResult.$is("Found")(hygieneStatus)) {
+			} else if (CheckOutcome.$is("Drifted")(hygieneStatus)) {
 				sectionsHealthy = false;
 				yield* Effect.log(`${WARNING} Hygiene hook: ${hookPath} outdated (run 'savvy init' to update)`);
 			} else {

@@ -120,7 +120,7 @@ export class GitHubService extends Context.Service<GitHubService, GitHubServiceS
  * @remarks
  * This layer is used by the `\@savvy-web/changesets/changelog` entry point
  * to resolve commit hashes into PR numbers and author attribution. It is
- * composed with {@link MarkdownLive} in the changelog formatter's
+ * used by the changelog formatter's
  * `MainLayer`.
  *
  * @example

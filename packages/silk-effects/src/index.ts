@@ -2,9 +2,13 @@
  * `@savvy-web/silk-effects` — shared Effect library for Silk Suite conventions.
  *
  * @remarks
- * Platform-agnostic Effect services for publishability detection, versioning strategy,
- * tag strategy, managed sections, config discovery, and Biome schema synchronization.
- * Consumers provide their platform layer (NodeContext, BunContext, etc.).
+ * Platform-agnostic Effect services for publishability detection, workspace
+ * analysis, managed sections, config discovery, and Biome schema
+ * synchronization. Versioning and tag classification are `@effected/workspaces`
+ * value classes (`VersioningStrategy`, `ReleaseTag`, `TagStyle`), imported from
+ * the kit directly rather than re-exported here — the same posture as
+ * `PublishTarget` on {@link AnalyzedWorkspace}. Consumers provide their platform
+ * layer (NodeContext, BunContext, etc.).
  *
  * @packageDocumentation
  */
@@ -42,14 +46,6 @@ export { BiomeSyncError } from "./errors/BiomeSyncError.js";
 export { ChangesetConfigError } from "./errors/ChangesetConfigError.js";
 export { ConfigNotFoundError } from "./errors/ConfigNotFoundError.js";
 export { PublishTargetBindingError } from "./errors/PublishTargetBindingError.js";
-export { SectionParseError } from "./errors/SectionParseError.js";
-export { SectionValidationError } from "./errors/SectionValidationError.js";
-export { SectionWriteError } from "./errors/SectionWriteError.js";
-export { TagFormatError } from "./errors/TagFormatError.js";
-export { ToolNotFoundError } from "./errors/ToolNotFoundError.js";
-export { ToolResolutionError } from "./errors/ToolResolutionError.js";
-export { ToolVersionMismatchError } from "./errors/ToolVersionMismatchError.js";
-export { VersioningDetectionError } from "./errors/VersioningDetectionError.js";
 export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
 /**
  * Lint orchestration business logic — Biome and markdownlint configuration and
@@ -65,10 +61,7 @@ export * as Lint from "./lint/index.js";
 export * as Repos from "./repos/index.js";
 // ── Schemas ────────────────────────────────────────────────────
 export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
-export type { CommentStyle } from "./schemas/CommentStyle.js";
 export type { ConfigDiscoveryOptions, ConfigLocation, ConfigSource } from "./schemas/ConfigDiscoverySchemas.js";
-// ── Schemas (tools) ───────────────────────────────────────────
-export { ResolvedTool } from "./schemas/ResolvedTool.js";
 export {
 	SavvyBaseSection,
 	SavvyHooksSection,
@@ -76,24 +69,7 @@ export {
 	savvyHooksHygiene,
 	savvyToolSection,
 } from "./schemas/SavvySections.js";
-export { SectionBlock } from "./schemas/SectionBlock.js";
-export { SectionDefinition, ShellSectionDefinition } from "./schemas/SectionDefinition.js";
-export type { CheckResultDefinition, SectionDiffDefinition, SyncResultDefinition } from "./schemas/SectionResults.js";
-export { CheckResult, SectionDiff, SyncResult } from "./schemas/SectionResults.js";
-export type { TagStrategyType } from "./schemas/TagStrategySchemas.js";
-export { ToolDefinition } from "./schemas/ToolDefinition.js";
-export type {
-	ResolutionPolicyDefinition,
-	SourceRequirementDefinition,
-	VersionExtractorDefinition,
-} from "./schemas/ToolResults.js";
-export { ResolutionPolicy, SourceRequirement, ToolSource, VersionExtractor } from "./schemas/ToolResults.js";
-export type {
-	ChangesetConfigFile,
-	SilkChangesetConfigFile,
-	VersioningStrategyResult,
-	VersioningStrategyType,
-} from "./schemas/VersioningSchemas.js";
+export type { ChangesetConfigFile, SilkChangesetConfigFile } from "./schemas/VersioningSchemas.js";
 export { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "./schemas/WorkspaceAnalysisSchemas.js";
 // ── Services ───────────────────────────────────────────────────
 export type { BiomeSchemaSyncShape } from "./services/BiomeSchemaSync.js";
@@ -104,8 +80,6 @@ export type { ChangesetConfigReaderShape } from "./services/ChangesetConfigReade
 export { ChangesetConfigReader, ChangesetConfigReaderLive } from "./services/ChangesetConfigReader.js";
 export type { ConfigDiscoveryShape } from "./services/ConfigDiscovery.js";
 export { ConfigDiscovery, ConfigDiscoveryLive } from "./services/ConfigDiscovery.js";
-export type { ManagedSectionShape } from "./services/ManagedSection.js";
-export { ManagedSection, ManagedSectionLive } from "./services/ManagedSection.js";
 export type {
 	PublishablePackage,
 	RawPackageJson,
@@ -125,12 +99,6 @@ export {
 } from "./services/SilkPublishability.js";
 export type { SilkWorkspaceAnalyzerShape } from "./services/SilkWorkspaceAnalyzer.js";
 export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/SilkWorkspaceAnalyzer.js";
-export type { TagStrategyShape } from "./services/TagStrategy.js";
-export { TagStrategy, TagStrategyLive } from "./services/TagStrategy.js";
-export type { ToolDiscoveryShape } from "./services/ToolDiscovery.js";
-export { ToolDiscovery, ToolDiscoveryLive } from "./services/ToolDiscovery.js";
-export type { VersioningStrategyShape } from "./services/VersioningStrategy.js";
-export { VersioningStrategy, VersioningStrategyLive } from "./services/VersioningStrategy.js";
 /**
  * Read-only Turborepo inspection — cache diagnosis, task-graph, and affected-set
  * analysis. All operations are `--dry`; tasks are never executed.
@@ -138,5 +106,3 @@ export { VersioningStrategy, VersioningStrategyLive } from "./services/Versionin
  * @public
  */
 export * as Turbo from "./turbo/index.js";
-// ── Utils ─────────────────────────────────────────────────────
-export { ToolCommand } from "./utils/ToolCommand.js";

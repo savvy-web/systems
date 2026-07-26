@@ -3,11 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeFileSystem } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { BiomeSchemaSyncLive, Lint, ManagedSectionLive, savvyBasePreamble } from "@savvy-web/silk-effects";
+import { ManagedSection } from "@effected/templates";
+import { BiomeSchemaSyncLive, Lint, savvyBasePreamble } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runLintInit } from "../../src/commands/lint/init.js";
 
-const TestLayer = Layer.provideMerge(Layer.merge(ManagedSectionLive, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
+const TestLayer = Layer.provideMerge(Layer.merge(ManagedSection.layer, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
 	Layer.provide(Logger.layer([])),
 );
 
@@ -25,8 +26,13 @@ describe("savvyLintBlock", () => {
 		);
 	});
 
-	it("uses the savvy-lint toolName", () => {
-		expect(Lint.savvyLintBlock("lint-staged.config.ts").toolName).toBe("savvy-lint");
+	// The key is the UPPERCASE form because the kit renders it verbatim into the
+	// markers; the section model this replaced uppercased a lowercase toolName on
+	// the way in. Keeping the uppercase spelling is what makes the emitted
+	// `# --- BEGIN SAVVY-LINT … ---` markers match the ones already in consumer
+	// repos' hook files, so this assertion guards marker compatibility.
+	it("uses the uppercased SAVVY-LINT section key", () => {
+		expect(Lint.savvyLintBlock("lint-staged.config.ts").key).toBe("SAVVY-LINT");
 	});
 });
 

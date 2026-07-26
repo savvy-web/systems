@@ -2,12 +2,13 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeFileSystem } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { ManagedSectionLive, savvyBasePreamble } from "@savvy-web/silk-effects";
+import { ManagedSection } from "@effected/templates";
+import { savvyBasePreamble } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
 
-/** Test layer combining NodeFileSystem and ManagedSectionLive, with logs silenced. */
-const TestLayer = Layer.provideMerge(ManagedSectionLive, NodeFileSystem.layer).pipe(Layer.provide(Logger.layer([])));
+/** Test layer combining NodeFileSystem and with logs silenced. */
+const TestLayer = Layer.provideMerge(ManagedSection.layer, NodeFileSystem.layer).pipe(Layer.provide(Logger.layer([])));
 
 /** Marker format used by silk-effects ManagedSection for "savvy-commit" tool. */
 const BEGIN_MARKER = "# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---";

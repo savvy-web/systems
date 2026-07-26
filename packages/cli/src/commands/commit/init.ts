@@ -5,12 +5,11 @@
  */
 import { chmod } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { SectionBlock, SectionWriteError } from "@savvy-web/silk-effects";
+import type { Section, SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
+import { CommentStyle, ManagedSection, SectionId } from "@effected/templates";
 import {
-	ManagedSection,
 	SavvyBaseSection,
 	SavvyHooksSection,
-	SectionDefinition,
 	savvyBasePreamble,
 	savvyHooksHygiene,
 	savvyToolSection,
@@ -30,7 +29,9 @@ import {
 const EXECUTABLE_MODE = 0o755;
 
 /** Section definition for the savvy-commit tool section (identity for read/check/remove). */
-export const SECTION_DEF = SectionDefinition.make({ toolName: "savvy-commit" });
+// Key spelled uppercase: the kit renders it verbatim into the markers already
+// present in consumer hook files. See schemas/SavvySections.ts.
+export const SECTION_DEF: SectionId = SectionId.make({ key: "SAVVY-COMMIT", commentStyle: CommentStyle.hash });
 
 /** Header written when creating a fresh commit-msg hook. */
 const COMMIT_MSG_HEADER =
@@ -58,7 +59,7 @@ function commitlintCommand(configPath: string): string {
  * @remarks
  * Exported for reuse by the check command, which rebuilds this block to compare against the on-disk section.
  */
-export function savvyCommitBlock(configPath: string): SectionBlock {
+export function savvyCommitBlock(configPath: string): Section {
 	return savvyToolSection("savvy-commit", commitlintCommand(configPath));
 }
 
@@ -114,7 +115,11 @@ function makeExecutable(path: string) {
 export function runCommitInit(opts: {
 	force: boolean;
 	config: string;
-}): Effect.Effect<void, Error | SectionWriteError | PlatformError, ManagedSection | FileSystem.FileSystem> {
+}): Effect.Effect<
+	void,
+	Error | SectionParseError | SectionRenderError | SectionFileError | PlatformError,
+	ManagedSection | FileSystem.FileSystem
+> {
 	const { force, config } = opts;
 	return Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -134,8 +139,8 @@ export function runCommitInit(opts: {
 		} else {
 			yield* ensureHookFile(HUSKY_HOOK_PATH, COMMIT_MSG_HEADER);
 		}
-		const commitResults = yield* ms.syncMany(HUSKY_HOOK_PATH, [
-			SavvyBaseSection.block(savvyBasePreamble()),
+		const commitResults = yield* ms.syncAll(HUSKY_HOOK_PATH, [
+			SavvyBaseSection.section(savvyBasePreamble()),
 			savvyCommitBlock(config),
 		]);
 		yield* makeExecutable(HUSKY_HOOK_PATH);
@@ -146,7 +151,7 @@ export function runCommitInit(opts: {
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene.
 		for (const hookPath of [POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH, POST_COMMIT_HOOK_PATH]) {
 			yield* ensureHookFile(hookPath, HYGIENE_HEADER);
-			yield* ms.sync(hookPath, SavvyHooksSection.block(savvyHooksHygiene()));
+			yield* ms.sync(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
 			yield* makeExecutable(hookPath);
 			yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
 		}

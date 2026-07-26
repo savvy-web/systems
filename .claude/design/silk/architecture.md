@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-07-06
-last-synced: 2026-07-06
+updated: 2026-07-25
+last-synced: 2026-07-25
 completeness: 92
 related:
   - ../cli/architecture.md
@@ -52,7 +52,7 @@ Implemented and dogfooded inside `systems` (`.changeset/config.json`, commitlint
 
 silk is the most demanding consumer of the bundler, and reconciling it drove the bundler's bundling-posture knobs and the per-entry override + node-builtin interop work (see `../tsdown-plugins/architecture.md`). The authoritative config is `packages/silk/savvy.build.ts`; its comment headers are the source of truth for each decision below.
 
-**The shipped posture: ESM-only base, force-bundle only the entries an external tool loads via CJS.** The constraint is that silk-effects is ESM-only (a transitive dep, `workspaces-effect`, has no `require` condition), so any entry an external tool `require()`s cannot externalize silk-effects — it must inline it. The base entries are ESM-only and externalize silk-effects; two per-entry overrides (`./changesets/changelog` and `./changesets/markdownlint`) build dual-format and force-bundle silk-effects so only those two entries pay the inlining cost.
+**The shipped posture: ESM-only base, force-bundle only the entries an external tool loads via CJS.** The constraint is that silk-effects is ESM-only (its `@effected/*` kit dependencies have no `require` condition), so any entry an external tool `require()`s cannot externalize silk-effects — it must inline it. The base entries are ESM-only and externalize silk-effects; two per-entry overrides (`./changesets/changelog` and `./changesets/markdownlint`) build dual-format and force-bundle silk-effects so only those two entries pay the inlining cost.
 
 - **Base build is `format: ["esm"]` and externalizes silk-effects** (`externals: ["source-map-support", "@savvy-web/silk-effects"]`). The base ESM entries reference silk-effects via `import "@savvy-web/silk-effects"` instead of inlining its large ESM-only transitive tree. `source-map-support` is an undeclared transitive external. `semver` and `typescript` are not listed — they are declared deps that tsdown auto-externalizes. `semver` MUST stay external because rolldown cannot emit its circular CJS modules `comparator` ↔ `range` into ESM without a `require_range is not a function` init-order crash, so it stays a declared runtime dep.
 - **`@savvy-web/silk-effects` is a devDependency, re-injected into published `dependencies` by the transform.** This is load-bearing: a regular `dependency` would be auto-externalized AND would make a CJS override's dts re-emit a bare `require` of ESM-only silk-effects → crash. As a devDependency, the overrides are free to bundle it as node_modules; the base entries externalize it explicitly; and the transform pulls its already-resolved spec from `devDependencies` back into the published `dependencies` so consumers can resolve the base entries' `import`.
@@ -118,6 +118,13 @@ The Biome preset (`./biome`) now also formats these presets under `public/tsconf
 A consumer config that infers a silk factory's return type must emit a portable `.d.ts` — its declaration must name the return type from `@savvy-web/silk` (a direct dependency), never from `@savvy-web/silk-effects` (only a transitive dependency). TypeScript names an inferred type from where the function **signature** is declared, not where the value is imported, so a shim that simply re-exports the silk-effects class by value (`export const Preset = Lint.Preset`) leaks the canonical return type back to silk-effects and triggers **TS2883** ("inferred type cannot be named… likely not portable") in any `export default CommitlintConfig.silk()` / `export default Preset.silk()` config.
 
 The fix is a silk-local **facade**: each config-factory shim declares the factory's method signatures in silk itself, annotated with a silk-owned return type, and delegates the body to the silk-effects implementation. This pins the consumer-visible canonical home to `@savvy-web/silk/*`.
+
+**The same invariant reaches past silk's own types: a type silk's public surface names must come from a package silk DECLARES.** After the github-split adoption silk's inferred `Lint` surface references kit types — `dist/prod/npm/pkg/lint.d.ts` emits `import("@effected/templates").SectionId` — because silk-effects deliberately re-exports nothing from `@effected/*` (see `../silk-effects/architecture.md#what-the-kit-owns-now`), so the canonical home of those types is the kit package itself. silk therefore declares `@effected/templates` as a direct `dependency`.
+
+Two things about that are worth carrying forward:
+
+- **`types:check` does not catch it.** It checks sources against the workspace's flat `node_modules`, where a transitively-installed package resolves fine. The gap surfaced only in a **dist-level typecheck of the built package** (`pnpm ci:build`), which is the gate to run after any change that widens a shim's exported type closure.
+- **The manifest transform's keep-list has not caught up, and that is a live gap.** `savvy.build.ts` strips every dependency except an explicit keep-list (`semver`, `effect`, `@effect/platform`, the three companions) plus `@savvy-web/silk-effects` pulled from devDependencies, so `@effected/templates` is currently **absent from the published `dependencies`** even though the published `.d.ts` imports it. Under pnpm's strict `node_modules` a consumer type-checking `@savvy-web/silk/lint` has no guaranteed resolution for it. Either add it to the keep-list or externalize it in the dts pass the way `effect` is; do not rely on hoisting.
 
 - `commitlint` — an empty-extends interface (`CommitlintUserConfig extends Commitlint.CommitlintUserConfig`, structurally identical, auto-syncing, silk-owned canonical home) plus a `CommitlintConfig` object facade whose `silk()` returns silk's `CommitlintUserConfig`. See `src/commitlint/index.ts`.
 - `lint` — a `Preset` object facade wrapping the silk-effects statics, each annotated with silk's own `LintStagedConfig` alias. See `src/lint/index.ts`.
