@@ -275,7 +275,7 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0(effect@4.0.0-beta.101)
       '@effected/git':
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1(effect@4.0.0-beta.101)
       '@effected/jsonc':
         specifier: ^0.5.1
@@ -556,7 +556,7 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0(effect@4.0.0-beta.101)
       '@effected/git':
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1(effect@4.0.0-beta.101)
       '@effected/glob':
         specifier: ^0.2.1
@@ -571,7 +571,7 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0(effect@4.0.0-beta.101)
       '@effected/walker':
-        specifier: ^0.3.2
+        specifier: ^0.3.3
         version: 0.3.3(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@effected/workspaces':
         specifier: ^0.9.0
@@ -707,7 +707,7 @@ importers:
         specifier: ^0.6.0
         version: 0.6.0(effect@4.0.0-beta.101)
       '@effected/tsconfig-json':
-        specifier: ^0.3.2
+        specifier: ^0.3.3
         version: 0.3.3(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/walker@0.3.3(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@effected/workspaces':
         specifier: ^0.9.0
