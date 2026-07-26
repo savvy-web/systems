@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 3.2.6
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From   | To     |
+| -------------------- | ---------- | ------- | ------ | ------ |
+| @savvy-web/changelog | dependency | updated | 0.1.1  | 0.1.1  |
+| @savvy-web/cli       | dependency | updated | 2.1.9  | 2.1.10 |
+| @savvy-web/mcp       | dependency | updated | 2.0.10 | 2.0.11 |
+
 ## 3.2.5
 
 ### Bug Fixes

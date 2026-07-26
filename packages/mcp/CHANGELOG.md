@@ -1,5 +1,13 @@
 # @savvy-web/mcp
 
+## 2.0.11
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.0.0 | 5.0.1 |
+
 ## 2.0.10
 
 ### Dependencies
