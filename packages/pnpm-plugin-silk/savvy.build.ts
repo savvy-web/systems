@@ -204,7 +204,7 @@ await build({
 							strategy: "interop",
 						},
 						"@rsbuild/core": {
-							range: "^2.1.6",
+							range: "^2.1.8",
 							peer: "^2.1.0",
 							strategy: "lock-minor",
 						},
@@ -214,13 +214,13 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@tsdown/exe": {
-							range: "^0.22.12",
-							peer: "^0.22.12",
+							range: "^0.22.14",
+							peer: "^0.22.14",
 							strategy: "lock",
 						},
 						"@tsdown/css": {
-							range: "^0.22.12",
-							peer: "^0.22.12",
+							range: "^0.22.14",
+							peer: "^0.22.14",
 							strategy: "lock",
 						},
 						"@types/bun": {
@@ -268,8 +268,8 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.1.0",
-							peer: "^17.1.0",
+							range: "^17.2.0",
+							peer: "^17.2.0",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
@@ -283,12 +283,12 @@ await build({
 							strategy: "lock",
 						},
 						react: {
-							range: "^19.2.7",
+							range: "^19.2.8",
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
 						"react-dom": {
-							range: "^19.2.7",
+							range: "^19.2.8",
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
@@ -298,7 +298,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsdown: {
-							range: "^0.22.12",
+							range: "^0.22.14",
 							peer: "^0.22.0",
 							strategy: "lock-minor",
 						},
@@ -313,8 +313,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						turbo: {
-							range: "^2.10.5",
-							peer: "^2.10.5",
+							range: "^2.10.6",
+							peer: "^2.10.6",
 							strategy: "lock",
 						},
 						vitest: {
