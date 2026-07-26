@@ -37,17 +37,6 @@
 				"siteDocs": null
 			}
 		},
-		"github-action-effects": {
-			"path": "packages/github-action-effects",
-			"designDocsPath": ".claude/design/github-action-effects",
-			"categories": ["architecture", "integration", "testing"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/github-action-effects/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
 		"templates": {
 			"path": "packages/templates",
 			"designDocsPath": ".claude/design/templates",

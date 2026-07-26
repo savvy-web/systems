@@ -107,6 +107,11 @@ await build({
 			"semver",
 			"effect",
 			"@effect/platform",
+			// The lint entry's emitted declarations reference @effected/templates
+			// types (SectionId on the section defs), so the published manifest must
+			// carry it or a consumer type-checking @savvy-web/silk/lint has no
+			// guaranteed resolution under pnpm's strict layout.
+			"@effected/templates",
 			"@savvy-web/changelog",
 			"@savvy-web/cli",
 			"@savvy-web/mcp",

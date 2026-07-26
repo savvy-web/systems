@@ -4,22 +4,21 @@
  * @internal
  */
 import { isDeepStrictEqual } from "node:util";
+import { Tool, ToolDiscovery } from "@effected/commands";
 import type { JsoncParseError } from "@effected/jsonc";
 import { Jsonc } from "@effected/jsonc";
-import type { ConfigDiscoveryShape, SectionParseError } from "@savvy-web/silk-effects";
+import type { SectionFileError, SectionParseError } from "@effected/templates";
+import { CheckOutcome, ManagedSection } from "@effected/templates";
+import type { ConfigDiscoveryShape } from "@savvy-web/silk-effects";
 import {
-	CheckResult,
 	ConfigDiscovery,
 	Lint,
-	ManagedSection,
 	SavvyBaseSection,
 	SavvyHooksSection,
-	ToolDefinition,
-	ToolDiscovery,
 	savvyBasePreamble,
 	savvyHooksHygiene,
 } from "@savvy-web/silk-effects";
-import { Effect, FileSystem } from "effect";
+import { Effect, FileSystem, Option } from "effect";
 import type { PlatformError } from "effect/PlatformError";
 import { BIOME_VERSION } from "./biome-version.js";
 
@@ -166,7 +165,7 @@ export function runLintCheck(opts: {
 	quiet: boolean;
 }): Effect.Effect<
 	void,
-	JsoncParseError | SectionParseError | PlatformError,
+	JsoncParseError | SectionParseError | SectionFileError | PlatformError,
 	ManagedSection | FileSystem.FileSystem | ToolDiscovery | ConfigDiscovery
 > {
 	const { quiet } = opts;
@@ -191,27 +190,29 @@ export function runLintCheck(opts: {
 
 		if (hasHuskyHook) {
 			// savvy-base section
-			const baseResult = yield* ms.check(Lint.HUSKY_HOOK_PATH, SavvyBaseSection.block(savvyBasePreamble()));
-			if (CheckResult.$is("Found")(baseResult)) {
-				baseStatusLabel = baseResult.isUpToDate ? "up-to-date" : "outdated";
-				if (!baseResult.isUpToDate) sectionsHealthy = false;
-			} else {
+			const baseResult = yield* ms.check(Lint.HUSKY_HOOK_PATH, SavvyBaseSection.section(savvyBasePreamble()));
+			if (CheckOutcome.$is("Absent")(baseResult)) {
 				sectionsHealthy = false;
+			} else {
+				const upToDate = CheckOutcome.$is("UpToDate")(baseResult);
+				baseStatusLabel = upToDate ? "up-to-date" : "outdated";
+				if (!upToDate) sectionsHealthy = false;
 			}
 
 			// savvy-lint section
 			const existing = yield* ms.read(Lint.HUSKY_HOOK_PATH, Lint.SavvyLintSectionDef);
-			if (existing) {
-				const configPath = extractConfigPathFromManaged(existing.content);
+			if (Option.isSome(existing)) {
+				const configPath = extractConfigPathFromManaged(existing.value.content);
 				detectedConfigPath = configPath;
 				if (configPath) {
 					const lintResult = yield* ms.check(Lint.HUSKY_HOOK_PATH, Lint.savvyLintBlock(configPath));
-					if (CheckResult.$is("Found")(lintResult)) {
-						lintStatusLabel = lintResult.isUpToDate ? "up-to-date" : "outdated";
-						if (!lintResult.isUpToDate) sectionsHealthy = false;
-					} else {
+					if (CheckOutcome.$is("Absent")(lintResult)) {
 						lintStatusLabel = "outdated";
 						sectionsHealthy = false;
+					} else {
+						const upToDate = CheckOutcome.$is("UpToDate")(lintResult);
+						lintStatusLabel = upToDate ? "up-to-date" : "outdated";
+						if (!upToDate) sectionsHealthy = false;
 					}
 				} else {
 					lintStatusLabel = "outdated";
@@ -249,9 +250,9 @@ export function runLintCheck(opts: {
 				shellHookStatuses.push({ path: hookPath, found: false, isUpToDate: false });
 				continue;
 			}
-			const hygieneResult = yield* ms.check(hookPath, SavvyHooksSection.block(savvyHooksHygiene()));
-			const found = CheckResult.$is("Found")(hygieneResult);
-			const isUpToDate = CheckResult.$is("Found")(hygieneResult) && hygieneResult.isUpToDate;
+			const hygieneResult = yield* ms.check(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
+			const found = !CheckOutcome.$is("Absent")(hygieneResult);
+			const isUpToDate = CheckOutcome.$is("UpToDate")(hygieneResult);
 			shellHookStatuses.push({ path: hookPath, found, isUpToDate });
 
 			if (!found) {
@@ -365,7 +366,7 @@ export function runLintCheck(opts: {
 		// Tool availability
 		yield* Effect.log("\nTool availability:");
 
-		const biomeAvailable = yield* td.isAvailable(ToolDefinition.make({ name: "biome" }));
+		const biomeAvailable = yield* td.isAvailable(Tool.named("biome"));
 		const biomeConfig = yield* findConfig(discovery, ["biome.jsonc", "biome.json"]);
 		if (biomeAvailable) {
 			const configInfo = biomeConfig ? ` (config: ${biomeConfig})` : "";
@@ -374,7 +375,7 @@ export function runLintCheck(opts: {
 			yield* Effect.log(`  ${BULLET} Biome: not installed`);
 		}
 
-		const markdownAvailable = yield* td.isAvailable(ToolDefinition.make({ name: "markdownlint-cli2" }));
+		const markdownAvailable = yield* td.isAvailable(Tool.named("markdownlint-cli2"));
 		const markdownConfig = yield* findConfig(discovery, [
 			".markdownlint-cli2.jsonc",
 			".markdownlint-cli2.json",
@@ -391,8 +392,8 @@ export function runLintCheck(opts: {
 			yield* Effect.log(`  ${BULLET} markdownlint-cli2: not installed`);
 		}
 
-		const tsgoAvailable = yield* td.isAvailable(ToolDefinition.make({ name: "tsgo" }));
-		const tscAvailable = yield* td.isAvailable(ToolDefinition.make({ name: "tsc" }));
+		const tsgoAvailable = yield* td.isAvailable(Tool.named("tsgo"));
+		const tscAvailable = yield* td.isAvailable(Tool.named("tsc"));
 		if (tsgoAvailable) {
 			yield* Effect.log(`  ${CHECK_MARK} TypeScript (tsgo)`);
 		} else if (tscAvailable) {

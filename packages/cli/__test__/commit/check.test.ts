@@ -3,8 +3,9 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { ManagedSection } from "@effected/templates";
 import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
-import { ChangesetConfigReaderLive, ManagedSectionLive, VersioningStrategyLive } from "@savvy-web/silk-effects";
+import { ChangesetConfigReaderLive, SilkPublishabilityDetectorLive } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runCommitCheck } from "../../src/commands/commit/check.js";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
@@ -21,10 +22,16 @@ const WorkspaceDiscoveryStub = Layer.succeed(WorkspaceDiscovery, {
 	refresh: () => Effect.void,
 } as never);
 
-/** Test layer combining all required services, with logs silenced. */
+/**
+ * Test layer combining all required services, with logs silenced. The release
+ * format now comes from `@effected/workspaces`' pure `VersioningStrategy`, so
+ * the check needs the ambient publishability policy (silk's own detector, as
+ * the real CLI provides) rather than a versioning layer.
+ */
 const TestLayer = Layer.mergeAll(
-	ManagedSectionLive,
-	VersioningStrategyLive.pipe(Layer.provide(ChangesetConfigReaderLive)),
+	ManagedSection.layer,
+	ChangesetConfigReaderLive,
+	SilkPublishabilityDetectorLive,
 	WorkspaceDiscoveryStub,
 	WorkspaceRoot.layer.pipe(Layer.provide(NodeServices.layer)),
 ).pipe(Layer.provideMerge(NodeServices.layer), Layer.provide(Logger.layer([])));

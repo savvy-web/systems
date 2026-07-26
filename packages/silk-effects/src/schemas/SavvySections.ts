@@ -1,5 +1,21 @@
-import type { SectionBlock } from "./SectionBlock.js";
-import { ShellSectionDefinition } from "./SectionDefinition.js";
+import type { Section } from "@effected/templates";
+import { CommentStyle, SectionId } from "@effected/templates";
+
+/**
+ * Build a shell-hook section identity from a Silk tool name.
+ *
+ * @remarks
+ * **The key is uppercased here, and that is load-bearing.** The kit renders a
+ * key verbatim into its markers (`# --- BEGIN <key> MANAGED SECTION ---`),
+ * while the section model this replaces uppercased `toolName` on the way in. A
+ * lowercase key would therefore emit `# --- BEGIN savvy-base MANAGED SECTION ---`
+ * and no longer match the `SAVVY-BASE` markers already written into every
+ * consumer repo's hook files — `check` would report the section absent and
+ * `sync` would append a second copy beside the first. Uppercasing keeps the
+ * marker bytes identical across the migration.
+ */
+const shellSection = (toolName: string): SectionId =>
+	SectionId.make({ key: toolName.toUpperCase(), commentStyle: CommentStyle.hash });
 
 /**
  * Section identity for the shared package-manager preamble.
@@ -8,15 +24,13 @@ import { ShellSectionDefinition } from "./SectionDefinition.js";
  *
  * @example
  * ```ts
- * const block = SavvyBaseSection.block(savvyBasePreamble());
+ * const section = SavvyBaseSection.section(savvyBasePreamble());
  * ```
  *
  * @since 0.5.0
  * @public
  */
-export const SavvyBaseSection: ShellSectionDefinition = ShellSectionDefinition.make({
-	toolName: "savvy-base",
-});
+export const SavvyBaseSection: SectionId = shellSection("savvy-base");
 
 /**
  * Section identity for the shared repo-hygiene block.
@@ -26,9 +40,7 @@ export const SavvyBaseSection: ShellSectionDefinition = ShellSectionDefinition.m
  * @since 0.5.0
  * @public
  */
-export const SavvyHooksSection: ShellSectionDefinition = ShellSectionDefinition.make({
-	toolName: "savvy-hooks",
-});
+export const SavvyHooksSection: SectionId = shellSection("savvy-hooks");
 
 /**
  * Package-manager detection preamble shared across Silk Suite hook files.
@@ -101,23 +113,23 @@ fi`;
  *
  * **Precondition:** a {@link SavvyBaseSection} block must precede this section in the same
  * hook file so `in_ci` and `pm_exec` are defined. Consumers guarantee this by passing both
- * to `ManagedSection.syncMany` in order:
+ * to `ManagedSection.syncAll` in order:
  *
  * @example
  * ```ts
- * yield* ManagedSection.syncMany(".husky/commit-msg", [
- *   SavvyBaseSection.block(savvyBasePreamble()),
+ * yield* sections.syncAll(".husky/commit-msg", [
+ *   SavvyBaseSection.section(savvyBasePreamble()),
  *   savvyToolSection("savvy-commit", 'commitlint --config "$ROOT/lib/configs/commitlint.config.ts" --edit "$1"'),
  * ]);
  * ```
  *
  * @param toolName - Section identity; also drives the marker names (uppercased).
  * @param command - The command passed verbatim to `pm_exec`, run only outside CI.
- * @returns A shell {@link SectionBlock} (`commentStyle: "#"`) for `toolName`.
+ * @returns A shell `Section` (`commentStyle: hash`) for `toolName`.
  *
  * @since 0.5.0
  * @public
  */
-export function savvyToolSection(toolName: string, command: string): SectionBlock {
-	return ShellSectionDefinition.make({ toolName }).block(`in_ci || pm_exec ${command}`);
+export function savvyToolSection(toolName: string, command: string): Section {
+	return shellSection(toolName).section(`in_ci || pm_exec ${command}`);
 }

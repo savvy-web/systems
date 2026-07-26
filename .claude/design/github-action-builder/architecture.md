@@ -9,8 +9,8 @@ created: 2026-01-29
 updated: 2026-07-25
 last-synced: 2026-07-25
 related:
-  - ../github-action-effects/index.md
   - ../testing/effect-vitest.md
+  - ../_archive/github-action-effects/index.md
 dependencies: []
 authors:
   - C. Spencer Beggs
@@ -29,7 +29,7 @@ tags:
 
 The package lives at `packages/github-action-builder` and ships a `github-action-builder` bin plus a programmatic `GitHubAction` class. It is itself built by `@savvy-web/bundler` via the front-door `savvy.build.ts` — see `@./.claude/design/bundler/architecture.md`.
 
-The complementary [`@savvy-web/github-action-effects`](../github-action-effects/index.md) package provides the Effect services consumed by the action code this builder bundles. The two are independent packages with no build-time dependency between them.
+The Effect services consumed by the action code this builder bundles come from the `@effected` kit — `@effected/github-actions` (Actions runtime protocol), `@effected/github`, `@effected/sbom`, `@effected/npm`, `@effected/commands`. They and this builder are independent, with no build-time dependency between them. The former in-repo `@savvy-web/github-action-effects` that filled that role was deleted in the github-split adoption; its design docs are archived at [`../_archive/github-action-effects/index.md`](../_archive/github-action-effects/index.md) for history only.
 
 The hard constraint that shapes everything else: **Node.js 24 ESM only**. The `action.yml` schema requires `runs.using: "node24"` exactly, and the bundle is single-file ESM. Most of the rsbuild interop work below exists to make CJS dependencies behave correctly inside that ESM output.
 
@@ -79,7 +79,8 @@ The non-obvious interop decisions, all in `build-live.ts`, are the reason rsbuil
 - **`build.ignore` stub** — a single throwing `.mjs` is written to a deterministic project-local path (`node_modules/.cache/github-action-builder/ignore-stub.mjs`) and each ignored specifier is aliased to it via `resolve.alias` with a `$` exact-match suffix. The fixed path keeps the committed bundle reproducible across builds (issue #94); a `mkdtemp` path changed the output every run.
 - **`build.nativeDynamicImports` → the `webpackIgnore`-injecting loader.** rspack compiles a fully dynamic `import(expr)` — a non-literal argument or an interpolated template literal — into a context module that throws `Cannot find module` at runtime even when the file exists on disk, which breaks packages that resolve a module path at runtime and import it. For each listed package, `buildNativeDynamicImportRules` (`src/services/native-dynamic-imports.ts`) adds one rspack module rule matching that package's resolved path under `node_modules` (flat and pnpm layouts) and routes its source through `webpack-ignore-dynamic-imports.cjs` — a pure string-transform loader that injects `/* webpackIgnore: true */` into every fully-dynamic `import(` call (idempotent; other magic comments like `webpackChunkName` do not suppress injection), so rspack leaves those calls as native `import()`. The loader ships as a genuine on-disk `.cjs` asset (rspack loaders are `require()`d at build time) under `public/loaders/`, exported at `./loaders/webpack-ignore-dynamic-imports.cjs` and resolved via `import.meta.resolve` through the package's own exports map so the path is correct from both `src` and built `dist`. See the loader file for the exact injection rules and documented non-AST limitations.
 - **`__dirname` / `__filename` shims** via `tools.rspack.node: "node-module"`. CJS deps that reference these globals (e.g. `@cyclonedx/cyclonedx-library`) throw "__dirname is not defined" inside ESM; rspack derives them from `import.meta.url` instead.
-- **`legalComments: "inline"`** keeps third-party license banners inline rather than extracting them to `*.LICENSE.txt` sidecars, which are committed-action noise, while preserving attribution (issue #94).
+- **`mode: "production"` is pinned, not inherited.** Through rsbuild's JS API the mode resolves from `NODE_ENV` and falls back to `"none"` when it is unset, and minification only applies in `"production"` — so a bare local build silently emitted an unminified bundle (~7x the size) while CI, which sets `NODE_ENV=production`, minified. This tool only ever produces committed production artifacts, so the mode is hardcoded and `build.minify` alone decides minification. A `default-minify` integration fixture pins it.
+- **`legalComments: "linked"` plus a sidecar fold-in, NOT `"inline"`.** Attribution must survive into the committed bundle (#94) and a committed action must carry no `*.LICENSE.txt` sidecar files — those two requirements pull in opposite directions and the obvious mode is the wrong one. `"inline"` relies on the SWC minimizer's comment preservation, which never receives the bundled module banners, so under real minification it **silently dropped attribution entirely** (rsbuild 2.1.8; the loss only became visible once the mode pin above made minification actually run). `"linked"` is the only mode whose extraction sees those banners, so the build takes the sidecar it emits and folds it back in: `inlineLicenseSidecar` (`src/services/build-live.ts`) reads `<out>.js.LICENSE.txt`, replaces the `/*! LICENSE: … */` reference banner in the bundle with the verbatim license blocks (prepending them if the reference is absent), then deletes the sidecar. Attribution inline, no extra dist file, and both halves are integration-pinned.
 
 ## Validation
 
@@ -97,7 +98,7 @@ All errors use `Data.TaggedError` for type-safe pattern matching via `Effect.cat
 
 ## Testing
 
-Unit tests live under a sibling `__test__/` directory mirroring `src/` (`*.test.ts`). The handful that run Effect programs — the service and schema tests — use `@effect/vitest` per the suite-wide conventions in [../testing/effect-vitest.md](../testing/effect-vitest.md); the rest, including the integration harness below, have no Effect surface and stay on plain `vitest`. Integration tests under `__test__/integration/` (`*.int.test.ts`, discovered and classified as an `:int` project by the root `@vitest-agent/plugin`) build a fixture via `GitHubAction.create()` then run the emitted `dist/main.js` with Node to assert runtime behavior — covering the `node-commonjs` interop, user externals not being bundled, the throwing ignore stub, inline license comments and idempotent (reproducible) output. See the fixtures under `__test__/integration/fixtures/` for the exact scenarios.
+Unit tests live under a sibling `__test__/` directory mirroring `src/` (`*.test.ts`). The handful that run Effect programs — the service and schema tests — use `@effect/vitest` per the suite-wide conventions in [../testing/effect-vitest.md](../testing/effect-vitest.md); the rest, including the integration harness below, have no Effect surface and stay on plain `vitest`. Integration tests under `__test__/integration/` (`*.int.test.ts`, discovered and classified as an `:int` project by the root `@vitest-agent/plugin`) build a fixture via `GitHubAction.create()` then run the emitted `dist/main.js` with Node to assert runtime behavior — covering the `node-commonjs` interop, user externals not being bundled, the throwing ignore stub, the folded-in license attribution (and the absence of a `*.LICENSE.txt` sidecar), default minification under the pinned production mode, and idempotent (reproducible) output. See the fixtures under `__test__/integration/fixtures/` for the exact scenarios.
 
 ## Rationale
 

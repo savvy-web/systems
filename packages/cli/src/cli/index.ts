@@ -22,8 +22,14 @@
  *   `WorkspaceRoot` from `process.cwd()` lazily on first use, so the CLI's
  *   startup cwd is the discovery root).
  * - Flat silk-effects services — `ChangesetConfigReaderLive`,
- *   `SilkPublishabilityDetectorLive`, `ManagedSectionLive`, `BiomeSchemaSyncLive`,
- *   `ConfigDiscoveryLive`, `ToolDiscoveryLive`, and `VersioningStrategyLive`.
+ *   `SilkPublishabilityDetectorLive`, `ManagedSection.layer` (from
+ *   `@effected/templates`), `BiomeSchemaSyncLive`,
+ *   and `ConfigDiscoveryLive`. Tool resolution is the kit's
+ *   `ToolDiscovery.layer` over `ChildProcessSpawner` plus a `LocalExec`, which
+ *   `Workspaces.localExecLayer()` supplies from the detected package manager.
+ *   Versioning classification
+ *   is a pure `@effected/workspaces` value operation over `WorkspaceDiscovery`
+ *   and the silk `PublishabilityDetector`, so it needs no layer of its own.
  * - Changesets-namespace services — `Changesets.ConfigInspectorLive`,
  *   `Changesets.ReleasePlannerLive`, and `Changesets.BranchAnalyzerLive`
  *   sharing a single `ConfigInspector` via `provideMerge`. `DepsRegen` is NOT
@@ -38,18 +44,17 @@
  */
 
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { ToolDiscovery } from "@effected/commands";
 import { Git } from "@effected/git";
-import { PackageManagerDetector, WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
+import { ManagedSection } from "@effected/templates";
+import { PackageManagerDetector, WorkspaceDiscovery, WorkspaceRoot, Workspaces } from "@effected/workspaces";
 import {
 	BiomeSchemaSyncLive,
 	ChangesetConfigReaderLive,
 	Changesets,
 	ConfigDiscoveryLive,
-	ManagedSectionLive,
 	Repos,
 	SilkPublishabilityDetectorLive,
-	ToolDiscoveryLive,
-	VersioningStrategyLive,
 } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 import { Command } from "effect/unstable/cli";
@@ -106,9 +111,9 @@ const WorkspaceLive = Layer.mergeAll(WorkspaceRootLive, PackageManagerDetector.l
 const GitLive = Git.layer;
 
 /**
- * Base layer membership: silk-effects leaf services (`ManagedSection`,
- * `BiomeSchemaSync`, `ConfigDiscovery`, `SilkPublishabilityDetector`) that
- * depend only on the platform, plus the changeset base layers
+ * Base layer membership: the kit's `ManagedSection` plus the silk-effects leaf
+ * services (`BiomeSchemaSync`, `ConfigDiscovery`, `SilkPublishabilityDetector`)
+ * that depend only on the platform, plus the changeset base layers
  * (`WorkspaceLive`, `ChangesetConfigReader`, `GitLive`) that `AppLive`'s
  * upper services build upon.
  */
@@ -116,7 +121,7 @@ const BaseLive = Layer.mergeAll(
 	WorkspaceLive,
 	GitLive,
 	ChangesetConfigReaderLive,
-	ManagedSectionLive,
+	ManagedSection.layer,
 	BiomeSchemaSyncLive,
 	ConfigDiscoveryLive,
 	SilkPublishabilityDetectorLive,
@@ -142,12 +147,20 @@ const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
  */
 const ReposGroupLive = Repos.ReposManagerLive.pipe(Layer.provide(Repos.ReposConfigStoreLive), Layer.provide(GitLive));
 
-const AppLive = Layer.mergeAll(
-	ToolDiscoveryLive,
-	VersioningStrategyLive,
-	InspectorAndAnalyzerLive,
-	ReposGroupLive,
-).pipe(Layer.provideMerge(BaseLive), Layer.provideMerge(NodeServices.layer));
+/**
+ * `ToolDiscovery` from `@effected/commands`, wired to this workspace. Its
+ * `LocalExec` contract — the argv prefix that runs a project-local binary — is
+ * implemented by `Workspaces.localExecLayer()`, which reads the detected package
+ * manager and the resolved workspace root. Both are already in `WorkspaceLive`,
+ * and the layer is bound to a `const` so the single reference memoizes.
+ */
+const LocalExecLive = Workspaces.localExecLayer();
+const ToolDiscoveryGroupLive = ToolDiscovery.layer.pipe(Layer.provide(LocalExecLive), Layer.provide(WorkspaceLive));
+
+const AppLive = Layer.mergeAll(ToolDiscoveryGroupLive, InspectorAndAnalyzerLive, ReposGroupLive).pipe(
+	Layer.provideMerge(BaseLive),
+	Layer.provideMerge(NodeServices.layer),
+);
 
 /**
  * Bootstrap and run the `savvy` CLI application.

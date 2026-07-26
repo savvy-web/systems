@@ -35,7 +35,6 @@
 //     No equivalent in silk-effects. Lives at ./services/github.ts.
 //
 //   markdown.ts — COPIED
-//     MarkdownService + MarkdownLive for markdown AST parse/stringify.
 //     No equivalent in silk-effects. Lives at ./services/markdown.ts.
 //
 //   branch-analyzer.ts — COPIED
@@ -122,14 +121,11 @@ export {
 	MaintenanceTriggerSchema,
 	deriveMaintenanceReason,
 } from "./services/maintenance-reason.js";
-export type { MarkdownServiceShape } from "./services/markdown.js";
-export { MarkdownService } from "./services/markdown.js";
 export type { ReleasePlannerShape } from "./services/release-planner.js";
 export { ReleasePlanner, ReleasePlannerLive, makeReleasePlannerTest } from "./services/release-planner.js";
 // === Effect Layers ===
 
 export { GitHubLive, makeGitHubTest } from "./services/github.js";
-export { MarkdownLive } from "./services/markdown.js";
 
 // === Tagged Errors ===
 

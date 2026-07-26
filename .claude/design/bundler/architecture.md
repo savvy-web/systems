@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-06-05
-updated: 2026-07-24
-last-synced: 2026-07-24
+updated: 2026-07-25
+last-synced: 2026-07-25
 completeness: 90
 related:
   - ../tsdown-plugins/architecture.md
@@ -134,7 +134,7 @@ A package can emit both esm and cjs (the rslib parity target for CJS consumers l
 
 Four `defineBuild` knobs let a package pick any rslib bundling posture. As with every behavior, the mechanics live in `@savvy-web/tsdown-plugins` (the per-pass `deps` shapes, the dts-posture mirror); `runBuild` only conditional-spreads each onto the `buildTargetGroups` call.
 
-**tsdown already auto-externalizes declared deps, so `externals` is rarely needed.** tsdown externalizes `dependencies`+`peerDependencies`+`optionalDependencies` by default, so most packages carry no `externals` list at all; github-action-effects keeps only its undeclared `@effect/*` transitives and silk keeps `source-map-support`. `externals` now names only undeclared transitives that must stay external; the four knobs cover the postures that DEPART from the auto-externalize default.
+**tsdown already auto-externalizes declared deps, so `externals` is rarely needed.** tsdown externalizes `dependencies`+`peerDependencies`+`optionalDependencies` by default, so most packages carry no `externals` list at all — silk's `source-map-support` is the surviving example. `externals` now names only undeclared transitives that must stay external; the four knobs cover the postures that DEPART from the auto-externalize default.
 
 - **`bundleNodeModules?: boolean`** force-bundles every node_modules/workspace dep not in `externals` into the package output (rslib's bundle-everything-except-externals), and the dts pass inlines the matching types. It also switches the JS pass from per-module (`preserveModules`) output to a single bundled file per entry, so the artifact survives `npm pack` (which strips any `node_modules`-named directory a per-module layout would emit for inlined deps) — see `../tsdown-plugins/architecture.md`. Defaults off. silk's and `@savvy-web/changelog`'s self-contained CJS-requireable artifacts depend on it.
 - **`bundle?: ReadonlyArray<string>`** force-INLINES the listed packages into the JS output (tsdown `deps.alwaysBundle`), even declared deps that would otherwise be auto-externalized — the inverse of `externals`. JS-pass-only; declarations are not inlined by it (use `bundledPackages` for that).
@@ -186,7 +186,7 @@ The bundler, `tsdown-plugins` and all eight library/host packages build via this
 
 - **Tier 1 — `@savvy-web/tsdown-plugins`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from its **OWN `./src`** (`tsx` compiles the TS on the fly — no built copy exists yet). It cannot use `defineBuild`/`runBuild` because those live in the bundler, which is downstream. This is the **one package whose build scripts still run `tsx savvy.build.ts`**: every other package runs `node savvy.build.ts` (Node 24+ native type-stripping over the erasable-types-only file), but tsdown-plugins cannot type-strip a file that imports its own un-built `./src`.
 - **Tier 2 — `@savvy-web/bundler`** builds itself via an escape-hatch `savvy.build.ts` that imports `buildTargetGroups` from the **already-built `@savvy-web/tsdown-plugins`** (the workspace link). It cannot use its own `defineBuild`/`runBuild` (that would need an already-built bundler).
-- **Tier 3 — the eight downstream packages** (`templates`, `github-action-effects`, `silk-effects`, `github-action-builder`, `cli`, `mcp`, `silk`, `rspress-builder`) build via the normal **front-door** `build()`, because the bundler is built by the time they run. `rspress-builder` self-hosts through the front door even though it itself wraps `runBuild` — `definePlugin` returns a plain `BuildConfig`, so its own `savvy.build.ts` calls `build()` directly.
+- **Tier 3 — the seven downstream packages** (`templates`, `silk-effects`, `github-action-builder`, `cli`, `mcp`, `silk`, `rspress-builder`) build via the normal **front-door** `build()`, because the bundler is built by the time they run. `rspress-builder` self-hosts through the front door even though it itself wraps `runBuild` — `definePlugin` returns a plain `BuildConfig`, so its own `savvy.build.ts` calls `build()` directly.
 
 Turbo config is mostly generic: the root `turbo.json` carries the generic `build:dev`/`build:prod`/`build:meta`/`types:check` tasks and its `*.ts` input glob already covers `savvy.build.ts`, so most child `turbo.json`s are just `{"tasks": {}}` (`extends ["//"]`). `build:prod` `dependsOn` `["types:check", "build:dev"]` (meta now runs inside `--target prod`, so the old `build:meta` edge is gone), and its `inputs` include `$TURBO_ROOT$/.changeset/**` so a local changeset edit invalidates the cached prod build and recomputes the optimistic next-version meta. The retained `build:meta` task and the meta-emitting leaves' `build:meta` SCRIPT are now no-ops (the soft-deprecation); they survive only until a follow-up branch removes them.
 

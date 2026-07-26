@@ -8,8 +8,6 @@
  * a string. Centralizing the processor configuration ensures consistent
  * GFM support (tables, strikethrough, etc.) across all markdown operations.
  *
- * @see {@link MarkdownService} for the Effect service layer built on top
- *   of these primitives
  *
  * @internal
  */

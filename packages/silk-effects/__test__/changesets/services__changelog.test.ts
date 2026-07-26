@@ -6,7 +6,6 @@ import { getReleaseLine } from "../../src/changesets/changelog/getReleaseLine.js
 import type { ChangesetOptions } from "../../src/changesets/schemas/options.js";
 import { ChangelogService } from "../../src/changesets/services/changelog.js";
 import { makeGitHubTest } from "../../src/changesets/services/github.js";
-import { MarkdownLive } from "../../src/changesets/services/markdown.js";
 import type { GitHubCommitInfo } from "../../src/changesets/vendor/github-info.js";
 
 const OPTIONS: ChangesetOptions = { repo: "owner/repo" };
@@ -28,7 +27,7 @@ const ChangelogLive = Layer.succeed(ChangelogService, {
 	formatDependencyReleaseLine: getDependencyReleaseLine,
 });
 
-const TestLayer = Layer.mergeAll(ChangelogLive, testGitHubLayer, MarkdownLive);
+const TestLayer = Layer.mergeAll(ChangelogLive, testGitHubLayer);
 
 describe("ChangelogService (Effect service layer)", () => {
 	it.effect("formatReleaseLine via service returns formatted output", () =>

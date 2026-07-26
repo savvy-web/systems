@@ -4,9 +4,9 @@
  * @internal
  */
 
+import type { Section } from "@effected/templates";
+import { CommentStyle, SectionId } from "@effected/templates";
 import { savvyToolSection } from "../../schemas/SavvySections.js";
-import type { SectionBlock } from "../../schemas/SectionBlock.js";
-import { SectionDefinition } from "../../schemas/SectionDefinition.js";
 
 /** Path for the husky pre-commit hook. */
 export const HUSKY_HOOK_PATH = ".husky/pre-commit";
@@ -26,13 +26,13 @@ export const DEFAULT_CONFIG_PATH = "lib/configs/lint-staged.config.ts";
 /** Path for the markdownlint-cli2 config file. */
 export const MARKDOWNLINT_CONFIG_PATH = "lib/configs/.markdownlint-cli2.jsonc";
 
-// `toolName` is normalized to uppercase when silk-effects builds section markers, so
-// `"savvy-lint"` and `"SAVVY-LINT"` both target the same `# --- BEGIN SAVVY-LINT … ---`
-// block. Both definitions below use the lowercase form for consistency with the
-// silk-effects shared exports (`savvy-base`, `savvy-hooks`).
+// The kit renders a section key VERBATIM into its markers, so these keys are
+// spelled uppercase to keep emitting the `# --- BEGIN SAVVY-LINT … ---` markers
+// already present in consumer repos. See the note on `shellSection` in
+// `schemas/SavvySections.ts`.
 
 /** Identity definition for the savvy-lint tool section (read / check / remove). */
-export const SavvyLintSectionDef = SectionDefinition.make({ toolName: "savvy-lint" });
+export const SavvyLintSectionDef: SectionId = SectionId.make({ key: "SAVVY-LINT", commentStyle: CommentStyle.hash });
 
 /**
  * Identity definition for the legacy `SAVVY-LINT` hygiene section that previously
@@ -45,7 +45,10 @@ export const SavvyLintSectionDef = SectionDefinition.make({ toolName: "savvy-lin
  * `SavvyLintSectionDef`'s; the two definitions are split only by intent (live tool
  * section vs. legacy hygiene block that lives in a different hook).
  */
-export const LegacySavvyLintHygieneDef = SectionDefinition.make({ toolName: "savvy-lint" });
+export const LegacySavvyLintHygieneDef: SectionId = SectionId.make({
+	key: "SAVVY-LINT",
+	commentStyle: CommentStyle.hash,
+});
 
 /**
  * Build the lint-staged command run inside the savvy-lint tool section.
@@ -62,7 +65,7 @@ function lintStagedCommand(configPath: string): string {
  * @remarks
  * Depends on the savvy-base preamble (`in_ci`, `pm_exec`) preceding it in the hook.
  */
-export function savvyLintBlock(configPath: string): SectionBlock {
+export function savvyLintBlock(configPath: string): Section {
 	return savvyToolSection("savvy-lint", lintStagedCommand(configPath));
 }
 

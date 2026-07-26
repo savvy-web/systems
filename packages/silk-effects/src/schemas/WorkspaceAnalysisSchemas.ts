@@ -1,8 +1,7 @@
-import { PublishConfig, PublishTarget } from "@effected/workspaces";
+import { PublishConfig, PublishTarget, TagStyle, VersioningStrategy } from "@effected/workspaces";
 import { Effect, Equal, Function as Fn, Hash, Option, Schema } from "effect";
 import { trimTrailingSlashes } from "../utils/TrailingSlash.js";
-import { TagStrategyType } from "./TagStrategySchemas.js";
-import { ChangesetConfigFile, SilkChangesetConfigFile, VersioningStrategyResult } from "./VersioningSchemas.js";
+import { ChangesetConfigFile, SilkChangesetConfigFile } from "./VersioningSchemas.js";
 
 // ── SilkPublishConfig input target schemas (module-local) ─────────────────────
 
@@ -194,8 +193,8 @@ export class WorkspaceAnalysis extends Schema.TaggedClass<WorkspaceAnalysis>()("
 	packageManager: PackageManagerInfo,
 	workspaces: Schema.Array(AnalyzedWorkspace),
 	changesetConfig: Schema.NullOr(Schema.Union([SilkChangesetConfigFile, ChangesetConfigFile])),
-	versioning: Schema.NullOr(VersioningStrategyResult),
-	tagStrategy: Schema.NullOr(TagStrategyType),
+	versioning: Schema.NullOr(VersioningStrategy),
+	tagStrategy: Schema.NullOr(TagStyle),
 }) {
 	findWorkspace(name: string): Option.Option<AnalyzedWorkspace> {
 		const found = this.workspaces.find((w) => w.name === name);

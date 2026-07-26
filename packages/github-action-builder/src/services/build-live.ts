@@ -3,8 +3,8 @@
  * BuildService Layer implementation.
  *
  */
-import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRsbuild } from "@rsbuild/core";
 import { Effect, Layer, Result } from "effect";
@@ -131,6 +131,40 @@ function writeFile(path: string, content: string): Effect.Effect<void, WriteErro
 }
 
 /**
+ * Fold an extracted `*.LICENSE.txt` sidecar back into its bundle.
+ *
+ * `legalComments: "linked"` is the only mode whose extraction actually sees
+ * bundled license banners — the "inline" mode's SWC comment-preservation path
+ * never receives them and silently drops attribution (verified against
+ * rsbuild 2.1.8). A committed action still must not carry sidecar files
+ * (issue #94), so the sidecar's verbatim comment blocks replace the
+ * `LICENSE:` reference banner in the bundle and the sidecar is deleted —
+ * attribution inline, no extra dist file.
+ */
+function inlineLicenseSidecar(outputPath: string): Effect.Effect<void, WriteError> {
+	return Effect.try({
+		try: () => {
+			const sidecarPath = `${outputPath}.LICENSE.txt`;
+			if (!existsSync(sidecarPath)) {
+				return;
+			}
+			const licenses = readFileSync(sidecarPath, "utf8").trim();
+			const bundle = readFileSync(outputPath, "utf8");
+			const reference = new RegExp(`^/\\*! LICENSE: ${basename(sidecarPath).replace(/\./g, "\\.")} \\*/\\n?`);
+			const folded = reference.test(bundle) ? bundle.replace(reference, `${licenses}\n`) : `${licenses}\n${bundle}`;
+			writeFileSync(outputPath, folded, "utf8");
+			unlinkSync(sidecarPath);
+		},
+		/* v8 ignore next 5 - error branch requires fs permission failures */
+		catch: (error) =>
+			new WriteError({
+				path: outputPath,
+				cause: error,
+			}),
+	});
+}
+
+/**
  * Bundle a single entry with rsbuild.
  */
 /* v8 ignore start - bundling requires actual rsbuild execution */
@@ -180,6 +214,13 @@ function bundleEntry(
 			try: () =>
 				createRsbuild({
 					rsbuildConfig: {
+						// Via the JS API, rsbuild's mode resolves from NODE_ENV and falls
+						// back to "none" when it is unset — and minification only applies
+						// in "production" mode, so a bare local build silently emitted an
+						// unminified 7x dist while CI (NODE_ENV=production) minified. This
+						// tool only produces committed production artifacts; pin the mode
+						// so build.minify alone decides minification.
+						mode: "production",
 						source: { entry: { [entry.type]: entry.path } },
 						resolve: { alias: ignoreAlias },
 						output: {
@@ -217,10 +258,14 @@ function bundleEntry(
 								return false;
 							},
 							cleanDistPath: false,
-							// Keep third-party license banners inline instead of extracting them
-							// to `*.LICENSE.txt` sidecars (rspack's "linked" behavior), which are
-							// committed-action noise — while still preserving attribution (#94).
-							legalComments: "inline",
+							// "linked" is the only legalComments mode whose extraction sees
+							// bundled license banners under real minification — "inline" relies
+							// on the SWC minimizer's comment preservation, which never receives
+							// the module banners and silently drops attribution (rsbuild 2.1.8;
+							// surfaced when mode: "production" made minification real). The
+							// sidecar it emits is folded back into the bundle and deleted by
+							// inlineLicenseSidecar, preserving the no-sidecar contract (#94).
+							legalComments: "linked",
 							minify: config.build.minify,
 							sourceMap: config.build.sourceMap ? { js: "source-map" as const } : false,
 						},
@@ -292,6 +337,7 @@ function bundleEntry(
 		});
 
 		const outputPath = resolve(outputDir, `${entry.type}.js`);
+		yield* inlineLicenseSidecar(outputPath);
 		const size = yield* Effect.try({
 			try: () => statSync(outputPath).size,
 			catch: (error) =>

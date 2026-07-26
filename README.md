@@ -10,17 +10,17 @@ Shared [Effect](https://effect.website/) library providing Silk Suite convention
 
 | Topic | What it does |
 | ----- | ------------ |
-| [Publishability](./packages/silk-effects/docs/publishability.md) | Multi-registry target resolution and publishability detection |
-| [Changeset config](./packages/silk-effects/docs/changeset-config.md) | Reading and decoding `.changeset/config.json` with Silk detection |
-| [Versioning strategy](./packages/silk-effects/docs/versioning-strategy.md) | Classifying workspace versioning as single, fixed-group or independent |
-| [Tag strategy](./packages/silk-effects/docs/tag-strategy.md) | Git tag format (single vs scoped) based on versioning strategy |
-| [Managed sections](./packages/silk-effects/docs/managed-section.md) | Managed sections in user-editable files with BEGIN/END markers |
-| [Config discovery](./packages/silk-effects/docs/config-discovery.md) | Config file discovery with `lib/configs/` priority convention |
-| [Biome sync](./packages/silk-effects/docs/biome-sync.md) | Biome `$schema` URL synchronization across config files |
-| [Tool discovery](./packages/silk-effects/docs/tool-discovery.md) | Locating CLI tools, extracting versions and enforcing constraints |
+| [Overview](./packages/silk-effects/docs/01-overview.md) | What the library is, its design philosophy and platform-layer model |
+| [Platform layers](./packages/silk-effects/docs/02-platform-layers.md) | Composing layers and providing platform dependencies |
+| [Publishability](./packages/silk-effects/docs/03-publishability.md) | Multi-registry target resolution and publishability detection |
+| [Changeset config](./packages/silk-effects/docs/04-changeset-config.md) | Reading and decoding `.changeset/config.json` with Silk detection |
+| [Config discovery](./packages/silk-effects/docs/05-config-discovery.md) | Config file discovery with `lib/configs/` priority convention |
+| [Biome sync](./packages/silk-effects/docs/06-biome-sync.md) | Biome `$schema` URL synchronization across config files |
 
 ```bash
-pnpm add @savvy-web/silk-effects effect @effect/platform @effect/platform-node
+npm install @savvy-web/silk-effects effect @effect/platform-node
+# or
+pnpm add @savvy-web/silk-effects effect @effect/platform-node
 ```
 
 See the [silk-effects README](./packages/silk-effects/README.md) for usage examples.
@@ -48,12 +48,6 @@ See the [mcp README](./packages/mcp/README.md) for the tool surface.
 The [changesets](https://github.com/changesets/changesets) changelog generator as a standalone package — the canonical `changelog` id for `.changeset/config.json`, shipped dual ESM/CJS so the vanilla changesets CLI can `require()` it. Installed automatically as a peer of `@savvy-web/silk`.
 
 See the [changelog README](./packages/changelog/README.md) for the config entry.
-
-### @savvy-web/github-action-effects
-
-[Effect](https://effect.website/) services for building GitHub Actions: schema-validated inputs, structured logging that maps to workflow commands and typed wrappers around the GitHub API, with no `@actions/*` packages in the dependency tree.
-
-See the [github-action-effects README](./packages/github-action-effects/README.md) for usage examples.
 
 ### @savvy-web/github-action-builder
 
@@ -102,7 +96,7 @@ claude plugin add marketplace savvy-web/systems
 **Available plugins:**
 
 - **silk** -- Companion for `@savvy-web/silk`: changeset, commit, lint and Turborepo conventions, skills and agents, the bundled `savvy-mcp` server and live Biome diagnostics
-- **github-actions** -- An `action-engineer` agent and a twelve-skill suite for building Node.js 24 GitHub Actions on `@savvy-web/github-action-effects` and `@savvy-web/github-action-builder`, plus the shared `savvy-mcp` server
+- **github-actions** -- An `action-engineer` agent and a twelve-skill suite for building Node.js 24 GitHub Actions with `@savvy-web/github-action-builder`, plus the shared `savvy-mcp` server
 - **changesets** -- Companion for `@savvy-web/changesets`: structured changeset files
 - **vitest** -- Companion for `@savvy-web/vitest`: well-structured test files
 - **lint-staged** -- Companion for `@savvy-web/lint-staged`: lint-staged configuration
@@ -116,7 +110,7 @@ For on-demand checks the bundled `savvy-mcp` server exposes the `biome_check` to
 
 ### Action engineering in the github-actions plugin
 
-The github-actions plugin targets a standalone action repo, not this monorepo: it teaches the `@savvy-web/github-action-effects` + `@savvy-web/github-action-builder` stack. Hand a whole action task to the `action-engineer` agent and it starts with the plugin's twelve skills already loaded. If you work inline instead, read the `action-engineering` skill first -- it routes each job to the service and skill that covers it, and names the capabilities the library deliberately does not have.
+The github-actions plugin targets a standalone action repo, not this monorepo. Hand a whole action task to the `action-engineer` agent and it starts with the plugin's twelve skills already loaded. If you work inline instead, read the `action-engineering` skill first -- it routes each job to the service and skill that covers it, and names the capabilities the library deliberately does not have. Its build guidance covers `@savvy-web/github-action-builder`, which is current; its service-level guidance still describes `@savvy-web/github-action-effects`, a library this repo no longer ships.
 
 The remaining eleven skills cover scaffolding from [github-action-template](https://github.com/savvy-web/github-action-template), `action.config.ts` builds, entry points and Layer wiring, inputs, machine-readable output contracts, GitHub App authentication, the GitHub API client, check runs and job summaries and PR comments, run logging, tagged errors and cross-phase state, and testing.
 

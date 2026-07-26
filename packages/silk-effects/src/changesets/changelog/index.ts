@@ -9,8 +9,7 @@
  * @remarks
  * The module composes two Effect programs — {@link getReleaseLine} and
  * {@link getDependencyReleaseLine} — and runs each through
- * `Effect.runPromise` with a merged layer of {@link GitHubLive} (for commit
- * metadata) and {@link MarkdownLive} (for mdast parsing). Options are
+ * `Effect.runPromise` with {@link GitHubLive} (for commit metadata). Options are
  * validated at the boundary via `validateChangesetOptions` before being
  * passed to the formatters.
  *
@@ -50,26 +49,25 @@
  * @see {@link getDependencyReleaseLine} in `./getDependencyReleaseLine.ts` for dependency table formatting
  */
 
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
 
 import { validateChangesetOptions } from "../schemas/options.js";
 import { GitHubLive } from "../services/github.js";
-import { MarkdownLive } from "../services/markdown.js";
 import type { ChangelogFunctions } from "../vendor/types.js";
 import { getDependencyReleaseLine as getDependencyReleaseLineEffect } from "./getDependencyReleaseLine.js";
 import { getReleaseLine as getReleaseLineEffect } from "./getReleaseLine.js";
 
 /**
- * Combined layer providing all services needed by the formatters.
+ * The layer providing every service the formatters need.
  *
- * Merges {@link GitHubLive} and {@link MarkdownLive} into a single layer
- * that satisfies the environment requirements of both `getReleaseLine`
- * (which needs `GitHubService` and `MarkdownService`) and
- * `getDependencyReleaseLine` (which needs `GitHubService`).
+ * {@link GitHubLive} satisfies the requirements of both `getReleaseLine` and
+ * `getDependencyReleaseLine`, which each need only `GitHubService`. Markdown
+ * parsing is not a layer: the formatters call the remark pipeline's
+ * `parseMarkdown` / `stringifyMarkdown` functions directly.
  *
  * @internal
  */
-const MainLayer = Layer.mergeAll(GitHubLive, MarkdownLive);
+const MainLayer = GitHubLive;
 
 /**
  * Changesets API `ChangelogFunctions` implementation.

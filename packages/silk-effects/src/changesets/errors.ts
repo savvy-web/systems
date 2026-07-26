@@ -180,7 +180,6 @@ export const MarkdownParseErrorBase = Data.TaggedError("MarkdownParseError");
  * );
  * ```
  *
- * @see {@link MarkdownService} for the Effect service that may produce this error
  *
  * @public
  */

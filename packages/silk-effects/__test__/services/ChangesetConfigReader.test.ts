@@ -2,7 +2,6 @@ import { describe, expect, it } from "@effect/vitest";
 import type { Exit } from "effect";
 import { Cause, Effect, FileSystem, Layer, Option } from "effect";
 import { ChangesetConfigError } from "../../src/errors/ChangesetConfigError.js";
-import { VersioningDetectionError } from "../../src/errors/VersioningDetectionError.js";
 import { ChangesetConfigReader, ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
 
 // ---------------------------------------------------------------------------
@@ -239,17 +238,5 @@ describe("ChangesetConfigError", () => {
 		const err = new ChangesetConfigError({ path: "/repo/.changeset/config.json", reason: "File not found" });
 		expect(err.message).toContain("/repo/.changeset/config.json");
 		expect(err.message).toContain("File not found");
-	});
-});
-
-describe("VersioningDetectionError", () => {
-	it("has correct _tag", () => {
-		const err = new VersioningDetectionError({ reason: "no packages found" });
-		expect(err._tag).toBe("VersioningDetectionError");
-	});
-
-	it("includes reason in message", () => {
-		const err = new VersioningDetectionError({ reason: "no packages found" });
-		expect(err.message).toContain("no packages found");
 	});
 });

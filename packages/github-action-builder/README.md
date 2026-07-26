@@ -106,6 +106,8 @@ export default GitHubAction.create({
 });
 ```
 
+Every build runs in production mode, so `minify` alone decides whether the output is minified and a local build produces the same bytes CI does. License notices from bundled dependencies are folded into the bundle, keeping the output a single committed file with its attribution intact.
+
 ## action.yml requirements
 
 Your `action.yml` must use Node.js 24:

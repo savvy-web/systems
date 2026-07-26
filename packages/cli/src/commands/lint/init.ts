@@ -8,11 +8,11 @@ import { dirname } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
-import type { SectionWriteError } from "@savvy-web/silk-effects";
+import type { SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
+import { ManagedSection } from "@effected/templates";
 import {
 	BiomeSchemaSync,
 	Lint,
-	ManagedSection,
 	SavvyBaseSection,
 	SavvyHooksSection,
 	savvyBasePreamble,
@@ -222,7 +222,7 @@ export function runLintInit(opts: {
 	preset: "minimal" | "standard" | "silk";
 }): Effect.Effect<
 	void,
-	Error | SectionWriteError | PlatformError,
+	Error | SectionParseError | SectionRenderError | SectionFileError | PlatformError,
 	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync
 > {
 	const { force, config, preset } = opts;
@@ -244,8 +244,8 @@ export function runLintInit(opts: {
 		} else {
 			yield* ensureHookFile(Lint.HUSKY_HOOK_PATH, PRE_COMMIT_HEADER);
 		}
-		const preCommitResults = yield* ms.syncMany(Lint.HUSKY_HOOK_PATH, [
-			SavvyBaseSection.block(savvyBasePreamble()),
+		const preCommitResults = yield* ms.syncAll(Lint.HUSKY_HOOK_PATH, [
+			SavvyBaseSection.section(savvyBasePreamble()),
 			Lint.savvyLintBlock(config),
 		]);
 		yield* makeExecutable(Lint.HUSKY_HOOK_PATH);
@@ -261,7 +261,7 @@ export function runLintInit(opts: {
 				yield* ensureHookFile(hookPath, HYGIENE_HEADER);
 				// Migrate legacy SAVVY-LINT hygiene section if present.
 				yield* ms.remove(hookPath, Lint.LegacySavvyLintHygieneDef);
-				yield* ms.sync(hookPath, SavvyHooksSection.block(savvyHooksHygiene()));
+				yield* ms.sync(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
 				yield* makeExecutable(hookPath);
 				yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
 			}

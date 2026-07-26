@@ -3,12 +3,12 @@ status: current
 module: github-actions
 category: architecture
 created: 2026-07-23
-updated: 2026-07-24
-last-synced: 2026-07-24
+updated: 2026-07-25
+last-synced: 2026-07-25
 completeness: 85
 related:
   - ../silk/plugin.md
-  - ../github-action-effects/index.md
+  - ../_archive/github-action-effects/index.md
   - ../github-action-builder/architecture.md
   - ../mcp/architecture.md
 dependencies: []
@@ -60,6 +60,18 @@ names, no `file:line` citations into repos the reader cannot open, no "which rep
 [Written for a standalone action repo](#written-for-a-standalone-action-repo) for the consequences that shape.
 
 ## Current State
+
+> **Stale against the `@effected` github-split, and tracked.** Every skill, reference and the orientation hook
+> still teach `@savvy-web/github-action-effects`, which was **deleted from this repo** in the github-split
+> adoption. Action repos now consume `@effected/github-actions`, `@effected/github`, `@effected/sbom`,
+> `@effected/npm` and `@effected/commands` directly, and savvy-specific action business logic is moving into
+> `@savvy-web/silk-effects`. The plugin's content has not been migrated: its package-relative citations
+> (`@savvy-web/github-action-effects@3.0.4`, the service catalog, the `*Test`-double topology, the `./testing`
+> subpath) name a package a reader will not find in `node_modules`. Re-pointing the twelve skills at the kit is
+> outstanding work and should be done as one deliberate pass — see the archived
+> [`../_archive/github-action-effects/index.md`](../_archive/github-action-effects/index.md) for what the old
+> surface was, and the `@effected` kit's own `.d.ts` for what replaces it. Until that lands, read every
+> `github-action-effects` mention below as *the thing this plugin currently says*, not as current truth.
 
 Implemented on branch `feat/github-actions-plugin`. Contents:
 
@@ -225,8 +237,8 @@ has since moved under two of them. `github-api`'s `references/service-signatures
 `fn: (octokit: unknown)` for `GitHubClient.rest`/`paginate`/`paginateStream`, and `action-engineering`'s
 `references/error-taxonomy.md` still lists `GitBranchError` as `branch`/`operation`/`reason` only. The package now
 exports a `GitHubOctokit` type for those callbacks to be annotated with, and `GitBranchError` carries optional
-`status`/`alreadyExists` fields (see `../github-action-effects/services.md` and
-`../github-action-effects/errors-and-schemas.md`). Both are outstanding re-sync items for the vendored references —
+`status`/`alreadyExists` fields (see `../_archive/github-action-effects/services.md` and
+`../_archive/github-action-effects/errors-and-schemas.md`). Both are outstanding re-sync items for the vendored references —
 recorded here rather than silently patched, because the provenance-banner mechanism is what is supposed to catch
 this class of drift and a design doc is the right place to note when it has accrued.
 

@@ -1,19 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConfigNotFoundError } from "../../src/errors/ConfigNotFoundError.js";
-import { TagFormatError } from "../../src/errors/TagFormatError.js";
 import { WorkspaceAnalysisError } from "../../src/errors/WorkspaceAnalysisError.js";
-
-describe("TagFormatError", () => {
-	it("has correct tag", () => {
-		const err = new TagFormatError({ name: "@scope/pkg", version: "", reason: "empty version" });
-		expect(err._tag).toBe("TagFormatError");
-	});
-
-	it("has human-readable message", () => {
-		const err = new TagFormatError({ name: "@scope/pkg", version: "1.0.0", reason: "invariant violated" });
-		expect(err.message).toBe("Failed to format tag for @scope/pkg@1.0.0: invariant violated");
-	});
-});
 
 describe("WorkspaceAnalysisError", () => {
 	it("has correct tag", () => {

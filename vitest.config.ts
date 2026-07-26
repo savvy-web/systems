@@ -70,39 +70,12 @@ export default async () => {
 					// executed; the coverage tool misidentifies it as uncovered).
 					"packages/silk-effects/src/utils/ToolCommand.ts",
 
-					// SigstoreSignerLive: wraps @sigstore/sign with live Fulcio/Rekor OIDC flow;
-					// exercising its branches requires real OIDC tokens. No test in source repo.
-					"packages/github-action-effects/src/layers/SigstoreSignerLive.ts",
-
 					// Commitlint diagnostic files migrated from @savvy-web/commitlint (coverage:none).
 					// These fetch live data (GitHub API, git) and only a subset is exercised by the
 					// cache-based unit tests migrated alongside them.
 					"packages/silk-effects/src/commitlint/hook/diagnostics/open-issues.ts",
 					"packages/silk-effects/src/commitlint/hook/diagnostics/signing.ts",
 					"packages/silk-effects/src/commitlint/hook/diagnostics/branch.ts",
-
-					// github-action-effects test-helper layers (public test doubles for consumers).
-					// These were below threshold in the source github-action-effects repo where
-					// they also had no unit tests. They provide test doubles, not business logic.
-					"packages/github-action-effects/src/layers/GitHubCommitTest.ts",
-					"packages/github-action-effects/src/layers/GitHubArtifactMetadataTest.ts",
-					"packages/github-action-effects/src/layers/GitHubContentTest.ts",
-					"packages/github-action-effects/src/layers/OidcTokenIssuerTest.ts",
-
-					// PullRequestLive: integration layer that calls live GitHub REST endpoints.
-					// No test in the source repo; all branches require network access.
-					"packages/github-action-effects/src/layers/PullRequestLive.ts",
-
-					// Additional github-action-effects test helper layers that were below threshold
-					// in the standalone source repo but not individually whitelisted (the source
-					// global average was still above threshold; the monorepo aggregate is lower).
-					"packages/github-action-effects/src/layers/SigstoreSignerTest.ts",
-					"packages/github-action-effects/src/layers/GitHubReleaseTest.ts",
-					"packages/github-action-effects/src/layers/NpmRegistryTest.ts",
-
-					// AttestLive: wraps @sigstore/attest with live attestation calls; all non-happy
-					// paths require network access and real OIDC tokens.
-					"packages/github-action-effects/src/layers/AttestLive.ts",
 
 					// Silk-effects schema with complex optional/default branches that are not reached
 					// by the existing test suite (the test file covers the happy path).
@@ -116,26 +89,10 @@ export default async () => {
 					// full filesystem context not available in unit tests.
 					"packages/github-action-builder/src/schemas/path.ts",
 
-					// github-action-effects integration layers and test helpers that were below
-					// threshold in the standalone source repo but did not individually cause CI
-					// failure because the source-level global average was higher.
-					"packages/github-action-effects/src/layers/WorkspaceDetectorLive.ts",
-					"packages/github-action-effects/src/layers/ConfigLoaderTest.ts",
-					"packages/github-action-effects/src/runtime/ActionsConfigProvider.ts",
-					"packages/github-action-effects/src/schemas/LogLevel.ts",
-
 					// CLI commit command migrated from @savvy-web/commitlint (coverage:none).
 					// The handler calls gh, gpg, and git — exercising all branches requires
 					// real tool availability.
 					"packages/cli/src/commands/commit/check.ts",
-
-					// Additional github-action-effects integration/test layers with low branch
-					// coverage. All exist in the standalone source repo where the global average
-					// was above threshold without them needing exclusion.
-					"packages/github-action-effects/src/layers/GitHubArtifactMetadataLive.ts",
-					"packages/github-action-effects/src/layers/PackageManagerAdapterTest.ts",
-					"packages/github-action-effects/src/layers/internal/decodeInput.ts",
-					"packages/github-action-effects/src/layers/internal/decodeState.ts",
 				],
 			},
 		},

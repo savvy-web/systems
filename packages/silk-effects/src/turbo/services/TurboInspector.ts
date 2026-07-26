@@ -1,8 +1,7 @@
+import { Run, Tool, ToolDiscovery } from "@effected/commands";
 import { Git } from "@effected/git";
 import { Context, Effect, FileSystem, Layer, Schema } from "effect";
-import { ChildProcessSpawner } from "effect/unstable/process";
-import { ToolDefinition } from "../../schemas/ToolDefinition.js";
-import { ToolDiscovery } from "../../services/ToolDiscovery.js";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { TurboDigest } from "../digest.js";
 import type { TurboError } from "../errors.js";
 import { DryRunParseError, NotATurboRepoError, TurboExecError, TurboNotInstalledError } from "../errors.js";
@@ -60,7 +59,7 @@ export class TurboInspector extends Context.Service<TurboInspector, TurboInspect
 	"@savvy-web/silk-effects/TurboInspector",
 ) {}
 
-const TURBO = ToolDefinition.make({ name: "turbo" });
+const TURBO = Tool.named("turbo");
 
 /** Default task used by {@link TurboInspector.taskGraph} and {@link TurboInspector.affected}. */
 const DEFAULT_BUILD_TASK = "build:dev";
@@ -72,10 +71,10 @@ const DEFAULT_AFFECTED_BASE = "main";
  * Live implementation of {@link TurboInspector}.
  *
  * @remarks
- * Requires {@link ToolDiscovery} to resolve the `turbo` binary, plus
- * `ChildProcessSpawner` and `FileSystem` from core (provide `NodeServices.layer`
- * at the app edge) and `Git` from `@effected/git`. Mirrors `ToolDiscoveryLive`:
- * the spawner is captured at layer construction and discharged onto each command
+ * Requires `ToolDiscovery` from `@effected/commands` to resolve the `turbo`
+ * binary, plus `ChildProcessSpawner` and `FileSystem` from core (provide
+ * `NodeServices.layer` at the app edge) and `Git` from `@effected/git`. The
+ * spawner is captured at layer construction and discharged onto each `Run`
  * effect with `Effect.provideService`, keeping the public method effects at
  * `R = never`.
  *
@@ -98,15 +97,20 @@ export const TurboInspectorLive: Layer.Layer<
 			args: ReadonlyArray<string>,
 			env?: Record<string, string>,
 		): Effect.Effect<string, TurboNotInstalledError | TurboExecError> =>
-			discovery.require(TURBO).pipe(
-				Effect.mapError((e) => new TurboNotInstalledError({ reason: e.reason })),
+			discovery.resolve(TURBO).pipe(
+				// The kit's resolution failure is a four-member union (not found,
+				// version mismatch, refused name, local-exec mechanism failure) and
+				// none of its members carries a `reason` field, so the message getter
+				// is what feeds our own error.
+				Effect.mapError((e) => new TurboNotInstalledError({ reason: e.message })),
 				Effect.flatMap((resolved) => {
-					const command = resolved.exec(...args).workingDirectory(cwd);
-					return Effect.provideService(
-						(env ? command.env(env) : command).string(),
-						ChildProcessSpawner.ChildProcessSpawner,
-						spawner,
-					).pipe(Effect.mapError((e) => new TurboExecError({ args: [...args], reason: String(e) })));
+					const base = ChildProcess.setCwd(resolved.command(...args), cwd);
+					// `Run.extendEnv` merges onto the parent environment; core's bare `setEnv`
+					// would replace it outright and leave the child with no PATH.
+					const command = env ? Run.extendEnv(base, env) : base;
+					return Effect.provideService(Run.text(command), ChildProcessSpawner.ChildProcessSpawner, spawner).pipe(
+						Effect.mapError((e) => new TurboExecError({ args: [...args], reason: String(e) })),
+					);
 				}),
 			);
 
