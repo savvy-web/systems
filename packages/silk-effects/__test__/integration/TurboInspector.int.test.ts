@@ -34,14 +34,17 @@ describe("TurboInspector (live layer)", () => {
 	// still inheriting the parent environment. Core's `ChildProcess.setEnv`
 	// writes `options.env` without setting `extendEnv`, and the Node spawner
 	// then passes ONLY those vars to the child — so a `turbo` spawned that way
-	// has no `PATH` and cannot start. If `withExtendedEnv` in TurboInspector
-	// ever regresses to a bare `setEnv`, this test fails at the spawn rather
-	// than silently changing what every turbo invocation inherits.
+	// has no `PATH` and cannot start. If the `Run.extendEnv` wiring in
+	// TurboInspector ever regresses to a bare `setEnv`, this test fails at the
+	// spawn rather than silently changing what every turbo invocation inherits.
+	// The base is HEAD, not a branch name: CI checks out a detached merge
+	// commit with no local `main` ref, and any base that turbo can diff
+	// exercises the env guard equally (the child must have PATH to run at all).
 	it.effect("affected passes TURBO_SCM_BASE without discarding the inherited environment", () =>
 		Effect.gen(function* () {
-			const program = Effect.flatMap(TurboInspector, (t) => t.affected(repoRoot, "main"));
+			const program = Effect.flatMap(TurboInspector, (t) => t.affected(repoRoot, "HEAD"));
 			const result = yield* program.pipe(Effect.provide(LiveStack));
-			expect(result.base).toBe("main");
+			expect(result.base).toBe("HEAD");
 			expect(Array.isArray(result.packages)).toBe(true);
 			expect(Array.isArray(result.dependents)).toBe(true);
 		}),

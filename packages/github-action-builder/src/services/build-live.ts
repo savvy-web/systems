@@ -150,8 +150,17 @@ function inlineLicenseSidecar(outputPath: string): Effect.Effect<void, WriteErro
 			}
 			const licenses = readFileSync(sidecarPath, "utf8").trim();
 			const bundle = readFileSync(outputPath, "utf8");
-			const reference = new RegExp(`^/\\*! LICENSE: ${basename(sidecarPath).replace(/\./g, "\\.")} \\*/\\n?`);
-			const folded = reference.test(bundle) ? bundle.replace(reference, `${licenses}\n`) : `${licenses}\n${bundle}`;
+			// The reference banner rspack emits is a fixed literal, so plain string
+			// operations replace it — no regex built from a filename (CodeQL #9).
+			const reference = `/*! LICENSE: ${basename(sidecarPath)} */`;
+			const afterReference =
+				bundle.startsWith(reference) && bundle.charAt(reference.length) === "\n"
+					? reference.length + 1
+					: bundle.startsWith(reference)
+						? reference.length
+						: 0;
+			const rest = bundle.slice(afterReference);
+			const folded = `${licenses}\n${rest}`;
 			writeFileSync(outputPath, folded, "utf8");
 			unlinkSync(sidecarPath);
 		},
