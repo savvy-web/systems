@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 3.2.5
+
+### Bug Fixes
+
+* Disable import css warnings on CSS file imports in TSX files
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.2.4
 
 ### Dependencies
