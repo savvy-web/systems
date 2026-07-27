@@ -53,8 +53,25 @@ async function loadConfig(root: string, packages: Packages): Promise<{ config: C
 export interface ReleasePlannerShape {
 	/** Compute the in-memory release plan (read-only). */
 	readonly plan: (root: string) => Effect.Effect<ReleasePlan, ReleasePlanError>;
-	/** Render a non-destructive preview of the next release. */
-	readonly preview: (root: string) => Effect.Effect<ChangesetPreview, ReleasePlanError>;
+	/**
+	 * Render a non-destructive preview of the next release.
+	 *
+	 * @remarks
+	 * Rendering `changelogEntry` means resolving the configured changelog module,
+	 * so `changelogModules` matters here for the same reason it does on `apply`.
+	 */
+	readonly preview: (
+		root: string,
+		options?: {
+			/**
+			 * Map configured changelog ids to absolute module paths. When set,
+			 * `config.changelog[0]` must be a key of this map (rewritten before the
+			 * engine call; unmapped ids fail) and the engine's `format` integration
+			 * is disabled — callers in no-`node_modules` contexts own formatting.
+			 */
+			readonly changelogModules?: Readonly<Record<string, string>>;
+		},
+	) => Effect.Effect<ChangesetPreview, ReleasePlanError>;
 	/** Natively apply the release (destructive unless `dryRun`). */
 	readonly apply: (
 		root: string,
@@ -82,7 +99,7 @@ function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): 
 			catch: (e) => new ReleasePlanError({ phase: "plan", reason: errMsg(e) }),
 		});
 
-	const preview: ReleasePlannerShape["preview"] = (root) => previewEffect(root, fs);
+	const preview: ReleasePlannerShape["preview"] = (root, options) => previewEffect(root, options?.changelogModules, fs);
 
 	const apply: ReleasePlannerShape["apply"] = (root, options) =>
 		applyEffect(root, options?.dryRun ?? false, options?.changelogModules, inspector, fs);
@@ -122,6 +139,49 @@ export function makeReleasePlannerTest(fixed: {
 	return Layer.succeed(ReleasePlanner, shape);
 }
 
+/**
+ * Rewrite the engine config for a caller that supplies its own changelog module
+ * paths: `config.changelog[0]` becomes the mapped absolute path and the engine's
+ * `format` integration is switched off.
+ *
+ * @remarks
+ * Shared by `preview` and `apply` — both hand the result to
+ * `applyReleasePlan`, and both are called from no-`node_modules` contexts where
+ * neither the configured id nor a formatter can be resolved. An unmapped id
+ * fails typed (naming the supported keys) rather than reaching
+ * `import-meta-resolve`, which reports it as `expected to be defined`.
+ *
+ * Exported for tests only — not re-exported from the package index, so it is
+ * not public API. Driving it directly is the only deterministic way to assert
+ * the `format: false` half: every formatter the changesets config accepts
+ * either shells out through `npx` (network) or to an ambient binary, so a
+ * fixture that names one passes or fails on what the machine happens to have
+ * installed rather than on this rewrite.
+ */
+export function withChangelogModules(
+	config: Config,
+	changelogModules: Readonly<Record<string, string>>,
+	phase: "preview" | "apply",
+): Effect.Effect<Config, ReleasePlanError> {
+	const unformatted: Config = { ...config, format: false };
+	if (!Array.isArray(config.changelog)) return Effect.succeed(unformatted);
+	const configuredId = config.changelog[0];
+	// Own-property check, not `map[id] === undefined`: an id naming an
+	// `Object.prototype` member (`toString`, `constructor`) otherwise reads back
+	// an inherited function, skips this typed error and hands the engine a
+	// non-string where it expects a module specifier.
+	if (!Object.hasOwn(changelogModules, configuredId)) {
+		const supported = Object.keys(changelogModules).join(", ");
+		return Effect.fail(
+			new ReleasePlanError({
+				phase,
+				reason: `changelog id "${configuredId}" is not in changelogModules (supported: ${supported})`,
+			}),
+		);
+	}
+	return Effect.succeed({ ...unformatted, changelog: [changelogModules[configuredId], config.changelog[1]] });
+}
+
 /** Extract the `## <version>` block (down to the next H2 or EOF) from a changelog. */
 export function extractVersionBlock(changelog: string, version: string): string {
 	const lines = changelog.split("\n");
@@ -153,7 +213,11 @@ function maintenanceReasons(plan: ReleasePlan, config: Config): Map<string, Main
  * scope-managed temp directory (cleaned up automatically when the scope
  * closes) and reading the generated CHANGELOG blocks back.
  */
-function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<ChangesetPreview, ReleasePlanError> {
+function previewEffect(
+	root: string,
+	changelogModules: Readonly<Record<string, string>> | undefined,
+	fs: FileSystem.FileSystem,
+): Effect.Effect<ChangesetPreview, ReleasePlanError> {
 	const program = Effect.gen(function* () {
 		// v3 `readPreState` (invoked internally by `getReleasePlan`) rewrites a
 		// legacy `pre.json` in place as an auto-migration — acceptable, but it
@@ -175,6 +239,9 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 		});
 		yield* Effect.forEach(warnings, (w) => Effect.logWarning(w));
 		const reasonByName = maintenanceReasons(plan, config);
+		// The rewrite happens before any work is scaffolded so an unmapped id fails
+		// on the caller's config rather than after a temp tree has been built.
+		const engineConfig = changelogModules ? yield* withChangelogModules(config, changelogModules, "preview") : config;
 
 		const preMode: ChangesetPreview["preMode"] = plan.preState ? plan.preState.mode : null;
 		const changesets: PendingChangeset[] = plan.changesets.map((cs) => ({
@@ -236,8 +303,9 @@ function previewEffect(root: string, fs: FileSystem.FileSystem): Effect.Effect<C
 		if (rootClExists) yield* fs.copyFile(rootCl, join(tempRoot, "CHANGELOG.md"));
 
 		// run the GENUINE engine; contextDir = real root so config.changelog resolves
+		// when it is an unmapped id (a mapped one is already an absolute path).
 		yield* Effect.tryPromise({
-			try: () => applyReleasePlan(plan, tempPackages, config, undefined, root),
+			try: () => applyReleasePlan(plan, tempPackages, engineConfig, undefined, root),
 			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 		});
 
@@ -315,24 +383,7 @@ function applyEffect(
 		});
 		yield* Effect.forEach(warnings, (w) => Effect.logWarning(w));
 
-		let engineConfig: Config = config;
-		if (changelogModules) {
-			engineConfig = { ...config, format: false };
-			if (Array.isArray(config.changelog)) {
-				const configuredId = config.changelog[0];
-				const mapped = changelogModules[configuredId];
-				if (mapped === undefined) {
-					const supported = Object.keys(changelogModules).join(", ");
-					return yield* Effect.fail(
-						new ReleasePlanError({
-							phase: "apply",
-							reason: `changelog id "${configuredId}" is not in changelogModules (supported: ${supported})`,
-						}),
-					);
-				}
-				engineConfig = { ...engineConfig, changelog: [mapped, config.changelog[1]] };
-			}
-		}
+		const engineConfig = changelogModules ? yield* withChangelogModules(config, changelogModules, "apply") : config;
 
 		const releases = plan.releases
 			.filter((r) => r.type !== "none")
