@@ -107,6 +107,17 @@ const tags = strategy.tagsFor([{ name: "@savvy-web/silk-effects", version: "1.0.
 
 `WorkspaceAnalysis.versioning` and `WorkspaceAnalysis.tagStrategy` carry those kit types directly.
 
+#### ChangesetLinter
+
+Validate a changeset file against the Silk section rules. `ChangesetLinter.validateContent(content, filePath?)` and `ChangesetLinter.validateFile(filePath)` are static and synchronous, returning `LintMessage[]` — no Effect, no layers. Rules cover the valid section headings, structural constraints, and the dependency-table format, so a `## Dependencies` section written as prose or a bullet list is reported rather than accepted.
+
+```typescript
+import { Changesets } from "@savvy-web/silk-effects";
+
+const messages = Changesets.ChangesetLinter.validateFile(".changeset/quiet-moons-render.md");
+// => [] when the file is valid, otherwise one LintMessage per violation
+```
+
 ---
 
 ### FileSystem layer required
@@ -258,9 +269,67 @@ const result = await Effect.runPromise(
 // => { updated: true, skipped: false, current: "2.0.0" }
 ```
 
+#### ConfigInspector
+
+Resolve `.changeset/config.json` into a fully attributed view of the workspace: the configured changelog, base branch, access and ignore list, plus one scope per package carrying its `workspaceDir`, version, `additionalScopes` and resolved `versionFiles`. `inspect(cwd)` returns that view and `classify` maps arbitrary file paths to the package that owns them, which is how a branch diff becomes a per-package attribution. `refresh()` clears the per-root cache, which a long-lived host needs in order to see config edits made between calls.
+
+`Changesets.ConfigInspectorLive` requires `ChangesetConfigReader`, `WorkspaceDiscovery` from [`@effected/workspaces`](https://www.npmjs.com/package/@effected/workspaces) and `FileSystem`.
+
+#### ReleasePlanner
+
+Drive the genuine changesets engine rather than shelling out to the `changeset` binary. Three members:
+
+- `plan(root)` computes the in-memory release plan. It renders nothing, so it resolves no changelog module.
+- `preview(root, options?)` renders a non-destructive preview, running the real engine against a scope-managed temp directory and reading the generated CHANGELOG blocks back. The repository is never mutated.
+- `apply(root, options?)` performs the release — version bumps, CHANGELOG writes and configured version-file updates. Pass `dryRun` to compute without writing.
+
+Both `preview` and `apply` accept `changelogModules`, mapping the changelog id configured in `.changeset/config.json` to an absolute module path. Reach for it when running somewhere the configured id cannot be resolved — a bundled GitHub Action with no `node_modules`, for instance. When set, the configured id must be a key of the map, an unmapped id fails with a `ReleasePlanError` naming the supported keys, and the engine's formatter integration is disabled so the caller owns formatting.
+
+```typescript
+const preview = yield* planner.preview(root, {
+  changelogModules: { "@savvy-web/changelog": changelogModulePath },
+});
+// => ChangesetPreview: per-release changelogEntry, versions and changeset ids
+```
+
+`Changesets.ReleasePlannerLive` requires `ConfigInspector` and `FileSystem`.
+
 ---
 
 ### FileSystem + process layer required
+
+#### BranchAnalyzer
+
+`analyzeBranch` classifies a branch's diff by the package that owns each file, applying `ConfigInspector` attribution over the git range. This is what answers "what changed on this branch, and which package releases because of it", including the unmapped files that belong to no package.
+
+`Changesets.BranchAnalyzerLive` requires `ConfigInspector` and the platform process spawner.
+
+#### DepsRegen
+
+Own dependency-changeset orchestration, split so that detection and regeneration share one code path: `plan(options)` computes a complete, side-effect-free `RegenPlan` — target filenames, each row's from/to version, and any stale pure-dependency changesets marked for deletion — and `execute(plan)` applies exactly what the plan describes. A dry run is `plan()` plus rendering.
+
+Both sides of the diff are snapshotted at their own git ref, so `catalog:` and `workspace:` specifiers resolve per side before the comparison. A specifier that changes protocol without changing its resolved version produces no row.
+
+`Changesets.DepsRegenDefault` is the batteries-included layer, composing the full graph with silk's opinionated defaults and leaving only the platform services open. Because snapshots read git history, provide a spawn-capable layer such as `NodeServices.layer` rather than a filesystem-only one.
+
+```typescript
+import { Effect } from "effect";
+import { NodeServices } from "@effect/platform-node";
+import { Changesets } from "@savvy-web/silk-effects";
+
+const plan = await Effect.runPromise(
+  Effect.gen(function* () {
+    const regen = yield* Changesets.DepsRegen;
+    return yield* regen.plan({});
+  }).pipe(
+    Effect.provide(Changesets.DepsRegenDefault),
+    Effect.provide(NodeServices.layer),
+  ),
+);
+// => RegenPlan: files to write, rows per package, changesets to delete
+```
+
+`Changesets.DepsRegenLive` is the seam for callers injecting their own dependencies; it requires `WorkspaceSnapshots`, `ConfigInspector`, `WorkspaceDiscovery`, `PublishabilityDetector`, `ChangesetConfig`, `Git` and `FileSystem`.
 
 #### TurboInspector
 
