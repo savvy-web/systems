@@ -16,6 +16,8 @@ Removes the TsconfigResolver enum-conversion class, which nothing consumed, in f
 
 @savvy-web/github-action-builder now resolves its own tsconfig for the declaration pass, so its emitted declarations reference Node's URL type from node:url instead of the DOM global URL.
 
+A package tsconfig that exists but cannot be resolved, whether from malformed JSON or an extends target that cannot be located, now fails the build with package context instead of silently falling back to synthesized defaults. Falling back emitted declarations compiled under the wrong options while still reporting success, because the generated declaration-pass config never references the broken source. A package with no tsconfig at all remains a supported case and still uses the defaults.
+
 ## Other
 
 Both the TsconfigResolver removal and the rspress-builder option renames are released as minor rather than major, a deliberate SemVer deviation, because nothing outside this suite consumes either surface yet.

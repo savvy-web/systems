@@ -68,6 +68,7 @@ describe("resolvePortableTsconfig", () => {
 				compilerOptions: {
 					target: "es2022",
 					types: ["node"],
+					// biome-ignore lint/suspicious/noTemplateCurlyInString: TypeScript's own ${configDir} token, not a JS template
 					typeRoots: ["${configDir}/node_modules/@types"],
 				},
 			}),

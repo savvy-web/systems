@@ -51,14 +51,18 @@ describe("buildResolvedTsconfig", () => {
 		expect(cfg.compilerOptions.tsBuildInfoFile).toBeUndefined();
 	});
 
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: TypeScript's own ${configDir} token, not a JS template
 	it("substitutes ${configDir} into absolute paths", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "rtc-configdir-"));
 		await writeFile(
 			join(dir, "tsconfig.json"),
 			JSON.stringify({
 				compilerOptions: {
+					// biome-ignore lint/suspicious/noTemplateCurlyInString: TypeScript's own ${configDir} token, not a JS template
 					rootDir: "${configDir}",
+					// biome-ignore lint/suspicious/noTemplateCurlyInString: TypeScript's own ${configDir} token, not a JS template
 					outDir: "${configDir}/dist",
+					// biome-ignore lint/suspicious/noTemplateCurlyInString: TypeScript's own ${configDir} token, not a JS template
 					typeRoots: ["${configDir}/node_modules/@types", "${configDir}/types"],
 				},
 			}),
@@ -77,6 +81,21 @@ describe("buildResolvedTsconfig", () => {
 		expect(cfg.compilerOptions.declaration).toBe(true);
 		expect(cfg.compilerOptions.composite).toBe(false);
 		expect((cfg.compilerOptions.typeRoots as string[]).every(isAbsolute)).toBe(true);
+	});
+
+	it("throws when a tsconfig exists but cannot be resolved", async () => {
+		// Absence is a supported case; a PRESENT but broken config is not. Falling back here would
+		// emit declarations under the wrong options and still report a green build, because the
+		// emitted temp tsconfig never references the broken source.
+		const dir = await mkdtemp(join(tmpdir(), "rtc-broken-"));
+		await writeFile(join(dir, "tsconfig.json"), "{ this is not valid json");
+		expect(() => buildResolvedTsconfig({ cwd: dir })).toThrow(/Cannot resolve tsconfig at/);
+	});
+
+	it("throws when a tsconfig extends a target that cannot be located", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "rtc-badextends-"));
+		await writeFile(join(dir, "tsconfig.json"), JSON.stringify({ extends: "./nope-does-not-exist.json" }));
+		expect(() => buildResolvedTsconfig({ cwd: dir })).toThrow(/Cannot resolve tsconfig at/);
 	});
 
 	it("emits absolute include/exclude entries and globs types as declarations", () => {

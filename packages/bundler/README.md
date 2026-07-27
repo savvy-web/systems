@@ -210,7 +210,7 @@ const config = defineBuild({
 
 ## Per-entry overrides
 
-The format and bundling fields above apply to every export entry. Use `overrides` to pin a subset of entries to their own format and bundling, layered onto the base config. The base build stays as configured; only the listed `entries` (by export subpath) get the override:
+The format and bundling fields above apply to every export entry. Use `overrides` to pin a subset of entries to their own format and bundling. Each override is built from its own values alone — it does not inherit from the base config, so every field it needs must be listed again (see below). The base build stays as configured; only the listed `entries` (by export subpath) get the override:
 
 ```ts
 const config = defineBuild({

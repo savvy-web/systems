@@ -13,7 +13,7 @@ npm install --save-dev @savvy-web/rspress-builder
 pnpm add -D @savvy-web/rspress-builder
 ```
 
-`@rspress/core`, `react`, `react-dom` and `@tsdown/css` are peer dependencies the host plugin provides.
+`@rspress/core`, `react`, `react-dom` and `typescript` are peer dependencies the host plugin provides. `@tsdown/css` is a regular dependency of this package, so you do not install it yourself — tsdown loads it lazily when a CSS file is encountered.
 
 ## Quick start
 

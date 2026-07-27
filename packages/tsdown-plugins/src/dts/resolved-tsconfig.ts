@@ -86,10 +86,17 @@ export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): Resolve
 	if (existsSync(ownConfig)) {
 		try {
 			base = { ...TsconfigLoaderSync.resolve(ownConfig, tsconfigSyncOptions).compilerOptions };
-		} catch {
-			// A malformed or unresolvable config must not abort the build at this layer — the dts
-			// pass still gets a working config, and tsc reports the real problem with better context.
-			base = fallbackCompilerOptions(cwd);
+		} catch (error) {
+			// A config that EXISTS but will not resolve — malformed JSON, or an `extends` that cannot be
+			// located — is a defect, not a fallback case, so fail loudly. Synthesizing defaults here
+			// would emit declarations compiled under the WRONG options while still reporting a green
+			// build: the tsconfig this function returns is written to a temp file that extends the base
+			// by absolute path and never references the broken source, so the dts pass itself sees
+			// nothing wrong. A consumer running only `build:*` would never learn about it.
+			// `resolvePortableTsconfig` below throws on the same failure; these two must not diverge.
+			// Genuine ABSENCE stays a supported case and is handled by the `else` branch.
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`Cannot resolve tsconfig at ${ownConfig}: ${message}`, { cause: error });
 		}
 	} else {
 		base = fallbackCompilerOptions(cwd);

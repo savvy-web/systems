@@ -21,6 +21,7 @@ describe("rspress-builder public assets", () => {
 		expect(json.compilerOptions.module).toBe("nodenext");
 		expect(json.compilerOptions.target).toBe("es2025");
 		// The declaration glob agrees with ecma.json's; `types/` holds only `.d.ts`.
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: TypeScript's own ${configDir} token, not a JS template
 		expect(json.include).toContain("${configDir}/types/*.d.ts");
 	});
 
