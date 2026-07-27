@@ -96,23 +96,12 @@ claude plugin add marketplace savvy-web/systems
 **Available plugins:**
 
 - **silk** -- Companion for `@savvy-web/silk`: changeset, commit, lint and Turborepo conventions, skills and agents, the bundled `savvy-mcp` server and live Biome diagnostics
-- **github-actions** -- An `action-engineer` agent and a twelve-skill suite for building Node.js 24 GitHub Actions with `@savvy-web/github-action-builder`, plus the shared `savvy-mcp` server
-- **changesets** -- Companion for `@savvy-web/changesets`: structured changeset files
-- **vitest** -- Companion for `@savvy-web/vitest`: well-structured test files
-- **lint-staged** -- Companion for `@savvy-web/lint-staged`: lint-staged configuration
-- **commitlint** -- Companion for `@savvy-web/commitlint`: commitlint configuration
 
 ### Biome in the silk plugin
 
 The silk plugin runs the Biome language server (`biome lsp-proxy`), so Biome lint and format diagnostics surface automatically while you work across JavaScript, TypeScript, JSON, CSS and GraphQL files. Biome must be available for the language server to start: install it globally on PATH (recommended -- `brew install biome` or `npm i -g @biomejs/biome`) or add it as a project devDependency so `node_modules/.bin/biome` resolves. Without Biome the language server exits with an actionable message telling you to install it, surfaced in the `/plugin` Errors tab.
 
 For on-demand checks the bundled `savvy-mcp` server exposes the `biome_check` tool: run Biome over any path and get structured diagnostics back, optionally applying fixes with `write` (safe) or `unsafe`. It complements the always-on LSP, which is read-only. Running Biome through Bash still works and draws a one-time, non-blocking nudge toward `biome_check`.
-
-### Action engineering in the github-actions plugin
-
-The github-actions plugin targets a standalone action repo, not this monorepo. Hand a whole action task to the `action-engineer` agent and it starts with the plugin's twelve skills already loaded. If you work inline instead, read the `action-engineering` skill first -- it routes each job to the service and skill that covers it, and names the capabilities the library deliberately does not have. Its build guidance covers `@savvy-web/github-action-builder`, which is current; its service-level guidance still describes `@savvy-web/github-action-effects`, a library this repo no longer ships.
-
-The remaining eleven skills cover scaffolding from [github-action-template](https://github.com/savvy-web/github-action-template), `action.config.ts` builds, entry points and Layer wiring, inputs, machine-readable output contracts, GitHub App authentication, the GitHub API client, check runs and job summaries and PR comments, run logging, tagged errors and cross-phase state, and testing.
 
 ## Ecosystem
 

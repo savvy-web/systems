@@ -1,10 +1,10 @@
 ---
-status: current
+status: needs-review
 module: github-actions
 category: architecture
 created: 2026-07-23
-updated: 2026-07-25
-last-synced: 2026-07-25
+updated: 2026-07-27
+last-synced: 2026-07-27
 completeness: 85
 related:
   - ../silk/plugin.md
@@ -61,6 +61,8 @@ names, no `file:line` citations into repos the reader cannot open, no "which rep
 
 ## Current State
 
+> **Removed from the repo (2026-07-26).** Commit `670cd115` deleted `plugins/github-actions/` and its `.claude-plugin/marketplace.json` entry, and the root `pnpm test:hooks` script no longer runs its test runner (the stale leg was dropped once the removal left it broken). This doc is now the record of the plugin as last shipped — read the present tense below as historical. The kit-migration pass described in the next note never landed; if an action-engineering plugin returns re-pointed at the `@effected/*` kit, this record is its starting point.
+>
 > **Stale against the `@effected` github-split, and tracked.** Every skill, reference and the orientation hook
 > still teach `@savvy-web/github-action-effects`, which was **deleted from this repo** in the github-split
 > adoption. Action repos now consume `@effected/github-actions`, `@effected/github`, `@effected/sbom`,
@@ -88,8 +90,7 @@ Implemented on branch `feat/github-actions-plugin`. Contents:
 - **Hooks** (`hooks/hooks.json`, `hooks/session-start/orientation.sh`, `hooks/lib/`): exactly one hook — an
   unmatched SessionStart orientation block, whose payload also carries the plugin's dogfood-feedback loop. See
   [Hook surface](#hook-surface) and [Dogfood feedback](#dogfood-feedback).
-- **Tests** (`tests/`): a BATS + shellcheck suite mirroring silk's runner, wired into the root `pnpm test:hooks`
-  and the Hook Tests CI workflow. See [Tests](#tests).
+- **Tests** (`tests/`): a BATS + shellcheck suite mirroring silk's runner, formerly wired into the root `pnpm test:hooks` and the Hook Tests CI workflow (both legs removed with the plugin). See [Tests](#tests).
 
 ## The action-engineer agent
 
@@ -358,11 +359,7 @@ Both roster loops end in a `≥ 12` count guard. Without it an empty `skills/*/`
 a bad checkout — makes both loops iterate zero times and pass vacuously, which is precisely the regression the
 suites exist to catch.
 
-Wiring: the root `pnpm test:hooks` runs silk's runner then this one, and `.github/workflows/hook-tests.yml`
-watches `plugins/github-actions/**` (whole-subtree, unlike silk's narrower `hooks/`+`tests/`+`bin/` paths) and
-runs both suites in one job. The broader path list is deliberate and the workflow header says why: these bats
-suites assert the agent/skill *registration* contract, so a change under `agents/` or `skills/` can break them
-without touching a single shell script.
+Wiring (historical): the root `pnpm test:hooks` ran silk's runner then this one, and `.github/workflows/hook-tests.yml` watched `plugins/github-actions/**` (whole-subtree, unlike silk's narrower `hooks/`+`tests/`+`bin/` paths) and ran both suites in one job. The broader path list was deliberate and the workflow header said why: these bats suites assert the agent/skill *registration* contract, so a change under `agents/` or `skills/` could break them without touching a single shell script. The root-script leg was dropped after the plugin's removal left it pointing at a deleted runner.
 
 ## Relationship to the silk plugin
 
