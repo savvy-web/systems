@@ -137,7 +137,7 @@
 							"level": "on",
 							"options": {
 								"extensionMappings": {
-									"ts": ".js",
+									"ts": "js",
 									"tsx": "js",
 									"css": "css"
 								}
