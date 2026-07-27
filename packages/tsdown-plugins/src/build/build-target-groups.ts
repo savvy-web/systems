@@ -4,6 +4,8 @@ import { dirname, isAbsolute, join } from "node:path";
 import type { Plugin } from "rolldown";
 import { analyzeReexportBarrel, collectExportNames, renderReexportStub } from "../dts/reexport-stub.js";
 import { writeDtsEmitTsconfig } from "../dts/resolved-tsconfig.js";
+import { extractAmbientDts } from "../entry/ambient-dts.js";
+import type { PackageJsonLike } from "../entry/extract.js";
 import type { TargetGroupRef } from "../manifest/emit-manifest.js";
 import { emitManifest } from "../manifest/emit-manifest.js";
 import type { DualExports, ExeRewrite, Json } from "../manifest/transform.js";
@@ -14,7 +16,7 @@ import { createTsdownLogger } from "../report/tsdown-logger.js";
 import { cjsDefaultInterop } from "./cjs-default-interop.js";
 import type { NormalizedLooseFile } from "./loose-files.js";
 import { nodeBuiltinDefaultInterop } from "./node-builtin-default-interop.js";
-import { copyPublicDir } from "./sync-public.js";
+import { copyAmbientDts, copyPublicDir } from "./sync-public.js";
 import type { BuildFormat, BuildGroupSpec, BuildPlatform } from "./target-groups.js";
 import {
 	deriveDeclarationsPassOptions,
@@ -45,8 +47,13 @@ export interface CssOptions {
 
 /**
  * One entry partition built with its own format + bundling posture, layered into the
- * SAME outDir as the base build (clean:false). Anything omitted falls back to the base
- * build's value. `entry` is a subset of the package's entries (`entryName -> source path`).
+ * SAME outDir as the base build (clean:false). Each partition is built from ITS OWN values
+ * only — an option this override omits is simply absent for this partition, not inherited
+ * from the base build (partition 0 in `buildTargetGroups`). Callers that want a base-build
+ * value to also apply to an override must pass it again explicitly. This is relied upon
+ * deliberately by at least one consumer: `packages/silk/savvy.build.ts` has an override that
+ * depends on NOT inheriting the base build's externals. `entry` is a subset of the package's
+ * entries (`entryName -> source path`).
  * @public
  */
 export interface EntryOverride {
@@ -216,6 +223,20 @@ const STUB_BASE_ENTRY = "index";
 export async function buildTargetGroups(options: BuildTargetGroupsOptions): Promise<void> {
 	const build: TsdownBuild = options.build ?? ((await import("tsdown")).build as unknown as TsdownBuild);
 	const publicDir = join(options.cwd, "public");
+
+	// Zero-config ambient .d.ts exports (types-only hand-authored declarations): extracted from the
+	// package manifest ONCE and copied into every resolved group's own pkg dir below, alongside
+	// copyPublicDir. Running the copy HERE — inside buildTargetGroups rather than only in runBuild —
+	// means every build path, including the self-hosting escape hatches that call this function
+	// directly and never reach runBuild, gets its ambient exports copied. A synthetic/test cwd with
+	// no real package.json (or one with no ambient exports) yields an empty array and no-ops below.
+	let pkgForAmbient: PackageJsonLike = {};
+	try {
+		pkgForAmbient = JSON.parse(readFileSync(join(options.cwd, "package.json"), "utf-8")) as PackageJsonLike;
+	} catch {
+		// synthetic cwd (tests) or unreadable manifest — no ambient exports to copy
+	}
+	const ambient = extractAmbientDts(pkgForAmbient, {});
 
 	// The dts/declarations EMIT passes run on TS6 and use a `stableTypeOrdering` variant of the
 	// resolved tsconfig so union/type member ordering is deterministic across builds (#156). This is
@@ -638,6 +659,12 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 
 		// Flatten public/ into the group's package root, after every pass (JS, dts, declarations,
 		// looseFiles) has written its outputs. Additive with a byte-collision guard — see copyPublicDir.
-		copyPublicDir(publicDir, outDirFor(options.cwd, group.id));
+		const groupOutDir = outDirFor(options.cwd, group.id);
+		copyPublicDir(publicDir, groupOutDir);
+
+		// Copy ambient .d.ts exports into this group's pkg dir. The manifest already points at
+		// "./<outName>" (transformExports) — this is what makes that path resolve on disk. Runs for
+		// every group, every build path (dev/prod, front door AND self-hosting escape hatches).
+		if (ambient.length > 0) copyAmbientDts({ ambient, srcCwd: options.cwd, outDir: groupOutDir });
 	}
 }

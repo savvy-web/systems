@@ -1,4 +1,5 @@
 {
+	"//": "types and lib REPLACE the base list rather than merging with it. If you override either, re-list every entry you still need, including node.",
 	"compilerOptions": {
 		"allowJs": true,
 		"esModuleInterop": true,

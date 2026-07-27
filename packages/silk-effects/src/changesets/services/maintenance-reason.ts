@@ -73,6 +73,10 @@ export type MaintenanceReason = typeof MaintenanceReasonSchema.Type;
  * will not match here; the release then degrades gracefully to the
  * `"unspecified"` fallback sentence instead of naming its triggers.
  *
+ * Co-members releasing as `type: "none"` are never triggers — they carry no
+ * version bump (and, per `@changesets/types`, no guaranteed `newVersion`), so
+ * naming one would print an unchanged version as the cause of the release.
+ *
  * @public
  */
 export function deriveMaintenanceReason(
@@ -92,8 +96,9 @@ export function deriveMaintenanceReason(
 			if (!group.some((pattern) => ChangesetConfig.matches(release.name, pattern))) continue;
 			const triggers = plan.releases
 				.filter(
-					(r) =>
+					(r): r is Exclude<ComprehensiveRelease, { type: "none" }> =>
 						r.name !== release.name &&
+						r.type !== "none" &&
 						r.changesets.length > 0 &&
 						group.some((pattern) => ChangesetConfig.matches(r.name, pattern)),
 				)

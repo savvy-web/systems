@@ -3,20 +3,29 @@ import { dirname } from "node:path";
 import type { BuildConfig, BuildConfigInput, BuildEntryOverride, RunOptions } from "@savvy-web/bundler";
 import { defineBuild, runBuild } from "@savvy-web/bundler";
 
-export type { RunOptions };
+export type { BuildConfig, BuildConfigInput, BuildEntryOverride, RunOptions };
+
 // Re-export the orchestrator so a consumer imports both from one source. definePlugin
 // returns a standard BuildConfig with the runtime baked in as an override partition, so the
 // bundler's runBuild consumes it unchanged.
 export { runBuild };
 
 /**
- * Per-bundle externals tuning for a single partition (plugin or runtime).
+ * Per-bundle dependency posture for a single partition (plugin or runtime). Mirrors the
+ * bundler's `BuildEntryOverride`; a value set here wins over the build-wide option of the
+ * same name.
  *
  * @public
  */
 export interface RspressBundleOptions {
-	/** Additional externals merged with the built-ins for that bundle. */
+	/** Additional externals merged with this bundle's built-ins and the build-wide `externals`. */
 	readonly externals?: ReadonlyArray<string>;
+	/** Packages whose declarations are inlined into this bundle's dts. */
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	/** Packages externalized in this bundle's dts pass only, referenced via import in the emitted `.d.ts`. */
+	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+	/** Force-bundle node_modules JS dependencies into this bundle's output. */
+	readonly bundleNodeModules?: boolean | undefined;
 }
 
 /**
@@ -33,10 +42,20 @@ export interface RspressPluginOptions {
 	readonly runtime?: boolean | RspressBundleOptions;
 	/** Tuning for the plugin (`.`) bundle (node, bundled). */
 	readonly plugin?: RspressBundleOptions;
+	/** Build-wide externals merged into BOTH bundles' built-in lists. */
+	readonly externals?: ReadonlyArray<string>;
 	/** Packages whose declarations are inlined into the bundled dts (e.g. [`@rspress/core`]). */
-	readonly dtsBundledPackages?: ReadonlyArray<string>;
+	readonly bundledPackages?: ReadonlyArray<string> | undefined;
+	/**
+	 * Packages externalized in the dts pass ONLY — referenced via `import` in the emitted
+	 * `.d.ts` rather than inlined — while the JS pass still bundles them. Declare these as
+	 * package dependencies so consumers can resolve the emitted type imports.
+	 */
+	readonly dtsExternals?: ReadonlyArray<string> | undefined;
+	/** Force-bundle node_modules (and workspace) JS dependencies into the package output. */
+	readonly bundleNodeModules?: boolean | undefined;
 	/** API-model generation. Defaults to on (documents plugin options AND runtime components). `false` opts out. */
-	readonly apiModel?: BuildConfigInput["meta"];
+	readonly meta?: BuildConfigInput["meta"];
 	/** Final package.json mutation; defaults to the bundler's defaultManifestTransform. */
 	readonly transform?: BuildConfigInput["transform"];
 	/** JSX override; defaults to tsconfig-inferred. */
@@ -68,7 +87,10 @@ export function definePlugin(options: RspressPluginOptions = {}): BuildConfig {
 	const runtimeTuning: RspressBundleOptions = typeof runtimeOpt === "object" ? runtimeOpt : {};
 	const pluginTuning = options.plugin ?? {};
 
-	const pluginExternals = [...PLUGIN_EXTERNALS, ...(pluginTuning.externals ?? [])];
+	const dedupe = (xs: ReadonlyArray<string>): string[] => [...new Set(xs)];
+	const sharedExternals = options.externals ?? [];
+
+	const pluginExternals = dedupe([...PLUGIN_EXTERNALS, ...sharedExternals, ...(pluginTuning.externals ?? [])]);
 
 	const overrides: BuildEntryOverride[] = runtimeEnabled
 		? [
@@ -77,7 +99,20 @@ export function definePlugin(options: RspressPluginOptions = {}): BuildConfig {
 					outSubdir: "runtime",
 					platform: "browser",
 					css: { modules: { localsConvention: "camelCaseOnly", namedExport: false }, inject: true },
-					externals: [...RUNTIME_EXTERNALS, ...(runtimeTuning.externals ?? [])],
+					externals: dedupe([...RUNTIME_EXTERNALS, ...sharedExternals, ...(runtimeTuning.externals ?? [])]),
+					// The bundler builds each override partition from its own values only — it does
+					// NOT fall back to the base build's value for an omitted option (see EntryOverride
+					// in build-target-groups.ts). So the build-wide value has to be threaded through
+					// here explicitly, with the per-bundle tuning winning when both are set.
+					...((runtimeTuning.bundledPackages ?? options.bundledPackages) !== undefined
+						? { bundledPackages: runtimeTuning.bundledPackages ?? options.bundledPackages }
+						: {}),
+					...((runtimeTuning.dtsExternals ?? options.dtsExternals) !== undefined
+						? { dtsExternals: runtimeTuning.dtsExternals ?? options.dtsExternals }
+						: {}),
+					...((runtimeTuning.bundleNodeModules ?? options.bundleNodeModules) !== undefined
+						? { bundleNodeModules: runtimeTuning.bundleNodeModules ?? options.bundleNodeModules }
+						: {}),
 				},
 			]
 		: [];
@@ -88,11 +123,19 @@ export function definePlugin(options: RspressPluginOptions = {}): BuildConfig {
 		...options.define,
 	};
 
+	// The plugin (".") bundle IS the base build, so plugin tuning resolves against the
+	// build-wide value here rather than through an override.
+	const bundledPackages = pluginTuning.bundledPackages ?? options.bundledPackages;
+	const dtsExternals = pluginTuning.dtsExternals ?? options.dtsExternals;
+	const bundleNodeModules = pluginTuning.bundleNodeModules ?? options.bundleNodeModules;
+
 	const input: BuildConfigInput = {
 		externals: pluginExternals,
 		define,
-		...(options.dtsBundledPackages !== undefined ? { bundledPackages: options.dtsBundledPackages } : {}),
-		...(options.apiModel !== undefined ? { meta: options.apiModel } : {}),
+		...(bundledPackages !== undefined ? { bundledPackages } : {}),
+		...(dtsExternals !== undefined ? { dtsExternals } : {}),
+		...(bundleNodeModules !== undefined ? { bundleNodeModules } : {}),
+		...(options.meta !== undefined ? { meta: options.meta } : {}),
 		...(options.transform !== undefined ? { transform: options.transform } : {}),
 		...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 		...(overrides.length > 0 ? { overrides } : {}),

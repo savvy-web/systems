@@ -52,8 +52,13 @@ export async function resolveNextVersions(cwd: string): Promise<NextVersions> {
 		try {
 			const plan = await getReleasePlan(rootDir);
 			// plan.releases includes type:"none" entries (unbumped dependents) whose newVersion equals
-			// the current version, so overlaying every release is safe.
-			for (const r of plan.releases) versions.set(r.name, r.newVersion);
+			// the current version, so overlaying every release is safe. Only the "none" arm may omit
+			// newVersion entirely; the map is already seeded with the current version, so skipping
+			// those leaves the right value in place.
+			for (const r of plan.releases) {
+				if (r.newVersion === undefined) continue;
+				versions.set(r.name, r.newVersion);
+			}
 		} catch {
 			// No `.changeset/config.json` (or unreadable): keep current versions.
 		}

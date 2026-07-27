@@ -38,7 +38,7 @@ catalogs:
       version: 4.0.0-beta.101
   silk:
     '@changesets/cli':
-      specifier: ^3.0.0-next.8
+      specifier: ^3.0.0-next.10
       version: 3.0.0-next.10
     '@commitlint/cli':
       specifier: ^21.2.1
@@ -101,7 +101,7 @@ catalogs:
       specifier: ^4.23.1
       version: 4.23.1
     turbo:
-      specifier: ^2.10.6
+      specifier: ^2.10.7
       version: 2.10.7
     typescript:
       specifier: ^7.0.2
@@ -428,9 +428,6 @@ importers:
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
-      '@savvy-web/tsdown-plugins':
-        specifier: workspace:*
-        version: link:../tsdown-plugins/dist/dev/pkg
       '@tsdown/css':
         specifier: catalog:silk
         version: 0.22.14(jiti@2.7.0)(postcss@8.5.23)(tsdown@0.22.14)(tsx@4.23.1)(yaml@2.9.0)
@@ -441,6 +438,9 @@ importers:
         specifier: catalog:silkPeers
         version: 19.2.8(react@19.2.8)
     devDependencies:
+      '@savvy-web/tsdown-plugins':
+        specifier: workspace:*
+        version: link:../tsdown-plugins/dist/dev/pkg
       '@types/node':
         specifier: catalog:silk
         version: 26.1.1
@@ -496,7 +496,7 @@ importers:
         version: 3.0.0-next.10
       '@commitlint/cli':
         specifier: catalog:silk
-        version: 21.2.1(@types/node@26.1.1)(conventional-commits-parser@7.1.0)(typescript@7.0.2)
+        version: 21.2.1(@types/node@26.1.1)(conventional-commits-parser@7.1.1)(typescript@7.0.2)
       '@commitlint/config-conventional':
         specifier: catalog:silk
         version: 21.2.0
@@ -541,16 +541,16 @@ importers:
   packages/silk-effects:
     dependencies:
       '@changesets/apply-release-plan':
-        specifier: ^8.0.0-next.7
+        specifier: ^8.0.0-next.9
         version: 8.0.0-next.9
       '@changesets/config':
         specifier: ^4.0.0-next.6
         version: 4.0.0-next.8
       '@changesets/get-github-info':
-        specifier: ^1.0.0-next.3
+        specifier: ^1.0.0-next.4
         version: 1.0.0-next.4
       '@changesets/get-release-plan':
-        specifier: ^5.0.0-next.7
+        specifier: ^5.0.0-next.9
         version: 5.0.0-next.9
       '@effected/commands':
         specifier: ^0.2.0
@@ -617,7 +617,7 @@ importers:
         version: 1.7.0
     devDependencies:
       '@changesets/types':
-        specifier: ^7.0.0-next.6
+        specifier: ^7.0.0-next.8
         version: 7.0.0-next.8
       '@commitlint/types':
         specifier: ^21.2.0
@@ -707,8 +707,8 @@ importers:
         specifier: ^0.6.1
         version: 0.6.1(effect@4.0.0-beta.101)
       '@effected/tsconfig-json':
-        specifier: ^0.3.3
-        version: 0.3.3(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/walker@0.3.3(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
+        specifier: ^0.4.0
+        version: 0.4.0(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/walker@0.3.3(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
       '@effected/workspaces':
         specifier: ^0.9.1
         version: 0.9.1(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
@@ -1159,8 +1159,8 @@ packages:
     peerDependencies:
       effect: 4.0.0-beta.101
 
-  '@effected/tsconfig-json@0.3.3':
-    resolution: {integrity: sha512-2XZdXLhw4HeH7Fl1Ki+TvhJdXfpYWkE63W3cyEuev0+06p4lbd9dPIWd4rruWYgAfvCOrOYK9hde37fe/bZXOw==}
+  '@effected/tsconfig-json@0.4.0':
+    resolution: {integrity: sha512-mEuaMQBYKJ+LpsWDTAsbLPRChXkWr2vt96VM4JpAxpzIH9JSSAAO3aqPrTt/nX81DEO/nqX4rxcdB33RzuBeng==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       '@effected/jsonc': ~0.5.1
@@ -3113,8 +3113,8 @@ packages:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
-  baseline-browser-mapping@2.11.3:
-    resolution: {integrity: sha512-sbT0Ui/CZwyAyy7icT1Gw5P1LKRlFaHwaF6tDCW5YHq2X5SeeZFphBuIagopSfwSSZq3sQcbmEL072yphxm7ew==}
+  baseline-browser-mapping@2.11.4:
+    resolution: {integrity: sha512-s4+sLr9mZ/CyqeRritFeYV/Zx73OAtmaHn6kkBS1XRoJn1hrg3xIDUcpicAEX68tkcIN0iBCgti31C8zxtkhsQ==}
     engines: {node: '>=6.0.0'}
     hasBin: true
 
@@ -3305,8 +3305,8 @@ packages:
     resolution: {integrity: sha512-n4Kr1HFMTf3iMbES0TMxKIcYtUUv4rKqyQQp2JwfOEfFCOfGT3Tq4mCyJ8S9/YPyWhydjfKrrvnyl+gCjA+mJQ==}
     engines: {node: '>=22'}
 
-  conventional-commits-parser@7.1.0:
-    resolution: {integrity: sha512-DPp6hkUjvwIivxbkrTiLXeRswNv1A/4GFA2X6scXma0AMa9632V3TwxmrlkUIEtUktiM3Ln+RrSH2xlP3/jUTw==}
+  conventional-commits-parser@7.1.1:
+    resolution: {integrity: sha512-B0f42jI++V5Vb7qK+DDw68r0dNxz5hk+RdKUkx2NOi39emc9hsHa3u2M3doF7QQhRFzCrAj7uM90teG+RBTaYQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -5868,13 +5868,13 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
-  '@commitlint/cli@21.2.1(@types/node@26.1.1)(conventional-commits-parser@7.1.0)(typescript@7.0.2)':
+  '@commitlint/cli@21.2.1(@types/node@26.1.1)(conventional-commits-parser@7.1.1)(typescript@7.0.2)':
     dependencies:
       '@commitlint/config-conventional': 21.2.0
       '@commitlint/format': 21.2.0
       '@commitlint/lint': 21.2.0
       '@commitlint/load': 21.2.0(@types/node@26.1.1)(typescript@7.0.2)
-      '@commitlint/read': 21.2.1(conventional-commits-parser@7.1.0)
+      '@commitlint/read': 21.2.1(conventional-commits-parser@7.1.1)
       '@commitlint/types': 21.2.0
       tinyexec: 1.2.4
       yargs: 18.1.0
@@ -5939,13 +5939,13 @@ snapshots:
     dependencies:
       '@commitlint/types': 21.2.0
       conventional-changelog-angular: 9.2.1
-      conventional-commits-parser: 7.1.0
+      conventional-commits-parser: 7.1.1
 
-  '@commitlint/read@21.2.1(conventional-commits-parser@7.1.0)':
+  '@commitlint/read@21.2.1(conventional-commits-parser@7.1.1)':
     dependencies:
       '@commitlint/top-level': 21.2.0
       '@commitlint/types': 21.2.0
-      '@conventional-changelog/git-client': 3.1.0(conventional-commits-parser@7.1.0)
+      '@conventional-changelog/git-client': 3.1.0(conventional-commits-parser@7.1.1)
       tinyexec: 1.2.4
     transitivePeerDependencies:
       - conventional-commits-filter
@@ -5974,16 +5974,16 @@ snapshots:
 
   '@commitlint/types@21.2.0':
     dependencies:
-      conventional-commits-parser: 7.1.0
+      conventional-commits-parser: 7.1.1
       picocolors: 1.1.1
 
-  '@conventional-changelog/git-client@3.1.0(conventional-commits-parser@7.1.0)':
+  '@conventional-changelog/git-client@3.1.0(conventional-commits-parser@7.1.1)':
     dependencies:
       '@simple-libs/child-process-utils': 2.0.0
       '@simple-libs/stream-utils': 2.0.0
       semver: 7.8.5
     optionalDependencies:
-      conventional-commits-parser: 7.1.0
+      conventional-commits-parser: 7.1.1
 
   '@conventional-changelog/template@1.2.1': {}
 
@@ -6081,7 +6081,7 @@ snapshots:
     dependencies:
       effect: 4.0.0-beta.101
 
-  '@effected/tsconfig-json@0.3.3(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/walker@0.3.3(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)':
+  '@effected/tsconfig-json@0.4.0(@effected/jsonc@0.5.1(effect@4.0.0-beta.101))(@effected/walker@0.3.3(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)':
     dependencies:
       '@effected/jsonc': 0.5.1(effect@4.0.0-beta.101)
       '@effected/walker': 0.3.3(@effected/glob@0.2.1(effect@4.0.0-beta.101))(effect@4.0.0-beta.101)
@@ -7940,7 +7940,7 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
-  baseline-browser-mapping@2.11.3: {}
+  baseline-browser-mapping@2.11.4: {}
 
   body-parser@2.3.0(supports-color@8.1.1):
     dependencies:
@@ -7973,7 +7973,7 @@ snapshots:
 
   browserslist@4.28.7:
     dependencies:
-      baseline-browser-mapping: 2.11.3
+      baseline-browser-mapping: 2.11.4
       caniuse-lite: 1.0.30001806
       electron-to-chromium: 1.5.396
       node-releases: 2.0.51
@@ -8124,7 +8124,7 @@ snapshots:
     dependencies:
       '@conventional-changelog/template': 1.2.1
 
-  conventional-commits-parser@7.1.0:
+  conventional-commits-parser@7.1.1:
     dependencies:
       '@simple-libs/stream-utils': 2.0.0
       argue-cli: 3.1.0

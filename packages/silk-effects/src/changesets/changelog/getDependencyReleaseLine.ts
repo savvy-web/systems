@@ -86,6 +86,30 @@ function inferDependencyType(dep: ModCompWithPackage): DependencyTableType {
 }
 
 /**
+ * A dependency update that carries both of its version endpoints.
+ *
+ * @internal
+ */
+type VersionedDependency = ModCompWithPackage & { oldVersion: string; newVersion: string };
+
+/**
+ * Narrow a dependency update to one with both version endpoints present.
+ *
+ * `@changesets/types` only guarantees `oldVersion`/`newVersion` on the
+ * `major`/`minor`/`patch` arms of `ComprehensiveRelease`; a `type: "none"`
+ * entry may carry neither. The table's `From`/`To` columns are validated
+ * version strings, so an entry missing either endpoint has no row to render.
+ *
+ * @param dep - The dependency update to test
+ * @returns `true` when both `oldVersion` and `newVersion` are present
+ *
+ * @internal
+ */
+function isVersioned(dep: ModCompWithPackage): dep is VersionedDependency {
+	return dep.oldVersion !== undefined && dep.newVersion !== undefined;
+}
+
+/**
  * Format dependency release lines as a structured markdown table.
  *
  * This is the core Effect program that implements the `getDependencyReleaseLine`
@@ -96,8 +120,9 @@ function inferDependencyType(dep: ModCompWithPackage): DependencyTableType {
  * The function maps each `ModCompWithPackage` entry to a `DependencyTableRow`,
  * inferring the dependency type from the consuming package's `package.json`,
  * then delegates to `serializeDependencyTableToMarkdown` for GFM table
- * rendering, prefixed with a `### Dependencies` heading. Returns an empty
- * string when no dependencies were updated.
+ * rendering, prefixed with a `### Dependencies` heading. Entries missing
+ * either version endpoint are dropped by {@link isVersioned}; the function
+ * returns an empty string when no rows survive.
  *
  * The `_changesets` and `_options` parameters are part of the Changesets API
  * contract but are not used in the table format. They are retained for
@@ -106,7 +131,7 @@ function inferDependencyType(dep: ModCompWithPackage): DependencyTableType {
  * @param _changesets - Changesets that caused the dependency updates (unused in table format)
  * @param dependenciesUpdated - The list of dependencies that were updated, including old/new versions
  * @param _options - Validated configuration options (unused in table format)
- * @returns An `Effect` that resolves to a `### Dependencies` heading followed by a formatted markdown table string, or empty string if no dependencies were updated
+ * @returns An `Effect` that resolves to a `### Dependencies` heading followed by a formatted markdown table string, or empty string if no dependencies with both version endpoints were updated
  */
 export function getDependencyReleaseLine(
 	_changesets: NewChangesetWithCommit[],
@@ -125,13 +150,14 @@ export function getDependencyReleaseLine(
 		// TODO: Remove in next major version.
 		yield* GitHubService;
 
-		const rows: DependencyTableRow[] = dependenciesUpdated.map((dep) => ({
+		const rows: DependencyTableRow[] = dependenciesUpdated.filter(isVersioned).map((dep) => ({
 			dependency: dep.name,
 			type: inferDependencyType(dep),
 			action: "updated" as const,
 			from: dep.oldVersion,
 			to: dep.newVersion,
 		}));
+		if (rows.length === 0) return "";
 
 		return `### Dependencies\n\n${serializeDependencyTableToMarkdown(rows)}`;
 	});
