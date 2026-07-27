@@ -1,5 +1,13 @@
 # @savvy-web/cli
 
+## 2.1.11
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.0.1 | 5.1.0 |
+
 ## 2.1.10
 
 ### Dependencies
