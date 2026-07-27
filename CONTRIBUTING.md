@@ -22,7 +22,7 @@ pnpm install
 | --- | --- |
 | `pnpm build` | Build all packages |
 | `pnpm test` | Run tests |
-| `pnpm test:hooks` | Run the Claude Code plugin hook suites (bats + `shellcheck`) for `plugins/silk` and `plugins/github-actions` |
+| `pnpm test:hooks` | Run the Claude Code plugin hook suite (bats + `shellcheck`) for `plugins/silk` |
 | `pnpm typecheck` | Type-check all packages via Turbo |
 | `pnpm lint` | Run Biome checks (no auto-fix) |
 | `pnpm lint:fix` | Run Biome with auto-fix (safe fixes only) |

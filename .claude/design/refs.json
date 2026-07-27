@@ -3,15 +3,9 @@
 	"refs": [
 		{
 			"source": "CLAUDE.md",
-			"target": ".claude/design/github-actions/plugin.md",
-			"hash": "e16197029dc5898099535c1f6dc136344f8df228aed3adafd1feb61565884638",
-			"recordedAt": "2026-07-25"
-		},
-		{
-			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "8d2b9b9f1e4b0195d491ec94e2bd986870f47123c3383d2462acdc91a368eabc",
-			"recordedAt": "2026-07-24"
+			"hash": "43fd96e3ce557e27c826eb359a6693a512eae5b9b83a39a3dc08b77b868a39ed",
+			"recordedAt": "2026-07-27"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -52,8 +46,8 @@
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "ddbbfad389a1dc52202a23ae8c365d6c195bd9768da4fec00e7031e01040e286",
-			"recordedAt": "2026-07-25"
+			"hash": "4566e82c87de117edd9f3cc23bb94d2b2860a394493774c86c10aebf0aaaab7b",
+			"recordedAt": "2026-07-27"
 		},
 		{
 			"source": "packages/pnpm-plugin-silk/CLAUDE.md",

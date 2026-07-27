@@ -20,7 +20,7 @@ Each package has its own `CLAUDE.md` (auto-loaded when you work in its subtree) 
 
 `e2e/*` is a separate harness area of PRIVATE, test-only packages (`@e2e/bundler`, `@e2e/pnpm-plugin-silk`) — distinct from the published `packages/*` — that exercise built `dist/dev` artifacts against isolated fixtures. See `e2e/CLAUDE.md`.
 
-Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/github-actions`), the placeholder docs site (`docs/`), cross-repo planning, and the plugin marketplace entry point (`.claude-plugin/`).
+Also in this repo: the `plugins/silk` Claude Code plugin (the repo's only plugin — `plugins/github-actions` was removed; action-engineering now ships via the separate effected plugin), the placeholder docs site (`docs/`), cross-repo planning, and the plugin marketplace entry point (`.claude-plugin/`).
 
 ## Tech Stack
 
@@ -29,7 +29,7 @@ Also in this repo: the Claude Code plugins (`plugins/silk`, `plugins/github-acti
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all eleven packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other nine via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
 - **Effect:** the whole repo is on Effect v4 (`catalog:effect` / `catalog:effectPeers`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency (`effect`/`effectPeers`; the `effect3` catalogs remain for any consumer still on v3). `effect` core source is vendored at `.repos/effect` (pinned to the catalog tag) — the authority for v4 APIs. It is checked out from `Effect-TS/effect` itself, NOT the archived `effect-smol` repo: v4 development moved back to the main monorepo. `.repos/config.json` is the live record of url/ref/sparse paths. The suite consumes eleven `@effected/*` kit packages from the npm registry (re-derive the list from the manifests, never from memory)
 - **Linting:** Biome, markdownlint
-- **Testing:** Vitest via `@vitest-agent/plugin`; a test that runs an Effect takes `describe`/`it`/`expect` from `@effect/vitest` (`catalog:effect`), one with no Effect surface stays on plain `vitest`, and `vi` always comes from `"vitest"` (hoisting). Built-artifact e2e harness in `e2e/*`; plugin hook shell suites (bats + shellcheck) under `plugins/*/tests`, run together by `pnpm test:hooks`
+- **Testing:** Vitest via `@vitest-agent/plugin`; a test that runs an Effect takes `describe`/`it`/`expect` from `@effect/vitest` (`catalog:effect`), one with no Effect surface stays on plain `vitest`, and `vi` always comes from `"vitest"` (hoisting). Built-artifact e2e harness in `e2e/*`; the silk plugin's hook shell suite (bats + shellcheck) under `plugins/silk/tests`, run by `pnpm test:hooks`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
 - **Releases:** `@savvy-web/changesets`
 
@@ -120,7 +120,3 @@ Load when working on `plugins/silk` (skills, agents, monitors, hooks, MCP wiring
 **Suite-wide test conventions (`@effect/vitest`):**
 → `@./.claude/design/testing/effect-vitest.md`
 Load before writing or converting any test that runs an Effect. Covers `it.effect` vs `it.live` vs suite-boundary `layer(...)` (which memoizes, bleeding test-double state — per-test `Effect.provide` is the default), `Effect.flip` for typed-failure assertions, and the `TestClock`/`TestConsole` swaps that silently change what a test observes.
-
-**`plugins/github-actions` — the action-engineering Claude Code plugin:**
-→ `@./.claude/design/github-actions/plugin.md`
-Load when working on `plugins/github-actions` (the `action-engineer` agent, the twelve-skill suite, the orientation hook, the bats tests). Its skills address an agent in a STANDALONE action repo cloned from `github-action-template`, not this monorepo — cite only paths that resolve under `node_modules/@savvy-web/…`, never sibling-repo or monorepo `file:line` references.
