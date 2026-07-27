@@ -1,11 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Cause, Effect, Exit } from "effect";
 import { Changesets } from "../../src/index.js";
 import { makeReleaseFixture, readFixtureChangelog } from "./support/release-fixture.js";
 
@@ -132,6 +132,115 @@ describe("ReleasePlanner.preview", () => {
 				expect(r.changelogEntry).toContain(`## ${r.newVersion}`);
 			}
 			expect(preview.releases.map((r) => r.name).sort()).toEqual(["@scope/a", "@scope/b"]);
+		}),
+	);
+});
+
+describe("ReleasePlanner.preview changelogModules", () => {
+	it.effect("renders changelogEntry from a mapped module with no node_modules to resolve from", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+				changesets: [{ id: "calm-owls-run", releases: { "@scope/a": "minor" }, summary: "feat: mapped changelog" }],
+			});
+			roots.push(root);
+			// No node_modules symlink here, unlike the tests above: this fixture is the
+			// zero-install case the release action's Phase 1 runs in, where the
+			// configured id cannot be resolved by `import-meta-resolve` at all.
+			const configPath = join(root, ".changeset/config.json");
+			const config = JSON.parse(readFileSync(configPath, "utf-8"));
+			config.changelog = ["@savvy-web/not-installed/changelog", { repo: "o/r" }];
+			writeFileSync(configPath, JSON.stringify(config, null, 2));
+			const modPath = join(root, "mapped-changelog.mjs");
+			writeFileSync(
+				modPath,
+				"export default {\n" +
+					// biome-ignore lint/suspicious/noTemplateCurlyInString: intentional plain string containing literal backtick-quoted JS source, not a template literal.
+					"  getReleaseLine: async (cs) => `- mapped: ${cs.summary}`,\n" +
+					'  getDependencyReleaseLine: async () => "",\n' +
+					"};\n",
+			);
+
+			const planner = yield* getPlanner();
+			const preview = yield* planner.preview(root, {
+				changelogModules: { "@savvy-web/not-installed/changelog": modPath },
+			});
+
+			const release = preview.releases.find((r) => r.name === "@scope/a");
+			expect(release).toBeDefined();
+			expect(release?.newVersion).toBe("1.1.0");
+			expect(release?.changelogEntry).toContain("## 1.1.0");
+			expect(release?.changelogEntry).toContain("mapped: feat: mapped changelog");
+		}),
+	);
+
+	it.effect("fails with a typed preview error naming an unmapped id", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+				changesets: [{ id: "brisk-ants-march", releases: { "@scope/a": "patch" }, summary: "fix: unmapped" }],
+			});
+			roots.push(root);
+			const configPath = join(root, ".changeset/config.json");
+			const config = JSON.parse(readFileSync(configPath, "utf-8"));
+			config.changelog = ["@custom/generator", null];
+			writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+			const planner = yield* getPlanner();
+			const exit = yield* Effect.exit(
+				planner.preview(root, { changelogModules: { "@savvy-web/changelog": "/tmp/nope.mjs" } }),
+			);
+
+			expect(Exit.isFailure(exit)).toBe(true);
+			const message = Cause.pretty(Exit.isFailure(exit) ? exit.cause : Cause.empty);
+			expect(message).toContain("preview");
+			expect(message).toContain("@custom/generator");
+			expect(message).toContain("@savvy-web/changelog");
+		}),
+	);
+
+	it.effect("treats an id inherited from Object.prototype as unmapped", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+				changesets: [{ id: "brave-pandas-learn", releases: { "@scope/a": "patch" }, summary: "fix: inherited id" }],
+			});
+			roots.push(root);
+			const configPath = join(root, ".changeset/config.json");
+			const config = JSON.parse(readFileSync(configPath, "utf-8"));
+			// `changelogModules["toString"]` reads back Object.prototype.toString — a
+			// function, not undefined — so a bare `=== undefined` check would accept it
+			// and hand the engine a non-string specifier.
+			config.changelog = ["toString", null];
+			writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+			const planner = yield* getPlanner();
+			const exit = yield* Effect.exit(
+				planner.preview(root, { changelogModules: { "@savvy-web/changelog": "/tmp/nope.mjs" } }),
+			);
+
+			expect(Exit.isFailure(exit)).toBe(true);
+			const message = Cause.pretty(Exit.isFailure(exit) ? exit.cause : Cause.empty);
+			expect(message).toContain("is not in changelogModules");
+			expect(message).toContain("toString");
+		}),
+	);
+
+	it.effect("leaves today's behaviour untouched when the option is absent", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+				changesets: [{ id: "lazy-tigers-jump", releases: { "@scope/a": "patch" }, summary: "fix: default path" }],
+			});
+			roots.push(root);
+			symlinkSync(repoNodeModules, join(root, "node_modules"), "dir");
+
+			const planner = yield* getPlanner();
+			const preview = yield* planner.preview(root);
+
+			const release = preview.releases.find((r) => r.name === "@scope/a");
+			expect(release?.newVersion).toBe("1.0.1");
+			expect(release?.changelogEntry).toContain("fix: default path");
 		}),
 	);
 });
