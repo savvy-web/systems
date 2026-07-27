@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 3.2.9
+
+### Bug Fixes
+
+* Prevent double import escaping on tsx files
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.2.8
 
 ### Refactoring
