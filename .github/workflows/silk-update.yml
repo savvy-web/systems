@@ -8,7 +8,7 @@ on:
       dry-run:
         description: Run without making changes (for testing)
         type: boolean
-        default: true
+        default: false
       branch:
         description: Branch name for dependency update PR
         type: string
