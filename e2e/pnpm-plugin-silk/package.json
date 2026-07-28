@@ -8,7 +8,6 @@
 	},
 	"devDependencies": {
 		"@savvy-web/pnpm-plugin-silk": "workspace:*",
-		"@savvy-web/tsdown-plugins": "workspace:*",
 		"@types/node": "catalog:silk",
 		"typescript": "catalog:silk"
 	}
