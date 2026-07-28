@@ -1,5 +1,22 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.25.1
+
+### Dependencies
+
+* | Dependency      | Type   | Action  | From          | To             |
+  | --------------- | ------ | ------- | ------------- | -------------- |
+  | @changesets/cli | config | updated | ^3.0.0-next.8 | ^3.0.0-next.10 |
+  | turbo           | config | updated | ^2.10.6       | ^2.10.7        |
+
+  Both move across the silk, silk:peers and silkPeers catalogs. [#398][#398]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#398]: https://github.com/savvy-web/systems/pull/398
+
 ## 0.25.0
 
 ### Features

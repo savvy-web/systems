@@ -1,5 +1,47 @@
 # @savvy-web/bundler
 
+## 2.1.0
+
+### Features
+
+* `@savvy-web/bundler` now ships a `./env` types-only export declaring `__PACKAGE_VERSION__` on `NodeJS.ProcessEnv`, the build-injected constant every consumer already reads at runtime. Previously the key compiled only because `@types/node`'s `ProcessEnv` carries an untyped string index signature, so there was no autocomplete and nothing documenting that the key exists. A consumer pulls the declaration in with a triple-slash reference: `/// <reference types="@savvy-web/bundler/env" />` in a `.d.ts` in their project. [#398][#398]
+
+### Bug Fixes
+
+* Ambient `.d.ts` export copying now happens inside `buildTargetGroups`, alongside the existing `copyPublicDir` call, instead of only in the bundler's `runBuild`. A self-hosting package that declares an ambient export and builds through the escape-hatch `savvy.build.ts` (which calls `buildTargetGroups` directly and never reaches `runBuild`) previously got its manifest rewritten to point at the ambient file without the file ever being copied, producing a broken published export. Every build path now copies it.
+
+  As a result, `RunOptions.copyAmbientDts` is removed from `@savvy-web/bundler`. Nothing outside this suite consumed the injectable, so the removal ships as minor rather than major, consistent with the rest of this branch. `runBuild` still runs the early `extractAmbientDts`/`assertNoEntryCollisions` fast-fail validation before any build branch; only the copy step moved. [#398][#398]
+
+- The published tsconfig presets (bundler's ecma.json, and rspress-builder's ecma.json and plugin.json) now set `composite: false` instead of `composite: true`. Nothing in this repo uses project references, and both tsconfigs the suite emits already force `composite: false` independently, so this changes no emitted build artifact. It only removes the console warnings consumer `tsc` runs produce when a non-referenced project inherits `composite: true`. [#398][#398]
+
+* Move tsdown-plugins from a dependency to a devDependency of rspress-builder. Its types reach consumers through the bundler, which declares it as a regular dependency, so the direct entry was redundant.
+
+  The shared ecma.json base now globs types/*.d.ts rather than types/*.ts and additionally includes src/\*.d.ts, so hand-authored ambient declarations under src are part of the program. [#398][#398]
+
+- Move the ambient RSPress declarations from the public asset rspress-env.d.ts to src/env.d.ts, published as the types-only ./env export. Consumers reference them with a triple-slash types directive pointing at savvy-web/rspress-builder/env, and the builder copies the file verbatim into every target directory through its zero-config ambient-dts path. The old ./rspress-env.d.ts export is removed.
+
+  The declarations augment ImportMeta by declaring the interface at top level rather than wrapping it in declare global. A global script cannot carry a declare global block, and under skipLibCheck the resulting error is suppressed while the augmentation is silently discarded, leaving consumers with no import.meta.env at all.
+
+  The tsconfig/plugin.json preset is now self-contained rather than extending the local ecma base, since a relative extends out of the published path is a resolution hazard for consumers.
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From  | To    |
+| ------------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.2.3 | 2.3.0 |
+
+### Other
+
+* The shipped tsconfig presets now carry an inline note about how TypeScript resolves extends. The types and lib compiler options replace the base list rather than merging with it, so overriding either one in a consumer tsconfig means re-listing every entry still needed, node included, or losing access to console, process and Buffer with no warning from the compiler.
+
+  ecma.json in bundler and rspress-builder, plugin.json in rspress-builder, and action.json in github-action-builder each carry a top-level note key documenting this. The bundler README also gains a short section explaining the behavior and pointing at plugin.json as the working example, since it already re-lists node alongside react and react-dom. [#398][#398]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#398]: https://github.com/savvy-web/systems/pull/398
+
 ## 2.0.14
 
 ### Dependencies
