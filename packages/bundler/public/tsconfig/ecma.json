@@ -1,8 +1,9 @@
 {
+	"//": "types and lib REPLACE the base list rather than merging with it. If you override either, re-list every entry you still need, including node.",
 	"$schema": "https://json.schemastore.org/tsconfig.json",
 	"compilerOptions": {
 		"allowSyntheticDefaultImports": true,
-		"composite": true,
+		"composite": false,
 		"declaration": true,
 		"declarationDir": "${configDir}/dist",
 		"declarationMap": false,
@@ -42,7 +43,8 @@
 		"${configDir}/__fixtures__/**/*"
 	],
 	"include": [
-		"${configDir}/types/*.ts",
+		"${configDir}/src/*.d.ts",
+		"${configDir}/types/*.d.ts",
 		"${configDir}/package.json",
 		"${configDir}/*.ts",
 		"${configDir}/*.cts",

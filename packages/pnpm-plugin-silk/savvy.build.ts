@@ -9,8 +9,8 @@ await build({
 				silk: {
 					packages: {
 						"@changesets/cli": {
-							range: "^3.0.0-next.8",
-							peer: "^3.0.0-next.8",
+							range: "^3.0.0-next.10",
+							peer: "^3.0.0-next.10",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
@@ -313,8 +313,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						turbo: {
-							range: "^2.10.6",
-							peer: "^2.10.6",
+							range: "^2.10.7",
+							peer: "^2.10.7",
 							strategy: "lock",
 						},
 						vitest: {

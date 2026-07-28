@@ -21,6 +21,9 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
+		"./env": {
+			"types": "./src/env.d.ts"
+		},
 		"./tsconfig/ecma.json": "./public/tsconfig/ecma.json"
 	},
 	"scripts": {

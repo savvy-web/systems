@@ -5,7 +5,6 @@ import type {
 	BuildGroupSpec,
 	BuildReport,
 	BuildTargetGroupsOptions,
-	CopyAmbientDtsOptions,
 	EntryOverride,
 	GenerateMetaOptions,
 	JsxConfig,
@@ -34,7 +33,6 @@ import {
 	packageJsonEntries,
 	readTsconfigJsx,
 	buildTargetGroups as realBuildTargetGroups,
-	copyAmbientDts as realCopyAmbientDts,
 	runExeBuild as realRunExeBuild,
 	writeTargetsBinding as realWriteTargetsBinding,
 	removeDeclarationMaps,
@@ -88,8 +86,6 @@ export interface RunOptions {
 		buildOk?: boolean | undefined;
 		failure?: { name?: string | undefined; message: string } | undefined;
 	}) => string | undefined;
-	/** Injectable ambient-.d.ts copier (defaults to copyAmbientDts). */
-	readonly copyAmbientDts?: ((o: CopyAmbientDtsOptions) => void) | undefined;
 }
 
 /** Reduce a thrown value to the `{ name?, message }` shape the issues artifact stamps on a failed build. */
@@ -516,16 +512,6 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		// local paths. Done after meta so prod meta still sees them; dev keeps them for `--target meta`.
 		if (target === "prod") {
 			for (const g of groups) removeDeclarationMaps(join(cwd, "dist", "prod", g.id, "pkg"));
-		}
-
-		// Copy ambient .d.ts exports into each built group's pkg dir. dev → dist/dev/pkg; prod →
-		// dist/prod/<group>/pkg. The manifest already points at "./<outName>" (transformExports).
-		if (ambient.length > 0 && (target === "dev" || target === "prod")) {
-			const copyAmbient = options.copyAmbientDts ?? realCopyAmbientDts;
-			for (const g of groups) {
-				const outDir = target === "dev" ? join(cwd, "dist", "dev", "pkg") : join(cwd, "dist", "prod", g.id, "pkg");
-				copyAmbient({ ambient, srcCwd: cwd, outDir });
-			}
 		}
 
 		// SEA step: compile the binary into each built group's pkg/bin and program its manifest. Runs AFTER

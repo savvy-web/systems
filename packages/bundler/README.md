@@ -58,7 +58,11 @@ The bundler ships its shared TypeScript base as a subpath export. Extend it from
 }
 ```
 
-`ecma.json` sets ESNext libs, NodeNext resolution, strict mode and `composite` declaration output. Override any of it in your own `tsconfig.json`.
+`ecma.json` sets ESNext libs, NodeNext resolution, strict mode and declaration emit (`declaration: true`, `composite: false`). Override any of it in your own `tsconfig.json`.
+
+Pick the one preset that matches your package type and extend it once: `@savvy-web/bundler/tsconfig/ecma.json` for a plain Node library, `@savvy-web/rspress-builder/tsconfig/plugin.json` for an RSPress plugin, `@savvy-web/github-action-builder/tsconfig/action.json` for a GitHub Action. Each preset is a complete, self-contained config for its package type — none of them uses `extends` internally, so you never need to compose or chain them together.
+
+That design choice exists because TypeScript's own `extends` replaces array-valued compiler options rather than merging them. If you override `types` or `lib` in your own `tsconfig.json`, the override replaces the base preset's list outright instead of adding to it, so you have to re-list every entry you still need, `node` included, or lose it silently — the symptom is `console`, `process` and `Buffer` no longer resolving. `packages/rspress-builder/public/tsconfig/plugin.json` illustrates both points at once: it is a fully self-contained preset for RSPress plugins, and it declares `types: ["node", "react", "react-dom"]` rather than assuming `node` inherits.
 
 ## Multi-target publishing
 
@@ -206,7 +210,7 @@ const config = defineBuild({
 
 ## Per-entry overrides
 
-The format and bundling fields above apply to every export entry. Use `overrides` to pin a subset of entries to their own format and bundling, layered onto the base config. The base build stays as configured; only the listed `entries` (by export subpath) get the override:
+The format and bundling fields above apply to every export entry. Use `overrides` to pin a subset of entries to their own format and bundling. Each override is built from its own values alone — it does not inherit from the base config, so every field it needs must be listed again (see below). The base build stays as configured; only the listed `entries` (by export subpath) get the override:
 
 ```ts
 const config = defineBuild({
@@ -223,7 +227,7 @@ const config = defineBuild({
 });
 ```
 
-Each override carries the same `format`, `bundle`, `externals`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` fields as the base config, plus three partition-only fields: `platform` (the JS-pass target, `"node"` by default or `"browser"` for a client runtime), `css` (forwarded to tsdown's `css` option to enable `@tsdown/css`) and `outSubdir` (builds the partition into an isolated `<group>/pkg/<subdir>/` sub-package, for which exactly one export path may be pinned). An override does not inherit the base `externals` — list what that partition needs. The build errors if an override names an export path the package does not declare. These partition fields are what [`@savvy-web/rspress-builder`](https://www.npmjs.com/package/@savvy-web/rspress-builder) composes to build an RSPress plugin's browser runtime bundle.
+Each override carries the same `format`, `bundle`, `externals`, `bundleNodeModules`, `bundledPackages` and `dtsExternals` fields as the base config, plus three partition-only fields: `platform` (the JS-pass target, `"node"` by default or `"browser"` for a client runtime), `css` (forwarded to tsdown's `css` option to enable `@tsdown/css`) and `outSubdir` (builds the partition into an isolated `<group>/pkg/<subdir>/` sub-package, for which exactly one export path may be pinned). An override does not inherit any base-config value — every field it needs, including `externals`, must be listed again. The build errors if an override names an export path the package does not declare. These partition fields are what [`@savvy-web/rspress-builder`](https://www.npmjs.com/package/@savvy-web/rspress-builder) composes to build an RSPress plugin's browser runtime bundle.
 
 ## Loose files
 
@@ -307,6 +311,14 @@ const config = defineBuild({
 ```
 
 `define` merges with the auto-injected version constant; a key of `process.env.__PACKAGE_VERSION__` in your own `define` wins.
+
+`@savvy-web/bundler` ships an ambient declaration for that injected key as its own `./env` types-only export, so a consumer's `process.env.__PACKAGE_VERSION__` resolves instead of falling through `@types/node`'s untyped index signature. Add a triple-slash reference to a `.d.ts` in your project to pull it in:
+
+```ts
+/// <reference types="@savvy-web/bundler/env" />
+```
+
+That gives you `readonly __PACKAGE_VERSION__?: string` on `NodeJS.ProcessEnv` — optional, matching the `?? "0.0.0"` fallback every consumer already uses for unbuilt source.
 
 ## Features
 

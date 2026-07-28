@@ -1,4 +1,5 @@
 // packages/tsdown-plugins/__test__/build/build-target-groups.test.ts
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1299,5 +1300,91 @@ describe("buildTargetGroups", () => {
 		expect(rtJs.dts).toBe(false);
 		// dts pass: stays the single named barrel entry so it rolls up one bundled index.d.ts.
 		expect(rtDts.entry).toEqual({ index: "./src/runtime/index.tsx" });
+	});
+
+	describe("ambient .d.ts export copying", () => {
+		// The copy runs INSIDE buildTargetGroups (not just runBuild) so every build path — including
+		// the self-hosting escape hatches that call this function directly — gets ambient exports
+		// copied. This is what makes the manifest's rewritten "./<outName>" (transformExports) actually
+		// resolve on disk. The `build` passed in is a no-op fake; the copy itself reads real fs at
+		// `options.cwd`, independent of whatever the JS/dts passes would have done.
+		async function ambientFixture(): Promise<string> {
+			const dir = await mkdtemp(join(tmpdir(), "btg-ambient-"));
+			await mkdir(join(dir, "src"), { recursive: true });
+			await writeFile(
+				join(dir, "package.json"),
+				JSON.stringify({
+					name: "pkg",
+					version: "1.0.0",
+					exports: { ".": "./src/index.ts", "./virtual": { types: "./src/virtual.d.ts" } },
+				}),
+			);
+			await writeFile(join(dir, "src/index.ts"), "export const A = 1;\n");
+			await writeFile(
+				join(dir, "src/virtual.d.ts"),
+				'declare module "pkg/virtual/x" {\n  export const y: number;\n}\n',
+			);
+			return dir;
+		}
+
+		it("a prod build copies each ambient entry into every resolved group's own pkg dir", async () => {
+			const dir = await ambientFixture();
+			const build = (async () => {}) as never;
+			await buildTargetGroups({
+				cwd: dir,
+				version: "1.0.0",
+				entry: { index: "./src/index.ts" },
+				tsconfigPath: join(dir, "tsconfig.json"),
+				groups: [
+					{ id: "npm", name: "pkg" },
+					{ id: "jsr", name: "pkg" },
+				],
+				devManifest: "preserve",
+				build,
+			});
+			for (const groupDir of ["dist/prod/npm/pkg", "dist/prod/jsr/pkg"]) {
+				const dst = join(dir, groupDir, "virtual.d.ts");
+				expect(existsSync(dst)).toBe(true);
+				expect(await readFile(dst, "utf-8")).toContain('declare module "pkg/virtual/x"');
+			}
+		}, 30_000);
+
+		it("a dev build copies ambient entries into dist/dev/pkg", async () => {
+			const dir = await ambientFixture();
+			const build = (async () => {}) as never;
+			await buildTargetGroups({
+				cwd: dir,
+				version: "1.0.0",
+				entry: { index: "./src/index.ts" },
+				tsconfigPath: join(dir, "tsconfig.json"),
+				groups: [{ id: "dev", name: "pkg" }],
+				devManifest: "preserve",
+				build,
+			});
+			const dst = join(dir, "dist/dev/pkg/virtual.d.ts");
+			expect(existsSync(dst)).toBe(true);
+			expect(await readFile(dst, "utf-8")).toContain('declare module "pkg/virtual/x"');
+		}, 30_000);
+
+		it("a package with no ambient exports triggers no copy", async () => {
+			const dir = await mkdtemp(join(tmpdir(), "btg-noambient-"));
+			await mkdir(join(dir, "src"), { recursive: true });
+			await writeFile(
+				join(dir, "package.json"),
+				JSON.stringify({ name: "pkg", version: "1.0.0", exports: { ".": "./src/index.ts" } }),
+			);
+			await writeFile(join(dir, "src/index.ts"), "export const A = 1;\n");
+			const build = (async () => {}) as never;
+			await buildTargetGroups({
+				cwd: dir,
+				version: "1.0.0",
+				entry: { index: "./src/index.ts" },
+				tsconfigPath: join(dir, "tsconfig.json"),
+				groups: [{ id: "dev", name: "pkg" }],
+				devManifest: "preserve",
+				build,
+			});
+			expect(existsSync(join(dir, "dist/dev/pkg"))).toBe(false);
+		}, 30_000);
 	});
 });

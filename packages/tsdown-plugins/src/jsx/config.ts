@@ -1,8 +1,9 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import * as nodePath from "node:path";
-import type { CompilerOptions, TsconfigLoaderSyncOptions } from "@effected/tsconfig-json";
+import type { CompilerOptions } from "@effected/tsconfig-json";
 import { JsxConfig as KitJsxConfig, TsconfigLoaderSync } from "@effected/tsconfig-json";
 import { Option } from "effect";
+import { tsconfigSyncOptions } from "../tsconfig/sync-options.js";
 
 /**
  * Resolved JSX transform settings. The shape mirrors the subset of rolldown's JsxOptions, but the
@@ -55,12 +56,6 @@ export function resolveJsxConfig(tsconfig: TsconfigJsx, override: JsxConfig | un
 	});
 }
 
-/** The consumer-supplied sync operations for the tsconfig loader. @internal */
-const syncOptions: TsconfigLoaderSyncOptions = {
-	fileSystem: { exists: existsSync, readFile: (p) => readFileSync(p, "utf8") },
-	path: nodePath,
-};
-
 /**
  * Read the jsx-relevant compilerOptions from a package's own tsconfig.json (best-effort;
  * returns empty on absence or parse error). Resolved through `@effected/tsconfig-json`'s
@@ -71,7 +66,7 @@ export function readTsconfigJsx(cwd: string): TsconfigJsx {
 	const path = nodePath.join(cwd, "tsconfig.json");
 	if (!existsSync(path)) return {};
 	try {
-		const co = TsconfigLoaderSync.compilerOptions(path, syncOptions);
+		const co = TsconfigLoaderSync.compilerOptions(path, tsconfigSyncOptions);
 		return {
 			...(co.jsx !== undefined ? { jsx: co.jsx } : {}),
 			...(co.jsxImportSource !== undefined ? { jsxImportSource: co.jsxImportSource } : {}),

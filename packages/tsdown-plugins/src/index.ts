@@ -79,7 +79,7 @@ export { rewriteMetaVersions } from "./meta/optimistic.js";
 export type { RunMetaPassOptions } from "./meta/run-pass.js";
 export { applySubdirMetaEntries, deriveExportPaths, runMetaPass } from "./meta/run-pass.js";
 export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
-export { TsconfigResolver, resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
+export { resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
 export type { DiagnosticInput, PassKind } from "./report/collector.js";
 export { BuildCollector, BuildCollectorTag } from "./report/collector.js";
 export type { Formatter, FormatterContext, RenderedOutput } from "./report/formatters/index.js";

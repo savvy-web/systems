@@ -2,16 +2,16 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
+import { TsconfigLoaderSync } from "@effected/tsconfig-json";
+import { tsconfigSyncOptions } from "../tsconfig/sync-options.js";
 
 /** @public */
 export interface ResolvedTsconfigOptions {
 	/** Absolute package root. */
 	readonly cwd: string;
-	/** Explicit `types` to forward (default ["node"]). Pulled from the project tsconfig by the caller. */
-	readonly types?: ReadonlyArray<string> | undefined;
-	/** TS `compilerOptions.jsx` to forward into the dts tsconfig (e.g. "react-jsx"). */
+	/** TS `compilerOptions.jsx` override (e.g. "react-jsx"); wins over the resolved config. */
 	readonly jsx?: string | undefined;
-	/** TS `compilerOptions.jsxImportSource` to forward (e.g. "react"). */
+	/** TS `compilerOptions.jsxImportSource` override (e.g. "react"); wins over the resolved config. */
 	readonly jsxImportSource?: string | undefined;
 }
 
@@ -23,28 +23,88 @@ export interface ResolvedTsconfig {
 }
 
 /**
- * Build the portable absolute-path tsconfig object (ported from rslib writeBundleTempConfig).
+ * The dts-pass deltas layered over whatever the package's own tsconfig declares. The shared
+ * `ecma.json` base sets `composite`/`incremental` true and points `tsBuildInfoFile` at a build
+ * info file; the declaration pass must never skip emit on stale build info, so all three are
+ * forced off here. `declarationMap` is forced on for the emitted maps. `declaration` and
+ * `emitDeclarationOnly` are forced on/off respectively because this pass's entire job is
+ * emitting declarations — it cannot honor a consumer's `declaration: false`; TypeScript's
+ * emitter asserts (`Debug Failure` in `getSourceMappingURL`) when `declarationMap` is
+ * requested without `declaration`.
+ *
+ * @internal
+ */
+const DTS_OVERLAY: Record<string, unknown> = {
+	declaration: true,
+	declarationMap: true,
+	emitDeclarationOnly: false,
+	composite: false,
+	incremental: false,
+	tsBuildInfoFile: undefined,
+};
+
+/**
+ * The compiler options used when a package has no own `tsconfig.json` — today's synthesized
+ * defaults, preserved verbatim. The e2e `leaf` / `leaf-escape` fixtures build without one, so
+ * absence is a supported case, not an error.
+ *
+ * @internal
+ */
+function fallbackCompilerOptions(cwd: string): Record<string, unknown> {
+	return {
+		declaration: true,
+		emitDeclarationOnly: false,
+		rootDir: cwd,
+		outDir: join(cwd, "dist"),
+		declarationDir: join(cwd, "dist"),
+		typeRoots: [join(cwd, "node_modules/@types"), join(cwd, "types")],
+		types: ["node"],
+	};
+}
+
+/**
+ * Build the portable absolute-path tsconfig object for the dts pass.
+ *
+ * @remarks
+ * Resolves the package's own `<cwd>/tsconfig.json` (which extends the shared
+ * `ecma.json` base) through `@effected/tsconfig-json`'s `TsconfigLoaderSync`, so the
+ * result carries the package's real effective options — target, module, lib, strict,
+ * jsx — with `${configDir}` already substituted to absolute paths. Only the dts-pass
+ * overlay (composite/incremental/tsBuildInfoFile forced off, declarationMap forced on)
+ * and an explicit jsx override are layered on top.
+ *
+ * `include`/`exclude` are NOT taken from the resolved config. The shared base includes
+ * `__test__` and `lib` sources, which have no business in a declaration program; the
+ * narrow list below is dts-pass-specific and deliberately held fixed.
  *
  * @public
  */
 export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): ResolvedTsconfig {
 	const cwd = options.cwd;
+	const ownConfig = join(cwd, "tsconfig.json");
+	let base: Record<string, unknown>;
+	if (existsSync(ownConfig)) {
+		try {
+			base = { ...TsconfigLoaderSync.resolve(ownConfig, tsconfigSyncOptions).compilerOptions };
+		} catch (error) {
+			// A config that EXISTS but will not resolve — malformed JSON, or an `extends` that cannot be
+			// located — is a defect, not a fallback case, so fail loudly. Synthesizing defaults here
+			// would emit declarations compiled under the WRONG options while still reporting a green
+			// build: the tsconfig this function returns is written to a temp file that extends the base
+			// by absolute path and never references the broken source, so the dts pass itself sees
+			// nothing wrong. A consumer running only `build:*` would never learn about it.
+			// `resolvePortableTsconfig` below throws on the same failure; these two must not diverge.
+			// Genuine ABSENCE stays a supported case and is handled by the `else` branch.
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`Cannot resolve tsconfig at ${ownConfig}: ${message}`, { cause: error });
+		}
+	} else {
+		base = fallbackCompilerOptions(cwd);
+	}
 	return {
 		compilerOptions: {
-			// emit settings for declaration-only dts
-			declaration: true,
-			emitDeclarationOnly: false,
-			declarationMap: true,
-			// portability: absolute roots + explicit types so pnpm symlinks resolve
-			rootDir: cwd,
-			outDir: join(cwd, "dist"),
-			declarationDir: join(cwd, "dist"),
-			typeRoots: [join(cwd, "node_modules/@types"), join(cwd, "types")],
-			types: options.types ? [...options.types] : ["node"],
-			// never skip emit on stale build info
-			composite: false,
-			incremental: false,
-			tsBuildInfoFile: undefined,
+			...base,
+			...DTS_OVERLAY,
 			...(options.jsx !== undefined ? { jsx: options.jsx } : {}),
 			...(options.jsxImportSource !== undefined ? { jsxImportSource: options.jsxImportSource } : {}),
 		},
@@ -52,7 +112,7 @@ export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): Resolve
 			join(cwd, "src/**/*.ts"),
 			join(cwd, "src/**/*.mts"),
 			join(cwd, "src/**/*.tsx"),
-			join(cwd, "types/*.ts"),
+			join(cwd, "types/*.d.ts"),
 			join(cwd, "package.json"),
 		],
 		exclude: [join(cwd, "node_modules"), join(cwd, "dist/**/*")],
