@@ -1,5 +1,47 @@
 # @savvy-web/tsdown-plugins
 
+## 2.3.0
+
+### Features
+
+* Resolve each package's own tsconfig for the declaration pass instead of synthesizing one that extends nothing, so declarations compile under the real effective compiler options rather than TypeScript defaults.
+
+  Align rspress-builder's public options with the bundler's own names. dtsBundledPackages becomes bundledPackages, apiModel becomes meta, and dtsExternals plus bundleNodeModules are exposed at both the build-wide and per-bundle levels.
+
+- The portable tsconfig resolver now gets `types` from `@effected/tsconfig-json@0.4.0`'s new `includeTypes` opt-in on `PortableTsconfig.make`, instead of a local merge-back step that re-added `types` after the kit's allow-list filter dropped it. The resolver bumps to `^0.4.0` and passes `{ includeTypes: true }` into `make`, and the destructure-and-reassign workaround is gone.
+
+  The emitted meta tsconfig carries the same keys and values as before, still `types: ["node"]` with `typeRoots` dropped. The only observed change is that `types` now sits in the position the kit's own allow-list places it rather than being appended last by the old mutation, so the JSON key order shifted; no consumer of this JSON reads it positionally. [#398][#398]
+
+### Bug Fixes
+
+* Ambient `.d.ts` export copying now happens inside `buildTargetGroups`, alongside the existing `copyPublicDir` call, instead of only in the bundler's `runBuild`. A self-hosting package that declares an ambient export and builds through the escape-hatch `savvy.build.ts` (which calls `buildTargetGroups` directly and never reaches `runBuild`) previously got its manifest rewritten to point at the ambient file without the file ever being copied, producing a broken published export. Every build path now copies it.
+
+  As a result, `RunOptions.copyAmbientDts` is removed from `@savvy-web/bundler`. Nothing outside this suite consumed the injectable, so the removal ships as minor rather than major, consistent with the rest of this branch. `runBuild` still runs the early `extractAmbientDts`/`assertNoEntryCollisions` fast-fail validation before any build branch; only the copy step moved. [#398][#398]
+
+- The meta tsconfig shipped at dist/prod/npm/meta/tsconfig.json now carries the resolved `types` array. The kit's PortableTsconfig allow-list classifies `types` as path-dependent and drops it, but it holds `@types/*` package names, not filesystem paths, and it is the only signal telling a downstream virtual TypeScript environment which ambient type packages to load. Without it, consumers building virtual environments got no `@types/node`, so `console`, `process` and `Buffer` were all missing. `types` is now merged back in from the resolved compiler options whenever the source config declares it; `typeRoots` stays dropped since those are genuinely absolute, machine-specific paths. [#398][#398]
+
+* Removes the TsconfigResolver enum-conversion class, which nothing consumed, in favor of the tsconfig-json kit. Corrects a false doc comment on EntryOverride that implied an omitted option falls back to the base build's value, when in fact each partition builds from its own values only.
+
+  @savvy-web/github-action-builder now resolves its own tsconfig for the declaration pass, so its emitted declarations reference Node's URL type from node:url instead of the DOM global URL.
+
+  A package tsconfig that exists but cannot be resolved, whether from malformed JSON or an extends target that cannot be located, now fails the build with package context instead of silently falling back to synthesized defaults. Falling back emitted declarations compiled under the wrong options while still reporting success, because the generated declaration-pass config never references the broken source. A package with no tsconfig at all remains a supported case and still uses the defaults.
+
+- Guard against missing version endpoints on changesets releases typed as none. The changesets types package only guarantees oldVersion and newVersion on the major, minor and patch arms of ComprehensiveRelease, so an entry typed none may carry neither.
+
+  The dependency changelog table now drops entries missing either endpoint rather than rendering an empty From or To cell. Maintenance-reason derivation no longer names a none co-member as a release trigger, which printed an unchanged version as the cause of the release. Next-version resolution skips releases with no newVersion instead of overwriting the seeded current version with undefined. [#398][#398]
+
+### Other
+
+* The portable tsconfig resolver now gets `types` from `@effected/tsconfig-json@0.4.0`'s new `includeTypes` opt-in on `PortableTsconfig.make`, instead of a local merge-back step that re-added `types` after the kit's allow-list filter dropped it. The resolver bumps to `^0.4.0` and passes `{ includeTypes: true }` into `make`, and the destructure-and-reassign workaround is gone.
+
+  The emitted meta tsconfig carries the same keys and values as before, still `types: ["node"]` with `typeRoots` dropped. The only observed change is that `types` now sits in the position the kit's own allow-list places it rather than being appended last by the old mutation, so the JSON key order shifted; no consumer of this JSON reads it positionally. [#398][#398]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#398]: https://github.com/savvy-web/systems/pull/398
+
 ## 2.2.3
 
 ### Dependencies

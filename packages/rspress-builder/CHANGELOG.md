@@ -1,5 +1,47 @@
 # @savvy-web/rspress-builder
 
+## 1.1.0
+
+### Features
+
+* Move the ambient RSPress declarations from the public asset rspress-env.d.ts to src/env.d.ts, published as the types-only ./env export. Consumers reference them with a triple-slash types directive pointing at savvy-web/rspress-builder/env, and the builder copies the file verbatim into every target directory through its zero-config ambient-dts path. The old ./rspress-env.d.ts export is removed.
+
+  The declarations augment ImportMeta by declaring the interface at top level rather than wrapping it in declare global. A global script cannot carry a declare global block, and under skipLibCheck the resulting error is suppressed while the augmentation is silently discarded, leaving consumers with no import.meta.env at all.
+
+  The tsconfig/plugin.json preset is now self-contained rather than extending the local ecma base, since a relative extends out of the published path is a resolution hazard for consumers.
+
+- Resolve each package's own tsconfig for the declaration pass instead of synthesizing one that extends nothing, so declarations compile under the real effective compiler options rather than TypeScript defaults.
+
+  Align rspress-builder's public options with the bundler's own names. dtsBundledPackages becomes bundledPackages, apiModel becomes meta, and dtsExternals plus bundleNodeModules are exposed at both the build-wide and per-bundle levels.
+
+### Bug Fixes
+
+* The published tsconfig presets (bundler's ecma.json, and rspress-builder's ecma.json and plugin.json) now set `composite: false` instead of `composite: true`. Nothing in this repo uses project references, and both tsconfigs the suite emits already force `composite: false` independently, so this changes no emitted build artifact. It only removes the console warnings consumer `tsc` runs produce when a non-referenced project inherits `composite: true`. [#398][#398]
+
+- Move tsdown-plugins from a dependency to a devDependency of rspress-builder. Its types reach consumers through the bundler, which declares it as a regular dependency, so the direct entry was redundant.
+
+  The shared ecma.json base now globs types/*.d.ts rather than types/*.ts and additionally includes src/\*.d.ts, so hand-authored ambient declarations under src are part of the program. [#398][#398]
+
+### Dependencies
+
+| Dependency         | Type       | Action  | From   | To    |
+| ------------------ | ---------- | ------- | ------ | ----- |
+| @savvy-web/bundler | dependency | updated | 2.0.14 | 2.1.0 |
+
+### Other
+
+* Both the TsconfigResolver removal and the rspress-builder option renames are released as minor rather than major, a deliberate SemVer deviation, because nothing outside this suite consumes either surface yet. [#398][#398]
+
+- The shipped tsconfig presets now carry an inline note about how TypeScript resolves extends. The types and lib compiler options replace the base list rather than merging with it, so overriding either one in a consumer tsconfig means re-listing every entry still needed, node included, or losing access to console, process and Buffer with no warning from the compiler.
+
+  ecma.json in bundler and rspress-builder, plugin.json in rspress-builder, and action.json in github-action-builder each carry a top-level note key documenting this. The bundler README also gains a short section explaining the behavior and pointing at plugin.json as the working example, since it already re-lists node alongside react and react-dom. [#398][#398]
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#398]: https://github.com/savvy-web/systems/pull/398
+
 ## 1.0.31
 
 ### Dependencies

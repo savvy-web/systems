@@ -1,5 +1,25 @@
 # @savvy-web/silk
 
+## 3.2.11
+
+### Bug Fixes
+
+* Corrected the `plugins/silk` build skill's rspress-builder reference doc. The front-door example passed `apiModel`, an option `@savvy-web/rspress-builder` renamed to `meta`; the option table still listed the old `dtsBundledPackages`/`apiModel` names instead of the current `bundledPackages`/`dtsExternals`/`bundleNodeModules`/`meta` surface and the per-bundle `RspressBundleOptions` shape; and the peer contract named `@tsdown/css` as a consumer-supplied peer when it is rspress-builder's own dependency, while omitting the actual `typescript` peer. The doc also gained a section on the package's `./env` ambient-types export. Agents read this file when scaffolding or building an RSPress plugin, so the stale names and contract were being copied into new work. [#398][#398]
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From   | To     |
+| -------------------- | ---------- | ------- | ------ | ------ |
+| @savvy-web/changelog | dependency | updated | 0.1.1  | 0.1.1  |
+| @savvy-web/cli       | dependency | updated | 2.1.13 | 2.1.14 |
+| @savvy-web/mcp       | dependency | updated | 2.0.14 | 2.0.15 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#398]: https://github.com/savvy-web/systems/pull/398
+
 ## 3.2.10
 
 ### Dependencies

@@ -1,5 +1,28 @@
 # @savvy-web/silk-effects
 
+## 5.1.3
+
+### Bug Fixes
+
+* Guard against missing version endpoints on changesets releases typed as none. The changesets types package only guarantees oldVersion and newVersion on the major, minor and patch arms of ComprehensiveRelease, so an entry typed none may carry neither.
+
+  The dependency changelog table now drops entries missing either endpoint rather than rendering an empty From or To cell. Maintenance-reason derivation no longer names a none co-member as a release trigger, which printed an unchanged version as the cause of the release. Next-version resolution skips releases with no newVersion instead of overwriting the seeded current version with undefined. [#398][#398]
+
+### Dependencies
+
+* | Dependency                     | Type          | Action  | From          | To            |                                                                       |
+  | :----------------------------- | :------------ | :------ | :------------ | :------------ | --------------------------------------------------------------------- |
+  | @changesets/apply-release-plan | dependency    | updated | ^8.0.0-next.7 | ^8.0.0-next.9 |                                                                       |
+  | @changesets/get-github-info    | dependency    | updated | ^1.0.0-next.3 | ^1.0.0-next.4 |                                                                       |
+  | @changesets/get-release-plan   | dependency    | updated | ^5.0.0-next.7 | ^5.0.0-next.9 |                                                                       |
+  | @changesets/types              | devDependency | updated | ^7.0.0-next.6 | ^7.0.0-next.8 | [#398][#398] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#398]: https://github.com/savvy-web/systems/pull/398
+
 ## 5.1.2
 
 ### Dependencies
