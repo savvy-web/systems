@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/templates",
-	"version": "1.0.10",
+	"version": "1.0.11",
 	"private": true,
 	"description": "Pure TypeScript templates for Silk Suite project scaffolding",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/templates",
