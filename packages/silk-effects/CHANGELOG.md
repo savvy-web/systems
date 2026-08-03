@@ -1,5 +1,59 @@
 # @savvy-web/silk-effects
 
+## 5.2.0
+
+### Breaking Changes
+
+* ### Layer statics replace `XLive` exports
+
+  Every service's production layer moves from a standalone `XLive` const to a `.layer` static on the service's own `Context.Service` class. The old `XLive` names are removed from the package's exports — both the flat services and the `Changesets`, `Repos`, and `Turbo` namespaces.
+
+  ```typescript
+  // Before
+  import { BiomeSchemaSyncLive, ChangesetConfigReaderLive, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+
+  Effect.provide(BiomeSchemaSyncLive);
+  Effect.provide(ChangesetConfigReaderLive);
+  Effect.provide(ConfigDiscoveryLive);
+
+  // After
+  import { BiomeSchemaSync, ChangesetConfigReader, ConfigDiscovery } from "@savvy-web/silk-effects";
+
+  Effect.provide(BiomeSchemaSync.layer);
+  Effect.provide(ChangesetConfigReader.layer);
+  Effect.provide(ConfigDiscovery.layer);
+  ```
+
+  Affected services: `BiomeSchemaSync`, `ChangesetConfig`, `ChangesetConfigReader`, `ConfigDiscovery`, `SilkWorkspaceAnalyzer`, `Changesets.BranchAnalyzer`, `Changesets.ConfigInspector`, `Changesets.DepsRegen`, `Changesets.GitHubService`, `Changesets.ReleasePlanner`, `Repos.ReposConfigStore`, `Repos.ReposManager`, and `Turbo.TurboInspector`.
+
+  `SilkPublishability` carries two production layers rather than one, so both move to statics: `SilkPublishability.layer` (the default detector) and `SilkPublishability.layerAdaptive` (the config-aware variant, replacing `PublishabilityDetectorAdaptiveLive`).
+
+  This is a genuine breaking change to the package's export surface, released as a minor bump rather than a major: consumption of `@savvy-web/silk-effects` is effectively in-house across the Silk Suite, so the migration cost is contained and immediate. [#408][#408]
+
+### Documentation
+
+* Corrects stale `Context.Tag` references left over from the v4 migration to `Context.Service`, verified against the current source:
+
+  * `docs/04-changeset-config.md` — the `ChangesetConfigReader` and `ChangesetConfig` service code blocks now show the real `Context.Service<Self, Shape>()("<id>")` form, each with its companion `*Shape` interface.
+  * `docs/05-config-discovery.md` — the `ConfigDiscovery` service code block, same correction.
+  * `docs/06-biome-sync.md` — the `BiomeSchemaSync` service code block, same correction.
+  * `src/changesets/services/changelog.ts` — the module's TSDoc comment, which reaches the published API docs, now says `Context.Service` rather than `Context.Tag`. [#408][#408]
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                              |
+  | ---------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/package-json | dependency | updated | ^0.6.1 | ^0.7.1 |                                                                              |
+  | @effected/workspaces   | dependency | updated | ^0.9.1 | ^0.9.3 | [#400][#400] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#400]: https://github.com/savvy-web/systems/pull/400
+
+[#408]: https://github.com/savvy-web/systems/pull/408
+
 ## 5.1.3
 
 ### Bug Fixes

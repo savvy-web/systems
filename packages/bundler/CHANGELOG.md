@@ -1,5 +1,23 @@
 # @savvy-web/bundler
 
+## 2.1.1
+
+### Refactoring
+
+* Internal layer usage in `runBuild` and the package's own self-hosting `savvy.build.ts` updated to consume `@savvy-web/tsdown-plugins`'s renamed statics — `ConfigValidator.layer` in place of the removed `ConfigValidatorLive`, and `ReportPipeline` in place of the removed `ReportPipelineLive`. No change to `runBuild`, `defineBuild`, or the package's own build output. [#408][#408]
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From  | To    |
+| ------------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.3.0 | 2.4.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#408]: https://github.com/savvy-web/systems/pull/408
+
 ## 2.1.0
 
 ### Features
