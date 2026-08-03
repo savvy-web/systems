@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.26.0
+
+### Features
+
+* Adds new `build`, `docs`, `lint` and `test` catalogs for specific domains.
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.25.1
 
 ### Dependencies
