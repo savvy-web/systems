@@ -1,5 +1,17 @@
 # @savvy-web/bundler
 
+## 2.1.2
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From  | To    |
+| ------------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.4.0 | 2.4.1 |
+
+* | Dependency | Type       | Action  | From   | To     |                                                          |
+  | ---------- | ---------- | ------- | ------ | ------ | -------------------------------------------------------- |
+  | rolldown   | dependency | updated | ^1.2.0 | ^1.2.1 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 2.1.1
 
 ### Refactoring
