@@ -33,12 +33,12 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:effect",
-		"@effected/commands": "^0.2.0",
-		"@effected/git": "^0.5.1",
-		"@effected/jsonc": "^0.5.1",
-		"@effected/templates": "^0.1.0",
-		"@effected/workspaces": "^0.9.3",
-		"@effected/yaml": "^0.6.0",
+		"@effected/commands": "^0.2.1",
+		"@effected/git": "^0.5.2",
+		"@effected/jsonc": "^0.5.2",
+		"@effected/templates": "^0.1.1",
+		"@effected/workspaces": "^0.9.4",
+		"@effected/yaml": "^0.6.1",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect"
 	},
