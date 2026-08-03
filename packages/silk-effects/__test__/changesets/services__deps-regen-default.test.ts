@@ -1,6 +1,6 @@
 /**
  * Tests for {@link DepsRegenDefault} — the batteries-included default
- * composition of {@link DepsRegenLive}.
+ * composition of {@link DepsRegen.layer}.
  *
  * Kept in its own file (rather than folded into
  * `services__deps-regen.test.ts`) because it exercises a real git fixture
@@ -19,16 +19,11 @@ import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { ConfigInspectorLive } from "../../src/changesets/services/config-inspector.js";
-import {
-	DepsRegen,
-	DepsRegenDefault,
-	DepsRegenLive,
-	makeDepsRegenDefault,
-} from "../../src/changesets/services/deps-regen.js";
-import { ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
-import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
-import { PublishabilityDetectorAdaptiveLive } from "../../src/services/SilkPublishability.js";
+import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
+import { DepsRegen, DepsRegenDefault, makeDepsRegenDefault } from "../../src/changesets/services/deps-regen.js";
+import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
+import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
+import { SilkPublishability } from "../../src/services/SilkPublishability.js";
 
 function git(cwd: string, ...args: string[]): string {
 	return execFileSync("git", args, {
@@ -355,11 +350,11 @@ describe("DepsRegenDefault — worktree freshness (regression: stale WorkspaceDi
 			// memoized WorkspaceDiscovery instance the DepsRegen graph reads —
 			// exercising plan()'s up-front refresh against a genuinely stale cache.
 			const kit = Workspaces.layerWithGit({ cwd: dir });
-			const configGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
+			const configGraph = ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer));
 			const freshLive = Layer.mergeAll(
-				DepsRegenLive.pipe(
-					Layer.provide(ConfigInspectorLive.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, kit)))),
-					Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(Layer.mergeAll(configGraph, kit)))),
+				DepsRegen.layer.pipe(
+					Layer.provide(ConfigInspector.layer.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, kit)))),
+					Layer.provide(SilkPublishability.layerAdaptive.pipe(Layer.provide(Layer.mergeAll(configGraph, kit)))),
 					Layer.provide(configGraph),
 					Layer.provide(kit),
 				),

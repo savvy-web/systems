@@ -3,8 +3,8 @@
  *
  * Each test sets up a throwaway project directory under `os.tmpdir()` with
  * a minimal pnpm workspace structure and a `.changeset/config.json`, then
- * runs the real {@link ConfigInspectorLive} layer composed with
- * `ChangesetConfigReaderLive`, `WorkspacesLive`, and `NodeServices.layer`.
+ * runs the real `ConfigInspector.layer` layer composed with
+ * `ChangesetConfigReader.layer`, `WorkspacesLive`, and `NodeServices.layer`.
  * This exercises the glob-materialization and overlap-detection paths that
  * a pure mock layer would not.
  */
@@ -21,14 +21,10 @@ import { Effect, Layer, Schema } from "effect";
 import { vi } from "vitest";
 import { ConfigurationError } from "../../src/changesets/errors.js";
 import type { ConfigInspector as ConfigInspectorTag } from "../../src/changesets/services/config-inspector.js";
-import {
-	ConfigInspector,
-	ConfigInspectorLive,
-	InspectedConfigSchema,
-} from "../../src/changesets/services/config-inspector.js";
-import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
+import { ConfigInspector, InspectedConfigSchema } from "../../src/changesets/services/config-inspector.js";
+import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 
-// Compose the dependency chain explicitly so that ConfigInspectorLive's
+// Compose the dependency chain explicitly so that ConfigInspector.layer's
 // requirement set is fully satisfied. Layer.mergeAll alone unions
 // requirements rather than threading them; `Layer.provide` is what feeds
 // upstream services into downstream ones.
@@ -37,8 +33,8 @@ import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigRea
 // was built with (single-root by design), so the test layer is a per-fixture
 // factory — build it with the fixture's cwd, never share one across tmpdirs.
 const testLive = (cwd: string): Layer.Layer<ConfigInspectorTag> =>
-	ConfigInspectorLive.pipe(
-		Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, Workspaces.layer({ cwd }))),
+	ConfigInspector.layer.pipe(
+		Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, Workspaces.layer({ cwd }))),
 		Layer.provide(NodeServices.layer),
 	);
 

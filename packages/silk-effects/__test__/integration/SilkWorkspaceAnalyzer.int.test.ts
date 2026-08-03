@@ -9,8 +9,8 @@ import {
 } from "@effected/workspaces";
 import { Effect, Layer, Logger, Option } from "effect";
 import type { AnalyzedWorkspace } from "../../src/schemas/WorkspaceAnalysisSchemas.js";
-import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
-import { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "../../src/services/SilkWorkspaceAnalyzer.js";
+import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
+import { SilkWorkspaceAnalyzer } from "../../src/services/SilkWorkspaceAnalyzer.js";
 
 // ---------------------------------------------------------------------------
 // Constants & helpers
@@ -48,12 +48,12 @@ const makeTestLayer = (fixturePath: string, pmLayer?: Layer.Layer<PackageManager
 
 	const pm = pmLayer ?? PackageManagerDetector.layer.pipe(Layer.provide(platform));
 
-	const changesetReader = ChangesetConfigReaderLive.pipe(Layer.provide(platform));
+	const changesetReader = ChangesetConfigReader.layer.pipe(Layer.provide(platform));
 
 	// Topological ordering is a pure DependencyGraph value inside the analyzer
 	// in v4, and versioning/tag classification are pure `@effected/workspaces`
 	// value operations — no sorter, versioning or tag layers to wire.
-	return SilkWorkspaceAnalyzerLive.pipe(Layer.provide(Layer.mergeAll(platform, discovery, pm, changesetReader)));
+	return SilkWorkspaceAnalyzer.layer.pipe(Layer.provide(Layer.mergeAll(platform, discovery, pm, changesetReader)));
 };
 
 /**

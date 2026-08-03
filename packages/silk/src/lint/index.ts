@@ -19,7 +19,7 @@
 import { Lint } from "@savvy-web/silk-effects";
 
 export type { ConfigLocation } from "@savvy-web/silk-effects";
-export { ConfigDiscovery, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+export { ConfigDiscovery } from "@savvy-web/silk-effects";
 
 // === Abstract base class ===
 

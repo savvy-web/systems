@@ -61,7 +61,7 @@ export interface ChangesetConfigReaderShape {
  *     const reader = yield* ChangesetConfigReader;
  *     return yield* reader.read(process.cwd());
  *   }).pipe(
- *     Effect.provide(ChangesetConfigReaderLive),
+ *     Effect.provide(ChangesetConfigReader.layer),
  *     Effect.provide(NodeServices.layer),
  *   )
  * );
@@ -72,71 +72,84 @@ export interface ChangesetConfigReaderShape {
  */
 export class ChangesetConfigReader extends Context.Service<ChangesetConfigReader, ChangesetConfigReaderShape>()(
 	"@savvy-web/silk-effects/ChangesetConfigReader",
-) {}
+) {
+	/**
+	 * Production implementation of {@link ChangesetConfigReader}.
+	 *
+	 * @remarks
+	 * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
+	 * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
+	 *
+	 * @since 0.1.0
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<ChangesetConfigReader, never, FileSystem.FileSystem> = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
 
-/**
- * Live implementation of {@link ChangesetConfigReader}.
- *
- * @remarks
- * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
- * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
- *
- * @since 0.1.0
- * @public
- */
-export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never, FileSystem.FileSystem> = Layer.effect(
-	ChangesetConfigReader,
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
+			const read = (
+				root: string,
+			): Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError> => {
+				const configPath = `${root}/.changeset/config.json`;
 
-		const read = (root: string): Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError> => {
-			const configPath = `${root}/.changeset/config.json`;
-
-			return Effect.gen(function* () {
-				const exists = yield* fs.exists(configPath).pipe(
-					Effect.mapError(
-						/* v8 ignore next 4 -- error path requires fs.exists to fail */
-						(cause) =>
-							new ChangesetConfigError({
-								path: configPath,
-								reason: String(cause),
-							}),
-					),
-				);
-
-				if (!exists) {
-					return yield* Effect.fail(
-						new ChangesetConfigError({
-							path: configPath,
-							reason: "File not found",
-						}),
+				return Effect.gen(function* () {
+					const exists = yield* fs.exists(configPath).pipe(
+						Effect.mapError(
+							/* v8 ignore next 4 -- error path requires fs.exists to fail */
+							(cause) =>
+								new ChangesetConfigError({
+									path: configPath,
+									reason: String(cause),
+								}),
+						),
 					);
-				}
 
-				const raw = yield* fs.readFileString(configPath).pipe(
-					Effect.mapError(
-						/* v8 ignore next 4 -- error path requires fs.readFileString to fail */
-						(cause) =>
+					if (!exists) {
+						return yield* Effect.fail(
 							new ChangesetConfigError({
 								path: configPath,
-								reason: String(cause),
+								reason: "File not found",
 							}),
-					),
-				);
+						);
+					}
 
-				const parsed: unknown = yield* Effect.try({
-					try: () => JSON.parse(raw) as unknown,
-					catch: (cause) =>
-						new ChangesetConfigError({
-							path: configPath,
-							reason: `Invalid JSON: ${String(cause)}`,
-						}),
-				});
+					const raw = yield* fs.readFileString(configPath).pipe(
+						Effect.mapError(
+							/* v8 ignore next 4 -- error path requires fs.readFileString to fail */
+							(cause) =>
+								new ChangesetConfigError({
+									path: configPath,
+									reason: String(cause),
+								}),
+						),
+					);
 
-				const rawConfig = parsed as { changelog?: unknown };
+					const parsed: unknown = yield* Effect.try({
+						try: () => JSON.parse(raw) as unknown,
+						catch: (cause) =>
+							new ChangesetConfigError({
+								path: configPath,
+								reason: `Invalid JSON: ${String(cause)}`,
+							}),
+					});
 
-				if (isSilkChangelog(rawConfig.changelog)) {
-					return yield* Schema.decodeUnknownEffect(SilkChangesetConfigFile)(parsed).pipe(
+					const rawConfig = parsed as { changelog?: unknown };
+
+					if (isSilkChangelog(rawConfig.changelog)) {
+						return yield* Schema.decodeUnknownEffect(SilkChangesetConfigFile)(parsed).pipe(
+							Effect.mapError(
+								/* v8 ignore next 4 -- error path requires schema decode failure */
+								(cause) =>
+									new ChangesetConfigError({
+										path: configPath,
+										reason: `Schema decode failed: ${String(cause)}`,
+									}),
+							),
+						);
+					}
+
+					return yield* Schema.decodeUnknownEffect(ChangesetConfigFile)(parsed).pipe(
 						Effect.mapError(
 							/* v8 ignore next 4 -- error path requires schema decode failure */
 							(cause) =>
@@ -146,21 +159,10 @@ export const ChangesetConfigReaderLive: Layer.Layer<ChangesetConfigReader, never
 								}),
 						),
 					);
-				}
+				});
+			};
 
-				return yield* Schema.decodeUnknownEffect(ChangesetConfigFile)(parsed).pipe(
-					Effect.mapError(
-						/* v8 ignore next 4 -- error path requires schema decode failure */
-						(cause) =>
-							new ChangesetConfigError({
-								path: configPath,
-								reason: `Schema decode failed: ${String(cause)}`,
-							}),
-					),
-				);
-			});
-		};
-
-		return { read };
-	}),
-);
+			return { read };
+		}),
+	);
+}

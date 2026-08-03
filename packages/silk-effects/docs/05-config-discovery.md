@@ -17,20 +17,22 @@ allowing per-repo overrides.
 ## Service API
 
 ```typescript
-class ConfigDiscovery extends Context.Tag("@savvy-web/silk-effects/ConfigDiscovery")<
-  ConfigDiscovery,
-  {
-    readonly find: (
-      name: string,
-      options?: { cwd?: string },
-    ) => Effect.Effect<ConfigLocation | null>;
+interface ConfigDiscoveryShape {
+  readonly find: (
+    name: string,
+    options?: { cwd?: string },
+  ) => Effect.Effect<ConfigLocation | null>;
 
-    readonly findAll: (
-      name: string,
-      options?: { cwd?: string },
-    ) => Effect.Effect<ReadonlyArray<ConfigLocation>>;
-  }
->() {}
+  readonly findAll: (
+    name: string,
+    options?: { cwd?: string },
+  ) => Effect.Effect<ReadonlyArray<ConfigLocation>>;
+}
+
+class ConfigDiscovery extends Context.Service<
+  ConfigDiscovery,
+  ConfigDiscoveryShape
+>()("@savvy-web/silk-effects/ConfigDiscovery") {}
 ```
 
 ### `find(name, options?)`
@@ -54,7 +56,7 @@ ordered from highest to lowest priority.
 ## Layer
 
 ```typescript
-export const ConfigDiscoveryLive: Layer.Layer<
+static readonly layer: Layer.Layer<
   ConfigDiscovery,
   never,
   FileSystem.FileSystem
@@ -139,7 +141,7 @@ const config = yield* discovery.find("biome.json").pipe(
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
-import { ConfigDiscovery, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+import { ConfigDiscovery } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
   const discovery = yield* ConfigDiscovery;
@@ -159,7 +161,7 @@ const program = Effect.gen(function* () {
 
 await Effect.runPromise(
   program.pipe(
-    Effect.provide(ConfigDiscoveryLive),
+    Effect.provide(ConfigDiscovery.layer),
     Effect.provide(NodeServices.layer),
   ),
 );

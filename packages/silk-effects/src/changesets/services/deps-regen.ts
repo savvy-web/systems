@@ -28,7 +28,6 @@
  * and MCP tools are thin adapters over this service.
  *
  * @see {@link DepsRegen} for the service tag
- * @see {@link DepsRegenLive} for the production layer
  *
  */
 
@@ -48,9 +47,9 @@ import type { Path } from "effect";
 import { Context, Effect, FileSystem, Layer, Option } from "effect";
 import type { ChildProcessSpawner } from "effect/unstable/process";
 import type { ChangesetConfigShape } from "../../services/ChangesetConfig.js";
-import { ChangesetConfig, ChangesetConfigLive } from "../../services/ChangesetConfig.js";
-import { ChangesetConfigReaderLive } from "../../services/ChangesetConfigReader.js";
-import { PublishabilityDetectorAdaptiveLive } from "../../services/SilkPublishability.js";
+import { ChangesetConfig } from "../../services/ChangesetConfig.js";
+import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";
+import { SilkPublishability } from "../../services/SilkPublishability.js";
 import type { GitError } from "../errors.js";
 import { ChangesetIOError } from "../errors.js";
 import type { WorkspaceDependencyDiff } from "../utils/dep-diff.js";
@@ -59,7 +58,7 @@ import { serializeDependencyTableToMarkdown, sortDependencyRows } from "../utils
 import { gitListChangesetFilesAtRef, gitMergeBase } from "../utils/git.js";
 import { listPublishablePackageNames } from "../utils/publishability.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
-import { ConfigInspector, ConfigInspectorLive } from "./config-inspector.js";
+import { ConfigInspector } from "./config-inspector.js";
 
 /* ----------------------------------------------------------------- *
  * Changeset filename helpers (ported verbatim from the CLI command)
@@ -381,10 +380,46 @@ export interface DepsRegenShape {
  *
  * @public
  */
-export class DepsRegen extends Context.Service<DepsRegen, DepsRegenShape>()("Changesets/DepsRegen") {}
+export class DepsRegen extends Context.Service<DepsRegen, DepsRegenShape>()("Changesets/DepsRegen") {
+	/**
+	 * Production layer for {@link DepsRegen}.
+	 *
+	 * Requires `WorkspaceSnapshots`, `WorkspaceDiscovery`,
+	 * `PublishabilityDetector` (all from `@effected/workspaces`),
+	 * `Git` (from `@effected/git`, backing merge-base resolution),
+	 * {@link ConfigInspector}, {@link ChangesetConfig}, and
+	 * `FileSystem.FileSystem` (resolved once at construction and closed over by
+	 * the shape, keeping `plan`/`execute` themselves requirement-free).
+	 *
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<
+		DepsRegen,
+		never,
+		| WorkspaceSnapshots
+		| ConfigInspector
+		| WorkspaceDiscovery
+		| PublishabilityDetector
+		| ChangesetConfig
+		| Git
+		| FileSystem.FileSystem
+	> = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			const snapshots = yield* WorkspaceSnapshots;
+			const inspector = yield* ConfigInspector;
+			const discovery = yield* WorkspaceDiscovery;
+			const detector = yield* PublishabilityDetector;
+			const config = yield* ChangesetConfig;
+			const fs = yield* FileSystem.FileSystem;
+			const git = yield* Git;
+			return makeShape(snapshots, inspector, discovery, detector, config, fs, Layer.succeed(Git, git));
+		}),
+	);
+}
 
 /* ----------------------------------------------------------------- *
- * Live layer
+ * Batteries-included default layer
  * ----------------------------------------------------------------- */
 
 /**
@@ -576,49 +611,9 @@ function makeShape(
 	return { plan, execute };
 }
 
-/**
- * Live layer for {@link DepsRegen}.
- *
- * Requires `WorkspaceSnapshots`, `WorkspaceDiscovery`,
- * `PublishabilityDetector` (all from `@effected/workspaces`),
- * `Git` (from `@effected/git`, backing merge-base resolution),
- * {@link ConfigInspector}, {@link ChangesetConfig}, and
- * `FileSystem.FileSystem` (resolved once at construction and closed over by
- * the shape, keeping `plan`/`execute` themselves requirement-free).
- *
- * @public
- */
-export const DepsRegenLive: Layer.Layer<
-	DepsRegen,
-	never,
-	| WorkspaceSnapshots
-	| ConfigInspector
-	| WorkspaceDiscovery
-	| PublishabilityDetector
-	| ChangesetConfig
-	| Git
-	| FileSystem.FileSystem
-> = Layer.effect(
-	DepsRegen,
-	Effect.gen(function* () {
-		const snapshots = yield* WorkspaceSnapshots;
-		const inspector = yield* ConfigInspector;
-		const discovery = yield* WorkspaceDiscovery;
-		const detector = yield* PublishabilityDetector;
-		const config = yield* ChangesetConfig;
-		const fs = yield* FileSystem.FileSystem;
-		const git = yield* Git;
-		return makeShape(snapshots, inspector, discovery, detector, config, fs, Layer.succeed(Git, git));
-	}),
-);
-
-/* ----------------------------------------------------------------- *
- * Batteries-included default layer
- * ----------------------------------------------------------------- */
-
 // Shared sub-graph — single const so Layer memoization (by reference)
 // constructs the config chain exactly once across the branches below.
-const ConfigGraph = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
+const ConfigGraph = ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer));
 
 /**
  * Build the batteries-included {@link DepsRegen} layer over a
@@ -643,9 +638,9 @@ export function makeDepsRegenDefault(
 	options?: WorkspacesOptions,
 ): Layer.Layer<DepsRegen, never, FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner> {
 	const kitGraph = Workspaces.layerWithGit(options);
-	return DepsRegenLive.pipe(
-		Layer.provide(ConfigInspectorLive.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, kitGraph)))),
-		Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(Layer.mergeAll(ConfigGraph, kitGraph)))),
+	return DepsRegen.layer.pipe(
+		Layer.provide(ConfigInspector.layer.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, kitGraph)))),
+		Layer.provide(SilkPublishability.layerAdaptive.pipe(Layer.provide(Layer.mergeAll(ConfigGraph, kitGraph)))),
 		Layer.provide(ConfigGraph),
 		Layer.provide(kitGraph),
 	);
@@ -661,10 +656,10 @@ export function makeDepsRegenDefault(
  * (`NodeServices.layer`), not a bare filesystem-only layer.
  *
  * Gating uses silk's adaptive publishability detector
- * ({@link PublishabilityDetectorAdaptiveLive}), so the default semantics
+ * (`SilkPublishability.layerAdaptive`), so the default semantics
  * are "versionable minus ignored" — identical to the savvy CLI and MCP
  * runtimes. Consumers who need to swap any dependency (test detectors,
- * alternate config sources) should keep composing {@link DepsRegenLive}
+ * alternate config sources) should keep composing {@link DepsRegen.layer}
  * directly; this layer is purely additive.
  *
  * @example

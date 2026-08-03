@@ -332,6 +332,78 @@ export class SilkPublishability {
 			return out;
 		});
 	}
+
+	/**
+	 * Override of `@effected/workspaces`' `PublishabilityDetector` Tag with pure silk rules.
+	 *
+	 * @remarks Requires `FileSystem` (captured at layer build); `detect` reads the raw
+	 * `package.json` from `pkg.packageJsonPath` and applies `SilkPublishability.detect`.
+	 *
+	 * @since 0.4.0
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<PublishabilityDetector, never, FileSystem.FileSystem> = Layer.effect(
+		PublishabilityDetector,
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			return {
+				detect: (pkg: WorkspacePackage) =>
+					Effect.gen(function* () {
+						const raw = yield* readRaw(fs, pkg.packageJsonPath);
+						if (!raw) return [];
+						const binding = yield* readTargetsBinding(fs, pkg.path);
+						return SilkPublishability.detect(pkg.name, raw, binding);
+					}),
+			};
+		}),
+	);
+
+	/**
+	 * Ignore-aware override of `PublishabilityDetector`. `detect` short-circuits to `[]`
+	 * for changeset-ignored packages, then dispatches on `ChangesetConfig.mode`:
+	 * `none` → `[]`; `silk` → `SilkPublishability.detect`; `vanilla` → the library default.
+	 *
+	 * @remarks Requires `FileSystem` and {@link ChangesetConfig} at build.
+	 * The kit's `detect` contract no longer receives the workspace root, so the changeset
+	 * lookups read it from `pkg.workspaceRoot` — the discovery root the package was found
+	 * against, never a filesystem marker walk, which could escape an unmarked root and read
+	 * the wrong `.changeset/config.json`.
+	 *
+	 * @since 0.4.0
+	 * @public
+	 */
+	static readonly layerAdaptive: Layer.Layer<PublishabilityDetector, never, FileSystem.FileSystem | ChangesetConfig> =
+		Layer.effect(
+			PublishabilityDetector,
+			Effect.gen(function* () {
+				const fs = yield* FileSystem.FileSystem;
+				const config = yield* ChangesetConfig;
+				const vanilla = PublishabilityDetector.npm;
+
+				return {
+					detect: (pkg: WorkspacePackage) =>
+						Effect.gen(function* () {
+							// The discovery root the package was found against, carried on the
+							// package itself. Never a filesystem marker walk: `WorkspaceRoot.find`
+							// can walk PAST the intended root when that root carries no marker (a
+							// fixture tree, a bare directory), silently reading an enclosing
+							// workspace's `.changeset/config.json` and dropping the ignore/mode
+							// gating — the #209 regression class.
+							const root = pkg.workspaceRoot;
+							if (yield* config.isIgnored(pkg.name, root)) return [];
+							const mode = yield* config.mode(root);
+							if (mode === "none") return [];
+							if (mode === "silk") {
+								const raw = yield* readRaw(fs, pkg.packageJsonPath);
+								if (!raw) return [];
+								const binding = yield* readTargetsBinding(fs, pkg.path);
+								return SilkPublishability.detect(pkg.name, raw, binding);
+							}
+							return yield* vanilla.detect(pkg);
+						}),
+				};
+			}),
+		);
 }
 
 /**
@@ -401,79 +473,3 @@ export const readTargetsBinding = (fs: FileSystem.FileSystem, pkgPath: string): 
 		),
 		Effect.orElseSucceed(() => null),
 	);
-
-/**
- * Override of `@effected/workspaces`' `PublishabilityDetector` Tag with pure silk rules.
- *
- * @remarks Requires `FileSystem` (captured at layer build); `detect` reads the raw
- * `package.json` from `pkg.packageJsonPath` and applies `SilkPublishability.detect`.
- *
- * @since 0.4.0
- * @public
- */
-export const SilkPublishabilityDetectorLive: Layer.Layer<PublishabilityDetector, never, FileSystem.FileSystem> =
-	Layer.effect(
-		PublishabilityDetector,
-		Effect.gen(function* () {
-			const fs = yield* FileSystem.FileSystem;
-			return {
-				detect: (pkg: WorkspacePackage) =>
-					Effect.gen(function* () {
-						const raw = yield* readRaw(fs, pkg.packageJsonPath);
-						if (!raw) return [];
-						const binding = yield* readTargetsBinding(fs, pkg.path);
-						return SilkPublishability.detect(pkg.name, raw, binding);
-					}),
-			};
-		}),
-	);
-
-/**
- * Ignore-aware override of `PublishabilityDetector`. `detect` short-circuits to `[]`
- * for changeset-ignored packages, then dispatches on `ChangesetConfig.mode`:
- * `none` → `[]`; `silk` → `SilkPublishability.detect`; `vanilla` → the library default.
- *
- * @remarks Requires `FileSystem` and {@link ChangesetConfig} at build.
- * The kit's `detect` contract no longer receives the workspace root, so the changeset
- * lookups read it from `pkg.workspaceRoot` — the discovery root the package was found
- * against, never a filesystem marker walk, which could escape an unmarked root and read
- * the wrong `.changeset/config.json`.
- *
- * @since 0.4.0
- * @public
- */
-export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
-	PublishabilityDetector,
-	never,
-	FileSystem.FileSystem | ChangesetConfig
-> = Layer.effect(
-	PublishabilityDetector,
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
-		const config = yield* ChangesetConfig;
-		const vanilla = PublishabilityDetector.npm;
-
-		return {
-			detect: (pkg: WorkspacePackage) =>
-				Effect.gen(function* () {
-					// The discovery root the package was found against, carried on the
-					// package itself. Never a filesystem marker walk: `WorkspaceRoot.find`
-					// can walk PAST the intended root when that root carries no marker (a
-					// fixture tree, a bare directory), silently reading an enclosing
-					// workspace's `.changeset/config.json` and dropping the ignore/mode
-					// gating — the #209 regression class.
-					const root = pkg.workspaceRoot;
-					if (yield* config.isIgnored(pkg.name, root)) return [];
-					const mode = yield* config.mode(root);
-					if (mode === "none") return [];
-					if (mode === "silk") {
-						const raw = yield* readRaw(fs, pkg.packageJsonPath);
-						if (!raw) return [];
-						const binding = yield* readTargetsBinding(fs, pkg.path);
-						return SilkPublishability.detect(pkg.name, raw, binding);
-					}
-					return yield* vanilla.detect(pkg);
-				}),
-		};
-	}),
-);

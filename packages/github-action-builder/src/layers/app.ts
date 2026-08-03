@@ -8,10 +8,10 @@
  */
 import { Layer } from "effect";
 
-import { BuildServiceLive } from "../services/build-live.js";
-import { ConfigServiceLive } from "../services/config-live.js";
-import { PersistLocalServiceLive } from "../services/persist-local-live.js";
-import { ValidationServiceLive } from "../services/validation-live.js";
+import { BuildService } from "../services/build.js";
+import { ConfigService } from "../services/config.js";
+import { PersistLocalService } from "../services/persist-local.js";
+import { ValidationService } from "../services/validation.js";
 
 /**
  * Layer providing ConfigService (no dependencies).
@@ -21,7 +21,7 @@ import { ValidationServiceLive } from "../services/validation-live.js";
  *
  * @public
  */
-export const ConfigLayer = ConfigServiceLive;
+export const ConfigLayer = ConfigService.layer;
 
 /**
  * Layer providing ValidationService (depends on ConfigService).
@@ -31,7 +31,7 @@ export const ConfigLayer = ConfigServiceLive;
  *
  * @public
  */
-export const ValidationLayer = ValidationServiceLive.pipe(Layer.provide(ConfigServiceLive));
+export const ValidationLayer = ValidationService.layer.pipe(Layer.provide(ConfigService.layer));
 
 /**
  * Layer providing BuildService (depends on ConfigService).
@@ -41,7 +41,7 @@ export const ValidationLayer = ValidationServiceLive.pipe(Layer.provide(ConfigSe
  *
  * @public
  */
-export const BuildLayer = BuildServiceLive.pipe(Layer.provide(ConfigServiceLive));
+export const BuildLayer = BuildService.layer.pipe(Layer.provide(ConfigService.layer));
 
 /**
  * Layer providing PersistLocalService (no dependencies).
@@ -51,7 +51,7 @@ export const BuildLayer = BuildServiceLive.pipe(Layer.provide(ConfigServiceLive)
  *
  * @public
  */
-export const PersistLocalLayer = PersistLocalServiceLive;
+export const PersistLocalLayer = PersistLocalService.layer;
 
 /**
  * Combined layer providing all services.
@@ -81,4 +81,4 @@ export const PersistLocalLayer = PersistLocalServiceLive;
  *
  * @public
  */
-export const AppLayer = Layer.mergeAll(ConfigServiceLive, ValidationLayer, BuildLayer, PersistLocalLayer);
+export const AppLayer = Layer.mergeAll(ConfigService.layer, ValidationLayer, BuildLayer, PersistLocalLayer);

@@ -19,10 +19,10 @@ import { Effect } from "effect";
  *
  * @remarks
  * Uses the currently-active {@link SilkPublishability} — wire the
- * {@link SilkPublishabilityDetectorLive} layer to get silk semantics.
+ * `SilkPublishability.layer` layer to get silk semantics.
  *
  * The kit's `PublishabilityDetector.detect` contract no longer receives the
- * workspace root — the ignore/mode-aware `PublishabilityDetectorAdaptiveLive`
+ * workspace root — the ignore/mode-aware `SilkPublishability.layerAdaptive`
  * derives the `.changeset/config.json` root per package from the package's
  * own discovery coordinates (`pkg.path` ascended by `pkg.relativePath`).
  * The `root` parameter is retained for signature stability

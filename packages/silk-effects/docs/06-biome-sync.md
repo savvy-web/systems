@@ -18,20 +18,22 @@ in place.
 ## Service API
 
 ```typescript
-class BiomeSchemaSync extends Context.Tag("@savvy-web/silk-effects/BiomeSchemaSync")<
-  BiomeSchemaSync,
-  {
-    readonly sync: (
-      version: string,
-      options?: { cwd?: string; gitignore?: boolean },
-    ) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
+interface BiomeSchemaSyncShape {
+  readonly sync: (
+    version: string,
+    options?: { cwd?: string; gitignore?: boolean },
+  ) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
 
-    readonly check: (
-      version: string,
-      options?: { cwd?: string; gitignore?: boolean },
-    ) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
-  }
->() {}
+  readonly check: (
+    version: string,
+    options?: { cwd?: string; gitignore?: boolean },
+  ) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
+}
+
+class BiomeSchemaSync extends Context.Service<
+  BiomeSchemaSync,
+  BiomeSchemaSyncShape
+>()("@savvy-web/silk-effects/BiomeSchemaSync") {}
 ```
 
 ### `sync(version, options?)`
@@ -55,7 +57,7 @@ in the `updated` array, but no disk writes occur.
 ## Layer
 
 ```typescript
-export const BiomeSchemaSyncLive: Layer.Layer<
+static readonly layer: Layer.Layer<
   BiomeSchemaSync,
   never,
   FileSystem.FileSystem
@@ -143,7 +145,6 @@ import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import {
   BiomeSchemaSync,
-  BiomeSchemaSyncLive,
 } from "@savvy-web/silk-effects";
 
 // Sync biome configs to version 1.9.3
@@ -158,7 +159,7 @@ const program = Effect.gen(function* () {
 
 await Effect.runPromise(
   program.pipe(
-    Effect.provide(BiomeSchemaSyncLive),
+    Effect.provide(BiomeSchemaSync.layer),
     Effect.provide(NodeServices.layer),
   ),
 );

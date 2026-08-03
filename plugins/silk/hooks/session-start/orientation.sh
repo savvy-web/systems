@@ -152,8 +152,11 @@ for anything no tool surfaces.
 
 <biome>
 The Biome LSP reports diagnostics on files you edit automatically; biome_check
-covers wider checks and every fix pass; Bash biome works as the escape hatch
-and draws a one-time nudge.
+covers wider checks and every fix pass. Direct Bash Biome is DENIED (any
+route: bare, path-prefixed, exec, npx/bunx/dlx, sudo/env-wrapped) except
+pnpm/yarn/bun/npm lint, lint:fix, lint:fix:unsafe at the repo root — a direct
+invocation skips the repo config and can corrupt .repos/** vendored
+submodules.
 </biome>
 ${TERMINAL_BLOCK}
 <active_hooks>

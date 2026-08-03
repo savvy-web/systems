@@ -30,7 +30,7 @@ function getPlanner() {
 		legacyVersionFilesUsed: false,
 	});
 	return Changesets.ReleasePlanner.pipe(
-		Effect.provide(Changesets.ReleasePlannerLive),
+		Effect.provide(Changesets.ReleasePlanner.layer),
 		Effect.provide(InspectorStub),
 		Effect.provide(NodeServices.layer),
 	) as Effect.Effect<Changesets.ReleasePlannerShape>;

@@ -31,7 +31,7 @@ describe("ReleasePlanner.plan", () => {
 			});
 			roots.push(root);
 			const planner = yield* Changesets.ReleasePlanner.pipe(
-				Effect.provide(Changesets.ReleasePlannerLive),
+				Effect.provide(Changesets.ReleasePlanner.layer),
 				Effect.provide(InspectorStub),
 				Effect.provide(NodeServices.layer),
 			);

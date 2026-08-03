@@ -4,17 +4,17 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Workspaces } from "@effected/workspaces";
-import { ChangesetConfigReaderLive, Changesets } from "@savvy-web/silk-effects";
+import { ChangesetConfigReader, Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 const WorkspacesKitLive = Workspaces.layer();
 
 import { runConfigValidate } from "../../src/commands/changeset/commands/config-validate.js";
 
-const { ConfigInspectorLive } = Changesets;
+const { ConfigInspector } = Changesets;
 
-const TestLive = ConfigInspectorLive.pipe(
-	Layer.provide(Layer.mergeAll(ChangesetConfigReaderLive, WorkspacesKitLive)),
+const TestLive = ConfigInspector.layer.pipe(
+	Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, WorkspacesKitLive)),
 	Layer.provide(NodeServices.layer),
 );
 const silentLogger = Logger.layer([]);

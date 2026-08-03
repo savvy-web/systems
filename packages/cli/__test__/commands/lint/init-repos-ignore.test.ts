@@ -4,13 +4,14 @@ import { join } from "node:path";
 import { NodeFileSystem } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { ManagedSection } from "@effected/templates";
-import { BiomeSchemaSyncLive, Lint } from "@savvy-web/silk-effects";
+import { BiomeSchemaSync, Lint } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runLintInit } from "../../../src/commands/lint/init.js";
 
-const TestLayer = Layer.provideMerge(Layer.merge(ManagedSection.layer, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
-	Layer.provide(Logger.layer([])),
-);
+const TestLayer = Layer.provideMerge(
+	Layer.merge(ManagedSection.layer, BiomeSchemaSync.layer),
+	NodeFileSystem.layer,
+).pipe(Layer.provide(Logger.layer([])));
 
 describe("runLintInit: .repos ignore propagation", () => {
 	let testDir: string;

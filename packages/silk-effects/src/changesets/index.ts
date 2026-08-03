@@ -19,7 +19,7 @@
 // Services found under ../changesets/package/src/services/ in the source repo:
 //
 //   silk-publishability.ts — SKIPPED
-//     silk-effects already exports SilkPublishability + SilkPublishabilityDetectorLive
+//     silk-effects already exports SilkPublishability + SilkPublishability.layer
 //     (src/services/SilkPublishability.ts). The changesets copy is the documented
 //     "temporary home" (its own file says "The eventual home is @savvy-web/silk-effects").
 //     The implementation in silk-effects is richer (supports `protocol`, `provenance`
@@ -28,22 +28,22 @@
 //
 //   changelog.ts — COPIED
 //     Changeset-specific service tag (ChangelogService) for changelog formatting.
-//     No equivalent in silk-effects. Lives at ./services/changelog.ts.
+//     No equivalent in silk-effects. Found at ./services/changelog.ts.
 //
 //   github.ts — COPIED
-//     GitHubService + GitHubLive + makeGitHubTest for commit metadata resolution.
-//     No equivalent in silk-effects. Lives at ./services/github.ts.
+//     GitHubService + GitHubService.layer + makeGitHubTest for commit metadata resolution.
+//     No equivalent in silk-effects. Found at ./services/github.ts.
 //
 //   markdown.ts — COPIED
-//     No equivalent in silk-effects. Lives at ./services/markdown.ts.
+//     No equivalent in silk-effects. Found at ./services/markdown.ts.
 //
 //   branch-analyzer.ts — COPIED
-//     BranchAnalyzer + BranchAnalyzerLive for git diff + file classification.
-//     No equivalent in silk-effects. Lives at ./services/branch-analyzer.ts.
+//     BranchAnalyzer + BranchAnalyzer.layer for git diff + file classification.
+//     No equivalent in silk-effects. Found at ./services/branch-analyzer.ts.
 //
 //   config-inspector.ts — COPIED (import of @savvy-web/silk-effects rewired to
 //     ../../services/ChangesetConfigReader.js). No equivalent in silk-effects.
-//     Lives at ./services/config-inspector.ts.
+//     Found at ./services/config-inspector.ts.
 //
 //   workspace-snapshot.ts — REMOVED (#208)
 //     The former WorkspaceSnapshotReader (git-ref side) and utils/worktree-snapshot.ts
@@ -74,7 +74,6 @@ export type { BranchAnalysis, BranchAnalyzerShape, BranchFileEntry, FileStatus }
 export {
 	BranchAnalysisSchema,
 	BranchAnalyzer,
-	BranchAnalyzerLive,
 	BranchFileEntrySchema,
 	FileStatusSchema,
 	makeBranchAnalyzerTest,
@@ -93,7 +92,6 @@ export {
 	ClassificationReasonSchema,
 	ClassificationSchema,
 	ConfigInspector,
-	ConfigInspectorLive,
 	InspectedConfigSchema,
 	ResolvedPackageScopeSchema,
 	ResolvedVersionFileSchema,
@@ -109,7 +107,6 @@ export type {
 export {
 	DepsRegen,
 	DepsRegenDefault,
-	DepsRegenLive,
 	isPureDependencyChangeset,
 	makeDepsRegenDefault,
 } from "./services/deps-regen.js";
@@ -122,10 +119,10 @@ export {
 	deriveMaintenanceReason,
 } from "./services/maintenance-reason.js";
 export type { ReleasePlannerShape } from "./services/release-planner.js";
-export { ReleasePlanner, ReleasePlannerLive, makeReleasePlannerTest } from "./services/release-planner.js";
+export { ReleasePlanner, makeReleasePlannerTest } from "./services/release-planner.js";
 // === Effect Layers ===
 
-export { GitHubLive, makeGitHubTest } from "./services/github.js";
+export { makeGitHubTest } from "./services/github.js";
 
 // === Tagged Errors ===
 

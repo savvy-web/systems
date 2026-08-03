@@ -22,8 +22,8 @@ import type {
 	ReposPinResult,
 	ReposStatusReport,
 } from "../../src/repos/schemas/reports.js";
-import { ReposConfigStore, ReposConfigStoreLive } from "../../src/repos/services/config-store.js";
-import { ReposManager, ReposManagerLive, STALE_LOCK_MAX_AGE_MS } from "../../src/repos/services/manager.js";
+import { ReposConfigStore } from "../../src/repos/services/config-store.js";
+import { ReposManager, STALE_LOCK_MAX_AGE_MS } from "../../src/repos/services/manager.js";
 
 const GIT_ENV = {
 	GIT_AUTHOR_NAME: "Test",
@@ -72,7 +72,7 @@ describe("ReposManager.status — stubbed executor", () => {
 				const manager = yield* ReposManager;
 				return yield* manager.status(root);
 			}).pipe(
-				Effect.provide(ReposManagerLive),
+				Effect.provide(ReposManager.layer),
 				Effect.provide(configStoreStub),
 				Effect.provide(gitStub),
 				Effect.provide(NodeServices.layer),
@@ -158,7 +158,7 @@ describe("ReposManager.sync / status — real git", () => {
 					write: () => Effect.succeed(undefined),
 				} as never);
 
-				const managerLayer = ReposManagerLive.pipe(
+				const managerLayer = ReposManager.layer.pipe(
 					Layer.provide(configStoreReal),
 					Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 					Layer.provide(NodeServices.layer),
@@ -255,7 +255,7 @@ describe("ReposManager.sync / status — real git", () => {
 				write: () => Effect.succeed(undefined),
 			} as never);
 
-			const managerLayer = ReposManagerLive.pipe(
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreReal),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -313,7 +313,7 @@ describe("ReposManager.sync / status — real git", () => {
 				write: () => Effect.succeed(undefined),
 			} as never);
 
-			const managerLayer = ReposManagerLive.pipe(
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreReal),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -392,8 +392,8 @@ describe("ReposManager.add / pin — real git", () => {
 				const name = "spec";
 				const upstreamUrl = `file://${up}`;
 
-				const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
-				const managerLayer = ReposManagerLive.pipe(
+				const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
+				const managerLayer = ReposManager.layer.pipe(
 					Layer.provide(configStoreLayer),
 					Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 					Layer.provide(NodeServices.layer),
@@ -498,7 +498,7 @@ describe("ReposManager.add / pin — real git", () => {
 			const root = mkdtempSync(join(tmpdir(), "repos-manager-pin-missing-"));
 
 			// `pin` fails at the manifest lookup before any git call, so an empty
-			// Git stub satisfies `ReposManagerLive`'s requirement without spawning.
+			// Git stub satisfies `ReposManager.layer`'s requirement without spawning.
 			const gitStub = Layer.succeed(Git, {} as never);
 
 			const pinExit = yield* Effect.exit(
@@ -506,7 +506,7 @@ describe("ReposManager.add / pin — real git", () => {
 					const manager = yield* ReposManager;
 					return yield* manager.pin(root, "does-not-exist", "1.0.0");
 				}).pipe(
-					Effect.provide(ReposManagerLive),
+					Effect.provide(ReposManager.layer),
 					Effect.provide(configStoreStub),
 					Effect.provide(gitStub),
 					Effect.provide(NodeServices.layer),
@@ -534,8 +534,8 @@ describe("ReposManager.add / pin — real git", () => {
 			});
 			const upstreamUrl = `file://${join(upstreamBareDir, "myrepo.git")}`;
 
-			const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
-			const managerLayer = ReposManagerLive.pipe(
+			const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -585,8 +585,8 @@ describe("ReposManager.add / pin — real git", () => {
 			const stableSha = git(up, "rev-parse", "stable").trim();
 			expect(stableSha).not.toBe(git(up, "rev-parse", "1.0.0^{commit}").trim());
 
-			const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
-			const managerLayer = ReposManagerLive.pipe(
+			const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -638,8 +638,8 @@ describe("ReposManager.add / pin — real git", () => {
 
 			const host = makeHost();
 
-			const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
-			const managerLayer = ReposManagerLive.pipe(
+			const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -726,8 +726,8 @@ describe("ReposManager.add / pin — real git", () => {
 			const name = "spec";
 			const upstreamUrl = `file://${up}`;
 
-			const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
-			const managerLayer = ReposManagerLive.pipe(
+			const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -769,8 +769,8 @@ describe("ReposManager.add / pin — real git", () => {
 			const host = makeHost();
 			const upstreamUrl = `file://${up}`;
 
-			const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
-			const managerLayer = ReposManagerLive.pipe(
+			const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -816,8 +816,8 @@ describe("ReposManager.add / pin — real git", () => {
 			const name = "spec";
 			const upstreamUrl = `file://${up}`;
 
-			const configStoreLayer = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
-			const managerLayer = ReposManagerLive.pipe(
+			const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
+			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
 				Layer.provide(NodeServices.layer),
@@ -894,7 +894,7 @@ describe("ReposManager.status — propagates git failures", () => {
 					const manager = yield* ReposManager;
 					return yield* manager.status(root);
 				}).pipe(
-					Effect.provide(ReposManagerLive),
+					Effect.provide(ReposManager.layer),
 					Effect.provide(configStoreStub),
 					Effect.provide(failingGitStub),
 					Effect.provide(NodeServices.layer),
@@ -926,14 +926,14 @@ describe("ReposManager.note", () => {
 	}
 
 	// `note` operates on the manifest only — no git command ever runs — so an
-	// empty Git stub satisfies `ReposManagerLive`'s requirement without spawning.
+	// empty Git stub satisfies `ReposManager.layer`'s requirement without spawning.
 	const gitStub = Layer.succeed(Git, {} as never);
 
 	// Per-test provide is REQUIRED in both helpers: `configStore` is a parameter carrying the
 	// per-test manifest fixture, so the layer genuinely varies test by test.
 	function run<A, E>(effect: Effect.Effect<A, E, ReposManager>, configStore: Layer.Layer<ReposConfigStore>) {
 		return effect.pipe(
-			Effect.provide(ReposManagerLive),
+			Effect.provide(ReposManager.layer),
 			Effect.provide(configStore),
 			Effect.provide(gitStub),
 			Effect.provide(NodeServices.layer),
@@ -943,7 +943,7 @@ describe("ReposManager.note", () => {
 	function runExit<A>(effect: Effect.Effect<A, unknown, ReposManager>, configStore: Layer.Layer<ReposConfigStore>) {
 		return Effect.exit(
 			effect.pipe(
-				Effect.provide(ReposManagerLive),
+				Effect.provide(ReposManager.layer),
 				Effect.provide(configStore),
 				Effect.provide(gitStub),
 				Effect.provide(NodeServices.layer),

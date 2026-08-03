@@ -21,8 +21,8 @@ All public API is exported from the package root. There are no sub-path exports.
 ```typescript
 import {
   SilkPublishability,
-  ChangesetConfig, ChangesetConfigLive,
-  ConfigDiscovery, ConfigDiscoveryLive,
+  ChangesetConfig,
+  ConfigDiscovery,
   Changesets, Lint, Turbo,
 } from "@savvy-web/silk-effects";
 ```
@@ -35,7 +35,7 @@ Schemas and value objects implement `Equal.Equal` and `Hash.Hash` for structural
 
 Services fall into three tiers based on their runtime requirements:
 
-1. **No platform layer** — pure services with no I/O. Provide only the service's own `Live` layer, or in the case of `SilkPublishability.detect`, call the static directly.
+1. **No platform layer** — pure services with no I/O. Provide only the service's own `layer` static, or in the case of `SilkPublishability.detect`, call the static directly.
 2. **FileSystem layer** — services that read or write files. Provide the service layer plus `NodeServices.layer`.
 3. **FileSystem + process layer** — services that also spawn a child process. Same as above, but additionally requires `ToolDiscovery` from `@effected/commands`, which itself reads `PackageManagerDetector` and `WorkspaceRoot` from `@effected/workspaces`.
 
@@ -66,14 +66,14 @@ const targets = SilkPublishability.detect(
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
-import { ConfigDiscovery, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+import { ConfigDiscovery } from "@savvy-web/silk-effects";
 
 const result = await Effect.runPromise(
   Effect.gen(function* () {
     const cd = yield* ConfigDiscovery;
     return yield* cd.find("biome.jsonc");
   }).pipe(
-    Effect.provide(ConfigDiscoveryLive),
+    Effect.provide(ConfigDiscovery.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -101,7 +101,7 @@ const affected = await Effect.runPromise(
     const turbo = yield* Turbo.TurboInspector;
     return yield* turbo.affected(process.cwd());
   }).pipe(
-    Effect.provide(Turbo.TurboInspectorLive),
+    Effect.provide(Turbo.TurboInspector.layer),
     Effect.provide(Layer.mergeAll(ToolsLive, Git.layer)),
     Effect.provide(NodeServices.layer),
   ),
@@ -131,7 +131,7 @@ All errors extend `Data.TaggedError` with a `_tag` discriminant and a `message` 
 ```typescript
 import { Effect } from "effect";
 import {
-  ChangesetConfigReader, ChangesetConfigReaderLive,
+  ChangesetConfigReader,
 } from "@savvy-web/silk-effects";
 import { NodeServices } from "@effect/platform-node";
 
@@ -143,7 +143,7 @@ const config = await Effect.runPromise(
     Effect.catchTag("ChangesetConfigError", (err) =>
       Effect.succeed(`Fallback: ${err.reason}`)
     ),
-    Effect.provide(ChangesetConfigReaderLive),
+    Effect.provide(ChangesetConfigReader.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -156,7 +156,7 @@ The `SilkPublishability` API does not raise errors: the pure `detect` returns `[
 | Service | Platform layer | Page |
 | ------- | -------------- | ---- |
 | SilkPublishability | None (static `detect`) | [03-publishability.md](./03-publishability.md) |
-| SilkPublishabilityDetectorLive / PublishabilityDetectorAdaptiveLive | FileSystem (+ ChangesetConfig) | [03-publishability.md](./03-publishability.md) |
+| SilkPublishability.layer / SilkPublishability.layerAdaptive | FileSystem (+ ChangesetConfig) | [03-publishability.md](./03-publishability.md) |
 | ChangesetConfig | FileSystem | [04-changeset-config.md](./04-changeset-config.md) |
 | ChangesetConfigReader | FileSystem | [04-changeset-config.md](./04-changeset-config.md) |
 | ConfigDiscovery | FileSystem | [05-config-discovery.md](./05-config-discovery.md) |

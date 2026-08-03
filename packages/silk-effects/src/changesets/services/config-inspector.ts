@@ -28,7 +28,6 @@
  * {@link ConfigInspectorShape.classify} calls reuse it.
  *
  * @see {@link ConfigInspector} for the Effect service tag
- * @see {@link ConfigInspectorLive} for the production layer
  *
  */
 
@@ -153,7 +152,7 @@ export interface ConfigInspectorShape {
  * @example
  * ```typescript
  * import { Effect } from "effect";
- * import { ConfigInspector, ConfigInspectorLive } from "@savvy-web/changesets";
+ * import { ConfigInspector } from "@savvy-web/changesets";
  *
  * const program = Effect.gen(function* () {
  *   const inspector = yield* ConfigInspector;
@@ -161,12 +160,34 @@ export interface ConfigInspectorShape {
  *   return config.packages.map((p) => p.name);
  * });
  *
- * Effect.runPromise(program.pipe(Effect.provide(ConfigInspectorLive)));
+ * Effect.runPromise(program.pipe(Effect.provide(ConfigInspector.layer)));
  * ```
  *
  * @public
  */
-export class ConfigInspector extends Context.Service<ConfigInspector, ConfigInspectorShape>()("ConfigInspector") {}
+export class ConfigInspector extends Context.Service<ConfigInspector, ConfigInspectorShape>()("ConfigInspector") {
+	/**
+	 * Production layer for {@link ConfigInspector}.
+	 *
+	 * Requires {@link ChangesetConfigReader} and `WorkspaceDiscovery`
+	 * in the environment.
+	 *
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<
+		ConfigInspector,
+		never,
+		ChangesetConfigReader | WorkspaceDiscovery | FileSystem.FileSystem
+	> = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			const reader = yield* ChangesetConfigReader;
+			const discovery = yield* WorkspaceDiscovery;
+			const fs = yield* FileSystem.FileSystem;
+			return makeShape(reader, discovery, fs);
+		}),
+	);
+}
 
 /* ----------------------------------------------------------------- *
  * Internal helpers
@@ -539,7 +560,7 @@ function configErrorFromParseError(parseError: unknown, configPath: string): Con
 }
 
 /* ----------------------------------------------------------------- *
- * Live layer
+ * Production layer
  * ----------------------------------------------------------------- */
 
 /**
@@ -783,33 +804,11 @@ function classifyOne(inspected: InspectedConfig, path: string): Classification {
 }
 
 /**
- * Live layer for {@link ConfigInspector}.
- *
- * Requires {@link ChangesetConfigReader} and `WorkspaceDiscovery`
- * in the environment.
- *
- * @public
- */
-export const ConfigInspectorLive: Layer.Layer<
-	ConfigInspector,
-	never,
-	ChangesetConfigReader | WorkspaceDiscovery | FileSystem.FileSystem
-> = Layer.effect(
-	ConfigInspector,
-	Effect.gen(function* () {
-		const reader = yield* ChangesetConfigReader;
-		const discovery = yield* WorkspaceDiscovery;
-		const fs = yield* FileSystem.FileSystem;
-		return makeShape(reader, discovery, fs);
-	}),
-);
-
-/**
  * Test factory — build a {@link ConfigInspector} that returns a fixed
  * {@link InspectedConfig} without touching the filesystem.
  *
  * Tests that need to exercise the inspect/classify logic against real files
- * should compose `ConfigInspectorLive` with test layers for
+ * should compose `ConfigInspector.layer` with test layers for
  * `ChangesetConfigReader` and `WorkspaceDiscovery` instead.
  *
  * @public

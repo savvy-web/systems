@@ -56,6 +56,16 @@
 				"hooks": [
 					{
 						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/biome-direct-deny.sh\"",
+						"timeout": 5
+					}
+				]
+			},
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-bash-guard.sh\"",
 						"timeout": 5
 					}

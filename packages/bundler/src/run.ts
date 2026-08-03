@@ -20,8 +20,7 @@ import {
 	BuildCollector,
 	ConfigValidationError,
 	ConfigValidator,
-	ConfigValidatorLive,
-	ReportPipelineLive,
+	ReportPipeline,
 	assertNoEntryCollisions,
 	buildEmittedManifest,
 	computeExeFileName,
@@ -254,7 +253,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 					...(config.meta !== undefined && config.meta !== false ? { meta: config.meta } : {}),
 					...(config.looseFiles !== undefined ? { looseFiles: config.looseFiles } : {}),
 				}),
-			).pipe(Effect.provide(ConfigValidatorLive)),
+			).pipe(Effect.provide(ConfigValidator.layer)),
 		);
 
 		// Resolve the SEA spec once (per-platform package = one spec, one target). The emitted filename is
@@ -433,7 +432,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 					...(explicitFormat !== undefined ? { explicitFormat } : {}),
 					verbose,
 					noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
-				}).pipe(Effect.provide(ReportPipelineLive)),
+				}).pipe(Effect.provide(ReportPipeline)),
 			);
 			for (const output of rendered) writeOutput(output);
 		};

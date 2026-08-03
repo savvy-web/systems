@@ -22,7 +22,6 @@ All exports come from the package root:
 import {
   SilkPublishability,
   ChangesetConfig,
-  ChangesetConfigLive,
   Changesets,
   Lint,
   Turbo,
@@ -58,7 +57,7 @@ These services read or write files. Provide `NodeServices.layer` (or the platfor
 
 | Service | Doc | What it does |
 | ------- | --- | ------------ |
-| [SilkPublishabilityDetectorLive / PublishabilityDetectorAdaptiveLive](./03-publishability.md) | Publishability | Override `@effected/workspaces`'s `PublishabilityDetector` Tag with silk rules (the adaptive layer is changeset-ignore-aware) |
+| [SilkPublishability.layer / SilkPublishability.layerAdaptive](./03-publishability.md) | Publishability | Override `@effected/workspaces`'s `PublishabilityDetector` Tag with silk rules (the adaptive layer is changeset-ignore-aware) |
 | [ChangesetConfig](./04-changeset-config.md) | Changeset config | Typed accessor over `.changeset/config.json`: mode, ignore patterns, fixed groups |
 | [ChangesetConfigReader](./04-changeset-config.md) | Changeset config | Read and decode `.changeset/config.json` with Silk auto-detection |
 | [ConfigDiscovery](./05-config-discovery.md) | Config files | Locate config files with priority-based search (`lib/configs/` then root) |
@@ -83,14 +82,14 @@ Most services follow the same Effect pattern:
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
-import { ServiceName, ServiceNameLive } from "@savvy-web/silk-effects";
+import { ServiceName } from "@savvy-web/silk-effects";
 
 const result = await Effect.runPromise(
   Effect.gen(function* () {
     const service = yield* ServiceName;
     return yield* service.method(args);
   }).pipe(
-    Effect.provide(ServiceNameLive),
+    Effect.provide(ServiceName.layer),
     Effect.provide(NodeServices.layer), // only for services that touch the filesystem or spawn processes
   ),
 );

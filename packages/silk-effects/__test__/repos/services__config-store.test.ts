@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { expect, layer } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { ReposConfigStore, ReposConfigStoreLive } from "../../src/repos/services/config-store.js";
+import { ReposConfigStore } from "../../src/repos/services/config-store.js";
 
 // Constant for the suite: the store is stateless and takes `root` as a per-call
 // argument, so one layer serves every test (each of which makes its own tmpdir).
-const StoreLive = ReposConfigStoreLive.pipe(Layer.provide(NodeServices.layer));
+const StoreLive = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
 
 const manifest = {
 	repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },

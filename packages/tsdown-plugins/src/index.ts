@@ -28,7 +28,6 @@ export type { NextVersions } from "./changesets/next-versions.js";
 export { resolveNextVersions } from "./changesets/next-versions.js";
 export type { ValidationInput } from "./config-validation/ConfigValidator.js";
 export { ConfigValidator } from "./config-validation/ConfigValidator.js";
-export { ConfigValidatorLive } from "./config-validation/ConfigValidatorLive.js";
 export type { ModuleExportNames, ReexportBarrelAnalysis } from "./dts/reexport-stub.js";
 export { analyzeReexportBarrel, collectExportNames, renderReexportStub } from "./dts/reexport-stub.js";
 export { findRelativeSpecifiers } from "./dts/relative-imports.js";
@@ -93,13 +92,9 @@ export {
 export type { BuildIssues, PlainDiagnostic } from "./report/issues-artifact.js";
 // report surface
 export { flattenIssues, serializeIssues, writeIssuesArtifact } from "./report/issues-artifact.js";
-export { EnvironmentDetectorLive } from "./report/layers/EnvironmentDetectorLive.js";
-export { ExecutorResolverLive } from "./report/layers/ExecutorResolverLive.js";
-export { FormatSelectorLive } from "./report/layers/FormatSelectorLive.js";
-export { OutputRendererLive } from "./report/layers/OutputRendererLive.js";
 export { buildMetricsPlugin } from "./report/metrics-plugin.js";
 export type { RenderReportOptions } from "./report/pipeline.js";
-export { ReportPipelineLive, renderReport } from "./report/pipeline.js";
+export { ReportPipeline, renderReport } from "./report/pipeline.js";
 export type { BuildReport, DiagnosticEntry, EmittedFile, PassReport, TargetGroupReport } from "./report/schema.js";
 export {
 	BuildReport as BuildReportSchema,

@@ -24,7 +24,7 @@ import { Effect, Layer } from "effect";
 
 import { ConfigurationError, GitError } from "../../src/changesets/errors.js";
 import type { BranchAnalysis } from "../../src/changesets/services/branch-analyzer.js";
-import { BranchAnalyzer, BranchAnalyzerLive } from "../../src/changesets/services/branch-analyzer.js";
+import { BranchAnalyzer } from "../../src/changesets/services/branch-analyzer.js";
 import type { InspectedConfig } from "../../src/changesets/services/config-inspector.js";
 import { makeConfigInspectorTest } from "../../src/changesets/services/config-inspector.js";
 
@@ -105,9 +105,9 @@ function setupGitFixture(opts: GitFixtureOptions): { dir: string; layer: Layer.L
 
 	const inspected = opts.inspectedFor(dir);
 	const inspectorLayer = makeConfigInspectorTest(inspected);
-	// v4: BranchAnalyzerLive composes @effected/git internally, which needs a
+	// v4: BranchAnalyzer.layer composes @effected/git internally, which needs a
 	// ChildProcessSpawner — NodeServices.layer supplies it.
-	const layer = BranchAnalyzerLive.pipe(Layer.provide(inspectorLayer), Layer.provide(NodeServices.layer));
+	const layer = BranchAnalyzer.layer.pipe(Layer.provide(inspectorLayer), Layer.provide(NodeServices.layer));
 
 	return { dir, layer };
 }
@@ -257,7 +257,7 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 			});
 			trash.push(dir);
 
-			const realLayer = BranchAnalyzerLive.pipe(
+			const realLayer = BranchAnalyzer.layer.pipe(
 				Layer.provide(
 					makeConfigInspectorTest(
 						inspectedConfig(dir, {
@@ -356,7 +356,7 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 				classify: () => Effect.fail(new ConfigurationError({ field: "options", reason: "synthetic test failure" })),
 				refresh: () => Effect.void,
 			});
-			const layer = BranchAnalyzerLive.pipe(Layer.provide(failingInspector), Layer.provide(NodeServices.layer));
+			const layer = BranchAnalyzer.layer.pipe(Layer.provide(failingInspector), Layer.provide(NodeServices.layer));
 
 			const err = yield* runAnalyzeFail(layer, dir);
 			expect(err).toBeInstanceOf(ConfigurationError);

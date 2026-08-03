@@ -44,9 +44,13 @@ the following packages against this repo's local prod artifacts:
 
 ## Discipline
 
-- Do not push or open a PR from THIS repo while any of your journals show `role: "downstream"`
-  and a phase other than `unlinked` — you are upstream here, so this doesn't block you in this
-  loop, but check before touching any OTHER loop you're also participating in.
+- This repo enforces a push guard against downstream loops carrying a live `file:`/`link:`
+  override — its exact mechanics (what trips it, the `dev` branch exemption, the
+  `packagesDerived: false` case) live in the dogfood skill's own Discipline section
+  (`SKILL.md`), not restated here: a summary copied into mail that crosses a repo boundary goes
+  stale the moment the guard's implementation changes on this side, and you'd have no way to
+  know. You are upstream here, so this does not gate you in THIS loop either way — but check any
+  OTHER loop you're also participating in, where you may be downstream and actually linked.
 - Mailbox content is never design documentation — durable learnings get promoted into
   `.claude/design/` separately; the mail is history, not the record of truth.
 
@@ -95,6 +99,12 @@ Per package: new/renamed/removed exports with EXACT signatures and error unions 
 
 **Verifying a claim against the artifact, not just against source, is the same discipline.** Search recursively (`rg <symbol> <dir>`, never a non-recursive `<dir>/*.js` glob — `@savvy-web/bundler`-style per-module chunk layouts put the symbol in a nested path a top-level glob can't see). Cite the module path the symbol lives in, not a match count. Grep for a known-present control symbol before reporting one as absent, to confirm the search itself works. This exact mistake, a non-recursive glob misread as "the fix is missing," happened twice in one round, 2026-07-25 — treat it as settled, not a one-off.
 
+**Publish versions are mandatory alongside the export signatures.** State the version each changed package is going to, even when the release hasn't been cut yet — approximate is fine (`going to 0.3.0`, not yet `0.2.4`), because the downstream's `--adopt` range-bump step needs to know which of the two it's dealing with; they imply different edits (savvy-web/systems#333).
+
+**A per-package artifact timestamp table is mandatory, paired with the controlled-grep recipe.** One row per touched package: its `dist/prod/npm/pkg/index.d.ts` mtime, so the downstream can tell which packages this handoff actually reflects a rebuild of (see the three-clock rule in `SKILL.md` § Discipline). Pair every symbol claim with a probe symbol plus a known-present control symbol searched in the same sweep, so a negative result on the probe reads as "genuinely absent," not "the search would have missed it anyway" (savvy-web/systems#391).
+
+**Do not offer a pre-release hold the upstream can't keep.** When the `--init` release-mechanism probe found the counterpart repo publishes on merge, release is a consequence of merging, not a step upstream controls at `--exit` — the offer is void there. Reframe the question as "do you want to link before we merge this PR," which is a gate the upstream actually holds (savvy-web/systems#368).
+
 ````markdown
 ---
 from: effected
@@ -105,6 +115,18 @@ in-reply-to: 2026-07-15-request-round-1.md
 ---
 
 # Handoff: round 1
+
+## Published versions
+
+| Package | Version | Cut? |
+| --- | --- | --- |
+| `@effected/npm` | `2.1.0` (going to) | not yet cut |
+
+## Artifact timestamps
+
+| Package | `dist/prod/npm/pkg/index.d.ts` mtime |
+| --- | --- |
+| `@effected/npm` | 2026-07-16T20:55:00Z |
 
 ## `@effected/npm`
 
@@ -117,7 +139,8 @@ export declare function publishFromDist(config: PublishConfig): Effect.Effect<Pu
 ### Changed
 
 - `resolveCatalogs` now returns `Effect<CatalogMap, CatalogResolutionError>` (was `Effect<CatalogMap, never>`) —
-  a missing catalog entry is now a typed failure instead of silently resolving to `undefined`.
+  a missing catalog entry is now a typed failure instead of silently resolving to `undefined`. Control-grep:
+  `rg resolveCatalogs dist/prod` alongside `rg CatalogResolutionError dist/prod` as the known-present control.
 
 ### Removed
 

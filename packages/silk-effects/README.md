@@ -33,7 +33,7 @@ All exports come from the package root:
 ```typescript
 import {
   SilkPublishability,
-  ChangesetConfig, ChangesetConfigLive,
+  ChangesetConfig,
   Changesets, Lint, Turbo,
 } from "@savvy-web/silk-effects";
 ```
@@ -124,25 +124,25 @@ const messages = Changesets.ChangesetLinter.validateFile(".changeset/quiet-moons
 
 These services read or write files. Provide the platform layer for your runtime, such as `NodeServices.layer`.
 
-#### SilkPublishabilityDetectorLive and PublishabilityDetectorAdaptiveLive
+#### SilkPublishability.layer and SilkPublishability.layerAdaptive
 
-`SilkPublishability.detect` is also exposed through `@effected/workspaces`'s `PublishabilityDetector` Tag so consumers can swap silk rules into any program that already yields the detector. Two layers override the Tag:
+`SilkPublishability.detect` is also exposed through `@effected/workspaces`'s `PublishabilityDetector` Tag so consumers can swap silk rules into any program that already yields the detector. Two static layers override the Tag:
 
-- `SilkPublishabilityDetectorLive` — applies silk rules unconditionally. Requires `FileSystem`.
-- `PublishabilityDetectorAdaptiveLive` — ignore-aware. Changeset-`ignore`d packages resolve to `[]`, then it dispatches by changeset mode (`none` → `[]`, `silk` → silk rules, `vanilla` → the `@effected/workspaces` default). Requires `FileSystem` and `ChangesetConfig`.
+- `SilkPublishability.layer` — applies silk rules unconditionally. Requires `FileSystem`.
+- `SilkPublishability.layerAdaptive` — ignore-aware. Changeset-`ignore`d packages resolve to `[]`, then it dispatches by changeset mode (`none` → `[]`, `silk` → silk rules, `vanilla` → the `@effected/workspaces` default). Requires `FileSystem` and `ChangesetConfig`.
 
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import { PublishabilityDetector } from "@effected/workspaces";
-import { SilkPublishabilityDetectorLive } from "@savvy-web/silk-effects";
+import { SilkPublishability } from "@savvy-web/silk-effects";
 
 const targets = await Effect.runPromise(
   Effect.gen(function* () {
     const detector = yield* PublishabilityDetector;
     return yield* detector.detect(pkg, root);
   }).pipe(
-    Effect.provide(SilkPublishabilityDetectorLive),
+    Effect.provide(SilkPublishability.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -159,7 +159,7 @@ Typed accessor over a workspace root's `.changeset/config.json`, reading through
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import {
-  ChangesetConfig, ChangesetConfigLive, ChangesetConfigReaderLive,
+  ChangesetConfig, ChangesetConfigReader,
 } from "@savvy-web/silk-effects";
 
 const mode = await Effect.runPromise(
@@ -167,8 +167,8 @@ const mode = await Effect.runPromise(
     const config = yield* ChangesetConfig;
     return yield* config.mode(process.cwd());
   }).pipe(
-    Effect.provide(ChangesetConfigLive),
-    Effect.provide(ChangesetConfigReaderLive),
+    Effect.provide(ChangesetConfig.layer),
+    Effect.provide(ChangesetConfigReader.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -212,7 +212,7 @@ Read and decode `.changeset/config.json`. Auto-detects whether the project uses 
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import {
-  ChangesetConfigReader, ChangesetConfigReaderLive,
+  ChangesetConfigReader,
 } from "@savvy-web/silk-effects";
 
 const config = await Effect.runPromise(
@@ -220,7 +220,7 @@ const config = await Effect.runPromise(
     const reader = yield* ChangesetConfigReader;
     return yield* reader.read(process.cwd());
   }).pipe(
-    Effect.provide(ChangesetConfigReaderLive),
+    Effect.provide(ChangesetConfigReader.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -234,14 +234,14 @@ Locate config files using a priority-based search convention. Checks `lib/config
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
-import { ConfigDiscovery, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+import { ConfigDiscovery } from "@savvy-web/silk-effects";
 
 const result = await Effect.runPromise(
   Effect.gen(function* () {
     const cd = yield* ConfigDiscovery;
     return yield* cd.find("biome.jsonc");
   }).pipe(
-    Effect.provide(ConfigDiscoveryLive),
+    Effect.provide(ConfigDiscovery.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -255,14 +255,14 @@ Keep Biome config `$schema` URLs current. Locates `biome.json` or `biome.jsonc`,
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
-import { BiomeSchemaSync, BiomeSchemaSyncLive } from "@savvy-web/silk-effects";
+import { BiomeSchemaSync } from "@savvy-web/silk-effects";
 
 const result = await Effect.runPromise(
   Effect.gen(function* () {
     const bss = yield* BiomeSchemaSync;
     return yield* bss.sync("2.0.0");
   }).pipe(
-    Effect.provide(BiomeSchemaSyncLive),
+    Effect.provide(BiomeSchemaSync.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -273,7 +273,7 @@ const result = await Effect.runPromise(
 
 Resolve `.changeset/config.json` into a fully attributed view of the workspace: the configured changelog, base branch, access and ignore list, plus one scope per package carrying its `workspaceDir`, version, `additionalScopes` and resolved `versionFiles`. `inspect(cwd)` returns that view and `classify` maps arbitrary file paths to the package that owns them, which is how a branch diff becomes a per-package attribution. `refresh()` clears the per-root cache, which a long-lived host needs in order to see config edits made between calls.
 
-`Changesets.ConfigInspectorLive` requires `ChangesetConfigReader`, `WorkspaceDiscovery` from [`@effected/workspaces`](https://www.npmjs.com/package/@effected/workspaces) and `FileSystem`.
+`Changesets.ConfigInspector.layer` requires `ChangesetConfigReader`, `WorkspaceDiscovery` from [`@effected/workspaces`](https://www.npmjs.com/package/@effected/workspaces) and `FileSystem`.
 
 #### ReleasePlanner
 
@@ -292,7 +292,7 @@ const preview = yield* planner.preview(root, {
 // => ChangesetPreview: per-release changelogEntry, versions and changeset ids
 ```
 
-`Changesets.ReleasePlannerLive` requires `ConfigInspector` and `FileSystem`.
+`Changesets.ReleasePlanner.layer` requires `ConfigInspector` and `FileSystem`.
 
 ---
 
@@ -302,7 +302,7 @@ const preview = yield* planner.preview(root, {
 
 `analyzeBranch` classifies a branch's diff by the package that owns each file, applying `ConfigInspector` attribution over the git range. This is what answers "what changed on this branch, and which package releases because of it", including the unmapped files that belong to no package.
 
-`Changesets.BranchAnalyzerLive` requires `ConfigInspector` and the platform process spawner.
+`Changesets.BranchAnalyzer.layer` requires `ConfigInspector` and the platform process spawner.
 
 #### DepsRegen
 
@@ -329,13 +329,13 @@ const plan = await Effect.runPromise(
 // => RegenPlan: files to write, rows per package, changesets to delete
 ```
 
-`Changesets.DepsRegenLive` is the seam for callers injecting their own dependencies; it requires `WorkspaceSnapshots`, `ConfigInspector`, `WorkspaceDiscovery`, `PublishabilityDetector`, `ChangesetConfig`, `Git` and `FileSystem`.
+`Changesets.DepsRegen.layer` is the seam for callers injecting their own dependencies; it requires `WorkspaceSnapshots`, `ConfigInspector`, `WorkspaceDiscovery`, `PublishabilityDetector`, `ChangesetConfig`, `Git` and `FileSystem`.
 
 #### TurboInspector
 
 Read-only Turborepo inspection. Every method shells out to `turbo` with `--dry=json`, so no task ever runs. `diagnoseCache(task, cwd)` reports a per-package cache HIT/MISS breakdown for a task, `taskGraph(cwd, task?)` derives the task graph and its critical path and `affected(cwd, base?)` lists the packages affected relative to `base` (default `main`). It resolves the `turbo` binary through `ToolDiscovery` from [`@effected/commands`](https://www.npmjs.com/package/@effected/commands) and fails with a tagged error when `turbo` is missing or the directory is not a Turborepo. The service tag and its layer are exported under the `Turbo` namespace.
 
-`Turbo.TurboInspectorLive` requires `ToolDiscovery`, `Git` from [`@effected/git`](https://www.npmjs.com/package/@effected/git), `FileSystem` and the platform process spawner. Wire `ToolDiscovery` to the workspace with `Workspaces.localExecLayer()`, which teaches it the argv prefix that runs a project-local binary:
+`Turbo.TurboInspector.layer` requires `ToolDiscovery`, `Git` from [`@effected/git`](https://www.npmjs.com/package/@effected/git), `FileSystem` and the platform process spawner. Wire `ToolDiscovery` to the workspace with `Workspaces.localExecLayer()`, which teaches it the argv prefix that runs a project-local binary:
 
 ```typescript
 import { Effect, Layer } from "effect";
@@ -356,7 +356,7 @@ const diagnosis = await Effect.runPromise(
     const turbo = yield* Turbo.TurboInspector;
     return yield* turbo.diagnoseCache("build:dev", process.cwd());
   }).pipe(
-    Effect.provide(Turbo.TurboInspectorLive),
+    Effect.provide(Turbo.TurboInspector.layer),
     Effect.provide(Layer.mergeAll(ToolsLive, Git.layer)),
     Effect.provide(NodeServices.layer),
   ),

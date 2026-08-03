@@ -27,7 +27,7 @@ Shown expanded for readability; each snapshot is ONE line on disk (no pretty-pri
     { "name": "@effected/npm", "override": "file:../../spencerbeggs/effected/packages/npm/dist/prod/npm/pkg" }
     // … full transitive closure of linked packages
   ],
-  "linkType": "pnpm-overrides",                  // future: "bun"
+  "linkType": "pnpm-overrides",                  // "file" also valid; future: "bun"
   "nativeRebuilds": ["better-sqlite3"],          // `pnpm rebuild` targets after --ignore-scripts installs
   "phase": "adopting",
   "ball": "ours",
@@ -49,8 +49,10 @@ Shown expanded for readability; each snapshot is ONE line on disk (no pretty-pri
 | `role` | `"downstream"` or `"upstream"` for THIS repo, in THIS loop. A repo can be downstream in one loop's journal and upstream in another's — role is per-journal, never global. |
 | `counterpart` | Static across the loop's life; repeated on every line by design (see above). `path` is relative to this repo's root. |
 | `packages` | Downstream only. The FULL transitive closure of linked `@scope/*` packages, each with the exact `pnpm-workspace.yaml` override string. Re-derive from the lockfile at `--init`/`--adopt` time — never trust a stale in-memory list. |
-| `linkType` | `"pnpm-overrides"` today; `"bun"` is a reserved future value, not yet implemented — do not invent other values. |
+| `packagesDerived` | Downstream only. `false` means the linked-package closure has NOT been computed yet; `true` means it has, so an empty `packages` array genuinely means nothing is linked. Readers must treat `false` as potentially-linked and fail safe (savvy-web/systems#331). |
+| `linkType` | `"pnpm-overrides"` or `"file"` today (`"file"` sanctioned alongside `pnpm-overrides` as of savvy-web/systems#338); `"bun"` is a reserved future value, not yet implemented — do not invent other values. |
 | `nativeRebuilds` | Downstream only. Native-module names that need `pnpm rebuild <name>` after an `--ignore-scripts` install (e.g. `better-sqlite3`). Scan for these at `--init`/discover at `--adopt`. |
+| `owner` | An opaque session-scoped token identifying which session wrote this snapshot. Exactly one session may hold a role in a loop; the append helper warns on a mismatch (savvy-web/systems#334). |
 | `phase` | See the phase machine in `SKILL.md`. Exactly one of `requested`, `implementing`, `handoff`, `adopting`, `findings`, `upstream-pr`, `released`, `unlinked`. |
 | `ball` | `"ours"` or `"theirs"` — whose move it is. Every mail kind deterministically flips or keeps it. |
 | `round` | Monotonic, shared by both sides. `briefing` is round 0. |
@@ -67,18 +69,25 @@ The upstream repo's own journal for the same loop mirrors phase/ball but drops w
 
 ## Appending a line
 
-There is no CLI/MCP tool for this in v1 (see the skill's Non-goals) — append by hand with `jq -c` (or equivalent) piped to `>>`, never `>`:
+Append with `skills/dogfood/scripts/journal-append.sh` (savvy-web/systems#338) — it inherits the last valid line, patches only what you pass, validates the event/phase/ball enums, and appends only on success. This replaces hand-rolling the full `jq` object on every append.
+
+Opening a loop:
 
 ```bash
-jq -nc \
-  --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --arg counterpart_id "effected" \
-  --arg phase "adopting" \
-  --arg ball "ours" \
-  '{at:$at, event:"mail-received", role:"downstream",
-    counterpart:{id:$counterpart_id, path:"../../spencerbeggs/effected"},
-    phase:$phase, ball:$ball, round:2}' \
-  >> .claude/dogfood/effected.jsonl
+bash journal-append.sh <journal-path> --init --role <downstream|upstream> \
+  --counterpart-id <id> --counterpart-path <path> --link-type <pnpm-overrides|file> \
+  [--note <text>] [--owner <token>]
 ```
 
-Build the full object (packages, nativeRebuilds, lastMail) inline in the `jq` invocation rather than piecing it together with shell string concatenation — a malformed line just gets walked past by every reader, but it still pollutes the audit trail.
+`--init` derives the opening `ball` from `--role` per the phase table (`requested` → upstream's ball): a downstream repo gets `ball: theirs`, an upstream repo gets `ball: ours`. A downstream init writes `packages: []`, `packagesDerived: false`, and `nativeRebuilds: []`; an upstream init omits all three fields entirely, per the upstream-side snapshot shape below.
+
+Every later append:
+
+```bash
+bash journal-append.sh <journal-path> --event <event> \
+  [--phase <p>] [--ball <b>] [--round <n>] \
+  [--mail-in <path>] [--mail-out <path>] [--note <text>] [--pr <repo#num>] \
+  [--packages-derived true|false] [--owner <token>]
+```
+
+Only the flags you pass change; every other field (including `counterpart`, `packages`, `linkType`, `nativeRebuilds`, `role`) carries forward unchanged from the last valid line, walking back past a corrupt tail the same way the guard/monitor readers do. `role` is fixed for a loop — the script refuses `--role` outside `--init`; append a `correction` event instead. An owner-token mismatch against the last writer warns (savvy-web/systems#334) rather than rejecting. Nothing is appended unless the composed line validates — a rejected input leaves the journal file byte-identical.

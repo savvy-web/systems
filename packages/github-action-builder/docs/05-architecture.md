@@ -127,25 +127,50 @@ interface BuildService {
 * Produces exactly one `.js` file per entry — dynamic `import()` calls in action source are folded back into the parent bundle (`asyncChunks: false`) so `action.yml` can always reference a predictable path
 * Shims `__dirname` and `__filename` inside the ESM bundle so CJS dependencies that reference those globals work without being externalized
 
+### PersistLocalService
+
+Syncs build output to a local action directory for testing with [nektos/act](https://github.com/nektos/act). It has no service dependencies.
+
+```typescript
+interface PersistLocalService {
+  // Persist build output to the local action directory
+  persist(config: Config, options?: PersistLocalRunnerOptions): Effect<PersistLocalResult, PersistLocalError | ActionYmlPathError>;
+
+  // Format persist result for display
+  formatResult(result: PersistLocalResult): string;
+}
+```
+
+**Key behaviors:**
+
+* Copies `action.yml` and `dist/` into `config.persistLocal.path`, comparing files by SHA-256 hash so only changed files are copied
+* Removes stale destination files that no longer exist in the source, then prunes any resulting empty directories
+* Validates that `action.yml`'s `runs.main`/`pre`/`post` paths resolve inside the destination, failing with `ActionYmlPathError` otherwise
+* Generates `.actrc` and `.github/workflows/act-test.yml` boilerplate when `config.persistLocal.actTemplate` is set and the files do not already exist
+* No-ops (returns a successful zero-copy result) when `config.persistLocal.enabled` is `false`
+
 ## Layer composition
 
 Effect Layers wire the services together:
 
 ```typescript
 // Individual service layers
-export const ConfigLayer = ConfigServiceLive;
-export const ValidationLayer = ValidationServiceLive.pipe(
-  Layer.provide(ConfigServiceLive)
+export const ConfigLayer = ConfigService.layer;
+export const ValidationLayer = ValidationService.layer.pipe(
+  Layer.provide(ConfigService.layer)
 );
-export const BuildLayer = BuildServiceLive.pipe(
-  Layer.provide(ConfigServiceLive)
+export const BuildLayer = BuildService.layer.pipe(
+  Layer.provide(ConfigService.layer)
 );
+
+export const PersistLocalLayer = PersistLocalService.layer;
 
 // Combined application layer
 export const AppLayer = Layer.mergeAll(
-  ConfigServiceLive,
+  ConfigService.layer,
   ValidationLayer,
-  BuildLayer
+  BuildLayer,
+  PersistLocalLayer
 );
 ```
 
@@ -241,6 +266,11 @@ Effect.gen(function* () {
 * `WriteError` - Failed to write output file
 * `CleanError` - Failed to clean output directory
 * `BuildFailed` - Overall build process failed
+
+**Persist Errors:**
+
+* `PersistLocalError` - Failed to sync a file into the local action directory
+* `ActionYmlPathError` - A `runs.main`/`pre`/`post` path in `action.yml` does not resolve in the destination
 
 ## Schema validation
 
@@ -346,12 +376,11 @@ src/
 |   +-- action-yml.ts        # action.yml schema (node24 only)
 |   +-- path.ts              # PathLike schema helpers
 +-- services/
-|   +-- config.ts            # ConfigService definition
-|   +-- config-live.ts       # ConfigService implementation
-|   +-- validation.ts        # ValidationService definition
-|   +-- validation-live.ts   # ValidationService implementation
-|   +-- build.ts             # BuildService definition
-|   +-- build-live.ts        # BuildService implementation
+|   +-- config.ts                   # ConfigService (class + layer static)
+|   +-- validation.ts               # ValidationService (class + layer static)
+|   +-- build.ts                    # BuildService (class + layer static)
+|   +-- persist-local.ts            # PersistLocalService (class + layer static)
+|   +-- native-dynamic-imports.ts   # buildNativeDynamicImportRules helper
 +-- layers/
 |   +-- app.ts               # Layer composition (AppLayer)
 +-- cli/
@@ -379,32 +408,25 @@ src/
 
 ### Adding a new service
 
-1. Define the service interface in `services/`:
+1. Define the `Context.Service` class and its `layer` static together in one file under `services/` — the package no longer splits a service interface from a separate `*-live.ts` implementation:
 
 ```typescript
-export interface MyService {
-  readonly doSomething: () => Effect<Result, MyError>;
+export class MyService extends Context.Service<MyService, MyServiceShape>()("MyService") {
+  static readonly layer: Layer.Layer<MyService> = Layer.succeed(this, {
+    doSomething: () => Effect.succeed({ /* ... */ }),
+  });
 }
-
-export const MyService = Context.GenericTag<MyService>("MyService");
-```
-
-1. Create the implementation in `services/*-live.ts`:
-
-```typescript
-export const MyServiceLive = Layer.succeed(MyService, {
-  doSomething: () => Effect.succeed({ /* ... */ }),
-});
 ```
 
 1. Add to the application layer in `layers/app.ts`:
 
 ```typescript
 export const AppLayer = Layer.mergeAll(
-  ConfigServiceLive,
+  ConfigService.layer,
   ValidationLayer,
   BuildLayer,
-  MyServiceLive,
+  PersistLocalLayer,
+  MyService.layer,
 );
 ```
 

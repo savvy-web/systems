@@ -10,7 +10,7 @@ Guide to providing platform dependencies for silk-effects services.
 
 ### Tier 0: no platform layer
 
-These services are pure — they perform no I/O and have no platform dependencies. You only need to provide the service's own `Live` layer.
+These services are pure — they perform no I/O and have no platform dependencies. You only need to provide the service's own `layer` static.
 
 **Services:** the static `SilkPublishability.detect`
 
@@ -39,18 +39,18 @@ const tags = strategy.tagsFor([{ name: "@my-org/pkg", version: "1.0.0" }]);
 
 These services read or write files. They depend on `FileSystem` from `effect`, which is provided by your runtime's platform layer.
 
-**Services:** `SilkPublishabilityDetectorLive`, `PublishabilityDetectorAdaptiveLive`, `ChangesetConfig`, `ChangesetConfigReader`, `ConfigDiscovery`, `BiomeSchemaSync`
+**Services:** `SilkPublishability.layer`, `SilkPublishability.layerAdaptive`, `ChangesetConfig`, `ChangesetConfigReader`, `ConfigDiscovery`, `BiomeSchemaSync`
 
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
-import { ConfigDiscovery, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+import { ConfigDiscovery } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
   const cd = yield* ConfigDiscovery;
   return yield* cd.find("biome.jsonc");
 }).pipe(
-  Effect.provide(ConfigDiscoveryLive),
+  Effect.provide(ConfigDiscovery.layer),
   Effect.provide(NodeServices.layer),
 );
 // => { path: "/project/biome.jsonc", source: "root" } | null
@@ -58,7 +58,7 @@ const program = Effect.gen(function* () {
 
 Swap `NodeServices.layer` for the platform layer of whichever runtime you target; nothing above it changes.
 
-The publishability detector layers also live in this tier. `SilkPublishabilityDetectorLive` requires only `FileSystem`; `PublishabilityDetectorAdaptiveLive` additionally requires `ChangesetConfig` (see below).
+The publishability detector layers also live in this tier. `SilkPublishability.layer` requires only `FileSystem`; `SilkPublishability.layerAdaptive` additionally requires `ChangesetConfig` (see below).
 
 ### Tier 2: FileSystem + process layer
 
@@ -84,7 +84,7 @@ const program = Effect.gen(function* () {
   const turbo = yield* Turbo.TurboInspector;
   return yield* turbo.taskGraph(process.cwd(), "build:dev");
 }).pipe(
-  Effect.provide(Turbo.TurboInspectorLive),
+  Effect.provide(Turbo.TurboInspector.layer),
   Effect.provide(Layer.mergeAll(ToolsLive, Git.layer)),
   Effect.provide(NodeServices.layer),
 );
@@ -105,9 +105,9 @@ Services that share a dependency (like `FileSystem`) only need the platform laye
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import {
-  ChangesetConfigReader, ChangesetConfigReaderLive,
-  ConfigDiscovery, ConfigDiscoveryLive,
-  BiomeSchemaSync, BiomeSchemaSyncLive,
+  ChangesetConfigReader,
+  ConfigDiscovery,
+  BiomeSchemaSync,
 } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
@@ -119,9 +119,9 @@ const program = Effect.gen(function* () {
 
 await Effect.runPromise(
   program.pipe(
-    Effect.provide(ChangesetConfigReaderLive),
-    Effect.provide(ConfigDiscoveryLive),
-    Effect.provide(BiomeSchemaSyncLive),
+    Effect.provide(ChangesetConfigReader.layer),
+    Effect.provide(ConfigDiscovery.layer),
+    Effect.provide(BiomeSchemaSync.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -129,21 +129,21 @@ await Effect.runPromise(
 
 ### Adaptive publishability with ChangesetConfig
 
-`PublishabilityDetectorAdaptiveLive` overrides `@effected/workspaces`'s `PublishabilityDetector` Tag and dispatches by changeset mode. It needs the `ChangesetConfig` service, which in turn needs `ChangesetConfigReader`. Wire them with `Layer.mergeAll` and provide the platform layer once:
+`SilkPublishability.layerAdaptive` overrides `@effected/workspaces`'s `PublishabilityDetector` Tag and dispatches by changeset mode. It needs the `ChangesetConfig` service, which in turn needs `ChangesetConfigReader`. Wire them with `Layer.mergeAll` and provide the platform layer once:
 
 ```typescript
 import { Effect, Layer } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import { PublishabilityDetector } from "@effected/workspaces";
 import {
-  ChangesetConfig, ChangesetConfigLive, ChangesetConfigReaderLive,
-  PublishabilityDetectorAdaptiveLive,
+  ChangesetConfig, ChangesetConfigReader,
+  SilkPublishability,
 } from "@savvy-web/silk-effects";
 
 const layer = Layer.mergeAll(
-  PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(ChangesetConfigLive)),
-  ChangesetConfigLive,
-  ChangesetConfigReaderLive,
+  SilkPublishability.layerAdaptive.pipe(Layer.provide(ChangesetConfig.layer)),
+  ChangesetConfig.layer,
+  ChangesetConfigReader.layer,
 ).pipe(Layer.provide(NodeServices.layer));
 
 const program = Effect.gen(function* () {
@@ -157,19 +157,19 @@ await Effect.runPromise(program);
 // => ReadonlyArray<PublishTarget>
 ```
 
-For unconditional silk rules without changeset awareness, use `SilkPublishabilityDetectorLive` instead, which needs only the platform layer:
+For unconditional silk rules without changeset awareness, use `SilkPublishability.layer` instead, which needs only the platform layer:
 
 ```typescript
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import { PublishabilityDetector } from "@effected/workspaces";
-import { SilkPublishabilityDetectorLive } from "@savvy-web/silk-effects";
+import { SilkPublishability } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
   const detector = yield* PublishabilityDetector;
   return yield* detector.detect(pkg, process.cwd());
 }).pipe(
-  Effect.provide(SilkPublishabilityDetectorLive),
+  Effect.provide(SilkPublishability.layer),
   Effect.provide(NodeServices.layer),
 );
 
@@ -181,8 +181,8 @@ await Effect.runPromise(program);
 
 ```text
 SilkPublishability.detect          (pure static, no layer)
-SilkPublishabilityDetectorLive     --> FileSystem
-PublishabilityDetectorAdaptiveLive --> FileSystem, ChangesetConfig
+SilkPublishability.layer           --> FileSystem
+SilkPublishability.layerAdaptive   --> FileSystem, ChangesetConfig
 ChangesetConfigReader              --> FileSystem
 ChangesetConfig                    --> ChangesetConfigReader
 ConfigDiscovery                    --> FileSystem
@@ -196,7 +196,7 @@ In tests, provide a stub filesystem instead of the real platform layer. `FileSys
 
 ```typescript
 import { Effect, FileSystem } from "effect";
-import { ConfigDiscovery, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+import { ConfigDiscovery } from "@savvy-web/silk-effects";
 
 const TestFileSystem = FileSystem.layerNoop({
   exists: () => Effect.succeed(true),
@@ -207,7 +207,7 @@ const program = Effect.gen(function* () {
   const cd = yield* ConfigDiscovery;
   return yield* cd.find("biome.jsonc");
 }).pipe(
-  Effect.provide(ConfigDiscoveryLive),
+  Effect.provide(ConfigDiscovery.layer),
   Effect.provide(TestFileSystem),
 );
 // => the stubbed location, with no disk access

@@ -28,7 +28,7 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 		expect(mod.DepsRegen).toBeDefined();
 		// DepsRegenBase removed in the v4 port (inline Context.Service + _base suppression).
 		expect("DepsRegenBase" in mod).toBe(false);
-		expect(mod.DepsRegenLive).toBeDefined();
+		expect(mod.DepsRegen.layer).toBeDefined();
 		expect(mod.DepsRegenDefault).toBeDefined();
 		expect(mod.isPureDependencyChangeset).toBeDefined();
 		expect(mod.gitMergeBase).toBeDefined();
@@ -42,7 +42,7 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 
 	it("exports layers", async () => {
 		const mod = await import("../../src/changesets/index.js");
-		expect(mod.GitHubLive).toBeDefined();
+		expect(mod.GitHubService.layer).toBeDefined();
 	});
 
 	it("exports tagged errors", async () => {

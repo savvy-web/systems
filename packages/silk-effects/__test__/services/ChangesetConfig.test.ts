@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { ChangesetConfig, ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
-import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
+import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
+import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 
 const writeConfig = (dir: string, content: unknown): void => {
 	const cd = join(dir, ".changeset");
@@ -29,8 +29,8 @@ const writeConfig = (dir: string, content: unknown): void => {
  */
 const provide = <A, E>(eff: Effect.Effect<A, E, ChangesetConfig>): Effect.Effect<A, E> =>
 	eff.pipe(
-		Effect.provide(ChangesetConfigLive),
-		Effect.provide(ChangesetConfigReaderLive),
+		Effect.provide(ChangesetConfig.layer),
+		Effect.provide(ChangesetConfigReader.layer),
 		Effect.provide(NodeServices.layer),
 	);
 

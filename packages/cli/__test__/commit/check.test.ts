@@ -5,7 +5,7 @@ import { NodeServices } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { ManagedSection } from "@effected/templates";
 import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
-import { ChangesetConfigReaderLive, SilkPublishabilityDetectorLive } from "@savvy-web/silk-effects";
+import { ChangesetConfigReader, SilkPublishability } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runCommitCheck } from "../../src/commands/commit/check.js";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
@@ -30,8 +30,8 @@ const WorkspaceDiscoveryStub = Layer.succeed(WorkspaceDiscovery, {
  */
 const TestLayer = Layer.mergeAll(
 	ManagedSection.layer,
-	ChangesetConfigReaderLive,
-	SilkPublishabilityDetectorLive,
+	ChangesetConfigReader.layer,
+	SilkPublishability.layer,
 	WorkspaceDiscoveryStub,
 	WorkspaceRoot.layer.pipe(Layer.provide(NodeServices.layer)),
 ).pipe(Layer.provideMerge(NodeServices.layer), Layer.provide(Logger.layer([])));

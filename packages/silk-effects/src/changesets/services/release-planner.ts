@@ -89,7 +89,17 @@ export interface ReleasePlannerShape {
 }
 
 /** Effect service tag for the release planner. @public */
-export class ReleasePlanner extends Context.Service<ReleasePlanner, ReleasePlannerShape>()("ReleasePlanner") {}
+export class ReleasePlanner extends Context.Service<ReleasePlanner, ReleasePlannerShape>()("ReleasePlanner") {
+	/** Production layer. Requires {@link ConfigInspector} (used by `apply`) and `FileSystem`. @public */
+	static readonly layer: Layer.Layer<ReleasePlanner, never, ConfigInspector | FileSystem.FileSystem> = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			const inspector = yield* ConfigInspector;
+			const fs = yield* FileSystem.FileSystem;
+			return makeShape(inspector, fs);
+		}),
+	);
+}
 
 /** Build the service shape over a resolved {@link ConfigInspector} and {@link FileSystem.FileSystem}. */
 function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): ReleasePlannerShape {
@@ -106,17 +116,6 @@ function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): 
 
 	return { plan, preview, apply };
 }
-
-/** Production layer. Requires {@link ConfigInspector} (used by `apply`) and `FileSystem`. @public */
-export const ReleasePlannerLive: Layer.Layer<ReleasePlanner, never, ConfigInspector | FileSystem.FileSystem> =
-	Layer.effect(
-		ReleasePlanner,
-		Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			const fs = yield* FileSystem.FileSystem;
-			return makeShape(inspector, fs);
-		}),
-	);
 
 /**
  * Test factory — supply fixed results for any subset of methods. Unsupplied

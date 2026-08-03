@@ -14,7 +14,7 @@ import { Effect } from "effect";
 import type { MetaOptions, PublishTargets, RenderedOutput } from "./src/index.js";
 import {
 	BuildCollector,
-	ReportPipelineLive,
+	ReportPipeline,
 	buildTargetGroups,
 	defaultManifestTransform,
 	packageJsonEntries,
@@ -131,7 +131,7 @@ try {
 		renderReport(collector.snapshot(pkg.name), {
 			verbose,
 			noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
-		}).pipe(Effect.provide(ReportPipelineLive)),
+		}).pipe(Effect.provide(ReportPipeline)),
 	);
 	for (const out of rendered as ReadonlyArray<RenderedOutput>) process.stdout.write(`${out.content}\n`);
 	// Persist the structured diagnostics artifact for every target, stamped with the build outcome

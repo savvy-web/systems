@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { ConfigDiscovery, ConfigDiscoveryLive, Lint } from "../../src/index.js";
+import { ConfigDiscovery, Lint } from "../../src/index.js";
 
 const {
 	Biome,
@@ -760,7 +760,7 @@ describe("Utility classes", () => {
 	describe("ConfigDiscovery", () => {
 		it("should re-export ConfigDiscovery from silk-effects", () => {
 			expect(ConfigDiscovery).toBeDefined();
-			expect(ConfigDiscoveryLive).toBeDefined();
+			expect(ConfigDiscovery.layer).toBeDefined();
 		});
 	});
 });

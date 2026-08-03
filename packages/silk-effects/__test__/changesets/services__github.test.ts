@@ -29,7 +29,7 @@ vi.mock("@changesets/get-github-info", () => ({
 }));
 
 import { GitHubApiError } from "../../src/changesets/errors.js";
-import { GitHubLive, GitHubService, makeGitHubTest } from "../../src/changesets/services/github.js";
+import { GitHubService, makeGitHubTest } from "../../src/changesets/services/github.js";
 import type { GitHubCommitInfo } from "../../src/changesets/vendor/github-info.js";
 import { getGitHubInfo } from "../../src/changesets/vendor/github-info.js";
 
@@ -86,14 +86,14 @@ describe("GitHubService (test layer)", () => {
 		}),
 	);
 
-	it.effect("GitHubLive provides the correct service shape", () =>
+	it.effect("GitHubService.layer provides the correct service shape", () =>
 		Effect.gen(function* () {
 			const program = Effect.gen(function* () {
 				const github = yield* GitHubService;
 				expect(typeof github.getInfo).toBe("function");
 			});
 
-			yield* program.pipe(Effect.provide(GitHubLive));
+			yield* program.pipe(Effect.provide(GitHubService.layer));
 		}),
 	);
 
