@@ -1,5 +1,38 @@
 # @savvy-web/github-action-builder
 
+## 2.2.0
+
+### Breaking Changes
+
+* ### Layer statics replace `XLive` exports
+
+  `ConfigServiceLive`, `ValidationServiceLive`, `BuildServiceLive`, and `PersistLocalServiceLive` are removed, along with the four standalone module files that defined them. Each service's production layer now lives as a `.layer` static on its own class. The package's higher-level `ConfigLayer`, `ValidationLayer`, `BuildLayer`, `PersistLocalLayer`, and `AppLayer` composites are unaffected — only the lower-level per-service layer names change for anyone consuming them directly.
+
+  ```typescript
+  // Before
+  import { ConfigServiceLive } from "@savvy-web/github-action-builder";
+  Effect.provide(ConfigServiceLive);
+
+  // After
+  import { ConfigService } from "@savvy-web/github-action-builder";
+  Effect.provide(ConfigService.layer);
+  ```
+
+  This is a genuine breaking change to the package's export surface, released as a minor bump rather than a major: consumption of `@savvy-web/github-action-builder` is effectively in-house across the Silk Suite, so the migration cost is contained and immediate. [#408][#408]
+
+### Documentation
+
+* `docs/05-architecture.md` is corrected against `src/layers/app.ts` and `src/services/persist-local.ts`:
+
+  * The "Combined application layer" and "Adding a new service" `AppLayer` examples were both missing `PersistLocalLayer`; the real definition merges four layers, not three.
+  * `PersistLocalService` previously appeared only in the file-structure tree. Added a service section matching the depth of `ConfigService`/`ValidationService`/`BuildService`, plus its `PersistLocalError`/`ActionYmlPathError` entries in the error-categories list. [#408][#408]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#408]: https://github.com/savvy-web/systems/pull/408
+
 ## 2.1.1
 
 ### Features

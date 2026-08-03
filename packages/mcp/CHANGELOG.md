@@ -1,5 +1,29 @@
 # @savvy-web/mcp
 
+## 2.0.16
+
+### Refactoring
+
+* Internal layer composition in the MCP server's runtime updated to consume `@savvy-web/silk-effects`'s renamed service statics (`ChangesetConfig.layer`, `ChangesetConfigReader.layer`, `SilkPublishability.layerAdaptive`, `SilkWorkspaceAnalyzer.layer`, `Changesets.BranchAnalyzer.layer`, `Changesets.ReleasePlanner.layer`, `Changesets.ConfigInspector.layer`, `Changesets.DepsRegen.layer`, `Repos.ReposManager.layer`, `Repos.ReposConfigStore.layer`, `Turbo.TurboInspector.layer`) in place of the removed `XLive` exports. No change to the server's tool surface or behavior. [#408][#408]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.1.3 | 5.2.0 |
+
+* | Dependency           | Type       | Action  | From   | To     |                                                                              |
+  | -------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.9.1 | ^0.9.3 | [#400][#400] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#400]: https://github.com/savvy-web/systems/pull/400
+
+[#408]: https://github.com/savvy-web/systems/pull/408
+
 ## 2.0.15
 
 ### Dependencies
