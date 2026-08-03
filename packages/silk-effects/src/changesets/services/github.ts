@@ -1,21 +1,20 @@
 /**
  * GitHub service for fetching commit metadata.
  *
- * Defines the {@link GitHubService} Effect service tag, the
- * {@link GitHubLive | production layer} backed by `\@changesets/get-github-info`,
+ * Defines the {@link GitHubService} Effect service tag, its
+ * `GitHubService.layer` production layer backed by `\@changesets/get-github-info`,
  * and the {@link makeGitHubTest} helper for constructing deterministic test
  * layers.
  *
  * @remarks
  * The GitHub service is consumed by the changelog formatters to resolve
  * commit hashes into pull-request numbers, author usernames, and link URLs.
- * In production, {@link GitHubLive} calls the GitHub REST API via the
+ * In production, `GitHubService.layer` calls the GitHub REST API via the
  * vendored `getGitHubInfo` wrapper. In tests, {@link makeGitHubTest}
  * returns canned responses from a `Map` keyed by commit hash.
  *
  * @see {@link GitHubService} for the Effect service tag
  * @see {@link GitHubServiceShape} for the service interface
- * @see {@link GitHubLive} for the production layer
  * @see {@link makeGitHubTest} for constructing test layers
  */
 
@@ -61,13 +60,13 @@ export interface GitHubServiceShape {
  * This tag follows the standard Effect `Context.Service` pattern. Two layers
  * are provided out of the box:
  *
- * - {@link GitHubLive} — production layer backed by the GitHub REST API
+ * - `GitHubService.layer` — production layer backed by the GitHub REST API
  * - {@link makeGitHubTest} — factory for deterministic test layers
  *
  * @example
  * ```typescript
- * import { Effect, Layer } from "effect";
- * import { GitHubService, GitHubLive } from "\@savvy-web/changesets";
+ * import { Effect } from "effect";
+ * import { GitHubService } from "\@savvy-web/changesets";
  *
  * const program = Effect.gen(function* () {
  *   const github = yield* GitHubService;
@@ -79,7 +78,7 @@ export interface GitHubServiceShape {
  * });
  *
  * // Provide the live layer and run
- * Effect.runPromise(program.pipe(Effect.provide(GitHubLive)));
+ * Effect.runPromise(program.pipe(Effect.provide(GitHubService.layer)));
  * ```
  *
  * @example Creating a test layer with canned responses
@@ -103,44 +102,43 @@ export interface GitHubServiceShape {
  * ```
  *
  * @see {@link GitHubServiceShape} for the service interface
- * @see {@link GitHubLive} for the production layer
  * @see {@link makeGitHubTest} for creating test layers
  *
  * @public
  */
-export class GitHubService extends Context.Service<GitHubService, GitHubServiceShape>()("GitHubService") {}
-
-/**
- * Production layer for {@link GitHubService}.
- *
- * Delegates to `\@changesets/get-github-info` to fetch commit metadata
- * from the GitHub REST API. Requires a `GITHUB_TOKEN` environment variable
- * to be set for authenticated requests.
- *
- * @remarks
- * This layer is used by the `\@savvy-web/changesets/changelog` entry point
- * to resolve commit hashes into PR numbers and author attribution. It is
- * used by the changelog formatter's
- * `MainLayer`.
- *
- * @example
- * ```typescript
- * import { Effect } from "effect";
- * import { GitHubService, GitHubLive } from "\@savvy-web/changesets";
- *
- * const program = Effect.gen(function* () {
- *   const github = yield* GitHubService;
- *   return yield* github.getInfo({ commit: "abc1234", repo: "owner/repo" });
- * });
- *
- * Effect.runPromise(program.pipe(Effect.provide(GitHubLive)));
- * ```
- *
- * @public
- */
-export const GitHubLive = Layer.succeed(GitHubService, {
-	getInfo: getGitHubInfo,
-});
+export class GitHubService extends Context.Service<GitHubService, GitHubServiceShape>()("GitHubService") {
+	/**
+	 * Production layer for {@link GitHubService}.
+	 *
+	 * Delegates to `\@changesets/get-github-info` to fetch commit metadata
+	 * from the GitHub REST API. Requires a `GITHUB_TOKEN` environment variable
+	 * to be set for authenticated requests.
+	 *
+	 * @remarks
+	 * This layer is used by the `\@savvy-web/changesets/changelog` entry point
+	 * to resolve commit hashes into PR numbers and author attribution. It is
+	 * used by the changelog formatter's
+	 * `MainLayer`.
+	 *
+	 * @example
+	 * ```typescript
+	 * import { Effect } from "effect";
+	 * import { GitHubService } from "\@savvy-web/changesets";
+	 *
+	 * const program = Effect.gen(function* () {
+	 *   const github = yield* GitHubService;
+	 *   return yield* github.getInfo({ commit: "abc1234", repo: "owner/repo" });
+	 * });
+	 *
+	 * Effect.runPromise(program.pipe(Effect.provide(GitHubService.layer)));
+	 * ```
+	 *
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<GitHubService> = Layer.succeed(this, {
+		getInfo: getGitHubInfo,
+	});
+}
 
 /**
  * Create a test layer for {@link GitHubService} with pre-configured responses.

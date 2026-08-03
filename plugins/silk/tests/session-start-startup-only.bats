@@ -110,7 +110,10 @@ STUB
 	[ "$status" -eq 0 ]
 	local ctx
 	ctx="$(jq -r '.hookSpecificOutput.additionalContext' <<< "$output")"
-	[[ "$ctx" == *"pnpm exec biome check"* ]]
+	[[ "$ctx" == *"pnpm run lint"* ]]
+	[[ "$ctx" == *"pnpm run lint:fix"* ]]
+	[[ "$ctx" == *"pnpm run lint:fix:unsafe"* ]]
+	[[ "$ctx" != *"pnpm exec biome"* ]]
 	[[ "$ctx" == *"pnpm run typecheck"* ]]
 }
 

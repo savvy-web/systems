@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { ToolDiscovery } from "@effected/commands";
 import { ManagedSection } from "@effected/templates";
 import { Workspaces } from "@effected/workspaces";
-import { BiomeSchemaSyncLive, ConfigDiscoveryLive } from "@savvy-web/silk-effects";
+import { BiomeSchemaSync, ConfigDiscovery } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 const WorkspacesKitLive = Workspaces.layer();
@@ -15,7 +15,7 @@ import { runLintCheck } from "../../src/commands/lint/check.js";
 import { runLintInit } from "../../src/commands/lint/init.js";
 
 const ToolDiscoveryLive = ToolDiscovery.layer.pipe(Layer.provide(Workspaces.localExecLayer()));
-const SilkLive = Layer.mergeAll(ManagedSection.layer, BiomeSchemaSyncLive, ConfigDiscoveryLive, ToolDiscoveryLive);
+const SilkLive = Layer.mergeAll(ManagedSection.layer, BiomeSchemaSync.layer, ConfigDiscovery.layer, ToolDiscoveryLive);
 const BaseAppLayer = SilkLive.pipe(Layer.provideMerge(WorkspacesKitLive), Layer.provideMerge(NodeServices.layer));
 
 /** Build a TestLayer that captures every Effect.log line into `sink` (replaces the default logger). */

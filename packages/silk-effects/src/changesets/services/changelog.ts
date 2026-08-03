@@ -5,7 +5,7 @@
  * {@link ChangelogServiceShape | shape interface} for dependency injection.
  * The actual formatting logic lives in `changelog/getReleaseLine.ts` and
  * `changelog/getDependencyReleaseLine.ts`; this module provides the
- * `Context.Tag` that wires those implementations into the Effect runtime.
+ * `Context.Service` that wires those implementations into the Effect runtime.
  *
  * @remarks
  * Unlike {@link GitHubService}, the
@@ -89,7 +89,7 @@ export interface ChangelogServiceShape {
  * ```typescript
  * import { Effect } from "effect";
  * import type { ChangesetOptions } from "\@savvy-web/changesets";
- * import { ChangelogService, GitHubLive } from "\@savvy-web/changesets";
+ * import { ChangelogService } from "\@savvy-web/changesets";
  *
  * const program = Effect.gen(function* () {
  *   const changelog = yield* ChangelogService;

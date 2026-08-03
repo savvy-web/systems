@@ -34,6 +34,13 @@ export interface ConfigDiscoveryShape {
 }
 
 /**
+ * Check whether a path exists, treating any PlatformError as "not found".
+ */
+function safeExists(fs: FileSystem.FileSystem, path: string): Effect.Effect<boolean> {
+	return fs.exists(path).pipe(Effect.orElseSucceed(() => false));
+}
+
+/**
  * Service that locates named config files within a workspace using priority-ordered search paths.
  *
  * @remarks
@@ -50,7 +57,7 @@ export interface ConfigDiscoveryShape {
  *     const discovery = yield* ConfigDiscovery;
  *     return yield* discovery.find("biome.json");
  *   }).pipe(
- *     Effect.provide(ConfigDiscoveryLive),
+ *     Effect.provide(ConfigDiscovery.layer),
  *     Effect.provide(NodeServices.layer),
  *   )
  * );
@@ -61,55 +68,48 @@ export interface ConfigDiscoveryShape {
  */
 export class ConfigDiscovery extends Context.Service<ConfigDiscovery, ConfigDiscoveryShape>()(
 	"@savvy-web/silk-effects/ConfigDiscovery",
-) {}
+) {
+	/**
+	 * Production implementation of {@link ConfigDiscovery}.
+	 *
+	 * @remarks
+	 * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
+	 * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
+	 *
+	 * @since 0.1.0
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<ConfigDiscovery, never, FileSystem.FileSystem> = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
 
-/**
- * Check whether a path exists, treating any PlatformError as "not found".
- */
-function safeExists(fs: FileSystem.FileSystem, path: string): Effect.Effect<boolean> {
-	return fs.exists(path).pipe(Effect.orElseSucceed(() => false));
+			const findAll = (name: string, options?: { cwd?: string }): Effect.Effect<ReadonlyArray<ConfigLocation>> =>
+				Effect.gen(function* () {
+					const cwd = options?.cwd ?? process.cwd();
+					const results: ConfigLocation[] = [];
+
+					// Priority 1: lib/configs/{name}
+					const libPath = `${cwd}/lib/configs/${name}`;
+					const libExists = yield* safeExists(fs, libPath);
+					if (libExists) {
+						results.push({ path: libPath, source: "lib" });
+					}
+
+					// Priority 2: {cwd}/{name}
+					const rootPath = `${cwd}/${name}`;
+					const rootExists = yield* safeExists(fs, rootPath);
+					if (rootExists) {
+						results.push({ path: rootPath, source: "root" });
+					}
+
+					return results;
+				});
+
+			const find = (name: string, options?: { cwd?: string }): Effect.Effect<ConfigLocation | null> =>
+				findAll(name, options).pipe(Effect.map((results) => results[0] ?? null));
+
+			return { find, findAll };
+		}),
+	);
 }
-
-/**
- * Live implementation of {@link ConfigDiscovery}.
- *
- * @remarks
- * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
- * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
- *
- * @since 0.1.0
- * @public
- */
-export const ConfigDiscoveryLive: Layer.Layer<ConfigDiscovery, never, FileSystem.FileSystem> = Layer.effect(
-	ConfigDiscovery,
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
-
-		const findAll = (name: string, options?: { cwd?: string }): Effect.Effect<ReadonlyArray<ConfigLocation>> =>
-			Effect.gen(function* () {
-				const cwd = options?.cwd ?? process.cwd();
-				const results: ConfigLocation[] = [];
-
-				// Priority 1: lib/configs/{name}
-				const libPath = `${cwd}/lib/configs/${name}`;
-				const libExists = yield* safeExists(fs, libPath);
-				if (libExists) {
-					results.push({ path: libPath, source: "lib" });
-				}
-
-				// Priority 2: {cwd}/{name}
-				const rootPath = `${cwd}/${name}`;
-				const rootExists = yield* safeExists(fs, rootPath);
-				if (rootExists) {
-					results.push({ path: rootPath, source: "root" });
-				}
-
-				return results;
-			});
-
-		const find = (name: string, options?: { cwd?: string }): Effect.Effect<ConfigLocation | null> =>
-			findAll(name, options).pipe(Effect.map((results) => results[0] ?? null));
-
-		return { find, findAll };
-	}),
-);

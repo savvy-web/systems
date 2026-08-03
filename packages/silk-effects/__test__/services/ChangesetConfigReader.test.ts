@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { Exit } from "effect";
 import { Cause, Effect, FileSystem, Layer, Option } from "effect";
 import { ChangesetConfigError } from "../../src/errors/ChangesetConfigError.js";
-import { ChangesetConfigReader, ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
+import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 
 // ---------------------------------------------------------------------------
 // Mock FileSystem
@@ -23,7 +23,7 @@ const makeTestFs = (files: Record<string, string>) =>
 
 function makeLayer(files: Record<string, string>) {
 	const testFs = makeTestFs(files);
-	return ChangesetConfigReaderLive.pipe(Layer.provide(testFs));
+	return ChangesetConfigReader.layer.pipe(Layer.provide(testFs));
 }
 
 // Per-test provide is REQUIRED in both helpers, not an unoptimised leftover: `makeLayer`

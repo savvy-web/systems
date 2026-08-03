@@ -11,7 +11,7 @@ afterEach(() => {
 	for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true });
 });
 
-// ConfigInspectorLive needs real FS/discovery; for apply tests we provide a
+// ConfigInspector.layer needs real FS/discovery; for apply tests we provide a
 // ConfigInspector stub with no versionFiles (the versionFiles path is covered
 // by the dedicated versionFiles tests below). plan/apply use the real engine over the fixture.
 
@@ -27,7 +27,7 @@ function getPlanner(projectDir: string) {
 		legacyVersionFilesUsed: false,
 	});
 	return Changesets.ReleasePlanner.pipe(
-		Effect.provide(Changesets.ReleasePlannerLive),
+		Effect.provide(Changesets.ReleasePlanner.layer),
 		Effect.provide(InspectorStub),
 		Effect.provide(NodeServices.layer),
 	) as Effect.Effect<Changesets.ReleasePlannerShape>;
@@ -72,7 +72,7 @@ function getPlannerWithVersionFiles(opts: {
 		legacyVersionFilesUsed: false,
 	});
 	return Changesets.ReleasePlanner.pipe(
-		Effect.provide(Changesets.ReleasePlannerLive),
+		Effect.provide(Changesets.ReleasePlanner.layer),
 		Effect.provide(InspectorStub),
 		Effect.provide(NodeServices.layer),
 	) as Effect.Effect<Changesets.ReleasePlannerShape>;

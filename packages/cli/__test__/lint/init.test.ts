@@ -4,13 +4,14 @@ import { join } from "node:path";
 import { NodeFileSystem } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { ManagedSection } from "@effected/templates";
-import { BiomeSchemaSyncLive, Lint, savvyBasePreamble } from "@savvy-web/silk-effects";
+import { BiomeSchemaSync, Lint, savvyBasePreamble } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runLintInit } from "../../src/commands/lint/init.js";
 
-const TestLayer = Layer.provideMerge(Layer.merge(ManagedSection.layer, BiomeSchemaSyncLive), NodeFileSystem.layer).pipe(
-	Layer.provide(Logger.layer([])),
-);
+const TestLayer = Layer.provideMerge(
+	Layer.merge(ManagedSection.layer, BiomeSchemaSync.layer),
+	NodeFileSystem.layer,
+).pipe(Layer.provide(Logger.layer([])));
 
 const BEGIN_BASE = "# --- BEGIN SAVVY-BASE MANAGED SECTION ---";
 const END_BASE = "# --- END SAVVY-BASE MANAGED SECTION ---";

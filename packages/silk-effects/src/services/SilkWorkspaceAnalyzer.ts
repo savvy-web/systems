@@ -52,7 +52,7 @@ export interface SilkWorkspaceAnalyzerShape {
  *     const analyzer = yield* SilkWorkspaceAnalyzer;
  *     return yield* analyzer.analyze("/path/to/monorepo");
  *   }).pipe(
- *     Effect.provide(SilkWorkspaceAnalyzerLive),
+ *     Effect.provide(SilkWorkspaceAnalyzer.layer),
  *     // ... provide all transitive layers
  *   )
  * );
@@ -63,7 +63,199 @@ export interface SilkWorkspaceAnalyzerShape {
  */
 export class SilkWorkspaceAnalyzer extends Context.Service<SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerShape>()(
 	"@savvy-web/silk-effects/SilkWorkspaceAnalyzer",
-) {}
+) {
+	/**
+	 * Production implementation of {@link SilkWorkspaceAnalyzer}.
+	 *
+	 * @remarks
+	 * Requires `WorkspaceDiscovery`, `PackageManagerDetector` and
+	 * {@link ChangesetConfigReader}. Versioning and tag classification are pure
+	 * `@effected/workspaces` value operations, so neither adds a requirement.
+	 *
+	 * @since 0.2.0
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<
+		SilkWorkspaceAnalyzer,
+		never,
+		FileSystem.FileSystem | WorkspaceDiscovery | PackageManagerDetector | ChangesetConfigReader
+	> = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const discovery = yield* WorkspaceDiscovery;
+			const pmDetector = yield* PackageManagerDetector;
+			const configReader = yield* ChangesetConfigReader;
+
+			const analyze = (root: string): Effect.Effect<WorkspaceAnalysis, WorkspaceAnalysisError> =>
+				Effect.gen(function* () {
+					// 1. Detect package manager and runtime
+					const pm = yield* pmDetector.detect(root).pipe(
+						Effect.mapError(
+							(err: PackageManagerDetectionFailure) =>
+								new WorkspaceAnalysisError({
+									root,
+									reason: `Package manager detection failed: ${String(err)}`,
+								}),
+						),
+					);
+
+					// 2. Discover workspace packages. The kit's discovery is bound to
+					// the root its layer was built with (`WorkspaceDiscovery.layer({ cwd })`)
+					// — the analyzer is single-root by design, so `root` must match it.
+					const packages = yield* discovery.listPackages().pipe(
+						Effect.mapError(
+							(err: WorkspaceDiscoveryFailure) =>
+								new WorkspaceAnalysisError({
+									root,
+									reason: `Workspace discovery failed: ${String(err)}`,
+								}),
+						),
+					);
+
+					// 3. Get topological sort order (dependencies first) over the
+					// discovered packages — a pure DependencyGraph value, no service.
+					// `make` accepts the ReadonlyArray directly (kit round 3 verified
+					// Schema.$Array's make-input is ReadonlyArray on beta.98).
+					const graph = DependencyGraph.make({ packages });
+					const topoOrder = yield* graph.sort().pipe(
+						Effect.mapError(
+							(err: CyclicDependencyError) =>
+								new WorkspaceAnalysisError({
+									root,
+									reason: `Cyclic dependency detected: ${String(err)}`,
+								}),
+						),
+					);
+
+					// Reorder packages by topological sort (root first, then
+					// dependencies-first order). When the topo order was built from a
+					// different workspace root (e.g. in tests) it will not contain
+					// our package names, so fall back to the discovery order.
+					const packagesByName = new Map(packages.map((p) => [p.name, p]));
+					const reordered = topoOrder.flatMap((name) => {
+						const pkg = packagesByName.get(name);
+						return pkg ? [pkg] : [];
+					});
+					const sortedPackages = reordered.length > 0 ? reordered : [...packages];
+
+					// 4. Read changeset config (optional — may not exist)
+					const changesetConfigOption = yield* configReader.read(root).pipe(Effect.option);
+					const changesetConfig = Option.getOrNull(changesetConfigOption);
+
+					// 5. Compute publishability for each workspace
+					const analyzedWorkspaces: AnalyzedWorkspace[] = [];
+
+					for (const pkg of sortedPackages) {
+						const pkgJson = yield* readRawPkgJson(fs, pkg.packageJsonPath);
+						const binding = yield* readTargetsBinding(fs, pkg.path);
+						const targets = SilkPublishability.detect(pkg.name, pkgJson as RawPackageJson, binding);
+
+						const isPublishable = targets.length > 0;
+						const isRoot = pkg.relativePath === ".";
+
+						// 6. Compute release status
+						const { versioned, tagged, released } = computeReleaseStatus(
+							pkg.name,
+							pkg.private,
+							isPublishable,
+							changesetConfig,
+						);
+
+						const analyzed = new AnalyzedWorkspace({
+							name: pkg.name,
+							version: { current: pkg.version },
+							path: pkg.path,
+							root: isRoot,
+							publishConfig: null,
+							publishable: isPublishable,
+							targets: [...targets],
+							versioned,
+							tagged,
+							released,
+							linked: [],
+							fixed: [],
+						});
+
+						analyzedWorkspaces.push(analyzed);
+					}
+
+					// 7. Wire up fixed/linked group references (immutable reconstruction)
+					if (changesetConfig) {
+						const fixedGroups = changesetConfig.fixed ?? [];
+						const linkedGroups = changesetConfig.linked ?? [];
+
+						const fixedByName = new Map<string, AnalyzedWorkspace[]>();
+						for (const group of fixedGroups) {
+							const members = analyzedWorkspaces.filter((w) => group.includes(w.name));
+							for (const member of members) {
+								fixedByName.set(
+									member.name,
+									members.filter((m) => m !== member),
+								);
+							}
+						}
+
+						const linkedByName = new Map<string, AnalyzedWorkspace[]>();
+						for (const group of linkedGroups) {
+							const members = analyzedWorkspaces.filter((w) => group.includes(w.name));
+							for (const member of members) {
+								linkedByName.set(
+									member.name,
+									members.filter((m) => m !== member),
+								);
+							}
+						}
+
+						for (let i = 0; i < analyzedWorkspaces.length; i++) {
+							const ws = analyzedWorkspaces[i];
+							const fixedRefs = fixedByName.get(ws.name) ?? [];
+							const linkedRefs = linkedByName.get(ws.name) ?? [];
+							if (fixedRefs.length > 0 || linkedRefs.length > 0) {
+								analyzedWorkspaces[i] = new AnalyzedWorkspace({
+									...ws,
+									fixed: fixedRefs,
+									linked: linkedRefs,
+								});
+							}
+						}
+					}
+
+					// 8. Compute versioning strategy. `classify` is pure and total, and
+					// the fixed groups come from the config already read at step 4 —
+					// the kit deliberately takes them as a plain argument rather than
+					// reading one release tool's config file itself.
+					const publishableNames = analyzedWorkspaces.filter((w) => w.publishable).map((w) => w.name);
+
+					const versioning = VersioningStrategy.classify({
+						packages: publishableNames,
+						fixedGroups: changesetConfig?.fixed ?? [],
+					});
+
+					// 9. Tag strategy follows from the versioning classification.
+					const tagStrategyType = versioning.tagStyle;
+
+					// 10. Build the final WorkspaceAnalysis
+					return new WorkspaceAnalysis({
+						root,
+						runtime: pm.runtime,
+						packageManager: {
+							type: pm.name,
+							// Conditional spread: v4 constructors validate, and the kit
+							// reports the version as an Option — never pass explicit undefined.
+							...(Option.isSome(pm.version) ? { version: pm.version.value } : {}),
+						},
+						workspaces: analyzedWorkspaces,
+						changesetConfig,
+						versioning,
+						tagStrategy: tagStrategyType,
+					});
+				});
+
+			return { analyze };
+		}),
+	);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -151,199 +343,3 @@ function computeReleaseStatus(
 	const released = versioned && tagged;
 	return { versioned, tagged, released };
 }
-
-// ---------------------------------------------------------------------------
-// Live layer
-// ---------------------------------------------------------------------------
-
-/**
- * Live implementation of {@link SilkWorkspaceAnalyzer}.
- *
- * @remarks
- * Requires `WorkspaceDiscovery`, `PackageManagerDetector` and
- * {@link ChangesetConfigReader}. Versioning and tag classification are pure
- * `@effected/workspaces` value operations, so neither adds a requirement.
- *
- * @since 0.2.0
- * @public
- */
-export const SilkWorkspaceAnalyzerLive: Layer.Layer<
-	SilkWorkspaceAnalyzer,
-	never,
-	FileSystem.FileSystem | WorkspaceDiscovery | PackageManagerDetector | ChangesetConfigReader
-> = Layer.effect(
-	SilkWorkspaceAnalyzer,
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
-		const discovery = yield* WorkspaceDiscovery;
-		const pmDetector = yield* PackageManagerDetector;
-		const configReader = yield* ChangesetConfigReader;
-
-		const analyze = (root: string): Effect.Effect<WorkspaceAnalysis, WorkspaceAnalysisError> =>
-			Effect.gen(function* () {
-				// 1. Detect package manager and runtime
-				const pm = yield* pmDetector.detect(root).pipe(
-					Effect.mapError(
-						(err: PackageManagerDetectionFailure) =>
-							new WorkspaceAnalysisError({
-								root,
-								reason: `Package manager detection failed: ${String(err)}`,
-							}),
-					),
-				);
-
-				// 2. Discover workspace packages. The kit's discovery is bound to
-				// the root its layer was built with (`WorkspaceDiscovery.layer({ cwd })`)
-				// — the analyzer is single-root by design, so `root` must match it.
-				const packages = yield* discovery.listPackages().pipe(
-					Effect.mapError(
-						(err: WorkspaceDiscoveryFailure) =>
-							new WorkspaceAnalysisError({
-								root,
-								reason: `Workspace discovery failed: ${String(err)}`,
-							}),
-					),
-				);
-
-				// 3. Get topological sort order (dependencies first) over the
-				// discovered packages — a pure DependencyGraph value, no service.
-				// `make` accepts the ReadonlyArray directly (kit round 3 verified
-				// Schema.$Array's make-input is ReadonlyArray on beta.98).
-				const graph = DependencyGraph.make({ packages });
-				const topoOrder = yield* graph.sort().pipe(
-					Effect.mapError(
-						(err: CyclicDependencyError) =>
-							new WorkspaceAnalysisError({
-								root,
-								reason: `Cyclic dependency detected: ${String(err)}`,
-							}),
-					),
-				);
-
-				// Reorder packages by topological sort (root first, then
-				// dependencies-first order). When the topo order was built from a
-				// different workspace root (e.g. in tests) it will not contain
-				// our package names, so fall back to the discovery order.
-				const packagesByName = new Map(packages.map((p) => [p.name, p]));
-				const reordered = topoOrder.flatMap((name) => {
-					const pkg = packagesByName.get(name);
-					return pkg ? [pkg] : [];
-				});
-				const sortedPackages = reordered.length > 0 ? reordered : [...packages];
-
-				// 4. Read changeset config (optional — may not exist)
-				const changesetConfigOption = yield* configReader.read(root).pipe(Effect.option);
-				const changesetConfig = Option.getOrNull(changesetConfigOption);
-
-				// 5. Compute publishability for each workspace
-				const analyzedWorkspaces: AnalyzedWorkspace[] = [];
-
-				for (const pkg of sortedPackages) {
-					const pkgJson = yield* readRawPkgJson(fs, pkg.packageJsonPath);
-					const binding = yield* readTargetsBinding(fs, pkg.path);
-					const targets = SilkPublishability.detect(pkg.name, pkgJson as RawPackageJson, binding);
-
-					const isPublishable = targets.length > 0;
-					const isRoot = pkg.relativePath === ".";
-
-					// 6. Compute release status
-					const { versioned, tagged, released } = computeReleaseStatus(
-						pkg.name,
-						pkg.private,
-						isPublishable,
-						changesetConfig,
-					);
-
-					const analyzed = new AnalyzedWorkspace({
-						name: pkg.name,
-						version: { current: pkg.version },
-						path: pkg.path,
-						root: isRoot,
-						publishConfig: null,
-						publishable: isPublishable,
-						targets: [...targets],
-						versioned,
-						tagged,
-						released,
-						linked: [],
-						fixed: [],
-					});
-
-					analyzedWorkspaces.push(analyzed);
-				}
-
-				// 7. Wire up fixed/linked group references (immutable reconstruction)
-				if (changesetConfig) {
-					const fixedGroups = changesetConfig.fixed ?? [];
-					const linkedGroups = changesetConfig.linked ?? [];
-
-					const fixedByName = new Map<string, AnalyzedWorkspace[]>();
-					for (const group of fixedGroups) {
-						const members = analyzedWorkspaces.filter((w) => group.includes(w.name));
-						for (const member of members) {
-							fixedByName.set(
-								member.name,
-								members.filter((m) => m !== member),
-							);
-						}
-					}
-
-					const linkedByName = new Map<string, AnalyzedWorkspace[]>();
-					for (const group of linkedGroups) {
-						const members = analyzedWorkspaces.filter((w) => group.includes(w.name));
-						for (const member of members) {
-							linkedByName.set(
-								member.name,
-								members.filter((m) => m !== member),
-							);
-						}
-					}
-
-					for (let i = 0; i < analyzedWorkspaces.length; i++) {
-						const ws = analyzedWorkspaces[i];
-						const fixedRefs = fixedByName.get(ws.name) ?? [];
-						const linkedRefs = linkedByName.get(ws.name) ?? [];
-						if (fixedRefs.length > 0 || linkedRefs.length > 0) {
-							analyzedWorkspaces[i] = new AnalyzedWorkspace({
-								...ws,
-								fixed: fixedRefs,
-								linked: linkedRefs,
-							});
-						}
-					}
-				}
-
-				// 8. Compute versioning strategy. `classify` is pure and total, and
-				// the fixed groups come from the config already read at step 4 —
-				// the kit deliberately takes them as a plain argument rather than
-				// reading one release tool's config file itself.
-				const publishableNames = analyzedWorkspaces.filter((w) => w.publishable).map((w) => w.name);
-
-				const versioning = VersioningStrategy.classify({
-					packages: publishableNames,
-					fixedGroups: changesetConfig?.fixed ?? [],
-				});
-
-				// 9. Tag strategy follows from the versioning classification.
-				const tagStrategyType = versioning.tagStyle;
-
-				// 10. Build the final WorkspaceAnalysis
-				return new WorkspaceAnalysis({
-					root,
-					runtime: pm.runtime,
-					packageManager: {
-						type: pm.name,
-						// Conditional spread: v4 constructors validate, and the kit
-						// reports the version as an Option — never pass explicit undefined.
-						...(Option.isSome(pm.version) ? { version: pm.version.value } : {}),
-					},
-					workspaces: analyzedWorkspaces,
-					changesetConfig,
-					versioning,
-					tagStrategy: tagStrategyType,
-				});
-			});
-
-		return { analyze };
-	}),
-);

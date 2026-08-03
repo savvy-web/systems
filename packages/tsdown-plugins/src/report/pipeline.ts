@@ -1,10 +1,6 @@
 // packages/tsdown-plugins/src/report/pipeline.ts
 import { Effect, Layer } from "effect";
 import type { RenderedOutput } from "./formatters/types.js";
-import { EnvironmentDetectorLive } from "./layers/EnvironmentDetectorLive.js";
-import { ExecutorResolverLive } from "./layers/ExecutorResolverLive.js";
-import { FormatSelectorLive } from "./layers/FormatSelectorLive.js";
-import { OutputRendererLive } from "./layers/OutputRendererLive.js";
 import type { BuildReport } from "./schema.js";
 import type { Environment } from "./services/EnvironmentDetector.js";
 import { EnvironmentDetector } from "./services/EnvironmentDetector.js";
@@ -14,11 +10,11 @@ import { FormatSelector } from "./services/FormatSelector.js";
 import { OutputRenderer } from "./services/OutputRenderer.js";
 
 /** @public */
-export const ReportPipelineLive = Layer.mergeAll(
-	EnvironmentDetectorLive,
-	ExecutorResolverLive,
-	FormatSelectorLive,
-	OutputRendererLive,
+export const ReportPipeline = Layer.mergeAll(
+	EnvironmentDetector.layer,
+	ExecutorResolver.layer,
+	FormatSelector.layer,
+	OutputRenderer.layer,
 );
 
 /** @public */

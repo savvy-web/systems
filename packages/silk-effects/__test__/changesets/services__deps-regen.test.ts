@@ -19,7 +19,7 @@ import { vi } from "vitest";
 import type { ChangesetIOError } from "../../src/changesets/errors.js";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
 import type { RegenPlan } from "../../src/changesets/services/deps-regen.js";
-import { DepsRegen, DepsRegenLive, isPureDependencyChangeset } from "../../src/changesets/services/deps-regen.js";
+import { DepsRegen, isPureDependencyChangeset } from "../../src/changesets/services/deps-regen.js";
 import type { WorkspaceDependencyDiff } from "../../src/changesets/utils/dep-diff.js";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 
@@ -124,7 +124,7 @@ describe("DepsRegen plan/execute", () => {
 		DetectorLayer,
 		configStub({ versionPrivate: false, ignored: [] }),
 	);
-	const live = DepsRegenLive.pipe(Layer.provide(deps), Layer.provide(Git.layer));
+	const live = DepsRegen.layer.pipe(Layer.provide(deps), Layer.provide(Git.layer));
 
 	const cannedDiff: WorkspaceDependencyDiff = {
 		package: "@x/a",
@@ -208,7 +208,7 @@ describe("DepsRegen plan/execute", () => {
 					DetectorLayerMulti,
 					configStub({ versionPrivate: false, ignored: [] }),
 				);
-				const liveMulti = DepsRegenLive.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
+				const liveMulti = DepsRegen.layer.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
 
 				// Force every `pickRandomTriplet()` pick to be identical so a filename
 				// collision between the two changed packages is deterministic rather
@@ -309,7 +309,7 @@ describe("DepsRegen — devDependency-only diffs must not delete pure changesets
 		DevDepDetectorLayer,
 		configStub({ versionPrivate: false, ignored: [] }),
 	);
-	const devDepLive = DepsRegenLive.pipe(Layer.provide(devDeps), Layer.provide(Git.layer));
+	const devDepLive = DepsRegen.layer.pipe(Layer.provide(devDeps), Layer.provide(Git.layer));
 
 	it.effect("plan() excludes the pre-existing pure changeset from toDelete, and execute() leaves it on disk", () =>
 		Effect.gen(function* () {
@@ -404,7 +404,7 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 			GatingDetectorLayer,
 			config,
 		);
-		const live = DepsRegenLive.pipe(Layer.provide(deps), Layer.provide(Git.layer));
+		const live = DepsRegen.layer.pipe(Layer.provide(deps), Layer.provide(Git.layer));
 		const program = Effect.gen(function* () {
 			const svc = yield* DepsRegen;
 			return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER", ...options });

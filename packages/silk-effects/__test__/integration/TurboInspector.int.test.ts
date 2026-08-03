@@ -4,17 +4,17 @@ import { describe, expect, it } from "@effect/vitest";
 import { ToolDiscovery } from "@effected/commands";
 import { Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { TurboInspector, TurboInspectorLive } from "../../src/turbo/services/TurboInspector.js";
+import { TurboInspector } from "../../src/turbo/services/TurboInspector.js";
 
 describe("TurboInspector (live layer)", () => {
-	// Live stack: TurboInspectorLive needs ToolDiscovery | ChildProcessSpawner | FileSystem | Git.
+	// Live stack: TurboInspector.layer needs ToolDiscovery | ChildProcessSpawner | FileSystem | Git.
 	// The kit's ToolDiscovery.layer needs ChildProcessSpawner | LocalExec, and
 	// Workspaces.localExecLayer() implements LocalExec over PackageManagerDetector +
 	// WorkspaceRoot. Workspaces.layerWithGit() supplies those two plus Git (over
 	// FileSystem + Path + ChildProcessSpawner); NodeServices.layer supplies
 	// ChildProcessSpawner + FileSystem + Path.
 	const repoRoot = join(import.meta.dirname, "../../../..");
-	const LiveStack = TurboInspectorLive.pipe(
+	const LiveStack = TurboInspector.layer.pipe(
 		Layer.provide(ToolDiscovery.layer.pipe(Layer.provide(Workspaces.localExecLayer()))),
 		Layer.provideMerge(Workspaces.layerWithGit()),
 		Layer.provideMerge(NodeServices.layer),

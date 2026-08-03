@@ -6,11 +6,7 @@ import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { PublishConfig, PublishabilityDetector, WorkspacePackage, WorkspaceRoot } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
-import {
-	PublishabilityDetectorAdaptiveLive,
-	SilkPublishability,
-	SilkPublishabilityDetectorLive,
-} from "../../src/services/SilkPublishability.js";
+import { SilkPublishability } from "../../src/services/SilkPublishability.js";
 
 const writePkg = (dir: string, content: unknown): void => {
 	writeFileSync(join(dir, "package.json"), JSON.stringify(content), "utf-8");
@@ -55,7 +51,7 @@ const makeWsPkg = (
 // `runResolve`) genuinely varies per test, and a half-collapsed file would leave two different
 // service lifetimes side by side for a marginal build saving. Keep the shapes uniform.
 const runSilk = <A>(eff: Effect.Effect<A, never, PublishabilityDetector>): Effect.Effect<A> =>
-	eff.pipe(Effect.provide(SilkPublishabilityDetectorLive), Effect.provide(NodeServices.layer));
+	eff.pipe(Effect.provide(SilkPublishability.layer), Effect.provide(NodeServices.layer));
 
 const mockChangesetConfig = (mode: "silk" | "vanilla" | "none", versionPrivate = false, ignore: string[] = []) =>
 	Layer.succeed(ChangesetConfig, {
@@ -85,7 +81,7 @@ const runAdaptive = <A>(
 ): Effect.Effect<A> =>
 	eff.pipe(
 		Effect.provide(
-			PublishabilityDetectorAdaptiveLive.pipe(
+			SilkPublishability.layerAdaptive.pipe(
 				Layer.provide(Layer.merge(mockChangesetConfig(mode, versionPrivate, ignore), mockWorkspaceRoot)),
 			),
 		),
@@ -93,10 +89,10 @@ const runAdaptive = <A>(
 	);
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SilkPublishabilityDetectorLive — silk rules (reads from disk)
+// SilkPublishability.layer — silk rules (reads from disk)
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("SilkPublishabilityDetectorLive — silk rules", () => {
+describe("SilkPublishability.layer — silk rules", () => {
 	let tmpDir: string;
 	beforeEach(() => {
 		tmpDir = mkdtempSync(join(tmpdir(), "pub-"));
@@ -370,10 +366,10 @@ describe("SilkPublishabilityDetectorLive — silk rules", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// PublishabilityDetectorAdaptiveLive — vanilla mode (reads from WorkspacePackage fields)
+// SilkPublishability.layerAdaptive — vanilla mode (reads from WorkspacePackage fields)
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("PublishabilityDetectorAdaptiveLive — vanilla mode", () => {
+describe("SilkPublishability.layerAdaptive — vanilla mode", () => {
 	let tmpDir: string;
 	beforeEach(() => {
 		tmpDir = mkdtempSync(join(tmpdir(), "pub-"));
@@ -417,10 +413,10 @@ describe("PublishabilityDetectorAdaptiveLive — vanilla mode", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// PublishabilityDetectorAdaptiveLive — none mode
+// SilkPublishability.layerAdaptive — none mode
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("PublishabilityDetectorAdaptiveLive — none mode", () => {
+describe("SilkPublishability.layerAdaptive — none mode", () => {
 	let tmpDir: string;
 	beforeEach(() => {
 		tmpDir = mkdtempSync(join(tmpdir(), "pub-"));
@@ -439,10 +435,10 @@ describe("PublishabilityDetectorAdaptiveLive — none mode", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk rules
+// SilkPublishability.layerAdaptive — silk mode dispatches to silk rules
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("PublishabilityDetectorAdaptiveLive — silk mode dispatches to silk rules", () => {
+describe("SilkPublishability.layerAdaptive — silk mode dispatches to silk rules", () => {
 	let tmpDir: string;
 	beforeEach(() => {
 		tmpDir = mkdtempSync(join(tmpdir(), "pub-"));
@@ -509,7 +505,7 @@ describe("SilkPublishability.resolveTargets — prod-binding guard", () => {
 	const runResolve = (pkg: WorkspacePackage, root: string) =>
 		Effect.exit(
 			SilkPublishability.resolveTargets(pkg, root).pipe(
-				Effect.provide(SilkPublishabilityDetectorLive),
+				Effect.provide(SilkPublishability.layer),
 				Effect.provide(NodeServices.layer),
 			),
 		);

@@ -14,12 +14,12 @@
 import { ToolDiscovery } from "@effected/commands";
 import { Workspaces } from "@effected/workspaces";
 import {
-	ChangesetConfigLive,
-	ChangesetConfigReaderLive,
+	ChangesetConfig,
+	ChangesetConfigReader,
 	Changesets,
-	PublishabilityDetectorAdaptiveLive,
 	Repos,
-	SilkWorkspaceAnalyzerLive,
+	SilkPublishability,
+	SilkWorkspaceAnalyzer,
 	Turbo,
 } from "@savvy-web/silk-effects";
 import type { FileSystem, Path } from "effect";
@@ -58,20 +58,20 @@ export const makeSilkRuntimeLayer = (
 	// (npm default), ChangeDetector, and Git — root-bound to `cwd`.
 	const kitGraph = Workspaces.layerWithGit({ cwd });
 
-	// ChangesetConfigReaderLive is a shared const, so every consumer below
+	// ChangesetConfigReader.layer is a shared const, so every consumer below
 	// memoizes onto the same reader instance. The analyzer's versioning and tag
 	// classification are pure `@effected/workspaces` value operations, so the
 	// reader is its only silk-side dependency.
-	const analyzerDeps = ChangesetConfigReaderLive;
+	const analyzerDeps = ChangesetConfigReader.layer;
 
 	/**
 	 * `BranchAnalyzer` + `ReleasePlanner` + the ONE shared `ConfigInspector`,
 	 * merged so all three land on the runtime and every internal consumer
 	 * memoizes onto the same inspector reference.
 	 */
-	const inspectorAndAnalyzer = Changesets.BranchAnalyzerLive.pipe(
-		Layer.provideMerge(Changesets.ReleasePlannerLive),
-		Layer.provideMerge(Changesets.ConfigInspectorLive.pipe(Layer.provide(ChangesetConfigReaderLive))),
+	const inspectorAndAnalyzer = Changesets.BranchAnalyzer.layer.pipe(
+		Layer.provideMerge(Changesets.ReleasePlanner.layer),
+		Layer.provideMerge(Changesets.ConfigInspector.layer.pipe(Layer.provide(ChangesetConfigReader.layer))),
 	);
 
 	/**
@@ -84,28 +84,28 @@ export const makeSilkRuntimeLayer = (
 	 */
 	const toolDiscovery = ToolDiscovery.layer.pipe(Layer.provide(Workspaces.localExecLayer({ cwd })));
 
-	const changesetConfig = ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive));
+	const changesetConfig = ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer));
 
-	const depsRegen = Changesets.DepsRegenLive.pipe(
+	const depsRegen = Changesets.DepsRegen.layer.pipe(
 		Layer.provide(inspectorAndAnalyzer),
-		Layer.provide(PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(changesetConfig))),
+		Layer.provide(SilkPublishability.layerAdaptive.pipe(Layer.provide(changesetConfig))),
 		Layer.provide(changesetConfig),
 	);
 
 	/**
-	 * `ReposManagerLive` requires `ReposConfigStore`, so it is given its own
-	 * `ReposConfigStoreLive` reference; the store is ALSO merged in directly so
+	 * `ReposManager.layer` requires `ReposConfigStore`, so it is given its own
+	 * `ReposConfigStore.layer` reference; the store is ALSO merged in directly so
 	 * `repos_inspect`'s config mode can resolve it on its own. Same reference —
 	 * one store instance.
 	 */
 	const repos = Layer.mergeAll(
-		Repos.ReposConfigStoreLive,
-		Repos.ReposManagerLive.pipe(Layer.provide(Repos.ReposConfigStoreLive)),
+		Repos.ReposConfigStore.layer,
+		Repos.ReposManager.layer.pipe(Layer.provide(Repos.ReposConfigStore.layer)),
 	);
 
 	return Layer.mergeAll(
-		SilkWorkspaceAnalyzerLive.pipe(Layer.provide(analyzerDeps)),
-		Turbo.TurboInspectorLive.pipe(Layer.provide(toolDiscovery)),
+		SilkWorkspaceAnalyzer.layer.pipe(Layer.provide(analyzerDeps)),
+		Turbo.TurboInspector.layer.pipe(Layer.provide(toolDiscovery)),
 		inspectorAndAnalyzer,
 		depsRegen,
 		repos,

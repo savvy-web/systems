@@ -9,7 +9,7 @@
  * @remarks
  * The module composes two Effect programs — {@link getReleaseLine} and
  * {@link getDependencyReleaseLine} — and runs each through
- * `Effect.runPromise` with {@link GitHubLive} (for commit metadata). Options are
+ * `Effect.runPromise` with `GitHubService.layer` (for commit metadata). Options are
  * validated at the boundary via `validateChangesetOptions` before being
  * passed to the formatters.
  *
@@ -52,7 +52,7 @@
 import { Effect } from "effect";
 
 import { validateChangesetOptions } from "../schemas/options.js";
-import { GitHubLive } from "../services/github.js";
+import { GitHubService } from "../services/github.js";
 import type { ChangelogFunctions } from "../vendor/types.js";
 import { getDependencyReleaseLine as getDependencyReleaseLineEffect } from "./getDependencyReleaseLine.js";
 import { getReleaseLine as getReleaseLineEffect } from "./getReleaseLine.js";
@@ -60,14 +60,14 @@ import { getReleaseLine as getReleaseLineEffect } from "./getReleaseLine.js";
 /**
  * The layer providing every service the formatters need.
  *
- * {@link GitHubLive} satisfies the requirements of both `getReleaseLine` and
+ * `GitHubService.layer` satisfies the requirements of both `getReleaseLine` and
  * `getDependencyReleaseLine`, which each need only `GitHubService`. Markdown
  * parsing is not a layer: the formatters call the remark pipeline's
  * `parseMarkdown` / `stringifyMarkdown` functions directly.
  *
  * @internal
  */
-const MainLayer = GitHubLive;
+const MainLayer = GitHubService.layer;
 
 /**
  * Changesets API `ChangelogFunctions` implementation.

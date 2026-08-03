@@ -1,12 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
 import { BiomeSyncError } from "../../src/errors/BiomeSyncError.js";
-import {
-	BiomeSchemaSync,
-	BiomeSchemaSyncLive,
-	buildSchemaUrl,
-	extractSemver,
-} from "../../src/services/BiomeSchemaSync.js";
+import { BiomeSchemaSync, buildSchemaUrl, extractSemver } from "../../src/services/BiomeSchemaSync.js";
 
 // ---------------------------------------------------------------------------
 // Mock FileSystem
@@ -34,7 +29,7 @@ const CWD = "/project";
 // varies test by test and cannot be hoisted into a suite-boundary `layer(...)` block.
 function runWith(files: Record<string, string>, effect: Effect.Effect<unknown, unknown, BiomeSchemaSync>) {
 	const testFs = makeTestFs(files);
-	const layer = BiomeSchemaSyncLive.pipe(Layer.provide(testFs));
+	const layer = BiomeSchemaSync.layer.pipe(Layer.provide(testFs));
 	return Effect.provide(effect, layer);
 }
 

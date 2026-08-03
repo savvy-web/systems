@@ -39,7 +39,6 @@
  * error channel stays `ConfigurationError | GitError`.
  *
  * @see {@link BranchAnalyzer} for the service tag
- * @see {@link BranchAnalyzerLive} for the production layer
  * @see {@link ConfigInspector} for the underlying classification service
  *
  */
@@ -121,7 +120,7 @@ export interface BranchAnalyzerShape {
  * @example
  * ```typescript
  * import { Effect } from "effect";
- * import { BranchAnalyzer, BranchAnalyzerLive, ConfigInspectorLive } from "@savvy-web/changesets";
+ * import { BranchAnalyzer, ConfigInspector } from "@savvy-web/changesets";
  *
  * const program = Effect.gen(function* () {
  *   const analyzer = yield* BranchAnalyzer;
@@ -131,16 +130,36 @@ export interface BranchAnalyzerShape {
  *
  * Effect.runPromise(
  *   program.pipe(
- *     Effect.provide(BranchAnalyzerLive),
- *     Effect.provide(ConfigInspectorLive),
- *     // ... + ChangesetConfigReaderLive + kit workspace layers + NodeServices.layer
+ *     Effect.provide(BranchAnalyzer.layer),
+ *     Effect.provide(ConfigInspector.layer),
+ *     // ... + ChangesetConfigReader.layer + kit workspace layers + NodeServices.layer
  *   ),
  * );
  * ```
  *
  * @public
  */
-export class BranchAnalyzer extends Context.Service<BranchAnalyzer, BranchAnalyzerShape>()("BranchAnalyzer") {}
+export class BranchAnalyzer extends Context.Service<BranchAnalyzer, BranchAnalyzerShape>()("BranchAnalyzer") {
+	/**
+	 * Production layer for {@link BranchAnalyzer}.
+	 *
+	 * Requires {@link ConfigInspector} (which in turn requires
+	 * `ChangesetConfigReader` and `WorkspaceDiscovery`) and a
+	 * `ChildProcessSpawner` (satisfied by `NodeServices.layer`) for the
+	 * internally-composed `@effected/git` layer.
+	 *
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<BranchAnalyzer, never, ConfigInspector | ChildProcessSpawner.ChildProcessSpawner> =
+		Layer.effect(
+			this,
+			Effect.gen(function* () {
+				const inspector = yield* ConfigInspector;
+				const git = yield* Git;
+				return makeShape(inspector, git);
+			}),
+		).pipe(Layer.provide(Git.layer));
+}
 
 /* ----------------------------------------------------------------- *
  * Internal helpers
@@ -177,7 +196,7 @@ function toFileStatus(status: NameStatusEntry["status"]): FileStatus {
 }
 
 /* ----------------------------------------------------------------- *
- * Live layer
+ * Production layer
  * ----------------------------------------------------------------- */
 
 /**
@@ -292,29 +311,6 @@ function makeShape(inspector: ConfigInspectorShape, git: GitReads): BranchAnalyz
 
 	return { analyzeBranch };
 }
-
-/**
- * Live layer for {@link BranchAnalyzer}.
- *
- * Requires {@link ConfigInspector} (which in turn requires
- * `ChangesetConfigReader` and `WorkspaceDiscovery`) and a
- * `ChildProcessSpawner` (satisfied by `NodeServices.layer`) for the
- * internally-composed `@effected/git` layer.
- *
- * @public
- */
-export const BranchAnalyzerLive: Layer.Layer<
-	BranchAnalyzer,
-	never,
-	ConfigInspector | ChildProcessSpawner.ChildProcessSpawner
-> = Layer.effect(
-	BranchAnalyzer,
-	Effect.gen(function* () {
-		const inspector = yield* ConfigInspector;
-		const git = yield* Git;
-		return makeShape(inspector, git);
-	}),
-).pipe(Layer.provide(Git.layer));
 
 /**
  * Test factory — build a {@link BranchAnalyzer} that returns a fixed

@@ -2,7 +2,7 @@
  * Publishability fixture harness.
  *
  * Runs the composed publish-target resolution path
- * (`SilkPublishabilityDetectorLive` + the private-build filter in
+ * (`SilkPublishability.layer` + the private-build filter in
  * `resolveTargets`) against the hand-authored fixture-workspaces
  * under `fixtures/publishability/`, asserting each fixture's resolved
  * `{ publishTargets, versionable }` disposition.
@@ -29,13 +29,9 @@ import { NodeFileSystem } from "@effect/platform-node";
 import { describe, expect, it } from "@effect/vitest";
 import { WorkspacePackage } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-import { ChangesetConfig, ChangesetConfigLive } from "../../src/services/ChangesetConfig.js";
-import { ChangesetConfigReaderLive } from "../../src/services/ChangesetConfigReader.js";
-import {
-	PublishabilityDetectorAdaptiveLive,
-	SilkPublishability,
-	SilkPublishabilityDetectorLive,
-} from "../../src/services/SilkPublishability.js";
+import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
+import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
+import { SilkPublishability } from "../../src/services/SilkPublishability.js";
 
 const platform = NodeFileSystem.layer;
 
@@ -66,8 +62,8 @@ const resolveFixture = (name: string) =>
 		Effect.provide(
 			Layer.mergeAll(
 				platform,
-				SilkPublishabilityDetectorLive.pipe(Layer.provide(platform)),
-				ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive.pipe(Layer.provide(platform)))),
+				SilkPublishability.layer.pipe(Layer.provide(platform)),
+				ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer.pipe(Layer.provide(platform)))),
 			),
 		),
 	);
@@ -264,15 +260,15 @@ const resolveWorkspacePackage = (workspace: string, subPath: string, name: strin
 				// The kit detect contract lost its root param; the adaptive detector
 				// derives the changeset root per package from its own discovery
 				// coordinates (path + relativePath), so no WorkspaceRoot is needed.
-				PublishabilityDetectorAdaptiveLive.pipe(
+				SilkPublishability.layerAdaptive.pipe(
 					Layer.provide(
 						Layer.mergeAll(
 							platform,
-							ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive.pipe(Layer.provide(platform)))),
+							ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer.pipe(Layer.provide(platform)))),
 						),
 					),
 				),
-				ChangesetConfigLive.pipe(Layer.provide(ChangesetConfigReaderLive.pipe(Layer.provide(platform)))),
+				ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer.pipe(Layer.provide(platform)))),
 			),
 		),
 	);

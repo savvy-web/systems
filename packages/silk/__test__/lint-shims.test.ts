@@ -146,10 +146,10 @@ describe("lint shims", () => {
 
 		// ===== silk-effects passthrough exports =====
 
-		it("exports ConfigDiscovery service and ConfigDiscoveryLive layer", async () => {
+		it("exports ConfigDiscovery service and ConfigDiscovery.layer layer", async () => {
 			const mod = await import("../src/lint/index.js");
 			expect(mod.ConfigDiscovery).toBeDefined();
-			expect(mod.ConfigDiscoveryLive).toBeDefined();
+			expect(mod.ConfigDiscovery.layer).toBeDefined();
 		});
 
 		// ===== Section / template data exports =====

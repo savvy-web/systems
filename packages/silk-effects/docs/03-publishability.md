@@ -12,7 +12,7 @@ The surface comes in four levels:
 
 - `SilkPublishability.detect` — a pure static you call directly, no layers. Takes the raw `package.json` plus the binding (`null` before the prod build has run).
 - `readTargetsBinding` — an Effect that reads a package's `dist/prod/targets.json` binding for `detect`, returning `null` when it is missing (pre-build).
-- `SilkPublishabilityDetectorLive` / `PublishabilityDetectorAdaptiveLive` — layers that override `@effected/workspaces`'s `PublishabilityDetector` Tag, so silk rules flow into any program that yields the detector.
+- `SilkPublishability.layer` / `SilkPublishability.layerAdaptive` — layers that override `@effected/workspaces`'s `PublishabilityDetector` Tag, so silk rules flow into any program that yields the detector.
 - `SilkPublishability.resolveTargets` / `SilkPublishability.listPublishable` — Effects that read from disk to filter targets and discover publishable packages.
 
 ## SilkPublishability
@@ -74,10 +74,10 @@ Targets-first precedence means a non-empty `publishConfig.targets` map resolves 
 
 `SilkPublishability.detect` is also exposed through `@effected/workspaces`'s `PublishabilityDetector` Tag. Provide one of these layers and every consumer that yields `PublishabilityDetector` gets silk behavior.
 
-### SilkPublishabilityDetectorLive
+### SilkPublishability.layer
 
 ```typescript
-export const SilkPublishabilityDetectorLive: Layer.Layer<
+static readonly layer: Layer.Layer<
   PublishabilityDetector,
   never,
   FileSystem.FileSystem
@@ -90,13 +90,13 @@ Applies silk rules unconditionally. `detect` reads the raw `package.json` from `
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import { PublishabilityDetector } from "@effected/workspaces";
-import { SilkPublishabilityDetectorLive } from "@savvy-web/silk-effects";
+import { SilkPublishability } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
   const detector = yield* PublishabilityDetector;
   return yield* detector.detect(pkg, root);
 }).pipe(
-  Effect.provide(SilkPublishabilityDetectorLive),
+  Effect.provide(SilkPublishability.layer),
   Effect.provide(NodeServices.layer),
 );
 
@@ -104,10 +104,10 @@ const targets = await Effect.runPromise(program);
 // => ReadonlyArray<PublishTarget>
 ```
 
-### PublishabilityDetectorAdaptiveLive
+### SilkPublishability.layerAdaptive
 
 ```typescript
-export const PublishabilityDetectorAdaptiveLive: Layer.Layer<
+static readonly layerAdaptive: Layer.Layer<
   PublishabilityDetector,
   never,
   FileSystem.FileSystem | ChangesetConfig
@@ -127,14 +127,14 @@ import { Effect, Layer } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import { PublishabilityDetector } from "@effected/workspaces";
 import {
-  ChangesetConfig, ChangesetConfigLive, ChangesetConfigReaderLive,
-  PublishabilityDetectorAdaptiveLive,
+  ChangesetConfig, ChangesetConfigReader,
+  SilkPublishability,
 } from "@savvy-web/silk-effects";
 
 const layer = Layer.mergeAll(
-  PublishabilityDetectorAdaptiveLive.pipe(Layer.provide(ChangesetConfigLive)),
-  ChangesetConfigLive,
-  ChangesetConfigReaderLive,
+  SilkPublishability.layerAdaptive.pipe(Layer.provide(ChangesetConfig.layer)),
+  ChangesetConfig.layer,
+  ChangesetConfigReader.layer,
 ).pipe(Layer.provide(NodeServices.layer));
 
 const program = Effect.gen(function* () {
@@ -248,5 +248,5 @@ const none = SilkPublishability.detect("@my-org/internal", { private: true }, nu
 - `readTargetsBinding` — `FileSystem`.
 - `SilkPublishability.resolveTargets` — `PublishabilityDetector` and `FileSystem`.
 - `SilkPublishability.listPublishable` — `WorkspaceDiscovery` and `PublishabilityDetector`.
-- `SilkPublishabilityDetectorLive` — `FileSystem`.
-- `PublishabilityDetectorAdaptiveLive` — `FileSystem` and `ChangesetConfig`.
+- `SilkPublishability.layer` — `FileSystem`.
+- `SilkPublishability.layerAdaptive` — `FileSystem` and `ChangesetConfig`.

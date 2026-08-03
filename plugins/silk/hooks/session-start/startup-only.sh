@@ -153,10 +153,11 @@ Preference order when you need to check or fix code quality:
 2. mcp__plugin_silk_savvy-mcp__biome_check — for anything wider than one file,
    and for EVERY fix pass: paths[], mode:"check"|"lint", write:true (safe fixes),
    unsafe:true, strict:true. Structured diagnostics, not stdout you have to parse.
-3. Bash — the escape hatch, available but not preferred. It works; it draws a
-   one-time nudge; it is the right call only when biome_check lacks a flag you
-   need or the MCP server is down:
-     ${RUN} biome check [--write]
+3. Bash — direct Biome is DENIED, not merely nudged: it does not resolve
+   this repo's config, so it will lint .repos/** vendored submodules and can
+   corrupt them. The sanctioned Bash path is one of the three root scripts,
+   through any package manager:
+     ${PM} run lint   /   ${PM} run lint:fix   /   ${PM} run lint:fix:unsafe
      ${PM} run lint:md   /   ${PM} run lint:md:fix     (markdownlint-cli2)
      ${PM} run typecheck                               (turbo run types:check)
      ${RUN} lint-staged --config "${PROJECT_DIR}/lib/configs/lint-staged.config.ts"

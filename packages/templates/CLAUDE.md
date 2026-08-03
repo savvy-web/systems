@@ -7,7 +7,7 @@
 - Content generation is pure functions; templates produce file content with no side effects.
 - Effect `Schema` validation throughout; the `TemplateEntry` abstraction models each emitted file.
 - A workspace compositor assembles templates into a project.
-- All Effect code uses class-based `Context.Tag`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
+- All Effect code uses class-based `Context.Service`, `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
 
 ## Design
 

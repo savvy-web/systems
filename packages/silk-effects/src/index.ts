@@ -73,13 +73,13 @@ export type { ChangesetConfigFile, SilkChangesetConfigFile } from "./schemas/Ver
 export { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "./schemas/WorkspaceAnalysisSchemas.js";
 // ── Services ───────────────────────────────────────────────────
 export type { BiomeSchemaSyncShape } from "./services/BiomeSchemaSync.js";
-export { BiomeSchemaSync, BiomeSchemaSyncLive, buildSchemaUrl, extractSemver } from "./services/BiomeSchemaSync.js";
+export { BiomeSchemaSync, buildSchemaUrl, extractSemver } from "./services/BiomeSchemaSync.js";
 export type { ChangesetConfigShape, ChangesetMode } from "./services/ChangesetConfig.js";
-export { ChangesetConfig, ChangesetConfigLive } from "./services/ChangesetConfig.js";
+export { ChangesetConfig } from "./services/ChangesetConfig.js";
 export type { ChangesetConfigReaderShape } from "./services/ChangesetConfigReader.js";
-export { ChangesetConfigReader, ChangesetConfigReaderLive } from "./services/ChangesetConfigReader.js";
+export { ChangesetConfigReader } from "./services/ChangesetConfigReader.js";
 export type { ConfigDiscoveryShape } from "./services/ConfigDiscovery.js";
-export { ConfigDiscovery, ConfigDiscoveryLive } from "./services/ConfigDiscovery.js";
+export { ConfigDiscovery } from "./services/ConfigDiscovery.js";
 export type {
 	PublishablePackage,
 	RawPackageJson,
@@ -91,14 +91,9 @@ export type {
 	TargetGroupBinding,
 	TargetsBinding,
 } from "./services/SilkPublishability.js";
-export {
-	PublishabilityDetectorAdaptiveLive,
-	SilkPublishability,
-	SilkPublishabilityDetectorLive,
-	readTargetsBinding,
-} from "./services/SilkPublishability.js";
+export { SilkPublishability, readTargetsBinding } from "./services/SilkPublishability.js";
 export type { SilkWorkspaceAnalyzerShape } from "./services/SilkWorkspaceAnalyzer.js";
-export { SilkWorkspaceAnalyzer, SilkWorkspaceAnalyzerLive } from "./services/SilkWorkspaceAnalyzer.js";
+export { SilkWorkspaceAnalyzer } from "./services/SilkWorkspaceAnalyzer.js";
 /**
  * Read-only Turborepo inspection — cache diagnosis, task-graph, and affected-set
  * analysis. All operations are `--dry`; tasks are never executed.

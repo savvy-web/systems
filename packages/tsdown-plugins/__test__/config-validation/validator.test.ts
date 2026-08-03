@@ -2,7 +2,6 @@ import { expect, layer } from "@effect/vitest";
 import { Effect } from "effect";
 import type { ValidationInput } from "../../src/config-validation/ConfigValidator.js";
 import { ConfigValidator } from "../../src/config-validation/ConfigValidator.js";
-import { ConfigValidatorLive } from "../../src/config-validation/ConfigValidatorLive.js";
 
 const validate = (input: ValidationInput) => Effect.flatMap(ConfigValidator, (v) => v.validate(input));
 
@@ -15,7 +14,7 @@ const expectInvalid = (input: ValidationInput) =>
 
 const ok: ValidationInput = { baseName: "pkg", hasExports: true };
 
-layer(ConfigValidatorLive)("ConfigValidator", (it) => {
+layer(ConfigValidator.layer)("ConfigValidator", (it) => {
 	it.effect("passes a minimal valid config", () => validate({ ...ok }));
 
 	it.effect("fails a dangling `from` target", () =>

@@ -7,8 +7,8 @@
  * single `savvy` root command, then provides the merged runtime Layer stack
  * that satisfies every command's service requirements.
  *
- * The layer stack wires the silk-effects Lives over their v4 requirement
- * channels:
+ * The layer stack wires the silk-effects service layers over their v4
+ * requirement channels:
  *
  * - `NodeServices.layer` — `FileSystem`, `Path`, `ChildProcessSpawner`, `Stdio`,
  *   and `Terminal`, consumed by every config reader, workspace service, git
@@ -21,17 +21,17 @@
  *   `WorkspaceDiscovery.layer()` (the kit resolves the root through
  *   `WorkspaceRoot` from `process.cwd()` lazily on first use, so the CLI's
  *   startup cwd is the discovery root).
- * - Flat silk-effects services — `ChangesetConfigReaderLive`,
- *   `SilkPublishabilityDetectorLive`, `ManagedSection.layer` (from
- *   `@effected/templates`), `BiomeSchemaSyncLive`,
- *   and `ConfigDiscoveryLive`. Tool resolution is the kit's
+ * - Flat silk-effects services — `ChangesetConfigReader.layer`,
+ *   `SilkPublishability.layer`, `ManagedSection.layer` (from
+ *   `@effected/templates`), `BiomeSchemaSync.layer`,
+ *   and `ConfigDiscovery.layer`. Tool resolution is the kit's
  *   `ToolDiscovery.layer` over `ChildProcessSpawner` plus a `LocalExec`, which
  *   `Workspaces.localExecLayer()` supplies from the detected package manager.
  *   Versioning classification
  *   is a pure `@effected/workspaces` value operation over `WorkspaceDiscovery`
  *   and the silk `PublishabilityDetector`, so it needs no layer of its own.
- * - Changesets-namespace services — `Changesets.ConfigInspectorLive`,
- *   `Changesets.ReleasePlannerLive`, and `Changesets.BranchAnalyzerLive`
+ * - Changesets-namespace services — `Changesets.ConfigInspector.layer`,
+ *   `Changesets.ReleasePlanner.layer`, and `Changesets.BranchAnalyzer.layer`
  *   sharing a single `ConfigInspector` via `provideMerge`. `DepsRegen` is NOT
  *   part of AppLive: its graph is root-bound at layer build, so the deps
  *   commands compose `Changesets.makeDepsRegenDefault({ cwd })` per invocation
@@ -49,12 +49,12 @@ import { Git } from "@effected/git";
 import { ManagedSection } from "@effected/templates";
 import { PackageManagerDetector, WorkspaceDiscovery, WorkspaceRoot, Workspaces } from "@effected/workspaces";
 import {
-	BiomeSchemaSyncLive,
-	ChangesetConfigReaderLive,
+	BiomeSchemaSync,
+	ChangesetConfigReader,
 	Changesets,
-	ConfigDiscoveryLive,
+	ConfigDiscovery,
 	Repos,
-	SilkPublishabilityDetectorLive,
+	SilkPublishability,
 } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 import { Command } from "effect/unstable/cli";
@@ -120,32 +120,35 @@ const GitLive = Git.layer;
 const BaseLive = Layer.mergeAll(
 	WorkspaceLive,
 	GitLive,
-	ChangesetConfigReaderLive,
+	ChangesetConfigReader.layer,
 	ManagedSection.layer,
-	BiomeSchemaSyncLive,
-	ConfigDiscoveryLive,
-	SilkPublishabilityDetectorLive,
+	BiomeSchemaSync.layer,
+	ConfigDiscovery.layer,
+	SilkPublishability.layer,
 );
 
 /**
- * `ConfigInspectorLive` is built once via {@link Layer.provideMerge}: the merge
- * feeds that single `ConfigInspector` instance into `ReleasePlannerLive` and
- * `BranchAnalyzerLive` AND re-exposes it for the surviving `config validate`
+ * `ConfigInspector.layer` is built once via {@link Layer.provideMerge}: the merge
+ * feeds that single `ConfigInspector` instance into `ReleasePlanner.layer` and
+ * `BranchAnalyzer.layer` AND re-exposes it for the surviving `config validate`
  * handler that yields it directly, so it is never constructed twice per run.
- * `BranchAnalyzerLive`'s v4 requirements are `ConfigInspector |
+ * `BranchAnalyzer.layer`'s v4 requirements are `ConfigInspector |
  * ChildProcessSpawner` (the spawner flows up to `NodeServices.layer`).
  */
-const InspectorAndAnalyzerLive = Changesets.BranchAnalyzerLive.pipe(
-	Layer.provideMerge(Changesets.ReleasePlannerLive),
-	Layer.provideMerge(Changesets.ConfigInspectorLive),
+const InspectorAndAnalyzerLive = Changesets.BranchAnalyzer.layer.pipe(
+	Layer.provideMerge(Changesets.ReleasePlanner.layer),
+	Layer.provideMerge(Changesets.ConfigInspector.layer),
 );
 
 /**
- * `Repos.ReposManager`, provided its `Repos.ReposConfigStoreLive` dependency
+ * `Repos.ReposManager`, provided its `Repos.ReposConfigStore.layer` dependency
  * and the shared `Git` service. Platform requirements (`FileSystem`, `Path`)
  * flow up to `NodeServices.layer`.
  */
-const ReposGroupLive = Repos.ReposManagerLive.pipe(Layer.provide(Repos.ReposConfigStoreLive), Layer.provide(GitLive));
+const ReposGroupLive = Repos.ReposManager.layer.pipe(
+	Layer.provide(Repos.ReposConfigStore.layer),
+	Layer.provide(GitLive),
+);
 
 /**
  * `ToolDiscovery` from `@effected/commands`, wired to this workspace. Its

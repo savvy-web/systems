@@ -4,7 +4,7 @@ import { Turbo } from "../../src/index.js";
 describe("Turbo namespace export", () => {
 	it("exposes the service tag, live layer, errors, digest, and schemas", () => {
 		expect(Turbo.TurboInspector).toBeDefined();
-		expect(Turbo.TurboInspectorLive).toBeDefined();
+		expect(Turbo.TurboInspector.layer).toBeDefined();
 		expect(Turbo.TurboDigest).toBeDefined();
 		expect(Turbo.TurboNotInstalledError).toBeDefined();
 		expect(Turbo.TurboExecError).toBeDefined();

@@ -16,16 +16,16 @@ Reads and decodes `.changeset/config.json` with automatic Silk detection.
 **Platform layer:** FileSystem
 
 ```typescript
-class ChangesetConfigReader extends Context.Tag(
-  "@savvy-web/silk-effects/ChangesetConfigReader"
-)<
+interface ChangesetConfigReaderShape {
+  readonly read: (
+    root: string,
+  ) => Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError>;
+}
+
+class ChangesetConfigReader extends Context.Service<
   ChangesetConfigReader,
-  {
-    readonly read: (
-      root: string,
-    ) => Effect.Effect<ChangesetConfigFile | SilkChangesetConfigFile, ChangesetConfigError>;
-  }
->() {}
+  ChangesetConfigReaderShape
+>()("@savvy-web/silk-effects/ChangesetConfigReader") {}
 ```
 
 ### `read(root)`
@@ -41,7 +41,7 @@ The service reads `{root}/.changeset/config.json`, parses it as JSON, then check
 - Otherwise, it is decoded as the standard `ChangesetConfigFile`.
 
 ```typescript
-export const ChangesetConfigReaderLive: Layer.Layer<
+static readonly layer: Layer.Layer<
   ChangesetConfigReader,
   never,
   FileSystem.FileSystem
@@ -57,7 +57,6 @@ import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import {
   ChangesetConfigReader,
-  ChangesetConfigReaderLive,
 } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
@@ -72,7 +71,7 @@ const program = Effect.gen(function* () {
 
 const kind = await Effect.runPromise(
   program.pipe(
-    Effect.provide(ChangesetConfigReaderLive),
+    Effect.provide(ChangesetConfigReader.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
@@ -86,18 +85,18 @@ Accessor service over a workspace root's `.changeset/config.json`, reading throu
 **Platform layer:** FileSystem (via `ChangesetConfigReader`)
 
 ```typescript
-class ChangesetConfig extends Context.Tag(
-  "@savvy-web/silk-effects/ChangesetConfig"
-)<
+interface ChangesetConfigShape {
+  readonly mode: (root: string) => Effect.Effect<ChangesetMode>;
+  readonly versionPrivate: (root: string) => Effect.Effect<boolean>;
+  readonly ignorePatterns: (root: string) => Effect.Effect<ReadonlyArray<string>>;
+  readonly isIgnored: (name: string, root: string) => Effect.Effect<boolean>;
+  readonly fixed: (root: string) => Effect.Effect<ReadonlyArray<ReadonlyArray<string>>>;
+}
+
+class ChangesetConfig extends Context.Service<
   ChangesetConfig,
-  {
-    readonly mode: (root: string) => Effect.Effect<ChangesetMode>;
-    readonly versionPrivate: (root: string) => Effect.Effect<boolean>;
-    readonly ignorePatterns: (root: string) => Effect.Effect<ReadonlyArray<string>>;
-    readonly isIgnored: (name: string, root: string) => Effect.Effect<boolean>;
-    readonly fixed: (root: string) => Effect.Effect<ReadonlyArray<ReadonlyArray<string>>>;
-  }
->() {
+  ChangesetConfigShape
+>()("@savvy-web/silk-effects/ChangesetConfig") {
   // exact name match, or @scope/* wildcard
   static matches(name: string, pattern: string): boolean;
 }
@@ -117,14 +116,14 @@ class ChangesetConfig extends Context.Tag(
 ### Layer
 
 ```typescript
-export const ChangesetConfigLive: Layer.Layer<
+static readonly layer: Layer.Layer<
   ChangesetConfig,
   never,
   ChangesetConfigReader
 >;
 ```
 
-Requires `ChangesetConfigReader` (which requires `FileSystem`). Provide `ChangesetConfigReaderLive` plus a platform layer.
+Requires `ChangesetConfigReader` (which requires `FileSystem`). Provide `ChangesetConfigReader.layer` plus a platform layer.
 
 ### Usage
 
@@ -132,7 +131,7 @@ Requires `ChangesetConfigReader` (which requires `FileSystem`). Provide `Changes
 import { Effect } from "effect";
 import { NodeServices } from "@effect/platform-node";
 import {
-  ChangesetConfig, ChangesetConfigLive, ChangesetConfigReaderLive,
+  ChangesetConfig, ChangesetConfigReader,
 } from "@savvy-web/silk-effects";
 
 const program = Effect.gen(function* () {
@@ -144,15 +143,15 @@ const program = Effect.gen(function* () {
 
 const result = await Effect.runPromise(
   program.pipe(
-    Effect.provide(ChangesetConfigLive),
-    Effect.provide(ChangesetConfigReaderLive),
+    Effect.provide(ChangesetConfig.layer),
+    Effect.provide(ChangesetConfigReader.layer),
     Effect.provide(NodeServices.layer),
   ),
 );
 // => { mode: "silk" | "vanilla" | "none", ignored: boolean }
 ```
 
-`ChangesetConfig` is also the dependency that makes `PublishabilityDetectorAdaptiveLive` ignore-aware. See [Publishability](./03-publishability.md).
+`ChangesetConfig` is also the dependency that makes `SilkPublishability.layerAdaptive` ignore-aware. See [Publishability](./03-publishability.md).
 
 ## Related types
 

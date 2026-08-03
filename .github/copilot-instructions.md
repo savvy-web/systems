@@ -44,7 +44,7 @@ This repo will contain three packages (currently in design phase):
 
 All Effect code in this repo uses:
 
-* Class-based `Context.Tag` for services
+* Class-based `Context.Service` for services
 * `Schema.Class` / `Schema.TaggedClass` for data types
 * `Data.TaggedError` for typed errors
 * `@effect/platform` abstractions for I/O (platform-agnostic)

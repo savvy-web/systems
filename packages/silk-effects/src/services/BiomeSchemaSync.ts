@@ -98,7 +98,7 @@ export interface BiomeSchemaSyncShape {
  *     const syncer = yield* BiomeSchemaSync;
  *     return yield* syncer.sync("^1.9.3");
  *   }).pipe(
- *     Effect.provide(BiomeSchemaSyncLive),
+ *     Effect.provide(BiomeSchemaSync.layer),
  *     Effect.provide(NodeServices.layer),
  *   )
  * );
@@ -109,87 +109,42 @@ export interface BiomeSchemaSyncShape {
  */
 export class BiomeSchemaSync extends Context.Service<BiomeSchemaSync, BiomeSchemaSyncShape>()(
 	"@savvy-web/silk-effects/BiomeSchemaSync",
-) {}
+) {
+	/**
+	 * Production implementation of {@link BiomeSchemaSync}.
+	 *
+	 * @remarks
+	 * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
+	 * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
+	 *
+	 * @since 0.1.0
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<BiomeSchemaSync, never, FileSystem.FileSystem> = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
 
-/**
- * Live implementation of {@link BiomeSchemaSync}.
- *
- * @remarks
- * Requires the core `FileSystem` service. Provide `NodeServices.layer` (or
- * `NodeFileSystem.layer`) from `@effect/platform-node` to satisfy this dependency.
- *
- * @since 0.1.0
- * @public
- */
-export const BiomeSchemaSyncLive: Layer.Layer<BiomeSchemaSync, never, FileSystem.FileSystem> = Layer.effect(
-	BiomeSchemaSync,
-	Effect.gen(function* () {
-		const fs = yield* FileSystem.FileSystem;
+			const run = (
+				version: string,
+				options: { cwd?: string; gitignore?: boolean } | undefined,
+				write: boolean,
+			): Effect.Effect<BiomeSyncResult, BiomeSyncError> =>
+				Effect.gen(function* () {
+					const cwd = options?.cwd ?? process.cwd();
+					const semver = extractSemver(version);
+					const expectedUrl = buildSchemaUrl(semver);
 
-		const run = (
-			version: string,
-			options: { cwd?: string; gitignore?: boolean } | undefined,
-			write: boolean,
-		): Effect.Effect<BiomeSyncResult, BiomeSyncError> =>
-			Effect.gen(function* () {
-				const cwd = options?.cwd ?? process.cwd();
-				const semver = extractSemver(version);
-				const expectedUrl = buildSchemaUrl(semver);
+					const configs = yield* findBiomeConfigs(cwd, fs);
 
-				const configs = yield* findBiomeConfigs(cwd, fs);
+					const updated: string[] = [];
+					const skipped: string[] = [];
+					const current: string[] = [];
 
-				const updated: string[] = [];
-				const skipped: string[] = [];
-				const current: string[] = [];
-
-				for (const configPath of configs) {
-					const raw = yield* fs.readFileString(configPath).pipe(
-						Effect.mapError(
-							/* v8 ignore next 4 -- error path requires a filesystem read failure */
-							(cause) =>
-								new BiomeSyncError({
-									path: configPath,
-									reason: String(cause),
-								}),
-						),
-					);
-
-					const parsed = (yield* Jsonc.parse(raw).pipe(
-						Effect.mapError(
-							/* v8 ignore next 4 -- error path requires a JSONC parse failure */
-							(e) =>
-								new BiomeSyncError({
-									path: configPath,
-									reason: `Failed to parse JSONC: ${String(e)}`,
-								}),
-						),
-					)) as Record<string, unknown>;
-
-					const schema = parsed.$schema;
-
-					if (typeof schema !== "string") {
-						// No $schema field
-						skipped.push(configPath);
-						continue;
-					}
-
-					if (!schema.includes(BIOME_SCHEMA_HOSTNAME)) {
-						// Not a biomejs.dev URL
-						skipped.push(configPath);
-						continue;
-					}
-
-					if (schema === expectedUrl) {
-						current.push(configPath);
-						continue;
-					}
-
-					// Wrong version — update
-					if (write) {
-						const updated_content = raw.replaceAll(schema, expectedUrl);
-						yield* fs.writeFileString(configPath, updated_content).pipe(
+					for (const configPath of configs) {
+						const raw = yield* fs.readFileString(configPath).pipe(
 							Effect.mapError(
-								/* v8 ignore next 4 -- error path requires a filesystem write failure */
+								/* v8 ignore next 4 -- error path requires a filesystem read failure */
 								(cause) =>
 									new BiomeSyncError({
 										path: configPath,
@@ -197,16 +152,61 @@ export const BiomeSchemaSyncLive: Layer.Layer<BiomeSchemaSync, never, FileSystem
 									}),
 							),
 						);
+
+						const parsed = (yield* Jsonc.parse(raw).pipe(
+							Effect.mapError(
+								/* v8 ignore next 4 -- error path requires a JSONC parse failure */
+								(e) =>
+									new BiomeSyncError({
+										path: configPath,
+										reason: `Failed to parse JSONC: ${String(e)}`,
+									}),
+							),
+						)) as Record<string, unknown>;
+
+						const schema = parsed.$schema;
+
+						if (typeof schema !== "string") {
+							// No $schema field
+							skipped.push(configPath);
+							continue;
+						}
+
+						if (!schema.includes(BIOME_SCHEMA_HOSTNAME)) {
+							// Not a biomejs.dev URL
+							skipped.push(configPath);
+							continue;
+						}
+
+						if (schema === expectedUrl) {
+							current.push(configPath);
+							continue;
+						}
+
+						// Wrong version — update
+						if (write) {
+							const updated_content = raw.replaceAll(schema, expectedUrl);
+							yield* fs.writeFileString(configPath, updated_content).pipe(
+								Effect.mapError(
+									/* v8 ignore next 4 -- error path requires a filesystem write failure */
+									(cause) =>
+										new BiomeSyncError({
+											path: configPath,
+											reason: String(cause),
+										}),
+								),
+							);
+						}
+						updated.push(configPath);
 					}
-					updated.push(configPath);
-				}
 
-				return { updated, skipped, current };
-			});
+					return { updated, skipped, current };
+				});
 
-		return {
-			sync: (version, options) => run(version, options, true),
-			check: (version, options) => run(version, options, false),
-		};
-	}),
-);
+			return {
+				sync: (version, options) => run(version, options, true),
+				check: (version, options) => run(version, options, false),
+			};
+		}),
+	);
+}

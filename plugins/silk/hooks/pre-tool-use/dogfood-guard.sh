@@ -4,17 +4,41 @@ set -euo pipefail
 # PreToolUse hook (matchers: Bash "git push" / "gh pr create" / "gh pr edit";
 # the GitKraken MCP equivalents git_push / pull_request_create; the GitHub
 # MCP server's create_pull_request / update_pull_request / push_files) --
-# deny publishing a branch while THIS repo is "downstream" in an active
-# dogfood loop. See skills/dogfood/SKILL.md for the full protocol; this is
+# deny pushing or opening a PR while THIS repo's tree carries a machine-local
+# dogfood link. See skills/dogfood/SKILL.md for the full protocol; this is
 # the enforced half of its "no push / no PR while linked" discipline
 # (docs/superpowers/specs/2026-07-16-dogfood-mailbox-skill-design.md).
 #
-# Reads the LAST VALID line of every "${PROJECT_DIR}/.claude/dogfood/*.jsonl"
-# journal (JSONL snapshot-lines -- current state is the tail line, per the
-# skill's journal contract). Denies when ANY journal's last valid line has
-# role:"downstream" and phase != "unlinked" -- that combination means a
-# pnpm-workspace.yaml override still points at a sibling checkout's
-# file:../../ path, which resolves only on this machine.
+# The hazard is NOT publishing: pnpm-workspace.yaml is never published, and a
+# published manifest carries registry ranges, with workspace:* transformed to
+# exact versions by the bundler. The real hazard is that a `file:../../`
+# override in pnpm-workspace.yaml's overrides block resolves only on THIS
+# machine -- every other clone, and any CI job that installs, fails to
+# resolve the dependency and breaks.
+#
+# The decision is keyed on TREE STATE, not journal bookkeeping alone
+# (savvy-web/systems#387 fixed a false-deny where journal role/phase denied a
+# push on a tree with no override at all; savvy-web/systems#332 is the
+# opposite failure this guard must not reopen -- a real override with no
+# journal yet):
+#   - `dev` branch: exempt unconditionally. It is a long-lived integration
+#     branch, force-reset from main after every release, never merged INTO
+#     anything; actions consumed from @dev are consumed as compiled bundles,
+#     so nothing downstream installs and a file: override there is inert.
+#   - a `file:`/`link:` override escaping the repo, found in
+#     pnpm-workspace.yaml's `overrides:` block, on any other branch: DENY.
+#     Only that block is scanned -- not pnpm-lock.yaml, whose link: paths are
+#     importer-relative and include the repo's own healthy internal linking
+#     strategy (root CLAUDE.md's dist/dev/pkg symlinks), which a naive scan
+#     over the lockfile would false-positive on for every clean checkout.
+#   - no override, and a downstream journal's last valid line is in a
+#     non-"unlinked" phase: allow, with a warning via additionalContext.
+#   - no override, no journal (or nothing downstream/active): allow, silent.
+#   - a downstream journal whose packagesDerived is explicitly false (closure
+#     not yet derived -- unknown, not known-clean) in a non-"unlinked" phase,
+#     on any branch but dev: DENY. packagesDerived is a three-state field --
+#     absent (upstream journals, and downstream journals written before this
+#     field existed) must NOT be treated as false.
 #
 # This is a TRIPWIRE, not a security boundary -- same posture as
 # repos-bash-guard.sh/repos-mcp-guard.sh: best-effort command-string matching,
@@ -94,6 +118,88 @@ esac
 PROJECT_DIR=$(resolve_project_dir "$HOOK_ENVELOPE")
 [ -z "$PROJECT_DIR" ] && exit 0
 
+# `dev` is exempt unconditionally -- see the header comment. Detached HEAD:
+# `git rev-parse --abbrev-ref HEAD` returns the literal string "HEAD" there,
+# not a branch name. We deliberately let that fall through to "not dev" (the
+# safe direction) rather than special-casing it -- detached HEAD is never the
+# long-lived dev branch this exemption exists for, and a non-repo
+# PROJECT_DIR (rev-parse failing entirely) resolves the same way.
+BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+[ "$BRANCH" = "dev" ] && exit 0
+
+# The hazard is an ARTIFACT fact, not a bookkeeping one: a file:/link: path
+# escaping this repo, authored in pnpm-workspace.yaml's `overrides:` block,
+# resolves only on this machine. Scan ONLY that block -- not pnpm-lock.yaml.
+# The lockfile's link: paths are importer-relative (a link:../../packages/...
+# entry resolves inside the repo from its importer but would look like an
+# escape if naively joined to the repo root) and include this repo's own
+# healthy dist/dev/pkg linking strategy, which false-positives on every
+# clean checkout (confirmed: 21 such lines in this repo's own lockfile).
+# The overrides block is where the dogfood protocol authors its links
+# (SKILL.md --init step 3), it is small, and its paths are root-relative.
+#
+# Each extracted line has a YAML comment stripped before matching, so
+# commenting out a finished loop's override -- the obvious, more
+# careful-looking alternative to SKILL.md --exit's "remove the entry" -- does
+# not trip a permanent false deny. The strip is QUOTE-AWARE, not a bare
+# `#`-to-end-of-line cut: a `#` only starts a comment when it is outside any
+# '...'/"..." span AND is at line-start or preceded by whitespace, matching
+# real YAML's rule. Quote-blindness would be the wrong direction to get
+# wrong -- a naive whitespace-gated strip (no quote tracking) still truncates
+# a legitimate quoted value like "weird #value file:../../x", deleting the
+# override it was supposed to detect and turning a real link into a MISSED
+# deny, which is worse than the false deny this fix exists to close. A
+# backslash unconditionally consumes the next character without letting it
+# flip quote state, so a value like "esc \" #v file:../../x" does not have
+# its embedded `\"` mistaken for the closing quote (which would flip
+# in-quote state early and expose the `#` as a comment start, stripping the
+# override away).
+#
+# Known limitation, not worth handling: a flow-style single-line block
+# (`overrides: {"@e/g": "file:../../x"}`) is invisible to this scan, since
+# the `next` on the `overrides:` match line itself skips anything written on
+# that same line. Not reachable through the documented protocol -- SKILL.md
+# --init always writes block style -- so left undetected rather than
+# complicating the parser for a shape nothing produces.
+LOCAL_OVERRIDE_RE='(file|link):(\.\./|/)'
+WS_FILE="${PROJECT_DIR}/pnpm-workspace.yaml"
+has_local_override=0
+if [ -f "$WS_FILE" ]; then
+	overrides_block=$(awk '/^overrides:/{f=1;next} f && /^[a-zA-Z]/{f=0} f' "$WS_FILE" 2>/dev/null \
+		| awk '
+			{
+				line = $0
+				n = length(line)
+				in_s = 0; in_d = 0
+				out = ""
+				for (i = 1; i <= n; i++) {
+					c = substr(line, i, 1)
+					if (c == "\\" && i < n) {
+						out = out c substr(line, i + 1, 1)
+						i++
+						continue
+					}
+					if (c == "\047" && !in_d) { in_s = !in_s; out = out c; continue }
+					if (c == "\"" && !in_s) { in_d = !in_d; out = out c; continue }
+					if (c == "#" && !in_s && !in_d) {
+						prev = (i == 1) ? "" : substr(line, i - 1, 1)
+						if (i == 1 || prev ~ /[ \t]/) break
+					}
+					out = out c
+				}
+				print out
+			}
+		' 2>/dev/null || true)
+	if [ -n "$overrides_block" ] && grep -Eq "$LOCAL_OVERRIDE_RE" <<< "$overrides_block" 2>/dev/null; then
+		has_local_override=1
+	fi
+fi
+
+if [ "$has_local_override" -eq 1 ]; then
+	emit_deny "this tree carries a file:/link: dependency override pointing outside the repo, in pnpm-workspace.yaml's overrides block -- it resolves only on this machine, so pushing it breaks the install for every other clone and any CI job that installs. Run /silk:dogfood --exit to unlink first, or push to dev, which is exempt."
+	exit 0
+fi
+
 DOGFOOD_DIR="${PROJECT_DIR}/.claude/dogfood"
 [ -d "$DOGFOOD_DIR" ] || exit 0
 
@@ -102,6 +208,10 @@ journals=("${DOGFOOD_DIR}"/*.jsonl)
 shopt -u nullglob
 [ "${#journals[@]}" -eq 0 ] && exit 0
 
+# Tree is clean of overrides. The journal is now ADVISORY -- except for a
+# downstream loop whose linked-package closure has not been derived yet,
+# which is unknown rather than known-clean (savvy-web/systems#331).
+advisory=""
 for journal in "${journals[@]}"; do
 	loop_id="$(basename "$journal" .jsonl)"
 
@@ -126,11 +236,26 @@ for journal in "${journals[@]}"; do
 
 	role=$(jq -r '.role // empty' <<< "$last_valid")
 	phase=$(jq -r '.phase // empty' <<< "$last_valid")
+	# packagesDerived is a THREE-state field: absent (upstream journals, and
+	# downstream journals written before this field existed) must NOT be
+	# treated as false. Compare the explicit string form against "false" --
+	# `.packagesDerived // false` would collapse absent into false and deny
+	# on every pre-existing journal.
+	derived=$(jq -r 'if has("packagesDerived") then (.packagesDerived | tostring) else "" end' <<< "$last_valid")
 
-	if [ "$role" = "downstream" ] && [ -n "$phase" ] && [ "$phase" != "unlinked" ]; then
-		emit_deny "dogfood loop \"${loop_id}\" is downstream in phase \"${phase}\" -- pushing or opening a PR now risks publishing pnpm-workspace.yaml file:../../ overrides that only resolve on this machine. Run /silk:dogfood --exit to unlink before pushing."
+	[ "$role" = "downstream" ] || continue
+	[ -n "$phase" ] && [ "$phase" != "unlinked" ] || continue
+
+	if [ "$derived" = "false" ]; then
+		emit_deny "dogfood loop \"${loop_id}\" has not derived its linked-package closure yet (packagesDerived is false), so whether this tree is linked is unknown rather than known-clean. Derive the closure and append a correction snapshot before pushing, or push to dev, which is exempt."
 		exit 0
 	fi
+
+	advisory="${advisory}${advisory:+, }${loop_id} (${phase})"
 done
+
+if [ -n "$advisory" ]; then
+	emit_context "PreToolUse" "Dogfood loop still open: ${advisory}. The tree carries no file:/link: overrides, so this push is allowed. If the loop is finished, run /silk:dogfood --exit to record the terminal unlinked snapshot."
+fi
 
 exit 0

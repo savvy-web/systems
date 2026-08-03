@@ -19,15 +19,13 @@ export interface ReposConfigStoreShape {
  */
 export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposConfigStoreShape>()(
 	"@savvy-web/silk-effects/ReposConfigStore",
-) {}
-
-/**
- * Live layer over the core FileSystem.
- * @public
- */
-export const ReposConfigStoreLive: Layer.Layer<ReposConfigStore, never, FileSystem.FileSystem | Path.Path> =
-	Layer.effect(
-		ReposConfigStore,
+) {
+	/**
+	 * Production layer over the core FileSystem.
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<ReposConfigStore, never, FileSystem.FileSystem | Path.Path> = Layer.effect(
+		this,
 		Effect.gen(function* () {
 			const fs = yield* FileSystem.FileSystem;
 			const path = yield* Path.Path;
@@ -128,3 +126,4 @@ export const ReposConfigStoreLive: Layer.Layer<ReposConfigStore, never, FileSyst
 			return { exists, read, write };
 		}),
 	);
+}

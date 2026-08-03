@@ -12,12 +12,12 @@ import * as SilkEffects from "../../src/index.js";
 describe("Repos namespace (src/repos/index.ts)", () => {
 	it("exports the ReposManager service", () => {
 		expect(SilkEffects.Repos.ReposManager).toBeDefined();
-		expect(SilkEffects.Repos.ReposManagerLive).toBeDefined();
+		expect(SilkEffects.Repos.ReposManager.layer).toBeDefined();
 	});
 
 	it("exports the ReposConfigStore service", () => {
 		expect(SilkEffects.Repos.ReposConfigStore).toBeDefined();
-		expect(SilkEffects.Repos.ReposConfigStoreLive).toBeDefined();
+		expect(SilkEffects.Repos.ReposConfigStore.layer).toBeDefined();
 	});
 
 	it("exports manifest schemas", () => {

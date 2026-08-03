@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
 import type { ConfigLocation } from "../../src/schemas/ConfigDiscoverySchemas.js";
-import { ConfigDiscovery, ConfigDiscoveryLive } from "../../src/services/ConfigDiscovery.js";
+import { ConfigDiscovery } from "../../src/services/ConfigDiscovery.js";
 
 // ---------------------------------------------------------------------------
 // Mock FileSystem
@@ -21,7 +21,7 @@ const makeTestFs = (existingPaths: ReadonlyArray<string>) =>
 // cannot be hoisted into a suite-boundary `layer(...)` block.
 function runWith(existingPaths: ReadonlyArray<string>, effect: Effect.Effect<unknown, unknown, ConfigDiscovery>) {
 	const testFs = makeTestFs(existingPaths);
-	const layer = ConfigDiscoveryLive.pipe(Layer.provide(testFs));
+	const layer = ConfigDiscovery.layer.pipe(Layer.provide(testFs));
 	return Effect.provide(effect, layer);
 }
 
@@ -154,7 +154,7 @@ describe("ConfigDiscovery error handling", () => {
 			const errorFs = Layer.succeed(FileSystem.FileSystem, {
 				exists: (_path: string) => Effect.fail(new Error("permission denied")),
 			} as unknown as FileSystem.FileSystem);
-			const layer = ConfigDiscoveryLive.pipe(Layer.provide(errorFs));
+			const layer = ConfigDiscovery.layer.pipe(Layer.provide(errorFs));
 
 			const result = yield* Effect.provide(
 				ConfigDiscovery.pipe(Effect.andThen((s) => s.find("biome.json", { cwd }))),
