@@ -43,7 +43,7 @@
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
-		"@modelcontextprotocol/inspector": "^1.0.0",
+		"@modelcontextprotocol/inspector": "^2.0.0",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"tsx": "catalog:silk",
