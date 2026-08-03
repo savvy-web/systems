@@ -17,6 +17,114 @@ allowedDeprecatedVersions:
 autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
+  build:
+    "@rsbuild/core": ^2.1.9
+    "@tsdown/css": ^0.22.14
+    "@tsdown/exe": ^0.22.14
+    "@types/bun": ^1.3.14
+    "@types/node": ^26.1.2
+    "@types/react": ^19.2.18
+    "@types/react-dom": ^19.2.4
+    react: ^19.2.8
+    react-dom: ^19.2.8
+    rolldown: ^1.2.1
+    tsdown: ^0.22.14
+    tsx: ^4.23.4
+    typescript: ^7.0.2
+  build:peers:
+    "@rsbuild/core": ^2.1.0
+    "@tsdown/css": ^0.22.0
+    "@tsdown/exe": ^0.22.0
+    "@types/bun": ^1.3.14
+    "@types/node": ^26.1.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
+    react: ^19.2.0
+    react-dom: ^19.2.0
+    rolldown: ^1.2.0
+    tsdown: ^0.22.0
+    tsx: ^4.23.4
+    typescript: ^7.0.0
+  buildPeers:
+    "@rsbuild/core": ^2.1.0
+    "@tsdown/css": ^0.22.0
+    "@tsdown/exe": ^0.22.0
+    "@types/bun": ^1.3.14
+    "@types/node": ^26.1.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
+    react: ^19.2.0
+    react-dom: ^19.2.0
+    rolldown: ^1.2.0
+    tsdown: ^0.22.0
+    tsx: ^4.23.4
+    typescript: ^7.0.0
+  docs:
+    "@rspress/core": ^2.0.19
+    "@rspress/plugin-sitemap": ^2.0.19
+    "@types/node": ^26.1.2
+    "@types/react": ^19.2.18
+    "@types/react-dom": ^19.2.4
+    react: ^19.2.8
+    react-dom: ^19.2.8
+    rspress-plugin-mermaid: ^1.0.1
+    typescript: ^7.0.2
+    vite: ^8.2.0
+    vitepress: ^2.0.0-alpha.19
+  docs:peers:
+    "@rspress/core": ^2.0.0
+    "@rspress/plugin-sitemap": ^2.0.19
+    "@types/node": ^26.1.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
+    react: ^19.2.0
+    react-dom: ^19.2.0
+    rspress-plugin-mermaid: ^1.0.1
+    typescript: ^7.0.0
+    vite: ^8.2.0
+    vitepress: ^2.0.0-alpha.19
+  docsPeers:
+    "@rspress/core": ^2.0.0
+    "@rspress/plugin-sitemap": ^2.0.19
+    "@types/node": ^26.1.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
+    react: ^19.2.0
+    react-dom: ^19.2.0
+    rspress-plugin-mermaid: ^1.0.1
+    typescript: ^7.0.0
+    vite: ^8.2.0
+    vitepress: ^2.0.0-alpha.19
+  lint:
+    "@biomejs/biome": 2.5.0
+    "@changesets/cli": ^3.0.0-next.10
+    "@commitlint/cli": ^21.2.1
+    "@commitlint/config-conventional": ^21.2.0
+    husky: ^9.1.7
+    lint-staged: ^17.3.0
+    markdownlint-cli2: ^0.23.2
+    markdownlint-cli2-formatter-codequality: ^0.0.7
+    turbo: ^2.10.8
+  lint:peers:
+    "@biomejs/biome": 2.5.0
+    "@changesets/cli": ^3.0.0-next.10
+    "@commitlint/cli": ^21.2.1
+    "@commitlint/config-conventional": ^21.2.0
+    husky: ^9.1.7
+    lint-staged: ^17.3.0
+    markdownlint-cli2: ^0.23.2
+    markdownlint-cli2-formatter-codequality: ^0.0.7
+    turbo: ^2.10.8
+  lintPeers:
+    "@biomejs/biome": 2.5.0
+    "@changesets/cli": ^3.0.0-next.10
+    "@commitlint/cli": ^21.2.1
+    "@commitlint/config-conventional": ^21.2.0
+    husky: ^9.1.7
+    lint-staged: ^17.3.0
+    markdownlint-cli2: ^0.23.2
+    markdownlint-cli2-formatter-codequality: ^0.0.7
+    turbo: ^2.10.8
   silk:
     "@changesets/cli": ^3.0.0-next.10
     "@commitlint/cli": ^21.2.1
@@ -57,28 +165,28 @@ catalogs:
     "@effect/typeclass": ^0.40.0
     "@effect/vitest": ^0.29.0
     "@effect/workflow": ^0.18.2
-    "@rsbuild/core": ^2.1.8
-    "@rspress/core": ^2.0.18
+    "@rsbuild/core": ^2.1.9
+    "@rspress/core": ^2.0.19
     "@tsdown/css": ^0.22.14
     "@tsdown/exe": ^0.22.14
     "@types/bun": ^1.3.14
-    "@types/node": ^26.1.1
-    "@types/react": ^19.2.17
-    "@types/react-dom": ^19.2.3
+    "@types/node": ^26.1.2
+    "@types/react": ^19.2.18
+    "@types/react-dom": ^19.2.4
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
     "@vitest/coverage-istanbul": ^4.1.10
     "@vitest/coverage-v8": ^4.1.10
     effect: ^3.21.4
     husky: ^9.1.7
-    lint-staged: ^17.2.0
-    markdownlint-cli2: ^0.23.1
+    lint-staged: ^17.3.0
+    markdownlint-cli2: ^0.23.2
     markdownlint-cli2-formatter-codequality: ^0.0.7
     react: ^19.2.8
     react-dom: ^19.2.8
-    rolldown: ^1.2.0
+    rolldown: ^1.2.1
     tsdown: ^0.22.14
-    tsx: ^4.23.1
-    turbo: ^2.10.7
+    tsx: ^4.23.4
+    turbo: ^2.10.8
     typescript: ^7.0.2
     vitest: ^4.1.10
   silk:peers:
@@ -134,15 +242,15 @@ catalogs:
     "@vitest/coverage-v8": ^4.1.0
     effect: ^3.21.0
     husky: ^9.1.7
-    lint-staged: ^17.2.0
-    markdownlint-cli2: ^0.23.1
+    lint-staged: ^17.3.0
+    markdownlint-cli2: ^0.23.2
     markdownlint-cli2-formatter-codequality: ^0.0.7
     react: ^19.2.0
     react-dom: ^19.2.0
     rolldown: ^1.2.0
     tsdown: ^0.22.0
-    tsx: ^4.23.1
-    turbo: ^2.10.7
+    tsx: ^4.23.4
+    turbo: ^2.10.8
     typescript: ^7.0.0
     vitest: ^4.1.0
   silkPeers:
@@ -198,16 +306,28 @@ catalogs:
     "@vitest/coverage-v8": ^4.1.0
     effect: ^3.21.0
     husky: ^9.1.7
-    lint-staged: ^17.2.0
-    markdownlint-cli2: ^0.23.1
+    lint-staged: ^17.3.0
+    markdownlint-cli2: ^0.23.2
     markdownlint-cli2-formatter-codequality: ^0.0.7
     react: ^19.2.0
     react-dom: ^19.2.0
     rolldown: ^1.2.0
     tsdown: ^0.22.0
-    tsx: ^4.23.1
-    turbo: ^2.10.7
+    tsx: ^4.23.4
+    turbo: ^2.10.8
     typescript: ^7.0.0
+    vitest: ^4.1.0
+  test:
+    "@vitest/coverage-istanbul": ^4.1.10
+    "@vitest/coverage-v8": ^4.1.10
+    vitest: ^4.1.10
+  test:peers:
+    "@vitest/coverage-istanbul": ^4.1.0
+    "@vitest/coverage-v8": ^4.1.0
+    vitest: ^4.1.0
+  testPeers:
+    "@vitest/coverage-istanbul": ^4.1.0
+    "@vitest/coverage-v8": ^4.1.0
     vitest: ^4.1.0
 configDependencies:
   "@effected/pnpm-plugin-effect": 0.3.1+sha512-e3HjGx6AQ4dGCLu8ApbFMm49NYmJ/fiC2sptSyeQRsw94VjdfCYWF73i1pa2SlFqRmeHcrYCK7KsWYZlXX9m1A==

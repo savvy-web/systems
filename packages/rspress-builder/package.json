@@ -34,24 +34,24 @@
 	},
 	"dependencies": {
 		"@savvy-web/bundler": "workspace:*",
-		"@tsdown/css": "catalog:silk"
+		"@tsdown/css": "catalog:build"
 	},
 	"devDependencies": {
 		"@savvy-web/tsdown-plugins": "workspace:*",
-		"@types/node": "catalog:silk",
-		"@types/react": "catalog:silk",
-		"react": "catalog:silk",
-		"typescript": "catalog:silk",
-		"vitest": "catalog:silk"
+		"@types/node": "catalog:build",
+		"@types/react": "catalog:build",
+		"react": "catalog:build",
+		"typescript": "catalog:build",
+		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@rspress/core": "catalog:silkPeers",
-		"@types/node": "catalog:silkPeers",
-		"@types/react": "catalog:silkPeers",
-		"@types/react-dom": "catalog:silkPeers",
-		"react": "catalog:silkPeers",
-		"react-dom": "catalog:silkPeers",
-		"typescript": "catalog:silkPeers"
+		"@rspress/core": "catalog:docs:peers",
+		"@types/node": "catalog:docs:peers",
+		"@types/react": "catalog:docs:peers",
+		"@types/react-dom": "catalog:docs:peers",
+		"react": "catalog:docs:peers",
+		"react-dom": "catalog:docs:peers",
+		"typescript": "catalog:docs:peers"
 	},
 	"publishConfig": {
 		"access": "public",

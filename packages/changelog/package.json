@@ -34,14 +34,14 @@
 		"semver": "^7.8.5"
 	},
 	"devDependencies": {
-		"@changesets/types": "^7.0.0-next.6",
+		"@changesets/types": "^7.0.0-next.8",
 		"@savvy-web/bundler": "workspace:*",
 		"@savvy-web/silk-effects": "workspace:*",
-		"@types/node": "catalog:silk",
+		"@types/node": "catalog:build",
 		"effect": "catalog:effect",
-		"tsx": "catalog:silk",
-		"typescript": "catalog:silk",
-		"vitest": "catalog:silk"
+		"tsx": "catalog:build",
+		"typescript": "catalog:build",
+		"vitest": "catalog:test"
 	},
 	"publishConfig": {
 		"access": "public",

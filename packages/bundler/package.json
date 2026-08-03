@@ -34,29 +34,29 @@
 	},
 	"dependencies": {
 		"@savvy-web/tsdown-plugins": "workspace:*",
-		"@tsdown/exe": "catalog:silk",
+		"@tsdown/exe": "catalog:build",
 		"effect": "catalog:effect",
-		"rolldown": "catalog:silk",
-		"tsdown": "catalog:silk"
+		"rolldown": "catalog:build",
+		"tsdown": "catalog:build"
 	},
 	"devDependencies": {
 		"@effect/platform-node": "catalog:effect",
-		"@tsdown/css": "catalog:silk",
-		"@types/node": "catalog:silk",
-		"@types/react": "catalog:silk",
-		"@types/react-dom": "catalog:silk",
-		"react": "catalog:silk",
-		"react-dom": "catalog:silk",
-		"typescript": "catalog:silk",
-		"vitest": "catalog:silk"
+		"@tsdown/css": "catalog:build",
+		"@types/node": "catalog:build",
+		"@types/react": "catalog:build",
+		"@types/react-dom": "catalog:build",
+		"react": "catalog:build",
+		"react-dom": "catalog:build",
+		"typescript": "catalog:build",
+		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@types/node": "catalog:silkPeers",
-		"@types/react": "catalog:silkPeers",
-		"@types/react-dom": "catalog:silkPeers",
-		"react": "catalog:silkPeers",
-		"react-dom": "catalog:silkPeers",
-		"typescript": "catalog:silkPeers"
+		"@types/node": "catalog:build:peers",
+		"@types/react": "catalog:build:peers",
+		"@types/react-dom": "catalog:build:peers",
+		"react": "catalog:build:peers",
+		"react-dom": "catalog:build:peers",
+		"typescript": "catalog:build:peers"
 	},
 	"peerDependenciesMeta": {
 		"@types/react": {

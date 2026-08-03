@@ -26,28 +26,9 @@ settings:
   excludeLinksFromLockfile: false
 
 catalogs:
-  effect:
-    '@effect/platform-node':
-      specifier: 4.0.0-beta.101
-      version: 4.0.0-beta.101
-    '@effect/vitest':
-      specifier: 4.0.0-beta.101
-      version: 4.0.0-beta.101
-    effect:
-      specifier: 4.0.0-beta.101
-      version: 4.0.0-beta.101
-  silk:
-    '@changesets/cli':
-      specifier: ^3.0.0-next.10
-      version: 3.0.0-next.10
-    '@commitlint/cli':
-      specifier: ^21.2.1
-      version: 21.2.1
-    '@commitlint/config-conventional':
-      specifier: ^21.2.0
-      version: 21.2.0
+  build:
     '@rsbuild/core':
-      specifier: ^2.1.8
+      specifier: ^2.1.9
       version: 2.1.9
     '@tsdown/css':
       specifier: ^0.22.14
@@ -59,32 +40,14 @@ catalogs:
       specifier: ^1.3.14
       version: 1.3.14
     '@types/node':
-      specifier: ^26.1.1
+      specifier: ^26.1.2
       version: 26.1.2
     '@types/react':
-      specifier: ^19.2.17
+      specifier: ^19.2.18
       version: 19.2.18
     '@types/react-dom':
-      specifier: ^19.2.3
+      specifier: ^19.2.4
       version: 19.2.4
-    '@vitest/coverage-istanbul':
-      specifier: ^4.1.10
-      version: 4.1.10
-    '@vitest/coverage-v8':
-      specifier: ^4.1.10
-      version: 4.1.10
-    husky:
-      specifier: ^9.1.7
-      version: 9.1.7
-    lint-staged:
-      specifier: ^17.2.0
-      version: 17.3.0
-    markdownlint-cli2:
-      specifier: ^0.23.1
-      version: 0.23.2
-    markdownlint-cli2-formatter-codequality:
-      specifier: ^0.0.7
-      version: 0.0.7
     react:
       specifier: ^19.2.8
       version: 19.2.8
@@ -92,24 +55,18 @@ catalogs:
       specifier: ^19.2.8
       version: 19.2.8
     rolldown:
-      specifier: ^1.2.0
+      specifier: ^1.2.1
       version: 1.2.1
     tsdown:
       specifier: ^0.22.14
       version: 0.22.14
     tsx:
-      specifier: ^4.23.1
+      specifier: ^4.23.4
       version: 4.23.4
-    turbo:
-      specifier: ^2.10.7
-      version: 2.10.8
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
-    vitest:
-      specifier: ^4.1.10
-      version: 4.1.10
-  silkPeers:
+  docs:peers:
     '@rspress/core':
       specifier: ^2.0.0
       version: 2.0.19
@@ -119,6 +76,64 @@ catalogs:
     react-dom:
       specifier: ^19.2.0
       version: 19.2.8
+  effect:
+    '@effect/platform-node':
+      specifier: 4.0.0-beta.101
+      version: 4.0.0-beta.101
+    '@effect/vitest':
+      specifier: 4.0.0-beta.101
+      version: 4.0.0-beta.101
+    effect:
+      specifier: 4.0.0-beta.101
+      version: 4.0.0-beta.101
+  lint:
+    '@biomejs/biome':
+      specifier: 2.5.0
+      version: 2.5.0
+    '@changesets/cli':
+      specifier: ^3.0.0-next.10
+      version: 3.0.0-next.10
+    '@commitlint/cli':
+      specifier: ^21.2.1
+      version: 21.2.1
+    '@commitlint/config-conventional':
+      specifier: ^21.2.0
+      version: 21.2.0
+    husky:
+      specifier: ^9.1.7
+      version: 9.1.7
+    lint-staged:
+      specifier: ^17.3.0
+      version: 17.3.0
+    markdownlint-cli2:
+      specifier: ^0.23.2
+      version: 0.23.2
+    markdownlint-cli2-formatter-codequality:
+      specifier: ^0.0.7
+      version: 0.0.7
+    turbo:
+      specifier: ^2.10.8
+      version: 2.10.8
+  silk:
+    '@types/node':
+      specifier: ^26.1.2
+      version: 26.1.2
+    tsdown:
+      specifier: ^0.22.14
+      version: 0.22.14
+    typescript:
+      specifier: ^7.0.2
+      version: 7.0.2
+  test:
+    '@vitest/coverage-istanbul':
+      specifier: ^4.1.10
+      version: 4.1.10
+    '@vitest/coverage-v8':
+      specifier: ^4.1.10
+      version: 4.1.10
+    vitest:
+      specifier: ^4.1.10
+      version: 4.1.10
 
 overrides:
   '@microsoft/api-extractor>typescript': ^6.0.3
@@ -187,44 +202,44 @@ importers:
         specifier: workspace:*
         version: link:../tsdown-plugins/dist/dev/pkg
       '@tsdown/exe':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 0.22.14(tsdown@0.22.14)
       effect:
         specifier: catalog:effect
         version: 4.0.0-beta.101
       rolldown:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 1.2.1
       tsdown:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 0.22.14(@tsdown/css@0.22.14)(@tsdown/exe@0.22.14)(tsx@4.23.4)(typescript@7.0.2)
     devDependencies:
       '@effect/platform-node':
         specifier: catalog:effect
         version: 4.0.0-beta.101(effect@4.0.0-beta.101)(ioredis@5.11.1(supports-color@8.1.1))
       '@tsdown/css':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 0.22.14(jiti@2.7.0)(postcss@8.5.25)(tsdown@0.22.14)(tsx@4.23.4)(yaml@2.9.0)
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       '@types/react':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 19.2.18
       '@types/react-dom':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 19.2.4(@types/react@19.2.18)
       react:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 19.2.8
       react-dom:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 19.2.8(react@19.2.8)
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -238,7 +253,7 @@ importers:
         version: 7.8.5
     devDependencies:
       '@changesets/types':
-        specifier: ^7.0.0-next.6
+        specifier: ^7.0.0-next.8
         version: 7.0.0-next.8
       '@savvy-web/bundler':
         specifier: workspace:*
@@ -247,19 +262,19 @@ importers:
         specifier: workspace:*
         version: link:../silk-effects/dist/dev/pkg
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       effect:
         specifier: catalog:effect
         version: 4.0.0-beta.101
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -300,16 +315,16 @@ importers:
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -322,7 +337,7 @@ importers:
         specifier: ^0.6.0
         version: 0.6.0(effect@4.0.0-beta.101)
       '@rsbuild/core':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 2.1.9
       effect:
         specifier: catalog:effect
@@ -341,16 +356,16 @@ importers:
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -388,16 +403,16 @@ importers:
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -407,59 +422,68 @@ importers:
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       rolldown-pnpm-config:
-        specifier: ^0.5.2
+        specifier: ^0.5.6
         version: 0.5.6(@types/react@19.2.18)(ioredis@5.11.1(supports-color@8.1.1))(rolldown@1.2.1)
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
     publishDirectory: dist/dev/pkg
 
   packages/rspress-builder:
     dependencies:
       '@rspress/core':
-        specifier: catalog:silkPeers
+        specifier: catalog:docs:peers
         version: 2.0.19(@rspack/core@2.1.7(@swc/helpers@0.5.23))(micromark-util-types@2.0.2)(micromark@4.0.2(supports-color@8.1.1))(supports-color@8.1.1)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
       '@tsdown/css':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 0.22.14(jiti@2.7.0)(postcss@8.5.25)(tsdown@0.22.14)(tsx@4.23.4)(yaml@2.9.0)
       '@types/react-dom':
-        specifier: catalog:silkPeers
+        specifier: catalog:docs:peers
         version: 19.2.4(@types/react@19.2.18)
       react-dom:
-        specifier: catalog:silkPeers
+        specifier: catalog:docs:peers
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@savvy-web/tsdown-plugins':
         specifier: workspace:*
         version: link:../tsdown-plugins/dist/dev/pkg
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       '@types/react':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 19.2.18
       react:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 19.2.8
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
   packages/silk:
     dependencies:
       '@biomejs/biome':
-        specifier: ~2.5.0
-        version: 2.5.6
+        specifier: catalog:lint
+        version: 2.5.0
+      '@changesets/cli':
+        specifier: catalog:lint
+        version: 3.0.0-next.10
+      '@commitlint/cli':
+        specifier: catalog:lint
+        version: 21.2.1(@types/node@26.1.2)(conventional-commits-parser@7.1.2)(typescript@7.0.2)
+      '@commitlint/config-conventional':
+        specifier: catalog:lint
+        version: 21.2.0
       '@effected/templates':
         specifier: ^0.1.0
         version: 0.1.0(effect@4.0.0-beta.101)
@@ -472,66 +496,57 @@ importers:
       '@savvy-web/mcp':
         specifier: workspace:*
         version: link:../mcp/dist/dev/pkg
+      '@types/bun':
+        specifier: catalog:build
+        version: 1.3.14
       '@vitest/coverage-istanbul':
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(supports-color@8.1.1)(vitest@4.1.10)
       '@vitest/coverage-v8':
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(vitest@4.1.10)
       effect:
         specifier: catalog:effect
         version: 4.0.0-beta.101
+      husky:
+        specifier: catalog:lint
+        version: 9.1.7
+      lint-staged:
+        specifier: catalog:lint
+        version: 17.3.0
+      markdownlint-cli2:
+        specifier: catalog:lint
+        version: 0.23.2(supports-color@8.1.1)
+      markdownlint-cli2-formatter-codequality:
+        specifier: catalog:lint
+        version: 0.0.7(markdownlint-cli2@0.23.2(supports-color@8.1.1))
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
       semver:
         specifier: ^7.8.5
         version: 7.8.5
+      turbo:
+        specifier: catalog:lint
+        version: 2.10.8
     devDependencies:
-      '@changesets/cli':
-        specifier: catalog:silk
-        version: 3.0.0-next.10
-      '@commitlint/cli':
-        specifier: catalog:silk
-        version: 21.2.1(@types/node@26.1.2)(conventional-commits-parser@7.1.2)(typescript@7.0.2)
-      '@commitlint/config-conventional':
-        specifier: catalog:silk
-        version: 21.2.0
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
       '@savvy-web/silk-effects':
         specifier: workspace:*
         version: link:../silk-effects/dist/dev/pkg
-      '@types/bun':
-        specifier: catalog:silk
-        version: 1.3.14
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
-      husky:
-        specifier: catalog:silk
-        version: 9.1.7
-      lint-staged:
-        specifier: catalog:silk
-        version: 17.3.0
-      markdownlint-cli2:
-        specifier: catalog:silk
-        version: 0.23.2(supports-color@8.1.1)
-      markdownlint-cli2-formatter-codequality:
-        specifier: catalog:silk
-        version: 0.0.7(markdownlint-cli2@0.23.2(supports-color@8.1.1))
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
-      turbo:
-        specifier: catalog:silk
-        version: 2.10.8
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -632,7 +647,7 @@ importers:
         specifier: ^4.0.4
         version: 4.0.4
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       '@types/shell-quote':
         specifier: ^1.7.5
@@ -647,13 +662,13 @@ importers:
         specifier: ^0.41.1
         version: 0.41.1(supports-color@8.1.1)
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -679,20 +694,20 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.101
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
       typescript:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 7.0.2
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
   packages/tsdown-plugins:
     dependencies:
       '@changesets/get-release-plan':
-        specifier: ^5.0.0-next.7
+        specifier: ^5.0.0-next.9
         version: 5.0.0-next.9
       '@effect/platform-node':
         specifier: catalog:effect
@@ -728,7 +743,7 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       tsdown:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 0.22.14(@tsdown/css@0.22.14)(@tsdown/exe@0.22.14)(tsx@4.23.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
@@ -738,16 +753,16 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-beta.101(effect@4.0.0-beta.101)(vitest@4.1.10)
       '@types/node':
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 26.1.2
       rolldown:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 1.2.1
       tsx:
-        specifier: catalog:silk
+        specifier: catalog:build
         version: 4.23.4
       vitest:
-        specifier: catalog:silk
+        specifier: catalog:test
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.4)(yaml@2.9.0))
     publishDirectory: dist/dev/pkg
 
@@ -828,59 +843,59 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@biomejs/biome@2.5.6':
-    resolution: {integrity: sha512-lxVNjv7UF6KfhMJfL9gaUHbWdJdHbsAj6OSmwSYNdhRuG67NxNQ4Xdvh3TUxsSK9sBzJBQhEJj3AopmmNJ5pSA==}
+  '@biomejs/biome@2.5.0':
+    resolution: {integrity: sha512-4kURkd9hAPrdDM3C9n82ycYgx8hvQcW6MjKTEejruj8rK0N8P3OPpdy8BvI8kt3KWY4ycF5XtDOrktetEfhfuw==}
     engines: {node: '>=14.21.3'}
     hasBin: true
 
-  '@biomejs/cli-darwin-arm64@2.5.6':
-    resolution: {integrity: sha512-zMOLZP4oMrjh6m1zcSj1ud2awUPgTuMVbmQhYYWL7J8HwCnbHHBvTm7VBTRuY7epT5bez76IpKYQ11ZAqHFlnw==}
+  '@biomejs/cli-darwin-arm64@2.5.0':
+    resolution: {integrity: sha512-Mn3Fwi3SA5fgmfCPqmzpWF2DLZnms3BVAhM088nTnGrTZmHS3wwIjcoZPqpXeNgd3DrrLH6xp8vTLIBuJoZiXw==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [darwin]
 
-  '@biomejs/cli-darwin-x64@2.5.6':
-    resolution: {integrity: sha512-JAC1VqzvO7Th5ZplU0G2uGfkZbxEe9uDDektPAhF0JLusoz1w+T4okp2bkykI0bbaO2vslKiRfj4gU43JaGreA==}
+  '@biomejs/cli-darwin-x64@2.5.0':
+    resolution: {integrity: sha512-rg3VPL5P8mYro6pqlXYXuJWph21slVp3SZtAqWSrkZs40d2gTzYmHF8E/X1iTID25btmNKltNDJ926sqVBp7DQ==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [darwin]
 
-  '@biomejs/cli-linux-arm64-musl@2.5.6':
-    resolution: {integrity: sha512-eUa3jeeYvfMt19LBeh6E5PUZpxnTC4JqNWo+EDjTtQjAr2xLGnWaxACtVU1DQqmHYbvThlJzLX+ZsYgrqh2qVw==}
+  '@biomejs/cli-linux-arm64-musl@2.5.0':
+    resolution: {integrity: sha512-vQdM4oSGaf7ZNeGO9w5+Y8SBtyser9M6znxYbm7Ec8wInxJu1WiKxFYZW5Auj2d80bcVvefuGGRxoFOE0eee8g==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@biomejs/cli-linux-arm64@2.5.6':
-    resolution: {integrity: sha512-6XsYwCFkp5sMxl85ffhgeGpGgs6A7dRYFnkceZ7WVxvycuTnGdD5xa534Z3xfrBQ0JCMK/mujT6ZNPJoghedwg==}
+  '@biomejs/cli-linux-arm64@2.5.0':
+    resolution: {integrity: sha512-tl+LW8fdD96/xdeWtWwc82LIOc5CoY7N2AsogLTp5R4ECErYt+8Jl/N68ezN9vzSiqPTxw6vjcihoLPYKZHrlw==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@biomejs/cli-linux-x64-musl@2.5.6':
-    resolution: {integrity: sha512-2Vp13QdKysH3HIWLaYLhUUwbK+jbZonJD1K+Lr0d0RO4wH7mkYd43vJixEDm8cUWrowoRz4UUHF1nm9Ae7ym8A==}
+  '@biomejs/cli-linux-x64-musl@2.5.0':
+    resolution: {integrity: sha512-+9hIcMngJ+yGUahXqZuZ8CoWKJE9SAZsFsM3QDvXpNsLbXZ9lqVzgBhOk/jTSYkOA0GLP9eu3teukqpLUojHMg==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@biomejs/cli-linux-x64@2.5.6':
-    resolution: {integrity: sha512-Pop9VXCFUhFTMfFefZ39S+u2rOPyNp5iHlxbZRwXGACHLy2r0jjiRgJHmaEKJzL3SyxlVeGShXhvvElvWowonA==}
+  '@biomejs/cli-linux-x64@2.5.0':
+    resolution: {integrity: sha512-zpEGf4RQbFEh8Vt7OmavLyyOzRbtcE9osCqrS1kfvt8jDvxwhKXLSf7n0ebr/ov0RJ9ssP+lhs6C8a9WwFvrQA==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@biomejs/cli-win32-arm64@2.5.6':
-    resolution: {integrity: sha512-tDGshcm6BdkZOCGnTDX0Y8/U4IfBSlnUU7T56nNDuPEfed+aHg+u8G36NB43fJVl0Os6+QURXIE1yuD7AaEofA==}
+  '@biomejs/cli-win32-arm64@2.5.0':
+    resolution: {integrity: sha512-jB0wAvTLI4itx5VidqVUejPQFhRUxiZ9l9FvZ26D5fl6t3qme+ZB4PD3bTSeL1vZ8NI2Rx/zj6H9zcESuGHKGw==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [win32]
 
-  '@biomejs/cli-win32-x64@2.5.6':
-    resolution: {integrity: sha512-WN05KwXnTO/2J45RQPvzZMXf7tZUIofHoR35xIPfCo7pQ2RFidxI8sfb5mGsaTxdMmEOzHzOPRCdA5/fCpc7xQ==}
+  '@biomejs/cli-win32-x64@2.5.0':
+    resolution: {integrity: sha512-VT/lF+GId+67j8aDfLkxdxNoVApsPSTbyAtB3jJq0IWTrY77WXfbPfpngxq0bA6JCEv/7k8C9qWjDRKRznDlyw==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
@@ -5628,39 +5643,39 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@biomejs/biome@2.5.6':
+  '@biomejs/biome@2.5.0':
     optionalDependencies:
-      '@biomejs/cli-darwin-arm64': 2.5.6
-      '@biomejs/cli-darwin-x64': 2.5.6
-      '@biomejs/cli-linux-arm64': 2.5.6
-      '@biomejs/cli-linux-arm64-musl': 2.5.6
-      '@biomejs/cli-linux-x64': 2.5.6
-      '@biomejs/cli-linux-x64-musl': 2.5.6
-      '@biomejs/cli-win32-arm64': 2.5.6
-      '@biomejs/cli-win32-x64': 2.5.6
+      '@biomejs/cli-darwin-arm64': 2.5.0
+      '@biomejs/cli-darwin-x64': 2.5.0
+      '@biomejs/cli-linux-arm64': 2.5.0
+      '@biomejs/cli-linux-arm64-musl': 2.5.0
+      '@biomejs/cli-linux-x64': 2.5.0
+      '@biomejs/cli-linux-x64-musl': 2.5.0
+      '@biomejs/cli-win32-arm64': 2.5.0
+      '@biomejs/cli-win32-x64': 2.5.0
 
-  '@biomejs/cli-darwin-arm64@2.5.6':
+  '@biomejs/cli-darwin-arm64@2.5.0':
     optional: true
 
-  '@biomejs/cli-darwin-x64@2.5.6':
+  '@biomejs/cli-darwin-x64@2.5.0':
     optional: true
 
-  '@biomejs/cli-linux-arm64-musl@2.5.6':
+  '@biomejs/cli-linux-arm64-musl@2.5.0':
     optional: true
 
-  '@biomejs/cli-linux-arm64@2.5.6':
+  '@biomejs/cli-linux-arm64@2.5.0':
     optional: true
 
-  '@biomejs/cli-linux-x64-musl@2.5.6':
+  '@biomejs/cli-linux-x64-musl@2.5.0':
     optional: true
 
-  '@biomejs/cli-linux-x64@2.5.6':
+  '@biomejs/cli-linux-x64@2.5.0':
     optional: true
 
-  '@biomejs/cli-win32-arm64@2.5.6':
+  '@biomejs/cli-win32-arm64@2.5.0':
     optional: true
 
-  '@biomejs/cli-win32-x64@2.5.6':
+  '@biomejs/cli-win32-x64@2.5.0':
     optional: true
 
   '@changesets/apply-release-plan@8.0.0-next.9':

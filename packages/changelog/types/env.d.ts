@@ -1,1 +1,1 @@
-/// <reference types="@savvy-web/rspress-builder/env"/>
+/// <reference types="@savvy-web/bundler/env"/>

@@ -6,6 +6,183 @@ await build({
 		PnpmConfigPlugin({
 			name: "@savvy-web/pnpm-plugin-silk",
 			catalogs: {
+				build: {
+					packages: {
+						"@tsdown/exe": {
+							range: "^0.22.14",
+							peer: "^0.22.0",
+							strategy: "lock-minor",
+						},
+						"@tsdown/css": {
+							range: "^0.22.14",
+							peer: "^0.22.0",
+							strategy: "lock-minor",
+						},
+						"@rsbuild/core": {
+							range: "^2.1.9",
+							peer: "^2.1.0",
+							strategy: "lock-minor",
+						},
+						"@types/bun": {
+							range: "^1.3.14",
+							peer: "^1.3.14",
+							strategy: "lock",
+						},
+						"@types/node": {
+							range: "^26.1.2",
+							peer: "^26.1.0",
+							strategy: "lock-minor",
+						},
+						"@types/react": {
+							range: "^19.2.18",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						"@types/react-dom": {
+							range: "^19.2.4",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						react: {
+							range: "^19.2.8",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						"react-dom": {
+							range: "^19.2.8",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						rolldown: {
+							range: "^1.2.1",
+							peer: "^1.2.0",
+							strategy: "lock-minor",
+						},
+						tsdown: {
+							range: "^0.22.14",
+							peer: "^0.22.0",
+							strategy: "lock-minor",
+						},
+						typescript: {
+							range: "^7.0.2",
+							peer: "^7.0.0",
+							strategy: "lock-minor",
+						},
+						tsx: {
+							range: "^4.23.4",
+							peer: "^4.23.4",
+							strategy: "lock",
+						},
+					},
+				},
+				docs: {
+					packages: {
+						"@rspress/core": {
+							range: "^2.0.19",
+							peer: "^2.0.0",
+							strategy: "lock-minor",
+						},
+						"@rspress/plugin-sitemap": {
+							range: "^2.0.19",
+							peer: "^2.0.19",
+							strategy: "lock",
+						},
+						"@types/node": {
+							range: "^26.1.2",
+							peer: "^26.1.0",
+							strategy: "lock-minor",
+						},
+						"@types/react": {
+							range: "^19.2.18",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						"@types/react-dom": {
+							range: "^19.2.4",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						react: {
+							range: "^19.2.8",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						"react-dom": {
+							range: "^19.2.8",
+							peer: "^19.2.0",
+							strategy: "lock-minor",
+						},
+						"rspress-plugin-mermaid": {
+							range: "^1.0.1",
+							peer: "^1.0.1",
+							strategy: "lock",
+						},
+						typescript: {
+							range: "^7.0.2",
+							peer: "^7.0.0",
+							strategy: "lock-minor",
+						},
+						vite: {
+							range: "^8.2.0",
+							peer: "^8.2.0",
+							strategy: "lock-minor",
+						},
+						vitepress: {
+							range: "^2.0.0-alpha.19",
+							peer: "^2.0.0-alpha.19",
+							strategy: "lock",
+						},
+					},
+				},
+				lint: {
+					packages: {
+						"@biomejs/biome": {
+							range: "2.5.0",
+							peer: "2.5.0",
+							strategy: "lock",
+						},
+						"@changesets/cli": {
+							range: "^3.0.0-next.10",
+							peer: "^3.0.0-next.10",
+							strategy: "lock",
+						},
+						"@commitlint/cli": {
+							range: "^21.2.1",
+							peer: "^21.2.1",
+							strategy: "lock",
+						},
+						"@commitlint/config-conventional": {
+							range: "^21.2.0",
+							peer: "^21.2.0",
+							strategy: "lock",
+						},
+						husky: {
+							range: "^9.1.7",
+							peer: "^9.1.7",
+							strategy: "lock",
+						},
+						"lint-staged": {
+							range: "^17.3.0",
+							peer: "^17.3.0",
+							strategy: "lock",
+						},
+						"markdownlint-cli2": {
+							range: "^0.23.2",
+							peer: "^0.23.2",
+							strategy: "lock",
+						},
+						"markdownlint-cli2-formatter-codequality": {
+							range: "^0.0.7",
+							peer: "^0.0.7",
+							strategy: "lock",
+						},
+						turbo: {
+							range: "^2.10.8",
+							peer: "^2.10.8",
+							strategy: "lock",
+						},
+					},
+				},
 				silk: {
 					packages: {
 						"@changesets/cli": {
@@ -204,12 +381,12 @@ await build({
 							strategy: "interop",
 						},
 						"@rsbuild/core": {
-							range: "^2.1.8",
+							range: "^2.1.9",
 							peer: "^2.1.0",
 							strategy: "lock-minor",
 						},
 						"@rspress/core": {
-							range: "^2.0.18",
+							range: "^2.0.19",
 							peer: "^2.0.0",
 							strategy: "lock-minor",
 						},
@@ -229,17 +406,17 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.1.1",
+							range: "^26.1.2",
 							peer: "^26.1.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
-							range: "^19.2.17",
+							range: "^19.2.18",
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
 						"@types/react-dom": {
-							range: "^19.2.3",
+							range: "^19.2.4",
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
@@ -268,13 +445,13 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.2.0",
-							peer: "^17.2.0",
+							range: "^17.3.0",
+							peer: "^17.3.0",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
-							range: "^0.23.1",
-							peer: "^0.23.1",
+							range: "^0.23.2",
+							peer: "^0.23.2",
 							strategy: "lock",
 						},
 						"markdownlint-cli2-formatter-codequality": {
@@ -293,7 +470,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.0",
+							range: "^1.2.1",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -303,8 +480,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsx: {
-							range: "^4.23.1",
-							peer: "^4.23.1",
+							range: "^4.23.4",
+							peer: "^4.23.4",
 							strategy: "lock",
 						},
 						typescript: {
@@ -313,9 +490,28 @@ await build({
 							strategy: "lock-minor",
 						},
 						turbo: {
-							range: "^2.10.7",
-							peer: "^2.10.7",
+							range: "^2.10.8",
+							peer: "^2.10.8",
 							strategy: "lock",
+						},
+						vitest: {
+							range: "^4.1.10",
+							peer: "^4.1.0",
+							strategy: "lock-minor",
+						},
+					},
+				},
+				test: {
+					packages: {
+						"@vitest/coverage-istanbul": {
+							range: "^4.1.10",
+							peer: "^4.1.0",
+							strategy: "lock-minor",
+						},
+						"@vitest/coverage-v8": {
+							range: "^4.1.10",
+							peer: "^4.1.0",
+							strategy: "lock-minor",
 						},
 						vitest: {
 							range: "^4.1.10",

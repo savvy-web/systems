@@ -37,12 +37,12 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:silk",
 		"effect": "catalog:effect",
-		"tsx": "catalog:silk",
-		"typescript": "catalog:silk",
-		"vitest": "catalog:silk"
+		"tsx": "catalog:build",
+		"typescript": "catalog:build",
+		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"effect": "catalog:effectPeers"
+		"effect": "catalog:effect:peers"
 	},
 	"publishConfig": {
 		"access": "public",

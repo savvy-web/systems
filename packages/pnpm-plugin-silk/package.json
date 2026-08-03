@@ -35,9 +35,9 @@
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
-		"@types/node": "catalog:silk",
-		"rolldown-pnpm-config": "^0.5.2",
-		"typescript": "catalog:silk"
+		"@types/node": "catalog:build",
+		"rolldown-pnpm-config": "^0.5.6",
+		"typescript": "catalog:build"
 	},
 	"engines": {
 		"node": ">=24.11.0"

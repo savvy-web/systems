@@ -30,7 +30,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@changesets/get-release-plan": "^5.0.0-next.7",
+		"@changesets/get-release-plan": "^5.0.0-next.9",
 		"@effect/platform-node": "catalog:effect",
 		"@effected/npm": "^0.8.0",
 		"@effected/package-json": "^0.7.1",
@@ -42,15 +42,15 @@
 		"effect": "catalog:effect",
 		"picocolors": "^1.1.1",
 		"std-env": "^4.2.0",
-		"tsdown": "catalog:silk",
+		"tsdown": "catalog:build",
 		"typescript": "^6.0.3"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
-		"@types/node": "catalog:silk",
-		"rolldown": "catalog:silk",
-		"tsx": "catalog:silk",
-		"vitest": "catalog:silk"
+		"@types/node": "catalog:build",
+		"rolldown": "catalog:build",
+		"tsx": "catalog:build",
+		"vitest": "catalog:test"
 	},
 	"publishConfig": {
 		"access": "public",

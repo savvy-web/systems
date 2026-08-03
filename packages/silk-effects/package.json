@@ -63,17 +63,17 @@
 		"@effect/vitest": "catalog:effect",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/mdast": "^4.0.4",
-		"@types/node": "catalog:silk",
+		"@types/node": "catalog:build",
 		"@types/shell-quote": "^1.7.5",
 		"effect": "catalog:effect",
 		"fast-check": "^4.9.0",
 		"markdownlint": "^0.41.1",
-		"tsx": "catalog:silk",
-		"typescript": "catalog:silk",
-		"vitest": "catalog:silk"
+		"tsx": "catalog:build",
+		"typescript": "catalog:build",
+		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"effect": "catalog:effectPeers"
+		"effect": "catalog:effect:peers"
 	},
 	"publishConfig": {
 		"access": "public",
