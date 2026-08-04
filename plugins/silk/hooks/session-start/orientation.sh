@@ -144,7 +144,9 @@ for anything no tool surfaces.
 <skills>
   /silk:changeset (--create|--squash|--list|--preview|--check),
   /silk:changeset-style, /silk:changeset-config, /silk:commit-create (load
-  BEFORE composing any commit message or PR body), /silk:build, /silk:tsdoc,
+  BEFORE composing any commit message), /silk:pr-body (load BEFORE writing or
+  editing any PR description — the marker contract that decides which regions
+  survive), /silk:build, /silk:tsdoc,
   /silk:turbo, /silk:repos, /silk:dogfood, /silk:it2 (only useful when the
   <terminal> block below appears). Descriptions and auto-load triggers live in
   the skills listing.
@@ -160,8 +162,10 @@ submodules.
 </biome>
 ${TERMINAL_BLOCK}
 <active_hooks>
-Guards cover commit/PR messages (the commitlint contract — load
-/silk:commit-create before composing, not after a rejection), writes under
+Guards cover commit messages (the commitlint contract — load
+/silk:commit-create before composing, not after a rejection) and, more
+loosely, PR bodies (markdown, headers and fences are fine there; load
+/silk:pr-body), writes under
 .repos/** (use repos_manage or savvy repos instead), pushes while dogfood
 file: overrides are linked, and validation of any .changeset/*.md you write.
 A deny explains itself. The Stop-time missing-changeset note is addressed to

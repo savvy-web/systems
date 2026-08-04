@@ -25,6 +25,47 @@ describe("hasClosingTrailer", () => {
 	it("does not match the verb 'close' (only closes/fixes/resolves)", () => {
 		expect(hasClosingTrailer("close #123", 123)).toBe(false);
 	});
+
+	// The house format puts every issue on one comma-separated trailer, so
+	// every id in the list has to count — not just the first.
+	it("matches any id in a comma-separated list, not only the first", () => {
+		const trailer = "Closes #247, #248, #251, #252";
+		expect(hasClosingTrailer(trailer, 247)).toBe(true);
+		expect(hasClosingTrailer(trailer, 248)).toBe(true);
+		expect(hasClosingTrailer(trailer, 252)).toBe(true);
+		expect(hasClosingTrailer(trailer, 999)).toBe(false);
+	});
+
+	it("matches across a full message with a spaced trailer block", () => {
+		const message = [
+			"feat(actions): canonicalize skills",
+			"",
+			"- Consolidate Actions skills into indexed guidance",
+			"",
+			"Closes #16, #17, #18",
+			"",
+			"Signed-off-by: C. Spencer Beggs <spencer@savvyweb.systems>",
+		].join("\n");
+		expect(hasClosingTrailer(message, 17)).toBe(true);
+		expect(hasClosingTrailer(message, 18)).toBe(true);
+		expect(hasClosingTrailer(message, 19)).toBe(false);
+	});
+
+	it("accepts the 'and' and colon spellings", () => {
+		expect(hasClosingTrailer("Closes #1 and #2", 2)).toBe(true);
+		expect(hasClosingTrailer("Closes: #1, #2", 2)).toBe(true);
+	});
+
+	it("does not treat a bare reference as closing an issue", () => {
+		// #99 appears, but no closing keyword governs it.
+		expect(hasClosingTrailer("Follows #99", 99)).toBe(false);
+		expect(hasClosingTrailer("Closes #1\n\nSee also #99", 99)).toBe(false);
+	});
+
+	it("does not match a longer id that merely contains the ticket", () => {
+		expect(hasClosingTrailer("Closes #1234", 123)).toBe(false);
+		expect(hasClosingTrailer("Closes #12, #1234", 123)).toBe(false);
+	});
 });
 
 describe("closesTrailerRule", () => {

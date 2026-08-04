@@ -123,6 +123,42 @@ _write_msg() {
 	[[ "$output" != *"MEASURED VIOLATION"* ]]
 }
 
+# The house format separates the Closes line from the signoff with a blank
+# line. If the backward footer scan stopped at that blank, only the signoff
+# would count as footer and an over-long Closes line would be measured against
+# the body's 300 cap — silent here, then rejected by the commit-msg hook. That
+# is the exact failure this script exists to prevent, so it gets its own case.
+#
+# The adjacent-lines test above passes either way; only the blank line
+# discriminates.
+@test "over-long Closes line separated from signoff by a blank line: measured as footer, not body" {
+	_stub_commitlint 1
+	local long_closes
+	# Must exceed FOOTER_MAX=100 to trip the violation — a shorter list is
+	# classified as footer correctly but reports nothing, proving nothing.
+	long_closes="Closes #101, #102, #103, #104, #105, #106, #107, #108, #109, #110, #111, #112, #113, #114, #115, #116, #117, #118"
+	local msg
+	msg=$(_write_msg $'fix(cli): resolve a crash\n\nExplains the fix in one short line.\n\n'"${long_closes}"$'\n\nSigned-off-by: Silk Test <test@example.com>\n')
+	local len=${#long_closes}
+	run bash "$SCRIPT" "$msg"
+	[[ "$output" == *"MEASURED VIOLATION: footer line 5 is ${len} chars (limit 100)"* ]]
+	[[ "$output" != *"MEASURED VIOLATION: body"* ]]
+}
+
+@test "blank line between trailers does not swallow the body into the footer" {
+	# The scan may only cross a blank that sits BETWEEN two trailers. The blank
+	# separating the body from the footer must still end it, or a long body
+	# line would be measured against the footer's 100 cap instead of 300.
+	_stub_commitlint 0
+	local long_body
+	long_body="- $(printf 'x%.0s' $(seq 1 150))"
+	local msg
+	msg=$(_write_msg $'fix(cli): resolve a crash\n\n'"${long_body}"$'\n\nCloses #42\n\nSigned-off-by: Silk Test <test@example.com>\n')
+	run bash "$SCRIPT" "$msg"
+	[[ "$output" == *"Body: longest line ${#long_body}/300"* ]]
+	[[ "$output" != *"MEASURED VIOLATION"* ]]
+}
+
 @test "single-line message (no body, no footer) does not crash the measurement pass" {
 	_stub_commitlint 1
 	local msg

@@ -26,10 +26,26 @@ export async function evaluateMessage(command: string, ctx: EvaluateCtx): Promis
 		if (h) hits.push(h);
 	};
 
-	await collect(Commitlint.forbiddenContentRule.check({ message: parsed.message }, undefined as never));
+	// A pull-request body is a markdown document, not a commit message, and the
+	// three rules below encode commit-body constraints that are simply false
+	// there. `forbidden-content` is the load-bearing one: it DENIES any line
+	// opening with `#` or a code fence, and the release PR body this ecosystem
+	// generates contains a ```proposed-squash-commit fence by design — so
+	// posting the canonical body through `gh pr create --body` was blocked
+	// outright. Verbosity and soft-wrap are advisory but wrong in the same
+	// direction: a PR summary is supposed to be long, and a soft-wrapped bullet
+	// is ordinary markdown.
+	//
+	// plan-leakage and closes-trailer are NOT gated — a PR body should no more
+	// cite `.claude/plans/` than a commit should, and both want issue links.
+	const isCommitMessage = parsed.kind === "git-commit" || parsed.kind === "git-commit-amend";
+
+	if (isCommitMessage) {
+		await collect(Commitlint.forbiddenContentRule.check({ message: parsed.message }, undefined as never));
+		await collect(Commitlint.softWrapRule.check({ message: parsed.message }, undefined as never));
+		await collect(Commitlint.verbosityRule.check({ message: parsed.message }, undefined as never));
+	}
 	await collect(Commitlint.planLeakageRule.check({ message: parsed.message }, undefined as never));
-	await collect(Commitlint.softWrapRule.check({ message: parsed.message }, undefined as never));
-	await collect(Commitlint.verbosityRule.check({ message: parsed.message }, undefined as never));
 	await collect(
 		Commitlint.closesTrailerRule.check(
 			{ message: parsed.message },

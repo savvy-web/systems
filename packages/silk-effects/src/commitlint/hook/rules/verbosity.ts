@@ -10,8 +10,27 @@ export interface VerbosityInput {
 	message: string;
 }
 
-export const VERBOSITY_LINE_THRESHOLD = 25;
-export const VERBOSITY_WORD_THRESHOLD = 400;
+/**
+ * Body-line ceiling before the rule advises.
+ *
+ * @remarks
+ * The house format is three to five bullets (or one to two short paragraphs)
+ * plus a `Closes` line and a `Signed-off-by` line, and the counted body here
+ * includes those two trailers. That is a 7-line message at the top of the
+ * intended range, so 12 leaves headroom and fires only on a body that is
+ * clearly past the format rather than at its boundary.
+ */
+export const VERBOSITY_LINE_THRESHOLD = 12;
+
+/**
+ * Body-word ceiling before the rule advises.
+ *
+ * @remarks
+ * Five bullets at roughly 20 words each, plus trailers, lands near 110. A
+ * two-paragraph prose body lands lower. 150 is the point past which a body
+ * has stopped being a scannable index entry.
+ */
+export const VERBOSITY_WORD_THRESHOLD = 150;
 
 export const verbosityRule: Rule<VerbosityInput, never> = {
 	id: "verbosity",
@@ -29,7 +48,7 @@ export const verbosityRule: Rule<VerbosityInput, never> = {
 			return {
 				ruleId: "verbosity",
 				severity: "advise" as const,
-				message: `Body has ${reasons.join(" / ")}; the project standard keeps commit bodies under ~${VERBOSITY_LINE_THRESHOLD} lines and ~${VERBOSITY_WORD_THRESHOLD} words. Move detail to the PR description and keep the commit body to the irreducible "what + why".`,
+				message: `Body has ${reasons.join(" / ")}; the project standard is three to five bullets, or one to two short paragraphs, under ~${VERBOSITY_LINE_THRESHOLD} lines and ~${VERBOSITY_WORD_THRESHOLD} words. This repo squash-merges, so a long body is discarded at merge. Cut to the user-visible change, the behavior a consumer could trip over, and any non-obvious trap; move the reasoning and evidence to the PR description.`,
 			};
 		}),
 };

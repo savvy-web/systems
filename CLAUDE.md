@@ -30,7 +30,7 @@ Also in this repo: the `plugins/silk` Claude Code plugin (the repo's only plugin
 - **Effect:** the whole repo is on Effect v4 (`catalog:effect` / `catalog:effectPeers`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency (`effect`/`effectPeers`; the `effect3` catalogs remain for any consumer still on v3). `effect` core source is vendored at `.repos/effect` (pinned to the catalog tag) — the authority for v4 APIs. It is checked out from `Effect-TS/effect` itself, NOT the archived `effect-smol` repo: v4 development moved back to the main monorepo. `.repos/config.json` is the live record of url/ref/sparse paths. The suite consumes eleven `@effected/*` kit packages from the npm registry (re-derive the list from the manifests, never from memory)
 - **Linting:** Biome, markdownlint
 - **Testing:** Vitest via `@vitest-agent/plugin`; a test that runs an Effect takes `describe`/`it`/`expect` from `@effect/vitest` (`catalog:effect`), one with no Effect surface stays on plain `vitest`, and `vi` always comes from `"vitest"` (hoisting). Built-artifact e2e harness in `e2e/*`; the silk plugin's hook shell suite (bats + shellcheck) under `plugins/silk/tests`, run by `pnpm test:hooks`
-- **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`
+- **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`. Bodies stay short (the repo squash-merges, so a long body is discarded at merge) — use `/silk:commit-create`. A PR body is markdown, NOT held to the commit contract: only `plan-leakage`/`closes-trailer` gate it, so headers and fences are fine — use `/silk:pr-body`.
 - **Releases:** `@savvy-web/changesets`
 
 ## Key Commands

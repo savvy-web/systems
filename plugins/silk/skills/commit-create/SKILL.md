@@ -2,20 +2,25 @@
 name: commit-create
 description: >
   Use when you are about to create a git commit, amend a commit, squash commits
-  before merge, finalize a branch, open or edit a pull request, or compose a
-  conventional commit message in any form. Defines the full commit-message
-  contract enforced by @savvy-web/commitlint: type enum, tdd scope grammar,
-  subject rules, body rules, DCO signoff, Closes trailers, signing posture, and
-  a pre-commit checklist.
+  before merge, finalize a branch, write a pull-request TITLE, or compose a
+  conventional commit message in any form — including the contents of a
+  proposed-squash-commit block. Defines the full commit-message contract
+  enforced by @savvy-web/commitlint: type enum, tdd scope grammar, subject
+  rules, the brevity doctrine for bodies (a few bullets or one to two short
+  paragraphs — never a design document), DCO signoff, comma-separated Closes
+  trailers, signing posture, and a pre-commit checklist. For a pull-request
+  DESCRIPTION, use the pr-body skill instead — that document is markdown and
+  is not held to this contract.
 when_to_use: >
   Triggered by: "create a commit", "git commit", "commit this", "commit my
   changes", "write a commit message", "amend", "amend the last commit",
   "squash", "squash before merge", "finalize", "wrap up", "wrap up this
-  branch", "ship", "ship this", "ship it", "open a PR", "open a pull request",
-  "create a PR", "draft a PR title", "gh pr create", "gh pr edit", "merge
-  this", "land this". Also applies whenever you are composing the subject or
-  body of a conventional commit message, even if the user has not explicitly
-  said the word "commit".
+  branch", "ship", "ship this", "ship it", "merge this", "land this", "draft a
+  PR title", "write the PR title". Also applies whenever you are composing the
+  subject or body of a conventional commit message, even if the user has not
+  explicitly said the word "commit" — including the contents of a
+  proposed-squash-commit fence inside a PR description. Does NOT apply to the
+  prose of a PR description; that is the pr-body skill.
 user-invocable: false
 allowed-tools: Bash(git log *), Bash(git status *), Bash(git diff *), Bash(git show *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/validate-message.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh *)
 ---
@@ -26,6 +31,22 @@ This skill defines the complete commit-message contract for this repository.
 Read it fully before you compose a subject line, body, or trailer. The rules
 below are enforced by the `@savvy-web/commitlint` Silk preset — violations
 cause the `commit-msg` husky hook to reject the commit.
+
+## Scope: this skill or `pr-body`?
+
+The two skills split on document, not on command. Both can apply to one PR.
+
+| You are writing | Skill | Held to the rules below? |
+| --- | --- | --- |
+| A commit message | `commit-create` | Yes |
+| A pull-request **title** | `commit-create` | Yes — a PR title is a conventional-commit subject |
+| The contents of a `proposed-squash-commit` fence | `commit-create` | Yes — it becomes a commit message |
+| A pull-request **description** | `pr-body` | **No** — markdown, only `plan-leakage`/`closes-trailer` apply |
+
+So `gh pr create --title` is this skill's business and `--body` is not, and a
+single `gh pr create` call routinely needs both. When you are writing a PR
+description that contains a squash-commit fence, follow `pr-body` for the
+document and this skill for what goes inside the fence.
 
 <EXTREMELY_IMPORTANT>
 You CANNOT eyeball a 300-character body line, a 100-character header, or a
@@ -90,13 +111,30 @@ the message and re-validate first.
 ```text
 type(scope): subject
 
-body (optional)
+body (optional — a few bullets, or one to two short paragraphs)
 
-Closes #N (optional, one per line)
+Closes #N, #N, #N (optional, all issues on ONE comma-separated line)
+
 Signed-off-by: Full Name <email@example.com>
 ```
 
 Every part has constraints. Read each section.
+
+Blank lines separate the subject, the body, the closing trailer, and the
+signoff. Squashing them together is not an error — commitlint accepts it —
+but the spaced form is the house style. Write it that way.
+
+<IMPORTANT_BREVITY>
+A commit message is a scannable index entry, not a design document. This repo
+squash-merges, and commits are sometimes rebased — a long body is discarded at
+merge or stranded on a commit nobody reads, after costing real time and tokens
+to write. Explanation that deserves to survive belongs in the PR description,
+the changeset, or a design doc, all of which outlive the commit.
+
+Agents here produce large commits, and that is fine. A large commit does NOT
+earn a large message. Report the few changes that matter and drop the rest.
+See "Body rules" for the length target and what qualifies as "matters".
+</IMPORTANT_BREVITY>
 
 ---
 
@@ -166,40 +204,80 @@ Good: `fix(cli): handle missing config file with a clear error message`
 
 ## Body rules
 
-The body is optional. Include it when the subject alone does not orient a
-reader to the change. Omit it for trivial commits (`chore: bump lockfile`,
-`style: apply biome formatting`).
+The body is optional. Omit it entirely when the subject already says the whole
+thing (`chore: bump lockfile`, `style: apply biome formatting`, most `tdd`
+cycle commits). An absent body is a correct body — do not manufacture one.
 
-When you write a body:
+### Length
 
-- Explain **what changed conceptually and why** — one level above the diff
-- Target 2–5 lines maximum; trim aggressively
-- Each bullet or paragraph is **one continuous line** — do not soft-wrap at 72 or any other column, that produces a stray indented continuation line that fails a different check (the `silk/body-prose-only`-adjacent soft-wrap heuristic)
-- **Keep each line comfortably under 300 characters — target roughly 200 as a safe working limit, not the ceiling itself.** The hard limit is 300; writing up to the edge of it leaves no headroom for a miscount. If a single bullet or sentence is approaching 200 characters, that is a signal to split it into two bullets, not a reason to compress punctuation to squeeze under 300
-- Name the concept or component that changed, not every file touched
-- Avoid vague qualifiers: "for clarity", "to improve readability", "as a cleanup" — unless the diff is purely formatting
-- Dependency updates: list only direct deps changed in the manifest; never enumerate transitive lockfile entries
+**Three to five bullets, or one to two short paragraphs. Not both, and never
+more than about eight body lines total.** Pick the shape that fits:
+
+- **Bullets** for a commit that did several separable things. One line each,
+  imperative, roughly 10–20 words. This is the default shape.
+- **Prose** for a commit whose point is a single idea that needs a sentence or
+  two of "why" — a subtle trap, a non-obvious constraint, a behavior change a
+  reader would otherwise misread.
+
+Each bullet or paragraph is **one continuous line** — do not soft-wrap at 72
+or any other column. A wrapped continuation line reads as a stray indented
+line and trips the soft-wrap heuristic. The hard cap is 300 characters per
+line, but a line anywhere near that is already too long for this format:
+**if a line passes roughly 200 characters, the content is wrong, not the
+formatting.** Split it or cut it.
+
+### What earns a line
+
+Write the line only if a reader scanning `git log` next quarter needs it:
+
+- The user-visible or API-visible change
+- A behavior change a consumer could trip over
+- A non-obvious constraint or trap the diff does not reveal on its own
+
+### What does not earn a line — cut these
+
+- Restating the subject in longer words
+- Narrating the change's motivation when the subject already implies it
+- Test counts, coverage deltas, or "pinned by tests that…" — the tests are in
+  the diff
+- Reasoning, investigation notes, or the evidence behind a decision — that is
+  PR-description and design-doc material
+- File-by-file or module-by-module walkthroughs
+- Refactors, renames, and mechanical churn carried along by the real change
+- Routine updates to CLAUDE.md, `.claude/design/`, skills, or any AI context
+  file — unless that update IS the commit
+- Config tweaks (biome.jsonc, tsconfig, lint-staged) — unless the config
+  change is the substantive point
+- Vague qualifiers: "for clarity", "to improve readability", "as a cleanup"
+- Dependency updates: name only direct deps changed in the manifest; never
+  enumerate transitive lockfile entries
+
+The test for any candidate line: **would you lose something if this line were
+deleted?** If not, delete it. Most first drafts lose half their lines to this
+question and improve.
 
 Do not count characters by eye and do not estimate. Write the message to a
 file and run `scripts/validate-message.sh` (or `scripts/commit.sh`, which
 calls it for you) — it prints the exact length and line number of every
 violation. See "Validate before you commit" above.
 
-**Never include in the body:**
+### Formatting the preset rejects
 
-- Markdown headers (`##`), numbered lists (`1.`), code fences (` ``` `), links (`[text](url)`), bold (`**`), or italic (`_`)
-- File-by-file implementation walkthroughs — name the concept, not every file modified
+- Markdown headers (`##`), numbered lists (`1.`), code fences (` ``` `), links (`[text](url)`), bold (`**text**`), horizontal rules (`---`), or more than two inline-code spans
 - References to plan files, design docs, or task IDs ("as decided in the plan", "see .claude/plans/...", "previously documented in")
-- Routine updates to CLAUDE.md, `.claude/design/`, `.claude/skills/`, or any AI context file — skip unless the change is architecturally significant
-- Config file tweaks (biome.jsonc, tsconfig, lint-staged) — skip unless the config change is the substantive point of the commit
+
+**Dash bullets (`- item`) are allowed and are the preferred body shape.** The
+`silk/body-no-markdown` rule does not flag them, and the stricter
+`silk/body-prose-only` rule is not enabled in this repo's config. Numbered
+lists (`1.`) are still rejected — use dashes.
 
 ---
 
 ## DCO signoff
 
 This repository requires a Developer Certificate of Origin (DCO) signoff on
-every commit. The trailer must appear as the **last line** of the commit
-message (or immediately after any `Closes` trailers):
+every commit. The trailer must be the **last line** of the commit message,
+separated from any `Closes` trailer above it by a blank line:
 
 ```text
 Signed-off-by: Full Name <email@example.com>
@@ -227,13 +305,33 @@ the `Signed-off-by` line:
 
 ```text
 Closes #42
+
 Signed-off-by: Spencer Beggs <spencer@example.com>
 ```
 
-Any of `Closes`, `Fixes`, or `Resolves` followed by `#N` are accepted. Use
-one trailer per issue. If the branch name contains a ticket number and the
-work closes that issue, always include the trailer. Each trailer line is
-subject to the same 100-character `footer-max-line-length` cap noted above.
+Any of `Closes`, `Fixes`, or `Resolves` followed by `#N` are accepted.
+
+**Multiple issues go on ONE line, comma-separated — never one trailer per
+line.** A stacked column of `Closes` lines is noise in `git log` and eats the
+footer's 100-character budget for nothing.
+
+```text
+Closes #247, #248, #251, #252, #253, #254
+
+Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
+```
+
+Not:
+
+```text
+Closes #247
+Closes #248
+Closes #251
+```
+
+If the list would exceed 100 characters (roughly a dozen issues), start a
+second `Closes` line rather than wrapping the first. If the branch name
+contains a ticket number and the work closes that issue, always include it.
 
 ---
 
@@ -253,36 +351,57 @@ configuration.
 
 ## Good examples
 
-### Feature commit with DCO
+These are the target. Note how much they leave out.
+
+### Bullets — a commit that did several separable things
 
 ```text
-feat(auth): add JWT refresh token rotation
+feat(actions): canonicalize GitHub Actions skills
 
-Expiry is now tracked per-device rather than per-session. Clients that
-present an expired access token receive a new pair if the refresh token
-is still valid and the device is registered.
+- Consolidate Actions skills into indexed guidance with focused references
+- Add action design and repository structure skills
+- Preload the complete Actions skill suite in action-engineer
+- Validate construct coverage across exported package APIs
 
 Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
 ```
 
-### TDD cycle commit
+### Bullets with a Closes trailer
+
+```text
+feat: add deferred runtime action capabilities
+
+- Add branch, cache digest, child environment, lockfile, and npm cache APIs
+- Document schemastore usage and correct its example
+- Publish changesets for package and dependency updates
+
+Closes #218
+
+Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
+```
+
+### Prose — one idea worth two sentences
+
+Reach for this shape only when the point is a trap or constraint the diff
+does not reveal on its own.
+
+```text
+ai(design): record the duplicate-service-identity trap
+
+Two resolved copies of one @effected package are two distinct Context.Service tags, so a layer built from one does not satisfy a requirement expressed by the other.
+
+It surfaces as a service reading unprovided in a graph that visibly provides it, not as a version error, which sends a reader looking for a signature change that never happened.
+
+Closes #16, #17, #18
+
+Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
+```
+
+### No body at all
 
 ```text
 tdd(14:green): implement scope validator for tdd commits
 
-Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
-```
-
-### Fix with Closes trailer
-
-```text
-fix(cli): resolve crash when config file is missing
-
-The CLI threw an unhandled ENOENT when no commitlint config was found
-in the project. It now falls back to the bundled Silk preset and emits
-a warning instead of crashing.
-
-Closes #87
 Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
 ```
 
@@ -313,6 +432,53 @@ chore: dependency updates
 
 Problems: markdown header in body, enumerating transitive lockfile entries.
 
+### The failure mode this skill exists to prevent
+
+```text
+feat(github-actions): serve a test payload and emit per-step summaries
+
+ActionEnvironment.makeTest and layerTest take the webhook payload as a second argument, serving it directly rather than through a GITHUB_EVENT_PATH read.
+
+The layer hard-provides a noop filesystem and captures it at construction, so seeding the path had no route to a payload, and every event-driven suite rebuilt the double by hand.
+
+ActionLogger.withStep adds the summary line withBuffer alone cannot reach: discard on success plus one info line, and a failure header emitted ahead of the transcript it announces.
+
+Docstrings now cover two failure modes that ship green. An explicitly empty input cannot be read through Config.withDefault, confirmed against runner source and a live probe.
+
+A bare ConfigProvider.fromEnv composed beneath the input provider uppercases the path, so an input-name key never matches and the read silently takes its default.
+
+Also lifts the GitHubMarkdown rename out of the does-not-ship list it was filed under, and adds a legacy-to-kit symbol map for ports that change every import and no pipeline step.
+
+Closes #247
+Closes #248
+Closes #251
+Closes #252
+
+Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
+```
+
+Every sentence here is accurate and well written, and the message is still
+wrong. It passes commitlint, so nothing will stop you. Problems: six
+paragraphs where three bullets would do; the investigation evidence
+("confirmed against runner source and a live probe") belongs in the PR;
+mechanical carry-along changes ("also lifts the rename…") promoted to a
+paragraph; stacked `Closes` lines instead of one comma-separated line. On a
+squash merge, all of it is discarded.
+
+The same commit, correctly:
+
+```text
+feat(github-actions): serve a test payload and emit per-step summaries
+
+- Take the webhook payload as an argument to ActionEnvironment.makeTest and layerTest, replacing the GITHUB_EVENT_PATH read that the hard-provided noop filesystem made unreachable
+- Add ActionLogger.withStep for per-step summaries: discard on success, failure header ahead of the transcript
+- Document two silent-default traps: an empty input is unreadable through Config.withDefault, and a bare ConfigProvider.fromEnv beneath the input provider uppercases the key so it never matches
+
+Closes #247, #248, #251, #252
+
+Signed-off-by: Spencer Beggs <spencer@savvyweb.systems>
+```
+
 ---
 
 ## Composing the message: what to get right before you validate
@@ -324,10 +490,11 @@ starts with getting these right:
 1. Confirm the type is in the allowed list above.
 2. For `tdd` commits, confirm the scope matches `^\d+:(spike|red|green|refactor)$`.
 3. Check the subject: imperative mood, no period, under 100 characters total.
-4. If you wrote a body, verify no markdown formatting, no plan-file references, and every line comfortably under 300 characters (target ~200 — see "Body rules").
-5. Confirm `Signed-off-by: Full Name <email>` is present, each trailer line under 100 characters.
-6. If the branch implies a ticket and the work closes it, add `Closes #N` above the signoff.
-7. If `commit.gpgsign=true`, confirm the signing agent is responsive before committing.
+4. **Count your body lines. More than about eight, or any line past ~200 characters, means cut — not reformat.** Re-read "What does not earn a line" and delete every line that survives the "would you lose something?" test only because you wrote it.
+5. If you wrote a body, verify no markdown headers, numbered lists, code fences, or plan-file references, and every line under 300 characters.
+6. Confirm `Signed-off-by: Full Name <email>` is present, each trailer line under 100 characters.
+7. If the branch implies a ticket and the work closes it, add `Closes #N` above the signoff — all issues on one comma-separated line.
+8. If `commit.gpgsign=true`, confirm the signing agent is responsive before committing.
 
 ## The one command that actually commits
 

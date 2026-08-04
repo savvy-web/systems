@@ -39,4 +39,50 @@ describe("evaluateMessage", () => {
 	it("returns null for non-commit commands", async () => {
 		expect(await evaluateMessage("ls -la", ctx)).toBeNull();
 	});
+
+	// A PR body is a markdown document. The commit-body rules that forbid
+	// headers and fences, cap length, and flag soft-wrapped bullets do not
+	// describe it, and applying them blocked the canonical release PR body —
+	// which carries a ```proposed-squash-commit fence by design.
+	describe("pull-request bodies", () => {
+		const prBody = [
+			"## Summary",
+			"",
+			"This changes the widget so that it no longer drops the error.",
+			"",
+			"```proposed-squash-commit",
+			"fix: stop dropping the widget error",
+			"```",
+		].join("\n");
+
+		it("does not deny a fenced code block in a PR body", async () => {
+			expect(await evaluateMessage(`gh pr create --title "t" --body "${prBody}"`, ctx)).toBeNull();
+		});
+
+		it("does not deny a markdown header in a PR body", async () => {
+			expect(await evaluateMessage(`gh pr edit 42 --body "## Summary"`, ctx)).toBeNull();
+		});
+
+		it("still denies a fenced code block in a commit message", async () => {
+			const out = await evaluateMessage(`git commit -m "subject" -m '\`\`\`ts'`, ctx);
+			const hookOutput = out as { hookSpecificOutput: { permissionDecision: string } };
+			expect(hookOutput.hookSpecificOutput.permissionDecision).toBe("deny");
+		});
+
+		it("does not advise on a long PR body", async () => {
+			// The verbosity rule caps a commit body near 12 lines; a PR summary
+			// that thorough is the goal, not a problem.
+			const long = Array(40).fill("A sentence about the change.").join("\n");
+			expect(await evaluateMessage(`gh pr create --title "t" --body "${long}"`, ctx)).toBeNull();
+		});
+
+		it("still advises on plan-file references in a PR body", async () => {
+			// Not gated: a public PR body should no more cite an internal design
+			// doc than a commit should.
+			const out = await evaluateMessage(`gh pr create --title "t" --body "see .claude/plans/foo.md"`, ctx);
+			expect(out).not.toBeNull();
+			const hookOutput = out as { hookSpecificOutput: Record<string, unknown> };
+			expect(hookOutput.hookSpecificOutput).toMatchObject({ additionalContext: expect.any(String) });
+		});
+	});
 });
