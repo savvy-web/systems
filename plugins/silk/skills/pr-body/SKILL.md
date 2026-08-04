@@ -13,7 +13,10 @@ when_to_use: >
   "update the PR body", "summarize this PR", "fix the proposed commit
   message", "link the issues on this PR". Also applies whenever you are about
   to write into a release PR's description, even if the user has not said the
-  word "pull request".
+  word "pull request". Covers the DESCRIPTION only — the PR title and the
+  contents of a proposed-squash-commit fence are conventional-commit subjects
+  and belong to the commit-create skill. One gh pr create call routinely needs
+  both skills.
 user-invocable: false
 allowed-tools: Bash(gh pr view *), Bash(gh pr list *), Bash(gh pr diff *), Bash(git log *), Bash(git diff *), Bash(git status *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/validate-message.sh *)
 ---

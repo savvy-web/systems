@@ -2,21 +2,25 @@
 name: commit-create
 description: >
   Use when you are about to create a git commit, amend a commit, squash commits
-  before merge, finalize a branch, open or edit a pull request, or compose a
-  conventional commit message in any form. Defines the full commit-message
-  contract enforced by @savvy-web/commitlint: type enum, tdd scope grammar,
-  subject rules, the brevity doctrine for bodies (a few bullets or one to two
-  short paragraphs — never a design document), DCO signoff, comma-separated
-  Closes trailers, signing posture, and a pre-commit checklist.
+  before merge, finalize a branch, write a pull-request TITLE, or compose a
+  conventional commit message in any form — including the contents of a
+  proposed-squash-commit block. Defines the full commit-message contract
+  enforced by @savvy-web/commitlint: type enum, tdd scope grammar, subject
+  rules, the brevity doctrine for bodies (a few bullets or one to two short
+  paragraphs — never a design document), DCO signoff, comma-separated Closes
+  trailers, signing posture, and a pre-commit checklist. For a pull-request
+  DESCRIPTION, use the pr-body skill instead — that document is markdown and
+  is not held to this contract.
 when_to_use: >
   Triggered by: "create a commit", "git commit", "commit this", "commit my
   changes", "write a commit message", "amend", "amend the last commit",
   "squash", "squash before merge", "finalize", "wrap up", "wrap up this
-  branch", "ship", "ship this", "ship it", "open a PR", "open a pull request",
-  "create a PR", "draft a PR title", "gh pr create", "gh pr edit", "merge
-  this", "land this". Also applies whenever you are composing the subject or
-  body of a conventional commit message, even if the user has not explicitly
-  said the word "commit".
+  branch", "ship", "ship this", "ship it", "merge this", "land this", "draft a
+  PR title", "write the PR title". Also applies whenever you are composing the
+  subject or body of a conventional commit message, even if the user has not
+  explicitly said the word "commit" — including the contents of a
+  proposed-squash-commit fence inside a PR description. Does NOT apply to the
+  prose of a PR description; that is the pr-body skill.
 user-invocable: false
 allowed-tools: Bash(git log *), Bash(git status *), Bash(git diff *), Bash(git show *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/validate-message.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh *)
 ---
@@ -27,6 +31,22 @@ This skill defines the complete commit-message contract for this repository.
 Read it fully before you compose a subject line, body, or trailer. The rules
 below are enforced by the `@savvy-web/commitlint` Silk preset — violations
 cause the `commit-msg` husky hook to reject the commit.
+
+## Scope: this skill or `pr-body`?
+
+The two skills split on document, not on command. Both can apply to one PR.
+
+| You are writing | Skill | Held to the rules below? |
+| --- | --- | --- |
+| A commit message | `commit-create` | Yes |
+| A pull-request **title** | `commit-create` | Yes — a PR title is a conventional-commit subject |
+| The contents of a `proposed-squash-commit` fence | `commit-create` | Yes — it becomes a commit message |
+| A pull-request **description** | `pr-body` | **No** — markdown, only `plan-leakage`/`closes-trailer` apply |
+
+So `gh pr create --title` is this skill's business and `--body` is not, and a
+single `gh pr create` call routinely needs both. When you are writing a PR
+description that contains a squash-commit fence, follow `pr-body` for the
+document and this skill for what goes inside the fence.
 
 <EXTREMELY_IMPORTANT>
 You CANNOT eyeball a 300-character body line, a 100-character header, or a
