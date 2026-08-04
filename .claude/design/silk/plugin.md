@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-08-03
-last-synced: 2026-08-03
+updated: 2026-08-04
+last-synced: 2026-08-04
 completeness: 90
 related:
   - ./architecture.md
@@ -30,6 +30,7 @@ The `silk@savvy-web-systems` Claude Code plugin. Merges the skills, agents and h
 - [Vendored-repos capability](#vendored-repos-capability)
 - [Dogfood-mailbox capability](#dogfood-mailbox-capability)
 - [it2 pane-orchestration capability](#it2-pane-orchestration-capability)
+- [Commit and PR message capability](#commit-and-pr-message-capability)
 - [The config skill drives changeset_inspect](#the-config-skill-drives-changeset_inspect)
 - [Hook merge](#hook-merge)
 - [Rationale](#rationale)
@@ -61,7 +62,7 @@ Implemented. Contents:
 
 The naming scheme is the load-bearing convention; the exact skill list is discoverable in the `skills/` directory.
 
-- **User-facing skills are tool-prefixed** (the `changeset` router plus its `changeset-style`/`changeset-config` siblings, and `commit-create`). Prefixing disambiguates now that three tools share one plugin. Capability skills are named for their capability (`build`, `tsdoc`, `turbo`, `repos`, `dogfood`).
+- **User-facing skills are tool-prefixed** (the `changeset` router plus its `changeset-style`/`changeset-config` siblings, and `commit-create`; `pr-body` is the one message-authoring skill named for its document rather than its tool, because no tool owns a PR description). Prefixing disambiguates now that three tools share one plugin. Capability skills are named for their capability (`build`, `tsdoc`, `turbo`, `repos`, `dogfood`).
 - **Internal mechanics stay unprefixed** (`config`, `dependencies`, `update`, `merge`, `delete`, `status`). They are not user-invoked — only the `changeset-manager` agent calls them by name, so they keep their short names.
 
 ## Changeset command surface
@@ -165,6 +166,17 @@ The plugin's lightest capability teaches the agent to orchestrate iTerm2 panes a
 - **The `it2` skill** (`skills/it2/SKILL.md`, `/silk:it2`, model- and user-invocable, description-triggered, **no** `paths` trigger since it has no backing file) is the self-contained playbook — it drives the raw `it2` CLI and does **not** depend on the external `it2-skills` marketplace plugin. It carries the pinned split-direction semantics (`--vertical` = new pane right, `--horizontal` = new pane below, no-flag = auto) with the inversion warning, the geometry-driven layout heuristic table (portrait → stack, landscape → side-by-side, many → grid, multi-window/monitor → spread), point-of-use geometry queries (`it2 window list --format json`, `it2 session get-info <sid> --format json --extract grid_size`), grid recipes (the "new pane is adjacent to the session being split" caveat, `--before`, `session move`), the session-id-prefix badging convention, the dismiss-and-close discipline, and a "when NOT to orchestrate" guardrail (single trivial dispatch, no parallelism asked for, headless) so proactive never becomes intrusive. All geometry queries and every it2 call happen at point-of-use, never in a hook.
 
 Its relationship to the `dogfood` capability's optional it2 transport layer (see [Dogfood-mailbox capability](#dogfood-mailbox-capability)) is a clean division: `dogfood` uses it2 as a cross-session *doorbell/spawn transport*, this capability uses it2 as a *pane-layout tool for subagents* — same CLI, different job. Both deliberately decline it2's auto-approve/modal plugins: cross-session auto-approval is permission laundering, and approvals stay with the human in each session.
+
+## Commit and PR message capability
+
+Two authoring skills — `commit-create` and `pr-body` — plus the `savvy commit hook pre-commit-message` guard they share. The organizing decision is that **the commit message and the PR description are one editorial system with a division of labor**, not two independent formats.
+
+- **Depth belongs in the PR, not the commit.** This repo squash-merges, so a long commit body is discarded at merge and the PR description is what survives. `commit-create` therefore teaches a hard shape — a few bullets or one to two short paragraphs — and `pr-body`'s summary region is where reasoning, evidence and migration guidance go. The silk-effects `verbosity` rule's thresholds are sized to that shape and move with it (see `../silk-effects/architecture.md`); the skill's prose and those constants are a coupled pair.
+- **The `commit-create` format is calibrated against what the preset actually enforces, not against what it looks like it might.** Dash bullets are legal (the `silk/body-prose-only` rule is never enabled by `createConfig`, and `detectMarkdown`'s bullet pattern is defined but never tested), and multiple issues go on one comma-separated `Closes` line rather than several lines — which is why the `closes-trailer` rule has to scan the whole reference list. Verify a claim about the preset against the rule source before writing it into the skill; the skill's authority is that it matches the enforcing code.
+- **The skill's `validate-message.sh` reproduces the hook's parse, so its silence has to mean the same thing.** The blank-line-separated subject / body / `Closes` / signoff layout the skill teaches meant the script's backward footer scan stopped at the blank line and measured a long `Closes` line against the body's character cap instead of the footer's, staying silent on a message the commit-msg hook then rejected. A pre-flight validator that disagrees with the gate is worse than none, so the scan crosses a blank line when a trailer precedes it.
+- **`pr-body` documents a marker contract, not a template.** A release PR description has several writers — the release action regenerates its managed region on every push, humans type above it, agents write into it — and HTML-comment markers are the whole mechanism keeping them apart. The skill's job is to say which regions the agent owns (`silk-release:summary`, carried through), which are rebuilt wholesale, and that a `proposed-squash-commit` fence is a commit message subject to `commit-create`. The `silk-release:references` region and its `owned` attribute come from the sibling `savvy-web/silk-release-action` repo and are not yet merged there; the skill is the consumer-side half of that contract.
+- **The two `Closes` spellings are deliberate and both load-bearing.** Comma-joined on one line inside the fence, because that is a commit message and commitlint reads it; one bare `Closes #N` per line outside the fence, because GitHub's issue linker reads only that form and a reference inside a code fence is inert. Neither can be normalized to the other.
+- **The hook is registered on `gh pr create`/`pr edit` as well as `git commit`, and gates its rules on which.** The canonical release PR body opens a fenced block, which the `forbidden-content` rule denies outright, so applying commit-body rules to a PR body blocked posting the ecosystem's own generated description. The gate lives in the CLI hook handler — see `../cli/architecture.md`.
 
 ## The config skill drives changeset_inspect
 

@@ -133,10 +133,17 @@ if [ "$header_len" -gt "$HEADER_MAX" ]; then
 	report_violation "header" 1 "$header_len" "$HEADER_MAX" "$header"
 fi
 
-# Identify the trailing trailer (footer) block: contiguous trailer-shaped
-# lines at the end of the message, working backward from the last
-# non-blank line. Everything after the header that is NOT part of this
-# block is measured against the body limit instead.
+# Identify the trailing trailer (footer) block: trailer-shaped lines at the
+# end of the message, working backward from the last non-blank line.
+# Everything after the header that is NOT part of this block is measured
+# against the body limit instead.
+#
+# Blank lines INSIDE the block do not end it. The house format separates the
+# Closes line from Signed-off-by with a blank line for readability, and
+# commitlint accepts that; if a blank line ended the scan here, only the
+# signoff would be measured and an over-long `Closes #a, #b, #c…` line would
+# be checked against the body's 300 cap instead of the footer's 100 — the
+# diagnostic would stay silent and the commit-msg hook would reject it later.
 footer_start=-1
 if [ "$total" -gt 1 ]; then
 	idx=$((total - 1))
@@ -148,6 +155,14 @@ if [ "$total" -gt 1 ]; then
 		line="${LINES[$scan]}"
 		if [[ "$line" =~ $TRAILER_RE ]]; then
 			footer_start=$scan
+			scan=$((scan - 1))
+			continue
+		fi
+		# A blank line only continues the scan once the block has started, and
+		# only if a trailer precedes it — otherwise the blank line separating
+		# the body from the footer would swallow the whole body.
+		if [ -z "$line" ] && [ "$footer_start" -ge 0 ] && [ "$scan" -ge 2 ] &&
+			[[ "${LINES[$((scan - 1))]}" =~ $TRAILER_RE ]]; then
 			scan=$((scan - 1))
 			continue
 		fi

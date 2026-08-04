@@ -52,8 +52,8 @@ The repository uses Husky with lint-staged. When you commit:
 2. **Make changes** -- Follow the code quality standards above
 3. **Add a changeset** -- Run `pnpm changeset` to describe your change
 4. **Test** -- Run `pnpm test` and ensure all tests pass
-5. **Commit** -- Use [Conventional Commits](https://www.conventionalcommits.org/) format (enforced by commitlint)
-6. **Submit a PR** -- PR titles must also follow Conventional Commits format
+5. **Commit** -- Use [Conventional Commits](https://www.conventionalcommits.org/) format (enforced by commitlint). Keep the body short -- a few bullets or a short paragraph. This repository squash-merges, so a long commit body is discarded at merge; put the detail in the PR description instead, where reviewers read it and it survives
+6. **Submit a PR** -- PR titles must also follow Conventional Commits format. The description is ordinary markdown and is where the reasoning, evidence and review notes belong
 
 ## Developer Certificate of Origin (DCO)
 
