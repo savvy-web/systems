@@ -1,5 +1,29 @@
 # @savvy-web/cli
 
+## 2.2.0
+
+### Bug Fixes
+
+* ### Pull-request bodies are no longer held to the commit-message rules
+
+  `savvy commit hook pre-commit-message` applied every commit-body rule to a `gh pr create`/`gh pr edit` body. The load-bearing consequence was `forbidden-content`, which denies any line opening with a markdown header or a code fence: the release PR body this ecosystem generates carries a `proposed-squash-commit` fence by design, so posting the canonical body through `gh` was blocked outright.
+
+  `forbidden-content`, `verbosity` and `soft-wrap` now run only for `git commit` and `git commit --amend`. A PR summary is a markdown document that is supposed to be long, and a soft-wrapped bullet is ordinary markdown there.
+
+  `plan-leakage` and `closes-trailer` still run for both. A public PR body should no more cite an internal design doc than a commit should, and both documents want their issues linked. [#420][#420]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.2.1 | 5.3.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#420]: https://github.com/savvy-web/systems/pull/420
+
 ## 2.1.16
 
 ### Dependencies
