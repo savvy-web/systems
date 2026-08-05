@@ -32,10 +32,10 @@
 	"dependencies": {
 		"@changesets/get-release-plan": "^5.0.0-next.9",
 		"@effect/platform-node": "catalog:effect",
-		"@effected/npm": "^0.8.2",
+		"@effected/npm": "^0.8.3",
 		"@effected/package-json": "^0.7.3",
 		"@effected/tsconfig-json": "^0.4.1",
-		"@effected/workspaces": "^0.9.5",
+		"@effected/workspaces": "^0.10.0",
 		"@microsoft/api-extractor": "^7.58.12",
 		"@microsoft/tsdoc": "^0.16.0",
 		"@microsoft/tsdoc-config": "^0.18.1",

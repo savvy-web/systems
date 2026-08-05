@@ -154,33 +154,51 @@ _repos_exempt() {
 GIT_REPOS_RE='(^|[^[:alnum:]_])git[[:space:]][^;&|]*\.repos/'
 if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 	SUBCOMMAND=""
+	# Anchor subcommand extraction to the CLAUSE that itself matches
+	# GIT_REPOS_RE, not to whichever "git" happens to appear first in the
+	# whole command. Without this, `git status && git checkout HEAD --
+	# .repos/effect` engages this leg (the SECOND git's clause targets
+	# .repos/) but the naive whole-SCAN SUBCOMMAND_RE match below would grab
+	# the FIRST git's subcommand ("status", a read op) and wrongly allow a
+	# write. Split SCAN into ;/&/|-delimited clauses (same split shape as
+	# the cp/mv leg further down), and extract the subcommand only from the
+	# clause where GIT_REPOS_RE itself matches.
+	GIT_CLAUSE=""
+	GIT_CLAUSES="$(printf '%s' "$SCAN" | sed -E 's/(&&|\|\||[;&|])/\n/g')"
+	while IFS= read -r clause; do
+		[[ "$clause" =~ $GIT_REPOS_RE ]] || continue
+		GIT_CLAUSE="$clause"
+		break
+	done <<< "$GIT_CLAUSES"
 	SUBCOMMAND_RE='git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:space:]]+|--git-dir=[^[:space:]]+[[:space:]]+|--work-tree=[^[:space:]]+[[:space:]]+)*([a-zA-Z-]+)'
-	if [[ "$SCAN" =~ $SUBCOMMAND_RE ]]; then
+	if [ -n "$GIT_CLAUSE" ] && [[ "$GIT_CLAUSE" =~ $SUBCOMMAND_RE ]]; then
 		SUBCOMMAND="${BASH_REMATCH[2]}"
 	fi
 	if [ -z "$SUBCOMMAND" ]; then
-		# Matched "git targets .repos" but couldn't confidently extract a
-		# subcommand -- fail open rather than deny on ambiguity.
+		# Matched "git targets .repos" but couldn't confidently isolate the
+		# matching clause or extract a subcommand from it -- fail open
+		# rather than deny on ambiguity.
 		hook_error "$_HOOK" "git-targets-.repos matched but subcommand extraction failed; skipping: $COMMAND"
 		exit 0
 	fi
 	if grep -Fxq "$SUBCOMMAND" "$READ_OPS_FILE" 2>/dev/null; then
 		exit 0
 	fi
-	# Sanctioned index/rename primitives for re-pointing a vendored repo's
-	# gitlink -- neither touches vendored *content*, both are recovery
-	# steps the guard should not stand in front of:
+	# Sanctioned index primitive for re-pointing a vendored repo's gitlink --
+	# doesn't touch vendored *content*, and is a recovery step the guard
+	# should not stand in front of:
 	#   - `git rm --cached <path>`: index-only removal of the gitlink,
 	#     reads/writes nothing inside the vendored tree. Bare `git rm`
 	#     (no --cached) deletes the working-tree entry too and stays
 	#     denied below.
-	#   - `git mv`: renames the gitlink path in the index and working
-	#     tree in one atomic git-tracked step.
+	# `git mv` is NOT exempted (#377): on a submodule it leaves the repo
+	# broken (core.worktree in .git/modules/<name>/config never gets updated
+	# to the new path), and the rename lifecycle op lands with a later
+	# repos-tooling phase, not as a raw git primitive today. `git mv` now
+	# falls through to the operation-named deny below, routed to the same
+	# lifecycle message bare `git rm`/`submodule deinit` use.
 	if [ "$SUBCOMMAND" = "rm" ] \
 		&& [[ "$SCAN" =~ (^|[[:space:]])--cached([[:space:]]|$) ]]; then
-		exit 0
-	fi
-	if [ "$SUBCOMMAND" = "mv" ]; then
 		exit 0
 	fi
 	# Manifest staging allowance (#379): `git add`/`git restore` are allowed
@@ -205,13 +223,22 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 	fi
 	# Operation-named deny messages (#423-1, #423-2): name what's actually
 	# happening instead of the one-size "re-pin via repos_manage" message.
+	# LIFECYCLE_MSG covers every op that changes a vendored repo's identity
+	# (unvendor via rm/submodule deinit, or rename via mv, #377) rather than
+	# its pinned content -- none of those tools exist yet, so the answer
+	# today is the same for all three: ask, and wait for the repos upgrade
+	# to ship the sanctioned primitive.
+	LIFECYCLE_MSG="unvendoring or renaming a vendored repo is a lifecycle operation; use repos_manage / savvy repos (remove/rename land with the repos upgrade) or ask before mutating vendored state this way."
 	case "$SUBCOMMAND" in
 		rm)
-			emit_deny "unvendoring a repo is a lifecycle operation; use repos_manage / savvy repos (remove lands with the repos upgrade) or ask before deleting vendored state."
+			emit_deny "$LIFECYCLE_MSG"
+			;;
+		mv)
+			emit_deny "$LIFECYCLE_MSG"
 			;;
 		submodule)
 			if [[ "$SCAN" =~ (^|[[:space:]])deinit([[:space:]]|$) ]]; then
-				emit_deny "unvendoring a repo is a lifecycle operation; use repos_manage / savvy repos (remove lands with the repos upgrade) or ask before deleting vendored state."
+				emit_deny "$LIFECYCLE_MSG"
 			else
 				emit_deny "git writes inside .repos/** are denied; re-pin via repos_manage (action: pin), sync via savvy repos sync, or edit .repos/config.json for notes."
 			fi
@@ -237,10 +264,14 @@ fi
 #     path -- a ".repos/" mention elsewhere on the line (e.g. the source
 #     side of `cat .repos/x > out`) does not deny.
 #   - tee: deny only when an argument token AFTER "tee" is a non-exempt
-#     ".repos/" path. Tokenized off a "|"-split copy of SCAN (not the shared
-#     TOKENS), so a "tee" glued to a preceding pipe with no space
-#     (`echo x|tee .repos/f`) still yields a bare "tee" token instead of
-#     staying stuck to the previous word as one glued token (#436).
+#     ".repos/" path, scoped to tee's OWN "|"-delimited pipeline segment --
+#     SCAN is split into segments on "|" and seen_tee re-arms per segment
+#     (not the shared TOKENS), so a "tee" glued to a preceding pipe with no
+#     space (`echo x|tee .repos/f`) still yields a bare "tee" token instead
+#     of staying stuck to the previous word as one glued token (#436), and a
+#     LATER pipeline command's own .repos/ read (`tee /tmp/out | cat
+#     .repos/effect/README.md`) is never mistaken for a still-open tee
+#     operand.
 #   - sed with an -i flag, rm, patch, dd of=: these mutate their operands,
 #     so any non-exempt ".repos/" token anywhere in the command denies
 #     (unchanged strictness from the prior single-flag version). sed -i
@@ -289,22 +320,30 @@ for i in "${!TOKENS[@]}"; do
 	_repos_exempt "$target" || deny=1
 done
 
-# tee: any token after a token exactly equal to "tee". Split on "|" before
-# tokenizing (into TEE_TOKENS, not the shared TOKENS) so a "tee" glued to a
-# preceding pipe with no space ("echo x|tee .repos/f") still yields a bare
-# "tee" token -- word-splitting $SCAN alone leaves it stuck to the previous
-# word ("x|tee") and the scan below never fires (#436).
+# tee: any token after a token exactly equal to "tee", scoped to tee's OWN
+# pipeline segment. Split SCAN into "|"-delimited segments (a newline per
+# "|", so a "tee" glued to a preceding pipe with no space -- "echo x|tee
+# .repos/f" -- still lands as a bare leading "tee" token on its own segment
+# rather than staying stuck to the previous word as one glued token (#436))
+# and re-arm seen_tee per segment. Without the per-segment reset, a LATER
+# pipeline command's own .repos/ read gets misread as a still-open tee
+# operand -- `tee /tmp/out | cat .repos/effect/README.md` would wrongly
+# deny, since the flat scan never noticed the "|" boundary and kept
+# seen_tee=1 into cat's segment.
 if [[ "$SCAN" =~ (^|[^[:alnum:]_])tee([[:space:]]|$) ]]; then
-	seen_tee=0
-	TEE_SCAN="$(printf '%s' "$SCAN" | sed -E 's/\|/ /g')"
-	# shellcheck disable=SC2206 # best-effort word split is the intent
-	TEE_TOKENS=($TEE_SCAN)
-	for tok in "${TEE_TOKENS[@]}"; do
-		if [ "$seen_tee" -eq 1 ] && [[ "$tok" == *.repos/* ]]; then
-			_repos_exempt "$tok" || deny=1
-		fi
-		[ "$tok" = "tee" ] && seen_tee=1
-	done
+	TEE_SEGMENTS="$(printf '%s' "$SCAN" | sed -E 's/\|/\n/g')"
+	while IFS= read -r seg; do
+		[[ "$seg" =~ (^|[^[:alnum:]_])tee([[:space:]]|$) ]] || continue
+		seen_tee=0
+		# shellcheck disable=SC2206 # best-effort word split is the intent
+		TEE_TOKENS=($seg)
+		for tok in "${TEE_TOKENS[@]}"; do
+			if [ "$seen_tee" -eq 1 ] && [[ "$tok" == *.repos/* ]]; then
+				_repos_exempt "$tok" || deny=1
+			fi
+			[ "$tok" = "tee" ] && seen_tee=1
+		done
+	done <<< "$TEE_SEGMENTS"
 fi
 
 # sed -i / rm / patch / dd of=: any non-exempt ".repos/" token anywhere.

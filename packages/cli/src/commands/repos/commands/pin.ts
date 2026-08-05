@@ -64,6 +64,10 @@ export const runReposPin = (cwd: string, name: string, ref: string) =>
 			process.exitCode = 1;
 			return Effect.log(error.message);
 		}),
+		Effect.catchTag("ReposLockdownError", (error) => {
+			process.exitCode = 1;
+			return Effect.log(error.message);
+		}),
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposPin */

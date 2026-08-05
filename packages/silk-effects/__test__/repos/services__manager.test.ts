@@ -962,6 +962,30 @@ describe("ReposManager.add / pin — real git", () => {
 
 describe("ReposManager lockdown integration", () => {
 	let previousAllowProtocol: string | undefined;
+	// Every root `makeUpstream`/`makeHost` creates in this suite, so `afterAll`
+	// can restore write permission (lockdown may leave a tree read-only) before
+	// removing it — otherwise these tmp dirs leak on every run.
+	const createdRoots: string[] = [];
+
+	/** Recursively `chmod u+w` so a lockdown-locked tree can be removed. */
+	function makeRemovable(dir: string): void {
+		let entries: Array<{ name: string; isDirectory(): boolean }>;
+		try {
+			entries = readdirSync(dir, { withFileTypes: true });
+		} catch {
+			return;
+		}
+		for (const entry of entries) {
+			const entryPath = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				chmodSync(entryPath, statSync(entryPath).mode | 0o200);
+				makeRemovable(entryPath);
+			} else {
+				chmodSync(entryPath, statSync(entryPath).mode | 0o200);
+			}
+		}
+		chmodSync(dir, statSync(dir).mode | 0o200);
+	}
 
 	beforeAll(() => {
 		previousAllowProtocol = process.env.GIT_ALLOW_PROTOCOL;
@@ -974,11 +998,16 @@ describe("ReposManager lockdown integration", () => {
 		} else {
 			process.env.GIT_ALLOW_PROTOCOL = previousAllowProtocol;
 		}
+		for (const root of createdRoots) {
+			makeRemovable(root);
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 
 	/** Upstream fixture with two tags so `pin` has somewhere to move to. */
 	function makeUpstream(): string {
 		const up = mkdtempSync(join(tmpdir(), "repos-manager-lockdown-upstream-"));
+		createdRoots.push(up);
 		git(up, "init", "--quiet", "-b", "main");
 		git(up, "config", "commit.gpgsign", "false");
 		mkdirSync(join(up, "src"), { recursive: true });
@@ -995,6 +1024,7 @@ describe("ReposManager lockdown integration", () => {
 
 	function makeHost(): string {
 		const host = mkdtempSync(join(tmpdir(), "repos-manager-lockdown-host-"));
+		createdRoots.push(host);
 		git(host, "init", "--quiet", "-b", "main");
 		execFileSync("git", ["config", "protocol.file.allow", "always"], { cwd: host });
 		git(host, "config", "commit.gpgsign", "false");
@@ -1016,12 +1046,17 @@ describe("ReposManager lockdown integration", () => {
 		rmSync(join(host, ".repos", name), { recursive: true, force: true });
 	}
 
-	/** Walk `dir` for the first regular file found, so a mode assertion has a concrete target. */
-	function firstFileUnder(dir: string): string {
+	/**
+	 * Recursion helper for {@link firstFileUnder}: returns the first regular
+	 * file found under `dir`, or `undefined` if the subtree holds none (an
+	 * empty subdirectory is a legitimate "keep looking" outcome, not an
+	 * error — only the top-level call throws when nothing is found anywhere).
+	 */
+	function findFileUnder(dir: string): string | undefined {
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			const entryPath = join(dir, entry.name);
 			if (entry.isDirectory()) {
-				const found = firstFileUnder(entryPath);
+				const found = findFileUnder(entryPath);
 				if (found !== undefined) {
 					return found;
 				}
@@ -1029,7 +1064,16 @@ describe("ReposManager lockdown integration", () => {
 				return entryPath;
 			}
 		}
-		throw new Error(`no file found under ${dir}`);
+		return undefined;
+	}
+
+	/** Walk `dir` for the first regular file found, so a mode assertion has a concrete target. */
+	function firstFileUnder(dir: string): string {
+		const found = findFileUnder(dir);
+		if (found === undefined) {
+			throw new Error(`no file found under ${dir}`);
+		}
+		return found;
 	}
 
 	const managerLayerWithLockdown = ReposManager.layer.pipe(
@@ -1064,7 +1108,12 @@ describe("ReposManager lockdown integration", () => {
 
 			const file = firstFileUnder(join(host, ".repos", name));
 			expect(statSync(file).mode & 0o777).toBe(0o444);
-			expect(() => writeFileSync(join(host, ".repos", name, "smuggled.txt"), "x")).toThrow(/EACCES|EPERM/);
+			// Mode bits don't bind root (container CI commonly runs as root), so
+			// only assert the write actually gets rejected when we're not root.
+			// The mode assertion above stays unconditional either way.
+			if (process.getuid?.() !== 0) {
+				expect(() => writeFileSync(join(host, ".repos", name, "smuggled.txt"), "x")).toThrow(/EACCES|EPERM/);
+			}
 		}),
 	);
 

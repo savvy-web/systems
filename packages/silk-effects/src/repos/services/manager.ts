@@ -227,12 +227,6 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								}
 							}),
 						);
-
-						// Deliberate, not dead code: `withUnlocked`'s own finalizer re-locks
-						// via `Effect.ignore`, so a chmod failure there is swallowed. This
-						// explicit call is the one that surfaces a lockdown failure to the
-						// caller.
-						yield* lockdown.lock(root, name);
 					}
 
 					return { initialized, sparseApplied, upToDate, clearedLocks };
@@ -360,12 +354,6 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						.add(root, [".gitmodules", MANIFEST_PATH, repoPath])
 						.pipe(Effect.mapError(asSubmoduleError(`git add .gitmodules ${MANIFEST_PATH} ${repoPath}`, root)));
 
-					// Deliberate, not dead code: `withUnlocked`'s own finalizer re-locks
-					// via `Effect.ignore`, so a chmod failure there is swallowed. This
-					// explicit call is the one that surfaces a lockdown failure to the
-					// caller.
-					yield* lockdown.lock(root, name);
-
 					return { name, ref: options.ref, path: repoPath };
 				});
 
@@ -380,19 +368,26 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					const repoPath = `${REPOS_DIR}/${name}`;
 					const subPath = path.join(root, repoPath);
 
-					const oldCommit = yield* git.revParse(subPath, "HEAD").pipe(Effect.orElseSucceed(() => null));
-
-					const newCommit = yield* lockdown.withUnlocked(
+					const { oldCommit, newCommit } = yield* lockdown.withUnlocked(
 						root,
 						name,
 						Effect.gen(function* () {
+							// `orElseSucceed(() => null)` covers "no HEAD yet" (a fresh
+							// checkout with nothing committed) — reading this INSIDE the
+							// unlock scope means a real permission failure surfaces as
+							// `ReposLockdownError` from the unlock walk rather than being
+							// masked as a false "no HEAD" null.
+							const oldCommit = yield* git.revParse(subPath, "HEAD").pipe(Effect.orElseSucceed(() => null));
+
 							yield* fetchRef(subPath, ref);
 							yield* git
 								.checkout(subPath, "FETCH_HEAD", { detach: true })
 								.pipe(Effect.mapError(asSubmoduleError("git checkout --detach FETCH_HEAD", subPath)));
-							return yield* git
+							const newCommit = yield* git
 								.revParse(subPath, "HEAD")
 								.pipe(Effect.mapError(asSubmoduleError("git rev-parse HEAD", subPath)));
+
+							return { oldCommit, newCommit };
 						}),
 					);
 
@@ -403,12 +398,6 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					yield* git
 						.add(root, [MANIFEST_PATH, repoPath])
 						.pipe(Effect.mapError(asSubmoduleError(`git add ${MANIFEST_PATH} ${repoPath}`, root)));
-
-					// Deliberate, not dead code: `withUnlocked`'s own finalizer re-locks
-					// via `Effect.ignore`, so a chmod failure there is swallowed. This
-					// explicit call is the one that surfaces a lockdown failure to the
-					// caller.
-					yield* lockdown.lock(root, name);
 
 					const staleNoteIds = (entry.notes ?? []).filter((note) => note.ref !== ref).map((note) => note.id);
 					const commitMessage = `chore(repos): pin ${name} to ${ref}`;

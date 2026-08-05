@@ -139,10 +139,26 @@ assert_deny() {
 	[ "$(_decision "$output")" = "deny" ]
 }
 
-@test "git mv .repos/<repo> .repos/<repo> (sanctioned rename primitive): silent no-op" {
+@test "git mv .repos/<repo> .repos/<repo> (#377, rename is no longer a sanctioned primitive): deny with the lifecycle message" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-mv.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
-	[ -z "$output" ]
+	[ "$(_decision "$output")" = "deny" ]
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+}
+
+@test "git mv OUT of .repos (#377): deny with the lifecycle message" {
+	run_guard_with_command 'git mv .repos/effect /tmp/effect'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+}
+
+@test "git mv INTO .repos (#377): deny with the lifecycle message" {
+	run_guard_with_command 'git mv /tmp/x .repos/effect/x'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
 }
 
 @test "bare rm -rf .repos/<repo> (no git involved): deny" {
@@ -155,6 +171,21 @@ assert_deny() {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-then-chained-rm.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "git status && git checkout HEAD -- .repos/effect (subcommand must anchor to the .repos-targeting clause, not the first git): deny" {
+	run_guard_with_command 'git status && git checkout HEAD -- .repos/effect'
+	assert_deny
+}
+
+@test "git checkout HEAD -- .repos/effect && git status (the .repos-targeting git is first here too): deny" {
+	run_guard_with_command 'git checkout HEAD -- .repos/effect && git status'
+	assert_deny
+}
+
+@test "git status && git log .repos/effect (later clause is a read op): allowed" {
+	run_guard_with_command 'git status && git log .repos/effect'
+	assert_allow
 }
 
 @test "non-Bash tool_name: silent no-op" {
@@ -276,6 +307,21 @@ assert_deny() {
 @test "glued |tee with .repos mentioned only as a read elsewhere is allowed" {
 	run_guard_with_command 'cat .repos/effect/README.md|echo x|tee /tmp/out.txt'
 	assert_allow
+}
+
+@test "tee's own segment is a plain write, .repos read is in a LATER pipeline segment: allowed" {
+	run_guard_with_command 'tee /tmp/out | cat .repos/effect/README.md'
+	assert_allow
+}
+
+@test "echo piped into tee targeting .repos is still denied" {
+	run_guard_with_command 'echo x | tee .repos/effect/f'
+	assert_deny
+}
+
+@test "tee in a LATER pipeline segment with a .repos operand is denied" {
+	run_guard_with_command 'cat x | tee /tmp/out | tee .repos/effect/f'
+	assert_deny
 }
 
 @test "cp -t naming a .repos destination is denied" {

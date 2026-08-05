@@ -1,13 +1,14 @@
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterAll, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer, Path, PlatformError } from "effect";
 import { ReposLockdown } from "../../src/repos/services/lockdown.js";
 
 const layer = ReposLockdown.layer.pipe(Layer.provide(NodeServices.layer));
 const mode = (p: string) => statSync(p).mode & 0o777;
+const isRoot = process.getuid?.() === 0;
 
 describe("ReposLockdown", () => {
 	let root: string;
@@ -105,5 +106,214 @@ describe("ReposLockdown — divergent submodule name", () => {
 			expect(mode(join(root, ".repos/divergent/src/a.ts"))).toBe(0o644);
 			expect(mode(join(root, ".git/modules/.repos/divergent-old/config"))).toBe(0o644);
 		}).pipe(Effect.provide(layer)),
+	);
+});
+
+describe("ReposLockdown — gitdir pointer containment", () => {
+	// A hand-edited (or otherwise malicious) `gitdir:` pointer can escape the
+	// repository root entirely. `resolveModuleDir` must fall back to the
+	// name-based path rather than chmod whatever the pointer resolves to.
+	let root: string;
+	let outside: string;
+	beforeAll(() => {
+		root = mkdtempSync(join(tmpdir(), "lockdown-escape-"));
+		outside = mkdtempSync(join(tmpdir(), "lockdown-escape-outside-"));
+		mkdirSync(join(root, ".repos/escaped/src"), { recursive: true });
+		writeFileSync(join(root, ".repos/escaped/src/a.ts"), "export {}\n");
+		writeFileSync(join(outside, "sentinel.txt"), "do not touch\n");
+		// A relative pointer that walks out of `root` entirely.
+		writeFileSync(join(root, ".repos/escaped/.git"), `gitdir: ${outside}\n`);
+	});
+	afterAll(() => {
+		Effect.runSync(
+			ReposLockdown.pipe(
+				Effect.flatMap((l) => l.unlock(root, "escaped")),
+				Effect.provide(layer),
+				Effect.ignore,
+			),
+		);
+		rmSync(root, { recursive: true, force: true });
+		rmSync(outside, { recursive: true, force: true });
+	});
+
+	it.effect("lock succeeds and never chmods the target outside the repo root", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			const before = mode(outside);
+			yield* lockdown.lock(root, "escaped");
+			expect(mode(join(root, ".repos/escaped/src/a.ts"))).toBe(0o444);
+			// The outside dir (and the sentinel file it holds) must be untouched —
+			// the pointer fell back to the name-based module dir instead.
+			expect(mode(outside)).toBe(before);
+			expect(mode(join(outside, "sentinel.txt"))).toBe(0o644);
+		}).pipe(Effect.provide(layer)),
+	);
+});
+
+describe("ReposLockdown — symlink-aware walk", () => {
+	// `fs.stat` follows symlinks; a symlink inside a vendored tree must never
+	// cause the walk to chmod (or descend into) something outside the locked
+	// root, and must never be chmod'd itself (no `lchmod` on Linux).
+	let root: string;
+	let outsideFile: string;
+	beforeAll(() => {
+		root = mkdtempSync(join(tmpdir(), "lockdown-symlink-"));
+		outsideFile = join(tmpdir(), `lockdown-symlink-outside-${Date.now()}.txt`);
+		writeFileSync(outsideFile, "do not touch\n");
+		mkdirSync(join(root, ".repos/linked/src"), { recursive: true });
+		writeFileSync(join(root, ".repos/linked/src/a.ts"), "export {}\n");
+		symlinkSync(outsideFile, join(root, ".repos/linked/src/link.ts"));
+	});
+	afterAll(() => {
+		Effect.runSync(
+			ReposLockdown.pipe(
+				Effect.flatMap((l) => l.unlock(root, "linked")),
+				Effect.provide(layer),
+				Effect.ignore,
+			),
+		);
+		rmSync(root, { recursive: true, force: true });
+		rmSync(outsideFile, { force: true });
+	});
+
+	it.effect("lock skips the symlink and never touches its target", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			const before = mode(outsideFile);
+			yield* lockdown.lock(root, "linked");
+			expect(mode(join(root, ".repos/linked/src/a.ts"))).toBe(0o444);
+			expect(mode(outsideFile)).toBe(before);
+		}).pipe(Effect.provide(layer)),
+	);
+});
+
+describe("ReposLockdown — executable bit preservation", () => {
+	let root: string;
+	beforeAll(() => {
+		root = mkdtempSync(join(tmpdir(), "lockdown-exec-"));
+		mkdirSync(join(root, ".repos/exec/bin"), { recursive: true });
+		writeFileSync(join(root, ".repos/exec/bin/run.sh"), "#!/bin/sh\necho hi\n", { mode: 0o755 });
+		writeFileSync(join(root, ".repos/exec/bin/README.md"), "# readme\n", { mode: 0o644 });
+	});
+	afterAll(() => {
+		Effect.runSync(
+			ReposLockdown.pipe(
+				Effect.flatMap((l) => l.unlock(root, "exec")),
+				Effect.provide(layer),
+				Effect.ignore,
+			),
+		);
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	it.effect("lock preserves 0o111 as 555, unlock restores it as 755; non-executables stay 444/644", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			yield* lockdown.lock(root, "exec");
+			expect(mode(join(root, ".repos/exec/bin/run.sh"))).toBe(0o555);
+			expect(mode(join(root, ".repos/exec/bin/README.md"))).toBe(0o444);
+
+			yield* lockdown.unlock(root, "exec");
+			expect(mode(join(root, ".repos/exec/bin/run.sh"))).toBe(0o755);
+			expect(mode(join(root, ".repos/exec/bin/README.md"))).toBe(0o644);
+		}).pipe(Effect.provide(layer)),
+	);
+});
+
+describe.skipIf(isRoot)("ReposLockdown — withUnlocked when unlock fails part-way", () => {
+	// Blocks path resolution into the module dir's ANCESTOR (not itself part of
+	// the walked subtree, so the walk never gets a chance to reopen it) while
+	// leaving the worktree side of the walk fully accessible. This reproduces
+	// a real partial-unlock: the worktree unlocks completely before the module
+	// dir side of the same `withUnlocked` call fails.
+	let root: string;
+	let blockedAncestor: string;
+	beforeAll(() => {
+		root = mkdtempSync(join(tmpdir(), "lockdown-partial-"));
+		mkdirSync(join(root, ".repos/blocked/src"), { recursive: true });
+		writeFileSync(join(root, ".repos/blocked/src/a.ts"), "export {}\n");
+		blockedAncestor = join(root, ".git/modules/.repos");
+		mkdirSync(join(blockedAncestor, "blocked"), { recursive: true });
+		writeFileSync(join(blockedAncestor, "blocked/config"), "[core]\n");
+	});
+	afterAll(() => {
+		// Restore search permission on the blocked ancestor before any cleanup
+		// (including this suite's own runs) needs to traverse it again.
+		chmodSync(blockedAncestor, 0o755);
+		Effect.runSync(
+			ReposLockdown.pipe(
+				Effect.flatMap((l) => l.unlock(root, "blocked")),
+				Effect.provide(layer),
+				Effect.ignore,
+			),
+		);
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	it.effect("fails AND re-locks the reachable part of the tree afterward", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			yield* lockdown.lock(root, "blocked");
+			expect(mode(join(root, ".repos/blocked/src/a.ts"))).toBe(0o444);
+
+			// Block path resolution into `.git/modules/.repos/blocked` — this is
+			// the module dir's own subtree, so `withUnlocked`'s unlock walk will
+			// reach the worktree side fine and only fail resolving the module
+			// dir side.
+			chmodSync(blockedAncestor, 0o000);
+
+			const failure = yield* Effect.flip(lockdown.withUnlocked(root, "blocked", Effect.void));
+			expect(failure._tag).toBe("ReposLockdownError");
+
+			// The worktree side (fully reachable) unlocked and then got
+			// re-locked back to 444/555 by the finalizer.
+			expect(mode(join(root, ".repos/blocked/src/a.ts"))).toBe(0o444);
+			expect(mode(join(root, ".repos/blocked/src"))).toBe(0o555);
+
+			// Restore so this test's own afterAll cleanup can traverse it.
+			chmodSync(blockedAncestor, 0o755);
+		}).pipe(Effect.provide(layer)),
+	);
+});
+
+describe("ReposLockdown — withUnlocked relock-failure propagation", () => {
+	// A `FileSystem` stub whose `chmod` succeeds for the unlock pass (dir mode
+	// 0o755) but fails for the lock/relock pass (dir mode 0o555), isolating
+	// the case where the inner effect succeeds but the relock finalizer does
+	// not — the relock failure must be the one that surfaces.
+	const relockFailure = PlatformError.systemError({
+		_tag: "PermissionDenied",
+		module: "FileSystem",
+		method: "chmod",
+	});
+
+	const fsStub = FileSystem.layerNoop({
+		exists: () => Effect.succeed(true),
+		readDirectory: () => Effect.succeed([]),
+		readFileString: () => Effect.fail(relockFailure),
+		stat: () => Effect.fail(relockFailure),
+		readLink: () => Effect.fail(relockFailure),
+		chmod: (_path, targetMode) =>
+			targetMode === 0o555 || targetMode === 0o444 ? Effect.fail(relockFailure) : Effect.void,
+	});
+
+	const stubLayer = ReposLockdown.layer.pipe(Layer.provide(Layer.mergeAll(fsStub, Path.layer)));
+
+	it.effect("propagates the relock failure when the inner effect succeeds", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			const failure = yield* Effect.flip(lockdown.withUnlocked("/root", "stub-repo", Effect.void));
+			expect(failure._tag).toBe("ReposLockdownError");
+		}).pipe(Effect.provide(stubLayer)),
+	);
+
+	it.effect("prefers the inner effect's failure and swallows a relock failure", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			const failure = yield* Effect.flip(
+				lockdown.withUnlocked("/root", "stub-repo", Effect.fail("inner-boom" as const)),
+			);
+			expect(failure).toBe("inner-boom");
+		}).pipe(Effect.provide(stubLayer)),
 	);
 });

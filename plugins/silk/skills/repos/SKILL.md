@@ -207,12 +207,18 @@ read them via the tools below rather than trusting recall for field names.
   `sync` and is reported `upToDate` — though `sync`'s lockdown pass still
   chmods the tree read-only regardless, so "untouched" covers content only,
   not permissions. Dirtiness is surfaced by `repos_inspect mode:"status"`
-  (or `savvy repos status`), not fixed by it. To restore pristine content,
-  either discard the stray edits with `git` inside the submodule directory,
-  or delete the submodule's working directory and re-run `sync` to
-  re-materialize it clean. Reach for `sync` before hand-running `git
-  submodule` commands against `.repos/`, but don't expect it to clean up
-  dirt on its own.
+  (or `savvy repos status`), not fixed by it. **A dirty vendored tree stays
+  locked — don't try to clean it up yourself.** `git reset --hard`,
+  deleting-and-re-`sync`ing the working directory, or any other in-place
+  recovery write fails against the OS-level `444`/`555` permissions the same
+  way any other write into `.repos/**` does. There is no sanctioned restore
+  operation today (one lands with the repos upgrade); until then, dirtiness
+  is a **stop and ask** signal, not a "run this to fix it" one. Do **not**
+  `chmod` the tree back to writable by hand to work around this — that
+  defeats the lockdown and leaves the tree writable until the next
+  `sync`/`pin` re-locks it out from under you regardless. Reach for `sync`
+  before hand-running `git submodule` commands against `.repos/`, but don't
+  expect it to clean up dirt on its own.
 
 ## Known gaps
 
