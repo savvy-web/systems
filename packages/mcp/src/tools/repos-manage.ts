@@ -207,6 +207,7 @@ export const reposManage = (
 	| Repos.GitSubmoduleError
 	| Repos.RepoNotFoundError
 	| Repos.NoteNotFoundError
+	| Repos.ReposLockdownError
 	| SchemaError.SchemaError
 	| WorkspaceRootNotFoundError,
 	Repos.ReposManager | WorkspaceRoot

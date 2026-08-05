@@ -4,7 +4,10 @@ description: >
   Vendored reference repos under .repos/ — when to vendor an upstream source as an
   agent authority, sparse-checkout discipline, the re-pin-on-dependency-bump rule,
   the orientation/notes editorial policy, and the repos_inspect/repos_manage MCP
-  tools. User-invokable as /silk:repos.
+  tools. Also covers plain git-submodule vocabulary directed at .repos/ — "manage
+  git submodules", "add a submodule", "remove a submodule", ".gitmodules" — since
+  this skill, not raw `git submodule`, is the sanctioned path for that vocabulary
+  in this repo. User-invokable as /silk:repos.
 when_to_use: >
   "vendor a repo", "add a reference repo", ".repos directory", "re-pin the vendored
   source", "pin tracks the installed version", "leave a note for the next agent",
@@ -88,6 +91,16 @@ than the new pin is flagged in the pin result (`staleNoteIds`) and in
 version bump untouched, but treat the flag as a prompt to check, not to
 reflexively delete.
 
+**Verify a pin against the checkout, not against a tag name (#424).** Confirm
+what a repo is actually pinned to with `git rev-parse HEAD` run *inside the
+vendored checkout* and compare it to the staged gitlink, `git ls-files -s
+.repos/<name>` — the two should name the same commit. Don't reach for `git
+describe --tags` as the check: in a monorepo upstream (most vendored repos
+are), `describe` frequently resolves to the nearest reachable tag, which is
+just as often a **sibling package's** release tag as this library's own —
+that mismatch is normal monorepo tagging, not drift, and re-pinning against
+it would move the pin to the wrong ref.
+
 ## Notes editorial policy
 
 A note is the answer to a **vexing question or a commonly-needed path**,
@@ -148,18 +161,52 @@ read them via the tools below rather than trusting recall for field names.
   notes and orientation by hand, and `repos_manage action:"note"` is simply
   the tool-mediated way to make the same edit. Use `pin`/`add`/`sync` for
   anything that touches a submodule's checkout or gitlink; either the tool or
-  a direct edit is fine for notes and orientation. The Bash and MCP tripwires
-  are best-effort pattern matches, not a sandbox — they can over-deny on an
-  unusual command shape; if a legitimate submodule-mutating command gets
-  blocked, don't route around the guard with a workaround, use
-  `repos_manage`/`savvy repos` instead.
+  a direct edit is fine for notes and orientation.
+- **The real boundary is OS-level, not pattern-matching.** `sync`/`add`/`pin`
+  apply a lockdown: after materializing or updating a submodule, every
+  vendored working tree — files `444`, directories `555` — goes
+  filesystem-read-only, and the tooling re-locks even when the triggering
+  operation itself fails partway through. The metadata directory is locked
+  too, derived from the checkout's own `gitdir:` pointer rather than assumed
+  from the manifest key — so a submodule registered under a diverging
+  `.git/modules` path (e.g. this repo's own `effect` entry, whose gitdir is
+  `.git/modules/.repos/effect-smol`) is still covered. `.repos/config.json` is
+  never locked (it's host-repo
+  content, not vendored), and `repos_inspect mode:"status"`/`savvy repos
+  status` work fine against a locked tree — reads don't need write
+  permission. A fresh clone's checkouts stay writable until the first `sync`
+  locks them. `plugins/silk/hooks/pre-tool-use/repos-bash-guard.sh` is a
+  precise early-warning layered in front of that boundary, not the boundary
+  itself — read its own header comment for the exact command-scanning it
+  applies before denying. If a command shape ever slips past the guard
+  anyway, the OS permission still stops the write: an `EACCES` inside
+  `.repos/**` means **use the tooling** (`repos_manage`/`savvy repos`), never
+  **fix the permissions** — don't `chmod` a vendored tree by hand to work
+  around it. That just leaves it writable until the next `sync`/`pin`
+  re-locks it out from under you, and it defeats the reason the tree is
+  locked in the first place.
+- **Two allowances worth stating explicitly, since agents keep tripping over
+  them as if they were denials:**
+  - Staging the manifest — `git add .repos/config.json`, `git restore
+    --staged .repos/config.json` — is sanctioned. The Bash guard's git leg
+    clears it whenever every `.repos/`-mentioning token in the invocation
+    resolves to exactly `.repos/config.json`; a mixed pathspec that also
+    names a vendored path in the same call still denies.
+  - Reading or copying content **out of** `.repos/` is sanctioned —
+    `cat .repos/effect/src/x.ts`, `cp .repos/effect/src/x.ts
+    /tmp/scratch.ts`. Only writes **into** a vendored tree are what the guard
+    and the lockdown exist to stop: a redirect target, `cp`/`mv`'s
+    destination operand, `tee`'s argument, or any `.repos/` token touched by
+    `sed -i`, `rm`, `patch`, or `dd of=`.
 - **`sync` re-materializes and re-applies, it does not fix dirtiness.** For
   each manifest entry, `sync` clears stale git locks, re-initializes any
   **absent** submodule checkout, and re-applies each repo's configured sparse
   paths on every run regardless of presence — that's how a manifest sparse
   change propagates to a checkout that already exists. A submodule that is
-  **present but dirty** (stray local edits) is left untouched by `sync` and
-  reported `upToDate`; dirtiness is surfaced by `repos_inspect mode:"status"`
+  **present but dirty** (stray local edits) has its content left untouched by
+  `sync` and is reported `upToDate` — though `sync`'s lockdown pass still
+  chmods the tree read-only regardless, so "untouched" covers content only,
+  not permissions. Dirtiness is surfaced by `repos_inspect mode:"status"`
   (or `savvy repos status`), not fixed by it. To restore pristine content,
   either discard the stray edits with `git` inside the submodule directory,
   or delete the submodule's working directory and re-run `sync` to

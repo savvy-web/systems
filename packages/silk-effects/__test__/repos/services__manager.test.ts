@@ -1,11 +1,13 @@
 import { execFileSync } from "node:child_process";
 import {
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
 	rmSync,
+	statSync,
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
@@ -23,6 +25,7 @@ import type {
 	ReposStatusReport,
 } from "../../src/repos/schemas/reports.js";
 import { ReposConfigStore } from "../../src/repos/services/config-store.js";
+import { ReposLockdown } from "../../src/repos/services/lockdown.js";
 import { ReposManager, STALE_LOCK_MAX_AGE_MS } from "../../src/repos/services/manager.js";
 
 const GIT_ENV = {
@@ -35,6 +38,14 @@ const GIT_ENV = {
 function git(cwd: string, ...args: string[]): string {
 	return execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, ...GIT_ENV } });
 }
+
+/**
+ * `ReposManager.layer` now requires `ReposLockdown`; every composition in this
+ * file threads this shared reference through so the layer construction
+ * resolves. Production behavior of the tests written before Task 2 is
+ * unaffected — they never observe `ReposLockdown` directly.
+ */
+const reposLockdownLayer = ReposLockdown.layer.pipe(Layer.provide(NodeServices.layer));
 
 describe("ReposManager.status — stubbed executor", () => {
 	it.effect("reports absent/clean/stale shape from a canned manifest with no filesystem or git backing", () =>
@@ -75,6 +86,7 @@ describe("ReposManager.status — stubbed executor", () => {
 				Effect.provide(ReposManager.layer),
 				Effect.provide(configStoreStub),
 				Effect.provide(gitStub),
+				Effect.provide(reposLockdownLayer),
 				Effect.provide(NodeServices.layer),
 			) as Effect.Effect<ReposStatusReport>;
 
@@ -161,6 +173,7 @@ describe("ReposManager.sync / status — real git", () => {
 				const managerLayer = ReposManager.layer.pipe(
 					Layer.provide(configStoreReal),
 					Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+					Layer.provide(reposLockdownLayer),
 					Layer.provide(NodeServices.layer),
 				);
 				const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -200,6 +213,10 @@ describe("ReposManager.sync / status — real git", () => {
 				expect(cleanEntry?.dirty).toBe(false);
 				expect(cleanEntry?.commit).not.toBeNull();
 
+				// `sync` leaves the tree locked (Task 2): simulate an external edit by
+				// unlocking the one file this test needs to dirty, the way a human
+				// bypassing the lockdown boundary would have to.
+				chmodSync(join(host, ".repos", name, "src", "keep.ts"), 0o644);
 				writeFileSync(join(host, ".repos", name, "src", "keep.ts"), "export const keep = false;\n");
 
 				const statusDirty = yield* run(
@@ -258,6 +275,7 @@ describe("ReposManager.sync / status — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreReal),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -316,6 +334,7 @@ describe("ReposManager.sync / status — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreReal),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -334,6 +353,78 @@ describe("ReposManager.sync / status — real git", () => {
 			if (exit._tag === "Success") {
 				expect(exit.value.clearedLocks).not.toContain(name);
 			}
+		}),
+	);
+
+	// Reproduces this repo's own `effect`/`effect-smol` split: the submodule is
+	// registered under a git module name that diverges from the manifest key
+	// (`--name`), and the worktree checkout is left IN PLACE (unlike
+	// `simulatePriorAdd`, which blows it away) so `.repos/<name>/.git` still
+	// carries a live `gitdir:` pointer at the divergently-named module dir.
+	// Stale-lock clearing must follow that pointer rather than assume
+	// `.git/modules/.repos/<name>`.
+	it.live("clears stale lock files under a divergently-named module dir", () =>
+		Effect.gen(function* () {
+			const up = makeUpstream();
+			const host = makeHost();
+			const name = "spec";
+			const moduleName = "spec-old";
+			const upstreamUrl = `file://${up}`;
+
+			mkdirSync(join(host, ".repos"), { recursive: true });
+			writeFileSync(
+				join(host, ".repos", "config.json"),
+				JSON.stringify({
+					repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+				}),
+			);
+
+			execFileSync("git", ["submodule", "add", "--name", moduleName, upstreamUrl, `.repos/${name}`], {
+				cwd: host,
+				env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+			});
+			git(join(host, ".repos", name), "checkout", "1.0.0");
+			git(host, "add", ".repos", ".gitmodules");
+			git(host, "commit", "--quiet", "-m", `add ${name} submodule`);
+			// deliberately no rmSync here — the worktree (and its .git gitdir
+			// pointer file) stays in place, unlike simulatePriorAdd.
+
+			const lockDirPath = join(host, ".git", "modules", moduleName);
+			mkdirSync(lockDirPath, { recursive: true });
+			writeFileSync(join(lockDirPath, "index.lock"), "");
+			writeFileSync(join(lockDirPath, "shallow.lock"), "");
+			const staleTime = new Date(Date.now() - STALE_LOCK_MAX_AGE_MS - 60_000);
+			utimesSync(join(lockDirPath, "index.lock"), staleTime, staleTime);
+			utimesSync(join(lockDirPath, "shallow.lock"), staleTime, staleTime);
+
+			const configStoreReal = Layer.succeed(ReposConfigStore, {
+				exists: () => Effect.succeed(true),
+				read: () =>
+					Effect.succeed({
+						repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+					} as ReposManifestFile),
+				write: () => Effect.succeed(undefined),
+			} as never);
+
+			const managerLayer = ReposManager.layer.pipe(
+				Layer.provide(configStoreReal),
+				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
+				Layer.provide(NodeServices.layer),
+			);
+			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+				effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>;
+
+			const syncResult = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+
+			expect(syncResult.clearedLocks).toContain(name);
+			expect(existsSync(join(lockDirPath, "index.lock"))).toBe(false);
+			expect(existsSync(join(lockDirPath, "shallow.lock"))).toBe(false);
 		}),
 	);
 });
@@ -396,6 +487,7 @@ describe("ReposManager.add / pin — real git", () => {
 				const managerLayer = ReposManager.layer.pipe(
 					Layer.provide(configStoreLayer),
 					Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+					Layer.provide(reposLockdownLayer),
 					Layer.provide(NodeServices.layer),
 				);
 				const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -509,6 +601,7 @@ describe("ReposManager.add / pin — real git", () => {
 					Effect.provide(ReposManager.layer),
 					Effect.provide(configStoreStub),
 					Effect.provide(gitStub),
+					Effect.provide(reposLockdownLayer),
 					Effect.provide(NodeServices.layer),
 				) as Effect.Effect<unknown, unknown>,
 			);
@@ -538,6 +631,7 @@ describe("ReposManager.add / pin — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -589,6 +683,7 @@ describe("ReposManager.add / pin — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -642,6 +737,7 @@ describe("ReposManager.add / pin — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -730,6 +826,7 @@ describe("ReposManager.add / pin — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -773,6 +870,7 @@ describe("ReposManager.add / pin — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const runExit = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -820,6 +918,7 @@ describe("ReposManager.add / pin — real git", () => {
 			const managerLayer = ReposManager.layer.pipe(
 				Layer.provide(configStoreLayer),
 				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
 				Layer.provide(NodeServices.layer),
 			);
 			const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
@@ -861,6 +960,173 @@ describe("ReposManager.add / pin — real git", () => {
 	);
 });
 
+describe("ReposManager lockdown integration", () => {
+	let previousAllowProtocol: string | undefined;
+
+	beforeAll(() => {
+		previousAllowProtocol = process.env.GIT_ALLOW_PROTOCOL;
+		process.env.GIT_ALLOW_PROTOCOL = "file";
+	});
+
+	afterAll(() => {
+		if (previousAllowProtocol === undefined) {
+			delete process.env.GIT_ALLOW_PROTOCOL;
+		} else {
+			process.env.GIT_ALLOW_PROTOCOL = previousAllowProtocol;
+		}
+	});
+
+	/** Upstream fixture with two tags so `pin` has somewhere to move to. */
+	function makeUpstream(): string {
+		const up = mkdtempSync(join(tmpdir(), "repos-manager-lockdown-upstream-"));
+		git(up, "init", "--quiet", "-b", "main");
+		git(up, "config", "commit.gpgsign", "false");
+		mkdirSync(join(up, "src"), { recursive: true });
+		writeFileSync(join(up, "src", "keep.ts"), "export const keep = true;\n");
+		git(up, "add", "-A");
+		git(up, "commit", "--quiet", "-m", "initial");
+		git(up, "tag", "tag1");
+		writeFileSync(join(up, "src", "keep.ts"), "export const keep = false;\n");
+		git(up, "add", "-A");
+		git(up, "commit", "--quiet", "-m", "second");
+		git(up, "tag", "tag2");
+		return up;
+	}
+
+	function makeHost(): string {
+		const host = mkdtempSync(join(tmpdir(), "repos-manager-lockdown-host-"));
+		git(host, "init", "--quiet", "-b", "main");
+		execFileSync("git", ["config", "protocol.file.allow", "always"], { cwd: host });
+		git(host, "config", "commit.gpgsign", "false");
+		writeFileSync(join(host, "README.md"), "# host\n");
+		git(host, "add", "-A");
+		git(host, "commit", "--quiet", "-m", "initial");
+		return host;
+	}
+
+	/** Simulate a prior `repos add`: register the submodule, pin it to `ref`, commit it, then blow away the worktree. */
+	function simulatePriorAdd(host: string, upstreamUrl: string, name: string, ref: string): void {
+		execFileSync("git", ["submodule", "add", upstreamUrl, `.repos/${name}`], {
+			cwd: host,
+			env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+		});
+		git(join(host, ".repos", name), "checkout", ref);
+		git(host, "add", ".repos", ".gitmodules");
+		git(host, "commit", "--quiet", "-m", `add ${name} submodule`);
+		rmSync(join(host, ".repos", name), { recursive: true, force: true });
+	}
+
+	/** Walk `dir` for the first regular file found, so a mode assertion has a concrete target. */
+	function firstFileUnder(dir: string): string {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const entryPath = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				const found = firstFileUnder(entryPath);
+				if (found !== undefined) {
+					return found;
+				}
+			} else {
+				return entryPath;
+			}
+		}
+		throw new Error(`no file found under ${dir}`);
+	}
+
+	const managerLayerWithLockdown = ReposManager.layer.pipe(
+		Layer.provide(ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer))),
+		Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+		Layer.provide(reposLockdownLayer),
+		Layer.provide(NodeServices.layer),
+	);
+	const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+		effect.pipe(Effect.provide(managerLayerWithLockdown)) as Effect.Effect<A, E>;
+
+	it.effect("sync leaves every present vendored tree read-only", () =>
+		Effect.gen(function* () {
+			const up = makeUpstream();
+			const host = makeHost();
+			const name = "spec";
+			const upstreamUrl = `file://${up}`;
+
+			mkdirSync(join(host, ".repos"), { recursive: true });
+			writeFileSync(
+				join(host, ".repos", "config.json"),
+				JSON.stringify({ repos: { [name]: { url: upstreamUrl, ref: "tag1", purpose: "test" } } }),
+			);
+			simulatePriorAdd(host, upstreamUrl, name, "tag1");
+
+			yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+
+			const file = firstFileUnder(join(host, ".repos", name));
+			expect(statSync(file).mode & 0o777).toBe(0o444);
+			expect(() => writeFileSync(join(host, ".repos", name, "smuggled.txt"), "x")).toThrow(/EACCES|EPERM/);
+		}),
+	);
+
+	it.effect("add ends locked and pin relocks after mutating", () =>
+		Effect.gen(function* () {
+			const up = makeUpstream();
+			const host = makeHost();
+			const name = "spec";
+			const upstreamUrl = `file://${up}`;
+
+			yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.add(host, { url: upstreamUrl, ref: "tag1", purpose: "test", name });
+				}),
+			);
+			expect(statSync(firstFileUnder(join(host, ".repos", name))).mode & 0o777).toBe(0o444);
+
+			yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.pin(host, name, "tag2");
+				}),
+			);
+			expect(statSync(firstFileUnder(join(host, ".repos", name))).mode & 0o777).toBe(0o444);
+		}),
+	);
+
+	it.effect("status succeeds against a locked tree and reports dirty=false", () =>
+		Effect.gen(function* () {
+			const up = makeUpstream();
+			const host = makeHost();
+			const name = "spec";
+			const upstreamUrl = `file://${up}`;
+
+			mkdirSync(join(host, ".repos"), { recursive: true });
+			writeFileSync(
+				join(host, ".repos", "config.json"),
+				JSON.stringify({ repos: { [name]: { url: upstreamUrl, ref: "tag1", purpose: "test" } } }),
+			);
+			simulatePriorAdd(host, upstreamUrl, name, "tag1");
+
+			yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					yield* manager.sync(host);
+				}),
+			);
+
+			const report = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.status(host);
+				}),
+			);
+
+			const entry = report.repos.find((r) => r.name === name);
+			expect(entry?.dirty).toBe(false);
+		}),
+	);
+});
+
 describe("ReposManager.status — propagates git failures", () => {
 	it.effect("fails with GitSubmoduleError instead of reporting a clean/null status when the git invocation fails", () =>
 		Effect.gen(function* () {
@@ -897,6 +1163,7 @@ describe("ReposManager.status — propagates git failures", () => {
 					Effect.provide(ReposManager.layer),
 					Effect.provide(configStoreStub),
 					Effect.provide(failingGitStub),
+					Effect.provide(reposLockdownLayer),
 					Effect.provide(NodeServices.layer),
 				) as Effect.Effect<unknown, unknown>,
 			);
@@ -936,6 +1203,7 @@ describe("ReposManager.note", () => {
 			Effect.provide(ReposManager.layer),
 			Effect.provide(configStore),
 			Effect.provide(gitStub),
+			Effect.provide(reposLockdownLayer),
 			Effect.provide(NodeServices.layer),
 		) as Effect.Effect<A, E>;
 	}
@@ -946,6 +1214,7 @@ describe("ReposManager.note", () => {
 				Effect.provide(ReposManager.layer),
 				Effect.provide(configStore),
 				Effect.provide(gitStub),
+				Effect.provide(reposLockdownLayer),
 				Effect.provide(NodeServices.layer),
 			) as Effect.Effect<unknown, unknown>,
 		);

@@ -29,6 +29,29 @@ _reason() {
 	jq -r '.hookSpecificOutput.permissionDecisionReason // empty' <<< "$1"
 }
 
+# run_guard_with_command <command> — derive an envelope from the redirect
+# fixture with .tool_input.command replaced by <command> (jq --arg, so
+# embedded newlines/quotes survive untouched), pipe it through the hook, and
+# set $output/$status per bats' `run`. Mirrors the "derive with jq rather
+# than a near-duplicate fixture" convention in tests/README.md.
+run_guard_with_command() {
+	local envelope
+	envelope="${BATS_TEST_TMPDIR}/envelope-command.json"
+	jq --arg c "$1" '.tool_input.command = $c' \
+		"${FIXTURES_DIR}/pretooluse.repos-bash-redirect.json" > "$envelope"
+	run bash -c "cat '${envelope}' | bash '${HOOK}'"
+}
+
+assert_allow() {
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+assert_deny() {
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
 @test "git -C .repos/<repo> checkout (write subcommand): deny naming repos_manage pin" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-write.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
@@ -144,4 +167,123 @@ _reason() {
 	run bash -c "printf 'not json' | bash '${HOOK}' 2>/dev/null"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
+}
+
+@test "heredoc body mentioning .repos does not deny a write elsewhere (#411)" {
+	run_guard_with_command $'cat >> .superpowers/notes.md <<\'EOF\'\nthe guard denies rm -rf .repos/effect\nEOF'
+	assert_allow
+}
+
+@test "gh issue create with .repos prose in --body is allowed (#423, #357)" {
+	run_guard_with_command 'gh issue create --repo o/r --title t --body "run git rm -f .repos/effect to reproduce"'
+	assert_allow
+}
+
+@test "cp OUT of .repos is allowed (#325)" {
+	run_guard_with_command 'cp .repos/effect/packages/effect/src/Context.ts /tmp/ctx.ts'
+	assert_allow
+}
+
+@test "cp INTO .repos is denied" {
+	run_guard_with_command 'cp /tmp/x.ts .repos/effect/packages/effect/src/x.ts'
+	assert_deny
+}
+
+@test "cp INTO .repos followed by a chained clause is still denied (clause-scoped last-operand)" {
+	run_guard_with_command 'cp a.ts .repos/effect/src/a.ts && echo done'
+	assert_deny
+}
+
+@test "cp OUT of .repos followed by a chained clause is still allowed (clause scoping does not over-reach)" {
+	run_guard_with_command 'cp .repos/effect/src/a.ts /tmp/x.ts && echo done'
+	assert_allow
+}
+
+@test "mv whose destination is .repos is denied" {
+	run_guard_with_command 'mv /tmp/dir .repos/effect/vendor'
+	assert_deny
+}
+
+@test "redirect into .repos/config.json is allowed" {
+	run_guard_with_command 'jq . < input.json > .repos/config.json'
+	assert_allow
+}
+
+@test "redirect into a vendored tree is still denied" {
+	run_guard_with_command 'echo x > .repos/effect/README.md'
+	assert_deny
+}
+
+@test "rm -rf of a vendored tree is still denied" {
+	run_guard_with_command 'rm -rf .repos/effect'
+	assert_deny
+}
+
+@test "quoted path without whitespace is still seen: rm of quoted vendored path denied" {
+	run_guard_with_command 'rm -rf ".repos/effect"'
+	assert_deny
+}
+
+@test "git add .repos/config.json is allowed (#379)" {
+	run_guard_with_command 'git add .repos/config.json'
+	assert_allow
+}
+
+@test "git add of config.json plus a vendored path stays denied" {
+	run_guard_with_command 'git add .repos/config.json .repos/effect'
+	assert_deny
+}
+
+@test "git restore --staged .repos/config.json is allowed" {
+	run_guard_with_command 'git restore --staged .repos/config.json'
+	assert_allow
+}
+
+@test "git diff .repos/config.json is allowed (#423)" {
+	run_guard_with_command 'git diff .repos/config.json'
+	assert_allow
+}
+
+@test "bare git rm on a vendored path denies with the lifecycle message" {
+	run_guard_with_command 'git rm -f .repos/effect'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+}
+
+@test "git submodule deinit denies with the lifecycle message" {
+	run_guard_with_command 'git submodule deinit -f .repos/effect'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+}
+
+@test "here-string does not arm the heredoc stripper, later write still denies" {
+	run_guard_with_command $'jq . <<< foo\nrm -rf .repos/effect'
+	assert_deny
+}
+
+@test "here-string with .repos only as a read source (single line) is allowed" {
+	run_guard_with_command 'jq . <<< "$(cat .repos/effect/package.json)"'
+	assert_allow
+}
+
+@test "glued |tee into .repos is denied" {
+	run_guard_with_command 'echo x|tee .repos/effect/f'
+	assert_deny
+}
+
+@test "glued |tee with .repos mentioned only as a read elsewhere is allowed" {
+	run_guard_with_command 'cat .repos/effect/README.md|echo x|tee /tmp/out.txt'
+	assert_allow
+}
+
+@test "cp -t naming a .repos destination is denied" {
+	run_guard_with_command 'cp -t .repos/dir src.ts'
+	assert_deny
+}
+
+@test "cp -t copying OUT of .repos to a non-.repos destination is allowed" {
+	run_guard_with_command 'cp -t /tmp .repos/effect/README.md'
+	assert_allow
 }

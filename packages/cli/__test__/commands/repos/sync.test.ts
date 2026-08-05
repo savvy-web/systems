@@ -35,8 +35,16 @@ function makeStubLayer(
 	} as never);
 }
 
-/** Run `runReposSync` against a stub layer, collecting every `Effect.log` line. */
-function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Effect.Effect<string[]> {
+/**
+ * Run `runReposSync` against a stub layer, collecting every `Effect.log` line.
+ * `runReposSync` only `catchTag`s `ReposConfigError`/`GitSubmoduleError` — a
+ * `ReposLockdownError` (Task 2: `sync` now unlocks/locks around its mutation
+ * work) flows through uncaught, so the return type carries it.
+ */
+function collectLogs(
+	cwd: string,
+	layer: Layer.Layer<Repos.ReposManager>,
+): Effect.Effect<string[], Repos.ReposLockdownError> {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
 		const captureLogger = Logger.make(({ message }) => {

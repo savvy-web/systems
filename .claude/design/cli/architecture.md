@@ -3,8 +3,8 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-08-04
-last-synced: 2026-08-04
+updated: 2026-08-05
+last-synced: 2026-08-05
 completeness: 90
 related:
   - ../silk/architecture.md
@@ -92,6 +92,7 @@ Inspector+Analyzer = BranchAnalyzer
 
 ReposGroup = Repos.ReposManager
                provide(Repos.ReposConfigStore)
+               provide(Repos.ReposLockdown)
                provide(Git)
 
 BaseLive  = WorkspaceLive + Git + ChangesetConfigReader
@@ -118,7 +119,7 @@ A command group built by piping `Command.make` through `Command.withSubcommands`
 
 The annotation is exact, never `any`: it restates the group's real Error and Requirements channels so the root layer graph stays compiler-validated. `runCli` provides `AppLive` with no casts, so `tsc` (`types:check`) — not the runtime smoke tests — is the gate that proves every service a handler yields is supplied.
 
-**A group's requirements channel is the union of its subcommands' requirements, not `never`.** `Command.withSubcommands` propagates each subcommand's `R` up into the parent (`R | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>`), so `changesetCommand` names `ChildProcessSpawner | ConfigInspector | FileSystem | Path | ReleasePlanner` and `reposCommand` names `Repos.ReposManager`. Earlier Effect v4 betas erased subcommand requirements at the group boundary, so these annotations previously read `never`; a beta bump that changes the propagation rule surfaces as a type error on exactly these two exports, and the fix is to widen the annotation to match — the layer graph itself does not change, since `AppLive` already discharged those services. Note the qualified `ChildProcessSpawner.ChildProcessSpawner`: `effect/unstable/process` re-exports it as a namespace and the package exports map offers no deeper subpath.
+**A group's requirements channel is the union of its subcommands' requirements, not `never`.** `Command.withSubcommands` propagates each subcommand's `R` up into the parent (`R | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>`), so `changesetCommand` names `ChildProcessSpawner | ConfigInspector | FileSystem | Path | ReleasePlanner` and `reposCommand` names `Repos.ReposManager`. The same annotation discipline applies to the *error* channel: `reposCommand`'s reads `Repos.GitSubmoduleError | Repos.ReposLockdownError`, because `sync`/`add`/`pin` now unlock and re-lock the vendored tree's OS permissions around their git mutations (see `../silk-effects/architecture.md#vendored-repos-repos-namespace`) and the handlers only `catchTag` the config/submodule failures. Earlier Effect v4 betas erased subcommand requirements at the group boundary, so these annotations previously read `never`; a beta bump that changes the propagation rule surfaces as a type error on exactly these two exports, and the fix is to widen the annotation to match — the layer graph itself does not change, since `AppLive` already discharged those services. Note the qualified `ChildProcessSpawner.ChildProcessSpawner`: `effect/unstable/process` re-exports it as a namespace and the package exports map offers no deeper subpath.
 
 ### Testing the command handlers
 

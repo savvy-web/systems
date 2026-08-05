@@ -3,4 +3,5 @@ export * from "./errors.js";
 export * from "./schemas/manifest.js";
 export * from "./schemas/reports.js";
 export * from "./services/config-store.js";
+export * from "./services/lockdown.js";
 export * from "./services/manager.js";

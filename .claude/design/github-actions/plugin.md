@@ -249,8 +249,9 @@ The agent's authority ladder is (1) the installed packages under `node_modules/@
 itself — template-derived, with working build/test wiring — and (3), for what neither answers (library internals,
 upstream history), the **silk plugin's `repos` capability**, loaded beside this one: `/silk:repos` plus the
 `repos_inspect`/`repos_manage` MCP tools vendor `savvy-web/systems`, the home of both libraries, under `.repos/`
-as read-only reference source. Vendored trees are never written to; silk's three PreToolUse tripwires enforce
-that from the other side (see `../silk/plugin.md`). Both the agent brief and `action-engineering`'s own
+as read-only reference source. Vendored trees are never written to: silk's `Repos.ReposLockdown` makes them
+OS-level read-only (files 444, dirs 555) and its three PreToolUse guards deny visible write attempts earlier,
+with a clearer message (see `../silk/plugin.md`). Both the agent brief and `action-engineering`'s own
 "Source access" section state the same ladder, so it holds whether the agent arrived via delegation or via a
 skill trigger.
 
@@ -372,7 +373,7 @@ deliberate rather than incidental:
   `source` path — so the discipline is to keep them identical on purpose and re-copy rather than hand-patch. The
   MCP *server* is genuinely shared (one `savvy-mcp`), only the tool-name prefix differs per plugin.
 - **Enforcement lives in silk, advice lives here.** Commit format, lint, changeset nudges, vendored-tree
-  tripwires and push discipline are all silk hooks. Re-registering any of them here would double-fire on a shared
+  guards and push discipline are all silk hooks. Re-registering any of them here would double-fire on a shared
   matcher (`Bash`, `Write|Edit|NotebookEdit`) and produce two denies for one action.
 - **This plugin consumes one silk capability**, `repos`, for read-only source access outside the monorepo (see
   [Source access outside the monorepo](#source-access-outside-the-monorepo)).
