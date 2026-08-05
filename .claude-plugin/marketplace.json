@@ -15,7 +15,7 @@
 				"source": "git-subdir",
 				"url": "https://github.com/savvy-web/systems.git",
 				"path": "plugins/silk",
-				"sha": "d152a44baa843334c9e7f8c7b267ed3dc1d59b2c"
+				"sha": "0292a9aef5070ed4496261eec23c040a04d1ed88"
 			},
 			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 			"category": "developer-tools",
