@@ -19,17 +19,20 @@ describe("ReposLockdown", () => {
 		mkdirSync(join(root, ".git/modules/.repos/demo"), { recursive: true });
 		writeFileSync(join(root, ".git/modules/.repos/demo/config"), "[core]\n");
 	});
-	afterAll(() => {
-		// unlock before rm so cleanup never fails on read-only dirs
-		Effect.runSync(
+	afterAll(() =>
+		// unlock before rm so cleanup never fails on read-only dirs; the fs ops
+		// are async, so this must be runPromise — runSync throws AsyncFiberError
+		// from the hook and fails the whole suite.
+		Effect.runPromise(
 			ReposLockdown.pipe(
 				Effect.flatMap((l) => l.unlock(root, "demo")),
 				Effect.provide(layer),
 				Effect.ignore,
 			),
-		);
-		rmSync(root, { recursive: true, force: true });
-	});
+		).then(() => {
+			rmSync(root, { recursive: true, force: true });
+		}),
+	);
 
 	it.effect("lock sets files 444 and dirs 555 in worktree and module dir", () =>
 		Effect.gen(function* () {
@@ -84,16 +87,17 @@ describe("ReposLockdown — divergent submodule name", () => {
 		writeFileSync(join(root, ".git/modules/.repos/divergent-old/config"), "[core]\n");
 		writeFileSync(join(root, ".repos/divergent/.git"), "gitdir: ../../.git/modules/.repos/divergent-old\n");
 	});
-	afterAll(() => {
-		Effect.runSync(
+	afterAll(() =>
+		Effect.runPromise(
 			ReposLockdown.pipe(
 				Effect.flatMap((l) => l.unlock(root, "divergent")),
 				Effect.provide(layer),
 				Effect.ignore,
 			),
-		);
-		rmSync(root, { recursive: true, force: true });
-	});
+		).then(() => {
+			rmSync(root, { recursive: true, force: true });
+		}),
+	);
 
 	it.effect("lock locks the divergently-named module dir, unlock restores it", () =>
 		Effect.gen(function* () {
@@ -124,17 +128,18 @@ describe("ReposLockdown — gitdir pointer containment", () => {
 		// A relative pointer that walks out of `root` entirely.
 		writeFileSync(join(root, ".repos/escaped/.git"), `gitdir: ${outside}\n`);
 	});
-	afterAll(() => {
-		Effect.runSync(
+	afterAll(() =>
+		Effect.runPromise(
 			ReposLockdown.pipe(
 				Effect.flatMap((l) => l.unlock(root, "escaped")),
 				Effect.provide(layer),
 				Effect.ignore,
 			),
-		);
-		rmSync(root, { recursive: true, force: true });
-		rmSync(outside, { recursive: true, force: true });
-	});
+		).then(() => {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(outside, { recursive: true, force: true });
+		}),
+	);
 
 	it.effect("lock succeeds and never chmods the target outside the repo root", () =>
 		Effect.gen(function* () {
@@ -164,17 +169,18 @@ describe("ReposLockdown — symlink-aware walk", () => {
 		writeFileSync(join(root, ".repos/linked/src/a.ts"), "export {}\n");
 		symlinkSync(outsideFile, join(root, ".repos/linked/src/link.ts"));
 	});
-	afterAll(() => {
-		Effect.runSync(
+	afterAll(() =>
+		Effect.runPromise(
 			ReposLockdown.pipe(
 				Effect.flatMap((l) => l.unlock(root, "linked")),
 				Effect.provide(layer),
 				Effect.ignore,
 			),
-		);
-		rmSync(root, { recursive: true, force: true });
-		rmSync(outsideFile, { force: true });
-	});
+		).then(() => {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(outsideFile, { force: true });
+		}),
+	);
 
 	it.effect("lock skips the symlink and never touches its target", () =>
 		Effect.gen(function* () {
@@ -195,16 +201,17 @@ describe("ReposLockdown — executable bit preservation", () => {
 		writeFileSync(join(root, ".repos/exec/bin/run.sh"), "#!/bin/sh\necho hi\n", { mode: 0o755 });
 		writeFileSync(join(root, ".repos/exec/bin/README.md"), "# readme\n", { mode: 0o644 });
 	});
-	afterAll(() => {
-		Effect.runSync(
+	afterAll(() =>
+		Effect.runPromise(
 			ReposLockdown.pipe(
 				Effect.flatMap((l) => l.unlock(root, "exec")),
 				Effect.provide(layer),
 				Effect.ignore,
 			),
-		);
-		rmSync(root, { recursive: true, force: true });
-	});
+		).then(() => {
+			rmSync(root, { recursive: true, force: true });
+		}),
+	);
 
 	it.effect("lock preserves 0o111 as 555, unlock restores it as 755; non-executables stay 444/644", () =>
 		Effect.gen(function* () {
@@ -240,14 +247,15 @@ describe.skipIf(isRoot)("ReposLockdown — withUnlocked when unlock fails part-w
 		// Restore search permission on the blocked ancestor before any cleanup
 		// (including this suite's own runs) needs to traverse it again.
 		chmodSync(blockedAncestor, 0o755);
-		Effect.runSync(
+		return Effect.runPromise(
 			ReposLockdown.pipe(
 				Effect.flatMap((l) => l.unlock(root, "blocked")),
 				Effect.provide(layer),
 				Effect.ignore,
 			),
-		);
-		rmSync(root, { recursive: true, force: true });
+		).then(() => {
+			rmSync(root, { recursive: true, force: true });
+		});
 	});
 
 	it.effect("fails AND re-locks the reachable part of the tree afterward", () =>
