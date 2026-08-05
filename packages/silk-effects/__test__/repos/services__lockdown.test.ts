@@ -125,7 +125,7 @@ describe("ReposLockdown — gitdir pointer containment", () => {
 		mkdirSync(join(root, ".repos/escaped/src"), { recursive: true });
 		writeFileSync(join(root, ".repos/escaped/src/a.ts"), "export {}\n");
 		writeFileSync(join(outside, "sentinel.txt"), "do not touch\n");
-		// A relative pointer that walks out of `root` entirely.
+		// An absolute pointer that resolves outside `root` entirely.
 		writeFileSync(join(root, ".repos/escaped/.git"), `gitdir: ${outside}\n`);
 	});
 	afterAll(() =>
@@ -264,10 +264,10 @@ describe.skipIf(isRoot)("ReposLockdown — withUnlocked when unlock fails part-w
 			yield* lockdown.lock(root, "blocked");
 			expect(mode(join(root, ".repos/blocked/src/a.ts"))).toBe(0o444);
 
-			// Block path resolution into `.git/modules/.repos/blocked` — this is
-			// the module dir's own subtree, so `withUnlocked`'s unlock walk will
-			// reach the worktree side fine and only fail resolving the module
-			// dir side.
+			// Block path resolution THROUGH `.git/modules/.repos` — the module
+			// dir's PARENT, not part of the walked subtree itself — so
+			// `withUnlocked`'s unlock walk reaches the worktree side fine and
+			// only fails resolving into the module dir side.
 			chmodSync(blockedAncestor, 0o000);
 
 			const failure = yield* Effect.flip(lockdown.withUnlocked(root, "blocked", Effect.void));
