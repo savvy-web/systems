@@ -1,5 +1,19 @@
 # @savvy-web/tsdown-plugins
 
+## 2.4.3
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From   | To     |                                                                              |
+  | ---------------------- | ---------- | ------- | ------ | ------ | ---------------------------------------------------------------------------- |
+  | @effected/npm          | dependency | updated | ^0.8.1 | ^0.8.2 |                                                                              |
+  | @effected/package-json | dependency | updated | ^0.7.2 | ^0.7.3 |                                                                              |
+  | @effected/workspaces   | dependency | updated | ^0.9.4 | ^0.9.5 | [#427][#427] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#427]: https://github.com/savvy-web/systems/pull/427
+
 ## 2.4.2
 
 ### Dependencies
