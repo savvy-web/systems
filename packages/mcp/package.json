@@ -35,7 +35,7 @@
 	"dependencies": {
 		"@effect/platform-node": "catalog:effect",
 		"@effected/commands": "^0.2.1",
-		"@effected/workspaces": "^0.9.4",
+		"@effected/workspaces": "^0.9.5",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect",

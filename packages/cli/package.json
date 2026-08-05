@@ -37,7 +37,7 @@
 		"@effected/git": "^0.5.2",
 		"@effected/jsonc": "^0.5.2",
 		"@effected/templates": "^0.1.1",
-		"@effected/workspaces": "^0.9.4",
+		"@effected/workspaces": "^0.9.5",
 		"@effected/yaml": "^0.6.1",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect"
