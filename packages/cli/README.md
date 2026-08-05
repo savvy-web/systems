@@ -55,6 +55,21 @@ npx savvy clean --globs dist,.turbo,coverage
 - `savvy commit` — the husky/Claude hook handlers (session-start, pre-commit-message, post-commit-verify).
 - `savvy changeset` — changeset lint, check, transform, version, config validation, and dependency changesets.
 - `savvy lint` — formatters for package.json, the pnpm workspace file and YAML.
+- `savvy repos` — the vendored reference repos declared in `.repos/config.json`: `status`, `sync`, `pin`, `add` and `note`.
+
+## Vendored repos are read-only
+
+`savvy repos sync`, `add` and `pin` leave every vendored tree under `.repos/` read-only at the OS level — files `0444`, directories `0555`. Reading a vendored source needs no extra step; writing to one fails with `EACCES` by design, because those trees mirror an upstream repo at a pinned ref and any local edit is lost on the next sync.
+
+```bash
+npx savvy repos sync
+# reconciles .repos/ with the manifest and re-locks every tree
+
+npx savvy repos pin effect v4.0.0
+# fetches, checks out the new ref, re-locks, and stages the gitlink and manifest
+```
+
+A manual `chmod` only holds until the next `sync` or `pin`. Route changes through `savvy repos` instead.
 
 Run any command with `--help` to see its full surface:
 

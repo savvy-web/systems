@@ -28,6 +28,10 @@ concurrency:
 jobs:
   hook-tests:
     name: BATS + shellcheck
+    # Temporarily disabled: the suite needs runner setup work (tracked by the
+    # repo owner) before it can pass on hosted runners. Run it locally via
+    # `pnpm test:hooks` in the meantime; re-enable by removing this `if`.
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

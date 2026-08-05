@@ -141,12 +141,13 @@ const InspectorAndAnalyzerLive = Changesets.BranchAnalyzer.layer.pipe(
 );
 
 /**
- * `Repos.ReposManager`, provided its `Repos.ReposConfigStore.layer` dependency
- * and the shared `Git` service. Platform requirements (`FileSystem`, `Path`)
- * flow up to `NodeServices.layer`.
+ * `Repos.ReposManager`, provided its `Repos.ReposConfigStore.layer` and
+ * `Repos.ReposLockdown.layer` dependencies plus the shared `Git` service.
+ * Platform requirements (`FileSystem`, `Path`) flow up to `NodeServices.layer`.
  */
 const ReposGroupLive = Repos.ReposManager.layer.pipe(
 	Layer.provide(Repos.ReposConfigStore.layer),
+	Layer.provide(Repos.ReposLockdown.layer),
 	Layer.provide(GitLive),
 );
 

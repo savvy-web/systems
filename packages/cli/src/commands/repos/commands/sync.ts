@@ -7,9 +7,11 @@
  * locks left behind by an interrupted fetch. Sync is idempotent repair, so
  * a `ReposConfigError` with kind `"missing"` -- the common, friendly case
  * (nothing to sync yet) -- always exits 0. A `ReposConfigError` with kind
- * `"invalid"` means the manifest exists but is corrupt or unreadable, and
- * `GitSubmoduleError` means the underlying git command failed -- both are
- * real failures, logged and reported via a non-zero exit code.
+ * `"invalid"` means the manifest exists but is corrupt or unreadable,
+ * `GitSubmoduleError` means the underlying git command failed, and
+ * `ReposLockdownError` means the OS-permission lockdown pass on a vendored
+ * tree failed -- all three are real failures, logged and reported via a
+ * non-zero exit code.
  *
  * @example
  * ```bash
@@ -57,6 +59,10 @@ export const runReposSync = (cwd: string) =>
 			return Effect.log(error.message);
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
+			process.exitCode = 1;
+			return Effect.log(error.message);
+		}),
+		Effect.catchTag("ReposLockdownError", (error) => {
 			process.exitCode = 1;
 			return Effect.log(error.message);
 		}),

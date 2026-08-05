@@ -4,7 +4,7 @@ import { Effect, Layer, Logger } from "effect";
 
 import { runReposSync } from "../../../src/commands/repos/commands/sync.js";
 
-const { ReposManager, ReposConfigError, GitSubmoduleError } = Repos;
+const { ReposManager, ReposConfigError, GitSubmoduleError, ReposLockdownError } = Repos;
 
 /** A canned report with one entry in each of the three actionable buckets. */
 const activeReport: Repos.ReposSyncReport = {
@@ -24,7 +24,12 @@ const emptyReport: Repos.ReposSyncReport = {
 
 /** Build a stub `Repos.ReposManager` layer whose `sync` resolves/fails as given. */
 function makeStubLayer(
-	sync: (root: string) => Effect.Effect<Repos.ReposSyncReport, Repos.ReposConfigError | Repos.GitSubmoduleError>,
+	sync: (
+		root: string,
+	) => Effect.Effect<
+		Repos.ReposSyncReport,
+		Repos.ReposConfigError | Repos.GitSubmoduleError | Repos.ReposLockdownError
+	>,
 ): Layer.Layer<Repos.ReposManager> {
 	return Layer.succeed(ReposManager, {
 		status: () => Effect.die("not used in this test"),
@@ -35,7 +40,12 @@ function makeStubLayer(
 	} as never);
 }
 
-/** Run `runReposSync` against a stub layer, collecting every `Effect.log` line. */
+/**
+ * Run `runReposSync` against a stub layer, collecting every `Effect.log`
+ * line. `runReposSync` `catchTag`s `ReposConfigError`/`GitSubmoduleError`/
+ * `ReposLockdownError` uniformly (friendly exit 0 for a missing manifest,
+ * `exitCode = 1` for everything else), so the returned effect never fails.
+ */
 function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Effect.Effect<string[]> {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
@@ -131,6 +141,24 @@ describe("runReposSync (adapter)", () => {
 			expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch"))).toBe(
 				true,
 			);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
+
+	it.effect("logs the error message and sets exitCode 1 on ReposLockdownError", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new ReposLockdownError({
+						path: "/repo/.repos/foo",
+						reason: "chmod failed: EACCES",
+					}),
+				),
+			);
+
+			const logs = yield* collectLogs("/repo", layer);
+
+			expect(logs.some((l) => l.includes("/repo/.repos/foo") && l.includes("chmod failed: EACCES"))).toBe(true);
 			expect(process.exitCode).toBe(1);
 		}),
 	);
