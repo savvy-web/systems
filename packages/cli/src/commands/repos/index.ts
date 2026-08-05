@@ -27,12 +27,16 @@ const _reposCommand = Command.make("repos").pipe(
  * The requirements channel names `Repos.ReposManager` rather than `never`:
  * `Command.withSubcommands` propagates each subcommand's requirements up into
  * the group's `R`, which the root assembly discharges via `AppLive`.
+ *
+ * The error channel now also names `Repos.ReposLockdownError`: `sync`/`add`/
+ * `pin` unlock and re-lock the vendored tree around their git mutations
+ * (Task 2), so a lockdown chmod failure can surface from any of the three.
  */
 export const reposCommand: Command.Command<
 	"repos",
 	Record<string, never>,
 	Record<string, never>,
-	Repos.GitSubmoduleError,
+	Repos.GitSubmoduleError | Repos.ReposLockdownError,
 	Repos.ReposManager
 > = _reposCommand;
 /* v8 ignore stop */

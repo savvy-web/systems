@@ -80,7 +80,9 @@ _valid_phase() {
 AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 if [ "$INIT" -eq 1 ]; then
-	[ -n "$ROLE" ] && [ -n "$CP_ID" ] && [ -n "$CP_PATH" ] && [ -n "$LINK_TYPE" ] || usage
+	if [ -z "$ROLE" ] || [ -z "$CP_ID" ] || [ -z "$CP_PATH" ] || [ -z "$LINK_TYPE" ]; then
+		usage
+	fi
 
 	# Flags that only make sense on a later append (they describe a change
 	# against a prior line, and --init has no prior line) are REJECTED, not

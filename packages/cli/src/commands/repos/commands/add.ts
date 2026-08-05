@@ -10,9 +10,10 @@
  * is the common, friendly case and always exits 0 (the manifest is created
  * on demand by `add` itself, so this only fires on a read that raced a
  * concurrent removal). A `ReposConfigError` with kind `"invalid"` means the
- * manifest exists but is corrupt or unreadable, and `GitSubmoduleError`
- * means the underlying git command failed -- both are real failures, logged
- * and reported via a non-zero exit code.
+ * manifest exists but is corrupt or unreadable, `GitSubmoduleError` means
+ * the underlying git command failed, and `ReposLockdownError` means the
+ * OS-permission lockdown pass on a vendored tree failed -- all three are
+ * real failures, logged and reported via a non-zero exit code.
  *
  * @example
  * ```bash
@@ -71,6 +72,10 @@ export const runReposAdd = (
 			return Effect.log(error.message);
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
+			process.exitCode = 1;
+			return Effect.log(error.message);
+		}),
+		Effect.catchTag("ReposLockdownError", (error) => {
 			process.exitCode = 1;
 			return Effect.log(error.message);
 		}),

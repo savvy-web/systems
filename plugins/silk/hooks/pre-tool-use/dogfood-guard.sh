@@ -244,7 +244,9 @@ for journal in "${journals[@]}"; do
 	derived=$(jq -r 'if has("packagesDerived") then (.packagesDerived | tostring) else "" end' <<< "$last_valid")
 
 	[ "$role" = "downstream" ] || continue
-	[ -n "$phase" ] && [ "$phase" != "unlinked" ] || continue
+	if [ -z "$phase" ] || [ "$phase" = "unlinked" ]; then
+		continue
+	fi
 
 	if [ "$derived" = "false" ]; then
 		emit_deny "dogfood loop \"${loop_id}\" has not derived its linked-package closure yet (packagesDerived is false), so whether this tree is linked is unknown rather than known-clean. Derive the closure and append a correction snapshot before pushing, or push to dev, which is exempt."

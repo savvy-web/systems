@@ -1,5 +1,28 @@
 # @savvy-web/cli
 
+## 2.3.0
+
+### Features
+
+* Both `savvy repos` (cli) and `repos_manage` (mcp) now provide `Repos.ReposLockdown.layer` alongside `Repos.ReposConfigStore.layer` when assembling `Repos.ReposManager.layer`, matching the vendored-repos read-only permissions enforcement added to `@savvy-web/silk-effects`. The exported `reposCommand` (cli) and `reposManage` (mcp) error unions each widen to include `Repos.ReposLockdownError`, surfaced if a lock/unlock chmod fails around a `sync`/`add`/`pin` operation. [#429][#429]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.3.1 | 5.4.0 |
+
+* | Dependency           | Type       | Action  | From   | To      |                                                                       |
+  | -------------------- | ---------- | ------- | ------ | ------- | --------------------------------------------------------------------- |
+  | @effected/commands   | dependency | updated | ^0.2.1 | ^0.3.1  |                                                                       |
+  | @effected/workspaces | dependency | updated | ^0.9.5 | ^0.10.0 | [#429][#429] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#429]: https://github.com/savvy-web/systems/pull/429
+
 ## 2.2.1
 
 ### Dependencies

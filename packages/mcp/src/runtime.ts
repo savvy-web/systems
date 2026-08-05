@@ -93,14 +93,19 @@ export const makeSilkRuntimeLayer = (
 	);
 
 	/**
-	 * `ReposManager.layer` requires `ReposConfigStore`, so it is given its own
-	 * `ReposConfigStore.layer` reference; the store is ALSO merged in directly so
-	 * `repos_inspect`'s config mode can resolve it on its own. Same reference —
-	 * one store instance.
+	 * `ReposManager.layer` requires `ReposConfigStore | ReposLockdown`, so it is
+	 * given its own `ReposConfigStore.layer` reference; the store is ALSO merged
+	 * in directly so `repos_inspect`'s config mode can resolve it on its own.
+	 * Same reference — one store instance. `ReposLockdown.layer` needs only the
+	 * platform services, which flow up from the outer `NodeServices.layer`
+	 * provision like `ReposManager`'s own `FileSystem`/`Path` requirement does.
 	 */
 	const repos = Layer.mergeAll(
 		Repos.ReposConfigStore.layer,
-		Repos.ReposManager.layer.pipe(Layer.provide(Repos.ReposConfigStore.layer)),
+		Repos.ReposManager.layer.pipe(
+			Layer.provide(Repos.ReposConfigStore.layer),
+			Layer.provide(Repos.ReposLockdown.layer),
+		),
 	);
 
 	return Layer.mergeAll(

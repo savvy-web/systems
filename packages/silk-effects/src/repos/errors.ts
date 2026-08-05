@@ -58,3 +58,18 @@ export class NoteNotFoundError extends NoteNotFoundErrorBase<{
 		return `no note "${this.id}" on vendored repo "${this.name}"`;
 	}
 }
+
+/** @internal */
+export const ReposLockdownErrorBase = Data.TaggedError("ReposLockdownError");
+/**
+ * A permissions (lockdown) operation on a vendored repo failed.
+ * @public
+ */
+export class ReposLockdownError extends ReposLockdownErrorBase<{
+	readonly path: string;
+	readonly reason: string;
+}> {
+	get message(): string {
+		return `repos lockdown failed at ${this.path}: ${this.reason}`;
+	}
+}

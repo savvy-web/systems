@@ -9,9 +9,11 @@
  * A `ReposConfigError` with kind `"missing"` -- nothing vendored yet -- is
  * the common, friendly case and always exits 0. A `ReposConfigError` with
  * kind `"invalid"` means the manifest exists but is corrupt or unreadable,
- * `GitSubmoduleError` means the underlying git command failed, and
- * `RepoNotFoundError` means the named repo isn't in the manifest -- all
- * three are real failures, logged and reported via a non-zero exit code.
+ * `GitSubmoduleError` means the underlying git command failed,
+ * `RepoNotFoundError` means the named repo isn't in the manifest, and
+ * `ReposLockdownError` means the OS-permission lockdown pass on a vendored
+ * tree failed -- all four are real failures, logged and reported via a
+ * non-zero exit code.
  *
  * @example
  * ```bash
@@ -59,6 +61,10 @@ export const runReposPin = (cwd: string, name: string, ref: string) =>
 			return Effect.log(error.message);
 		}),
 		Effect.catchTag("RepoNotFoundError", (error) => {
+			process.exitCode = 1;
+			return Effect.log(error.message);
+		}),
+		Effect.catchTag("ReposLockdownError", (error) => {
 			process.exitCode = 1;
 			return Effect.log(error.message);
 		}),

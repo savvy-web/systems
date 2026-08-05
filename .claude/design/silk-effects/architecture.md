@@ -4,8 +4,8 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-08-04
-last-synced: 2026-08-04
+updated: 2026-08-05
+last-synced: 2026-08-05
 related:
   - ../silk/architecture.md
   - ../cli/architecture.md
@@ -43,7 +43,7 @@ silk-effects **also hosts the per-tool business logic** of the three standalone 
 
 `@savvy-web/mcp` (the `savvy-mcp` server) is a third consumer: it composes its own runtime layer from silk-effects services (notably `SilkWorkspaceAnalyzer`, `WorkspaceRoot` and `Turbo.TurboInspector`) plus the `@effected/*` kit, and surfaces them as MCP tools. See `../mcp/architecture.md`.
 
-A fourth namespace export, `Turbo`, adds read-only Turborepo inspection built on `@effected/commands` (`ToolDiscovery` + `Tool` + `Run`). Unlike the three tool namespaces above it is not extracted CLI business logic — it is a small `Context.Service` plus pure digest transforms. See [Turbo Inspection](#turbo-inspection-turbo-namespace). A fifth, `Repos`, owns the vendored-reference-repo manifest and submodule plumbing.
+A fourth namespace export, `Turbo`, adds read-only Turborepo inspection built on `@effected/commands` (`ToolDiscovery` + `Tool` + `Run`). Unlike the three tool namespaces above it is not extracted CLI business logic — it is a small `Context.Service` plus pure digest transforms. See [Turbo Inspection](#turbo-inspection-turbo-namespace). A fifth, `Repos`, owns the vendored-reference-repo manifest, the submodule plumbing and the OS-permission boundary that keeps vendored trees read-only — see [Vendored Repos](#vendored-repos-repos-namespace).
 
 **Package:** `@savvy-web/silk-effects`, in `packages/silk-effects`. Platform-agnostic via effect's in-core platform abstractions — consumers provide their own platform layer. Built dual-format (esm + cjs) so config-integration consumers can `require()` it — see [Why dual-format](#why-dual-format-cjs--esm).
 
@@ -130,7 +130,7 @@ src/
   commitlint/           ← Commitlint namespace (extracted @savvy-web/commitlint logic)
   lint/                 ← Lint namespace (extracted @savvy-web/lint-staged logic)
   turbo/                ← Turbo namespace (TurboInspector service + TurboDigest transforms)
-  repos/                ← Repos namespace (.repos manifest, submodule plumbing, drift report)
+  repos/                ← Repos namespace (.repos manifest, submodule plumbing, OS-level lockdown)
 
 __test__/                ← mirrors the source tree; integration tests under integration/
   integration/fixtures/workspaces/  ← workspace fixture tree (see Testing Strategy)
@@ -240,6 +240,25 @@ The namespace splits into a service for I/O and a pure transformer for the math,
 **Schemas** (`src/turbo/schemas/`): `TurboDryRun` is the input decode shape for `turbo … --dry=json`; `CacheDiagnosis`, `TaskGraphResult` and `AffectedResult` are the deliberately **flat, bridge-safe** result shapes — no recursion, so the MCP's Effect-Schema→zod bridge round-trips them cleanly. See the structs in `src/turbo/schemas/results.ts`.
 
 **Errors** (`src/turbo/errors.ts`): the `TurboError` union — `TurboNotInstalledError` (binary unresolvable), `NotATurboRepoError` (no `turbo.json`), `DryRunParseError` (bad JSON / decode failure) and `TurboExecError` (non-zero exit). `TurboNotInstalledError` and `TurboExecError` are intentionally distinct so callers can tell "turbo absent" from "turbo ran and failed".
+
+### Vendored Repos (Repos namespace)
+
+The `Repos` namespace (`src/repos/`, re-exported from the root as `export * as Repos`) owns the vendored-reference-repo mechanism: a manifest at `.repos/config.json`, git submodules under `.repos/`, and the permissions boundary that keeps those checkouts read-only. It backs `savvy repos` and the MCP `repos_inspect`/`repos_manage` tools (see `../cli/architecture.md` and `../mcp/architecture.md`); the plugin-side judgment and guard layer is documented in `../silk/plugin.md`.
+
+Three services:
+
+- **`ReposConfigStore`** (`src/repos/services/config-store.ts`) reads and writes the validated manifest, failing with `ReposConfigError` (`kind: "missing" | "invalid"` — "missing" is the friendly, exit-0 case for a repo that vendors nothing).
+- **`ReposManager`** (`src/repos/services/manager.ts`) is the submodule plumbing: `status` (presence, gitlink commit, working-tree dirtiness, stale note ids), `sync` (stale-lock clearing, `--init --depth 1` for absent checkouts, sparse re-application on every run), `add`, `pin` and `note`. All git plumbing goes through `@effected/git`'s `Git`, whose typed failures are mapped onto this module's `GitSubmoduleError`. `ReposManager.layer` requires `ReposConfigStore | Git | FileSystem | Path | ReposLockdown`.
+- **`ReposLockdown`** (`src/repos/services/lockdown.ts`) is the boundary itself: `lock` chmods a vendored tree to files `0444` / directories `0555` (preserving each file's executable bit: `0555` instead when any of `0111` was already set), `unlock` restores `0644`/`0755` (`0755` for an executable), and the walk skips symlinks entirely (no chmod, no descent — there is no `lchmod` on Linux, and `fs.stat` following a symlink would otherwise touch whatever it points at). Failures surface as `ReposLockdownError { path, reason }`. `ReposLockdown.layer` needs only `FileSystem | Path`.
+
+Four decisions in this area are load-bearing:
+
+- **The OS permissions are the boundary; the plugin's Bash/fs/MCP guards are early-warning UX in front of it.** A guard can only pattern-match a command string, so it has documented misses; a `0444` file has none. The two layers are complementary and neither substitutes for the other.
+- **Both the worktree AND the submodule's git metadata directory are locked**, and the metadata dir is derived from the checkout rather than assumed. `resolveModuleDir` reads `<root>/.repos/<name>/.git` — normally a FILE holding a `gitdir:` pointer — and resolves it (relative pointers against the `.git` file's directory), because git names `.git/modules/<path>` after the path the submodule was *registered* under, which need not be the manifest key (this repo's own `effect` entry has gitdir `.git/modules/.repos/effect-smol`). It degrades to the name-based path when the pointer is unreadable and never fails; it is also held to `path.relative(root, resolved)` staying inside `root` — a hand-edited pointer that resolves outside the repo falls back to the name-based path rather than letting the walk chmod something it shouldn't. Shared with `sync`'s stale-lock pass so both land on the same directory.
+- **Traversal order differs by direction.** Locking chmods a directory *after* recursing into it (the directory must stay writable while being walked); unlocking chmods it *before* (re-entry needs the new mode). Getting this backwards makes the second pass fail with `EACCES` on the tree it just locked.
+- **`withUnlocked(root, name, effect)` owns the whole finalizer contract itself; callers no longer re-lock explicitly.** It runs `unlock`, captures its `Exit`, runs `effect` only if unlock succeeded (restoring interruptibility around it), then ALWAYS runs `lock` afterward and captures its `Exit` too — including when unlock failed part-way or `effect` was interrupted, so the tree never sits open on an aborted path. A relock failure surfaces as `ReposLockdownError` only when it is the SOLE failure; an unlock or inner-effect failure always wins and the relock failure is swallowed behind it. `sync`/`add`/`pin` no longer issue a trailing `lockdown.lock(root, name)` — the write/`git add` work that happens after the unlocked window is covered by this same finalizer surfacing its own failure.
+
+Consequence for consumers: `sync`, `add` and `pin` all widen their error channel with `ReposLockdownError`, which propagates into `reposCommand`'s annotated error channel in the CLI and into `repos_manage`'s in the MCP server; the `repos sync`/`add`/`pin` CLI handlers `catchTag` it the same as `GitSubmoduleError` (log the message, `exitCode = 1`). Reads (`status`, `repos_inspect`) work unchanged against a locked tree — reading never needs write permission — and `.repos/config.json` is host-repo content that is never locked.
 
 ## Service Patterns
 
