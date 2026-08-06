@@ -80,6 +80,24 @@ export interface ReposManagerShape {
 		root: string,
 		name: string,
 	) => Effect.Effect<ReposRemoveResult, ReposConfigError | GitSubmoduleError | RepoNotFoundError | ReposLockdownError>;
+	/**
+	 * Crash contract: unlike {@link add}, `rename` has no compensating
+	 * rollback. `Effect.uninterruptibleMask` guards fiber interruption, not a
+	 * hard process kill, so a `kill -9` between `git mv` and the manifest
+	 * write can leave the tree renamed in git, the manifest still holding
+	 * the old key, and the tree unlocked (the relock finalizer never runs).
+	 * This is a deliberate asymmetry with `add`, which DOES roll back —
+	 * `rename` does not, because unlike a fresh vendor there is no "nothing
+	 * happened yet" state to unwind back to.
+	 *
+	 * Recovery is NOT a guaranteed clean "just run it again": `git mv` is not
+	 * idempotent (a real-git probe confirms a second `git mv <old> <new>`
+	 * after the first already succeeded fails with "bad source"), so a crash
+	 * after `git mv` lands makes the next `rename` call fail at that same
+	 * step rather than resume past it. A crash in that window needs manual
+	 * inspection (`git status`, `.repos/config.json`, `.gitmodules`) before
+	 * retrying, not a blind re-invocation.
+	 */
 	readonly rename: (
 		root: string,
 		oldName: string,
@@ -565,14 +583,28 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 
 									const currentGitmodulesText = yield* fs.readFileString(gitmodulesPath).pipe(Effect.option);
 									if (Option.isSome(currentGitmodulesText)) {
-										const configResult = GitConfig.parseResult(currentGitmodulesText.value);
-										if (Result.isSuccess(configResult)) {
-											const removeResult = Gitmodules.remove(configResult.success, name);
-											if (Result.isSuccess(removeResult)) {
-												yield* rollbackStep(
-													"restore .gitmodules",
-													fs.writeFileString(gitmodulesPath, removeResult.success.stringify()),
-												);
+										const parsedForRollback = yield* Gitmodules.parse(currentGitmodulesText.value).pipe(Effect.option);
+										// `git submodule add` names the `.gitmodules` section after the
+										// PATH ([submodule ".repos/<name>"]), not the bare manifest key --
+										// removing by `name` alone was a no-op that left the section (and
+										// a wedged next `add`) behind. Resolve the section the same way
+										// `remove`'s own `.gitmodules` cleanup does: by canonical name
+										// first, falling back to its `path` field, both matched against
+										// `repoPath` (the actual registered path).
+										const section = Option.isSome(parsedForRollback)
+											? (parsedForRollback.value.entries.find((candidate) => candidate.name === repoPath) ??
+												parsedForRollback.value.entries.find((candidate) => candidate.path === repoPath))
+											: undefined;
+										if (section) {
+											const configResult = GitConfig.parseResult(currentGitmodulesText.value);
+											if (Result.isSuccess(configResult)) {
+												const removeResult = Gitmodules.remove(configResult.success, section.name);
+												if (Result.isSuccess(removeResult)) {
+													yield* rollbackStep(
+														"restore .gitmodules",
+														fs.writeFileString(gitmodulesPath, removeResult.success.stringify()),
+													);
+												}
 											}
 										}
 									}
@@ -1109,27 +1141,10 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 															.add(root, [".gitmodules"])
 															.pipe(Effect.mapError(asSubmoduleError("git add .gitmodules", root)));
 
-														// The SUPERPROJECT's own `.git/config` submodule
-														// registration (`submodule.<name>.url`/`.active` --
-														// entirely distinct from `.gitmodules`, and from the
-														// module's own gitdir config fixed above) is written
-														// only by `submodule add`/`submodule init`, keyed by
-														// section NAME -- `git mv` never touches it. Left
-														// alone, it stays registered under the OLD name
-														// forever, so `git submodule status` reads the
-														// (perfectly healthy) renamed entry as uninitialized
-														// (a live-repo post-rename finding, this review round).
-														// `submoduleInit` re-registers from the now-canonical
-														// `.gitmodules` under the NEW name; the stale OLD
-														// entries are then unset -- tolerantly, since
-														// `configUnset` fails LOUDLY on a key that was never
-														// set (per its own TSDoc) and an old registration that
-														// was itself never initialized is a legitimate,
-														// non-error case here, not a real failure.
-														yield* git
-															.submoduleInit(root, { paths: [newRepoPath] })
-															.pipe(Effect.mapError(asSubmoduleError(`git submodule init -- ${newRepoPath}`, root)));
-
+														// The stale OLD superproject registration (see below)
+														// is only unset when there IS an old name to unset --
+														// scoped to this branch since `oldSectionName` is only
+														// meaningful when the section actually needed renaming.
 														const unsetIfPresent = (key: string) =>
 															git.configGet(root, key).pipe(
 																Effect.mapError(asSubmoduleError(`git config --get ${key}`, root)),
@@ -1145,11 +1160,52 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 														yield* unsetIfPresent(`submodule.${oldSectionName}.active`);
 													}
 
+													// The SUPERPROJECT's own `.git/config` submodule
+													// registration (`submodule.<name>.url`/`.active` --
+													// entirely distinct from `.gitmodules`, and from the
+													// module's own gitdir config fixed above) is written
+													// only by `submodule add`/`submodule init`, keyed by
+													// section NAME -- `git mv` never touches it. Left
+													// alone, it stays registered under the OLD name
+													// forever, so `git submodule status` reads the
+													// (perfectly healthy) renamed entry as uninitialized
+													// (a live-repo post-rename finding, this review round).
+													// Run UNCONDITIONALLY (not nested inside the
+													// section-rename branch above) and tolerantly --
+													// `submoduleInit` re-registering an already-current
+													// section is a safe no-op, so this reaches the fix even
+													// on a hypothetical retry that resumes after a prior run
+													// already canonicalized the section name but crashed
+													// before reaching this point.
+													yield* git
+														.submoduleInit(root, { paths: [newRepoPath] })
+														.pipe(Effect.mapError(asSubmoduleError(`git submodule init -- ${newRepoPath}`, root)));
+
 													// 3. Manifest: rename the key, entry preserved verbatim.
+													// A concurrent manifest mutation (another `remove`/
+													// `rename`/hand-edit) landing in the narrow window
+													// between this method's up-front `configStore.read`
+													// existence check and this `update` call -- the lock is
+													// only held for `update`'s own read-modify-write, not
+													// across the git work above -- can make `oldName`
+													// already gone from the fresh read. git has already been
+													// fully renamed at this point, so silently returning
+													// `fresh` unchanged would report success while
+													// `.repos/config.json` stays stale and disagrees with
+													// `.gitmodules`/the worktree. Fail typed instead:
+													// `ReposConfigError` is already in `rename`'s declared
+													// error channel and both the CLI and mcp adapters
+													// `catchTag` it.
 													yield* configStore.update(root, (fresh) => {
 														const renamedEntry = getRepoEntry(fresh.repos, oldName);
 														if (!renamedEntry) {
-															return fresh;
+															return Effect.fail(
+																new ReposConfigError({
+																	path: MANIFEST_PATH,
+																	reason: `rename applied to git but manifest entry "${oldName}" is gone; manifest and .gitmodules now disagree`,
+																	kind: "invalid",
+																}),
+															);
 														}
 														const { [oldName]: _dropped, ...rest } = fresh.repos;
 														return { repos: { ...rest, [newName]: renamedEntry } };

@@ -23,6 +23,16 @@ const REPOS_DIR = join(ROOT, ".repos");
 // Kept >= 500ms per the monitor's spec.
 const DEBOUNCE_MS = 500;
 
+// Finite timeout for both spawnSync calls below -- a hung/stalled `savvy`
+// process (e.g. a runner wedged waiting on a registry) used to block this
+// monitor forever, since spawnSync with no `timeout` waits indefinitely.
+// `spawnSync` reports a timed-out child via `result.error` (ETIMEDOUT), which
+// the existing `probe.error`/`result.error` fail-open checks below already
+// route to `null` -- no new branch needed, only the option. Overridable via
+// env so a test can set it to a few milliseconds and assert the stalled-
+// runner case without actually waiting 30s.
+const SPAWN_TIMEOUT_MS = Number(process.env.GITMODULES_DRIFT_SPAWN_TIMEOUT_MS) || 30_000;
+
 // --- package manager resolution --------------------------------------------
 
 /**
@@ -80,7 +90,7 @@ export function checkDrift(root = ROOT) {
 	const [bin, ...rest] = runnerFor(detectPackageManager(root));
 	let probe;
 	try {
-		probe = spawnSync(bin, [...rest, "--version"], { cwd: root, encoding: "utf8" });
+		probe = spawnSync(bin, [...rest, "--version"], { cwd: root, encoding: "utf8", timeout: SPAWN_TIMEOUT_MS });
 	} catch {
 		return null;
 	}
@@ -88,7 +98,11 @@ export function checkDrift(root = ROOT) {
 
 	let result;
 	try {
-		result = spawnSync(bin, [...rest, "repos", "status", "--drift", "--json"], { cwd: root, encoding: "utf8" });
+		result = spawnSync(bin, [...rest, "repos", "status", "--drift", "--json"], {
+			cwd: root,
+			encoding: "utf8",
+			timeout: SPAWN_TIMEOUT_MS,
+		});
 	} catch {
 		return null;
 	}

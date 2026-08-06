@@ -9,9 +9,16 @@ import { RepoNote } from "./manifest.js";
  * `commit` is an alias of `stagedCommit`, retained for one release so an
  * existing consumer reading `entry.commit` keeps working while it migrates to
  * the index-aware triple. It carries no independent release tag beyond
- * `@public` (this schema has no narrower audience to gate it behind) and is
- * slated for removal once downstream consumers (the `mcp` `repos-inspect`
- * tool and the `cli` `repos status` renderer) have adopted `stagedCommit`.
+ * `@public` (this schema has no narrower audience to gate it behind).
+ * Removal is scheduled by a tracked issue, not gated on a renderer migration
+ * precondition here.
+ *
+ * Not fully behavior-preserving: `commit: stagedCommit ?? null` reads `null`
+ * for a gitlink committed at `HEAD` but staged for REMOVAL, where the prior
+ * single-`commit` field showed the committed oid. `stagedCommit` is `None`
+ * in exactly that case (nothing is staged), so the alias reports "nothing
+ * staged" rather than "here is what HEAD still has" — a real, if narrow,
+ * difference from the pre-triple `commit` field's behavior.
  * @public
  */
 export const RepoStatusEntry = Schema.Struct({

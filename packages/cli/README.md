@@ -59,7 +59,7 @@ npx savvy clean --globs dist,.turbo,coverage
 
 ## Vendored repos are read-only
 
-`savvy repos sync`, `add`, `pin`, `remove`, `rename` and `restore` leave every vendored tree under `.repos/` read-only at the OS level — files `0444`, directories `0555`. Reading a vendored source needs no extra step; writing to one fails with `EACCES` by design, because those trees mirror an upstream repo at a pinned ref and any local edit is lost on the next sync. A dirty tree from a hand bypass recovers with `savvy repos restore <name...>` (or with no names, every dirty tree) rather than a manual `git reset`. Restore is destructive by design: it hard-resets each tree it touches to the pinned commit, so uncommitted edits and untracked files in that tree are gone.
+`savvy repos sync`, `add`, `pin`, `remove`, `rename` and `restore` leave every vendored tree under `.repos/` read-only at the OS level — files `0444`, directories `0555` (an executable file locks at `0555` instead, and unlocks back to `0755` rather than losing its executable bit). Reading a vendored source needs no extra step; writing to one fails with `EACCES` by design, because those trees mirror an upstream repo at a pinned ref and any local edit is lost on the next sync. A dirty tree from a hand bypass recovers with `savvy repos restore <name...>` (or with no names, every dirty tree) rather than a manual `git reset`. Restore is destructive by design: it hard-resets each tree it touches to the pinned commit, so uncommitted edits and untracked files in that tree are gone.
 
 ```bash
 npx savvy repos sync

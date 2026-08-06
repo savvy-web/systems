@@ -204,6 +204,36 @@ assert_deny() {
 	assert_allow
 }
 
+@test "git -C .repos/effect log && git -C .repos/effect reset --hard HEAD (read clause first, write clause second, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect reset --hard HEAD'
+	assert_deny
+}
+
+@test "git -C .repos/effect log; git -C .repos/effect reset --hard HEAD (read clause first, write clause second, ;): deny" {
+	run_guard_with_command 'git -C .repos/effect log; git -C .repos/effect reset --hard HEAD'
+	assert_deny
+}
+
+@test "git -C .repos/effect log || git -C .repos/effect reset --hard HEAD (read clause first, write clause second, ||): deny" {
+	run_guard_with_command 'git -C .repos/effect log || git -C .repos/effect reset --hard HEAD'
+	assert_deny
+}
+
+@test "git -C .repos/effect log && git -C .repos/effect rm -rf . (read-then-rm bypass, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect rm -rf .'
+	assert_deny
+}
+
+@test "git -C .repos/effect log && git -C .repos/effect mv old new (read-then-mv bypass, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect mv old new'
+	assert_deny
+}
+
+@test "git -C .repos/effect log && git -C .repos/effect submodule deinit -- . (read-then-deinit bypass, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect submodule deinit -- .'
+	assert_deny
+}
+
 @test "non-Bash tool_name: silent no-op" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-mcp-write.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]

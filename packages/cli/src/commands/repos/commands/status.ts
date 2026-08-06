@@ -12,7 +12,7 @@
  * is a real failure, logged and reported via a non-zero exit code.
  *
  * With `--drift`, {@link Repos.ReposDrift.check} also runs (after the status
- * render), reconciling the manifest, `.gitmodules`, the worktree, and `git
+ * check), reconciling the manifest, `.gitmodules`, the worktree, and `git
  * submodule status`. Each detected drift prints as one line
  * (`<name>: <kind> — <detail>`), and any drift flips the exit code to 1,
  * mirroring the existing `!clean` rule for the status report itself. Because

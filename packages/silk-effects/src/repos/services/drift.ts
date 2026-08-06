@@ -54,7 +54,21 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						const manifestEntries = Object.entries(manifest.repos);
 						const gitmodulesPath = path.join(root, ".gitmodules");
 
-						const gitmodulesText = yield* fs.readFileString(gitmodulesPath).pipe(Effect.option);
+						// Only a `NotFound`-classified read failure means "no .gitmodules
+						// yet" -- `Effect.option` used to fold EVERY failure (a
+						// permission-denied stat, a broken symlink, an unreadable mount)
+						// into the same `None`, silently reporting a real I/O problem as
+						// "every manifest entry is unregistered." Any other failure
+						// propagates as `GitSubmoduleError`, the same classification
+						// `ReposManager` uses for its own `.gitmodules` reads.
+						const gitmodulesText = yield* fs.readFileString(gitmodulesPath).pipe(
+							Effect.map(Option.some),
+							Effect.catchTag("PlatformError", (error) =>
+								error.reason._tag === "NotFound"
+									? Effect.succeed(Option.none<string>())
+									: Effect.fail(asSubmoduleError("read .gitmodules", gitmodulesPath)(error)),
+							),
+						);
 
 						// No `.gitmodules` at all: every manifest entry is unregistered —
 						// there is nothing else to reconcile against.
@@ -96,9 +110,27 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						const drifts: RepoDrift[] = [];
 						const matchedSectionNames = new Set<string>();
 
-						for (const [name, entry] of manifestEntries) {
-							const expectedPath = `${REPOS_DIR}/${name}`;
+						// Pairing is arbitrated in TWO PASSES over every manifest entry,
+						// not one entry at a time -- entry order used to decide the
+						// outcome: with a section named ".repos/A" but whose `path` field
+						// reads ".repos/B", pairing B FIRST (in `Object.entries` order)
+						// stole that section via the path fallback below, leaving A's own
+						// correctly-named section unclaimed and A wrongly reported
+						// `unregisteredManifestEntry` despite its exact-name section
+						// existing. Claiming every exact-NAME match first, across ALL
+						// entries, before any entry is allowed to fall back to a PATH
+						// match closes that: a section already claimed by its rightful
+						// name-matched entry can never be stolen by another entry's path
+						// fallback, regardless of manifest iteration order.
+						interface Paired {
+							readonly section: (typeof gitmodules.entries)[number];
+							readonly viaPath: boolean;
+						}
+						const pairedByName = new Map<string, Paired>();
 
+						// Pass 1: exact-name claims, across every entry.
+						for (const [name] of manifestEntries) {
+							const expectedPath = `${REPOS_DIR}/${name}`;
 							// `git submodule add` derives the section's NAME (the
 							// `[submodule "<name>"]` subsection) from its path at
 							// creation time, so under normal use `section.name` already
@@ -110,24 +142,39 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							const nameMatch = gitmodules.entries.find(
 								(candidate) => candidate.name === expectedPath && !matchedSectionNames.has(candidate.name),
 							);
+							if (nameMatch) {
+								matchedSectionNames.add(nameMatch.name);
+								pairedByName.set(name, { section: nameMatch, viaPath: false });
+							}
+						}
 
-							// Name-pairing failed: a diverged section name (e.g. a
-							// manifest entry re-slugged after the `.gitmodules` section
-							// was created under an older name) would otherwise degrade
-							// straight to an unregistered/orphan pair and mask the
-							// url/shallow comparisons below. Fall back to pairing by the
-							// section's own `path` field -- the one other identifier that
-							// still ties a section to this manifest entry -- as long as
-							// that section hasn't already been claimed by a name match
-							// for a different entry.
-							const pathMatch = nameMatch
-								? undefined
-								: gitmodules.entries.find(
-										(candidate) => candidate.path === expectedPath && !matchedSectionNames.has(candidate.name),
-									);
+						// Pass 2: path-fallback for entries STILL unmatched after pass 1,
+						// against sections pass 1 (or an earlier pass-2 iteration) hasn't
+						// already claimed. A diverged section name (e.g. a manifest entry
+						// re-slugged after the `.gitmodules` section was created under an
+						// older name) would otherwise degrade straight to an
+						// unregistered/orphan pair and mask the url/shallow comparisons
+						// below; pairing by the section's own `path` field is the one
+						// other identifier that still ties a section to this manifest
+						// entry.
+						for (const [name] of manifestEntries) {
+							if (pairedByName.has(name)) {
+								continue;
+							}
+							const expectedPath = `${REPOS_DIR}/${name}`;
+							const pathMatch = gitmodules.entries.find(
+								(candidate) => candidate.path === expectedPath && !matchedSectionNames.has(candidate.name),
+							);
+							if (pathMatch) {
+								matchedSectionNames.add(pathMatch.name);
+								pairedByName.set(name, { section: pathMatch, viaPath: true });
+							}
+						}
 
-							const section = nameMatch ?? pathMatch;
-							if (!section) {
+						for (const [name, entry] of manifestEntries) {
+							const expectedPath = `${REPOS_DIR}/${name}`;
+							const paired = pairedByName.get(name);
+							if (!paired) {
 								drifts.push(
 									RepoDrift.make({
 										name,
@@ -138,7 +185,8 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 								);
 								continue;
 							}
-							matchedSectionNames.add(section.name);
+							const { section, viaPath } = paired;
+							const pathMatch = viaPath ? section : undefined;
 
 							if (pathMatch) {
 								drifts.push(
@@ -179,7 +227,12 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 									RepoDrift.make({
 										name,
 										kind: "missingShallow",
-										detail: `.gitmodules does not record submodule.${name}.shallow = true`,
+										// The config key is keyed by the `.gitmodules` SECTION
+										// name (the path form git derives it from,
+										// `submodule.<path>.shallow`), never the bare manifest
+										// key -- `section.name` is that canonical name, exactly
+										// the value paired against `name` above.
+										detail: `.gitmodules does not record submodule.${section.name}.shallow = true`,
 										observedValue: section.shallow === undefined ? "unset" : String(section.shallow),
 									}),
 								);

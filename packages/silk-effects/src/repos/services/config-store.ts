@@ -1,4 +1,4 @@
-import { Context, Effect, FileSystem, Layer, Path, Schedule, Schema } from "effect";
+import { Clock, Context, Effect, FileSystem, Layer, Option, Path, Schedule, Schema } from "effect";
 import { MANIFEST_PATH, REPOS_DIR } from "../constants.js";
 import { ReposConfigError } from "../errors.js";
 import { ReposManifestFile } from "../schemas/manifest.js";
@@ -141,6 +141,16 @@ export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposCon
 			// hanging the caller.
 			const lockSchedule = Schedule.exponential("25 millis").pipe(Schedule.upTo({ duration: "2 seconds" }));
 
+			// A `.lock` file left behind by a killed/crashed holder (the process
+			// died between `open` and the matching `remove` in `releaseLock`) used
+			// to block every future `update` forever: only `releaseLock` ever removed
+			// it, and the 2s retry window always ran out first. A lock older than
+			// this age is presumed abandoned and reclaimed (removed, then the acquire
+			// attempt retried) rather than treated as still-held; a lock younger than
+			// this is left alone, mirroring `STALE_LOCK_MAX_AGE_MS`'s reasoning in
+			// `manager.ts` for the analogous `index.lock`/`shallow.lock` case.
+			const LOCK_MAX_AGE_MS = 60_000;
+
 			const acquireLock = (root: string) =>
 				Effect.gen(function* () {
 					const lockPath = `${manifestPath(root)}.lock`;
@@ -153,8 +163,27 @@ export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposCon
 									new ReposConfigError({ path: lockPath, reason: `mkdir failed: ${String(cause)}`, kind: "invalid" }),
 							),
 						);
-					yield* Effect.scoped(fs.open(lockPath, { flag: "wx" })).pipe(
-						Effect.asVoid,
+
+					// Reclaim a stale lock BEFORE each open attempt (including the
+					// first): a lock whose mtime already exceeds `LOCK_MAX_AGE_MS` is
+					// removed here so the subsequent `open` succeeds immediately rather
+					// than waiting out the full retry window. A lock that is present but
+					// still young (a genuinely active holder) is left alone; the `open`
+					// below then fails `AlreadyExists` and the retry schedule below runs
+					// its normal backoff.
+					const attempt = Effect.gen(function* () {
+						const info = yield* fs.stat(lockPath).pipe(Effect.option);
+						if (Option.isSome(info) && Option.isSome(info.value.mtime)) {
+							const now = yield* Clock.currentTimeMillis;
+							const age = now - info.value.mtime.value.getTime();
+							if (age >= LOCK_MAX_AGE_MS) {
+								yield* fs.remove(lockPath).pipe(Effect.ignore);
+							}
+						}
+						yield* Effect.scoped(fs.open(lockPath, { flag: "wx" })).pipe(Effect.asVoid);
+					});
+
+					yield* attempt.pipe(
 						Effect.retry({
 							schedule: lockSchedule,
 							while: (error) => error.reason._tag === "AlreadyExists",
@@ -163,7 +192,14 @@ export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposCon
 							(cause) =>
 								new ReposConfigError({
 									path: lockPath,
-									reason: `timed out acquiring lock: ${String(cause)}`,
+									// Name the path AND the remedy explicitly -- the previous
+									// message ("timed out acquiring lock: ...") named neither,
+									// leaving the user to guess that the fix for a lock this old
+									// (a lock younger than LOCK_MAX_AGE_MS is already reclaimed
+									// above, so reaching this message at all means either a
+									// genuinely active holder or a lock not yet old enough to
+									// reclaim) is to remove the file by hand.
+									reason: `timed out acquiring lock after 2s at ${lockPath}: ${String(cause)}. If no other savvy process is running, a previous run likely crashed while holding it -- remove ${lockPath} and retry.`,
 									kind: "invalid",
 								}),
 						),
@@ -172,13 +208,19 @@ export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposCon
 
 			const releaseLock = (root: string) => fs.remove(`${manifestPath(root)}.lock`).pipe(Effect.ignore);
 
+			// Acquire/release is a single scoped resource: the finalizer
+			// (`releaseLock`) is bound via `Effect.acquireRelease` and run by
+			// `Effect.scoped` when the surrounding scope closes, so it cannot be
+			// skipped by any future refactor of the body -- unlike the previous
+			// `Effect.ensuring` shape, which relied on the body always being wrapped
+			// correctly by hand.
 			const update = (
 				root: string,
 				fn: (manifest: ReposManifestFile) => ReposManifestFile | Effect.Effect<ReposManifestFile, ReposConfigError>,
 			) =>
-				Effect.gen(function* () {
-					yield* acquireLock(root);
-					return yield* Effect.gen(function* () {
+				Effect.scoped(
+					Effect.gen(function* () {
+						yield* Effect.acquireRelease(acquireLock(root), () => releaseLock(root));
 						const manifest: ReposManifestFile = yield* read(root).pipe(
 							Effect.catchTag("ReposConfigError", (error) =>
 								error.kind === "missing" ? Effect.succeed({ repos: {} } as ReposManifestFile) : Effect.fail(error),
@@ -188,8 +230,8 @@ export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposCon
 						const next = Effect.isEffect(result) ? yield* result : result;
 						yield* write(root, next);
 						return next;
-					}).pipe(Effect.ensuring(releaseLock(root)));
-				});
+					}),
+				);
 
 			return { exists, read, write, update };
 		}),

@@ -40,7 +40,7 @@ const _reposCommand = Command.make("repos").pipe(
  * rather than `never`: `Command.withSubcommands` propagates each
  * subcommand's requirements up into the group's `R`, which the root assembly
  * discharges via `AppLive`. `Repos.ReposDrift` joins the union because
- * `status --drift` runs `Repos.ReposDrift.check` after the status render.
+ * `status --drift` runs `Repos.ReposDrift.check` after the status check.
  *
  * The error channel is `Repos.GitSubmoduleError` alone: `add`/`pin`/`note`/
  * `remove`/`rename`/`restore`/`sync` each `catchTag` every error their

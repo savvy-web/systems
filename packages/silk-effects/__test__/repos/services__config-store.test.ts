@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
@@ -131,7 +131,7 @@ layer(StoreLive)("ReposConfigStore", (it) => {
 // these stay outside the suite-boundary `layer(...)` block per house
 // convention (`MethodsNonLive` has no `.live`).
 it.live(
-	"a stale lock file that outlives the backoff window fails typed, naming the lock",
+	"a fresh (young) foreign lock file still blocks until the backoff window times out",
 	() =>
 		Effect.gen(function* () {
 			const root = mkdtempSync(join(tmpdir(), "repos-store-"));
@@ -141,6 +141,31 @@ it.live(
 			const error = yield* Effect.flip(store.update(root, (m) => m));
 			expect(error.kind).toBe("invalid");
 			expect(error.path).toContain("config.json.lock");
+		}).pipe(Effect.provide(StoreLive)),
+	10_000,
+);
+
+it.live(
+	"a stale lock file (older than LOCK_MAX_AGE_MS) is reclaimed and update() succeeds",
+	() =>
+		Effect.gen(function* () {
+			const root = mkdtempSync(join(tmpdir(), "repos-store-"));
+			mkdirSync(join(root, ".repos"), { recursive: true });
+			const lockPath = join(root, ".repos", "config.json.lock");
+			writeFileSync(lockPath, "");
+			// Backdate the lock's mtime well past LOCK_MAX_AGE_MS (60s) so
+			// `acquireLock` reads it as abandoned by a killed holder rather than
+			// as still actively held.
+			const staleTime = new Date(Date.now() - 5 * 60_000);
+			utimesSync(lockPath, staleTime, staleTime);
+			const store = yield* ReposConfigStore;
+			const next = yield* store.update(root, (m) => ({
+				repos: { ...m.repos, spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },
+			}));
+			expect(next.repos.spec?.purpose).toBe("spec authority");
+			// The reclaimed lock is removed by the successful acquire/release
+			// cycle -- no lock file should linger afterward.
+			expect(existsSync(lockPath)).toBe(false);
 		}).pipe(Effect.provide(StoreLive)),
 	10_000,
 );

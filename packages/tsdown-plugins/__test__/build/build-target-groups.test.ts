@@ -14,16 +14,33 @@ import { BuildCollector } from "../../src/report/collector.js";
 // already exist at a fixed path — a literal shared path like "/tmp/t.json" is also live-written
 // by the vitest-agent MCP reporter itself, so it is not even a stable "leftover"), each test gets
 // its OWN real tsconfig file under a unique `mkdtemp` directory, cleaned up afterward.
-const TMPDIR_ESCAPED = tmpdir().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Escape every regex metacharacter in a literal path segment before splicing it into a `RegExp` source. */
+function escapeForRegExp(literal: string): string {
+	return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 /**
  * Build the derived-path naming-contract regex for a given real base tsconfig path, mirroring
  * `writeDtsEmitTsconfig`'s own `join(tmpdir(), "tsconfig-dts-emit-<pid>-<sanitized-base>.json")`
- * scheme. Never asserts a literal tmpdir/pid value — only the pattern.
+ * scheme. Building the prefix via `join(tmpdir(), "tsconfig-dts-emit-")` (rather than hard-coding a
+ * "/" join) keeps this test's expectation platform-correct on a `path.sep` other than "/". Never
+ * asserts a literal tmpdir/pid value — only the pattern.
  */
 function dtsEmitTsconfigPattern(basePath: string): RegExp {
 	const sanitizedBase = basePath.replace(/[^\w]/g, "_");
-	return new RegExp(`^${TMPDIR_ESCAPED}/tsconfig-dts-emit-\\d+-${sanitizedBase}\\.json$`);
+	const prefixEscaped = escapeForRegExp(join(tmpdir(), "tsconfig-dts-emit-"));
+	return new RegExp(`^${prefixEscaped}\\d+-${sanitizedBase}\\.json$`);
+}
+
+/**
+ * The EXACT derived dts-emit tsconfig path `writeDtsEmitTsconfig` would write for `basePath` in
+ * THIS process — same sanitization, same `process.pid` (resolved-tsconfig.ts writes under
+ * `tmpdir()` directly, never under the caller's own `mkdtemp` directory, so removing only that
+ * directory in `withRealTsconfig`'s `finally` left this file behind on disk after every run).
+ */
+function derivedDtsEmitTsconfigPath(basePath: string): string {
+	const sanitizedBase = basePath.replace(/[^\w]/g, "_");
+	return join(tmpdir(), `tsconfig-dts-emit-${process.pid}-${sanitizedBase}.json`);
 }
 
 async function withRealTsconfig<T>(run: (tsconfigPath: string, pattern: RegExp) => Promise<T>): Promise<T> {
@@ -34,6 +51,7 @@ async function withRealTsconfig<T>(run: (tsconfigPath: string, pattern: RegExp) 
 		return await run(tsconfigPath, dtsEmitTsconfigPattern(tsconfigPath));
 	} finally {
 		await rm(dir, { recursive: true, force: true });
+		await rm(derivedDtsEmitTsconfigPath(tsconfigPath), { force: true });
 	}
 }
 

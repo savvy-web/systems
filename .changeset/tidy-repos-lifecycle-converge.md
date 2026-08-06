@@ -34,3 +34,11 @@ New `Repos.ReposDrift` service (`Repos.ReposDrift.layer`, needs `ReposConfigStor
 
 - `ReposManager.note`'s `promote` operation now appends the note to the target document (`layout` or `startHere`) instead of overwriting it.
 - `ReposConfigStore.update` now serializes manifest reads and writes behind an exclusive lock file, so concurrent callers queue instead of racing a lost update.
+
+## Documentation
+
+### Migrating an existing checkout after a `.gitmodules` section rename
+
+This repo's own `.repos/effect` entry has its `.gitmodules` section canonicalized from `[submodule "effect-smol"]` to `[submodule ".repos/effect"]` as part of this release, ahead of the new `rename` operation existing to do this safely. Renaming a section name in `.gitmodules` directly (rather than via `rename`) does not touch a contributor's own local `.git/config`, which stays registered under the old name — `git submodule status` then reports a perfectly healthy checkout as uninitialized (a leading `-`).
+
+After pulling this change, run `git submodule sync -- .repos/effect` followed by `git submodule init -- .repos/effect` to re-register the local `.git/config` under the canonical name. `savvy repos sync` does **not** do this on its own when the worktree is already present and the remote URL hasn't changed (verified against a scratch repo) — its reconciliation only fires a re-registration on a URL mismatch, not on a section-name-only rename. The module gitdir itself (`.git/modules/.repos/effect-smol`) needs no action: it's resolved from the worktree's own `.git` pointer file, not by name, so it keeps working from wherever it already is.

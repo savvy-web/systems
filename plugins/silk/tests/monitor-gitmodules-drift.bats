@@ -59,13 +59,13 @@ write_json() {
 	local json
 	json=$(write_json drift.json <<-'EOF'
 	{"repos":[{"name":"effect","present":true,"dirty":false,"staleNoteIds":[]}],"clean":false,
-	 "drift":{"drifts":[{"name":"effect","kind":"gitlink-mismatch","detail":"pinned ref differs from HEAD"}],"clean":false}}
+	 "drift":{"drifts":[{"name":"effect","kind":"urlMismatch","detail":"pinned ref differs from HEAD"}],"clean":false}}
 	EOF
 	)
 	_stub_savvy 0 1 "$json"
 	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" SILK_PACKAGE_MANAGER="$SILK_PACKAGE_MANAGER" node "$MONITOR" --once
 	[ "$status" -eq 0 ]
-	[[ "$output" == *".repos drift: effect: gitlink-mismatch — pinned ref differs from HEAD"* ]]
+	[[ "$output" == *".repos drift: effect: urlMismatch — pinned ref differs from HEAD"* ]]
 }
 
 @test "multiple drifts: one line per drift, each naming its own kind" {
@@ -73,16 +73,16 @@ write_json() {
 	json=$(write_json drift.json <<-'EOF'
 	{"repos":[],"clean":false,
 	 "drift":{"drifts":[
-	   {"name":"effect","kind":"gitlink-mismatch","detail":"pinned ref differs from HEAD"},
-	   {"name":"other-repo","kind":"missing-gitmodules-entry","detail":"present in config.json but absent from .gitmodules"}
+	   {"name":"effect","kind":"urlMismatch","detail":"pinned ref differs from HEAD"},
+	   {"name":"other-repo","kind":"unregisteredManifestEntry","detail":"present in config.json but absent from .gitmodules"}
 	 ],"clean":false}}
 	EOF
 	)
 	_stub_savvy 0 1 "$json"
 	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" SILK_PACKAGE_MANAGER="$SILK_PACKAGE_MANAGER" node "$MONITOR" --once
 	[ "$status" -eq 0 ]
-	[[ "$output" == *".repos drift: effect: gitlink-mismatch"* ]]
-	[[ "$output" == *".repos drift: other-repo: missing-gitmodules-entry"* ]]
+	[[ "$output" == *".repos drift: effect: urlMismatch"* ]]
+	[[ "$output" == *".repos drift: other-repo: unregisteredManifestEntry"* ]]
 }
 
 @test "clean report (no drift): silent, no crash" {
@@ -100,7 +100,7 @@ write_json() {
 @test "savvy CLI unavailable (--version fails): silent, fail-open" {
 	local json
 	json=$(write_json unreachable.json <<-'EOF'
-	{"repos":[],"clean":false,"drift":{"drifts":[{"name":"effect","kind":"gitlink-mismatch","detail":"should not be read"}],"clean":false}}
+	{"repos":[],"clean":false,"drift":{"drifts":[{"name":"effect","kind":"urlMismatch","detail":"should not be read"}],"clean":false}}
 	EOF
 	)
 	_stub_savvy 1 1 "$json"
@@ -153,7 +153,7 @@ for a in "\$@"; do
 	esac
 done
 if grep -q "${sentinel}" "${config}" 2>/dev/null; then
-	printf '%s\n' '{"repos":[],"clean":false,"drift":{"drifts":[{"name":"late-repo","kind":"gitlink-mismatch","detail":"appeared after startup"}],"clean":false}}'
+	printf '%s\n' '{"repos":[],"clean":false,"drift":{"drifts":[{"name":"late-repo","kind":"urlMismatch","detail":"appeared after startup"}],"clean":false}}'
 	exit 1
 fi
 printf '%s\n' '{"repos":[],"clean":true,"drift":{"drifts":[],"clean":true}}'
@@ -196,6 +196,27 @@ STUB
 	unset MONITOR_PID
 
 	grep -q "late-repo" "$out"
+}
+
+@test "stalled savvy runner: timed-out spawnSync routes through the existing null fail-open" {
+	# A runner that never exits (e.g. wedged waiting on a registry) used to
+	# block the monitor forever, since spawnSync had no timeout at all. Stub
+	# `--version` to sleep well past a test-tiny GITMODULES_DRIFT_SPAWN_TIMEOUT_MS
+	# so spawnSync's own ETIMEDOUT kicks in and the monitor still exits 0,
+	# silent, in well under the bats default timeout.
+	use_stub_bin
+	write_stub npx <<-'STUB'
+	#!/usr/bin/env bash
+	for a in "$@"; do
+		case "$a" in
+			--version) sleep 5; exit 0 ;;
+		esac
+	done
+	STUB
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" SILK_PACKAGE_MANAGER="$SILK_PACKAGE_MANAGER" \
+		GITMODULES_DRIFT_SPAWN_TIMEOUT_MS=100 node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
 }
 
 @test "malformed JSON on stdout: silent, no crash" {

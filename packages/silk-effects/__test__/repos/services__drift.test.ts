@@ -197,6 +197,71 @@ describe("ReposDrift.check", () => {
 			}),
 	);
 
+	it.effect(
+		"contention arbitration is order-independent: an exact-name match always wins the section, regardless of manifest key order",
+		() =>
+			Effect.gen(function* () {
+				// The half-finished-rename shape this detector exists for: ONE
+				// .gitmodules section named ".repos/A" but whose `path` field reads
+				// ".repos/B". Two manifest entries compete for it -- "A" (the
+				// section's rightful, exact-name owner) and "B" (which can only ever
+				// reach it via the path fallback). A single-pass, one-entry-at-a-
+				// time arbitration flips outcomes on `Object.entries` iteration
+				// order: A-first correctly pairs A by name and leaves B unregistered;
+				// B-first lets B steal the section via the path fallback BEFORE A
+				// ever gets a chance to claim it by name, so A is wrongly reported
+				// unregistered despite its exact-name section existing. Both orders
+				// below must produce the IDENTICAL result: A paired (no drift beyond
+				// what the fixture itself introduces), B unregistered.
+				const root = makeRoot();
+				const pathA = `${REPOS_DIR}/A`;
+				const pathB = `${REPOS_DIR}/B`;
+				writeFileSync(
+					join(root, ".gitmodules"),
+					`[submodule "${pathA}"]\n\tpath = ${pathB}\n\turl = https://example.com/a.git\n\tshallow = true\n`,
+				);
+				makeWorktree(root, pathB);
+
+				const entryA = { url: "https://example.com/a.git", ref: "1.0.0", purpose: "a" };
+				const entryB = { url: "https://example.com/b.git", ref: "1.0.0", purpose: "b" };
+
+				const manifestAFirst: ReposManifestFile = { repos: { A: entryA, B: entryB } };
+				const manifestBFirst: ReposManifestFile = { repos: { B: entryB, A: entryA } };
+
+				const reportAFirst = yield* Effect.gen(function* () {
+					const drift = yield* ReposDrift;
+					return yield* drift.check(root);
+				}).pipe(Effect.provide(driftLayer(manifestAFirst, [statusEntry(pathB)])));
+
+				const reportBFirst = yield* Effect.gen(function* () {
+					const drift = yield* ReposDrift;
+					return yield* drift.check(root);
+				}).pipe(Effect.provide(driftLayer(manifestBFirst, [statusEntry(pathB)])));
+
+				for (const report of [reportAFirst, reportBFirst]) {
+					expect(report.drifts.some((d) => d.name === "B" && d.kind === "unregisteredManifestEntry")).toBe(true);
+					expect(report.drifts.some((d) => d.name === "A" && d.kind === "unregisteredManifestEntry")).toBe(false);
+					// A is paired by name to a section whose `path` diverges from A's
+					// own expected path -- that's a genuine pathMismatch for A (the
+					// plain "expects path X but records Y" phrasing, not the "paired by
+					// path" fallback phrasing, since A won by NAME).
+					expect(
+						report.drifts.some((d) => d.name === "A" && d.kind === "pathMismatch" && d.observedValue === pathB),
+					).toBe(true);
+				}
+
+				// The two orders produce the identical drift set (same kinds/names),
+				// not merely "B is unregistered in both" -- sort by name+kind since
+				// object key order can otherwise still perturb array order.
+				const normalize = (report: typeof reportAFirst) =>
+					report.drifts
+						.map((d) => `${d.name}:${d.kind}`)
+						.slice()
+						.sort();
+				expect(normalize(reportAFirst)).toEqual(normalize(reportBFirst));
+			}),
+	);
+
 	it.effect("reports unregisteredManifestEntry when the manifest names an entry with no .gitmodules section", () =>
 		Effect.gen(function* () {
 			const root = makeRoot();
@@ -222,6 +287,33 @@ describe("ReposDrift.check", () => {
 					manifestValue: "https://example.com/orphan.git",
 				}),
 			]);
+		}),
+	);
+
+	it.effect("reports every manifest entry as unregisteredManifestEntry when .gitmodules itself is absent", () =>
+		Effect.gen(function* () {
+			const root = makeRoot();
+			// No `.gitmodules` written at all -- this is the "absent .gitmodules
+			// entirely" branch (drift.ts's `Option.isNone(gitmodulesText)` early
+			// return), distinct from the "present but empty" branch the sibling
+			// test above isolates. Two manifest entries prove EVERY entry is
+			// reported, not just the first.
+			const manifest: ReposManifestFile = {
+				repos: {
+					first: { url: "https://example.com/first.git", ref: "1.0.0", purpose: "first" },
+					second: { url: "https://example.com/second.git", ref: "1.0.0", purpose: "second" },
+				},
+			};
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(Effect.provide(driftLayer(manifest, [])));
+
+			expect(report.clean).toBe(false);
+			expect(report.drifts).toHaveLength(2);
+			expect(report.drifts.every((d) => d.kind === "unregisteredManifestEntry")).toBe(true);
+			expect(report.drifts.map((d) => d.name).sort()).toEqual(["first", "second"]);
 		}),
 	);
 

@@ -153,76 +153,16 @@ _repos_exempt() {
 # behavior this leg already had.
 GIT_REPOS_RE='(^|[^[:alnum:]_])git[[:space:]][^;&|]*\.repos/'
 if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
-	SUBCOMMAND=""
-	# Anchor subcommand extraction to the CLAUSE that itself matches
-	# GIT_REPOS_RE, not to whichever "git" happens to appear first in the
-	# whole command. Without this, `git status && git checkout HEAD --
-	# .repos/effect` engages this leg (the SECOND git's clause targets
-	# .repos/) but the naive whole-SCAN SUBCOMMAND_RE match below would grab
-	# the FIRST git's subcommand ("status", a read op) and wrongly allow a
-	# write. Split SCAN into ;/&/|-delimited clauses (same split shape as
-	# the cp/mv leg further down), and extract the subcommand only from the
-	# clause where GIT_REPOS_RE itself matches.
-	GIT_CLAUSE=""
-	GIT_CLAUSES="$(printf '%s' "$SCAN" | sed -E 's/(&&|\|\||[;&|])/\n/g')"
-	while IFS= read -r clause; do
-		[[ "$clause" =~ $GIT_REPOS_RE ]] || continue
-		GIT_CLAUSE="$clause"
-		break
-	done <<< "$GIT_CLAUSES"
+	# Iterate EVERY clause that itself matches GIT_REPOS_RE, not just the
+	# first -- a chained `git -C .repos/x log && git -C .repos/x reset --hard
+	# HEAD` used to `break` on the first (read) match and `exit 0` the whole
+	# command, never reaching the second clause's write (#436 follow-up).
+	# Split SCAN into ;/&/|-delimited clauses (same split shape as the cp/mv
+	# leg further down), extract the subcommand from EACH matching clause,
+	# and deny on the first one that isn't a read op or a sanctioned
+	# exemption -- only once every matching clause has cleared does the
+	# whole command pass.
 	SUBCOMMAND_RE='git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:space:]]+|--git-dir=[^[:space:]]+[[:space:]]+|--work-tree=[^[:space:]]+[[:space:]]+)*([a-zA-Z-]+)'
-	if [ -n "$GIT_CLAUSE" ] && [[ "$GIT_CLAUSE" =~ $SUBCOMMAND_RE ]]; then
-		SUBCOMMAND="${BASH_REMATCH[2]}"
-	fi
-	if [ -z "$SUBCOMMAND" ]; then
-		# Matched "git targets .repos" but couldn't confidently isolate the
-		# matching clause or extract a subcommand from it -- fail open
-		# rather than deny on ambiguity.
-		hook_error "$_HOOK" "git-targets-.repos matched but subcommand extraction failed; skipping: $COMMAND"
-		exit 0
-	fi
-	if grep -Fxq "$SUBCOMMAND" "$READ_OPS_FILE" 2>/dev/null; then
-		exit 0
-	fi
-	# Sanctioned index primitive for re-pointing a vendored repo's gitlink --
-	# doesn't touch vendored *content*, and is a recovery step the guard
-	# should not stand in front of:
-	#   - `git rm --cached <path>`: index-only removal of the gitlink,
-	#     reads/writes nothing inside the vendored tree. Bare `git rm`
-	#     (no --cached) deletes the working-tree entry too and stays
-	#     denied below.
-	# `git mv` is NOT exempted (#377): on a submodule a bare `git mv` leaves
-	# the module's `.gitmodules` section name uncanonicalized and skips the
-	# rest of the rename sequence (manifest key, verification) even though
-	# git itself now fixes `core.worktree`/`.gitmodules`' `path` field on
-	# its own (Task 11's real-git probe pinned that against git 2.54). The
-	# rename lifecycle op HAS a sanctioned primitive now (Task 11); `git mv`
-	# still falls through to the operation-named deny below, routed to a
-	# message naming that primitive instead of the raw command.
-	if [ "$SUBCOMMAND" = "rm" ] \
-		&& [[ "$SCAN" =~ (^|[[:space:]])--cached([[:space:]]|$) ]]; then
-		exit 0
-	fi
-	# Manifest staging allowance (#379): `git add`/`git restore` are allowed
-	# when EVERY token that mentions ".repos/" peels (via the shared
-	# _repos_exempt helper, defined above the git leg and reused by the
-	# non-git leg below) to exactly ".repos/config.json". A mixed pathspec
-	# (config.json plus a vendored path in the same invocation) still denies
-	# -- this only clears the pure "stage the manifest" shape.
-	if [ "$SUBCOMMAND" = "add" ] || [ "$SUBCOMMAND" = "restore" ]; then
-		# shellcheck disable=SC2206 # best-effort word split is the intent
-		GIT_TOKENS=($SCAN)
-		all_manifest=1
-		saw_repos_token=0
-		for tok in "${GIT_TOKENS[@]}"; do
-			[[ "$tok" == *.repos/* ]] || continue
-			saw_repos_token=1
-			_repos_exempt "$tok" || { all_manifest=0; break; }
-		done
-		if [ "$saw_repos_token" -eq 1 ] && [ "$all_manifest" -eq 1 ]; then
-			exit 0
-		fi
-	fi
 	# Operation-named deny messages (#423-1, #423-2): name what's actually
 	# happening instead of the one-size "re-pin via repos_manage" message.
 	# unvendoring (rm/submodule deinit) has a sanctioned primitive (#422);
@@ -236,27 +176,92 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 	# gitlink-targeted reset + sparse re-apply), so name that instead of the
 	# generic pin message.
 	RESTORE_LIFECYCLE_MSG="recovering a dirty vendored repo is a lifecycle operation; use repos_manage (action: restore) or savvy repos restore <name...> instead of raw git."
-	case "$SUBCOMMAND" in
-		rm)
-			emit_deny "$REMOVE_LIFECYCLE_MSG"
-			;;
-		mv)
-			emit_deny "$RENAME_LIFECYCLE_MSG"
-			;;
-		reset | clean)
-			emit_deny "$RESTORE_LIFECYCLE_MSG"
-			;;
-		submodule)
-			if [[ "$SCAN" =~ (^|[[:space:]])deinit([[:space:]]|$) ]]; then
-				emit_deny "$REMOVE_LIFECYCLE_MSG"
-			else
-				emit_deny "git writes inside .repos/** are denied; re-pin via repos_manage (action: pin), sync via savvy repos sync, or edit .repos/config.json for notes."
+
+	GIT_CLAUSES="$(printf '%s' "$SCAN" | sed -E 's/(&&|\|\||[;&|])/\n/g')"
+	while IFS= read -r clause; do
+		[[ "$clause" =~ $GIT_REPOS_RE ]] || continue
+
+		SUBCOMMAND=""
+		if [[ "$clause" =~ $SUBCOMMAND_RE ]]; then
+			SUBCOMMAND="${BASH_REMATCH[2]}"
+		fi
+		if [ -z "$SUBCOMMAND" ]; then
+			# Matched "git targets .repos" but couldn't confidently isolate
+			# the matching clause or extract a subcommand from it -- fail
+			# open rather than deny on ambiguity.
+			hook_error "$_HOOK" "git-targets-.repos matched but subcommand extraction failed; skipping: $COMMAND"
+			exit 0
+		fi
+		if grep -Fxq "$SUBCOMMAND" "$READ_OPS_FILE" 2>/dev/null; then
+			continue
+		fi
+		# Sanctioned index primitive for re-pointing a vendored repo's
+		# gitlink -- doesn't touch vendored *content*, and is a recovery
+		# step the guard should not stand in front of:
+		#   - `git rm --cached <path>`: index-only removal of the gitlink,
+		#     reads/writes nothing inside the vendored tree. Bare `git rm`
+		#     (no --cached) deletes the working-tree entry too and stays
+		#     denied below.
+		# `git mv` is NOT exempted (#377): on a submodule a bare `git mv`
+		# leaves the module's `.gitmodules` section name uncanonicalized and
+		# skips the rest of the rename sequence (manifest key, verification)
+		# even though git itself now fixes `core.worktree`/`.gitmodules`'
+		# `path` field on its own (Task 11's real-git probe pinned that
+		# against git 2.54). The rename lifecycle op HAS a sanctioned
+		# primitive now (Task 11); `git mv` still falls through to the
+		# operation-named deny below, routed to a message naming that
+		# primitive instead of the raw command.
+		if [ "$SUBCOMMAND" = "rm" ] \
+			&& [[ "$SCAN" =~ (^|[[:space:]])--cached([[:space:]]|$) ]]; then
+			continue
+		fi
+		# Manifest staging allowance (#379): `git add`/`git restore` are
+		# allowed when EVERY token that mentions ".repos/" peels (via the
+		# shared _repos_exempt helper, defined above the git leg and reused
+		# by the non-git leg below) to exactly ".repos/config.json". A mixed
+		# pathspec (config.json plus a vendored path in the same invocation)
+		# still denies -- this only clears the pure "stage the manifest"
+		# shape.
+		if [ "$SUBCOMMAND" = "add" ] || [ "$SUBCOMMAND" = "restore" ]; then
+			# shellcheck disable=SC2206 # best-effort word split is the intent
+			GIT_TOKENS=($SCAN)
+			all_manifest=1
+			saw_repos_token=0
+			for tok in "${GIT_TOKENS[@]}"; do
+				[[ "$tok" == *.repos/* ]] || continue
+				saw_repos_token=1
+				_repos_exempt "$tok" || { all_manifest=0; break; }
+			done
+			if [ "$saw_repos_token" -eq 1 ] && [ "$all_manifest" -eq 1 ]; then
+				continue
 			fi
-			;;
-		*)
-			emit_deny "git writes inside .repos/** are denied; re-pin via repos_manage (action: pin), sync via savvy repos sync, or edit .repos/config.json for notes."
-			;;
-	esac
+		fi
+		case "$SUBCOMMAND" in
+			rm)
+				emit_deny "$REMOVE_LIFECYCLE_MSG"
+				;;
+			mv)
+				emit_deny "$RENAME_LIFECYCLE_MSG"
+				;;
+			reset | clean)
+				emit_deny "$RESTORE_LIFECYCLE_MSG"
+				;;
+			submodule)
+				if [[ "$SCAN" =~ (^|[[:space:]])deinit([[:space:]]|$) ]]; then
+					emit_deny "$REMOVE_LIFECYCLE_MSG"
+				else
+					emit_deny "git writes inside .repos/** are denied; re-pin via repos_manage (action: pin), sync via savvy repos sync, or edit .repos/config.json for notes."
+				fi
+				;;
+			*)
+				emit_deny "git writes inside .repos/** are denied; re-pin via repos_manage (action: pin), sync via savvy repos sync, or edit .repos/config.json for notes."
+				;;
+		esac
+		exit 0
+	done <<< "$GIT_CLAUSES"
+	# Every clause that targeted .repos/ was a read op or a sanctioned
+	# exemption -- this leg owns the decision for the whole command either
+	# way, so exit 0 rather than falling through to the non-git leg below.
 	exit 0
 fi
 

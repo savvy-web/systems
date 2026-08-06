@@ -166,6 +166,17 @@ read them via the tools below rather than trusting recall for field names.
   repos add` requires `--purpose`, `savvy repos rename <old> <new>`, `savvy
   repos restore [name...]`. Run `savvy repos --help` for the full flag
   reference rather than guessing at option names.
+- **An existing checkout whose `.gitmodules` section name was renamed
+  out-of-band** (as opposed to via `rename`, which handles this itself) needs
+  a one-time local fixup: run `git submodule sync -- <path>` followed by
+  `git submodule init -- <path>` to re-register the superproject's own
+  `.git/config` under the canonical name — `savvy repos sync`/`repos_manage
+  action:"sync"` alone does NOT do this (verified: its "present and
+  `.gitmodules` entry already matches" branch only reconciles the remote URL,
+  never re-runs `submodule init`). Skipping this leaves `git submodule
+  status` reporting a healthy checkout as uninitialized (a leading `-`); the
+  module gitdir itself needs no action regardless (it's found by the
+  worktree's `.git` pointer, not by name).
 - **Drift report (`mode:"drift"` / `--drift`)** reconciles four authorities —
   the manifest, `.gitmodules`, the worktree, and `git submodule status` — and
   is read-only: it never mutates anything, only reports. Each finding names a

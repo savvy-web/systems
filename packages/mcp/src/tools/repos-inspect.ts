@@ -7,7 +7,6 @@
  * @packageDocumentation
  */
 
-import type { GitmodulesEntry } from "@effected/git";
 import { Gitmodules } from "@effected/git";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
@@ -79,7 +78,6 @@ const renderMarkdown = (data: ReposInspectResultType): string => {
 					`- ref: ${mdInline(entry.ref)}`,
 					`- purpose: ${mdInline(entry.purpose)}`,
 					`- present: ${entry.present}`,
-					`- commit: ${entry.commit ? mdInline(entry.commit) : "(none)"}`,
 					`- stagedCommit: ${entry.stagedCommit ? mdInline(entry.stagedCommit) : "(none)"}`,
 					`- committedCommit: ${entry.committedCommit ? mdInline(entry.committedCommit) : "(none)"}`,
 					`- checkedOutCommit: ${entry.checkedOutCommit ? mdInline(entry.checkedOutCommit) : "(none)"}`,
@@ -205,10 +203,27 @@ export const reposInspect = (
 			case "gitmodules": {
 				const fs = yield* FileSystem.FileSystem;
 				const path = yield* Path.Path;
+				const gitmodulesPath = path.join(root, ".gitmodules");
 				// Absence is empty submodule state, not a failure — a workspace with
-				// no vendored repos yet has none. Mirrors `ReposDrift.check`
-				// (drift.ts) exactly.
-				const text = yield* fs.readFileString(path.join(root, ".gitmodules")).pipe(Effect.option);
+				// no vendored repos yet has none. Only a `NotFound`-classified read
+				// failure means "absent," mirroring `ReposDrift.check`'s fix
+				// (drift.ts): a permission-denied stat or any other read failure is a
+				// real problem and must propagate typed, not collapse into an empty
+				// report via `Effect.option`.
+				const text = yield* fs.readFileString(gitmodulesPath).pipe(
+					Effect.map(Option.some),
+					Effect.catchTag("PlatformError", (error) =>
+						error.reason._tag === "NotFound"
+							? Effect.succeed(Option.none<string>())
+							: Effect.fail(
+									new Repos.GitSubmoduleError({
+										command: "read .gitmodules",
+										cwd: gitmodulesPath,
+										reason: error.message,
+									}),
+								),
+					),
+				);
 				if (Option.isNone(text)) {
 					return { mode: "gitmodules", entries: [] } as ReposInspectResultType;
 				}
@@ -216,8 +231,22 @@ export const reposInspect = (
 				if (Result.isFailure(parsed)) {
 					return { mode: "gitmodules", entries: [], parseError: parsed.failure.message } as ReposInspectResultType;
 				}
-				const entries: ReadonlyArray<GitmodulesEntry> = parsed.success.entries;
-				return { mode: "gitmodules", entries } as ReposInspectResultType;
+				// Decode for real rather than force-casting: `parsed.success.entries`
+				// is the kit's own `GitmodulesEntry[]`, structurally close enough to
+				// `GitmodulesEntrySchema` that a bare `as` would keep compiling even
+				// if `@effected/git` renamed or added a field, surfacing only as
+				// silently wrong markdown (a missing field reading back
+				// `undefined` → "(none)") instead of a decode error naming the
+				// mismatch. `parseError` already gives decode failures a home.
+				const decoded = Schema.decodeUnknownResult(Schema.Array(GitmodulesEntrySchema))(parsed.success.entries);
+				if (Result.isFailure(decoded)) {
+					return {
+						mode: "gitmodules",
+						entries: [],
+						parseError: `unexpected .gitmodules entry shape: ${decoded.failure.message}`,
+					} as ReposInspectResultType;
+				}
+				return { mode: "gitmodules", entries: decoded.success } as ReposInspectResultType;
 			}
 		}
 	});

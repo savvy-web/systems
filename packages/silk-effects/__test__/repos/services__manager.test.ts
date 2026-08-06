@@ -1520,7 +1520,15 @@ describe("ReposManager.add / pin — real git", () => {
 				writeFileSync(join(repoDir, "marker.txt"), "worktree\n");
 				mkdirSync(moduleDir, { recursive: true });
 				writeFileSync(join(moduleDir, "marker.txt"), "gitdir\n");
-				writeFileSync(gitmodulesPath, `[submodule "${name}"]\n\tpath = .repos/${name}\n\turl = ${upstreamUrl}\n`);
+				// `git submodule add` names the section after the PATH, not the
+				// bare manifest key -- this fixture mirrors the real shape so the
+				// rollback's `.gitmodules` cleanup is actually exercised against
+				// the section it will find in production, not a bare-name section
+				// that would never occur outside a test.
+				writeFileSync(
+					gitmodulesPath,
+					`[submodule ".repos/${name}"]\n\tpath = .repos/${name}\n\turl = ${upstreamUrl}\n`,
+				);
 
 				let deinitCalled = false;
 				let rmCalled = false;
@@ -1577,7 +1585,7 @@ describe("ReposManager.add / pin — real git", () => {
 				expect(existsSync(repoDir)).toBe(false);
 				expect(existsSync(moduleDir)).toBe(false);
 				const gitmodulesAfter = existsSync(gitmodulesPath) ? readFileSync(gitmodulesPath, "utf8") : "";
-				expect(gitmodulesAfter).not.toContain(`submodule "${name}"`);
+				expect(gitmodulesAfter).not.toContain(`submodule ".repos/${name}"`);
 				expect(existsSync(join(root, ".repos", "config.json"))).toBe(false);
 			}),
 	);
@@ -1610,7 +1618,12 @@ describe("ReposManager.add / pin — real git", () => {
 				mkdirSync(moduleDirActual, { recursive: true });
 				writeFileSync(join(moduleDirActual, "marker.txt"), "gitdir\n");
 				writeFileSync(join(repoDir, ".git"), `gitdir: ${moduleDirActual}\n`);
-				writeFileSync(gitmodulesPath, `[submodule "${name}"]\n\tpath = .repos/${name}\n\turl = ${upstreamUrl}\n`);
+				// Same real-shape fixture as the sibling rollback test above: the
+				// section is keyed by PATH, not the bare manifest name.
+				writeFileSync(
+					gitmodulesPath,
+					`[submodule ".repos/${name}"]\n\tpath = .repos/${name}\n\turl = ${upstreamUrl}\n`,
+				);
 
 				const fetchFailure = GitCommandError.make({
 					kind: "failed",
@@ -1662,6 +1675,8 @@ describe("ReposManager.add / pin — real git", () => {
 				// created or otherwise touched, proving the resolver was NOT reading
 				// a degraded fallback path.
 				expect(existsSync(moduleDirFallback)).toBe(false);
+				const gitmodulesAfter = existsSync(gitmodulesPath) ? readFileSync(gitmodulesPath, "utf8") : "";
+				expect(gitmodulesAfter).not.toContain(`submodule ".repos/${name}"`);
 			}),
 	);
 });
@@ -3088,6 +3103,106 @@ describe("ReposManager.rename — real git", () => {
 				// the NEW section name so `git submodule status` reads it as
 				// initialized instead of the divergently-registered old name.
 				expect(submoduleInitCalls).toEqual([[`.repos/${newName}`]]);
+			}),
+	);
+
+	it.effect(
+		"fails typed (ReposConfigError, kind invalid) when a concurrent manifest mutation removes oldName between the existence check and the update write, instead of silently reporting success",
+		() =>
+			Effect.gen(function* () {
+				// Reproduces the narrow race the manifest-write's own lock cannot
+				// close: `rename`'s up-front `configStore.read` sees `oldName`
+				// present, git gets fully renamed, and only THEN does the raced
+				// `update` callback observe a manifest where `oldName` is already
+				// gone (e.g. a concurrent `remove` won the lock first). Before this
+				// fix, `update`'s callback returned `fresh` unchanged and `rename`
+				// reported success anyway; now it fails typed instead.
+				const root = mkdtempSync(join(tmpdir(), "repos-manager-rename-race-"));
+				git(root, "init", "--quiet", "-b", "main");
+				git(root, "config", "commit.gpgsign", "false");
+				const oldName = "spec";
+				const newName = "spec2";
+				const oldRepoDir = join(root, ".repos", oldName);
+				const newRepoDir = join(root, ".repos", newName);
+				const moduleDirActual = join(root, ".git", "modules", ".repos", oldName);
+
+				mkdirSync(oldRepoDir, { recursive: true });
+				writeFileSync(join(oldRepoDir, "marker.txt"), "worktree\n");
+				mkdirSync(moduleDirActual, { recursive: true });
+				writeFileSync(join(moduleDirActual, "marker.txt"), "gitdir\n");
+				writeFileSync(join(oldRepoDir, ".git"), `gitdir: ${moduleDirActual}\n`);
+				const gitmodulesPath = join(root, ".gitmodules");
+				writeFileSync(
+					gitmodulesPath,
+					`[submodule ".repos/${oldName}"]\n\tpath = .repos/${oldName}\n\turl = https://example.com/spec.git\n`,
+				);
+				writeFileSync(join(root, ".repos", "config.json"), `${JSON.stringify({ repos: {} }, null, "\t")}\n`);
+				git(root, "add", "-A");
+				git(root, "commit", "--quiet", "-m", "seed race fixture");
+
+				const existenceManifest: ReposManifestFile = {
+					repos: { [oldName]: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "vendored source" } },
+				};
+				// The RACED manifest `update`'s callback actually observes -- oldName
+				// already gone, simulating a concurrent remove/rename that landed
+				// first.
+				const racedManifest: ReposManifestFile = { repos: {} };
+
+				let updateCalled = false;
+				const configStoreStub = Layer.succeed(ReposConfigStore, {
+					exists: () => Effect.succeed(true),
+					read: () => Effect.succeed(existenceManifest),
+					write: () => Effect.succeed(undefined),
+					update: (
+						_root: string,
+						fn: (m: ReposManifestFile) => ReposManifestFile | Effect.Effect<ReposManifestFile>,
+					) => {
+						updateCalled = true;
+						const result = fn(racedManifest);
+						return Effect.isEffect(result) ? result : Effect.succeed(result);
+					},
+				} as never);
+
+				const gitStub = Git.layerTest({
+					mv: () =>
+						Effect.sync(() => {
+							renameSync(oldRepoDir, newRepoDir);
+							const before = readFileSync(gitmodulesPath, "utf8");
+							writeFileSync(gitmodulesPath, before.split(`.repos/${oldName}`).join(`.repos/${newName}`));
+						}),
+					configSet: () => Effect.succeed(undefined),
+					add: () => Effect.succeed(undefined),
+					submoduleStatus: () => Effect.succeed([]),
+					submoduleInit: () => Effect.succeed(undefined),
+					configGet: () => Effect.succeed(Option.none()),
+				});
+
+				const managerLayer = ReposManager.layer.pipe(
+					Layer.provide(configStoreStub),
+					Layer.provide(gitStub),
+					Layer.provide(reposLockdownLayer),
+					Layer.provide(NodeServices.layer),
+				);
+
+				const exit = yield* Effect.exit(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.rename(root, oldName, newName);
+					}).pipe(Effect.provide(managerLayer)) as Effect.Effect<unknown, unknown>,
+				);
+
+				// Git already fully renamed -- the failure surfaces from the
+				// manifest-write step, not from any earlier step being skipped.
+				expect(existsSync(newRepoDir)).toBe(true);
+				expect(updateCalled).toBe(true);
+
+				expect(exit._tag).toBe("Failure");
+				if (exit._tag === "Failure") {
+					expect(Option.getOrThrow(Cause.findErrorOption(exit.cause))).toMatchObject({
+						_tag: "ReposConfigError",
+						kind: "invalid",
+					});
+				}
 			}),
 	);
 

@@ -38,6 +38,7 @@ const ReposManagerTest = Layer.succeed(
 						purpose: "vendor lib",
 						present: true,
 						commit: "abc123",
+						stagedCommit: "abc123",
 						dirty: false,
 						staleNoteIds: [],
 					},
@@ -224,6 +225,24 @@ describe("reposInspect gitmodules mode", () => {
 			expect(data.parseError).toBeUndefined();
 		}).pipe(Effect.provide(TestLayer)),
 	);
+
+	it.effect("reports empty entries plus a populated parseError on malformed .gitmodules text", () =>
+		Effect.gen(function* () {
+			// Unterminated section header -- `Gitmodules.parseResult` fails typed,
+			// mirroring the fixture `ReposDrift`'s own `gitmodulesUnparsable` test
+			// uses (services__drift.test.ts).
+			const data = yield* reposInspect({ mode: "gitmodules" }, "/repo");
+			expect(data.mode).toBe("gitmodules");
+			if (data.mode !== "gitmodules") throw new Error("expected gitmodules mode");
+			expect(data.entries).toHaveLength(0);
+			expect(data.parseError).toBeDefined();
+		}).pipe(
+			Effect.provide(
+				Layer.mergeAll(ReposManagerTest, ReposConfigStoreTest, ReposDriftTest, WorkspaceRootTest, PathTest),
+			),
+			Effect.provide(fileSystemWith('[submodule ".repos/foo"')),
+		),
+	);
 });
 
 describe("repos_inspect effect->zod bridge", () => {
@@ -239,6 +258,7 @@ describe("repos_inspect effect->zod bridge", () => {
 						purpose: "vendor lib",
 						present: true,
 						commit: "abc123",
+						stagedCommit: "abc123",
 						dirty: false,
 						staleNoteIds: [],
 					},
