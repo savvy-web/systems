@@ -243,6 +243,28 @@ describe("reposInspect gitmodules mode", () => {
 			Effect.provide(fileSystemWith('[submodule ".repos/foo"')),
 		),
 	);
+
+	it.effect("propagates a permission-denied read as a typed failure, never collapsing it to an empty report", () =>
+		Effect.gen(function* () {
+			// Only a NotFound-classified read failure means "absent" (the
+			// sibling test above). A PermissionDenied failure is a real
+			// problem and must surface on the typed error channel -- folding
+			// it into the same empty-report shape as "nothing vendored yet"
+			// would silently hide a real access problem from the caller.
+			const error = yield* Effect.flip(reposInspect({ mode: "gitmodules" }, "/repo"));
+			expect(error._tag).toBe("GitSubmoduleError");
+		}).pipe(
+			Effect.provide(
+				Layer.mergeAll(ReposManagerTest, ReposConfigStoreTest, ReposDriftTest, WorkspaceRootTest, PathTest),
+			),
+			Effect.provide(
+				FileSystem.layerNoop({
+					readFileString: () =>
+						Effect.fail(systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "readFileString" })),
+				}),
+			),
+		),
+	);
 });
 
 describe("repos_inspect effect->zod bridge", () => {

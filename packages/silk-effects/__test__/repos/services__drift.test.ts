@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Git } from "@effected/git";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer, Path } from "effect";
+import { systemError } from "effect/PlatformError";
 import { REPOS_DIR } from "../../src/repos/constants.js";
 import type { ReposManifestFile } from "../../src/repos/schemas/manifest.js";
 import { ReposConfigStore } from "../../src/repos/services/config-store.js";
@@ -438,6 +439,48 @@ describe("ReposDrift.check", () => {
 
 				expect(report.clean).toBe(false);
 				expect(report.drifts).toEqual([expect.objectContaining({ name: ".gitmodules", kind: "gitmodulesUnparsable" })]);
+			}),
+	);
+
+	it.effect(
+		"propagates a permission-denied .gitmodules read as a typed GitSubmoduleError, never a clean/empty report",
+		() =>
+			Effect.gen(function* () {
+				// Only a NotFound-classified read failure means "no .gitmodules
+				// yet" (the sibling absent-file test above). A PermissionDenied
+				// failure is a real problem and must surface on the typed error
+				// channel -- `git.submoduleStatus` dying loudly if reached proves
+				// the failure surfaces BEFORE any reconciliation is attempted,
+				// not merely that the final report happens to look right.
+				const root = makeRoot();
+				const configStoreStub = Layer.succeed(ReposConfigStore, {
+					exists: () => Effect.succeed(true),
+					read: () => Effect.succeed(healthyManifest()),
+					write: () => Effect.die("not stubbed"),
+					update: () => Effect.die("not stubbed"),
+				} as never);
+				const gitStub = Layer.succeed(Git, {
+					submoduleStatus: () => Effect.die("submoduleStatus must not be called on a permission-denied read"),
+				} as never);
+				const fsStub = FileSystem.layerNoop({
+					readFileString: () =>
+						Effect.fail(systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "readFileString" })),
+				});
+				const layer = ReposDrift.layer.pipe(
+					Layer.provide(configStoreStub),
+					Layer.provide(gitStub),
+					Layer.provide(fsStub),
+					Layer.provide(Path.layer),
+				);
+
+				const error = yield* Effect.flip(
+					Effect.gen(function* () {
+						const drift = yield* ReposDrift;
+						return yield* drift.check(root);
+					}).pipe(Effect.provide(layer)),
+				);
+
+				expect(error._tag).toBe("GitSubmoduleError");
 			}),
 	);
 });
