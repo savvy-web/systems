@@ -191,12 +191,14 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 	#     reads/writes nothing inside the vendored tree. Bare `git rm`
 	#     (no --cached) deletes the working-tree entry too and stays
 	#     denied below.
-	# `git mv` is NOT exempted (#377): on a submodule it leaves the repo
-	# broken (core.worktree in .git/modules/<name>/config never gets updated
-	# to the new path), and the rename lifecycle op lands with a later
-	# repos-tooling phase, not as a raw git primitive today. `git mv` now
-	# falls through to the operation-named deny below, routed to the same
-	# lifecycle message bare `git rm`/`submodule deinit` use.
+	# `git mv` is NOT exempted (#377): on a submodule a bare `git mv` leaves
+	# the module's `.gitmodules` section name uncanonicalized and skips the
+	# rest of the rename sequence (manifest key, verification) even though
+	# git itself now fixes `core.worktree`/`.gitmodules`' `path` field on
+	# its own (Task 11's real-git probe pinned that against git 2.54). The
+	# rename lifecycle op HAS a sanctioned primitive now (Task 11); `git mv`
+	# still falls through to the operation-named deny below, routed to a
+	# message naming that primitive instead of the raw command.
 	if [ "$SUBCOMMAND" = "rm" ] \
 		&& [[ "$SCAN" =~ (^|[[:space:]])--cached([[:space:]]|$) ]]; then
 		exit 0
@@ -223,22 +225,30 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 	fi
 	# Operation-named deny messages (#423-1, #423-2): name what's actually
 	# happening instead of the one-size "re-pin via repos_manage" message.
-	# LIFECYCLE_MSG covers every op that changes a vendored repo's identity
-	# (unvendor via rm/submodule deinit, or rename via mv, #377) rather than
-	# its pinned content -- none of those tools exist yet, so the answer
-	# today is the same for all three: ask, and wait for the repos upgrade
-	# to ship the sanctioned primitive.
-	LIFECYCLE_MSG="unvendoring or renaming a vendored repo is a lifecycle operation; use repos_manage / savvy repos (remove/rename land with the repos upgrade) or ask before mutating vendored state this way."
+	# unvendoring (rm/submodule deinit) has a sanctioned primitive (#422);
+	# renaming (mv, #377) now has one too (repos rename) — both messages
+	# point at the real tool rather than asking.
+	REMOVE_LIFECYCLE_MSG="unvendoring a vendored repo is a lifecycle operation; use repos_manage (action: remove) or savvy repos remove <name> instead of raw git."
+	RENAME_LIFECYCLE_MSG="renaming a vendored repo is a lifecycle operation; use repos_manage (action: rename) or savvy repos rename <old> <new> instead of raw git."
+	# Recovering a dirty vendored tree (#293) now has a sanctioned primitive
+	# too: a hand-run `git reset --hard`/`git clean` against `.repos/**` is
+	# exactly the recovery `restore` performs (a staged/committed
+	# gitlink-targeted reset + sparse re-apply), so name that instead of the
+	# generic pin message.
+	RESTORE_LIFECYCLE_MSG="recovering a dirty vendored repo is a lifecycle operation; use repos_manage (action: restore) or savvy repos restore <name...> instead of raw git."
 	case "$SUBCOMMAND" in
 		rm)
-			emit_deny "$LIFECYCLE_MSG"
+			emit_deny "$REMOVE_LIFECYCLE_MSG"
 			;;
 		mv)
-			emit_deny "$LIFECYCLE_MSG"
+			emit_deny "$RENAME_LIFECYCLE_MSG"
+			;;
+		reset | clean)
+			emit_deny "$RESTORE_LIFECYCLE_MSG"
 			;;
 		submodule)
 			if [[ "$SCAN" =~ (^|[[:space:]])deinit([[:space:]]|$) ]]; then
-				emit_deny "$LIFECYCLE_MSG"
+				emit_deny "$REMOVE_LIFECYCLE_MSG"
 			else
 				emit_deny "git writes inside .repos/** are denied; re-pin via repos_manage (action: pin), sync via savvy repos sync, or edit .repos/config.json for notes."
 			fi

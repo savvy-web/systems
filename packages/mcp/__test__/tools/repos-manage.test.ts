@@ -21,6 +21,8 @@ const ReposManagerTest = Layer.succeed(
 				sparseApplied: [],
 				upToDate: ["bar"],
 				clearedLocks: [],
+				urlSynced: [],
+				registered: [],
 			}),
 		add: (_root, options) =>
 			Effect.succeed({
@@ -43,6 +45,25 @@ const ReposManagerTest = Layer.succeed(
 				op: op.op,
 				id: op.op === "add" ? "n-1234" : op.id,
 				noteCount: 1,
+			}),
+		remove: (_root, name) =>
+			Effect.succeed({
+				name,
+				path: `.repos/${name}`,
+				commitMessage: `chore(repos): remove ${name}`,
+				removedNotes: [{ id: "n-aaaa", date: "2026-01-01", ref: "1.0.0", note: "written against 1.0.0" }],
+			}),
+		rename: (_root, oldName, newName) =>
+			Effect.succeed({
+				oldName,
+				newName,
+				path: `.repos/${newName}`,
+				commitMessage: `chore(repos): rename ${oldName} to ${newName}`,
+			}),
+		restore: (_root, names) =>
+			Effect.succeed({
+				restored: (names ?? ["foo"]).map((name) => ({ name, commit: "abc111" })),
+				skippedClean: names ? [] : ["bar"],
 			}),
 	}),
 );
@@ -94,6 +115,57 @@ layer(TestLayer)("reposManage handler — action dispatch", (it) => {
 			}
 		}),
 	);
+
+	it.effect("dispatches remove", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "remove", name: "foo" }, "/repo");
+			expect(data.action).toBe("remove");
+			if (data.action === "remove") {
+				expect(data.result.name).toBe("foo");
+				expect(data.result.path).toBe(".repos/foo");
+				expect(data.result.commitMessage).toBe("chore(repos): remove foo");
+				expect(data.result.removedNotes).toHaveLength(1);
+			}
+		}),
+	);
+
+	it.effect("dispatches rename", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "rename", name: "foo", newName: "bar" }, "/repo");
+			expect(data.action).toBe("rename");
+			if (data.action === "rename") {
+				expect(data.result.oldName).toBe("foo");
+				expect(data.result.newName).toBe("bar");
+				expect(data.result.path).toBe(".repos/bar");
+				expect(data.result.commitMessage).toBe("chore(repos): rename foo to bar");
+			}
+		}),
+	);
+
+	it.effect("dispatches restore with explicit names", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "restore", names: ["foo", "quux"] }, "/repo");
+			expect(data.action).toBe("restore");
+			if (data.action === "restore") {
+				expect(data.result.restored).toEqual([
+					{ name: "foo", commit: "abc111" },
+					{ name: "quux", commit: "abc111" },
+				]);
+				expect(data.result.skippedClean).toEqual([]);
+			}
+		}),
+	);
+
+	it.effect("dispatches restore with names omitted", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "restore" }, "/repo");
+			expect(data.action).toBe("restore");
+			if (data.action === "restore") {
+				expect(data.result.restored).toEqual([{ name: "foo", commit: "abc111" }]);
+				expect(data.result.skippedClean).toEqual(["bar"]);
+			}
+		}),
+	);
 });
 
 // `Effect.flip` (not `Effect.exit`) is the assertion here on purpose: it proves
@@ -128,6 +200,22 @@ layer(TestLayer)("reposManage handler — request validation", (it) => {
 			expect(error._tag).toBe("SchemaError");
 		}),
 	);
+
+	it.effect("rejects remove without name", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(reposManage({ action: "remove" }, "/repo"));
+			expect(error._tag).toBe("SchemaError");
+			expect(error.message).toContain("name");
+		}),
+	);
+
+	it.effect("rejects rename without newName", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(reposManage({ action: "rename", name: "foo" }, "/repo"));
+			expect(error._tag).toBe("SchemaError");
+			expect(error.message).toContain("newName");
+		}),
+	);
 });
 
 layer(TestLayer)("reposManage handler — pin markdown transcript", (it) => {
@@ -157,6 +245,39 @@ layer(TestLayer)("reposManage handler — pin markdown transcript", (it) => {
 			}),
 	);
 
+	it.effect("surfaces commitMessage and removedNotes in the remove transcript as the review/commit cue", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "remove", name: "foo" }, "/repo");
+			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+			expect(md.toLowerCase()).toContain("commit message");
+			expect(md).toContain("chore(repos): remove foo");
+			expect(md.toLowerCase()).toContain("removed notes");
+			expect(md).toContain("n-aaaa");
+			expect(md.toUpperCase()).toContain("REVIEW AND COMMIT");
+		}),
+	);
+
+	it.effect("surfaces commitMessage in the rename transcript as the review/commit cue", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "rename", name: "foo", newName: "bar" }, "/repo");
+			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+			expect(md.toLowerCase()).toContain("commit message");
+			expect(md).toContain("chore(repos): rename foo to bar");
+			expect(md.toUpperCase()).toContain("REVIEW AND COMMIT");
+		}),
+	);
+
+	it.effect("names what was discarded in the restore transcript", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "restore", names: ["foo"] }, "/repo");
+			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+			expect(md.toLowerCase()).toContain("restored");
+			expect(md.toLowerCase()).toContain("discarded");
+			expect(md).toContain("foo");
+			expect(md).toContain("abc111");
+		}),
+	);
+
 	it.effect("keeps a heading-injection note payload inert in the note transcript", () =>
 		Effect.gen(function* () {
 			const data = yield* reposManage({ action: "note", name: "`## heading", op: "add", note: "x" }, "/repo");
@@ -176,7 +297,14 @@ describe("repos_manage effect->zod bridge", () => {
 		const zodSchema = effectToZodSchema(ReposManageResult);
 		const parsed = zodSchema.safeParse({
 			action: "sync",
-			result: { initialized: ["foo"], sparseApplied: [], upToDate: [], clearedLocks: [] },
+			result: {
+				initialized: ["foo"],
+				sparseApplied: [],
+				upToDate: [],
+				clearedLocks: [],
+				urlSynced: [],
+				registered: [],
+			},
 		});
 		expect(parsed.success).toBe(true);
 	});
@@ -192,6 +320,46 @@ describe("repos_manage effect->zod bridge", () => {
 				newCommit: "def222",
 				commitMessage: "chore(repos): pin foo to main",
 				staleNoteIds: [],
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it("converts the result union and parses a remove payload", () => {
+		const zodSchema = effectToZodSchema(ReposManageResult);
+		const parsed = zodSchema.safeParse({
+			action: "remove",
+			result: {
+				name: "foo",
+				path: ".repos/foo",
+				commitMessage: "chore(repos): remove foo",
+				removedNotes: [{ id: "n-aaaa", date: "2026-01-01", ref: "1.0.0", note: "written against 1.0.0" }],
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it("converts the result union and parses a rename payload", () => {
+		const zodSchema = effectToZodSchema(ReposManageResult);
+		const parsed = zodSchema.safeParse({
+			action: "rename",
+			result: {
+				oldName: "foo",
+				newName: "bar",
+				path: ".repos/bar",
+				commitMessage: "chore(repos): rename foo to bar",
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it("converts the result union and parses a restore payload", () => {
+		const zodSchema = effectToZodSchema(ReposManageResult);
+		const parsed = zodSchema.safeParse({
+			action: "restore",
+			result: {
+				restored: [{ name: "foo", commit: "abc111" }],
+				skippedClean: ["bar"],
 			},
 		});
 		expect(parsed.success).toBe(true);

@@ -4,7 +4,7 @@ import { Effect, Layer, Logger } from "effect";
 
 import { runReposStatus } from "../../../src/commands/repos/commands/status.js";
 
-const { ReposManager, ReposConfigError } = Repos;
+const { ReposManager, ReposDrift, ReposConfigError } = Repos;
 
 /** A clean canned report: one present, non-dirty repo with no stale notes. */
 const cleanReport: Repos.ReposStatusReport = {
@@ -47,6 +47,23 @@ const dirtyReport: Repos.ReposStatusReport = {
 	clean: false,
 };
 
+/** A clean canned drift report: no drifts. */
+const cleanDriftReport: Repos.ReposDriftReport = { drifts: [], clean: true };
+
+/** A dirty canned drift report: one drift. */
+const dirtyDriftReport: Repos.ReposDriftReport = {
+	drifts: [
+		{
+			name: "foo",
+			kind: "urlMismatch",
+			detail: 'manifest entry "foo" expects url "a" but .gitmodules records "b"',
+			manifestValue: "a",
+			observedValue: "b",
+		},
+	],
+	clean: false,
+};
+
 /** Build a stub `Repos.ReposManager` layer whose `status` resolves/fails as given. */
 function makeStubLayer(
 	status: (root: string) => Effect.Effect<Repos.ReposStatusReport, Repos.ReposConfigError | Repos.GitSubmoduleError>,
@@ -60,8 +77,24 @@ function makeStubLayer(
 	} as never);
 }
 
+/** Build a stub `Repos.ReposDrift` layer whose `check` resolves/fails as given. */
+function makeStubDriftLayer(
+	check: (root: string) => Effect.Effect<Repos.ReposDriftReport, Repos.ReposConfigError | Repos.GitSubmoduleError>,
+): Layer.Layer<Repos.ReposDrift> {
+	return Layer.succeed(ReposDrift, { check } as never);
+}
+
+/** Fallback `Repos.ReposDrift` stub for tests that never exercise `--drift`. */
+const unusedDriftLayer = makeStubDriftLayer(() => Effect.die("not used in this test"));
+
 /** Run `runReposStatus` against a stub layer, collecting everything written via `console.log` (the JSON path). */
-function collectStdout(cwd: string, json: boolean, layer: Layer.Layer<Repos.ReposManager>) {
+function collectStdout(
+	cwd: string,
+	json: boolean,
+	layer: Layer.Layer<Repos.ReposManager>,
+	drift = false,
+	driftLayer: Layer.Layer<Repos.ReposDrift> = unusedDriftLayer,
+) {
 	return Effect.gen(function* () {
 		let out = "";
 		const original = console.log;
@@ -70,7 +103,7 @@ function collectStdout(cwd: string, json: boolean, layer: Layer.Layer<Repos.Repo
 			out += `${args.map((a) => (typeof a === "string" ? a : String(a))).join(" ")}\n`;
 		}) as typeof console.log;
 		yield* Effect.ensuring(
-			runReposStatus(cwd, json).pipe(Effect.provide(layer)),
+			runReposStatus(cwd, json, drift).pipe(Effect.provide(Layer.merge(layer, driftLayer))),
 			Effect.sync(() => {
 				console.log = original;
 			}),
@@ -80,14 +113,20 @@ function collectStdout(cwd: string, json: boolean, layer: Layer.Layer<Repos.Repo
 }
 
 /** Run `runReposStatus` against a stub layer, collecting every `Effect.log` line (the human-readable path). */
-function collectLogs(cwd: string, json: boolean, layer: Layer.Layer<Repos.ReposManager>) {
+function collectLogs(
+	cwd: string,
+	json: boolean,
+	layer: Layer.Layer<Repos.ReposManager>,
+	drift = false,
+	driftLayer: Layer.Layer<Repos.ReposDrift> = unusedDriftLayer,
+) {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
 		const captureLogger = Logger.make(({ message }) => {
 			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
 		});
-		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
-		yield* runReposStatus(cwd, json).pipe(Effect.provide(captured));
+		const captured = Layer.provideMerge(Layer.merge(layer, driftLayer), Logger.layer([captureLogger]));
+		yield* runReposStatus(cwd, json, drift).pipe(Effect.provide(captured));
 		return sink;
 	});
 }
@@ -209,6 +248,59 @@ describe("runReposStatus (adapter)", () => {
 			yield* collectLogs("/repo", true, layer);
 
 			expect(process.exitCode).toBe(1);
+		}),
+	);
+
+	it.effect("--drift logs one line per drift and sets exitCode 1 when drifts exist", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
+			const driftLayer = makeStubDriftLayer(() => Effect.succeed(dirtyDriftReport));
+
+			const logs = yield* collectLogs("/repo", false, layer, true, driftLayer);
+
+			expect(logs.some((l) => l.includes("foo: urlMismatch — ") && l.includes('expects url "a"'))).toBe(true);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
+
+	it.effect("--drift prints no drift lines and does not set exitCode when the drift report is clean", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
+			const driftLayer = makeStubDriftLayer(() => Effect.succeed(cleanDriftReport));
+
+			const logs = yield* collectLogs("/repo", false, layer, true, driftLayer);
+
+			expect(logs.some((l) => l.includes(":"))).toBe(false);
+			expect(process.exitCode).toBeUndefined();
+		}),
+	);
+
+	it.live("--json --drift merges { drift } into the JSON payload", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
+			const driftLayer = makeStubDriftLayer(() => Effect.succeed(dirtyDriftReport));
+
+			const out = yield* collectStdout("/repo", true, layer, true, driftLayer);
+			const parsed: unknown = JSON.parse(out);
+
+			expect(parsed).toEqual({ ...cleanReport, drift: dirtyDriftReport });
+			expect(process.exitCode).toBe(1);
+		}),
+	);
+
+	it.effect("--drift stays friendly-exit-0 when the manifest is missing", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
+				),
+			);
+			const driftLayer = makeStubDriftLayer(() => Effect.die("not used: status fails before drift check runs"));
+
+			const logs = yield* collectLogs("/repo", false, layer, true, driftLayer);
+
+			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(process.exitCode).toBeUndefined();
 		}),
 	);
 });

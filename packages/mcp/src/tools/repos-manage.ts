@@ -1,9 +1,10 @@
 /**
  * The `repos_manage` MCP tool: one action-discriminated mutating tool
- * covering `sync`, `pin`, `add`, and `note` against the vendored `.repos/`
- * submodules. The wire schema is flat (no `oneOf`); the handler maps it into
- * an internal `Schema.TaggedStruct` request union that names the missing
- * field per action on decode failure. Mutating — no `readOnlyHint`.
+ * covering `sync`, `pin`, `add`, `note`, `remove`, `rename`, and `restore`
+ * against the vendored `.repos/` submodules. The wire schema is flat (no
+ * `oneOf`); the handler maps it into an internal `Schema.TaggedStruct`
+ * request union that names the missing field per action on decode failure.
+ * Mutating — no `readOnlyHint`.
  *
  * @packageDocumentation
  */
@@ -59,8 +60,32 @@ const NoteRequest = Schema.TaggedStruct("note", {
 	}),
 );
 
+/** `remove` requires only `name`. */
+const RemoveRequest = Schema.TaggedStruct("remove", {
+	name: Schema.String,
+});
+
+/** `rename` requires `name` (the old name) and `newName`. */
+const RenameRequest = Schema.TaggedStruct("rename", {
+	name: Schema.String,
+	newName: Schema.String,
+});
+
+/** `restore`'s `names` is optional and repeatable, mirroring `add`'s `sparse`; omitted means "every dirty entry". */
+const RestoreRequest = Schema.TaggedStruct("restore", {
+	names: Schema.optional(Schema.Array(Schema.String)),
+});
+
 /** Internal tagged-union request the flat wire args decode into. */
-const ReposManageRequest = Schema.Union([SyncRequest, PinRequest, AddRequest, NoteRequest]);
+const ReposManageRequest = Schema.Union([
+	SyncRequest,
+	PinRequest,
+	AddRequest,
+	NoteRequest,
+	RemoveRequest,
+	RenameRequest,
+	RestoreRequest,
+]);
 
 /** `sync` result variant. */
 export const ReposManageSyncResult = Schema.Struct({
@@ -86,16 +111,37 @@ export const ReposManageNoteResult = Schema.Struct({
 	result: Repos.ReposNoteResult,
 }).annotate({ identifier: "ReposManageNoteResult" });
 
+/** `remove` result variant. */
+export const ReposManageRemoveResult = Schema.Struct({
+	action: Schema.Literal("remove"),
+	result: Repos.ReposRemoveResult,
+}).annotate({ identifier: "ReposManageRemoveResult" });
+
+/** `rename` result variant. */
+export const ReposManageRenameResult = Schema.Struct({
+	action: Schema.Literal("rename"),
+	result: Repos.ReposRenameResult,
+}).annotate({ identifier: "ReposManageRenameResult" });
+
+/** `restore` result variant. */
+export const ReposManageRestoreResult = Schema.Struct({
+	action: Schema.Literal("restore"),
+	result: Repos.ReposRestoreResult,
+}).annotate({ identifier: "ReposManageRestoreResult" });
+
 /** The `repos_manage` tool result — a discriminated union keyed by `action`. */
 export const ReposManageResult = Schema.Union([
 	ReposManageSyncResult,
 	ReposManagePinResult,
 	ReposManageAddResult,
 	ReposManageNoteResult,
+	ReposManageRemoveResult,
+	ReposManageRenameResult,
+	ReposManageRestoreResult,
 ]).annotate({
 	identifier: "ReposManageResult",
 	title: "repos_manage result",
-	description: "Result of a mutating repos action: sync, pin, add, or note.",
+	description: "Result of a mutating repos action: sync, pin, add, note, remove, rename, or restore.",
 });
 
 export type ReposManageResultType = Schema.Schema.Type<typeof ReposManageResult>;
@@ -119,6 +165,10 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 				...section("Up to date", r.upToDate),
 				``,
 				...section("Cleared locks", r.clearedLocks),
+				``,
+				...section("URL synced", r.urlSynced),
+				``,
+				...section("Registered", r.registered),
 			].join("\n");
 		}
 		case "pin": {
@@ -167,6 +217,68 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 				`noteCount: ${r.noteCount}`,
 			].join("\n");
 		}
+		case "remove": {
+			const r = data.result;
+			const lines = [
+				`# repos remove — ${mdInline(r.name)}`,
+				``,
+				`path: ${mdInline(r.path)}`,
+				``,
+				`## Commit message`,
+				``,
+				mdInline(r.commitMessage),
+				``,
+				`## Removed notes`,
+				``,
+			];
+			if (r.removedNotes.length > 0) {
+				lines.push(
+					`Promote any durable ones elsewhere before committing:`,
+					...r.removedNotes.map((note) => `- ${mdInline(note.id)} (${mdInline(note.ref)}): ${mdInline(note.note)}`),
+				);
+			} else {
+				lines.push("(none)");
+			}
+			lines.push(
+				``,
+				`REVIEW AND COMMIT: the manifest, .gitmodules, and gitlink removal are already staged — review and commit using the message above.`,
+			);
+			return lines.join("\n");
+		}
+		case "rename": {
+			const r = data.result;
+			return [
+				`# repos rename — ${mdInline(r.oldName)} → ${mdInline(r.newName)}`,
+				``,
+				`path: ${mdInline(r.path)}`,
+				``,
+				`## Commit message`,
+				``,
+				mdInline(r.commitMessage),
+				``,
+				`REVIEW AND COMMIT: the moved worktree, .gitmodules section, and manifest key are already staged — review and commit using the message above.`,
+			].join("\n");
+		}
+		case "restore": {
+			const r = data.result;
+			const lines = [`# repos restore`, ``, `## Restored`, ``];
+			if (r.restored.length > 0) {
+				lines.push(
+					`DESTRUCTIVE: any uncommitted worktree edits and untracked files in these repos were discarded — the working tree was hard-reset to the commit below and sparse paths re-applied.`,
+					``,
+					...r.restored.map((entry) => `- ${mdInline(entry.name)} → ${mdInline(entry.commit)}`),
+				);
+			} else {
+				lines.push("(none)");
+			}
+			lines.push(``, `## Skipped (clean)`, ``);
+			if (r.skippedClean.length > 0) {
+				lines.push(...r.skippedClean.map((name) => `- ${mdInline(name)}`));
+			} else {
+				lines.push("(none)");
+			}
+			return lines.join("\n");
+		}
 	}
 };
 
@@ -180,8 +292,9 @@ export const ReposManageAsMarkdown = ReposManageResult.pipe(
 
 /** Flat wire arguments for the {@link reposManage} handler. */
 export interface ReposManageArgs {
-	readonly action: "sync" | "pin" | "add" | "note";
+	readonly action: "sync" | "pin" | "add" | "note" | "remove" | "rename" | "restore";
 	readonly name?: string;
+	readonly newName?: string;
 	readonly ref?: string;
 	readonly url?: string;
 	readonly purpose?: string;
@@ -190,6 +303,7 @@ export interface ReposManageArgs {
 	readonly note?: string;
 	readonly id?: string;
 	readonly into?: "layout" | "startHere";
+	readonly names?: ReadonlyArray<string>;
 	readonly cwd?: string;
 }
 
@@ -248,6 +362,18 @@ export const reposManage = (
 							: ({ op: "promote", id: request.id as string, into: request.into as "layout" | "startHere" } as const);
 				const result = yield* manager.note(root, request.name, noteOp);
 				return { action: "note", result } as ReposManageResultType;
+			}
+			case "remove": {
+				const result = yield* manager.remove(root, request.name);
+				return { action: "remove", result } as ReposManageResultType;
+			}
+			case "rename": {
+				const result = yield* manager.rename(root, request.name, request.newName);
+				return { action: "rename", result } as ReposManageResultType;
+			}
+			case "restore": {
+				const result = yield* manager.restore(root, request.names);
+				return { action: "restore", result } as ReposManageResultType;
 			}
 		}
 	});

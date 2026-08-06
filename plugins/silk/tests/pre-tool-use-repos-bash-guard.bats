@@ -139,7 +139,7 @@ assert_deny() {
 	[ "$(_decision "$output")" = "deny" ]
 }
 
-@test "git mv .repos/<repo> .repos/<repo> (#377, rename is no longer a sanctioned primitive): deny with the lifecycle message" {
+@test "git mv .repos/<repo> .repos/<repo> (#377, raw git mv stays denied — use repos_manage rename): deny with the lifecycle message" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-mv.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
@@ -159,6 +159,22 @@ assert_deny() {
 	assert_deny
 	local reason; reason="$(_reason "$output")"
 	[[ "$reason" == *"lifecycle"* ]]
+}
+
+@test "git reset --hard against a vendored path (#293, use repos_manage restore): deny with the lifecycle message" {
+	run_guard_with_command 'git reset --hard HEAD -- .repos/effect'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+	[[ "$reason" == *"restore"* ]]
+}
+
+@test "git clean -fd against a vendored path (#293, use repos_manage restore): deny with the lifecycle message" {
+	run_guard_with_command 'git clean -fd .repos/effect'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+	[[ "$reason" == *"restore"* ]]
 }
 
 @test "bare rm -rf .repos/<repo> (no git involved): deny" {

@@ -1,15 +1,30 @@
 import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, FileSystem, Layer, Path, Schema } from "effect";
+import { systemError } from "effect/PlatformError";
 
 import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
+import { ReposInspectModeSchema } from "../../src/server.js";
 import { ReposInspectAsMarkdown, ReposInspectResult, reposInspect } from "../../src/tools/repos-inspect.js";
 
 const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot,
 	WorkspaceRoot.of({ find: (_base: string) => Effect.succeed("/repo") }),
 );
+
+/**
+ * Neither `Path.layer` nor a bare `FileSystem.layerNoop` needs a platform
+ * package (per the house testing convention) — `Path.layer` does real
+ * path-joining, and the default `readFileString` noop fails every read,
+ * matching a workspace with no `.gitmodules` for the status/config/drift
+ * tests below (which never reach the `gitmodules` branch but still need the
+ * handler's declared `R` satisfied).
+ */
+const PathTest = Path.layer;
+const FileSystemAbsentTest = FileSystem.layerNoop({
+	readFileString: () => Effect.fail(systemError({ _tag: "NotFound", module: "FileSystem", method: "readFileString" })),
+});
 
 const ReposManagerTest = Layer.succeed(
 	Repos.ReposManager,
@@ -33,6 +48,9 @@ const ReposManagerTest = Layer.succeed(
 		add: () => Effect.die("not stubbed"),
 		pin: () => Effect.die("not stubbed"),
 		note: () => Effect.die("not stubbed"),
+		remove: () => Effect.die("not stubbed"),
+		rename: () => Effect.die("not stubbed"),
+		restore: () => Effect.die("not stubbed"),
 	}),
 );
 
@@ -52,10 +70,38 @@ const ReposConfigStoreTest = Layer.succeed(
 				},
 			}),
 		write: () => Effect.die("not stubbed"),
+		update: () => Effect.die("not stubbed"),
 	}),
 );
 
-const TestLayer = Layer.mergeAll(ReposManagerTest, ReposConfigStoreTest, WorkspaceRootTest);
+const ReposDriftTest = Layer.succeed(
+	Repos.ReposDrift,
+	Repos.ReposDrift.of({
+		check: () =>
+			Effect.succeed({
+				drifts: [
+					{
+						name: "foo",
+						kind: "urlMismatch",
+						detail:
+							'manifest entry "foo" expects url "https://example.com/foo.git" but .gitmodules records "https://example.com/other.git"',
+						manifestValue: "https://example.com/foo.git",
+						observedValue: "https://example.com/other.git",
+					},
+				],
+				clean: false,
+			}),
+	}),
+);
+
+const TestLayer = Layer.mergeAll(
+	ReposManagerTest,
+	ReposConfigStoreTest,
+	ReposDriftTest,
+	WorkspaceRootTest,
+	PathTest,
+	FileSystemAbsentTest,
+);
 
 layer(TestLayer)("reposInspect handler", (it) => {
 	it.effect("projects status mode and renders markdown", () =>
@@ -78,6 +124,21 @@ layer(TestLayer)("reposInspect handler", (it) => {
 			const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
 			expect(md).toContain("repos config");
 			expect(md).toContain("vendor lib");
+		}),
+	);
+
+	it.effect("projects drift mode and renders the drift kind in markdown", () =>
+		Effect.gen(function* () {
+			const data = yield* reposInspect({ mode: "drift" }, "/repo");
+			expect(data.mode).toBe("drift");
+			if (data.mode === "drift") {
+				expect(data.report.clean).toBe(false);
+				expect(data.report.drifts).toHaveLength(1);
+			}
+			const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
+			expect(md).toContain("repos drift");
+			expect(md).toContain("foo");
+			expect(md).toContain("urlMismatch");
 		}),
 	);
 
@@ -119,6 +180,52 @@ layer(TestLayer)("reposInspect handler", (it) => {
 	});
 });
 
+describe("reposInspect gitmodules mode", () => {
+	const gitmodulesText = [
+		'[submodule ".repos/foo"]',
+		"\tpath = .repos/foo",
+		"\turl = https://example.com/foo.git",
+		"\tbranch = main",
+		"\tshallow = true",
+		'[submodule ".repos/bar"]',
+		"\tpath = .repos/bar",
+		"\turl = https://example.com/bar.git",
+		"",
+	].join("\n");
+
+	/** Stubs `FileSystem` to answer `readFileString` with the given text, mirroring `drift.ts`'s ambient-service read. */
+	const fileSystemWith = (text: string) => FileSystem.layerNoop({ readFileString: () => Effect.succeed(text) });
+
+	it.effect("renders both entries of a two-entry .gitmodules file", () =>
+		Effect.gen(function* () {
+			const data = yield* reposInspect({ mode: "gitmodules" }, "/repo");
+			expect(data.mode).toBe("gitmodules");
+			if (data.mode !== "gitmodules") throw new Error("expected gitmodules mode");
+			expect(data.entries).toHaveLength(2);
+			expect(data.parseError).toBeUndefined();
+
+			const md = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
+			expect(md).toContain(".repos/foo");
+			expect(md).toContain(".repos/bar");
+		}).pipe(
+			Effect.provide(
+				Layer.mergeAll(ReposManagerTest, ReposConfigStoreTest, ReposDriftTest, WorkspaceRootTest, PathTest),
+			),
+			Effect.provide(fileSystemWith(gitmodulesText)),
+		),
+	);
+
+	it.effect("reports no entries when .gitmodules is absent", () =>
+		Effect.gen(function* () {
+			const data = yield* reposInspect({ mode: "gitmodules" }, "/repo");
+			expect(data.mode).toBe("gitmodules");
+			if (data.mode !== "gitmodules") throw new Error("expected gitmodules mode");
+			expect(data.entries).toHaveLength(0);
+			expect(data.parseError).toBeUndefined();
+		}).pipe(Effect.provide(TestLayer)),
+	);
+});
+
 describe("repos_inspect effect->zod bridge", () => {
 	it("converts the result union and parses a status payload", () => {
 		const zodSchema = effectToZodSchema(ReposInspectResult);
@@ -153,5 +260,16 @@ describe("repos_inspect effect->zod bridge", () => {
 			},
 		});
 		expect(parsed.success).toBe(true);
+	});
+
+	it("accepts every wire mode, including the new drift and gitmodules modes", () => {
+		for (const mode of ["status", "config", "drift", "gitmodules"]) {
+			expect(ReposInspectModeSchema.safeParse(mode).success).toBe(true);
+		}
+	});
+
+	it("rejects an unknown mode at the wire boundary", () => {
+		const parsed = ReposInspectModeSchema.safeParse("bogus");
+		expect(parsed.success).toBe(false);
 	});
 });

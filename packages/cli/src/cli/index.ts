@@ -145,7 +145,7 @@ const InspectorAndAnalyzerLive = Changesets.BranchAnalyzer.layer.pipe(
  * `Repos.ReposLockdown.layer` dependencies plus the shared `Git` service.
  * Platform requirements (`FileSystem`, `Path`) flow up to `NodeServices.layer`.
  */
-const ReposGroupLive = Repos.ReposManager.layer.pipe(
+const ReposGroupLive = Layer.mergeAll(Repos.ReposManager.layer, Repos.ReposDrift.layer).pipe(
 	Layer.provide(Repos.ReposConfigStore.layer),
 	Layer.provide(Repos.ReposLockdown.layer),
 	Layer.provide(GitLive),
