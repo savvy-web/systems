@@ -36,7 +36,7 @@
 		"@effect/platform-node": "catalog:effect",
 		"@effected/commands": "^0.3.1",
 		"@effected/git": "^0.6.0",
-		"@effected/workspaces": "^0.10.0",
+		"@effected/workspaces": "^0.10.2",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect",
