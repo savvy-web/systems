@@ -55,11 +55,11 @@ npx savvy clean --globs dist,.turbo,coverage
 - `savvy commit` — the husky/Claude hook handlers (session-start, pre-commit-message, post-commit-verify).
 - `savvy changeset` — changeset lint, check, transform, version, config validation, and dependency changesets.
 - `savvy lint` — formatters for package.json, the pnpm workspace file and YAML.
-- `savvy repos` — the vendored reference repos declared in `.repos/config.json`: `status`, `sync`, `pin`, `add` and `note`.
+- `savvy repos` — the vendored reference repos declared in `.repos/config.json`: `status` (with `--drift`), `sync`, `pin`, `add`, `note`, `remove`, `rename` and `restore`.
 
 ## Vendored repos are read-only
 
-`savvy repos sync`, `add` and `pin` leave every vendored tree under `.repos/` read-only at the OS level — files `0444`, directories `0555`. Reading a vendored source needs no extra step; writing to one fails with `EACCES` by design, because those trees mirror an upstream repo at a pinned ref and any local edit is lost on the next sync.
+`savvy repos sync`, `add`, `pin`, `remove`, `rename` and `restore` leave every vendored tree under `.repos/` read-only at the OS level — files `0444`, directories `0555` (an executable file locks at `0555` instead, and unlocks back to `0755` rather than losing its executable bit). Reading a vendored source needs no extra step; writing to one fails with `EACCES` by design, because those trees mirror an upstream repo at a pinned ref and any local edit is lost on the next sync. A dirty tree from a hand bypass recovers with `savvy repos restore <name...>` (or with no names, every dirty tree) rather than a manual `git reset`. Restore is destructive by design: it hard-resets each tree it touches to the pinned commit, so uncommitted edits and untracked files in that tree are gone.
 
 ```bash
 npx savvy repos sync
@@ -67,9 +67,15 @@ npx savvy repos sync
 
 npx savvy repos pin effect v4.0.0
 # fetches, checks out the new ref, re-locks, and stages the gitlink and manifest
+
+npx savvy repos restore
+# hard-resets every dirty tree to its pinned commit and reports the clean ones as skipped
+
+npx savvy repos status --drift
+# reports where the manifest, .gitmodules, the worktree and git submodule status disagree
 ```
 
-A manual `chmod` only holds until the next `sync` or `pin`. Route changes through `savvy repos` instead.
+A manual `chmod` only holds until the next mutation. Route changes through `savvy repos` instead.
 
 Run any command with `--help` to see its full surface:
 

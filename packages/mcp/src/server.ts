@@ -41,6 +41,17 @@ import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "./tool
 import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
 import { CURRENT_MCP_VERSION } from "./version.js";
 
+/**
+ * The `repos_inspect` wire-level `mode` enum. Exported so tests can assert
+ * the boundary rejects an unknown mode without duplicating the enum's
+ * member list.
+ */
+export const ReposInspectModeSchema = z
+	.enum(["status", "config", "drift", "gitmodules"])
+	.describe(
+		"status = drift report; config = the full agent brief; drift = four-authority submodule reconciliation; gitmodules = decoded .gitmodules sections.",
+	);
+
 /** Wrap a markdown string + structured object in the dual-channel tool result. */
 const structuredResult = <T extends object>(text: string, structured: T) => ({
 	content: [{ type: "text" as const, text }],
@@ -203,9 +214,10 @@ export function buildServer(ctx: McpContext): McpServer {
 		"repos_inspect",
 		{
 			title: "Inspect vendored repos",
-			description: "Read-only: drift report or parsed .repos/config.json manifest with orientation and notes.",
+			description:
+				"Read-only: drift report or parsed .repos/config.json manifest with orientation and notes. mode=status is the per-repo drift summary from ReposManager (present/dirty/commit); mode=config is the parsed manifest; mode=drift reconciles all four submodule authorities (manifest, .gitmodules, worktree, git submodule status) and reports every disagreement; mode=gitmodules decodes the raw .gitmodules file's submodule sections.",
 			inputSchema: {
-				mode: z.enum(["status", "config"]).describe("status = drift report; config = the full agent brief."),
+				mode: ReposInspectModeSchema,
 				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
 			},
 			outputSchema: effectToZodSchema(ReposInspectResult) as never,
@@ -223,10 +235,13 @@ export function buildServer(ctx: McpContext): McpServer {
 		{
 			title: "Manage vendored repos",
 			description:
-				"Mutating: sync (initialize/reconcile submodules per the manifest), pin (re-pin a repo to a new ref), add (vendor a new repo), or note (add/remove/promote an agent note). Pass action plus the fields that action needs: pin needs name+ref; add needs url+ref+purpose (name/sparse optional); note needs name+op, plus note (op=add), id (op=remove), or id+into (op=promote). A decode failure names the missing field. The pin result's markdown surfaces commitMessage and staleNoteIds — review and commit after pinning.",
+				"Mutating: sync (initialize/reconcile submodules per the manifest), pin (re-pin a repo to a new ref), add (vendor a new repo), note (add/remove/promote an agent note), remove (unvendor a repo), rename (rename a vendored repo's manifest key and worktree), or restore (hard-reset a repo's worktree back to its pinned gitlink commit and re-apply sparse paths — DESTRUCTIVE to uncommitted worktree edits; never run implicitly). Pass action plus the fields that action needs: pin needs name+ref; add needs url+ref+purpose (name/sparse optional); note needs name+op, plus note (op=add), id (op=remove), or id+into (op=promote); remove needs name; rename needs name (the old name) + newName; restore takes an optional names list — omitted, it restores every dirty repo and reports the clean ones as skipped; given, it restores exactly those repos even if already clean. A decode failure names the missing field. The pin result's markdown surfaces commitMessage and staleNoteIds — review and commit after pinning. The remove result's markdown surfaces commitMessage and removedNotes — promote any durable notes elsewhere, then review and commit. The rename result's markdown surfaces commitMessage — review and commit after renaming. The restore result's markdown names exactly what was discarded.",
 			inputSchema: {
-				action: z.enum(["sync", "pin", "add", "note"]).describe("Which mutation to perform."),
-				name: z.optional(z.string()).describe("Repo name (pin, note; optional override for add)."),
+				action: z
+					.enum(["sync", "pin", "add", "note", "remove", "rename", "restore"])
+					.describe("Which mutation to perform."),
+				name: z.optional(z.string()).describe("Repo name (pin, note, remove, rename; optional override for add)."),
+				newName: z.optional(z.string()).describe("New repo name (rename)."),
 				ref: z.optional(z.string()).describe("Git ref to pin/vendor to (pin, add)."),
 				url: z.optional(z.string()).describe("Repo URL to vendor (add)."),
 				purpose: z.optional(z.string()).describe("One-line purpose for the manifest (add)."),
@@ -235,6 +250,9 @@ export function buildServer(ctx: McpContext): McpServer {
 				note: z.optional(z.string()).describe("Note text (note, op=add)."),
 				id: z.optional(z.string()).describe("Note id (note, op=remove|promote)."),
 				into: z.optional(z.enum(["layout", "startHere"])).describe("Orientation target (note, op=promote)."),
+				names: z
+					.optional(z.array(z.string()))
+					.describe("Repo names to restore (restore); omitted restores every dirty repo."),
 				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
 			},
 			outputSchema: effectToZodSchema(ReposManageResult) as never,

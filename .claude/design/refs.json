@@ -4,7 +4,7 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "f40a5ecb5d1cc901cf6bddb43186472d373b2f702dd90c1280a97095fb4f37e3",
+			"hash": "aa4f2db7bde2d686ebe1da1a0bde07f73834deecf3e8941a5792e9c831f10419",
 			"recordedAt": "2026-08-05"
 		},
 		{
@@ -34,7 +34,7 @@
 		{
 			"source": "packages/cli/CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "a77cd660ddc2ceb474c1253b932d65ffcac0fe5bcaeb9a1b795862e4d72d1393",
+			"hash": "efbc136c5e9547de955044b3779dbf3acf2ace4206ffe936e55b022ec0d11d80",
 			"recordedAt": "2026-08-05"
 		},
 		{
@@ -46,7 +46,7 @@
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "099e310c13df531f3eab68475e9ad53a7016f04bef947cd4bb9be0c2fae16f86",
+			"hash": "8c208ac3960e943b46361d0cb5dd8b2398162eef8df7e34bc6e2beeee532c65d",
 			"recordedAt": "2026-08-05"
 		},
 		{
@@ -58,13 +58,13 @@
 		{
 			"source": "packages/rspress-builder/CLAUDE.md",
 			"target": ".claude/design/rspress-builder/architecture.md",
-			"hash": "18b6a128aceec18cc4f38c8cead5e4d49a3b5e55fb3c55b6c14a70bcffbb635b",
-			"recordedAt": "2026-07-27"
+			"hash": "55a0b4e8cd81aa078487b0339ddd9735fe80c1afe5def3e1655bf6fcac604c67",
+			"recordedAt": "2026-08-05"
 		},
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
 			"target": ".claude/design/silk-effects/architecture.md",
-			"hash": "ae03145f3a0c89b0f46e7607a0823485c8664913e7ce8ed53fb8846c6cff5004",
+			"hash": "53bba275b51eae4f4dd0c805345730a1625d61168ab77b3e592da6d26bf23933",
 			"recordedAt": "2026-08-05"
 		},
 		{

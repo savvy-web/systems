@@ -48,4 +48,15 @@ describe("Repos namespace (src/repos/index.ts)", () => {
 		expect(SilkEffects.Repos.MANIFEST_PATH).toBeDefined();
 		expect(SilkEffects.Repos.NOTE_LIMIT).toBeDefined();
 	});
+
+	it("exports the ReposDrift service", () => {
+		expect(SilkEffects.Repos.ReposDrift).toBeDefined();
+		expect(SilkEffects.Repos.ReposDrift.layer).toBeDefined();
+	});
+
+	it("exports drift schemas", () => {
+		expect(SilkEffects.Repos.DriftKind).toBeDefined();
+		expect(SilkEffects.Repos.RepoDrift).toBeDefined();
+		expect(SilkEffects.Repos.ReposDriftReport).toBeDefined();
+	});
 });

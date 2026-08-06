@@ -12,7 +12,8 @@ when_to_use: >
   "vendor a repo", "add a reference repo", ".repos directory", "re-pin the vendored
   source", "pin tracks the installed version", "leave a note for the next agent",
   "promote a note to orientation", "what is vendored here", "submodule is dirty",
-  "repos_inspect", "repos_manage", "savvy repos"
+  "repos_inspect", "repos_manage", "savvy repos", "rename a submodule", "restore a
+  dirty submodule", "drift report"
 paths:
   - "**/.repos/config.json"
 ---
@@ -139,9 +140,11 @@ the same cost.
 The manifest and result schemas are the source of truth for exact fields —
 read them via the tools below rather than trusting recall for field names.
 
-- **`repos_inspect`** (read-only) — `mode:"status"` for a drift report
-  (present/dirty/stale-notes per repo); `mode:"config"` for the full manifest
-  brief (purposes, orientation, notes).
+- **`repos_inspect`** (read-only) — `mode:"status"` for a per-repo
+  present/dirty/stale-notes report; `mode:"config"` for the full manifest
+  brief (purposes, orientation, notes); `mode:"drift"` for the four-way
+  reconciliation below; `mode:"gitmodules"` for the parsed `.gitmodules`
+  entries.
 - **`repos_manage`** (mutating) — `action:"sync"` re-materializes missing
   checkouts; `action:"pin"` re-pins one repo, stages the manifest and gitlink,
   and returns a ready-made commit message plus `staleNoteIds`; `action:"add"`
@@ -149,11 +152,49 @@ read them via the tools below rather than trusting recall for field names.
   same way as `pin`; `action:"note"` with `op:"add"|"remove"|"promote"` writes
   the manifest directly but does **not** stage it — the note write is an
   ordinary unstaged file edit, like any other, that the caller stages and
-  commits themselves.
-- **CLI equivalent** — `savvy repos status|sync|pin|add|note`, same
-  semantics; `savvy repos status --json` for machine-readable drift, `savvy
-  repos add` requires `--purpose`. Run `savvy repos --help` for the full flag
+  commits themselves; `action:"remove"` unvendors an entry (deinits the
+  submodule, drops the worktree and gitdir, rewrites `.gitmodules` and the
+  manifest, stages the result) and returns a ready-made commit message plus
+  the removed notes for a last look; `action:"rename"` moves an entry to a
+  new name (`git mv`, `.gitmodules` section rename, superproject
+  `submodule.<name>.*` re-registration, manifest key rename, all staged) and
+  returns a ready-made commit message; `action:"restore"` is the dirty-tree
+  recovery path — see below.
+- **CLI equivalent** — `savvy repos status|sync|pin|add|note|remove|rename|
+  restore`, same semantics; `savvy repos status --json` for machine-readable
+  status, `savvy repos status --drift [--json]` for the drift report, `savvy
+  repos add` requires `--purpose`, `savvy repos rename <old> <new>`, `savvy
+  repos restore [name...]`. Run `savvy repos --help` for the full flag
   reference rather than guessing at option names.
+- **An existing checkout whose `.gitmodules` section name was renamed
+  out-of-band** (as opposed to via `rename`, which handles this itself) needs
+  a one-time local fixup: run `git submodule sync -- <path>` followed by
+  `git submodule init -- <path>` to re-register the superproject's own
+  `.git/config` under the canonical name — `savvy repos sync`/`repos_manage
+  action:"sync"` alone does NOT do this (verified: its "present and
+  `.gitmodules` entry already matches" branch only reconciles the remote URL,
+  never re-runs `submodule init`). Skipping this leaves `git submodule
+  status` reporting a healthy checkout as uninitialized (a leading `-`); the
+  module gitdir itself needs no action regardless (it's found by the
+  worktree's `.git` pointer, not by name).
+- **Drift report (`mode:"drift"` / `--drift`)** reconciles four authorities —
+  the manifest, `.gitmodules`, the worktree, and `git submodule status` — and
+  is read-only: it never mutates anything, only reports. Each finding names a
+  `kind`: `urlMismatch`/`pathMismatch` (a value disagrees between two
+  authorities — `manifestValue`/`observedValue` carry both sides),
+  `unregisteredManifestEntry` (a manifest entry with no `.gitmodules`
+  section), `orphanGitmodulesEntry` (a `.gitmodules` section with no manifest
+  entry), `missingWorktree` (no checkout present), `checkoutDiverged` (the
+  checked-out commit doesn't match the pinned gitlink), `missingShallow` (the
+  `submodule.<path>.shallow` config is absent), and `gitmodulesUnparsable`
+  (not about one repo — the file itself failed to parse). `status --drift`
+  runs the plain status report first and the drift check after; either
+  finding flips the exit code to 1.
+- **The `gitmodules-drift` monitor** (`plugins/silk/monitors/`) watches
+  `.gitmodules` and `.repos/config.json` for changes and runs `savvy repos
+  status --drift --json` on a debounce, printing one line per drift found.
+  Filesystem + subprocess only, never mutates anything, and fails open
+  (silent) whenever the `savvy` CLI isn't available in the project.
 - **The tools are the sanctioned path for submodule mutations; the manifest
   itself is legitimately hand-editable.** The fs/Bash/MCP guards deny direct
   writes into vendored submodule trees, but `config.json` is deliberately
@@ -162,8 +203,8 @@ read them via the tools below rather than trusting recall for field names.
   the tool-mediated way to make the same edit. Use `pin`/`add`/`sync` for
   anything that touches a submodule's checkout or gitlink; either the tool or
   a direct edit is fine for notes and orientation.
-- **The real boundary is OS-level, not pattern-matching.** `sync`/`add`/`pin`
-  apply a lockdown: after materializing or updating a submodule, every
+- **The real boundary is OS-level, not pattern-matching.** `sync`/`add`/`pin`/
+  `remove`/`rename`/`restore` apply a lockdown: after materializing or updating a submodule, every
   vendored working tree — files `444`, directories `555` — goes
   filesystem-read-only, and the tooling re-locks even when the triggering
   operation itself fails partway through. The metadata directory is locked
@@ -209,16 +250,19 @@ read them via the tools below rather than trusting recall for field names.
   not permissions. Dirtiness is surfaced by `repos_inspect mode:"status"`
   (or `savvy repos status`), not fixed by it. **A dirty vendored tree stays
   locked — don't try to clean it up yourself.** `git reset --hard`,
-  deleting-and-re-`sync`ing the working directory, or any other in-place
+  deleting-and-re-`sync`ing the working directory, or any other hand-run
   recovery write fails against the OS-level `444`/`555` permissions the same
-  way any other write into `.repos/**` does. There is no sanctioned restore
-  operation today (one lands with the repos upgrade); until then, dirtiness
-  is a **stop and ask** signal, not a "run this to fix it" one. Do **not**
-  `chmod` the tree back to writable by hand to work around this — that
-  defeats the lockdown and leaves the tree writable until the next
-  `sync`/`pin` re-locks it out from under you regardless. Reach for `sync`
-  before hand-running `git submodule` commands against `.repos/`, but don't
-  expect it to clean up dirt on its own.
+  way any other write into `.repos/**` does. The sanctioned recovery is
+  `repos_manage action:"restore"` (or `savvy repos restore [name...]`) —
+  explicit only, never run implicitly by `sync` or anything else: it
+  hard-resets the named repos (or, with no names, every dirty one) to their
+  staged (falling back to committed) gitlink commit and re-applies sparse
+  paths, DISCARDING any uncommitted worktree edits and untracked files in the
+  repos it touches. Do **not** `chmod` the tree back to writable by hand to
+  work around this — that defeats the lockdown and leaves the tree writable
+  until the next `sync`/`pin` re-locks it out from under you regardless.
+  Reach for `sync` before hand-running `git submodule` commands against
+  `.repos/`, and reach for `restore` before hand-cleaning a dirty checkout.
 
 ## Known gaps
 

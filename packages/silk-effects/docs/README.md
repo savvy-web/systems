@@ -62,6 +62,8 @@ These services read or write files. Provide `NodeServices.layer` (or the platfor
 | [ChangesetConfigReader](./04-changeset-config.md) | Changeset config | Read and decode `.changeset/config.json` with Silk auto-detection |
 | [ConfigDiscovery](./05-config-discovery.md) | Config files | Locate config files with priority-based search (`lib/configs/` then root) |
 | [BiomeSchemaSync](./06-biome-sync.md) | Biome schemas | Keep `$schema` URLs in Biome config files in sync with the installed version |
+| `Repos.ReposConfigStore` | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) | Read and write the `.repos/config.json` manifest |
+| `Repos.ReposLockdown` | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) | Hold every vendored tree read-only between mutations (files `0444`, directories `0555`; an executable file locks at `0555`/unlocks at `0755` instead, preserving its executable bit) |
 
 ### FileSystem + process layer required
 
@@ -70,6 +72,8 @@ These services spawn a child process in addition to reading files.
 | Service | Doc | What it does |
 | ------- | --- | ------------ |
 | `Turbo.TurboInspector` | [README](../README.md#turboinspector) | Inspect a Turborepo over `turbo --dry`: cache diagnosis, task graph, affected packages |
+| `Repos.ReposManager` | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) | Drive the vendored `.repos/` submodules: status, sync, add, pin, note, remove, rename and restore |
+| `Repos.ReposDrift` | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) | Reconcile the manifest, `.gitmodules`, the worktree and `git submodule status`, reporting each mismatch as a typed drift kind |
 
 ### Platform layers guide
 

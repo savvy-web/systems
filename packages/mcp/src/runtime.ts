@@ -23,7 +23,7 @@ import {
 	Turbo,
 } from "@savvy-web/silk-effects";
 import type { FileSystem, Path } from "effect";
-import { Layer } from "effect";
+import { Effect, Layer } from "effect";
 import type { ChildProcessSpawner } from "effect/unstable/process";
 
 import type { McpServices } from "./context.js";
@@ -33,7 +33,7 @@ import type { McpServices } from "./context.js";
  * `SilkWorkspaceAnalyzer`, `WorkspaceRoot`, `Turbo.TurboInspector`,
  * `Changesets.BranchAnalyzer`, `Changesets.ConfigInspector`,
  * `Changesets.ReleasePlanner`, `Changesets.DepsRegen`, `Repos.ReposManager`,
- * and `Repos.ReposConfigStore`; requires `ChildProcessSpawner` + `FileSystem`
+ * `Repos.ReposConfigStore`, and `Repos.ReposDrift`; requires `ChildProcessSpawner` + `FileSystem`
  * + `Path` from the host's platform layer (`NodeServices.layer` in bin.ts).
  *
  * @remarks
@@ -99,6 +99,10 @@ export const makeSilkRuntimeLayer = (
 	 * Same reference — one store instance. `ReposLockdown.layer` needs only the
 	 * platform services, which flow up from the outer `NodeServices.layer`
 	 * provision like `ReposManager`'s own `FileSystem`/`Path` requirement does.
+	 * `ReposDrift.layer` is read-only (no `ReposLockdown` interaction) and
+	 * requires only `ReposConfigStore | Git | FileSystem | Path`; `Git` comes
+	 * from `kitGraph` below via the same one-reference discipline, and
+	 * `repos_inspect`'s drift mode resolves it directly.
 	 */
 	const repos = Layer.mergeAll(
 		Repos.ReposConfigStore.layer,
@@ -106,7 +110,17 @@ export const makeSilkRuntimeLayer = (
 			Layer.provide(Repos.ReposConfigStore.layer),
 			Layer.provide(Repos.ReposLockdown.layer),
 		),
+		Repos.ReposDrift.layer.pipe(Layer.provide(Repos.ReposConfigStore.layer)),
 	);
+
+	// `repos_inspect`'s `gitmodules` mode reads `.gitmodules` through the
+	// ambient `FileSystem`/`Path` services directly (mirroring
+	// `Repos.ReposDrift.check`), so those two are passed through onto the
+	// runtime's own output rather than being fully discharged by
+	// `NodeServices.layer` at the host boundary (bin.ts) — both are already
+	// required inputs below (via `kitGraph`/`ReposManager`/`ReposDrift`), so
+	// this adds no new requirement.
+	const platformPassthrough = Layer.effectContext(Effect.context<FileSystem.FileSystem | Path.Path>());
 
 	return Layer.mergeAll(
 		SilkWorkspaceAnalyzer.layer.pipe(Layer.provide(analyzerDeps)),
@@ -114,5 +128,6 @@ export const makeSilkRuntimeLayer = (
 		inspectorAndAnalyzer,
 		depsRegen,
 		repos,
+		platformPassthrough,
 	).pipe(Layer.provideMerge(kitGraph));
 };

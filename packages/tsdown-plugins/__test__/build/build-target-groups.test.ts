@@ -1,74 +1,137 @@
 // packages/tsdown-plugins/__test__/build/build-target-groups.test.ts
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { buildTargetGroups } from "../../src/build/build-target-groups.js";
 import { BuildCollector } from "../../src/report/collector.js";
 
+// #430: `writeDtsEmitTsconfig` (src/dts/resolved-tsconfig.ts) only derives a temp dts-emit
+// tsconfig when its base path resolves via `existsSync` — a synthetic path that happens not to
+// exist on disk falls through its best-effort branch and is returned unchanged. To keep the two
+// tests below deterministic (rather than depending on whatever incidentally does or doesn't
+// already exist at a fixed path — a literal shared path like "/tmp/t.json" is also live-written
+// by the vitest-agent MCP reporter itself, so it is not even a stable "leftover"), each test gets
+// its OWN real tsconfig file under a unique `mkdtemp` directory, cleaned up afterward.
+/** Escape every regex metacharacter in a literal path segment before splicing it into a `RegExp` source. */
+function escapeForRegExp(literal: string): string {
+	return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Build the derived-path naming-contract regex for a given real base tsconfig path, mirroring
+ * `writeDtsEmitTsconfig`'s own `join(tmpdir(), "tsconfig-dts-emit-<pid>-<sanitized-base>.json")`
+ * scheme. Building the prefix via `join(tmpdir(), "tsconfig-dts-emit-")` (rather than hard-coding a
+ * "/" join) keeps this test's expectation platform-correct on a `path.sep` other than "/". Never
+ * asserts a literal tmpdir/pid value — only the pattern.
+ */
+function dtsEmitTsconfigPattern(basePath: string): RegExp {
+	const sanitizedBase = basePath.replace(/[^\w]/g, "_");
+	const prefixEscaped = escapeForRegExp(join(tmpdir(), "tsconfig-dts-emit-"));
+	return new RegExp(`^${prefixEscaped}\\d+-${sanitizedBase}\\.json$`);
+}
+
+/**
+ * The EXACT derived dts-emit tsconfig path `writeDtsEmitTsconfig` would write for `basePath` in
+ * THIS process — same sanitization, same `process.pid` (resolved-tsconfig.ts writes under
+ * `tmpdir()` directly, never under the caller's own `mkdtemp` directory, so removing only that
+ * directory in `withRealTsconfig`'s `finally` left this file behind on disk after every run).
+ */
+function derivedDtsEmitTsconfigPath(basePath: string): string {
+	const sanitizedBase = basePath.replace(/[^\w]/g, "_");
+	return join(tmpdir(), `tsconfig-dts-emit-${process.pid}-${sanitizedBase}.json`);
+}
+
+async function withRealTsconfig<T>(run: (tsconfigPath: string, pattern: RegExp) => Promise<T>): Promise<T> {
+	const dir = await mkdtemp(join(tmpdir(), "btg-real-tsconfig-"));
+	const tsconfigPath = join(dir, "tsconfig.json");
+	await writeFile(tsconfigPath, "{}\n", "utf-8");
+	try {
+		return await run(tsconfigPath, dtsEmitTsconfigPattern(tsconfigPath));
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+		await rm(derivedDtsEmitTsconfigPath(tsconfigPath), { force: true });
+	}
+}
+
 describe("buildTargetGroups", () => {
 	it("runs a JS pass + a dts pass per group (two passes to the same outDir)", async () => {
-		const calls: Array<{
-			outDir: string;
-			plugins: number;
-			hasManifest: boolean;
-			dts: unknown;
-			unbundle: unknown;
-			clean: unknown;
-		}> = [];
-		const fakeBuild = vi.fn(
-			async (cfg: {
+		await withRealTsconfig(async (realTsconfigPath, dtsEmitPattern) => {
+			const calls: Array<{
 				outDir: string;
-				plugins: Array<{ name?: string }>;
+				plugins: number;
+				hasManifest: boolean;
 				dts: unknown;
 				unbundle: unknown;
 				clean: unknown;
-			}) => {
-				calls.push({
-					outDir: cfg.outDir,
-					plugins: cfg.plugins.length,
-					hasManifest: cfg.plugins.some((p) => p.name === "savvy:emit-manifest"),
-					dts: cfg.dts,
-					unbundle: cfg.unbundle,
-					clean: cfg.clean,
-				});
-				return [];
-			},
-		);
-		await buildTargetGroups({
-			cwd: "/abs/pkg",
-			version: "1.0.0",
-			entry: { index: "./src/index.ts" },
-			tsconfigPath: "/tmp/t.json",
-			groups: [
-				{ id: "dev", name: "base" },
-				{ id: "npm", name: "base" },
-			],
-			devManifest: "preserve",
-			build: fakeBuild as never,
+			}> = [];
+			const fakeBuild = vi.fn(
+				async (cfg: {
+					outDir: string;
+					plugins: Array<{ name?: string }>;
+					dts: unknown;
+					unbundle: unknown;
+					clean: unknown;
+				}) => {
+					calls.push({
+						outDir: cfg.outDir,
+						plugins: cfg.plugins.length,
+						hasManifest: cfg.plugins.some((p) => p.name === "savvy:emit-manifest"),
+						dts: cfg.dts,
+						unbundle: cfg.unbundle,
+						clean: cfg.clean,
+					});
+					return [];
+				},
+			);
+			await buildTargetGroups({
+				cwd: "/abs/pkg",
+				version: "1.0.0",
+				entry: { index: "./src/index.ts" },
+				tsconfigPath: realTsconfigPath,
+				groups: [
+					{ id: "dev", name: "base" },
+					{ id: "npm", name: "base" },
+				],
+				devManifest: "preserve",
+				build: fakeBuild as never,
+			});
+			// 2 groups x 2 passes = 4 calls.
+			expect(fakeBuild).toHaveBeenCalledTimes(4);
+
+			// Group "dev": JS pass then dts pass, both to dist/dev/pkg.
+			const [devJs, devDts, npmJs, npmDts] = calls;
+			expect(devJs.outDir).toBe("/abs/pkg/dist/dev/pkg");
+			expect(devDts.outDir).toBe("/abs/pkg/dist/dev/pkg");
+			expect(npmJs.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
+			expect(npmDts.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
+
+			// JS pass: per-module JS, no dts, manifest plugin present, fresh outDir.
+			expect(devJs.hasManifest).toBe(true);
+			expect(devJs.dts).toBe(false);
+			expect(devJs.unbundle).toBe(true);
+			expect(devJs.clean).toBe(true);
+
+			// dts pass: bundled declarations only, NO manifest plugin, clean:false (keep JS pass output).
+			expect(devDts.hasManifest).toBe(false);
+			// #430: the base tsconfig exists on disk here, so `writeDtsEmitTsconfig` derives a
+			// dts-emit variant rather than passing the source path through verbatim — assert the
+			// derivation CONTRACT (naming pattern), not a literal path.
+			const devDtsConfig = devDts.dts as { tsconfig: string; emitDtsOnly: boolean; generator: string };
+			expect(devDtsConfig.tsconfig).toMatch(dtsEmitPattern);
+			expect(devDtsConfig.emitDtsOnly).toBe(true);
+			expect(devDtsConfig.generator).toBe("tsc");
+			// Stronger pin: the derived file exists and extends the real base by absolute path.
+			const derivedContents = JSON.parse(await readFile(devDtsConfig.tsconfig, "utf-8")) as {
+				extends: string;
+				compilerOptions: { stableTypeOrdering: boolean };
+			};
+			expect(derivedContents.extends).toBe(realTsconfigPath);
+			expect(derivedContents.compilerOptions.stableTypeOrdering).toBe(true);
+			expect(devDts.unbundle).toBe(false);
+			expect(devDts.clean).toBe(false);
 		});
-		// 2 groups x 2 passes = 4 calls.
-		expect(fakeBuild).toHaveBeenCalledTimes(4);
-
-		// Group "dev": JS pass then dts pass, both to dist/dev/pkg.
-		const [devJs, devDts, npmJs, npmDts] = calls;
-		expect(devJs.outDir).toBe("/abs/pkg/dist/dev/pkg");
-		expect(devDts.outDir).toBe("/abs/pkg/dist/dev/pkg");
-		expect(npmJs.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
-		expect(npmDts.outDir).toBe("/abs/pkg/dist/prod/npm/pkg");
-
-		// JS pass: per-module JS, no dts, manifest plugin present, fresh outDir.
-		expect(devJs.hasManifest).toBe(true);
-		expect(devJs.dts).toBe(false);
-		expect(devJs.unbundle).toBe(true);
-		expect(devJs.clean).toBe(true);
-
-		// dts pass: bundled declarations only, NO manifest plugin, clean:false (keep JS pass output).
-		expect(devDts.hasManifest).toBe(false);
-		expect(devDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true, generator: "tsc" });
-		expect(devDts.unbundle).toBe(false);
-		expect(devDts.clean).toBe(false);
 	});
 
 	it("runs one dts build PER entry for a multi-entry partition (single-entry rollups, no shared chunk)", async () => {
@@ -1066,39 +1129,46 @@ describe("buildTargetGroups", () => {
 	});
 
 	it("routes an override partition with outSubdir into a nested outDir (both passes)", async () => {
-		const calls: Array<{ outDir: string; dts: unknown }> = [];
-		const fakeBuild = vi.fn(async (cfg: { outDir: string; dts: unknown }) => {
-			calls.push({ outDir: cfg.outDir, dts: cfg.dts });
-			return [];
-		});
-		await buildTargetGroups({
-			cwd: "/abs/pkg",
-			version: "1.0.0",
-			entry: { index: "./src/index.ts" },
-			tsconfigPath: "/tmp/t.json",
-			groups: [{ id: "dev", name: "base" }],
-			devManifest: "preserve",
-			overrides: [
-				{
-					entry: { index: "./src/runtime/index.tsx" },
-					outSubdir: "runtime",
-					platform: "browser",
-					css: { modules: { localsConvention: "camelCaseOnly", namedExport: false }, inject: true },
-					externals: ["react", "@theme"],
-				},
-			],
-			build: fakeBuild as never,
-		});
+		await withRealTsconfig(async (realTsconfigPath, dtsEmitPattern) => {
+			const calls: Array<{ outDir: string; dts: unknown }> = [];
+			const fakeBuild = vi.fn(async (cfg: { outDir: string; dts: unknown }) => {
+				calls.push({ outDir: cfg.outDir, dts: cfg.dts });
+				return [];
+			});
+			await buildTargetGroups({
+				cwd: "/abs/pkg",
+				version: "1.0.0",
+				entry: { index: "./src/index.ts" },
+				tsconfigPath: realTsconfigPath,
+				groups: [{ id: "dev", name: "base" }],
+				devManifest: "preserve",
+				overrides: [
+					{
+						entry: { index: "./src/runtime/index.tsx" },
+						outSubdir: "runtime",
+						platform: "browser",
+						css: { modules: { localsConvention: "camelCaseOnly", namedExport: false }, inject: true },
+						externals: ["react", "@theme"],
+					},
+				],
+				build: fakeBuild as never,
+			});
 
-		// base JS, base dts, runtime JS, runtime dts = 4 calls.
-		expect(fakeBuild).toHaveBeenCalledTimes(4);
-		const [baseJs, baseDts, rtJs, rtDts] = calls;
-		expect(baseJs.outDir).toBe("/abs/pkg/dist/dev/pkg");
-		expect(baseDts.outDir).toBe("/abs/pkg/dist/dev/pkg");
-		expect(rtJs.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
-		expect(rtJs.dts).toBe(false);
-		expect(rtDts.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
-		expect(rtDts.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true, generator: "tsc" });
+			// base JS, base dts, runtime JS, runtime dts = 4 calls.
+			expect(fakeBuild).toHaveBeenCalledTimes(4);
+			const [baseJs, baseDts, rtJs, rtDts] = calls;
+			expect(baseJs.outDir).toBe("/abs/pkg/dist/dev/pkg");
+			expect(baseDts.outDir).toBe("/abs/pkg/dist/dev/pkg");
+			expect(rtJs.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
+			expect(rtJs.dts).toBe(false);
+			expect(rtDts.outDir).toBe("/abs/pkg/dist/dev/pkg/runtime");
+			// #430: same derived-tsconfig contract as the JS+dts-pass test above — the base exists
+			// on disk, so the dts pass gets a derived temp tsconfig, not the source path verbatim.
+			const rtDtsConfig = rtDts.dts as { tsconfig: string; emitDtsOnly: boolean; generator: string };
+			expect(rtDtsConfig.tsconfig).toMatch(dtsEmitPattern);
+			expect(rtDtsConfig.emitDtsOnly).toBe(true);
+			expect(rtDtsConfig.generator).toBe("tsc");
+		});
 	});
 
 	it("skips the dts pass when all entries are bin/ (empty dts entry after bin filter)", async () => {

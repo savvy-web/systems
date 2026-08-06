@@ -88,6 +88,10 @@ e2e/bundler/__test__/e2e/fixtures/*/tsdoc.json
 # Claude Code autonomous-loop wakeup lock (transient harness artifact)
 .claude/scheduled_tasks.lock
 
+# ReposConfigStore's exclusive-create manifest lock (transient; a crashed
+# holder can leave this behind next to .repos/config.json)
+.repos/config.json.lock
+
 
 # Don't store models for now
 website/lib/models/*

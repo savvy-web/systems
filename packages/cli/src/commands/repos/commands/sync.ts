@@ -3,8 +3,10 @@
  *
  * @remarks
  * A thin adapter over {@link Repos.ReposManager.sync}: initializes missing
- * submodules, re-applies sparse-checkout patterns, and clears stale git
- * locks left behind by an interrupted fetch. Sync is idempotent repair, so
+ * submodules, re-applies sparse-checkout patterns, clears stale git locks
+ * left behind by an interrupted fetch, reconciles a submodule's URL when it
+ * drifts from the manifest, and registers an orphan manifest entry (no
+ * gitlink at all) from scratch. Sync is idempotent repair, so
  * a `ReposConfigError` with kind `"missing"` -- the common, friendly case
  * (nothing to sync yet) -- always exits 0. A `ReposConfigError` with kind
  * `"invalid"` means the manifest exists but is corrupt or unreadable,
@@ -47,7 +49,19 @@ export const runReposSync = (cwd: string) =>
 		for (const name of report.sparseApplied) {
 			yield* Effect.log(`${name}: sparse-checkout applied`);
 		}
-		if (report.initialized.length === 0 && report.sparseApplied.length === 0 && report.clearedLocks.length === 0) {
+		for (const name of report.urlSynced) {
+			yield* Effect.log(`${name}: url reconciled`);
+		}
+		for (const name of report.registered) {
+			yield* Effect.log(`${name}: registered`);
+		}
+		if (
+			report.initialized.length === 0 &&
+			report.sparseApplied.length === 0 &&
+			report.clearedLocks.length === 0 &&
+			report.urlSynced.length === 0 &&
+			report.registered.length === 0
+		) {
 			yield* Effect.log("all vendored repos up to date");
 		}
 	}).pipe(

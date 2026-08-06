@@ -162,3 +162,7 @@ The `SilkPublishability` API does not raise errors: the pure `detect` returns `[
 | ConfigDiscovery | FileSystem | [05-config-discovery.md](./05-config-discovery.md) |
 | BiomeSchemaSync | FileSystem | [06-biome-sync.md](./06-biome-sync.md) |
 | Turbo.TurboInspector | FileSystem + process | [README](../README.md#turboinspector) |
+| Repos.ReposManager | FileSystem + process | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) |
+| Repos.ReposDrift | FileSystem + process | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) |
+| Repos.ReposConfigStore | FileSystem | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) |
+| Repos.ReposLockdown | FileSystem | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) |

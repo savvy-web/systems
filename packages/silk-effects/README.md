@@ -13,7 +13,7 @@ Shared [Effect](https://effect.website/) library providing Silk Suite convention
 - Supply the Silk commitlint config, its prompt and formatter, and the `silk/body-no-markdown` rule
 - Run the lint-staged handlers and the `savvy lint fmt` formatters from a single implementation so the hook and the CLI cannot drift
 - Inspect a Turborepo read-only — diagnose per-package cache hits, derive the task graph and compute affected packages, all over `turbo --dry`
-- Manage the vendored reference repos declared in `.repos/config.json` — submodule status, sync, pinning and notes — and keep every vendored tree read-only between mutations
+- Manage the vendored reference repos declared in `.repos/config.json` — submodule status, drift detection, sync, add, pin, note, remove, rename and restore — and keep every vendored tree read-only between mutations
 - Locate config files and keep Biome schema URLs in sync across workspaces
 
 ## Install
@@ -364,13 +364,13 @@ const diagnosis = await Effect.runPromise(
 // => CacheDiagnosis: per-package HIT/MISS breakdown for the task
 ```
 
-#### ReposManager and ReposLockdown
+#### ReposManager, ReposDrift and ReposLockdown
 
-The `Repos` namespace drives vendored reference repos — upstream sources checked out as git submodules under `.repos/`, declared in a `.repos/config.json` manifest. `ReposConfigStore` reads and writes that manifest, and `ReposManager` does the git work: `status(root)` reports presence, the pinned commit, working-tree dirtiness and stale notes, `sync(root)` initializes missing submodules and applies each entry's sparse-checkout, `pin(root, name, ref)` moves an entry to a new ref, `add(root, options)` vendors a new one, and `note(root, name, op)` adds, removes or promotes an agent note.
+The `Repos` namespace drives vendored reference repos — upstream sources checked out as git submodules under `.repos/`, declared in a `.repos/config.json` manifest. `ReposConfigStore` reads and writes that manifest, and `ReposManager` does the git work: `status(root)` reports presence, the pinned commit, working-tree dirtiness and stale notes, `sync(root)` initializes missing submodules and applies each entry's sparse-checkout, `pin(root, name, ref)` moves an entry to a new ref, `add(root, options)` vendors a new one, `note(root, name, op)` adds, removes or promotes an agent note, `remove(root, name)` unvendors an entry, `rename(root, oldName, newName)` renames one in place, and `restore(root, names?)` hard-resets one or more dirty checkouts back to their pinned commit. `ReposDrift.check(root)` is a read-only companion — it reconciles the manifest, `.gitmodules`, the worktree, and `git submodule status`, reporting any mismatch as a typed drift kind.
 
-`ReposLockdown` is the permissions boundary around all of that. `lock(root, name)` chmods a vendored worktree and its submodule git metadata to files `0444` and directories `0555`; `unlock` reverses it; `withUnlocked(root, name, effect)` brackets an effect between the two. `ReposManager`'s `sync`, `add` and `pin` run their git mutations inside that bracket and re-lock afterwards, so a vendored tree is read-only whenever the manager is not mid-write. Reads are unaffected — a locked tree needs no special handling to open a file.
+`ReposLockdown` is the permissions boundary around all of that. `lock(root, name)` chmods a vendored worktree and its submodule git metadata to files `0444` and directories `0555` (an executable file locks at `0555` instead, preserving its executable bit); `unlock` reverses it, restoring `0644`/`0755` (`0755` for a file that was executable); `withUnlocked(root, name, effect)` brackets an effect between the two. `ReposManager`'s `sync`, `add`, `pin`, `remove` and `restore` run their git mutations inside that bracket and re-lock afterwards, and `rename` hand-rolls the same unlock/relock contract across its `oldName`→`newName` move, so a vendored tree is read-only whenever the manager is not mid-write. Reads are unaffected — a locked tree needs no special handling to open a file.
 
-Two consequences for callers: `ReposManager.layer` now requires `ReposLockdown` alongside `ReposConfigStore`, `Git`, `FileSystem` and `Path`, and `sync`, `add` and `pin` widen their error channel with `ReposLockdownError`, which carries the offending `path` and a `reason`.
+Two consequences for callers: `ReposManager.layer` requires `ReposLockdown` alongside `ReposConfigStore`, `Git`, `FileSystem` and `Path`, and `sync`, `add`, `pin`, `remove`, `rename` and `restore` widen their error channel with `ReposLockdownError`, which carries the offending `path` and a `reason`.
 
 ```typescript
 import { Effect, Layer } from "effect";

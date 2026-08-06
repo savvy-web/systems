@@ -6,12 +6,14 @@ import { runReposSync } from "../../../src/commands/repos/commands/sync.js";
 
 const { ReposManager, ReposConfigError, GitSubmoduleError, ReposLockdownError } = Repos;
 
-/** A canned report with one entry in each of the three actionable buckets. */
+/** A canned report with one entry in each of the five actionable buckets. */
 const activeReport: Repos.ReposSyncReport = {
 	clearedLocks: ["foo"],
 	initialized: ["bar"],
 	sparseApplied: ["baz"],
 	upToDate: [],
+	urlSynced: ["qux"],
+	registered: ["quux"],
 };
 
 /** A canned report where nothing needed reconciling. */
@@ -20,6 +22,8 @@ const emptyReport: Repos.ReposSyncReport = {
 	initialized: [],
 	sparseApplied: [],
 	upToDate: ["foo"],
+	urlSynced: [],
+	registered: [],
 };
 
 /** Build a stub `Repos.ReposManager` layer whose `sync` resolves/fails as given. */
@@ -79,6 +83,8 @@ describe("runReposSync (adapter)", () => {
 			expect(logs.some((l) => l.includes("foo: cleared stale lock"))).toBe(true);
 			expect(logs.some((l) => l.includes("bar: initialized"))).toBe(true);
 			expect(logs.some((l) => l.includes("baz: sparse-checkout applied"))).toBe(true);
+			expect(logs.some((l) => l.includes("qux: url reconciled"))).toBe(true);
+			expect(logs.some((l) => l.includes("quux: registered"))).toBe(true);
 			expect(process.exitCode).toBeUndefined();
 		}),
 	);

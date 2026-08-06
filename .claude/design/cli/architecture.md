@@ -25,6 +25,7 @@ The `savvy` binary — the single command host for the Silk Suite's everyday dev
 - [Overview](#overview)
 - [Command tree](#command-tree)
 - [The clean command](#the-clean-command)
+- [The repos group](#the-repos-group)
 - [The runtime layer stack](#the-runtime-layer-stack)
 - [Boundaries and invariants](#boundaries-and-invariants)
 - [Rationale](#rationale)
@@ -55,7 +56,11 @@ savvy changeset   lint · check · transform · validate-file · version ·
                   config(validate) · deps(detect · regen — thin adapters
                   over silk-effects' Changesets.DepsRegen)
 savvy lint        fmt(package-json · pnpm-workspace · yaml)
+savvy repos       status(--json · --drift) · sync · pin · add · note ·
+                  remove · rename · restore
 ```
+
+The `repos` group (`src/commands/repos/`) is a thin adapter surface over silk-effects' `Repos` namespace — see [The repos group](#the-repos-group).
 
 The root `savvy init` and `savvy check` orchestrators are the only setup and validation entry points — there are no per-tool `init`/`check` subcommands on the three groups. Each group lives under `src/commands/{commit,changeset,lint}/` and exports its group command plus named handler functions. The top-level `init` and `check` orchestrators (`src/commands/init.ts`, `src/commands/check.ts`) sequence the three tool handlers and short-circuit on first failure; the tool handlers are injected so the orchestration logic is unit-testable without a runtime. The plugin hooks and skills shell out to these subcommands.
 
@@ -72,6 +77,18 @@ The flow is: discover packages via `WorkspaceDiscovery.listPackages()`, partitio
 Three safety properties are load-bearing and must survive any edit. Containment: every match is `realpath`-resolved and rejected unless it stays within its workspace root, so symlinks and `..` cannot escape. The workspace root directory itself and its `package.json` are never removed. Removal runs via `fs.promises.rm({ recursive, force })` under bounded concurrency, leaves before the root; per-target failures are collected rather than thrown, and a non-empty failure set produces a non-zero exit without aborting the remaining deletions.
 
 `clean` adds no new runtime layers. `runClean` requires only `WorkspaceDiscovery`, already present in `AppLive`. The two filesystem-touching units — `collectTargets` (glob plus containment) and `removeTargets` (deletion) — are unit-tested against temp-dir fixtures; `runClean` is tested against a stubbed `WorkspaceDiscovery` layer.
+
+## The repos group
+
+`savvy repos` (`src/commands/repos/`) covers the whole vendored-reference-repo lifecycle, one thin handler per `Repos.ReposManager` method: `status`, `sync`, `pin`, `add`, `note`, `remove <name>`, `rename <old> <new>` and `restore [names...]`. The business logic is entirely in silk-effects (see `../silk-effects/architecture.md#vendored-repos-repos-namespace`); these handlers decode flags, render, and set exit codes.
+
+Three things about the group are load-bearing:
+
+- **`status --drift` is two reads, in order.** The plain status report renders first (`ReposManager.status`), then `Repos.ReposDrift.check` reconciles the manifest, `.gitmodules`, the worktree and `git submodule status`, printing one line per finding (`<name>: <kind> — <detail>`). Either an unclean status report or any drift flips `process.exitCode` to 1, mirroring the pre-existing `!clean` rule. Both calls read the same manifest, so a missing manifest fails at the status call before the drift check runs — the friendly "nothing vendored yet" exit-0 case is unchanged by `--drift`. `--json` emits the structured report instead of the rendered text.
+- **`restore` is the destructive one.** It hard-resets a vendored checkout back to its staged (or committed) gitlink commit and re-applies sparse paths, discarding uncommitted work by design. With no names it restores every dirty repo and reports the ones it skipped as clean; with explicit names it restores exactly those, clean or not, after validating that every name exists so a typo in a later name cannot leave earlier ones already reset.
+- **Each handler `catchTag`s the FULL error union its `ReposManager` method can produce** — `ReposConfigError`, `GitSubmoduleError`, `RepoNotFoundError`, `NoteNotFoundError`, and `ReposLockdownError` for the six ops that unlock/re-lock the tree — down to a logged message and a non-zero exit code. Consequently `reposCommand`'s hand-written error annotation is `Repos.GitSubmoduleError` alone: the only channel left uncaught is the one `status`/`status --drift` let escape. Its requirements annotation names `Repos.ReposManager | Repos.ReposDrift`, the latter purely because of `status --drift` (see [Why some command groups carry a hand-written type annotation](#why-some-command-groups-carry-a-hand-written-type-annotation)).
+
+`ReposGroup` in the layer stack provides `Repos.ReposLockdown` alongside `ReposConfigStore`/`Git` because the mutating ops apply the OS-level permissions boundary; `Repos.ReposDrift` needs no lockdown, being read-only.
 
 ## The runtime layer stack
 
@@ -90,9 +107,9 @@ Inspector+Analyzer = BranchAnalyzer
                        provideMerge(ReleasePlanner)
                        provideMerge(ConfigInspector)
 
-ReposGroup = Repos.ReposManager
+ReposGroup = mergeAll(Repos.ReposManager, Repos.ReposDrift)
                provide(Repos.ReposConfigStore)
-               provide(Repos.ReposLockdown)
+               provide(Repos.ReposLockdown)   ← ReposManager only
                provide(Git)
 
 BaseLive  = WorkspaceLive + Git + ChangesetConfigReader
@@ -119,7 +136,7 @@ A command group built by piping `Command.make` through `Command.withSubcommands`
 
 The annotation is exact, never `any`: it restates the group's real Error and Requirements channels so the root layer graph stays compiler-validated. `runCli` provides `AppLive` with no casts, so `tsc` (`types:check`) — not the runtime smoke tests — is the gate that proves every service a handler yields is supplied.
 
-**A group's requirements channel is the union of its subcommands' requirements, not `never`.** `Command.withSubcommands` propagates each subcommand's `R` up into the parent (`R | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>`), so `changesetCommand` names `ChildProcessSpawner | ConfigInspector | FileSystem | Path | ReleasePlanner` and `reposCommand` names `Repos.ReposManager`. The same annotation discipline applies to the *error* channel: `reposCommand`'s reads `Repos.GitSubmoduleError | Repos.ReposLockdownError`, because `sync`/`add`/`pin` now unlock and re-lock the vendored tree's OS permissions around their git mutations (see `../silk-effects/architecture.md#vendored-repos-repos-namespace`) and the handlers only `catchTag` the config/submodule failures. Earlier Effect v4 betas erased subcommand requirements at the group boundary, so these annotations previously read `never`; a beta bump that changes the propagation rule surfaces as a type error on exactly these two exports, and the fix is to widen the annotation to match — the layer graph itself does not change, since `AppLive` already discharged those services. Note the qualified `ChildProcessSpawner.ChildProcessSpawner`: `effect/unstable/process` re-exports it as a namespace and the package exports map offers no deeper subpath.
+**A group's requirements channel is the union of its subcommands' requirements, not `never`.** `Command.withSubcommands` propagates each subcommand's `R` up into the parent (`R | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>`), so `changesetCommand` names `ChildProcessSpawner | ConfigInspector | FileSystem | Path | ReleasePlanner` and `reposCommand` names `Repos.ReposManager | Repos.ReposDrift` (the latter only because `status --drift` runs `ReposDrift.check`). The same annotation discipline applies to the *error* channel, and there it narrowed rather than widened: `reposCommand`'s now reads `Repos.GitSubmoduleError` alone. The mutating handlers (`sync`/`add`/`pin`/`note`/`remove`/`rename`/`restore`) `catchTag` every failure their `ReposManager` method can produce — `ReposLockdownError` included, since six of them unlock and re-lock the vendored tree's OS permissions around their git mutations (see `../silk-effects/architecture.md#vendored-repos-repos-namespace`) — so only the `GitSubmoduleError` that `status`/`status --drift` leave uncaught reaches the group boundary. Earlier Effect v4 betas erased subcommand requirements at the group boundary, so these annotations previously read `never`; a beta bump that changes the propagation rule surfaces as a type error on exactly these two exports, and the fix is to widen the annotation to match — the layer graph itself does not change, since `AppLive` already discharged those services. Note the qualified `ChildProcessSpawner.ChildProcessSpawner`: `effect/unstable/process` re-exports it as a namespace and the package exports map offers no deeper subpath.
 
 ### Testing the command handlers
 

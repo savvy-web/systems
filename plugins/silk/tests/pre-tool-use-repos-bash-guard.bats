@@ -139,7 +139,7 @@ assert_deny() {
 	[ "$(_decision "$output")" = "deny" ]
 }
 
-@test "git mv .repos/<repo> .repos/<repo> (#377, rename is no longer a sanctioned primitive): deny with the lifecycle message" {
+@test "git mv .repos/<repo> .repos/<repo> (#377, raw git mv stays denied — use repos_manage rename): deny with the lifecycle message" {
 	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-mv.json' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
@@ -159,6 +159,22 @@ assert_deny() {
 	assert_deny
 	local reason; reason="$(_reason "$output")"
 	[[ "$reason" == *"lifecycle"* ]]
+}
+
+@test "git reset --hard against a vendored path (#293, use repos_manage restore): deny with the lifecycle message" {
+	run_guard_with_command 'git reset --hard HEAD -- .repos/effect'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+	[[ "$reason" == *"restore"* ]]
+}
+
+@test "git clean -fd against a vendored path (#293, use repos_manage restore): deny with the lifecycle message" {
+	run_guard_with_command 'git clean -fd .repos/effect'
+	assert_deny
+	local reason; reason="$(_reason "$output")"
+	[[ "$reason" == *"lifecycle"* ]]
+	[[ "$reason" == *"restore"* ]]
 }
 
 @test "bare rm -rf .repos/<repo> (no git involved): deny" {
@@ -186,6 +202,36 @@ assert_deny() {
 @test "git status && git log .repos/effect (later clause is a read op): allowed" {
 	run_guard_with_command 'git status && git log .repos/effect'
 	assert_allow
+}
+
+@test "git -C .repos/effect log && git -C .repos/effect reset --hard HEAD (read clause first, write clause second, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect reset --hard HEAD'
+	assert_deny
+}
+
+@test "git -C .repos/effect log; git -C .repos/effect reset --hard HEAD (read clause first, write clause second, ;): deny" {
+	run_guard_with_command 'git -C .repos/effect log; git -C .repos/effect reset --hard HEAD'
+	assert_deny
+}
+
+@test "git -C .repos/effect log || git -C .repos/effect reset --hard HEAD (read clause first, write clause second, ||): deny" {
+	run_guard_with_command 'git -C .repos/effect log || git -C .repos/effect reset --hard HEAD'
+	assert_deny
+}
+
+@test "git -C .repos/effect log && git -C .repos/effect rm -rf . (read-then-rm bypass, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect rm -rf .'
+	assert_deny
+}
+
+@test "git -C .repos/effect log && git -C .repos/effect mv old new (read-then-mv bypass, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect mv old new'
+	assert_deny
+}
+
+@test "git -C .repos/effect log && git -C .repos/effect submodule deinit -- . (read-then-deinit bypass, &&): deny" {
+	run_guard_with_command 'git -C .repos/effect log && git -C .repos/effect submodule deinit -- .'
+	assert_deny
 }
 
 @test "non-Bash tool_name: silent no-op" {
@@ -331,5 +377,20 @@ assert_deny() {
 
 @test "cp -t copying OUT of .repos to a non-.repos destination is allowed" {
 	run_guard_with_command 'cp -t /tmp .repos/effect/README.md'
+	assert_allow
+}
+
+@test "sibling clause --cached does not exempt a bare git rm in another clause" {
+	run_guard_with_command 'git rm .repos/effect/README.md && git rm --cached .repos/config.json'
+	assert_deny
+}
+
+@test "clause-local --cached still exempts the index-only git rm shape" {
+	run_guard_with_command 'git rm --cached .repos/effect && git status'
+	assert_allow
+}
+
+@test "manifest staging clause is allowed despite a vendored read in a sibling clause" {
+	run_guard_with_command 'git add .repos/config.json && git log .repos/effect'
 	assert_allow
 }
