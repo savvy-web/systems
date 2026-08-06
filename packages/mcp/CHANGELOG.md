@@ -1,5 +1,31 @@
 # @savvy-web/mcp
 
+## 2.2.0
+
+### Features
+
+* `repos_inspect` gains two new modes: `drift` runs the four-authority reconciliation (manifest, `.gitmodules`, worktree, `git submodule status`) and returns every disagreement found; `gitmodules` returns the decoded `.gitmodules` sections directly (or a parse error).
+
+  `repos_manage` gains three new actions matching `ReposManager`'s new lifecycle operations: `remove` (unvendor a repo), `rename` (rename a vendored repo's worktree, git config, and manifest key), and `restore` (hard-reset dirty vendored repos back to their pinned commit). [#436][#436]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.4.0 | 5.5.0 |
+
+* | Dependency              | Type       | Action  | From    | To      |                                                                       |
+  | ----------------------- | ---------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/workspaces    | dependency | updated | ^0.10.0 | ^0.10.2 |                                                                       |
+  | @savvy-web/silk-effects | dependency | updated | 5.3.1   | 5.4.0   |                                                                       |
+  | @effected/git           | dependency | added   | —       | ^0.6.0  | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#436]: https://github.com/savvy-web/systems/pull/436
+
 ## 2.1.0
 
 ### Features
