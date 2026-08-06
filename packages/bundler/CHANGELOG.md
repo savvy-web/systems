@@ -1,5 +1,21 @@
 # @savvy-web/bundler
 
+## 2.1.6
+
+### Dependencies
+
+| Dependency                | Type       | Action  | From  | To    |
+| ------------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.4.4 | 2.4.5 |
+
+* | Dependency                | Type       | Action  | From  | To    |                                                                       |
+  | ------------------------- | ---------- | ------- | ----- | ----- | --------------------------------------------------------------------- |
+  | @savvy-web/tsdown-plugins | dependency | updated | 2.4.3 | 2.4.4 | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#436]: https://github.com/savvy-web/systems/pull/436
+
 ## 2.1.5
 
 ### Dependencies

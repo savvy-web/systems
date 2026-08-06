@@ -1,5 +1,35 @@
 # @savvy-web/cli
 
+## 2.4.0
+
+### Features
+
+* `savvy repos` gains three new subcommands matching `ReposManager`'s new lifecycle operations:
+
+  * `savvy repos remove <name>` — unvendors a repo (gitlink, module gitdir, `.gitmodules` section, manifest entry).
+  * `savvy repos rename <old> <new>` — renames a vendored repo's worktree, git config, and manifest key.
+  * `savvy repos restore [names...]` — hard-resets dirty vendored repos back to their pinned commit; called with no names, restores every dirty repo and reports which were already clean.
+
+  `savvy repos status` gains a `--drift` flag that runs the new four-authority reconciliation (manifest, `.gitmodules`, worktree, `git submodule status`) and reports every disagreement found. [#436][#436]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.4.0 | 5.5.0 |
+
+* | Dependency              | Type       | Action  | From    | To      |                                                                       |
+  | ----------------------- | ---------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/git           | dependency | updated | ^0.5.2  | ^0.6.0  |                                                                       |
+  | @effected/workspaces    | dependency | updated | ^0.10.0 | ^0.10.2 |                                                                       |
+  | @savvy-web/silk-effects | dependency | updated | 5.3.1   | 5.4.0   | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#436]: https://github.com/savvy-web/systems/pull/436
+
 ## 2.3.0
 
 ### Features
