@@ -211,8 +211,11 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 		# primitive now (Task 11); `git mv` still falls through to the
 		# operation-named deny below, routed to a message naming that
 		# primitive instead of the raw command.
+		# The exemption tests THIS clause, not the whole command: a
+		# `--cached` in a sibling clause must not clear a destructive bare
+		# `git rm` in this one (both re-reviewers flagged the $SCAN form).
 		if [ "$SUBCOMMAND" = "rm" ] \
-			&& [[ "$SCAN" =~ (^|[[:space:]])--cached([[:space:]]|$) ]]; then
+			&& [[ "$clause" =~ (^|[[:space:]])--cached([[:space:]]|$) ]]; then
 			continue
 		fi
 		# Manifest staging allowance (#379): `git add`/`git restore` are
@@ -223,8 +226,12 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 		# still denies -- this only clears the pure "stage the manifest"
 		# shape.
 		if [ "$SUBCOMMAND" = "add" ] || [ "$SUBCOMMAND" = "restore" ]; then
+			# Token scan is clause-scoped for the same reason as the rm
+			# exemption above: a vendored path in a SIBLING clause must not
+			# deny a pure manifest-staging clause (that sibling is judged on
+			# its own iteration).
 			# shellcheck disable=SC2206 # best-effort word split is the intent
-			GIT_TOKENS=($SCAN)
+			GIT_TOKENS=($clause)
 			all_manifest=1
 			saw_repos_token=0
 			for tok in "${GIT_TOKENS[@]}"; do

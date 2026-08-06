@@ -692,8 +692,25 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						}),
 					);
 
-					yield* configStore.write(root, {
-						repos: { ...manifest.repos, [name]: { ...entry, ref } },
+					// The manifest write rides the lock-serialized `update` like every
+					// other mutating op (pin was the last one on the unlocked `write`
+					// path), and the entry is re-read INSIDE the lock so a concurrent
+					// mutation between the up-front existence check and this write
+					// surfaces as a typed failure instead of a lost update.
+					yield* configStore.update(root, (fresh) => {
+						const freshEntry = getRepoEntry(fresh.repos, name);
+						if (!freshEntry) {
+							return Effect.fail(
+								new ReposConfigError({
+									path: path.join(root, MANIFEST_PATH),
+									reason: `pin applied to git but manifest entry "${name}" is gone; manifest and checkout now disagree`,
+									kind: "invalid",
+								}),
+							);
+						}
+						return Effect.succeed({
+							repos: { ...fresh.repos, [name]: { ...freshEntry, ref } },
+						});
 					});
 
 					// `.gitmodules` is not written by this method — pin only moves the

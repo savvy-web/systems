@@ -379,3 +379,18 @@ assert_deny() {
 	run_guard_with_command 'cp -t /tmp .repos/effect/README.md'
 	assert_allow
 }
+
+@test "sibling clause --cached does not exempt a bare git rm in another clause" {
+	run_guard_with_command 'git rm .repos/effect/README.md && git rm --cached .repos/config.json'
+	assert_deny
+}
+
+@test "clause-local --cached still exempts the index-only git rm shape" {
+	run_guard_with_command 'git rm --cached .repos/effect && git status'
+	assert_allow
+}
+
+@test "manifest staging clause is allowed despite a vendored read in a sibling clause" {
+	run_guard_with_command 'git add .repos/config.json && git log .repos/effect'
+	assert_allow
+}
