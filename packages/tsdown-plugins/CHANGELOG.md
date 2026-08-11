@@ -1,5 +1,22 @@
 # @savvy-web/tsdown-plugins
 
+## 2.4.6
+
+### Dependencies
+
+* | Dependency              | Type       | Action  | From           | To             |                                                                              |
+  | ----------------------- | ---------- | ------- | -------------- | -------------- | ---------------------------------------------------------------------------- |
+  | @effect/platform-node   | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 |                                                                              |
+  | @effected/npm           | dependency | updated | ^0.8.3         | ^0.9.0         |                                                                              |
+  | @effected/package-json  | dependency | updated | ^0.7.3         | ^0.8.0         |                                                                              |
+  | @effected/tsconfig-json | dependency | updated | ^0.4.1         | ^0.5.0         |                                                                              |
+  | @effected/workspaces    | dependency | updated | ^0.10.2        | ^0.11.0        |                                                                              |
+  | effect                  | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#449]: https://github.com/savvy-web/systems/pull/449
+
 ## 2.4.5
 
 ### Dependencies

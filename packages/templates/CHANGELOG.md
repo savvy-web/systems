@@ -1,5 +1,19 @@
 # @savvy-web/templates
 
+## 1.0.13
+
+### Dependencies
+
+* | Dependency             | Type           | Action  | From           | To             |                                                                              |
+  | ---------------------- | -------------- | ------- | -------------- | -------------- | ---------------------------------------------------------------------------- |
+  | @effected/package-json | dependency     | updated | ^0.7.3         | ^0.8.0         |                                                                              |
+  | @effected/yaml         | dependency     | updated | ^0.6.1         | ^0.7.0         |                                                                              |
+  | effect                 | peerDependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#449]: https://github.com/savvy-web/systems/pull/449
+
 ## 1.0.12
 
 ### Dependencies

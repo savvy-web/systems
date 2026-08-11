@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/silk",
-	"version": "3.5.0",
+	"version": "3.5.1",
 	"private": true,
 	"description": "The single Silk Suite dev-tooling package — changeset, commitlint, lint, and biome conventions",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk",
@@ -41,7 +41,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/templates": "^0.1.1",
+		"@effected/templates": "^0.2.0",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",

@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/mcp",
-	"version": "2.2.0",
+	"version": "2.2.1",
 	"private": true,
 	"description": "The savvy MCP server — Silk Suite tooling and library knowledge for coding agents",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/mcp",
@@ -34,9 +34,9 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:effect",
-		"@effected/commands": "^0.3.1",
-		"@effected/git": "^0.6.0",
-		"@effected/workspaces": "^0.10.2",
+		"@effected/commands": "^0.4.0",
+		"@effected/git": "^0.7.0",
+		"@effected/workspaces": "^0.11.0",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect",

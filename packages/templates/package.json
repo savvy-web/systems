@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/templates",
-	"version": "1.0.12",
+	"version": "1.0.13",
 	"private": true,
 	"description": "Pure TypeScript templates for Silk Suite project scaffolding",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/templates",
@@ -29,8 +29,8 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/package-json": "^0.7.3",
-		"@effected/yaml": "^0.6.1"
+		"@effected/package-json": "^0.8.0",
+		"@effected/yaml": "^0.7.0"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
