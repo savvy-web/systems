@@ -41,7 +41,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/templates": "^0.1.1",
+		"@effected/templates": "^0.2.0",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",

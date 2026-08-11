@@ -1,4 +1,8 @@
 {
+	"//": "skipLibCheck works around Effect-TS/effect#7187: effect's published SchemaAST.d.ts drops the `@internal` `Sentinel` type that Schema.d.ts references publicly, so any tsc run resolving effect's d.ts through this config fails with TS2694. Every other tsconfig base in this repo (bundler ecma.json, silk rspress/website.json, rspress-builder plugin.json, github-action-builder action.json) already sets it; the silk node/root.json preset is the outlier. Drop this override once effect ships the fix.",
 	"$schema": "https://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"skipLibCheck": true
+	},
 	"extends": "./packages/silk/public/tsconfig/node/root.json"
 }

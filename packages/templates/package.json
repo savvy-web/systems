@@ -29,8 +29,8 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/package-json": "^0.7.3",
-		"@effected/yaml": "^0.6.1"
+		"@effected/package-json": "^0.8.0",
+		"@effected/yaml": "^0.7.0"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
