@@ -45,6 +45,17 @@ function git(cwd: string, ...args: string[]): string {
 }
 
 /**
+ * Suite timeout for the real-git suites below. These spawn `git init`,
+ * `submodule add`, fetch and sparse-checkout against `file://` remotes; a
+ * single test legitimately costs several seconds of wall clock, and under
+ * full-suite parallelism they were landing just past Vitest's 5s default
+ * (observed 5.0s-6.3s) and failing as timeouts while passing in isolation.
+ * The budget is generous on purpose: it exists to absorb scheduling jitter,
+ * not to mask a hang. The stubbed-executor suites keep the 5s default.
+ */
+const REAL_GIT_TIMEOUT = { timeout: 30_000 };
+
+/**
  * `ReposManager.layer` now requires `ReposLockdown`; every composition in this
  * file threads this shared reference through so the layer construction
  * resolves. Production behavior of the tests written before Task 2 is
@@ -112,7 +123,7 @@ describe("ReposManager.status — stubbed executor", () => {
 	);
 });
 
-describe("ReposManager.sync / status — real git", () => {
+describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 	function makeUpstream(): string {
 		const up = mkdtempSync(join(tmpdir(), "repos-manager-upstream-"));
 		git(up, "init", "--quiet", "-b", "main");
@@ -695,7 +706,7 @@ describe("ReposManager.sync / status — real git", () => {
 	);
 });
 
-describe("ReposManager.add / pin — real git", () => {
+describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
 	// `git submodule add` does NOT honor repo-local `protocol.file.allow` config
 	// (unlike `submodule update --init`), so the production `add`/`pin` paths need
 	// this scoped globally for the child git processes they spawn. Test-only: the
@@ -1681,7 +1692,7 @@ describe("ReposManager.add / pin — real git", () => {
 	);
 });
 
-describe("ReposManager lockdown integration", () => {
+describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 	let previousAllowProtocol: string | undefined;
 	// Every root `makeUpstream`/`makeHost` creates in this suite, so `afterAll`
 	// can restore write permission (lockdown may leave a tree read-only) before
@@ -2316,7 +2327,7 @@ describe("ReposManager.note", () => {
 	);
 });
 
-describe("ReposManager.remove — real git", () => {
+describe("ReposManager.remove — real git", REAL_GIT_TIMEOUT, () => {
 	let previousAllowProtocol: string | undefined;
 
 	beforeAll(() => {
@@ -2580,7 +2591,7 @@ describe("ReposManager.remove — real git", () => {
  *    and `R ` -- staged column only, clean unstaged column) -- no separate
  *    `git add` is needed for either.
  */
-describe("git mv on a submodule (real git) — Task 11 probe", () => {
+describe("git mv on a submodule (real git) — Task 11 probe", REAL_GIT_TIMEOUT, () => {
 	let previousAllowProtocol: string | undefined;
 
 	beforeAll(() => {
@@ -2661,7 +2672,7 @@ describe("git mv on a submodule (real git) — Task 11 probe", () => {
 	});
 });
 
-describe("ReposManager.rename — real git", () => {
+describe("ReposManager.rename — real git", REAL_GIT_TIMEOUT, () => {
 	let previousAllowProtocol: string | undefined;
 
 	beforeAll(() => {
@@ -3322,7 +3333,7 @@ describe("ReposManager.rename — real git", () => {
 	);
 });
 
-describe("ReposManager.restore — real git", () => {
+describe("ReposManager.restore — real git", REAL_GIT_TIMEOUT, () => {
 	let previousAllowProtocol: string | undefined;
 
 	beforeAll(() => {

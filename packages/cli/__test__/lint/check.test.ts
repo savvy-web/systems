@@ -61,7 +61,16 @@ fi
 ${END_LINT}
 `;
 
-describe("runLintCheck", () => {
+/**
+ * Every test here bootstraps a real temp workspace on disk and resolves
+ * `ToolDiscovery` over `Workspaces.localExecLayer()`, which probes for real
+ * tools out of process. Under full-suite parallelism that pushed past Vitest's
+ * 5s default and failed as a timeout while passing in isolation. The budget
+ * absorbs scheduling jitter; it is not covering for a hang.
+ */
+const TOOL_DISCOVERY_TIMEOUT = { timeout: 30_000 };
+
+describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 	let testDir: string;
 	let originalCwd: string;
 	let logs: string[];
