@@ -1,5 +1,19 @@
 # @savvy-web/github-action-builder
 
+## 2.2.3
+
+### Dependencies
+
+* | Dependency            | Type       | Action  | From           | To             |                                                                              |
+  | --------------------- | ---------- | ------- | -------------- | -------------- | ---------------------------------------------------------------------------- |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 |                                                                              |
+  | @effected/yaml        | dependency | updated | ^0.6.1         | ^0.7.0         |                                                                              |
+  | effect                | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#449]: https://github.com/savvy-web/systems/pull/449
+
 ## 2.2.2
 
 ### Dependencies
