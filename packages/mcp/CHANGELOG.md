@@ -1,5 +1,27 @@
 # @savvy-web/mcp
 
+## 2.3.0
+
+### Features
+
+* `repos_manage` action `add` accepts an `orientation` argument, so the block a preceding `remove` reported can be handed straight back and a re-vendor is lossless in one call.
+
+  `action: "remove"` echoes the removed entry's orientation block verbatim as JSON, because `add` does not resurrect it and a re-vendor otherwise loses it silently.
+
+  `action: "sync"` renders a `Boundary marked` section, and `action: "restore"` renders a `Still dirty` section when it is non-empty. The latter is deliberately omitted when empty: a standing empty heading on every clean restore trains a reader to skip past the one section that matters. [#464][#464]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.5.2 | 5.6.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#464]: https://github.com/savvy-web/systems/pull/464
+
 ## 2.2.2
 
 ### Dependencies
