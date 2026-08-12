@@ -421,6 +421,50 @@ describe("Handler classes", () => {
 			expect(result).toEqual([]);
 		});
 
+		it("should forward format options through fmtCommand so both entry points agree", () => {
+			const format = YamlFormattingOptions.make({ indentSequences: false });
+			const result = Yaml.fmtCommand({ format })(["config.yaml"]) as string;
+
+			// The subcommand runs in another process, so the options have to cross
+			// the shell boundary or the two entry points format differently.
+			expect(result).toContain("--format");
+			const encoded = /--format '([^']*)'/.exec(result)?.[1];
+			expect(encoded).toBeDefined();
+			expect(Yaml.parseFormatOptions(encoded as string).indentSequences).toBe(false);
+		});
+
+		it("should omit the format flag when no options are given", () => {
+			const result = Yaml.fmtCommand()(["config.yaml"]) as string;
+			expect(result).not.toContain("--format");
+		});
+
+		it("should round-trip format options through encode and parse", () => {
+			const original = YamlFormattingOptions.make({ quoteStyle: "double", indentSequences: true });
+			const restored = Yaml.parseFormatOptions(Yaml.encodeFormatOptions(original));
+
+			expect(restored.quoteStyle).toBe("double");
+			expect(restored.indentSequences).toBe(true);
+		});
+
+		it("should produce identical bytes from both entry points for the same options", async () => {
+			const format = YamlFormattingOptions.make({ indentSequences: false });
+			const source = "list:\n  - one\n  - two\n";
+
+			// Path A: the lint-staged handler applies the options directly
+			const viaHandler = join(FIXTURES_DIR, "entrypoint-a.yaml");
+			writeFileSync(viaHandler, source, "utf-8");
+			await Yaml.create({ format, exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"] })([viaHandler]);
+
+			// Path B: the CLI subcommand decodes the same options off the command line
+			const viaCommand = join(FIXTURES_DIR, "entrypoint-b.yaml");
+			writeFileSync(viaCommand, source, "utf-8");
+			const emitted = Yaml.fmtCommand({ format })([viaCommand]) as string;
+			const encoded = /--format '([^']*)'/.exec(emitted)?.[1] as string;
+			Yaml.formatFile(viaCommand, Yaml.parseFormatOptions(encoded));
+
+			expect(readFileSync(viaCommand, "utf-8")).toBe(readFileSync(viaHandler, "utf-8"));
+		});
+
 		it("should return empty when all files are excluded", async () => {
 			const handler = Yaml.create();
 			const result = await handler(["pnpm-lock.yaml"]);

@@ -113,6 +113,34 @@ export class Yaml {
 	}
 
 	/**
+	 * Serialize formatting options for the `savvy lint fmt yaml --format` flag.
+	 *
+	 * @remarks
+	 * The CLI subcommand runs in a separate process, so options set on
+	 * {@link fmtCommand} have to cross a shell boundary to reach
+	 * {@link formatFile}. Without that hop the two entry points format the same
+	 * file differently — the drift this package's shared-static rule exists to
+	 * prevent. {@link parseFormatOptions} is the inverse.
+	 *
+	 * @param options - Formatting options to encode
+	 * @returns The options as a JSON string
+	 */
+	static encodeFormatOptions(options: YamlFormattingOptions): string {
+		return JSON.stringify(options);
+	}
+
+	/**
+	 * Parse formatting options serialized by {@link encodeFormatOptions}.
+	 *
+	 * @param encoded - JSON produced by {@link encodeFormatOptions}
+	 * @returns The decoded options
+	 * @throws Error if the JSON is malformed or fails schema validation
+	 */
+	static parseFormatOptions(encoded: string): YamlFormattingOptions {
+		return YamlFormattingOptions.make(JSON.parse(encoded) as Parameters<typeof YamlFormattingOptions.make>[0]);
+	}
+
+	/**
 	 * Create a handler that returns a CLI command to format YAML files.
 	 *
 	 * @remarks
@@ -121,11 +149,15 @@ export class Yaml {
 	 * can detect the modification and auto-stage it.
 	 * Use this in lint-staged array syntax for sequential execution.
 	 *
+	 * `options.format` is forwarded to the subcommand as `--format`, so this
+	 * path and {@link create} produce identical bytes for the same options.
+	 *
 	 * @param options - Configuration options
 	 * @returns A lint-staged compatible handler function
 	 */
 	static fmtCommand(options: YamlOptions = {}): LintStagedHandler {
 		const excludes = options.exclude ?? [...Yaml.defaultExcludes];
+		const formatOptions = options.format;
 
 		return (filenames: readonly string[]): string | string[] => {
 			const filtered = Filter.exclude(filenames, excludes);
@@ -135,7 +167,10 @@ export class Yaml {
 			}
 
 			const cmd = Command.findSavvyLint();
-			return `${cmd} fmt yaml ${Filter.shellEscape(filtered)}`;
+			const formatFlag = formatOptions
+				? ` --format ${Filter.shellEscape([Yaml.encodeFormatOptions(formatOptions)])}`
+				: "";
+			return `${cmd} fmt yaml${formatFlag} ${Filter.shellEscape(filtered)}`;
 		};
 	}
 
