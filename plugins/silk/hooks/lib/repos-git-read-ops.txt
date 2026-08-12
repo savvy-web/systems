@@ -2,6 +2,15 @@
 # (git -C .repos/<repo> ..., --git-dir=/--work-tree= targeting .repos/).
 # Used by hooks/pre-tool-use/repos-bash-guard.sh (grep -Fxq, whole-line
 # match). Anything NOT listed here is treated as a write and denied.
+#
+# ONLY subcommands that are read-only BY NATURE belong here. A subcommand
+# that is read-or-write depending on its flags or its subverb cannot be
+# classified by name at all, and listing it either denies every read
+# (`git config --get`) or permits real writes (`git remote set-url`).
+# Those live in `_repos_clause_is_read` in the guard instead — currently
+# `config`, `submodule` and `remote`. `remote` was ON this list and is the
+# worked example of the second failure: every `git remote set-url` against a
+# vendored tree passed until it moved.
 status
 log
 diff
@@ -11,6 +20,5 @@ ls-tree
 cat-file
 blame
 grep
-remote
 rev-parse
 describe

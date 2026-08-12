@@ -52,6 +52,15 @@ export const runReposRemove = (cwd: string, name: string) =>
 		for (const note of result.removedNotes) {
 			yield* Effect.log(`warning: note ${note.id} (${note.ref}) was removed with the entry — promote first if durable`);
 		}
+		// `add` has an `orientation` parameter but does not resurrect anything on
+		// its own, so anyone re-vendoring after this loses the block unless they
+		// are handed it here, while it still exists.
+		if (result.removedEntry.orientation) {
+			yield* Effect.log(
+				`warning: the orientation block for ${result.name} was removed with the entry and add will NOT restore it — re-vendoring? capture it now:`,
+			);
+			yield* Effect.log(JSON.stringify(result.removedEntry.orientation, null, 2));
+		}
 	}).pipe(
 		Effect.catchTag("ReposConfigError", (error) => {
 			if (error.kind === "missing") {

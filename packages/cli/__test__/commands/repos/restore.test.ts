@@ -10,6 +10,7 @@ const { ReposManager } = Repos;
 const restoreResult: Repos.ReposRestoreResult = {
 	restored: [{ name: "foo", commit: "abc111" }],
 	skippedClean: [],
+	stillDirty: [],
 };
 
 /** Build a stub `Repos.ReposManager` layer whose `restore` resolves/fails as given, recording the args it was called with. */
@@ -84,7 +85,7 @@ describe("runReposRestore (adapter)", () => {
 				let captured: unknown;
 				const layer = makeStubLayer((root, names) => {
 					captured = { root, names };
-					return Effect.succeed({ restored: [], skippedClean: [] });
+					return Effect.succeed({ restored: [], skippedClean: [], stillDirty: [] });
 				});
 
 				yield* collectLogs("/repo", [], layer);
@@ -102,6 +103,7 @@ describe("runReposRestore (adapter)", () => {
 						{ name: "bar", commit: "def222" },
 					],
 					skippedClean: [],
+					stillDirty: [],
 				}),
 			);
 
@@ -119,6 +121,7 @@ describe("runReposRestore (adapter)", () => {
 				Effect.succeed({
 					restored: [{ name: "dirty-spec", commit: "abc111" }],
 					skippedClean: ["clean-spec"],
+					stillDirty: [],
 				}),
 			);
 
@@ -132,7 +135,7 @@ describe("runReposRestore (adapter)", () => {
 
 	it.effect("logs a nothing-to-restore message when both result arrays are empty", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.succeed({ restored: [], skippedClean: [] }));
+			const layer = makeStubLayer(() => Effect.succeed({ restored: [], skippedClean: [], stillDirty: [] }));
 
 			const logs = yield* collectLogs("/repo", [], layer);
 

@@ -38,8 +38,11 @@ export interface ReposLockdownShape {
  * A submodule worktree's `<root>/.repos/<name>/.git` is normally a FILE
  * containing a single `gitdir: <path>` line pointing at the real metadata
  * directory, which git names after whatever path/name the submodule was
- * REGISTERED under — not necessarily the manifest key (e.g. this repo's own
- * `effect` entry has gitdir `.git/modules/.repos/effect-smol`). This helper
+ * REGISTERED under — not necessarily the manifest key. Git never renames
+ * that directory, so a manifest entry re-slugged after it was first vendored
+ * keeps its original gitdir name indefinitely (manifest key `<new>`, gitdir
+ * `.git/modules/.repos/<old>`). `ReposDrift` reports that state as
+ * `localRegistrationDivergence`; re-vendoring the entry clears it. This helper
  * reads that pointer and resolves it (relative pointers are relative to the
  * directory containing the `.git` file) so callers always land on the real
  * metadata directory.
@@ -96,6 +99,39 @@ export const resolveModuleDir = (
 /**
  * Enforces OS-level read-only permissions on vendored repos so they cannot
  * be accidentally edited outside the sync flow.
+ *
+ * @remarks
+ * SCOPE: the WORKTREE only. The submodule's git metadata directory
+ * (`.git/modules/...`) is deliberately NOT locked — `unlock` still walks it
+ * so trees locked by an older version are freed, but `lock` never re-locks
+ * it. Do not "restore" the metadata lock without re-reading this note.
+ *
+ * Locking the metadata directory made the boundary enforce itself only via
+ * `EACCES`, whose message names neither `.repos/` nor a reason, and it broke
+ * every client that needs incidental gitdir writes: a plain `git pull` that
+ * moves a gitlink recurses by default and dies writing `FETCH_HEAD`, and any
+ * client keeping per-gitdir state (GitKraken writes a `gk/` directory into
+ * every gitdir it manages, which no git setting governs) is structurally
+ * incompatible with a read-only gitdir. Since vendored reference sources are
+ * the overwhelming majority of submodules in this ecosystem, ordinary tooling
+ * collided with the lockdown constantly.
+ *
+ * What the worktree lock still buys, verified against git 2.54:
+ *
+ * - editing a vendored file fails (`EACCES`) — the property the system
+ *   actually needs;
+ * - `git reset --hard` inside a vendored tree fails (cannot unlink);
+ * - `git checkout <other>` does NOT fail — it moves `HEAD` while leaving the
+ *   worktree stale. That is the one guarantee given up here, and it is given
+ *   up knowingly: git immediately reports the submodule as `+<oid>`, which
+ *   {@link ReposDrift} already classifies as `checkoutDiverged` and
+ *   `ReposManager.restore` repairs.
+ *
+ * So the invariant weakens from "the pin cannot drift" to "a drifted pin is
+ * always detected and one command from repaired." The declarative half of the
+ * boundary — `submodule.<path>.update = none`, so clients skip these trees
+ * rather than discovering the boundary by failing — is asserted by
+ * `ReposManager.sync`, not here.
  * @public
  */
 export class ReposLockdown extends Context.Service<ReposLockdown, ReposLockdownShape>()(
@@ -172,10 +208,19 @@ export class ReposLockdown extends Context.Service<ReposLockdown, ReposLockdownS
 					}
 				});
 
+			// ASYMMETRIC BY DESIGN — read the module-gitdir note on the class
+			// before "fixing" the asymmetry. Lock walks the WORKTREE only;
+			// unlock walks the worktree AND the module gitdir. That asymmetry
+			// IS the one-way migration off the old both-trees lock: every
+			// `withUnlocked` bracket frees a gitdir a previous version locked
+			// and never re-locks it, so one `savvy repos sync` migrates a whole
+			// repo. Unlocking an already-unlocked gitdir is a no-op chmod, so
+			// this stays correct once every tree has migrated.
 			const walkRoot = (root: string, name: string, fileBaseMode: number, dirMode: number, order: "lock" | "unlock") =>
 				Effect.gen(function* () {
-					const moduleDir = yield* resolveModuleDir(fs, path, root, name);
-					for (const dir of [path.join(root, REPOS_DIR, name), moduleDir]) {
+					const worktree = path.join(root, REPOS_DIR, name);
+					const targets = order === "unlock" ? [worktree, yield* resolveModuleDir(fs, path, root, name)] : [worktree];
+					for (const dir of targets) {
 						const present = yield* fs
 							.exists(dir)
 							.pipe(

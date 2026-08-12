@@ -12,6 +12,7 @@ const removeResult: Repos.ReposRemoveResult = {
 	path: ".repos/foo",
 	commitMessage: "chore(repos): remove foo",
 	removedNotes: [{ id: "n-1234", date: "2026-01-01", ref: "1.0.0", note: "discovered the entry point" }],
+	removedEntry: { url: "https://example.test/foo.git", ref: "1.0.0", purpose: "fixture" },
 };
 
 /** Build a stub `Repos.ReposManager` layer whose `remove` resolves/fails as given, recording the args it was called with. */

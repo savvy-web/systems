@@ -33,6 +33,13 @@ const DEBOUNCE_MS = 500;
 // runner case without actually waiting 30s.
 const SPAWN_TIMEOUT_MS = Number(process.env.GITMODULES_DRIFT_SPAWN_TIMEOUT_MS) || 30_000;
 
+// Delay before the one startup sweep (see `main`). Must clear the SessionStart
+// hook's `savvy repos sync`, whose own watchdog is 6s (SILK_REPOS_SYNC_TIMEOUT)
+// -- that sync unlocks and re-locks vendored trees and writes git config, so a
+// drift read landing mid-sync reports transient state that is nobody's actual
+// problem. Overridable via env so a test need not wait.
+const STARTUP_SWEEP_DELAY_MS = Number(process.env.GITMODULES_DRIFT_STARTUP_DELAY_MS) || 8000;
+
 // --- package manager resolution --------------------------------------------
 
 /**
@@ -167,6 +174,20 @@ async function main() {
 		if (timer) clearTimeout(timer);
 		timer = setTimeout(notify, DEBOUNCE_MS);
 	};
+
+	// One startup sweep, then watch. The watchers below only ever fire on a
+	// CHANGE to .gitmodules or .repos/config.json, so drift that already exists
+	// when the session opens is invisible to them -- and several drift kinds
+	// touch neither file by construction: a stale local registration lives in
+	// .git/config, and a diverged nested submodule lives one level down inside
+	// a vendored tree. Those could sit unreported indefinitely while every
+	// authority this monitor watches stayed byte-identical.
+	//
+	// `unref` so this timer alone never holds the process open, and it is
+	// deliberately NOT routed through `scheduled`: a real file change arriving
+	// inside the delay window must not push the sweep later, and the sweep
+	// must not cancel that change's own debounce.
+	setTimeout(notify, STARTUP_SWEEP_DELAY_MS).unref?.();
 
 	// .gitmodules lives directly under the project root, which always exists.
 	watchFileIn(ROOT, ".gitmodules", scheduled);

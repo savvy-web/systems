@@ -3,6 +3,6 @@
 	"hook_event_name": "PreToolUse",
 	"tool_name": "Bash",
 	"tool_input": {
-		"command": "sed -i '' 's/a/b/' .repos/effect-smol/README.md"
+		"command": "sed -i '' 's/a/b/' .repos/effect/README.md"
 	}
 }

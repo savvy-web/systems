@@ -235,7 +235,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		{
 			title: "Manage vendored repos",
 			description:
-				"Mutating: sync (initialize/reconcile submodules per the manifest), pin (re-pin a repo to a new ref), add (vendor a new repo), note (add/remove/promote an agent note), remove (unvendor a repo), rename (rename a vendored repo's manifest key and worktree), or restore (hard-reset a repo's worktree back to its pinned gitlink commit and re-apply sparse paths — DESTRUCTIVE to uncommitted worktree edits; never run implicitly). Pass action plus the fields that action needs: pin needs name+ref; add needs url+ref+purpose (name/sparse optional); note needs name+op, plus note (op=add), id (op=remove), or id+into (op=promote); remove needs name; rename needs name (the old name) + newName; restore takes an optional names list — omitted, it restores every dirty repo and reports the clean ones as skipped; given, it restores exactly those repos even if already clean. A decode failure names the missing field. The pin result's markdown surfaces commitMessage and staleNoteIds — review and commit after pinning. The remove result's markdown surfaces commitMessage and removedNotes — promote any durable notes elsewhere, then review and commit. The rename result's markdown surfaces commitMessage — review and commit after renaming. The restore result's markdown names exactly what was discarded.",
+				"Mutating: sync (initialize/reconcile submodules per the manifest), pin (re-pin a repo to a new ref), add (vendor a new repo), note (add/remove/promote an agent note), remove (unvendor a repo), rename (rename a vendored repo's manifest key and worktree), or restore (hard-reset a repo's worktree back to its pinned gitlink commit and re-apply sparse paths — DESTRUCTIVE to uncommitted worktree edits; never run implicitly). Pass action plus the fields that action needs: pin needs name+ref; add needs url+ref+purpose (name/sparse/orientation optional — pass orientation back from a preceding remove's removedEntry to make a re-vendor lossless); note needs name+op, plus note (op=add), id (op=remove), or id+into (op=promote); remove needs name; rename needs name (the old name) + newName; restore takes an optional names list — omitted, it restores every dirty repo and reports the clean ones as skipped; given, it restores exactly those repos even if already clean. A decode failure names the missing field. The pin result's markdown surfaces commitMessage and staleNoteIds — review and commit after pinning. The remove result's markdown surfaces commitMessage, removedNotes and the removed entry's orientation block — promote any durable notes elsewhere, keep the orientation if you intend to re-vendor, then review and commit. The rename result's markdown surfaces commitMessage — review and commit after renaming. The restore result's markdown names exactly what was discarded.",
 			inputSchema: {
 				action: z
 					.enum(["sync", "pin", "add", "note", "remove", "rename", "restore"])
@@ -246,6 +246,17 @@ export function buildServer(ctx: McpContext): McpServer {
 				url: z.optional(z.string()).describe("Repo URL to vendor (add)."),
 				purpose: z.optional(z.string()).describe("One-line purpose for the manifest (add)."),
 				sparse: z.optional(z.array(z.string())).describe("Sparse-checkout patterns (add)."),
+				orientation: z
+					.optional(
+						z.object({
+							layout: z.optional(z.string()),
+							keyPaths: z.optional(z.record(z.string(), z.string())),
+							startHere: z.optional(z.string()),
+						}),
+					)
+					.describe(
+						"Orientation block to write (add). Pass back what a preceding remove reported as removedEntry.orientation — add does NOT restore it on its own, so a re-vendor loses it otherwise.",
+					),
 				op: z.optional(z.enum(["add", "remove", "promote"])).describe("Note operation (note)."),
 				note: z.optional(z.string()).describe("Note text (note, op=add)."),
 				id: z.optional(z.string()).describe("Note id (note, op=remove|promote)."),

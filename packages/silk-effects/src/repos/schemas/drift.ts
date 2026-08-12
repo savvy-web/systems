@@ -1,9 +1,9 @@
 import { Schema } from "effect";
 
 /**
- * The kinds of drift {@link ReposDrift} can detect between the four
- * authorities it reconciles: the manifest, `.gitmodules`, the worktree, and
- * `git submodule status`.
+ * The kinds of drift {@link ReposDrift} can detect between the five
+ * authorities it reconciles: the manifest, `.gitmodules`, the worktree,
+ * `git submodule status`, and the superproject's local git config.
  * @public
  */
 export const DriftKind = Schema.Literals([
@@ -15,6 +15,8 @@ export const DriftKind = Schema.Literals([
 	"checkoutDiverged",
 	"missingShallow",
 	"gitmodulesUnparsable",
+	"localRegistrationDivergence",
+	"nestedSubmoduleDivergence",
 ]);
 /** @public */
 export type DriftKind = typeof DriftKind.Type;

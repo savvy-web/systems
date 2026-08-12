@@ -138,6 +138,123 @@ _repos_exempt() {
 	[ "$target" = ".repos/config.json" ]
 }
 
+# The one sanctioned `git config` WRITE: removing a submodule registration
+# from the superproject's local config. Deliberately narrow on three axes, so
+# this stays "drop a stale registration" and never widens into "edit config":
+#
+#   - REMOVAL verbs only (--unset/--unset-all/--remove-section). Creating or
+#     altering a registration is still denied; `sync` owns that.
+#   - LOCAL config only. An `-f`/`--file` write targets a file -- `.gitmodules`
+#     is tracked host content -- which this allowance is not about.
+#   - Every `.repos/`-mentioning token must be a `submodule.<name>` KEY, never
+#     a path operand. A submodule's config key embeds its own path by
+#     construction, which is precisely why the guard's "a token naming the
+#     vendored dir is a target under it" model misfires on `git config`.
+#
+# Returns 0 (allow) / 1 (deny).
+_repos_config_deregister_allowed() {
+	local clause="$1"
+	if [[ "$clause" =~ (^|[[:space:]])(-f|--file)([[:space:]]|=) ]]; then
+		return 1
+	fi
+	if [[ ! "$clause" =~ (^|[[:space:]])(--unset|--unset-all|--remove-section)([[:space:]]|$) ]]; then
+		return 1
+	fi
+	# shellcheck disable=SC2206 # best-effort word split, as everywhere here
+	local tokens=($clause) tok
+	for tok in "${tokens[@]}"; do
+		[[ "$tok" == *.repos/* ]] || continue
+		tok="${tok%\"}"; tok="${tok#\"}"
+		tok="${tok%\'}"; tok="${tok#\'}"
+		[[ "$tok" == submodule.* ]] || return 1
+	done
+	return 0
+}
+
+# Mode-dependent git subcommands: read-or-write depending on their flags or
+# their subverb, so the flat read-ops list cannot classify them by name.
+# Listing such a subcommand there permits its writes; omitting it denies its
+# reads. Both failures were live:
+#
+#   - `config` was omitted, so every read fell to the catch-all deny. A
+#     submodule's config KEY necessarily embeds its own path
+#     (`submodule..repos/<name>.url`), which means the guard's "a token
+#     naming the vendored dir is a target under it" model misfires here: the
+#     token is a key in a flat namespace addressing the PARENT repo's
+#     `.git/config`, a file nowhere near the vendored trees. No submodule
+#     config key could be read at all.
+#   - `submodule` was likewise omitted, so `git submodule status` — the
+#     read that diagnoses a nested-submodule divergence — was denied along
+#     with `deinit`.
+#   - `remote` was LISTED, so `git remote set-url` against a vendored tree
+#     passed: a real write, permitted by name.
+#
+# Returns 0 (read, allow) / 1 (treat as write). Deliberately conservative:
+# anything not positively recognized as a read returns 1.
+_repos_clause_is_read() {
+	local subcommand="$1" clause="$2"
+	# shellcheck disable=SC2206 # best-effort word split, as everywhere here
+	local tokens=($clause)
+	local i seen=0 verb=""
+	for i in "${!tokens[@]}"; do
+		if [ "$seen" -eq 0 ]; then
+			[ "${tokens[$i]}" = "$subcommand" ] && seen=1
+			continue
+		fi
+		# The subverb is the FIRST non-flag token after the subcommand.
+		if [ -z "$verb" ] && [[ "${tokens[$i]}" != -* ]]; then
+			verb="${tokens[$i]}"
+		fi
+	done
+
+	case "$subcommand" in
+		config)
+			# Dropping a stale submodule REGISTRATION is sanctioned, even though
+			# it is a write. `ReposDrift` reports an orphaned
+			# `submodule.<name>.*` section -- one left behind by a rename or an
+			# unvendoring -- and names `git config --remove-section` as the
+			# remedy, but nothing else can perform it: `repos_manage` has no
+			# action for it, so denying this leaves a drift the tooling detects
+			# and no sanctioned way to clear. The write lands in the
+			# superproject's own `.git/config`, never inside `.repos/**`, which
+			# is the only thing this guard exists to protect.
+			if _repos_config_deregister_allowed "$clause"; then
+				return 0
+			fi
+			# A write flag anywhere disqualifies the clause even if a read flag
+			# is also present -- `git config --get x --unset y` must not be
+			# cleared by its read half.
+			if [[ "$clause" =~ (^|[[:space:]])(--unset|--unset-all|--add|--replace-all|--rename-section|--remove-section|--edit|-e)([[:space:]]|$) ]]; then
+				return 1
+			fi
+			# A read flag is REQUIRED, never merely preferred: the bare
+			# `git config <name> <value>` two-positional form is the actual
+			# write shape and carries no flag at all, so demanding a read flag
+			# is what keeps it denied.
+			if [[ "$clause" =~ (^|[[:space:]])(--get|--get-all|--get-regexp|--get-urlmatch|--get-color|--get-colorbool|--list|-l)([[:space:]]|=|$) ]]; then
+				return 0
+			fi
+			return 1
+			;;
+		submodule)
+			case "$verb" in
+				status | summary) return 0 ;;
+				*) return 1 ;;
+			esac
+			;;
+		remote)
+			# Bare `git remote` and `git remote -v` list; `show`/`get-url`
+			# read. `add`/`remove`/`rename`/`set-url`/`set-head`/`prune`/
+			# `update` all write, and fall through.
+			case "$verb" in
+				"" | show | get-url) return 0 ;;
+				*) return 1 ;;
+			esac
+			;;
+	esac
+	return 1
+}
+
 # --- Git leg -------------------------------------------------------------
 # Fires for any git invocation that targets .repos/ *within its own clause*
 # -- via -C/--git-dir=/--work-tree=, or a bare pathspec argument
@@ -193,6 +310,13 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 			exit 0
 		fi
 		if grep -Fxq "$SUBCOMMAND" "$READ_OPS_FILE" 2>/dev/null; then
+			continue
+		fi
+		# Read-or-write-by-flag subcommands, which the by-name list above
+		# cannot decide (see _repos_clause_is_read). Clause-scoped like every
+		# other exemption here: a read in this clause never clears a write in
+		# a sibling one.
+		if _repos_clause_is_read "$SUBCOMMAND" "$clause"; then
 			continue
 		fi
 		# Sanctioned index primitive for re-pointing a vendored repo's
@@ -374,12 +498,41 @@ if [[ "$SCAN" =~ (^|[^[:alnum:]_])sed([[:space:]]|$) ]] \
 	&& [[ "$SCAN" =~ (^|[[:space:]])(-[A-Za-z]*i|--in-place)([[:space:]]|$) ]]; then
 	sed_i=1
 fi
+# A sed SCRIPT is not a path, and scanning every token could not tell them
+# apart. `sed -i 's|.repos/old|.repos/new|g' <files outside .repos>` mentions
+# ".repos/" twice inside the EXPRESSION while writing only to its file
+# operands, and was denied on the strength of the expression alone -- the
+# rename of this repo's own guard fixtures hit exactly that. Positional
+# parsing cannot resolve it either: BSD `sed -i ''` takes a backup-suffix
+# argument that GNU `sed -i` does not, so "which operand is the script" is
+# genuinely ambiguous across platforms.
+#
+# Recognize the script by SHAPE instead: an optional address, then an `s`/`y`
+# command, then its delimiter (`s|`, `s/`, `s#`, `2,5y,`), or a script carried
+# by `-e=`/`--expression=`. A real file operand never looks like that -- a
+# path token's first character is `.`, `/`, or a name character followed by
+# more name characters, so `src/.repos/x` and `.repos/s.txt` both stay paths.
+_SED_SCRIPT_RE='^[0-9,$]*[sy][^[:alnum:]_[:space:]]'
+_repos_is_sed_script() {
+	local tok="$1"
+	tok="${tok%\"}"; tok="${tok#\"}"
+	tok="${tok%\'}"; tok="${tok#\'}"
+	[[ "$tok" =~ ^--?e(xpression)?= ]] && return 0
+	[[ "$tok" =~ $_SED_SCRIPT_RE ]] && return 0
+	return 1
+}
+
 if [ "$sed_i" -eq 1 ] \
 	|| [[ "$SCAN" =~ (^|[^[:alnum:]_])rm([[:space:]]|$) ]] \
 	|| [[ "$SCAN" =~ (^|[^[:alnum:]_])patch([[:space:]]|$) ]] \
 	|| [[ "$SCAN" =~ dd[[:space:]].*of= ]]; then
 	for tok in "${TOKENS[@]}"; do
 		[[ "$tok" == *.repos/* ]] || continue
+		# Scoped to the sed case: only a sed invocation has a non-path operand
+		# to skip, so rm/patch/dd keep the unchanged any-token strictness.
+		if [ "$sed_i" -eq 1 ] && _repos_is_sed_script "$tok"; then
+			continue
+		fi
 		_repos_exempt "$tok" || deny=1
 	done
 fi

@@ -394,3 +394,160 @@ assert_deny() {
 	run_guard_with_command 'git add .repos/config.json && git log .repos/effect'
 	assert_allow
 }
+
+# --- Mode-dependent subcommands (#458) -------------------------------------
+# `config`, `submodule` and `remote` are read-or-write depending on their
+# flags/subverb, so the by-name read-ops list cannot classify them. See
+# _repos_clause_is_read in the guard.
+
+@test "git config --get on a submodule key (the key embeds .repos/ by construction): allowed" {
+	run_guard_with_command 'git config --local --get submodule..repos/effect.url'
+	assert_allow
+}
+
+@test "git config --get-regexp matching a submodule key: allowed" {
+	run_guard_with_command 'git config --local --get-regexp submodule..repos/effect'
+	assert_allow
+}
+
+@test "git config --list is a read even when a .repos key is named: allowed" {
+	run_guard_with_command 'git config --list --show-origin .repos/effect'
+	assert_allow
+}
+
+# --unset/--unset-all/--remove-section on a submodule key are the sanctioned
+# deregistration (covered below); every OTHER config write verb still denies,
+# including on a submodule key. Removal clears a stale registration; altering
+# one is `sync`'s job.
+@test "git config --replace-all on a submodule key (a write, not a removal): deny" {
+	run_guard_with_command 'git config --replace-all submodule..repos/effect.url https://evil.example/x.git'
+	assert_deny
+}
+
+@test "git config bare name/value two-positional form (the real write shape): deny" {
+	run_guard_with_command 'git config submodule..repos/effect.url https://evil.example/x.git'
+	assert_deny
+}
+
+@test "git config --get paired with a non-removal write in the same clause: deny (write flag wins)" {
+	run_guard_with_command 'git config --get submodule..repos/effect.url --add core.hooksPath .repos/effect/hooks'
+	assert_deny
+}
+
+@test "git submodule status (the read that diagnoses nested divergence): allowed" {
+	run_guard_with_command 'git -C .repos/effect submodule status'
+	assert_allow
+}
+
+@test "git submodule summary against a vendored tree: allowed" {
+	run_guard_with_command 'git -C .repos/effect submodule summary'
+	assert_allow
+}
+
+@test "git submodule deinit still denies with the unvendoring lifecycle message" {
+	run_guard_with_command 'git -C .repos/effect submodule deinit --all'
+	assert_deny
+	[[ "$(_reason "$output")" == *"unvendoring"* ]]
+}
+
+@test "git submodule update against a vendored tree: deny" {
+	run_guard_with_command 'git -C .repos/effect submodule update --init --recursive'
+	assert_deny
+}
+
+@test "git remote -v against a vendored tree (read): allowed" {
+	run_guard_with_command 'git -C .repos/effect remote -v'
+	assert_allow
+}
+
+@test "git remote get-url against a vendored tree (read): allowed" {
+	run_guard_with_command 'git -C .repos/effect remote get-url origin'
+	assert_allow
+}
+
+@test "git remote set-url against a vendored tree (was permitted by the by-name list): deny" {
+	run_guard_with_command 'git -C .repos/effect remote set-url origin https://evil.example/x.git'
+	assert_deny
+}
+
+@test "git remote add against a vendored tree: deny" {
+	run_guard_with_command 'git -C .repos/effect remote add mirror https://evil.example/x.git'
+	assert_deny
+}
+
+@test "a config read in one clause does not clear a config write in a sibling clause" {
+	run_guard_with_command 'git config --get submodule..repos/effect.url && git config submodule..repos/effect.url https://evil.example/x.git'
+	assert_deny
+}
+
+# --- sed script vs sed file operand ----------------------------------------
+# A sed SCRIPT is not a path. Scanning every token for ".repos/" denied a
+# rename whose expression mentioned the vendored dir while every file operand
+# sat outside it. Positional parsing can't resolve this (BSD `-i ''` takes a
+# suffix argument GNU `-i` does not), so the script is recognized by shape.
+
+@test "sed -i whose EXPRESSION mentions .repos/ but whose targets are outside it: allowed" {
+	run_guard_with_command "sed -i '' 's|.repos/effect-smol|.repos/effect|g' plugins/silk/hooks/fixtures/a.json"
+	assert_allow
+}
+
+@test "sed -i with a .repos/ expression, GNU form, non-vendored target: allowed" {
+	run_guard_with_command "sed -i 's|.repos/old|.repos/new|' packages/x.ts"
+	assert_allow
+}
+
+@test "sed -i with a .repos/ expression AND a .repos/ FILE operand: still denies" {
+	run_guard_with_command "sed -i 's|.repos/old|.repos/new|' .repos/effect/README.md"
+	assert_deny
+}
+
+@test "sed -i with an ordinary expression and a .repos/ file operand: still denies" {
+	run_guard_with_command "sed -i 's/a/b/' .repos/effect/README.md"
+	assert_deny
+}
+
+@test "a path token that merely starts with s is not mistaken for a sed script" {
+	run_guard_with_command "sed -i 's/a/b/' src/.repos/effect/x.ts"
+	assert_deny
+}
+
+@test "the sed script exemption does not leak to rm" {
+	run_guard_with_command "rm -rf .repos/effect"
+	assert_deny
+}
+
+# --- deregistering a stale submodule section (the drift remedy) ------------
+# ReposDrift reports an orphaned submodule.<name>.* section and names
+# `git config --remove-section` as the fix; nothing else can perform it, so
+# denying it left a detected drift with no sanctioned remedy. The write lands
+# in the superproject's .git/config, never inside .repos/**.
+
+@test "git config --remove-section on a stale submodule section: allowed" {
+	run_guard_with_command 'git config --remove-section submodule..repos/effect-smol'
+	assert_allow
+}
+
+@test "git config --unset of a submodule registration key: allowed" {
+	run_guard_with_command 'git config --local --unset submodule..repos/effect-smol.url'
+	assert_allow
+}
+
+@test "git config --unset-all of a submodule registration key: allowed" {
+	run_guard_with_command 'git config --unset-all submodule..repos/effect-smol.active'
+	assert_allow
+}
+
+@test "the deregister allowance is local-config only: an -f .gitmodules unset denies" {
+	run_guard_with_command 'git config -f .gitmodules --unset submodule..repos/effect.url'
+	assert_deny
+}
+
+@test "the deregister allowance is removal-only: setting a registration still denies" {
+	run_guard_with_command 'git config submodule..repos/effect.url https://evil.example/x.git'
+	assert_deny
+}
+
+@test "the deregister allowance covers submodule KEYS only, not path operands" {
+	run_guard_with_command 'git config --unset core.thing .repos/effect/f'
+	assert_deny
+}

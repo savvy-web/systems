@@ -53,6 +53,18 @@ export interface ReposManagerShape {
 	readonly sync: (
 		root: string,
 	) => Effect.Effect<ReposSyncReport, ReposConfigError | GitSubmoduleError | ReposLockdownError>;
+	/**
+	 * Vendors a new repo.
+	 *
+	 * `options.orientation` exists so a re-vendor can be LOSSLESS in one call.
+	 * Remove-then-re-add is the remedy for several vendored-tree problems, and
+	 * without this parameter that remedy silently destroys the entry's
+	 * orientation block — the durable, hand-curated part an agent reads to know
+	 * where to look in the tree, and the part no report mentions is gone.
+	 * Notes are ephemeral by policy and are NOT carried across a re-vendor;
+	 * orientation is, when the caller passes it back (see
+	 * {@link ReposRemoveResult.removedEntry}, which hands it to them).
+	 */
 	readonly add: (
 		root: string,
 		options: {
@@ -61,6 +73,7 @@ export interface ReposManagerShape {
 			readonly purpose: string;
 			readonly name?: string;
 			readonly sparse?: ReadonlyArray<string>;
+			readonly orientation?: RepoOrientation;
 		},
 	) => Effect.Effect<ReposAddResult, ReposConfigError | GitSubmoduleError | ReposLockdownError>;
 	readonly pin: (
@@ -229,10 +242,6 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								ref: entry.ref,
 								purpose: entry.purpose,
 								present,
-								// Alias of `stagedCommit`, retained for one release (see the
-								// schema's TSDoc); `null` preserves the pre-existing
-								// "not staged" contract.
-								commit: stagedCommit ?? null,
 								...(stagedCommit !== undefined ? { stagedCommit } : {}),
 								...(committedCommit !== undefined ? { committedCommit } : {}),
 								...(checkedOutCommit !== undefined ? { checkedOutCommit } : {}),
@@ -255,8 +264,24 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					const clearedLocks: string[] = [];
 					const urlSynced: string[] = [];
 					const registered: string[] = [];
+					const boundaryMarked: string[] = [];
 
 					const gitmodulesPath = path.join(root, ".gitmodules");
+
+					// Declare the vendored boundary to git, in the superproject's
+					// LOCAL config (never `.gitmodules` — this is a property of this
+					// checkout's workflow, not of the vendored repo, and must not be
+					// published to anyone cloning us).
+					//
+					// `fetch.recurseSubmodules = false`: git's default is `on-demand`,
+					// which recurses whenever a pull moves a gitlink. That is the exact
+					// shape that used to die writing `FETCH_HEAD` into a locked gitdir;
+					// with the gitdir lock gone it no longer errors, but recursing into
+					// pinned reference sources is still pure waste — nothing here ever
+					// wants a fetch it did not ask for.
+					yield* git
+						.configSet(root, "fetch.recurseSubmodules", "false")
+						.pipe(Effect.mapError(asSubmoduleError("git config fetch.recurseSubmodules false", root)));
 
 					for (const [name, entry] of Object.entries(manifest.repos)) {
 						const repoPath = path.join(root, REPOS_DIR, name);
@@ -267,6 +292,28 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 							root,
 							name,
 							Effect.gen(function* () {
+								// The boundary marker is asserted at the END of this block,
+								// but git consults it DURING it: `submodule.<name>.update =
+								// none` makes `git submodule update --init` skip the
+								// submodule outright ("Skipping submodule ..."), which would
+								// silently defeat this method's own initialize branch below.
+								// `--checkout` overrides `none` on the command line, but
+								// `@effected/git`'s `submoduleUpdate` exposes no such option
+								// (kit gap), so neutralize the marker for the duration of our
+								// own git work and re-assert it at the end. A crash in
+								// between leaves `checkout`, i.e. plain git default behavior
+								// — the pre-marker status quo, never something worse.
+								//
+								// Keyed on the repo-relative PATH because that is the name
+								// `git submodule add` derives its `.gitmodules` section from,
+								// and the name `rename` canonicalizes a diverged section back
+								// to; a checkout whose local registration still carries an
+								// older name is exactly the divergence `ReposDrift` reports.
+								const updateKey = `submodule.${repoPathRel}.update`;
+								yield* git
+									.configSet(root, updateKey, "checkout")
+									.pipe(Effect.mapError(asSubmoduleError(`git config ${updateKey} checkout`, root)));
+
 								let clearedAnyLock = false;
 								for (const lock of STALE_LOCKS) {
 									const lockPath = path.join(moduleDir, lock);
@@ -388,16 +435,52 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								}
 
 								if (entry.sparse && entry.sparse.length > 0) {
+									// Evict any of the vendored repo's OWN submodules first,
+									// or `sparseApplied` reports a lie: sparse-checkout
+									// governs the parent's tracked files only, so a
+									// materialized nested submodule survives the call below
+									// untouched no matter what the manifest's `sparse` list
+									// says. Reporting `sparseApplied` for a repo whose
+									// excluded directories are still on disk is exactly the
+									// false success this field was accused of.
+									const nested = yield* git.submoduleStatus(repoPath).pipe(Effect.orElseSucceed(() => []));
+									if (nested.some((nestedEntry) => nestedEntry.state !== "uninitialized")) {
+										yield* git
+											.submoduleDeinit(repoPath, { all: true, force: true })
+											.pipe(Effect.mapError(asSubmoduleError("git submodule deinit --all --force", repoPath)));
+									}
+
 									yield* git
 										.sparseCheckoutSet(repoPath, entry.sparse, { cone: false })
 										.pipe(Effect.mapError(asSubmoduleError("git sparse-checkout set --no-cone", repoPath)));
 									sparseApplied.push(name);
 								}
+
+								// Assert the boundary now that our own git work is done:
+								// `update = none` makes every client — `git submodule
+								// update`, `git pull --recurse-submodules`, and the GUI
+								// clients that drive them — skip this tree instead of
+								// managing it. This is the declarative statement of a
+								// posture that used to be communicated only by an `EACCES`
+								// on a locked gitdir.
+								//
+								// `submodule.<name>.active` is deliberately NOT set to
+								// `false`, though it reads like the natural companion:
+								// `git submodule status` reports an inactive submodule as
+								// UNINITIALIZED even when it is fully checked out, which
+								// would make `ReposDrift` report `missingWorktree` for every
+								// vendored repo — and `git submodule init` (which `rename`
+								// runs) flips it back to `true` anyway, so the marker would
+								// not even survive this package's own operations.
+								yield* git
+									.configSet(root, updateKey, "none")
+									.pipe(Effect.mapError(asSubmoduleError(`git config ${updateKey} none`, root)));
+								boundaryMarked.push(name);
 							}),
 						);
 					}
 
-					return { initialized, sparseApplied, upToDate, clearedLocks, urlSynced, registered };
+					return { initialized, sparseApplied, upToDate, clearedLocks, urlSynced, registered, boundaryMarked };
 				});
 
 			/** Last path segment of a repo URL, with a trailing `.git` stripped. */
@@ -433,6 +516,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					readonly purpose: string;
 					readonly name?: string;
 					readonly sparse?: ReadonlyArray<string>;
+					readonly orientation?: RepoOrientation;
 				},
 			) =>
 				Effect.gen(function* () {
@@ -640,11 +724,30 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						}),
 					);
 
+					// Declare the boundary at the point the tree comes into existence,
+					// not at the next `sync`. `add` is a creation point: leaving the
+					// marker to a later run means a freshly vendored repo sits
+					// undeclared in the meantime, and every client is free to manage
+					// it — which is exactly the window this marker exists to close.
+					// (Found by re-vendoring this repo's own `effect` entry and
+					// noticing the marker was absent afterwards.)
+					//
+					// Unlike `sync`, no flip to `checkout` is needed around the git
+					// work above: nothing in `add` runs `git submodule update`, which
+					// is the only command `update = none` suppresses.
+					yield* git
+						.configSet(root, "fetch.recurseSubmodules", "false")
+						.pipe(Effect.mapError(asSubmoduleError("git config fetch.recurseSubmodules false", root)));
+					yield* git
+						.configSet(root, `submodule.${repoPath}.update`, "none")
+						.pipe(Effect.mapError(asSubmoduleError(`git config submodule.${repoPath}.update none`, root)));
+
 					const entry: RepoEntry = {
 						url: options.url,
 						ref: options.ref,
 						purpose: options.purpose,
 						...(options.sparse && options.sparse.length > 0 ? { sparse: options.sparse } : {}),
+						...(options.orientation ? { orientation: options.orientation } : {}),
 					};
 
 					// 7. The manifest write moves onto the serialized `update` primitive
@@ -890,7 +993,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					);
 
 					// `.gitmodules`: the section name may diverge from the manifest
-					// key (this repo's own effect/effect-smol entry) -- find the
+					// key (a repo re-slugged after its section was created) -- find the
 					// section by its canonical name first, falling back to its
 					// `path` field, mirroring the drift-pairing logic in
 					// `drift.ts`.
@@ -947,6 +1050,9 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						path: repoPath,
 						commitMessage: `chore(repos): remove ${name}`,
 						removedNotes: entry.notes ?? [],
+						// The entry as it stood, so a remove-then-re-add remedy can hand
+						// `orientation` straight back to `add` instead of losing it.
+						removedEntry: entry,
 					};
 				});
 
@@ -1112,7 +1218,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 													// c. `.gitmodules`: `git mv` already updated + staged the
 													// section's `path` field, but the section NAME itself is
 													// untouched by `mv` -- it may still be the old repo path,
-													// or (this repo's own effect/effect-smol shape) a name
+													// or (the re-slugged-after-vendoring shape) a name
 													// that never matched the manifest key at all. Find the
 													// section by its (now current) `path` field -- the one
 													// field `mv` is guaranteed to have already updated -- and
@@ -1285,6 +1391,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					}
 
 					const restored: Array<{ name: string; commit: string }> = [];
+					const stillDirty: string[] = [];
 
 					for (const name of targetNames) {
 						const entry = getRepoEntry(manifest.repos, name);
@@ -1328,6 +1435,34 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 									);
 								}
 
+								// A vendored repo's OWN submodules must go first. `git reset
+								// --hard` does not recurse, so a nested checkout that has
+								// diverged from what this repo's pinned commit records
+								// survives the reset untouched — the parent stays
+								// permanently dirty (` M <nested>`) and the nested tree keeps
+								// presenting source from a version this manifest does not
+								// pin. Sparse-checkout cannot evict it either: sparse governs
+								// the parent's TRACKED files, while an initialized
+								// submodule's worktree belongs to its own repository.
+								//
+								// Deinitializing is the right repair rather than recursing
+								// the reset: nothing in a vendored reference source is ever
+								// meant to be materialized one level down, so the target
+								// state is "no nested checkout at all", not "a nested
+								// checkout at the recorded commit".
+								//
+								// `--all` on a repo with no submodules is a no-op, but the
+								// status probe guards it anyway so a failure here is always
+								// about a real nested tree. Both are tolerant: a vendored
+								// repo whose nested state cannot be read is not a reason to
+								// abandon the reset the caller actually asked for.
+								const nested = yield* git.submoduleStatus(subPath).pipe(Effect.orElseSucceed(() => []));
+								if (nested.some((nestedEntry) => nestedEntry.state !== "uninitialized")) {
+									yield* git
+										.submoduleDeinit(subPath, { all: true, force: true })
+										.pipe(Effect.mapError(asSubmoduleError("git submodule deinit --all --force", subPath)));
+								}
+
 								yield* git
 									.reset(subPath, { mode: "hard", ref: targetCommit })
 									.pipe(Effect.mapError(asSubmoduleError(`git reset --hard ${targetCommit}`, subPath)));
@@ -1341,14 +1476,29 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 										.pipe(Effect.mapError(asSubmoduleError("git sparse-checkout set --no-cone", subPath)));
 								}
 
-								return targetCommit;
+								// Verify rather than assume. Every step above can succeed
+								// while leaving the tree dirty (the nested-submodule case
+								// this method now repairs was exactly that shape, and an
+								// unreadable nested state is tolerated above rather than
+								// failed), so re-read the ground truth and let the caller
+								// see it. Read INSIDE the unlock bracket: a `git status`
+								// against a relocked tree is fine, but keeping it here means
+								// it observes precisely the state the repair left behind.
+								const afterStatus = yield* git
+									.status(subPath)
+									.pipe(Effect.mapError(asSubmoduleError("git status --porcelain", subPath)));
+
+								return { targetCommit, dirty: afterStatus.length > 0 };
 							}),
 						);
 
-						restored.push({ name, commit });
+						restored.push({ name, commit: commit.targetCommit });
+						if (commit.dirty) {
+							stillDirty.push(name);
+						}
 					}
 
-					return { restored, skippedClean };
+					return { restored, skippedClean, stillDirty };
 				});
 
 			return {

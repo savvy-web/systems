@@ -155,7 +155,8 @@ read them via the tools below rather than trusting recall for field names.
   commits themselves; `action:"remove"` unvendors an entry (deinits the
   submodule, drops the worktree and gitdir, rewrites `.gitmodules` and the
   manifest, stages the result) and returns a ready-made commit message plus
-  the removed notes for a last look; `action:"rename"` moves an entry to a
+  the removed notes for a last look **plus `removedEntry`, the whole entry as
+  it stood**; `action:"rename"` moves an entry to a
   new name (`git mv`, `.gitmodules` section rename, superproject
   `submodule.<name>.*` re-registration, manifest key rename, all staged) and
   returns a ready-made commit message; `action:"restore"` is the dirty-tree
@@ -166,6 +167,40 @@ read them via the tools below rather than trusting recall for field names.
   repos add` requires `--purpose`, `savvy repos rename <old> <new>`, `savvy
   repos restore [name...]`. Run `savvy repos --help` for the full flag
   reference rather than guessing at option names.
+- **Re-vendoring (remove + re-add) is lossless only if you carry `orientation`
+  across yourself.** Remove-then-re-add is the standing remedy for several
+  vendored-tree problems, and `add` resurrects nothing on its own. Pass
+  `orientation` to `add` — it takes the same shape as the manifest's block —
+  using what `remove` handed back in `removedEntry.orientation` (the MCP and
+  CLI outputs both echo it verbatim for exactly this). Skipping it destroys
+  the curated block a future agent reads to navigate the tree, and **nothing
+  downstream notices**: `drift` and `status` both report clean afterwards,
+  because neither knows an orientation was ever there. Notes are different —
+  they are ephemeral by policy and are *not* meant to survive a re-vendor;
+  promote any durable one instead.
+- **`rename` has no rollback, and a crashed `rename` does not resume by
+  re-running it.** `git mv` is not idempotent (a second `git mv <old> <new>`
+  after the first succeeded fails with "bad source"), so a hard kill between
+  the move and the manifest write leaves a state a blind retry cannot clear —
+  the retry dies at the same step. Inspect before retrying, then finish by
+  hand in this order:
+  1. `git status` and `savvy repos status --drift` — establish which steps
+     landed. The worktree at `.repos/<new>` present while the manifest still
+     holds `<old>` is the signature of a crash after `git mv`.
+  2. If the worktree did **not** move, nothing landed: just re-run
+     `savvy repos rename <old> <new>`.
+  3. If it did move, complete the remaining steps rather than retrying:
+     confirm the `.gitmodules` section name is `.repos/<new>` (`git mv`
+     updates the section's `path` field but never its name), edit the
+     manifest key from `<old>` to `<new>` by hand — `.repos/config.json` is
+     hand-editable — then run `git submodule sync -- .repos/<new>` and
+     `git submodule init -- .repos/<new>` to re-register the superproject
+     config under the new name, and `git config --unset
+     submodule..repos/<old>.url` (and `.active`) to clear the stale one.
+  4. Finish with `savvy repos sync`, which re-asserts the boundary markers
+     and re-locks the tree, and `savvy repos status --drift` to confirm
+     clean. A crash also skips the relock finalizer, so the tree is left
+     writable until that `sync`.
 - **An existing checkout whose `.gitmodules` section name was renamed
   out-of-band** (as opposed to via `rename`, which handles this itself) needs
   a one-time local fixup: run `git submodule sync -- <path>` followed by
@@ -177,8 +212,9 @@ read them via the tools below rather than trusting recall for field names.
   status` reporting a healthy checkout as uninitialized (a leading `-`); the
   module gitdir itself needs no action regardless (it's found by the
   worktree's `.git` pointer, not by name).
-- **Drift report (`mode:"drift"` / `--drift`)** reconciles four authorities —
-  the manifest, `.gitmodules`, the worktree, and `git submodule status` — and
+- **Drift report (`mode:"drift"` / `--drift`)** reconciles five authorities —
+  the manifest, `.gitmodules`, the worktree, `git submodule status`, and the
+  superproject's local git config — and
   is read-only: it never mutates anything, only reports. Each finding names a
   `kind`: `urlMismatch`/`pathMismatch` (a value disagrees between two
   authorities — `manifestValue`/`observedValue` carry both sides),
@@ -186,10 +222,29 @@ read them via the tools below rather than trusting recall for field names.
   section), `orphanGitmodulesEntry` (a `.gitmodules` section with no manifest
   entry), `missingWorktree` (no checkout present), `checkoutDiverged` (the
   checked-out commit doesn't match the pinned gitlink), `missingShallow` (the
-  `submodule.<path>.shallow` config is absent), and `gitmodulesUnparsable`
-  (not about one repo — the file itself failed to parse). `status --drift`
+  `submodule.<path>.shallow` config is absent), `gitmodulesUnparsable`
+  (not about one repo — the file itself failed to parse),
+  `localRegistrationDivergence` (this checkout is registered under a
+  pre-canonicalization section name — the remedy is the `git submodule sync`
+  - `init` fixup described above, and the drift's `detail` says so), and
+  `nestedSubmoduleDivergence` (a vendored repo's OWN submodule is
+  materialized and off its recorded commit — see below). `status --drift`
   runs the plain status report first and the drift check after; either
   finding flips the exit code to 1.
+- **A vendored repo's own submodules are a blind spot the manifest cannot
+  close by itself.** `sparse` governs only the parent's *tracked* files; an
+  initialized submodule's worktree belongs to its own repository, so sparse
+  can never evict it no matter what the manifest lists. Once anything runs a
+  recursive init, the nested tree sits outside every other authority — which
+  is how a repo pinned at one version can present source from another, the
+  exact failure vendoring exists to prevent, while the parent stays
+  permanently dirty (`M <nested>`). `drift` now reports this as
+  `nestedSubmoduleDivergence`; `sync` and `restore` repair it by
+  **deinitializing** the nested gitlinks (the target state is no nested
+  checkout at all, not a nested checkout at the recorded commit). If
+  `restore` runs and the tree is *still* dirty afterwards, it says so in
+  `stillDirty` and the CLI exits 1 — treat that as an incomplete restore, not
+  a success.
 - **The `gitmodules-drift` monitor** (`plugins/silk/monitors/`) watches
   `.gitmodules` and `.repos/config.json` for changes and runs `savvy repos
   status --drift --json` on a debounce, printing one line per drift found.
@@ -203,16 +258,41 @@ read them via the tools below rather than trusting recall for field names.
   the tool-mediated way to make the same edit. Use `pin`/`add`/`sync` for
   anything that touches a submodule's checkout or gitlink; either the tool or
   a direct edit is fine for notes and orientation.
-- **The real boundary is OS-level, not pattern-matching.** `sync`/`add`/`pin`/
-  `remove`/`rename`/`restore` apply a lockdown: after materializing or updating a submodule, every
-  vendored working tree — files `444`, directories `555` — goes
-  filesystem-read-only, and the tooling re-locks even when the triggering
-  operation itself fails partway through. The metadata directory is locked
-  too, derived from the checkout's own `gitdir:` pointer rather than assumed
-  from the manifest key — so a submodule registered under a diverging
-  `.git/modules` path (e.g. this repo's own `effect` entry, whose gitdir is
-  `.git/modules/.repos/effect-smol`) is still covered. `.repos/config.json` is
-  never locked (it's host-repo
+- **A vendored submodule is not yours to fetch, update, or manage from a git
+  client.** State this to yourself before reaching for any git command
+  against `.repos/**`, and configure your client accordingly. `sync` declares
+  the posture to git itself, in the superproject's **local** config:
+  `submodule.<path>.update = none` (so `git submodule update`, `git pull
+  --recurse-submodules`, and every GUI client driving them skip these trees)
+  and `fetch.recurseSubmodules = false`. Neither is written to `.gitmodules`
+  — this is a property of your checkout's workflow, not something published
+  to anyone who clones the repo. `submodule.<path>.active` is deliberately
+  left `true`: an inactive submodule reads as **uninitialized** in `git
+  submodule status` even when fully checked out, which would make every drift
+  report claim `missingWorktree`, and `git submodule init` flips it back
+  anyway. Do not set it.
+- **The real boundary is OS-level, not pattern-matching — and it covers the
+  WORKTREE only.** `sync`/`add`/`pin`/`remove`/`rename`/`restore` apply a
+  lockdown: after materializing or updating a submodule, every vendored
+  working tree — files `444`, directories `555` — goes filesystem-read-only,
+  and the tooling re-locks even when the triggering operation itself fails
+  partway through. The submodule's **git metadata directory
+  (`.git/modules/...`) is deliberately left writable.** Locking it made the
+  boundary announce itself only through an `EACCES` naming neither `.repos/`
+  nor a reason, and it broke ordinary tooling: a plain `git pull` that moves
+  a gitlink recurses by default and dies writing `FETCH_HEAD`, and any client
+  keeping per-gitdir state (GitKraken writes a `gk/` directory into every
+  gitdir it manages, which no git setting governs) simply cannot work. What
+  the worktree lock still buys, verified against git 2.54: editing a vendored
+  file fails, and `git reset --hard` fails. What it does **not** stop is `git
+  checkout <other>` inside a vendored tree, which moves `HEAD` while leaving
+  the worktree stale — so the invariant is not "the pin cannot drift" but
+  **"a drifted pin is always detected and one command from repaired"**: git
+  reports it as `+<oid>`, drift reports `checkoutDiverged`, and `restore`
+  fixes it. Run `savvy repos sync` once per existing checkout to migrate off
+  the old metadata lock; unlock still walks the gitdir precisely so that one
+  run frees it, and lock never re-locks it.
+  `.repos/config.json` is never locked (it's host-repo
   content, not vendored), and `repos_inspect mode:"status"`/`savvy repos
   status` work fine against a locked tree — reads don't need write
   permission. A fresh clone's checkouts stay writable until the first `sync`
@@ -233,6 +313,25 @@ read them via the tools below rather than trusting recall for field names.
     clears it whenever every `.repos/`-mentioning token in the invocation
     resolves to exactly `.repos/config.json`; a mixed pathspec that also
     names a vendored path in the same call still denies.
+  - Reading a submodule's git config is sanctioned — `git config --get`,
+    `--get-regexp`, `--get-all`, `--list`. A submodule's config key embeds its
+    own path by construction (`submodule..repos/<name>.url`), so these reads
+    look like vendored paths without being them: the key addresses the
+    superproject's `.git/config`, which lives nowhere near a vendored tree.
+    `git submodule status`/`summary` and `git remote -v`/`show`/`get-url` are
+    reads too. `git remote set-url`/`add`, `git submodule update`/`deinit`,
+    and every non-removal `git config` write still deny.
+  - **Dropping a stale submodule registration** is sanctioned —
+    `git config --remove-section submodule.<name>`, `--unset`, `--unset-all`.
+    This is the remedy `drift` names for an orphaned
+    `localRegistrationDivergence`, and no tool performs it, so it has to be
+    reachable from Bash. Narrow on purpose: removal verbs only, local config
+    only (an `-f .gitmodules` write denies — that file is tracked host
+    content), and every `.repos/`-mentioning token must be a `submodule.<name>`
+    key rather than a path.
+  - A `sed -i` whose **expression** mentions `.repos/` is fine when its file
+    operands are outside it — `sed -i 's|.repos/old|.repos/new|' src/x.ts`
+    passes. A `.repos/` **file operand** still denies, expression or not.
   - Reading or copying content **out of** `.repos/` is sanctioned —
     `cat .repos/effect/src/x.ts`, `cp .repos/effect/src/x.ts
     /tmp/scratch.ts`. Only writes **into** a vendored tree are what the guard

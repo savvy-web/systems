@@ -3,6 +3,6 @@
 	"hook_event_name": "PreToolUse",
 	"tool_name": "NotebookEdit",
 	"tool_input": {
-		"notebook_path": "__PROJECT_DIR__/.repos/effect-smol/analysis.ipynb"
+		"notebook_path": "__PROJECT_DIR__/.repos/effect/analysis.ipynb"
 	}
 }

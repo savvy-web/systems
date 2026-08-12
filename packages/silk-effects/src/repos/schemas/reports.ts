@@ -1,24 +1,16 @@
 import { Schema } from "effect";
-import { RepoNote } from "./manifest.js";
+import { RepoEntry, RepoNote } from "./manifest.js";
 
 /**
  * Status of one vendored repo: gitlink presence and dirtiness, plus notes
  * that no longer match the pinned ref.
  *
  * @remarks
- * `commit` is an alias of `stagedCommit`, retained for one release so an
- * existing consumer reading `entry.commit` keeps working while it migrates to
- * the index-aware triple. It carries no independent release tag beyond
- * `@public` (this schema has no narrower audience to gate it behind).
- * Removal is scheduled by a tracked issue, not gated on a renderer migration
- * precondition here.
- *
- * Not fully behavior-preserving: `commit: stagedCommit ?? null` reads `null`
- * for a gitlink committed at `HEAD` but staged for REMOVAL, where the prior
- * single-`commit` field showed the committed oid. `stagedCommit` is `None`
- * in exactly that case (nothing is staged), so the alias reports "nothing
- * staged" rather than "here is what HEAD still has" — a real, if narrow,
- * difference from the pre-triple `commit` field's behavior.
+ * The gitlink is reported as an index-aware TRIPLE — `stagedCommit` (the
+ * index), `committedCommit` (`HEAD`), `checkedOutCommit` (the submodule's own
+ * worktree) — because those three legitimately disagree during a pin, and a
+ * single field cannot say which one it means. A deprecated `commit` alias of
+ * `stagedCommit` bridged one release and is now gone; read `stagedCommit`.
  * @public
  */
 export const RepoStatusEntry = Schema.Struct({
@@ -26,8 +18,6 @@ export const RepoStatusEntry = Schema.Struct({
 	ref: Schema.String,
 	purpose: Schema.String,
 	present: Schema.Boolean,
-	/** @deprecated alias of `stagedCommit`; retained for one release. */
-	commit: Schema.NullOr(Schema.String),
 	/** The gitlink oid staged in the index (`git ls-files --stage`) — sees a pin BEFORE it is committed. */
 	stagedCommit: Schema.optionalKey(Schema.String),
 	/** The gitlink oid committed at `HEAD` (`git ls-tree HEAD`). */
@@ -55,7 +45,8 @@ export type ReposStatusReport = typeof ReposStatusReport.Type;
  * Result of reconciling working-tree submodules with the manifest: missing
  * repos initialized, sparse-checkout patterns re-applied, already-present
  * repos left alone, stale locks cleared, drifted submodule URLs reconciled,
- * and orphan manifest entries (no gitlink at all) registered.
+ * orphan manifest entries (no gitlink at all) registered, and the vendored
+ * boundary re-declared to git.
  * @public
  */
 export const ReposSyncReport = Schema.Struct({
@@ -65,6 +56,14 @@ export const ReposSyncReport = Schema.Struct({
 	clearedLocks: Schema.Array(Schema.String),
 	urlSynced: Schema.Array(Schema.String),
 	registered: Schema.Array(Schema.String),
+	/**
+	 * Repos whose `submodule.<path>.update = none` marker was (re-)asserted in
+	 * the superproject's local config — the declarative half of the vendored
+	 * boundary, telling every git client to skip these trees rather than
+	 * letting them discover the boundary by failing against a permission
+	 * error.
+	 */
+	boundaryMarked: Schema.Array(Schema.String),
 });
 /** @public */
 export type ReposSyncReport = typeof ReposSyncReport.Type;
@@ -98,9 +97,23 @@ export type ReposAddResult = typeof ReposAddResult.Type;
 
 /**
  * Result of removing a vendored repo from the manifest: the gitlink, module
- * gitdir, and `.gitmodules` section are all gone, and the entry's notes are
- * surfaced so any durable ones can be promoted elsewhere before this result
- * is committed.
+ * gitdir, and `.gitmodules` section are all gone, and the entry that was
+ * removed is handed back so nothing durable is lost.
+ *
+ * @remarks
+ * `removedEntry` is the whole manifest entry, and it exists because
+ * remove-then-re-add is the standing remedy for several vendored-tree
+ * problems. `add` does not resurrect anything on its own, so without the
+ * entry in hand a caller following that remedy silently destroys the
+ * `orientation` block — larger and far harder to reconstruct than the notes,
+ * and invisible afterwards in every report an agent would think to check.
+ * Pass `removedEntry.orientation` straight back to `add` to make a re-vendor
+ * lossless.
+ *
+ * `removedNotes` is retained alongside it, and is exactly
+ * `removedEntry.notes ?? []`. Notes are ephemeral by policy — a last look
+ * before they go, so a durable one can be promoted elsewhere — whereas
+ * orientation is meant to survive.
  * @public
  */
 export const ReposRemoveResult = Schema.Struct({
@@ -108,6 +121,7 @@ export const ReposRemoveResult = Schema.Struct({
 	path: Schema.String,
 	commitMessage: Schema.String,
 	removedNotes: Schema.Array(RepoNote),
+	removedEntry: RepoEntry,
 });
 /** @public */
 export type ReposRemoveResult = typeof ReposRemoveResult.Type;
@@ -138,11 +152,19 @@ export type ReposRenameResult = typeof ReposRenameResult.Type;
  * {@link ReposManagerShape.restore} — repos left untouched because `status`
  * reported them clean; an explicit-names call never skips anything (an
  * explicit ask is always honored), so it always reports an empty array.
+ *
+ * `stillDirty` is the honesty channel: a repo that was reset but whose
+ * worktree is STILL dirty afterwards. `restored` alone cannot express that —
+ * it says what was attempted, not what was achieved — and a caller reading
+ * only `restored` would take a report of a repo that never came clean as
+ * success. Membership in both `restored` and `stillDirty` is the normal shape
+ * for such a repo.
  * @public
  */
 export const ReposRestoreResult = Schema.Struct({
 	restored: Schema.Array(Schema.Struct({ name: Schema.String, commit: Schema.String })),
 	skippedClean: Schema.Array(Schema.String),
+	stillDirty: Schema.Array(Schema.String),
 });
 /** @public */
 export type ReposRestoreResult = typeof ReposRestoreResult.Type;

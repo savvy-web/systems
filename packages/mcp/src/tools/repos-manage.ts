@@ -25,13 +25,18 @@ const PinRequest = Schema.TaggedStruct("pin", {
 	ref: Schema.String,
 });
 
-/** `add` requires `url`/`ref`/`purpose`; `name` and `sparse` are optional. */
+/**
+ * `add` requires `url`/`ref`/`purpose`; `name`, `sparse` and `orientation`
+ * are optional. `orientation` is what makes a re-vendor lossless — pass back
+ * the block a preceding `remove` reported.
+ */
 const AddRequest = Schema.TaggedStruct("add", {
 	url: Schema.String,
 	ref: Schema.String,
 	purpose: Schema.String,
 	name: Schema.optional(Schema.String),
 	sparse: Schema.optional(Schema.Array(Schema.String)),
+	orientation: Schema.optional(Repos.RepoOrientation),
 });
 
 /**
@@ -169,6 +174,8 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 				...section("URL synced", r.urlSynced),
 				``,
 				...section("Registered", r.registered),
+				``,
+				...section("Boundary marked", r.boundaryMarked),
 			].join("\n");
 		}
 		case "pin": {
@@ -239,6 +246,23 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 			} else {
 				lines.push("(none)");
 			}
+			// The orientation block is the durable half of an entry and `add`
+			// does not resurrect it, so a caller following the standard
+			// remove-then-re-add remedy loses it unless it is put in front of
+			// them HERE, while they still have it. Echo it verbatim as JSON so
+			// it can be handed straight back to `add`'s `orientation` parameter.
+			if (r.removedEntry.orientation) {
+				lines.push(
+					``,
+					`## Removed orientation`,
+					``,
+					`\`add\` does NOT restore this. If you are re-vendoring ${mdInline(r.name)}, pass it back as the \`orientation\` argument:`,
+					``,
+					"```json",
+					JSON.stringify(r.removedEntry.orientation, null, 2),
+					"```",
+				);
+			}
 			lines.push(
 				``,
 				`REVIEW AND COMMIT: the manifest, .gitmodules, and gitlink removal are already staged — review and commit using the message above.`,
@@ -277,6 +301,21 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 			} else {
 				lines.push("(none)");
 			}
+			// Only rendered when non-empty: this is an exception report, and a
+			// standing "## Still dirty — (none)" heading on every clean restore
+			// would train a reader to skip past the one section that matters.
+			if (r.stillDirty.length > 0) {
+				lines.push(
+					``,
+					`## Still dirty — RESTORE DID NOT FULLY SUCCEED`,
+					``,
+					`The reset ran but these worktrees remain dirty, so treat the restore as incomplete rather than done:`,
+					``,
+					...r.stillDirty.map((name) => `- ${mdInline(name)}`),
+					``,
+					`Run repos_inspect (mode: drift) — a nestedSubmoduleDivergence or a permission problem is the usual cause.`,
+				);
+			}
 			return lines.join("\n");
 		}
 	}
@@ -299,6 +338,8 @@ export interface ReposManageArgs {
 	readonly url?: string;
 	readonly purpose?: string;
 	readonly sparse?: ReadonlyArray<string>;
+	/** `add` only: the orientation block to write, so a re-vendor keeps the one a preceding `remove` reported. */
+	readonly orientation?: Repos.RepoOrientation;
 	readonly op?: "add" | "remove" | "promote";
 	readonly note?: string;
 	readonly id?: string;
@@ -350,6 +391,7 @@ export const reposManage = (
 					purpose: request.purpose,
 					...(request.name !== undefined ? { name: request.name } : {}),
 					...(request.sparse !== undefined ? { sparse: request.sparse } : {}),
+					...(request.orientation !== undefined ? { orientation: request.orientation } : {}),
 				});
 				return { action: "add", result } as ReposManageResultType;
 			}

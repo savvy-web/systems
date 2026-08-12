@@ -58,7 +58,16 @@ afterEach(() => {
  * git-submodule-status authorities and running `FileSystem`/`Path` for real
  * so `.gitmodules` text and worktree presence are read off the tmp fixture.
  */
-function driftLayer(manifest: ReposManifestFile, statuses: ReadonlyArray<ReturnType<typeof statusEntry>>) {
+function driftLayer(
+	manifest: ReposManifestFile,
+	statuses: ReadonlyArray<ReturnType<typeof statusEntry>>,
+	options: {
+		/** `git config --list` rows, for the local-registration authority. */
+		readonly configEntries?: ReadonlyArray<{ readonly key: string; readonly value: string }>;
+		/** `git submodule status` rows returned for a call from INSIDE a vendored tree. */
+		readonly nestedStatuses?: ReadonlyArray<ReturnType<typeof statusEntry>>;
+	} = {},
+) {
 	const configStoreStub = Layer.succeed(ReposConfigStore, {
 		exists: () => Effect.succeed(true),
 		read: () => Effect.succeed(manifest),
@@ -66,7 +75,21 @@ function driftLayer(manifest: ReposManifestFile, statuses: ReadonlyArray<ReturnT
 		update: () => Effect.die("not stubbed"),
 	} as never);
 
-	const gitStub = Layer.succeed(Git, { submoduleStatus: () => Effect.succeed(statuses) } as never);
+	// `submoduleStatus` is called at TWO levels now: once against the
+	// superproject root, and once per present vendored repo to probe that
+	// repo's OWN submodules. A path-agnostic stub would replay the
+	// superproject's statuses as if they were nested ones and manufacture
+	// `nestedSubmoduleDivergence` drifts in every fixture carrying an
+	// out-of-sync entry. Discriminate on the cwd: only a call from INSIDE a
+	// vendored tree is the nested probe, and these fixtures have no nested
+	// submodules.
+	const gitStub = Layer.succeed(Git, {
+		submoduleStatus: (cwd: string) =>
+			Effect.succeed(cwd.includes(`/${REPOS_DIR}/`) ? (options.nestedStatuses ?? []) : statuses),
+		// The local-registration authority. Empty is the healthy case: no
+		// stale `submodule.*` sections registered in this checkout's config.
+		configList: () => Effect.succeed(options.configEntries ?? []),
+	} as never);
 
 	return ReposDrift.layer.pipe(
 		Layer.provide(configStoreStub),
@@ -154,13 +177,13 @@ describe("ReposDrift.check", () => {
 				// The real-world case this fallback exists for: the manifest entry
 				// is named "effect" (`expectedPath` = ".repos/effect"), but the
 				// `.gitmodules` section carries an older name
-				// ("effect-smol") whose `path` field was updated to
+				// ("legacy-name") whose `path` field was updated to
 				// ".repos/effect" without renaming the section itself. A
 				// name-only pairing would degrade this to an
 				// unregisteredManifestEntry/orphanGitmodulesEntry pair and hide the
 				// url divergence asserted below.
-				const divergentSectionName = `${REPOS_DIR}/effect-smol`;
-				const staleUrl = "https://example.com/effect-smol.git";
+				const divergentSectionName = `${REPOS_DIR}/legacy-name`;
+				const staleUrl = "https://example.com/legacy-name.git";
 				writeFileSync(
 					join(root, ".gitmodules"),
 					`[submodule "${divergentSectionName}"]\n\tpath = ${EXPECTED_PATH}\n\turl = ${staleUrl}\n\tshallow = true\n`,
@@ -482,5 +505,151 @@ describe("ReposDrift.check", () => {
 
 				expect(error._tag).toBe("GitSubmoduleError");
 			}),
+	);
+
+	// --- localRegistrationDivergence (#438) --------------------------------
+	// The manifest, .gitmodules, the index and the worktree can all agree
+	// while this CHECKOUT is still registered under a pre-canonicalization
+	// name. Reproduced live in the systems repo itself, where the manifest key
+	// a manifest key is backed by a gitdir git named at creation time.
+
+	it.effect("reports localRegistrationDivergence when the module gitdir is named for a pre-rename section", () =>
+		Effect.gen(function* () {
+			const root = makeRoot();
+			writeFileSync(join(root, ".gitmodules"), healthyGitmodulesText());
+			makeWorktree(root);
+			// A real submodule checkout's `.git` is a FILE pointing at the gitdir
+			// git named at creation time -- here, an older name.
+			mkdirSync(join(root, ".git/modules", REPOS_DIR, "spec-old"), { recursive: true });
+			writeFileSync(join(root, EXPECTED_PATH, ".git"), `gitdir: ../../.git/modules/${REPOS_DIR}/spec-old\n`);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						configEntries: [{ key: `submodule.${REPOS_DIR}/spec-old.url`, value: URL }],
+					}),
+				),
+			);
+
+			expect(report.clean).toBe(false);
+			expect(report.drifts).toEqual([
+				expect.objectContaining({
+					name: NAME,
+					kind: "localRegistrationDivergence",
+					manifestValue: EXPECTED_PATH,
+					observedValue: `${REPOS_DIR}/spec-old`,
+				}),
+			]);
+			// The remedy has to be in the detail, or the report names a problem
+			// with no way out.
+			expect(report.drifts[0]?.detail).toContain("git submodule sync");
+		}),
+	);
+
+	it.effect("reports a stale local registration that backs no manifest entry at all", () =>
+		Effect.gen(function* () {
+			const root = makeRoot();
+			writeFileSync(join(root, ".gitmodules"), healthyGitmodulesText());
+			makeWorktree(root);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						configEntries: [
+							{ key: `submodule.${EXPECTED_PATH}.url`, value: URL },
+							{ key: `submodule.${REPOS_DIR}/unvendored.url`, value: "https://example.com/gone.git" },
+						],
+					}),
+				),
+			);
+
+			expect(report.drifts).toEqual([
+				expect.objectContaining({
+					name: `${REPOS_DIR}/unvendored`,
+					kind: "localRegistrationDivergence",
+				}),
+			]);
+		}),
+	);
+
+	it.effect("a canonical local registration is NOT reported (the healthy case stays clean)", () =>
+		Effect.gen(function* () {
+			const root = makeRoot();
+			writeFileSync(join(root, ".gitmodules"), healthyGitmodulesText());
+			makeWorktree(root);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						// A submodule name is routinely a PATH, so these keys contain
+						// dots throughout -- the parser must not split positionally.
+						configEntries: [
+							{ key: `submodule.${EXPECTED_PATH}.url`, value: URL },
+							{ key: `submodule.${EXPECTED_PATH}.active`, value: "true" },
+							{ key: `submodule.${EXPECTED_PATH}.update`, value: "none" },
+							{ key: "fetch.recurseSubmodules", value: "false" },
+						],
+					}),
+				),
+			);
+
+			expect(report.clean).toBe(true);
+			expect(report.drifts).toEqual([]);
+		}),
+	);
+
+	// --- nestedSubmoduleDivergence (#459) ----------------------------------
+
+	it.effect("reports nestedSubmoduleDivergence when a vendored repo's OWN submodule is out of sync", () =>
+		Effect.gen(function* () {
+			const root = makeRoot();
+			writeFileSync(join(root, ".gitmodules"), healthyGitmodulesText());
+			makeWorktree(root);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						nestedStatuses: [statusEntry("nested/effect", "outOfSync")],
+					}),
+				),
+			);
+
+			expect(report.clean).toBe(false);
+			expect(report.drifts).toEqual([expect.objectContaining({ name: NAME, kind: "nestedSubmoduleDivergence" })]);
+			expect(report.drifts[0]?.detail).toContain("nested/effect");
+		}),
+	);
+
+	it.effect("an UNINITIALIZED nested gitlink is the healthy state and is not reported", () =>
+		Effect.gen(function* () {
+			const root = makeRoot();
+			writeFileSync(join(root, ".gitmodules"), healthyGitmodulesText());
+			makeWorktree(root);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						nestedStatuses: [statusEntry("nested/effect", "uninitialized")],
+					}),
+				),
+			);
+
+			expect(report.clean).toBe(true);
+		}),
 	);
 });
