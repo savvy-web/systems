@@ -86,7 +86,7 @@ rewrite_project_dir() {
 @test "relative file_path resolved against project dir: deny" {
 	make_project >/dev/null
 	local envelope="${BATS_TEST_TMPDIR}/relative-deny.json"
-	jq '.tool_input.file_path = ".repos/effect-smol/src/x.ts"' \
+	jq '.tool_input.file_path = ".repos/effect/src/x.ts"' \
 		"${FIXTURES_DIR}/pretooluse.repos-fs-outside.json" > "$envelope"
 	run bash -c "cat '${envelope}' | bash '${HOOK}'"
 	[ "$status" -eq 0 ]

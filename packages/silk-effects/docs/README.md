@@ -63,7 +63,7 @@ These services read or write files. Provide `NodeServices.layer` (or the platfor
 | [ConfigDiscovery](./05-config-discovery.md) | Config files | Locate config files with priority-based search (`lib/configs/` then root) |
 | [BiomeSchemaSync](./06-biome-sync.md) | Biome schemas | Keep `$schema` URLs in Biome config files in sync with the installed version |
 | `Repos.ReposConfigStore` | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) | Read and write the `.repos/config.json` manifest |
-| `Repos.ReposLockdown` | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) | Hold every vendored tree read-only between mutations (files `0444`, directories `0555`; an executable file locks at `0555`/unlocks at `0755` instead, preserving its executable bit) |
+| `Repos.ReposLockdown` | [README](../README.md#reposmanager-reposdrift-and-reposlockdown) | Hold every vendored worktree read-only between mutations (files `0444`, directories `0555`; an executable file locks at `0555`/unlocks at `0755` instead, preserving its executable bit). The submodule gitdir is left writable so ordinary git clients keep working |
 
 ### FileSystem + process layer required
 

@@ -14,6 +14,7 @@ const activeReport: Repos.ReposSyncReport = {
 	upToDate: [],
 	urlSynced: ["qux"],
 	registered: ["quux"],
+	boundaryMarked: [],
 };
 
 /** A canned report where nothing needed reconciling. */
@@ -24,6 +25,7 @@ const emptyReport: Repos.ReposSyncReport = {
 	upToDate: ["foo"],
 	urlSynced: [],
 	registered: [],
+	boundaryMarked: [],
 };
 
 /** Build a stub `Repos.ReposManager` layer whose `sync` resolves/fails as given. */

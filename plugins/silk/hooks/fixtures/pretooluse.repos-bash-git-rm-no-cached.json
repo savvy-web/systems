@@ -3,6 +3,6 @@
 	"hook_event_name": "PreToolUse",
 	"tool_name": "Bash",
 	"tool_input": {
-		"command": "git rm .repos/effect-smol"
+		"command": "git rm .repos/effect"
 	}
 }

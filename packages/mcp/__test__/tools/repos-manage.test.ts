@@ -23,6 +23,7 @@ const ReposManagerTest = Layer.succeed(
 				clearedLocks: [],
 				urlSynced: [],
 				registered: [],
+				boundaryMarked: ["foo", "bar"],
 			}),
 		add: (_root, options) =>
 			Effect.succeed({
@@ -52,6 +53,13 @@ const ReposManagerTest = Layer.succeed(
 				path: `.repos/${name}`,
 				commitMessage: `chore(repos): remove ${name}`,
 				removedNotes: [{ id: "n-aaaa", date: "2026-01-01", ref: "1.0.0", note: "written against 1.0.0" }],
+				removedEntry: {
+					url: "https://example.test/foo.git",
+					ref: "1.0.0",
+					purpose: "fixture",
+					notes: [{ id: "n-aaaa", date: "2026-01-01", ref: "1.0.0", note: "written against 1.0.0" }],
+					orientation: { layout: "one package per dir", startHere: "src/index.ts" },
+				},
 			}),
 		rename: (_root, oldName, newName) =>
 			Effect.succeed({
@@ -64,6 +72,7 @@ const ReposManagerTest = Layer.succeed(
 			Effect.succeed({
 				restored: (names ?? ["foo"]).map((name) => ({ name, commit: "abc111" })),
 				skippedClean: names ? [] : ["bar"],
+				stillDirty: [],
 			}),
 	}),
 );

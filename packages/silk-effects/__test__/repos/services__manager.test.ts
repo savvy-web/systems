@@ -112,7 +112,6 @@ describe("ReposManager.status — stubbed executor", () => {
 			const entry = report.repos[0];
 			expect(entry?.name).toBe("spec");
 			expect(entry?.present).toBe(false);
-			expect(entry?.commit).toBeNull();
 			expect(entry?.stagedCommit).toBeUndefined();
 			expect(entry?.committedCommit).toBeUndefined();
 			expect(entry?.checkedOutCommit).toBeUndefined();
@@ -232,8 +231,7 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 				const cleanEntry = statusClean.repos.find((r) => r.name === name);
 				expect(cleanEntry?.present).toBe(true);
 				expect(cleanEntry?.dirty).toBe(false);
-				expect(cleanEntry?.commit).not.toBeNull();
-				expect(cleanEntry?.stagedCommit).toBe(cleanEntry?.commit);
+				expect(cleanEntry?.stagedCommit).toBeDefined();
 				expect(cleanEntry?.committedCommit).toBe(cleanEntry?.stagedCommit);
 				expect(cleanEntry?.checkedOutCommit).toBe(cleanEntry?.stagedCommit);
 
@@ -380,7 +378,7 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 		}),
 	);
 
-	// Reproduces this repo's own `effect`/`effect-smol` split: the submodule is
+	// Reproduces the re-slugged-after-vendoring split: the submodule is
 	// registered under a git module name that diverges from the manifest key
 	// (`--name`), and the worktree checkout is left IN PLACE (unlike
 	// `simulatePriorAdd`, which blows it away) so `.repos/<name>/.git` still
@@ -781,6 +779,11 @@ describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
 							purpose: "spec authority",
 							name,
 							sparse: ["src"],
+							// Passing orientation through `add` is what makes a
+							// remove-then-re-add remedy lossless; without it the block an
+							// agent relies on to navigate a vendored tree is destroyed
+							// silently by the standard repair.
+							orientation: { layout: "src/ holds the spec", startHere: "src/keep.ts" },
 						});
 					}),
 				);
@@ -796,6 +799,15 @@ describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
 				const gitmodules = readFileSync(join(host, ".gitmodules"), "utf8");
 				expect(gitmodules).toContain("shallow = true");
 
+				// The vendored boundary is declared at creation, not deferred to the
+				// next `sync`: an undeclared window is one in which every git client
+				// is free to manage the tree. `active` must stay true — an inactive
+				// submodule reads as uninitialized in `git submodule status`, which
+				// would make every drift report claim a missing worktree.
+				expect(git(host, "config", "--get", `submodule..repos/${name}.update`).trim()).toBe("none");
+				expect(git(host, "config", "--get", "fetch.recurseSubmodules").trim()).toBe("false");
+				expect(git(host, "config", "--get", `submodule..repos/${name}.active`).trim()).toBe("true");
+
 				// Manifest entry was written.
 				const manifestPath = join(host, ".repos", "config.json");
 				const manifestAfterAdd = JSON.parse(readFileSync(manifestPath, "utf8")) as ReposManifestFile;
@@ -804,6 +816,7 @@ describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
 					ref: "1.0.0",
 					purpose: "spec authority",
 					sparse: ["src"],
+					orientation: { layout: "src/ holds the spec", startHere: "src/keep.ts" },
 				});
 
 				// Staged, not committed.
@@ -910,7 +923,6 @@ describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
 				expect(pinnedEntry?.stagedCommit).toBe(newCommit);
 				expect(pinnedEntry?.committedCommit).toBe(oldCommit);
 				expect(pinnedEntry?.checkedOutCommit).toBe(newCommit);
-				expect(pinnedEntry?.commit).toBe(newCommit);
 
 				git(host, "commit", "--quiet", "-m", "pin spec to 2.0.0");
 
@@ -2428,6 +2440,9 @@ describe("ReposManager.remove — real git", REAL_GIT_TIMEOUT, () => {
 					path: `.repos/${name}`,
 					commitMessage: `chore(repos): remove ${name}`,
 					removedNotes: [seededNote],
+					// The whole entry comes back so a remove-then-re-add remedy can
+					// hand `orientation` straight to `add` instead of dropping it.
+					removedEntry: { ...addedEntry, notes: [seededNote] },
 				});
 
 				// Gitlink gone from the index.
@@ -2456,16 +2471,16 @@ describe("ReposManager.remove — real git", REAL_GIT_TIMEOUT, () => {
 		"finds and removes a .gitmodules section registered under a name that diverges from the manifest key, pairing by path",
 		() =>
 			Effect.gen(function* () {
-				// This repo's own effect/effect-smol shape: the manifest key
+				// The re-slugged-after-vendoring shape: the manifest key
 				// ("effect") differs from the .gitmodules section name
-				// ("effect-smol") but the section's own `path` field still names
+				// ("legacy-name") but the section's own `path` field still names
 				// the manifest-derived path.
 				const root = mkdtempSync(join(tmpdir(), "repos-manager-remove-divergent-"));
 				git(root, "init", "--quiet", "-b", "main");
 				git(root, "config", "commit.gpgsign", "false");
 				const name = "effect";
 				const repoDir = join(root, ".repos", name);
-				const moduleDirActual = join(root, ".git", "modules", ".repos", "effect-smol");
+				const moduleDirActual = join(root, ".git", "modules", ".repos", "legacy-name");
 
 				mkdirSync(repoDir, { recursive: true });
 				writeFileSync(join(repoDir, "marker.txt"), "worktree\n");
@@ -2475,7 +2490,7 @@ describe("ReposManager.remove — real git", REAL_GIT_TIMEOUT, () => {
 				const gitmodulesPath = join(root, ".gitmodules");
 				writeFileSync(
 					gitmodulesPath,
-					`[submodule "effect-smol"]\n\tpath = .repos/${name}\n\turl = https://example.com/effect.git\n`,
+					`[submodule "legacy-name"]\n\tpath = .repos/${name}\n\turl = https://example.com/effect.git\n`,
 				);
 				writeFileSync(join(root, ".repos", "config.json"), `${JSON.stringify({ repos: {} }, null, "\t")}\n`);
 				git(root, "add", "-A");
@@ -2516,7 +2531,7 @@ describe("ReposManager.remove — real git", REAL_GIT_TIMEOUT, () => {
 				expect(removeResult.path).toBe(`.repos/${name}`);
 
 				const gitmodulesAfter = readFileSync(gitmodulesPath, "utf8");
-				expect(gitmodulesAfter).not.toContain("effect-smol");
+				expect(gitmodulesAfter).not.toContain("legacy-name");
 				expect(gitmodulesAfter).not.toContain(`.repos/${name}`);
 			}),
 	);
@@ -3017,9 +3032,9 @@ describe("ReposManager.rename — real git", REAL_GIT_TIMEOUT, () => {
 		"finds and renames a .gitmodules section registered under a name that diverges from the manifest key, pairing by path",
 		() =>
 			Effect.gen(function* () {
-				// This repo's own effect/effect-smol shape: the manifest key
+				// The re-slugged-after-vendoring shape: the manifest key
 				// ("effect") differs from the .gitmodules section name
-				// ("effect-smol"). `git mv` itself pairs by `path`, not `name` (the
+				// ("legacy-name"). `git mv` itself pairs by `path`, not `name` (the
 				// Task 11 probe's finding 1), and the manager's own section lookup
 				// mirrors that -- this test proves it end to end without a real
 				// `git mv` spawn, since the point under test is the PAIRING logic,
@@ -3031,7 +3046,7 @@ describe("ReposManager.rename — real git", REAL_GIT_TIMEOUT, () => {
 				const newName = "effect2";
 				const oldRepoDir = join(root, ".repos", oldName);
 				const newRepoDir = join(root, ".repos", newName);
-				const moduleDirActual = join(root, ".git", "modules", ".repos", "effect-smol");
+				const moduleDirActual = join(root, ".git", "modules", ".repos", "legacy-name");
 
 				mkdirSync(oldRepoDir, { recursive: true });
 				writeFileSync(join(oldRepoDir, "marker.txt"), "worktree\n");
@@ -3041,7 +3056,7 @@ describe("ReposManager.rename — real git", REAL_GIT_TIMEOUT, () => {
 				const gitmodulesPath = join(root, ".gitmodules");
 				writeFileSync(
 					gitmodulesPath,
-					`[submodule "effect-smol"]\n\tpath = .repos/${oldName}\n\turl = https://example.com/effect.git\n`,
+					`[submodule "legacy-name"]\n\tpath = .repos/${oldName}\n\turl = https://example.com/effect.git\n`,
 				);
 				writeFileSync(join(root, ".repos", "config.json"), `${JSON.stringify({ repos: {} }, null, "\t")}\n`);
 				git(root, "add", "-A");
@@ -3105,7 +3120,7 @@ describe("ReposManager.rename — real git", REAL_GIT_TIMEOUT, () => {
 				expect(renameResult.path).toBe(`.repos/${newName}`);
 
 				const gitmodulesAfter = readFileSync(gitmodulesPath, "utf8");
-				expect(gitmodulesAfter).not.toContain("effect-smol");
+				expect(gitmodulesAfter).not.toContain("legacy-name");
 				expect(gitmodulesAfter).toContain(`[submodule ".repos/${newName}"]`);
 				expect(gitmodulesAfter).toContain(`path = .repos/${newName}`);
 
@@ -3473,7 +3488,7 @@ describe("ReposManager.restore — real git", REAL_GIT_TIMEOUT, () => {
 					}),
 				);
 
-				expect(restoreResult).toEqual({ restored: [{ name, commit: pinnedCommit }], skippedClean: [] });
+				expect(restoreResult).toEqual({ restored: [{ name, commit: pinnedCommit }], skippedClean: [], stillDirty: [] });
 
 				expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(pinnedCommit);
 				expect(readFileSync(join(subPath, "src", "keep.ts"), "utf8")).toBe("export const keep = true;\n");
@@ -3636,7 +3651,7 @@ describe("ReposManager.restore — real git", REAL_GIT_TIMEOUT, () => {
 					}),
 				);
 
-				expect(restoreResult).toEqual({ restored: [{ name, commit: pinnedCommit }], skippedClean: [] });
+				expect(restoreResult).toEqual({ restored: [{ name, commit: pinnedCommit }], skippedClean: [], stillDirty: [] });
 				expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(pinnedCommit);
 			}),
 	);

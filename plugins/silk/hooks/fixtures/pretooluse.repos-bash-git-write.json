@@ -3,6 +3,6 @@
 	"hook_event_name": "PreToolUse",
 	"tool_name": "Bash",
 	"tool_input": {
-		"command": "git -C .repos/effect-smol checkout -b x"
+		"command": "git -C .repos/effect checkout -b x"
 	}
 }

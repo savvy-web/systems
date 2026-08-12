@@ -235,3 +235,65 @@ STUB
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
+
+# --- startup sweep ----------------------------------------------------------
+# The watchers only fire on a CHANGE to .gitmodules or .repos/config.json.
+# Drift that already exists when the session opens is invisible to them, and
+# some drift kinds touch neither file at all by construction (a stale local
+# registration lives in .git/config; a diverged nested submodule lives inside
+# a vendored tree). Hence one sweep at startup.
+#
+# Discriminating by construction: this test changes NO watched file after the
+# monitor starts, so the only thing that can produce output is the sweep
+# itself. A mutant that drops it stays silent and fails here.
+
+@test "startup sweep: reports pre-existing drift with no file change at all" {
+	local json
+	json=$(write_json startup-drift.json <<-'EOF'
+	{"repos":[],"clean":false,
+	 "drift":{"drifts":[{"name":"effect","kind":"localRegistrationDivergence","detail":"registered under a stale name"}],"clean":false}}
+	EOF
+	)
+	_stub_savvy 0 1 "$json"
+
+	local out="${BATS_TEST_TMPDIR}/monitor.out"
+	env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" SILK_PACKAGE_MANAGER="$SILK_PACKAGE_MANAGER" PATH="$PATH" \
+		GITMODULES_DRIFT_STARTUP_DELAY_MS=200 \
+		node "$MONITOR" > "$out" 2>&1 &
+	MONITOR_PID=$!
+
+	local waited=0
+	while [ "$waited" -lt 5000 ] && ! grep -q "localRegistrationDivergence" "$out" 2>/dev/null; do
+		sleep 0.1
+		waited=$((waited + 100))
+	done
+
+	kill "$MONITOR_PID" 2>/dev/null || true
+	wait "$MONITOR_PID" 2>/dev/null || true
+	unset MONITOR_PID
+
+	grep -q ".repos drift: effect: localRegistrationDivergence" "$out"
+}
+
+@test "startup sweep: silent on a clean report, so a healthy repo says nothing" {
+	local json
+	json=$(write_json startup-clean.json <<-'EOF'
+	{"repos":[],"clean":true,"drift":{"drifts":[],"clean":true}}
+	EOF
+	)
+	_stub_savvy 0 0 "$json"
+
+	local out="${BATS_TEST_TMPDIR}/monitor.out"
+	env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" SILK_PACKAGE_MANAGER="$SILK_PACKAGE_MANAGER" PATH="$PATH" \
+		GITMODULES_DRIFT_STARTUP_DELAY_MS=200 \
+		node "$MONITOR" > "$out" 2>&1 &
+	MONITOR_PID=$!
+
+	sleep 1.2
+
+	kill "$MONITOR_PID" 2>/dev/null || true
+	wait "$MONITOR_PID" 2>/dev/null || true
+	unset MONITOR_PID
+
+	[ ! -s "$out" ]
+}

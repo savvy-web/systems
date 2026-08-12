@@ -4,8 +4,8 @@ import { RepoName, ReposManifestFile } from "../../src/repos/schemas/manifest.js
 
 const valid = {
 	repos: {
-		"effect-smol": {
-			url: "https://github.com/Effect-TS/effect-smol",
+		"legacy-name": {
+			url: "https://github.com/Effect-TS/legacy-name",
 			ref: "effect@4.0.0-beta.97",
 			purpose: "Read-only Effect v4 source; authority on what v4 exports.",
 			sparse: ["packages/effect/src"],
@@ -24,8 +24,8 @@ const valid = {
 describe("ReposManifestFile", () => {
 	it("decodes a full manifest", () => {
 		const decoded = Schema.decodeUnknownSync(ReposManifestFile)(valid);
-		expect(Object.keys(decoded.repos)).toEqual(["effect-smol"]);
-		expect(decoded.repos["effect-smol"]?.notes?.[0]?.id).toBe("n-7f3a");
+		expect(Object.keys(decoded.repos)).toEqual(["legacy-name"]);
+		expect(decoded.repos["legacy-name"]?.notes?.[0]?.id).toBe("n-7f3a");
 	});
 	it("decodes a minimal entry (no sparse/orientation/notes)", () => {
 		const min = { repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } } };
@@ -56,7 +56,7 @@ describe("RepoName", () => {
 		expect(() => Schema.decodeUnknownSync(RepoName)(bad)).toThrow();
 	});
 
-	it.each(["spec", "effect-smol", "my_repo.v2"])("accepts %j", (good) => {
+	it.each(["spec", "legacy-name", "my_repo.v2"])("accepts %j", (good) => {
 		expect(Schema.decodeUnknownSync(RepoName)(good)).toBe(good);
 	});
 });

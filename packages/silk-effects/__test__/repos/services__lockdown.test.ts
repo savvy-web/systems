@@ -34,13 +34,34 @@ describe("ReposLockdown", () => {
 		}),
 	);
 
-	it.effect("lock sets files 444 and dirs 555 in worktree and module dir", () =>
+	it.effect("lock sets files 444 and dirs 555 in the worktree, and leaves the module gitdir WRITABLE", () =>
 		Effect.gen(function* () {
 			const lockdown = yield* ReposLockdown;
 			yield* lockdown.lock(root, "demo");
 			expect(mode(join(root, ".repos/demo/src/a.ts"))).toBe(0o444);
 			expect(mode(join(root, ".repos/demo/src"))).toBe(0o555);
-			expect(mode(join(root, ".git/modules/.repos/demo/config"))).toBe(0o444);
+			// The gitdir is deliberately NOT locked: a read-only one breaks
+			// `git pull`'s default submodule recursion (it cannot write
+			// FETCH_HEAD) and every client that keeps per-gitdir state. See the
+			// scope note on ReposLockdown.
+			expect(mode(join(root, ".git/modules/.repos/demo/config"))).toBe(0o644);
+		}).pipe(Effect.provide(layer)),
+	);
+
+	it.effect("unlock frees a gitdir locked by an older version, and lock never re-locks it (migration)", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			// Simulate a tree locked by the previous both-trees implementation.
+			chmodSync(join(root, ".git/modules/.repos/demo/config"), 0o444);
+			chmodSync(join(root, ".git/modules/.repos/demo"), 0o555);
+
+			yield* lockdown.unlock(root, "demo");
+			expect(mode(join(root, ".git/modules/.repos/demo/config"))).toBe(0o644);
+			expect(mode(join(root, ".git/modules/.repos/demo"))).toBe(0o755);
+
+			yield* lockdown.lock(root, "demo");
+			expect(mode(join(root, ".git/modules/.repos/demo/config"))).toBe(0o644);
+			expect(mode(join(root, ".repos/demo/src/a.ts"))).toBe(0o444);
 		}).pipe(Effect.provide(layer)),
 	);
 
@@ -73,7 +94,7 @@ describe("ReposLockdown", () => {
 });
 
 describe("ReposLockdown — divergent submodule name", () => {
-	// Reproduces this repo's own `effect`/`effect-smol` split: the manifest key
+	// Reproduces the re-slugged-after-vendoring split: the manifest key
 	// ("divergent") differs from the module dir git actually registered the
 	// submodule under ("divergent-old"). `<root>/.repos/divergent/.git` is a
 	// FILE pointing at the real metadata dir via a relative `gitdir:` pointer,
@@ -99,9 +120,15 @@ describe("ReposLockdown — divergent submodule name", () => {
 		}),
 	);
 
-	it.effect("lock locks the divergently-named module dir, unlock restores it", () =>
+	it.effect("unlock frees the divergently-named module dir; lock leaves it alone", () =>
 		Effect.gen(function* () {
 			const lockdown = yield* ReposLockdown;
+			// The gitdir-pointer resolution still has to be right, but now it is
+			// the UNLOCK side that depends on it: a divergently-named gitdir
+			// locked by an older version can only be freed if the pointer is
+			// followed rather than the manifest key assumed.
+			chmodSync(join(root, ".git/modules/.repos/divergent-old/config"), 0o444);
+
 			yield* lockdown.lock(root, "divergent");
 			expect(mode(join(root, ".repos/divergent/src/a.ts"))).toBe(0o444);
 			expect(mode(join(root, ".git/modules/.repos/divergent-old/config"))).toBe(0o444);

@@ -62,6 +62,17 @@ export const runReposRestore = (cwd: string, names: ReadonlyArray<string>) =>
 		for (const name of result.skippedClean) {
 			yield* Effect.log(`${name}: clean — skipped`);
 		}
+		// Reporting a reset that ran while the tree stayed dirty as a plain
+		// success is what let a nested-submodule divergence look repaired for
+		// months. Say it, and set a failing exit code so a script notices.
+		for (const name of result.stillDirty) {
+			yield* Effect.log(
+				`${name}: WARNING — reset ran but the worktree is STILL dirty; run \`savvy repos status --drift\``,
+			);
+		}
+		if (result.stillDirty.length > 0) {
+			process.exitCode = 1;
+		}
 		if (result.restored.length === 0 && result.skippedClean.length === 0) {
 			yield* Effect.log("nothing to restore");
 		}

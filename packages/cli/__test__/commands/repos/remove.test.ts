@@ -12,6 +12,7 @@ const removeResult: Repos.ReposRemoveResult = {
 	path: ".repos/foo",
 	commitMessage: "chore(repos): remove foo",
 	removedNotes: [{ id: "n-1234", date: "2026-01-01", ref: "1.0.0", note: "discovered the entry point" }],
+	removedEntry: { url: "https://example.test/foo.git", ref: "1.0.0", purpose: "fixture" },
 };
 
 /** Build a stub `Repos.ReposManager` layer whose `remove` resolves/fails as given, recording the args it was called with. */
@@ -58,6 +59,31 @@ describe("runReposRemove (adapter)", () => {
 	afterEach(() => {
 		process.exitCode = savedExitCode;
 	});
+
+	it.effect("prints the removed entry's orientation block, because add will not restore it", () =>
+		Effect.gen(function* () {
+			// Remove-then-re-add is the standing remedy for several vendored-tree
+			// problems, and `add` resurrects nothing. If this block is not put in
+			// front of the caller while it still exists, the re-vendor destroys it
+			// silently — no report downstream mentions an orientation that is gone.
+			const orientation = { layout: "src/ holds the spec", startHere: "src/index.ts" };
+			const layer = makeStubLayer(() =>
+				Effect.succeed({
+					...removeResult,
+					removedEntry: { ...removeResult.removedEntry, orientation },
+				}),
+			);
+
+			const logs = yield* collectLogs("/repo", "foo", layer);
+			const joined = logs.join("\n");
+
+			expect(joined).toContain("orientation");
+			expect(joined).toContain("will NOT restore it");
+			// The block itself must be emitted verbatim enough to hand back to `add`.
+			expect(joined).toContain("src/ holds the spec");
+			expect(joined).toContain("src/index.ts");
+		}),
+	);
 
 	it.effect("passes cwd and name through to ReposManager.remove", () =>
 		Effect.gen(function* () {

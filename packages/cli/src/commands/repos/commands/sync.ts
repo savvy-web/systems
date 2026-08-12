@@ -55,6 +55,12 @@ export const runReposSync = (cwd: string) =>
 		for (const name of report.registered) {
 			yield* Effect.log(`${name}: registered`);
 		}
+		// `boundaryMarked` is deliberately absent from both the per-entry log
+		// above and this idle check: `sync` re-asserts the boundary marker on
+		// EVERY entry on EVERY run, so it is never empty and never news. Folding
+		// it in here would permanently suppress the "up to date" line; logging it
+		// above would print a line per repo on every no-op sync. It stays in the
+		// structured report for callers that want to verify the assertion.
 		if (
 			report.initialized.length === 0 &&
 			report.sparseApplied.length === 0 &&

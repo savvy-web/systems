@@ -13,7 +13,7 @@ Shared [Effect](https://effect.website/) library providing Silk Suite convention
 - Supply the Silk commitlint config, its prompt and formatter, and the `silk/body-no-markdown` rule
 - Run the lint-staged handlers and the `savvy lint fmt` formatters from a single implementation so the hook and the CLI cannot drift
 - Inspect a Turborepo read-only — diagnose per-package cache hits, derive the task graph and compute affected packages, all over `turbo --dry`
-- Manage the vendored reference repos declared in `.repos/config.json` — submodule status, drift detection, sync, add, pin, note, remove, rename and restore — and keep every vendored tree read-only between mutations
+- Manage the vendored reference repos declared in `.repos/config.json` — submodule status, drift detection, sync, add, pin, note, remove, rename and restore — and keep every vendored worktree read-only between mutations
 - Locate config files and keep Biome schema URLs in sync across workspaces
 
 ## Install
@@ -366,9 +366,17 @@ const diagnosis = await Effect.runPromise(
 
 #### ReposManager, ReposDrift and ReposLockdown
 
-The `Repos` namespace drives vendored reference repos — upstream sources checked out as git submodules under `.repos/`, declared in a `.repos/config.json` manifest. `ReposConfigStore` reads and writes that manifest, and `ReposManager` does the git work: `status(root)` reports presence, the pinned commit, working-tree dirtiness and stale notes, `sync(root)` initializes missing submodules and applies each entry's sparse-checkout, `pin(root, name, ref)` moves an entry to a new ref, `add(root, options)` vendors a new one, `note(root, name, op)` adds, removes or promotes an agent note, `remove(root, name)` unvendors an entry, `rename(root, oldName, newName)` renames one in place, and `restore(root, names?)` hard-resets one or more dirty checkouts back to their pinned commit. `ReposDrift.check(root)` is a read-only companion — it reconciles the manifest, `.gitmodules`, the worktree, and `git submodule status`, reporting any mismatch as a typed drift kind.
+The `Repos` namespace drives vendored reference repos — upstream sources checked out as git submodules under `.repos/`, declared in a `.repos/config.json` manifest. `ReposConfigStore` reads and writes that manifest, and `ReposManager` does the git work: `status(root)` reports presence, the gitlink commit, working-tree dirtiness and stale notes, `sync(root)` initializes missing submodules and applies each entry's sparse-checkout, `pin(root, name, ref)` moves an entry to a new ref, `add(root, options)` vendors a new one, `note(root, name, op)` adds, removes or promotes an agent note, `remove(root, name)` unvendors an entry, `rename(root, oldName, newName)` renames one in place, and `restore(root, names?)` hard-resets one or more dirty checkouts back to their pinned commit. `ReposDrift.check(root)` is a read-only companion — it reconciles the manifest, `.gitmodules`, the worktree, `git submodule status` and the superproject's local git config, reporting any mismatch as a typed drift kind.
 
-`ReposLockdown` is the permissions boundary around all of that. `lock(root, name)` chmods a vendored worktree and its submodule git metadata to files `0444` and directories `0555` (an executable file locks at `0555` instead, preserving its executable bit); `unlock` reverses it, restoring `0644`/`0755` (`0755` for a file that was executable); `withUnlocked(root, name, effect)` brackets an effect between the two. `ReposManager`'s `sync`, `add`, `pin`, `remove` and `restore` run their git mutations inside that bracket and re-lock afterwards, and `rename` hand-rolls the same unlock/relock contract across its `oldName`→`newName` move, so a vendored tree is read-only whenever the manager is not mid-write. Reads are unaffected — a locked tree needs no special handling to open a file.
+`status` reports the gitlink as a triple, because the index, `HEAD` and the submodule's own checkout legitimately disagree mid-pin: `stagedCommit` (the index), `committedCommit` (`HEAD`) and `checkedOutCommit` (the worktree). The deprecated single `commit` field that aliased `stagedCommit` has been removed — read `stagedCommit` instead.
+
+`ReposLockdown` is the permissions boundary around all of that, and it covers the vendored WORKTREE only. `lock(root, name)` chmods that worktree to files `0444` and directories `0555` (an executable file locks at `0555` instead, preserving its executable bit); `unlock` reverses it, restoring `0644`/`0755` (`0755` for a file that was executable); `withUnlocked(root, name, effect)` brackets an effect between the two. `ReposManager`'s `sync`, `add`, `pin`, `remove` and `restore` run their git mutations inside that bracket and re-lock afterwards, and `rename` hand-rolls the same unlock/relock contract across its `oldName`→`newName` move, so a vendored worktree is read-only whenever the manager is not mid-write. Reads are unaffected — a locked tree needs no special handling to open a file.
+
+The submodule's git metadata directory under `.git/modules/` is deliberately left writable, so a plain `git pull` and any GUI client that keeps per-gitdir state keep working against a repo that uses this mechanism. `unlock` still walks that directory, freeing one an older release locked; `lock` never re-locks it. The trade is that a `git checkout` inside a vendored worktree still succeeds, moving `HEAD` while leaving the files stale — `ReposDrift` classifies that as `checkoutDiverged` and `restore` repairs it, so a drifted pin is always detected rather than prevented.
+
+The declarative half of the boundary is written by `sync` and `add`, into the superproject's local git config rather than `.gitmodules`: `submodule.<path>.update = none` per entry and `fetch.recurseSubmodules = false`, so ordinary git clients skip these trees instead of discovering the boundary by failing on a permission error. `ReposSyncReport.boundaryMarked` lists the entries whose marker was asserted on that run.
+
+Two report fields exist to say what was achieved rather than attempted. `ReposRestoreResult.stillDirty` names repos that were reset but whose worktree is dirty afterwards, so a caller reading `restored` alone cannot mistake an incomplete restore for a clean one. `ReposRemoveResult.removedEntry` hands back the whole manifest entry — pass its `orientation` block straight to `add`'s `orientation` option to make a remove-then-re-add lossless, since `add` resurrects nothing on its own.
 
 Two consequences for callers: `ReposManager.layer` requires `ReposLockdown` alongside `ReposConfigStore`, `Git`, `FileSystem` and `Path`, and `sync`, `add`, `pin`, `remove`, `rename` and `restore` widen their error channel with `ReposLockdownError`, which carries the offending `path` and a `reason`.
 
@@ -388,7 +396,8 @@ const report = await Effect.runPromise(
     Effect.provide(NodeServices.layer),
   ),
 );
-// => ReposSyncReport: per-repo initialization and sparse-checkout outcome, trees left read-only
+// => ReposSyncReport: per-repo initialization and sparse-checkout outcome,
+//    plus boundaryMarked; worktrees left read-only
 ```
 
 ## Documentation
