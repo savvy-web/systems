@@ -2,12 +2,8 @@ import { build, defaultManifestTransform } from "@savvy-web/bundler";
 
 await build({
 	// `source-map-support` is referenced transitively but not declared, so tsdown would
-	// otherwise bundle it. `typescript` (peer dep) and `semver` (runtime dep) are
-	// auto-externalized by tsdown from the manifest; `semver` MUST stay external because
-	// rolldown cannot emit its circular CommonJS modules (comparator <-> range) into the
-	// ESM output without a `require_range is not a function` init-order crash. It is kept
-	// as a declared runtime dependency (preserved through the transform below) for that
-	// reason.
+	// otherwise bundle it. `typescript` (peer dep) is auto-externalized by tsdown from
+	// the manifest.
 	//
 	// `@savvy-web/silk-effects` is a devDependency (NOT a declared runtime dep), so tsdown
 	// would normally bundle it into every entry — externalize it here so the BASE ESM
@@ -95,7 +91,7 @@ await build({
 		// their bins stay available to consumers either way.
 		//
 		// The surviving runtime dependencies are those three exact-pinned companions,
-		// `semver` (externalized in JS, see above), the two `dtsExternals` packages
+		// the two `dtsExternals` packages
 		// (externalized in the dts so consumers can resolve the type imports), and
 		// `@savvy-web/silk-effects` (externalized in the BASE ESM entries, so the
 		// published package needs it as a real dependency for consumers to resolve those
@@ -104,7 +100,6 @@ await build({
 		const deps = pkg.dependencies as Record<string, string> | undefined;
 		const kept: Record<string, string> = {};
 		for (const name of [
-			"semver",
 			"effect",
 			"@effect/platform",
 			// The lint entry's emitted declarations reference @effected/templates

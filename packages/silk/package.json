@@ -45,9 +45,7 @@
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
-		"effect": "catalog:effect",
-		"prettier": "^3.9.6",
-		"semver": "^7.8.5"
+		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",

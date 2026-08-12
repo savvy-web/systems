@@ -50,11 +50,11 @@ const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
 	}),
 );
 
-/** Format YAML files with Prettier. */
+/** Format YAML files with @effected/yaml. */
 const yamlCommand = Command.make("yaml", { files: filesArg }, ({ files }) =>
-	Effect.gen(function* () {
+	Effect.sync(() => {
 		for (const filepath of files) {
-			yield* Effect.promise(() => Lint.Yaml.formatFile(filepath));
+			Lint.Yaml.formatFile(filepath);
 		}
 	}),
 );
