@@ -76,6 +76,120 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						Effect.orElseSucceed(() => false),
 					);
 
+				/**
+				 * Reconciles the superproject's LOCAL git config for every manifest
+				 * entry. Extracted from `check`'s main path so it also runs when
+				 * `.gitmodules` is ABSENT: that early return short-circuits the whole
+				 * reconciliation, so a repo with no `.gitmodules` but a stale
+				 * `submodule.<name>.*` section reported clean while `git submodule
+				 * status` still listed the phantom entry.
+				 */
+				const localRegistrationDrifts = (root: string, manifestEntries: ReadonlyArray<readonly [string, unknown]>) =>
+					Effect.gen(function* () {
+						const found: RepoDrift[] = [];
+						// --- Fifth authority: the superproject's LOCAL git config ------
+						// `.git/config`'s `submodule.<name>.*` registration is written
+						// only by `submodule add`/`submodule init`, is unversioned, and
+						// is keyed by section NAME. Nothing above reads it, so after a
+						// section canonicalization the manifest, `.gitmodules`, the index
+						// and the worktree can all agree — a clean report — while this
+						// checkout is still registered under the OLD name. `git
+						// submodule status` then reads a perfectly healthy entry as
+						// uninitialized.
+						//
+						// The module GITDIR is the precise link between the two names:
+						// git names `.git/modules/<dir>` after the registration name in
+						// force when the submodule was created, and never renames it
+						// afterwards. So the gitdir's own path, relative to
+						// `.git/modules`, IS the name this checkout is really registered
+						// under — no guessing required.
+						//
+						// That "never renames it" is also why the remedy below is a
+						// RE-VENDOR and not `git submodule sync` + `init`. Those two
+						// rewrite config (urls, `active`) and would leave the gitdir
+						// directory named exactly as it is, so this check would fail
+						// identically on the next run — the report would name a fix that
+						// provably cannot clear it, and `status --drift` would exit 1
+						// forever. The two branches in this section have genuinely
+						// different remedies precisely because they are keyed on
+						// different things: this one on the gitdir PATH, the orphan one
+						// below on a config SECTION.
+						const configEntries = yield* git
+							.configList(root)
+							.pipe(Effect.mapError(asSubmoduleError("git config --list", root)));
+						const registeredNames = new Set(
+							configEntries
+								.map((configEntry) => submoduleNameFromKey(configEntry.key))
+								.filter((registeredName): registeredName is string => registeredName !== undefined),
+						);
+
+						const modulesRoot = path.join(root, ".git", "modules");
+						const canonicalNames = new Set(manifestEntries.map(([name]) => `${REPOS_DIR}/${name}`));
+						const explained = new Set<string>();
+
+						for (const [name] of manifestEntries) {
+							const expectedPath = `${REPOS_DIR}/${name}`;
+							const moduleDir = yield* resolveModuleDir(fs, path, root, name);
+							const relativeToModules = path.relative(modulesRoot, moduleDir);
+							// Not under `.git/modules` at all (a plain, non-submodule
+							// checkout, or a `gitdir:` pointer that resolved elsewhere) —
+							// there is no registration name to compare against.
+							if (
+								relativeToModules.startsWith("..") ||
+								path.isAbsolute(relativeToModules) ||
+								relativeToModules === ""
+							) {
+								continue;
+							}
+							if (relativeToModules === expectedPath) {
+								continue;
+							}
+							explained.add(relativeToModules);
+							found.push(
+								RepoDrift.make({
+									name,
+									kind: "localRegistrationDivergence",
+									detail: `manifest entry "${name}" is canonically "${expectedPath}" but this checkout's module gitdir is registered as "${relativeToModules}"${
+										registeredNames.has(relativeToModules)
+											? ` (local git config still carries submodule.${relativeToModules}.*)`
+											: ""
+									} — re-vendor the entry to clear it: \`savvy repos remove ${name}\`, then \`savvy repos add\` with the orientation the remove result hands back`,
+									manifestValue: expectedPath,
+									observedValue: relativeToModules,
+								}),
+							);
+						}
+
+						// A stale local registration whose gitdir no longer backs any
+						// manifest entry: nothing above can attribute it to an entry, but
+						// leaving it unreported means `git submodule status` keeps
+						// listing a name the manifest has never heard of.
+						for (const registeredName of registeredNames) {
+							if (
+								!registeredName.startsWith(`${REPOS_DIR}/`) ||
+								canonicalNames.has(registeredName) ||
+								explained.has(registeredName)
+							) {
+								continue;
+							}
+							found.push(
+								RepoDrift.make({
+									name: registeredName,
+									kind: "localRegistrationDivergence",
+									// Unlike the per-entry divergence above, the `git submodule
+									// sync` + `init` remedy does NOT apply here: there is no
+									// manifest entry left to re-register, so the only fix is to
+									// drop the section outright. Say that, or the report names a
+									// problem whose stated remedy is for a different one.
+									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry — a stale registration left behind by a rename or an unvendoring; clear it with \`git config --remove-section submodule.${registeredName}\``,
+									observedValue: registeredName,
+								}),
+							);
+						}
+
+						return found;
+					});
+
 				const check = (root: string) =>
 					Effect.gen(function* () {
 						const manifest = yield* configStore.read(root);
@@ -101,7 +215,7 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						// No `.gitmodules` at all: every manifest entry is unregistered —
 						// there is nothing else to reconcile against.
 						if (Option.isNone(gitmodulesText)) {
-							const drifts = manifestEntries.map(([name, entry]) =>
+							const drifts: RepoDrift[] = manifestEntries.map(([name, entry]) =>
 								RepoDrift.make({
 									name,
 									kind: "unregisteredManifestEntry",
@@ -109,6 +223,13 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 									manifestValue: entry.url,
 								}),
 							);
+							// The local config is an INDEPENDENT authority — a stale
+							// `submodule.<name>.*` section survives `.gitmodules` being
+							// deleted, and reporting clean here hid exactly that. The
+							// nested-submodule probe is deliberately not run: with nothing
+							// registered, every entry is already reported unregistered
+							// above, which is the dominant signal.
+							drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries)));
 							return ReposDriftReport.make({ drifts, clean: drifts.length === 0 });
 						}
 
@@ -318,94 +439,7 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							);
 						}
 
-						// --- Fifth authority: the superproject's LOCAL git config ------
-						// `.git/config`'s `submodule.<name>.*` registration is written
-						// only by `submodule add`/`submodule init`, is unversioned, and
-						// is keyed by section NAME. Nothing above reads it, so after a
-						// section canonicalization the manifest, `.gitmodules`, the index
-						// and the worktree can all agree — a clean report — while this
-						// checkout is still registered under the OLD name. `git
-						// submodule status` then reads a perfectly healthy entry as
-						// uninitialized.
-						//
-						// The module GITDIR is the precise link between the two names:
-						// git names `.git/modules/<dir>` after the registration name in
-						// force when the submodule was created, and never renames it
-						// afterwards. So the gitdir's own path, relative to
-						// `.git/modules`, IS the name this checkout is really registered
-						// under — no guessing required.
-						const configEntries = yield* git
-							.configList(root)
-							.pipe(Effect.mapError(asSubmoduleError("git config --list", root)));
-						const registeredNames = new Set(
-							configEntries
-								.map((configEntry) => submoduleNameFromKey(configEntry.key))
-								.filter((registeredName): registeredName is string => registeredName !== undefined),
-						);
-
-						const modulesRoot = path.join(root, ".git", "modules");
-						const canonicalNames = new Set(manifestEntries.map(([name]) => `${REPOS_DIR}/${name}`));
-						const explained = new Set<string>();
-
-						for (const [name] of manifestEntries) {
-							const expectedPath = `${REPOS_DIR}/${name}`;
-							const moduleDir = yield* resolveModuleDir(fs, path, root, name);
-							const relativeToModules = path.relative(modulesRoot, moduleDir);
-							// Not under `.git/modules` at all (a plain, non-submodule
-							// checkout, or a `gitdir:` pointer that resolved elsewhere) —
-							// there is no registration name to compare against.
-							if (
-								relativeToModules.startsWith("..") ||
-								path.isAbsolute(relativeToModules) ||
-								relativeToModules === ""
-							) {
-								continue;
-							}
-							if (relativeToModules === expectedPath) {
-								continue;
-							}
-							explained.add(relativeToModules);
-							drifts.push(
-								RepoDrift.make({
-									name,
-									kind: "localRegistrationDivergence",
-									detail: `manifest entry "${name}" is canonically "${expectedPath}" but this checkout's module gitdir is registered as "${relativeToModules}"${
-										registeredNames.has(relativeToModules)
-											? ` (local git config still carries submodule.${relativeToModules}.*)`
-											: ""
-									} — run \`git submodule sync\` + \`git submodule init\` to re-register it locally`,
-									manifestValue: expectedPath,
-									observedValue: relativeToModules,
-								}),
-							);
-						}
-
-						// A stale local registration whose gitdir no longer backs any
-						// manifest entry: nothing above can attribute it to an entry, but
-						// leaving it unreported means `git submodule status` keeps
-						// listing a name the manifest has never heard of.
-						for (const registeredName of registeredNames) {
-							if (
-								!registeredName.startsWith(`${REPOS_DIR}/`) ||
-								canonicalNames.has(registeredName) ||
-								explained.has(registeredName)
-							) {
-								continue;
-							}
-							drifts.push(
-								RepoDrift.make({
-									name: registeredName,
-									kind: "localRegistrationDivergence",
-									// Unlike the per-entry divergence above, the `git submodule
-									// sync` + `init` remedy does NOT apply here: there is no
-									// manifest entry left to re-register, so the only fix is to
-									// drop the section outright. Say that, or the report names a
-									// problem whose stated remedy is for a different one.
-									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry — a stale registration left behind by a rename or an unvendoring; clear it with \`git config --remove-section submodule.${registeredName}\``,
-									observedValue: registeredName,
-								}),
-							);
-						}
+						drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries)));
 
 						// --- One level down: a vendored repo's OWN submodules ----------
 						// Sparse-checkout governs only the parent's TRACKED files; an

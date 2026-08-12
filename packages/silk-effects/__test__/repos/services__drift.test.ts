@@ -544,8 +544,14 @@ describe("ReposDrift.check", () => {
 				}),
 			]);
 			// The remedy has to be in the detail, or the report names a problem
-			// with no way out.
-			expect(report.drifts[0]?.detail).toContain("git submodule sync");
+			// with no way out — and it has to be a remedy that can actually CLEAR
+			// this drift. The check is keyed on the module gitdir's path, and git
+			// never renames that directory, so `git submodule sync` + `init` (which
+			// only rewrite config) would leave this firing identically on the next
+			// run. Re-vendoring is what moves the gitdir. Asserting the sync+init
+			// wording here is what previously locked the unreachable remedy in.
+			expect(report.drifts[0]?.detail).toContain("savvy repos remove");
+			expect(report.drifts[0]?.detail).not.toContain("git submodule sync");
 		}),
 	);
 
@@ -650,6 +656,34 @@ describe("ReposDrift.check", () => {
 			);
 
 			expect(report.clean).toBe(true);
+		}),
+	);
+
+	it.effect("reports a stale local registration even when .gitmodules is ABSENT", () =>
+		Effect.gen(function* () {
+			// The no-.gitmodules early return short-circuits the whole
+			// reconciliation, so this state reported clean apart from the
+			// unregistered entries — while `git submodule status` still listed the
+			// phantom section. The local config is an independent authority and
+			// survives `.gitmodules` being deleted.
+			const root = makeRoot();
+			// deliberately NO .gitmodules written
+			makeWorktree(root);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						configEntries: [{ key: `submodule.${REPOS_DIR}/unvendored.url`, value: "https://example.com/gone.git" }],
+					}),
+				),
+			);
+
+			expect(report.clean).toBe(false);
+			expect(report.drifts.map((d) => d.kind)).toContain("unregisteredManifestEntry");
+			expect(report.drifts.map((d) => d.kind)).toContain("localRegistrationDivergence");
 		}),
 	);
 });

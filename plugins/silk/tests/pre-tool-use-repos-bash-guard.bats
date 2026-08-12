@@ -551,3 +551,44 @@ assert_deny() {
 	run_guard_with_command 'git config --unset core.thing .repos/effect/f'
 	assert_deny
 }
+
+# The deregister allowance's local-config test is per-TOKEN and prefix-matched.
+# A regex over the clause let four forms through: an attached -f<path> (no space
+# and no "=", so a `(-f|--file)([[:space:]]|=)` test never fired) and all three
+# non-local scopes, which went unchecked. The attached form is the dangerous one
+# — it writes .gitmodules, tracked host content.
+
+@test "deregister allowance denies an ATTACHED -f<path>" {
+	run_guard_with_command 'git config -f.gitmodules --unset submodule..repos/effect.url'
+	assert_deny
+}
+
+@test "deregister allowance denies --file=<path>" {
+	run_guard_with_command 'git config --file=.gitmodules --unset submodule..repos/effect.url'
+	assert_deny
+}
+
+@test "deregister allowance denies a separated -f <path>" {
+	run_guard_with_command 'git config -f .gitmodules --unset submodule..repos/effect.url'
+	assert_deny
+}
+
+@test "deregister allowance denies --global scope" {
+	run_guard_with_command 'git config --global --unset submodule..repos/effect.url'
+	assert_deny
+}
+
+@test "deregister allowance denies --system scope" {
+	run_guard_with_command 'git config --system --remove-section submodule..repos/effect'
+	assert_deny
+}
+
+@test "deregister allowance denies --worktree scope" {
+	run_guard_with_command 'git config --worktree --unset submodule..repos/effect.url'
+	assert_deny
+}
+
+@test "an explicit --local deregister is still allowed" {
+	run_guard_with_command 'git config --local --remove-section submodule..repos/effect-smol'
+	assert_allow
+}

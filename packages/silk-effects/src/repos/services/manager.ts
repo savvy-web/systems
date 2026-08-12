@@ -292,27 +292,31 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 							root,
 							name,
 							Effect.gen(function* () {
-								// The boundary marker is asserted at the END of this block,
-								// but git consults it DURING it: `submodule.<name>.update =
-								// none` makes `git submodule update --init` skip the
-								// submodule outright ("Skipping submodule ..."), which would
-								// silently defeat this method's own initialize branch below.
-								// `--checkout` overrides `none` on the command line, but
-								// `@effected/git`'s `submoduleUpdate` exposes no such option
-								// (kit gap), so neutralize the marker for the duration of our
-								// own git work and re-assert it at the end. A crash in
-								// between leaves `checkout`, i.e. plain git default behavior
-								// — the pre-marker status quo, never something worse.
+								// The boundary marker's key. It is asserted at the END of this
+								// block, but git consults it DURING it: `update = none` makes
+								// `git submodule update --init` skip the submodule outright
+								// ("Skipping submodule ..."), which would silently defeat the
+								// initialize branch below. `--checkout` overrides it on the command
+								// line, but `@effected/git`'s `submoduleUpdate` exposes no such
+								// option (kit gap), so the marker has to be neutralized around that
+								// ONE call — see the initialize branch, which brackets it.
 								//
-								// Keyed on the repo-relative PATH because that is the name
-								// `git submodule add` derives its `.gitmodules` section from,
-								// and the name `rename` canonicalizes a diverged section back
-								// to; a checkout whose local registration still carries an
-								// older name is exactly the divergence `ReposDrift` reports.
+								// Scoped to that single call rather than to this whole block, on
+								// purpose. An earlier version flipped the key here at the top and
+								// restored it at the bottom, so ANY failure in between left the tree
+								// declared `checkout` — open to every git client — until some later
+								// sync happened to succeed. Nothing else in this block consults
+								// `update`, so the window never needed to be that wide.
+								//
+								// Keyed on the repo-relative PATH because that is the name `git
+								// submodule add` derives its `.gitmodules` section from, and the name
+								// `rename` canonicalizes a diverged section back to; a checkout whose
+								// local registration still carries an older name is exactly the
+								// divergence `ReposDrift` reports.
 								const updateKey = `submodule.${repoPathRel}.update`;
-								yield* git
-									.configSet(root, updateKey, "checkout")
-									.pipe(Effect.mapError(asSubmoduleError(`git config ${updateKey} checkout`, root)));
+								const assertBoundaryMarker = git
+									.configSet(root, updateKey, "none")
+									.pipe(Effect.mapError(asSubmoduleError(`git config ${updateKey} none`, root)));
 
 								let clearedAnyLock = false;
 								for (const lock of STALE_LOCKS) {
@@ -422,12 +426,21 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 
 									registered.push(name);
 								} else if (!present) {
+									// The only call in this method that `update = none` would
+									// suppress, so it is the only place the marker is lifted.
+									// `ensuring` restores it however this exits — success,
+									// typed failure, or interruption — so a failed sync can
+									// never leave the tree declared `checkout`.
+									yield* git
+										.configSet(root, updateKey, "checkout")
+										.pipe(Effect.mapError(asSubmoduleError(`git config ${updateKey} checkout`, root)));
 									yield* git
 										.submoduleUpdate(root, { init: true, depth: 1, paths: [repoPathRel] })
 										.pipe(
 											Effect.mapError(
 												asSubmoduleError(`git submodule update --init --depth 1 -- ${repoPathRel}`, root),
 											),
+											Effect.ensuring(Effect.ignore(assertBoundaryMarker)),
 										);
 									initialized.push(name);
 								} else {
@@ -472,9 +485,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								// vendored repo — and `git submodule init` (which `rename`
 								// runs) flips it back to `true` anyway, so the marker would
 								// not even survive this package's own operations.
-								yield* git
-									.configSet(root, updateKey, "none")
-									.pipe(Effect.mapError(asSubmoduleError(`git config ${updateKey} none`, root)));
+								yield* assertBoundaryMarker;
 								boundaryMarked.push(name);
 							}),
 						);

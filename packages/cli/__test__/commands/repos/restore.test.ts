@@ -133,6 +133,28 @@ describe("runReposRestore (adapter)", () => {
 		}),
 	);
 
+	it.effect("warns and sets exitCode 1 when a restored repo is STILL dirty afterwards", () =>
+		Effect.gen(function* () {
+			// The honesty channel. A reset that ran while the tree stayed dirty is
+			// not a success, and reporting it as one is what let a nested-submodule
+			// divergence look repaired. Membership in both `restored` and
+			// `stillDirty` is the normal shape for such a repo.
+			const layer = makeStubLayer(() =>
+				Effect.succeed({
+					restored: [{ name: "nested-spec", commit: "abc111" }],
+					skippedClean: [],
+					stillDirty: ["nested-spec"],
+				}),
+			);
+
+			const logs = yield* collectLogs("/repo", ["nested-spec"], layer);
+
+			expect(logs.some((l) => l.includes("nested-spec") && l.includes("restored"))).toBe(true);
+			expect(logs.some((l) => l.includes("nested-spec") && l.includes("STILL dirty"))).toBe(true);
+			expect(process.exitCode).toBe(1);
+		}),
+	);
+
 	it.effect("logs a nothing-to-restore message when both result arrays are empty", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() => Effect.succeed({ restored: [], skippedClean: [], stillDirty: [] }));

@@ -189,14 +189,24 @@ read them via the tools below rather than trusting recall for field names.
      holds `<old>` is the signature of a crash after `git mv`.
   2. If the worktree did **not** move, nothing landed: just re-run
      `savvy repos rename <old> <new>`.
-  3. If it did move, complete the remaining steps rather than retrying:
-     confirm the `.gitmodules` section name is `.repos/<new>` (`git mv`
-     updates the section's `path` field but never its name), edit the
-     manifest key from `<old>` to `<new>` by hand — `.repos/config.json` is
-     hand-editable — then run `git submodule sync -- .repos/<new>` and
-     `git submodule init -- .repos/<new>` to re-register the superproject
-     config under the new name, and `git config --unset
-     submodule..repos/<old>.url` (and `.active`) to clear the stale one.
+  3. If it did move, complete the remaining steps rather than retrying, and
+     **check the `.gitmodules` section name and its `path` field separately** —
+     `git mv` rewrites the `path` field but never the section header, so the
+     usual post-crash shape is `[submodule ".repos/<old>"]` with
+     `path = .repos/<new>` inside it. Registration is keyed on the section
+     NAME, so the order matters:
+     - Rename the section header to `.repos/<new>` FIRST, if it is still
+       `<old>`. Running `sync`/`init` before this registers the old name again
+       and you end up undoing it.
+     - Edit the manifest key from `<old>` to `<new>` by hand —
+       `.repos/config.json` is hand-editable.
+     - Then `git submodule sync -- .repos/<new>` and
+       `git submodule init -- .repos/<new>` to register the superproject
+       config under the canonical name. If you chose to leave the header
+       alone, these must name the ACTUAL section instead, or they register
+       nothing useful.
+     - Finally `git config --remove-section submodule..repos/<old>` to clear
+       the stale registration (sanctioned — see the allowances above).
   4. Finish with `savvy repos sync`, which re-asserts the boundary markers
      and re-locks the tree, and `savvy repos status --drift` to confirm
      clean. A crash also skips the relock finalizer, so the tree is left
@@ -225,8 +235,14 @@ read them via the tools below rather than trusting recall for field names.
   `submodule.<path>.shallow` config is absent), `gitmodulesUnparsable`
   (not about one repo — the file itself failed to parse),
   `localRegistrationDivergence` (this checkout is registered under a
-  pre-canonicalization section name — the remedy is the `git submodule sync`
-  - `init` fixup described above, and the drift's `detail` says so), and
+  pre-canonicalization name — **two variants with two different remedies, and
+  the drift's own `detail` names the right one per finding**: keyed on the
+  module gitdir's path, it is cleared by RE-VENDORING the entry (`remove` then
+  `add`, handing back the orientation the remove reported), because git never
+  renames a directory under `.git/modules` and so `git submodule sync` + `init`
+  would leave the check failing identically forever; keyed on an orphaned
+  config section with no manifest entry, it is cleared by
+  `git config --remove-section submodule.<name>`), and
   `nestedSubmoduleDivergence` (a vendored repo's OWN submodule is
   materialized and off its recorded commit — see below). `status --drift`
   runs the plain status report first and the drift check after; either

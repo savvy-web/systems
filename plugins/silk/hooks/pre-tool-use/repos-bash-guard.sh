@@ -144,8 +144,14 @@ _repos_exempt() {
 #
 #   - REMOVAL verbs only (--unset/--unset-all/--remove-section). Creating or
 #     altering a registration is still denied; `sync` owns that.
-#   - LOCAL config only. An `-f`/`--file` write targets a file -- `.gitmodules`
-#     is tracked host content -- which this allowance is not about.
+#   - LOCAL config only, tested by TOKEN and not by a regex over the clause.
+#     An `-f`/`--file` write targets a file -- `.gitmodules` is tracked host
+#     content -- and `--global`/`--system`/`--worktree` target a scope this
+#     allowance has no business in. The first version tested
+#     `(-f|--file)([[:space:]]|=)`, which four forms walked straight through:
+#     an ATTACHED `-f.gitmodules` (no space, no `=`, so the regex never
+#     matched) plus all three non-local scopes, which were not checked at all.
+#     A per-token prefix test cannot be defeated by attachment.
 #   - Every `.repos/`-mentioning token must be a `submodule.<name>` KEY, never
 #     a path operand. A submodule's config key embeds its own path by
 #     construction, which is precisely why the guard's "a token naming the
@@ -154,18 +160,20 @@ _repos_exempt() {
 # Returns 0 (allow) / 1 (deny).
 _repos_config_deregister_allowed() {
 	local clause="$1"
-	if [[ "$clause" =~ (^|[[:space:]])(-f|--file)([[:space:]]|=) ]]; then
-		return 1
-	fi
 	if [[ ! "$clause" =~ (^|[[:space:]])(--unset|--unset-all|--remove-section)([[:space:]]|$) ]]; then
 		return 1
 	fi
 	# shellcheck disable=SC2206 # best-effort word split, as everywhere here
 	local tokens=($clause) tok
 	for tok in "${tokens[@]}"; do
-		[[ "$tok" == *.repos/* ]] || continue
 		tok="${tok%\"}"; tok="${tok#\"}"
 		tok="${tok%\'}"; tok="${tok#\'}"
+		# File and scope selectors, matched as PREFIXES so an attached value
+		# (`-f.gitmodules`, `--file=.gitmodules`) cannot slip past.
+		case "$tok" in
+			-f | -f?* | --file | --file=* | --global | --system | --worktree) return 1 ;;
+		esac
+		[[ "$tok" == *.repos/* ]] || continue
 		[[ "$tok" == submodule.* ]] || return 1
 	done
 	return 0
