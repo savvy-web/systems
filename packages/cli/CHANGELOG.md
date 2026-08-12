@@ -1,5 +1,31 @@
 # @savvy-web/cli
 
+## 2.5.0
+
+### Breaking Changes
+
+* `savvy repos status --json` no longer includes a `commit` field per repo. The payload already reported the gitlink as a staged/committed/checked-out triple; only the deprecated alias is gone. Read `stagedCommit` instead — a script that parsed `.repos[].commit` out of the JSON output needs to switch to `.repos[].stagedCommit`.
+
+### Features
+
+* `savvy repos remove` prints the removed entry's orientation block when it has one. `savvy repos add` does not restore it on its own, so a re-vendor loses it unless it is captured at removal time. [#464][#464]
+
+### Bug Fixes
+
+* `savvy repos restore` reports any repo whose worktree is still dirty after the reset and exits 1, rather than reporting a reset that achieved nothing as success.
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.5.2 | 5.6.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#464]: https://github.com/savvy-web/systems/pull/464
+
 ## 2.4.2
 
 ### Dependencies
