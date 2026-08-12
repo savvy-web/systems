@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/silk",
-	"version": "3.6.0",
+	"version": "3.7.0",
 	"private": true,
 	"description": "The single Silk Suite dev-tooling package — changeset, commitlint, lint, and biome conventions",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk",
@@ -45,7 +45,8 @@
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
-		"effect": "catalog:effect"
+		"effect": "catalog:effect",
+		"semver": "^7.8.5"
 	},
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
