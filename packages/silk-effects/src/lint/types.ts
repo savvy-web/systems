@@ -1,5 +1,7 @@
 // Type definitions for @savvy-web/lint-staged.
 
+import type { YamlFormattingOptions } from "@effected/yaml";
+
 /**
  * A lint-staged handler function.
  * Receives an array of staged filenames and returns command(s) to execute.
@@ -126,9 +128,14 @@ export interface ShellScriptsOptions extends BaseHandlerOptions {
  */
 export interface YamlOptions extends BaseHandlerOptions {
 	/**
-	 * Path to yaml-lint config file (.yaml-lint.json).
+	 * Formatting options passed through to `@effected/yaml`.
+	 *
+	 * @remarks
+	 * Defaults to the handler's own `defaultFormatOptions`. There is no
+	 * config-file discovery: `@effected/yaml` is a pure tier that loads nothing
+	 * from disk, and a consumer's `.prettierrc` is NOT consulted.
 	 */
-	config?: string;
+	format?: YamlFormattingOptions;
 
 	/**
 	 * Skip YAML formatting.

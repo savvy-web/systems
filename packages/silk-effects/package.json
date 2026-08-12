@@ -41,20 +41,18 @@
 		"@effected/package-json": "^0.8.0",
 		"@effected/templates": "^0.2.0",
 		"@effected/walker": "^0.4.0",
-		"@effected/workspaces": "^0.11.1",
-		"@effected/yaml": "^0.7.0",
+		"@effected/workspaces": "^0.11.2",
+		"@effected/yaml": "^0.8.0",
 		"@manypkg/get-packages": "^3.1.0",
 		"mdast-util-heading-range": "^4.0.0",
 		"mdast-util-to-string": "^4.0.0",
-		"prettier": "^3.9.6",
 		"remark-gfm": "^4.0.1",
 		"remark-parse": "^11.0.0",
 		"remark-stringify": "^11.0.0",
 		"shell-quote": "^1.10.0",
 		"unified": "^11.0.5",
 		"unified-lint-rule": "^3.0.1",
-		"unist-util-visit": "^5.1.0",
-		"yaml-lint": "^1.7.0"
+		"unist-util-visit": "^5.1.0"
 	},
 	"devDependencies": {
 		"@changesets/types": "^7.0.0-next.8",

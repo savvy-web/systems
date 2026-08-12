@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
+import { YamlFormattingOptions } from "@effected/yaml";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ConfigDiscovery, Lint } from "../../src/index.js";
 
@@ -309,10 +310,62 @@ describe("Handler classes", () => {
 			// Formatting is done in-place; lint-staged auto-stages modified files
 			expect(result).toEqual([]);
 
-			// File should be formatted by Prettier (extra spaces removed)
+			// File should be formatted (extra spaces removed)
 			const formatted = readFileSync(testFile, "utf-8");
 			expect(formatted).toContain("key: value");
 			expect(formatted).toContain("other: value2");
+		});
+
+		it("should preserve comments and blank lines when formatting", async () => {
+			const testFile = join(FIXTURES_DIR, "comments.yaml");
+			const withComments = "# header\n\nkey:   value # trailing\n\n# own-line\nother: value2\n";
+			writeFileSync(testFile, withComments, "utf-8");
+
+			const handler = Yaml.create({ exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"] });
+			await handler([testFile]);
+
+			const formatted = readFileSync(testFile, "utf-8");
+			expect(formatted).toContain("# header");
+			expect(formatted).toContain("# trailing");
+			expect(formatted).toContain("# own-line");
+			// The blank line separating the header comment from the first key survives
+			expect(formatted).toMatch(/# header\n\nkey:/);
+		});
+
+		it("should format every document of a multi-document stream", async () => {
+			const testFile = join(FIXTURES_DIR, "multidoc.yaml");
+			writeFileSync(testFile, "a:   1\n---\nb:   2\n", "utf-8");
+
+			const handler = Yaml.create({ exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"] });
+			await handler([testFile]);
+
+			// Neither document is dropped, and both are formatted
+			const formatted = readFileSync(testFile, "utf-8");
+			expect(formatted).toContain("a: 1");
+			expect(formatted).toContain("b: 2");
+			expect(formatted).toContain("---");
+		});
+
+		it("should reject a stream whose LATER document is invalid", () => {
+			const testFile = join(FIXTURES_DIR, "multidoc-invalid.yaml");
+			writeFileSync(testFile, "a: 1\n---\nb: *missing\n", "utf-8");
+
+			const handler = Yaml.create({ skipFormat: true, exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"] });
+			// A single-document parse would accept this file; the whole-stream gate does not
+			expect(() => handler([testFile])).toThrow("Invalid YAML");
+		});
+
+		it("should be idempotent: formatting twice changes nothing the second time", async () => {
+			const testFile = join(FIXTURES_DIR, "idempotent.yaml");
+			writeFileSync(testFile, "list:\n- one\n- two # note\n\nafter: 1\n", "utf-8");
+
+			const handler = Yaml.create({ exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"] });
+			await handler([testFile]);
+			const once = readFileSync(testFile, "utf-8");
+			await handler([testFile]);
+			const twice = readFileSync(testFile, "utf-8");
+
+			expect(twice).toBe(once);
 		});
 
 		it("should skip formatting when option is set", async () => {
@@ -333,17 +386,17 @@ describe("Handler classes", () => {
 			expect(readFileSync(testFile, "utf-8")).toBe(content);
 		});
 
-		it("should validate and reject invalid YAML", async () => {
+		it("should validate and reject invalid YAML", () => {
 			const testFile = join(FIXTURES_DIR, "invalid.yaml");
 			writeFileSync(testFile, "key: value\n  invalid: indent", "utf-8");
 
 			// Use explicit excludes so the fixture file (inside __test__/fixtures) is not filtered out
 			const handler = Yaml.create({ skipFormat: true, exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"] });
-			await expect(handler([testFile])).rejects.toThrow("Invalid YAML");
+			// The handler is synchronous, so it throws rather than rejecting
+			expect(() => handler([testFile])).toThrow("Invalid YAML");
 		});
 
-		it("should have findConfig and isAvailable static methods", () => {
-			expect(typeof Yaml.findConfig).toBe("function");
+		it("should have an isAvailable static method", () => {
 			expect(typeof Yaml.isAvailable).toBe("function");
 			expect(Yaml.isAvailable()).toBe(true);
 		});
@@ -368,16 +421,68 @@ describe("Handler classes", () => {
 			expect(result).toEqual([]);
 		});
 
+		it("should forward format options through fmtCommand so both entry points agree", () => {
+			const format = YamlFormattingOptions.make({ indentSequences: false });
+			const result = Yaml.fmtCommand({ format })(["config.yaml"]) as string;
+
+			// The subcommand runs in another process, so the options have to cross
+			// the shell boundary or the two entry points format differently.
+			expect(result).toContain("--format");
+			const encoded = /--format '([^']*)'/.exec(result)?.[1];
+			expect(encoded).toBeDefined();
+			expect(Yaml.parseFormatOptions(encoded as string).indentSequences).toBe(false);
+		});
+
+		it("should omit the format flag when no options are given", () => {
+			const result = Yaml.fmtCommand()(["config.yaml"]) as string;
+			expect(result).not.toContain("--format");
+		});
+
+		it("should round-trip format options through encode and parse", () => {
+			const original = YamlFormattingOptions.make({ quoteStyle: "double", indentSequences: true });
+			const restored = Yaml.parseFormatOptions(Yaml.encodeFormatOptions(original));
+
+			expect(restored.quoteStyle).toBe("double");
+			expect(restored.indentSequences).toBe(true);
+		});
+
+		it("should produce identical bytes from both entry points for the same options", async () => {
+			const format = YamlFormattingOptions.make({ indentSequences: false });
+			const source = "list:\n  - one\n  - two\n";
+
+			// Path A: the lint-staged handler applies the options directly
+			const viaHandler = join(FIXTURES_DIR, "entrypoint-a.yaml");
+			writeFileSync(viaHandler, source, "utf-8");
+			await Yaml.create({ format, exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"] })([viaHandler]);
+
+			// Path B: the CLI subcommand decodes the same options off the command line
+			const viaCommand = join(FIXTURES_DIR, "entrypoint-b.yaml");
+			writeFileSync(viaCommand, source, "utf-8");
+			const emitted = Yaml.fmtCommand({ format })([viaCommand]) as string;
+			const encoded = /--format '([^']*)'/.exec(emitted)?.[1] as string;
+			Yaml.formatFile(viaCommand, Yaml.parseFormatOptions(encoded));
+
+			expect(readFileSync(viaCommand, "utf-8")).toBe(readFileSync(viaHandler, "utf-8"));
+		});
+
 		it("should return empty when all files are excluded", async () => {
 			const handler = Yaml.create();
 			const result = await handler(["pnpm-lock.yaml"]);
 			expect(result).toEqual([]);
 		});
 
-		it("should have loadConfig method that handles errors", () => {
-			// loadConfig with nonexistent file returns undefined
-			const result = Yaml.loadConfig("/nonexistent/config.json");
-			expect(result).toBeUndefined();
+		it("should accept caller-supplied formatting options", async () => {
+			const testFile = join(FIXTURES_DIR, "flat-seq.yaml");
+			writeFileSync(testFile, "list:\n- one\n- two\n", "utf-8");
+
+			// indentSequences false keeps the flat form the file already uses
+			const handler = Yaml.create({
+				format: YamlFormattingOptions.make({ indentSequences: false }),
+				exclude: ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
+			});
+			await handler([testFile]);
+
+			expect(readFileSync(testFile, "utf-8")).toBe("list:\n- one\n- two\n");
 		});
 	});
 
