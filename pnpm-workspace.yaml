@@ -97,7 +97,7 @@ catalogs:
     vitepress: ^2.0.0-alpha.19
   lint:
     "@biomejs/biome": 2.5.0
-    "@changesets/cli": ^3.0.0-next.10
+    "@changesets/cli": ^3.0.0
     "@commitlint/cli": ^21.2.1
     "@commitlint/config-conventional": ^21.2.0
     husky: ^9.1.7
@@ -107,7 +107,7 @@ catalogs:
     turbo: ^2.10.8
   lint:peers:
     "@biomejs/biome": 2.5.0
-    "@changesets/cli": ^3.0.0-next.10
+    "@changesets/cli": ^3.0.0
     "@commitlint/cli": ^21.2.1
     "@commitlint/config-conventional": ^21.2.0
     husky: ^9.1.7
@@ -117,7 +117,7 @@ catalogs:
     turbo: ^2.10.8
   lintPeers:
     "@biomejs/biome": 2.5.0
-    "@changesets/cli": ^3.0.0-next.10
+    "@changesets/cli": ^3.0.0
     "@commitlint/cli": ^21.2.1
     "@commitlint/config-conventional": ^21.2.0
     husky: ^9.1.7
@@ -126,7 +126,7 @@ catalogs:
     markdownlint-cli2-formatter-codequality: ^0.0.7
     turbo: ^2.10.8
   silk:
-    "@changesets/cli": ^3.0.0-next.10
+    "@changesets/cli": ^3.0.0
     "@commitlint/cli": ^21.2.1
     "@commitlint/config-conventional": ^21.2.0
     "@effect/ai": ^0.36.0
@@ -190,7 +190,7 @@ catalogs:
     typescript: ^7.0.2
     vitest: ^4.1.10
   silk:peers:
-    "@changesets/cli": ^3.0.0-next.10
+    "@changesets/cli": ^3.0.0
     "@commitlint/cli": ^21.2.1
     "@commitlint/config-conventional": ^21.2.0
     "@effect/ai": ^0.36.0
@@ -254,7 +254,7 @@ catalogs:
     typescript: ^7.0.0
     vitest: ^4.1.0
   silkPeers:
-    "@changesets/cli": ^3.0.0-next.10
+    "@changesets/cli": ^3.0.0
     "@commitlint/cli": ^21.2.1
     "@commitlint/config-conventional": ^21.2.0
     "@effect/ai": ^0.36.0
