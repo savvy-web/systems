@@ -1,5 +1,23 @@
 # @savvy-web/silk-effects
 
+## 5.7.1
+
+### Dependencies
+
+* | Dependency                  | Type       | Action  | From          | To     |                                                                              |
+  | --------------------------- | ---------- | ------- | ------------- | ------ | ---------------------------------------------------------------------------- |
+  | @changesets/get-github-info | dependency | updated | ^1.0.0-next.4 | ^1.0.0 | [#472][#472] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+- | Dependency           | Type       | Action  | From    | To      |                                                                              |
+  | -------------------- | ---------- | ------- | ------- | ------- | ---------------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.11.2 | ^0.12.0 | [#475][#475] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#472]: https://github.com/savvy-web/systems/pull/472
+
+[#475]: https://github.com/savvy-web/systems/pull/475
+
 ## 5.7.0
 
 ### Features
