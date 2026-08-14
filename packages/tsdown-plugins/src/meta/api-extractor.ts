@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
+import { existsSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { ExtractorMessage } from "@microsoft/api-extractor";
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from "@microsoft/api-extractor";
 import { TSDocConfigFile } from "@microsoft/tsdoc-config";
@@ -37,6 +40,48 @@ export interface RunApiExtractorOptions {
 /** messageIds that become a hard build error in CI (they corrupt the .api.json). */
 const CI_FATAL_MESSAGE_IDS = new Set<string>(["ae-forgotten-export"]);
 
+/** Options for {@link writeApiExtractorTsconfig}. */
+export interface WriteApiExtractorTsconfigOptions {
+	/** Absolute package root (only used to locate the `types/*.d.ts` legacy-typings glob). */
+	readonly cwd: string;
+	/** The resolved compile tsconfig the derived config extends. */
+	readonly tsconfigPath: string;
+	/** The single entry `.d.ts` this extractor run analyzes. */
+	readonly entryDtsPath: string;
+}
+
+/**
+ * Derive the extractor-scoped tsconfig for ONE api-extractor run and return its path (#354).
+ *
+ * The compile tsconfig's `include` covers `src/**` — necessary for the dts-emit pass, poison for
+ * the extractor: a hand-authored `src/*.d.ts` shim matched by that glob survives api-extractor's
+ * .d.ts root filter, and a self-name import inside it resolves through the SOURCE manifest's
+ * `exports` to raw `.ts` sources under `src/`, putting non-declaration files in the Program and
+ * firing an unsuppressable `ae-wrong-input-file-type` on every build. The derived config keeps the
+ * base's `compilerOptions` (via an absolute-path `extends`) but replaces the input set with exactly
+ * what the extractor's Program should hold: the entry `.d.ts` (`files`) plus the `types/*.d.ts`
+ * legacy typings — the same effective roots as before minus everything under `src/`.
+ *
+ * Best-effort, mirroring `writeDtsEmitTsconfig`: a base that does not exist (e.g. a synthetic test
+ * path) gets no variant — the original path is returned unchanged. The filename is deterministic
+ * per (pid, base, entry) via a content hash (the two joined paths overflow a filename), so repeated
+ * calls within a process overwrite the same file; cross-process temp files are left for the OS to
+ * reap, consistent with the other tmpdir tsconfig writers.
+ */
+export function writeApiExtractorTsconfig(options: WriteApiExtractorTsconfigOptions): string {
+	const absBase = isAbsolute(options.tsconfigPath) ? options.tsconfigPath : resolve(options.tsconfigPath);
+	if (!existsSync(absBase)) return options.tsconfigPath;
+	const entryDts = isAbsolute(options.entryDtsPath) ? options.entryDtsPath : resolve(options.cwd, options.entryDtsPath);
+	// `files` wins regardless of the inherited `exclude` (exclude never filters `files`), and the
+	// explicit empty-`include` override would be implied — but the legacy-typings glob keeps
+	// hand-authored ambient declarations under types/ analyzable, exactly as the base include did.
+	const cfg = { extends: absBase, files: [entryDts], include: [join(options.cwd, "types/*.d.ts")] };
+	const hash = createHash("sha256").update(`${absBase}\0${entryDts}`).digest("hex").slice(0, 16);
+	const path = join(tmpdir(), `tsconfig-api-extractor-${process.pid}-${hash}.json`);
+	writeFileSync(path, `${JSON.stringify(cfg, null, "\t")}\n`, "utf-8");
+	return path;
+}
+
 /**
  * Map an API Extractor message to a collector DiagnosticInput, or undefined if not warn/error.
  *
@@ -71,7 +116,15 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 			projectFolder: options.cwd,
 			mainEntryPointFilePath: options.entryDtsPath,
 			enumMemberOrder: "preserve",
-			compiler: { tsconfigFilePath: options.tsconfigPath },
+			// The extractor gets its own files-scoped tsconfig, never the compile config verbatim — the
+			// compile include's src/ globs poison the analysis Program (#354, see writeApiExtractorTsconfig).
+			compiler: {
+				tsconfigFilePath: writeApiExtractorTsconfig({
+					cwd: options.cwd,
+					tsconfigPath: options.tsconfigPath,
+					entryDtsPath: options.entryDtsPath,
+				}),
+			},
 			// includeForgottenExports keeps "forgotten" declarations (referenced but not exported) IN the
 			// doc model instead of dropping them (api-extractor's default). Without it the synthetic base
 			// class TypeScript hoists for Effect class mixins (Schema.Class/Data.TaggedError/Context.Tag/

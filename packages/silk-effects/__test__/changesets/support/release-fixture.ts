@@ -53,7 +53,7 @@ export function makeReleaseFixture(spec: FixtureSpec): string {
 		join(root, ".changeset", "config.json"),
 		JSON.stringify(
 			{
-				$schema: "https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json",
+				$schema: "https://unpkg.com/@changesets/config@4.0.0/schema.json",
 				changelog: "@changesets/cli/changelog",
 				commit: false,
 				access: "restricted",
