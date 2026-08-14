@@ -34,7 +34,7 @@ const SnapshotConfig = Schema.Struct({
 });
 
 /**
- * Standard changesets configuration matching the `@changesets/config@4.0.0-next.6` spec.
+ * Standard changesets configuration matching the `@changesets/config@4.0.0` spec.
  *
  * @remarks
  * Represents the parsed `.changeset/config.json` file. All fields are optional
@@ -43,7 +43,7 @@ const SnapshotConfig = Schema.Struct({
  *
  * @since 0.1.0
  */
-// Standard changesets config (matches @changesets/config@4.0.0-next.6 upstream spec)
+// Standard changesets config (matches @changesets/config@4.0.0 upstream spec)
 /** @public */
 export const ChangesetConfigFile = Schema.Struct({
 	changelog: Schema.optional(Schema.Union([Schema.String, Schema.Array(Schema.Unknown), Schema.Literal(false)])),
