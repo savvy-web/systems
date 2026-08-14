@@ -1,8 +1,8 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { runApiExtractor } from "../../src/meta/api-extractor.js";
+import { runApiExtractor, writeApiExtractorTsconfig } from "../../src/meta/api-extractor.js";
 import { writeTsdocConfig } from "../../src/meta/tsdoc-config.js";
 
 function scaffoldForgotten(): { dir: string; entryDtsPath: string; tsconfigPath: string; packageJsonPath: string } {
@@ -212,5 +212,130 @@ describe("runApiExtractor", () => {
 		});
 		expect(existsSync(apiJsonPath)).toBe(false);
 		expect(seen).toContain("ae-forgotten-export");
+	});
+});
+
+// #354: the extractor pass must not inherit the compile tsconfig's `src/**` include. A hand-authored
+// `src/*.d.ts` shim (matched by that include, and kept by api-extractor's .d.ts root filter) can
+// self-name-import the package, which resolves through the SOURCE manifest's `exports` to raw
+// `src/**/*.ts` — putting non-declaration sources in the analysis Program and firing an
+// unsuppressable ae-wrong-input-file-type on every build (observed in vitest-bats).
+function scaffoldSrcShim(): {
+	dir: string;
+	entryDtsPath: string;
+	tsconfigPath: string;
+	packageJsonPath: string;
+} {
+	const dir = mkdtempSync(join(tmpdir(), "ae-src-shim-"));
+	// SOURCE manifest: self-name `exports` point at raw sources (the standard source-repo shape).
+	writeFileSync(
+		join(dir, "package.json"),
+		JSON.stringify({
+			name: "@scope/fixture",
+			version: "1.0.0",
+			types: "./dist/index.d.ts",
+			exports: { ".": "./src/index.ts", "./runtime": "./src/runtime.ts" },
+		}),
+	);
+	// Mirrors writeResolvedTsconfig's shape: absolute-path include covering src/**/*.ts (which the
+	// tsconfig glob also matches for src/*.d.ts), exclude covering node_modules and dist.
+	writeFileSync(
+		join(dir, "tsconfig.json"),
+		JSON.stringify({
+			compilerOptions: {
+				target: "ESNext",
+				module: "NodeNext",
+				moduleResolution: "NodeNext",
+				declaration: true,
+				skipLibCheck: true,
+				types: [],
+			},
+			include: [join(dir, "src/**/*.ts"), join(dir, "types/*.d.ts")],
+			exclude: [join(dir, "node_modules"), join(dir, "dist/**/*")],
+		}),
+	);
+	mkdirSync(join(dir, "src"), { recursive: true });
+	writeFileSync(join(dir, "src/index.ts"), "export const a = 1;\n");
+	writeFileSync(join(dir, "src/runtime.ts"), "export interface ScriptBuilder {\n\trun(): void;\n}\n");
+	// The poison: an ambient shim under src/ whose self-name import resolves via the source manifest
+	// to src/runtime.ts, dragging raw .ts sources into the extractor Program.
+	writeFileSync(
+		join(dir, "src/shims.d.ts"),
+		'declare module "*.sh" {\n\timport type { ScriptBuilder } from "@scope/fixture/runtime";\n\tconst script: ScriptBuilder;\n\texport default script;\n}\n',
+	);
+	const dtsDir = join(dir, "dist");
+	mkdirSync(dtsDir, { recursive: true });
+	writeFileSync(join(dtsDir, "index.d.ts"), "/** @public */\nexport declare function go(): void;\n");
+	return {
+		dir,
+		entryDtsPath: join(dtsDir, "index.d.ts"),
+		tsconfigPath: join(dir, "tsconfig.json"),
+		packageJsonPath: join(dir, "package.json"),
+	};
+}
+
+describe("api-extractor tsconfig scoping (#354)", () => {
+	it("does not emit ae-wrong-input-file-type when a src/*.d.ts shim references raw sources", () => {
+		const f = scaffoldSrcShim();
+		const tsdocConfigPath = writeTsdocConfig(f.dir, { suppressWarnings: [], tagDefinitions: [] });
+		const apiJsonPath = join(f.dir, "out.api.json");
+		const codes: Array<string | undefined> = [];
+		let modelWritten = false;
+		try {
+			runApiExtractor({
+				cwd: f.dir,
+				packageJsonPath: f.packageJsonPath,
+				entryDtsPath: f.entryDtsPath,
+				tsconfigPath: f.tsconfigPath,
+				tsdocConfigPath,
+				apiJsonPath,
+				suppressWarnings: [],
+				onMessage: (e) => codes.push(e.code),
+			});
+			modelWritten = existsSync(apiJsonPath);
+		} finally {
+			rmSync(writeApiExtractorTsconfig({ cwd: f.dir, tsconfigPath: f.tsconfigPath, entryDtsPath: f.entryDtsPath }), {
+				force: true,
+			});
+			rmSync(f.dir, { recursive: true, force: true });
+		}
+		expect(codes).not.toContain("ae-wrong-input-file-type");
+		expect(modelWritten).toBe(true);
+	});
+
+	it("writeApiExtractorTsconfig derives a files-scoped config extending the base by absolute path", () => {
+		const dir = mkdtempSync(join(tmpdir(), "ae-derive-"));
+		const base = join(dir, "tsconfig.json");
+		writeFileSync(
+			base,
+			JSON.stringify({ compilerOptions: { skipLibCheck: true }, include: [join(dir, "src/**/*.ts")] }),
+		);
+		const entry = join(dir, "index.d.ts");
+		const derived = writeApiExtractorTsconfig({ cwd: dir, tsconfigPath: base, entryDtsPath: entry });
+		try {
+			expect(derived).not.toBe(base);
+			const cfg = JSON.parse(readFileSync(derived, "utf-8")) as {
+				extends: string;
+				files: string[];
+				include: string[];
+			};
+			expect(cfg.extends).toBe(base);
+			expect(cfg.files).toEqual([entry]);
+			// Legacy typings stay analyzable; nothing else from the compile include survives.
+			expect(cfg.include).toEqual([join(dir, "types/*.d.ts")]);
+		} finally {
+			rmSync(derived, { force: true });
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("writeApiExtractorTsconfig returns a missing base path unchanged (best-effort, mirrors writeDtsEmitTsconfig)", () => {
+		const missing = join(tmpdir(), "ae-derive-missing", "tsconfig.json");
+		const out = writeApiExtractorTsconfig({
+			cwd: "/abs/pkg",
+			tsconfigPath: missing,
+			entryDtsPath: "/abs/pkg/index.d.ts",
+		});
+		expect(out).toBe(missing);
 	});
 });
