@@ -9,3 +9,4 @@ Stops the Biome preset's `useImportExtensions` autofix from rewriting correct `.
 * JSON asset imports (including `with { type: "json" }`) are no longer flagged or rewritten
 * Missing-extension TypeScript imports still receive the correct emitted `.js`/`.mjs`/`.cjs` extension
 * Existing `biome-ignore lint/correctness/useImportExtensions` suppressions for asset imports become unnecessary (and will surface as unused-suppression warnings)
+* `.tsx` files are now linted at the base `error` severity: the removed override had pinned them to `on`, this rule's default `warning` level
