@@ -684,36 +684,36 @@ describe("Handler classes", () => {
 			expect(result).toEqual([]);
 		});
 
-		it("should use detected compiler for typecheck command", () => {
+		it("should prefer tsc for the typecheck command when both compilers are available", () => {
 			TypeScript.clearCache();
 			const spy = stubFindTool(["tsgo", "tsc"]);
 			try {
 				const cmd = TypeScript.getDefaultTypecheckCommand();
-				expect(cmd).toBe("tsgo --noEmit");
+				expect(cmd).toBe("tsc --noEmit");
 			} finally {
 				spy.mockRestore();
 				TypeScript.clearCache();
 			}
 		});
 
-		it("should detect tsgo compiler when tsgo is available", () => {
-			TypeScript.clearCache();
-			const spy = stubFindTool(["tsgo"]);
-			try {
-				const compiler = TypeScript.detectCompiler();
-				expect(compiler).toBe("tsgo");
-			} finally {
-				spy.mockRestore();
-				TypeScript.clearCache();
-			}
-		});
-
-		it("should fall back to tsc when tsgo is unavailable", () => {
+		it("should detect tsc compiler when tsc is available", () => {
 			TypeScript.clearCache();
 			const spy = stubFindTool(["tsc"]);
 			try {
 				const compiler = TypeScript.detectCompiler();
 				expect(compiler).toBe("tsc");
+			} finally {
+				spy.mockRestore();
+				TypeScript.clearCache();
+			}
+		});
+
+		it("should fall back to tsgo when tsc is unavailable", () => {
+			TypeScript.clearCache();
+			const spy = stubFindTool(["tsgo"]);
+			try {
+				const compiler = TypeScript.detectCompiler();
+				expect(compiler).toBe("tsgo");
 			} finally {
 				spy.mockRestore();
 				TypeScript.clearCache();

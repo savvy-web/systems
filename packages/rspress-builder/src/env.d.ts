@@ -99,7 +99,6 @@ interface ImportMetaEnv {
 	readonly DEV: boolean;
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: ImportMeta is used by TypeScript but may appear unused to the linter
 interface ImportMeta {
 	/**
 	 * The `import.meta` object contains metadata about the current module. It is a standard

@@ -2,8 +2,7 @@
 
 BATS coverage and a `shellcheck` pass for the hook scripts under
 `plugins/silk/hooks/`. This directory is the canonical harness — new silk hooks
-get a suite here, shared conventions live in `test_helper.bash`, and
-`plugins/github-actions/tests/` mirrors the same layout for that plugin's hooks.
+get a suite here, and shared conventions live in `test_helper.bash`.
 
 ## Running
 
@@ -13,8 +12,7 @@ From the repo root:
 pnpm test:hooks
 ```
 
-That runs both plugins' runners in turn — `plugins/silk/tests/run-hook-tests.sh`
-then `plugins/github-actions/tests/run-hook-tests.sh`. Each one:
+That runs `plugins/silk/tests/run-hook-tests.sh`, which:
 
 1. Runs `shellcheck` over every shell entry script under `hooks/`, `bin/`, and
    `tests/`, plus the `tests/*.bash` helpers.

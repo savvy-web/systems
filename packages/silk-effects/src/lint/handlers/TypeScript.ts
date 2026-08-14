@@ -1,7 +1,7 @@
 /**
  * Handler for TypeScript files.
  *
- * Runs type checking with tsgo or tsc.
+ * Runs type checking with tsc or tsgo.
  */
 
 import type { LintStagedHandler, TypeScriptOptions } from "../types.js";
@@ -17,11 +17,11 @@ export type TypeScriptCompiler = "tsgo" | "tsc";
 /**
  * Handler for TypeScript files.
  *
- * Runs type checking with tsgo or tsc.
+ * Runs type checking with tsc or tsgo.
  *
  * @remarks
  * Type checking runs on all staged TypeScript files using the configured
- * compiler (tsgo or tsc). The compiler is auto-detected at runtime using
+ * compiler (tsc or tsgo). The compiler is auto-detected at runtime using
  * `Command.findTool()`, which correctly handles pnpm catalogs, peer
  * dependencies, and hoisted/transitive deps.
  *
@@ -60,10 +60,16 @@ export class TypeScript {
 	 * Detect which TypeScript compiler to use.
 	 *
 	 * Uses `Command.findTool()` to check for available compilers:
-	 * 1. `tsgo` (native TypeScript) — checked first
-	 * 2. `tsc` (standard TypeScript) — fallback
+	 * 1. `tsc` (standard TypeScript) — checked first
+	 * 2. `tsgo` (native TypeScript) — fallback
 	 *
 	 * @remarks
+	 * `tsc` is preferred so the pre-commit gate runs the same compiler as a
+	 * repo's own `types:check` task. Preferring `tsgo` meant any repo with
+	 * `\@typescript/native-preview` anywhere in its dependency graph — even as
+	 * a hoisted or transitive dep — silently got a different compiler for its
+	 * commit gate than for its typecheck task.
+	 *
 	 * Unlike the previous implementation that parsed `package.json` dependencies,
 	 * this uses runtime tool detection which works correctly with pnpm catalogs,
 	 * peer dependencies, and hoisted/transitive deps.
@@ -76,18 +82,18 @@ export class TypeScript {
 			return TypeScript.cachedCompilerResult.compiler;
 		}
 
-		// Check for native TypeScript (tsgo) first
-		const tsgo = Command.findTool("tsgo");
-		if (tsgo.available) {
-			TypeScript.cachedCompilerResult = { compiler: "tsgo", tool: tsgo };
-			return "tsgo";
-		}
-
-		// Fall back to standard TypeScript (tsc)
+		// Check for standard TypeScript (tsc) first
 		const tsc = Command.findTool("tsc");
 		if (tsc.available) {
 			TypeScript.cachedCompilerResult = { compiler: "tsc", tool: tsc };
 			return "tsc";
+		}
+
+		// Fall back to native TypeScript (tsgo)
+		const tsgo = Command.findTool("tsgo");
+		if (tsgo.available) {
+			TypeScript.cachedCompilerResult = { compiler: "tsgo", tool: tsgo };
+			return "tsgo";
 		}
 
 		return undefined;
@@ -109,7 +115,7 @@ export class TypeScript {
 	 * Uses the cached `ToolSearchResult` from `detectCompiler()` to build
 	 * the command string, avoiding a separate package manager detection step.
 	 *
-	 * @returns Command string like `pnpm exec tsgo --noEmit` or `tsgo --noEmit`
+	 * @returns Command string like `pnpm exec tsc --noEmit` or `tsc --noEmit`
 	 * @throws Error if no TypeScript compiler is available
 	 */
 	static getDefaultTypecheckCommand(): string {
