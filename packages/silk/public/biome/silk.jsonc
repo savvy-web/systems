@@ -61,7 +61,17 @@
 				"useImportExtensions": {
 					"level": "error",
 					"options": {
-						"forceJsExtensions": true
+						// forceJsExtensions rewrote EVERY import to `.js`, including correct
+						// `.json` asset imports (breaking resolution — see systems#359 and
+						// upstream biomejs/biome#7734). extensionMappings only rewrites the
+						// listed source extensions; unmapped extensions (json, css, ...) keep
+						// the imported file's real extension.
+						"extensionMappings": {
+							"cts": "cjs",
+							"mts": "mjs",
+							"ts": "js",
+							"tsx": "js"
+						}
 					}
 				},
 				"noUnresolvedImports": "off"
@@ -124,25 +134,6 @@
 				"rules": {
 					"correctness": {
 						"noUndeclaredDependencies": "off"
-					}
-				}
-			}
-		},
-		{
-			"includes": ["**/*.tsx"],
-			"linter": {
-				"rules": {
-					"correctness": {
-						"useImportExtensions": {
-							"level": "on",
-							"options": {
-								"extensionMappings": {
-									"ts": "js",
-									"tsx": "js",
-									"css": "css"
-								}
-							}
-						}
 					}
 				}
 			}

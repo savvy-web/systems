@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 // The loader is a genuine CommonJS file (rspack loaders load via require()); a
 // scoped createRequire loads it from this ESM test module without a bundler.
 const require = createRequire(import.meta.url);
-// biome-ignore lint/correctness/useImportExtensions: the real file extension is .cjs, not .js — the rule's fix would break resolution.
 const loader = require("../../public/loaders/webpack-ignore-dynamic-imports.cjs") as (source: string) => string;
 
 describe("webpack-ignore-dynamic-imports loader", () => {
