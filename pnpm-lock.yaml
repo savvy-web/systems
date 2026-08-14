@@ -91,7 +91,7 @@ catalogs:
       specifier: 2.5.0
       version: 2.5.0
     '@changesets/cli':
-      specifier: ^3.0.0-next.10
+      specifier: ^3.0.0
       version: 3.0.0
     '@commitlint/cli':
       specifier: ^21.2.1
@@ -553,16 +553,16 @@ importers:
   packages/silk-effects:
     dependencies:
       '@changesets/apply-release-plan':
-        specifier: ^8.0.0-next.9
+        specifier: ^8.0.0
         version: 8.0.0
       '@changesets/config':
-        specifier: ^4.0.0-next.6
+        specifier: ^4.0.0
         version: 4.0.0
       '@changesets/get-github-info':
         specifier: ^1.0.0
         version: 1.0.0
       '@changesets/get-release-plan':
-        specifier: ^5.0.0-next.9
+        specifier: ^5.0.0
         version: 5.0.0
       '@effected/commands':
         specifier: ^0.4.0
@@ -701,7 +701,7 @@ importers:
   packages/tsdown-plugins:
     dependencies:
       '@changesets/get-release-plan':
-        specifier: ^5.0.0-next.9
+        specifier: ^5.0.0
         version: 5.0.0
       '@effect/platform-node':
         specifier: catalog:effect

@@ -142,8 +142,8 @@ await build({
 							strategy: "lock",
 						},
 						"@changesets/cli": {
-							range: "^3.0.0-next.10",
-							peer: "^3.0.0-next.10",
+							range: "^3.0.0",
+							peer: "^3.0.0",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
@@ -186,8 +186,8 @@ await build({
 				silk: {
 					packages: {
 						"@changesets/cli": {
-							range: "^3.0.0-next.10",
-							peer: "^3.0.0-next.10",
+							range: "^3.0.0",
+							peer: "^3.0.0",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {

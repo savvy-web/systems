@@ -79,7 +79,7 @@ const RULE_NAMES = [
 ] as const;
 
 const DEFAULT_CONFIG = {
-	$schema: "https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json",
+	$schema: "https://unpkg.com/@changesets/config@4.0.0/schema.json",
 	changelog: [CHANGELOG_ENTRY, { repo: "owner/repo" }],
 	commit: false,
 	access: "restricted",

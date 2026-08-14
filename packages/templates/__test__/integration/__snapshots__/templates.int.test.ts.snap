@@ -20,7 +20,7 @@ exports[`template snapshots > changeset: with repo 1`] = `
 [
   {
     "content": "{
-	"$schema": "https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json",
+	"$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
 	"changelog": [
 		"@savvy-web/changesets/changelog",
 		{
@@ -510,7 +510,7 @@ autoInstallPeers: true
   },
   {
     "content": "{
-	"$schema": "https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json",
+	"$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
 	"changelog": "@savvy-web/changesets/changelog",
 	"commit": false,
 	"fixed": [],

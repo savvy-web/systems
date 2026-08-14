@@ -30,10 +30,10 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@changesets/apply-release-plan": "^8.0.0-next.9",
-		"@changesets/config": "^4.0.0-next.6",
+		"@changesets/apply-release-plan": "^8.0.0",
+		"@changesets/config": "^4.0.0",
 		"@changesets/get-github-info": "^1.0.0",
-		"@changesets/get-release-plan": "^5.0.0-next.9",
+		"@changesets/get-release-plan": "^5.0.0",
 		"@effected/commands": "^0.4.0",
 		"@effected/git": "^0.7.0",
 		"@effected/glob": "^0.3.0",
