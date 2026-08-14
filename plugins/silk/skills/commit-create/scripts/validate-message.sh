@@ -49,6 +49,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ${CLAUDE_PLUGIN_ROOT} is set by the host for every Bash-tool invocation of a
+# bundled skill script. The dirname-walk fallback is ONLY for standalone
+# invocation outside Claude Code (skill-scripts convention) — three levels up
+# from skills/commit-create/scripts is the plugin root.
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPT_DIR}/../../.." && pwd)}"
+# shellcheck source=../../../hooks/lib/resolve-cli-project-dir.sh
+. "${PLUGIN_ROOT}/hooks/lib/resolve-cli-project-dir.sh"
+
 usage() {
 	echo "Usage: validate-message.sh <path-to-candidate-commit-message-file>" >&2
 }
@@ -67,10 +77,14 @@ if [ ! -s "$MSG_FILE" ]; then
 	exit 1
 fi
 
-# Three-tier project root resolution (skill-scripts convention): the
-# namespaced session var, then the host-provided project dir, then a
-# standalone-invocation fallback.
-PROJECT_DIR="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}}"
+# Cwd-first project root resolution (see resolve-cli-project-dir.sh):
+# `git -C "$PWD" rev-parse --show-toplevel` is the primary authority so this
+# always resolves the CALLER's actual working tree — including a linked git
+# worktree, which returns its own root, never the main checkout.
+# SILK_PROJECT_DIR remains an explicit override; CLAUDE_PROJECT_DIR (the
+# session's primary-checkout pin) is a fallback only, never silently
+# preferred over a resolved cwd.
+PROJECT_DIR=$(resolve_cli_project_dir) || exit 1
 if [ ! -d "$PROJECT_DIR" ]; then
 	echo "ERROR: project dir not found: $PROJECT_DIR" >&2
 	exit 1

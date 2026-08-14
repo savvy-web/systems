@@ -26,6 +26,12 @@ setup() {
 	# attempt to resolve a runner; the real value never matters to the stub.
 	mkdir -p "${CLAUDE_PROJECT_DIR}/lib/configs"
 	: >"${CLAUDE_PROJECT_DIR}/lib/configs/commitlint.config.ts"
+	# resolve_cli_project_dir now consults `$PWD` FIRST (savvy-web/systems#474,
+	# #434, #418): a plain `make_project` tmp dir is not a git repo, so cwd
+	# resolution fails there and the script correctly falls back to
+	# CLAUDE_PROJECT_DIR -- but the bats process's OWN cwd is inside this very
+	# git checkout, and without this `cd` that real repo would win instead.
+	cd "$CLAUDE_PROJECT_DIR"
 }
 
 _stub_commitlint() {
@@ -166,4 +172,90 @@ _write_msg() {
 	run bash "$SCRIPT" "$msg"
 	[[ "$output" == *"Body: no body lines."* ]]
 	[[ "$output" == *"Footer: no trailer lines detected."* ]]
+}
+
+# --- resolve-cli-project-dir.sh coverage (savvy-web/systems#474, #434, #418) -
+#
+# validate-message.sh's own PROJECT_DIR resolution shares resolve_cli_project_dir
+# with commit.sh (see hooks/lib/resolve-cli-project-dir.sh). These tests cover
+# the shared resolution contract directly, using validate-message.sh because it
+# has no side effect (no git commit) to unwind between scenarios.
+
+# _make_git_project_with_config <name> — a REAL git repo (unlike make_project's
+# plain tmp dir) with a committed lib/configs/commitlint.config.ts, so
+# `git -C "$PWD" rev-parse --show-toplevel` resolves it and the runner
+# detection finds the marker file regardless of which candidate directory ends
+# up governing the resolution. Echoes the SYMLINK-RESOLVED (`pwd -P`) repo
+# path, not anywhere. macOS puts $TMPDIR under a `/var` that is itself a
+# symlink to `/private/var`, and `git rev-parse --show-toplevel` always
+# returns the canonicalized form — echoing the raw path here would make an
+# assertion that embeds this helper's return value disagree with the
+# resolver's own output for reasons that have nothing to do with the
+# resolution logic under test.
+_make_git_project_with_config() {
+	local name="$1"
+	local repo="${BATS_TEST_TMPDIR}/${name}"
+	mkdir -p "${repo}/lib/configs"
+	: >"${repo}/lib/configs/commitlint.config.ts"
+	git -C "$repo" init -q -b main
+	git -C "$repo" config user.email test@example.com
+	git -C "$repo" config user.name "Silk Test"
+	git -C "$repo" add -A
+	git -C "$repo" commit -q -m "chore: seed ${name}"
+	(cd "$repo" && pwd -P)
+}
+
+@test "cwd inside a worktree resolves to the worktree, ignoring a CLAUDE_PROJECT_DIR pinned to the primary checkout" {
+	_stub_commitlint 0
+	local main_repo wt
+	main_repo=$(_make_git_project_with_config primary)
+	wt="${BATS_TEST_TMPDIR}/wt"
+	git -C "$main_repo" worktree add -q -b feature "$wt" main
+	export CLAUDE_PROJECT_DIR="$main_repo"
+	cd "$wt"
+	local msg
+	msg=$(_write_msg $'chore: bump lockfile\n\nSigned-off-by: Silk Test <test@example.com>\n')
+	run bash "$SCRIPT" "$msg"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"PASS: commit message satisfies the @savvy-web/commitlint preset."* ]]
+	# Same repo, different worktree, is an EXPECTED disagreement -- silent,
+	# not a NOTICE and not a refusal.
+	[[ "$output" != *"NOTICE:"* ]]
+	[[ "$output" != *"ERROR: refusing"* ]]
+}
+
+@test "explicit SILK_PROJECT_DIR override wins over a differing cwd, with a NOTICE naming both paths" {
+	_stub_commitlint 0
+	local target decoy
+	target=$(_make_git_project_with_config target)
+	decoy=$(_make_git_project_with_config decoy)
+	unset CLAUDE_PROJECT_DIR
+	export SILK_PROJECT_DIR="$target"
+	cd "$decoy"
+	local msg
+	msg=$(_write_msg $'chore: bump lockfile\n\nSigned-off-by: Silk Test <test@example.com>\n')
+	run bash "$SCRIPT" "$msg"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"PASS: commit message satisfies the @savvy-web/commitlint preset."* ]]
+	[[ "$output" == *"NOTICE: SILK_PROJECT_DIR (${target}) overrides the resolved cwd toplevel (${decoy})."* ]]
+}
+
+@test "CLAUDE_PROJECT_DIR naming a genuinely different repo than cwd refuses, without SILK_PROJECT_DIR set" {
+	local claimed decoy
+	claimed=$(_make_git_project_with_config claimed)
+	decoy=$(_make_git_project_with_config decoy)
+	unset SILK_PROJECT_DIR
+	export CLAUDE_PROJECT_DIR="$claimed"
+	cd "$decoy"
+	local msg
+	msg=$(_write_msg $'chore: bump lockfile\n\nSigned-off-by: Silk Test <test@example.com>\n')
+	run bash "$SCRIPT" "$msg"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"ERROR: refusing to guess the target repository"* ]]
+	[[ "$output" == *"$decoy"* ]]
+	[[ "$output" == *"$claimed"* ]]
+	# The commitlint runner must never even be invoked -- resolution fails
+	# before the config-file check or the runner detection ever run.
+	[[ "$output" != *"PASS:"* ]]
+	[[ "$output" != *"FAIL:"* ]]
 }

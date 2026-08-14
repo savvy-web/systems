@@ -41,6 +41,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ${CLAUDE_PLUGIN_ROOT} is set by the host for every Bash-tool invocation of a
+# bundled skill script. The dirname-walk fallback is ONLY for standalone
+# invocation outside Claude Code (skill-scripts convention) — three levels up
+# from skills/commit-create/scripts is the plugin root.
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPT_DIR}/../../.." && pwd)}"
+# shellcheck source=../../../hooks/lib/resolve-cli-project-dir.sh
+. "${PLUGIN_ROOT}/hooks/lib/resolve-cli-project-dir.sh"
+
 usage() {
 	echo "Usage: commit.sh <path-to-message-file> [-- git commit args...]" >&2
 }
@@ -86,15 +94,15 @@ if ! bash "${SCRIPT_DIR}/validate-message.sh" "$MSG_FILE"; then
 	exit 1
 fi
 
-# Same three-tier project root resolution as validate-message.sh (see that
-# script's comment for the rationale). This `cd` is load-bearing: without
-# it, `git commit` below runs in WHATEVER directory this script happened to
-# be invoked from — not necessarily the repo the staged changes live in —
-# and can silently operate on the wrong git repository. validate-message.sh
-# resolving its OWN copy of PROJECT_DIR in its own subshell does not help
-# this script's `git commit`, which runs after that subshell has already
-# exited.
-PROJECT_DIR="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}}"
+# Same cwd-first project root resolution as validate-message.sh (see
+# resolve-cli-project-dir.sh for the full rationale). This `cd` is
+# load-bearing: without it, `git commit` below runs in WHATEVER directory
+# this script happened to be invoked from — not necessarily the repo the
+# staged changes live in — and can silently operate on the wrong git
+# repository. validate-message.sh resolving its OWN copy of PROJECT_DIR in
+# its own subshell does not help this script's `git commit`, which runs
+# after that subshell has already exited.
+PROJECT_DIR=$(resolve_cli_project_dir) || exit 1
 if [ ! -d "$PROJECT_DIR" ]; then
 	echo "ERROR: project dir not found: $PROJECT_DIR" >&2
 	exit 1
