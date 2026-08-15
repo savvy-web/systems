@@ -18,6 +18,7 @@
 		}
 	],
 	"commit": false,
+	"format": false,
 	"access": "restricted",
 	"baseBranch": "main",
 	"updateInternalDependencies": "patch",
