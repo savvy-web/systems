@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.26.1
+
+### Dependencies
+
+* | Dependency      | Type   | Action  | From           | To     |                                                                       |
+  | :-------------- | :----- | :------ | :------------- | :----- | --------------------------------------------------------------------- |
+  | @changesets/cli | config | updated | ^3.0.0-next.10 | ^3.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#483]: https://github.com/savvy-web/systems/pull/483
+
 ## 0.26.0
 
 ### Features

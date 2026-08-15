@@ -1,5 +1,23 @@
 # @savvy-web/cli
 
+## 2.5.3
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.7.1 | 5.7.2 |
+
+### Maintenance
+
+* `savvy changeset init` now generates `.changeset/config.json` pointing at the stable `@changesets/config@4.0.0` schema instead of the `4.0.0-next.6` prerelease [#483][#483]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#483]: https://github.com/savvy-web/systems/pull/483
+
 ## 2.5.2
 
 ### Dependencies

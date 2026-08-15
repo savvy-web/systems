@@ -1,5 +1,21 @@
 # @savvy-web/github-action-builder
 
+## 2.2.5
+
+### Bug Fixes
+
+* The `nativeDynamicImports` loader no longer rewrites `import(` occurrences inside comments, string literals, or template-literal text. Previously a doc comment merely mentioning `import(...)` had the `webpackIgnore` block comment injected into it, and the injected `*/` closed the enclosing comment early — corrupting the module with a syntax error reported against an unrelated line.
+
+  * Both loader passes are now gated by a lexical scan that protects line comments, block comments, string literals, template-literal text, and regex literals
+  * An empty-argument `import()` — the prose form doc comments use — is also excluded, since it is never a resolvable dynamic import
+  * Real dynamic imports, including inside `${ ... }` template interpolations, are still rewritten [#479][#479]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#479]: https://github.com/savvy-web/systems/pull/479
+
 ## 2.2.4
 
 ### Dependencies
