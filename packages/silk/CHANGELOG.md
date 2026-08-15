@@ -1,5 +1,23 @@
 # @savvy-web/silk
 
+## 3.7.2
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.5.2 | 2.5.3 |
+| @savvy-web/mcp       | dependency | updated | 2.3.2 | 2.3.3 |
+
+* | Dependency      | Type       | Action  | From           | To     |                                                                       |
+  | :-------------- | :--------- | :------ | :------------- | :----- | --------------------------------------------------------------------- |
+  | @changesets/cli | dependency | updated | ^3.0.0-next.10 | ^3.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#483]: https://github.com/savvy-web/systems/pull/483
+
 ## 3.7.1
 
 ### Dependencies

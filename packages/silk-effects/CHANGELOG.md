@@ -1,5 +1,19 @@
 # @savvy-web/silk-effects
 
+## 5.7.2
+
+### Dependencies
+
+* | Dependency                     | Type       | Action  | From          | To     |                                                                       |
+  | :----------------------------- | :--------- | :------ | :------------ | :----- | --------------------------------------------------------------------- |
+  | @changesets/apply-release-plan | dependency | updated | ^8.0.0-next.9 | ^8.0.0 |                                                                       |
+  | @changesets/config             | dependency | updated | ^4.0.0-next.6 | ^4.0.0 |                                                                       |
+  | @changesets/get-release-plan   | dependency | updated | ^5.0.0-next.9 | ^5.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#483]: https://github.com/savvy-web/systems/pull/483
+
 ## 5.7.1
 
 ### Dependencies
