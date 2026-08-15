@@ -1,5 +1,23 @@
 # @savvy-web/cli
 
+## 2.5.4
+
+### Bug Fixes
+
+* `savvy lint check` now probes `tsc` before `tsgo` when reporting TypeScript availability, matching the lint-staged handler's tsc-first compiler preference [#477][#477]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.7.2 | 5.8.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#477]: https://github.com/savvy-web/systems/pull/477
+
 ## 2.5.3
 
 ### Dependencies

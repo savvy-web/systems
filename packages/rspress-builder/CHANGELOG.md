@@ -1,5 +1,17 @@
 # @savvy-web/rspress-builder
 
+## 1.1.12
+
+### Maintenance
+
+* Removed a stale Biome suppression comment from the `./env` ambient declarations (`env.d.ts`) that no longer suppressed anything [#477][#477]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#477]: https://github.com/savvy-web/systems/pull/477
+
 ## 1.1.11
 
 ### Dependencies

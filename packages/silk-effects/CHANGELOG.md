@@ -1,5 +1,35 @@
 # @savvy-web/silk-effects
 
+## 5.8.0
+
+### Features
+
+* ### PrBody namespace — the shared PR-body contract
+
+  New `PrBody` namespace owning the `silk-release` marker contract dogfooded in `silk-release-action`, so independent writers of a managed PR description share one implementation. All operations are pure and total, and output is byte-compatible with the action's `pr-body.ts`, pinned by fixtures generated from the original implementation.
+
+  * `Markers` — the frozen `silk-release` marker constants and the `proposed-squash-commit` fence language; the single source of truth for the marker grammar
+  * `Region` — the generic marker-pair region grammar: `start`, `end`, `read`, `strip`, `upsert`
+  * `ManagedPrBody` — `build`, `upsert`, `extractSummary`, `extractReferences`: the managed-body renderer with summary and reference carry-through and owned-id subtraction
+  * `ClosingReferences` — one owner for the two closing-reference spellings: the comma-joined commitlint trailer and the bare one-per-line form GitHub's linker reads
+  * `LinkedIssueRef` — the issue shape with `isClosed`, the case-insensitive closedness test that classifies REST `closed` and GraphQL `CLOSED` alike
+  * `OwnedAttribute` — render and parse for the references marker's owned-ids attribute
+  * `PrBodyDiagnostic` — advisory `scan` reporting unpaired or duplicated markers [#488][#488]
+
+### Bug Fixes
+
+* The lint-staged type-check handler now prefers `tsc` over `tsgo` when detecting a TypeScript compiler, so the pre-commit gate runs the same compiler as a repo's own `types:check` task. Previously, any repo with `@typescript/native-preview` anywhere in its dependency graph — even as a hoisted or transitive dep — silently got `tsgo` for its commit gate with no way to opt out.
+
+  * `Lint.TypeScript.detectCompiler()` checks `tsc` first and falls back to `tsgo` [#477][#477]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#477]: https://github.com/savvy-web/systems/pull/477
+
+[#488]: https://github.com/savvy-web/systems/pull/488
+
 ## 5.7.2
 
 ### Dependencies
