@@ -75,7 +75,7 @@ These Biome and TypeScript rules are enforced at pre-commit and WILL BLOCK a
 commit if violated. Apply them from the first edit — do not defer to the hook.
 
 Biome lint rules (all Error-level):
-- useImportExtensions: All relative imports MUST use .js extensions (ESM requirement)
+- useImportExtensions: relative imports MUST carry an explicit extension — TS-family sources use their emitted form (.ts/.tsx -> .js, .mts -> .mjs, .cts -> .cjs); asset imports (.json, .css) keep their real extension
 - useImportType: Type-only imports MUST use import type { Foo }, not import { type Foo }
 - useNodejsImportProtocol: Node.js built-ins MUST use node: protocol (node:fs, node:path)
 - noUnusedVariables: Unused variables are an error (rest siblings excepted)
