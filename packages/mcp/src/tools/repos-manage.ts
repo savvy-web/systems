@@ -340,7 +340,7 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 			const lines = [
 				`# repos deregister — ${mdInline(r.section)}`,
 				``,
-				`Removed the stale \`submodule.${r.section}\` section from the superproject's LOCAL git config. Keys cleared:`,
+				`Removed the stale ${mdInline(`submodule.${r.section}`)} section from the superproject's LOCAL git config. Keys cleared:`,
 				``,
 				...r.removedKeys.map((key) => `- ${mdInline(key)}`),
 				``,

@@ -322,6 +322,24 @@ layer(TestLayer)("reposManage handler — pin markdown transcript", (it) => {
 		}),
 	);
 
+	it.effect("keeps a backtick-carrying section token inert in the deregister transcript", () =>
+		Effect.gen(function* () {
+			// The stub echoes the section back, so a hostile registration name
+			// flows into both the heading and the removed-section line; the full
+			// `submodule.<section>` token must render inside a longer backtick
+			// run rather than terminating the span the line wraps it in.
+			const data = yield* reposManage({ action: "deregister", section: "`## heading" }, "/repo");
+			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+			// No space padding here, unlike the note-transcript case: the full
+			// token starts with "submodule.", not a backtick, so mdInline only
+			// lengthens the delimiter run.
+			expect(md).toContain("``submodule.`## heading``");
+			for (const line of md.split("\n")) {
+				expect(line.startsWith("## heading")).toBe(false);
+			}
+		}),
+	);
+
 	it.effect("keeps a heading-injection note payload inert in the note transcript", () =>
 		Effect.gen(function* () {
 			const data = yield* reposManage({ action: "note", name: "`## heading", op: "add", note: "x" }, "/repo");
