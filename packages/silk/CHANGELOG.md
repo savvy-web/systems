@@ -1,5 +1,30 @@
 # @savvy-web/silk
 
+## 3.7.3
+
+### Bug Fixes
+
+* Stops the Biome preset's `useImportExtensions` autofix from rewriting correct `.json` (and other asset) imports to `.js`, which broke module resolution. The preset now uses `extensionMappings` (`ts`/`tsx` to `js`, `mts` to `mjs`, `cts` to `cjs`) instead of the legacy `forceJsExtensions: true`, so unmapped extensions like `json` and `css` keep the imported file's real extension. The now-redundant `.tsx` override that partially worked around the same problem is removed.
+
+  * JSON asset imports (including `with { type: "json" }`) are no longer flagged or rewritten
+  * Missing-extension TypeScript imports still receive the correct emitted `.js`/`.mjs`/`.cjs` extension
+  * Existing `biome-ignore lint/correctness/useImportExtensions` suppressions for asset imports become unnecessary (and will surface as unused-suppression warnings)
+  * `.tsx` files are now linted at the base `error` severity: the removed override had pinned them to `on`, this rule's default `warning` level [#478][#478]
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.5.3 | 2.5.4 |
+| @savvy-web/mcp       | dependency | updated | 2.3.3 | 2.3.4 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#478]: https://github.com/savvy-web/systems/pull/478
+
 ## 3.7.2
 
 ### Dependencies
