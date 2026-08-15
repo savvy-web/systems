@@ -131,8 +131,12 @@ export interface ReposManagerShape {
 	 *
 	 * `section` is the registration name exactly as the drift report states it
 	 * (e.g. `.repos/effect-old`) — the `submodule.` prefix is implied, never
-	 * passed. Refuses (typed `ReposConfigError`) when the section is the
-	 * canonical registration of a live manifest entry: reconciling a LIVE
+	 * passed. Refuses (typed `ReposConfigError`): a section outside
+	 * `.repos/` (this machinery does not own it — it may be a real submodule
+	 * of the host repo), the canonical registration of a live manifest entry,
+	 * and a registration whose module gitdir still backs a live entry under a
+	 * DIVERGED name (the same gitdir attribution `ReposDrift` uses — that
+	 * state's remedy is a re-vendor, not a deregister). Reconciling a LIVE
 	 * registration is `sync`'s job and unvendoring is `remove`'s, so
 	 * deregistration only ever touches state nothing else owns. Touches only
 	 * the superproject's local config — no vendored worktree — so unlike the
@@ -1535,6 +1539,23 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 
 			const deregister = (root: string, section: string) =>
 				Effect.gen(function* () {
+					// Scope check FIRST, before any read: this op exists for the
+					// vendored-repos domain, and a host repo can carry legitimate
+					// submodules of its own. A section outside `.repos/` is one this
+					// machinery does not own — clearing it would unregister a real
+					// submodule — so it is refused outright rather than removed,
+					// mirroring the drift check, which only ever reports
+					// `.repos/`-prefixed orphans.
+					if (!section.startsWith(`${REPOS_DIR}/`) || section === `${REPOS_DIR}/`) {
+						return yield* Effect.fail(
+							new ReposConfigError({
+								path: MANIFEST_PATH,
+								reason: `"${section}" is not a ${REPOS_DIR}/ registration — deregister only clears stale vendored-repo sections; clear an unrelated submodule registration with git directly`,
+								kind: "invalid",
+							}),
+						);
+					}
+
 					// "No manifest yet" reads as empty rather than failing: a stale
 					// registration can outlive the manifest itself (the last entry
 					// unvendored, or the file deleted), and that is precisely a state
@@ -1559,6 +1580,34 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								new ReposConfigError({
 									path: MANIFEST_PATH,
 									reason: `"${section}" is the canonical registration of manifest entry "${name}" — deregister clears STALE registrations only; use remove to unvendor, or sync to reconcile`,
+									kind: "invalid",
+								}),
+							);
+						}
+					}
+
+					// A live registration can also hide under a NONCANONICAL name: a
+					// checkout whose module gitdir was created under an older
+					// registration (the per-entry `localRegistrationDivergence`
+					// shape). The gitdir path relative to `.git/modules` IS the name
+					// the checkout is really registered under — the same attribution
+					// `ReposDrift` uses to EXCLUDE such sections from its orphan
+					// report (its remedy there is a re-vendor, because git never
+					// renames the gitdir). Removing that section would deregister a
+					// healthy checkout, so it is refused with the drift report's own
+					// remedy. The name-based fallback `resolveModuleDir` degrades to
+					// equals the canonical path, which the loop above already
+					// refused — so this loop can only refuse a genuinely diverged
+					// live registration, never double-report the canonical case.
+					const modulesRoot = path.join(root, ".git", "modules");
+					for (const name of Object.keys(manifest.repos)) {
+						const moduleDir = yield* resolveModuleDir(fs, path, root, name);
+						const relativeToModules = path.relative(modulesRoot, moduleDir);
+						if (relativeToModules === section) {
+							return yield* Effect.fail(
+								new ReposConfigError({
+									path: MANIFEST_PATH,
+									reason: `"${section}" is the registration backing manifest entry "${name}" (its module gitdir lives there under a diverged name) — deregister clears STALE registrations only; re-vendor the entry instead (remove, then add with the orientation the remove result hands back)`,
 									kind: "invalid",
 								}),
 							);

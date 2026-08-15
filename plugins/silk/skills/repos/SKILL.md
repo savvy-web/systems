@@ -345,8 +345,9 @@ read them via the tools below rather than trusting recall for field names.
     `git config --remove-section submodule.<name>`, `--unset`, `--unset-all`.
     The PREFERRED route is `savvy repos deregister <name>` (or the
     `repos_manage` `deregister` action), which performs the removal typed and
-    refuses a live registration; the raw Bash allowance remains as a
-    fallback. Narrow on purpose: removal verbs only, local config
+    refuses a section still backing a live manifest entry — canonically named
+    or gitdir-diverged — as well as any section outside `.repos/`; the raw
+    Bash allowance remains as a fallback. Narrow on purpose: removal verbs only, local config
     only (an `-f .gitmodules` write denies — that file is tracked host
     content), and every `.repos/`-mentioning token must be a `submodule.<name>`
     key rather than a path.

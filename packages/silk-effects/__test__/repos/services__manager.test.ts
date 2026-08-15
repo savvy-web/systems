@@ -3888,6 +3888,57 @@ describe("ReposManager.deregister — real git", REAL_GIT_TIMEOUT, () => {
 		}),
 	);
 
+	it.effect("refuses a section outside .repos/ — a host repo's own submodule registration is not ours to clear", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// A registration this machinery does NOT own: a legitimate submodule
+			// of the host repo living outside the vendored dir.
+			git(host, "config", "submodule.vendor/other.url", "https://example.com/other.git");
+
+			const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+			const error = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, "vendor/other");
+			}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("not a .repos/ registration");
+			// The refusal happened before any mutation: the section survives.
+			expect(git(host, "config", "--get", "submodule.vendor/other.url").trim()).toBe("https://example.com/other.git");
+		}),
+	);
+
+	it.effect("refuses a live registration hiding under a diverged name, via the module-gitdir attribution", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// The per-entry localRegistrationDivergence shape: manifest entry
+			// "spec" whose checkout's module gitdir lives at
+			// `.git/modules/.repos/old` — the name it was originally registered
+			// under. `submodule..repos/old.*` is therefore the LIVE checkout's
+			// real registration, not an orphan, and drift's own remedy for it is
+			// a re-vendor; deregistering it would unregister a healthy checkout.
+			mkdirSync(join(host, ".git", "modules", ".repos", "old"), { recursive: true });
+			mkdirSync(join(host, ".repos", "spec"), { recursive: true });
+			writeFileSync(join(host, ".repos", "spec", ".git"), "gitdir: ../../.git/modules/.repos/old\n");
+			git(host, "config", "submodule..repos/old.url", "https://example.com/spec.git");
+
+			const managerLayer = makeManagerLayer(
+				Effect.succeed({
+					repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },
+				} as ReposManifestFile),
+			);
+			const error = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, ".repos/old");
+			}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("diverged name");
+			// The live registration survives.
+			expect(git(host, "config", "--get", "submodule..repos/old.url").trim()).toBe("https://example.com/spec.git");
+		}),
+	);
+
 	it.effect("fails typed, not with a loud git exit, when the section is not registered at all", () =>
 		Effect.gen(function* () {
 			const host = makeHost();
