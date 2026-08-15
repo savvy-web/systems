@@ -34,6 +34,7 @@ describe("Repos namespace (src/repos/index.ts)", () => {
 		expect(SilkEffects.Repos.ReposPinResult).toBeDefined();
 		expect(SilkEffects.Repos.ReposAddResult).toBeDefined();
 		expect(SilkEffects.Repos.ReposNoteResult).toBeDefined();
+		expect(SilkEffects.Repos.ReposDeregisterResult).toBeDefined();
 	});
 
 	it("exports tagged errors", () => {

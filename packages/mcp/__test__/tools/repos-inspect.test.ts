@@ -52,6 +52,7 @@ const ReposManagerTest = Layer.succeed(
 		remove: () => Effect.die("not stubbed"),
 		rename: () => Effect.die("not stubbed"),
 		restore: () => Effect.die("not stubbed"),
+		deregister: () => Effect.die("not stubbed"),
 	}),
 );
 

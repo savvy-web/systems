@@ -2,6 +2,7 @@ import type { Repos } from "@savvy-web/silk-effects";
 import { Command } from "effect/unstable/cli";
 
 import { addCommand } from "./commands/add.js";
+import { deregisterCommand } from "./commands/deregister.js";
 import { noteCommand } from "./commands/note.js";
 import { pinCommand } from "./commands/pin.js";
 import { removeCommand } from "./commands/remove.js";
@@ -21,6 +22,7 @@ const _reposCommand = Command.make("repos").pipe(
 		removeCommand,
 		renameCommand,
 		restoreCommand,
+		deregisterCommand,
 	]),
 	Command.withDescription("Vendored reference repos under .repos/"),
 );
@@ -43,8 +45,8 @@ const _reposCommand = Command.make("repos").pipe(
  * `status --drift` runs `Repos.ReposDrift.check` after the status check.
  *
  * The error channel is `Repos.GitSubmoduleError` alone: `add`/`pin`/`note`/
- * `remove`/`rename`/`restore`/`sync` each `catchTag` every error their
- * underlying `ReposManager` method can produce — `ReposConfigError`,
+ * `remove`/`rename`/`restore`/`sync`/`deregister` each `catchTag` every error
+ * their underlying `ReposManager` method can produce — `ReposConfigError`,
  * `GitSubmoduleError`, `RepoNotFoundError`, `NoteNotFoundError`, and (for the
  * six ops that unlock/re-lock the vendored tree around a git mutation)
  * `ReposLockdownError` — down to a logged message and a non-zero exit code,
@@ -63,6 +65,7 @@ export const reposCommand: Command.Command<
 /* v8 ignore stop */
 
 export { runReposAdd } from "./commands/add.js";
+export { runReposDeregister } from "./commands/deregister.js";
 export { runReposNote } from "./commands/note.js";
 export { runReposPin } from "./commands/pin.js";
 export { runReposRemove } from "./commands/remove.js";

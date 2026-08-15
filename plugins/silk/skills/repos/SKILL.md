@@ -205,8 +205,10 @@ read them via the tools below rather than trusting recall for field names.
        config under the canonical name. If you chose to leave the header
        alone, these must name the ACTUAL section instead, or they register
        nothing useful.
-     - Finally `git config --remove-section submodule..repos/<old>` to clear
-       the stale registration (sanctioned — see the allowances above).
+     - Finally `savvy repos deregister .repos/<old>` to clear the stale
+       registration (or the `repos_manage` `deregister` action; the raw
+       `git config --remove-section` route stays sanctioned as a fallback —
+       see the allowances above).
   4. Finish with `savvy repos sync`, which re-asserts the boundary markers
      and re-locks the tree, and `savvy repos status --drift` to confirm
      clean. A crash also skips the relock finalizer, so the tree is left
@@ -242,7 +244,9 @@ read them via the tools below rather than trusting recall for field names.
   renames a directory under `.git/modules` and so `git submodule sync` + `init`
   would leave the check failing identically forever; keyed on an orphaned
   config section with no manifest entry, it is cleared by
-  `git config --remove-section submodule.<name>`), and
+  `savvy repos deregister <name>` — or the `repos_manage` `deregister`
+  action, which refuses a section still backing a live manifest entry and
+  stages nothing, since local config is unversioned), and
   `nestedSubmoduleDivergence` (a vendored repo's OWN submodule is
   materialized and off its recorded commit — see below). `status --drift`
   runs the plain status report first and the drift check after; either
@@ -339,9 +343,10 @@ read them via the tools below rather than trusting recall for field names.
     and every non-removal `git config` write still deny.
   - **Dropping a stale submodule registration** is sanctioned —
     `git config --remove-section submodule.<name>`, `--unset`, `--unset-all`.
-    This is the remedy `drift` names for an orphaned
-    `localRegistrationDivergence`, and no tool performs it, so it has to be
-    reachable from Bash. Narrow on purpose: removal verbs only, local config
+    The PREFERRED route is `savvy repos deregister <name>` (or the
+    `repos_manage` `deregister` action), which performs the removal typed and
+    refuses a live registration; the raw Bash allowance remains as a
+    fallback. Narrow on purpose: removal verbs only, local config
     only (an `-f .gitmodules` write denies — that file is tracked host
     content), and every `.repos/`-mentioning token must be a `submodule.<name>`
     key rather than a path.

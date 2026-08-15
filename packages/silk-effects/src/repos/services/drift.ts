@@ -17,8 +17,14 @@ import { resolveModuleDir } from "./lockdown.js";
  * `submodule.` prefix and the final `.<property>` segment instead; everything
  * between is the name, dots and all. Returns `undefined` for any key that is
  * not a `submodule.*.*` key.
+ *
+ * Shared with `ReposManager.deregister`, which must attribute config keys to
+ * a registration name the exact same way this check does — two parsers here
+ * would let the report and the remedy disagree about what a section is named.
+ *
+ * @internal
  */
-const submoduleNameFromKey = (key: string): string | undefined => {
+export const submoduleNameFromKey = (key: string): string | undefined => {
 	if (!key.startsWith("submodule.")) {
 		return undefined;
 	}
@@ -181,7 +187,7 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 									// manifest entry left to re-register, so the only fix is to
 									// drop the section outright. Say that, or the report names a
 									// problem whose stated remedy is for a different one.
-									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry — a stale registration left behind by a rename or an unvendoring; clear it with \`git config --remove-section submodule.${registeredName}\``,
+									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry — a stale registration left behind by a rename or an unvendoring; clear it with \`savvy repos deregister ${registeredName}\``,
 									observedValue: registeredName,
 								}),
 							);

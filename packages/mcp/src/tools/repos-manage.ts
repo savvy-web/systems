@@ -1,7 +1,7 @@
 /**
  * The `repos_manage` MCP tool: one action-discriminated mutating tool
- * covering `sync`, `pin`, `add`, `note`, `remove`, `rename`, and `restore`
- * against the vendored `.repos/` submodules. The wire schema is flat (no
+ * covering `sync`, `pin`, `add`, `note`, `remove`, `rename`, `restore`, and
+ * `deregister` against the vendored `.repos/` submodules. The wire schema is flat (no
  * `oneOf`); the handler maps it into an internal `Schema.TaggedStruct`
  * request union that names the missing field per action on decode failure.
  * Mutating — no `readOnlyHint`.
@@ -81,6 +81,15 @@ const RestoreRequest = Schema.TaggedStruct("restore", {
 	names: Schema.optional(Schema.Array(Schema.String)),
 });
 
+/**
+ * `deregister` requires `section` — the stale registration name exactly as the
+ * drift report states it (e.g. `.repos/old-name`); the `submodule.` prefix is
+ * implied, never passed.
+ */
+const DeregisterRequest = Schema.TaggedStruct("deregister", {
+	section: Schema.String,
+});
+
 /** Internal tagged-union request the flat wire args decode into. */
 const ReposManageRequest = Schema.Union([
 	SyncRequest,
@@ -90,6 +99,7 @@ const ReposManageRequest = Schema.Union([
 	RemoveRequest,
 	RenameRequest,
 	RestoreRequest,
+	DeregisterRequest,
 ]);
 
 /** `sync` result variant. */
@@ -134,6 +144,12 @@ export const ReposManageRestoreResult = Schema.Struct({
 	result: Repos.ReposRestoreResult,
 }).annotate({ identifier: "ReposManageRestoreResult" });
 
+/** `deregister` result variant. */
+export const ReposManageDeregisterResult = Schema.Struct({
+	action: Schema.Literal("deregister"),
+	result: Repos.ReposDeregisterResult,
+}).annotate({ identifier: "ReposManageDeregisterResult" });
+
 /** The `repos_manage` tool result — a discriminated union keyed by `action`. */
 export const ReposManageResult = Schema.Union([
 	ReposManageSyncResult,
@@ -143,10 +159,11 @@ export const ReposManageResult = Schema.Union([
 	ReposManageRemoveResult,
 	ReposManageRenameResult,
 	ReposManageRestoreResult,
+	ReposManageDeregisterResult,
 ]).annotate({
 	identifier: "ReposManageResult",
 	title: "repos_manage result",
-	description: "Result of a mutating repos action: sync, pin, add, note, remove, rename, or restore.",
+	description: "Result of a mutating repos action: sync, pin, add, note, remove, rename, restore, or deregister.",
 });
 
 export type ReposManageResultType = Schema.Schema.Type<typeof ReposManageResult>;
@@ -318,6 +335,19 @@ const renderMarkdown = (data: ReposManageResultType): string => {
 			}
 			return lines.join("\n");
 		}
+		case "deregister": {
+			const r = data.result;
+			const lines = [
+				`# repos deregister — ${mdInline(r.section)}`,
+				``,
+				`Removed the stale \`submodule.${r.section}\` section from the superproject's LOCAL git config. Keys cleared:`,
+				``,
+				...r.removedKeys.map((key) => `- ${mdInline(key)}`),
+				``,
+				`Local config only — nothing is staged and there is nothing to commit.`,
+			];
+			return lines.join("\n");
+		}
 	}
 };
 
@@ -331,7 +361,7 @@ export const ReposManageAsMarkdown = ReposManageResult.pipe(
 
 /** Flat wire arguments for the {@link reposManage} handler. */
 export interface ReposManageArgs {
-	readonly action: "sync" | "pin" | "add" | "note" | "remove" | "rename" | "restore";
+	readonly action: "sync" | "pin" | "add" | "note" | "remove" | "rename" | "restore" | "deregister";
 	readonly name?: string;
 	readonly newName?: string;
 	readonly ref?: string;
@@ -345,6 +375,8 @@ export interface ReposManageArgs {
 	readonly id?: string;
 	readonly into?: "layout" | "startHere";
 	readonly names?: ReadonlyArray<string>;
+	/** `deregister` only: the stale registration name as the drift report states it (e.g. `.repos/old-name`). */
+	readonly section?: string;
 	readonly cwd?: string;
 }
 
@@ -416,6 +448,10 @@ export const reposManage = (
 			case "restore": {
 				const result = yield* manager.restore(root, request.names);
 				return { action: "restore", result } as ReposManageResultType;
+			}
+			case "deregister": {
+				const result = yield* manager.deregister(root, request.section);
+				return { action: "deregister", result } as ReposManageResultType;
 			}
 		}
 	});
