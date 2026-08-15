@@ -12,7 +12,22 @@
 
 set -euo pipefail
 
-PROJECT_DIR="${SILK_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ${CLAUDE_PLUGIN_ROOT} is set by the host for every Bash-tool invocation of a
+# bundled skill script. The dirname-walk fallback is ONLY for standalone
+# invocation outside Claude Code (skill-scripts convention) — three levels up
+# from skills/changeset/scripts is the plugin root.
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPT_DIR}/../../.." && pwd)}"
+# shellcheck source=../../../hooks/lib/resolve-cli-project-dir.sh
+. "${PLUGIN_ROOT}/hooks/lib/resolve-cli-project-dir.sh"
+
+# Cwd-first project root resolution (see resolve-cli-project-dir.sh):
+# `git -C "$PWD" rev-parse --show-toplevel` is the primary authority, so a
+# worktree-isolated invocation resolves its OWN worktree, not the main
+# checkout SILK_PROJECT_DIR/CLAUDE_PROJECT_DIR are pinned to
+# (savvy-web/systems#474, #434, #418).
+PROJECT_DIR=$(resolve_cli_project_dir) || exit 1
 if [ ! -d "$PROJECT_DIR" ]; then
 	echo "ERROR: project dir not found: $PROJECT_DIR" >&2
 	exit 1

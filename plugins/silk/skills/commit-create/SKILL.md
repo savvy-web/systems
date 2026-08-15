@@ -91,6 +91,48 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh" <message-fil
 and the commit-msg hook for the actual commit. If a hook seems wrong, fix
 the hook; do not bypass it.
 
+### Which repository the commit lands in
+
+`commit.sh` and `validate-message.sh` resolve the target repository the same
+way, and the current working directory is the primary authority:
+
+1. **Your cwd, if it is inside a git repository, wins.** They run
+   `git -C "$PWD" rev-parse --show-toplevel` first. Inside a linked git
+   worktree (e.g. `.claude/worktrees/agent-*/`) this correctly resolves to
+   the WORKTREE's own root, never the primary checkout — that is where the
+   commit belongs.
+2. **`CLAUDE_PROJECT_DIR` is a fallback, not an override.** It is the host's
+   pin to the session's primary checkout and is expected to differ from cwd
+   whenever you are working in a worktree — that disagreement is silently
+   ignored and cwd still wins. If `CLAUDE_PROJECT_DIR` instead names a
+   genuinely different repository (no shared git history with cwd — a
+   cross-repo agent session, or a stale value left over from earlier,
+   unrelated work) the scripts refuse rather than guess, printing an error
+   that names both paths. Fix this by `cd`-ing to the repo you mean to
+   operate on, or by setting `SILK_PROJECT_DIR` (below).
+3. **`SILK_PROJECT_DIR` is an explicit, deliberate override.** Set it to
+   force resolution to a specific repository regardless of cwd — the
+   documented lever for a cross-repo agent session that genuinely needs to
+   target a repo other than the one it is standing in. It always wins over
+   cwd, and a one-line `NOTICE` goes to stderr whenever it overrides a
+   differing cwd, so the override is never silent:
+
+   ```bash
+   SILK_PROJECT_DIR=/path/to/intended/repo bash "${CLAUDE_PLUGIN_ROOT}/skills/commit-create/scripts/commit.sh" <message-file>
+   ```
+
+4. Outside any git repository entirely (cwd resolution itself fails), the
+   fallback chain is `SILK_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → the literal
+   cwd.
+
+This is the fix for a family of reproduced bugs — savvy-web/systems issues
+474, 434 and 418 — where an inherited, stale
+`SILK_PROJECT_DIR`/`CLAUDE_PROJECT_DIR` silently outranked the actual working
+tree, including a near-miss where one agent's commit almost landed on another
+agent's staged tree. If `commit.sh` ever reports the wrong repository, that
+is a bug in the resolution above, not something to work around by exporting
+an env var and moving on without understanding why it was necessary.
+
 If the commit is being made through an MCP tool (GitKraken) or as a `gh pr
 create`/`gh pr edit` body instead of a Bash `git commit` — where there is no
 wrapper script to call — the same discipline still applies without the
