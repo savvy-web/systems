@@ -1,5 +1,28 @@
 # @savvy-web/tsdown-plugins
 
+## 2.4.10
+
+### Bug Fixes
+
+* Scopes the API Extractor pass to its own derived tsconfig instead of reusing the compile tsconfig verbatim. The compile config's `src/**` include could pull raw TypeScript sources into the extractor's analysis Program — a hand-authored `src/*.d.ts` shim with a self-name import resolved through the source manifest's `exports` — producing an unsuppressable `ae-wrong-input-file-type` warning in `issues.json` on every build.
+
+  * Each extractor run now receives a temp tsconfig that extends the resolved compile config by absolute path but limits inputs to the entry `.d.ts` (`files`) plus `types/*.d.ts` legacy typings
+  * Packages that carry ambient declaration shims under `src/` can now reach a zero-warning `issues.json` [#481][#481]
+
+### Dependencies
+
+* | Dependency                   | Type       | Action  | From          | To     |                                                                       |
+  | :--------------------------- | :--------- | :------ | :------------ | :----- | --------------------------------------------------------------------- |
+  | @changesets/get-release-plan | dependency | updated | ^5.0.0-next.9 | ^5.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#481]: https://github.com/savvy-web/systems/pull/481
+
+[#483]: https://github.com/savvy-web/systems/pull/483
+
 ## 2.4.9
 
 ### Dependencies

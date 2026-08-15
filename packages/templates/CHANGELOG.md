@@ -1,5 +1,17 @@
 # @savvy-web/templates
 
+## 1.0.15
+
+### Maintenance
+
+* Changeset config templates now reference the stable `@changesets/config@4.0.0` schema instead of the `4.0.0-next.6` prerelease [#483][#483]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#483]: https://github.com/savvy-web/systems/pull/483
+
 ## 1.0.14
 
 ### Dependencies
