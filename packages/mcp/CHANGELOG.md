@@ -1,5 +1,25 @@
 # @savvy-web/mcp
 
+## 2.4.0
+
+### Features
+
+* ### repos\_manage action deregister
+
+  `repos_manage` gains `action: "deregister"`, clearing a stale `submodule.<section>` registration from the superproject's local git config — the phantom entry `repos_inspect` drift reports as an orphan `localRegistrationDivergence`. It takes `section` (the registration name exactly as the drift report states it), refuses a section still backing a live manifest entry, and its markdown lists the config keys the removed section carried and says outright that nothing is staged, since local config is unversioned. [#494][#494]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.8.1 | 5.9.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#494]: https://github.com/savvy-web/systems/pull/494
+
 ## 2.3.5
 
 ### Dependencies

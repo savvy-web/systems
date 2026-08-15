@@ -1,5 +1,25 @@
 # @savvy-web/cli
 
+## 2.6.0
+
+### Features
+
+* ### savvy repos deregister
+
+  New `savvy repos deregister <section>` subcommand clearing a stale `submodule.<section>` registration from the local git config — the orphan case `savvy repos status --drift` reports, whose stated remedy previously required a raw `git config --remove-section`. Every failure is real (exit 1): a section still backing a live manifest entry is refused, and an unregistered section fails typed as nothing-to-deregister. Nothing is staged afterwards, since the local config is unversioned. [#494][#494]
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 5.8.1 | 5.9.0 |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#494]: https://github.com/savvy-web/systems/pull/494
+
 ## 2.5.5
 
 ### Dependencies
