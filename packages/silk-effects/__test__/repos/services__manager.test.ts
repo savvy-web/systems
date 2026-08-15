@@ -3939,6 +3939,103 @@ describe("ReposManager.deregister — real git", REAL_GIT_TIMEOUT, () => {
 		}),
 	);
 
+	it.effect(
+		"removes the orphaned old-named twin when the entry's canonical section coexists — the crashed-rename recovery flow",
+		() =>
+			Effect.gen(function* () {
+				const host = makeHost();
+				// The end state of a crashed-rename recovery: entry "spec" has been
+				// re-registered under its CANONICAL section (submodule sync + init),
+				// but its module gitdir still lives at `.git/modules/.repos/old`
+				// (git never renames it) and the stale old-named section is still
+				// registered alongside. The gitdir matches the old name, yet the
+				// canonical registration proves the old section is a genuine orphan
+				// — deregistering it is the recovery's own final step and must
+				// succeed, not be refused.
+				mkdirSync(join(host, ".git", "modules", ".repos", "old"), { recursive: true });
+				mkdirSync(join(host, ".repos", "spec"), { recursive: true });
+				writeFileSync(join(host, ".repos", "spec", ".git"), "gitdir: ../../.git/modules/.repos/old\n");
+				git(host, "config", "submodule..repos/spec.url", "https://example.com/spec.git");
+				git(host, "config", "submodule..repos/old.url", "https://example.com/spec.git");
+
+				const managerLayer = makeManagerLayer(
+					Effect.succeed({
+						repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },
+					} as ReposManifestFile),
+				);
+				const result = yield* Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.deregister(host, ".repos/old");
+				}).pipe(Effect.provide(managerLayer)) as Effect.Effect<ReposDeregisterResult>;
+
+				expect(result.section).toBe(".repos/old");
+				// The twin is gone; the canonical live registration survives.
+				expect(() => git(host, "config", "--get", "submodule..repos/old.url")).toThrow();
+				expect(git(host, "config", "--get", "submodule..repos/spec.url").trim()).toBe("https://example.com/spec.git");
+			}),
+	);
+
+	it.effect("ignores a section living only in GLOBAL config — probe and removal agree on the local scope", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// A `.repos/`-shaped section in the GLOBAL config only. A merged
+			// probe would see it, pass, and the local-scoped removal would then
+			// exit 128 loudly — the exact failure the local-file pin prevents.
+			// The discriminating assertion is the ERROR TYPE: the pinned probe
+			// fails typed as nothing-to-deregister (ReposConfigError), never as
+			// the removal's GitSubmoduleError.
+			const globalConfig = join(mkdtempSync(join(tmpdir(), "repos-deregister-global-")), "gitconfig");
+			writeFileSync(globalConfig, '[submodule ".repos/ghost"]\n\turl = https://example.com/ghost.git\n');
+			const savedGlobal = process.env.GIT_CONFIG_GLOBAL;
+			process.env.GIT_CONFIG_GLOBAL = globalConfig;
+
+			const error = yield* Effect.gen(function* () {
+				const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+				return yield* Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.deregister(host, ".repos/ghost");
+				}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+			}).pipe(
+				Effect.ensuring(
+					Effect.sync(() => {
+						if (savedGlobal === undefined) {
+							delete process.env.GIT_CONFIG_GLOBAL;
+						} else {
+							process.env.GIT_CONFIG_GLOBAL = savedGlobal;
+						}
+					}),
+				),
+			);
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("nothing to deregister");
+		}),
+	);
+
+	it.effect("resolves the shared local config through a linked worktree's gitdir indirection", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// A linked worktree's `<root>/.git` is a pointer FILE; git's --local
+			// there targets the SHARED config at the main gitdir (via the
+			// worktree gitdir's `commondir`). The probe must resolve the same
+			// file, or a stale section visible to the removal would read as
+			// nothing-to-deregister from the worktree.
+			const worktree = join(mkdtempSync(join(tmpdir(), "repos-deregister-wt-")), "wt");
+			git(host, "worktree", "add", "--quiet", worktree);
+			git(host, "config", "submodule..repos/old.url", "https://example.com/old.git");
+
+			const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+			const result = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(worktree, ".repos/old");
+			}).pipe(Effect.provide(managerLayer)) as Effect.Effect<ReposDeregisterResult>;
+
+			expect(result.section).toBe(".repos/old");
+			expect(result.removedKeys).toEqual(["submodule..repos/old.url"]);
+			expect(() => git(host, "config", "--get", "submodule..repos/old.url")).toThrow();
+		}),
+	);
+
 	it.effect("fails typed, not with a loud git exit, when the section is not registered at all", () =>
 		Effect.gen(function* () {
 			const host = makeHost();
