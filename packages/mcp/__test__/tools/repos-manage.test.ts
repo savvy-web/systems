@@ -74,6 +74,11 @@ const ReposManagerTest = Layer.succeed(
 				skippedClean: names ? [] : ["bar"],
 				stillDirty: [],
 			}),
+		deregister: (_root, section) =>
+			Effect.succeed({
+				section,
+				removedKeys: [`submodule.${section}.url`, `submodule.${section}.active`],
+			}),
 	}),
 );
 
@@ -175,6 +180,17 @@ layer(TestLayer)("reposManage handler — action dispatch", (it) => {
 			}
 		}),
 	);
+
+	it.effect("dispatches deregister", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "deregister", section: ".repos/old" }, "/repo");
+			expect(data.action).toBe("deregister");
+			if (data.action === "deregister") {
+				expect(data.result.section).toBe(".repos/old");
+				expect(data.result.removedKeys).toEqual(["submodule..repos/old.url", "submodule..repos/old.active"]);
+			}
+		}),
+	);
 });
 
 // `Effect.flip` (not `Effect.exit`) is the assertion here on purpose: it proves
@@ -223,6 +239,14 @@ layer(TestLayer)("reposManage handler — request validation", (it) => {
 			const error = yield* Effect.flip(reposManage({ action: "rename", name: "foo" }, "/repo"));
 			expect(error._tag).toBe("SchemaError");
 			expect(error.message).toContain("newName");
+		}),
+	);
+
+	it.effect("rejects deregister without section, naming the missing field", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(reposManage({ action: "deregister" }, "/repo"));
+			expect(error._tag).toBe("SchemaError");
+			expect(error.message).toContain("section");
 		}),
 	);
 });
@@ -284,6 +308,35 @@ layer(TestLayer)("reposManage handler — pin markdown transcript", (it) => {
 			expect(md.toLowerCase()).toContain("discarded");
 			expect(md).toContain("foo");
 			expect(md).toContain("abc111");
+		}),
+	);
+
+	it.effect("names the cleared keys and the nothing-to-commit posture in the deregister transcript", () =>
+		Effect.gen(function* () {
+			const data = yield* reposManage({ action: "deregister", section: ".repos/old" }, "/repo");
+			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+			expect(md).toContain("repos deregister");
+			expect(md).toContain("submodule..repos/old.url");
+			expect(md).toContain("submodule..repos/old.active");
+			expect(md.toLowerCase()).toContain("nothing to commit");
+		}),
+	);
+
+	it.effect("keeps a backtick-carrying section token inert in the deregister transcript", () =>
+		Effect.gen(function* () {
+			// The stub echoes the section back, so a hostile registration name
+			// flows into both the heading and the removed-section line; the full
+			// `submodule.<section>` token must render inside a longer backtick
+			// run rather than terminating the span the line wraps it in.
+			const data = yield* reposManage({ action: "deregister", section: "`## heading" }, "/repo");
+			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
+			// No space padding here, unlike the note-transcript case: the full
+			// token starts with "submodule.", not a backtick, so mdInline only
+			// lengthens the delimiter run.
+			expect(md).toContain("``submodule.`## heading``");
+			for (const line of md.split("\n")) {
+				expect(line.startsWith("## heading")).toBe(false);
+			}
 		}),
 	);
 
@@ -369,6 +422,18 @@ describe("repos_manage effect->zod bridge", () => {
 			result: {
 				restored: [{ name: "foo", commit: "abc111" }],
 				skippedClean: ["bar"],
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it("converts the result union and parses a deregister payload", () => {
+		const zodSchema = effectToZodSchema(ReposManageResult);
+		const parsed = zodSchema.safeParse({
+			action: "deregister",
+			result: {
+				section: ".repos/old",
+				removedKeys: ["submodule..repos/old.url"],
 			},
 		});
 		expect(parsed.success).toBe(true);

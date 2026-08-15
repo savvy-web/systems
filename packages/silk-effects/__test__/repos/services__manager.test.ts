@@ -19,9 +19,12 @@ import { afterAll, beforeAll, describe, expect, it } from "@effect/vitest";
 import { Git, GitCommandError, LsRemoteEntry } from "@effected/git";
 import { Cause, Effect, Layer, Option } from "effect";
 import { REPOS_DIR } from "../../src/repos/constants.js";
+import type { GitSubmoduleError } from "../../src/repos/errors.js";
+import { ReposConfigError } from "../../src/repos/errors.js";
 import type { ReposManifestFile } from "../../src/repos/schemas/manifest.js";
 import type {
 	ReposAddResult,
+	ReposDeregisterResult,
 	ReposNoteResult,
 	ReposPinResult,
 	ReposRemoveResult,
@@ -636,6 +639,69 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 			expect(syncResult.registered).toEqual([]);
 			expect(syncResult.initialized).toEqual([]);
 		}),
+	);
+
+	it.effect(
+		"initializes a missing worktree under a pre-declared update=none marker, which stays none across the sync",
+		() =>
+			Effect.gen(function* () {
+				const up = makeUpstream();
+				const host = makeHost();
+				const name = "spec";
+				const upstreamUrl = `file://${up}`;
+
+				mkdirSync(join(host, ".repos"), { recursive: true });
+				writeFileSync(
+					join(host, ".repos", "config.json"),
+					JSON.stringify({
+						repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+					}),
+				);
+				simulatePriorAdd(host, upstreamUrl, name, "1.0.0");
+
+				// The state a previously synced checkout is in: the vendored
+				// boundary already declared (`update = none`) while the worktree
+				// has gone missing. Without `--checkout` on the initialize call,
+				// `git submodule update --init` honors the marker and SKIPS the
+				// submodule — reporting success while checking out nothing — so
+				// the worktree assertion below is the discriminating one.
+				git(host, "config", `submodule..repos/${name}.update`, "none");
+
+				const configStoreReal = Layer.succeed(ReposConfigStore, {
+					exists: () => Effect.succeed(true),
+					read: () =>
+						Effect.succeed({
+							repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+						} as ReposManifestFile),
+					write: () => Effect.succeed(undefined),
+				} as never);
+
+				const managerLayer = ReposManager.layer.pipe(
+					Layer.provide(configStoreReal),
+					Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+					Layer.provide(reposLockdownLayer),
+					Layer.provide(NodeServices.layer),
+				);
+
+				const run = <A, E>(effect: Effect.Effect<A, E, ReposManager>) =>
+					effect.pipe(Effect.provide(managerLayer)) as Effect.Effect<A, E>;
+
+				const syncResult = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.sync(host);
+					}),
+				);
+
+				expect(syncResult.initialized).toEqual([name]);
+				// The worktree really materialized — the silent-skip false success
+				// `--checkout` exists to prevent.
+				expect(readdirSync(join(host, ".repos", name, "src"))).toContain("keep.ts");
+				// And the boundary marker was never flipped: it reads `none` after
+				// the sync, with no `checkout` window ever written around the
+				// initialize call.
+				expect(git(host, "config", "--get", `submodule..repos/${name}.update`).trim()).toBe("none");
+			}),
 	);
 
 	it.effect(
@@ -3726,5 +3792,262 @@ describe("ReposManager.restore — real git", REAL_GIT_TIMEOUT, () => {
 					});
 				}
 			}),
+	);
+});
+
+describe("ReposManager.deregister — real git", REAL_GIT_TIMEOUT, () => {
+	function makeHost(): string {
+		const host = mkdtempSync(join(tmpdir(), "repos-manager-deregister-"));
+		git(host, "init", "--quiet", "-b", "main");
+		git(host, "config", "commit.gpgsign", "false");
+		writeFileSync(join(host, "README.md"), "# host\n");
+		git(host, "add", "-A");
+		git(host, "commit", "--quiet", "-m", "initial");
+		return host;
+	}
+
+	function makeManagerLayer(readManifest: Effect.Effect<ReposManifestFile, ReposConfigError>) {
+		const configStore = Layer.succeed(ReposConfigStore, {
+			exists: () => Effect.succeed(true),
+			read: () => readManifest,
+			write: () => Effect.succeed(undefined),
+		} as never);
+		return ReposManager.layer.pipe(
+			Layer.provide(configStore),
+			Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+			Layer.provide(reposLockdownLayer),
+			Layer.provide(NodeServices.layer),
+		);
+	}
+
+	it.effect("removes a stale submodule section and reports the keys it carried", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// A stale registration: a `submodule..repos/old.*` section in the
+			// LOCAL config that no manifest entry backs — the state a rename or
+			// an unvendoring leaves behind.
+			git(host, "config", "submodule..repos/old.url", "https://example.com/old.git");
+			git(host, "config", "submodule..repos/old.active", "true");
+
+			const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+			const result = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, ".repos/old");
+			}).pipe(Effect.provide(managerLayer)) as Effect.Effect<ReposDeregisterResult>;
+
+			expect(result.section).toBe(".repos/old");
+			expect(result.removedKeys).toEqual(
+				expect.arrayContaining(["submodule..repos/old.url", "submodule..repos/old.active"]),
+			);
+			// The section is really gone from the local config.
+			expect(() => git(host, "config", "--get", "submodule..repos/old.url")).toThrow();
+		}),
+	);
+
+	it.effect("treats a MISSING manifest as empty — a stale registration can outlive the manifest itself", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			git(host, "config", "submodule..repos/old.url", "https://example.com/old.git");
+
+			const managerLayer = makeManagerLayer(
+				Effect.fail(
+					new ReposConfigError({ path: join(host, ".repos", "config.json"), reason: "no such file", kind: "missing" }),
+				),
+			);
+			const result = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, ".repos/old");
+			}).pipe(Effect.provide(managerLayer)) as Effect.Effect<ReposDeregisterResult>;
+
+			expect(result.section).toBe(".repos/old");
+			expect(() => git(host, "config", "--get", "submodule..repos/old.url")).toThrow();
+		}),
+	);
+
+	it.effect("refuses to deregister the canonical registration of a live manifest entry", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// The LIVE registration a healthy vendored checkout carries — must
+			// survive: clearing it is sync's/remove's job, never deregister's.
+			git(host, "config", "submodule..repos/spec.url", "https://example.com/spec.git");
+
+			const managerLayer = makeManagerLayer(
+				Effect.succeed({
+					repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },
+				} as ReposManifestFile),
+			);
+			const error = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, ".repos/spec");
+			}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("canonical registration");
+			// The refusal happened BEFORE any git mutation: the section survives.
+			expect(git(host, "config", "--get", "submodule..repos/spec.url").trim()).toBe("https://example.com/spec.git");
+		}),
+	);
+
+	it.effect("refuses a section outside .repos/ — a host repo's own submodule registration is not ours to clear", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// A registration this machinery does NOT own: a legitimate submodule
+			// of the host repo living outside the vendored dir.
+			git(host, "config", "submodule.vendor/other.url", "https://example.com/other.git");
+
+			const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+			const error = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, "vendor/other");
+			}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("not a .repos/ registration");
+			// The refusal happened before any mutation: the section survives.
+			expect(git(host, "config", "--get", "submodule.vendor/other.url").trim()).toBe("https://example.com/other.git");
+		}),
+	);
+
+	it.effect("refuses a live registration hiding under a diverged name, via the module-gitdir attribution", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// The per-entry localRegistrationDivergence shape: manifest entry
+			// "spec" whose checkout's module gitdir lives at
+			// `.git/modules/.repos/old` — the name it was originally registered
+			// under. `submodule..repos/old.*` is therefore the LIVE checkout's
+			// real registration, not an orphan, and drift's own remedy for it is
+			// a re-vendor; deregistering it would unregister a healthy checkout.
+			mkdirSync(join(host, ".git", "modules", ".repos", "old"), { recursive: true });
+			mkdirSync(join(host, ".repos", "spec"), { recursive: true });
+			writeFileSync(join(host, ".repos", "spec", ".git"), "gitdir: ../../.git/modules/.repos/old\n");
+			git(host, "config", "submodule..repos/old.url", "https://example.com/spec.git");
+
+			const managerLayer = makeManagerLayer(
+				Effect.succeed({
+					repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },
+				} as ReposManifestFile),
+			);
+			const error = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, ".repos/old");
+			}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("diverged name");
+			// The live registration survives.
+			expect(git(host, "config", "--get", "submodule..repos/old.url").trim()).toBe("https://example.com/spec.git");
+		}),
+	);
+
+	it.effect(
+		"removes the orphaned old-named twin when the entry's canonical section coexists — the crashed-rename recovery flow",
+		() =>
+			Effect.gen(function* () {
+				const host = makeHost();
+				// The end state of a crashed-rename recovery: entry "spec" has been
+				// re-registered under its CANONICAL section (submodule sync + init),
+				// but its module gitdir still lives at `.git/modules/.repos/old`
+				// (git never renames it) and the stale old-named section is still
+				// registered alongside. The gitdir matches the old name, yet the
+				// canonical registration proves the old section is a genuine orphan
+				// — deregistering it is the recovery's own final step and must
+				// succeed, not be refused.
+				mkdirSync(join(host, ".git", "modules", ".repos", "old"), { recursive: true });
+				mkdirSync(join(host, ".repos", "spec"), { recursive: true });
+				writeFileSync(join(host, ".repos", "spec", ".git"), "gitdir: ../../.git/modules/.repos/old\n");
+				git(host, "config", "submodule..repos/spec.url", "https://example.com/spec.git");
+				git(host, "config", "submodule..repos/old.url", "https://example.com/spec.git");
+
+				const managerLayer = makeManagerLayer(
+					Effect.succeed({
+						repos: { spec: { url: "https://example.com/spec.git", ref: "1.0.0", purpose: "spec authority" } },
+					} as ReposManifestFile),
+				);
+				const result = yield* Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.deregister(host, ".repos/old");
+				}).pipe(Effect.provide(managerLayer)) as Effect.Effect<ReposDeregisterResult>;
+
+				expect(result.section).toBe(".repos/old");
+				// The twin is gone; the canonical live registration survives.
+				expect(() => git(host, "config", "--get", "submodule..repos/old.url")).toThrow();
+				expect(git(host, "config", "--get", "submodule..repos/spec.url").trim()).toBe("https://example.com/spec.git");
+			}),
+	);
+
+	it.effect("ignores a section living only in GLOBAL config — probe and removal agree on the local scope", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// A `.repos/`-shaped section in the GLOBAL config only. A merged
+			// probe would see it, pass, and the local-scoped removal would then
+			// exit 128 loudly — the exact failure the local-file pin prevents.
+			// The discriminating assertion is the ERROR TYPE: the pinned probe
+			// fails typed as nothing-to-deregister (ReposConfigError), never as
+			// the removal's GitSubmoduleError.
+			const globalConfig = join(mkdtempSync(join(tmpdir(), "repos-deregister-global-")), "gitconfig");
+			writeFileSync(globalConfig, '[submodule ".repos/ghost"]\n\turl = https://example.com/ghost.git\n');
+			const savedGlobal = process.env.GIT_CONFIG_GLOBAL;
+			process.env.GIT_CONFIG_GLOBAL = globalConfig;
+
+			const error = yield* Effect.gen(function* () {
+				const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+				return yield* Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.deregister(host, ".repos/ghost");
+				}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+			}).pipe(
+				Effect.ensuring(
+					Effect.sync(() => {
+						if (savedGlobal === undefined) {
+							delete process.env.GIT_CONFIG_GLOBAL;
+						} else {
+							process.env.GIT_CONFIG_GLOBAL = savedGlobal;
+						}
+					}),
+				),
+			);
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("nothing to deregister");
+		}),
+	);
+
+	it.effect("resolves the shared local config through a linked worktree's gitdir indirection", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+			// A linked worktree's `<root>/.git` is a pointer FILE; git's --local
+			// there targets the SHARED config at the main gitdir (via the
+			// worktree gitdir's `commondir`). The probe must resolve the same
+			// file, or a stale section visible to the removal would read as
+			// nothing-to-deregister from the worktree.
+			const worktree = join(mkdtempSync(join(tmpdir(), "repos-deregister-wt-")), "wt");
+			git(host, "worktree", "add", "--quiet", worktree);
+			git(host, "config", "submodule..repos/old.url", "https://example.com/old.git");
+
+			const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+			const result = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(worktree, ".repos/old");
+			}).pipe(Effect.provide(managerLayer)) as Effect.Effect<ReposDeregisterResult>;
+
+			expect(result.section).toBe(".repos/old");
+			expect(result.removedKeys).toEqual(["submodule..repos/old.url"]);
+			expect(() => git(host, "config", "--get", "submodule..repos/old.url")).toThrow();
+		}),
+	);
+
+	it.effect("fails typed, not with a loud git exit, when the section is not registered at all", () =>
+		Effect.gen(function* () {
+			const host = makeHost();
+
+			const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+			const error = yield* Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.deregister(host, ".repos/ghost");
+			}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+			expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+			expect(String(error.message)).toContain("nothing to deregister");
+		}),
 	);
 });

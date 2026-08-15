@@ -170,6 +170,26 @@ export const ReposRestoreResult = Schema.Struct({
 export type ReposRestoreResult = typeof ReposRestoreResult.Type;
 
 /**
+ * Result of clearing a stale submodule registration from the superproject's
+ * LOCAL git config.
+ *
+ * @remarks
+ * `section` is the registration name the section was cleared under (e.g.
+ * `.repos/effect-old`), and `removedKeys` lists the full config keys the
+ * removed section actually carried — the achieved-state report, read from the
+ * config BEFORE the removal so a caller can see exactly what is gone. There
+ * is no `commitMessage`: the local config is unversioned, so a deregister
+ * stages nothing and leaves nothing to commit.
+ * @public
+ */
+export const ReposDeregisterResult = Schema.Struct({
+	section: Schema.String,
+	removedKeys: Schema.Array(Schema.String),
+});
+/** @public */
+export type ReposDeregisterResult = typeof ReposDeregisterResult.Type;
+
+/**
  * Result of an agent-note mutation against a vendored repo.
  * @public
  */

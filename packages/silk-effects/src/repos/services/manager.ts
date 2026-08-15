@@ -9,6 +9,7 @@ import type { RepoEntry, RepoNote, RepoOrientation, ReposManifestFile } from "..
 import { RepoName } from "../schemas/manifest.js";
 import type {
 	ReposAddResult,
+	ReposDeregisterResult,
 	ReposNoteResult,
 	ReposPinResult,
 	ReposRemoveResult,
@@ -18,6 +19,7 @@ import type {
 	ReposSyncReport,
 } from "../schemas/reports.js";
 import { ReposConfigStore } from "./config-store.js";
+import { submoduleNameFromKey } from "./drift.js";
 import { ReposLockdown, resolveModuleDir } from "./lockdown.js";
 
 /**
@@ -120,6 +122,34 @@ export interface ReposManagerShape {
 		root: string,
 		names?: ReadonlyArray<string>,
 	) => Effect.Effect<ReposRestoreResult, ReposConfigError | GitSubmoduleError | RepoNotFoundError | ReposLockdownError>;
+	/**
+	 * Clears a STALE submodule registration — a `submodule.<section>.*`
+	 * section in the superproject's LOCAL git config left behind by a rename
+	 * or an unvendoring, which `git submodule status` then lists as a phantom
+	 * entry the manifest has never heard of (`ReposDrift` reports it as
+	 * `localRegistrationDivergence`).
+	 *
+	 * `section` is the registration name exactly as the drift report states it
+	 * (e.g. `.repos/effect-old`) — the `submodule.` prefix is implied, never
+	 * passed. Refuses (typed `ReposConfigError`): a section outside
+	 * `.repos/` (this machinery does not own it — it may be a real submodule
+	 * of the host repo), the canonical registration of a live manifest entry,
+	 * and a registration whose module gitdir still backs a live entry under a
+	 * DIVERGED name (the same gitdir attribution `ReposDrift` uses — that
+	 * state's remedy is a re-vendor, not a deregister) — UNLESS that entry's
+	 * canonical section is also registered, in which case the old-named twin
+	 * is a genuine orphan and removing it is a crashed-rename recovery's own
+	 * final step. Reconciling a LIVE
+	 * registration is `sync`'s job and unvendoring is `remove`'s, so
+	 * deregistration only ever touches state nothing else owns. Touches only
+	 * the superproject's local config — no vendored worktree — so unlike the
+	 * other mutating ops it needs no lockdown bracket and stages nothing to
+	 * commit.
+	 */
+	readonly deregister: (
+		root: string,
+		section: string,
+	) => Effect.Effect<ReposDeregisterResult, ReposConfigError | GitSubmoduleError>;
 }
 
 /**
@@ -127,8 +157,10 @@ export interface ReposManagerShape {
  * (presence, dirtiness, stale notes), reconciles the working tree with the
  * manifest, vendors new entries (`add`), re-pins existing entries to a new
  * ref (`pin`), adds/removes/promotes agent notes (`note`), unvendors
- * (`remove`), renames (`rename`), and explicitly hard-resets dirty
- * checkouts back to their pinned commit (`restore`).
+ * (`remove`), renames (`rename`), explicitly hard-resets dirty
+ * checkouts back to their pinned commit (`restore`), and clears stale
+ * submodule registrations from the superproject's local git config
+ * (`deregister`).
  * @public
  */
 export class ReposManager extends Context.Service<ReposManager, ReposManagerShape>()(
@@ -293,20 +325,17 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 							name,
 							Effect.gen(function* () {
 								// The boundary marker's key. It is asserted at the END of this
-								// block, but git consults it DURING it: `update = none` makes
+								// block, and git consults it DURING it: `update = none` makes
 								// `git submodule update --init` skip the submodule outright
 								// ("Skipping submodule ..."), which would silently defeat the
-								// initialize branch below. `--checkout` overrides it on the command
-								// line, but `@effected/git`'s `submoduleUpdate` exposes no such
-								// option (kit gap), so the marker has to be neutralized around that
-								// ONE call — see the initialize branch, which brackets it.
-								//
-								// Scoped to that single call rather than to this whole block, on
-								// purpose. An earlier version flipped the key here at the top and
-								// restored it at the bottom, so ANY failure in between left the tree
-								// declared `checkout` — open to every git client — until some later
-								// sync happened to succeed. Nothing else in this block consults
-								// `update`, so the window never needed to be that wide.
+								// initialize branch below. That branch passes `--checkout` —
+								// git's documented command-line override of the marker — so the
+								// key itself is never touched mid-sync. (An earlier version had
+								// to flip it to `checkout` around that one call because
+								// `@effected/git`'s `submoduleUpdate` exposed no `--checkout`;
+								// the flag landed in 0.8.0 — effected#333 — so the flip, its
+								// two extra config writes, and the crash window that could
+								// leave the marker at `checkout` are all gone.)
 								//
 								// Keyed on the repo-relative PATH because that is the name `git
 								// submodule add` derives its `.gitmodules` section from, and the name
@@ -427,20 +456,19 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 									registered.push(name);
 								} else if (!present) {
 									// The only call in this method that `update = none` would
-									// suppress, so it is the only place the marker is lifted.
-									// `ensuring` restores it however this exits — success,
-									// typed failure, or interruption — so a failed sync can
-									// never leave the tree declared `checkout`.
+									// suppress. `checkout: true` (`--checkout`) is git's
+									// documented command-line override of that marker, so the
+									// submodule is materialized without ever rewriting the key —
+									// without it, git skips the update SILENTLY (success
+									// reported, nothing checked out), which is exactly the false
+									// success the old flip-to-`checkout` bracket existed to
+									// prevent.
 									yield* git
-										.configSet(root, updateKey, "checkout")
-										.pipe(Effect.mapError(asSubmoduleError(`git config ${updateKey} checkout`, root)));
-									yield* git
-										.submoduleUpdate(root, { init: true, depth: 1, paths: [repoPathRel] })
+										.submoduleUpdate(root, { init: true, checkout: true, depth: 1, paths: [repoPathRel] })
 										.pipe(
 											Effect.mapError(
-												asSubmoduleError(`git submodule update --init --depth 1 -- ${repoPathRel}`, root),
+												asSubmoduleError(`git submodule update --init --checkout --depth 1 -- ${repoPathRel}`, root),
 											),
-											Effect.ensuring(Effect.ignore(assertBoundaryMarker)),
 										);
 									initialized.push(name);
 								} else {
@@ -1512,6 +1540,179 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					return { restored, skippedClean, stillDirty };
 				});
 
+			/**
+			 * Resolve the file git's `--local` scope actually targets for `root`.
+			 * A plain checkout is `<root>/.git/config`; a LINKED WORKTREE's
+			 * `<root>/.git` is a pointer FILE whose `gitdir:` names
+			 * `.git/worktrees/<name>`, and the local config git uses there is the
+			 * SHARED one at the main gitdir named by that dir's `commondir` file.
+			 * Every unreadable/malformed step degrades to the plain
+			 * `<root>/.git/config` path rather than failing — the same
+			 * never-fails posture as `resolveModuleDir`.
+			 */
+			const resolveLocalConfigPath = (root: string): Effect.Effect<string> =>
+				Effect.gen(function* () {
+					const dotGit = path.join(root, ".git");
+					const fallback = path.join(dotGit, "config");
+					const info = yield* fs.stat(dotGit).pipe(Effect.option);
+					if (Option.isNone(info) || info.value.type === "Directory") {
+						return fallback;
+					}
+					const content = yield* fs.readFileString(dotGit).pipe(Effect.option);
+					if (Option.isNone(content)) {
+						return fallback;
+					}
+					const match = /^gitdir:\s*(.+)$/m.exec(content.value);
+					if (!match?.[1]) {
+						return fallback;
+					}
+					const pointer = match[1].trim();
+					const gitdir = path.isAbsolute(pointer) ? pointer : path.resolve(root, pointer);
+					const commondir = yield* fs.readFileString(path.join(gitdir, "commondir")).pipe(Effect.option);
+					if (Option.isSome(commondir)) {
+						const common = commondir.value.trim();
+						return path.join(path.isAbsolute(common) ? common : path.resolve(gitdir, common), "config");
+					}
+					return path.join(gitdir, "config");
+				});
+
+			const deregister = (root: string, section: string) =>
+				Effect.gen(function* () {
+					// Scope check FIRST, before any read: this op exists for the
+					// vendored-repos domain, and a host repo can carry legitimate
+					// submodules of its own. A section outside `.repos/` is one this
+					// machinery does not own — clearing it would unregister a real
+					// submodule — so it is refused outright rather than removed,
+					// mirroring the drift check, which only ever reports
+					// `.repos/`-prefixed orphans.
+					if (!section.startsWith(`${REPOS_DIR}/`) || section === `${REPOS_DIR}/`) {
+						return yield* Effect.fail(
+							new ReposConfigError({
+								path: MANIFEST_PATH,
+								reason: `"${section}" is not a ${REPOS_DIR}/ registration — deregister only clears stale vendored-repo sections; clear an unrelated submodule registration with git directly`,
+								kind: "invalid",
+							}),
+						);
+					}
+
+					// "No manifest yet" reads as empty rather than failing: a stale
+					// registration can outlive the manifest itself (the last entry
+					// unvendored, or the file deleted), and that is precisely a state
+					// this op exists to clean up. Any OTHER read failure propagates —
+					// same discipline as `add`.
+					const manifest: ReposManifestFile = yield* configStore
+						.read(root)
+						.pipe(
+							Effect.catchTag("ReposConfigError", (error) =>
+								error.kind === "missing" ? Effect.succeed({ repos: {} } as ReposManifestFile) : Effect.fail(error),
+							),
+						);
+
+					// Refuse a LIVE registration: the canonical section name of a
+					// manifest entry is its repo-relative path, and clearing that
+					// section would unregister a healthy vendored checkout. `sync`
+					// owns reconciling live registrations and `remove` owns
+					// unvendoring; deregister only ever touches state neither claims.
+					for (const name of Object.keys(manifest.repos)) {
+						if (section === `${REPOS_DIR}/${name}`) {
+							return yield* Effect.fail(
+								new ReposConfigError({
+									path: MANIFEST_PATH,
+									reason: `"${section}" is the canonical registration of manifest entry "${name}" — deregister clears STALE registrations only; use remove to unvendor, or sync to reconcile`,
+									kind: "invalid",
+								}),
+							);
+						}
+					}
+
+					// Probe BEFORE removing, for two reasons: `configRemoveSection`
+					// fails loudly (git exits 128) on a section that does not exist,
+					// which would surface a typo as an opaque git failure instead of
+					// the typed refusal below — and the section's keys, read now, are
+					// the achieved-state report (`removedKeys`) the result carries.
+					// The probe is pinned to the REPOSITORY-LOCAL config file
+					// (resolved through a linked worktree's `gitdir:`/`commondir`
+					// indirection when `<root>/.git` is a pointer file, since git's
+					// `--local` targets the shared config there): a bare
+					// `configList` reads the MERGED system/global/local view, so a
+					// section living only in global config would pass the probe and
+					// then die loudly on the local-scoped removal — the exact
+					// failure the probe exists to prevent. (`@effected/git` exposes
+					// no scope option — effected#372 — so the file override is the
+					// interim pin.) The key→name attribution is
+					// `submoduleNameFromKey`, the SAME parser `ReposDrift` uses to
+					// report the stale section, so the report and the remedy can
+					// never disagree about a section's name (a submodule name is
+					// routinely a path and contains dots — a naive split would
+					// mis-attribute every key).
+					const localConfigPath = yield* resolveLocalConfigPath(root);
+					const configEntries = yield* git
+						.configList(root, { file: localConfigPath })
+						.pipe(Effect.mapError(asSubmoduleError(`git config -f ${localConfigPath} --list`, root)));
+					const registeredNames = new Set(
+						configEntries
+							.map((configEntry) => submoduleNameFromKey(configEntry.key))
+							.filter((registeredName): registeredName is string => registeredName !== undefined),
+					);
+					const removedKeys = configEntries
+						.map((configEntry) => configEntry.key)
+						.filter((key) => submoduleNameFromKey(key) === section);
+					if (removedKeys.length === 0) {
+						return yield* Effect.fail(
+							new ReposConfigError({
+								path: localConfigPath,
+								reason: `no submodule.${section} section registered in the local git config — nothing to deregister`,
+								kind: "invalid",
+							}),
+						);
+					}
+
+					// A live registration can also hide under a NONCANONICAL name: a
+					// checkout whose module gitdir was created under an older
+					// registration (the per-entry `localRegistrationDivergence`
+					// shape). The gitdir path relative to `.git/modules` IS the name
+					// the checkout is really registered under — the same attribution
+					// `ReposDrift` uses to EXCLUDE such sections from its orphan
+					// report (its remedy there is a re-vendor, because git never
+					// renames the gitdir). Removing that section would deregister a
+					// healthy checkout, so it is refused with the drift report's own
+					// remedy — UNLESS the entry's CANONICAL section is ALSO present
+					// in the local config. Gitdir location and registration identity
+					// are independent (`resolveModuleDir` reads only the frozen
+					// `.git` pointer, never the config), and git never renames the
+					// gitdir: after a crashed-rename recovery re-registers the entry
+					// under its canonical name, the old-named section is a genuinely
+					// orphaned twin whose removal is the recovery's own final step —
+					// refusing it would block exactly the flow this op exists to
+					// finish. Canonical present ⇒ the twin is the orphan, allow;
+					// canonical absent ⇒ the target IS the live backing
+					// registration, refuse. The name-based fallback
+					// `resolveModuleDir` degrades to equals the canonical path,
+					// which the loop above already refused — so this loop can only
+					// act on a genuinely diverged gitdir, never double-report the
+					// canonical case.
+					const modulesRoot = path.join(root, ".git", "modules");
+					for (const name of Object.keys(manifest.repos)) {
+						const moduleDir = yield* resolveModuleDir(fs, path, root, name);
+						const relativeToModules = path.relative(modulesRoot, moduleDir);
+						if (relativeToModules === section && !registeredNames.has(`${REPOS_DIR}/${name}`)) {
+							return yield* Effect.fail(
+								new ReposConfigError({
+									path: MANIFEST_PATH,
+									reason: `"${section}" is the registration backing manifest entry "${name}" (its module gitdir lives there under a diverged name, and no canonical submodule.${REPOS_DIR}/${name} registration exists) — deregister clears STALE registrations only; re-vendor the entry instead (remove, then add with the orientation the remove result hands back)`,
+									kind: "invalid",
+								}),
+							);
+						}
+					}
+
+					yield* git
+						.configRemoveSection(root, `submodule.${section}`)
+						.pipe(Effect.mapError(asSubmoduleError(`git config --remove-section submodule.${section}`, root)));
+
+					return { section, removedKeys };
+				});
+
 			return {
 				status,
 				sync,
@@ -1521,6 +1722,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 				remove,
 				rename,
 				restore,
+				deregister,
 			};
 		}),
 	);
