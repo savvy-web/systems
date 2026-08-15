@@ -1,5 +1,19 @@
 # @savvy-web/silk-effects
 
+## 5.8.1
+
+### Dependencies
+
+* | Dependency             | Type       | Action  | From    | To      |                                                                       |
+  | ---------------------- | ---------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/git          | dependency | updated | ^0.7.0  | ^0.8.0  |                                                                       |
+  | @effected/package-json | dependency | updated | ^0.8.0  | ^0.9.0  |                                                                       |
+  | @effected/workspaces   | dependency | updated | ^0.12.0 | ^0.13.0 | [#490][#490] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#490]: https://github.com/savvy-web/systems/pull/490
+
 ## 5.8.0
 
 ### Features
