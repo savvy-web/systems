@@ -25,10 +25,23 @@ const platform = Layer.mergeAll(NodeFileSystem.layer, NodePath.layer, Logger.lay
  * Create a mock PackageManagerDetector for fixtures that lack lockfiles.
  * Without a lockfile the real detector either falls back to "npm" (when a
  * `workspaces` field exists) or fails entirely (standalone packages).
+ *
+ * `evidence` names the detection rung that would have decided each manager in
+ * a real workspace — the kit's closed vocabulary, one canonical rung per name.
  */
+const MOCK_EVIDENCE = {
+	bun: "bun.lock",
+	npm: "package.json#workspaces",
+	pnpm: "pnpm-workspace.yaml",
+	yarn: "yarn.lock",
+} as const;
+
 const mockPM = (type: "npm" | "pnpm" | "yarn" | "bun" = "npm", runtime: "node" | "bun" = "node") =>
 	Layer.succeed(PackageManagerDetector, {
-		detect: () => Effect.succeed(DetectedPackageManager.make({ name: type, version: Option.none(), runtime })),
+		detect: () =>
+			Effect.succeed(
+				DetectedPackageManager.make({ name: type, version: Option.none(), runtime, evidence: MOCK_EVIDENCE[type] }),
+			),
 	});
 
 /**
