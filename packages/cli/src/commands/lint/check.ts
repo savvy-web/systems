@@ -392,12 +392,12 @@ export function runLintCheck(opts: {
 			yield* Effect.log(`  ${BULLET} markdownlint-cli2: not installed`);
 		}
 
-		const tsgoAvailable = yield* td.isAvailable(Tool.named("tsgo"));
 		const tscAvailable = yield* td.isAvailable(Tool.named("tsc"));
-		if (tsgoAvailable) {
-			yield* Effect.log(`  ${CHECK_MARK} TypeScript (tsgo)`);
-		} else if (tscAvailable) {
+		const tsgoAvailable = yield* td.isAvailable(Tool.named("tsgo"));
+		if (tscAvailable) {
 			yield* Effect.log(`  ${CHECK_MARK} TypeScript (tsc)`);
+		} else if (tsgoAvailable) {
+			yield* Effect.log(`  ${CHECK_MARK} TypeScript (tsgo)`);
 		} else {
 			yield* Effect.log(`  ${BULLET} TypeScript: not installed`);
 		}

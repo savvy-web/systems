@@ -19,7 +19,7 @@ The canonical package uses four scripts and inherits a shared Turborepo task gra
 
 - `build:dev` — fast, unminified `dist/dev` output.
 - `build:prod` — `dist/prod` output plus the API Extractor meta pass.
-- `types:check` — type-checks the package via `tsgo --noEmit`.
+- `types:check` — type-checks the package via `tsc --noEmit`.
 - `prepare` — runs on `pnpm install` so the package's `dist/dev` exists at link time for consumers.
 
 ## `prepare` guidance

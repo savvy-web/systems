@@ -65,7 +65,7 @@ Use only when you must inspect or programmatically transform the resolved config
 
 ## package.json script contract
 
-Every bundler-built package declares `publishConfig.directory: dist/dev/pkg` and three scripts: `build:dev` (`node savvy.build.ts --target dev`), `build:prod` (`node savvy.build.ts --target prod`), `types:check` (`tsgo --noEmit`). Other supporting scripts may exist alongside these.
+Every bundler-built package declares `publishConfig.directory: dist/dev/pkg` and three scripts: `build:dev` (`node savvy.build.ts --target dev`), `build:prod` (`node savvy.build.ts --target prod`), `types:check` (`tsc --noEmit`). Other supporting scripts may exist alongside these.
 
 ### `prepare` — read this before touching it
 
