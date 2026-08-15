@@ -55,6 +55,15 @@ export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
  */
 export * as Lint from "./lint/index.js";
 /**
+ * The shared PR-body contract: the frozen `silk-release` marker grammar,
+ * managed-region carry-through, and the two closing-reference spellings —
+ * extracted from `silk-release-action` so independent writers agree on one
+ * implementation (savvy-web/systems#419).
+ *
+ * @public
+ */
+export * as PrBody from "./pr-body/index.js";
+/**
  * Vendored reference repos: the .repos/config.json manifest, submodule plumbing, and drift reporting.
  * @public
  */
