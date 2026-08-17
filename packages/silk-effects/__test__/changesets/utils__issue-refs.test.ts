@@ -129,4 +129,12 @@ describe("parseIssueReferences", () => {
 			refs: [],
 		});
 	});
+
+	it("dedupes a repeated reference within a category", () => {
+		expect(parseIssueReferences("Closes #1, #1\nCloses #1\nRefs #1")).toEqual({
+			closes: ["1"],
+			fixes: [],
+			refs: ["1"],
+		});
+	});
 });

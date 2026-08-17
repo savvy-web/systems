@@ -80,7 +80,9 @@ function categoryOf(list: ReferenceList): keyof IssueReferences {
  * The colon spelling is line-dialect-only; `collectReferenceLists` owns the
  * per-line composition (whole-line trailer parse first, inline harvest
  * otherwise), guaranteeing a trailer line is never double-counted. Malformed
- * candidates are simply skipped.
+ * candidates are simply skipped. The kit preserves duplicates by contract;
+ * each category dedupes them here (first occurrence wins), mirroring the
+ * PR-body path, so a repeated reference renders one changelog link.
  *
  * @param commitMessage - The commit message body to parse
  * @returns Categorized issue references with numbers as strings (no `#` prefix)
@@ -101,6 +103,9 @@ export function parseIssueReferences(commitMessage: string): IssueReferences {
 	const references: IssueReferences = { closes: [], fixes: [], refs: [] };
 	for (const list of collectReferenceLists(commitMessage)) {
 		references[categoryOf(list)].push(...list.issueNumbers.map(String));
+	}
+	for (const category of Object.keys(references) as (keyof IssueReferences)[]) {
+		references[category] = [...new Set(references[category])];
 	}
 	return references;
 }
