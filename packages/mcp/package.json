@@ -45,7 +45,7 @@
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
 		"@effected/memfs": "^0.4.0",
-		"@modelcontextprotocol/inspector": "^1.0.1",
+		"@modelcontextprotocol/inspector": "^2.2.0",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
 		"tsx": "catalog:build",
