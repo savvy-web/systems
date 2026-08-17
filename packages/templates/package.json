@@ -30,7 +30,7 @@
 	},
 	"dependencies": {
 		"@effected/package-json": "^0.9.0",
-		"@effected/yaml": "^0.8.0"
+		"@effected/yaml": "^0.9.0"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",

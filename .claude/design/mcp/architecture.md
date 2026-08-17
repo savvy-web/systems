@@ -3,8 +3,8 @@ status: current
 module: mcp
 category: architecture
 created: 2026-05-31
-updated: 2026-08-12
-last-synced: 2026-08-12
+updated: 2026-08-16
+last-synced: 2026-08-16
 completeness: 95
 related:
   - ../silk-effects/architecture.md
@@ -65,6 +65,8 @@ The leftover platform requirements (`ChildProcessSpawner`, `FileSystem`, `Path`)
 The smoke tests in `__test__/` (`runtime.smoke.test.ts`, `server.smoke.test.ts`) are the layer-completeness gate, exactly as in the CLI: a missing service names itself at runtime, not at typecheck.
 
 These smoke tests are also the repo's canonical use of a **suite-boundary `layer(...)` block** (`@effect/vitest`), which is otherwise avoided in favor of per-test `Effect.provide` — see [../testing/effect-vitest.md](../testing/effect-vitest.md#layer-provision-per-test-effectprovide-is-the-default). Sharing is correct here specifically because the runtime is **root-bound at layer build** (single-root semantics), so one built layer per fixture root is the thing under test rather than an optimization, and every test in the group is read-only against that root; a test that mutated the fixture would need its own. Two ordering constraints fall out and are documented in-file: the fixture is created in `beforeAll` rather than at module scope (a load-time throw zeroes the whole package — `0/0 passed`, exit 0 — instead of reporting a named hook failure), and `makeSilkRuntimeLayer(dir)` is wrapped in `Layer.suspend` so construction is deferred to layer-build time, which `layer(...)` performs in its own nested `beforeAll` after the fixture exists. The layer's `Layer.Layer<McpServices>` type annotation carries the assertion the old `ManagedRuntime`-typed binding did: the composed layer supplies exactly `McpServices` with no error channel.
+
+Tool tests that stand in for the filesystem build an `@effected/memfs` volume seeded at the exact paths the tool should read, and reach for `MemoryFileSystem.layerFaulty` over a volume where the file genuinely exists when a permission failure is the subject — otherwise "denied" and "missing" produce the same fixture and the two tests stop being distinguishable. `__test__/tools/repos-inspect.test.ts` is the worked example; the rules are suite-wide, in [../testing/effect-vitest.md](../testing/effect-vitest.md#filesystem-doubles-effectedmemfs).
 
 ## The tools
 

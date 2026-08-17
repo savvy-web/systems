@@ -1,6 +1,6 @@
 # @savvy-web/pnpm-plugin-silk
 
-`@savvy-web/pnpm-plugin-silk` is the unified pnpm **config dependency** for the Silk Suite. At `pnpm install` it injects into every consuming repo the `silk` (current ranges) and `silkPeers` (permissive peer ranges) catalogs, security `overrides`, `allowBuilds`, `publicHoistPattern`, `peerDependencyRules`, `minimumReleaseAge` gating, and the `strictDepBuilds`/`blockExoticSubdeps` defaults.
+`@savvy-web/pnpm-plugin-silk` is the unified pnpm **config dependency** for the Silk Suite. At `pnpm install` it injects into every consuming repo five purpose-scoped catalog pairs — `build`, `docs`, `lint`, `silk`, `test`, each with a `<name>:peers` companion carrying permissive peer ranges — plus security `overrides`, `allowBuilds`, `publicHoistPattern`, `peerDependencyRules`, `minimumReleaseAge` gating, and the `strictDepBuilds`/`blockExoticSubdeps` defaults. The camelCase `<name>Peers` spelling is GONE (0.27.0); so is the Effect closure, which now comes from the separate `@effected/pnpm-plugin-effect` config dependency as `catalog:effect`/`catalog:effect:peers`.
 
 ## Key surface
 

@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Git } from "@effected/git";
-import { Effect, FileSystem, Layer, Path } from "effect";
+import { MemoryFileSystem } from "@effected/memfs";
+import { Effect, Layer, Path } from "effect";
 import { systemError } from "effect/PlatformError";
 import { REPOS_DIR } from "../../src/repos/constants.js";
 import type { ReposManifestFile } from "../../src/repos/schemas/manifest.js";
@@ -475,7 +476,7 @@ describe("ReposDrift.check", () => {
 				// channel -- `git.submoduleStatus` dying loudly if reached proves
 				// the failure surfaces BEFORE any reconciliation is attempted,
 				// not merely that the final report happens to look right.
-				const root = makeRoot();
+				const root = "/drift-root";
 				const configStoreStub = Layer.succeed(ReposConfigStore, {
 					exists: () => Effect.succeed(true),
 					read: () => Effect.succeed(healthyManifest()),
@@ -485,10 +486,22 @@ describe("ReposDrift.check", () => {
 				const gitStub = Layer.succeed(Git, {
 					submoduleStatus: () => Effect.die("submoduleStatus must not be called on a permission-denied read"),
 				} as never);
-				const fsStub = FileSystem.layerNoop({
+				// A volume where `.gitmodules` genuinely EXISTS, with the read denied on top.
+				// The previous `layerNoop` stub had no volume at all, so the file was also
+				// absent — leaving the two cases this test exists to separate (denied vs.
+				// missing) indistinguishable in the fixture. Seeding the file makes the
+				// injected denial the only reason the read can fail.
+				const fsStub = MemoryFileSystem.layerFaulty({
 					readFileString: () =>
 						Effect.fail(systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "readFileString" })),
-				});
+				}).pipe(
+					Layer.provide(
+						MemoryFileSystem.layerWith({
+							[`${root}/.gitmodules`]:
+								'[submodule ".repos/foo"]\n\tpath = .repos/foo\n\turl = https://example.com/foo.git\n',
+						}),
+					),
+				);
 				const layer = ReposDrift.layer.pipe(
 					Layer.provide(configStoreStub),
 					Layer.provide(gitStub),

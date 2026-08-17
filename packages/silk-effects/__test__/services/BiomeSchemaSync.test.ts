@@ -1,22 +1,20 @@
 import { describe, expect, it } from "@effect/vitest";
+import { MemoryFileSystem } from "@effected/memfs";
 import { Effect, FileSystem, Layer } from "effect";
 import { BiomeSyncError } from "../../src/errors/BiomeSyncError.js";
 import { BiomeSchemaSync, buildSchemaUrl, extractSemver } from "../../src/services/BiomeSchemaSync.js";
 
 // ---------------------------------------------------------------------------
-// Mock FileSystem
+// Virtual FileSystem
 // ---------------------------------------------------------------------------
 
-const makeTestFs = (files: Record<string, string>) =>
-	Layer.succeed(FileSystem.FileSystem, {
-		exists: (path: string) => Effect.succeed(path in files),
-		readFileString: (path: string) =>
-			path in files ? Effect.succeed(files[path]) : Effect.fail(new Error(`ENOENT: ${path}`)),
-		writeFileString: (path: string, content: string) =>
-			Effect.sync(() => {
-				files[path] = content;
-			}),
-	} as unknown as FileSystem.FileSystem);
+// A real `FileSystem` over an in-memory volume, replacing a hand-rolled stub
+// that stored writes in the same mutable record it read from. Two gains: an
+// unseeded read now fails typed `NotFound` instead of a bare
+// `new Error("ENOENT: …")` the real filesystem never produces, and a
+// write-then-read round-trip goes through the filesystem contract rather than
+// through the stub's own bookkeeping.
+const makeTestFs = (files: Record<string, string>) => MemoryFileSystem.layerWith(files);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,14 +22,34 @@ const makeTestFs = (files: Record<string, string>) =>
 
 const CWD = "/project";
 
-// Per-test provide is REQUIRED here, not an unoptimised leftover: the mocked filesystem is
-// built from — and mutated through — the per-test `files` record, so the layer genuinely
-// varies test by test and cannot be hoisted into a suite-boundary `layer(...)` block.
+// Per-test provide is REQUIRED here, not an unoptimised leftover: the volume is seeded from
+// the per-test `files` record, so the layer genuinely varies test by test and cannot be
+// hoisted into a suite-boundary `layer(...)` block.
 function runWith(files: Record<string, string>, effect: Effect.Effect<unknown, unknown, BiomeSchemaSync>) {
 	const testFs = makeTestFs(files);
 	const layer = BiomeSchemaSync.layer.pipe(Layer.provide(testFs));
 	return Effect.provide(effect, layer);
 }
+
+// For the tests that assert on file CONTENT after the run. Writes now land in the volume
+// instead of back in the caller's `files` record, so the read-back must see the SAME volume
+// as the write.
+//
+// That requires ONE `Effect.provide`, not one layer value. Binding `layerWith(seed)` to a
+// const is NOT sufficient: layer memoization is per-build, so two separate `Effect.provide`
+// calls against the same const build two independent volumes, each re-seeded — the read-back
+// silently returns the seed and an assertion written against the seed passes vacuously.
+// `provideMerge` exposes `BiomeSchemaSync` and `FileSystem` from a single build, so the whole
+// test body runs against one volume.
+function runOnVolume<A, E>(
+	files: Record<string, string>,
+	body: Effect.Effect<A, E, BiomeSchemaSync | FileSystem.FileSystem>,
+): Effect.Effect<A, E> {
+	return Effect.provide(body, Layer.provideMerge(BiomeSchemaSync.layer, makeTestFs(files)));
+}
+
+/** Read a file back from the volume the surrounding `runOnVolume` body is running against. */
+const readBack = (path: string) => Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFileString(path));
 
 // ---------------------------------------------------------------------------
 // extractSemver
@@ -115,12 +133,15 @@ describe("BiomeSchemaSync.check", () => {
 	it.effect("does NOT write files even when update is needed", () =>
 		Effect.gen(function* () {
 			const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" });
-			const files = {
-				[`${CWD}/biome.json`]: originalContent,
-			};
-			yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))));
+			const after = yield* runOnVolume(
+				{ [`${CWD}/biome.json`]: originalContent },
+				Effect.gen(function* () {
+					yield* BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD })));
+					return yield* readBack(`${CWD}/biome.json`);
+				}),
+			);
 			// File content should be unchanged
-			expect(files[`${CWD}/biome.json`]).toBe(originalContent);
+			expect(after).toBe(originalContent);
 		}),
 	);
 
@@ -196,29 +217,35 @@ describe("BiomeSchemaSync.sync", () => {
 	it.effect("writes updated content when schema URL has wrong version", () =>
 		Effect.gen(function* () {
 			const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.0/schema.json" });
-			const files = {
-				[`${CWD}/biome.json`]: originalContent,
-			};
-			const result = yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("^2.4.9", { cwd: CWD }))));
+			const { result, written } = yield* runOnVolume(
+				{ [`${CWD}/biome.json`]: originalContent },
+				Effect.gen(function* () {
+					const result = yield* BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("^2.4.9", { cwd: CWD })));
+					return { result, written: yield* readBack(`${CWD}/biome.json`) };
+				}),
+			);
 			expect(result).toMatchObject({
 				updated: [`${CWD}/biome.json`],
 				current: [],
 				skipped: [],
 			});
 			// File should be updated
-			expect(files[`${CWD}/biome.json`]).toContain("https://biomejs.dev/schemas/2.4.9/schema.json");
-			expect(files[`${CWD}/biome.json`]).not.toContain("2.4.0");
+			expect(written).toContain("https://biomejs.dev/schemas/2.4.9/schema.json");
+			expect(written).not.toContain("2.4.0");
 		}),
 	);
 
 	it.effect("does not write when schema is already current", () =>
 		Effect.gen(function* () {
 			const originalContent = JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.4.9/schema.json" });
-			const files = {
-				[`${CWD}/biome.json`]: originalContent,
-			};
-			yield* runWith(files, BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD }))));
-			expect(files[`${CWD}/biome.json`]).toBe(originalContent);
+			const after = yield* runOnVolume(
+				{ [`${CWD}/biome.json`]: originalContent },
+				Effect.gen(function* () {
+					yield* BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD })));
+					return yield* readBack(`${CWD}/biome.json`);
+				}),
+			);
+			expect(after).toBe(originalContent);
 		}),
 	);
 

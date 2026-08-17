@@ -1,21 +1,20 @@
 import { describe, expect, it } from "@effect/vitest";
+import { MemoryFileSystem } from "@effected/memfs";
 import type { Exit } from "effect";
-import { Cause, Effect, FileSystem, Layer, Option } from "effect";
+import { Cause, Effect, Layer, Option } from "effect";
 import { ChangesetConfigError } from "../../src/errors/ChangesetConfigError.js";
 import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 
 // ---------------------------------------------------------------------------
-// Mock FileSystem
+// Virtual FileSystem
 // ---------------------------------------------------------------------------
 
-const makeTestFs = (files: Record<string, string>) =>
-	Layer.succeed(FileSystem.FileSystem, {
-		exists: (path: string) => Effect.succeed(path in files),
-		readFileString: (path: string) =>
-			path in files
-				? Effect.succeed(files[path])
-				: Effect.fail(new Error(`ENOENT: ${path}`) as unknown as Parameters<typeof Effect.fail>[0]),
-	} as unknown as FileSystem.FileSystem);
+// A real `FileSystem` over an in-memory volume. The previous hand-rolled stub
+// signalled a missing file by failing with a bare `new Error("ENOENT: …")`
+// double-cast into the `PlatformError` channel — a shape the real filesystem
+// never produces. A volume reports absence the way production does: `exists`
+// answers `false`, and an unseeded read fails typed `NotFound`.
+const makeTestFs = (files: Record<string, string>) => MemoryFileSystem.layerWith(files);
 
 // ---------------------------------------------------------------------------
 // Helpers
