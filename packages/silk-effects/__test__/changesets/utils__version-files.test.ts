@@ -652,12 +652,42 @@ describe("VersionFiles.processVersionFiles", () => {
 			// rather than silently skipping, so a success cannot pass unnoticed.
 			const exit = yield* Effect.exit(Effect.provide(VersionFiles.processVersionFiles("/project", configs), denied));
 			if (Exit.isFailure(exit)) {
-				// A tagged `VersionFileError` now, so the assertion names the type and the
-				// offending path rather than string-matching a free-text prefix.
+				// A tagged `VersionFileError` now — assert the type, the offending path, AND
+				// the rendered reason. Dropping the reason would let `describeFailure`
+				// regress to `String(error)` or "[object Object]" unnoticed; this is its
+				// only exercise.
 				expect(Cause.pretty(exit.cause)).toContain("VersionFileError");
 				expect(Cause.pretty(exit.cause)).toContain("/project/plugin.json");
+				expect(Cause.pretty(exit.cause)).toContain("PermissionDenied: FileSystem.readFileString");
 			} else {
 				throw new Error("expected the per-file error to surface as a defect, but the effect succeeded");
+			}
+		}),
+	);
+
+	// A version file whose bytes do not parse reaches `computeUpdate`, which runs
+	// `Effect.runSync(Jsonc.parse(...))` and THROWS — a defect, not a typed failure.
+	// The pre-FileSystem try/catch enclosed that call, so this input class has always
+	// been typed; `applyOne`'s `catchDefect` is what keeps it that way. Without it the
+	// die rides through `ReleasePlanner.apply`'s `mapError` and crashes it.
+	it.effect("keeps an unparseable version file on the TYPED channel, not as a defect", () =>
+		Effect.gen(function* () {
+			canWalk(["broken.json"]);
+			const configs = [{ glob: "broken.json", paths: ["$.version"] }];
+
+			const exit = yield* Effect.exit(
+				withVolume(
+					{ [PKG]: JSON.stringify({ name: "root", version: "2.0.0" }), "/project/broken.json": "" },
+					VersionFiles.processVersionFiles("/project", configs),
+				),
+			);
+
+			expect(Exit.isFailure(exit)).toBe(true);
+			if (Exit.isFailure(exit)) {
+				// `processVersionFiles` is the legacy path, so it re-dies deliberately —
+				// what matters is that the die carries the wrapped VersionFileError with
+				// its file path, not a bare JsoncParseError from deep inside computeUpdate.
+				expect(Cause.pretty(exit.cause)).toContain("/project/broken.json");
 			}
 		}),
 	);

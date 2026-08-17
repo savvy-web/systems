@@ -557,6 +557,16 @@ export class VersionFiles {
 			return yield* VersionFiles.updateFile(filePath, jsonPaths, version);
 		}).pipe(
 			Effect.mapError((error) => new VersionFileError({ filePath, reason: VersionFiles.describeFailure(error) })),
+			// `computeUpdate` runs `Effect.runSync(Jsonc.parse(...))`, which THROWS on
+			// unparseable input — and a throw inside `Effect.gen` is a defect, which
+			// `mapError` never sees. Without this, an empty or malformed version file
+			// dies here and the die rides straight through `ReleasePlanner.apply`'s own
+			// `mapError`, crashing it with a raw JsoncParseError instead of the
+			// `ReleasePlanError` its contract promises. The pre-migration try/catch
+			// enclosed that call, so this input class has always been typed — keep it so.
+			Effect.catchDefect((defect) =>
+				Effect.fail(new VersionFileError({ filePath, reason: VersionFiles.describeFailure(defect) })),
+			),
 		);
 	}
 
