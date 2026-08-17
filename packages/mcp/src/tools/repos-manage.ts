@@ -12,7 +12,6 @@
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import type { SchemaError } from "effect";
 import { Effect, Schema, SchemaGetter } from "effect";
 import { mdInline } from "./md-inline.js";
 
@@ -395,7 +394,7 @@ export const reposManage = (
 	| Repos.RepoNotFoundError
 	| Repos.NoteNotFoundError
 	| Repos.ReposLockdownError
-	| SchemaError.SchemaError
+	| Schema.SchemaError
 	| WorkspaceRootNotFoundError,
 	Repos.ReposManager | WorkspaceRoot
 > =>
