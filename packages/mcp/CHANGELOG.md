@@ -1,5 +1,17 @@
 # @savvy-web/mcp
 
+## 2.4.2
+
+### Dependencies
+
+* | Dependency                | Type       | Action  | From    | To      |                                                                              |
+  | ------------------------- | ---------- | ------- | ------- | ------- | ---------------------------------------------------------------------------- |
+  | @modelcontextprotocol/sdk | dependency | updated | ^1.29.0 | ^1.30.0 | [#500][#500] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#500]: https://github.com/savvy-web/systems/pull/500
+
 ## 2.4.1
 
 ### Dependencies
