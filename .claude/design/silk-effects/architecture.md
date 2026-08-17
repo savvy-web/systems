@@ -4,10 +4,11 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-08-16
-last-synced: 2026-08-16
+updated: 2026-08-17
+last-synced: 2026-08-17
 related:
   - ../silk/architecture.md
+  - ../silk/plugin.md
   - ../cli/architecture.md
   - ../mcp/architecture.md
   - ../testing/effect-vitest.md
@@ -35,7 +36,7 @@ dependencies: []
 
 `@savvy-web/silk-effects` is a platform-agnostic Effect library providing Silk Suite-specific conventions. It extracts repeated patterns from across the ecosystem into a single shared package consumed by the Silk Suite repositories.
 
-The library builds on the `@effected/*` kit (`workspaces`, `commands`, `templates`, `git`, `glob`, `jsonc`, `package-json`, `walker`, `yaml`) to provide higher-level, Silk-opinionated behavior for publishability detection, workspace analysis, changesets configuration, config discovery, Biome schema synchronization and the shared hook-section content.
+The library builds on the `@effected/*` kit (`workspaces`, `commands`, `templates`, `git`, `github-references`, `glob`, `jsonc`, `package-json`, `walker`, `yaml`) to provide higher-level, Silk-opinionated behavior for publishability detection, workspace analysis, changesets configuration, config discovery, Biome schema synchronization and the shared hook-section content.
 
 **The seam is policy-versus-mechanism, and it moved.** Generic mechanisms that once lived here — versioning/tag classification, CLI tool discovery, the managed-section engine — are now kit surfaces, and silk-effects keeps only the Silk *policy* layered over them. See [What the kit owns now](#what-the-kit-owns-now) for the exact map; the short version is that a service deleted from this package was not lost, it was upstreamed.
 
@@ -43,7 +44,7 @@ silk-effects **also hosts the per-tool business logic** of the three standalone 
 
 `@savvy-web/mcp` (the `savvy-mcp` server) is a third consumer: it composes its own runtime layer from silk-effects services (notably `SilkWorkspaceAnalyzer`, `WorkspaceRoot` and `Turbo.TurboInspector`) plus the `@effected/*` kit, and surfaces them as MCP tools. See `../mcp/architecture.md`.
 
-A fourth namespace export, `Turbo`, adds read-only Turborepo inspection built on `@effected/commands` (`ToolDiscovery` + `Tool` + `Run`). Unlike the three tool namespaces above it is not extracted CLI business logic — it is a small `Context.Service` plus pure digest transforms. See [Turbo Inspection](#turbo-inspection-turbo-namespace). A fifth, `Repos`, owns the vendored-reference-repo manifest, the submodule plumbing and the OS-permission boundary that keeps vendored trees read-only — see [Vendored Repos](#vendored-repos-repos-namespace).
+A fourth namespace export, `Turbo`, adds read-only Turborepo inspection built on `@effected/commands` (`ToolDiscovery` + `Tool` + `Run`). Unlike the three tool namespaces above it is not extracted CLI business logic — it is a small `Context.Service` plus pure digest transforms. See [Turbo Inspection](#turbo-inspection-turbo-namespace). A fifth, `Repos`, owns the vendored-reference-repo manifest, the submodule plumbing and the OS-permission boundary that keeps vendored trees read-only — see [Vendored Repos](#vendored-repos-repos-namespace). A sixth, `PrBody` (`src/pr-body/`, added in #488), holds the managed PR-description marker contract shared with `savvy-web/silk-release-action` — `ManagedPrBody`, `Markers`, `Region`, `OwnedAttribute`, `LinkedIssueRef`, `PrBodyDiagnostic` and `ClosingReferences`; the consumer-side half of the same contract is the plugin's `pr-body` skill (see `../silk/plugin.md`).
 
 **Package:** `@savvy-web/silk-effects`, in `packages/silk-effects`. Platform-agnostic via effect's in-core platform abstractions — consumers provide their own platform layer. Built dual-format (esm + cjs) so config-integration consumers can `require()` it — see [Why dual-format](#why-dual-format-cjs--esm).
 
@@ -59,7 +60,7 @@ Published and consumed by `@savvy-web/cli`, `@savvy-web/silk` and `@savvy-web/mc
 
 ## What the kit owns now
 
-The `@effected` github-split wave (kit releases: `commands`/`templates` 0.1.0, `workspaces` 0.9.0, `npm` 0.5.0, `package-json` 0.6.0) took three mechanisms out of this package. The table is the migration map — read it before going looking for a service that a stale note, an old test name or an action repo still mentions.
+The `@effected` github-split wave (kit releases at the time: `commands`/`templates` 0.1.0, `workspaces` 0.9.0, `npm` 0.5.0, `package-json` 0.6.0 — all since superseded; the manifest is authoritative) took three mechanisms out of this package, and a later dogfood round (`@effected/github-references` 0.1.0, systems#507/effected#399) took a fourth — the issue-reference grammar. The table is the migration map — read it before going looking for a service, or a pattern constant, that a stale note, an old test name or an action repo still mentions.
 
 | Deleted from silk-effects | Now in the kit | Shape change worth knowing |
 | --- | --- | --- |
@@ -68,6 +69,7 @@ The `@effected` github-split wave (kit releases: `commands`/`templates` 0.1.0, `
 | `ToolDiscovery` service + `ToolDefinition`/`ResolvedTool`/`ToolResults` schemas + `ToolNotFoundError`/`ToolResolutionError`/`ToolVersionMismatchError` + the `ToolCommand` util | `@effected/commands` `ToolDiscovery` (`resolve`/`isAvailable`/`invalidate`/`invalidateAll`), `Tool.named`, the `Run` free functions | `ResolvedTool.command(...)` returns a core `ChildProcess.Command` rather than a bespoke wrapper, and the caller pipes it through `Run.text`/`Run.lines`/`Run.exitCode`. Resolution failure is a four-member union whose members carry no `reason` field — map from `e.message`. |
 | `ManagedSection` service + `SectionDefinition`/`SectionBlock`/`SectionResults`/`CommentStyle` schemas + `SectionParseError`/`SectionValidationError`/`SectionWriteError` | `@effected/templates` `ManagedSection`, `Section`, `SectionId`, `CommentStyle` | Data-first, and the outcome enums flattened: `CheckOutcome` is `UpToDate`/`Drifted`/`Absent` (previously a nested `Found` + `isUpToDate` boolean), `syncMany` is now `syncAll`, and `read` returns an `Option`. |
 | `Changesets.MarkdownService`/`MarkdownLive` | — (deleted outright) | Pure indirection with zero call sites. The changesets engine still uses mdast/remark internally; removing it narrowed `ChangelogService`'s `R` to `GitHubService` alone. |
+| `PrBody.ClosingReferences.BARE_LINE_PATTERN` (public static) + the private `CLOSING_LIST_PATTERN`/`REFERENCE_PATTERN` in `commitlint/hook/rules/closes-trailer.ts` + the private `CLOSES_ISSUE_PATTERN`/`FIXES_ISSUE_PATTERN`/`REFS_ISSUE_PATTERN` in `changesets/utils/issue-refs.ts` | `@effected/github-references` `parseBareLines`, `parseClosingLists`, `collectReferenceLists`, `keywordFamily` | The one public removal is `BARE_LINE_PATTERN` — a consumer that reached for the regex now calls `ClosingReferences.parseBare` (unchanged signature) or the kit directly. Behavior widened rather than narrowed; see [Issue References](#issue-references-kit-owned-grammar). |
 
 Two consequences are load-bearing:
 
@@ -106,7 +108,7 @@ These `Commitlint` decisions are load-bearing for consumers:
 
 - **The hook rules are a menu, not a pipeline, and the caller picks the subset.** Each rule under `src/commitlint/hook/rules/` is an independent `Rule` with its own severity; nothing in this package composes them into a fixed run. The `savvy commit hook pre-commit-message` caller runs the commit-body rules only for a real commit message and a smaller set for a `gh pr create`/`pr edit` body — see `../cli/architecture.md`. A new rule therefore has to be classified by the caller, and a rule that assumes it is only ever handed a commit message needs to say so.
 - **`verbosity`'s thresholds encode the plugin's authored commit format, not a generic style opinion.** `VERBOSITY_LINE_THRESHOLD` / `VERBOSITY_WORD_THRESHOLD` are exported and carry their derivation in TSDoc: they are sized to the three-to-five-bullet house format the `commit-create` skill teaches, plus headroom, because this repo squash-merges and a long body is discarded at merge. Changing the format in `plugins/silk/skills/commit-create/SKILL.md` without moving these constants (or the reverse) puts the advisory rule and the authoring instruction into disagreement — the one coupling between this package and the plugin's prose.
-- **`closes-trailer` matches against the whole reference list on a trailer line.** `Closes #247, #248, #251` is one line naming three issues, which is the form the commit format asks for; a pattern anchored to a single `#N` per line silently ignores every id after the first, so the rule extracts the reference list and scans within it.
+- **`closes-trailer` matches against the whole reference list on a trailer line.** `Closes #247, #248, #251` is one line naming three issues, which is the form the commit format asks for; a rule that looks for a single `#N` per line silently ignores every id after the first, so `hasClosingTrailer` reads the whole list. It does that through `@effected/github-references`' `parseClosingLists` rather than a local regex — see [Issue References](#issue-references-kit-owned-grammar) for the grammar and the two behavior changes that came with the swap (all nine closing tenses now count; a keyword mid-prose no longer does).
 
 These `Lint` decisions are load-bearing for consumers:
 
@@ -136,6 +138,7 @@ src/
   lint/                 ← Lint namespace (extracted @savvy-web/lint-staged logic)
   turbo/                ← Turbo namespace (TurboInspector service + TurboDigest transforms)
   repos/                ← Repos namespace (.repos manifest, submodule plumbing, OS-level lockdown)
+  pr-body/              ← PrBody namespace (managed PR-description markers, regions, closing refs)
 
 __test__/                ← mirrors the source tree; integration tests under integration/
   integration/fixtures/workspaces/  ← workspace fixture tree (see Testing Strategy)
@@ -218,6 +221,36 @@ The composition contract is the load-bearing part. `savvyToolSection` produces a
 CLI tool resolution — locating a binary globally (PATH) or locally (through the package manager), extracting versions, enforcing constraints and caching probes — is `@effected/commands`' `ToolDiscovery`. silk-effects holds no copy: `Tool.named("turbo")` builds the definition, `discovery.resolve(tool)` yields a `ResolvedTool` whose `command(...)` returns a core `ChildProcess.Command`, and the `Run` free functions (`Run.text`, `Run.lines`, `Run.exitCode`) execute it. Its `LocalExec` contract — the argv prefix that runs a project-local binary — is supplied by `@effected/workspaces`' `Workspaces.localExecLayer()`, which reads the detected package manager and workspace root. See `../cli/architecture.md` and `../mcp/architecture.md` for how each host wires it.
 
 **Environment extension goes through `Run.extendEnv`, never core's bare `setEnv`.** `ChildProcess.setEnv` *replaces* the child environment outright rather than merging onto the parent's, so a command given one extra variable loses `PATH` and fails to spawn at all. This was a live bug found on this branch, fixed upstream in the kit, and pinned here by a mutation-tested case in `__test__/turbo/TurboInspector.int.test.ts` — if that test ever stops failing when `extendEnv` is swapped back to `setEnv`, the pin has rotted.
+
+### Issue References (kit-owned grammar)
+
+GitHub issue-reference parsing — the closing keywords, the `#N` lists and the two dialects they appear in — is `@effected/github-references`. silk-effects holds no copy: the three hand-rolled grammars it used to carry (PrBody's bare-line regex, the `closes-trailer` list scanner, the changesets categorized harvester) were all retired onto the kit in the dogfood round that produced that package (systems#507/effected#399). They had drifted from GitHub and from each other — three keyword sets, three separator rules, three answers to whether the `#` was optional — which is exactly the failure a shared grammar removes.
+
+**Two dialects, and which call site is on which is a decision, not an accident.**
+
+- The **line dialect** (`parseBareLines`, `parseClosingLists`, `parseReferenceLists`): the whole line, after trimming, must be `<keyword>[:] #N[, #N…]`. Colon-tolerant. A trailer is a line of its own, so a `#N` mentioned mid-prose never qualifies.
+- The **inline dialect** (`harvestReferenceLists`): references harvested out of running text, no colon accepted, several lists may share one line.
+- `collectReferenceLists` composes them per line — whole-line parse first, inline harvest only for a line that is not a whole-line list — which is what guarantees a colon-less trailer line contributes its list exactly once rather than once per posture.
+
+The three call sites:
+
+| Call site | Kit entry point | Dialect |
+| --- | --- | --- |
+| `PrBody.ClosingReferences.parseBare` (`src/pr-body/references.ts`) | `parseBareLines` | line, one `#N` per line |
+| `Commitlint` `hasClosingTrailer` (`src/commitlint/hook/rules/closes-trailer.ts`) | `parseClosingLists` | line, deliberately — a trailer must be its own line |
+| `parseIssueReferences` (`src/changesets/utils/issue-refs.ts`; `@internal`, reached only through `getReleaseLine`) | `collectReferenceLists` + `keywordFamily` | both, per line |
+
+Behavior the swap changed, all of it drift-correction rather than new policy:
+
+- **The keyword set widened to GitHub's nine closing tenses** (`close`/`closes`/`closed`, `fix`/`fixes`/`fixed`, `resolve`/`resolves`/`resolved`) plus the non-closing `ref`/`refs`/`references`. `closes-trailer` previously accepted only the present plural, so `Fixed #123` read as a missing trailer.
+- **`closes-trailer` is now strictly whole-line.** Its old pattern was unanchored, so a keyword in running prose satisfied the rule; it no longer does. This is the intended reading of "trailer" and is documented at the call site so a future edit does not "fix" it back to the inline harvest.
+- **`parseIssueReferences` requires the `#`.** `Closes 123` used to be accepted — that was drift from GitHub, not a feature.
+- **`parseIssueReferences` accumulates across the whole message.** The old per-category `RegExp.exec` took the first match only, so a second `Closes` line was silently dropped; every list now contributes, in message order, duplicates preserved.
+- **`resolve`-family keywords categorize as `closes`**, via a `Record<KeywordFamily, keyof IssueReferences>` that is total over the kit's family union — a family the kit adds without a category here is a type error, never a silent drop.
+- **Separators are the kit's**: `,`, `and` and the Oxford `, and`. PrBody's bare-line separator tightened from `\s+` to `[ \t]+` (the kit's ruling — a newline is not intra-line whitespace).
+- **The 10k-character ReDoS truncation is gone** from `issue-refs.ts`. The kit is regex-free and not backtracking-vulnerable, so the input cap that existed only to bound a catastrophic pattern has no subject; adversarial input is no longer a reason to silently ignore the tail of a long message.
+
+Only the changesets side of that list is user-visible output: `parseIssueReferences` feeds `getReleaseLine`, so a changeset whose commit body names issues in any of the newly recognized forms now renders those refs in the changelog where it previously rendered none. The PrBody marker grammar itself (`Markers`, `Region`, `OwnedAttribute`) is untouched by all of this and remains silk-owned — it is a Silk/silk-release-action contract, not GitHub's.
 
 ### Workspace Analysis (SilkWorkspaceAnalyzer)
 
@@ -386,11 +419,11 @@ Consumers match on these with `$is`. The section outcomes silk-effects used to d
 ```text
 @savvy-web/silk-effects
   ├── effect (peer + dev)
-  └── @effected/* (direct): commands · git · glob · jsonc · package-json ·
-                            templates · walker · workspaces · yaml
+  └── @effected/* (direct): commands · git · github-references · glob · jsonc ·
+                            package-json · templates · walker · workspaces · yaml
 ```
 
-`effect` is the sole peer (consumers already depend on it; v4 absorbed the `@effect/platform` surface into core). The `@effected/*` kit packages are direct dependencies — `package.json` holds the authoritative ranges, and the github-split wave pinned `commands`/`templates` at 0.1.0, `workspaces` 0.9.0, `npm` 0.5.0 and `package-json` 0.6.0. The `Changesets` namespace also depends on the genuine changesets engine at runtime — `@changesets/get-release-plan`, `@changesets/apply-release-plan`, `@changesets/config` and `@manypkg/get-packages` back `ReleasePlanner`, all on the changesets **v3** line (see the third load-bearing bullet in [Tool Namespaces](#tool-namespaces-changesets-commitlint-lint)). The vendored `src/changesets/vendor/github-info.ts` adapter wraps v1 `@changesets/get-github-info`'s `getCommitInfo` and folds its structured, possibly-`undefined` result back into the legacy `GitHubCommitInfo` shape so the changelog pipeline is unaffected. See `package.json` for the complete dependency list.
+`effect` is the sole peer (consumers already depend on it; v4 absorbed the `@effect/platform` surface into core). The `@effected/*` kit packages are direct dependencies and **`package.json` holds the authoritative ranges** — every range here has moved since the github-split wave, so read the manifest rather than any version written into prose. The newest member is `@effected/github-references` (0.1.0, pure and effect-peer-only), which owns the issue-reference grammar all three of this package's reference call sites now share — see [Issue References](#issue-references-kit-owned-grammar). The `Changesets` namespace also depends on the genuine changesets engine at runtime — `@changesets/get-release-plan`, `@changesets/apply-release-plan`, `@changesets/config` and `@manypkg/get-packages` back `ReleasePlanner`, all on the changesets **v3** line (see the third load-bearing bullet in [Tool Namespaces](#tool-namespaces-changesets-commitlint-lint)). The vendored `src/changesets/vendor/github-info.ts` adapter wraps v1 `@changesets/get-github-info`'s `getCommitInfo` and folds its structured, possibly-`undefined` result back into the legacy `GitHubCommitInfo` shape so the changelog pipeline is unaffected. See `package.json` for the complete dependency list.
 
 **Runtime requirement:** Consumers must provide a platform layer (`NodeServices.layer` / `NodeContext.layer`, `BunContext.layer`, etc.) for modules that use `FileSystem` or `ChildProcessSpawner`.
 

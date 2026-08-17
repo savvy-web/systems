@@ -75,9 +75,56 @@ describe("parseIssueReferences", () => {
 		});
 	});
 
-	it("handles numbers without # prefix", () => {
+	// GitHub's grammar makes the # mandatory; the old pattern's bare-number
+	// acceptance was drift from it.
+	it("requires the # prefix", () => {
 		expect(parseIssueReferences("Closes 123")).toEqual({
+			closes: [],
+			fixes: [],
+			refs: [],
+		});
+	});
+
+	it("categorizes the resolve family as closes", () => {
+		expect(parseIssueReferences("Resolves #7")).toEqual({
+			closes: ["7"],
+			fixes: [],
+			refs: [],
+		});
+	});
+
+	it("harvests a reference embedded in prose", () => {
+		expect(parseIssueReferences("This closes #12 in passing")).toEqual({
+			closes: ["12"],
+			fixes: [],
+			refs: [],
+		});
+	});
+
+	it("harvests several keyword lists from one line", () => {
+		expect(parseIssueReferences("Closes #123, Fixes #456")).toEqual({
 			closes: ["123"],
+			fixes: ["456"],
+			refs: [],
+		});
+	});
+
+	// The colon spelling is line-dialect-only: the whole-line pass reads it
+	// (see the `Fixes: #789` case above), the inline harvest does not — so a
+	// colon trailer buried mid-prose is not a reference.
+	it("does not harvest a colon spelling from mid-prose", () => {
+		expect(parseIssueReferences("prose closes: #1 more prose")).toEqual({
+			closes: [],
+			fixes: [],
+			refs: [],
+		});
+	});
+
+	// A trailer line is also a valid inline harvest of itself; the per-line
+	// composition must count it exactly once.
+	it("never double-counts a line matched by both dialects", () => {
+		expect(parseIssueReferences("Closes #42")).toEqual({
+			closes: ["42"],
 			fixes: [],
 			refs: [],
 		});

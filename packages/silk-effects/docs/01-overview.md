@@ -118,7 +118,11 @@ const affected = await Effect.runPromise(
   |- @effected/commands (direct)
   |- @effected/templates (direct)
   |- @effected/git (direct)
+  |- @effected/github-references (direct)
+  |- @effected/glob (direct)
   |- @effected/jsonc (direct)
+  |- @effected/package-json (direct)
+  |- @effected/walker (direct)
   +- @effected/yaml (direct)
 ```
 
