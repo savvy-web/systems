@@ -22,8 +22,13 @@ describe("hasClosingTrailer", () => {
 		expect(hasClosingTrailer("Closes #5", 123)).toBe(false);
 	});
 
-	it("does not match the verb 'close' (only closes/fixes/resolves)", () => {
-		expect(hasClosingTrailer("close #123", 123)).toBe(false);
+	// GitHub accepts all nine closing keyword tenses; the old pattern's
+	// present-plural-only set was drift from that grammar.
+	it("accepts every closing keyword tense GitHub does", () => {
+		const tenses = ["close", "closes", "Closed", "fix", "Fixes", "Fixed", "resolve", "resolves", "Resolved"];
+		for (const keyword of tenses) {
+			expect(hasClosingTrailer(`${keyword} #123`, 123)).toBe(true);
+		}
 	});
 
 	// The house format puts every issue on one comma-separated trailer, so

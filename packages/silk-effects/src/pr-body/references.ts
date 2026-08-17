@@ -1,3 +1,4 @@
+import { parseBareLines } from "@effected/github-references";
 import { Schema } from "effect";
 import { LinkedIssueRef } from "./linked-issue.js";
 import { Markers } from "./markers.js";
@@ -38,19 +39,6 @@ export class ClosingReferences extends Schema.Class<ClosingReferences>("ClosingR
 	ids: Schema.Array(Schema.Number.check(Schema.isInt())),
 }) {
 	/**
-	 * A closing keyword and its issue reference, anchored per line.
-	 *
-	 * @remarks
-	 * Anchored so a number mentioned in passing is not mistaken for a closing
-	 * reference — matching what GitHub itself links on. Every keyword GitHub
-	 * accepts is matched, not just the present-tense plural this contract
-	 * emits: `close`/`closed`, `fix`/`fixed`, `resolve`/`resolved` and an
-	 * optional colon are all valid, and a reference the parser fails to
-	 * recognise is one the next regeneration silently deletes.
-	 */
-	static readonly BARE_LINE_PATTERN = /^(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)$/i;
-
-	/**
 	 * The open issues' ids, in input order, duplicates preserved.
 	 *
 	 * @remarks
@@ -69,14 +57,19 @@ export class ClosingReferences extends Schema.Class<ClosingReferences>("ClosingR
 	/**
 	 * Issue ids carried by a region's bare closing lines.
 	 *
+	 * @remarks
+	 * The region is read with `@effected/github-references`' `parseBareLines`
+	 * — per line, the whole line, after trimming, must be
+	 * `<keyword>[:] #<number>`, so a number mentioned in passing is never
+	 * mistaken for a closing reference. Every keyword GitHub accepts counts,
+	 * not just the present-tense plural this contract emits, because a
+	 * reference the parser fails to recognise is one the next regeneration
+	 * silently deletes.
+	 *
 	 * @public
 	 */
 	static parseBare(region: string): ReadonlyArray<number> {
-		return region
-			.split("\n")
-			.map((line) => ClosingReferences.BARE_LINE_PATTERN.exec(line.trim())?.[1])
-			.filter((id): id is string => id !== undefined)
-			.map(Number);
+		return parseBareLines(region).map((ref) => ref.issueNumber);
 	}
 
 	/**

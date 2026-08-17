@@ -4,6 +4,7 @@
  *
  * @internal
  */
+import { parseClosingLists } from "@effected/github-references";
 import { Effect } from "effect";
 import type { BranchInfo } from "../diagnostics/branch.js";
 import type { OpenIssue } from "../diagnostics/open-issues.js";
@@ -19,39 +20,22 @@ export interface ClosesTrailerCtx {
 }
 
 /**
- * A closing keyword followed by its full list of issue references.
+ * Whether some line of the message is a closing trailer naming `ticketId`.
  *
  * @remarks
- * The house commit format puts every issue on ONE comma-separated trailer
- * (`Closes #247, #248, #251`), so a pattern anchored on `keyword\s+#N` sees
- * only the first id and reports a missing trailer that is plainly present.
- * Capturing the whole list and scanning it is what makes the later ids count.
- *
- * `and` is accepted alongside the comma because humans write it; the optional
- * colon matches the `Closes: #N` form the validator's trailer pattern allows.
- *
- * @internal
- */
-const CLOSING_LIST_PATTERN = /\b(?:closes|fixes|resolves):?\s+(#\d+(?:\s*(?:,|and)\s*#\d+)*)/gi;
-
-/**
- * Reference ids within a captured closing list.
+ * The message is read with `@effected/github-references`' `parseClosingLists`:
+ * per line, the whole line, after trimming, must be a closing keyword (any of
+ * GitHub's nine tenses, optional colon) followed by its full `#N` list —
+ * comma, `and`, or Oxford `, and` separated — so every id in the house
+ * one-trailer format (`Closes #247, #248, #251`) counts, not just the first.
+ * A `#N` mentioned mid-prose never qualifies: a trailer is a line of its own,
+ * which is why this rule deliberately stays on the whole-line dialect rather
+ * than the inline harvest.
  *
  * @internal
  */
-const REFERENCE_PATTERN = /#(\d+)/g;
-
 export function hasClosingTrailer(message: string, ticketId: number): boolean {
-	// String.prototype.matchAll clones the receiver, so these module-level
-	// global regexes carry no lastIndex state between calls.
-	for (const keywordMatch of message.matchAll(CLOSING_LIST_PATTERN)) {
-		const list = keywordMatch[1];
-		if (list === undefined) continue;
-		for (const reference of list.matchAll(REFERENCE_PATTERN)) {
-			if (Number(reference[1]) === ticketId) return true;
-		}
-	}
-	return false;
+	return parseClosingLists(message).some((list) => list.issueNumbers.includes(ticketId));
 }
 
 export const closesTrailerRule: Rule<ClosesTrailerInput, ClosesTrailerCtx> = {
