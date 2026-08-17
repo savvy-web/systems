@@ -290,8 +290,8 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(effect@4.0.0-rc.109)
       '@effected/templates':
-        specifier: ^0.3.0
-        version: 0.3.0(effect@4.0.0-rc.109)
+        specifier: ^0.4.0
+        version: 0.4.0(effect@4.0.0-rc.109)
       '@effected/workspaces':
         specifier: ^0.14.0
         version: 0.14.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
@@ -488,8 +488,8 @@ importers:
         specifier: catalog:lint
         version: 21.2.2
       '@effected/templates':
-        specifier: ^0.3.0
-        version: 0.3.0(effect@4.0.0-rc.109)
+        specifier: ^0.4.0
+        version: 0.4.0(effect@4.0.0-rc.109)
       '@savvy-web/changelog':
         specifier: workspace:*
         version: link:../changelog/dist/dev/pkg
@@ -580,8 +580,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(effect@4.0.0-rc.109)
       '@effected/templates':
-        specifier: ^0.3.0
-        version: 0.3.0(effect@4.0.0-rc.109)
+        specifier: ^0.4.0
+        version: 0.4.0(effect@4.0.0-rc.109)
       '@effected/walker':
         specifier: ^0.5.0
         version: 0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
@@ -1162,8 +1162,8 @@ packages:
     peerDependencies:
       effect: 4.0.0-rc.109
 
-  '@effected/templates@0.3.0':
-    resolution: {integrity: sha512-0Gfcbp+2l88zPgqQlw5HeDRuJNAOLxzTORVcEBsVVvJui7Uu8GnXWcV4eCPsRdSjZ0vKysvk01q8cBYwDRKUew==}
+  '@effected/templates@0.4.0':
+    resolution: {integrity: sha512-YA+CqUu5Ll3RDGp7aS7IlO2RiSh/Qxur0oLy++uYD/p3Z/tTu8wbuU4OBHW/kxxGbQ1swhV2Bg8Dz2gJ0JbPUg==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-rc.109
@@ -5930,7 +5930,7 @@ snapshots:
     dependencies:
       effect: 4.0.0-rc.109
 
-  '@effected/templates@0.3.0(effect@4.0.0-rc.109)':
+  '@effected/templates@0.4.0(effect@4.0.0-rc.109)':
     dependencies:
       effect: 4.0.0-rc.109
 
