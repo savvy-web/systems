@@ -28,7 +28,7 @@ Shown expanded for readability; each snapshot is ONE line on disk (no pretty-pri
     // … full transitive closure of linked packages
   ],
   "linkType": "pnpm-overrides",                  // "file" also valid; future: "bun"
-  "nativeRebuilds": ["better-sqlite3"],          // `pnpm rebuild` targets after --ignore-scripts installs
+  "nativeRebuilds": ["esbuild"],                 // `pnpm rebuild` targets after --ignore-scripts installs
   "phase": "adopting",
   "ball": "ours",
   "round": 2,
@@ -51,7 +51,7 @@ Shown expanded for readability; each snapshot is ONE line on disk (no pretty-pri
 | `packages` | Downstream only. The FULL transitive closure of linked `@scope/*` packages, each with the exact `pnpm-workspace.yaml` override string. Re-derive from the lockfile at `--init`/`--adopt` time — never trust a stale in-memory list. |
 | `packagesDerived` | Downstream only. `false` means the linked-package closure has NOT been computed yet; `true` means it has, so an empty `packages` array genuinely means nothing is linked. Readers must treat `false` as potentially-linked and fail safe (savvy-web/systems#331). |
 | `linkType` | `"pnpm-overrides"` or `"file"` today (`"file"` sanctioned alongside `pnpm-overrides` as of savvy-web/systems#338); `"bun"` is a reserved future value, not yet implemented — do not invent other values. |
-| `nativeRebuilds` | Downstream only. Native-module names that need `pnpm rebuild <name>` after an `--ignore-scripts` install (e.g. `better-sqlite3`). Scan for these at `--init`/discover at `--adopt`. |
+| `nativeRebuilds` | Downstream only. Native-module names that need `pnpm rebuild <name>` after an `--ignore-scripts` install. DERIVE this by scanning the resolved tree, never from a remembered example — on the Effect v4 line `@effected/store` uses `node:sqlite` and needs nothing, while the common real answer in a vitest repo is `esbuild`, whose platform binary the skipped postinstall leaves missing. |
 | `owner` | An opaque session-scoped token identifying which session wrote this snapshot. Exactly one session may hold a role in a loop; the append helper warns on a mismatch (savvy-web/systems#334). |
 | `phase` | See the phase machine in `SKILL.md`. Exactly one of `requested`, `implementing`, `handoff`, `adopting`, `findings`, `upstream-pr`, `released`, `unlinked`. |
 | `ball` | `"ours"` or `"theirs"` — whose move it is. Every mail kind deterministically flips or keeps it. |

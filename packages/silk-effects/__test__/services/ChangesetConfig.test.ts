@@ -2,20 +2,35 @@
  * Unit tests for ChangesetConfig service.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { NodeServices } from "@effect/platform-node";
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
+import { MemoryFileSystem } from "@effected/memfs";
+import { Effect, FileSystem } from "effect";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 
+/**
+ * A fixed project root on the virtual volume, replacing a per-test `mkdtempSync`.
+ * `ChangesetConfig` caches per root, so the roots still have to differ between the
+ * suites that pin cache lifetime — hence a constant per `describe`, not one global.
+ */
+const configPath = (root: string) => `${root}/.changeset/config.json`;
+
+/**
+ * The seed the next `provide` will build its volume from. `writeConfig` stages an
+ * entry here rather than touching a disk, so every call site below is unchanged:
+ * `provide` reads this record when it constructs the layer, which happens after
+ * the staging call. A write made *inside* a running program cannot go through
+ * here — the volume is already built — and must use `writeConfigLive` instead.
+ */
+let files: Record<string, string>;
+
 const writeConfig = (dir: string, content: unknown): void => {
-	const cd = join(dir, ".changeset");
-	mkdirSync(cd, { recursive: true });
-	writeFileSync(join(cd, "config.json"), JSON.stringify(content), "utf-8");
+	files[configPath(dir)] = JSON.stringify(content);
 };
+
+/** Write the config through the SAME filesystem the service reads, mid-runtime. */
+const writeConfigLive = (dir: string, content: unknown) =>
+	Effect.flatMap(FileSystem.FileSystem, (fs) => fs.writeFileString(configPath(dir), JSON.stringify(content)));
 
 /**
  * Provide the config graph PER TEST rather than at the suite boundary.
@@ -26,22 +41,22 @@ const writeConfig = (dir: string, content: unknown): void => {
  * suite-boundary layer is built once for the whole group, which would share
  * that cache across every test and dissolve the very lifetime boundary those
  * tests exist to pin.
+ *
+ * One `Effect.provide` of the volume serves both the service graph beneath it
+ * and any `writeConfigLive` in the program above it, so both see one volume —
+ * layer memoization is per build, not per layer value.
  */
-const provide = <A, E>(eff: Effect.Effect<A, E, ChangesetConfig>): Effect.Effect<A, E> =>
+const provide = <A, E>(eff: Effect.Effect<A, E, ChangesetConfig | FileSystem.FileSystem>): Effect.Effect<A, E> =>
 	eff.pipe(
 		Effect.provide(ChangesetConfig.layer),
 		Effect.provide(ChangesetConfigReader.layer),
-		Effect.provide(NodeServices.layer),
+		Effect.provide(MemoryFileSystem.layerWith(files)),
 	);
 
 describe("ChangesetConfig", () => {
-	let tmpDir: string;
+	const tmpDir = "/ccfg";
 	beforeEach(() => {
-		tmpDir = mkdtempSync(join(tmpdir(), "ccfg-"));
-	});
-
-	afterEach(() => {
-		rmSync(tmpDir, { recursive: true, force: true });
+		files = {};
 	});
 
 	it.effect("returns 'none' when .changeset/config.json does not exist", () =>
@@ -85,8 +100,8 @@ describe("ChangesetConfig", () => {
 
 	it.effect("returns 'none' on malformed JSON", () =>
 		Effect.gen(function* () {
-			mkdirSync(join(tmpDir, ".changeset"), { recursive: true });
-			writeFileSync(join(tmpDir, ".changeset", "config.json"), "{ not valid json", "utf-8");
+			// Seeded raw: `writeConfig` JSON-encodes, and this case needs bytes that do not parse.
+			files[configPath(tmpDir)] = "{ not valid json";
 			const mode = yield* provide(Effect.flatMap(ChangesetConfig, (c) => c.mode(tmpDir)));
 			expect(mode).toBe("none");
 		}),
@@ -117,13 +132,9 @@ describe("ChangesetConfig", () => {
 });
 
 describe("ChangesetConfig.isIgnored / ignorePatterns", () => {
-	let tmpDir: string;
+	const tmpDir = "/cc-ignore";
 	beforeEach(() => {
-		tmpDir = mkdtempSync(join(tmpdir(), "cc-ignore-"));
-	});
-
-	afterEach(() => {
-		rmSync(tmpDir, { recursive: true, force: true });
+		files = {};
 	});
 
 	it.effect("returns the configured ignore patterns", () =>
@@ -164,13 +175,9 @@ describe("ChangesetConfig.isIgnored / ignorePatterns", () => {
 });
 
 describe("ChangesetConfig.refresh (#229 — long-lived process staleness)", () => {
-	let tmpDir: string;
+	const tmpDir = "/cc-refresh";
 	beforeEach(() => {
-		tmpDir = mkdtempSync(join(tmpdir(), "cc-refresh-"));
-	});
-
-	afterEach(() => {
-		rmSync(tmpDir, { recursive: true, force: true });
+		files = {};
 	});
 
 	it.effect("without refresh, a second read in the same runtime still serves the cached (stale) ignore list", () =>
@@ -179,7 +186,7 @@ describe("ChangesetConfig.refresh (#229 — long-lived process staleness)", () =
 				const config = yield* ChangesetConfig;
 				const before = yield* config.isIgnored("@libraries/x", tmpDir);
 
-				writeConfig(tmpDir, { changelog: "@changesets/cli/changelog", ignore: ["@libraries/*"] });
+				yield* writeConfigLive(tmpDir, { changelog: "@changesets/cli/changelog", ignore: ["@libraries/*"] });
 				const stillCached = yield* config.isIgnored("@libraries/x", tmpDir);
 				return { before, stillCached };
 			});
@@ -197,7 +204,7 @@ describe("ChangesetConfig.refresh (#229 — long-lived process staleness)", () =
 				const config = yield* ChangesetConfig;
 				const before = yield* config.isIgnored("@libraries/x", tmpDir);
 
-				writeConfig(tmpDir, { changelog: "@changesets/cli/changelog", ignore: ["@libraries/*"] });
+				yield* writeConfigLive(tmpDir, { changelog: "@changesets/cli/changelog", ignore: ["@libraries/*"] });
 				yield* config.refresh();
 				const after = yield* config.isIgnored("@libraries/x", tmpDir);
 				return { before, after };
@@ -212,13 +219,9 @@ describe("ChangesetConfig.refresh (#229 — long-lived process staleness)", () =
 });
 
 describe("ChangesetConfig.fixed", () => {
-	let tmpDir: string;
+	const tmpDir = "/cc-fixed";
 	beforeEach(() => {
-		tmpDir = mkdtempSync(join(tmpdir(), "cc-fixed-"));
-	});
-
-	afterEach(() => {
-		rmSync(tmpDir, { recursive: true, force: true });
+		files = {};
 	});
 
 	it.effect("returns the configured fixed groups", () =>

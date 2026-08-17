@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterAll, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect, FileSystem, Layer, Path, PlatformError } from "effect";
+import { MemoryFileSystem } from "@effected/memfs";
+import { Effect, Layer, Path, PlatformError } from "effect";
 import { ReposLockdown } from "../../src/repos/services/lockdown.js";
 
 const layer = ReposLockdown.layer.pipe(Layer.provide(NodeServices.layer));
@@ -322,17 +323,36 @@ describe("ReposLockdown — withUnlocked relock-failure propagation", () => {
 		method: "chmod",
 	});
 
-	const fsStub = FileSystem.layerNoop({
-		exists: () => Effect.succeed(true),
-		readDirectory: () => Effect.succeed([]),
-		readFileString: () => Effect.fail(relockFailure),
-		stat: () => Effect.fail(relockFailure),
-		readLink: () => Effect.fail(relockFailure),
-		chmod: (_path, targetMode) =>
-			targetMode === 0o555 || targetMode === 0o444 ? Effect.fail(relockFailure) : Effect.void,
+	// A REAL volume with one injected fault, rather than a `layerNoop` stub.
+	//
+	// The stub this replaces was deny-by-default, so isolating a single failing
+	// `chmod` meant hand-building every other method the walk touches — and the
+	// price was `readDirectory: () => Effect.succeed([])`. The walk then had
+	// nothing to recurse into, so these two tests proved the finalizer contract
+	// over an EMPTY tree and could never reach the lock-recursion-order
+	// invariant (lock chmods a directory after recursing, unlock before).
+	//
+	// Here the volume is real and recursive; only `chmod` is intercepted, keyed
+	// on the target mode so the unlock pass (0o755) delegates to the volume and
+	// the lock/relock pass (0o555/0o444) fails. Everything else — readDirectory,
+	// stat, readLink — is the genuine filesystem.
+	const Volume = MemoryFileSystem.layerWith({
+		"/root/.repos/stub-repo/src/a.ts": "export {}\n",
+		"/root/.repos/stub-repo/src/nested/b.ts": "export {}\n",
+		"/root/.repos/stub-repo/bin.sh": MemoryFileSystem.file("#!/bin/sh\n", { mode: 0o755 }),
 	});
 
-	const stubLayer = ReposLockdown.layer.pipe(Layer.provide(Layer.mergeAll(fsStub, Path.layer)));
+	const stubLayer = ReposLockdown.layer.pipe(
+		Layer.provide(
+			Layer.mergeAll(
+				MemoryFileSystem.layerFaulty({
+					chmod: (_path, targetMode) =>
+						targetMode === 0o555 || targetMode === 0o444 ? Effect.fail(relockFailure) : undefined,
+				}).pipe(Layer.provide(Volume)),
+				Path.layer,
+			),
+		),
+	);
 
 	it.effect("propagates the relock failure when the inner effect succeeds", () =>
 		Effect.gen(function* () {

@@ -3,11 +3,14 @@
 ## Rule
 
 CI runs tasks through `turbo`, never by hand-iterating packages. The Silk job
-order is fixed: **install → build → checks**. Install (`pnpm install
---frozen-lockfile`) never builds — there are no `prepare` build scripts — so an
-explicit `pnpm build` (turbo `build:dev` + `build:prod`) must run before any
-check that imports a `@savvy-web/*` package, because consumers resolve the built
-`dist/dev` via `linkDirectory`.
+order is fixed: **install → build → checks**.
+
+Install DOES build the dev outputs: each `workspace:*`-depended package carries
+its own `prepare: turbo run build:dev`, which pnpm runs per package (a frozen
+install included, unless `--ignore-scripts`). What install does NOT produce is the
+prod outputs, so an explicit `pnpm build` must still run before any check that
+needs them. Checks importing a `@savvy-web/*` package resolve the built `dist/dev`
+via `linkDirectory`, which is exactly what those `prepare` scripts guarantee.
 
 ## Remote caching
 
@@ -48,10 +51,14 @@ dependencies) changed.
 
 ## Anti-patterns
 
-Do not build inside an install hook to "warm" CI — mcp's `build:dev` pulls the
-libraries' `build:prod`, which resolves `catalog:silkPeers` from the workspace
-state file pnpm writes only after install scripts, so an install-time build fails
-with `Catalog(s) not found: silkPeers`. Keep build a post-install turbo step.
+Do not put `build:prod` in an install hook to "warm" CI. It dependsOn `types:check`
+and `build:dev`, and its peer-catalog resolution reads a workspace state file pnpm
+writes only AFTER install scripts complete, so it fails with
+`Catalog(s) not found: <name>:peers`. Keep the prod build a post-install turbo step.
+
+This is NOT a blanket ban on install-time builds: each workspace-dependency package
+carries its own `prepare: turbo run build:dev` precisely so consumers' `link:`
+resolution works at install time, and `build:dev` dependsOn `^build:dev` only.
 
 ## See also
 

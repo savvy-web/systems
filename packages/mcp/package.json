@@ -36,7 +36,7 @@
 		"@effect/platform-node": "catalog:effect",
 		"@effected/commands": "^0.4.0",
 		"@effected/git": "^0.8.0",
-		"@effected/workspaces": "^0.13.0",
+		"@effected/workspaces": "^0.13.1",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect",
@@ -44,6 +44,7 @@
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
+		"@effected/memfs": "^0.3.0",
 		"@modelcontextprotocol/inspector": "^1.0.0",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",

@@ -81,7 +81,7 @@ See the [templates README](./packages/templates/README.md) for usage examples.
 
 ### @savvy-web/pnpm-plugin-silk
 
-Centralized dependency-version management for the Silk ecosystem, delivered as a pnpm config dependency: the `silk` and `silkPeers` catalogs, security overrides and install-time policy shared across every consuming repository.
+Centralized dependency-version management for the Silk ecosystem, delivered as a pnpm config dependency: the `build`, `docs`, `lint`, `silk` and `test` catalogs with their `:peers` companions, plus security overrides and install-time policy shared across every consuming repository.
 
 See the [pnpm-plugin-silk README](./packages/pnpm-plugin-silk/README.md) for the catalog reference and install steps.
 
@@ -130,7 +130,7 @@ Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
 
 - [pnpm-module-template](https://github.com/savvy-web/pnpm-module-template) -- Single package starter with full Silk Suite integration
 - [pnpm-monorepo-template](https://github.com/savvy-web/pnpm-monorepo-template) -- Multi-package monorepo scaffold
-- [github-action-template](https://github.com/savvy-web/github-action-template) -- Node.js 24 GitHub Action starter wired for `@savvy-web/github-action-effects` and `@savvy-web/github-action-builder`
+- [github-action-template](https://github.com/savvy-web/github-action-template) -- Node.js 24 GitHub Action starter wired for `@effected/github-actions` and `@savvy-web/github-action-builder`
 
 ## Requirements
 

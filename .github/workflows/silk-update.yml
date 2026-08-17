@@ -49,51 +49,26 @@ jobs:
           config-dependencies: |
             @effected/pnpm-plugin-effect
           dependencies: |
+            @changesets/*
             @effected/*
-            @microsoft/api-extractor
-            @microsoft/tsdoc
-            @microsoft/tsdoc-config
-            @azure/storage-blob
-            @changesets/get-github-info
-            @changesets/types
-            @commitlint/types
-            @cyclonedx/cyclonedx-library
-            @octokit/auth-app
-            @octokit/rest
-            @rsbuild/*
-            @sigstore/bundle
-            @sigstore/sign
-            @types/mdast
-            @types/shell-quote
-            @vitest-agent/*
-            deep-equal
-            fast-check
+            @manypkg/*
+            @modelcontextprotocol/*
             jiti
-            jsonc-effect
-            json-schema-effect
-            js-yaml
-            markdownlint
+            jju
             mdast-util-heading-range
             mdast-util-to-string
             picocolors
-            prettier
             remark-gfm
             remark-parse
             remark-stringify
+            rolldown-pnpm-config
+            semver
             shell-quote
-            sort-package-json
-            semver-effect
             std-env
-            tinyglobby
-            tsdown
             unified
             unified-lint-rule
             unist-util-visit
-            vitest
-            workspaces-effect
-            yaml
-            yaml-effect
-            yaml-lint
+            zod
           run: |
             pnpm savvy init
             pnpm lint:fix 2>/dev/null || true

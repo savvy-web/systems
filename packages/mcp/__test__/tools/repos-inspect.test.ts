@@ -1,4 +1,5 @@
 import { describe, expect, it, layer } from "@effect/vitest";
+import { MemoryFileSystem } from "@effected/memfs";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Layer, Path, Schema } from "effect";
@@ -195,8 +196,15 @@ describe("reposInspect gitmodules mode", () => {
 		"",
 	].join("\n");
 
-	/** Stubs `FileSystem` to answer `readFileString` with the given text, mirroring `drift.ts`'s ambient-service read. */
-	const fileSystemWith = (text: string) => FileSystem.layerNoop({ readFileString: () => Effect.succeed(text) });
+	/**
+	 * A volume holding `text` at the ONE path the tool is expected to read.
+	 *
+	 * The stub this replaces answered `readFileString` with the same text for
+	 * every path, so the tool could have read anything — or a misspelled path —
+	 * and still passed. Seeding a single file makes path-correctness observable:
+	 * read the wrong path and the volume fails typed `NotFound`.
+	 */
+	const fileSystemWith = (text: string) => MemoryFileSystem.layerWith({ "/repo/.gitmodules": text });
 
 	it.effect("renders both entries of a two-entry .gitmodules file", () =>
 		Effect.gen(function* () {
@@ -259,10 +267,13 @@ describe("reposInspect gitmodules mode", () => {
 				Layer.mergeAll(ReposManagerTest, ReposConfigStoreTest, ReposDriftTest, WorkspaceRootTest, PathTest),
 			),
 			Effect.provide(
-				FileSystem.layerNoop({
+				// A volume where `.gitmodules` genuinely exists, with the read denied on
+				// top — so the denial is the only thing that can fail, and this test is
+				// distinguishable from its absent-file sibling by more than intent.
+				MemoryFileSystem.layerFaulty({
 					readFileString: () =>
 						Effect.fail(systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "readFileString" })),
-				}),
+				}).pipe(Layer.provide(MemoryFileSystem.layerWith({ "/repo/.gitmodules": gitmodulesText }))),
 			),
 		),
 	);

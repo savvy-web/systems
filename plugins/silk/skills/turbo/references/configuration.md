@@ -113,6 +113,8 @@ Though declared inside a task (not globally), these pair with the global ones:
 ## Silk note
 
 Respect the established `dependsOn` chains between packages — a consumer's build waits on
-its upstream libraries. Never move build work into a `prepare`/`postprepare` script —
-install and build are decoupled, and an install-time build fails resolving
-`catalog:silkPeers` before pnpm writes the workspace state file.
+its upstream libraries. Leave the per-package `prepare: turbo run build:dev` scripts alone:
+they are what makes a `workspace:*` consumer's `link:` resolve during `pnpm install`, and
+`dependsOn` cannot substitute for them because it never reaches the install step. What must
+stay out of an install hook is `build:prod`, whose peer-catalog resolution reads a workspace
+state file pnpm writes only after install scripts complete.

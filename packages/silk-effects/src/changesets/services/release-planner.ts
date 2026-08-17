@@ -439,10 +439,20 @@ function applyEffect(
 				const fresh = freshVersions[i];
 				return fresh !== p.version ? { ...p, version: fresh } : p;
 			});
-			versionFileUpdates = yield* Effect.try({
-				try: () => (scopes.length > 0 ? VersionFiles.processResolvedVersionFiles(scopes, dryRun) : []),
-				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
-			});
+			// `processResolvedVersionFiles` is an Effect over `FileSystem` now and fails
+			// TYPED, so `Effect.mapError` replaces the old `Effect.try` — the conversion
+			// to `ReleasePlanError` is still required, not incidental: a defect here
+			// would bypass the inspector's catch and crash `apply()`, which is exactly
+			// what `__test__/changesets/services__release-planner-apply.test.ts` pins.
+			// The service already holds a resolved `fs`, so provide it here and keep
+			// this function's `R` at `never`.
+			versionFileUpdates =
+				scopes.length > 0
+					? yield* VersionFiles.processResolvedVersionFiles(scopes, dryRun).pipe(
+							Effect.provideService(FileSystem.FileSystem, fs),
+							Effect.mapError((e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) })),
+						)
+					: [];
 		}
 
 		return { dryRun, touchedFiles, releases, versionFileUpdates };

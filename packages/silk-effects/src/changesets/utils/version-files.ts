@@ -19,14 +19,14 @@
  * @internal
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { GlobPatternOptions } from "@effected/glob";
 import { Jsonc, JsoncEdit, JsoncFormattingOptions, JsoncModifier } from "@effected/jsonc";
 import type { GlobExpansionError } from "@effected/walker";
 import { compileAndExpand } from "@effected/walker";
-import type { FileSystem } from "effect";
-import { Effect, Path, Schema } from "effect";
+import { Effect, FileSystem, Path, Schema } from "effect";
+import type * as PlatformError from "effect/PlatformError";
+import { VersionFileError } from "../errors.js";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import type { LegacyVersionFileConfig } from "../schemas/version-files.js";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
@@ -163,35 +163,29 @@ export class VersionFiles {
 	static discoverVersions(
 		cwd: string,
 		packages: ReadonlyArray<{ name: string; version: string; path: string }>,
-	): WorkspaceVersion[] {
-		const resolvedCwd = resolve(cwd);
-		const results: WorkspaceVersion[] = [];
-		const seen = new Set<string>();
+	): Effect.Effect<WorkspaceVersion[], never, FileSystem.FileSystem> {
+		return Effect.gen(function* () {
+			const resolvedCwd = resolve(cwd);
+			const results: WorkspaceVersion[] = [];
+			const seen = new Set<string>();
 
-		for (const pkg of packages) {
-			if (seen.has(pkg.path) || !pkg.version) continue;
-			seen.add(pkg.path);
-			results.push({ name: pkg.name, path: pkg.path, version: pkg.version });
-		}
-
-		// Always include root if not already present
-		if (!seen.has(resolvedCwd)) {
-			const version = readPackageVersion(resolvedCwd);
-			if (version) {
-				let rootName = "root";
-				try {
-					const pkg = JSON.parse(readFileSync(join(resolvedCwd, "package.json"), "utf-8")) as {
-						name?: string;
-					};
-					if (pkg.name) rootName = pkg.name;
-				} catch {
-					// Use default name
-				}
-				results.push({ name: rootName, path: resolvedCwd, version });
+			for (const pkg of packages) {
+				if (seen.has(pkg.path) || !pkg.version) continue;
+				seen.add(pkg.path);
+				results.push({ name: pkg.name, path: pkg.path, version: pkg.version });
 			}
-		}
 
-		return results;
+			// Always include root if not already present
+			if (!seen.has(resolvedCwd)) {
+				const version = yield* readPackageVersion(resolvedCwd);
+				if (version) {
+					const rootName = yield* readPackageName(resolvedCwd);
+					results.push({ name: rootName, path: resolvedCwd, version });
+				}
+			}
+
+			return results;
+		});
 	}
 
 	/**
@@ -305,22 +299,29 @@ export class VersionFiles {
 	 * @see {@link jsonPathResolve} for concrete-path enumeration
 	 * @see {@link VersionFiles.applyVersionEdit} for the per-path edit
 	 */
-	static updateFile(filePath: string, jsonPaths: readonly string[], version: string): VersionFileUpdate | undefined {
-		const original = readFileSync(filePath, "utf-8");
-		const { content, previousValues, totalChanged } = VersionFiles.computeUpdate(original, jsonPaths, version);
+	static updateFile(
+		filePath: string,
+		jsonPaths: readonly string[],
+		version: string,
+	): Effect.Effect<VersionFileUpdate | undefined, PlatformError.PlatformError, FileSystem.FileSystem> {
+		return Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const original = yield* fs.readFileString(filePath);
+			const { content, previousValues, totalChanged } = VersionFiles.computeUpdate(original, jsonPaths, version);
 
-		if (totalChanged === 0) {
-			return undefined;
-		}
+			if (totalChanged === 0) {
+				return undefined;
+			}
 
-		writeFileSync(filePath, content, "utf-8");
+			yield* fs.writeFileString(filePath, content);
 
-		return {
-			filePath,
-			jsonPaths,
-			version,
-			previousValues,
-		};
+			return {
+				filePath,
+				jsonPaths,
+				version,
+				previousValues,
+			};
+		});
 	}
 
 	/**
@@ -458,7 +459,7 @@ export class VersionFiles {
 		packages: ReadonlyArray<{ name: string; version: string; path: string }> = [],
 	): Effect.Effect<VersionFileUpdate[], GlobExpansionError, FileSystem.FileSystem> {
 		return Effect.gen(function* () {
-			const workspaces = VersionFiles.discoverVersions(cwd, packages);
+			const workspaces = yield* VersionFiles.discoverVersions(cwd, packages);
 			const rootVersion = workspaces.find((ws) => ws.path === resolve(cwd))?.version ?? "0.0.0";
 			const resolved = yield* VersionFiles.resolveGlobs(configs, cwd);
 			const updates: VersionFileUpdate[] = [];
@@ -469,23 +470,10 @@ export class VersionFiles {
 					? (workspaces.find((ws) => ws.name === config.package)?.version ?? rootVersion)
 					: VersionFiles.resolveVersion(filePath, workspaces, rootVersion);
 
-				try {
-					if (dryRun) {
-						// Same decision path as the real run (computeUpdate), minus the write, so
-						// the preview reports pending inserts and skips same-value no-ops too.
-						const content = readFileSync(filePath, "utf-8");
-						const { previousValues, totalChanged } = VersionFiles.computeUpdate(content, jsonPaths, version);
-						if (totalChanged > 0) {
-							updates.push({ filePath, jsonPaths, version, previousValues });
-						}
-					} else {
-						const result = VersionFiles.updateFile(filePath, jsonPaths, version);
-						if (result) {
-							updates.push(result);
-						}
-					}
-				} catch (error) {
-					throw new Error(`Failed to update ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+				// Legacy path: a per-file failure stays a DEFECT, as the old synchronous throw was.
+				const result = yield* VersionFiles.applyOne(filePath, jsonPaths, version, dryRun).pipe(Effect.orDie);
+				if (result) {
+					updates.push(result);
 				}
 			}
 
@@ -514,36 +502,82 @@ export class VersionFiles {
 	 *
 	 * @internal
 	 */
-	static processResolvedVersionFiles(scopes: ReadonlyArray<ResolvedPackageScope>, dryRun = false): VersionFileUpdate[] {
-		const updates: VersionFileUpdate[] = [];
+	static processResolvedVersionFiles(
+		scopes: ReadonlyArray<ResolvedPackageScope>,
+		dryRun = false,
+	): Effect.Effect<VersionFileUpdate[], VersionFileError, FileSystem.FileSystem> {
+		return Effect.gen(function* () {
+			const updates: VersionFileUpdate[] = [];
 
-		for (const scope of scopes) {
-			for (const vf of scope.versionFiles) {
-				const jsonPaths = vf.paths.length > 0 ? vf.paths : ["$.version"];
-				for (const filePath of vf.matchedFiles) {
-					try {
-						if (dryRun) {
-							// Same decision path as the real run (computeUpdate), minus the write, so
-							// the preview reports pending inserts and skips same-value no-ops too.
-							const content = readFileSync(filePath, "utf-8");
-							const { previousValues, totalChanged } = VersionFiles.computeUpdate(content, jsonPaths, scope.version);
-							if (totalChanged > 0) {
-								updates.push({ filePath, jsonPaths, version: scope.version, previousValues });
-							}
-						} else {
-							const result = VersionFiles.updateFile(filePath, jsonPaths, scope.version);
-							if (result) {
-								updates.push(result);
-							}
+			for (const scope of scopes) {
+				for (const vf of scope.versionFiles) {
+					const jsonPaths = vf.paths.length > 0 ? vf.paths : ["$.version"];
+					for (const filePath of vf.matchedFiles) {
+						const result = yield* VersionFiles.applyOne(filePath, jsonPaths, scope.version, dryRun);
+						if (result) {
+							updates.push(result);
 						}
-					} catch (error) {
-						throw new Error(`Failed to update ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
 					}
 				}
 			}
-		}
 
-		return updates;
+			return updates;
+		});
+	}
+
+	/**
+	 * Apply one version file's update, shared by both process entry points.
+	 *
+	 * @remarks
+	 * Fails TYPED with `VersionFileError`, carrying the offending `filePath`. The two callers then
+	 * choose their own posture, which is not the same and must not be unified:
+	 * {@link VersionFiles.processVersionFiles} (legacy) turns it into a DEFECT,
+	 * matching the synchronous throw it had under `node:fs`, while
+	 * {@link VersionFiles.processResolvedVersionFiles} leaves it typed because
+	 * `ReleasePlanner.apply` converts it to a `ReleasePlanError` — a defect there
+	 * would bypass the inspector's catch and crash `apply()`.
+	 *
+	 * @internal
+	 */
+	private static applyOne(
+		filePath: string,
+		jsonPaths: readonly string[],
+		version: string,
+		dryRun: boolean,
+	): Effect.Effect<VersionFileUpdate | undefined, VersionFileError, FileSystem.FileSystem> {
+		return Effect.gen(function* () {
+			if (dryRun) {
+				// Same decision path as the real run (computeUpdate), minus the write, so
+				// the preview reports pending inserts and skips same-value no-ops too.
+				const fs = yield* FileSystem.FileSystem;
+				const content = yield* fs.readFileString(filePath);
+				const { previousValues, totalChanged } = VersionFiles.computeUpdate(content, jsonPaths, version);
+				return totalChanged > 0 ? { filePath, jsonPaths, version, previousValues } : undefined;
+			}
+			return yield* VersionFiles.updateFile(filePath, jsonPaths, version);
+		}).pipe(
+			Effect.mapError((error) => new VersionFileError({ filePath, reason: VersionFiles.describeFailure(error) })),
+			// `computeUpdate` runs `Effect.runSync(Jsonc.parse(...))`, which THROWS on
+			// unparseable input — and a throw inside `Effect.gen` is a defect, which
+			// `mapError` never sees. Without this, an empty or malformed version file
+			// dies here and the die rides straight through `ReleasePlanner.apply`'s own
+			// `mapError`, crashing it with a raw JsoncParseError instead of the
+			// `ReleasePlanError` its contract promises. The pre-migration try/catch
+			// enclosed that call, so this input class has always been typed — keep it so.
+			Effect.catchDefect((defect) =>
+				Effect.fail(new VersionFileError({ filePath, reason: VersionFiles.describeFailure(defect) })),
+			),
+		);
+	}
+
+	/** Render a `PlatformError` the way the old `node:fs` catch rendered an `Error`. */
+	private static describeFailure(error: unknown): string {
+		if (typeof error === "object" && error !== null) {
+			const e = error as { message?: unknown; reason?: unknown; describe?: unknown };
+			if (typeof e.message === "string") return e.message;
+			if (typeof e.reason === "string") return e.reason;
+		}
+		return String(error);
 	}
 }
 
@@ -601,13 +635,43 @@ function expandGlob(
  *
  * @internal
  */
-function readPackageVersion(dir: string): string | undefined {
-	try {
-		const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf-8")) as {
-			version?: string;
-		};
-		return pkg.version;
-	} catch {
-		return undefined;
-	}
+/**
+ * Read the `name` field from a `package.json` in the given directory, falling
+ * back to `"root"` when it is absent, unreadable, or malformed.
+ *
+ * @param dir - Absolute path to the directory containing `package.json`
+ * @returns The package name, or `"root"`
+ *
+ * @internal
+ */
+function readPackageName(dir: string): Effect.Effect<string, never, FileSystem.FileSystem> {
+	return Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const raw = yield* fs.readFileString(join(dir, "package.json"));
+		return yield* Effect.try({
+			try: () => (JSON.parse(raw) as { name?: string }).name,
+			catch: (e) => e,
+		});
+	}).pipe(
+		Effect.map((name) => name ?? "root"),
+		Effect.orElseSucceed(() => "root"),
+	);
+}
+
+function readPackageVersion(dir: string): Effect.Effect<string | undefined, never, FileSystem.FileSystem> {
+	return Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const raw = yield* fs.readFileString(join(dir, "package.json"));
+		// `Effect.try`, not a bare `JSON.parse`: a throw inside `Effect.gen` is a
+		// DEFECT, which `orElseSucceed` below would not recover — and malformed
+		// JSON has to stay recoverable, as it was under the original try/catch.
+		return yield* Effect.try({
+			try: () => (JSON.parse(raw) as { version?: string }).version,
+			catch: (e) => e,
+		});
+	}).pipe(
+		// Absent, unreadable, or malformed all mean "no version here" — the same
+		// fail-soft contract the previous try/catch around `readFileSync` had.
+		Effect.orElseSucceed(() => undefined),
+	);
 }

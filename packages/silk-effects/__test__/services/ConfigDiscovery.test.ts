@@ -1,24 +1,32 @@
 import { describe, expect, it } from "@effect/vitest";
+import { MemoryFileSystem } from "@effected/memfs";
 import { Effect, FileSystem, Layer } from "effect";
+import { systemError } from "effect/PlatformError";
 import type { ConfigLocation } from "../../src/schemas/ConfigDiscoverySchemas.js";
 import { ConfigDiscovery } from "../../src/services/ConfigDiscovery.js";
 
 // ---------------------------------------------------------------------------
-// Mock FileSystem
+// Virtual FileSystem
 // ---------------------------------------------------------------------------
 
+// A real `FileSystem` over an in-memory volume, not a cast object shape: an
+// unseeded path is genuinely absent rather than absent-by-omission, so a typo
+// in a candidate path shows up as a failing assertion instead of a stub that
+// happily answers `false` for a path the service never even asks about.
+//
+// `ConfigDiscovery` only ever calls `exists`, so the contents are arbitrary —
+// `{}` just keeps the seeded files plausible as config files.
 const makeTestFs = (existingPaths: ReadonlyArray<string>) =>
-	Layer.succeed(FileSystem.FileSystem, {
-		exists: (path: string) => Effect.succeed(existingPaths.includes(path)),
-	} as unknown as FileSystem.FileSystem);
+	MemoryFileSystem.layerWith(Object.fromEntries(existingPaths.map((path) => [path, "{}"])));
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Per-test provide is REQUIRED here, not an unoptimised leftover: the mocked filesystem is
+// Per-test provide is REQUIRED here, not an unoptimised leftover: the virtual filesystem is
 // built from the per-test `existingPaths`, so the layer genuinely varies test by test and
-// cannot be hoisted into a suite-boundary `layer(...)` block.
+// cannot be hoisted into a suite-boundary `layer(...)` block. `layerWith` also mints a fresh
+// reference per call, so each test gets its own volume rather than a memoized shared one.
 function runWith(existingPaths: ReadonlyArray<string>, effect: Effect.Effect<unknown, unknown, ConfigDiscovery>) {
 	const testFs = makeTestFs(existingPaths);
 	const layer = ConfigDiscovery.layer.pipe(Layer.provide(testFs));
@@ -147,13 +155,17 @@ describe("ConfigDiscovery.findAll", () => {
 // ---------------------------------------------------------------------------
 
 describe("ConfigDiscovery error handling", () => {
+	// Deliberately NOT a memory volume: this is fault injection, not arrangement.
+	// A volume answers `exists` honestly (`false` for an absent path) and has no way
+	// to make the call *fail*, so proving `safeExists`' `orElseSucceed` recovery needs
+	// a stub. It must fail with a real `PlatformError` — the previous `new Error(...)`
+	// was not one, so the test never exercised the channel its name claims.
 	it.effect("treats PlatformError from fs.exists as not found", () =>
 		Effect.gen(function* () {
 			const cwd = "/repo";
-			// Mock that throws an error for exists
-			const errorFs = Layer.succeed(FileSystem.FileSystem, {
-				exists: (_path: string) => Effect.fail(new Error("permission denied")),
-			} as unknown as FileSystem.FileSystem);
+			const errorFs = FileSystem.layerNoop({
+				exists: () => Effect.fail(systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "exists" })),
+			});
 			const layer = ConfigDiscovery.layer.pipe(Layer.provide(errorFs));
 
 			const result = yield* Effect.provide(
