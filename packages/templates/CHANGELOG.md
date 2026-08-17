@@ -1,5 +1,17 @@
 # @savvy-web/templates
 
+## 1.0.17
+
+### Dependencies
+
+* | Dependency     | Type       | Action  | From   | To     |                                                                       |
+  | -------------- | ---------- | ------- | ------ | ------ | --------------------------------------------------------------------- |
+  | @effected/yaml | dependency | updated | ^0.8.0 | ^0.9.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#498]: https://github.com/savvy-web/systems/pull/498
+
 ## 1.0.16
 
 ### Dependencies

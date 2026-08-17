@@ -1,5 +1,17 @@
 # @savvy-web/tsdown-plugins
 
+## 2.4.12
+
+### Dependencies
+
+* | Dependency           | Type       | Action  | From    | To      |                                                                       |
+  | -------------------- | ---------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.13.0 | ^0.13.1 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#498]: https://github.com/savvy-web/systems/pull/498
+
 ## 2.4.11
 
 ### Dependencies

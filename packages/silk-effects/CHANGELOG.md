@@ -1,5 +1,32 @@
 # @savvy-web/silk-effects
 
+## 5.9.1
+
+### Refactoring
+
+* Version-file I/O now runs through the Effect `FileSystem` service instead of
+  `node:fs`. Behavior is unchanged: `ReleasePlanner.apply` still surfaces a
+  version-file write failure as a typed `ReleasePlanError`, and the deprecated
+  top-level `versionFiles[]` path still fails as a defect.
+
+  * `VersionFiles` reads and writes through `FileSystem`, so its members are now
+    Effects requiring `FileSystem.FileSystem` — an internal surface, not exported
+    from the package root
+  * Package-manifest parsing is fail-soft as before, including on malformed JSON [#498][#498]
+
+### Dependencies
+
+* | Dependency           | Type       | Action  | From    | To      |                                                                       |
+  | -------------------- | ---------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.13.0 | ^0.13.1 |                                                                       |
+  | @effected/yaml       | dependency | updated | ^0.8.0  | ^0.9.0  | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#498]: https://github.com/savvy-web/systems/pull/498
+
 ## 5.9.0
 
 ### Features
