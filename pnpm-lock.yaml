@@ -381,7 +381,7 @@ importers:
         specifier: ^0.13.1
         version: 0.13.1(@effected/jsonc@0.6.0(effect@4.0.0-beta.107))(effect@4.0.0-beta.107)
       '@modelcontextprotocol/sdk':
-        specifier: ^1.29.0
+        specifier: ^1.30.0
         version: 1.30.0(supports-color@8.1.1)(zod@4.4.3)
       '@savvy-web/silk-effects':
         specifier: workspace:*
@@ -400,7 +400,7 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0(effect@4.0.0-beta.107)
       '@modelcontextprotocol/inspector':
-        specifier: ^1.0.0
+        specifier: ^1.0.1
         version: 1.0.1(@types/node@26.2.0)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(supports-color@8.1.1)(typescript@7.0.2)
       '@savvy-web/bundler':
         specifier: workspace:*
