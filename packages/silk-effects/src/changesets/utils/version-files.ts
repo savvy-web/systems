@@ -26,6 +26,7 @@ import type { GlobExpansionError } from "@effected/walker";
 import { compileAndExpand } from "@effected/walker";
 import { Effect, FileSystem, Path, Schema } from "effect";
 import type * as PlatformError from "effect/PlatformError";
+import { VersionFileError } from "../errors.js";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import type { LegacyVersionFileConfig } from "../schemas/version-files.js";
 // biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
@@ -504,7 +505,7 @@ export class VersionFiles {
 	static processResolvedVersionFiles(
 		scopes: ReadonlyArray<ResolvedPackageScope>,
 		dryRun = false,
-	): Effect.Effect<VersionFileUpdate[], Error, FileSystem.FileSystem> {
+	): Effect.Effect<VersionFileUpdate[], VersionFileError, FileSystem.FileSystem> {
 		return Effect.gen(function* () {
 			const updates: VersionFileUpdate[] = [];
 
@@ -528,7 +529,7 @@ export class VersionFiles {
 	 * Apply one version file's update, shared by both process entry points.
 	 *
 	 * @remarks
-	 * Fails TYPED with `Failed to update <path>: <reason>`. The two callers then
+	 * Fails TYPED with `VersionFileError`, carrying the offending `filePath`. The two callers then
 	 * choose their own posture, which is not the same and must not be unified:
 	 * {@link VersionFiles.processVersionFiles} (legacy) turns it into a DEFECT,
 	 * matching the synchronous throw it had under `node:fs`, while
@@ -543,7 +544,7 @@ export class VersionFiles {
 		jsonPaths: readonly string[],
 		version: string,
 		dryRun: boolean,
-	): Effect.Effect<VersionFileUpdate | undefined, Error, FileSystem.FileSystem> {
+	): Effect.Effect<VersionFileUpdate | undefined, VersionFileError, FileSystem.FileSystem> {
 		return Effect.gen(function* () {
 			if (dryRun) {
 				// Same decision path as the real run (computeUpdate), minus the write, so
@@ -555,7 +556,7 @@ export class VersionFiles {
 			}
 			return yield* VersionFiles.updateFile(filePath, jsonPaths, version);
 		}).pipe(
-			Effect.mapError((error) => new Error(`Failed to update ${filePath}: ${VersionFiles.describeFailure(error)}`)),
+			Effect.mapError((error) => new VersionFileError({ filePath, reason: VersionFiles.describeFailure(error) })),
 		);
 	}
 

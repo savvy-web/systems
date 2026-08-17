@@ -85,7 +85,7 @@ Key coordination points:
 ## Conventions
 
 - Source `package.json` `"private": true` is transformed by builders based on `publishConfig.access`.
-- Use `catalog:silk` for pinned dependencies, `catalog:silkPeers` for peer dependency ranges.
+- Catalogs are purpose-scoped: `catalog:build`, `catalog:docs`, `catalog:lint`, `catalog:silk`, `catalog:test`, each with a `<name>:peers` companion for peer ranges. The camelCase `<name>Peers` spelling is GONE. `effect` and `@effect/*` come from `catalog:effect`/`catalog:effect:peers`, supplied by `@effected/pnpm-plugin-effect`.
 - Verify any Effect API against the vendored `.repos/effect` source or the installed beta, never v3 memory. Vendored WORKTREES are OS-level read-only (`Repos.ReposLockdown`) and local git config declares them off-limits (`submodule.<path>.update = none`); the submodule gitdir stays writable on purpose, so ordinary git and GUI clients keep working. Reads need nothing, and an `EACCES` there means route the change through `savvy repos` / the `repos_manage` MCP tool — never `chmod` the tree back by hand. A `git checkout` inside a vendored tree is NOT blocked, so drift is detected, not prevented: `savvy repos status --drift` reports it, `savvy repos restore` repairs it.
 - All Effect code uses class-based `Context.Service` services (each exporting a companion `*Shape` interface), `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
 - README.md is for external users; `.claude/design/` for package architecture docs.

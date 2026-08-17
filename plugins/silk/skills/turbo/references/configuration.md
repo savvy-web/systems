@@ -115,4 +115,4 @@ Though declared inside a task (not globally), these pair with the global ones:
 Respect the established `dependsOn` chains between packages — a consumer's build waits on
 its upstream libraries. Never move build work into a `prepare`/`postprepare` script —
 install and build are decoupled, and an install-time build fails resolving
-`catalog:silkPeers` before pnpm writes the workspace state file.
+`catalog:silk:peers` before pnpm writes the workspace state file.

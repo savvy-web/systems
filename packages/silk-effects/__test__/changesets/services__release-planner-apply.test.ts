@@ -155,7 +155,7 @@ describe("ReleasePlanner.apply (versionFiles)", () => {
 			roots.push(root);
 
 			// versionFiles points at a file that does not exist, so
-			// processResolvedVersionFiles throws synchronously. That throw must surface
+			// processResolvedVersionFiles fails with a typed VersionFileError. That failure must surface
 			// as a typed ReleasePlanError rather than an uncaught defect (which would
 			// otherwise bypass the inspector catchAll and crash apply()).
 			const planner = yield* getPlannerWithVersionFiles({

@@ -49,9 +49,9 @@ dependencies) changed.
 ## Anti-patterns
 
 Do not build inside an install hook to "warm" CI — mcp's `build:dev` pulls the
-libraries' `build:prod`, which resolves `catalog:silkPeers` from the workspace
+libraries' `build:prod`, which resolves `catalog:silk:peers` from the workspace
 state file pnpm writes only after install scripts, so an install-time build fails
-with `Catalog(s) not found: silkPeers`. Keep build a post-install turbo step.
+with `Catalog(s) not found: silk:peers`. Keep build a post-install turbo step.
 
 ## See also
 

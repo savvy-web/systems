@@ -652,7 +652,10 @@ describe("VersionFiles.processVersionFiles", () => {
 			// rather than silently skipping, so a success cannot pass unnoticed.
 			const exit = yield* Effect.exit(Effect.provide(VersionFiles.processVersionFiles("/project", configs), denied));
 			if (Exit.isFailure(exit)) {
-				expect(Cause.pretty(exit.cause)).toContain("Failed to update /project/plugin.json");
+				// A tagged `VersionFileError` now, so the assertion names the type and the
+				// offending path rather than string-matching a free-text prefix.
+				expect(Cause.pretty(exit.cause)).toContain("VersionFileError");
+				expect(Cause.pretty(exit.cause)).toContain("/project/plugin.json");
 			} else {
 				throw new Error("expected the per-file error to surface as a defect, but the effect succeeded");
 			}

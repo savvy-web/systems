@@ -8,6 +8,9 @@ const require = createRequire(import.meta.url);
 const pkgRoot = dirname(require.resolve("@savvy-web/pnpm-plugin-silk/package.json"));
 
 describe("e2e: built @savvy-web/pnpm-plugin-silk artifact", () => {
+	/** Every camelCase peer catalog dropped in 0.27.0 — both surfaces must reject all of them. */
+	const REMOVED_PEER_CATALOGS = ["buildPeers", "docsPeers", "lintPeers", "silkPeers", "testPeers"];
+
 	// Probes `typescript` rather than `effect`: the silk catalogs no longer carry
 	// the Effect closure (that lives in the `effect` catalogs supplied by
 	// `@effected/pnpm-plugin-effect`), so `effect` would assert absence, not shape.
@@ -20,8 +23,7 @@ describe("e2e: built @savvy-web/pnpm-plugin-silk artifact", () => {
 	// both names resolved during the transition, so an assertion on the new one
 	// alone would still pass if the old catalog were reintroduced.
 	it("no longer exposes the removed camelCase peer catalogs", () => {
-		expect(catalogs.get("silkPeers")).toBeUndefined();
-		for (const name of ["buildPeers", "docsPeers", "lintPeers", "testPeers"]) {
+		for (const name of REMOVED_PEER_CATALOGS) {
 			expect(catalogs.get(name)).toBeUndefined();
 		}
 	});
@@ -31,7 +33,9 @@ describe("e2e: built @savvy-web/pnpm-plugin-silk artifact", () => {
 		const result = mod.hooks.updateConfig({});
 		expect(result.catalogs.silk.typescript).toMatch(/^[~^]?\d/);
 		expect(result.catalogs["silk:peers"].typescript).toMatch(/^[~^]?\d/);
-		expect(result.catalogs.silkPeers).toBeUndefined();
+		for (const name of REMOVED_PEER_CATALOGS) {
+			expect(result.catalogs[name]).toBeUndefined();
+		}
 		expect(result.publicHoistPattern).toContain("typescript");
 		expect(result.strictDepBuilds).toBe(true);
 	});

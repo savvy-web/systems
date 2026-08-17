@@ -110,13 +110,16 @@ the tool does not surface.
 
 ## Silk conventions
 
-- pnpm 11.x workspace; dependencies pinned via `catalog:silk`, peer ranges via
-  `catalog:silkPeers`.
+- pnpm 11.x workspace; catalogs are purpose-scoped — `build`, `docs`, `lint`, `silk`,
+  `test`, each with a `<name>:peers` companion for peer ranges. Reach for the catalog
+  that matches the dependency's role (`tsdown` is `catalog:build`, `vitest` is
+  `catalog:test`); `catalog:silk` is only what has no more specific home. `effect` and
+  `@effect/*` come from `catalog:effect`, supplied by `@effected/pnpm-plugin-effect`.
 - Install and build are DECOUPLED. `pnpm install` never builds; build is the explicit
   post-install `pnpm build` (turbo `build:dev` + `build:prod`). NEVER build inside a
-  `prepare`/`postprepare` hook — an install-time build resolves `catalog:silkPeers`
+  `prepare`/`postprepare` hook — an install-time build resolves `catalog:silk:peers`
   before pnpm has written the workspace state file and fails with
-  `Catalog(s) not found: silkPeers`. Order is always install → build → checks.
+  `Catalog(s) not found: silk:peers`. Order is always install → build → checks.
 
 ## Deep dives
 
