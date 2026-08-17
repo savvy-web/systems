@@ -1,5 +1,27 @@
 # @savvy-web/silk
 
+## 3.7.7
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.6.0 | 2.6.1 |
+| @savvy-web/mcp       | dependency | updated | 2.4.0 | 2.4.1 |
+
+* | Dependency                      | Type           | Action  | From    | To       |                                                                       |
+  | ------------------------------- | -------------- | ------- | ------- | -------- | --------------------------------------------------------------------- |
+  | @commitlint/cli                 | peerDependency | updated | ^21.2.1 | ^21.2.2  |                                                                       |
+  | @commitlint/config-conventional | peerDependency | updated | ^21.2.0 | ^21.2.2  |                                                                       |
+  | @types/node                     | peerDependency | updated | ^26.1.2 | ^26.2.0  |                                                                       |
+  | tsx                             | peerDependency | updated | ^4.23.4 | ^4.23.12 |                                                                       |
+  | turbo                           | peerDependency | updated | ^2.10.8 | ^2.10.10 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#498]: https://github.com/savvy-web/systems/pull/498
+
 ## 3.7.6
 
 ### Dependencies

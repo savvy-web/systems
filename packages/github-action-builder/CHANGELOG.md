@@ -1,5 +1,19 @@
 # @savvy-web/github-action-builder
 
+## 2.2.6
+
+### Dependencies
+
+* | Dependency     | Type           | Action  | From    | To      |                                                                       |
+  | -------------- | -------------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/yaml | dependency     | updated | ^0.8.0  | ^0.9.0  |                                                                       |
+  | @rsbuild/core  | dependency     | updated | ^2.1.9  | ^2.1.13 |                                                                       |
+  | @types/node    | peerDependency | updated | ^26.1.0 | ^26.2.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#498]: https://github.com/savvy-web/systems/pull/498
+
 ## 2.2.5
 
 ### Bug Fixes
