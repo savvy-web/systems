@@ -43,8 +43,16 @@ const GIT_ENV = {
 	GIT_COMMITTER_EMAIL: "t@example.com",
 };
 
+// stdio pipes stderr rather than inheriting it: git's clone progress and
+// detached-HEAD advice otherwise leak into the test run's console. Failures
+// still surface — execFileSync attaches the piped stderr to the thrown error.
 function git(cwd: string, ...args: string[]): string {
-	return execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, ...GIT_ENV } });
+	return execFileSync("git", args, {
+		cwd,
+		encoding: "utf8",
+		env: { ...process.env, ...GIT_ENV },
+		stdio: ["ignore", "pipe", "pipe"],
+	});
 }
 
 /**
@@ -158,6 +166,7 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 		execFileSync("git", ["submodule", "add", upstreamUrl, `.repos/${name}`], {
 			cwd: host,
 			env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+			stdio: ["ignore", "pipe", "pipe"],
 		});
 		git(join(host, ".repos", name), "checkout", ref);
 		git(host, "add", ".repos", ".gitmodules");
@@ -407,6 +416,7 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 			execFileSync("git", ["submodule", "add", "--name", moduleName, upstreamUrl, `.repos/${name}`], {
 				cwd: host,
 				env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+				stdio: ["ignore", "pipe", "pipe"],
 			});
 			git(join(host, ".repos", name), "checkout", "1.0.0");
 			git(host, "add", ".repos", ".gitmodules");
@@ -719,6 +729,7 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 				execFileSync("git", ["submodule", "add", upstreamUrl, `.repos/${name}`], {
 					cwd: host,
 					env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+					stdio: ["ignore", "pipe", "pipe"],
 				});
 				git(join(host, ".repos", name), "checkout", "1.0.0");
 				git(host, "add", ".repos", ".gitmodules");
@@ -1050,6 +1061,7 @@ describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
 			execFileSync("git", ["clone", "--bare", up, join(upstreamBareDir, "myrepo.git")], {
 				cwd: upstreamBareDir,
 				env: { ...process.env, ...GIT_ENV },
+				stdio: ["ignore", "pipe", "pipe"],
 			});
 			const upstreamUrl = `file://${join(upstreamBareDir, "myrepo.git")}`;
 
@@ -1553,6 +1565,7 @@ describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
 				execFileSync("git", ["submodule", "add", "--depth", "1", upstreamUrl, `.repos/${name}`], {
 					cwd: host,
 					env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+					stdio: ["ignore", "pipe", "pipe"],
 				});
 
 				const configStoreLayer = ReposConfigStore.layer.pipe(Layer.provide(NodeServices.layer));
@@ -1849,6 +1862,7 @@ describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 		execFileSync("git", ["submodule", "add", upstreamUrl, `.repos/${name}`], {
 			cwd: host,
 			env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+			stdio: ["ignore", "pipe", "pipe"],
 		});
 		git(join(host, ".repos", name), "checkout", ref);
 		git(host, "add", ".repos", ".gitmodules");

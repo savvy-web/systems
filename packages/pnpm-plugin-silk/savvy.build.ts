@@ -335,6 +335,7 @@ await build({
 				],
 			},
 			allowBuilds: {
+				"@modelcontextprotocol/inspector": true,
 				"@parcel/watcher": true,
 				"better-sqlite3": true,
 				"core-js": true,
