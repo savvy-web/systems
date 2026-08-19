@@ -29,7 +29,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/package-json": "^0.10.1",
+		"@effected/package-json": "^0.10.2",
 		"@effected/yaml": "^0.10.0"
 	},
 	"devDependencies": {
