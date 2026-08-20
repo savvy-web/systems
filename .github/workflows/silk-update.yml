@@ -36,7 +36,7 @@ jobs:
         uses: savvy-web/silk-runtime-action@v1
       - name: Update Config Dependencies
         id: update
-        uses: savvy-web/silk-update-action@dev
+        uses: savvy-web/silk-update-action@v4
         with:
           app-client-id: ${{ vars.APP_CLIENT_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -44,7 +44,6 @@ jobs:
           dry-run: ${{ inputs.dry-run || false }}
           changesets: true
           auto-merge: "squash"
-          check-peers: "no-auto-merge"
           upgrade-package-manager: "^11.0.0"
           upgrade-runtime-node: "^26.0.0"
           config-dependencies: |
