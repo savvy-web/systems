@@ -51,6 +51,21 @@ set -euo pipefail
 # config is exactly the corruption hazard this hook exists to stop, scoped
 # package name or not.
 #
+# CONSUMER FALSE POSITIVE, accepted deliberately (savvy-web/systems#410).
+# In an external consumer of @savvy-web/silk that has a real
+# node_modules/.bin/biome on its path, `npx biome` resolves the ACTUAL
+# Biome and largely does resolve that repo's root config -- so the deny
+# fires on a command whose stated hazard is absent. That does not happen
+# here: pnpm's isolated layout leaves no root node_modules/.bin/biome, which
+# is exactly why `npx biome` reaches the unrelated biome@0.3.3 impostor
+# instead. The alternative -- sniffing for a shadowing local binary and
+# allowing npx through when one exists -- trades a clean, syntactic rule for
+# a heuristic that still cannot tell whether the config resolves from the
+# caller's cwd. Since the deny message names working alternatives (the lint
+# scripts, the biome_check MCP tool), the cost downstream is a redirect
+# rather than lost capability, and "use the scripts" is the rule we want in
+# a consumer repo either way. Keep the rule; document the case.
+#
 # Coverage is NOT keyed to this repo's package manager: an agent that cannot
 # run `biome` will reach for `npx biome` in a pnpm repo just as readily as in
 # a yarn or bun one. Silk ships to pnpm, yarn, bun and npm consumers, so
@@ -147,7 +162,7 @@ done
 
 [ "$is_denied" -eq 0 ] && { emit_noop; exit 0; }
 
-DENY_MSG="Direct Biome invocation is denied: it does not resolve this repo's config, so it lints paths the config excludes — in this repo that means .repos/** vendored submodules, which are read-only and can be corrupted. Use the mcp__plugin_silk_savvy-mcp__biome_check MCP tool (write: true applies safe fixes), or the sanctioned Bash path: pnpm lint / pnpm lint:fix / pnpm lint:fix:unsafe at the repo root (yarn/bun/npm equivalents also allowed)."
+DENY_MSG="Direct Biome invocation is denied: it does not resolve this repo's config, so it lints paths the config excludes — in this repo that means .repos/** vendored submodules, which are read-only and can be corrupted. Use the mcp__plugin_silk_savvy-mcp__biome_check MCP tool (write: true applies safe fixes), or the sanctioned Bash path: pnpm lint / pnpm lint:fix / pnpm lint:fix:unsafe at the repo root (yarn/bun/npm equivalents also allowed). In a consumer repo that has its own node_modules/.bin/biome, this deny is a redirect rather than a real hazard — the lint scripts are still the intended path (savvy-web/systems#410)."
 
 emit_deny "$DENY_MSG"
 exit 0

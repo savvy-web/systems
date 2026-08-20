@@ -4,7 +4,8 @@
 # Coverage for skills/dogfood/scripts/journal-append.sh (savvy-web/systems#338):
 # carry-forward of static fields, enum validation, corrupt-tail walk-back,
 # --init mode (both roles), packagesDerived (#331), the owner-token warning
-# (#334), and the --pr repo#number shape.
+# (#334), the --pr repo#number shape, and the --package/--clear-packages
+# mid-loop closure flags (#508).
 
 load 'test_helper'
 
@@ -17,7 +18,7 @@ setup() {
 
 seed() {
 	cat > "$JOURNAL" <<-'EOF'
-		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../spencerbeggs/effected"},"packages":["@effected/glob"],"packagesDerived":true,"linkType":"file","nativeRebuilds":["better-sqlite3"],"phase":"requested","ball":"theirs","round":1,"owner":"sess-a"}
+		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../spencerbeggs/effected"},"packages":[{"name":"@effected/glob","override":"file:../../spencerbeggs/effected/packages/glob/dist/prod/npm/pkg"}],"packagesDerived":true,"linkType":"file","nativeRebuilds":["esbuild"],"phase":"requested","ball":"theirs","round":1,"owner":"sess-a"}
 	EOF
 }
 
@@ -31,8 +32,8 @@ seed() {
 	[ "$(jq -r '.ball' <<< "$last")" = "ours" ]
 	[ "$(jq -r '.role' <<< "$last")" = "downstream" ]
 	[ "$(jq -r '.counterpart.id' <<< "$last")" = "effected" ]
-	[ "$(jq -r '.packages[0]' <<< "$last")" = "@effected/glob" ]
-	[ "$(jq -r '.nativeRebuilds[0]' <<< "$last")" = "better-sqlite3" ]
+	[ "$(jq -r '.packages[0].name' <<< "$last")" = "@effected/glob" ]
+	[ "$(jq -r '.nativeRebuilds[0]' <<< "$last")" = "esbuild" ]
 	[ "$(jq -r '.round' <<< "$last")" = "1" ]
 }
 
@@ -203,4 +204,116 @@ seed() {
 	run bash "$SCRIPT" "$JOURNAL" --event correction --role upstream
 	[ "$status" -ne 0 ]
 	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+# --- --package / --clear-packages (savvy-web/systems#508) -------------------
+
+@test "--package replaces the closure and pairs with --packages-derived" {
+	seed
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --phase adopting --ball ours \
+		--package '@effected/templates=file:../x/packages/templates/dist/prod/npm/pkg' \
+		--package '@effected/github=file:../x/packages/github/dist/prod/npm/pkg' \
+		--packages-derived true
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$JOURNAL")"
+	[ "$(jq -r '.packages | length' <<< "$last")" = "2" ]
+	[ "$(jq -r '.packages[0].name' <<< "$last")" = "@effected/templates" ]
+	[ "$(jq -r '.packages[0].override' <<< "$last")" = "file:../x/packages/templates/dist/prod/npm/pkg" ]
+	[ "$(jq -r '.packages[1].name' <<< "$last")" = "@effected/github" ]
+	[ "$(jq -r '.packagesDerived' <<< "$last")" = "true" ]
+}
+
+@test "--clear-packages empties the closure" {
+	seed
+	run bash "$SCRIPT" "$JOURNAL" --event unlinked --phase unlinked --clear-packages
+	[ "$status" -eq 0 ]
+	[ "$(jq -r '.packages | length' <<< "$(tail -n1 "$JOURNAL")")" = "0" ]
+}
+
+@test "rejects a --package without an override and appends nothing" {
+	seed
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event correction --package '@effected/glob'
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "rejects an empty --package name and appends nothing" {
+	seed
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event correction --package '=file:../x'
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "rejects --package together with --clear-packages" {
+	seed
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event correction --package '@effected/glob=file:../x' --clear-packages
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "rejects --package on an upstream journal" {
+	cat > "$JOURNAL" <<-'EOF'
+		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"savvy-web-systems","path":"../../savvy-web/systems"},"linkType":"file","phase":"requested","ball":"ours","round":1}
+	EOF
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event correction --package '@effected/glob=file:../x'
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"downstream-only"* ]]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "rejects --package alongside --init" {
+	run bash "$SCRIPT" "${BATS_TEST_TMPDIR}/new.jsonl" --init --role downstream \
+		--counterpart-id effected --counterpart-path ../x --link-type file \
+		--package '@effected/glob=file:../x'
+	[ "$status" -ne 0 ]
+	[ ! -f "${BATS_TEST_TMPDIR}/new.jsonl" ]
+}
+
+@test "rejects a nonempty --package when packagesDerived carries forward false" {
+	cat > "$JOURNAL" <<-'EOF'
+		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../spencerbeggs/effected"},"packages":[],"packagesDerived":false,"linkType":"file","nativeRebuilds":[],"phase":"requested","ball":"theirs","round":0}
+	EOF
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --package '@effected/glob=file:../x'
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"--packages-derived true"* ]]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "rejects a nonempty --package with an explicit --packages-derived false" {
+	seed
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --package '@effected/glob=file:../x' --packages-derived false
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "--package needs no flag when packagesDerived already carries forward true" {
+	seed
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --package '@effected/glob=file:../x'
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$JOURNAL")"
+	[ "$(jq -r '.packages[0].name' <<< "$last")" = "@effected/glob" ]
+	[ "$(jq -r '.packagesDerived' <<< "$last")" = "true" ]
+}
+
+@test "--clear-packages is exempt from the derived requirement" {
+	cat > "$JOURNAL" <<-'EOF'
+		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../spencerbeggs/effected"},"packages":[],"packagesDerived":false,"linkType":"file","nativeRebuilds":[],"phase":"requested","ball":"theirs","round":0}
+	EOF
+	run bash "$SCRIPT" "$JOURNAL" --event unlinked --phase unlinked --clear-packages --packages-derived false
+	[ "$status" -eq 0 ]
+	[ "$(jq -r '.packages | length' <<< "$(tail -n1 "$JOURNAL")")" = "0" ]
 }

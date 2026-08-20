@@ -63,6 +63,26 @@ await runBuild(config, { cwd: process.cwd(), argv: process.argv.slice(2) });
 
 Use only when you must inspect or programmatically transform the resolved config, or inject `RunOptions` IO hooks (testing/self-host). Default builds use `build()`.
 
+## Reading a build as evidence
+
+Two different failures produce a build log that reads exactly like a clean gate. Both matter most when the build is the evidence for a claim — "the warnings are fixed", "the surface is clean", "the change is in the artifact".
+
+**A direct `node savvy.build.ts --target prod` is not the `build:prod` task.** The task graph runs `types:check` and `build:dev` first; invoking the script by hand skips both. The prod pass then runs against whatever `dist/dev` happens to hold, may emit no `.d.ts` at all, and can leave a truncated `issues.json` whose empty diagnostic buckets are indistinguishable from a clean one. Run the task, not the script: `pnpm turbo run build:prod --filter <package>`.
+
+**A turbo cache hit replays the previous run's output verbatim.** `FULL TURBO`, the same file count, the same `suppressed` figure — a stale artifact and a fresh one read identically in the log. An agent that edits source, builds, and reads a clean log has no evidence from that log that the build ever saw the edit.
+
+The tell for both is `dist/<target>/issues.json`'s `generatedAt` — the timestamp the build *wrote into* the artifact. It must postdate your newest source edit.
+
+```bash
+node -pe "require('./dist/prod/issues.json').generatedAt"
+```
+
+**Do not reach for the file's mtime instead.** A cache restore writes the artifact with the *current* time, so mtime is refreshed on every replay while `generatedAt` keeps the original build's value. Measured on this repo: a `FULL TURBO` hit restored `dist/dev/issues.json` at `06:23:05` with `generatedAt` still reading `02:18:04`. An mtime comparison — `find src -newer dist/prod/issues.json` or any equivalent — therefore reports "fresh" for every replayed artifact no matter how stale, which is precisely the case you are trying to catch. `generatedAt` is the authority; mtime is worse than useless here because it looks like corroboration.
+
+A `generatedAt` predating your edit means one of two things, and they are worth telling apart: the build never saw the edit, or the edit is not an input to that task's hash. `--force` settles it — a replay against genuinely unchanged inputs is legitimate and needs no rebuild, which is why `/silk:tsdoc`'s verification recipe passes `--force` rather than trusting a cached gate.
+
+`issues.json` also carries a `buildOk` stamp — read it before the diagnostic buckets, since the artifact is written on every terminal path including a crash. `/silk:tsdoc` owns that recipe.
+
 ## package.json script contract
 
 Every bundler-built package declares `publishConfig.directory: dist/dev/pkg` and three scripts: `build:dev` (`node savvy.build.ts --target dev`), `build:prod` (`node savvy.build.ts --target prod`), `types:check` (`tsc --noEmit`). Other supporting scripts may exist alongside these.
