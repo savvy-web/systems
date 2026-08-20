@@ -153,11 +153,24 @@ run_monitor() {
 	local pid=$!
 	sleep 3
 
+	# The lock file must be ABSENT, and that assertion is what makes this case
+	# discriminating. `chmod 500` does not deny root, so a suite running as uid
+	# 0 (a root Docker image or devcontainer — exactly what CI may be) takes the
+	# LOCKED path instead, where `alive` and the report line are both satisfied
+	# with the fallback branch broken. Reading a 0500 directory is still
+	# permitted, so this listing works for either uid.
+	# `if ... fi` rather than `[ ... ] && var=yes`: bats runs tests under
+	# `set -e`, and a false `&&` compound would abort before the `kill` and the
+	# `chmod 700`, leaking the background node process and leaving the tmpdir
+	# unwritable for the rest of the run.
+	local unlocked=no
+	if [ -z "$(find "$rotmp" -mindepth 1 -print -quit)" ]; then unlocked=yes; fi
 	local alive=no
-	kill -0 "$pid" 2>/dev/null && alive=yes
+	if kill -0 "$pid" 2>/dev/null; then alive=yes; fi
 	kill "$pid" 2>/dev/null || true
 	chmod 700 "$rotmp"
 
+	[ "$unlocked" = yes ]
 	[ "$alive" = yes ]
 	grep -q "@x/thing has 1 ae-\*/tsdoc- issue in prod" "${BATS_TEST_TMPDIR}/out.log"
 }
