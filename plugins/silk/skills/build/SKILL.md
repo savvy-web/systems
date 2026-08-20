@@ -71,14 +71,15 @@ Two different failures produce a build log that reads exactly like a clean gate.
 
 **A turbo cache hit replays the previous run's output verbatim.** `FULL TURBO`, the same file count, the same `suppressed` figure — a stale artifact and a fresh one read identically in the log. An agent that edits source, builds, and reads a clean log has no evidence from that log that the build ever saw the edit.
 
-The tell for both is the same: `dist/<target>/issues.json`'s `generatedAt` must postdate your newest source edit.
+The tell for both is `dist/<target>/issues.json`'s `generatedAt` — the timestamp the build *wrote into* the artifact. It must postdate your newest source edit.
 
 ```bash
 node -pe "require('./dist/prod/issues.json').generatedAt"
-find src -name '*.ts' -newer dist/prod/issues.json
 ```
 
-Any path printed by `find` is a source file newer than the artifact — the gate you are reading predates that edit and belongs to an earlier tree. `find` printing nothing means the artifact is at least as new as every source. A replay against genuinely unchanged inputs is legitimate and needs no rebuild; pass `--force` when you need to defeat the cache deliberately, as `/silk:tsdoc`'s verification recipe does.
+**Do not reach for the file's mtime instead.** A cache restore writes the artifact with the *current* time, so mtime is refreshed on every replay while `generatedAt` keeps the original build's value. Measured on this repo: a `FULL TURBO` hit restored `dist/dev/issues.json` at `06:23:05` with `generatedAt` still reading `02:18:04`. An mtime comparison — `find src -newer dist/prod/issues.json` or any equivalent — therefore reports "fresh" for every replayed artifact no matter how stale, which is precisely the case you are trying to catch. `generatedAt` is the authority; mtime is worse than useless here because it looks like corroboration.
+
+A `generatedAt` predating your edit means one of two things, and they are worth telling apart: the build never saw the edit, or the edit is not an input to that task's hash. `--force` settles it — a replay against genuinely unchanged inputs is legitimate and needs no rebuild, which is why `/silk:tsdoc`'s verification recipe passes `--force` rather than trusting a cached gate.
 
 `issues.json` also carries a `buildOk` stamp — read it before the diagnostic buckets, since the artifact is written on every terminal path including a crash. `/silk:tsdoc` owns that recipe.
 

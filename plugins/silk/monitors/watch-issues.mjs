@@ -19,7 +19,7 @@
 // cannot vouch for produces no line at all.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { globSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { globSync, readFileSync, realpathSync, statSync, unlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
@@ -35,6 +35,11 @@ const POLL_MS = 2000;
 // churn never fires. Override with SILK_TSDOC_MONITOR_STABLE_POLLS (0 restores
 // the old fire-immediately behavior).
 const STABLE_POLLS = Math.max(0, Number(process.env.SILK_TSDOC_MONITOR_STABLE_POLLS ?? 3) || 0);
+// How long a lock may go untouched before a rival treats it as abandoned. The
+// holder refreshes its lock's mtime every tick, so this only elapses when the
+// holder is gone — which is the one case a pid probe cannot detect, because a
+// recycled pid answers `kill(pid, 0)` exactly like the original holder.
+const STALE_LOCK_MS = POLL_MS * 5;
 
 function countTsdocIssues(issues) {
 	const all = [...(issues?.warnings ?? []), ...(issues?.errors ?? [])];
@@ -180,7 +185,7 @@ function claimLock() {
 	for (let attempt = 0; attempt < 2; attempt++) {
 		try {
 			writeFileSync(lockPath, String(process.pid), { flag: "wx" });
-			return releaseFn(lockPath);
+			return { lockPath, release: releaseFn(lockPath) };
 		} catch (err) {
 			if (err?.code !== "EEXIST") {
 				// Cannot write a lock at all (read-only tmp): run unlocked
@@ -188,7 +193,7 @@ function claimLock() {
 				return () => {};
 			}
 		}
-		if (holderIsLive(lockPath)) return null;
+		if (lockIsHeld(lockPath)) return null;
 		try {
 			unlinkSync(lockPath);
 		} catch {
@@ -198,26 +203,65 @@ function claimLock() {
 	return null;
 }
 
-// Whether the pid recorded in the lock file belongs to a live process. Only a
-// missing process counts as gone: `process.kill(pid, 0)` throws EPERM when the
-// process is alive but owned by another uid, and reading that as "gone" would
-// take over a held lock. A garbage or unreadable file is not a holder.
-function holderIsLive(lockPath) {
+// Whether the lock is still HELD. Two things a pid probe alone cannot settle,
+// both of which strand the monitor permanently rather than transiently:
+//
+//   1. `wx` is `open(O_CREAT|O_EXCL)` followed by a SEPARATE `write()`, so the
+//      path exists while the file is still zero-length. A rival reading in that
+//      window sees "", which is not a pid — and if that counted as "no holder"
+//      it would unlink a live holder's lock and both watchers would run, the
+//      exact duplication this is here to stop. So a freshly-stamped file that
+//      does not parse is a rival mid-write: yield to it.
+//   2. `process.kill(pid, 0)` cannot tell the original holder from an unrelated
+//      process that later inherited the pid. A SIGKILLed watcher never runs its
+//      release, the OS recycles the pid, and from then on every new watcher
+//      probes that pid, finds it "alive", and exits — silently, forever, until
+//      someone deletes a file in tmp they have no reason to suspect. The
+//      heartbeat is what breaks that: a real holder refreshes the lock's mtime
+//      every tick, so a lock that has gone quiet for STALE_LOCK_MS is abandoned
+//      no matter what the pid probe says.
+function lockIsHeld(lockPath) {
+	let age = Number.POSITIVE_INFINITY;
+	try {
+		age = Date.now() - statSync(lockPath).mtimeMs;
+	} catch {
+		return false; // vanished between the EEXIST and this read
+	}
 	let held;
 	try {
 		held = Number(readFileSync(lockPath, "utf8").trim());
 	} catch {
-		return false;
+		held = Number.NaN;
 	}
-	if (!Number.isInteger(held) || held <= 0) return false;
+	if (!Number.isInteger(held) || held <= 0) {
+		// Empty or garbage. Fresh means a rival is mid-write (case 1); old
+		// means a process died between create and write, so reclaim it.
+		return age < STALE_LOCK_MS;
+	}
 	// Our own pid in the file is a leftover of ours, not a rival holder.
 	if (held === process.pid) return false;
+	let alive;
 	try {
-		// Signal 0 tests for existence without delivering anything.
 		process.kill(held, 0);
-		return true;
+		alive = true;
 	} catch (err) {
-		return err?.code === "EPERM";
+		// EPERM means alive but owned by another uid; only a missing process
+		// counts as gone.
+		alive = err?.code === "EPERM";
+	}
+	// A live pid with a stale heartbeat is case 2 — treat it as abandoned.
+	return alive && age < STALE_LOCK_MS;
+}
+
+// Refresh our lock's mtime so rivals can tell a live holder from a recycled
+// pid. Only ever touches a file that still names this process.
+function heartbeat(lockPath) {
+	try {
+		if (readFileSync(lockPath, "utf8").trim() !== String(process.pid)) return;
+		const now = new Date();
+		utimesSync(lockPath, now, now);
+	} catch {
+		/* lock gone or unwritable — the next claim settles it */
 	}
 }
 
@@ -245,26 +289,38 @@ async function main() {
 	// period from, so it reports current non-zero counts immediately. It also
 	// skips the lock: it is a diagnostic invocation, not a resident watcher.
 	const minStablePolls = once ? 0 : STABLE_POLLS;
-	let release = () => {};
+	let lockPath;
 	if (!once) {
 		const claimed = claimLock();
 		if (claimed === null) return; // another watcher already owns this project
-		release = claimed;
-		process.on("exit", release);
+		lockPath = claimed.lockPath;
+		process.on("exit", claimed.release);
 		for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => process.exit(0));
 	}
 	let prev = new Map();
 	const tick = async () => {
 		try {
+			if (lockPath !== undefined) heartbeat(lockPath);
 			const current = await scan();
 			let dirtyPaths;
 			const isDirty = (c) => {
 				dirtyPaths ??= dirtySourcePaths();
 				if (dirtyPaths === undefined) return false;
 				const rel = relative(ROOT, c.pkgDir);
-				// A package AT the root owns every path git reports.
-				const prefix = rel === "" ? "" : `${rel}${sep}`;
-				for (const p of dirtyPaths) if (p.startsWith(prefix)) return true;
+				// Scoped to the same files gate 2 measures, plus the build
+				// entry. A prefix match over the WHOLE package directory would
+				// disagree with `newestSourceMtime` (which reads `src/**` only)
+				// and silence the monitor for an uncommitted `__test__/*.ts` or
+				// `vitest.config.ts` — neither of which is an input to the
+				// `ae-*`/`tsdoc-*` pass, so the artifact still describes
+				// committed `src/` accurately. `savvy.build.ts` IS an input
+				// (it carries `meta.tsdoc.suppressWarnings`), so it counts.
+				const base = rel === "" ? "" : `${rel}${sep}`;
+				const srcPrefix = `${base}src${sep}`;
+				const buildEntry = `${base}savvy.build.ts`;
+				for (const p of dirtyPaths) {
+					if (p.startsWith(srcPrefix) || p === buildEntry) return true;
+				}
 				return false;
 			};
 			const { lines, next } = diagnose(current, prev, minStablePolls, isDirty);

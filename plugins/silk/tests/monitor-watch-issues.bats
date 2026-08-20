@@ -95,6 +95,34 @@ run_monitor() {
 	[ -z "$output" ]
 }
 
+@test "an uncommitted test file does not silence the monitor" {
+	# Gate 3 is scoped to what actually feeds the ae-*/tsdoc- pass. A dirty
+	# __test__/*.ts is the normal state during active work and is not an input,
+	# so the artifact still describes committed src/ accurately.
+	git -C "$PROJECT" init --quiet
+	git -C "$PROJECT" add -A
+	git -C "$PROJECT" -c user.email=t@t -c user.name=t commit --quiet -m seed
+	mkdir -p "${PKG}/__test__"
+	printf 'export const t = 1;\n' > "${PKG}/__test__/thing.test.ts"
+	write_issues true
+	run_monitor
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"@x/thing has 1 ae-*/tsdoc- issue in prod"* ]]
+}
+
+@test "an uncommitted savvy.build.ts does silence the monitor" {
+	# The build entry carries meta.tsdoc.suppressWarnings, so it IS an input to
+	# the pass — a dirty one means the artifact may not describe committed config.
+	git -C "$PROJECT" init --quiet
+	git -C "$PROJECT" add -A
+	git -C "$PROJECT" -c user.email=t@t -c user.name=t commit --quiet -m seed
+	printf 'export default {};\n' > "${PKG}/savvy.build.ts"
+	write_issues true
+	run_monitor
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "silent on a zero-issue artifact" {
 	cat > "${PKG}/dist/prod/issues.json" <<-'EOF'
 	{"package":"@x/thing","target":"prod","buildOk":true,"warnings":[],"errors":[]}
