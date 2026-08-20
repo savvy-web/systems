@@ -277,3 +277,43 @@ seed() {
 	[ "$status" -ne 0 ]
 	[ ! -f "${BATS_TEST_TMPDIR}/new.jsonl" ]
 }
+
+@test "rejects a nonempty --package when packagesDerived carries forward false" {
+	cat > "$JOURNAL" <<-'EOF'
+		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../spencerbeggs/effected"},"packages":[],"packagesDerived":false,"linkType":"file","nativeRebuilds":[],"phase":"requested","ball":"theirs","round":0}
+	EOF
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --package '@effected/glob=file:../x'
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"--packages-derived true"* ]]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "rejects a nonempty --package with an explicit --packages-derived false" {
+	seed
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --package '@effected/glob=file:../x' --packages-derived false
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "--package needs no flag when packagesDerived already carries forward true" {
+	seed
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --package '@effected/glob=file:../x'
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$JOURNAL")"
+	[ "$(jq -r '.packages[0].name' <<< "$last")" = "@effected/glob" ]
+	[ "$(jq -r '.packagesDerived' <<< "$last")" = "true" ]
+}
+
+@test "--clear-packages is exempt from the derived requirement" {
+	cat > "$JOURNAL" <<-'EOF'
+		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../spencerbeggs/effected"},"packages":[],"packagesDerived":false,"linkType":"file","nativeRebuilds":[],"phase":"requested","ball":"theirs","round":0}
+	EOF
+	run bash "$SCRIPT" "$JOURNAL" --event unlinked --phase unlinked --clear-packages --packages-derived false
+	[ "$status" -eq 0 ]
+	[ "$(jq -r '.packages | length' <<< "$(tail -n1 "$JOURNAL")")" = "0" ]
+}

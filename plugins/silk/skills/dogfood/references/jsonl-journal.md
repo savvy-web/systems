@@ -106,6 +106,7 @@ Rules, all enforced:
 
 - **A snapshot is a complete state, so the flags REPLACE the array — they never merge.** The `--package` flags on one invocation name the whole closure; `--clear-packages` names an empty one. The two are mutually exclusive.
 - **Downstream only**, checked against the prior line's `role` — an upstream journal carries no `packages` field at all.
+- **A nonempty closure requires an effective `packagesDerived: true`** — passed on the same append, or already carried forward. Writing the array IS the derivation, so a nonempty `packages` alongside `packagesDerived: false` claims the closure is both known and underived, and the script refuses it rather than recording the contradiction. A link-lazy loop carries `false` forward from `--init`, so this is what you hit by default: pass `--packages-derived true` with the `--package` flags. `--clear-packages` is exempt — an empty closure asserts nothing, which is why `--exit` can clear without claiming a derivation.
 - **Not valid with `--init`.** A new loop always opens with `packages: []`; a closure derived at init time is recorded by the follow-up append, same as one derived mid-round.
 - `--clear-packages` is what `--exit`'s terminal `unlinked` snapshot uses to state the tree is unlinked explicitly, rather than leaving the last live closure standing in the final line.
 

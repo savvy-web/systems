@@ -252,6 +252,28 @@ if [ -n "$PACKAGES_JSON" ] && [ "$(jq -r '.role // empty' <<< "$PREV")" != "down
 	exit 1
 fi
 
+# A NONEMPTY closure and packagesDerived:false are a contradiction: the array
+# names the overrides that are actually live, so writing it IS the derivation.
+# A link-lazy loop opens packagesDerived:false and carries that value forward,
+# so the contradiction is what you get by DEFAULT when --package is passed
+# without --packages-derived true -- the flag has to be refused rather than
+# silently accepted, the same reasoning as the --init rejections above
+# (savvy-web/systems#391). The state is fail-safe rather than dangerous (the
+# push guard denies on packagesDerived:false), but it misdescribes the tree to
+# every reader, which is the whole reason #508 wanted the array truthful.
+# --clear-packages is deliberately exempt: an EMPTY closure carries no such
+# claim, and --exit's terminal snapshot clears without asserting a derivation.
+if [ "${#PACKAGES[@]}" -gt 0 ]; then
+	EFFECTIVE_DERIVED="$PACKAGES_DERIVED"
+	if [ -z "$EFFECTIVE_DERIVED" ]; then
+		EFFECTIVE_DERIVED=$(jq -r 'if has("packagesDerived") then (.packagesDerived | tostring) else "" end' <<< "$PREV")
+	fi
+	if [ "$EFFECTIVE_DERIVED" != "true" ]; then
+		echo "journal-append: --package writes a nonempty closure, which requires --packages-derived true (effective value here is '${EFFECTIVE_DERIVED:-unset}'). A nonempty packages array with packagesDerived false claims the closure is both known and underived." >&2
+		exit 1
+	fi
+fi
+
 NEXT=$(jq -c \
 	--arg at "$AT" --arg event "$EVENT" --arg phase "$PHASE" --arg ball "$BALL" \
 	--arg round "$ROUND" --arg mailIn "$MAIL_IN" --arg mailOut "$MAIL_OUT" \

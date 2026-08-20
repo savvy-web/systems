@@ -165,25 +165,63 @@ export function diagnose(current, prev, minStablePolls, isDirty = () => false) {
 // idle agent — several of which rebuilt to investigate, rewriting the artifact
 // and re-firing the monitor (savvy-web/systems#255). The lock is advisory: a
 // stale pid file (holder gone) is taken over, never trusted.
+//
+// Acquisition is an exclusive create, NOT a read-then-write. A read-then-write
+// re-opens the very race the lock closes: two monitors cold-starting in the
+// same instant both find no file, both write, and both run — the duplication
+// this exists to stop. `wx` fails with EEXIST when the path already exists, so
+// exactly one writer wins no matter how the starts interleave.
 function claimLock() {
 	const key = createHash("sha256").update(realpathish(ROOT)).digest("hex").slice(0, 16);
 	const lockPath = join(tmpdir(), `silk-tsdoc-monitor-${key}.pid`);
-	try {
-		const held = Number(readFileSync(lockPath, "utf8").trim());
-		if (Number.isInteger(held) && held > 0 && held !== process.pid) {
-			// Signal 0 tests for existence without delivering anything.
-			process.kill(held, 0);
-			return null;
+	// Two attempts at most: the first claim, and one retry after reclaiming a
+	// lock whose holder is gone. A second EEXIST means another starter won the
+	// reclaim, which is a decided outcome rather than something to spin on.
+	for (let attempt = 0; attempt < 2; attempt++) {
+		try {
+			writeFileSync(lockPath, String(process.pid), { flag: "wx" });
+			return releaseFn(lockPath);
+		} catch (err) {
+			if (err?.code !== "EEXIST") {
+				// Cannot write a lock at all (read-only tmp): run unlocked
+				// rather than not at all. Only a genuine EEXIST means "held".
+				return () => {};
+			}
 		}
-	} catch {
-		// No lock file, unreadable, or the holder is gone — ours to take.
+		if (holderIsLive(lockPath)) return null;
+		try {
+			unlinkSync(lockPath);
+		} catch {
+			// Another starter reclaimed it first; the retry's EEXIST settles it.
+		}
 	}
+	return null;
+}
+
+// Whether the pid recorded in the lock file belongs to a live process. Only a
+// missing process counts as gone: `process.kill(pid, 0)` throws EPERM when the
+// process is alive but owned by another uid, and reading that as "gone" would
+// take over a held lock. A garbage or unreadable file is not a holder.
+function holderIsLive(lockPath) {
+	let held;
 	try {
-		writeFileSync(lockPath, String(process.pid));
+		held = Number(readFileSync(lockPath, "utf8").trim());
 	} catch {
-		// Cannot write a lock (read-only tmp): run unlocked rather than not at all.
-		return () => {};
+		return false;
 	}
+	if (!Number.isInteger(held) || held <= 0) return false;
+	// Our own pid in the file is a leftover of ours, not a rival holder.
+	if (held === process.pid) return false;
+	try {
+		// Signal 0 tests for existence without delivering anything.
+		process.kill(held, 0);
+		return true;
+	} catch (err) {
+		return err?.code === "EPERM";
+	}
+}
+
+function releaseFn(lockPath) {
 	return () => {
 		try {
 			if (readFileSync(lockPath, "utf8").trim() === String(process.pid)) unlinkSync(lockPath);
