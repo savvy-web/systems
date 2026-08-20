@@ -44,6 +44,7 @@ jobs:
           dry-run: ${{ inputs.dry-run || false }}
           changesets: true
           auto-merge: "squash"
+          check-peers: "no-auto-merge"
           upgrade-package-manager: "^11.0.0"
           upgrade-runtime-node: "^26.0.0"
           config-dependencies: |
