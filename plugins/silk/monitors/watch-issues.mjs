@@ -190,7 +190,12 @@ function claimLock() {
 			if (err?.code !== "EEXIST") {
 				// Cannot write a lock at all (read-only tmp): run unlocked
 				// rather than not at all. Only a genuine EEXIST means "held".
-				return () => {};
+				// Same object shape as the success path — a bare function here
+				// left `claimed.release` undefined, and `process.on("exit",
+				// undefined)` throws, killing the monitor on the one path whose
+				// whole point is to keep it alive. Omitting `lockPath` is what
+				// tells the tick loop to skip the heartbeat.
+				return { release: () => {} };
 			}
 		}
 		if (lockIsHeld(lockPath)) return null;

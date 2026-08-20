@@ -131,3 +131,33 @@ run_monitor() {
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
+
+# --- unlocked fallback (savvy-web/systems#517 review) -----------------------
+#
+# The read-only-tmp path is the one the `--once` tests above can never reach,
+# because `--once` skips the lock entirely. It is also the path whose whole
+# purpose is to keep the monitor alive, so a crash here is the exact outcome
+# it exists to prevent — it shipped broken once (claimLock returned a bare
+# function where main() expected `{ release }`, so `process.on("exit",
+# undefined)` threw before the first tick). Resident mode, real unwritable
+# tmpdir, assert it both survives and still reports.
+
+@test "runs unlocked and still reports when tmpdir is unwritable" {
+	write_issues true
+	local rotmp="${BATS_TEST_TMPDIR}/rotmp"
+	mkdir -p "$rotmp"
+	chmod 500 "$rotmp"
+
+	TMPDIR="${rotmp}/" CLAUDE_PROJECT_DIR="$PROJECT" SILK_TSDOC_MONITOR_STABLE_POLLS=0 \
+		node "$MONITOR" > "${BATS_TEST_TMPDIR}/out.log" 2>&1 &
+	local pid=$!
+	sleep 3
+
+	local alive=no
+	kill -0 "$pid" 2>/dev/null && alive=yes
+	kill "$pid" 2>/dev/null || true
+	chmod 700 "$rotmp"
+
+	[ "$alive" = yes ]
+	grep -q "@x/thing has 1 ae-\*/tsdoc- issue in prod" "${BATS_TEST_TMPDIR}/out.log"
+}
