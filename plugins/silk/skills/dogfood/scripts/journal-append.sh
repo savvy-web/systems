@@ -22,6 +22,8 @@ usage() {
 
 		patches: --phase --ball --round --mail-in --mail-out --note --pr
 		         --packages-derived true|false --owner
+		         --package '<name>=<override>' (repeatable, downstream only)
+		         --clear-packages (downstream only; sets packages back to [])
 		         (only --note and --owner are valid alongside --init; the rest
 		         describe a change against a prior line, which --init has none of)
 		events:  loop-started mail-sent mail-received phase-change pr-recorded
@@ -41,6 +43,8 @@ JOURNAL="$1"; shift
 
 EVENT="" PHASE="" BALL="" ROUND="" MAIL_IN="" MAIL_OUT="" NOTE="" PR=""
 PACKAGES_DERIVED="" OWNER="" ROLE="" CP_ID="" CP_PATH="" LINK_TYPE="" INIT=0
+CLEAR_PACKAGES=0
+PACKAGES=()
 
 while [ "$#" -gt 0 ]; do
 	case "$1" in
@@ -54,6 +58,8 @@ while [ "$#" -gt 0 ]; do
 		--note) NOTE="${2:-}"; shift 2 ;;
 		--pr) PR="${2:-}"; shift 2 ;;
 		--packages-derived) PACKAGES_DERIVED="${2:-}"; shift 2 ;;
+		--package) PACKAGES+=("${2:-}"); shift 2 ;;
+		--clear-packages) CLEAR_PACKAGES=1; shift ;;
 		--owner) OWNER="${2:-}"; shift 2 ;;
 		--role) ROLE="${2:-}"; shift 2 ;;
 		--counterpart-id) CP_ID="${2:-}"; shift 2 ;;
@@ -100,6 +106,15 @@ if [ "$INIT" -eq 1 ]; then
 			exit 1
 		fi
 	done
+
+	# --package/--clear-packages are array/toggle-shaped, so they don't fit the
+	# scalar loop above -- rejected on the same grounds (savvy-web/systems#508):
+	# an --init line's closure is always [] / packagesDerived:false, and a
+	# closure derived at init time is recorded by a follow-up append, not here.
+	if [ "${#PACKAGES[@]}" -gt 0 ] || [ "$CLEAR_PACKAGES" -eq 1 ]; then
+		echo "journal-append: --package/--clear-packages are not valid with --init (a new loop always opens with packages: [])" >&2
+		exit 1
+	fi
 
 	# The opening ball is derived from role, not hardcoded to one side's view
 	# (savvy-web/systems#338 known-defect 1): SKILL.md's phase table says the
@@ -152,6 +167,34 @@ _valid_event "$EVENT" || { echo "journal-append: invalid event '$EVENT'" >&2; ex
 [ -n "$BALL" ] && { case "$BALL" in ours|theirs) ;; *) echo "journal-append: invalid ball '$BALL'" >&2; exit 1 ;; esac; }
 [ -n "$PACKAGES_DERIVED" ] && { case "$PACKAGES_DERIVED" in true|false) ;; *) echo "journal-append: --packages-derived must be true or false, got '$PACKAGES_DERIVED'" >&2; exit 1 ;; esac; }
 [ -n "$ROLE" ] && { echo "journal-append: role is fixed for a loop; append a correction event instead of changing it" >&2; exit 1; }
+
+# --package / --clear-packages (savvy-web/systems#508). A snapshot is a
+# COMPLETE state, so these REPLACE the whole array rather than merging into
+# it: --package a --package b means the closure is exactly {a, b}, and
+# --clear-packages means it is empty. Both are downstream-only (checked
+# against the prior line's role, below, once it has been read) -- an upstream
+# journal carries no packages field at all.
+if [ "${#PACKAGES[@]}" -gt 0 ] && [ "$CLEAR_PACKAGES" -eq 1 ]; then
+	echo "journal-append: --package and --clear-packages are mutually exclusive (a snapshot names one complete closure)" >&2
+	exit 1
+fi
+PACKAGES_JSON=""
+if [ "${#PACKAGES[@]}" -gt 0 ]; then
+	PACKAGES_JSON="[]"
+	for _spec in "${PACKAGES[@]}"; do
+		case "$_spec" in
+			*=*) ;;
+			*) echo "journal-append: --package must be '<name>=<override>', got '$_spec'" >&2; exit 1 ;;
+		esac
+		_name="${_spec%%=*}"
+		_override="${_spec#*=}"
+		[ -n "$_name" ] || { echo "journal-append: --package name is empty in '$_spec'" >&2; exit 1; }
+		[ -n "$_override" ] || { echo "journal-append: --package override is empty in '$_spec'" >&2; exit 1; }
+		PACKAGES_JSON=$(jq -c --arg n "$_name" --arg o "$_override" '. + [{name:$n, override:$o}]' <<< "$PACKAGES_JSON")
+	done
+elif [ "$CLEAR_PACKAGES" -eq 1 ]; then
+	PACKAGES_JSON="[]"
+fi
 [ -f "$JOURNAL" ] || { echo "journal-append: $JOURNAL not found (use --init for a new loop)" >&2; exit 1; }
 
 # --pr must be repo#number. Validate and split it in bash rather than in the
@@ -201,11 +244,20 @@ if [ -n "$OWNER" ] && [ -n "$PREV_OWNER" ] && [ "$OWNER" != "$PREV_OWNER" ]; the
 	echo "journal-append: WARNING -- last snapshot was written by owner '$PREV_OWNER', this one by '$OWNER'. Two sessions driving one role corrupts the mail chain (savvy-web/systems#334). Confirm the other session has stopped before continuing." >&2
 fi
 
+# Downstream-only, same posture as the other downstream-only fields: an
+# upstream journal has no packages array, and writing one would misdescribe a
+# side that links nothing.
+if [ -n "$PACKAGES_JSON" ] && [ "$(jq -r '.role // empty' <<< "$PREV")" != "downstream" ]; then
+	echo "journal-append: --package/--clear-packages are downstream-only; this journal's role is '$(jq -r '.role // "unknown"' <<< "$PREV")'" >&2
+	exit 1
+fi
+
 NEXT=$(jq -c \
 	--arg at "$AT" --arg event "$EVENT" --arg phase "$PHASE" --arg ball "$BALL" \
 	--arg round "$ROUND" --arg mailIn "$MAIL_IN" --arg mailOut "$MAIL_OUT" \
 	--arg note "$NOTE" --arg prRepo "$PR_REPO" --arg prNum "$PR_NUM" \
 	--arg pd "$PACKAGES_DERIVED" --arg owner "$OWNER" \
+	--argjson pkgs "${PACKAGES_JSON:-null}" \
 	'.at = $at
 	 | .event = $event
 	 | (if $phase == "" then . else .phase = $phase end)
@@ -214,6 +266,7 @@ NEXT=$(jq -c \
 	 | (if $note == "" then . else .note = $note end)
 	 | (if $owner == "" then . else .owner = $owner end)
 	 | (if $pd == "" then . else .packagesDerived = ($pd == "true") end)
+	 | (if $pkgs == null then . else .packages = $pkgs end)
 	 | (if $mailIn == "" then . else .lastMail = ((.lastMail // {}) + {in: $mailIn}) end)
 	 | (if $mailOut == "" then . else .lastMail = ((.lastMail // {}) + {out: $mailOut}) end)
 	 | (if $prRepo == "" then . else .upstream = ((.upstream // {}) + {pr: ((.upstream.pr // {}) + {repo: $prRepo, number: ($prNum | tonumber)})}) end)' \

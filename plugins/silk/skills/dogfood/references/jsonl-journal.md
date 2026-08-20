@@ -87,7 +87,28 @@ Every later append:
 bash journal-append.sh <journal-path> --event <event> \
   [--phase <p>] [--ball <b>] [--round <n>] \
   [--mail-in <path>] [--mail-out <path>] [--note <text>] [--pr <repo#num>] \
-  [--packages-derived true|false] [--owner <token>]
+  [--packages-derived true|false] [--owner <token>] \
+  [--package '<name>=<override>' ...] [--clear-packages]
 ```
+
+### Recording a closure derived mid-loop
+
+`--package` (repeatable) and `--clear-packages` write the `packages` array on a later append, so a loop that opens link-lazy — `linkType` decided later, `packages: []`, `packagesDerived: false` — can record its real closure at the moment it installs one, instead of choosing between a false `packagesDerived: true` over an empty array and burying the authoritative list in `note` prose where no reader can consume it (savvy-web/systems#508):
+
+```bash
+bash journal-append.sh <journal-path> --event phase-change --phase adopting --ball ours \
+  --package '@effected/templates=file:../../spencerbeggs/effected/packages/templates/dist/prod/npm/pkg' \
+  --package '@effected/github=file:../../spencerbeggs/effected/packages/github/dist/prod/npm/pkg' \
+  --packages-derived true
+```
+
+Rules, all enforced:
+
+- **A snapshot is a complete state, so the flags REPLACE the array — they never merge.** The `--package` flags on one invocation name the whole closure; `--clear-packages` names an empty one. The two are mutually exclusive.
+- **Downstream only**, checked against the prior line's `role` — an upstream journal carries no `packages` field at all.
+- **Not valid with `--init`.** A new loop always opens with `packages: []`; a closure derived at init time is recorded by the follow-up append, same as one derived mid-round.
+- `--clear-packages` is what `--exit`'s terminal `unlinked` snapshot uses to state the tree is unlinked explicitly, rather than leaving the last live closure standing in the final line.
+
+Deriving the closure is unchanged and still `SKILL.md` `--init` step 3's job — from the counterpart's BUILT manifest, never its source manifest. These flags record a derivation; they do not perform one.
 
 Only the flags you pass change; every other field (including `counterpart`, `packages`, `linkType`, `nativeRebuilds`, `role`) carries forward unchanged from the last valid line, walking back past a corrupt tail the same way the guard/monitor readers do. `role` is fixed for a loop — the script refuses `--role` outside `--init`; append a `correction` event instead. An owner-token mismatch against the last writer warns (savvy-web/systems#334) rather than rejecting. Nothing is appended unless the composed line validates — a rejected input leaves the journal file byte-identical.

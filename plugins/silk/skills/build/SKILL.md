@@ -63,6 +63,25 @@ await runBuild(config, { cwd: process.cwd(), argv: process.argv.slice(2) });
 
 Use only when you must inspect or programmatically transform the resolved config, or inject `RunOptions` IO hooks (testing/self-host). Default builds use `build()`.
 
+## Reading a build as evidence
+
+Two different failures produce a build log that reads exactly like a clean gate. Both matter most when the build is the evidence for a claim — "the warnings are fixed", "the surface is clean", "the change is in the artifact".
+
+**A direct `node savvy.build.ts --target prod` is not the `build:prod` task.** The task graph runs `types:check` and `build:dev` first; invoking the script by hand skips both. The prod pass then runs against whatever `dist/dev` happens to hold, may emit no `.d.ts` at all, and can leave a truncated `issues.json` whose empty diagnostic buckets are indistinguishable from a clean one. Run the task, not the script: `pnpm turbo run build:prod --filter <package>`.
+
+**A turbo cache hit replays the previous run's output verbatim.** `FULL TURBO`, the same file count, the same `suppressed` figure — a stale artifact and a fresh one read identically in the log. An agent that edits source, builds, and reads a clean log has no evidence from that log that the build ever saw the edit.
+
+The tell for both is the same: `dist/<target>/issues.json`'s `generatedAt` must postdate your newest source edit.
+
+```bash
+node -pe "require('./dist/prod/issues.json').generatedAt"
+find src -name '*.ts' -newer dist/prod/issues.json
+```
+
+Any path printed by `find` is a source file newer than the artifact — the gate you are reading predates that edit and belongs to an earlier tree. `find` printing nothing means the artifact is at least as new as every source. A replay against genuinely unchanged inputs is legitimate and needs no rebuild; pass `--force` when you need to defeat the cache deliberately, as `/silk:tsdoc`'s verification recipe does.
+
+`issues.json` also carries a `buildOk` stamp — read it before the diagnostic buckets, since the artifact is written on every terminal path including a crash. `/silk:tsdoc` owns that recipe.
+
 ## package.json script contract
 
 Every bundler-built package declares `publishConfig.directory: dist/dev/pkg` and three scripts: `build:dev` (`node savvy.build.ts --target dev`), `build:prod` (`node savvy.build.ts --target prod`), `types:check` (`tsc --noEmit`). Other supporting scripts may exist alongside these.

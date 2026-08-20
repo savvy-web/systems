@@ -4,16 +4,30 @@
 // non-zero value. A count that is still moving build-to-build — an agent
 // actively fixing diagnostics (the peeling-the-onion pattern), or a fresh
 // package mid-build — is held back until it holds steady across a short quiet
-// period, so the monitor never tells the session to "dispatch the tsdoctor
-// agent" for a package a fixing agent is already working on
-// (see savvy-web/systems#248).
-import { globSync, realpathSync } from "node:fs";
+// period (see savvy-web/systems#248).
+//
+// dist/<target>/issues.json is a gitignored, shared, mutable artifact, which
+// makes it a poor channel for cross-agent evidence: a stray build from another
+// tree rewrites it, a crashed build writes an all-zeros version of it, and a
+// reviewer proving a fix is load-bearing MUST reintroduce the bug and rebuild.
+// A watcher that reports whatever it finds observes all three as regressions.
+// One session fired five events on one package, none of which described HEAD,
+// and two agents came within one instruction of "fixing" a symbol deleted two
+// commits earlier (savvy-web/systems#255). Three gates below exist for that:
+// buildOk, artifact-newer-than-source, and clean-tree. Each is a reason to
+// stay quiet, never a reason to report harder — an artifact this monitor
+// cannot vouch for produces no line at all.
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { globSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 const TSDOC_CODE = /^(ae-|tsdoc-)/;
+const SOURCE_EXT = /\.(ts|tsx|mts|cts)$/;
 const POLL_MS = 2000;
 // Consecutive polls a non-zero count must hold, unchanged, before the monitor
 // notifies. With POLL_MS=2000 the default (3) is a ~6s quiet period. A build
@@ -27,6 +41,51 @@ function countTsdocIssues(issues) {
 	return all.filter((d) => typeof d?.code === "string" && TSDOC_CODE.test(d.code)).length;
 }
 
+// Newest mtime among the package's own sources. `undefined` when the package
+// has no source tree we can see — treated as "cannot vouch", same as a stale
+// artifact, rather than as a pass.
+function newestSourceMtime(pkgDir) {
+	let newest;
+	try {
+		for (const rel of globSync("src/**/*", { cwd: pkgDir, exclude: (p) => p.includes("node_modules") })) {
+			if (!SOURCE_EXT.test(rel)) continue;
+			const ms = statSync(join(pkgDir, rel)).mtimeMs;
+			if (newest === undefined || ms > newest) newest = ms;
+		}
+	} catch {
+		return undefined;
+	}
+	return newest;
+}
+
+// One `git status` per tick at most, and only once something is otherwise
+// ready to fire. A dirty working tree is normal during a review and poisons
+// the build the artifact came from, so a package with uncommitted or untracked
+// sources is not reported on at all.
+function dirtySourcePaths() {
+	try {
+		const out = execFileSync("git", ["status", "--porcelain", "--untracked-files=all"], {
+			cwd: ROOT,
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+		});
+		const paths = new Set();
+		for (const line of out.split("\n")) {
+			// "XY path", or "XY old -> new" for a rename — the destination is
+			// the one that exists in the tree the build read.
+			let path = line.slice(3).trim();
+			const arrow = path.lastIndexOf(" -> ");
+			if (arrow !== -1) path = path.slice(arrow + 4);
+			if (!path || !SOURCE_EXT.test(path)) continue;
+			paths.add(path);
+		}
+		return paths;
+	} catch {
+		// No git, not a repo, git unavailable — no cleanliness claim either way.
+		return undefined;
+	}
+}
+
 async function scan() {
 	const files = globSync(["**/dist/dev/issues.json", "**/dist/prod/issues.json"], {
 		cwd: ROOT,
@@ -35,13 +94,23 @@ async function scan() {
 	const current = [];
 	for (const rel of files) {
 		const path = join(ROOT, rel);
+		// <pkg>/dist/<target>/issues.json — up three to the package root.
+		const pkgDir = dirname(dirname(dirname(path)));
 		try {
 			const issues = JSON.parse(await readFile(path, "utf8"));
+			const newestSrc = newestSourceMtime(pkgDir);
 			current.push({
 				path,
+				pkgDir,
 				pkg: typeof issues?.package === "string" ? issues.package : rel,
 				target: typeof issues?.target === "string" ? issues.target : "?",
 				count: countTsdocIssues(issues),
+				// Three-state, deliberately: true / false / undefined. An
+				// artifact written by a bundler predating the stamp cannot be
+				// vouched for, and `?? false`-style collapsing would turn
+				// "unknown" into a claim.
+				buildOk: typeof issues?.buildOk === "boolean" ? issues.buildOk : undefined,
+				fresh: newestSrc === undefined ? undefined : statSync(path).mtimeMs >= newestSrc,
 			});
 		} catch {
 			// partial write / parse error — skip and retry on the next poll
@@ -50,14 +119,18 @@ async function scan() {
 	return current;
 }
 
-// Pure debounce step. State per path carries the current count, how many
-// consecutive scans it has held that count (`streak`), and the last count we
-// notified about (`notified`). A non-zero count fires only once its streak
-// reaches `minStablePolls` and it differs from the last-notified value — so a
-// count that keeps changing (active fixing) never fires, a new stable value
-// fires exactly once, and a return to zero clears the dedup so a later
-// regression can fire again.
-export function diagnose(current, prev, minStablePolls) {
+// Pure debounce + provenance step. State per path carries the current count,
+// how many consecutive scans it has held that count (`streak`), and the last
+// count we notified about (`notified`). A non-zero count fires only once its
+// streak reaches `minStablePolls`, it differs from the last-notified value,
+// and the artifact can be vouched for — so a count that keeps changing (active
+// fixing) never fires, a new stable value fires exactly once, and a return to
+// zero clears the dedup so a later regression can fire again.
+//
+// `isDirty` is injected rather than called here so this stays pure and
+// testable; it is consulted lazily, only for a candidate that has already
+// cleared every other gate.
+export function diagnose(current, prev, minStablePolls, isDirty = () => false) {
 	const lines = [];
 	const next = new Map();
 	for (const c of current) {
@@ -67,26 +140,96 @@ export function diagnose(current, prev, minStablePolls) {
 		if (c.count === 0) {
 			notified = undefined;
 		} else if (streak >= minStablePolls && notified !== c.count) {
-			const plural = c.count === 1 ? "" : "s";
-			lines.push(
-				`tsdoc: ${c.pkg} has ${c.count} ae-*/tsdoc- issue${plural} in ${c.target} — dispatch the tsdoctor agent or /silk:tsdoc to fix, unless an agent is already working this package: if a build or fixing agent is in flight, let it finish before dispatching another rather than acting on this line immediately`,
-			);
-			notified = c.count;
+			// buildOk false: the build crashed and wrote a torn artifact whose
+			// diagnostics describe nothing. buildOk absent: unknown provenance.
+			// fresh false: the artifact predates a source edit, so it is some
+			// earlier tree's gate. dirty: a review or a mid-fix tree, where
+			// breakage is expected and reporting it un-commits work.
+			const vouched = c.buildOk === true && c.fresh === true && !isDirty(c);
+			if (vouched) {
+				const plural = c.count === 1 ? "" : "s";
+				lines.push(
+					`tsdoc: ${c.pkg} has ${c.count} ae-*/tsdoc- issue${plural} in ${c.target}. Read ${relative(ROOT, c.path) || c.path} for the entries before acting — this line reports an artifact, not the state of any agent's in-flight work.`,
+				);
+				notified = c.count;
+			}
 		}
 		next.set(c.path, { count: c.count, streak, notified });
 	}
 	return { lines, next };
 }
 
+// Per-project single-instance lock. Monitors are respawned per session and
+// were never deduplicated: one repo accumulated 70 live watchers, so a single
+// event fired six times with an identical payload, and each firing woke every
+// idle agent — several of which rebuilt to investigate, rewriting the artifact
+// and re-firing the monitor (savvy-web/systems#255). The lock is advisory: a
+// stale pid file (holder gone) is taken over, never trusted.
+function claimLock() {
+	const key = createHash("sha256").update(realpathish(ROOT)).digest("hex").slice(0, 16);
+	const lockPath = join(tmpdir(), `silk-tsdoc-monitor-${key}.pid`);
+	try {
+		const held = Number(readFileSync(lockPath, "utf8").trim());
+		if (Number.isInteger(held) && held > 0 && held !== process.pid) {
+			// Signal 0 tests for existence without delivering anything.
+			process.kill(held, 0);
+			return null;
+		}
+	} catch {
+		// No lock file, unreadable, or the holder is gone — ours to take.
+	}
+	try {
+		writeFileSync(lockPath, String(process.pid));
+	} catch {
+		// Cannot write a lock (read-only tmp): run unlocked rather than not at all.
+		return () => {};
+	}
+	return () => {
+		try {
+			if (readFileSync(lockPath, "utf8").trim() === String(process.pid)) unlinkSync(lockPath);
+		} catch {
+			/* nothing to release */
+		}
+	};
+}
+
+function realpathish(p) {
+	try {
+		return realpathSync(p);
+	} catch {
+		return p;
+	}
+}
+
 async function main() {
 	const once = process.argv.includes("--once");
 	// --once is a single-shot check with no polling history to build a quiet
-	// period from, so it reports current non-zero counts immediately.
+	// period from, so it reports current non-zero counts immediately. It also
+	// skips the lock: it is a diagnostic invocation, not a resident watcher.
 	const minStablePolls = once ? 0 : STABLE_POLLS;
+	let release = () => {};
+	if (!once) {
+		const claimed = claimLock();
+		if (claimed === null) return; // another watcher already owns this project
+		release = claimed;
+		process.on("exit", release);
+		for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => process.exit(0));
+	}
 	let prev = new Map();
 	const tick = async () => {
 		try {
-			const { lines, next } = diagnose(await scan(), prev, minStablePolls);
+			const current = await scan();
+			let dirtyPaths;
+			const isDirty = (c) => {
+				dirtyPaths ??= dirtySourcePaths();
+				if (dirtyPaths === undefined) return false;
+				const rel = relative(ROOT, c.pkgDir);
+				// A package AT the root owns every path git reports.
+				const prefix = rel === "" ? "" : `${rel}${sep}`;
+				for (const p of dirtyPaths) if (p.startsWith(prefix)) return true;
+				return false;
+			};
+			const { lines, next } = diagnose(current, prev, minStablePolls, isDirty);
 			prev = next;
 			for (const line of lines) console.log(line);
 		} catch {

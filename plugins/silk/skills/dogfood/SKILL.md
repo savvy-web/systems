@@ -114,6 +114,7 @@ The downstream receive flow, run after a `handoff` lands:
 
 1. Re-read the newest handoff mail.
 2. Run the refresh recipe: `pnpm clean --lockfile && pnpm install --ignore-scripts`, then `pnpm rebuild <name>` for every entry in the journal's `nativeRebuilds`.
+   **When the handoff brought a link closure this loop did not have before** — the normal case for a link-lazy loop that opened with `packages: []` — record it structurally as you install it: `--package '<name>=<override>'` (repeatable) plus `--packages-derived true` on the next append. Do not pair `--packages-derived true` with an empty array, and do not describe the closure only in `note` prose: the first is the false known-clean signal the field exists to prevent, and the second puts the authoritative list where no reader can consume it (savvy-web/systems#508). See `references/jsonl-journal.md`.
 3. Verify the handoff's claims against the INSTALLED `.d.ts` (not the handoff's prose) — drift between what was claimed and what's actually exported/typed is a defect, flag it, don't silently work around it.
 4. Migrate consumers onto the new surfaces.
 5. **Bump the declared ranges while still linked.** Caret ranges on a `0.x` package pin the minor — `^0.4.1` does not accept `0.5.0` — and on a kit where every meaningful change ships as a `0.x` minor, every release lands outside every range the downstream declares. While linked, `file:` overrides replace resolution outright and semver is never consulted, so the whole checklist passes green with the ranges silently stale; they're consulted for the first time at `--exit`, after the safety net is removed, and resolve back to the old versions against code calling the new surfaces. Bump the ranges now (savvy-web/systems#333), so the registry install at exit is a no-op rather than a downgrade. **Edit the manifest by hand** — `pnpm add <pkg>@^<next>` resolves the range against the REGISTRY and refuses a version the upstream has not published yet, which is every version worth bumping to mid-loop. The `file:` override supplies the actual build regardless of what the manifest declares, so the hand-written range is correct even though nothing on the registry satisfies it.
@@ -131,7 +132,7 @@ Role-aware endgame. Only after this completes does the enforcement hook lift and
 1. Remove this loop's entries from `pnpm-workspace.yaml`'s `overrides:` block. (Commenting an entry out instead of deleting it is tolerated — the push guard strips YAML comments quote-awarely before scanning — but removal is still the documented step; don't rely on the tolerance as the normal path.)
 2. `pnpm clean --lockfile && pnpm install` against the registry (scripts ON this time — native modules rebuild themselves; do not pass `--ignore-scripts` here).
 3. Re-run the full gates (`types:check`, `build:dev`/`build:prod`, tests).
-4. Append the terminal `unlinked` snapshot to the journal.
+4. Append the terminal `unlinked` snapshot to the journal, clearing the closure explicitly (`--clear-packages`) so the final line states the tree is unlinked rather than leaving the last live override list standing.
 
 Only then is the enforcement hook satisfied for this loop and pushing/opening a PR is unblocked (assuming no OTHER active downstream loop is also linked).
 
