@@ -1,5 +1,17 @@
 # @savvy-web/mcp
 
+## 2.4.9
+
+### Dependencies
+
+| Dependency              | Type       | Action  | From  | To    |
+| ----------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/silk-effects | dependency | updated | 6.0.3 | 6.0.4 |
+
+* | Dependency           | Type       | Action  | From    | To      |                                                          |
+  | -------------------- | ---------- | ------- | ------- | ------- | -------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.15.1 | ^0.16.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 2.4.8
 
 ### Dependencies

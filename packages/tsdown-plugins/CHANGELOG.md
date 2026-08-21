@@ -1,5 +1,14 @@
 # @savvy-web/tsdown-plugins
 
+## 2.5.1
+
+### Dependencies
+
+* | Dependency           | Type       | Action  | From    | To      |                                                          |
+  | -------------------- | ---------- | ------- | ------- | ------- | -------------------------------------------------------- |
+  | @effected/npm        | dependency | updated | ^0.11.0 | ^0.11.1 |                                                          |
+  | @effected/workspaces | dependency | updated | ^0.15.1 | ^0.16.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 2.5.0
 
 ### Features
