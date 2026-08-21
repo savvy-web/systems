@@ -1,5 +1,17 @@
 # @savvy-web/cli
 
+## 2.7.0
+
+### Maintenance
+
+* `BIOME_VERSION` moves to `2.5.9`, the release the suite now pins. `savvy init` and `savvy check` write and validate consumer `biome.json`/`biome.jsonc` `$schema` URLs against it, so both commands now carry repos onto 2.5.9 — which is also what the shared `silk.jsonc` preset requires. [#534][#534]
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#534]: https://github.com/savvy-web/systems/pull/534
+
 ## 2.6.9
 
 ### Dependencies
