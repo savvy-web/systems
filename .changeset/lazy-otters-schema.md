@@ -4,19 +4,20 @@
 
 ## Features
 
-### Schema validation coverage
+### Sorted keys in more config files
 
-Expands schema-driven JSON validation coverage in the published Biome preset (`silk.jsonc`) to more of the repo's own config files, so editors and CI get schema-aware linting on them too:
+The preset's key-sorting override (`assist.actions.source.useSortedKeys`) now covers more of a repo's config files. Biome alphabetizes the keys in each of these on a `--write` pass or an editor save with `source.fixAll.biome` enabled:
 
 * `.claude/settings.json` / `.claude/settings.local.json`
 * `.claude/design/design.config.json`
 * `.changeset/config.json`
 * `**/.markdownlint.json` and `**/.markdownlint-cli2.jsonc`
 * `**/devcontainer.json`
-* `.repos/config.json`
 * `.vscode/*.json`
 * `**/biome.json` / `**/biome.jsonc` / `**/silk.jsonc`
 * `**/.claude-plugin/plugin.json` and `**/.claude-plugin/marketplace.json`
+
+Expect a one-time reordering diff across these files the first time you run `savvy lint --write` after upgrading. They are hand-maintained, so the diff can be large even though no value changes — review it once and commit it. Drop the override from your own `biome.jsonc` if you would rather keep a hand-ordered file.
 
 ### Catalog-aware module resolution
 

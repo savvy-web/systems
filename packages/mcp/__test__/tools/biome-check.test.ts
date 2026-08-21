@@ -250,6 +250,26 @@ describe("resolveContainmentRoot (systems#482)", () => {
 		expect(resolveContainmentRoot("/repo", "/wt", p)).toBeNull();
 	});
 
+	// The server is launched from packages/mcp/ by dev tooling, so root can be a
+	// strict subdirectory of its own worktree. Both probes then agree on commonDir
+	// because it is the SAME repository — widening to the worktree top level would
+	// hand --write the whole repo, including the .repos/** vendored trees.
+	it("does not widen when root is a subdirectory of its own worktree", () => {
+		const p = probe({
+			"/repo/packages/mcp": { commonDir: "/repo/.git", topLevel: "/repo" },
+			"/repo/packages/silk": { commonDir: "/repo/.git", topLevel: "/repo" },
+		});
+		expect(resolveContainmentRoot("/repo/packages/mcp", "/repo/packages/silk", p)).toBeNull();
+	});
+
+	it("still contains to the worktree when root is a subdirectory of a DIFFERENT worktree", () => {
+		const p = probe({
+			"/repo/packages/mcp": { commonDir: "/repo/.git", topLevel: "/repo" },
+			"/wt/feature/packages/silk": { commonDir: "/repo/.git", topLevel: "/wt/feature" },
+		});
+		expect(resolveContainmentRoot("/repo/packages/mcp", "/wt/feature/packages/silk", p)).toBe("/wt/feature");
+	});
+
 	it("does not treat a lexical prefix as containment", () => {
 		expect(resolveContainmentRoot("/repo", "/repo-evil", probe({}))).toBeNull();
 	});

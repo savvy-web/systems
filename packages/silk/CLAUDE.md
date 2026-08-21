@@ -16,15 +16,16 @@
 
 ## Biome version upgrade
 
-Biome is pinned EXACTLY, never to a range. `package.json` `peerDependencies["@biomejs/biome"]` is `catalog:lint`, and the catalog entry carries a bare exact version, so the published manifest ships an exact peer (verify with the built `dist/prod/npm/pkg/package.json`). Five coupled spots — bump all five together when upgrading:
+Biome is pinned EXACTLY, never to a range. `package.json` `peerDependencies["@biomejs/biome"]` is `catalog:lint`, and the catalog entry carries a bare exact version, so the published manifest ships an exact peer (verify with the built `dist/prod/npm/pkg/package.json`). Six coupled spots — bump all six together when upgrading:
 
-1. Root `pnpm-workspace.yaml`, BOTH the `lint` and `lint:peers` catalogs → the exact new release (e.g. `2.5.9`). This is what silk's `catalog:lint` peer resolves to.
-2. `public/biome/silk.jsonc` `$schema` URL → the same exact release.
-3. Root `biome.jsonc` `$schema` URL → the same exact release.
-4. `@savvy-web/cli`'s `BIOME_VERSION` const (`packages/cli/src/commands/lint/biome-version.ts`) → the same exact release; `savvy init`/`savvy check` sync consumer `biome.json(c)` `$schema` URLs to it.
-5. `@savvy-web/templates`' `biomeVersion` schema default (`packages/templates/src/lib/workspace/index.ts`) → the same exact release; it feeds the `$schema` URL of every scaffolded `biome.jsonc`, and its test asserts the URL literally.
+1. `packages/pnpm-plugin-silk/savvy.build.ts`, the `@biomejs/biome` entry in the `lint` catalog (`range` AND `peer`) → the exact new release (e.g. `2.5.9`). This is the SOURCE OF TRUTH for every catalog, here and in all ~33 consumer repos. The root `pnpm-workspace.yaml` is GENERATED from it — editing that file by hand looks correct and is silently reverted the next time anyone runs `pnpm pnpm:export`, while consumers keep resolving the old version from the published config dependency. Nothing in CI regenerates or verifies the export, so that drift lands unnoticed. A catalog change also needs its own `@savvy-web/pnpm-plugin-silk` changeset, or the fix never leaves this repo.
+2. Root `pnpm-workspace.yaml`, BOTH the `lint` and `lint:peers` catalogs → refresh by running `pnpm pnpm:export` (then `pnpm exec savvy lint fmt pnpm-workspace`, since the exporter's quoting differs from the committed form). Do not type the version in by hand.
+3. `public/biome/silk.jsonc` `$schema` URL → the same exact release.
+4. Root `biome.jsonc` `$schema` URL → the same exact release.
+5. `@savvy-web/cli`'s `BIOME_VERSION` const (`packages/cli/src/commands/lint/biome-version.ts`) → the same exact release; `savvy init`/`savvy check` sync consumer `biome.json(c)` `$schema` URLs to it.
+6. `@savvy-web/templates`' `biomeVersion` schema default (`packages/templates/src/lib/workspace/index.ts`) → the same exact release; it feeds the `$schema` URL of every scaffolded `biome.jsonc`, and its test asserts the URL literally.
 
-The three URL sites and `BIOME_VERSION` have drifted from the installed binary before (2.5.1 everywhere while the catalog installed 2.5.0). Nothing checks the five for agreement, so grep the old version across the repo after bumping.
+The URL sites and `BIOME_VERSION` have drifted from the installed binary before (2.5.1 everywhere while the catalog installed 2.5.0). Nothing checks the five for agreement, so grep the old version across the repo after bumping — `savvy.build.ts` is the entry that gets missed, because the generated yaml already shows the new number.
 
 Config keys in the shared `public/biome/silk.jsonc` asset are a separate concern from the version pin: the asset propagates to ~33 consumer repos, so a key that does not exist in the OLDEST Biome any consumer still runs makes that consumer hard-error on an unknown key. Check the key against the older schema before adding it (`curl https://biomejs.dev/schemas/<old>/schema.json`). Known 2.5-only keys, still ungated: `linter.rules.preset`, `javascript.resolver`, `formatter.delimiterSpacing`, `html.parser.vue`, `plugins[].includes`.
 

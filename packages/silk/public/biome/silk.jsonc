@@ -158,7 +158,6 @@
 				"**/.changeset/config.json",
 				"**/.markdownlint.json",
 				"**/devcontainer.json",
-				"**/.repos/config.json",
 				"**/.vscode/*.json",
 				"**/biome.json",
 				"**/biome.jsonc",

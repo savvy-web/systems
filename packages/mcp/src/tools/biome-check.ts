@@ -213,9 +213,9 @@ const gitWorktreeProbe: GitWorktreeProbe = (dir) => {
  * Decide which directory tree this run may touch.
  *
  * @remarks A cwd inside the server's root keeps that root. A cwd OUTSIDE it is
- * accepted only when it belongs to a worktree of the same repository — identified
- * by a shared git common dir — and containment then follows that worktree rather
- * than the server's start directory (systems#482). Binding to the start directory
+ * accepted only when it belongs to a DIFFERENT worktree of the same repository —
+ * a shared git common dir but a different top level — and containment then follows
+ * that worktree rather than the server's start directory (systems#482). Binding to the start directory
  * meant a call from a sibling worktree silently mutated the main checkout, which in
  * a parallel multi-agent session is another agent's tree. Returns null to reject.
  *
@@ -235,6 +235,14 @@ export const resolveContainmentRoot = (
 	const home = probe(root);
 	if (!home) return null;
 	if (from.commonDir !== home.commonDir) return null;
+	// Same repository — but that alone does not earn a wider tree. When the two
+	// share a top level, `root` is a strict subdirectory of its own worktree (dev
+	// tooling launches the server from packages/mcp/), and the cwd is simply
+	// elsewhere in that same checkout. Widening to the top level there would hand
+	// a --write pass the entire repo, including the .repos/** vendored trees, for
+	// a request that was rejected before worktree support existed. Only a genuinely
+	// different worktree gets its own tree.
+	if (from.topLevel === home.topLevel) return null;
 	return from.topLevel;
 };
 
