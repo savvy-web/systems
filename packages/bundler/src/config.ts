@@ -63,10 +63,10 @@ export interface BuildConfigInput {
 	/**
 	 * Force-bundle node_modules (and workspace) JS dependencies that are not
 	 * externalized into the package output, restoring the self-contained bundle
-	 * the rslib builder produced. Threads tsdown `deps.skipNodeModulesBundle: false`
-	 * into BOTH the JS output and the bundled declarations: the dts posture
-	 * tracks the JS posture, so node_modules types are inlined into the `.d.ts`
-	 * and the published package needs no extra declared deps for them. Defaults to false.
+	 * the rslib builder produced. Bundles into BOTH the JS output and the bundled
+	 * declarations: the dts posture tracks the JS posture, so node_modules types are
+	 * inlined into the `.d.ts` and the published package needs no extra declared deps
+	 * for them. Defaults to false.
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
 	/**
@@ -176,10 +176,9 @@ export interface BuildConfig {
 	readonly dtsExternals?: ReadonlyArray<string> | undefined;
 	/**
 	 * Force-bundle node_modules (and workspace) JS dependencies that are not
-	 * externalized into the package output (rslib parity). Threads tsdown
-	 * `deps.skipNodeModulesBundle: false` into BOTH the JS output and the bundled
-	 * declarations — the dts posture tracks the JS posture, inlining node_modules
-	 * types into the `.d.ts`. Defaults to false.
+	 * externalized into the package output (rslib parity). Applies to BOTH the JS
+	 * output and the bundled declarations — the dts posture tracks the JS posture,
+	 * inlining node_modules types into the `.d.ts`. Defaults to false.
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
 	/** Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`). Inverse of `externals`. */

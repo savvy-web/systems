@@ -36,8 +36,10 @@ describe("bundledPackages: selective dts inlining (deps.dts.alwaysBundle)", () =
 
 	it("keeps an unlisted external (effect) as an external import reference", () => {
 		const dts = readFileSync(join(OUT, "index.d.ts"), "utf-8");
-		// effect is in externals (deps.neverBundle): it stays a real external import
-		// statement at the top of the file, NOT inlined as source regions.
+		// effect stays a real external import statement at the top of the file, NOT inlined as
+		// source regions. In this branch (bundledPackages without bundleNodeModules) the dts pass
+		// runs under `deps.neverBundle: true`, which externalizes EVERY node_modules type; the
+		// externals array is a subset of that, so this asserts the outcome, not the mechanism.
 		const importLines = dts.split("\n").filter((l) => /^\s*import\b/.test(l));
 		expect(importLines.some((l) => /from ["']effect["']/.test(l))).toBe(true);
 		// And effect's declarations are NOT rolled into the rollup (no region sourced

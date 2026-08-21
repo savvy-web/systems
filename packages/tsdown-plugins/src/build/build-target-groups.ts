@@ -99,7 +99,7 @@ export interface BuildTargetGroupsOptions {
 	/**
 	 * External packages whose declarations are inlined into the bundled dts
 	 * (rslib `dtsBundledPackages` equivalent). Forwarded to the dts pass as
-	 * `deps.dts.alwaysBundle` alongside `skipNodeModulesBundle: true`; unlike
+	 * `deps.dts.alwaysBundle` alongside `deps.neverBundle: true`; unlike
 	 * `deps.onlyBundle` this does not enable tsdown's strict-mode check that
 	 * errors on every unlisted transitive dependency. The JS pass is unaffected.
 	 */
@@ -107,16 +107,17 @@ export interface BuildTargetGroupsOptions {
 	/**
 	 * Force-bundle node_modules (and workspace) JS dependencies that are not
 	 * externalized, restoring the rslib bundle-everything-except-externals
-	 * behavior. Sets tsdown `deps.skipNodeModulesBundle: false`; the dts pass
-	 * posture mirrors the JS pass, so the bundled declarations are also
+	 * behavior. Acts through the JS pass's `unbundle: false` posture, NOT through a
+	 * `deps` flag: bundling node_modules is already tsdown's default for anything the
+	 * manifest does not declare as a production dependency. The dts pass mirrors it by
+	 * likewise leaving that default in place, so the bundled declarations are also
 	 * self-contained. Defaults to false (current behavior).
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
 	/**
 	 * Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`),
 	 * even declared deps that would otherwise be auto-externalized. The inverse of
-	 * `externals`. JS pass only; `alwaysBundle` is allowed alongside our
-	 * `skipNodeModulesBundle: false` (the throw only fires when skipNodeModulesBundle is true).
+	 * `externals`. JS pass only.
 	 */
 	readonly bundle?: ReadonlyArray<string> | undefined;
 	/** Output formats to emit. Defaults to esm-only when unset. */
@@ -253,8 +254,8 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 	const instrument = (groupId: string): Record<string, unknown> =>
 		collector === undefined ? {} : { logLevel: "silent", customLogger: createTsdownLogger(collector, groupId) };
 
-	const metricsPlugins = (groupId: string, pass: PassKind): Plugin[] =>
-		collector === undefined ? [] : [buildMetricsPlugin(collector, groupId, pass, verbose)];
+	const metricsPlugins = (groupId: string, pass: PassKind, suppressMixedExports = false): Plugin[] =>
+		collector === undefined ? [] : [buildMetricsPlugin(collector, groupId, pass, verbose, suppressMixedExports)];
 
 	// PLUGIN_TIMINGS is rolldown's plugin-performance diagnostic. The builder's own always-on
 	// plugins (savvy:emit-manifest, metrics) trip it on virtually every build, so in normal runs
@@ -375,15 +376,13 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 					...timingChecks,
 					...instrument(group.id),
 					...(part.css !== undefined ? { css: part.css } : {}),
-					...(partExternals?.length || partBundleNodeModules || partBundle?.length
+					...(partExternals?.length || partBundle?.length
 						? {
 								deps: {
 									...(partExternals?.length ? { neverBundle: partExternals } : {}),
 									// alwaysBundle force-inlines these packages (inverse of neverBundle), even
-									// declared deps tsdown would auto-externalize. Allowed alongside
-									// skipNodeModulesBundle:false (the throw only fires when it is true).
+									// declared deps tsdown would auto-externalize.
 									...(partBundle?.length ? { alwaysBundle: partBundle } : {}),
-									...(partBundleNodeModules ? { skipNodeModulesBundle: false } : {}),
 								},
 							}
 						: {}),
@@ -397,7 +396,10 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						...(manifestPlugin ? [manifestPlugin] : []),
 						...(js.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
 						...(options.extraPlugins ?? []),
-						...metricsPlugins(group.id, "js"),
+						// The cjs branch above installs cjsDefaultInterop(), which makes rolldown's
+						// MIXED_EXPORTS warning moot for this pass — suppress it wherever that footer
+						// lands (here, the dts pass, and a cjs loose file) and nowhere else.
+						...metricsPlugins(group.id, "js", js.format.includes("cjs")),
 					],
 				}),
 			);
@@ -418,20 +420,20 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			//
 			//  1. bundleNodeModules — the JS pass force-bundles all node_modules (rslib
 			//     bundle-everything-except-externals). The dts must match: INLINE every
-			//     node_modules type into the declarations (`skipNodeModulesBundle: false`),
-			//     so the published package is self-contained and consumers need no extra
-			//     declared deps for the inlined types. `dts.alwaysBundle` is then redundant,
-			//     but include it when bundledPackages is also set (belt-and-suspenders).
+			//     node_modules type into the declarations, so the published package is
+			//     self-contained and consumers need no extra declared deps for the inlined
+			//     types. That is tsdown's DEFAULT dts posture, so this branch contributes no
+			//     deps flag of its own; it only adds `dts.alwaysBundle` when bundledPackages
+			//     is also set (belt-and-suspenders — already-inlined types stay inlined).
 			//  2. bundledPackages without bundleNodeModules — "inline ONLY these declarations,
 			//     externalize the rest" (rslib dtsBundledPackages parity). onlyBundle would
 			//     put tsdown's dts pass into strict mode (it errors on every reachable
 			//     node_modules type dep not in onlyBundle), unworkable when transitive type
-			//     deps cannot all be enumerated. Instead externalize all node_modules
-			//     (`skipNodeModulesBundle: true`) and force-bundle only the listed packages
-			//     via `deps.dts.alwaysBundle`. tsdown forbids skipNodeModulesBundle with the
-			//     top-level deps.alwaysBundle, but deps.dts.alwaysBundle is exempt from that
-			//     mutual-exclusion check and is consulted first in tsdown's external strategy,
-			//     so the listed declarations still inline.
+			//     deps cannot all be enumerated. Instead externalize everything
+			//     (`neverBundle: true`) and force-bundle only the listed packages via
+			//     `deps.dts.alwaysBundle`, which tsdown consults FIRST in its external
+			//     strategy, so the listed declarations still inline. `neverBundle: true`
+			//     supersedes the dtsNeverBundle array — it is a strict superset of it.
 			//  3. neither — the existing leaf bundled-dts behavior; only neverBundle applies.
 			//
 			// Across ALL three branches the dts pass `neverBundle` is the UNION of `externals`
@@ -449,18 +451,15 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// JS pass already emitted per-module JS for every entry. The bundling posture (neverBundle /
 			// bundleNodeModules / bundledPackages) is identical for every entry, so compute it once.
 			const dtsDeps =
-				dtsNeverBundle.length > 0 || partBundleNodeModules || dts.bundledPackages
+				dtsNeverBundle.length > 0 || dts.bundledPackages
 					? {
 							deps: {
 								...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
-								...(partBundleNodeModules
-									? {
-											skipNodeModulesBundle: false,
-											...(dts.bundledPackages ? { dts: { alwaysBundle: dts.bundledPackages } } : {}),
-										}
-									: dts.bundledPackages
-										? { skipNodeModulesBundle: true, dts: { alwaysBundle: dts.bundledPackages } }
-										: {}),
+								...(dts.bundledPackages
+									? partBundleNodeModules
+										? { dts: { alwaysBundle: dts.bundledPackages } }
+										: { neverBundle: true as const, dts: { alwaysBundle: dts.bundledPackages } }
+									: {}),
 							},
 						}
 					: {};
@@ -547,7 +546,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						plugins: [
 							...(dts.format.includes("cjs") ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
 							...(options.extraPlugins ?? []),
-							...metricsPlugins(group.id, "dts"),
+							...metricsPlugins(group.id, "dts", dts.format.includes("cjs")),
 						],
 					});
 				}
@@ -584,18 +583,15 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						define: decl.define,
 						...timingChecks,
 						logLevel: "silent",
-						...(dtsNeverBundle.length > 0 || partBundleNodeModules || decl.bundledPackages
+						...(dtsNeverBundle.length > 0 || decl.bundledPackages
 							? {
 									deps: {
 										...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
-										...(partBundleNodeModules
-											? {
-													skipNodeModulesBundle: false,
-													...(decl.bundledPackages ? { dts: { alwaysBundle: decl.bundledPackages } } : {}),
-												}
-											: decl.bundledPackages
-												? { skipNodeModulesBundle: true, dts: { alwaysBundle: decl.bundledPackages } }
-												: {}),
+										...(decl.bundledPackages
+											? partBundleNodeModules
+												? { dts: { alwaysBundle: decl.bundledPackages } }
+												: { neverBundle: true as const, dts: { alwaysBundle: decl.bundledPackages } }
+											: {}),
 									},
 								}
 							: {}),
@@ -621,7 +617,6 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 		const looseDeps = {
 			...(options.externals?.length ? { neverBundle: options.externals } : {}),
 			...(options.bundle?.length ? { alwaysBundle: options.bundle } : {}),
-			...(options.bundleNodeModules ? { skipNodeModulesBundle: false } : {}),
 		};
 		for (const lf of options.looseFiles ?? []) {
 			const hasCjs = lf.format === "cjs";
@@ -651,7 +646,7 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 					plugins: [
 						...(hasCjs ? [nodeBuiltinDefaultInterop(), cjsDefaultInterop()] : []),
 						...(options.extraPlugins ?? []),
-						...metricsPlugins(group.id, "loose"),
+						...metricsPlugins(group.id, "loose", hasCjs),
 					],
 				}),
 			);

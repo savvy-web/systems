@@ -15,7 +15,10 @@ export class DiagnosticEntry extends Schema.Class<DiagnosticEntry>("DiagnosticEn
 	source: Schema.Literals(["tsdown", "rolldown", "api-extractor"]),
 	level: Schema.Literals(["warn", "error"]),
 	text: Schema.String,
-	/** API Extractor messageId (e.g. "ae-forgotten-export"); used to group suppressed messages by type. */
+	/**
+	 * Diagnostic identifier — an API Extractor messageId (e.g. "ae-forgotten-export") or a
+	 * rolldown warning code (e.g. "MIXED_EXPORTS"); used to group suppressed messages by type.
+	 */
 	code: Schema.optional(Schema.String),
 	/** True when shown as `warn` locally but a hard error in CI (drives the "[fails CI]" nudge). */
 	ciFatal: Schema.optional(Schema.Boolean),

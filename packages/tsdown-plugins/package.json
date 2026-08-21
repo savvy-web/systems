@@ -35,7 +35,7 @@
 		"@effected/npm": "^0.11.0",
 		"@effected/package-json": "^0.10.2",
 		"@effected/tsconfig-json": "^0.6.0",
-		"@effected/workspaces": "^0.15.0",
+		"@effected/workspaces": "^0.15.1",
 		"@microsoft/api-extractor": "^7.58.12",
 		"@microsoft/tsdoc": "^0.16.0",
 		"@microsoft/tsdoc-config": "^0.18.1",

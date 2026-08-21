@@ -3,8 +3,8 @@ status: current
 module: pnpm-plugin-silk
 category: architecture
 created: 2026-06-30
-updated: 2026-07-11
-last-synced: 2026-07-11
+updated: 2026-08-20
+last-synced: 2026-08-20
 completeness: 85
 related:
   - ../bundler/architecture.md
@@ -47,6 +47,8 @@ One managed override carries the TypeScript 7 migration's compatibility shim: th
 A config dependency cannot run an install-time build step, because it installs before any build tooling exists. The enabling mechanism is `rolldown-pnpm-config` (external package, see `/Users/spencer/workspaces/spencerbeggs/rolldown-pnpm-config`), a rolldown plugin that compiles a declarative config into a pre-built `pnpmfile.mjs`/`.cjs` so the published artifact needs no build on the consumer side.
 
 In this package `savvy.build.ts` calls the bundler's `build()` with `PnpmConfigPlugin({...})` as a plugin, plus `bundleNodeModules: true` and a `looseFiles` map that emits both `pnpmfile.mjs` and `pnpmfile.cjs` from `src/pnpmfile.ts`. The three source files are thin seams over the plugin's virtual modules: `src/index.ts` re-exports `catalogs` from `rolldown-pnpm-config/virtual/catalogs`, `src/pnpmfile.ts` re-exports `hooks` from `rolldown-pnpm-config/virtual/pnpmfile` and `types/refs.d.ts` carries the `/// <reference types="rolldown-pnpm-config/virtual" />` triple-slash directive that types those virtual modules. See `../bundler/architecture.md` for the `build()` / `looseFiles` contract this leans on.
+
+**The CJS-format warning on this package's build is expected and deliberately left visible.** tsdown prints "We recommend using the ESM format instead of CommonJS" for the `pnpmfile.cjs` loose file; a pnpm config dependency must ship a CJS pnpmfile for older pnpm loaders, so the advice does not apply. It is NOT routed into the build report's `suppressed` bucket (unlike rolldown's `MIXED_EXPORTS` on silk's cjs interop passes — see `../tsdown-plugins/architecture.md`) because the CJS output is expected to be dropped in the near future and the warning is the reminder.
 
 ## Self-consumption via export
 
