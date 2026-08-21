@@ -1,24 +1,24 @@
 {
 	"$schema": "https://www.schemastore.org/claude-code-marketplace.json",
-	"name": "savvy-web-systems",
-	"owner": {
-		"name": "Savvy Web Systems",
-		"email": "spencer@savvyweb.systems"
-	},
 	"metadata": {
 		"description": "Claude Code plugins for the Savvy Web Silk Suite"
 	},
+	"name": "savvy-web-systems",
+	"owner": {
+		"email": "spencer@savvyweb.systems",
+		"name": "Savvy Web Systems"
+	},
 	"plugins": [
 		{
+			"category": "developer-tools",
+			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 			"name": "silk",
 			"source": {
-				"source": "git-subdir",
-				"url": "https://github.com/savvy-web/systems.git",
 				"path": "plugins/silk",
-				"sha": "5ca4bfdbea293487439203fabf97c83d93373de5"
+				"sha": "5ca4bfdbea293487439203fabf97c83d93373de5",
+				"source": "git-subdir",
+				"url": "https://github.com/savvy-web/systems.git"
 			},
-			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
-			"category": "developer-tools",
 			"tags": ["silk-suite", "changesets", "commitlint", "biome", "code-quality"]
 		}
 	]

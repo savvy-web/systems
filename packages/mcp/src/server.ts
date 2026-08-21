@@ -296,7 +296,11 @@ export function buildServer(ctx: McpContext): McpServer {
 				strict: z
 					.optional(z.boolean())
 					.describe("Report project warnings as errors (marked with originalSeverity). Default: honor project config."),
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
+				cwd: z
+					.optional(z.string())
+					.describe(
+						"Directory to run from. May be the server's workspace root, a directory inside it, or a git worktree of the SAME repository — a worktree contains the run to that worktree instead of the main checkout. Anything else is rejected.",
+					),
 			},
 			outputSchema: effectToZodSchema(BiomeCheckResult) as never,
 		},

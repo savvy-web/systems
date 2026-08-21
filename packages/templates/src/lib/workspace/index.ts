@@ -28,7 +28,7 @@ export const WorkspaceOptions = Schema.Struct({
 	packageManager: Schema.Literals(["pnpm", "npm", "bun"]),
 	packageManagerVersion: Schema.String,
 	nodeVersion: Schema.String,
-	biomeVersion: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed("2.3.3"))),
+	biomeVersion: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed("2.5.9"))),
 	features: Schema.optional(Features),
 });
 

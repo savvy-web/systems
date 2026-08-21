@@ -69,9 +69,18 @@ const GitlabDiagnostic = Schema.Struct({
 const GitlabArray = Schema.Array(GitlabDiagnostic);
 const decodeGitlab = Schema.decodeUnknownSync(GitlabArray);
 
-/** Map a gitlab severity onto our three-level scale. */
+/**
+ * Map a gitlab severity back onto the Biome severity it was produced from.
+ *
+ * @remarks Biome's gitlab reporter encodes its own `Severity` onto GitLab's
+ * codequality scale (`crates/biome_cli/src/reporter/gitlab.rs`):
+ * `Hint => info`, `Information => minor`, `Warning => major`, `Error => critical`,
+ * `Fatal => blocker`. This function is the exact inverse. Reading `major` as an
+ * error (as this did before systems#516) reports every diagnostic one step more
+ * severe than the project's own `biome check` does, turning a green repo red.
+ */
 const mapSeverity = (s: "info" | "minor" | "major" | "critical" | "blocker"): "error" | "warning" | "info" =>
-	s === "info" ? "info" : s === "minor" ? "warning" : "error";
+	s === "info" || s === "minor" ? "info" : s === "major" ? "warning" : "error";
 
 /**
  * Parse Biome `--reporter=gitlab` stdout into normalized diagnostics. Returns []
@@ -161,6 +170,74 @@ export const BiomeCheckAsMarkdown = BiomeCheckResult.pipe(
 	}),
 );
 
+/**
+ * Canonicalize a path, falling back to lexical resolution when it does not exist
+ * (a non-existent target cannot be a symlink pointing out of tree).
+ */
+const canonicalize = (p: string): string => {
+	try {
+		return realpathSync(p);
+	} catch {
+		return resolve(p);
+	}
+};
+
+/** What {@link resolveContainmentRoot} needs to know about a directory's git identity. */
+export interface GitWorktreeIdentity {
+	/** The shared git dir — identical across every worktree of one repository. */
+	readonly commonDir: string;
+	/** The top level of the specific worktree the directory belongs to. */
+	readonly topLevel: string;
+}
+
+/** Probe a directory's git identity. Returns null when it is not inside a repository. */
+export type GitWorktreeProbe = (dir: string) => GitWorktreeIdentity | null;
+
+/** Real git probe. One `rev-parse` yielding both paths already absolute. */
+const gitWorktreeProbe: GitWorktreeProbe = (dir) => {
+	const res = spawnSync(
+		"git",
+		["-C", dir, "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"],
+		{
+			encoding: "utf8",
+			timeout: 10_000,
+		},
+	);
+	if (res.error || (res.status ?? 1) !== 0) return null;
+	const [commonDir, topLevel] = (res.stdout ?? "").trim().split("\n");
+	if (!commonDir || !topLevel) return null;
+	return { commonDir: canonicalize(commonDir.trim()), topLevel: canonicalize(topLevel.trim()) };
+};
+
+/**
+ * Decide which directory tree this run may touch.
+ *
+ * @remarks A cwd inside the server's root keeps that root. A cwd OUTSIDE it is
+ * accepted only when it belongs to a worktree of the same repository — identified
+ * by a shared git common dir — and containment then follows that worktree rather
+ * than the server's start directory (systems#482). Binding to the start directory
+ * meant a call from a sibling worktree silently mutated the main checkout, which in
+ * a parallel multi-agent session is another agent's tree. Returns null to reject.
+ *
+ * @param root - the server's workspace root, already canonicalized
+ * @param cwd - the requested working directory, already canonicalized
+ * @param probe - git identity probe; injectable for tests
+ * @returns the directory tree to contain to, or null if the cwd must be rejected
+ */
+export const resolveContainmentRoot = (
+	root: string,
+	cwd: string,
+	probe: GitWorktreeProbe = gitWorktreeProbe,
+): string | null => {
+	if (cwd === root || cwd.startsWith(`${root}${sep}`)) return root;
+	const from = probe(cwd);
+	if (!from) return null;
+	const home = probe(root);
+	if (!home) return null;
+	if (from.commonDir !== home.commonDir) return null;
+	return from.topLevel;
+};
+
 /** Arguments for the {@link runBiomeCheck} handler. */
 export interface BiomeCheckArgs {
 	readonly paths?: readonly string[];
@@ -183,24 +260,17 @@ export interface BiomeCheckArgs {
 export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): Promise<BiomeCheckResultType> => {
 	const mode = args.mode ?? "check";
 
-	// Containment: this is a mutating tool, so keep cwd and every target path
-	// inside the workspace root. Canonicalize with realpathSync so a symlink whose
-	// target escapes the root can't pass a purely lexical prefix check; fall back
-	// to lexical resolution for paths that don't exist yet (a non-existent target
-	// can't be a symlink pointing out of tree). Reject anything that escapes.
-	const canonicalize = (p: string): string => {
-		try {
-			return realpathSync(p);
-		} catch {
-			return resolve(p);
-		}
-	};
+	// Containment: this is a mutating tool, so keep cwd and every target path inside
+	// one tree. Canonicalize with realpathSync so a symlink whose target escapes
+	// can't pass a purely lexical prefix check. The tree is the server's root, or —
+	// when cwd names a worktree of the same repository — that worktree (systems#482).
 	const root = canonicalize(fallbackCwd);
-	const within = (abs: string): boolean => abs === root || abs.startsWith(`${root}${sep}`);
 	const cwd = canonicalize(args.cwd ?? fallbackCwd);
-	if (!within(cwd)) {
+	const containmentRoot = resolveContainmentRoot(root, cwd);
+	if (containmentRoot === null) {
 		throw new Error(`cwd escapes the workspace root: ${args.cwd}`);
 	}
+	const within = (abs: string): boolean => abs === containmentRoot || abs.startsWith(`${containmentRoot}${sep}`);
 	const rawPaths = args.paths && args.paths.length > 0 ? args.paths : ["."];
 	const paths = rawPaths.map((p) => {
 		const lexical = resolve(cwd, p);

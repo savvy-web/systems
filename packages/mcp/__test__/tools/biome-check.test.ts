@@ -10,6 +10,7 @@ import {
 	BiomeCheckResult,
 	buildBiomeResult,
 	parseBiomeGitlab,
+	resolveContainmentRoot,
 	runBiomeCheck,
 } from "../../src/tools/biome-check.js";
 
@@ -18,14 +19,14 @@ const SAMPLE = JSON.stringify([
 		description: "Unexpected any.",
 		check_name: "lint/suspicious/noExplicitAny",
 		fingerprint: "abc",
-		severity: "major",
+		severity: "critical",
 		location: { path: "src/x.ts", lines: { begin: 12 } },
 	},
 	{
 		description: "Forgotten semicolon style.",
 		check_name: "format",
 		fingerprint: "def",
-		severity: "minor",
+		severity: "major",
 		location: { path: "src/y.ts", lines: { begin: 3 } },
 	},
 ]);
@@ -42,6 +43,49 @@ describe("parseBiomeGitlab", () => {
 			message: "Unexpected any.",
 		});
 		expect(diags[1].severity).toBe("warning");
+	});
+
+	// Biome's gitlab reporter (crates/biome_cli/src/reporter/gitlab.rs) maps its own
+	// Severity onto GitLab's codequality scale: Hint => info, Information => minor,
+	// Warning => major, Error => critical, Fatal => blocker. Reading "major" as an
+	// error shifts every level one step too severe — systems#516.
+	it("inverts the gitlab reporter's severity table exactly", () => {
+		const cases = [
+			["info", "info"],
+			["minor", "info"],
+			["major", "warning"],
+			["critical", "error"],
+			["blocker", "error"],
+		] as const;
+		for (const [gitlab, expected] of cases) {
+			const [diag] = parseBiomeGitlab(
+				JSON.stringify([
+					{
+						description: "d",
+						check_name: "r",
+						severity: gitlab,
+						location: { path: "a.ts", lines: { begin: 1 } },
+					},
+				]),
+			);
+			expect(diag?.severity, `gitlab "${gitlab}" should normalize to "${expected}"`).toBe(expected);
+		}
+	});
+
+	it("does not report a project warning as an error (systems#516)", () => {
+		const diags = parseBiomeGitlab(
+			JSON.stringify([
+				{
+					description: "This import is unused.",
+					check_name: "lint/correctness/noUnusedImports",
+					severity: "major",
+					location: { path: "src/x.ts", lines: { begin: 1 } },
+				},
+			]),
+		);
+		expect(diags[0]?.severity).toBe("warning");
+		const result = buildBiomeResult({ diagnostics: diags, wrote: false });
+		expect(result.summary).toEqual({ errors: 0, warnings: 1 });
 	});
 
 	it("returns [] for empty or invalid stdout", () => {
@@ -166,6 +210,48 @@ describe("runBiomeCheck containment", () => {
 		} finally {
 			rmSync(base, { recursive: true, force: true });
 		}
+	});
+});
+
+describe("resolveContainmentRoot (systems#482)", () => {
+	// A root-bound tool invoked from a sibling worktree silently operated on the
+	// MAIN checkout — in a parallel multi-agent session, another agent's tree.
+	// Containment must follow the worktree, not the server's start directory.
+	const probe = (map: Record<string, { commonDir: string; topLevel: string }>) => (dir: string) => map[dir] ?? null;
+
+	it("keeps the root for a cwd inside it", () => {
+		expect(resolveContainmentRoot("/repo", "/repo/packages/mcp", probe({}))).toBe("/repo");
+		expect(resolveContainmentRoot("/repo", "/repo", probe({}))).toBe("/repo");
+	});
+
+	it("accepts a worktree of the same repository and contains to that worktree", () => {
+		const p = probe({
+			"/repo": { commonDir: "/repo/.git", topLevel: "/repo" },
+			"/wt/feature/src": { commonDir: "/repo/.git", topLevel: "/wt/feature" },
+		});
+		expect(resolveContainmentRoot("/repo", "/wt/feature/src", p)).toBe("/wt/feature");
+	});
+
+	it("rejects a worktree of a different repository", () => {
+		const p = probe({
+			"/repo": { commonDir: "/repo/.git", topLevel: "/repo" },
+			"/other": { commonDir: "/other/.git", topLevel: "/other" },
+		});
+		expect(resolveContainmentRoot("/repo", "/other", p)).toBeNull();
+	});
+
+	it("rejects a directory that is not a git repository", () => {
+		const p = probe({ "/repo": { commonDir: "/repo/.git", topLevel: "/repo" } });
+		expect(resolveContainmentRoot("/repo", "/etc", p)).toBeNull();
+	});
+
+	it("rejects when the root itself is not a git repository", () => {
+		const p = probe({ "/wt": { commonDir: "/repo/.git", topLevel: "/wt" } });
+		expect(resolveContainmentRoot("/repo", "/wt", p)).toBeNull();
+	});
+
+	it("does not treat a lexical prefix as containment", () => {
+		expect(resolveContainmentRoot("/repo", "/repo-evil", probe({}))).toBeNull();
 	});
 });
 

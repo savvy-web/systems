@@ -1,42 +1,42 @@
 {
 	"$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
-	"name": "silk",
-	"version": "3.8.4",
-	"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 	"author": {
-		"name": "C. Spencer Beggs",
 		"email": "spencer@savvyweb.systems",
+		"name": "C. Spencer Beggs",
 		"url": "https://savvyweb.systems"
 	},
+	"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 	"homepage": "https://github.com/savvy-web/systems",
-	"repository": "https://github.com/savvy-web/systems.git",
-	"license": "MIT",
 	"keywords": ["silk-suite", "changesets", "commitlint", "lint-staged", "biome", "code-quality", "turborepo"],
-	"mcpServers": {
-		"savvy-mcp": {
-			"command": "sh",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"]
-		}
-	},
+	"license": "MIT",
 	"lspServers": {
 		"biome": {
-			"command": "sh",
 			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/biome-lsp.sh"],
+			"command": "sh",
 			"extensionToLanguage": {
-				".js": "javascript",
-				".mjs": "javascript",
 				".cjs": "javascript",
-				".jsx": "javascriptreact",
-				".ts": "typescript",
-				".mts": "typescript",
+				".css": "css",
 				".cts": "typescript",
-				".tsx": "typescriptreact",
+				".gql": "graphql",
+				".graphql": "graphql",
+				".js": "javascript",
 				".json": "json",
 				".jsonc": "jsonc",
-				".css": "css",
-				".graphql": "graphql",
-				".gql": "graphql"
+				".jsx": "javascriptreact",
+				".mjs": "javascript",
+				".mts": "typescript",
+				".ts": "typescript",
+				".tsx": "typescriptreact"
 			}
 		}
-	}
+	},
+	"mcpServers": {
+		"savvy-mcp": {
+			"args": ["${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"],
+			"command": "sh"
+		}
+	},
+	"name": "silk",
+	"repository": "https://github.com/savvy-web/systems.git",
+	"version": "3.8.4"
 }
