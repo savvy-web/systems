@@ -5,7 +5,7 @@
 ## Key surface
 
 - `private: true` source, `publishConfig.access: public`, **npm-registry-only** — the one repo package not also published to GitHub Packages (`publishConfig.targets: { npm: true }`).
-- Built **in-tree**: `savvy.build.ts` calls `@savvy-web/bundler`'s `build()` front door with `rolldown-pnpm-config`'s `PnpmConfigPlugin({...})`, so `savvy.build.ts` is the single source of truth for the entire distributed config (catalogs, overrides, hoist/build/peer rules). `bundleNodeModules: true`; `looseFiles` emits `pnpmfile.mjs` + `pnpmfile.cjs`.
+- Built **in-tree**: `savvy.build.ts` calls `@savvy-web/bundler`'s `build()` front door with `rolldown-pnpm-config`'s `PnpmConfigPlugin({...})`, so `savvy.build.ts` is the single source of truth for the entire distributed config (catalogs, overrides, hoist/build/peer rules). `bundleNodeModules: true`; `looseFiles` emits `pnpmfile.mjs` + `pnpmfile.cjs`. tsdown's "We recommend using the ESM format instead of CommonJS" warning on `pnpmfile.cjs` is EXPECTED and deliberately left visible — a config dependency must ship a CJS pnpmfile, and the warning is the reminder to drop that output. Do not suppress it.
 - `src/index.ts` and `src/pnpmfile.ts` are one-line re-exports of `rolldown-pnpm-config/virtual/{catalogs,pnpmfile}` — no hand-written logic lives in `src/`.
 - Self-consumption: the monorepo cannot be its own config dependency, so the config is materialized into the root `pnpm-workspace.yaml` via `pnpm pnpm:export`. Edit the config in `savvy.build.ts`, then run `pnpm pnpm:export` to refresh the local workspace yaml.
 - Maintainer commands at repo root (proxy to `rolldown-pnpm-config`): `pnpm pnpm:up` (interactive catalog bump), `pnpm pnpm:preview`, `pnpm pnpm:export`.

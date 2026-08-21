@@ -19,6 +19,10 @@ function byteLength(content: string | Uint8Array): number {
  * defensive onLog for rolldown-level diagnostics that bypass tsdown's logger. Append it to each
  * build pass's `plugins` array. `bytes` is taken from the in-memory chunk/asset content (no fs);
  * `gzip` is computed only when `verbose`.
+ *
+ * Set `suppressMixedExports` for a pass whose emitted CJS carries the `cjsDefaultInterop()`
+ * footer — see the onLog comment below for why rolldown's MIXED_EXPORTS advice does not apply
+ * there.
  * @public
  */
 export function buildMetricsPlugin(
@@ -26,6 +30,7 @@ export function buildMetricsPlugin(
 	groupId: string,
 	pass: PassKind,
 	verbose: boolean,
+	suppressMixedExports = false,
 ): Plugin {
 	return {
 		name: "savvy:build-metrics",
@@ -63,6 +68,17 @@ export function buildMetricsPlugin(
 				...(l.loc?.line !== undefined ? { line: l.loc.line } : {}),
 				...(l.loc?.column !== undefined ? { column: l.loc.column } : {}),
 			};
+			// MIXED_EXPORTS on a pass carrying cjsDefaultInterop(): rolldown's suggested fix
+			// (`output.exports: "named"`) changes no codegen for this shape — a default+named module
+			// emits `exports.default` under both "auto" and "named", which is precisely why the
+			// interop footer exists (see cjs-default-interop.ts). The consequence the warning
+			// describes — consumers having to reach for `chunk.default` — is what that footer
+			// removes. Record it in the suppressed bucket for accounting rather than dropping it
+			// silently, and keep it out of the console.
+			if (suppressMixedExports && l.code === "MIXED_EXPORTS") {
+				collector.recordSuppressed(groupId, { source: "rolldown", level: "warn", code: "MIXED_EXPORTS", ...entry });
+				return false;
+			}
 			if (level === "error") {
 				// Record the error but do NOT suppress: returning undefined lets rolldown's default error
 				// reporting fire, so a build error is never silently swallowed.

@@ -4,8 +4,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "75f11abad72ac1a07044e9a3f627a462bee191426c5d787b79e20329bf2b1040",
-			"recordedAt": "2026-08-16"
+			"hash": "dedd3c058575e489382134fa8422379a1cb15cc9d105cc70ad0d0fc01dc86d3b",
+			"recordedAt": "2026-08-20"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -52,8 +52,8 @@
 		{
 			"source": "packages/pnpm-plugin-silk/CLAUDE.md",
 			"target": ".claude/design/pnpm-plugin-silk/architecture.md",
-			"hash": "2792b4f48d03130e9c2575fc3de6566548280e8d34d9a48395e1b33a2c582245",
-			"recordedAt": "2026-07-12"
+			"hash": "941b5a80412c2276aff61ca396a8be8c37842828e899899a934450577b1e0f05",
+			"recordedAt": "2026-08-20"
 		},
 		{
 			"source": "packages/rspress-builder/CLAUDE.md",
@@ -82,8 +82,8 @@
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "497e124463c30dd9b72fe3af85af46f0b87e75f3deb8af1f82c7f33a68bc1c77",
-			"recordedAt": "2026-08-03"
+			"hash": "48008ca860bf95d2d1c298717228d214ab9ea2a7f9e674fce9e8794ba7ef43be",
+			"recordedAt": "2026-08-20"
 		}
 	]
 }

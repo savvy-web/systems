@@ -496,7 +496,7 @@ describe("buildTargetGroups", () => {
 		expect((captured[0]?.deps as { alwaysBundle?: unknown } | undefined)?.alwaysBundle).toBeUndefined();
 	});
 
-	it("inlines bundledPackages in the dts pass via skipNodeModulesBundle + deps.dts.alwaysBundle, not the JS pass", async () => {
+	it("inlines bundledPackages in the dts pass via neverBundle: true + deps.dts.alwaysBundle, not the JS pass", async () => {
 		const captured: Array<{ deps?: unknown }> = [];
 		const build = (async (cfg: { deps?: unknown }) => {
 			captured.push({ deps: cfg.deps });
@@ -515,22 +515,21 @@ describe("buildTargetGroups", () => {
 		// [0] = JS pass, [1] = dts pass for the single group.
 		// JS pass must NOT carry the dts-only inlining knobs.
 		expect((captured[0]?.deps as { onlyBundle?: unknown } | undefined)?.onlyBundle).toBeUndefined();
-		expect(
-			(captured[0]?.deps as { skipNodeModulesBundle?: unknown } | undefined)?.skipNodeModulesBundle,
-		).toBeUndefined();
+		expect((captured[0]?.deps as { neverBundle?: unknown } | undefined)?.neverBundle).toEqual(["typescript"]);
 		expect((captured[0]?.deps as { dts?: unknown } | undefined)?.dts).toBeUndefined();
-		// dts pass: externalize all node_modules, force-bundle only the listed packages.
+		// dts pass: externalize everything, force-bundle only the listed packages.
 		// onlyBundle is intentionally NOT used (it puts tsdown into strict mode).
 		expect((captured[1]?.deps as { onlyBundle?: unknown })?.onlyBundle).toBeUndefined();
-		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(true);
 		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
 			"@commitlint/types",
 		]);
-		// neverBundle (externals) still applies on the dts pass too.
-		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
+		// `neverBundle: true` supersedes the externals array on this pass — it is a strict
+		// superset of it (externalize EVERY node_modules type), and deps.dts.alwaysBundle
+		// opts the listed packages back in.
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toBe(true);
 	});
 
-	it("inlines bundledPackages without neverBundle when bundledPackages is set but externals are not", async () => {
+	it("inlines bundledPackages via neverBundle: true when bundledPackages is set but externals are not", async () => {
 		const captured: Array<{ deps?: unknown }> = [];
 		const build = (async (cfg: { deps?: unknown }) => {
 			captured.push({ deps: cfg.deps });
@@ -547,13 +546,12 @@ describe("buildTargetGroups", () => {
 		});
 		// JS pass: no deps at all.
 		expect(captured[0]?.deps).toBeUndefined();
-		// dts pass: skipNodeModulesBundle + dts.alwaysBundle present, neverBundle absent.
+		// dts pass: neverBundle: true + dts.alwaysBundle present.
 		expect((captured[1]?.deps as { onlyBundle?: unknown })?.onlyBundle).toBeUndefined();
-		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(true);
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toBe(true);
 		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
 			"@commitlint/types",
 		]);
-		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toBeUndefined();
 	});
 
 	it("inlines all node_modules into BOTH passes when bundleNodeModules is set (dts posture tracks the JS pass)", async () => {
@@ -572,13 +570,14 @@ describe("buildTargetGroups", () => {
 			bundleNodeModules: true,
 			build,
 		});
-		// [0] = JS pass: skipNodeModulesBundle false, neverBundle (externals) still present.
-		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// [0] = JS pass: neverBundle (externals) only. bundleNodeModules contributes NO deps
+		// flag — inlining node_modules is tsdown's default; the option acts via unbundle:false.
+		expect(captured[0]?.deps as Record<string, unknown>).not.toHaveProperty("skipNodeModulesBundle");
 		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
 		// [1] = dts pass: must MATCH the JS posture so the declarations are self-contained
-		// (rslib parity). skipNodeModulesBundle false inlines every node_modules type; no
+		// (rslib parity) — i.e. NOT neverBundle: true, which would externalize every type. No
 		// dts.alwaysBundle because bundledPackages is not set.
-		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		expect(captured[1]?.deps as Record<string, unknown>).not.toHaveProperty("skipNodeModulesBundle");
 		expect((captured[1]?.deps as { dts?: unknown })?.dts).toBeUndefined();
 		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
 	});
@@ -600,12 +599,12 @@ describe("buildTargetGroups", () => {
 			bundledPackages: ["@commitlint/types"],
 			build,
 		});
-		// JS pass unchanged: skipNodeModulesBundle false, no dts/onlyBundle inlining knobs.
-		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// JS pass unchanged: no dts/onlyBundle inlining knobs.
 		expect((captured[0]?.deps as { dts?: unknown })?.dts).toBeUndefined();
-		// dts pass: bundleNodeModules wins (skipNodeModulesBundle false inlines everything),
-		// and dts.alwaysBundle is included as belt-and-suspenders since bundledPackages is set.
-		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// dts pass: bundleNodeModules wins — the default posture inlines everything, so
+		// neverBundle stays the externals array (never promoted to true), and dts.alwaysBundle
+		// is included as belt-and-suspenders since bundledPackages is set.
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
 		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
 			"@commitlint/types",
 		]);
@@ -613,7 +612,7 @@ describe("buildTargetGroups", () => {
 		expect((captured[1]?.deps as { onlyBundle?: unknown })?.onlyBundle).toBeUndefined();
 	});
 
-	it("sets deps.skipNodeModulesBundle false on the JS pass even when no externals are configured", async () => {
+	it("emits no JS-pass deps at all when bundleNodeModules is set and no externals are configured", async () => {
 		const captured: Array<{ deps?: unknown }> = [];
 		const build = (async (cfg: { deps?: unknown }) => {
 			captured.push({ deps: cfg.deps });
@@ -628,9 +627,9 @@ describe("buildTargetGroups", () => {
 			bundleNodeModules: true,
 			build,
 		});
-		// JS pass: skipNodeModulesBundle false present, neverBundle absent (no externals).
-		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
-		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toBeUndefined();
+		// bundleNodeModules alone contributes nothing to deps, so with no externals and no
+		// `bundle` there is no deps object to emit.
+		expect(captured[0]?.deps).toBeUndefined();
 	});
 
 	it("leaves the JS pass deps unchanged when bundleNodeModules is absent or false", async () => {
@@ -648,7 +647,7 @@ describe("buildTargetGroups", () => {
 			externals: ["typescript"],
 			build,
 		});
-		// JS pass: only neverBundle, no skipNodeModulesBundle key.
+		// JS pass: only neverBundle, no deprecated skipNodeModulesBundle key.
 		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
 		expect(captured[0]?.deps as Record<string, unknown>).not.toHaveProperty("skipNodeModulesBundle");
 	});
@@ -780,7 +779,6 @@ describe("buildTargetGroups", () => {
 		// JS pass: still force-bundles node_modules; neverBundle is the externals ONLY,
 		// NOT the dtsExternals (the JS pass bundles effect for the self-contained runtime).
 		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript", "source-map-support"]);
-		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
 		// dts pass: neverBundle is the UNION of externals + dtsExternals, so effect stays an
 		// external import reference in the .d.ts while every other node_modules type inlines.
 		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual([
@@ -789,7 +787,6 @@ describe("buildTargetGroups", () => {
 			"effect",
 			"@effect/platform",
 		]);
-		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
 		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
 			"@commitlint/types",
 		]);
@@ -811,12 +808,11 @@ describe("buildTargetGroups", () => {
 			dtsExternals: ["effect"],
 			build,
 		});
-		// JS pass: no neverBundle (no externals), still force-bundles everything.
-		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toBeUndefined();
-		expect((captured[0]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
-		// dts pass: neverBundle is just the dtsExternals.
-		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["effect"]);
-		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// JS pass: no neverBundle (no externals), so no deps object at all.
+		expect(captured[0]?.deps).toBeUndefined();
+		// dts pass: neverBundle is just the dtsExternals — never promoted to true, since
+		// bundleNodeModules wants every OTHER node_modules type inlined.
+		expect(captured[1]?.deps).toEqual({ neverBundle: ["effect"] });
 	});
 
 	it("unions dtsExternals into the dts pass neverBundle in the bundledPackages-only branch", async () => {
@@ -838,9 +834,9 @@ describe("buildTargetGroups", () => {
 		});
 		// JS pass: neverBundle is externals only (no dtsExternals, no bundle flag here).
 		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript"]);
-		// dts pass: neverBundle is the union; skipNodeModulesBundle true + alwaysBundle preserved.
-		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["typescript", "effect"]);
-		expect((captured[1]?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(true);
+		// dts pass: neverBundle: true supersedes the externals+dtsExternals union (a strict
+		// superset of it — both stay external), and dts.alwaysBundle is preserved.
+		expect((captured[1]?.deps as { neverBundle?: unknown })?.neverBundle).toBe(true);
 		expect((captured[1]?.deps as { dts?: { alwaysBundle?: unknown } })?.dts?.alwaysBundle).toEqual([
 			"@commitlint/types",
 		]);
@@ -1020,8 +1016,9 @@ describe("buildTargetGroups", () => {
 		expect(mjs?.clean).toBe(false);
 		expect(mjs?.hasManifest).toBe(false);
 		expect(mjs?.outDir).toBe("/abs/pkg/dist/dev/pkg");
-		// bundleNodeModules posture is inherited so the loose file is self-contained.
-		expect((mjs?.deps as { skipNodeModulesBundle?: unknown })?.skipNodeModulesBundle).toBe(false);
+		// bundleNodeModules posture is inherited so the loose file is self-contained: nothing is
+		// externalized, so the pass carries no deps object at all.
+		expect(mjs?.deps).toBeUndefined();
 		// CJS loose file present with cjs format.
 		const cjs = loose.find((c) => Array.isArray(c.format) && (c.format as string[])[0] === "cjs");
 		expect(cjs?.format).toEqual(["cjs"]);

@@ -62,10 +62,11 @@ export interface DeriveOptions {
 	 */
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 	/**
-	 * Force-bundle node_modules (and workspace) JS dependencies into the JS pass (tsdown
-	 * `deps.skipNodeModulesBundle: false`). Consumed here ONLY to decide the JS pass's
-	 * `unbundle` posture — see {@link DerivedTsdownOptions.unbundle} — the `deps` shape
-	 * itself is computed separately in `buildTargetGroups`.
+	 * Force-bundle node_modules (and workspace) JS dependencies into the JS pass.
+	 * Consumed here ONLY to decide the JS pass's `unbundle` posture — see
+	 * {@link DerivedTsdownOptions.unbundle} — which is the whole of its effect: tsdown
+	 * already bundles anything the manifest does not declare as a production dependency,
+	 * so no `deps` flag is needed to force it.
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
 }

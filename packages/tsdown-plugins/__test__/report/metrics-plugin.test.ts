@@ -57,6 +57,29 @@ describe("buildMetricsPlugin", () => {
 		expect(report?.targetGroups[0]?.warnings).toHaveLength(1);
 	});
 
+	it("routes MIXED_EXPORTS to the suppressed bucket when the pass carries cjsDefaultInterop", () => {
+		const c = new BuildCollector();
+		const plugin = buildMetricsPlugin(c, "npm", "js", false, true);
+		const result = callOnLog(plugin, "warn", { message: "mixed", code: "MIXED_EXPORTS", id: "/src/a.ts" });
+		expect(result).toBe(false);
+		const group = c.snapshot("@x/p")[0]?.targetGroups[0];
+		// Suppressed, not warned — and labelled so the build summary can group it by code.
+		expect(group?.warnings).toHaveLength(0);
+		expect(group?.suppressed).toHaveLength(1);
+		expect(group?.suppressed[0]?.code).toBe("MIXED_EXPORTS");
+		expect(group?.suppressed[0]?.file).toBe("/src/a.ts");
+	});
+
+	it("keeps MIXED_EXPORTS a real warning on a pass without cjsDefaultInterop", () => {
+		const c = new BuildCollector();
+		// The flag defaults to false: an esm-only pass has no interop footer, so the warning stands.
+		const plugin = buildMetricsPlugin(c, "npm", "js", false);
+		expect(callOnLog(plugin, "warn", { message: "mixed", code: "MIXED_EXPORTS" })).toBe(false);
+		const group = c.snapshot("@x/p")[0]?.targetGroups[0];
+		expect(group?.warnings).toHaveLength(1);
+		expect(group?.suppressed).toHaveLength(0);
+	});
+
 	it("onLog records an error and does not suppress it (returns undefined)", () => {
 		const c = new BuildCollector();
 		const plugin = buildMetricsPlugin(c, "npm", "js", false);

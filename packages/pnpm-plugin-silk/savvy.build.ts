@@ -54,7 +54,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.4",
+							range: "^1.2.5",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -142,8 +142,8 @@ await build({
 							strategy: "lock",
 						},
 						"@changesets/cli": {
-							range: "^3.0.0",
-							peer: "^3.0.0",
+							range: "^3.0.1",
+							peer: "^3.0.1",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
@@ -177,8 +177,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.10.10",
-							peer: "^2.10.10",
+							range: "^2.10.11",
+							peer: "^2.10.11",
 							strategy: "lock",
 						},
 					},
@@ -191,8 +191,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.1.2",
-							peer: "^26.1.0",
+							range: "^26.2.0",
+							peer: "^26.2.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -240,8 +240,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsx: {
-							range: "^4.23.4",
-							peer: "^4.23.4",
+							range: "^4.23.12",
+							peer: "^4.23.12",
 							strategy: "lock",
 						},
 						typescript: {
@@ -254,17 +254,17 @@ await build({
 				test: {
 					packages: {
 						"@vitest/coverage-istanbul": {
-							range: "^4.1.10",
+							range: "^4.1.11",
 							peer: "^4.1.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-v8": {
-							range: "^4.1.10",
+							range: "^4.1.11",
 							peer: "^4.1.0",
 							strategy: "lock-minor",
 						},
 						vitest: {
-							range: "^4.1.10",
+							range: "^4.1.11",
 							peer: "^4.1.0",
 							strategy: "lock-minor",
 						},
