@@ -1,5 +1,27 @@
 # @savvy-web/silk
 
+## 3.8.2
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.6.6 | 2.6.7 |
+| @savvy-web/mcp       | dependency | updated | 2.4.7 | 2.4.8 |
+
+* | Dependency                | Type           | Action  | From     | To       |                                                                       |
+  | ------------------------- | -------------- | ------- | -------- | -------- | --------------------------------------------------------------------- |
+  | @changesets/cli           | peerDependency | updated | ^3.0.0   | ^3.0.1   |                                                                       |
+  | @vitest/coverage-istanbul | peerDependency | updated | ^4.1.10  | ^4.1.11  |                                                                       |
+  | @vitest/coverage-v8       | peerDependency | updated | ^4.1.10  | ^4.1.11  |                                                                       |
+  | turbo                     | peerDependency | updated | ^2.10.10 | ^2.10.11 |                                                                       |
+  | vitest                    | peerDependency | updated | ^4.1.10  | ^4.1.11  | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#525]: https://github.com/savvy-web/systems/pull/525
+
 ## 3.8.1
 
 ### Dependencies

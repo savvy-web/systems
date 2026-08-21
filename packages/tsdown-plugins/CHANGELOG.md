@@ -1,5 +1,27 @@
 # @savvy-web/tsdown-plugins
 
+## 2.5.0
+
+### Features
+
+* `buildMetricsPlugin` takes a new optional `suppressMixedExports` argument. When set, rolldown's `MIXED_EXPORTS` warning is routed to the build report's suppressed bucket — labelled `MIXED_EXPORTS` — instead of printing to the console. The builder enables it automatically for every pass that installs `cjsDefaultInterop()`, where the warning's premise no longer holds: the interop footer already makes `require(x)` and `import(x).default` resolve to the same thing.
+
+### Bug Fixes
+
+* Removes the last uses of tsdown's deprecated `deps.skipNodeModulesBundle`, which printed `` `deps.skipNodeModulesBundle` is deprecated. Use `deps.neverBundle: true` instead. `` on every build of a `bundleNodeModules` package. `bundleNodeModules` now relies entirely on the JS pass's default bundling behavior, and the dts pass's selective-inlining branch (`bundledPackages` without `bundleNodeModules`) moves to `deps.neverBundle: true`. Output is unaffected — the warning simply stops. [#525][#525]
+
+### Dependencies
+
+* | Dependency           | Type       | Action  | From    | To      |                                                                       |
+  | -------------------- | ---------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.15.0 | ^0.15.1 | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#525]: https://github.com/savvy-web/systems/pull/525
+
 ## 2.4.16
 
 ### Dependencies

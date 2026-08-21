@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.28.0
+
+### Maintenance
+
+* Bumps silk tooling dependencies. [#525][#525]
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#525]: https://github.com/savvy-web/systems/pull/525
+
 ## 0.27.0
 
 ### Breaking Changes
