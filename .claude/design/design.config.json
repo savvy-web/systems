@@ -1,113 +1,30 @@
 {
 	"$schema": "https://spencerbegg.gs/schemas/design-config/1.0.0/schema.json",
-	"version": "1.0.0",
-	"project": {
-		"name": "savvy-web/systems",
-		"type": "monorepo",
-		"repository": "https://github.com/savvy-web/systems",
-		"maintainer": "C. Spencer Beggs"
-	},
-	"paths": {
-		"designDocs": ".claude/design",
-		"plans": ".claude/plans",
-		"skills": ".claude/skills",
-		"context": "CLAUDE.md",
-		"localContext": "CLAUDE.local.md"
+	"integration": {
+		"ci": {
+			"enabled": false,
+			"syncOnMerge": false,
+			"validateOnPR": false
+		},
+		"git": {
+			"requireReviewForChanges": false,
+			"trackDesignDocs": true
+		},
+		"plans": {
+			"autoSyncProgress": false,
+			"bidirectionalLinking": true,
+			"cacheMetadata": true,
+			"cacheTTL": 300,
+			"enabled": true,
+			"validateOnCommit": true
+		}
 	},
 	"modules": {
-		"silk-effects": {
-			"path": "packages/silk-effects",
-			"designDocsPath": ".claude/design/silk-effects",
-			"categories": ["architecture", "integration"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/silk-effects/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
-		"github-action-builder": {
-			"path": "packages/github-action-builder",
-			"designDocsPath": ".claude/design/github-action-builder",
-			"categories": ["architecture"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/github-action-builder/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
-		"templates": {
-			"path": "packages/templates",
-			"designDocsPath": ".claude/design/templates",
-			"categories": ["architecture", "integration"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/templates/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
-		"cli": {
-			"path": "packages/cli",
-			"designDocsPath": ".claude/design/cli",
-			"categories": ["architecture", "integration"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/cli/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
-		"silk": {
-			"path": "packages/silk",
-			"designDocsPath": ".claude/design/silk",
-			"categories": ["architecture", "integration"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/silk/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
-		"changelog": {
-			"path": "packages/changelog",
-			"designDocsPath": ".claude/design/changelog",
-			"categories": ["architecture", "integration"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/changelog/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
-		"mcp": {
-			"path": "packages/mcp",
-			"designDocsPath": ".claude/design/mcp",
-			"categories": ["architecture", "integration"],
-			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": "packages/mcp/README.md",
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
 		"api-extractor-llms": {
-			"path": ".claude/design/api-extractor-llms",
-			"designDocsPath": ".claude/design/api-extractor-llms",
 			"categories": ["architecture"],
+			"designDocsPath": ".claude/design/api-extractor-llms",
 			"maintainer": "C. Spencer Beggs",
-			"userDocs": {
-				"readme": null,
-				"repoDocs": null,
-				"siteDocs": null
-			}
-		},
-		"docs": {
-			"path": "plugins/docs",
-			"designDocsPath": ".claude/design/docs",
-			"categories": ["architecture", "integration"],
-			"maintainer": "C. Spencer Beggs",
+			"path": ".claude/design/api-extractor-llms",
 			"userDocs": {
 				"readme": null,
 				"repoDocs": null,
@@ -115,69 +32,208 @@
 			}
 		},
 		"bundler": {
-			"path": "packages/bundler",
-			"designDocsPath": ".claude/design/bundler",
 			"categories": ["architecture"],
+			"designDocsPath": ".claude/design/bundler",
 			"maintainer": "C. Spencer Beggs",
+			"path": "packages/bundler",
 			"userDocs": {
 				"readme": "packages/bundler/README.md",
 				"repoDocs": null,
 				"siteDocs": null
 			}
 		},
-		"tsdown-plugins": {
-			"path": "packages/tsdown-plugins",
-			"designDocsPath": ".claude/design/tsdown-plugins",
-			"categories": ["architecture"],
+		"changelog": {
+			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/changelog",
 			"maintainer": "C. Spencer Beggs",
+			"path": "packages/changelog",
 			"userDocs": {
-				"readme": "packages/tsdown-plugins/README.md",
+				"readme": "packages/changelog/README.md",
 				"repoDocs": null,
 				"siteDocs": null
 			}
 		},
-		"rspress-builder": {
-			"path": "packages/rspress-builder",
-			"designDocsPath": ".claude/design/rspress-builder",
-			"categories": ["architecture"],
+		"cli": {
+			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/cli",
 			"maintainer": "C. Spencer Beggs",
+			"path": "packages/cli",
 			"userDocs": {
-				"readme": "packages/rspress-builder/README.md",
+				"readme": "packages/cli/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"docs": {
+			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/docs",
+			"maintainer": "C. Spencer Beggs",
+			"path": "plugins/docs",
+			"userDocs": {
+				"readme": null,
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"e2e": {
+			"categories": ["testing", "architecture"],
+			"designDocsPath": ".claude/design/e2e",
+			"maintainer": "C. Spencer Beggs",
+			"path": "e2e",
+			"userDocs": {
+				"readme": null,
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"github-action-builder": {
+			"categories": ["architecture"],
+			"designDocsPath": ".claude/design/github-action-builder",
+			"maintainer": "C. Spencer Beggs",
+			"path": "packages/github-action-builder",
+			"userDocs": {
+				"readme": "packages/github-action-builder/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"mcp": {
+			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/mcp",
+			"maintainer": "C. Spencer Beggs",
+			"path": "packages/mcp",
+			"userDocs": {
+				"readme": "packages/mcp/README.md",
 				"repoDocs": null,
 				"siteDocs": null
 			}
 		},
 		"pnpm-plugin-silk": {
-			"path": "packages/pnpm-plugin-silk",
-			"designDocsPath": ".claude/design/pnpm-plugin-silk",
 			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/pnpm-plugin-silk",
 			"maintainer": "C. Spencer Beggs",
+			"path": "packages/pnpm-plugin-silk",
 			"userDocs": {
 				"readme": "packages/pnpm-plugin-silk/README.md",
 				"repoDocs": null,
 				"siteDocs": null
 			}
 		},
-		"e2e": {
-			"path": "e2e",
-			"designDocsPath": ".claude/design/e2e",
-			"categories": ["testing", "architecture"],
+		"rspress-builder": {
+			"categories": ["architecture"],
+			"designDocsPath": ".claude/design/rspress-builder",
 			"maintainer": "C. Spencer Beggs",
+			"path": "packages/rspress-builder",
+			"userDocs": {
+				"readme": "packages/rspress-builder/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"silk": {
+			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/silk",
+			"maintainer": "C. Spencer Beggs",
+			"path": "packages/silk",
+			"userDocs": {
+				"readme": "packages/silk/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"silk-effects": {
+			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/silk-effects",
+			"maintainer": "C. Spencer Beggs",
+			"path": "packages/silk-effects",
+			"userDocs": {
+				"readme": "packages/silk-effects/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"templates": {
+			"categories": ["architecture", "integration"],
+			"designDocsPath": ".claude/design/templates",
+			"maintainer": "C. Spencer Beggs",
+			"path": "packages/templates",
+			"userDocs": {
+				"readme": "packages/templates/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
+		"testing": {
+			"categories": ["testing"],
+			"designDocsPath": ".claude/design/testing",
+			"maintainer": "C. Spencer Beggs",
+			"path": ".",
 			"userDocs": {
 				"readme": null,
 				"repoDocs": null,
 				"siteDocs": null
 			}
 		},
-		"testing": {
-			"path": ".",
-			"designDocsPath": ".claude/design/testing",
-			"categories": ["testing"],
+		"tsdown-plugins": {
+			"categories": ["architecture"],
+			"designDocsPath": ".claude/design/tsdown-plugins",
 			"maintainer": "C. Spencer Beggs",
+			"path": "packages/tsdown-plugins",
 			"userDocs": {
-				"readme": null,
+				"readme": "packages/tsdown-plugins/README.md",
 				"repoDocs": null,
 				"siteDocs": null
+			}
+		}
+	},
+	"paths": {
+		"context": "CLAUDE.md",
+		"designDocs": ".claude/design",
+		"localContext": "CLAUDE.local.md",
+		"plans": ".claude/plans",
+		"skills": ".claude/skills"
+	},
+	"project": {
+		"maintainer": "C. Spencer Beggs",
+		"name": "savvy-web/systems",
+		"repository": "https://github.com/savvy-web/systems",
+		"type": "monorepo"
+	},
+	"quality": {
+		"context": {
+			"childMaxLines": 300,
+			"requireDesignDocPointers": true,
+			"rootMaxLines": 500
+		},
+		"designDocs": {
+			"maxLineLength": 120,
+			"minSections": ["Overview", "Current State", "Rationale"],
+			"requireFrontmatter": true,
+			"requireTOC": true
+		},
+		"plans": {
+			"archiveAfterDays": 30,
+			"maxLineLength": 120,
+			"progressRange": [0, 100],
+			"requiredFields": ["name", "title", "created", "status", "progress"],
+			"requireFrontmatter": true,
+			"stalenessThresholdDays": 30,
+			"validStatuses": ["ready", "in-progress", "blocked", "completed", "abandoned"]
+		},
+		"userDocs": {
+			"level1": {
+				"maxLineLength": 80,
+				"requireSections": ["Features", "Installation", "Usage"],
+				"targetWordCount": [200, 500]
+			},
+			"level2": {
+				"maxLineLength": 120,
+				"requireNavigation": true
+			},
+			"level3": {
+				"framework": "rspress",
+				"requireCodeExamples": true,
+				"requireMetadata": true
 			}
 		}
 	},
@@ -208,61 +264,5 @@
 			"docs-review"
 		]
 	},
-	"quality": {
-		"designDocs": {
-			"maxLineLength": 120,
-			"requireFrontmatter": true,
-			"requireTOC": true,
-			"minSections": ["Overview", "Current State", "Rationale"]
-		},
-		"userDocs": {
-			"level1": {
-				"targetWordCount": [200, 500],
-				"maxLineLength": 80,
-				"requireSections": ["Features", "Installation", "Usage"]
-			},
-			"level2": {
-				"maxLineLength": 120,
-				"requireNavigation": true
-			},
-			"level3": {
-				"framework": "rspress",
-				"requireMetadata": true,
-				"requireCodeExamples": true
-			}
-		},
-		"context": {
-			"rootMaxLines": 500,
-			"childMaxLines": 300,
-			"requireDesignDocPointers": true
-		},
-		"plans": {
-			"maxLineLength": 120,
-			"requireFrontmatter": true,
-			"requiredFields": ["name", "title", "created", "status", "progress"],
-			"validStatuses": ["ready", "in-progress", "blocked", "completed", "abandoned"],
-			"progressRange": [0, 100],
-			"stalenessThresholdDays": 30,
-			"archiveAfterDays": 30
-		}
-	},
-	"integration": {
-		"ci": {
-			"enabled": false,
-			"validateOnPR": false,
-			"syncOnMerge": false
-		},
-		"git": {
-			"trackDesignDocs": true,
-			"requireReviewForChanges": false
-		},
-		"plans": {
-			"enabled": true,
-			"bidirectionalLinking": true,
-			"autoSyncProgress": false,
-			"validateOnCommit": true,
-			"cacheMetadata": true,
-			"cacheTTL": 300
-		}
-	}
+	"version": "1.0.0"
 }

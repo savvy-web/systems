@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
 	"assist": {
 		"actions": {
 			"source": {
@@ -13,12 +13,50 @@
 		},
 		"enabled": true
 	},
+	"css": {
+		"linter": {
+			"enabled": true
+		},
+		"parser": {
+			"cssModules": true
+		}
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/.repos",
+			"!**/.turbo",
+			"!**/.git",
+			"!**/.rslib",
+			"!**/.vitest",
+			"!**/.coverage",
+			"!coverage",
+			"!.claude/worktrees",
+			"!**/__test__/**/fixtures",
+			"!**/__test__/snapshots",
+			"!**/__test__/**/fixtures",
+			"!**/__test__/**/snapshots",
+			"!**/__fixtures__",
+			"!**/__snapshots__"
+		]
+	},
 	"formatter": {
 		"enabled": true,
 		"formatWithErrors": true,
 		"indentStyle": "tab",
 		"indentWidth": 2,
 		"lineWidth": 120
+	},
+	"javascript": {
+		"resolver": {
+			// Catalog-aware module resolution: lets noUndeclaredDependencies and
+			// friends understand `catalog:` / `catalog:<name>` specs in package.json.
+			// Requires Biome >= 2.5. Consumers are carried onto it by silk-update-action
+			// and `savvy init`, which rewrite the $schema URL CI installs from.
+			"experimentalPnpmCatalogs": true
+		}
 	},
 	"json": {
 		"assist": {
@@ -27,14 +65,6 @@
 		"formatter": {
 			"enabled": true,
 			"expand": "auto"
-		},
-		"linter": {
-			"enabled": true
-		}
-	},
-	"css": {
-		"parser": {
-			"cssModules": true
 		},
 		"linter": {
 			"enabled": true
@@ -52,6 +82,7 @@
 				}
 			},
 			"correctness": {
+				"noUnresolvedImports": "off",
 				"noUnusedVariables": {
 					"level": "error",
 					"options": {
@@ -73,13 +104,12 @@
 							"tsx": "js"
 						}
 					}
-				},
-				"noUnresolvedImports": "off"
+				}
 			},
 			"nursery": {
 				"useExplicitType": "off"
 			},
-			"recommended": true,
+			"preset": "recommended",
 			"style": {
 				"useConsistentTypeDefinitions": "error",
 				"useImportType": {
@@ -91,10 +121,10 @@
 				"useNodejsImportProtocol": "error"
 			},
 			"suspicious": {
-				"noDuplicateDependencies": "error",
-				"noImportCycles": "error",
 				"noBiomeFirstException": "error",
+				"noDuplicateDependencies": "error",
 				"noDuplicateObjectKeys": "error",
+				"noImportCycles": "error",
 				"noQuickfixBiome": "error",
 				"useBiomeIgnoreFolder": "error"
 			}
@@ -117,7 +147,25 @@
 					}
 				}
 			},
-			"includes": ["**/turbo.json", "**/tsconfig.json", "**/tsconfig.*.json", "**/public/tsconfig/**/*.json"]
+			"includes": [
+				"**/turbo.json",
+				"**/tsconfig.json",
+				"**/tsconfig.*.json",
+				"**/public/tsconfig/**/*.json",
+				"**/.claude/settings.json",
+				"**/.claude/settings.local.json",
+				"**/.claude/design/design.config.json",
+				"**/.changeset/config.json",
+				"**/.markdownlint.json",
+				"**/devcontainer.json",
+				"**/.vscode/*.json",
+				"**/biome.json",
+				"**/biome.jsonc",
+				"**/silk.jsonc",
+				"**/.markdownlint-cli2.jsonc",
+				"**/.claude-plugin/plugin.json",
+				"**/.claude-plugin/marketplace.json"
+			]
 		},
 		{
 			"includes": [
@@ -145,26 +193,5 @@
 		"defaultBranch": "main",
 		"enabled": true,
 		"useIgnoreFile": true
-	},
-	"files": {
-		"includes": [
-			"**",
-			"!**/node_modules",
-			"!**/dist",
-			"!**/.repos",
-			"!**/.turbo",
-			"!**/.git",
-			"!**/.rslib",
-			"!**/.vitest",
-			"!**/.coverage",
-			"!coverage",
-			"!.claude/worktrees",
-			"!**/__test__/**/fixtures",
-			"!**/__test__/snapshots",
-			"!**/__test__/**/fixtures",
-			"!**/__test__/**/snapshots",
-			"!**/__fixtures__",
-			"!**/__snapshots__"
-		]
 	}
 }

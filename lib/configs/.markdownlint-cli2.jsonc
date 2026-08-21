@@ -1,27 +1,11 @@
 {
 	"$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/v0.22.0/schema/markdownlint-cli2-config-schema.json",
-	"globs": ["**/*.{md,mdx}"],
-	"fix": true,
-	"gitignore": true,
-	"noBanner": true,
-	"ignores": [
-		"**/.git",
-		"**/node_modules",
-		"**/.cache",
-		"**/coverage",
-		"**/.coverage",
-		"**/dist",
-		"**/CHANGELOG.md",
-		"**/.claude/plans",
-		"**/docs/superpowers",
-		"**/__test__/**/fixtures/**",
-		"**/__fixtures__/**",
-		"**/public/content/packages/*/api/**",
-		"**/public/content/packages/*/api.md",
-		"**/.repos"
-	],
-	"customRules": ["@savvy-web/silk/changesets/markdownlint"],
 	"config": {
+		"changeset-content-structure": false,
+		"changeset-dependency-table-format": false,
+		"changeset-heading-hierarchy": false,
+		"changeset-required-sections": false,
+		"changeset-uncategorized-content": false,
 		"default": true,
 		"MD001": true,
 		"MD002": true,
@@ -90,11 +74,27 @@
 		"MD059": true,
 		"MD060": {
 			"style": "compact"
-		},
-		"changeset-heading-hierarchy": false,
-		"changeset-required-sections": false,
-		"changeset-content-structure": false,
-		"changeset-uncategorized-content": false,
-		"changeset-dependency-table-format": false
-	}
+		}
+	},
+	"customRules": ["@savvy-web/silk/changesets/markdownlint"],
+	"fix": true,
+	"gitignore": true,
+	"globs": ["**/*.{md,mdx}"],
+	"ignores": [
+		"**/.git",
+		"**/node_modules",
+		"**/.cache",
+		"**/coverage",
+		"**/.coverage",
+		"**/dist",
+		"**/CHANGELOG.md",
+		"**/.claude/plans",
+		"**/docs/superpowers",
+		"**/__test__/**/fixtures/**",
+		"**/__fixtures__/**",
+		"**/public/content/packages/*/api/**",
+		"**/public/content/packages/*/api.md",
+		"**/.repos"
+	],
+	"noBanner": true
 }

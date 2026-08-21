@@ -137,8 +137,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.0",
-							peer: "2.5.0",
+							range: "2.5.9",
+							peer: "2.5.9",
 							strategy: "lock",
 						},
 						"@changesets/cli": {

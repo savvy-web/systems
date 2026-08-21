@@ -472,7 +472,7 @@ autoInstallPeers: true
   },
   {
     "content": "{
-	"$schema": "https://biomejs.dev/schemas/2.3.3/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
 	"root": true
 }",
     "filename": "biome.jsonc",

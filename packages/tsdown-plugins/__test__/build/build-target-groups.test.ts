@@ -375,7 +375,7 @@ describe("buildTargetGroups", () => {
 			format: ["esm", "cjs"],
 			build: captureBuild(dual),
 		});
-		expect((dual[0]?.exports as Record<string, unknown>)["."]).toEqual({
+		expect((dual[0]?.exports as Record<string, unknown> | undefined)?.["."]).toEqual({
 			types: "./index.d.ts",
 			import: "./index.js",
 			require: "./index.cjs",
@@ -392,7 +392,7 @@ describe("buildTargetGroups", () => {
 			devManifest: "preserve",
 			build: captureBuild(esm),
 		});
-		expect((esm[0]?.exports as Record<string, unknown>)["."]).toEqual({
+		expect((esm[0]?.exports as Record<string, unknown> | undefined)?.["."]).toEqual({
 			types: "./index.d.ts",
 			import: "./index.js",
 			default: "./index.js",
