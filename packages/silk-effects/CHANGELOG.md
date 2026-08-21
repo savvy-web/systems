@@ -1,5 +1,13 @@
 # @savvy-web/silk-effects
 
+## 6.0.4
+
+### Dependencies
+
+* | Dependency           | Type       | Action  | From    | To      |                                                          |
+  | -------------------- | ---------- | ------- | ------- | ------- | -------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.15.1 | ^0.16.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
 ## 6.0.3
 
 ### Dependencies
