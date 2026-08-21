@@ -1,5 +1,17 @@
 # @savvy-web/silk-effects
 
+## 6.0.5
+
+### Dependencies
+
+* | Dependency           | Type       | Action  | From    | To      |                                                                              |
+  | -------------------- | ---------- | ------- | ------- | ------- | ---------------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.16.0 | ^0.17.0 | [#532][#532] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#532]: https://github.com/savvy-web/systems/pull/532
+
 ## 6.0.4
 
 ### Dependencies
