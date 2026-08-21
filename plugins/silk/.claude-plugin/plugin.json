@@ -1,4 +1,5 @@
 {
+	"$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
 	"name": "silk",
 	"version": "3.8.4",
 	"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",

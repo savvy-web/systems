@@ -13,6 +13,35 @@
 		},
 		"enabled": true
 	},
+	"css": {
+		"linter": {
+			"enabled": true
+		},
+		"parser": {
+			"cssModules": true
+		}
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/.repos",
+			"!**/.turbo",
+			"!**/.git",
+			"!**/.rslib",
+			"!**/.vitest",
+			"!**/.coverage",
+			"!coverage",
+			"!.claude/worktrees",
+			"!**/__test__/**/fixtures",
+			"!**/__test__/snapshots",
+			"!**/__test__/**/fixtures",
+			"!**/__test__/**/snapshots",
+			"!**/__fixtures__",
+			"!**/__snapshots__"
+		]
+	},
 	"formatter": {
 		"enabled": true,
 		"formatWithErrors": true,
@@ -32,14 +61,6 @@
 			"enabled": true
 		}
 	},
-	"css": {
-		"parser": {
-			"cssModules": true
-		},
-		"linter": {
-			"enabled": true
-		}
-	},
 	"linter": {
 		"domains": {
 			"project": "all"
@@ -52,6 +73,7 @@
 				}
 			},
 			"correctness": {
+				"noUnresolvedImports": "off",
 				"noUnusedVariables": {
 					"level": "error",
 					"options": {
@@ -73,8 +95,7 @@
 							"tsx": "js"
 						}
 					}
-				},
-				"noUnresolvedImports": "off"
+				}
 			},
 			"nursery": {
 				"useExplicitType": "off"
@@ -91,10 +112,10 @@
 				"useNodejsImportProtocol": "error"
 			},
 			"suspicious": {
-				"noDuplicateDependencies": "error",
-				"noImportCycles": "error",
 				"noBiomeFirstException": "error",
+				"noDuplicateDependencies": "error",
 				"noDuplicateObjectKeys": "error",
+				"noImportCycles": "error",
 				"noQuickfixBiome": "error",
 				"useBiomeIgnoreFolder": "error"
 			}
@@ -117,7 +138,26 @@
 					}
 				}
 			},
-			"includes": ["**/turbo.json", "**/tsconfig.json", "**/tsconfig.*.json", "**/public/tsconfig/**/*.json"]
+			"includes": [
+				"**/turbo.json",
+				"**/tsconfig.json",
+				"**/tsconfig.*.json",
+				"**/public/tsconfig/**/*.json",
+				"**/.claude/settings.json",
+				"**/.claude/settings.local.json",
+				"**/.claude/design/design.config.json",
+				"**/.changeset/config.json",
+				"**/.markdownlint.json",
+				"**/devcontainer.json",
+				"**/.repos/config.json",
+				"**/.vscode/*.json",
+				"**/biome.json",
+				"**/biome.jsonc",
+				"**/silk.jsonc",
+				"**/.markdownlint-cli2.jsonc",
+				"**/.claude-plugin/plugin.json",
+				"**/.claude-plugin/marketplace.json"
+			]
 		},
 		{
 			"includes": [
@@ -145,26 +185,5 @@
 		"defaultBranch": "main",
 		"enabled": true,
 		"useIgnoreFile": true
-	},
-	"files": {
-		"includes": [
-			"**",
-			"!**/node_modules",
-			"!**/dist",
-			"!**/.repos",
-			"!**/.turbo",
-			"!**/.git",
-			"!**/.rslib",
-			"!**/.vitest",
-			"!**/.coverage",
-			"!coverage",
-			"!.claude/worktrees",
-			"!**/__test__/**/fixtures",
-			"!**/__test__/snapshots",
-			"!**/__test__/**/fixtures",
-			"!**/__test__/**/snapshots",
-			"!**/__fixtures__",
-			"!**/__snapshots__"
-		]
 	}
 }
