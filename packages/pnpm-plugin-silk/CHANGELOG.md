@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.29.1
+
+### Dependencies
+
+* | Dependency           | Type          | Action  | From   | To     |                                                                       |
+  | :------------------- | :------------ | :------ | :----- | :----- | --------------------------------------------------------------------- |
+  | rolldown-pnpm-config | devDependency | updated | ^0.6.3 | ^0.7.0 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#537]: https://github.com/savvy-web/systems/pull/537
+
 ## 0.29.0
 
 ### Maintenance

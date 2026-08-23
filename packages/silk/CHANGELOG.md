@@ -1,5 +1,43 @@
 # @savvy-web/silk
 
+## 3.9.1
+
+### Bug Fixes
+
+* ### Declare the peers silk-effects requires
+
+  `@savvy-web/silk` externalizes `@savvy-web/silk-effects` and re-adds it to its published manifest as a runtime
+  dependency, so installing silk resolves silk-effects transitively — and inherits the three peers silk-effects now
+  requires. Nothing in the published graph named them.
+
+  Under pnpm's `autoInstallPeers: true` that silently materialized a second copy of each, which is the duplication
+  the peer change exists to remove. Under yarn, or pnpm with `autoInstallPeers: false`, `import "@savvy-web/silk/lint"`
+  failed with `ERR_MODULE_NOT_FOUND`.
+
+  `@effected/commands`, `@effected/git` and `@effected/workspaces` are now declared, so a consumer installing silk
+  alone gets a coherent graph.
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.7.0 | 2.7.1 |
+| @savvy-web/mcp       | dependency | updated | 2.5.0 | 2.5.1 |
+
+* | Dependency           | Type           | Action  | From    | To      |                                                                       |
+  | -------------------- | -------------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @types/bun           | peerDependency | updated | ^1.3.14 | ^1.4.0  |                                                                       |
+  | @effected/commands   | dependency     | added   | —       | ^0.5.0  |                                                                       |
+  | @effected/git        | dependency     | added   | —       | ^0.9.0  |                                                                       |
+  | @effected/workspaces | dependency     | added   | —       | ^0.17.1 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#537]: https://github.com/savvy-web/systems/pull/537
+
 ## 3.9.0
 
 ### Features

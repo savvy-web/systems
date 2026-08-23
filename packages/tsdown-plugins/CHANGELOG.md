@@ -1,5 +1,18 @@
 # @savvy-web/tsdown-plugins
 
+## 2.5.3
+
+### Dependencies
+
+* | Dependency               | Type       | Action  | From     | To      |                                                                       |
+  | ------------------------ | ---------- | ------- | -------- | ------- | --------------------------------------------------------------------- |
+  | @effected/workspaces     | dependency | updated | ^0.17.0  | ^0.17.1 |                                                                       |
+  | @microsoft/api-extractor | dependency | updated | ^7.58.12 | ^7.59.0 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#537]: https://github.com/savvy-web/systems/pull/537
+
 ## 2.5.2
 
 ### Dependencies
