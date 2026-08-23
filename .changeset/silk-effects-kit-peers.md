@@ -27,10 +27,15 @@ literal ranges — `@effected/commands@^0.5.0`, `@effected/git@^0.9.0`, `@effect
 each copy dragged its own kit. Both were bundled into the resulting artifact. Nothing failed; the build stayed
 green and shipped two of everything.
 
-As peers, that skew is loud instead. Because `0.x` caret ranges are disjoint across minors, a mismatched consumer
-now fails to resolve rather than silently duplicating, and the upgrade action holds automerge until it is fixed.
-Two copies also mean two type identities, so a mismatch surfaces at `tsc` as an unsatisfiable `Layer` rather than
-at runtime.
+As peers, that skew becomes visible instead of silent. Two copies mean two distinct type identities, so a
+mismatched consumer fails at `tsc` with an unsatisfiable `Layer` — a service reading unprovided in a graph that
+visibly provides it — rather than installing clean and bundling both.
+
+**The stop is typecheck, not install.** With `autoInstallPeers: true` and `strictPeerDependencies` unset (pnpm's
+default), a conflicting peer range prints a warning and the install still exits 0. A repo whose CI only bundles,
+without a typecheck step, will not catch the skew. Turning this into an install-time failure means setting
+`strictPeerDependencies: true`, which is a behavior change for every consuming repo and belongs in its own
+change.
 
 Only these three moved. They are the packages whose services and types cross this package's public API boundary —
 `WorkspaceSnapshots` in `DepsRegen.layer`, `Git` in the service layers, `ToolDiscovery` in `TurboInspector`. The
@@ -42,7 +47,11 @@ bytes, not correctness.
 | Dependency           | Type           | Action  | From    | To      |
 | :------------------- | :------------- | :------ | :------ | :------ |
 | @effected/commands   | peerDependency | added   | —       | ^0.5.0  |
+| @effected/commands   | dependency     | removed | ^0.5.0  | —       |
+| @effected/commands   | devDependency  | added   | —       | ^0.5.0  |
 | @effected/git        | peerDependency | added   | —       | ^0.9.0  |
+| @effected/git        | dependency     | removed | ^0.9.0  | —       |
+| @effected/git        | devDependency  | added   | —       | ^0.9.0  |
 | @effected/workspaces | peerDependency | added   | —       | ^0.17.0 |
 | @effected/workspaces | dependency     | removed | ^0.17.0 | —       |
 | @effected/workspaces | devDependency  | added   | —       | ^0.17.1 |

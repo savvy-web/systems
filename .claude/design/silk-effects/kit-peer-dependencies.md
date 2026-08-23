@@ -34,9 +34,18 @@ Both copies were bundled into the action artifact by rsbuild. Nothing failed; th
 was simply twice as large and carried two of everything. The other kit packages deduped only because the two
 silk-effects versions happened to pin overlapping ranges — luck, not design.
 
-Required peers convert that silent duplication into a loud mismatch. On `0.x`, caret ranges are disjoint across
-minors, so a peer range is a natural hard stop — which is wanted here: the upgrade action holds automerge until
-peers resolve, so the hard stop is the mechanism that keeps the ecosystem coherent.
+Required peers convert that silent duplication into a visible mismatch. On `0.x`, caret ranges are disjoint across
+minors, so a consumer on the wrong minor cannot satisfy the peer with the copy it already has.
+
+**Where that actually stops is typecheck, not install.** This repo sets `autoInstallPeers: true` and nothing —
+here or in `@savvy-web/pnpm-plugin-silk` — sets `strictPeerDependencies`, whose pnpm default is `false`. A
+conflicting peer range therefore prints a warning and the install exits 0. What fails is `tsc`: two resolved
+copies are two distinct type identities, so a `Layer` built from one does not satisfy a requirement expressed by
+the other. A consuming repo whose CI bundles without typechecking will not catch the skew.
+
+Making it an install-time failure means distributing `strictPeerDependencies: true` through
+`packages/pnpm-plugin-silk/savvy.build.ts`. That is a behavior change for every consuming repo and has not been
+done.
 
 ## What is peered, and what is not
 
