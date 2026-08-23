@@ -129,6 +129,33 @@ describe("contributor-footnotes", () => {
 		expect((twice.match(/### Thanks/g) ?? []).length).toBe(1);
 	});
 
+	it("keeps ### Patch Changes when an existing Thanks section holds a plain attribution paragraph", () => {
+		const md = "## 1.0.0\n\n### Thanks\n\nThanks @alice!\n\n### Patch Changes\n\n- Fixed a bug\n";
+		const result = transform(md);
+		expect(result).toContain("### Patch Changes");
+		expect(result).toContain("Fixed a bug");
+		expect(result).toContain("@alice");
+		expect((result.match(/### Thanks/g) ?? []).length).toBe(1);
+	});
+
+	it("keeps ### Patch Changes when an existing Thanks section holds a linked attribution paragraph", () => {
+		const md =
+			"## 1.0.0\n\n### Thanks\n\nThanks [@alice](https://github.com/alice)!\n\n### Patch Changes\n\n- Fixed a bug\n";
+		const result = transform(md);
+		expect(result).toContain("### Patch Changes");
+		expect(result).toContain("Fixed a bug");
+		expect(result).toContain("@alice");
+		expect((result.match(/### Thanks/g) ?? []).length).toBe(1);
+	});
+
+	it("is idempotent when the Thanks section precedes another h3 section", () => {
+		const md = "## 1.0.0\n\n### Thanks\n\nThanks @alice!\n\n### Patch Changes\n\n- Fixed a bug\n";
+		const once = transform(md);
+		const twice = transform(once);
+		expect(twice).toBe(once);
+		expect(twice).toContain("### Patch Changes");
+	});
+
 	it("removes a list item that held ONLY an attribution, instead of leaving an empty bullet", () => {
 		const md = "## 1.0.0\n\n### Features\n\n- Added X\n- Thanks [@alice](https://github.com/alice)!\n";
 		const result = transform(md);

@@ -40,7 +40,7 @@ export const HeadingHierarchyRule: Rule = {
 		let prevDepth = 0;
 
 		for (const token of params.parsers.micromark.tokens) {
-			if (token.type !== "atxHeading") {
+			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
 				continue;
 			}
 

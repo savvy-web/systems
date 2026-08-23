@@ -63,7 +63,7 @@ export const ContentStructureRule: Rule = {
 		// Collect h2 heading indices for empty section detection
 		const h2Indices: number[] = [];
 		for (let i = 0; i < tokens.length; i++) {
-			if (tokens[i].type === "atxHeading" && getHeadingLevel(tokens[i]) === 2) {
+			if ((tokens[i].type === "atxHeading" || tokens[i].type === "setextHeading") && getHeadingLevel(tokens[i]) === 2) {
 				h2Indices.push(i);
 			}
 		}

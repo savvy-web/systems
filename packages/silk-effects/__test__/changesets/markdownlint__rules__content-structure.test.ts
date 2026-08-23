@@ -100,4 +100,10 @@ describe("markdownlint/content-structure", () => {
 		const messages = check("## Features\n\n## Bug Fixes\n\nContent\n");
 		expect(messages[0]).toContain(RULE_DOCS.CSH003);
 	});
+
+	it("rejects an empty setext h2 section like its remark sibling", () => {
+		const messages = check("Features\n--------\n");
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toContain("Empty section");
+	});
 });

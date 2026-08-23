@@ -39,7 +39,7 @@ export const RequiredSectionsRule: Rule = {
 	parser: "micromark",
 	function: function CSH002(params, onError) {
 		for (const token of params.parsers.micromark.tokens) {
-			if (token.type !== "atxHeading") {
+			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
 				continue;
 			}
 

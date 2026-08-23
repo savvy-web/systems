@@ -356,7 +356,8 @@ export const ContributorFootnotesPlugin: Plugin<[ContributorFootnotesOptions?], 
 				// (heading + content up to the next h2/h3), then re-emit merged.
 				if (isThanksHeading(node)) {
 					indicesToRemove.push(i);
-					for (let j = i + 1; j < block.endIndex; j++) {
+					let j = i + 1;
+					for (; j < block.endIndex; j++) {
 						const contentNode = tree.children[j];
 						if (contentNode.type === "heading" && [2, 3].includes((contentNode as Heading).depth)) break;
 						// Reference definitions belong to the whole block (appended by
@@ -365,12 +366,17 @@ export const ContributorFootnotesPlugin: Plugin<[ContributorFootnotesOptions?], 
 						harvestMentions(contentNode, contributors);
 						indicesToRemove.push(j);
 					}
+					// Advance the outer loop past the harvested range: revisiting a
+					// harvested node would double-process it (an attribution-shaped
+					// paragraph gets stripped AND its index pushed a second time).
+					i = j - 1;
 				}
 			}
 
-			// Remove collected nodes in reverse index order
-			indicesToRemove.sort((a, b) => b - a);
-			for (const idx of indicesToRemove) {
+			// Remove collected nodes in descending, DEDUPLICATED index order — a
+			// duplicate index would delete the sibling that shifted into the slot.
+			const uniqueIndices = [...new Set(indicesToRemove)].sort((a, b) => b - a);
+			for (const idx of uniqueIndices) {
 				tree.children.splice(idx, 1);
 			}
 
@@ -379,7 +385,7 @@ export const ContributorFootnotesPlugin: Plugin<[ContributorFootnotesOptions?], 
 			// Insert the Thanks section at the end of the version block, but
 			// before any trailing reference definitions so a second run (which
 			// re-collects and re-inserts) reproduces the same layout.
-			let insertAt = block.endIndex - indicesToRemove.length;
+			let insertAt = block.endIndex - uniqueIndices.length;
 			while (insertAt > block.startIndex && tree.children[insertAt - 1]?.type === "definition") {
 				insertAt--;
 			}
