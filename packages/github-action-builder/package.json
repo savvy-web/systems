@@ -50,7 +50,7 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:effect",
-		"@effected/yaml": "^0.10.0",
+		"@effected/yaml": "catalog:effected",
 		"@rsbuild/core": "catalog:build",
 		"effect": "catalog:effect",
 		"jiti": "^2.7.0",

@@ -22,7 +22,7 @@ catalogs:
     "@rsbuild/core": ^2.1.13
     "@tsdown/css": ^0.22.14
     "@tsdown/exe": ^0.22.14
-    "@types/bun": ^1.3.14
+    "@types/bun": ^1.4.0
     "@types/node": ^26.2.0
     "@types/react": ^19.2.18
     "@types/react-dom": ^19.2.4
@@ -36,7 +36,7 @@ catalogs:
     "@rsbuild/core": ^2.1.0
     "@tsdown/css": ^0.22.0
     "@tsdown/exe": ^0.22.0
-    "@types/bun": ^1.3.14
+    "@types/bun": ^1.4.0
     "@types/node": ^26.2.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
@@ -56,7 +56,7 @@ catalogs:
     react-dom: ^19.2.8
     rspress-plugin-mermaid: ^1.0.1
     typescript: ^7.0.2
-    vite: ^8.2.1
+    vite: ^8.2.2
     vitepress: ^2.0.0-alpha.19
   docs:peers:
     "@rspress/core": ^2.0.0
@@ -91,7 +91,7 @@ catalogs:
     markdownlint-cli2-formatter-codequality: ^0.0.7
     turbo: ^2.10.11
   silk:
-    "@types/bun": ^1.3.14
+    "@types/bun": ^1.4.0
     "@types/node": ^26.2.0
     "@types/react": ^19.2.18
     "@types/react-dom": ^19.2.4
@@ -105,7 +105,7 @@ catalogs:
     tsx: ^4.23.12
     typescript: ^7.0.2
   silk:peers:
-    "@types/bun": ^1.3.14
+    "@types/bun": ^1.4.0
     "@types/node": ^26.2.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
@@ -127,7 +127,7 @@ catalogs:
     "@vitest/coverage-v8": ^4.1.0
     vitest: ^4.1.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.5.0+sha512-ZXhKy7WI8ROoHdiOX/q2VzmDPHhQZFwuEvsKN68GsBWnjmbQkCCmaisxoXL6wzM6IKNV4zV3IXWIO1cKsydQuA==
+  "@effected/pnpm-plugin-effect": 0.6.0+sha512-y3Hzf4BJ6sRuOKOC2Yfk+cqbPvda8VC0vCYvg7NGXCZxA0z4G/lcwZn/EsUxR/F4rzC25C9ABSUVmHtwK9/JLw==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info

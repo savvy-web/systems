@@ -24,8 +24,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@types/bun": {
-							range: "^1.3.14",
-							peer: "^1.3.14",
+							range: "^1.4.0",
+							peer: "^1.4.0",
 							strategy: "lock",
 						},
 						"@types/node": {
@@ -123,7 +123,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.2.1",
+							range: "^8.2.2",
 							peer: "^8.2.0",
 							strategy: "lock-minor",
 						},
@@ -186,8 +186,8 @@ await build({
 				silk: {
 					packages: {
 						"@types/bun": {
-							range: "^1.3.14",
-							peer: "^1.3.14",
+							range: "^1.4.0",
+							peer: "^1.4.0",
 							strategy: "lock",
 						},
 						"@types/node": {
