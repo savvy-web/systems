@@ -129,6 +129,38 @@ describe("contributor-footnotes", () => {
 		expect((twice.match(/### Thanks/g) ?? []).length).toBe(1);
 	});
 
+	it("removes a list item that held ONLY an attribution, instead of leaving an empty bullet", () => {
+		const md = "## 1.0.0\n\n### Features\n\n- Added X\n- Thanks [@alice](https://github.com/alice)!\n";
+		const result = transform(md);
+		expect(result).toContain("Added X");
+		expect(result).toContain("Thanks to");
+		// No `- ` husk survives where the attribution-only bullet was.
+		expect(result).not.toMatch(/^[-*][ \t]*$/m);
+	});
+
+	it("removes a list emptied entirely by stripping attribution-only bullets", () => {
+		const md = "## 1.0.0\n\n### Features\n\n- Thanks @bob!\n";
+		const result = transform(md);
+		expect(result).toContain("Thanks to");
+		expect(result).toContain("@bob");
+		expect(result).not.toMatch(/^[-*][ \t]*$/m);
+	});
+
+	it("thanks: false also removes list items emptied by stripping", () => {
+		const md = "## 1.0.0\n\n### Features\n\n- Added X\n- Thanks [@alice](https://github.com/alice)!\n";
+		const result = String(
+			unified()
+				.use(remarkParse)
+				.use(remarkGfm)
+				.use(ContributorFootnotesPlugin, { thanks: false })
+				.use(remarkStringify)
+				.processSync(md),
+		);
+		expect(result).toContain("Added X");
+		expect(result).not.toContain("@alice");
+		expect(result).not.toMatch(/^[-*][ \t]*$/m);
+	});
+
 	it("thanks: false strips inline attributions and emits no Thanks section", () => {
 		const md = "## 1.0.0\n\n### Features\n\n- Added X Thanks [@alice](https://github.com/alice)!\n";
 		const result = String(

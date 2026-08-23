@@ -937,8 +937,43 @@ describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () =
 			expect(second.packages.map((p) => p.name).sort()).toEqual(["@scope/bar", "@scope/foo"]);
 		}),
 	);
+
+	it.effect(
+		"refreshIn(childDir) drops the cache of the root CONTAINING the directory, per the documented contract",
+		() =>
+			Effect.gen(function* () {
+				const dir = setupBaseBranchFixture();
+				dirs.push(dir);
+
+				const program = Effect.gen(function* () {
+					const inspector = yield* ConfigInspector;
+					const first = yield* inspector.inspect(dir);
+
+					const configPath = join(dir, ".changeset", "config.json");
+					const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+					raw.baseBranch = "develop";
+					writeFileSync(configPath, `${JSON.stringify(raw, null, 2)}\n`);
+
+					// The contract is "the workspace CONTAINING directory": a refresh
+					// keyed on a child directory must invalidate the /root cache, not
+					// only a cache entry that happens to equal the child path.
+					yield* inspector.refreshIn(join(dir, "packages", "foo"));
+					const second = yield* inspector.inspect(dir);
+					return { first, second };
+				});
+
+				// Same single-shared-instance discipline as the refresh() test above.
+				const { first, second } = yield* program.pipe(Effect.provide(testLive(dir)));
+				expect(first.baseBranch).toBe("main");
+				expect(second.baseBranch).toBe("develop");
+			}),
+	);
 });
 
+// Real tmpdirs (not @effected/memfs) on purpose: the hint decision keys on
+// whether a glob MATERIALIZES against the real kit discovery + glob walk this
+// file's harness runs end-to-end (see the file header). Tmpdirs are removed in
+// afterEach.
 describe("ConfigInspector.classify — unmapped-file hints (#290)", () => {
 	const dirs: string[] = [];
 
@@ -1028,6 +1063,11 @@ describe("ConfigInspector.classify — unmapped-file hints (#290)", () => {
 	);
 });
 
+// Real tmpdirs (not @effected/memfs) on purpose: these tests exercise the REAL
+// kit `Workspaces.layer({ cwd })` discovery — per-call-root `listPackagesIn`
+// with real-path root anchoring over an on-disk pnpm workspace — which is the
+// exact #487 subject and cannot be backed by an in-memory volume. Same
+// file-wide harness as every block above; tmpdirs are removed in afterEach.
 describe("ConfigInspector — inspect from a nested git worktree (#487)", () => {
 	const dirs: string[] = [];
 

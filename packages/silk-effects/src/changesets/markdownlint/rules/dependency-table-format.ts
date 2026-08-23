@@ -12,8 +12,9 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./
  * dependency types, actions, and version / sentinel values.
  *
  * @remarks
- * The rule inspects the micromark token tree for `atxHeading` tokens whose
- * text is "Dependencies" (case-insensitive). For each match it verifies:
+ * The rule inspects the micromark token tree for level-2 `atxHeading` or
+ * `setextHeading` tokens whose text is "Dependencies" (case-insensitive).
+ * For each match it verifies:
  *
  * - The section contains a `table` token ANYWHERE between the heading and the
  *   next heading — prose may precede or follow it (issues #456/#457). A
@@ -24,7 +25,8 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./
  *   `Dependency | Type | Action | From | To`.
  * - Each data row has a non-empty dependency name.
  * - The `Type` cell is one of: `dependency`, `devDependency`,
- *   `peerDependency`, `optionalDependency`, `workspace`, `config`.
+ *   `peerDependency`, `optionalDependency`, `workspace`, `config`, `runtime`,
+ *   `packageManager`.
  * - The `Action` cell is one of: `added`, `updated`, `removed`.
  * - `From` and `To` cells match a semver string or the em-dash sentinel
  *   (`\u2014`).
@@ -121,8 +123,12 @@ export const DependencyTableFormatRule: Rule = {
 		for (let i = 0; i < tokens.length; i++) {
 			const token = tokens[i];
 
-			// Find h2 headings
-			if (token.type !== "atxHeading") {
+			// Find h2 headings — atx (`## Dependencies`) or setext ("Dependencies"
+			// underlined with `---`). remark-parse normalizes setext to a plain
+			// depth-2 heading node, so the remark engine already enforces the
+			// section; accepting only atx here would let the setext spelling
+			// escape this engine and split the two implementations of one rule.
+			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
 				continue;
 			}
 			if (getHeadingLevel(token) !== 2) {

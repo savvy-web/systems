@@ -234,6 +234,39 @@ export function parseChangesetPackages(content: string): ReadonlyArray<string> {
 }
 
 /**
+ * Whether `content` carries a `## Dependencies` heading OUTSIDE fenced code
+ * blocks. A prose changeset that DOCUMENTS the changeset format quotes the
+ * heading inside a ``` fence; a fence-blind regex misreads that file as a
+ * dependency changeset (classified mixed, dropped from the coexisting
+ * bucket). Tracks CommonMark fence state: an opening run of 3+ backticks or
+ * tildes (a backtick fence's info string may not contain a backtick) is
+ * closed only by a run of the same character, at least as long, with nothing
+ * else on the line.
+ */
+function containsDependenciesHeading(content: string): boolean {
+	let fence: { readonly char: string; readonly length: number } | null = null;
+	for (const line of content.split(/\r?\n/)) {
+		const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+		if (match) {
+			const run = match[1] as string;
+			const char = run.charAt(0);
+			const trailing = match[2] as string;
+			if (fence === null) {
+				if (char === "~" || !trailing.includes("`")) {
+					fence = { char, length: run.length };
+					continue;
+				}
+			} else if (char === fence.char && run.length >= fence.length && trailing.trim() === "") {
+				fence = null;
+				continue;
+			}
+		}
+		if (fence === null && /^## Dependencies\b/.test(line)) return true;
+	}
+	return false;
+}
+
+/**
  * Prose-only changesets (no `## Dependencies` heading at all) found in
  * `changesetDir`, each with the packages its frontmatter releases. These are
  * the files a regen run never touches — surfaced so the result can account
@@ -254,9 +287,10 @@ const findProseChangesets = (
 		for (const file of files) {
 			const content = yield* fs.readFileString(file).pipe(Effect.option);
 			if (Option.isNone(content)) continue;
-			// Prose-only = no Dependencies heading anywhere. Pure and mixed
-			// dependency changesets are already accounted for by the other buckets.
-			if (/^## Dependencies\b/m.test(content.value)) continue;
+			// Prose-only = no Dependencies heading anywhere (outside code fences).
+			// Pure and mixed dependency changesets are already accounted for by
+			// the other buckets.
+			if (containsDependenciesHeading(content.value)) continue;
 			result.push({ file, packages: parseChangesetPackages(content.value) });
 		}
 		return result;
@@ -278,8 +312,9 @@ const findMixedDependencyChangesets = (
 		for (const file of files) {
 			const content = yield* fs.readFileString(file).pipe(Effect.option);
 			if (Option.isNone(content)) continue;
-			// Mixed = has a `## Dependencies` heading but doesn't pass the strict test.
-			if (/^## Dependencies\b/m.test(content.value) && !isPureDependencyChangeset(content.value).isPure) {
+			// Mixed = has a `## Dependencies` heading (outside code fences) but
+			// doesn't pass the strict test.
+			if (containsDependenciesHeading(content.value) && !isPureDependencyChangeset(content.value).isPure) {
 				result.push(file);
 			}
 		}

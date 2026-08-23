@@ -92,31 +92,40 @@ import { getBlockSections, getHeadingText, getVersionBlocks } from "../../utils/
  * Historical CHANGELOG blocks (e.g. silk\@3.10.0) carry an authored
  * dependency table bullet-wrapped into a list item, which the aggregation
  * pass otherwise cannot recognize. Each list item's tables that parse as
- * dependency tables contribute their rows; the item's remaining children
- * are unwrapped to top-level legacy content. When no table in the list
- * parses, the caller keeps the whole list as legacy content untouched.
+ * dependency tables contribute their rows; ONLY those tables leave the
+ * list. The non-table items (e.g. an explanatory bullet alongside the
+ * wrapped table) keep their bullet structure: they survive as a List node
+ * in the legacy content rather than being flattened to bare paragraphs.
+ * When no table in the list parses, the caller keeps the whole list as
+ * legacy content untouched.
  *
  * @param list - A list node found inside a `### Dependencies` section
- * @returns Parsed rows plus the unwrapped non-table content
+ * @returns Parsed rows plus the remaining non-table content (a pruned copy
+ *   of the list, when any items survive)
  *
  * @internal
  */
 function extractTablesFromList(list: List): { rows: DependencyTableRow[]; rest: RootContent[] } {
 	const rows: DependencyTableRow[] = [];
-	const rest: RootContent[] = [];
+	const keptItems: List["children"] = [];
 	for (const item of list.children) {
+		const keptChildren: typeof item.children = [];
 		for (const child of item.children) {
 			if (child.type === "table") {
 				try {
 					rows.push(...parseDependencyTable(child as Table));
 					continue;
 				} catch {
-					// fall through: keep the unparseable table as legacy content
+					// fall through: keep the unparseable table, still bullet-wrapped
 				}
 			}
-			rest.push(child);
+			keptChildren.push(child);
+		}
+		if (keptChildren.length > 0) {
+			keptItems.push({ ...item, children: keptChildren });
 		}
 	}
+	const rest: RootContent[] = keptItems.length > 0 ? [{ ...list, children: keptItems }] : [];
 	return { rows, rest };
 }
 

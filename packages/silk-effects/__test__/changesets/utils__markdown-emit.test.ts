@@ -8,6 +8,7 @@
  * there), so these assertions pin bytes deliberately.
  */
 
+import { MdastDecodeError } from "@effected/markdown";
 import type { Root } from "mdast";
 import { describe, expect, it } from "vitest";
 
@@ -133,6 +134,18 @@ describe("emitMarkdown", () => {
 
 	it("throws a defect with the typed error's context on an undecodable tree", () => {
 		const bogus = { type: "root", children: [{ type: "not-a-node" }] } as unknown as Root;
-		expect(() => emitMarkdown(bogus)).toThrow(/markdown/i);
+		let thrown: unknown;
+		try {
+			emitMarkdown(bogus);
+		} catch (error) {
+			thrown = error;
+		}
+		expect(thrown).toBeInstanceOf(Error);
+		// The message names the decode path (not the stringify path) so the
+		// defect is attributable to the boundary that failed.
+		expect((thrown as Error).message).toMatch(/^markdown emit: mdast tree failed to decode/);
+		// The typed kit error survives as `cause` — the defect preserves the
+		// structured failure, not just its rendered message.
+		expect((thrown as Error).cause).toBeInstanceOf(MdastDecodeError);
 	});
 });

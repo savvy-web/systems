@@ -31,7 +31,7 @@
  *
  */
 
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { GlobPattern, GlobPatternOptions } from "@effected/glob";
 import { compileAndExpand } from "@effected/walker";
 import type { WorkspaceDiscoveryShape } from "@effected/workspaces";
@@ -754,12 +754,19 @@ function makeShape(
 
 	const refreshIn = (directory: string): Effect.Effect<void> =>
 		Effect.gen(function* () {
-			const projectDir = resolve(directory);
-			cache.delete(projectDir);
+			const target = resolve(directory);
+			// The documented contract is "the workspace CONTAINING directory":
+			// the cache is keyed by whatever projectDir inspect() was handed, so
+			// a refresh keyed on a child directory must drop every cached root
+			// that contains it — deleting only the exact path would leave the
+			// ancestor root's InspectedConfig stale.
+			for (const key of [...cache.keys()]) {
+				if (target === key || target.startsWith(key + sep)) cache.delete(key);
+			}
 			// The kit's refreshIn fails typed on a directory in no workspace;
 			// the pre-clean stays error-free and lets inspect() report that
 			// case as its ordinary ConfigurationError.
-			yield* Effect.ignore(discovery.refreshIn(projectDir));
+			yield* Effect.ignore(discovery.refreshIn(target));
 		});
 
 	return { inspect, classify, refresh, refreshIn };

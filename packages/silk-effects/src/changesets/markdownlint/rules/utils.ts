@@ -25,14 +25,25 @@ import type { MicromarkToken } from "markdownlint";
 export { RULE_DOCS } from "../../constants.js";
 
 /**
- * Get the heading level (1-6) from an `atxHeading` token.
+ * Get the heading level (1-6) from an `atxHeading` or `setextHeading` token.
  *
- * @param heading - The `atxHeading` micromark token
- * @returns The heading depth (number of `#` characters), or 0 if no sequence found
+ * @remarks
+ * remark-parse normalizes setext headings to plain depth-1/2 heading nodes,
+ * so the remark siblings of these rules see them as ordinary headings. The
+ * micromark extractors must agree, or the two engines disagree about the
+ * same file (the issue #367 class of drift).
+ *
+ * @param heading - The `atxHeading` or `setextHeading` micromark token
+ * @returns The heading depth (`#` count, or 1/2 for `=`/`-` setext
+ *   underlines), or 0 if no sequence found
  *
  * @internal
  */
 export function getHeadingLevel(heading: MicromarkToken): number {
+	if (heading.type === "setextHeading") {
+		const line = heading.children.find((c) => c.type === "setextHeadingLine");
+		return line ? (line.text.startsWith("=") ? 1 : 2) : 0;
+	}
 	const sequence = heading.children.find((c) => c.type === "atxHeadingSequence");
 	return sequence ? sequence.text.length : 0;
 }
@@ -65,19 +76,19 @@ export function unescapeMarkdown(raw: string): string {
 }
 
 /**
- * Get the plain text content of an `atxHeading` token.
+ * Get the plain text content of an `atxHeading` or `setextHeading` token.
  *
  * @remarks
  * Escape-resolved, so a heading compares equal to the same heading as the
  * remark rules see it. `getHeadingLevel` needs no equivalent — it counts
  * sequence characters rather than reading text.
  *
- * @param heading - The `atxHeading` micromark token
+ * @param heading - The `atxHeading` or `setextHeading` micromark token
  * @returns The heading text, or empty string if no text token found
  *
  * @internal
  */
 export function getHeadingText(heading: MicromarkToken): string {
-	const textToken = heading.children.find((c) => c.type === "atxHeadingText");
+	const textToken = heading.children.find((c) => c.type === "atxHeadingText" || c.type === "setextHeadingText");
 	return textToken ? unescapeMarkdown(textToken.text) : "";
 }

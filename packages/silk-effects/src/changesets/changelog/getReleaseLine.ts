@@ -110,11 +110,34 @@ function attributionPhrasing(attribution: string): PhrasingContent[] | undefined
 }
 
 /**
+ * Find the paragraph of a list's FINAL RENDERED bullet: the last paragraph
+ * of the last item, recursing into a trailing nested list first — for
+ * `- Parent` / `  - Child`, the child is the bullet a reader sees last, so
+ * the attribution must land there, not on the parent line above it.
+ *
+ * @internal
+ */
+function lastRenderedBulletParagraph(list: List): Paragraph | undefined {
+	const lastItem = list.children[list.children.length - 1];
+	if (!lastItem) return undefined;
+	for (let i = lastItem.children.length - 1; i >= 0; i--) {
+		const child = lastItem.children[i];
+		if (child.type === "list") {
+			const nested = lastRenderedBulletParagraph(child as List);
+			if (nested) return nested;
+		} else if (child.type === "paragraph") {
+			return child as Paragraph;
+		}
+	}
+	return undefined;
+}
+
+/**
  * Find the paragraph the attribution should be appended to: the LAST
- * top-level paragraph, or the last paragraph of the last item of the LAST
- * top-level list, across all section content nodes. Tables, headings, code
- * fences and blockquotes are never targets — attribution must not land
- * inside them.
+ * top-level paragraph, or the deepest trailing bullet's paragraph of the
+ * LAST top-level list (see {@link lastRenderedBulletParagraph}), across all
+ * section content nodes. Tables, headings, code fences and blockquotes are
+ * never targets — attribution must not land inside them.
  *
  * @internal
  */
@@ -125,11 +148,7 @@ function findAttributionTarget(sections: readonly { contentNodes: RootContent[] 
 			if (node.type === "paragraph") {
 				target = node as Paragraph;
 			} else if (node.type === "list") {
-				const items = (node as List).children;
-				const lastItem = items[items.length - 1];
-				const lastParagraph = lastItem?.children
-					.filter((child): child is Paragraph => child.type === "paragraph")
-					.at(-1);
+				const lastParagraph = lastRenderedBulletParagraph(node as List);
 				if (lastParagraph) target = lastParagraph;
 			}
 		}

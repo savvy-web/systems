@@ -71,7 +71,7 @@
  * @public
  */
 
-import type { Heading, Link, Paragraph, PhrasingContent, Root, Text } from "mdast";
+import type { Heading, Link, List, Paragraph, PhrasingContent, Root, Text } from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 import { getVersionBlocks } from "../../utils/version-blocks.js";
@@ -279,6 +279,29 @@ function buildSummaryParagraph(contributors: Map<string, Contributor>): Paragrap
 }
 
 /**
+ * Remove list items (recursively) whose content was emptied by attribution
+ * stripping — a bullet that held ONLY `Thanks @user!` must not survive as a
+ * bare `- ` husk. Runs in both the `thanks: true` and `thanks: false` paths,
+ * since stripping is unconditional.
+ *
+ * @internal
+ */
+function pruneEmptiedListItems(list: List): void {
+	list.children = list.children.filter((item) => {
+		item.children = item.children.filter((child) => {
+			if (child.type === "paragraph") return (child as Paragraph).children.length > 0;
+			if (child.type === "list") {
+				const nested = child as List;
+				pruneEmptiedListItems(nested);
+				return nested.children.length > 0;
+			}
+			return true;
+		});
+		return item.children.length > 0;
+	});
+}
+
+/**
  * Whether a node is a depth-3 heading whose text is `Thanks`.
  *
  * @internal
@@ -307,9 +330,15 @@ export const ContributorFootnotesPlugin: Plugin<[ContributorFootnotesOptions?], 
 
 				// Inline attributions on list items
 				if (node.type === "list") {
-					visit(node, "paragraph", (para: Paragraph) => {
+					const listNode = node as List;
+					visit(listNode, "paragraph", (para: Paragraph) => {
 						stripAttribution(para, contributors);
 					});
+					// A bullet emptied by the strip (its paragraph held only the
+					// attribution) is removed rather than left as a bare `- `;
+					// a list emptied entirely goes with it.
+					pruneEmptiedListItems(listNode);
+					if (listNode.children.length === 0) indicesToRemove.push(i);
 					continue;
 				}
 

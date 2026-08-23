@@ -58,6 +58,24 @@ ${TABLE_HEADER}
 		expect(result).toContain("bar");
 	});
 
+	it("keeps non-table bullets as a list when a list mixes prose bullets with a bullet-wrapped table", () => {
+		const md = `## 1.0.0
+
+### Dependencies
+
+- Routine maintenance bump, nothing user-facing.
+- ${"| Dependency | Type | Action | From | To |"}
+  ${"| --- | --- | --- | --- | --- |"}
+  ${"| foo | dependency | updated | 1.0.0 | 2.0.0 |"}
+`;
+		const result = transform(md);
+		// The parsed table leaves the list and joins the aggregated table…
+		expect(result).toMatch(/\| foo\s+\| dependency\s+\| updated/);
+		// …while the explanatory bullet KEEPS its bullet structure instead of
+		// being flattened to a bare paragraph.
+		expect(result).toMatch(/^[-*] Routine maintenance bump, nothing user-facing\./m);
+	});
+
 	it("carries runtime and packageManager rows through merge, collapse, and sort (#544)", () => {
 		const md = `## 1.0.0
 

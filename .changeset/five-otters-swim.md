@@ -61,4 +61,7 @@ Changelog rendering now emits through `@effected/markdown`'s canonical stringifi
 
 * Changelog rendering is now AST-native: `### Sub-headings` inside a changeset render as `#### Sub-headings` in the CHANGELOG instead of being demoted to bullets, and tables, code fences, and blockquotes pass through as blocks instead of getting bullet-wrapped
 * Contributor attribution no longer lands inside a table cell, fixing duplicated or bulleted dependency tables in released notes
-* `aggregate-dependency-tables` now unwraps legacy bullet-wrapped dependency tables and merges authored and synthesized tables into a single table per version
+* `aggregate-dependency-tables` now unwraps legacy bullet-wrapped dependency tables and merges authored and synthesized tables into a single table per version, preserving surrounding non-table bullets in place
+* Attribution lands on the deepest trailing bullet of a nested list, and list items emptied by attribution stripping no longer leave bare bullets behind
+* CSH005 recognizes setext `Dependencies` headings in the markdownlint engine (parity with remark), and changeset classification ignores `## Dependencies` headings quoted inside fenced code blocks
+* `ConfigInspector.refreshIn` on a child directory now also clears the cached parent workspace root, matching its documented contract

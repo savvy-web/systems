@@ -220,6 +220,26 @@ layer(testLayer)("getReleaseLine", (it) => {
 		}),
 	);
 
+	it.effect("appends attribution to the deepest trailing bullet of a nested trailing list", () =>
+		Effect.gen(function* () {
+			const result = yield* getReleaseLine(
+				{
+					id: "nested-list",
+					summary: "## Features\n\n- Parent bullet\n  - Child bullet",
+					releases: [{ name: "pkg", type: "minor" }],
+					commit: "abc1234567890",
+				},
+				"minor",
+				OPTIONS,
+			);
+			// The attribution lands on the final RENDERED bullet — the deepest
+			// trailing item of the nested list — never on its parent, where it
+			// would visually attach to the wrong line.
+			expect(result).toMatch(/Child bullet \[#42\]/);
+			expect(result).not.toMatch(/Parent bullet \[#42\]/);
+		}),
+	);
+
 	it.effect("renders each top-level paragraph of a section as its own bullet", () =>
 		Effect.gen(function* () {
 			const result = yield* getReleaseLine(

@@ -15,7 +15,8 @@
  *   `src/changesets/utils/dependency-section.ts`).
  * - The table must have the correct columns: Dependency, Type, Action, From, To.
  * - The `Type` column must be one of the recognized dependency types
- *   (`dependency`, `devDependency`, `peerDependency`, `optionalDependency`, `workspace`, `config`).
+ *   (`dependency`, `devDependency`, `peerDependency`, `optionalDependency`, `workspace`, `config`,
+ *   `runtime`, `packageManager`).
  * - The `Action` column must be one of `added`, `updated`, `removed`.
  *
  * **Semantic validation** (em-dash rules):

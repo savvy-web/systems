@@ -29,6 +29,31 @@ describe("dependency-table-format rule", () => {
 		expect(lint(md)).toEqual([]);
 	});
 
+	// Engine-agreement pin for the setext spelling: remark-parse normalizes a
+	// setext level-2 heading to a depth-2 heading node, so this rule enforces
+	// the section; the markdownlint sibling accepts setextHeading tokens for
+	// the same reason. Both suites carry this pair so a drift is loud.
+	describe("setext level-2 Dependencies heading (engine agreement)", () => {
+		it("flags a table-less section under a setext heading", () => {
+			const md = ["Dependencies", "------------", "", "Routine maintenance only.", ""].join("\n");
+			const messages = lint(md);
+			expect(messages.some((m) => m.includes("must contain a table"))).toBe(true);
+		});
+
+		it("accepts a valid table under a setext heading", () => {
+			const md = [
+				"Dependencies",
+				"------------",
+				"",
+				"| Dependency | Type | Action | From | To |",
+				"| --- | --- | --- | --- | --- |",
+				"| effect | dependency | updated | 3.18.0 | 3.19.1 |",
+				"",
+			].join("\n");
+			expect(lint(md)).toEqual([]);
+		});
+	});
+
 	it("accepts a table with all types", () => {
 		const md = `## Dependencies
 

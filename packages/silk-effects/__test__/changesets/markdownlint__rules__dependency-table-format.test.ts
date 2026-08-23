@@ -63,6 +63,29 @@ describe("markdownlint/dependency-table-format", () => {
 		expect(check(table("| pnpm | packageManager | updated | 11.22.0 | 11.23.0 |"))).toEqual([]);
 	});
 
+	// A setext level-2 "Dependencies" heading (underlined with ---) is the same
+	// documented heading to a reader; remark-parse normalizes setext to a plain
+	// heading node so the remark engine already enforces the section. The
+	// markdownlint scan must accept setextHeading tokens too, or the two
+	// engines disagree about the same file.
+	describe("setext level-2 Dependencies heading (engine agreement)", () => {
+		it("flags a table-less section under a setext heading", () => {
+			const md = ["Dependencies", "------------", "", "Routine maintenance only.", ""].join("\n");
+			const errors = check(md);
+			expect(errors.some((e) => e.includes("must contain a table"))).toBe(true);
+		});
+
+		it("passes a valid table under a setext heading", () => {
+			const md = ["Dependencies", "------------", "", VALID_TABLE, ""].join("\n");
+			expect(check(md)).toEqual([]);
+		});
+
+		it("ignores a setext level-1 Dependencies heading (wrong depth, same as atx)", () => {
+			const md = ["Dependencies", "============", "", "Prose only.", ""].join("\n");
+			expect(check(md)).toEqual([]);
+		});
+	});
+
 	// --- issues #456 / #457 ---------------------------------------------------
 	// CSH005 accepts a valid dependency table ANYWHERE in the `## Dependencies`
 	// section; prose may precede or follow it. This mirrors the remark rule so

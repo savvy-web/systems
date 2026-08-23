@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
@@ -297,25 +297,25 @@ describe("DepsRegen — coexisting prose changesets are surfaced, not silently i
 		Layer.provide(Git.layer),
 	);
 
-	it.effect("plan() and execute() report an untouched prose changeset referencing an in-scope package", () =>
-		Effect.gen(function* () {
-			const dir = mkdtempSync(join(tmpdir(), "depsregen-coexist-"));
-			const csDir = join(dir, ".changeset");
-			mkdirSync(csDir);
-			// Prose-only changeset for the in-scope package: no Dependencies section,
-			// so it is neither pure (delete candidate) nor mixed (skippedMixed).
-			const proseFile = join(csDir, "sweet-cooks-guess.md");
-			writeFileSync(
-				proseFile,
-				["---", '"@scope/foo": minor', "---", "", "## Features", "", "Adds a thing.", ""].join("\n"),
-			);
-			// Prose changeset for a package NOT in scope for this run — must not appear.
-			const outOfScopeFile = join(csDir, "other-pkg-prose.md");
-			writeFileSync(
-				outOfScopeFile,
-				["---", '"@scope/unrelated": patch', "---", "", "## Fixes", "", "Unrelated.", ""].join("\n"),
-			);
+	it.effect("plan() and execute() report an untouched prose changeset referencing an in-scope package", () => {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-coexist-"));
+		const csDir = join(dir, ".changeset");
+		mkdirSync(csDir);
+		// Prose-only changeset for the in-scope package: no Dependencies section,
+		// so it is neither pure (delete candidate) nor mixed (skippedMixed).
+		const proseFile = join(csDir, "sweet-cooks-guess.md");
+		writeFileSync(
+			proseFile,
+			["---", '"@scope/foo": minor', "---", "", "## Features", "", "Adds a thing.", ""].join("\n"),
+		);
+		// Prose changeset for a package NOT in scope for this run — must not appear.
+		const outOfScopeFile = join(csDir, "other-pkg-prose.md");
+		writeFileSync(
+			outOfScopeFile,
+			["---", '"@scope/unrelated": patch', "---", "", "## Fixes", "", "Unrelated.", ""].join("\n"),
+		);
 
+		return Effect.gen(function* () {
 			const { plan, result } = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
 				const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
@@ -330,7 +330,51 @@ describe("DepsRegen — coexisting prose changesets are surfaced, not silently i
 			expect(plan.skippedMixed).not.toContain(proseFile);
 			expect(existsSync(proseFile)).toBe(true);
 			expect(existsSync(outOfScopeFile)).toBe(true);
-		}),
+		}).pipe(Effect.ensuring(Effect.sync(() => rmSync(dir, { recursive: true, force: true }))));
+	});
+
+	it.effect(
+		"classifies a prose changeset whose fenced code block CONTAINS '## Dependencies' as prose, not mixed",
+		() => {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-fence-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			// A prose changeset DOCUMENTING the changeset format: the Dependencies
+			// heading appears only inside a fenced ```markdown block. A fence-blind
+			// detector misreads it as a mixed dependency changeset and drops it from
+			// the coexisting bucket.
+			const proseFile = join(csDir, "docs-about-format.md");
+			writeFileSync(
+				proseFile,
+				[
+					"---",
+					'"@scope/foo": minor',
+					"---",
+					"",
+					"## Documentation",
+					"",
+					"Documents the dependency-changeset format:",
+					"",
+					"```markdown",
+					"## Dependencies",
+					"",
+					"| Dependency | Type | Action | From | To |",
+					"```",
+					"",
+				].join("\n"),
+			);
+
+			return Effect.gen(function* () {
+				const plan = yield* Effect.gen(function* () {
+					const svc = yield* DepsRegen;
+					return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+				// Prose-only: surfaced in coexisting, never classified mixed.
+				expect(plan.coexisting).toEqual([{ file: proseFile, packages: ["@scope/foo"] }]);
+				expect(plan.skippedMixed).not.toContain(proseFile);
+			}).pipe(Effect.ensuring(Effect.sync(() => rmSync(dir, { recursive: true, force: true }))));
+		},
 	);
 });
 
