@@ -18,6 +18,8 @@ Six kinds. Each section below is both the content contract and a fill-in-the-bla
 
 The protocol boot for the counterpart's session. Generated, not hand-written — `--init` produces it from the local role/packages/paths it just resolved. A loop that closed with a terminal `unlinked` line and is later reopened (a fresh non-`unlinked` `loop-started` append, per the journal's reopening rule) also boots via `briefing` rather than any other kind — the counterpart session is starting from nothing and needs the same mailbox/journal/role/push-guard content either way. The difference is framing: a reopen briefing carries the CURRENT round number, never `round: 0`, and opens with a short summary of the prior loop's terminal state (what shipped, why it closed) before repeating the standard boot content below.
 
+**The briefing states in prose whose ball it is and what the opening move is** — which side sends round 1's opening mail, and whether that mail already exists or is still owed. The receiving agent reads this prose before it ever reads its journal, and in the loop that produced this rule it was the briefing's "round 1 begins with your request mail" line that got the downstream moving while both journals said the opposite. A loop opened from a pre-filed issue (no request mail exists yet) says so explicitly: the downstream owes the opening `request`, and both `--init` journal appends carry the matching `--ball` override (see `--init` step 6 in `SKILL.md`).
+
 ```markdown
 ---
 from: savvy-web-systems
@@ -219,6 +221,8 @@ Not yet — see friction item above. Round 2 requested.
 ## `release` (upstream → downstream)
 
 The exit trigger: package names + versions cut, registry. Downstream acts on it with `--exit`.
+
+**Every package/version pair in the table has been probed on the registry before the mail is sent, and the probe result — not the merge, and not CI success — is what licenses the mail.** A multi-package cut publishes staggered (packages have landed minutes apart while every release workflow already reported success), so a green workflow does not mean every package is installable. Probe `npm view "<pkg>@<expected-version>" version` once per package — the exact pair, since a bare `npm view <pkg> version` reads the `latest` dist-tag rather than proving the cut version is published — and send only after the LAST one resolves — a release mail naming a version the downstream cannot install sends `--exit` into a failing registry install.
 
 ```markdown
 ---

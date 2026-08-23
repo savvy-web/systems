@@ -3,9 +3,15 @@
 	"refs": [
 		{
 			"source": "CLAUDE.md",
+			"target": ".claude/design/silk-effects/kit-peer-dependencies.md",
+			"hash": "793db0bbdde00c201766563bb022b1dc750ad4c84d69cb1c95101a917c8c9e4a",
+			"recordedAt": "2026-08-23"
+		},
+		{
+			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "dedd3c058575e489382134fa8422379a1cb15cc9d105cc70ad0d0fc01dc86d3b",
-			"recordedAt": "2026-08-20"
+			"hash": "e55715d6bdc6f12875a8399b6e583d9314474704aefda3f25f82f0445ce7148e",
+			"recordedAt": "2026-08-23"
 		},
 		{
 			"source": "CLAUDE.md",

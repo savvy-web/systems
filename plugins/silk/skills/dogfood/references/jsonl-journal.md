@@ -76,10 +76,10 @@ Opening a loop:
 ```bash
 bash journal-append.sh <journal-path> --init --role <downstream|upstream> \
   --counterpart-id <id> --counterpart-path <path> --link-type <pnpm-overrides|file> \
-  [--note <text>] [--owner <token>]
+  [--ball <ours|theirs>] [--note <text>] [--owner <token>]
 ```
 
-`--init` derives the opening `ball` from `--role` per the phase table (`requested` → upstream's ball): a downstream repo gets `ball: theirs`, an upstream repo gets `ball: ours`. A downstream init writes `packages: []`, `packagesDerived: false`, and `nativeRebuilds: []`; an upstream init omits all three fields entirely, per the upstream-side snapshot shape below.
+`--init` derives the opening `ball` from `--role` per the phase table (`requested` → upstream's ball): a downstream repo gets `ball: theirs`, an upstream repo gets `ball: ours`. That default assumes round 1's `request` mail has already been sent; a loop opened before it exists (e.g. from a pre-filed issue, so the downstream still owes the opening mail) passes an explicit `--ball` on both sides' `--init` appends instead of correcting immediately afterward (see `--init` step 6 in `SKILL.md`). A downstream init writes `packages: []`, `packagesDerived: false`, and `nativeRebuilds: []`; an upstream init omits all three fields entirely, per the upstream-side snapshot shape below.
 
 Every later append:
 
