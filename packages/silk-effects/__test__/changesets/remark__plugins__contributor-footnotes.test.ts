@@ -5,11 +5,20 @@ import { unified } from "unified";
 import { describe, expect, it } from "vitest";
 
 import { ContributorFootnotesPlugin } from "../../src/changesets/remark/plugins/contributor-footnotes.js";
+import { SilkChangesetTransformPreset } from "../../src/changesets/remark/presets.js";
 
 function transform(md: string): string {
 	return String(
 		unified().use(remarkParse).use(remarkGfm).use(ContributorFootnotesPlugin).use(remarkStringify).processSync(md),
 	);
+}
+
+function transformFull(md: string): string {
+	const processor = unified().use(remarkParse).use(remarkGfm);
+	for (const plugin of SilkChangesetTransformPreset) {
+		processor.use(plugin);
+	}
+	return String(processor.use(remarkStringify).processSync(md));
 }
 
 describe("contributor-footnotes", () => {
@@ -217,5 +226,166 @@ describe("contributor-footnotes", () => {
 		expect(result).toContain("Added X");
 		expect(result).not.toContain("Thanks");
 		expect(result).not.toContain("@alice");
+	});
+
+	describe("foreign (hand-authored) Thanks section content", () => {
+		it("round-trips a Thanks section whose body is a hand-authored prose paragraph", () => {
+			const md = "## 1.0.0\n\n### Thanks\n\nSpecial thanks to the docs team for the review pass.\n";
+			const result = transform(md);
+			expect(result).toContain("### Thanks");
+			expect(result).toContain("Special thanks to the docs team for the review pass.");
+			// Nothing harvested, nothing to emit: transform is a pass-through.
+			expect(transform(result)).toBe(result);
+		});
+
+		it("round-trips a Thanks section whose body is a plain-name list", () => {
+			const md = "## 1.0.0\n\n### Thanks\n\n- Alice Smith\n- Bob Jones\n";
+			const result = transform(md);
+			expect(result).toContain("### Thanks");
+			expect(result).toContain("Alice Smith");
+			expect(result).toContain("Bob Jones");
+			expect(transform(result)).toBe(result);
+		});
+
+		it("round-trips a Thanks section whose body is a code block", () => {
+			const md = "## 1.0.0\n\n### Thanks\n\n```\nteam credits roll here\n```\n";
+			const result = transform(md);
+			expect(result).toContain("### Thanks");
+			expect(result).toContain("team credits roll here");
+			expect(transform(result)).toBe(result);
+		});
+
+		it("preserves a mixed prose+mention paragraph untouched and does not double-credit its mention", () => {
+			const md = [
+				"## 1.0.0",
+				"",
+				"### Features",
+				"",
+				"- Added X Thanks @bob!",
+				"",
+				"### Thanks",
+				"",
+				"Huge effort on the infra migration Thanks @alice!",
+				"",
+			].join("\n");
+			const result = transform(md);
+			// The mixed paragraph survives verbatim (mention included, not stripped).
+			expect(result).toContain("Huge effort on the infra migration Thanks @alice!");
+			// The merged paragraph credits only the inline attribution's @bob.
+			expect(result).toContain("Thanks to @bob for their contributions!");
+			// @alice is not mined into the merged paragraph (one credit, in the prose).
+			expect((result.match(/@alice/g) ?? []).length).toBe(1);
+		});
+
+		it("appends the merged paragraph into a surviving Thanks section (one section, heading kept in place)", () => {
+			const md = [
+				"## 1.0.0",
+				"",
+				"### Features",
+				"",
+				"- Added X Thanks @bob!",
+				"",
+				"### Thanks",
+				"",
+				"Special thanks to the docs team.",
+				"",
+			].join("\n");
+			const result = transform(md);
+			expect((result.match(/### Thanks/g) ?? []).length).toBe(1);
+			// Preserved prose first, merged paragraph after it, inside the section.
+			const prose = result.indexOf("Special thanks to the docs team.");
+			const merged = result.indexOf("Thanks to @bob for their contributions!");
+			expect(prose).toBeGreaterThan(-1);
+			expect(merged).toBeGreaterThan(prose);
+		});
+
+		it("still harvests and merges a pure-attribution Thanks body with inline attributions", () => {
+			const md = [
+				"## 1.0.0",
+				"",
+				"### Features",
+				"",
+				"- Added X Thanks @bob!",
+				"",
+				"### Thanks",
+				"",
+				"Thanks @alice!",
+				"",
+			].join("\n");
+			const result = transform(md);
+			expect((result.match(/### Thanks/g) ?? []).length).toBe(1);
+			expect(result).toContain("Thanks to @alice and @bob for their contributions!");
+		});
+
+		it("is idempotent over a foreign-shaped changelog with a hand-authored Thanks section", () => {
+			const md = [
+				"## 1.0.0",
+				"",
+				"### Features",
+				"",
+				"- Added X Thanks @bob!",
+				"",
+				"### Thanks",
+				"",
+				"Special thanks to the docs team.",
+				"",
+			].join("\n");
+			const once = transform(md);
+			const twice = transform(once);
+			expect(twice).toBe(once);
+			expect((twice.match(/### Thanks/g) ?? []).length).toBe(1);
+		});
+
+		it("thanks: false leaves hand-authored Thanks content (and its heading) in place", () => {
+			const md = "## 1.0.0\n\n### Thanks\n\nSpecial thanks to the docs team.\n\n### Patch Changes\n\n- Fixed a bug\n";
+			const result = String(
+				unified()
+					.use(remarkParse)
+					.use(remarkGfm)
+					.use(ContributorFootnotesPlugin, { thanks: false })
+					.use(remarkStringify)
+					.processSync(md),
+			);
+			expect(result).toContain("### Thanks");
+			expect(result).toContain("Special thanks to the docs team.");
+			expect(result).toContain("### Patch Changes");
+		});
+
+		it("thanks: false still strips pure-attribution shapes from an existing Thanks section", () => {
+			const md = "## 1.0.0\n\n### Thanks\n\nSpecial thanks to the docs team.\n\nThanks @alice!\n";
+			const result = String(
+				unified()
+					.use(remarkParse)
+					.use(remarkGfm)
+					.use(ContributorFootnotesPlugin, { thanks: false })
+					.use(remarkStringify)
+					.processSync(md),
+			);
+			expect(result).toContain("Special thanks to the docs team.");
+			expect(result).not.toContain("@alice");
+		});
+
+		it("full transform preset keeps one final Thanks section (preserved prose + merged mentions, pinned last)", () => {
+			const md = [
+				"## 1.0.0",
+				"",
+				"### Thanks",
+				"",
+				"Special thanks to the docs team.",
+				"",
+				"### Features",
+				"",
+				"- Added X Thanks @bob!",
+				"",
+			].join("\n");
+			const once = transformFull(md);
+			expect((once.match(/### Thanks/g) ?? []).length).toBe(1);
+			expect(once).toContain("Special thanks to the docs team.");
+			expect(once).toContain("Thanks to @bob for their contributions!");
+			// Reorder pins Thanks last: the section follows Features in the output.
+			expect(once.indexOf("### Thanks")).toBeGreaterThan(once.indexOf("### Features"));
+			// Stable under a second full-pipeline pass.
+			expect(transformFull(once)).toBe(once);
+		});
 	});
 });

@@ -65,4 +65,5 @@ Changelog rendering now emits through `@effected/markdown`'s canonical stringifi
 * Attribution lands on the deepest trailing bullet of a nested list, and list items emptied by attribution stripping no longer leave bare bullets behind
 * All five CSH rules recognize setext headings in the markdownlint engine (parity with remark), and changeset classification ignores `## Dependencies` headings quoted inside fenced code blocks
 * Harvesting an existing `### Thanks` section whose body is itself attribution-shaped no longer deletes the following sibling section
+* Hand-authored `### Thanks` content (prose, plain-name lists, anything without an `@handle`) round-trips untouched through the transformer instead of being deleted; only pure attribution paragraphs are harvested into the merged credit
 * `ConfigInspector.refreshIn` on a child directory now also clears the cached parent workspace root, matching its documented contract
