@@ -33,6 +33,13 @@ Shared Effect library for the Silk Suite, and the home of the dev-tooling busine
 
 ## Design
 
+Load before changing any `@effected/*` dependency in this package's manifest, or when a consumer reports a
+duplicate kit copy:
+→ `@../../.claude/design/silk-effects/kit-peer-dependencies.md`
+Covers why `@effected/workspaces`, `@effected/git` and `@effected/commands` are REQUIRED PEERS supplied by
+`catalog:effected:peers` (and why the other seven are not), the two-copies type-identity failure the peers exist to
+make loud, and the `configDependencies` bump trap that makes a published catalog appear not to exist.
+
 Load for service patterns, value-object conventions, layer composition, and the full service inventory:
 → `@../../.claude/design/silk-effects/architecture.md`
 Load when implementing a new service, changing a result schema, touching the `Repos` namespace (its Vendored Repos section covers all four services plus the lifecycle-operations and drift-reconciliation subsections), or onboarding a consumer repo. Its testing-strategy section covers the fixture-tree integration tests, the `TestConsole`-vs-`process.stderr` discrimination that decides whether a logging test can stay on `it.effect`, the memfs carve-out (the `ReposLockdown` blocks and `services__config-store.test.ts`'s `it.live` lock tests stay on real tmpdirs because memfs records mode bits without enforcing them — do not "finish the migration"), and the test-only module-export convention (helpers exported from their own module but deliberately never from the index — do not "tidy" them into it).

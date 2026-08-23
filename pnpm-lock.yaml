@@ -6,17 +6,17 @@ importers:
   .:
     configDependencies:
       '@effected/pnpm-plugin-effect':
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.6.0
+        version: 0.6.0
 
 packages:
 
-  '@effected/pnpm-plugin-effect@0.5.0':
-    resolution: {integrity: sha512-ZXhKy7WI8ROoHdiOX/q2VzmDPHhQZFwuEvsKN68GsBWnjmbQkCCmaisxoXL6wzM6IKNV4zV3IXWIO1cKsydQuA==}
+  '@effected/pnpm-plugin-effect@0.6.0':
+    resolution: {integrity: sha512-y3Hzf4BJ6sRuOKOC2Yfk+cqbPvda8VC0vCYvg7NGXCZxA0z4G/lcwZn/EsUxR/F4rzC25C9ABSUVmHtwK9/JLw==}
 
 snapshots:
 
-  '@effected/pnpm-plugin-effect@0.5.0': {}
+  '@effected/pnpm-plugin-effect@0.6.0': {}
 
 ---
 lockfileVersion: '9.0'
@@ -36,6 +36,9 @@ catalogs:
     '@tsdown/exe':
       specifier: ^0.22.14
       version: 0.22.14
+    '@types/bun':
+      specifier: ^1.3.14
+      version: 1.3.14
     '@types/node':
       specifier: ^26.2.0
       version: 26.2.0
@@ -63,6 +66,16 @@ catalogs:
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
+  docs:peers:
+    '@rspress/core':
+      specifier: ^2.0.0
+      version: 2.0.19
+    '@types/react-dom':
+      specifier: ^19.2.0
+      version: 19.2.4
+    react-dom:
+      specifier: ^19.2.0
+      version: 19.2.8
   effect:
     '@effect/platform-node':
       specifier: 4.0.0-rc.109
@@ -73,6 +86,44 @@ catalogs:
     effect:
       specifier: 4.0.0-rc.109
       version: 4.0.0-rc.109
+  effected:
+    '@effected/commands':
+      specifier: ^0.5.0
+      version: 0.5.0
+    '@effected/git':
+      specifier: ^0.9.0
+      version: 0.9.0
+    '@effected/workspaces':
+      specifier: ^0.17.1
+      version: 0.17.1
+  lint:
+    '@biomejs/biome':
+      specifier: 2.5.9
+      version: 2.5.9
+    '@changesets/cli':
+      specifier: ^3.0.1
+      version: 3.0.1
+    '@commitlint/cli':
+      specifier: ^21.2.2
+      version: 21.2.2
+    '@commitlint/config-conventional':
+      specifier: ^21.2.2
+      version: 21.2.2
+    husky:
+      specifier: ^9.1.7
+      version: 9.1.7
+    lint-staged:
+      specifier: ^17.3.0
+      version: 17.3.0
+    markdownlint-cli2:
+      specifier: ^0.23.2
+      version: 0.23.2
+    markdownlint-cli2-formatter-codequality:
+      specifier: ^0.0.7
+      version: 0.0.7
+    turbo:
+      specifier: ^2.10.11
+      version: 2.10.11
   silk:
     '@types/node':
       specifier: ^26.2.0
@@ -81,6 +132,12 @@ catalogs:
       specifier: ^7.0.2
       version: 7.0.2
   test:
+    '@vitest/coverage-istanbul':
+      specifier: ^4.1.11
+      version: 4.1.11
+    '@vitest/coverage-v8':
+      specifier: ^4.1.11
+      version: 4.1.11
     vitest:
       specifier: ^4.1.11
       version: 4.1.11
@@ -88,7 +145,7 @@ catalogs:
 overrides:
   '@microsoft/api-extractor>typescript': ^6.0.3
 
-pnpmfileChecksum: sha256-eRrXXWzpMsTtZf4VUjI+WqFN7xebZA9OJ4DzXz9Dc74=
+pnpmfileChecksum: sha256-XD+UoGODiANOX6T4X2JVWrBQmuqwnvvpi32slSkRuBo=
 
 importers:
 
@@ -234,10 +291,10 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1)
       '@effected/commands':
-        specifier: ^0.5.0
+        specifier: catalog:effected
         version: 0.5.0(effect@4.0.0-rc.109)
       '@effected/git':
-        specifier: ^0.9.0
+        specifier: catalog:effected
         version: 0.9.0(effect@4.0.0-rc.109)
       '@effected/jsonc':
         specifier: ^0.7.0
@@ -246,8 +303,8 @@ importers:
         specifier: ^0.4.0
         version: 0.4.0(effect@4.0.0-rc.109)
       '@effected/workspaces':
-        specifier: ^0.17.0
-        version: 0.17.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+        specifier: catalog:effected
+        version: 0.17.1(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/yaml':
         specifier: ^0.10.0
         version: 0.10.0(effect@4.0.0-rc.109)
@@ -325,14 +382,14 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1)
       '@effected/commands':
-        specifier: ^0.5.0
+        specifier: catalog:effected
         version: 0.5.0(effect@4.0.0-rc.109)
       '@effected/git':
-        specifier: ^0.9.0
+        specifier: catalog:effected
         version: 0.9.0(effect@4.0.0-rc.109)
       '@effected/workspaces':
-        specifier: ^0.17.0
-        version: 0.17.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+        specifier: catalog:effected
+        version: 0.17.1(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(supports-color@8.1.1)(zod@4.4.3)
@@ -381,8 +438,8 @@ importers:
         specifier: catalog:build
         version: 26.2.0
       rolldown-pnpm-config:
-        specifier: ^0.6.3
-        version: 0.6.3(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5)
+        specifier: ^0.7.0
+        version: 0.7.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5)
       typescript:
         specifier: catalog:build
         version: 7.0.2
@@ -517,12 +574,6 @@ importers:
       '@changesets/get-release-plan':
         specifier: ^5.0.0
         version: 5.0.0
-      '@effected/commands':
-        specifier: ^0.5.0
-        version: 0.5.0(effect@4.0.0-rc.109)
-      '@effected/git':
-        specifier: ^0.9.0
-        version: 0.9.0(effect@4.0.0-rc.109)
       '@effected/github-references':
         specifier: ^0.1.0
         version: 0.1.0(effect@4.0.0-rc.109)
@@ -541,9 +592,6 @@ importers:
       '@effected/walker':
         specifier: ^0.5.0
         version: 0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
-      '@effected/workspaces':
-        specifier: ^0.17.0
-        version: 0.17.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/yaml':
         specifier: ^0.10.0
         version: 0.10.0(effect@4.0.0-rc.109)
@@ -590,9 +638,18 @@ importers:
       '@effect/vitest':
         specifier: catalog:effect
         version: 4.0.0-rc.109(effect@4.0.0-rc.109)(vitest@4.1.11)
+      '@effected/commands':
+        specifier: catalog:effected
+        version: 0.5.0(effect@4.0.0-rc.109)
+      '@effected/git':
+        specifier: catalog:effected
+        version: 0.9.0(effect@4.0.0-rc.109)
       '@effected/memfs':
         specifier: ^0.5.0
         version: 0.5.0(effect@4.0.0-rc.109)
+      '@effected/workspaces':
+        specifier: catalog:effected
+        version: 0.17.1(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
@@ -1153,6 +1210,12 @@ packages:
 
   '@effected/workspaces@0.17.0':
     resolution: {integrity: sha512-zHFpkt393D+yXNUkRO4QFkXaIeVjWfhobumJgI+xlbhsMUQ79Ey8mi6gk66O17uh+tfwiamen9t8wXr2NTSHnw==}
+    engines: {node: '>=24.11.0'}
+    peerDependencies:
+      effect: 4.0.0-rc.109
+
+  '@effected/workspaces@0.17.1':
+    resolution: {integrity: sha512-FFJaEhGLK2r/Hje6x02QIJ9AjYPTGIQsAJsJnXH7qtFjVZRA/bHUQg37GvO2W60P27Y6gw0KMvGlIu/neknxPQ==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-rc.109
@@ -4277,8 +4340,8 @@ packages:
       vue-tsc:
         optional: true
 
-  rolldown-pnpm-config@0.6.3:
-    resolution: {integrity: sha512-n+EYQG3oyqyu0EzXMHgOWekPQpJwH6h5SKBI6sRk0+1l44mAy7W7ZLGJnUtxApfxTzzkVBZ45s7ID+hVHf822A==}
+  rolldown-pnpm-config@0.7.0:
+    resolution: {integrity: sha512-MOA6BJO+32GFtmMY12ma2J13z8qB+XjJBs4/7rEa7lIrbY21FjyKNEMmPL5jbkN+OXi+Pc5l1pDRaUr3qU3COQ==}
     engines: {node: '>=24.11.0'}
     hasBin: true
     peerDependencies:
@@ -5380,6 +5443,25 @@ snapshots:
     transitivePeerDependencies:
       - '@effected/jsonc'
 
+  '@effected/workspaces@0.17.1(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)':
+    dependencies:
+      '@effected/commands': 0.5.0(effect@4.0.0-rc.109)
+      '@effected/git': 0.9.0(effect@4.0.0-rc.109)
+      '@effected/glob': 0.4.0(effect@4.0.0-rc.109)
+      '@effected/lockfiles': 0.6.2(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(@effected/npm@0.11.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/semver@0.5.0(effect@4.0.0-rc.109))(@effected/yaml@0.10.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/npm': 0.11.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/package-json': 0.10.2(effect@4.0.0-rc.109)
+      '@effected/semver': 0.5.0(effect@4.0.0-rc.109)
+      '@effected/walker': 0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/yaml': 0.10.0(effect@4.0.0-rc.109)
+      '@pnpm/catalogs.config': 1100.0.5
+      '@pnpm/catalogs.protocol-parser': 1100.0.1
+      '@pnpm/catalogs.resolver': 1100.0.1
+      '@pnpm/catalogs.types': 1100.0.1
+      effect: 4.0.0-rc.109
+    transitivePeerDependencies:
+      - '@effected/jsonc'
+
   '@effected/xdg@0.3.0(@effected/config-file@0.5.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(@effected/toml@0.5.0(effect@4.0.0-rc.109))(@effected/walker@0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/yaml@0.10.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/walker@0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)':
     dependencies:
       '@effected/config-file': 0.5.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(@effected/toml@0.5.0(effect@4.0.0-rc.109))(@effected/walker@0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/yaml@0.10.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
@@ -6382,7 +6464,7 @@ snapshots:
     dependencies:
       '@effect/platform-node': 4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1)
       '@effect/sql-sqlite-node': 4.0.0-rc.109(effect@4.0.0-rc.109)
-      '@effected/workspaces': 0.17.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/workspaces': 0.17.1(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@vitest-agent/sdk': 2.4.4(@effected/glob@0.4.0(effect@4.0.0-rc.109))(redis@6.2.1)
       '@vitest-agent/sidecar': 2.1.4
       effect: 4.0.0-rc.109
@@ -6467,7 +6549,7 @@ snapshots:
       '@effected/jsonc': 0.7.0(effect@4.0.0-rc.109)
       '@effected/toml': 0.5.0(effect@4.0.0-rc.109)
       '@effected/walker': 0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
-      '@effected/workspaces': 0.17.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/workspaces': 0.17.1(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/xdg': 0.3.0(@effected/config-file@0.5.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(@effected/toml@0.5.0(effect@4.0.0-rc.109))(@effected/walker@0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/yaml@0.10.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/walker@0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/yaml': 0.10.0(effect@4.0.0-rc.109)
       acorn: 8.18.0
@@ -8725,11 +8807,12 @@ snapshots:
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-pnpm-config@0.6.3(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5):
+  rolldown-pnpm-config@0.7.0(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5):
     dependencies:
       '@effect/platform-node': 4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1)
       '@effected/npm': 0.11.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/semver': 0.5.0(effect@4.0.0-rc.109)
+      '@effected/workspaces': 0.17.1(@effected/jsonc@0.7.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/yaml': 0.10.0(effect@4.0.0-rc.109)
       effect: 4.0.0-rc.109
       ink: 7.1.1(@types/react@19.2.18)(react@19.2.8)
@@ -8741,6 +8824,7 @@ snapshots:
     optionalDependencies:
       rolldown: 1.2.5
     transitivePeerDependencies:
+      - '@effected/jsonc'
       - '@types/react'
       - bufferutil
       - react-devtools-core
