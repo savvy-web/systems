@@ -302,3 +302,67 @@ describe("computeWorkspaceDependencyDiffs (package moved between refs)", () => {
 		expect(diff).toBeUndefined();
 	});
 });
+
+// --- cross-seeded catalogs (#539) --------------------------------------------
+// A catalog injected by a config-dependency pnpmfile hook is visible only where
+// hook replay ran — the worktree side under WorkspaceCatalogs'
+// config-dependency layers — and never at a git ref (`at(ref)` merges only the
+// ref's inline yaml + lockfile catalogs). Without cross-seeding, the at-ref
+// side falls through to its lockfile importer entries and answers with a
+// CONCRETE version while the other side answers with the declared RANGE, and
+// the diff fabricates a caret→exact row for a dependency nothing touched.
+describe("computeWorkspaceDependencyDiffs (cross-seeded catalogs, #539)", () => {
+	const HOOK_CATALOG = "catalog:effected";
+
+	const side = (catalogs: Record<string, Record<string, string>>, spec: string, recorded: string) =>
+		new WorkspaceStateSnapshot({
+			packages: [
+				new PackageStateSnapshot({
+					name: "@x/pkg",
+					version: "1.0.0",
+					relativePath: "packages/pkg",
+					dependencies: { "@effected/jsonc": spec },
+				}),
+			],
+			catalogs: CatalogSet.fromCatalogs(catalogs),
+			importerVersions: { "packages/pkg": { "@effected/jsonc": recorded } },
+		});
+
+	it("emits ZERO rows when a hook-injected catalog range is unchanged and only visible on the after side", () => {
+		// before = at-ref: the hook catalog is invisible there, only the lockfile
+		// concrete 0.7.0 exists. after = worktree with hook replay: ^0.7.0.
+		const before = side({}, HOOK_CATALOG, "0.7.0");
+		const after = side({ effected: { "@effected/jsonc": "^0.7.0" } }, HOOK_CATALOG, "0.7.0");
+		expect(computeWorkspaceDependencyDiffs(before, after)).toEqual([]);
+	});
+
+	it("emits ZERO rows in the symmetric direction (catalog only visible on the before side)", () => {
+		const before = side({ effected: { "@effected/jsonc": "^0.7.0" } }, HOOK_CATALOG, "0.7.0");
+		const after = side({}, HOOK_CATALOG, "0.7.0");
+		expect(computeWorkspaceDependencyDiffs(before, after)).toEqual([]);
+	});
+
+	it("emits ZERO rows when a plain caret range merely adopted the hook-injected catalog specifier", () => {
+		const before = side({}, "^0.7.0", "0.7.0");
+		const after = side({ effected: { "@effected/jsonc": "^0.7.0" } }, HOOK_CATALOG, "0.7.0");
+		expect(computeWorkspaceDependencyDiffs(before, after)).toEqual([]);
+	});
+
+	it("does NOT mask a real range movement: each side's own catalogs win over the seed", () => {
+		const before = side({ effected: { "@effected/jsonc": "^0.6.0" } }, HOOK_CATALOG, "0.6.2");
+		const after = side({ effected: { "@effected/jsonc": "^0.7.0" } }, HOOK_CATALOG, "0.7.0");
+		const [diff] = computeWorkspaceDependencyDiffs(before, after);
+		expect(diff?.rows).toEqual([
+			{ dependency: "@effected/jsonc", type: "dependency", action: "updated", from: "^0.6.0", to: "^0.7.0" },
+		]);
+	});
+
+	it("still falls back to the lockfile importer entry when NEITHER side's catalogs resolve", () => {
+		const before = side({}, HOOK_CATALOG, "0.7.0");
+		const after = side({}, HOOK_CATALOG, "0.7.2");
+		const [diff] = computeWorkspaceDependencyDiffs(before, after);
+		expect(diff?.rows).toEqual([
+			{ dependency: "@effected/jsonc", type: "dependency", action: "updated", from: "0.7.0", to: "0.7.2" },
+		]);
+	});
+});

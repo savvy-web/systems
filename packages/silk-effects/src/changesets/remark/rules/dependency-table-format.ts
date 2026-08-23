@@ -8,7 +8,11 @@
  * This rule performs both structural and semantic validation on dependency tables:
  *
  * **Structural validation** (via `parseDependencyTable` and Effect Schema):
- * - The Dependencies section must contain a table, not a list or paragraph.
+ * - The Dependencies section must contain a table ANYWHERE between its heading
+ *   and the next heading — prose may precede or follow it (issues #456/#457).
+ *   A section with no table (prose or list only) fails, reported at the
+ *   `## Dependencies` heading (the anchor both engines share; see
+ *   `src/changesets/utils/dependency-section.ts`).
  * - The table must have the correct columns: Dependency, Type, Action, From, To.
  * - The `Type` column must be one of the recognized dependency types
  *   (`dependency`, `devDependency`, `peerDependency`, `optionalDependency`, `workspace`, `config`).
@@ -49,7 +53,7 @@
  * console.log(result.messages.length); // 0
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH005.md | CSH005 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH005.md | CSH005 rule documentation}
  * @see {@link AggregateDependencyTablesPlugin} for the transform plugin that merges dependency tables
  * @see {@link ContentStructureRule} for general section content validation
  *
@@ -61,6 +65,7 @@ import { toString as nodeToString } from "mdast-util-to-string";
 import { lintRule } from "unified-lint-rule";
 import { visit } from "unist-util-visit";
 import { RULE_DOCS } from "../../constants.js";
+import { scanDependencySection } from "../../utils/dependency-section.js";
 import { parseDependencyTable } from "../../utils/dependency-table.js";
 
 /** @internal */
@@ -74,17 +79,19 @@ export const DependencyTableFormatRule = lintRule(
 			if (nodeToString(node).toLowerCase() !== "dependencies") return;
 			if (index === undefined) return;
 
-			// Collect content nodes until next heading or end
-			const content: RootContent[] = [];
-			for (let i = index + 1; i < tree.children.length; i++) {
-				const child = tree.children[i];
-				if (child.type === "heading") break;
-				content.push(child);
-			}
+			// Shared section-scanning decision (issues #456/#457): the first table
+			// ANYWHERE in the section satisfies the rule; prose may precede or
+			// follow it. The semantics live in scanDependencySection so this rule
+			// and the sibling markdownlint rule cannot drift.
+			const scan = scanDependencySection<RootContent>(tree.children, index + 1, {
+				isHeading: (n) => n.type === "heading",
+				isTable: (n) => n.type === "table",
+			});
 
-			// Must have exactly one table
-			const tables = content.filter((n) => n.type === "table");
-			if (tables.length === 0) {
+			// Position choice (documented in utils/dependency-section.ts): a
+			// section with no table reports at the Dependencies HEADING, matching
+			// the markdownlint rule's anchor for the same diagnostic.
+			if (scan.table === undefined) {
 				file.message(
 					`Dependencies section must contain a table, not a list or paragraph. See: ${RULE_DOCS.CSH005}`,
 					node,
@@ -92,7 +99,7 @@ export const DependencyTableFormatRule = lintRule(
 				return;
 			}
 
-			const table = tables[0] as Table;
+			const table = scan.table as Table;
 
 			// Validate structure via parseDependencyTable (handles column names,
 			// types, and actions via Schema.decodeUnknownSync). Then do semantic

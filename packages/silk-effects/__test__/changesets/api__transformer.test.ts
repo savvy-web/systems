@@ -55,6 +55,15 @@ describe("ChangelogTransformer.transformContent", () => {
 		expect(result).toContain("Thanks to");
 		expect(result).toContain("@alice");
 		expect(result).toContain("contributions");
+		expect(result).toContain("### Thanks");
+	});
+
+	it("thanks: false strips attributions and emits no Thanks section", () => {
+		const input = "## 1.0.0\n\n### Features\n\n- Added X Thanks [@alice](https://github.com/alice)!\n";
+		const result = ChangelogTransformer.transformContent(input, { thanks: false });
+		expect(result).toContain("Added X");
+		expect(result).not.toContain("Thanks");
+		expect(result).not.toContain("@alice");
 	});
 
 	it("converts issue links to reference-style", () => {

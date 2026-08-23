@@ -31,6 +31,7 @@
  */
 
 import { Effect, Schema } from "effect";
+import type { Heading, List, Paragraph, PhrasingContent, Root, RootContent } from "mdast";
 
 import { resolveCommitType } from "../categories/index.js";
 import { GitHubInfoSchema } from "../schemas/github.js";
@@ -39,11 +40,102 @@ import { GitHubService } from "../services/github.js";
 import { parseCommitMessage } from "../utils/commit-parser.js";
 import { parseIssueReferences } from "../utils/issue-refs.js";
 import { logWarning } from "../utils/logger.js";
+import { parseMarkdown, stringifyMarkdown } from "../utils/remark-pipeline.js";
 import { parseChangesetSections } from "../utils/section-parser.js";
 import type { GitHubCommitInfo } from "../vendor/github-info.js";
 import type { NewChangesetWithCommit, VersionType } from "../vendor/types.js";
 import type { ChangelogEntry } from "./formatting.js";
 import { formatChangelogEntry, formatPRAndUserAttribution } from "./formatting.js";
+
+/**
+ * Stringify a single MDAST block node back to markdown, trimmed.
+ *
+ * @internal
+ */
+function stringifyNode(node: RootContent): string {
+	const root: Root = { type: "root", children: [node] };
+	return stringifyMarkdown(root).trimEnd();
+}
+
+/**
+ * Render one top-level section content node to markdown.
+ *
+ * @remarks
+ * The emit decision is made on the node type, never on string prefixes:
+ *
+ * - **paragraph** — rendered as a `- ` bullet, with continuation lines
+ *   indented two spaces so multi-line prose stays inside the list item
+ *   (the historical behavior for simple prose content).
+ * - **heading** — promoted one level so a changeset `###` sub-heading emits
+ *   as `####` and can never collide with the changelog's depth-3 category
+ *   headings (which the version-block utilities and merge/reorder/dedup
+ *   plugins treat as section boundaries). Depths are clamped to the 4–6
+ *   range: promoting below 4 could fabricate a version or category heading.
+ * - **everything else** (list, table, code fence, blockquote, ...) — passes
+ *   through verbatim as a block: never bullet-prefixed, never
+ *   continuation-indented.
+ *
+ * @internal
+ */
+function renderSectionNode(node: RootContent): string {
+	if (node.type === "paragraph") {
+		const lines = stringifyNode(node).split("\n");
+		const [first, ...rest] = lines;
+		return [`- ${first}`, ...rest.map((line) => (line.length > 0 ? `  ${line}` : line))].join("\n");
+	}
+	if (node.type === "heading") {
+		const heading = node as Heading;
+		const promoted: Heading = {
+			...heading,
+			depth: Math.min(Math.max(heading.depth + 1, 4), 6) as Heading["depth"],
+		};
+		return stringifyNode(promoted);
+	}
+	return stringifyNode(node);
+}
+
+/**
+ * Parse an attribution suffix (e.g. `" [#42](url) Thanks [\@user](url)!"`)
+ * into phrasing nodes ready to append to a paragraph, prefixed with a
+ * separating space.
+ *
+ * @internal
+ */
+function attributionPhrasing(attribution: string): PhrasingContent[] | undefined {
+	const trimmed = attribution.trim();
+	if (trimmed === "") return undefined;
+	const first = parseMarkdown(trimmed).children[0];
+	if (first?.type !== "paragraph") return undefined;
+	return [{ type: "text", value: " " }, ...(first as Paragraph).children];
+}
+
+/**
+ * Find the paragraph the attribution should be appended to: the LAST
+ * top-level paragraph, or the last paragraph of the last item of the LAST
+ * top-level list, across all section content nodes. Tables, headings, code
+ * fences and blockquotes are never targets — attribution must not land
+ * inside them.
+ *
+ * @internal
+ */
+function findAttributionTarget(sections: readonly { contentNodes: RootContent[] }[]): Paragraph | undefined {
+	let target: Paragraph | undefined;
+	for (const section of sections) {
+		for (const node of section.contentNodes) {
+			if (node.type === "paragraph") {
+				target = node as Paragraph;
+			} else if (node.type === "list") {
+				const items = (node as List).children;
+				const lastItem = items[items.length - 1];
+				const lastParagraph = lastItem?.children
+					.filter((child): child is Paragraph => child.type === "paragraph")
+					.at(-1);
+				if (lastParagraph) target = lastParagraph;
+			}
+		}
+	}
+	return target;
+}
 
 /**
  * Format a single changeset into a markdown release line.
@@ -112,46 +204,48 @@ export function getReleaseLine(
 		const bodyText = changeset.summary.split("\n").slice(1).join("\n");
 		const issueRefs = parseIssueReferences(bodyText);
 
-		// 5. Build attribution suffix
+		// 5. Build attribution suffix. `thanks: false` strips the user credit
+		//    everywhere; the PR reference is provenance, not thanks, and stays.
+		const includeThanks = options.thanks !== false;
 		const attribution = commitInfo
 			? formatPRAndUserAttribution(
 					commitInfo.pull ?? undefined,
-					commitInfo.user ?? undefined,
+					includeThanks ? (commitInfo.user ?? undefined) : undefined,
 					commitInfo.links as { pull?: string; user?: string },
 				)
 			: "";
 
-		// 6. Section-aware formatting (h2 headings present)
+		// 6. Section-aware formatting (h2 headings present). Rendering is
+		//    AST-native: each content node is emitted by type (see
+		//    renderSectionNode), so headings, tables, code fences and
+		//    blockquotes pass through as blocks instead of being wrapped
+		//    into a bullet.
 		if (parsed.sections.length > 0) {
-			const lines: string[] = [];
-
-			if (parsed.preamble) {
-				lines.push(parsed.preamble);
-				lines.push("");
+			// Attribution attaches to the last paragraph/bullet across the whole
+			// entry — never to a table row or heading. Mutate before rendering.
+			const phrasing = attributionPhrasing(attribution);
+			let standaloneAttribution: string | undefined;
+			if (phrasing) {
+				const target = findAttributionTarget(parsed.sections);
+				if (target) {
+					target.children.push(...phrasing);
+				} else {
+					standaloneAttribution = attribution.trim();
+				}
 			}
+
+			const blocks: string[] = [];
+			if (parsed.preamble) blocks.push(parsed.preamble);
 
 			for (const section of parsed.sections) {
-				lines.push(`### ${section.category.heading}`);
-				lines.push("");
-
-				if (section.content) {
-					// Content may already contain list items; render the first line as-is
-					const contentLines = section.content.split("\n");
-					const firstContentLine = contentLines[0];
-					if (firstContentLine.startsWith("- ") || firstContentLine.startsWith("* ")) {
-						lines.push(firstContentLine);
-						lines.push(...contentLines.slice(1));
-					} else {
-						// Indent prose continuation lines so they stay inside the list item
-						lines.push(`- ${firstContentLine}`);
-						lines.push(...contentLines.slice(1).map((line) => (line.length > 0 ? `  ${line}` : line)));
-					}
+				blocks.push(`### ${section.category.heading}`);
+				for (const node of section.contentNodes) {
+					blocks.push(renderSectionNode(node));
 				}
-				lines.push("");
 			}
 
-			const result = lines.join("\n").trimEnd();
-			return `${result}${attribution}`;
+			if (standaloneAttribution) blocks.push(standaloneAttribution);
+			return blocks.join("\n\n");
 		}
 
 		// 7. Flat-text formatting (backward-compatible)

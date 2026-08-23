@@ -14,7 +14,16 @@ describe("DependencyTableTypeSchema", () => {
 	const decode = Schema.decodeUnknownSync(DependencyTableTypeSchema);
 
 	it("accepts valid dependency types", () => {
-		for (const t of ["dependency", "devDependency", "peerDependency", "optionalDependency", "workspace", "config"]) {
+		for (const t of [
+			"dependency",
+			"devDependency",
+			"peerDependency",
+			"optionalDependency",
+			"workspace",
+			"config",
+			"runtime",
+			"packageManager",
+		]) {
 			expect(decode(t)).toBe(t);
 		}
 	});

@@ -21,10 +21,25 @@ export const ChangesetDepsDetectPackage = Schema.Struct({
 	rows: Schema.Array(Changesets.DependencyTableRowSchema),
 }).annotate({ identifier: "ChangesetDepsDetectPackage" });
 
+/**
+ * An untouched prose-only changeset releasing a package in scope for the run
+ * (#279) — informational, so the result accounts for every changeset touching
+ * an in-scope package.
+ */
+export const ChangesetDepsDetectCoexisting = Schema.Struct({
+	file: Schema.String,
+	packages: Schema.Array(Schema.String),
+}).annotate({ identifier: "ChangesetDepsDetectCoexisting" });
+
 /** The `changeset_deps_detect` tool result. */
 export const ChangesetDepsDetectResult = Schema.Struct({
 	root: Schema.String,
 	packages: Schema.Array(ChangesetDepsDetectPackage),
+	coexisting: Schema.Array(ChangesetDepsDetectCoexisting).annotate({
+		description:
+			"Prose-only changesets referencing an in-scope package (no Dependencies section). Informational — a regen " +
+			"run would leave these untouched.",
+	}),
 }).annotate({
 	identifier: "ChangesetDepsDetectResult",
 	title: "changeset_deps_detect result",
@@ -56,8 +71,20 @@ const mdInline = (value: string): string => {
 
 /** Render the structured result as a markdown transcript. */
 const renderMarkdown = (data: ChangesetDepsDetectResultType): string => {
+	const coexistingLines =
+		data.coexisting.length === 0
+			? []
+			: [
+					``,
+					`## Coexisting prose changesets (untouched by regen)`,
+					``,
+					...data.coexisting.map((c) => `- ${mdInline(c.file)} (${c.packages.map(mdInline).join(", ")})`),
+				];
 	if (data.packages.length === 0) {
-		return `# changeset deps detect — ${mdInline(data.root)}\n\nNo dependency changes detected.`;
+		return [`# changeset deps detect — ${mdInline(data.root)}`, ``, `No dependency changes detected.`]
+			.concat(coexistingLines)
+			.join("\n")
+			.trimEnd();
 	}
 	const lines = [`# changeset deps detect — ${mdInline(data.root)}`, ``];
 	for (const pkg of data.packages) {
@@ -68,6 +95,7 @@ const renderMarkdown = (data: ChangesetDepsDetectResultType): string => {
 		}
 		lines.push(``);
 	}
+	lines.push(...coexistingLines);
 	return lines.join("\n").trimEnd();
 };
 
@@ -121,5 +149,6 @@ export const changesetDepsDetect = (
 				relativePath: entry.diff.relativePath,
 				rows: entry.diff.rows,
 			})),
+			coexisting: plan.coexisting.map((entry) => ({ file: entry.file, packages: [...entry.packages] })),
 		} as ChangesetDepsDetectResultType;
 	});

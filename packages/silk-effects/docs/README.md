@@ -38,6 +38,7 @@ There are no sub-path exports. Everything is imported from `@savvy-web/silk-effe
 - [Changeset config](./04-changeset-config.md) — reading and decoding `.changeset/config.json`
 - [ConfigDiscovery](./05-config-discovery.md) — priority-based config file search
 - [BiomeSchemaSync](./06-biome-sync.md) — keeping Biome `$schema` URLs current
+- Changeset lint rules — [CSH001](./rules/CSH001.md) through [CSH005](./rules/CSH005.md), the section rules `ChangesetLinter` enforces
 
 ## Services by platform layer
 

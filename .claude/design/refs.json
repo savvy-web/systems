@@ -52,8 +52,8 @@
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "7f75b48d248adbc4c044a6eacdf7d34a1c985997b3eee1f46bd32b590ebe6056",
-			"recordedAt": "2026-08-16"
+			"hash": "3dcf79661f704b3826ccd7fdbd0683106b2bed6ba7f15eb2dee1aafdc4a99f1d",
+			"recordedAt": "2026-08-23"
 		},
 		{
 			"source": "packages/pnpm-plugin-silk/CLAUDE.md",
@@ -70,14 +70,20 @@
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
 			"target": ".claude/design/silk-effects/architecture.md",
-			"hash": "39c245301a754c41cb372f281875e49f50ddb70bc9d76f5a779c37065a474d3a",
-			"recordedAt": "2026-08-17"
+			"hash": "6740b36168ea7277cc7331ed05145b5b08250087c9f2164ecfea8639eac02d59",
+			"recordedAt": "2026-08-23"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/kit-peer-dependencies.md",
+			"hash": "793db0bbdde00c201766563bb022b1dc750ad4c84d69cb1c95101a917c8c9e4a",
+			"recordedAt": "2026-08-23"
 		},
 		{
 			"source": "packages/silk/CLAUDE.md",
 			"target": ".claude/design/silk/architecture.md",
-			"hash": "c856a24b19bbea63db862612b30ba8a263a3d9c09ec3aae946908cc6289c9752",
-			"recordedAt": "2026-07-25"
+			"hash": "68f6327706efc0cb596363887edd67ae1aca490304108d50f94aa53e4d4d4d5d",
+			"recordedAt": "2026-08-23"
 		},
 		{
 			"source": "packages/templates/CLAUDE.md",

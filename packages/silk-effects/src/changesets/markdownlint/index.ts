@@ -14,11 +14,11 @@
  * - {@link UncategorizedContentRule | changeset-uncategorized-content} (CSH004): Reject content before first h2 heading
  * - {@link DependencyTableFormatRule | changeset-dependency-table-format} (CSH005): Validate dependency table structure
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH001.md | CSH001 docs}
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH002.md | CSH002 docs}
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH003.md | CSH003 docs}
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH004.md | CSH004 docs}
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH005.md | CSH005 docs}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH001.md | CSH001 docs}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH002.md | CSH002 docs}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH003.md | CSH003 docs}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH004.md | CSH004 docs}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH005.md | CSH005 docs}
  *
  */
 

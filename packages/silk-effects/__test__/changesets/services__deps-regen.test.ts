@@ -237,6 +237,7 @@ describe("DepsRegen plan/execute", () => {
 				toDelete: [],
 				toWrite: [{ file: join(dir, "no-such-subdir", "brave-dogs-laugh.md"), package: "@x/a", diff: cannedDiff }],
 				skippedMixed: [],
+				coexisting: [],
 			};
 			const result = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
@@ -254,6 +255,7 @@ describe("DepsRegen plan/execute", () => {
 				toDelete: [{ file: join(dir, "never-existed.md"), package: "@x/a" }],
 				toWrite: [{ file: join(dir, "calm-owls-sing.md"), package: "@x/a", diff: cannedDiff }],
 				skippedMixed: [],
+				coexisting: [],
 			};
 			const result = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
@@ -262,6 +264,72 @@ describe("DepsRegen plan/execute", () => {
 			expect(result.written).toEqual([join(dir, "calm-owls-sing.md")]);
 			expect(result.deleted).toEqual([]);
 			expect(existsSync(join(dir, "calm-owls-sing.md"))).toBe(true);
+		}),
+	);
+});
+
+describe("DepsRegen — coexisting prose changesets are surfaced, not silently invisible (#279)", () => {
+	// Same before/after as the main suite: @scope/foo has a real dependency diff.
+	const before = wss([{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: "3.18.0" } }]);
+	const after = wss([{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: "3.19.0" } }]);
+	const InspectorLayer = Layer.succeed(ConfigInspector, {
+		inspect: () => Effect.succeed({ baseBranch: "main" }),
+		classify: () => Effect.succeed([]),
+		refresh: () => Effect.void,
+	} as never);
+	const DiscoveryLayer = Layer.succeed(WorkspaceDiscovery, {
+		listPackages: () => Effect.succeed([{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" }]),
+		refresh: () => Effect.void,
+	} as never);
+	const DetectorLayer = Layer.succeed(PublishabilityDetector, {
+		detect: () => Effect.succeed([{}]),
+	} as never);
+	const live = DepsRegen.layer.pipe(
+		Layer.provide(
+			Layer.mergeAll(
+				pitStub(before, after),
+				InspectorLayer,
+				DiscoveryLayer,
+				DetectorLayer,
+				configStub({ versionPrivate: false, ignored: [] }),
+			),
+		),
+		Layer.provide(Git.layer),
+	);
+
+	it.effect("plan() and execute() report an untouched prose changeset referencing an in-scope package", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-coexist-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			// Prose-only changeset for the in-scope package: no Dependencies section,
+			// so it is neither pure (delete candidate) nor mixed (skippedMixed).
+			const proseFile = join(csDir, "sweet-cooks-guess.md");
+			writeFileSync(
+				proseFile,
+				["---", '"@scope/foo": minor', "---", "", "## Features", "", "Adds a thing.", ""].join("\n"),
+			);
+			// Prose changeset for a package NOT in scope for this run — must not appear.
+			const outOfScopeFile = join(csDir, "other-pkg-prose.md");
+			writeFileSync(
+				outOfScopeFile,
+				["---", '"@scope/unrelated": patch', "---", "", "## Fixes", "", "Unrelated.", ""].join("\n"),
+			);
+
+			const { plan, result } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(plan.coexisting).toEqual([{ file: proseFile, packages: ["@scope/foo"] }]);
+			expect(result.coexisting).toEqual([{ file: proseFile, packages: ["@scope/foo"] }]);
+			// Untouched: not deleted, not written over, not classified as mixed.
+			expect(plan.toDelete.map((d) => d.file)).not.toContain(proseFile);
+			expect(plan.skippedMixed).not.toContain(proseFile);
+			expect(existsSync(proseFile)).toBe(true);
+			expect(existsSync(outOfScopeFile)).toBe(true);
 		}),
 	);
 });

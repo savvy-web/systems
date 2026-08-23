@@ -96,6 +96,8 @@ describe("serializeDependencyTable", () => {
 		const original: DependencyTableRow[] = [
 			{ dependency: "typescript", type: "devDependency", action: "updated", from: "^5.4.0", to: "^5.6.0" },
 			{ dependency: "new-pkg", type: "dependency", action: "added", from: "\u2014", to: "^1.0.0" },
+			{ dependency: "node", type: "runtime", action: "updated", from: "25.6.0", to: "26.0.0" },
+			{ dependency: "pnpm", type: "packageManager", action: "updated", from: "11.22.0", to: "11.23.0" },
 		];
 		const table = serializeDependencyTable(original);
 		const parsed = parseDependencyTable(table);
@@ -246,20 +248,23 @@ describe("sortDependencyRows", () => {
 	});
 });
 
-describe("dependency table cells are emitted literally", () => {
-	/** Cells whose characters remark-stringify would otherwise escape. */
+describe("dependency table cells survive the canonical escaping", () => {
+	/**
+	 * Cells whose characters the canonical stringifier escapes in the raw
+	 * bytes. The escaping is a spelling, not a value change: parsing consumes
+	 * the backslashes, so cell VALUES round-trip byte-identically and never
+	 * accumulate escape layers across emit/parse cycles.
+	 */
 	const ESCAPE_BAIT: DependencyTableRow[] = [
 		{ dependency: "@effected/semver", type: "dependency", action: "updated", from: "~0.2.0", to: "~0.2.1" },
 		{ dependency: "some_pkg", type: "dependency", action: "updated", from: "1.0.0", to: "2.0.0" },
 	];
 
-	it("does not escape ~ in version specifiers or _ in package names", () => {
+	it("escapes ~ and _ in the raw bytes (canonical form)", () => {
 		const md = serializeDependencyTableToMarkdown(ESCAPE_BAIT);
-		expect(md).not.toContain("\\~");
-		expect(md).not.toContain("\\_");
-		expect(md).toContain("~0.2.0");
-		expect(md).toContain("~0.2.1");
-		expect(md).toContain("some_pkg");
+		expect(md).toContain("\\~0.2.0");
+		expect(md).toContain("\\~0.2.1");
+		expect(md).toContain("some\\_pkg");
 	});
 
 	it("round-trips cell values byte-identically through markdown", () => {
@@ -267,16 +272,11 @@ describe("dependency table cells are emitted literally", () => {
 		expect(parseDependencyTable(getTable(md))).toEqual(ESCAPE_BAIT);
 	});
 
-	it("does not compound escapes when a corrupted value is re-serialized", () => {
-		// A value already carrying the legacy backslash must not gain another layer.
-		// Such a value cannot round-trip through parse — VERSION_RE rejects it — so
-		// only the write side is assertable here.
-		const corrupted: DependencyTableRow[] = [
-			{ dependency: "@effected/semver", type: "dependency", action: "updated", from: "\\~0.2.0", to: "~0.2.1" },
-		];
-		const md = serializeDependencyTableToMarkdown(corrupted);
-		expect(md).not.toContain("\\\\\\~");
-		expect(md).toContain("\\\\~0.2.0");
+	it("does not accumulate escape layers across emit/parse cycles", () => {
+		const first = serializeDependencyTableToMarkdown(ESCAPE_BAIT);
+		const reparsed = parseDependencyTable(getTable(first));
+		const second = serializeDependencyTableToMarkdown(reparsed);
+		expect(second).toBe(first);
 	});
 
 	it("escapes a pipe so it cannot break out of its cell", () => {
@@ -292,12 +292,12 @@ describe("dependency table cells are emitted literally", () => {
 		expect(stringifyMarkdown(tree)).toContain("some\\_snake\\_case");
 	});
 
-	it("emits literal cells when the table node is stringified as part of a document", () => {
+	it("emits the same cell escaping when the table is part of a document", () => {
 		// The aggregate-dependency-tables plugin inserts the mdast node into a
-		// changeset AST, which is stringified through the shared pipeline.
+		// changeset AST, which is stringified through the shared emit boundary,
+		// so document-level and standalone serialization agree byte-for-byte.
 		const table = serializeDependencyTable(ESCAPE_BAIT);
 		const md = stringifyMarkdown({ type: "root", children: [table] });
-		expect(md).not.toContain("\\~");
-		expect(md).not.toContain("\\_");
+		expect(md.trim()).toBe(serializeDependencyTableToMarkdown(ESCAPE_BAIT));
 	});
 });

@@ -37,6 +37,7 @@ import { compileAndExpand } from "@effected/walker";
 import type { WorkspaceDiscoveryShape } from "@effected/workspaces";
 import { WorkspaceDiscovery } from "@effected/workspaces";
 import { Context, Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
+import { MARKDOWNLINT_CONFIG_PATH } from "../../lint/cli/sections.js";
 import type { ChangesetConfigReaderShape } from "../../services/ChangesetConfigReader.js";
 import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";
 import type { RawPackageJson } from "../../services/SilkPublishability.js";
@@ -90,6 +91,15 @@ export const ClassificationReasonSchema = Schema.Union([
 	Schema.Literal("workspace"),
 	Schema.Struct({ kind: Schema.Literal("additionalScope"), glob: Schema.String }),
 	Schema.Struct({ kind: Schema.Literal("versionFile"), glob: Schema.String }),
+	Schema.Struct({
+		kind: Schema.Literal("unmappedHint"),
+		hint: Schema.String.annotate({
+			description:
+				"Why this UNMAPPED path is probably not an unattributed change: it matches a config glob whose file no " +
+				"longer materializes (deleted versionFiles / additionalScopes target) or mirrors a known package template. " +
+				"The package stays null — a hint is context, not attribution.",
+		}),
+	}),
 	Schema.Null,
 ]).annotate({ identifier: "ClassificationReason" });
 /** Reason a path was attributed to a package (or left unmapped). @public */
@@ -144,6 +154,26 @@ export interface ConfigInspectorShape {
 	 * @returns An Effect that clears the cache and succeeds with `void`.
 	 */
 	readonly refresh: () => Effect.Effect<void>;
+
+	/**
+	 * Drop the cached {@link InspectedConfig} for ONE root — the workspace
+	 * containing `directory` — leaving every other root's cache and discovery
+	 * memo untouched. The per-root counterpart to
+	 * {@link ConfigInspectorShape.refresh} for a long-lived host serving many
+	 * roots (the savvy-mcp server): refreshing before a per-call `inspect`
+	 * should not discard sibling worktrees' state that did not change.
+	 *
+	 * @remarks
+	 * Best-effort by design: a `directory` in no workspace is ignored here and
+	 * fails with a proper `ConfigurationError` at the subsequent
+	 * `inspect`/`classify` call instead.
+	 *
+	 * @param directory - Absolute path to the project root (or any directory
+	 *   inside it).
+	 * @returns An Effect that clears that root's cache and succeeds with
+	 *   `void`.
+	 */
+	readonly refreshIn: (directory: string) => Effect.Effect<void>;
 }
 
 /**
@@ -633,10 +663,15 @@ function makeShape(
 				Effect.mapError((parseError) => configErrorFromParseError(parseError, configPath)),
 			);
 
-			// The kit's discovery is bound to the root its layer was built with
-			// (`WorkspaceDiscovery.layer({ cwd })`) — the inspector is single-root
-			// by design, so `projectDir` must match that root.
-			const workspaceList = yield* discovery.listPackages().pipe(
+			// Per-call-root discovery (#487). A long-lived host (the savvy-mcp
+			// server) builds the discovery layer ONCE for its startup root, but a
+			// caller in a git worktree of the same repository inspects a DIFFERENT
+			// projectDir. `listPackagesIn` re-READS beneath projectDir's own
+			// resolved root (memoized per root), so names, versions AND membership
+			// come from the actual per-call root — a package the worktree branch
+			// adds or removes is seen, not approximated from the layer-bound
+			// root's manifests as the old relativePath re-rooting did.
+			const workspaceList = yield* discovery.listPackagesIn(projectDir).pipe(
 				Effect.mapError(
 					(err) =>
 						new ConfigurationError({
@@ -645,12 +680,7 @@ function makeShape(
 						}),
 				),
 			);
-
-			const workspaces = workspaceList.map((w) => ({
-				name: w.name,
-				path: w.path,
-				version: w.version,
-			}));
+			const workspaces = workspaceList.map((w) => ({ name: w.name, path: w.path, version: w.version }));
 
 			const hasExplicitPackages = Object.keys(decodedOptions.packages ?? {}).length > 0;
 
@@ -722,7 +752,56 @@ function makeShape(
 			yield* discovery.refresh();
 		});
 
-	return { inspect, classify, refresh };
+	const refreshIn = (directory: string): Effect.Effect<void> =>
+		Effect.gen(function* () {
+			const projectDir = resolve(directory);
+			cache.delete(projectDir);
+			// The kit's refreshIn fails typed on a directory in no workspace;
+			// the pre-clean stays error-free and lets inspect() report that
+			// case as its ordinary ConfigurationError.
+			yield* Effect.ignore(discovery.refreshIn(projectDir));
+		});
+
+	return { inspect, classify, refresh, refreshIn };
+}
+
+/**
+ * Known template-mirror pairs (#290): repo files generated from (or kept in
+ * byte-lockstep with) a template a package ships, keyed by projectDir-relative
+ * POSIX path. An unmapped diff on one of these is a mirror of an already
+ * attributed template change, not an unattributed change needing its own
+ * changeset — the hint spares the agent a manual diff. Deliberately a small
+ * static table, not a diff-correlation engine.
+ */
+const TEMPLATE_MIRRORS: Readonly<Record<string, string>> = {
+	[MARKDOWNLINT_CONFIG_PATH]:
+		"mirrors the @savvy-web/silk-effects markdownlint template (src/lint/cli/templates/markdownlint.gen.ts)",
+};
+
+/**
+ * A machine-readable hint for a path that mapped to NO package (#290): a
+ * versionFiles / additionalScopes glob that names the path without a
+ * materialized file behind it (the deleted-file shape branch diffs produce),
+ * or a known template mirror. Pure — pattern matching only, no filesystem.
+ * `null` when nothing explains the path.
+ */
+function unmappedHint(inspected: InspectedConfig, rel: string): string | null {
+	for (const s of inspected.packages) {
+		for (const vf of s.versionFiles) {
+			if (globMatchesRel(vf.glob, rel)) {
+				return `versionFiles of "${s.name}" (glob "${vf.glob}")`;
+			}
+		}
+	}
+	for (const s of inspected.packages) {
+		const glob = s.additionalScopes.find((g) => globMatchesRel(g, rel));
+		if (glob !== undefined) {
+			return `additionalScopes of "${s.name}" (glob "${glob}")`;
+		}
+	}
+	// Object.hasOwn guard, never a bare bracket read: a path literally named
+	// "constructor" must not read an inherited Object.prototype member.
+	return Object.hasOwn(TEMPLATE_MIRRORS, rel) ? (TEMPLATE_MIRRORS[rel] as string) : null;
 }
 
 /**
@@ -800,6 +879,19 @@ function classifyOne(inspected: InspectedConfig, path: string): Classification {
 		return { path, package: rootScope, reason: "workspace" };
 	}
 
+	// 5. Unmapped — attach a machine-readable hint when the config or a known
+	// template-mirror pair explains the path (#290). Attribution stays null:
+	// the hint tells the agent WHY the path is probably already accounted for,
+	// it does not claim ownership. Only for paths inside the project — a
+	// `../`/absolute stray gets no hint from project-relative patterns.
+	if (isInside(inspected.projectDir, abs)) {
+		const rel = relative(inspected.projectDir, abs).replaceAll("\\", "/");
+		const hint = unmappedHint(inspected, rel);
+		if (hint !== null) {
+			return { path, package: null, reason: { kind: "unmappedHint", hint } };
+		}
+	}
+
 	return { path, package: null, reason: null };
 }
 
@@ -818,6 +910,7 @@ export function makeConfigInspectorTest(fixed: InspectedConfig): Layer.Layer<Con
 		inspect: () => Effect.succeed(fixed),
 		classify: (_cwd, paths) => Effect.succeed(paths.map((p) => classifyOne(fixed, p))),
 		refresh: () => Effect.void,
+		refreshIn: () => Effect.void,
 	};
 	return Layer.succeed(ConfigInspector, shape);
 }

@@ -158,6 +158,7 @@ describe("transform command – runTransform handler", () => {
 				inspect: () => Effect.fail(new ConfigurationError({ field: "options", reason: "synthetic" })),
 				classify: () => Effect.fail(new ConfigurationError({ field: "options", reason: "synthetic" })),
 				refresh: () => Effect.void,
+				refreshIn: () => Effect.void,
 			});
 
 			const error = yield* Effect.flip(

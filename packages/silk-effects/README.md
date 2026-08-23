@@ -109,7 +109,7 @@ const tags = strategy.tagsFor([{ name: "@savvy-web/silk-effects", version: "1.0.
 
 #### ChangesetLinter
 
-Validate a changeset file against the Silk section rules. `ChangesetLinter.validateContent(content, filePath?)` and `ChangesetLinter.validateFile(filePath)` are static and synchronous, returning `LintMessage[]` — no Effect, no layers. Rules cover the valid section headings, structural constraints, and the dependency-table format, so a `## Dependencies` section written as prose or a bullet list is reported rather than accepted.
+Validate a changeset file against the Silk section rules. `ChangesetLinter.validateContent(content, filePath?)` and `ChangesetLinter.validateFile(filePath)` are static and synchronous, returning `LintMessage[]` — no Effect, no layers. Rules cover the valid section headings, structural constraints, and the dependency-table format: a `## Dependencies` section must contain a dependency table somewhere between its heading and the next — prose may sit before or after the table — and a section with no table at all is reported at the heading. Each rule is documented under [`docs/rules/`](./docs/rules/CSH001.md) (CSH001 through CSH005).
 
 ```typescript
 import { Changesets } from "@savvy-web/silk-effects";
@@ -294,6 +294,8 @@ const preview = yield* planner.preview(root, {
 
 `Changesets.ReleasePlanner.layer` requires `ConfigInspector` and `FileSystem`.
 
+The `Changesets` namespace also re-exports the stock [`@changesets/changelog-git`](https://www.npmjs.com/package/@changesets/changelog-git) renderer as `Changesets.vanillaChangelogFunctions`, for consumers who want the vanilla changelog output without depending on that package directly.
+
 ---
 
 ### FileSystem + process layer required
@@ -408,6 +410,7 @@ const report = await Effect.runPromise(
 - [Changeset config](./docs/04-changeset-config.md) — reading and decoding `.changeset/config.json`
 - [Config discovery](./docs/05-config-discovery.md) — priority-based config file search
 - [Biome sync](./docs/06-biome-sync.md) — keeping Biome `$schema` URLs current
+- Changeset lint rules — [CSH001](./docs/rules/CSH001.md) through [CSH005](./docs/rules/CSH005.md), the section rules `ChangesetLinter` enforces
 
 ## License
 

@@ -34,7 +34,7 @@
  * console.log(invalid.messages[0].reason); // 'Unknown section "Misc"...'
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH002.md | CSH002 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH002.md | CSH002 rule documentation}
  * @see {@link HeadingHierarchyRule} for validating heading depth structure
  * @see {@link UncategorizedContentRule} for detecting content outside of sections
  *

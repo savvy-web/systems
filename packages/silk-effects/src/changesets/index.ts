@@ -67,6 +67,9 @@ export { ChangelogTransformer } from "./api/transformer.js";
 // This object implements ChangelogFunctions from @changesets/types — it is the
 // value that belongs in .changeset/config.json under "changelog": ["...", opts].
 export { default as changelogFunctions } from "./changelog/index.js";
+// The stock changesets renderer (@changesets/changelog-git), re-exported so
+// consumers need not depend on it directly. Exact upstream parity.
+export { vanillaChangelogFunctions } from "./changelog/vanilla.js";
 
 // === Effect Services ===
 
@@ -98,6 +101,7 @@ export {
 	makeConfigInspectorTest,
 } from "./services/config-inspector.js";
 export type {
+	CoexistingChangeset,
 	DepsRegenOptions,
 	DepsRegenPlanError,
 	DepsRegenShape,
@@ -109,6 +113,7 @@ export {
 	DepsRegenDefault,
 	isPureDependencyChangeset,
 	makeDepsRegenDefault,
+	parseChangesetPackages,
 } from "./services/deps-regen.js";
 export type { GitHubServiceShape } from "./services/github.js";
 export { GitHubService } from "./services/github.js";

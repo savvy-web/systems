@@ -905,6 +905,216 @@ describe("ConfigInspector.refresh (#229 — long-lived process staleness)", () =
 				expect(second.packages.map((p) => p.name).sort()).toEqual(["@scope/bar", "@scope/foo"]);
 			}),
 	);
+
+	it.effect("after refreshIn(dir), inspect(dir) also reflects a newly-added workspace package (per-root refresh)", () =>
+		Effect.gen(function* () {
+			const dir = setupBaseBranchFixture();
+			dirs.push(dir);
+
+			const program = Effect.gen(function* () {
+				const inspector = yield* ConfigInspector;
+				const first = yield* inspector.inspect(dir);
+
+				mkdirSync(join(dir, "packages", "bar"), { recursive: true });
+				writeFileSync(
+					join(dir, "packages", "bar", "package.json"),
+					JSON.stringify({ name: "@scope/bar", version: "1.0.0", publishConfig: { access: "public" } }, null, 2),
+				);
+				writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/foo"\n  - "packages/bar"\n');
+
+				// The per-root refresh (#229) with the SAME dir the inspect
+				// targets — must drop that root's InspectedConfig cache AND
+				// its per-root discovery memo, or the second inspect serves
+				// the stale membership.
+				yield* inspector.refreshIn(dir);
+				const second = yield* inspector.inspect(dir);
+				return { first, second };
+			});
+
+			// Same single-shared-instance discipline as the refresh() test above.
+			const { first, second } = yield* program.pipe(Effect.provide(testLive(dir)));
+			expect(first.packages.map((p) => p.name)).toEqual(["@scope/foo"]);
+			expect(second.packages.map((p) => p.name).sort()).toEqual(["@scope/bar", "@scope/foo"]);
+		}),
+	);
+});
+
+describe("ConfigInspector.classify — unmapped-file hints (#290)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	it.effect("hints a versionFiles-linked path that no longer materializes (deleted file)", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "packages/silk", name: "@scope/silk", version: "1.0.0", publishConfig: { access: "public" } },
+				],
+				configJson: makeConfig({
+					packages: { "@scope/silk": { versionFiles: [{ glob: "plugins/*/plugin.json" }] } },
+				}),
+				// No plugins/ files on disk — the glob materializes to nothing, so a
+				// deleted plugin.json in a branch diff lands unmapped.
+			});
+			dirs.push(dir);
+
+			const [c] = yield* runClassify(dir, ["plugins/silk/plugin.json"]);
+			expect(c?.package).toBeNull();
+			expect(c?.reason).toEqual({
+				kind: "unmappedHint",
+				hint: 'versionFiles of "@scope/silk" (glob "plugins/*/plugin.json")',
+			});
+		}),
+	);
+
+	it.effect("hints an additionalScopes-linked path that no longer materializes", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "packages/silk", name: "@scope/silk", version: "1.0.0", publishConfig: { access: "public" } },
+				],
+				configJson: makeConfig({
+					packages: { "@scope/silk": { additionalScopes: ["docs/silk/**"] } },
+				}),
+			});
+			dirs.push(dir);
+
+			const [c] = yield* runClassify(dir, ["docs/silk/guide.md"]);
+			expect(c?.package).toBeNull();
+			expect(c?.reason).toEqual({
+				kind: "unmappedHint",
+				hint: 'additionalScopes of "@scope/silk" (glob "docs/silk/**")',
+			});
+		}),
+	);
+
+	it.effect("hints the known markdownlint template mirror", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "packages/silk", name: "@scope/silk", version: "1.0.0", publishConfig: { access: "public" } },
+				],
+				configJson: makeConfig(),
+			});
+			dirs.push(dir);
+
+			const [c] = yield* runClassify(dir, ["lib/configs/.markdownlint-cli2.jsonc"]);
+			expect(c?.package).toBeNull();
+			expect(c?.reason).toEqual({
+				kind: "unmappedHint",
+				hint: "mirrors the @savvy-web/silk-effects markdownlint template (src/lint/cli/templates/markdownlint.gen.ts)",
+			});
+		}),
+	);
+
+	it.effect("keeps a plain unmapped file's reason null", () =>
+		Effect.gen(function* () {
+			const dir = setupFixture({
+				workspacePackages: [
+					{ relPath: "packages/silk", name: "@scope/silk", version: "1.0.0", publishConfig: { access: "public" } },
+				],
+				configJson: makeConfig(),
+			});
+			dirs.push(dir);
+
+			const [c] = yield* runClassify(dir, ["stray/notes.txt"]);
+			expect(c).toEqual({ path: "stray/notes.txt", package: null, reason: null });
+		}),
+	);
+});
+
+describe("ConfigInspector — inspect from a nested git worktree (#487)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	/** Write one checkout's worth of fixture files into `dir` (same layout in primary and worktree). */
+	const writeCheckout = (dir: string): void => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(
+			join(dir, "package.json"),
+			JSON.stringify({ name: "test-root", version: "1.0.0", private: true, workspaces: ["packages/silk"] }, null, 2),
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/silk"\n');
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+		mkdirSync(join(dir, "packages", "silk"), { recursive: true });
+		writeFileSync(
+			join(dir, "packages", "silk", "package.json"),
+			JSON.stringify({ name: "@scope/silk", version: "1.0.0", publishConfig: { access: "public" } }, null, 2),
+		);
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					...makeConfig({ packages: { "@scope/silk": { additionalScopes: ["plugins/silk/**"] } } }),
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		mkdirSync(join(dir, "plugins", "silk"), { recursive: true });
+		writeFileSync(join(dir, "plugins", "silk", "plugin.json"), "{}\n");
+	};
+
+	it.effect("inspects the WORKTREE root even though the kit discovery layer is bound to the primary checkout", () =>
+		Effect.gen(function* () {
+			// The worktree is NESTED inside the primary checkout — the shape agent
+			// worktrees (.claude/worktrees/*) have, and what makes the primary
+			// root "contain" every worktree path in the shadowing check.
+			const primary = mkdtempSync(join(tmpdir(), "config-inspector-wt-"));
+			dirs.push(primary);
+			writeCheckout(primary);
+			const worktree = join(primary, ".claude", "worktrees", "wt");
+			writeCheckout(worktree);
+
+			// The worktree's branch ADDS a package the primary checkout does not
+			// have. Per-call-root discovery (`listPackagesIn`) must see it — the
+			// old relativePath re-rooting could only rewrite the primary root's
+			// membership onto worktree paths, so this package was invisible.
+			writeFileSync(join(worktree, "pnpm-workspace.yaml"), 'packages:\n  - "packages/silk"\n  - "packages/extra"\n');
+			mkdirSync(join(worktree, "packages", "extra"), { recursive: true });
+			writeFileSync(
+				join(worktree, "packages", "extra", "package.json"),
+				JSON.stringify({ name: "@scope/extra", version: "2.0.0", publishConfig: { access: "public" } }, null, 2),
+			);
+
+			// Discovery bound to the PRIMARY root; inspect() called with the
+			// worktree — exactly the savvy-mcp server shape (#487).
+			const program = Effect.gen(function* () {
+				const inspector = yield* ConfigInspector;
+				const inspected = yield* inspector.inspect(worktree);
+				const classified = yield* inspector.classify(worktree, ["plugins/silk/plugin.json"]);
+				return { inspected, classified };
+			});
+			const { inspected, classified } = yield* program.pipe(Effect.provide(testLive(primary)));
+
+			expect(inspected.projectDir).toBe(worktree);
+			const silk = inspected.packages.find((p) => p.name === "@scope/silk");
+			expect(silk?.workspaceDir).toBe(join(worktree, "packages", "silk"));
+
+			// The worktree-only package IS part of the inspected release surface.
+			const extra = inspected.packages.find((p) => p.name === "@scope/extra");
+			expect(extra?.workspaceDir).toBe(join(worktree, "packages", "extra"));
+			expect(extra?.version).toBe("2.0.0");
+			expect(silk?.additionalScopeFiles).toContain(join(worktree, "plugins", "silk", "plugin.json"));
+			expect(classified[0]).toEqual({
+				path: "plugins/silk/plugin.json",
+				package: "@scope/silk",
+				reason: { kind: "additionalScope", glob: "plugins/silk/**" },
+			});
+		}),
+	);
 });
 
 describe("InspectedConfigSchema", () => {

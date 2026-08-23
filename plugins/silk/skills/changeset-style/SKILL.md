@@ -80,7 +80,7 @@ These rules are enforced by the remark-lint pre-validation layer. Violating them
 | **CSH002** | All `##` headings must exactly match one of the 13 valid categories. |
 | **CSH003** | No empty sections. Code fences must include a language identifier. No empty list items. |
 | **CSH004** | No content before the first `##` heading (the YAML frontmatter is not "content"). |
-| **CSH005** | A `## Dependencies` section **must** contain a Markdown table in the 5-column schema below — prose or a bullet list is invalid, not an alternative form. |
+| **CSH005** | A `## Dependencies` section **must** contain a Markdown table in the 5-column schema below, anywhere in the section — prose may accompany it, but a section with only prose or a bullet list is invalid. |
 
 ### CSH005 dependency table schema
 
@@ -91,14 +91,17 @@ These rules are enforced by the remark-lint pre-validation layer. Violating them
 ```
 
 - **Dependency** — package name (non-empty)
-- **Type** — one of: `dependency`, `devDependency`, `peerDependency`, `optionalDependency`, `workspace`, `config`
+- **Type** — one of: `dependency`, `devDependency`, `peerDependency`, `optionalDependency`, `workspace`, `config`, `runtime`, `packageManager` (`runtime` = a language-runtime upgrade such as node; `packageManager` = the package manager's self-upgrade such as pnpm — both release-neutral, like `devDependency`)
 - **Action** — one of: `added`, `updated`, `removed`
 - **From** — previous version, or `—` (em dash) for additions
 - **To** — new version, or `—` (em dash) for removals
 
 A `## Dependencies` section written as prose or a bullet list — instead of
-this table — is a CSH005 violation, not a stylistic alternative. This is
-enforced uniformly across every path a changeset passes through:
+this table — is a CSH005 violation, not a stylistic alternative. Prose is
+allowed alongside the table: a valid table anywhere in the section satisfies
+the rule, with explanatory text before or after it. Both lint engines
+(remark-lint and markdownlint) share one section-scanning decision, so this
+is enforced uniformly across every path a changeset passes through:
 `savvy changeset check`, the `changeset_validate` MCP tool, and the
 pre-commit hook.
 

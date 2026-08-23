@@ -114,6 +114,14 @@ export const ChangesetOptionsSchema = Schema.Struct({
 	/** Custom issue reference prefixes (e.g., `["#", "GH-"]`). */
 	issuePrefixes: Schema.optional(Schema.Array(Schema.String)),
 	/**
+	 * Whether to credit contributors with `Thanks \@user!` attributions
+	 * (aggregated into a `### Thanks` section by the transform pipeline).
+	 * Defaults to `true`; set `false` to strip attribution entirely —
+	 * no inline thanks and no Thanks section. PR references are kept
+	 * either way.
+	 */
+	thanks: Schema.optional(Schema.Boolean),
+	/**
 	 * Per-package release surfaces. Each entry declares `additionalScopes`
 	 * (globs outside the workspace dir that belong to the package) and
 	 * `versionFiles` (files bumped in lockstep with the package's version).

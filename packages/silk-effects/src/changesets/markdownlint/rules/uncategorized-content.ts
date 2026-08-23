@@ -27,7 +27,7 @@ import { RULE_DOCS, getHeadingLevel } from "./utils.js";
  * }
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH004.md | CSH004 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH004.md | CSH004 rule documentation}
  * @see `src/remark/rules/uncategorized-content.ts` for the corresponding remark-lint rule
  *
  * @public

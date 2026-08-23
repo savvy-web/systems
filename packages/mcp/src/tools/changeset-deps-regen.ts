@@ -13,12 +13,27 @@ import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
 
+/**
+ * An untouched prose-only changeset releasing a package in scope for the run
+ * (#279) — informational, so the result accounts for every changeset touching
+ * an in-scope package.
+ */
+export const ChangesetCoexistingEntry = Schema.Struct({
+	file: Schema.String,
+	packages: Schema.Array(Schema.String),
+}).annotate({ identifier: "ChangesetCoexistingEntry" });
+
 /** The `changeset_deps_regen` tool result. */
 export const ChangesetDepsRegenResult = Schema.Struct({
 	root: Schema.String,
 	deleted: Schema.Array(Schema.String),
 	written: Schema.Array(Schema.String),
 	skippedMixed: Schema.Array(Schema.String),
+	coexisting: Schema.Array(ChangesetCoexistingEntry).annotate({
+		description:
+			"Prose-only changesets referencing an in-scope package that this run left untouched (no Dependencies " +
+			"section). Informational — no need to re-list .changeset/ to confirm a package's full changeset picture.",
+	}),
 	dryRun: Schema.Boolean,
 }).annotate({
 	identifier: "ChangesetDepsRegenResult",
@@ -45,7 +60,12 @@ const mdInline = (value: string): string => {
 /** Render the structured result as a markdown transcript. */
 const renderMarkdown = (data: ChangesetDepsRegenResultType): string => {
 	const heading = `# changeset deps regen — ${mdInline(data.root)}${data.dryRun ? " (dry run)" : ""}`;
-	if (data.deleted.length === 0 && data.written.length === 0 && data.skippedMixed.length === 0) {
+	if (
+		data.deleted.length === 0 &&
+		data.written.length === 0 &&
+		data.skippedMixed.length === 0 &&
+		data.coexisting.length === 0
+	) {
 		return `${heading}\n\nNo dependency changes to regenerate.`;
 	}
 	const lines = [heading, ``];
@@ -63,6 +83,13 @@ const renderMarkdown = (data: ChangesetDepsRegenResultType): string => {
 	if (data.skippedMixed.length > 0) {
 		lines.push(`Skipped ${data.skippedMixed.length} mixed changeset(s):`);
 		for (const file of data.skippedMixed) lines.push(`- ${mdInline(file)}`);
+		lines.push(``);
+	}
+	if (data.coexisting.length > 0) {
+		lines.push(`Coexisting prose changeset(s) for in-scope packages, left untouched:`);
+		for (const entry of data.coexisting) {
+			lines.push(`- ${mdInline(entry.file)} (${entry.packages.map(mdInline).join(", ")})`);
+		}
 	}
 	return lines.join("\n").trimEnd();
 };
@@ -117,6 +144,7 @@ export const changesetDepsRegen = (
 				deleted: plan.toDelete.map((entry) => entry.file),
 				written: plan.toWrite.map((entry) => entry.file),
 				skippedMixed: [...plan.skippedMixed],
+				coexisting: plan.coexisting.map((entry) => ({ file: entry.file, packages: [...entry.packages] })),
 				dryRun: true,
 			} as ChangesetDepsRegenResultType;
 		}
@@ -127,6 +155,7 @@ export const changesetDepsRegen = (
 			deleted: [...result.deleted],
 			written: [...result.written],
 			skippedMixed: [...result.skippedMixed],
+			coexisting: result.coexisting.map((entry) => ({ file: entry.file, packages: [...entry.packages] })),
 			dryRun: false,
 		} as ChangesetDepsRegenResultType;
 	});

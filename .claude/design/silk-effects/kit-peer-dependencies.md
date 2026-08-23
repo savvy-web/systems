@@ -3,8 +3,8 @@ status: current
 module: silk-effects
 category: architecture
 created: 2026-08-22
-updated: 2026-08-22
-last-synced: 2026-08-22
+updated: 2026-08-23
+last-synced: 2026-08-23
 completeness: 90
 related:
   - ./architecture.md
@@ -82,6 +82,30 @@ across the ecosystem.
 
 `catalog:` resolves inside `peerDependencies`; this is long-established here (`effect: catalog:effect:peers`) and
 independently confirmed by eleven manifests in the effected repo doing the same.
+
+## The plugin is the kit's version surface
+
+Formalized upstream in the 2026-08-23 dogfood round. `@effected/pnpm-plugin-effect` publishes the `effected`
+and `effected:peers` catalogs carrying the current version of every kit library. Consumers spell kit
+dependencies `catalog:effected`, never a version — so this repo tracks ONE number, the plugin pin in
+`pnpm-workspace.yaml`'s `configDependencies:`, and bumping it re-resolves every `catalog:effected` specifier at
+once.
+
+Three consequences:
+
+- **A kit-library release without the paired plugin release is invisible** to catalog consumers — a caret on
+  `0.x` pins the minor inside the catalog too. Upstream's release discipline now pairs a library bump with the
+  plugin's catalog bump in one cut (via pending-changeset-aware `catalog:sync`); when coordinating a dogfood
+  round, confirm the cut includes the plugin.
+- **The pin bump is version+integrity, not version alone.** The `configDependencies` entry carries a
+  `+sha512-...` integrity hash; editing the version and leaving the old hash will not install. Obtain the hash
+  from the registry — `npm view @effected/pnpm-plugin-effect@<version> dist.integrity` — and the pin becomes
+  `<version>+<that value>`. (Verified: the current `0.6.3` pin's hash matches exactly what that command
+  returns.)
+- **Dogfood exits skip the range-bump step.** The protocol's "bump declared ranges while linked" step does not
+  apply to catalog-supplied kit ranges — this repo never owns them. The exit equivalent is: remove the `file:`
+  override, bump the plugin pin (version+integrity), `pnpm clean --lockfile && pnpm install` (scripts ON), full
+  gates.
 
 ## The mechanism proved itself immediately
 

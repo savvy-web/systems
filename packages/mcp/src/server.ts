@@ -105,7 +105,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		"changeset_inspect",
 		{
 			description:
-				"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). mode=classify maps arbitrary repo-relative paths to their owning package. Prefer this over shelling out to the savvy CLI.",
+				"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about; an unmapped path may carry a machine-readable unmappedHint reason — e.g. a deleted versionFiles/additionalScopes target or a known template mirror — meaning it is probably already accounted for). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). mode=classify maps arbitrary repo-relative paths to their owning package. Prefer this over shelling out to the savvy CLI.",
 			inputSchema: {
 				mode: z.enum(["branch", "config", "classify"]).describe("Which inspection to run."),
 				base: z.optional(z.string()).describe("Override the base branch (branch mode only)."),
@@ -145,7 +145,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		"changeset_deps_detect",
 		{
 			description:
-				"Read-only preview of the cumulative dependency diff (merge-base -> working tree) per workspace package. Returns each affected package's resolved dependency-table rows (catalog:/workspace: specifiers resolved to concrete versions; devDependencies retained) as the exact rows a pure-dependency changeset would carry. Does NOT write or delete any file. Prefer this over shelling out to savvy changeset deps detect.",
+				"Read-only preview of the cumulative dependency diff (merge-base -> working tree) per workspace package. Returns each affected package's resolved dependency-table rows (catalog:/workspace: specifiers resolved per side; devDependencies retained) as the exact rows a pure-dependency changeset would carry, plus a coexisting list of untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Does NOT write or delete any file. Prefer this over shelling out to savvy changeset deps detect.",
 			inputSchema: {
 				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
 				package: z.optional(z.string()).describe("Restrict output to a single workspace package."),
@@ -187,7 +187,7 @@ export function buildServer(ctx: McpContext): McpServer {
 		"changeset_deps_regen",
 		{
 			description:
-				"Regenerate pure-dependency changesets: delete stale single-package Dependencies-only changesets and write fresh single-package, patch-bump changesets from the cumulative dependency diff (catalog:/workspace: resolved; devDependencies dropped). Mixed changesets (Dependencies plus other content) are left untouched. Set dryRun=true to preview the plan without touching the filesystem. NOTE: without dryRun this tool MUTATES .changeset/*.md (git-reversible). Prefer this over shelling out to savvy changeset deps regen.",
+				"Regenerate pure-dependency changesets: delete stale single-package Dependencies-only changesets and write fresh single-package, patch-bump changesets from the cumulative dependency diff (catalog:/workspace: resolved; devDependencies dropped). Mixed changesets (Dependencies plus other content) are left untouched, and the result's coexisting list accounts for untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Set dryRun=true to preview the plan without touching the filesystem. NOTE: without dryRun this tool MUTATES .changeset/*.md (git-reversible). Prefer this over shelling out to savvy changeset deps regen.",
 			inputSchema: {
 				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
 				package: z.optional(z.string()).describe("Restrict regeneration to a single workspace package."),

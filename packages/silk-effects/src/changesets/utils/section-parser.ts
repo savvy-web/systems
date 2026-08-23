@@ -43,6 +43,16 @@ export interface ParsedSection {
 	heading: string;
 	/** The markdown content under this heading */
 	content: string;
+	/**
+	 * The MDAST nodes under this heading.
+	 *
+	 * @remarks
+	 * The same content as {@link ParsedSection.content}, but as the parsed
+	 * tree slice. The changelog formatter renders from these nodes so that
+	 * emit decisions (bullet vs block) are made on node types rather than
+	 * string prefixes.
+	 */
+	contentNodes: RootContent[];
 }
 
 /**
@@ -154,7 +164,7 @@ export function parseChangesetSections(summary: string): ParsedChangeset {
 
 		const category = fromHeading(headingText);
 		if (category) {
-			result.sections.push({ category, heading: headingText, content });
+			result.sections.push({ category, heading: headingText, content, contentNodes });
 		}
 		// Unknown headings are silently skipped (validation is Layer 1's job)
 	}

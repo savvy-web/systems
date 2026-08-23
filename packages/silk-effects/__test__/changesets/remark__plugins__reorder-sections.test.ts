@@ -81,4 +81,17 @@ describe("reorder-sections", () => {
 		const result = transform("");
 		expect(result.trim()).toBe("");
 	});
+
+	it("sorts a Thanks section last, after every category and unknown heading", () => {
+		const md =
+			"## 1.0.0\n\n### Thanks\n\nThanks to @alice for their contributions!\n\n### Custom Section\n\n- X\n\n### Other\n\n- Y\n\n### Dependencies\n\n- Z\n";
+		const result = transform(md);
+		const depIdx = result.indexOf("### Dependencies");
+		const otherIdx = result.indexOf("### Other");
+		const customIdx = result.indexOf("### Custom Section");
+		const thanksIdx = result.indexOf("### Thanks");
+		expect(depIdx).toBeLessThan(otherIdx);
+		expect(otherIdx).toBeLessThan(customIdx);
+		expect(customIdx).toBeLessThan(thanksIdx);
+	});
 });

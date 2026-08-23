@@ -58,6 +58,31 @@ ${TABLE_HEADER}
 		expect(result).toContain("bar");
 	});
 
+	it("carries runtime and packageManager rows through merge, collapse, and sort (#544)", () => {
+		const md = `## 1.0.0
+
+### Dependencies
+
+${TABLE_HEADER}
+| node | runtime | updated | 25.5.0 | 25.6.0 |
+| effect | dependency | updated | 3.18.0 | 3.19.0 |
+
+### Dependencies
+
+${TABLE_HEADER}
+| node | runtime | updated | 25.6.0 | 26.0.0 |
+| pnpm | packageManager | updated | 11.22.0 | 11.23.0 |
+`;
+		const result = transform(md);
+		expect((result.match(/### Dependencies/g) || []).length).toBe(1);
+		// The two node runtime rows collapse into one spanning both endpoints;
+		// type survives the round-trip verbatim. remark-stringify pads cells,
+		// so match with flexible whitespace.
+		expect(result).toMatch(/\| node\s+\| runtime\s+\| updated \| 25\.5\.0\s+\| 26\.0\.0\s+\|/);
+		expect(result).toMatch(/\| pnpm\s+\| packageManager \| updated \| 11\.22\.0 \| 11\.23\.0 \|/);
+		expect((result.match(/\| node\s+\|/g) || []).length).toBe(1);
+	});
+
 	it("collapses same package across tables", () => {
 		const md = `## 1.0.0
 
@@ -154,5 +179,31 @@ ${TABLE_HEADER}
 		expect(result).not.toContain("### Dependencies");
 		// Features should remain
 		expect(result).toContain("### Features");
+	});
+
+	it("unwraps a bullet-wrapped table and merges it with a proper table", () => {
+		// The silk@3.10.0 failure shape: an authored dependency table that the
+		// old formatter wrapped into a list item.
+		const md = `## 1.0.0
+
+### Dependencies
+
+- ${TABLE_HEADER.split("\n")[0]}
+  ${TABLE_HEADER.split("\n")[1]}
+  | effect | dependency | updated | 4.0.0 | 4.1.0 |
+
+### Dependencies
+
+${TABLE_HEADER}
+| some-lib | dependency | updated | 1.0.0 | 1.1.0 |
+`;
+		const result = transform(md);
+		expect((result.match(/### Dependencies/g) ?? []).length).toBe(1);
+		// remark-stringify pads table cells, so count header rows structurally
+		expect((result.match(/\| Dependency \|/g) ?? []).length).toBe(1);
+		expect(result).toContain("effect");
+		expect(result).toContain("some-lib");
+		// no table row remains inside a list item
+		expect(result).not.toMatch(/^\s*[-*] \|/m);
 	});
 });

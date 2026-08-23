@@ -37,7 +37,8 @@ import type { McpServices } from "./context.js";
  * + `Path` from the host's platform layer (`NodeServices.layer` in bin.ts).
  *
  * @remarks
- * The kit graph (`Workspaces.layerWithGit`) mints a fresh layer reference per
+ * The kit graph (`Workspaces.layerWithGitAndConfigDependenciesSubprocess`)
+ * mints a fresh layer reference per
  * call, so it is bound to a `const` and provided ONCE via `Layer.provideMerge`
  * — layer memoization by reference then constructs each kit service exactly
  * once and exposes `WorkspaceRoot` on the runtime. The same discipline gives
@@ -54,9 +55,14 @@ export const makeSilkRuntimeLayer = (
 	cwd: string,
 ): Layer.Layer<McpServices, never, FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner> => {
 	// One reference, one construction: WorkspaceRoot, WorkspaceDiscovery,
-	// PackageManagerDetector, WorkspaceSnapshots, PublishabilityDetector
-	// (npm default), ChangeDetector, and Git — root-bound to `cwd`.
-	const kitGraph = Workspaces.layerWithGit({ cwd });
+	// PackageManagerDetector, WorkspaceSnapshots, ChangeDetector, and Git —
+	// root-bound to `cwd`. The composite is `Workspaces.layerWithGit`'s
+	// service set with config-dependency hook replay in catalog assembly
+	// (subprocess variant, bundle-safe), so hook-injected catalogs
+	// (`catalog:effected`, `catalog:effect:peers`) resolve to their declared
+	// ranges in `changeset_deps_detect` / `changeset_deps_regen` diffs instead
+	// of concrete lockfile versions (#539).
+	const kitGraph = Workspaces.layerWithGitAndConfigDependenciesSubprocess({ cwd });
 
 	// ChangesetConfigReader.layer is a shared const, so every consumer below
 	// memoizes onto the same reader instance. The analyzer's versioning and tag

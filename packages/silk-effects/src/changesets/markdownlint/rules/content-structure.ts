@@ -47,7 +47,7 @@ function hasContentBetween(tokens: MicromarkToken[], currentIdx: number, nextIdx
  * }
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH003.md | CSH003 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH003.md | CSH003 rule documentation}
  * @see `src/remark/rules/content-structure.ts` for the corresponding remark-lint rule
  *
  * @public
