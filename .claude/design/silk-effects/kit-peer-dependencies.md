@@ -102,6 +102,31 @@ fixed it. Before the peer change the same skew installed clean and shipped two c
 packages take `0.17.1`. It is a build-time devDependency bundled into nothing shipped — bytes, not correctness,
 which is the line the narrow-three decision drew. `pnpm dedupe` would collapse it if it ever matters.
 
+## The dedup is not one manifest edit
+
+Bumping a consumer's direct `@savvy-web/silk-effects` pin across the major does NOT by itself collapse the
+duplicate. Measured in `silk-release-action`, which is the tree this design was written from:
+
+| Step | silk-effects | @effected/workspaces |
+| --- | --- | --- |
+| Before | 5.9.3 + 6.0.5 | 0.14.2 + 0.17.0 |
+| After bumping the direct pin to `^7.0.0` | 6.0.5 + 7.0.0 | 0.17.1 |
+| After `pnpm update @savvy-web/silk` (3.9.0 → 3.9.1) | 7.0.0 | 0.17.0 + 0.17.1 |
+| After `pnpm update @effected/workspaces` | 7.0.0 | 0.17.1 |
+
+The reason is that a lockfile-held intermediate keeps satisfying its own declared range. The repo declared
+`@savvy-web/silk@^3.9.0` and the lockfile held `3.9.0`; the range was satisfied, so a plain install never moved
+it, and `3.9.0` pins `silk-effects@6.0.5` exactly. Each intermediate has to be updated explicitly before the copy
+it pins is released.
+
+So the design's two-to-one prediction holds, but the operation is "bump the direct pin, then update every
+intermediate that pins the old copy" — not a single manifest edit. Verify by counting resolved versions in the
+lockfile, not by reading manifests.
+
+The peer ranges needed no change at any point: both action repos already declared `@effected/commands ^0.5.0`,
+`@effected/git ^0.9.0` and `@effected/workspaces ^0.17.0`, which is exactly what silk-effects@7 requires. That is
+the narrow-three decision paying off — those three were chosen because consumers already declared them.
+
 ## Trap: bumping the config dependency
 
 **A `configDependencies` version bump in `pnpm-workspace.yaml` does not make pnpm re-resolve it.** pnpm reports
@@ -145,6 +170,13 @@ nothing, and each was found by **measuring** rather than reading:
 A seventh had the polarity reversed — a permission-diff grep that matched prose and fired on documentation while
 the permission block was byte-identical. Same root cause, opposite symptom: the check did not measure what it
 claimed.
+
+A seventh, met three times in this programme and twice more in the protocol's own history: **an artifact search
+that finds nothing because the search is broken, reported as "the fix is missing."** Fetching a 2.3MB bundle
+through an API that inlines file content yields nothing greppable, and every marker comes back absent — which
+reads exactly like a stale artifact. The discipline that catches it is a control symbol: grep for something known
+to be present, and if the control does not light up, distrust the search rather than the artifact. Here the
+control was absent from two bundles at once, which is impossible, and that impossibility was the tell.
 
 **Review is not the control.** All of these were in reviewed code. Reviewing a check means reading it and agreeing
 it looks correct, and all of them did. What caught them was producing the condition the check claims to catch and
