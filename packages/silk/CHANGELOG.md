@@ -1,5 +1,23 @@
 # @savvy-web/silk
 
+## 3.10.1
+
+### Dependencies
+
+| Dependency           | Type       | Action  | From  | To    |
+| -------------------- | ---------- | ------- | ----- | ----- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli       | dependency | updated | 2.7.2 | 2.7.3 |
+| @savvy-web/mcp       | dependency | updated | 2.5.2 | 2.6.0 |
+
+* | Dependency           | Type       | Action  | From    | To      |                                                                       |
+  | -------------------- | ---------- | ------- | ------- | ------- | --------------------------------------------------------------------- |
+  | @effected/workspaces | dependency | updated | ^0.17.2 | ^0.18.0 | [#547][#547] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#547]: https://github.com/savvy-web/systems/pull/547
+
 ## 3.10.0
 
 ### Features
