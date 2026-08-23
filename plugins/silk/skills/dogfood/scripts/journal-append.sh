@@ -18,7 +18,13 @@ usage() {
 		usage: journal-append.sh <journal> --event <event> [patches...]
 		       journal-append.sh <journal> --init --role <role> \
 		           --counterpart-id <id> --counterpart-path <path> --link-type <type> \
-		           [--note <text>] [--owner <token>]
+		           [--ball ours|theirs] [--note <text>] [--owner <token>]
+
+		--ball with --init overrides the role-derived opening ball, for a loop
+		that opens BEFORE the round-1 request mail exists (e.g. worked from a
+		pre-filed issue, so the downstream still owes the opening mail):
+		pass --ball ours on the downstream side and --ball theirs on the
+		upstream side.
 
 		patches: --phase --ball --round --mail-in --mail-out --note --pr
 		         --packages-derived true|false --owner
@@ -97,7 +103,7 @@ if [ "$INIT" -eq 1 ]; then
 	# (savvy-web/systems#391 -- --note was accepted and dropped here, and an
 	# agent following SKILL.md's instruction to record it had no signal
 	# anything had gone wrong).
-	for _pair in "EVENT:--event" "PHASE:--phase" "BALL:--ball" "ROUND:--round" \
+	for _pair in "EVENT:--event" "PHASE:--phase" "ROUND:--round" \
 		"MAIL_IN:--mail-in" "MAIL_OUT:--mail-out" "PR:--pr" "PACKAGES_DERIVED:--packages-derived"; do
 		_var="${_pair%%:*}"
 		_flag="${_pair##*:}"
@@ -121,11 +127,24 @@ if [ "$INIT" -eq 1 ]; then
 	# `requested` phase's ball belongs to upstream. A repo opening as
 	# downstream sees that as "theirs"; a repo opening as upstream sees its
 	# own opening move as "ours".
+	#
+	# That derivation assumes the round-1 request mail has already been sent.
+	# A loop opened the other way round -- from a pre-filed issue, before any
+	# request mail exists -- starts with the DOWNSTREAM owing the opening
+	# mail, and the role-derived value is inverted on both sides at once. An
+	# explicit --ball states that choice instead of forcing an immediate
+	# cross-repo correction append (savvy-web/systems#527).
 	case "$ROLE" in
 		downstream) INIT_BALL="theirs" ;;
 		upstream) INIT_BALL="ours" ;;
 		*) echo "journal-append: role must be downstream or upstream" >&2; exit 1 ;;
 	esac
+	if [ -n "$BALL" ]; then
+		case "$BALL" in
+			ours|theirs) INIT_BALL="$BALL" ;;
+			*) echo "journal-append: invalid ball '$BALL'" >&2; exit 1 ;;
+		esac
+	fi
 
 	# "none" is not a sanctioned value anywhere in the field contract --
 	# reference doc: linkType is "pnpm-overrides" today, "file" as of #338,

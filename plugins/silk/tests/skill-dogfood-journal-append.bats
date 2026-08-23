@@ -152,6 +152,40 @@ seed() {
 	[ "$(jq 'has("packagesDerived")' <<< "$last")" = "false" ]
 }
 
+@test "--init --ball overrides the role-derived opening ball for downstream" {
+	local fresh="${BATS_TEST_TMPDIR}/owes-request.jsonl"
+	run bash "$SCRIPT" "$fresh" --init --role downstream \
+		--counterpart-id effected --counterpart-path ../../spencerbeggs/effected \
+		--link-type file --ball ours
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$fresh")"
+	[ "$(jq -r '.role' <<< "$last")" = "downstream" ]
+	[ "$(jq -r '.ball' <<< "$last")" = "ours" ]
+	[ "$(jq -r '.phase' <<< "$last")" = "requested" ]
+}
+
+@test "--init --ball overrides the role-derived opening ball for upstream" {
+	local fresh="${BATS_TEST_TMPDIR}/awaiting-request.jsonl"
+	run bash "$SCRIPT" "$fresh" --init --role upstream \
+		--counterpart-id systems --counterpart-path ../../savvy-web/systems \
+		--link-type file --ball theirs
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$fresh")"
+	[ "$(jq -r '.role' <<< "$last")" = "upstream" ]
+	[ "$(jq -r '.ball' <<< "$last")" = "theirs" ]
+}
+
+@test "--init rejects an invalid --ball and writes nothing" {
+	local fresh="${BATS_TEST_TMPDIR}/bad-ball.jsonl"
+	run bash "$SCRIPT" "$fresh" --init --role downstream \
+		--counterpart-id effected --counterpart-path ../../spencerbeggs/effected \
+		--link-type file --ball sideways
+	[ "$status" -ne 0 ]
+	[ ! -f "$fresh" ]
+}
+
 @test "--init records --note on the opening line" {
 	local fresh="${BATS_TEST_TMPDIR}/noted.jsonl"
 	run bash "$SCRIPT" "$fresh" --init --role downstream \
