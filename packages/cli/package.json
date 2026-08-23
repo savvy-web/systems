@@ -35,10 +35,10 @@
 		"@effect/platform-node": "catalog:effect",
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
-		"@effected/jsonc": "^0.7.0",
-		"@effected/templates": "^0.4.0",
+		"@effected/jsonc": "catalog:effected",
+		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
-		"@effected/yaml": "^0.10.0",
+		"@effected/yaml": "catalog:effected",
 		"@savvy-web/silk-effects": "workspace:*",
 		"effect": "catalog:effect"
 	},
