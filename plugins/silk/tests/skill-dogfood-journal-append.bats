@@ -177,6 +177,25 @@ seed() {
 	[ "$(jq -r '.ball' <<< "$last")" = "theirs" ]
 }
 
+@test "--init rejects an explicitly empty --ball instead of falling back to the role default" {
+	local fresh="${BATS_TEST_TMPDIR}/empty-ball.jsonl"
+	run bash "$SCRIPT" "$fresh" --init --role downstream \
+		--counterpart-id effected --counterpart-path ../../spencerbeggs/effected \
+		--link-type file --ball ""
+	[ "$status" -ne 0 ]
+	[ ! -f "$fresh" ]
+	[[ "$output" == *"invalid ball"* ]]
+}
+
+@test "a later append rejects an explicitly empty --ball and appends nothing" {
+	seed
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event phase-change --ball ""
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
 @test "--init rejects an invalid --ball and writes nothing" {
 	local fresh="${BATS_TEST_TMPDIR}/bad-ball.jsonl"
 	run bash "$SCRIPT" "$fresh" --init --role downstream \

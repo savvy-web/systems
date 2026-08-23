@@ -30,8 +30,9 @@ usage() {
 		         --packages-derived true|false --owner
 		         --package '<name>=<override>' (repeatable, downstream only)
 		         --clear-packages (downstream only; sets packages back to [])
-		         (only --note and --owner are valid alongside --init; the rest
-		         describe a change against a prior line, which --init has none of)
+		         (only --ball, --note and --owner are valid alongside --init;
+		         the rest describe a change against a prior line, which --init
+		         has none of)
 		events:  loop-started mail-sent mail-received phase-change pr-recorded
 		         correction unlinked
 		phases:  requested implementing handoff adopting findings upstream-pr
@@ -49,7 +50,7 @@ JOURNAL="$1"; shift
 
 EVENT="" PHASE="" BALL="" ROUND="" MAIL_IN="" MAIL_OUT="" NOTE="" PR=""
 PACKAGES_DERIVED="" OWNER="" ROLE="" CP_ID="" CP_PATH="" LINK_TYPE="" INIT=0
-CLEAR_PACKAGES=0
+CLEAR_PACKAGES=0 BALL_SET=0
 PACKAGES=()
 
 while [ "$#" -gt 0 ]; do
@@ -57,7 +58,7 @@ while [ "$#" -gt 0 ]; do
 		--init) INIT=1; shift ;;
 		--event) EVENT="${2:-}"; shift 2 ;;
 		--phase) PHASE="${2:-}"; shift 2 ;;
-		--ball) BALL="${2:-}"; shift 2 ;;
+		--ball) BALL="${2:-}"; BALL_SET=1; shift 2 ;;
 		--round) ROUND="${2:-}"; shift 2 ;;
 		--mail-in) MAIL_IN="${2:-}"; shift 2 ;;
 		--mail-out) MAIL_OUT="${2:-}"; shift 2 ;;
@@ -139,7 +140,10 @@ if [ "$INIT" -eq 1 ]; then
 		upstream) INIT_BALL="ours" ;;
 		*) echo "journal-append: role must be downstream or upstream" >&2; exit 1 ;;
 	esac
-	if [ -n "$BALL" ]; then
+	# Keyed on presence, not non-emptiness: --ball "" must be rejected as an
+	# invalid override, never silently replaced by the role-derived default --
+	# a wrong opening ball leaves the counterpart waiting on a turn it owns.
+	if [ "$BALL_SET" -eq 1 ]; then
 		case "$BALL" in
 			ours|theirs) INIT_BALL="$BALL" ;;
 			*) echo "journal-append: invalid ball '$BALL'" >&2; exit 1 ;;
@@ -183,7 +187,7 @@ fi
 [ -n "$EVENT" ] || usage
 _valid_event "$EVENT" || { echo "journal-append: invalid event '$EVENT'" >&2; exit 1; }
 [ -n "$PHASE" ] && { _valid_phase "$PHASE" || { echo "journal-append: invalid phase '$PHASE'" >&2; exit 1; }; }
-[ -n "$BALL" ] && { case "$BALL" in ours|theirs) ;; *) echo "journal-append: invalid ball '$BALL'" >&2; exit 1 ;; esac; }
+[ "$BALL_SET" -eq 1 ] && { case "$BALL" in ours|theirs) ;; *) echo "journal-append: invalid ball '$BALL'" >&2; exit 1 ;; esac; }
 [ -n "$PACKAGES_DERIVED" ] && { case "$PACKAGES_DERIVED" in true|false) ;; *) echo "journal-append: --packages-derived must be true or false, got '$PACKAGES_DERIVED'" >&2; exit 1 ;; esac; }
 [ -n "$ROLE" ] && { echo "journal-append: role is fixed for a loop; append a correction event instead of changing it" >&2; exit 1; }
 

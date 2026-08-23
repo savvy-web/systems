@@ -222,7 +222,7 @@ Not yet — see friction item above. Round 2 requested.
 
 The exit trigger: package names + versions cut, registry. Downstream acts on it with `--exit`.
 
-**Every package/version pair in the table has been probed on the registry before the mail is sent, and the probe result — not the merge, and not CI success — is what licenses the mail.** A multi-package cut publishes staggered (packages have landed minutes apart while every release workflow already reported success), so a green workflow does not mean every package is installable. Probe `npm view <pkg> version` once per package and send only after the LAST one resolves to its expected version — a release mail naming a version the downstream cannot install sends `--exit` into a failing registry install.
+**Every package/version pair in the table has been probed on the registry before the mail is sent, and the probe result — not the merge, and not CI success — is what licenses the mail.** A multi-package cut publishes staggered (packages have landed minutes apart while every release workflow already reported success), so a green workflow does not mean every package is installable. Probe `npm view "<pkg>@<expected-version>" version` once per package — the exact pair, since a bare `npm view <pkg> version` reads the `latest` dist-tag rather than proving the cut version is published — and send only after the LAST one resolves — a release mail naming a version the downstream cannot install sends `--exit` into a failing registry install.
 
 ```markdown
 ---

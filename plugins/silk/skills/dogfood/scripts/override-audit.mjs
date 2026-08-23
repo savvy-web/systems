@@ -84,27 +84,33 @@ function collectDeclaredRanges(dir, packageName, ranges) {
 
 // Ask the registry whether any published version satisfies the range. `npm
 // view '<pkg>@<range>' version --json` does the semver math server-side: empty
-// output means no published version satisfies; a 404 means the package is not
-// on the registry at all. Both are "the override is doing real work".
+// output means no published version satisfies, and an E404 means the package
+// is not on the registry at all — both are definitive "the override is doing
+// real work" answers ({ status: "none" }). Any other command failure (npm
+// missing, DNS, registry outage) is NOT an answer: it comes back as
+// { status: "unavailable" } so the audit reports the probe as unverified
+// instead of claiming a clean result it never obtained.
 function registryVersionSatisfying(packageName, range) {
 	let stdout;
 	try {
 		stdout = execFileSync("npm", ["view", `${packageName}@${range}`, "version", "--json"], {
 			encoding: "utf8",
-			stdio: ["ignore", "pipe", "ignore"],
+			stdio: ["ignore", "pipe", "pipe"],
 		});
-	} catch {
-		return undefined;
+	} catch (error) {
+		const stderr = typeof error?.stderr === "string" ? error.stderr : (error?.stderr?.toString?.() ?? "");
+		if (/E404|404 Not Found/i.test(stderr)) return { status: "none" };
+		return { status: "unavailable" };
 	}
-	if (stdout.trim() === "") return undefined;
+	if (stdout.trim() === "") return { status: "none" };
 	try {
 		const parsed = JSON.parse(stdout);
-		if (typeof parsed === "string") return parsed;
-		if (Array.isArray(parsed) && parsed.length > 0) return parsed[parsed.length - 1];
+		if (typeof parsed === "string") return { status: "found", version: parsed };
+		if (Array.isArray(parsed) && parsed.length > 0) return { status: "found", version: parsed[parsed.length - 1] };
 	} catch {
-		return undefined;
+		return { status: "unavailable" };
 	}
-	return undefined;
+	return { status: "none" };
 }
 
 const overrides = parseLocalOverrides(readFileSync(workspaceYamlPath, "utf8"));
@@ -114,6 +120,7 @@ if (overrides.length === 0) {
 }
 
 let warnings = 0;
+let unverified = 0;
 for (const { name, override } of overrides) {
 	const linkPath = resolve(workspaceDir, override.replace(/^(?:file|link):/, ""));
 	let localVersion = "unreadable";
@@ -127,16 +134,31 @@ for (const { name, override } of overrides) {
 	}
 	const ranges = new Set();
 	collectDeclaredRanges(workspaceDir, name, ranges);
-	for (const range of ranges) {
-		const satisfied = registryVersionSatisfying(name, range);
-		if (satisfied !== undefined) {
+	const probes = [...ranges].map((range) => ({ range, result: registryVersionSatisfying(name, range) }));
+
+	// A pnpm override is GLOBAL: one consumer resolving from the registry does
+	// not make the override unnecessary while another consumer's range still
+	// needs the linked build. Warn only when EVERY declared range has a
+	// satisfying published version — and a failed probe forfeits the claim
+	// entirely, because "unverified" is not "satisfied".
+	for (const { range, result } of probes) {
+		if (result.status === "unavailable") {
 			console.log(
-				`override-audit: WARNING — ${name} is overridden to ${override} (local artifact ${localVersion}), but the registry already serves ${satisfied} satisfying the declared range '${range}'. If this entry was not a deliberate link, it is redirecting every reference in the tree to a possibly-stale local build.`,
+				`override-audit: UNVERIFIED — could not probe the registry for ${name}@${range} (npm view failed: npm missing, network, or registry error). This is not a clean audit result for ${name}.`,
 			);
-			warnings += 1;
+			unverified += 1;
 		}
+	}
+	if (probes.length > 0 && probes.every(({ result }) => result.status === "found")) {
+		const pairs = probes.map(({ range, result }) => `${result.version} satisfying '${range}'`).join(", ");
+		console.log(
+			`override-audit: WARNING — ${name} is overridden to ${override} (local artifact ${localVersion}), but the registry already serves ${pairs} — every range its consumers declare. If this entry was not a deliberate link, it is redirecting every reference in the tree to a possibly-stale local build.`,
+		);
+		warnings += 1;
 	}
 }
 
-console.log(`override-audit: ${overrides.length} override(s) audited, ${warnings} warning(s)`);
+console.log(
+	`override-audit: ${overrides.length} override(s) audited, ${warnings} warning(s), ${unverified} unverified probe(s)`,
+);
 process.exit(0);

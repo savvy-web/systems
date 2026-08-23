@@ -107,6 +107,53 @@ make_workspace() {
 	[ ! -f "$NPM_CALL_LOG" ] || ! grep -q '@effected/glob' "$NPM_CALL_LOG"
 }
 
+@test "reports an unverified probe when npm itself fails, never a clean audit" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	write_stub npm <<-'EOF'
+		#!/usr/bin/env bash
+		echo "npm ERR! network request failed" >&2
+		exit 1
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"UNVERIFIED"* ]]
+	[[ "$output" == *"0 warning(s)"* ]]
+	[[ "$output" == *"1 unverified probe(s)"* ]]
+}
+
+@test "treats an npm E404 as definitively absent, not as an unverified probe" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	write_stub npm <<-'EOF'
+		#!/usr/bin/env bash
+		echo "npm ERR! code E404" >&2
+		exit 1
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 warning(s)"* ]]
+	[[ "$output" == *"0 unverified probe(s)"* ]]
+}
+
+@test "does not warn while any declared range still needs the linked build" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	mkdir -p "${WORKSPACE}/packages/other"
+	cat > "${WORKSPACE}/packages/other/package.json" <<-'EOF'
+		{"name":"other","dependencies":{"@effected/glob":"^0.3.0"}}
+	EOF
+	write_stub npm <<-'EOF'
+		#!/usr/bin/env bash
+		printf '%s\n' "$*" >> "$NPM_CALL_LOG"
+		case "$*" in
+			*"@^0.2.0"*) printf '"0.2.1"\n' ;;
+		esac
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"WARNING"* ]]
+	[[ "$output" == *"0 warning(s)"* ]]
+	grep -q '@effected/glob@\^0.3.0' "$NPM_CALL_LOG"
+}
+
 @test "warns when the link path has no readable manifest" {
 	make_workspace "file:./missing/pkg" "^0.3.0"
 	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
