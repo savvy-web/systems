@@ -1,5 +1,18 @@
 # @savvy-web/silk-effects
 
+## 7.0.1
+
+### Dependencies
+
+* | Dependency           | Type           | Action  | From    | To      |                                                                              |
+  | -------------------- | -------------- | ------- | ------- | ------- | ---------------------------------------------------------------------------- |
+  | @effected/yaml       | dependency     | updated | ^0.10.0 | ^0.11.0 |                                                                              |
+  | @effected/workspaces | peerDependency | updated | 0.17.1  | 0.17.2  | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#542]: https://github.com/savvy-web/systems/pull/542
+
 ## 7.0.0
 
 ### Breaking Changes
