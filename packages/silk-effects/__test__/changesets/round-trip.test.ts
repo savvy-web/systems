@@ -35,6 +35,15 @@ function extractH3Headings(content: string): string[] {
 	return matches.map((m) => m.replace(/^### /, ""));
 }
 
+/**
+ * A heading the transform pipeline is allowed to emit: the 13 changeset
+ * categories, plus the `Thanks` section synthesized by
+ * ContributorFootnotesPlugin (not an authorable changeset category).
+ */
+function isEmittableHeading(heading: string): boolean {
+	return isValidHeading(heading) || heading === "Thanks";
+}
+
 describe("Round-trip: lint → format → transform", () => {
 	it.effect("transformed output has valid category headings", () =>
 		Effect.gen(function* () {
@@ -58,7 +67,7 @@ describe("Round-trip: lint → format → transform", () => {
 			const headings = extractH3Headings(result);
 			expect(headings.length).toBeGreaterThan(0);
 			for (const heading of headings) {
-				expect(isValidHeading(heading)).toBe(true);
+				expect(isEmittableHeading(heading)).toBe(true);
 			}
 		}),
 	);
@@ -113,7 +122,7 @@ describe("Round-trip: lint → format → transform", () => {
 			const headings = extractH3Headings(result);
 			expect(headings.length).toBeGreaterThan(0);
 			for (const heading of headings) {
-				expect(isValidHeading(heading)).toBe(true);
+				expect(isEmittableHeading(heading)).toBe(true);
 			}
 
 			// Verify both original sections survived

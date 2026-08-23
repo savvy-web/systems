@@ -70,8 +70,19 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 				lines.push(`- ${mdInline(f.status)}  ${mdInline(f.path)}  ->  ${owner}`);
 			}
 			if (r.unmappedFiles.length > 0) {
+				// A hinted unmapped file (#290) is probably already accounted for —
+				// surface the hint so the agent can classify without a manual diff.
+				const hints = new Map<string, string>();
+				for (const f of r.files) {
+					if (typeof f.reason === "object" && f.reason !== null && f.reason.kind === "unmappedHint") {
+						hints.set(f.path, f.reason.hint);
+					}
+				}
 				lines.push(``, `## Unmapped (ask the user)`);
-				for (const p of r.unmappedFiles) lines.push(`- ${mdInline(p)}`);
+				for (const p of r.unmappedFiles) {
+					const hint = hints.get(p);
+					lines.push(hint === undefined ? `- ${mdInline(p)}` : `- ${mdInline(p)} — ${mdInline(hint)}`);
+				}
 			}
 			return lines.join("\n");
 		}
@@ -101,7 +112,11 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 			const lines = [`# changeset classify`, ``];
 			for (const c of data.result) {
 				const owner = c.package ? mdInline(c.package) : mdInline("<unmapped>");
-				lines.push(`- ${mdInline(c.path)}  ->  ${owner}`);
+				const hint =
+					typeof c.reason === "object" && c.reason !== null && c.reason.kind === "unmappedHint"
+						? ` — ${mdInline(c.reason.hint)}`
+						: "";
+				lines.push(`- ${mdInline(c.path)}  ->  ${owner}${hint}`);
 			}
 			if (data.result.length === 0) lines.push("(no paths)");
 			return lines.join("\n");
@@ -146,8 +161,11 @@ export const changesetInspect = (
 		// call must refresh it first to observe on-disk edits made since the
 		// last call — covers all three modes, since branch mode's
 		// BranchAnalyzer also reads through this same shared inspector.
+		// Per-ROOT refresh: this call inspects exactly `root`, and the
+		// inspector reads workspace membership per call root, so refreshing
+		// only that root leaves sibling worktrees' still-valid caches intact.
 		const inspector = yield* Changesets.ConfigInspector;
-		yield* inspector.refresh();
+		yield* inspector.refreshIn(root);
 
 		switch (args.mode) {
 			case "branch": {

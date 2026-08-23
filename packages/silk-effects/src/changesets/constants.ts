@@ -1,19 +1,24 @@
 // Constants for changeset lint rule documentation URLs.
 //
-// Each lint rule in the @savvy-web/changesets remark-lint plugin has a
-// corresponding documentation page hosted on GitHub. These URLs are
+// Each CSH lint rule has a corresponding documentation page under this
+// package's docs tree (packages/silk-effects/docs/rules/). These URLs are
 // referenced in lint diagnostic messages to help users understand and
 // resolve validation errors.
 //
 // Rule codes follow the `CSH` prefix convention:
-// - `CSH001` -- Changeset heading validation
-// - `CSH002` -- Changeset summary validation
-// - `CSH003` -- Dependency table structure validation
-// - `CSH004` -- Changeset body content validation
-// - `CSH005` -- Frontmatter validation
+// - `CSH001` -- Heading hierarchy (no h1, no depth skips)
+// - `CSH002` -- Required sections (h2 headings match the 13 categories)
+// - `CSH003` -- Content structure (no empty sections/items, fence languages)
+// - `CSH004` -- Uncategorized content (nothing before the first h2)
+// - `CSH005` -- Dependency table format (5-column table in ## Dependencies)
 
-/** Base URL for rule documentation on GitHub. */
-const DOCS_BASE = "https://github.com/savvy-web/changesets/blob/main/docs/rules";
+/**
+ * Base URL for rule documentation on GitHub.
+ *
+ * The former home (savvy-web/changesets) is archived; the docs live in the
+ * systems monorepo alongside the rule sources (savvy-web/systems#456).
+ */
+const DOCS_BASE = "https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules";
 
 /**
  * Documentation URLs for each changeset lint rule.

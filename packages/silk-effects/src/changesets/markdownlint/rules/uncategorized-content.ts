@@ -27,7 +27,7 @@ import { RULE_DOCS, getHeadingLevel } from "./utils.js";
  * }
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH004.md | CSH004 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH004.md | CSH004 rule documentation}
  * @see `src/remark/rules/uncategorized-content.ts` for the corresponding remark-lint rule
  *
  * @public
@@ -42,7 +42,7 @@ export const UncategorizedContentRule: Rule = {
 
 		for (const token of tokens) {
 			// Stop at the first h2 — everything after is categorized
-			if (token.type === "atxHeading" && getHeadingLevel(token) === 2) {
+			if ((token.type === "atxHeading" || token.type === "setextHeading") && getHeadingLevel(token) === 2) {
 				break;
 			}
 
@@ -52,7 +52,7 @@ export const UncategorizedContentRule: Rule = {
 			}
 
 			// Any other top-level token before the first h2 is uncategorized content
-			if (token.type !== "atxHeading") {
+			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
 				onError({
 					lineNumber: token.startLine,
 					detail: `Content must be placed under a category heading (## heading). Move this content under an appropriate section like "## Features" or "## Bug Fixes". If it doesn't fit an existing category, use "## Other". See: ${RULE_DOCS.CSH004}`,

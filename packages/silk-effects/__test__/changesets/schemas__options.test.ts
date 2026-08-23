@@ -207,4 +207,27 @@ describe("validateChangesetOptions", () => {
 			expect(err.reason).toContain("@savvy-web/changesets");
 		}),
 	);
+
+	it.effect("accepts thanks: false", () =>
+		Effect.gen(function* () {
+			const opts = yield* validateChangesetOptions({ repo: "owner/repo", thanks: false });
+			expect(opts.thanks).toBe(false);
+		}),
+	);
+
+	it.effect("accepts thanks: true and leaves it absent by default", () =>
+		Effect.gen(function* () {
+			const withThanks = yield* validateChangesetOptions({ repo: "owner/repo", thanks: true });
+			expect(withThanks.thanks).toBe(true);
+			const without = yield* validateChangesetOptions({ repo: "owner/repo" });
+			expect(without.thanks).toBeUndefined();
+		}),
+	);
+
+	it.effect("rejects a non-boolean thanks", () =>
+		Effect.gen(function* () {
+			const err = yield* runFail({ repo: "owner/repo", thanks: "yes" });
+			expect(err).toBeInstanceOf(ConfigurationError);
+		}),
+	);
 });

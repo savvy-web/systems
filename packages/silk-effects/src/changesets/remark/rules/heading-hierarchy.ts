@@ -35,7 +35,7 @@
  * console.log(invalid.messages[0].reason); // "h1 headings are not allowed..."
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH001.md | CSH001 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH001.md | CSH001 rule documentation}
  * @see {@link RequiredSectionsRule} for validating that h2 headings match known categories
  * @see {@link ContentStructureRule} for validating section content quality
  *

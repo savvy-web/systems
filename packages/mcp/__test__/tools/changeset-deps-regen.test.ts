@@ -26,6 +26,7 @@ const cannedPlan = {
 		},
 	],
 	skippedMixed: ["/repo/.changeset/mixed-owls-rest.md"],
+	coexisting: [{ file: "/repo/.changeset/sweet-cooks-guess.md", packages: ["@scope/foo"] }],
 } as unknown as Changesets.RegenPlan;
 
 /**
@@ -50,6 +51,7 @@ const DepsRegenStub = Layer.succeed(
 					deleted: p.toDelete.map((e) => e.file),
 					written: p.toWrite.map((e) => e.file),
 					skippedMixed: p.skippedMixed,
+					coexisting: p.coexisting,
 				});
 			}),
 	}),
@@ -72,6 +74,7 @@ layer(TestLayer)("changesetDepsRegen handler", (it) => {
 			expect(data.deleted).toEqual(["/repo/.changeset/stale-cats-sing.md"]);
 			expect(data.written).toEqual(["/repo/.changeset/brave-dogs-fly.md"]);
 			expect(data.skippedMixed).toEqual(["/repo/.changeset/mixed-owls-rest.md"]);
+			expect(data.coexisting).toEqual([{ file: "/repo/.changeset/sweet-cooks-guess.md", packages: ["@scope/foo"] }]);
 		}),
 	);
 
@@ -104,6 +107,9 @@ layer(TestLayer)("changesetDepsRegen handler", (it) => {
 			const md = Schema.decodeUnknownSync(ChangesetDepsRegenAsMarkdown)(data);
 			expect(md).toContain("brave-dogs-fly.md");
 			expect(md).toContain("stale-cats-sing.md");
+			// Coexisting prose changesets are surfaced informationally (#279).
+			expect(md).toContain("sweet-cooks-guess.md");
+			expect(md).toContain("Coexisting");
 			expect(() => Schema.encodeUnknownSync(ChangesetDepsRegenAsMarkdown)("anything")).toThrow();
 		}),
 	);

@@ -9,14 +9,16 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
+import type { Root } from "mdast";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
-import remarkStringify from "remark-stringify";
 import { unified } from "unified";
 
+import { ContributorFootnotesPlugin } from "../remark/plugins/contributor-footnotes.js";
 import type { MaintenanceNoteOptions } from "../remark/plugins/maintenance-note.js";
 import { MaintenanceNotePlugin } from "../remark/plugins/maintenance-note.js";
 import { SilkChangesetTransformPreset } from "../remark/presets.js";
+import { emitMarkdown } from "../utils/markdown-emit.js";
 
 /**
  * Optional per-file behavior for {@link ChangelogTransformer}.
@@ -26,6 +28,13 @@ import { SilkChangesetTransformPreset } from "../remark/presets.js";
 export interface TransformOptions {
 	/** Insert a Maintenance note into this version block when it ends up empty. */
 	readonly maintenance?: MaintenanceNoteOptions;
+	/**
+	 * Whether to aggregate `Thanks \@user!` attributions into a `### Thanks`
+	 * section (default `true`). When `false`, inline attributions and any
+	 * existing Thanks section are stripped and no section is emitted.
+	 * Mirrors the `thanks` changelog option in `.changeset/config.json`.
+	 */
+	readonly thanks?: boolean;
 }
 
 /**
@@ -105,8 +114,9 @@ export class ChangelogTransformer {
 	 * @remarks
 	 * The input is parsed with `remark-parse` and `remark-gfm` (for table
 	 * support), processed through every plugin in {@link SilkChangesetTransformPreset}
-	 * in order, and stringified back to markdown. The operation is synchronous
-	 * and idempotent.
+	 * in order, and emitted back to markdown through the canonical
+	 * `@effected/markdown` stringifier. The operation is synchronous and
+	 * idempotent.
 	 *
 	 * @param content - Raw CHANGELOG markdown string (may contain multiple
 	 *   version blocks, GFM tables, footnotes, and reference links)
@@ -117,15 +127,21 @@ export class ChangelogTransformer {
 	static transformContent(content: string, options?: TransformOptions): string {
 		const processor = unified().use(remarkParse).use(remarkGfm);
 		for (const plugin of SilkChangesetTransformPreset) {
-			processor.use(plugin);
+			// ContributorFootnotesPlugin is the one preset member that takes
+			// options — pass `thanks` through when the caller set it.
+			if (plugin === ContributorFootnotesPlugin && options?.thanks !== undefined) {
+				processor.use(ContributorFootnotesPlugin, { thanks: options.thanks });
+			} else {
+				processor.use(plugin);
+			}
 		}
 		if (options?.maintenance) {
 			processor.use(MaintenanceNotePlugin, options.maintenance);
 		}
-		processor.use(remarkStringify);
 
-		const file = processor.processSync(content);
-		return String(file);
+		const parsed = processor.parse(content);
+		const transformed = processor.runSync(parsed) as Root;
+		return emitMarkdown(transformed);
 	}
 
 	/**

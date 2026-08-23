@@ -27,7 +27,7 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText } from "./utils.js";
  * }
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH002.md | CSH002 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH002.md | CSH002 rule documentation}
  * @see `src/remark/rules/required-sections.ts` for the corresponding remark-lint rule
  *
  * @public
@@ -39,7 +39,7 @@ export const RequiredSectionsRule: Rule = {
 	parser: "micromark",
 	function: function CSH002(params, onError) {
 		for (const token of params.parsers.micromark.tokens) {
-			if (token.type !== "atxHeading") {
+			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
 				continue;
 			}
 

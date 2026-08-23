@@ -91,4 +91,8 @@ describe("markdownlint/uncategorized-content", () => {
 		const messages = check("Uncategorized text.\n");
 		expect(messages[0]).toContain(RULE_DOCS.CSH004);
 	});
+
+	it("accepts content under a setext h2 heading like its remark sibling", () => {
+		expect(check("Features\n--------\n\n- Added X\n")).toEqual([]);
+	});
 });

@@ -40,7 +40,7 @@
  * console.log(invalid.messages[0].reason); // "Empty section..."
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH003.md | CSH003 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH003.md | CSH003 rule documentation}
  * @see {@link HeadingHierarchyRule} for validating heading depth structure
  * @see {@link RequiredSectionsRule} for validating recognized section headings
  *

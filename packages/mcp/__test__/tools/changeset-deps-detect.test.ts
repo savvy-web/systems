@@ -30,6 +30,7 @@ const cannedPlan = {
 		},
 	],
 	skippedMixed: [],
+	coexisting: [{ file: "/repo/.changeset/sweet-cooks-guess.md", packages: ["@scope/foo"] }],
 } as unknown as Changesets.RegenPlan;
 
 /**
@@ -48,7 +49,8 @@ const DepsRegenStub = Layer.succeed(
 				capturedPlanOptions = options;
 				return Effect.succeed(cannedPlan);
 			}),
-		execute: (p) => Effect.succeed({ deleted: [], written: [], skippedMixed: p.skippedMixed }),
+		execute: (p) =>
+			Effect.succeed({ deleted: [], written: [], skippedMixed: p.skippedMixed, coexisting: p.coexisting }),
 	}),
 );
 
@@ -73,6 +75,8 @@ layer(TestLayer)("changesetDepsDetect handler", (it) => {
 			// devDependency row is retained on the detect path
 			expect(pkg?.rows.some((r) => r.type === "devDependency")).toBe(true);
 			expect(pkg?.rows[0]?.dependency).toBe("effect");
+			// Coexisting prose changesets are surfaced informationally (#279).
+			expect(data.coexisting).toEqual([{ file: "/repo/.changeset/sweet-cooks-guess.md", packages: ["@scope/foo"] }]);
 		}),
 	);
 
@@ -84,6 +88,8 @@ layer(TestLayer)("changesetDepsDetect handler", (it) => {
 			expect(md).toContain("packages/foo");
 			expect(md).toContain("effect");
 			expect(md).toContain("typescript");
+			expect(md).toContain("sweet-cooks-guess.md");
+			expect(md).toContain("Coexisting prose changesets");
 		}),
 	);
 

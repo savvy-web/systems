@@ -93,6 +93,12 @@ describe("markdownlint/heading-hierarchy", () => {
 		expect(messages[0]).toContain("Heading level skipped");
 	});
 
+	it("rejects a setext h1 heading like its remark sibling", () => {
+		const messages = check("Title\n=====\n\nContent\n");
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toContain("h1 headings are not allowed in changeset files");
+	});
+
 	it("includes documentation URL in error messages", () => {
 		const messages = check("# Title\n");
 		expect(messages[0]).toContain(RULE_DOCS.CSH001);

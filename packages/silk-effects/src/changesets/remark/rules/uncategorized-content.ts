@@ -40,7 +40,7 @@
  * console.log(invalid.messages[0].reason); // "Content must be placed under a category heading..."
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH004.md | CSH004 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH004.md | CSH004 rule documentation}
  * @see {@link RequiredSectionsRule} for validating that h2 headings match known categories
  * @see {@link ContentStructureRule} for validating section content quality
  *

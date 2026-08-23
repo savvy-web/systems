@@ -24,7 +24,7 @@ import { toString as mdastToString } from "mdast-util-to-string";
 
 import type { DependencyTableRow } from "../schemas/dependency-table.js";
 import { DependencyTableRowSchema } from "../schemas/dependency-table.js";
-import { literalText, stringifyMarkdown } from "./remark-pipeline.js";
+import { stringifyMarkdown } from "./remark-pipeline.js";
 
 /**
  * Ordered column headers for dependency tables.
@@ -109,10 +109,12 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
  * Create a table cell with a text node.
  *
  * @remarks
- * The cell text is marked literal, so stringification writes it verbatim
- * instead of escaping characters that could open a markdown construct. See
- * {@link literalText} — without it `~0.2.1` is written as `\~0.2.1` and
- * `some_pkg` as `some\_pkg`.
+ * The cell holds a plain text node; the canonical stringifier escapes any
+ * character that could open a markdown construct (`~0.2.1` is written as
+ * `\~0.2.1`, `some_pkg` as `some\_pkg`, `|` as `\|`). Parsing consumes the
+ * escapes, so cell VALUES round-trip byte-identically through
+ * parse-and-reserialize — the escaping is a raw-byte spelling, never a
+ * value change, and it cannot compound across cycles.
  *
  * @param text - The cell text content
  * @returns An MDAST `TableCell` node
@@ -122,7 +124,7 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 function makeCell(text: string): TableCell {
 	return {
 		type: "tableCell",
-		children: [literalText(text)],
+		children: [{ type: "text", value: text }],
 	};
 }
 
@@ -181,9 +183,9 @@ export function serializeDependencyTable(rows: DependencyTableRow[]): Table {
  * Serialize dependency table rows to a markdown table string.
  *
  * @remarks
- * Combines {@link serializeDependencyTable} with unified/remark-gfm/remark-stringify
- * to produce a ready-to-use GFM markdown table string. The result is trimmed
- * of leading/trailing whitespace.
+ * Combines {@link serializeDependencyTable} with the canonical
+ * `@effected/markdown` emit boundary to produce a ready-to-use GFM markdown
+ * table string. The result is trimmed of leading/trailing whitespace.
  *
  * @param rows - Array of `DependencyTableRow` objects
  * @returns Markdown table string (GFM format)

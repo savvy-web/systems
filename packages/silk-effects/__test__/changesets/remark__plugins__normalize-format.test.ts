@@ -77,4 +77,12 @@ describe("normalize-format", () => {
 		const result = transform(md);
 		expect(result).toContain("Some text.");
 	});
+
+	it("keeps a depth-3 section whose only lead content is a promoted #### sub-heading", () => {
+		const md = "## 1.0.0\n\n### Features\n\n#### Sub-feature\n\n- Detail\n\n### Bug Fixes\n\n- Fix A\n";
+		const result = transform(md);
+		expect(result).toContain("### Features");
+		expect(result).toContain("#### Sub-feature");
+		expect(result).toContain("Detail");
+	});
 });

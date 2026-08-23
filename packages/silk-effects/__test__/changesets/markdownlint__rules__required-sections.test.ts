@@ -96,6 +96,11 @@ describe("markdownlint/required-sections", () => {
 		const messages = check("## Invalid\n\nContent\n");
 		expect(messages[0]).toContain(RULE_DOCS.CSH002);
 	});
+	it("rejects an unknown setext h2 section like its remark sibling", () => {
+		const messages = check("Bogus Section\n-------------\n\nContent\n");
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toContain('Unknown section "Bogus Section"');
+	});
 });
 
 // --- issue #367: shared extractors resolve escapes -----------------------------

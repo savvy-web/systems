@@ -26,7 +26,7 @@
  *
  */
 
-import type { WorkspaceStateSnapshot } from "@effected/workspaces";
+import { WorkspaceStateSnapshot } from "@effected/workspaces";
 import { Option } from "effect";
 import type { DependencyTableRow, DependencyTableType } from "../schemas/dependency-table.js";
 import { sortDependencyRows } from "./dependency-table.js";
@@ -125,8 +125,17 @@ export function computeWorkspaceDependencyDiffs(
 ): ReadonlyArray<WorkspaceDependencyDiff> {
 	const result: WorkspaceDependencyDiff[] = [];
 
-	for (const afterPkg of after.packages) {
-		const beforePkg = Option.getOrNull(before.package(afterPkg.name));
+	// Cross-seed each side with the other's catalogs at lower precedence so a
+	// catalog visible on only one side (hook-injected, #539) resolves to its
+	// declared RANGE on both sides instead of one side falling through to a
+	// concrete lockfile version. The kit's `crossSeed` keeps each side's own
+	// catalogs authoritative (seed answers only where they cannot). Shadows the
+	// parameters deliberately: nothing below may resolve against an unseeded
+	// side.
+	const [seededBefore, seededAfter] = WorkspaceStateSnapshot.crossSeed(before, after);
+
+	for (const afterPkg of seededAfter.packages) {
+		const beforePkg = Option.getOrNull(seededBefore.package(afterPkg.name));
 		const rows: DependencyTableRow[] = [];
 
 		// Lockfile importer keys. A package that moved directories between refs
@@ -142,13 +151,13 @@ export function computeWorkspaceDependencyDiffs(
 
 			for (const [name, beforeSpec] of Object.entries(beforeRecord)) {
 				seen.add(name);
-				const from = resolveOrRaw(before, beforeImporter, name, beforeSpec);
+				const from = resolveOrRaw(seededBefore, beforeImporter, name, beforeSpec);
 				const afterSpec = afterRecord[name];
 				if (afterSpec === undefined) {
 					rows.push({ dependency: name, type, action: "removed", from, to: EM_DASH });
 					continue;
 				}
-				const to = resolveOrRaw(after, afterImporter, name, afterSpec);
+				const to = resolveOrRaw(seededAfter, afterImporter, name, afterSpec);
 				if (from !== to) rows.push({ dependency: name, type, action: "updated", from, to });
 			}
 
@@ -159,7 +168,7 @@ export function computeWorkspaceDependencyDiffs(
 					type,
 					action: "added",
 					from: EM_DASH,
-					to: resolveOrRaw(after, afterImporter, name, afterSpec),
+					to: resolveOrRaw(seededAfter, afterImporter, name, afterSpec),
 				});
 			}
 		}

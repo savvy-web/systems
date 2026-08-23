@@ -20,7 +20,10 @@ const emptyDiscovery: WorkspaceDiscoveryShape = {
 	getPackage: () => Effect.die("not implemented"),
 	resolveFile: () => Effect.succeed(Option.none()),
 	resolveFiles: () => Effect.succeed([]),
+	infoIn: () => Effect.die("not implemented"),
+	listPackagesIn: () => Effect.succeed([]),
 	refresh: () => Effect.void,
+	refreshIn: () => Effect.void,
 };
 const EmptyLayer = Layer.succeed(WorkspaceDiscovery, WorkspaceDiscovery.of(emptyDiscovery));
 

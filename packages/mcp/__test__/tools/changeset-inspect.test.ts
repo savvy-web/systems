@@ -30,6 +30,7 @@ const BranchAnalyzerTest = Layer.succeed(
 );
 
 let configInspectorRefreshCalls = 0;
+let configInspectorRefreshInDirs: string[] = [];
 
 const ConfigInspectorTest = Layer.succeed(
 	Changesets.ConfigInspector,
@@ -50,6 +51,10 @@ const ConfigInspectorTest = Layer.succeed(
 			Effect.sync(() => {
 				configInspectorRefreshCalls++;
 			}),
+		refreshIn: (directory) =>
+			Effect.sync(() => {
+				configInspectorRefreshInDirs.push(directory);
+			}),
 	}),
 );
 
@@ -60,6 +65,7 @@ layer(TestLayer)("changesetInspect handler", (it) => {
 	// call counter is cumulative across tests — reset it per test.
 	beforeEach(() => {
 		configInspectorRefreshCalls = 0;
+		configInspectorRefreshInDirs = [];
 	});
 
 	it.effect("projects branch mode and renders markdown", () =>
@@ -95,30 +101,66 @@ layer(TestLayer)("changesetInspect handler", (it) => {
 
 	// #229: the long-lived savvy-mcp server holds one ConfigInspector for its
 	// whole process lifetime; every call must refresh its cache first so an
-	// on-disk edit made since the last tool call is observed.
-	it.effect("refreshes the ConfigInspector cache before serving config mode", () =>
+	// on-disk edit made since the last tool call is observed. The refresh is
+	// per-ROOT (refreshIn with the call's resolved root), so one call does
+	// not discard sibling worktrees' still-valid caches — the wholesale
+	// refresh() must NOT run here.
+	it.effect("refreshes the ConfigInspector cache for the call's root before serving config mode", () =>
 		Effect.gen(function* () {
 			yield* changesetInspect({ mode: "config" }, "/repo");
-			expect(configInspectorRefreshCalls).toBe(1);
+			expect(configInspectorRefreshInDirs).toEqual(["/repo"]);
+			expect(configInspectorRefreshCalls).toBe(0);
 		}),
 	);
 
-	it.effect("refreshes the ConfigInspector cache before serving classify mode", () =>
+	it.effect("refreshes the ConfigInspector cache for the call's root before serving classify mode", () =>
 		Effect.gen(function* () {
 			yield* changesetInspect({ mode: "classify", paths: [] }, "/repo");
-			expect(configInspectorRefreshCalls).toBe(1);
+			expect(configInspectorRefreshInDirs).toEqual(["/repo"]);
+			expect(configInspectorRefreshCalls).toBe(0);
 		}),
 	);
 
-	it.effect("refreshes the ConfigInspector cache before serving branch mode", () =>
+	it.effect("refreshes the ConfigInspector cache for the call's root before serving branch mode", () =>
 		Effect.gen(function* () {
 			yield* changesetInspect({ mode: "branch" }, "/repo");
-			expect(configInspectorRefreshCalls).toBe(1);
+			expect(configInspectorRefreshInDirs).toEqual(["/repo"]);
+			expect(configInspectorRefreshCalls).toBe(0);
 		}),
 	);
 
 	it("forbids encoding markdown back", () => {
 		expect(() => Schema.encodeUnknownSync(ChangesetInspectAsMarkdown)("anything")).toThrow();
+	});
+
+	it("surfaces an unmappedHint reason on unmapped files in branch and classify markdown (#290)", () => {
+		const hint = 'versionFiles of "@savvy-web/silk" (glob "plugins/*/plugin.json")';
+		const branch = {
+			mode: "branch" as const,
+			result: {
+				baseBranch: "main",
+				mergeBaseSha: "abc123",
+				files: [
+					{
+						path: "plugins/silk/plugin.json",
+						status: "deleted" as const,
+						package: null,
+						reason: { kind: "unmappedHint" as const, hint },
+					},
+				],
+				packagesAffected: [],
+				unmappedFiles: ["plugins/silk/plugin.json"],
+			},
+		};
+		const branchMd = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(branch);
+		expect(branchMd).toContain("versionFiles of");
+
+		const classify = {
+			mode: "classify" as const,
+			result: [{ path: "plugins/silk/plugin.json", package: null, reason: { kind: "unmappedHint" as const, hint } }],
+		};
+		const classifyMd = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(classify);
+		expect(classifyMd).toContain("versionFiles of");
 	});
 
 	it("escapes repo-derived values as inert code spans (prompt-injection hardening)", () => {

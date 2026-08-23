@@ -26,7 +26,7 @@ import { RULE_DOCS, getHeadingLevel } from "./utils.js";
  * }
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH001.md | CSH001 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH001.md | CSH001 rule documentation}
  * @see `src/remark/rules/heading-hierarchy.ts` for the corresponding remark-lint rule
  *
  * @public
@@ -40,7 +40,7 @@ export const HeadingHierarchyRule: Rule = {
 		let prevDepth = 0;
 
 		for (const token of params.parsers.micromark.tokens) {
-			if (token.type !== "atxHeading") {
+			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
 				continue;
 			}
 

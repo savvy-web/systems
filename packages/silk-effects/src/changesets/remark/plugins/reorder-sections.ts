@@ -70,6 +70,25 @@ import { getBlockSections, getHeadingText, getVersionBlocks } from "../../utils/
  */
 const UNKNOWN_PRIORITY = 999;
 
+/**
+ * Priority for the `Thanks` section emitted by {@link ContributorFootnotesPlugin}.
+ * Sorts after everything — including unknown headings — so the contributor
+ * credits always close the version block.
+ *
+ * @internal
+ */
+const THANKS_PRIORITY = 1000;
+
+/**
+ * Resolve the sort priority for a section heading.
+ *
+ * @internal
+ */
+function headingPriority(text: string): number {
+	if (text.trim().toLowerCase() === "thanks") return THANKS_PRIORITY;
+	return fromHeading(text)?.priority ?? UNKNOWN_PRIORITY;
+}
+
 export const ReorderSectionsPlugin: Plugin<[], Root> = () => {
 	return (tree: Root) => {
 		const blocks = getVersionBlocks(tree);
@@ -90,12 +109,10 @@ export const ReorderSectionsPlugin: Plugin<[], Root> = () => {
 				}
 			}
 
-			// Sort sections by category priority
-			const sorted = [...sections].sort((a, b) => {
-				const aPriority = fromHeading(getHeadingText(a.heading))?.priority ?? UNKNOWN_PRIORITY;
-				const bPriority = fromHeading(getHeadingText(b.heading))?.priority ?? UNKNOWN_PRIORITY;
-				return aPriority - bPriority;
-			});
+			// Sort sections by category priority (Thanks pinned last)
+			const sorted = [...sections].sort(
+				(a, b) => headingPriority(getHeadingText(a.heading)) - headingPriority(getHeadingText(b.heading)),
+			);
 
 			// Check if already in order
 			const alreadySorted = sorted.every((s, i) => s.headingIndex === sections[i].headingIndex);

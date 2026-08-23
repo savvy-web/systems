@@ -211,6 +211,92 @@ const findPureDependencyChangesets = (
 	});
 
 /**
+ * Every package name a changeset's YAML frontmatter releases, parsed with the
+ * same lenient `"@pkg": bump` line grammar {@link isPureDependencyChangeset}
+ * uses. A file with no frontmatter, or one whose lines all fail the grammar,
+ * yields an empty list — this feeds an informational surface, so lenient
+ * degradation beats a typed failure.
+ *
+ * @param content - Raw `.changeset/*.md` file contents.
+ *
+ * @public
+ */
+export function parseChangesetPackages(content: string): ReadonlyArray<string> {
+	const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+	if (!fmMatch) return [];
+	const packages: string[] = [];
+	for (const line of (fmMatch[1] as string).split(/\r?\n/)) {
+		if (line.trim().length === 0 || /^\s*#/.test(line)) continue;
+		const m = line.match(/^\s*["']?([^"':\s]+)["']?\s*:\s*([a-z]+)\s*$/);
+		if (m) packages.push(m[1] as string);
+	}
+	return packages;
+}
+
+/**
+ * Whether `content` carries a `## Dependencies` heading OUTSIDE fenced code
+ * blocks. A prose changeset that DOCUMENTS the changeset format quotes the
+ * heading inside a ``` fence; a fence-blind regex misreads that file as a
+ * dependency changeset (classified mixed, dropped from the coexisting
+ * bucket). Tracks CommonMark fence state: an opening run of 3+ backticks or
+ * tildes (a backtick fence's info string may not contain a backtick) is
+ * closed only by a run of the same character, at least as long, with nothing
+ * else on the line.
+ */
+function containsDependenciesHeading(content: string): boolean {
+	let fence: { readonly char: string; readonly length: number } | null = null;
+	for (const line of content.split(/\r?\n/)) {
+		const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+		if (match) {
+			const run = match[1] as string;
+			const char = run.charAt(0);
+			const trailing = match[2] as string;
+			if (fence === null) {
+				if (char === "~" || !trailing.includes("`")) {
+					fence = { char, length: run.length };
+					continue;
+				}
+			} else if (char === fence.char && run.length >= fence.length && trailing.trim() === "") {
+				fence = null;
+				continue;
+			}
+		}
+		if (fence === null && /^## Dependencies\b/.test(line)) return true;
+	}
+	return false;
+}
+
+/**
+ * Prose-only changesets (no `## Dependencies` heading at all) found in
+ * `changesetDir`, each with the packages its frontmatter releases. These are
+ * the files a regen run never touches — surfaced so the result can account
+ * for them instead of leaving them invisible (#279). Same
+ * skip-unreadable-file / loud-list-failure semantics as
+ * {@link findPureDependencyChangesets}.
+ */
+const findProseChangesets = (
+	fs: FileSystem.FileSystem,
+	changesetDir: string,
+): Effect.Effect<
+	ReadonlyArray<{ readonly file: string; readonly packages: ReadonlyArray<string> }>,
+	ChangesetIOError
+> =>
+	Effect.gen(function* () {
+		const files = yield* listChangesetFiles(fs, changesetDir);
+		const result: Array<{ file: string; packages: ReadonlyArray<string> }> = [];
+		for (const file of files) {
+			const content = yield* fs.readFileString(file).pipe(Effect.option);
+			if (Option.isNone(content)) continue;
+			// Prose-only = no Dependencies heading anywhere (outside code fences).
+			// Pure and mixed dependency changesets are already accounted for by
+			// the other buckets.
+			if (containsDependenciesHeading(content.value)) continue;
+			result.push({ file, packages: parseChangesetPackages(content.value) });
+		}
+		return result;
+	});
+
+/**
  * Mixed dependency changesets (have a `## Dependencies` heading but fail
  * the strict pure-changeset test) found in `changesetDir`. Same
  * skip-unreadable-file / loud-list-failure semantics as
@@ -226,8 +312,9 @@ const findMixedDependencyChangesets = (
 		for (const file of files) {
 			const content = yield* fs.readFileString(file).pipe(Effect.option);
 			if (Option.isNone(content)) continue;
-			// Mixed = has a `## Dependencies` heading but doesn't pass the strict test.
-			if (/^## Dependencies\b/m.test(content.value) && !isPureDependencyChangeset(content.value).isPure) {
+			// Mixed = has a `## Dependencies` heading (outside code fences) but
+			// doesn't pass the strict test.
+			if (containsDependenciesHeading(content.value) && !isPureDependencyChangeset(content.value).isPure) {
 				result.push(file);
 			}
 		}
@@ -250,9 +337,27 @@ function renderChangesetContent(diff: WorkspaceDependencyDiff): string {
  * ----------------------------------------------------------------- */
 
 /**
+ * A prose-only changeset that coexists with the run: it releases at least one
+ * package in scope for this run but was left untouched because it carries no
+ * `## Dependencies` section. Purely informational (#279) — surfaced so the
+ * regen/detect result accounts for every changeset touching an in-scope
+ * package, instead of leaving prose entries invisible and forcing a manual
+ * `.changeset/` cross-check.
+ *
+ * @public
+ */
+export interface CoexistingChangeset {
+	/** Absolute path of the untouched prose changeset. */
+	readonly file: string;
+	/** The in-scope packages its frontmatter releases (out-of-scope names are dropped). */
+	readonly packages: ReadonlyArray<string>;
+}
+
+/**
  * A complete, side-effect-free regen plan: which stale pure-dependency
  * changesets to delete, which fresh changesets to write (carrying the
- * already-resolved diff), and which mixed changesets were left untouched.
+ * already-resolved diff), which mixed changesets were left untouched, and
+ * which coexisting prose changesets reference in-scope packages.
  *
  * @public
  */
@@ -264,11 +369,14 @@ export interface RegenPlan {
 		readonly diff: WorkspaceDependencyDiff;
 	}>;
 	readonly skippedMixed: ReadonlyArray<string>;
+	/** Informational: untouched prose changesets releasing in-scope packages (#279). */
+	readonly coexisting: ReadonlyArray<CoexistingChangeset>;
 }
 
 /**
  * The result of applying a {@link RegenPlan}: the files actually deleted
- * and written, plus the mixed changesets that were skipped.
+ * and written, plus the mixed changesets that were skipped and the
+ * coexisting prose changesets carried through from the plan.
  *
  * @public
  */
@@ -276,6 +384,8 @@ export interface RegenResult {
 	readonly deleted: ReadonlyArray<string>;
 	readonly written: ReadonlyArray<string>;
 	readonly skippedMixed: ReadonlyArray<string>;
+	/** Informational: untouched prose changesets releasing in-scope packages (#279). */
+	readonly coexisting: ReadonlyArray<CoexistingChangeset>;
 }
 
 /**
@@ -460,7 +570,12 @@ function makeShape(
 			// changed ignore list, privatePackages setting, or baseBranch) would
 			// otherwise be invisible for the rest of the process.
 			// inspector.refresh() also refreshes WorkspaceDiscovery, so this one
-			// call covers both.
+			// call covers both. Deliberately the WHOLESALE refresh, not the
+			// per-root refreshIn: plan() reads through the LAYER-BOUND
+			// `discovery.listPackages()` and worktree snapshot below, and the
+			// kit's per-root refresh leaves the layer-bound memo untouched by
+			// contract — a per-root refresh here would reintroduce the stale
+			// enumeration this refresh exists to prevent.
 			yield* inspector.refresh();
 			yield* config.refresh();
 
@@ -528,20 +643,33 @@ function makeShape(
 			const inScopeFor = (name: string): boolean =>
 				explicitTargets.size > 0 ? activeTargets.has(name) : inScope.has(name) && !excluded.has(name);
 
-			// Restrict, then drop devDeps (unless kept), then drop diffs whose rows
-			// became empty. Specifier resolution already happened per-side inside
-			// computeWorkspaceDependencyDiffs, so rows arrive fully resolved.
+			// Restrict, then drop release-neutral rows (unless kept), then drop
+			// diffs whose rows became empty. Specifier resolution already happened
+			// per-side inside computeWorkspaceDependencyDiffs, so rows arrive
+			// fully resolved. `runtime` and `packageManager` (#544) sit in the
+			// same release-neutral bucket as `devDependency` — today the diff
+			// generator only emits the four npm-field types, so their inclusion
+			// here is defensive classification, not a behavior change.
 			const keepDevDeps = options.includeDevDeps === true;
+			const releaseNeutral = new Set<string>(["devDependency", "runtime", "packageManager"]);
 			const scoped = rawDiffs.filter((d) => inScopeFor(d.package));
 
 			const resolved: WorkspaceDependencyDiff[] = [];
 			for (const diff of scoped) {
-				const rows = keepDevDeps ? [...diff.rows] : diff.rows.filter((r) => r.type !== "devDependency");
+				const rows = keepDevDeps ? [...diff.rows] : diff.rows.filter((r) => !releaseNeutral.has(r.type));
 				if (rows.length > 0) resolved.push({ ...diff, rows: sortDependencyRows(rows) });
 			}
 
 			const existingPure = yield* findPureDependencyChangesets(fs, changesetDir);
 			const skippedMixed = yield* findMixedDependencyChangesets(fs, changesetDir);
+
+			// Informational: prose-only changesets releasing an in-scope package.
+			// The run never touches them, but the result must account for them so
+			// an agent reading it does not double-create content or re-list
+			// .changeset/ to confirm the package's full changeset picture (#279).
+			const coexisting = (yield* findProseChangesets(fs, changesetDir))
+				.map((p) => ({ file: p.file, packages: p.packages.filter(inScopeFor) }))
+				.filter((p) => p.packages.length > 0);
 
 			// A package is only "being rewritten this run" when it survives the
 			// devDep-drop + empty-diff filters above and lands in `resolved` (the
@@ -580,7 +708,7 @@ function makeShape(
 				toWrite.push({ file: join(changesetDir, `${filename}.md`), package: diff.package, diff });
 			}
 
-			return { toDelete, toWrite, skippedMixed };
+			return { toDelete, toWrite, skippedMixed, coexisting };
 		});
 
 	const execute = (plan: RegenPlan): Effect.Effect<RegenResult, ChangesetIOError, never> =>
@@ -605,7 +733,7 @@ function makeShape(
 				const removed = yield* Effect.isSuccess(fs.remove(entry.file));
 				if (removed) deleted.push(entry.file);
 			}
-			return { deleted, written, skippedMixed: plan.skippedMixed };
+			return { deleted, written, skippedMixed: plan.skippedMixed, coexisting: plan.coexisting };
 		});
 
 	return { plan, execute };
@@ -627,17 +755,23 @@ const ConfigGraph = ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigRead
  * lazily); pass an explicit `cwd` when planning against a different root
  * (fixtures, multi-repo hosts).
  *
- * `Workspaces.layerWithGit` mints a fresh layer reference per call, so the
- * graph is bound ONCE per builder call and shared across every internal
- * branch — layer memoization by reference constructs each kit service
- * exactly once.
+ * The graph is `Workspaces.layerWithGitAndConfigDependenciesSubprocess` —
+ * `layerWithGit`'s service set with config-dependency hook replay in catalog
+ * assembly, so hook-injected catalogs resolve to ranges (#539). The subprocess
+ * replay is chosen over the in-process one because silk's consumers (the
+ * `savvy` CLI, the `savvy-mcp` server) are bundled, and a bundler compiles the
+ * in-process replay's computed dynamic `import()` into a context module that
+ * cannot resolve at runtime. The kit mints a fresh layer reference per call,
+ * so the graph is bound ONCE per builder call and shared across every internal
+ * branch — layer memoization by reference constructs each kit service exactly
+ * once.
  *
  * @public
  */
 export function makeDepsRegenDefault(
 	options?: WorkspacesOptions,
 ): Layer.Layer<DepsRegen, never, FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner> {
-	const kitGraph = Workspaces.layerWithGit(options);
+	const kitGraph = Workspaces.layerWithGitAndConfigDependenciesSubprocess(options);
 	return DepsRegen.layer.pipe(
 		Layer.provide(ConfigInspector.layer.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, kitGraph)))),
 		Layer.provide(SilkPublishability.layerAdaptive.pipe(Layer.provide(Layer.mergeAll(ConfigGraph, kitGraph)))),

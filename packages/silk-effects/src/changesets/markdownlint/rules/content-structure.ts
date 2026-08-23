@@ -47,7 +47,7 @@ function hasContentBetween(tokens: MicromarkToken[], currentIdx: number, nextIdx
  * }
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH003.md | CSH003 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH003.md | CSH003 rule documentation}
  * @see `src/remark/rules/content-structure.ts` for the corresponding remark-lint rule
  *
  * @public
@@ -63,7 +63,7 @@ export const ContentStructureRule: Rule = {
 		// Collect h2 heading indices for empty section detection
 		const h2Indices: number[] = [];
 		for (let i = 0; i < tokens.length; i++) {
-			if (tokens[i].type === "atxHeading" && getHeadingLevel(tokens[i]) === 2) {
+			if ((tokens[i].type === "atxHeading" || tokens[i].type === "setextHeading") && getHeadingLevel(tokens[i]) === 2) {
 				h2Indices.push(i);
 			}
 		}

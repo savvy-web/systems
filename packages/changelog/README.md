@@ -27,6 +27,16 @@ Reference it as the `changelog` entry in `.changeset/config.json`:
 
 `savvy init` from [`@savvy-web/cli`](https://www.npmjs.com/package/@savvy-web/cli) writes this entry automatically, filling in the detected repo slug.
 
+## Options
+
+The second tuple element configures the generator. `repo` (required) is the `owner/repo` slug used to render pull-request links. `thanks` (optional, default `true`) controls contributor attribution — set it to `false` to strip the `Thanks @user!` credits and the per-version `### Thanks` section; pull-request references stay either way:
+
+```json
+{
+  "changelog": ["@savvy-web/changelog", { "repo": "owner/repo", "thanks": false }]
+}
+```
+
 ## License
 
 [MIT](LICENSE)

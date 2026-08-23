@@ -9,9 +9,11 @@
  * dropping the declaration makes rolldown inline that package's source into
  * the artifacts instead of leaving an `import` for the consumer to resolve.
  *
- * `semver` is the live case. Nothing in `src/` imports it —
- * `@savvy-web/changelog`, whose code is force-bundled into the changelog and
- * markdownlint entries, is the importer. Inlining it pulls semver's circular
+ * `semver` is the live case. Nothing in `src/` imports it — the importers are
+ * the `@changesets/*` packages inside `@savvy-web/silk-effects`' transitive
+ * tree, force-bundled into the changelog and markdownlint entries (which must
+ * stay CJS-requireable and so cannot externalize ESM-only silk-effects; see
+ * the systems#469 determination in savvy.build.ts). Inlining it pulls semver's circular
  * CommonJS modules into the ESM output, which is the documented
  * `require_range is not a function` init-order hazard.
  *

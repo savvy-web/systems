@@ -7,11 +7,17 @@ await build({
 	// rolldown cannot emit its circular CommonJS modules (comparator <-> range) into the
 	// ESM output without a `require_range is not a function` init-order crash. It is kept
 	// as a declared runtime dependency (preserved through the transform below) for that
-	// reason. Nothing in silk's OWN source imports it — `@savvy-web/changelog`, whose code
-	// is force-bundled into the changelog and markdownlint entries, is the importer — so a
-	// source-level grep reads it as unused. It is not: drop it and rolldown inlines
-	// semver's CJS source into four artifacts. `__test__/externals.test.ts` pins this
-	// against the built output; do not remove either half.
+	// reason. Nothing in silk's OWN source imports it — the importers are the
+	// `@changesets/*` packages (apply-release-plan, config, get-release-plan) inside
+	// `@savvy-web/silk-effects`' transitive tree, which the CJS overrides below
+	// force-bundle — so a source-level grep reads it as unused. It is not: drop it and
+	// rolldown inlines semver's CJS source into four artifacts. There is no
+	// externalization escape (systems#469 determination): the CJS-requireable entries
+	// cannot externalize ESM-only silk-effects, so its semver-importing closure is always
+	// bundled, and only the manifest declaration keeps semver itself external — which the
+	// published manifest needs anyway for the external import to resolve at runtime.
+	// `__test__/externals.test.ts` pins this against the built output; do not remove
+	// either half.
 	//
 	// `@savvy-web/silk-effects` is a devDependency (NOT a declared runtime dep), so tsdown
 	// would normally bundle it into every entry — externalize it here so the BASE ESM

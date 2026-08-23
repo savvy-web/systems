@@ -25,12 +25,14 @@ const cannedPlan: Changesets.RegenPlan = {
 		},
 	],
 	skippedMixed: [],
+	coexisting: [],
 };
 
 const cannedResult: Changesets.RegenResult = {
 	deleted: cannedPlan.toDelete.map((entry) => entry.file),
 	written: cannedPlan.toWrite.map((entry) => entry.file),
 	skippedMixed: cannedPlan.skippedMixed,
+	coexisting: cannedPlan.coexisting,
 };
 
 /**

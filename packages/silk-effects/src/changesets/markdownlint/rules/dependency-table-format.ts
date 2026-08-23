@@ -1,6 +1,7 @@
 import type { MicromarkToken, Rule } from "markdownlint";
 
 import { VERSION_RE } from "../../schemas/dependency-table.js";
+import { scanDependencySection } from "../../utils/dependency-section.js";
 import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./utils.js";
 
 /**
@@ -11,15 +12,21 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./
  * dependency types, actions, and version / sentinel values.
  *
  * @remarks
- * The rule inspects the micromark token tree for `atxHeading` tokens whose
- * text is "Dependencies" (case-insensitive). For each match it verifies:
+ * The rule inspects the micromark token tree for level-2 `atxHeading` or
+ * `setextHeading` tokens whose text is "Dependencies" (case-insensitive).
+ * For each match it verifies:
  *
- * - The section contains a `table` token (not a list or paragraph).
+ * - The section contains a `table` token ANYWHERE between the heading and the
+ *   next heading — prose may precede or follow it (issues #456/#457). A
+ *   section with no table (prose or list only) fails, reported at the
+ *   `## Dependencies` heading (the anchor both engines share; see
+ *   `src/changesets/utils/dependency-section.ts`).
  * - The table header row has exactly five columns:
  *   `Dependency | Type | Action | From | To`.
  * - Each data row has a non-empty dependency name.
  * - The `Type` cell is one of: `dependency`, `devDependency`,
- *   `peerDependency`, `optionalDependency`, `workspace`, `config`.
+ *   `peerDependency`, `optionalDependency`, `workspace`, `config`, `runtime`,
+ *   `packageManager`.
  * - The `Action` cell is one of: `added`, `updated`, `removed`.
  * - `From` and `To` cells match a semver string or the em-dash sentinel
  *   (`\u2014`).
@@ -44,7 +51,7 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./
  * }
  * ```
  *
- * @see {@link https://github.com/savvy-web/changesets/blob/main/docs/rules/CSH005.md | CSH005 rule documentation}
+ * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH005.md | CSH005 rule documentation}
  * @see `src/remark/rules/dependency-table-format.ts` for the corresponding remark-lint rule
  *
  * @public
@@ -62,6 +69,8 @@ const VALID_TYPES = new Set([
 	"optionalDependency",
 	"workspace",
 	"config",
+	"runtime",
+	"packageManager",
 ]);
 
 const VALID_ACTIONS = new Set(["added", "updated", "removed"]);
@@ -114,8 +123,12 @@ export const DependencyTableFormatRule: Rule = {
 		for (let i = 0; i < tokens.length; i++) {
 			const token = tokens[i];
 
-			// Find h2 headings
-			if (token.type !== "atxHeading") {
+			// Find h2 headings — atx (`## Dependencies`) or setext ("Dependencies"
+			// underlined with `---`). remark-parse normalizes setext to a plain
+			// depth-2 heading node, so the remark engine already enforces the
+			// section; accepting only atx here would let the setext spelling
+			// escape this engine and split the two implementations of one rule.
+			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
 				continue;
 			}
 			if (getHeadingLevel(token) !== 2) {
@@ -127,29 +140,21 @@ export const DependencyTableFormatRule: Rule = {
 
 			const headingLine = token.startLine;
 
-			// Scan forward past lineEnding/lineEndingBlank to find the next block
-			let tableToken: AnyToken | null = null;
+			// Shared section-scanning decision (issues #456/#457): the first table
+			// ANYWHERE in the section satisfies the rule; prose may precede or
+			// follow it. The semantics live in scanDependencySection so this rule
+			// and the sibling remark rule cannot drift.
+			const { table } = scanDependencySection<AnyToken>(tokens as AnyToken[], i + 1, {
+				isSkippable: (t) => t.type === "lineEnding" || t.type === "lineEndingBlank",
+				isHeading: (t) => t.type === "atxHeading" || t.type === "setextHeading",
+				isTable: (t) => t.type === "table",
+			});
+			const tableToken = table;
 
-			for (let j = i + 1; j < tokens.length; j++) {
-				const next = tokens[j] as AnyToken;
-
-				if (next.type === "lineEnding" || next.type === "lineEndingBlank") {
-					continue;
-				}
-
-				// If we hit another heading, the section has no table content
-				if (next.type === "atxHeading") {
-					break;
-				}
-
-				if (next.type === "table") {
-					tableToken = next;
-				}
-				// list, paragraph, codeFenced, etc. — not a table; leave tableToken null
-				break;
-			}
-
-			if (tableToken === null) {
+			// Position choice (documented in utils/dependency-section.ts): a
+			// section with no table reports at the Dependencies HEADING, matching
+			// the remark rule's anchor for the same diagnostic.
+			if (tableToken === undefined) {
 				onError({
 					lineNumber: headingLine,
 					detail: `Dependencies section must contain a table, not a list or paragraph. See: ${RULE_DOCS.CSH005}`,

@@ -196,6 +196,20 @@ export function extractVersionBlock(changelog: string, version: string): string 
 	return lines.slice(start, end).join("\n").trim();
 }
 
+/**
+ * Read the `thanks` changelog option from the changesets config tuple
+ * (`"changelog": ["@savvy-web/changelog", { "thanks": false }]`), if set.
+ * A missing or non-boolean value returns `undefined` so the transformer's
+ * default (`true`) applies.
+ */
+function thanksOption(config: Config): boolean | undefined {
+	if (!Array.isArray(config.changelog)) return undefined;
+	const opts: unknown = config.changelog[1];
+	if (typeof opts !== "object" || opts === null) return undefined;
+	const thanks = (opts as { thanks?: unknown }).thanks;
+	return typeof thanks === "boolean" ? thanks : undefined;
+}
+
 /** Maintenance reasons for every changeset-less release in the plan, keyed by package name. */
 function maintenanceReasons(plan: ReleasePlan, config: Config): Map<string, MaintenanceReason> {
 	const reasons = new Map<string, MaintenanceReason>();
@@ -324,12 +338,13 @@ function previewEffect(
 			// Sync engine call: a throw here must stay on the typed failure path
 			// rather than escaping the gen body as a defect.
 			const reason = reasonByName.get(r.name);
+			const thanks = thanksOption(config);
 			yield* Effect.try({
 				try: () =>
-					ChangelogTransformer.transformFile(
-						clPath,
-						reason ? { maintenance: { version: r.newVersion, reason } } : undefined,
-					),
+					ChangelogTransformer.transformFile(clPath, {
+						...(reason ? { maintenance: { version: r.newVersion, reason } } : {}),
+						...(thanks !== undefined ? { thanks } : {}),
+					}),
 				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 			});
 			const content = yield* fs.readFileString(clPath);
@@ -391,6 +406,7 @@ function applyEffect(
 		let touchedFiles: string[] = [];
 		if (!dryRun) {
 			const reasonByName = maintenanceReasons(plan, config);
+			const thanks = thanksOption(config);
 			const versionByPkgName = new Map(plan.releases.map((r) => [r.name, r.newVersion]));
 			const nameByDir = new Map<string, string>();
 			for (const p of packages.packages) nameByDir.set(p.dir, p.packageJson.name);
@@ -405,10 +421,10 @@ function applyEffect(
 						const pkgName = nameByDir.get(dirname(f));
 						const reason = pkgName ? reasonByName.get(pkgName) : undefined;
 						const newVersion = pkgName ? versionByPkgName.get(pkgName) : undefined;
-						ChangelogTransformer.transformFile(
-							f,
-							reason && newVersion ? { maintenance: { version: newVersion, reason } } : undefined,
-						);
+						ChangelogTransformer.transformFile(f, {
+							...(reason && newVersion ? { maintenance: { version: newVersion, reason } } : {}),
+							...(thanks !== undefined ? { thanks } : {}),
+						});
 					}
 					return touched;
 				},

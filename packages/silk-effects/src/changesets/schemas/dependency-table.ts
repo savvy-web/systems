@@ -59,8 +59,14 @@ export type DependencyAction = typeof DependencyActionSchema.Type;
  * @remarks
  * Unlike {@link DependencyTypeSchema} (which uses plural npm field names like
  * `"dependencies"`), this schema uses singular forms (`"dependency"`) and adds
- * two additional types: `"workspace"` for monorepo workspace references and
- * `"config"` for configuration toolchain updates (e.g., ESLint, TypeScript).
+ * four additional types with no `package.json` dependency-field counterpart:
+ * `"workspace"` for monorepo workspace references, `"config"` for
+ * configuration toolchain updates (e.g., ESLint, TypeScript), `"runtime"` for
+ * language-runtime upgrades (e.g., the Node.js engine itself), and
+ * `"packageManager"` for the package manager's own self-upgrade (pnpm, bun,
+ * npm). `"runtime"` and `"packageManager"` are release-neutral — like
+ * `devDependency` rows they document toolchain movement without implying a
+ * consumer-facing version bump.
  *
  * @example
  * ```typescript
@@ -84,6 +90,8 @@ export const DependencyTableTypeSchema = Schema.Literals([
 	"optionalDependency",
 	"workspace",
 	"config",
+	"runtime",
+	"packageManager",
 ]);
 
 /**
@@ -91,7 +99,8 @@ export const DependencyTableTypeSchema = Schema.Literals([
  *
  * @remarks
  * One of `"dependency"`, `"devDependency"`, `"peerDependency"`,
- * `"optionalDependency"`, `"workspace"`, or `"config"`.
+ * `"optionalDependency"`, `"workspace"`, `"config"`, `"runtime"`, or
+ * `"packageManager"`.
  *
  * @public
  */
