@@ -97,3 +97,40 @@ describe("built artifact externals", () => {
 		});
 	}
 });
+
+describe("published manifest covers silk-effects' required peers", () => {
+	// silk externalizes @savvy-web/silk-effects and re-adds it to the published
+	// manifest, so a consumer installing silk resolves silk-effects transitively
+	// and inherits its REQUIRED peers. Nothing else in the published graph names
+	// them, so if silk does not carry them the peers go unsatisfied: silently
+	// duplicated under pnpm's autoInstallPeers, ERR_MODULE_NOT_FOUND under yarn
+	// or with autoInstallPeers off.
+	//
+	// Two sites have to agree for that to work — silk's `dependencies` AND the
+	// `kept` allowlist in savvy.build.ts, which filters the published manifest
+	// down. Adding to one alone is a no-op, which is how this shipped unnoticed.
+	// These assertions read the BUILT manifest, so they fail if either site drifts.
+	const builtManifest = join(PKG_ROOT, "dist/dev/pkg/package.json");
+	const effectsManifest = join(PKG_ROOT, "../silk-effects/package.json");
+
+	const requiredPeers = Object.keys(
+		(JSON.parse(readFileSync(effectsManifest, "utf-8")) as { peerDependencies?: Record<string, string> })
+			.peerDependencies ?? {},
+	);
+	const published =
+		(JSON.parse(readFileSync(builtManifest, "utf-8")) as { dependencies?: Record<string, string> }).dependencies ?? {};
+
+	it("declares every peer silk-effects requires", () => {
+		const missing = requiredPeers.filter((name) => published[name] === undefined);
+		expect(missing).toEqual([]);
+	});
+
+	it("keeps the check honest — silk-effects itself is a published dependency", () => {
+		// The premise of the test above: silk really does ship silk-effects as a
+		// runtime dependency. If this ever stops being true the peers stop being
+		// inherited, and an empty `missing` list above would mean "nothing to
+		// cover" rather than "everything covered".
+		expect(published["@savvy-web/silk-effects"]).toBeDefined();
+		expect(requiredPeers.length).toBeGreaterThan(0);
+	});
+});

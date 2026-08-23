@@ -116,6 +116,17 @@ await build({
 			// carry it or a consumer type-checking @savvy-web/silk/lint has no
 			// guaranteed resolution under pnpm's strict layout.
 			"@effected/templates",
+			// silk-effects declares @effected/workspaces, @effected/git and
+			// @effected/commands as REQUIRED peers. silk externalizes silk-effects and
+			// re-adds it below as a real runtime dependency, so a consumer installing
+			// silk inherits those peers — and nothing else in the published graph names
+			// them. Without these three the peers go unsatisfied: silently duplicated
+			// under pnpm's autoInstallPeers, ERR_MODULE_NOT_FOUND under yarn or with
+			// autoInstallPeers off. Adding them to `dependencies` alone is not enough;
+			// this allowlist is what reaches the published manifest.
+			"@effected/commands",
+			"@effected/git",
+			"@effected/workspaces",
 			"@savvy-web/changelog",
 			"@savvy-web/cli",
 			"@savvy-web/mcp",
