@@ -178,6 +178,26 @@ reads exactly like a stale artifact. The discipline that catches it is a control
 to be present, and if the control does not light up, distrust the search rather than the artifact. Here the
 control was absent from two bundles at once, which is impossible, and that impossibility was the tell.
 
+An eighth, and the most instructive because it happened while hunting the family itself. A session set out to
+disprove a claim that the release gate had rejected a bad release, queried `/commits/{sha}/check-runs` on three
+branch heads, found zero non-success results, and reported that the gate had never failed. Both halves of the
+search were blind:
+
+- **Wrong location.** PR validation posts check runs to the pull request's MERGE ref, not the head. The failing
+  `Build Validation` check — conclusion `failure`, title "The on-build gate failed" — was on a merge commit that
+  was never queried. "Zero non-success on the heads" was a true statement about a place the answer does not live.
+- **Wrong layer.** Filtering on workflow run and job conclusions cannot see a gate failure at all. The job
+  concluded `success` while containing the failed gate, because the step's error channel is `never` and it
+  signals through `success: false` into the check derivation. Conclusions are structurally blind to the event.
+
+No positive control was run. Asking "does this query return a failing check I already know exists?" would have
+exposed the scope error immediately.
+
+**An accident is not a control.** The gate's failure that day was incidental — real drift, caught for real, but
+nobody made it happen. That proves the mechanism *can* fire; it does not prove anyone can make it fire on demand,
+and only the second is a control. A deliberate exercise — hand-stale a catalog range, open a PR, watch validation
+go red on purpose — remains the outstanding verification.
+
 **Review is not the control.** All of these were in reviewed code. Reviewing a check means reading it and agreeing
 it looks correct, and all of them did. What caught them was producing the condition the check claims to catch and
 watching it fail to catch it. A check whose failing case has never been exercised is an untested assertion about
