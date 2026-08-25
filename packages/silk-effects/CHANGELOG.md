@@ -1,5 +1,24 @@
 # @savvy-web/silk-effects
 
+## 7.1.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/jsonc | dependency | updated | ^0.7.0 | ^0.8.0 |
+| @effected/markdown | dependency | updated | ^0.6.3 | ^0.7.0 |
+| @effected/package-json | dependency | updated | ^0.11.0 | ^0.12.0 |
+| @effected/yaml | dependency | updated | ^0.11.0 | ^0.12.0 |
+
+[#552][#552]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#552]: https://github.com/savvy-web/systems/pull/552
+
 ## 7.1.1
 
 ### Dependencies
