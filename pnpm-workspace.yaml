@@ -25,7 +25,7 @@ catalogs:
     "@types/bun": ^1.4.0
     "@types/node": ^26.2.0
     "@types/react": ^19.2.18
-    "@types/react-dom": ^19.2.4
+    "@types/react-dom": ^19.2.5
     react: ^19.2.8
     react-dom: ^19.2.8
     rolldown: ^1.2.5
@@ -51,7 +51,7 @@ catalogs:
     "@rspress/plugin-sitemap": ^2.0.19
     "@types/node": ^26.2.0
     "@types/react": ^19.2.18
-    "@types/react-dom": ^19.2.4
+    "@types/react-dom": ^19.2.5
     react: ^19.2.8
     react-dom: ^19.2.8
     rspress-plugin-mermaid: ^1.0.1
@@ -94,7 +94,7 @@ catalogs:
     "@types/bun": ^1.4.0
     "@types/node": ^26.2.0
     "@types/react": ^19.2.18
-    "@types/react-dom": ^19.2.4
+    "@types/react-dom": ^19.2.5
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
     husky: ^9.1.7
     lint-staged: ^17.3.0
@@ -127,7 +127,7 @@ catalogs:
     "@vitest/coverage-v8": ^4.1.0
     vitest: ^4.1.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.6.7+sha512-EmiC6i8q/vCIolEt8PGxXkZvch0M/7AXV9rZaoPeYFAmuiVsAKeXLQwEdeG3Wr7q+hfFw5jZCh2bO2JyJUdhLg==
+  "@effected/pnpm-plugin-effect": 0.6.8+sha512-Pru4OYUOCNH/b//ZEDrIfUklBfw3oyY805jFqk7za+1jJ0683Maa66y7pTZfRsqBOui9MNmWucukK8feqGvo8Q==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
@@ -138,25 +138,16 @@ minimumReleaseAgeExclude:
   - "@oxc-project/*"
   - "@savvy-web/*"
   - "@spencerbeggs/*"
+  - "@tsdoctor/*"
   - "@typescript/*"
   - "@vitest-agent/*"
-  - api-extractor-llms
-  - config-file-effect
-  - json-schema-effect
-  - jsonc-effect
   - oxc-parser
-  - package-json-effect
   - reposets
   - rolldown-pnpm-config
   - rspress-plugin-api-extractor
   - runtime-resolver
-  - semver-effect
   - std-osc8
-  - type-registry-effect
   - vitest-bats
-  - workspaces-effect
-  - xdg-effect
-  - yaml-effect
 overrides:
   "@microsoft/api-extractor>typescript": ^6.0.3
 peerDependencyRules:
