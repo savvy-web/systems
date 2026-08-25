@@ -474,8 +474,8 @@ importers:
         specifier: catalog:build
         version: 26.2.0
       rolldown-pnpm-config:
-        specifier: ^0.7.6
-        version: 0.7.6(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5)
+        specifier: ^0.7.7
+        version: 0.7.7(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5)
       typescript:
         specifier: catalog:build
         version: 7.0.2
@@ -4404,8 +4404,8 @@ packages:
       vue-tsc:
         optional: true
 
-  rolldown-pnpm-config@0.7.6:
-    resolution: {integrity: sha512-Xju44NAAY4xVMw9dG8qfqkClPzabaWyhCtBAeWseYpIq1+xhKjPw7A5RO34W8WM6nMscwh6rwf3d+yE/BdsILw==}
+  rolldown-pnpm-config@0.7.7:
+    resolution: {integrity: sha512-lqtGNUr6dofd8+zPJcWvNGZCBUO+HrBvhoz2ULZR2tq9yO0OSwmHxaQqTN+eIY7aWRqVwpGj+wWgq9G9Kh11Yw==}
     engines: {node: '>=24.11.0'}
     hasBin: true
     peerDependencies:
@@ -8864,7 +8864,7 @@ snapshots:
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-pnpm-config@0.7.6(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5):
+  rolldown-pnpm-config@0.7.7(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5):
     dependencies:
       '@effect/platform-node': 4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1)
       '@effected/npm': 0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
