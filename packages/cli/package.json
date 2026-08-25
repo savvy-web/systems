@@ -44,6 +44,7 @@
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
+		"@effected/memfs": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
 		"tsx": "catalog:build",

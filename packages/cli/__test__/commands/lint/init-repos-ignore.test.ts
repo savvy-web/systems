@@ -1,16 +1,25 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NodeFileSystem } from "@effect/platform-node";
+import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { ManagedSection } from "@effected/templates";
+import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { BiomeSchemaSync, Lint } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runLintInit } from "../../../src/commands/lint/init.js";
 
+// The real `WorkspaceDiscovery` over the real `WorkspaceRoot`, not a double:
+// these suites run in a bare tmpdir with no workspace root above it, so
+// discovery fails root-not-found and the biome-schema pass degrades to a single
+// default-directory scan — exactly what it does in a plain single-package
+// project. The workspace-aware path is covered on a virtual volume in
+// `__test__/lint/biome-schema-sync.test.ts`.
+const WorkspaceLive = WorkspaceDiscovery.layer().pipe(Layer.provide(WorkspaceRoot.layer));
+
 const TestLayer = Layer.provideMerge(
-	Layer.merge(ManagedSection.layer, BiomeSchemaSync.layer),
-	NodeFileSystem.layer,
+	Layer.mergeAll(ManagedSection.layer, BiomeSchemaSync.layer, WorkspaceLive),
+	Layer.merge(NodeFileSystem.layer, NodePath.layer),
 ).pipe(Layer.provide(Logger.layer([])));
 
 describe("runLintInit: .repos ignore propagation", () => {
