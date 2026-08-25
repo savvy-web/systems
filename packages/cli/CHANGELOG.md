@@ -1,5 +1,29 @@
 # @savvy-web/cli
 
+## 2.7.7
+
+### Bug Fixes
+
+- `savvy init` now syncs the biome `$schema` URL in every workspace package, not just the workspace root. A monorepo where a leaf package carries its own `biome.json` or `biome.jsonc` previously left those files pinned to whatever Biome version they were written against, while the root config was updated.
+
+- Workspace package roots are enumerated with `@effected/workspaces`, and each one carrying a biome config is synced in the same pass
+
+- A repo with no workspace root (a plain single-package project) is unaffected: the current directory is still scanned exactly as before
+
+- A config that cannot be read or parsed is now reported and skipped rather than aborting the remaining packages [#556][#556]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 7.1.2 | 7.1.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#556]: https://github.com/savvy-web/systems/pull/556
+
 ## 2.7.6
 
 ### Dependencies
