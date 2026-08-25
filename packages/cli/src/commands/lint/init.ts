@@ -10,6 +10,7 @@ import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import type { SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
 import { ManagedSection } from "@effected/templates";
+import { WorkspaceDiscovery } from "@effected/workspaces";
 import {
 	BiomeSchemaSync,
 	Lint,
@@ -168,20 +169,86 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 }
 
 /**
+ * Every directory a biome config may sit in: the workspace root plus each leaf
+ * package the workspace `packages:` patterns enumerate.
+ *
+ * @remarks
+ * `BiomeSchemaSync` scans a single directory per call, so a monorepo needs the
+ * roots enumerated up front. `listPackages` already includes the workspace root
+ * itself (the entry whose `relativePath` is `"."`), so no extra cwd pass is
+ * needed on the happy path.
+ *
+ * Discovery failing yields an EMPTY list, which the caller reads as "no roots
+ * to enumerate — scan `BiomeSchemaSync`'s own default directory instead". The
+ * cwd is deliberately not named here: resolving it is the sync service's job,
+ * and an ambient `process.cwd()` read in this function would be a second,
+ * divergent source of truth for the same directory.
+ *
+ * The two ways discovery fails mean different things and are reported differently:
+ *
+ * - `WorkspaceRootNotFoundError` is the normal shape of a plain single-package
+ *   project (no `pnpm-workspace.yaml`, no `workspaces` field). Nothing to say.
+ * - Anything else (an unenumerable `packages:` pattern, a leaf manifest missing
+ *   a `version`) means leaves exist but could not be enumerated, so the fallback
+ *   silently under-scans. That earns a warning.
+ *
+ * @returns Effect yielding the directories to scan, never failing
+ */
+function biomeConfigRoots(): Effect.Effect<ReadonlyArray<string>, never, WorkspaceDiscovery> {
+	return Effect.gen(function* () {
+		const discovery = yield* WorkspaceDiscovery;
+		return yield* discovery.listPackages().pipe(
+			Effect.map((packages) => packages.map((pkg) => pkg.path)),
+			Effect.catchTag("WorkspaceRootNotFoundError", () => Effect.succeed<ReadonlyArray<string>>([])),
+			Effect.catch((e) =>
+				Effect.as(Effect.log(`${WARNING} Only syncing biome $schema in the current directory: ${e.message}`), []),
+			),
+		);
+	});
+}
+
+/**
  * Find and sync biome config `$schema` URLs to match the pinned {@link BIOME_VERSION}.
  *
+ * @remarks
+ * Covers every workspace root, not just the repository root: a leaf package
+ * carrying its own `biome.json`/`biome.jsonc` is updated in the same pass.
+ * A failure on one root is reported and skipped rather than aborting the rest,
+ * so one unreadable or malformed config cannot strand the others on a stale
+ * schema URL.
+ *
+ * Exported for the handler tests, which drive this seam over an in-memory
+ * volume — `runLintInit` itself chmods hook files through `node:fs/promises`,
+ * which no `FileSystem` double can intercept.
+ *
  * @returns Effect that syncs biome schemas and logs results
+ *
+ * @internal
  */
-function syncBiomeSchemas() {
+export function syncBiomeSchemas(): Effect.Effect<void, never, BiomeSchemaSync | WorkspaceDiscovery> {
 	return Effect.gen(function* () {
 		const syncer = yield* BiomeSchemaSync;
-		const result = yield* syncer.sync(BIOME_VERSION);
+		const roots = yield* biomeConfigRoots();
 
-		for (const configPath of result.current) {
-			yield* Effect.log(`${CHECK_MARK} ${configPath}: biome $schema up-to-date`);
-		}
-		for (const configPath of result.updated) {
-			yield* Effect.log(`${CHECK_MARK} Updated $schema in ${configPath}`);
+		// An empty root list means discovery could not enumerate one; fall through
+		// to a single pass over `BiomeSchemaSync`'s own default directory.
+		const passes: ReadonlyArray<{ cwd: string } | undefined> =
+			roots.length > 0 ? roots.map((cwd) => ({ cwd })) : [undefined];
+
+		for (const options of passes) {
+			yield* syncer.sync(BIOME_VERSION, options).pipe(
+				Effect.flatMap((result) =>
+					Effect.gen(function* () {
+						for (const configPath of result.current) {
+							yield* Effect.log(`${CHECK_MARK} ${configPath}: biome $schema up-to-date`);
+						}
+						for (const configPath of result.updated) {
+							yield* Effect.log(`${CHECK_MARK} Updated $schema in ${configPath}`);
+						}
+					}),
+				),
+				Effect.catchTag("BiomeSyncError", (e) => Effect.log(`${WARNING} Could not sync biome $schema: ${e.message}`)),
+			);
 		}
 	});
 }
@@ -223,7 +290,7 @@ export function runLintInit(opts: {
 }): Effect.Effect<
 	void,
 	Error | SectionParseError | SectionRenderError | SectionFileError | PlatformError,
-	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync
+	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync | WorkspaceDiscovery
 > {
 	const { force, config, preset } = opts;
 	return Effect.gen(function* () {
@@ -272,10 +339,8 @@ export function runLintInit(opts: {
 			yield* writeMarkdownlintConfig(fs, preset, force);
 		}
 
-		// Sync biome $schema URLs
-		yield* syncBiomeSchemas().pipe(
-			Effect.catchTag("BiomeSyncError", (e) => Effect.log(`${WARNING} Could not sync biome $schema: ${e.message}`)),
-		);
+		// Sync biome $schema URLs across every workspace root
+		yield* syncBiomeSchemas();
 
 		// Handle config file
 		const configExists = yield* fs.exists(config);
