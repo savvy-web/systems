@@ -1,5 +1,18 @@
 # @savvy-web/tsdown-plugins
 
+## 2.5.8
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/tsconfig-json | dependency | updated | ^0.6.0 | ^0.6.1 |
+| @effected/workspaces | dependency | updated | ^0.18.1 | ^0.18.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.5.7
 
 ### Dependencies

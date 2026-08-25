@@ -1,5 +1,18 @@
 # @savvy-web/cli
 
+## 2.7.6
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.18.1 | ^0.18.2 |
+| @savvy-web/silk-effects | dependency | updated | 7.1.2 | 7.1.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.7.5
 
 ### Dependencies

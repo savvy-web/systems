@@ -1,5 +1,20 @@
 # @savvy-web/silk
 
+## 3.10.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.18.1 | ^0.18.2 |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli | dependency | updated | 2.7.5 | 2.7.6 |
+| @savvy-web/mcp | dependency | updated | 2.6.2 | 2.6.3 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.10.3
 
 ### Dependencies
