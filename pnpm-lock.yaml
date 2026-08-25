@@ -6,17 +6,17 @@ importers:
   .:
     configDependencies:
       '@effected/pnpm-plugin-effect':
-        specifier: 0.6.8
-        version: 0.6.8
+        specifier: 0.6.9
+        version: 0.6.9
 
 packages:
 
-  '@effected/pnpm-plugin-effect@0.6.8':
-    resolution: {integrity: sha512-Pru4OYUOCNH/b//ZEDrIfUklBfw3oyY805jFqk7za+1jJ0683Maa66y7pTZfRsqBOui9MNmWucukK8feqGvo8Q==}
+  '@effected/pnpm-plugin-effect@0.6.9':
+    resolution: {integrity: sha512-Rq25k5QVTsSfTxUzc0TqrdVnKP4gtDYFfv2L5Nhlc4sm3xy0T3KmyFQ1/qyDUDPoePmuym8TB9TJ3Gjan89viQ==}
 
 snapshots:
 
-  '@effected/pnpm-plugin-effect@0.6.8': {}
+  '@effected/pnpm-plugin-effect@0.6.9': {}
 
 ---
 lockfileVersion: '9.0'
@@ -109,8 +109,8 @@ catalogs:
       specifier: ^0.5.0
       version: 0.5.0
     '@effected/npm':
-      specifier: ^0.12.0
-      version: 0.12.0
+      specifier: ^0.12.1
+      version: 0.12.1
     '@effected/package-json':
       specifier: ^0.12.0
       version: 0.12.0
@@ -178,7 +178,7 @@ catalogs:
 overrides:
   '@microsoft/api-extractor>typescript': ^6.0.3
 
-pnpmfileChecksum: sha256-R+/ElqKvovej0OasZWegN8vjHRfhy6Khtz7Q+6O97AM=
+pnpmfileChecksum: sha256-gLdBmLap8RtmhzcOjWckhIDQp8EJ9SbsIXeND7hfEtI=
 
 importers:
 
@@ -775,7 +775,7 @@ importers:
         version: 4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1)
       '@effected/npm':
         specifier: catalog:effected
-        version: 0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+        version: 0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/package-json':
         specifier: catalog:effected
         version: 0.12.0(effect@4.0.0-rc.109)
@@ -1223,8 +1223,8 @@ packages:
     peerDependencies:
       effect: 4.0.0-rc.109
 
-  '@effected/npm@0.12.0':
-    resolution: {integrity: sha512-UrfEwGtoviEPDDdkybompmJKfAvNv9RAx1oUPSsjw0Rmevxqwyqmdmvr9Aw4/oPyfiYPXFMeHkv+tWY+/C1DuQ==}
+  '@effected/npm@0.12.1':
+    resolution: {integrity: sha512-bHV0iTYQv/9MZ3wxdZnzii43pxhpoKgQva2A5Ahg0aJvHa3EEHaOaGXnxre8HUSgzSbK2RzKLkrynVnkH5VNRA==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       '@effected/semver': ^0.5.0
@@ -5435,10 +5435,10 @@ snapshots:
     dependencies:
       effect: 4.0.0-rc.109
 
-  '@effected/lockfiles@0.7.1(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@effected/npm@0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/semver@0.5.0(effect@4.0.0-rc.109))(@effected/yaml@0.12.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)':
+  '@effected/lockfiles@0.7.1(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@effected/npm@0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/semver@0.5.0(effect@4.0.0-rc.109))(@effected/yaml@0.12.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)':
     dependencies:
       '@effected/jsonc': 0.8.0(effect@4.0.0-rc.109)
-      '@effected/npm': 0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/npm': 0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/semver': 0.5.0(effect@4.0.0-rc.109)
       '@effected/yaml': 0.12.0(effect@4.0.0-rc.109)
       effect: 4.0.0-rc.109
@@ -5455,7 +5455,7 @@ snapshots:
     dependencies:
       effect: 4.0.0-rc.109
 
-  '@effected/npm@0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)':
+  '@effected/npm@0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)':
     dependencies:
       '@effected/commands': 0.5.0(effect@4.0.0-rc.109)
       '@effected/semver': 0.5.0(effect@4.0.0-rc.109)
@@ -5464,7 +5464,7 @@ snapshots:
   '@effected/package-json@0.12.0(effect@4.0.0-rc.109)':
     dependencies:
       '@effected/jsonc': 0.8.0(effect@4.0.0-rc.109)
-      '@effected/npm': 0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/npm': 0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/semver': 0.5.0(effect@4.0.0-rc.109)
       '@effected/spdx': 0.4.0(effect@4.0.0-rc.109)
       effect: 4.0.0-rc.109
@@ -5501,8 +5501,8 @@ snapshots:
       '@effected/commands': 0.5.0(effect@4.0.0-rc.109)
       '@effected/git': 0.10.0(effect@4.0.0-rc.109)
       '@effected/glob': 0.4.0(effect@4.0.0-rc.109)
-      '@effected/lockfiles': 0.7.1(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@effected/npm@0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/semver@0.5.0(effect@4.0.0-rc.109))(@effected/yaml@0.12.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
-      '@effected/npm': 0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/lockfiles': 0.7.1(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@effected/npm@0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109))(@effected/semver@0.5.0(effect@4.0.0-rc.109))(@effected/yaml@0.12.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/npm': 0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/package-json': 0.12.0(effect@4.0.0-rc.109)
       '@effected/semver': 0.5.0(effect@4.0.0-rc.109)
       '@effected/walker': 0.5.0(@effected/glob@0.4.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
@@ -8867,7 +8867,7 @@ snapshots:
   rolldown-pnpm-config@0.7.6(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(@types/react@19.2.18)(redis@6.2.1)(rolldown@1.2.5):
     dependencies:
       '@effect/platform-node': 4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1)
-      '@effected/npm': 0.12.0(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
+      '@effected/npm': 0.12.1(@effected/semver@0.5.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/semver': 0.5.0(effect@4.0.0-rc.109)
       '@effected/workspaces': 0.18.2(@effected/jsonc@0.8.0(effect@4.0.0-rc.109))(effect@4.0.0-rc.109)
       '@effected/yaml': 0.12.0(effect@4.0.0-rc.109)
