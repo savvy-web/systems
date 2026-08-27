@@ -1,5 +1,15 @@
 # @savvy-web/cli
 
+## 2.8.0
+
+### Features
+
+- Bumpe biome schemas to 2.4.10
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.7.8
 
 ### Dependencies
