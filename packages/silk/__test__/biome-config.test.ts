@@ -39,7 +39,7 @@ interface SilkBiomeConfig {
 }
 
 const loadAsset = (): SilkBiomeConfig => {
-	const raw = readFileSync(join(import.meta.dirname, "..", "public", "biome", "silk.jsonc"), "utf8");
+	const raw = readFileSync(join(import.meta.dirname, "..", "public", "biome", "silk.json"), "utf8");
 	// The asset only uses full-line // comments; strip them so JSON.parse works.
 	const json = raw
 		.split("\n")
