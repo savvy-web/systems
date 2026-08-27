@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 3.10.9
+
+### Bug Fixes
+
+- Fixes biome schema version
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.10.8
 
 ### Dependencies
