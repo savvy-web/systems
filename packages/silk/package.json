@@ -30,7 +30,7 @@
 		"./commitlint/prompt": "./src/commitlint/prompt.ts",
 		"./commitlint/formatter": "./src/commitlint/formatter.ts",
 		"./lint": "./src/lint/index.ts",
-		"./biome": "./public/biome/silk.jsonc",
+		"./biome": "./public/biome/silk.json",
 		"./tsconfig/node/root.json": "./public/tsconfig/node/root.json",
 		"./tsconfig/rspress/website.json": "./public/tsconfig/rspress/website.json"
 	},

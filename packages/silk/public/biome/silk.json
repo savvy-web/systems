@@ -51,11 +51,7 @@
 	},
 	"javascript": {
 		"resolver": {
-			// Catalog-aware module resolution: lets noUndeclaredDependencies and
-			// friends understand `catalog:` / `catalog:<name>` specs in package.json.
-			// Requires Biome >= 2.5. Consumers are carried onto it by silk-update-action
-			// and `savvy init`, which rewrite the $schema URL CI installs from.
-			"experimentalPnpmCatalogs": true
+			"experimentalPnpmCatalogs": false
 		}
 	},
 	"json": {
@@ -92,11 +88,6 @@
 				"useImportExtensions": {
 					"level": "error",
 					"options": {
-						// forceJsExtensions rewrote EVERY import to `.js`, including correct
-						// `.json` asset imports (breaking resolution — see systems#359 and
-						// upstream biomejs/biome#7734). extensionMappings only rewrites the
-						// listed source extensions; unmapped extensions (json, css, ...) keep
-						// the imported file's real extension.
 						"extensionMappings": {
 							"cts": "cjs",
 							"mts": "mjs",
@@ -192,5 +183,6 @@
 		"defaultBranch": "main",
 		"enabled": true,
 		"useIgnoreFile": true
-	}
+	},
+	"root": true
 }
