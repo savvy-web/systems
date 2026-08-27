@@ -19,8 +19,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.1.13",
-							peer: "^2.1.0",
+							range: "^2.2.0",
+							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
 						"@types/bun": {
