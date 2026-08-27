@@ -229,6 +229,9 @@ importers:
       '@savvy-web/pnpm-plugin-silk':
         specifier: workspace:*
         version: link:../../packages/pnpm-plugin-silk/dist/dev/pkg
+      '@savvy-web/tsdown-plugins':
+        specifier: workspace:*
+        version: link:../../packages/tsdown-plugins/dist/dev/pkg
       '@types/node':
         specifier: catalog:silk
         version: 26.3.0
