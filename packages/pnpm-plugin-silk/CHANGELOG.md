@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.31.1
+
+### Bug Fixes
+
+- Bumps `@rslib/core`
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.31.0
 
 ### Features
