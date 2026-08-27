@@ -1,5 +1,17 @@
 # @savvy-web/bundler
 
+## 2.1.29
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @types/node | peerDependency | updated | ^26.2.0 | ^26.3.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.1.28
 
 ### Dependencies

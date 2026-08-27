@@ -1,5 +1,22 @@
 # @savvy-web/silk
 
+## 3.10.7
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli | dependency | updated | 2.7.8 | 2.7.8 |
+| @savvy-web/mcp | dependency | updated | 2.6.4 | 2.6.4 |
+| @biomejs/biome | peerDependency | updated | 2.5.9 | 2.5.10 |
+| @types/node | peerDependency | updated | ^26.2.0 | ^26.3.0 |
+| turbo | peerDependency | updated | ^2.10.11 | ^2.10.12 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.10.6
 
 ### Dependencies

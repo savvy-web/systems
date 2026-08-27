@@ -1,5 +1,18 @@
 # @savvy-web/rspress-builder
 
+## 1.1.30
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/bundler | dependency | updated | 2.1.28 | 2.1.29 |
+| @types/node | peerDependency | updated | ^26.2.0 | ^26.3.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 1.1.29
 
 ### Dependencies
