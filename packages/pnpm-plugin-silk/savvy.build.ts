@@ -29,8 +29,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.2.0",
-							peer: "^26.2.0",
+							range: "^26.3.0",
+							peer: "^26.3.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -78,18 +78,18 @@ await build({
 				docs: {
 					packages: {
 						"@rspress/core": {
-							range: "^2.0.19",
+							range: "^2.0.20",
 							peer: "^2.0.0",
 							strategy: "lock-minor",
 						},
 						"@rspress/plugin-sitemap": {
-							range: "^2.0.19",
-							peer: "^2.0.19",
+							range: "^2.0.20",
+							peer: "^2.0.20",
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.2.0",
-							peer: "^26.2.0",
+							range: "^26.3.0",
+							peer: "^26.3.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -137,8 +137,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.9",
-							peer: "2.5.9",
+							range: "2.5.10",
+							peer: "2.5.10",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -177,8 +177,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.10.11",
-							peer: "^2.10.11",
+							range: "^2.10.12",
+							peer: "^2.10.12",
 							strategy: "lock",
 						},
 					},
@@ -191,8 +191,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.2.0",
-							peer: "^26.2.0",
+							range: "^26.3.0",
+							peer: "^26.3.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {

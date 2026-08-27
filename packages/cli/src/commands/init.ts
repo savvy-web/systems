@@ -16,7 +16,6 @@
 
 import { Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
-
 import { runChangesetInit } from "./changeset/index.js";
 import { runCommitInit } from "./commit/init.js";
 import { runLintInit } from "./lint/init.js";
