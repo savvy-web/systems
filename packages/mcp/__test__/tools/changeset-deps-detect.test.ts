@@ -3,7 +3,11 @@ import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 
-import { ChangesetDepsDetectAsMarkdown, changesetDepsDetect } from "../../src/tools/changeset-deps-detect.js";
+import {
+	ChangesetDepsDetectAsMarkdown,
+	ChangesetDepsDetectResult,
+	changesetDepsDetect,
+} from "../../src/tools/changeset-deps-detect.js";
 
 const ROOT = "/repo";
 
@@ -25,6 +29,7 @@ const cannedPlan = {
 				rows: [
 					{ dependency: "effect", type: "dependency", action: "updated", from: "3.18.0", to: "3.19.1" },
 					{ dependency: "typescript", type: "devDependency", action: "updated", from: "5.4.0", to: "5.5.0" },
+					{ dependency: "prettier", type: "devDependency", action: "updated", from: "^1.2", to: "*" },
 				],
 			},
 		},
@@ -71,12 +76,14 @@ layer(TestLayer)("changesetDepsDetect handler", (it) => {
 			const pkg = data.packages[0];
 			expect(pkg?.package).toBe("@scope/foo");
 			expect(pkg?.relativePath).toBe("packages/foo");
-			expect(pkg?.rows).toHaveLength(2);
+			expect(pkg?.rows).toHaveLength(3);
 			// devDependency row is retained on the detect path
 			expect(pkg?.rows.some((r) => r.type === "devDependency")).toBe(true);
 			expect(pkg?.rows[0]?.dependency).toBe("effect");
+			expect(pkg?.rows.find((r) => r.dependency === "prettier")).toMatchObject({ from: "^1.2", to: "*" });
 			// Coexisting prose changesets are surfaced informationally (#279).
 			expect(data.coexisting).toEqual([{ file: "/repo/.changeset/sweet-cooks-guess.md", packages: ["@scope/foo"] }]);
+			expect(() => Schema.decodeUnknownSync(ChangesetDepsDetectResult)(data)).not.toThrow();
 		}),
 	);
 
@@ -88,6 +95,7 @@ layer(TestLayer)("changesetDepsDetect handler", (it) => {
 			expect(md).toContain("packages/foo");
 			expect(md).toContain("effect");
 			expect(md).toContain("typescript");
+			expect(md).toContain("prettier");
 			expect(md).toContain("sweet-cooks-guess.md");
 			expect(md).toContain("Coexisting prose changesets");
 		}),

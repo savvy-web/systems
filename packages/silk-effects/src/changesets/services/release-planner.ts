@@ -156,6 +156,8 @@ export function makeReleasePlannerTest(fixed: {
  * either shells out through `npx` (network) or to an ambient binary, so a
  * fixture that names one passes or fails on what the machine happens to have
  * installed rather than on this rewrite.
+ *
+ * @internal
  */
 export function withChangelogModules(
 	config: Config,
@@ -181,7 +183,11 @@ export function withChangelogModules(
 	return Effect.succeed({ ...unformatted, changelog: [changelogModules[configuredId], config.changelog[1]] });
 }
 
-/** Extract the `## <version>` block (down to the next H2 or EOF) from a changelog. */
+/**
+ * Extract the `## <version>` block (down to the next H2 or EOF) from a changelog.
+ *
+ * @internal
+ */
 export function extractVersionBlock(changelog: string, version: string): string {
 	const lines = changelog.split("\n");
 	const start = lines.findIndex((l) => l.trim() === `## ${version}`);

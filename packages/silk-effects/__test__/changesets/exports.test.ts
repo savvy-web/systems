@@ -61,6 +61,10 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 		expect(mod.SectionCategorySchema).toBeDefined();
 		expect(mod.ChangesetSchema).toBeDefined();
 		expect(mod.CommitHashSchema).toBeDefined();
+		expect(mod.CoexistingChangesetSchema).toBeDefined();
+		expect(mod.RegenDiffRowSchema).toBeDefined();
+		expect(mod.RegenPlanSchema).toBeDefined();
+		expect(mod.RegenResultSchema).toBeDefined();
 		expect(mod.GitHubInfoSchema).toBeDefined();
 		expect(mod.NonEmptyString).toBeDefined();
 		expect(mod.PositiveInteger).toBeDefined();

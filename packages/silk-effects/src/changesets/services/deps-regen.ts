@@ -52,6 +52,7 @@ import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";
 import { SilkPublishability } from "../../services/SilkPublishability.js";
 import type { GitError } from "../errors.js";
 import { ChangesetIOError } from "../errors.js";
+import type { RegenPlan, RegenResult } from "../schemas/deps-regen.js";
 import type { WorkspaceDependencyDiff } from "../utils/dep-diff.js";
 import { computeWorkspaceDependencyDiffs } from "../utils/dep-diff.js";
 import { serializeDependencyTableToMarkdown, sortDependencyRows } from "../utils/dependency-table.js";
@@ -59,6 +60,8 @@ import { gitListChangesetFilesAtRef, gitMergeBase } from "../utils/git.js";
 import { listPublishablePackageNames } from "../utils/publishability.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector } from "./config-inspector.js";
+
+export type { CoexistingChangeset, RegenDiffRow, RegenPlan, RegenResult } from "../schemas/deps-regen.js";
 
 /* ----------------------------------------------------------------- *
  * Changeset filename helpers (ported verbatim from the CLI command)
@@ -330,62 +333,6 @@ function renderChangesetContent(diff: WorkspaceDependencyDiff): string {
 	const frontmatter = `---\n"${diff.package}": patch\n---`;
 	const table = serializeDependencyTableToMarkdown([...diff.rows]);
 	return `${frontmatter}\n\n## Dependencies\n\n${table}\n`;
-}
-
-/* ----------------------------------------------------------------- *
- * Plan / result shapes
- * ----------------------------------------------------------------- */
-
-/**
- * A prose-only changeset that coexists with the run: it releases at least one
- * package in scope for this run but was left untouched because it carries no
- * `## Dependencies` section. Purely informational (#279) — surfaced so the
- * regen/detect result accounts for every changeset touching an in-scope
- * package, instead of leaving prose entries invisible and forcing a manual
- * `.changeset/` cross-check.
- *
- * @public
- */
-export interface CoexistingChangeset {
-	/** Absolute path of the untouched prose changeset. */
-	readonly file: string;
-	/** The in-scope packages its frontmatter releases (out-of-scope names are dropped). */
-	readonly packages: ReadonlyArray<string>;
-}
-
-/**
- * A complete, side-effect-free regen plan: which stale pure-dependency
- * changesets to delete, which fresh changesets to write (carrying the
- * already-resolved diff), which mixed changesets were left untouched, and
- * which coexisting prose changesets reference in-scope packages.
- *
- * @public
- */
-export interface RegenPlan {
-	readonly toDelete: ReadonlyArray<{ readonly file: string; readonly package: string }>;
-	readonly toWrite: ReadonlyArray<{
-		readonly file: string;
-		readonly package: string;
-		readonly diff: WorkspaceDependencyDiff;
-	}>;
-	readonly skippedMixed: ReadonlyArray<string>;
-	/** Informational: untouched prose changesets releasing in-scope packages (#279). */
-	readonly coexisting: ReadonlyArray<CoexistingChangeset>;
-}
-
-/**
- * The result of applying a {@link RegenPlan}: the files actually deleted
- * and written, plus the mixed changesets that were skipped and the
- * coexisting prose changesets carried through from the plan.
- *
- * @public
- */
-export interface RegenResult {
-	readonly deleted: ReadonlyArray<string>;
-	readonly written: ReadonlyArray<string>;
-	readonly skippedMixed: ReadonlyArray<string>;
-	/** Informational: untouched prose changesets releasing in-scope packages (#279). */
-	readonly coexisting: ReadonlyArray<CoexistingChangeset>;
 }
 
 /**

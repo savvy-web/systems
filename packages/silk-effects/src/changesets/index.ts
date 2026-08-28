@@ -105,6 +105,7 @@ export type {
 	DepsRegenOptions,
 	DepsRegenPlanError,
 	DepsRegenShape,
+	RegenDiffRow,
 	RegenPlan,
 	RegenResult,
 } from "./services/deps-regen.js";
@@ -161,6 +162,12 @@ export {
 	VERSION_RE,
 	VersionOrEmptySchema,
 } from "./schemas/dependency-table.js";
+export {
+	CoexistingChangesetSchema,
+	RegenDiffRowSchema,
+	RegenPlanSchema,
+	RegenResultSchema,
+} from "./schemas/deps-regen.js";
 export type { VersionType } from "./schemas/git.js";
 export { CommitHashSchema, VersionTypeSchema } from "./schemas/git.js";
 export type { GitHubInfo } from "./schemas/github.js";
