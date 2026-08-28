@@ -1,5 +1,22 @@
 # @savvy-web/cli
 
+## 2.8.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/jsonc | dependency | updated | ^0.8.0 | ^0.8.1 |
+| @savvy-web/silk-effects | dependency | updated | 7.1.3 | 7.1.4 |
+
+[#572][#572]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#572]: https://github.com/savvy-web/systems/pull/572
+
 ## 2.8.0
 
 ### Features
