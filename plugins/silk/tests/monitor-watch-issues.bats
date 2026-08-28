@@ -19,6 +19,7 @@ MONITOR="${PLUGIN_ROOT}/monitors/watch-issues.mjs"
 
 setup() {
 	common_setup
+	require_node_fs_glob_sync
 	PROJECT="${BATS_TEST_TMPDIR}/project"
 	PKG="${PROJECT}/packages/thing"
 	mkdir -p "${PKG}/src" "${PKG}/dist/prod"

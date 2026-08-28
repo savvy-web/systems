@@ -43,6 +43,16 @@ common_setup() {
 	export SILK_HOOK_DEBUG_LOG="${BATS_TEST_TMPDIR}/hook-debug.log"
 }
 
+# require_node_fs_glob_sync — skip the current test when the runtime does not
+# provide `fs.globSync` (Node 22+). The monitor suites import globSync
+# directly from node:fs, so older Node versions fail before the test can make
+# any assertions about monitor behavior.
+require_node_fs_glob_sync() {
+	if ! node -e 'const fs = require("node:fs"); process.exit(typeof fs.globSync === "function" ? 0 : 1)' >/dev/null 2>&1; then
+		skip "requires node:fs globSync (Node 22+)"
+	fi
+}
+
 # use_stub_bin — prepend a per-test stub dir to PATH so fake CLI runners
 # (npx, pnpm, savvy) intercept a hook's shell-outs. Real tools (jq, git, bash)
 # still resolve because the stub dir is only PREPENDED. Pair with

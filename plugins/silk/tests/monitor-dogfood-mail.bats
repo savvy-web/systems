@@ -16,6 +16,7 @@ MONITOR="${PLUGIN_ROOT}/monitors/dogfood-mail.mjs"
 
 setup() {
 	common_setup
+	require_node_fs_glob_sync
 }
 
 # write_journal_line <project> <loop-id> <json-line> -- append a raw JSONL
