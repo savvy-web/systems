@@ -279,8 +279,12 @@ describe("BiomeSchemaSync.sync", () => {
 				skipped: [],
 			});
 
-			expect(written).toContain(`"$schema": "${expectedSchema}"`);
-			expect(written).toContain(`"note": "${staleSchema}"`);
+			expect(written).toBe(`{
+  "$schema": "${expectedSchema}",
+  "note": "${staleSchema}",
+  "formatter": { "enabled": true }
+}
+`);
 		}),
 	);
 
