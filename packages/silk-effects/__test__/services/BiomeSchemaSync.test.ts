@@ -179,6 +179,25 @@ describe("BiomeSchemaSync.check", () => {
 		}),
 	);
 
+	it.effect("reports biome.json as skipped when $schema only contains biomejs.dev in path", () =>
+		Effect.gen(function* () {
+			const files = {
+				[`${CWD}/biome.json`]: JSON.stringify({
+					$schema: "https://evil.example/biomejs.dev/schemas/2.4.0/schema.json",
+				}),
+			};
+			const result = yield* runWith(
+				files,
+				BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("^2.4.9", { cwd: CWD }))),
+			);
+			expect(result).toMatchObject({
+				skipped: [`${CWD}/biome.json`],
+				updated: [],
+				current: [],
+			});
+		}),
+	);
+
 	it.effect("handles biome.jsonc as well as biome.json", () =>
 		Effect.gen(function* () {
 			const files = {
@@ -232,6 +251,40 @@ describe("BiomeSchemaSync.sync", () => {
 			// File should be updated
 			expect(written).toContain("https://biomejs.dev/schemas/2.4.9/schema.json");
 			expect(written).not.toContain("2.4.0");
+		}),
+	);
+
+	it.effect("rewrites only $schema when the same URL appears in another field", () =>
+		Effect.gen(function* () {
+			const staleSchema = "https://biomejs.dev/schemas/2.4.0/schema.json";
+			const expectedSchema = "https://biomejs.dev/schemas/2.4.9/schema.json";
+			const originalContent = `{
+  "$schema": "${staleSchema}",
+  "note": "${staleSchema}",
+  "formatter": { "enabled": true }
+}
+`;
+
+			const { result, written } = yield* runOnVolume(
+				{ [`${CWD}/biome.json`]: originalContent },
+				Effect.gen(function* () {
+					const result = yield* BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("^2.4.9", { cwd: CWD })));
+					return { result, written: yield* readBack(`${CWD}/biome.json`) };
+				}),
+			);
+
+			expect(result).toMatchObject({
+				updated: [`${CWD}/biome.json`],
+				current: [],
+				skipped: [],
+			});
+
+			expect(written).toBe(`{
+  "$schema": "${expectedSchema}",
+  "note": "${staleSchema}",
+  "formatter": { "enabled": true }
+}
+`);
 		}),
 	);
 

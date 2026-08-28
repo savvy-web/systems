@@ -1,4 +1,4 @@
-import { Jsonc } from "@effected/jsonc";
+import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { Context, Effect, FileSystem, Layer } from "effect";
 import { BiomeSyncError } from "../errors/BiomeSyncError.js";
 import type { BiomeSyncResult } from "../schemas/BiomeConfig.js";
@@ -30,6 +30,18 @@ export function buildSchemaUrl(version: string): string {
 }
 
 const BIOME_SCHEMA_HOSTNAME = "biomejs.dev";
+
+function normalizeHostname(hostname: string): string {
+	return hostname.toLowerCase().replace(/\.+$/, "");
+}
+
+function isBiomeSchemaUrl(schema: string): boolean {
+	try {
+		return normalizeHostname(new URL(schema).hostname) === BIOME_SCHEMA_HOSTNAME;
+	} catch {
+		return false;
+	}
+}
 
 /** Check which biome config files exist in cwd. */
 function findBiomeConfigs(cwd: string, fs: FileSystem.FileSystem): Effect.Effect<string[]> {
@@ -172,7 +184,7 @@ export class BiomeSchemaSync extends Context.Service<BiomeSchemaSync, BiomeSchem
 							continue;
 						}
 
-						if (!schema.includes(BIOME_SCHEMA_HOSTNAME)) {
+						if (!isBiomeSchemaUrl(schema)) {
 							// Not a biomejs.dev URL
 							skipped.push(configPath);
 							continue;
@@ -185,8 +197,19 @@ export class BiomeSchemaSync extends Context.Service<BiomeSchemaSync, BiomeSchem
 
 						// Wrong version — update
 						if (write) {
-							const updated_content = raw.replaceAll(schema, expectedUrl);
-							yield* fs.writeFileString(configPath, updated_content).pipe(
+							const updatedContent = yield* JsoncModifier.modify(raw, ["$schema"], expectedUrl).pipe(
+								Effect.map((edits) => JsoncEdit.applyAll(raw, edits)),
+								Effect.mapError(
+									/* v8 ignore next 4 -- error path requires a JSONC edit failure */
+									(error) =>
+										new BiomeSyncError({
+											path: configPath,
+											reason: `Failed to update JSONC: ${String(error)}`,
+										}),
+								),
+							);
+
+							yield* fs.writeFileString(configPath, updatedContent).pipe(
 								Effect.mapError(
 									/* v8 ignore next 4 -- error path requires a filesystem write failure */
 									(cause) =>

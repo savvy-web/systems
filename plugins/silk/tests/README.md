@@ -18,14 +18,17 @@ That runs `plugins/silk/tests/run-hook-tests.sh`, which:
    `tests/`, plus the `tests/*.bash` helpers.
 2. Runs `bats` over every `tests/*.bats` suite.
 
-Requirements: `bats`, `shellcheck`, `jq`, and `git` on `PATH`.
+Requirements: `bats`, `shellcheck`, `jq`, `git`, and Node.js `24.11.0+` on
+`PATH`.
 
 ```bash
 # macOS
 brew install bats-core shellcheck jq
+brew install node@24
 
 # Debian / Ubuntu
-sudo apt-get install -y bats shellcheck jq
+sudo apt-get install -y bats shellcheck jq git
+# Install Node.js 24.11.0+ with your preferred toolchain manager.
 ```
 
 Run a single suite directly with `bats`:
@@ -35,7 +38,7 @@ bats plugins/silk/tests/pre-tool-use-commit-mcp.bats
 ```
 
 CI runs the same script via `.github/workflows/hook-tests.yml` (a dedicated
-job — the suite is pure shell and needs no Node.js/pnpm install).
+job with shell tooling and Node.js `24.11.0` setup).
 
 ## Layout
 

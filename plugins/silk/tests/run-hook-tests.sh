@@ -18,14 +18,23 @@ PLUGIN_ROOT="$(cd "${TESTS_DIR}/.." && pwd)"
 cd "$PLUGIN_ROOT"
 
 missing=0
-for tool in shellcheck bats jq; do
+for tool in shellcheck bats jq git node; do
 	if ! command -v "$tool" >/dev/null 2>&1; then
 		echo "run-hook-tests: required tool '${tool}' not found on PATH." >&2
 		missing=1
 	fi
 done
 if [ "$missing" -ne 0 ]; then
-	echo "Install them (macOS: 'brew install shellcheck bats-core jq'; Debian/Ubuntu: 'apt-get install shellcheck bats jq')." >&2
+	echo "Install them (macOS: 'brew install shellcheck bats-core jq git'; Debian/Ubuntu: 'apt-get install shellcheck bats jq git nodejs')." >&2
+	exit 127
+fi
+
+if ! node -e '
+	const [major, minor, patch] = process.versions.node.split(".").map((part) => Number(part) || 0);
+	const ok = major > 24 || (major === 24 && (minor > 11 || (minor === 11 && patch >= 0)));
+	process.exit(ok ? 0 : 1);
+' >/dev/null 2>&1; then
+	echo "run-hook-tests: Node.js 24.11.0+ is required (found $(node -v))." >&2
 	exit 127
 fi
 
