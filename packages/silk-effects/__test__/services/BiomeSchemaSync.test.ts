@@ -258,11 +258,12 @@ describe("BiomeSchemaSync.sync", () => {
 		Effect.gen(function* () {
 			const staleSchema = "https://biomejs.dev/schemas/2.4.0/schema.json";
 			const expectedSchema = "https://biomejs.dev/schemas/2.4.9/schema.json";
-			const originalContent = JSON.stringify({
-				$schema: staleSchema,
-				note: staleSchema,
-				formatter: { enabled: true },
-			});
+			const originalContent = `{
+  "$schema": "${staleSchema}",
+  "note": "${staleSchema}",
+  "formatter": { "enabled": true }
+}
+`;
 
 			const { result, written } = yield* runOnVolume(
 				{ [`${CWD}/biome.json`]: originalContent },
@@ -278,9 +279,8 @@ describe("BiomeSchemaSync.sync", () => {
 				skipped: [],
 			});
 
-			const parsed = JSON.parse(written) as Record<string, unknown>;
-			expect(parsed.$schema).toBe(expectedSchema);
-			expect(parsed.note).toBe(staleSchema);
+			expect(written).toContain(`"$schema": "${expectedSchema}"`);
+			expect(written).toContain(`"note": "${staleSchema}"`);
 		}),
 	);
 
