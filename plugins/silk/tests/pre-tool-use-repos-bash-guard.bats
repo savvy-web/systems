@@ -29,17 +29,34 @@ _reason() {
 	jq -r '.hookSpecificOutput.permissionDecisionReason // empty' <<< "$1"
 }
 
-# run_guard_with_command <command> — derive an envelope from the redirect
-# fixture with .tool_input.command replaced by <command> (jq --arg, so
-# embedded newlines/quotes survive untouched), pipe it through the hook, and
-# set $output/$status per bats' `run`. Mirrors the "derive with jq rather
-# than a near-duplicate fixture" convention in tests/README.md.
+run_guard_with_envelope() {
+	local envelope="$1"
+	# Hook assertions are over stdout JSON/no-op only; stderr diagnostics vary by
+	# host shell/tooling and are not part of the contract this suite validates.
+	run bash -c "bash '${HOOK}' < '${envelope}' 2>/dev/null"
+}
+
+# run_guard_with_command <command> — synthesize a Bash PreToolUse envelope
+# with .tool_input.command set to <command> (jq --arg, so embedded
+# newlines/quotes survive untouched), run it through the hook, and
+# set $output/$status per bats' `run`.
 run_guard_with_command() {
+	run_guard_with_tool_and_command "Bash" "$1"
+}
+
+run_guard_with_tool_and_command() {
+	local tool_name="$1" command="$2"
 	local envelope
 	envelope="${BATS_TEST_TMPDIR}/envelope-command.json"
-	jq --arg c "$1" '.tool_input.command = $c' \
-		"${FIXTURES_DIR}/pretooluse.repos-bash-redirect.json" > "$envelope"
-	run bash -c "cat '${envelope}' | bash '${HOOK}'"
+	jq -n --arg tool "$tool_name" --arg c "$command" '{
+		session_id: "test-repos-bash-command",
+		hook_event_name: "PreToolUse",
+		tool_name: $tool,
+		tool_input: {
+			command: $c
+		}
+	}' > "$envelope"
+	run_guard_with_envelope "$envelope"
 }
 
 assert_allow() {
@@ -53,7 +70,7 @@ assert_deny() {
 }
 
 @test "git -C .repos/<repo> checkout (write subcommand): deny naming repos_manage pin" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-write.json' | bash '${HOOK}'"
+	run_guard_with_command "git -C .repos/effect checkout -b x"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 	local reason; reason="$(_reason "$output")"
@@ -62,85 +79,85 @@ assert_deny() {
 }
 
 @test "git -C .repos/<repo> log (read subcommand, allow-listed): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-read.json' | bash '${HOOK}'"
+	run_guard_with_command "git -C .repos/effect log --oneline"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "shell redirect into .repos/** : deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-redirect.json' | bash '${HOOK}'"
+	run_guard_with_command "echo broken > .repos/effect/src/index.ts"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "sed -i targeting .repos/** : deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-sed.json' | bash '${HOOK}'"
+	run_guard_with_command "sed -i '' 's/a/b/' .repos/effect/README.md"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "redirect append into .repos/config.json (the hand-editable exception): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-config-allow.json' | bash '${HOOK}'"
+	run_guard_with_command "echo note >> .repos/config.json"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "redirect append into .repos/config.json.bak (adjacent filename, NOT the exact exemption): deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-config-bak-deny.json' | bash '${HOOK}'"
+	run_guard_with_command "echo x >> .repos/config.json.bak"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "redirect append into .repos/config.jsonX (suffix, NOT the exact exemption): deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-config-suffix-deny.json' | bash '${HOOK}'"
+	run_guard_with_command "echo x >> .repos/config.jsonX"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "sed -i with the flag reordered after the script arg: deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-sed-reordered.json' | bash '${HOOK}'"
+	run_guard_with_command "sed -e 's/a/b/' -i .repos/effect/README.md"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "git --git-dir=<abs>/.repos/<repo>/.git checkout (write subcommand): deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-dir-write.json' | bash '${HOOK}'"
+	run_guard_with_command "git --git-dir=/x/.repos/effect/.git checkout -b y"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "git --work-tree=<abs>/.repos/<repo> status (read subcommand): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-worktree-read.json' | bash '${HOOK}'"
+	run_guard_with_command "git --work-tree=/x/.repos/effect status"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "rg read over .repos/** : silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-rg.json' | bash '${HOOK}'"
+	run_guard_with_command "rg pattern .repos/effect"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "command with no .repos mention: silent no-op (cheap early-out)" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-unrelated.json' | bash '${HOOK}'"
+	run_guard_with_command "pnpm build"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "git rm --cached .repos/<repo> (index-only gitlink removal): silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-rm-cached.json' | bash '${HOOK}'"
+	run_guard_with_command "git rm --cached .repos/effect"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "git rm .repos/<repo> (no --cached, deletes working-tree file too): deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-rm-no-cached.json' | bash '${HOOK}'"
+	run_guard_with_command "git rm .repos/effect"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "git mv .repos/<repo> .repos/<repo> (#377, raw git mv stays denied — use repos_manage rename): deny with the lifecycle message" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-mv.json' | bash '${HOOK}'"
+	run_guard_with_command "git mv .repos/effect .repos/effect-renamed"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 	local reason; reason="$(_reason "$output")"
@@ -178,13 +195,13 @@ assert_deny() {
 }
 
 @test "bare rm -rf .repos/<repo> (no git involved): deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-rm-rf.json' | bash '${HOOK}'"
+	run_guard_with_command "rm -rf .repos/effect"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
 
 @test "git status && rm -rf .repos/<repo> (rm in a later, unrelated clause): deny" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-bash-git-then-chained-rm.json' | bash '${HOOK}'"
+	run_guard_with_command "git status && rm -rf .repos/effect"
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
@@ -235,7 +252,7 @@ assert_deny() {
 }
 
 @test "non-Bash tool_name: silent no-op" {
-	run bash -c "cat '${FIXTURES_DIR}/pretooluse.repos-mcp-write.json' | bash '${HOOK}'"
+	run_guard_with_tool_and_command "mcp__gitkraken__git_add_or_commit" ""
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }

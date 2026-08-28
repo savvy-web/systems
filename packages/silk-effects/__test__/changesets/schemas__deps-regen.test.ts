@@ -1,11 +1,19 @@
 import { describe, expect, it } from "@effect/vitest";
+import { CatalogSet, PackageStateSnapshot, WorkspaceStateSnapshot } from "@effected/workspaces";
 import { Schema } from "effect";
-import type { CoexistingChangeset, RegenPlan, RegenResult } from "../../src/changesets/schemas/deps-regen.js";
+import type {
+	CoexistingChangeset,
+	RegenDiffRow,
+	RegenPlan,
+	RegenResult,
+} from "../../src/changesets/schemas/deps-regen.js";
 import {
 	CoexistingChangesetSchema,
+	RegenDiffRowSchema,
 	RegenPlanSchema,
 	RegenResultSchema,
 } from "../../src/changesets/schemas/deps-regen.js";
+import { computeWorkspaceDependencyDiffs } from "../../src/changesets/utils/dep-diff.js";
 
 describe("deps-regen schemas", () => {
 	it("decodes a CoexistingChangeset", () => {
@@ -44,6 +52,17 @@ describe("deps-regen schemas", () => {
 		expect(Schema.decodeUnknownSync(RegenPlanSchema)(value)).toEqual(value);
 	});
 
+	it("decodes a RegenDiffRow with unresolved raw specifier cells", () => {
+		const value: RegenDiffRow = {
+			dependency: "typescript",
+			type: "dependency",
+			action: "updated",
+			from: "^1.2",
+			to: "*",
+		};
+		expect(Schema.decodeUnknownSync(RegenDiffRowSchema)(value)).toEqual(value);
+	});
+
 	it("decodes a RegenResult", () => {
 		const value: RegenResult = {
 			deleted: ["/repo/.changeset/old-note.md"],
@@ -54,7 +73,7 @@ describe("deps-regen schemas", () => {
 		expect(Schema.decodeUnknownSync(RegenResultSchema)(value)).toEqual(value);
 	});
 
-	it("reuses dependency-row validation for plan diffs", () => {
+	it("still validates dependency action/type in plan rows", () => {
 		const decode = Schema.decodeUnknownSync(RegenPlanSchema);
 		expect(() =>
 			decode({
@@ -82,5 +101,42 @@ describe("deps-regen schemas", () => {
 				coexisting: [],
 			}),
 		).toThrow();
+	});
+
+	it("decodes a RegenPlan built from real computeWorkspaceDependencyDiffs output", () => {
+		const makeSnapshot = (spec: string) =>
+			new WorkspaceStateSnapshot({
+				packages: [
+					new PackageStateSnapshot({
+						name: "@scope/foo",
+						version: "1.0.0",
+						relativePath: "packages/foo",
+						dependencies: { typescript: spec },
+					}),
+				],
+				catalogs: CatalogSet.empty(),
+			});
+		const [diff] = computeWorkspaceDependencyDiffs(makeSnapshot("^1.2"), makeSnapshot("*"));
+		expect(diff).toBeDefined();
+		if (!diff) {
+			throw new Error("expected at least one dependency diff row");
+		}
+		const plan: RegenPlan = {
+			toDelete: [],
+			toWrite: [
+				{
+					file: "/repo/.changeset/new-note.md",
+					package: "@scope/foo",
+					diff: {
+						package: diff.package,
+						relativePath: diff.relativePath,
+						rows: diff.rows,
+					},
+				},
+			],
+			skippedMixed: [],
+			coexisting: [],
+		};
+		expect(Schema.decodeUnknownSync(RegenPlanSchema)(plan)).toEqual(plan);
 	});
 });

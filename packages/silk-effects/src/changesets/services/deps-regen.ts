@@ -61,7 +61,7 @@ import { listPublishablePackageNames } from "../utils/publishability.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector } from "./config-inspector.js";
 
-export type { CoexistingChangeset, RegenPlan, RegenResult } from "../schemas/deps-regen.js";
+export type { CoexistingChangeset, RegenDiffRow, RegenPlan, RegenResult } from "../schemas/deps-regen.js";
 
 /* ----------------------------------------------------------------- *
  * Changeset filename helpers (ported verbatim from the CLI command)

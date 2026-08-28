@@ -18,7 +18,7 @@ import { Effect, Schema, SchemaGetter } from "effect";
 export const ChangesetDepsDetectPackage = Schema.Struct({
 	package: Schema.String,
 	relativePath: Schema.String,
-	rows: Schema.Array(Changesets.DependencyTableRowSchema),
+	rows: Schema.Array(Changesets.RegenDiffRowSchema),
 }).annotate({ identifier: "ChangesetDepsDetectPackage" });
 
 /**

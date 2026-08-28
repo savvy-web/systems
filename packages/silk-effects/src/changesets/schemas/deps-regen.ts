@@ -5,17 +5,44 @@
  */
 
 import { Schema } from "effect";
-import { DependencyTableSchema } from "./dependency-table.js";
+import { DependencyActionSchema, DependencyTableTypeSchema } from "./dependency-table.js";
+import { NonEmptyString } from "./primitives.js";
 
 const RegenDeleteEntrySchema = Schema.Struct({
 	file: Schema.String,
 	package: Schema.String,
 }).annotate({ identifier: "RegenDeleteEntry" });
 
+/**
+ * One dependency-diff row emitted by the deps-regen planner.
+ *
+ * @remarks
+ * `computeWorkspaceDependencyDiffs` intentionally falls back to raw unresolved
+ * specifier strings (`*`, `>=5.7.0`, `^1.2`, `latest`, etc.). This in-memory
+ * plan schema therefore accepts any non-empty `from`/`to` cell instead of the
+ * stricter changelog-table version pattern.
+ *
+ * @public
+ */
+export const RegenDiffRowSchema = Schema.Struct({
+	dependency: NonEmptyString,
+	type: DependencyTableTypeSchema,
+	action: DependencyActionSchema,
+	from: NonEmptyString,
+	to: NonEmptyString,
+}).annotate({ identifier: "RegenDiffRow" });
+
+/**
+ * One dependency-diff row emitted by the deps-regen planner.
+ *
+ * @public
+ */
+export type RegenDiffRow = Schema.Schema.Type<typeof RegenDiffRowSchema>;
+
 const WorkspaceDependencyDiffPayloadSchema = Schema.Struct({
 	package: Schema.String,
 	relativePath: Schema.String,
-	rows: DependencyTableSchema,
+	rows: Schema.Array(RegenDiffRowSchema).check(Schema.isMinLength(1)),
 }).annotate({ identifier: "WorkspaceDependencyDiffPayload" });
 
 const RegenWriteEntrySchema = Schema.Struct({
