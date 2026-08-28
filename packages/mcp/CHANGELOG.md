@@ -1,5 +1,23 @@
 # @savvy-web/mcp
 
+## 2.6.6
+
+### Bug Fixes
+
+- Validate `changeset_deps_detect` dependency rows with `Changesets.RegenDiffRowSchema` so valid unresolved raw specifiers from `DepsRegen.plan()` (`*`, `^1.2`, etc.) are accepted. [#581][#581]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 7.1.4 | 7.2.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#581]: https://github.com/savvy-web/systems/pull/581
+
 ## 2.6.5
 
 ### Dependencies

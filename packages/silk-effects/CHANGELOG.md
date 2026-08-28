@@ -1,5 +1,29 @@
 # @savvy-web/silk-effects
 
+## 7.2.0
+
+### Features
+
+- Export `CoexistingChangesetSchema`, `RegenDiffRowSchema`, `RegenPlanSchema`, and `RegenResultSchema` from `Changesets`, and derive the existing `CoexistingChangeset`, `RegenDiffRow`, `RegenPlan`, and `RegenResult` types from those schemas so deps-regen result contracts are schema-first runtime surfaces.
+- Align `RegenPlanSchema` with `DepsRegen.plan()` output by accepting unresolved raw dependency specifier cells (`*`, `^1.2`, `latest`, etc.) in in-memory regen diff rows.
+
+### Bug Fixes
+
+- Tighten Biome schema URL handling so only an exact `biomejs.dev` hostname is considered managed.
+- Update only the `$schema` field during Biome schema sync instead of replacing every matching URL string in the file. [#578][#578]
+
+### Refactoring
+
+- Mark `withChangelogModules` and `extractVersionBlock` as `@internal` test-only helpers while preserving their in-module exports and runtime behavior. [#581][#581]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#578]: https://github.com/savvy-web/systems/pull/578
+
+[#581]: https://github.com/savvy-web/systems/pull/581
+
 ## 7.1.4
 
 ### Dependencies
