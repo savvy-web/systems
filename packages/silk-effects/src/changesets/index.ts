@@ -161,6 +161,7 @@ export {
 	VERSION_RE,
 	VersionOrEmptySchema,
 } from "./schemas/dependency-table.js";
+export { CoexistingChangesetSchema, RegenPlanSchema, RegenResultSchema } from "./schemas/deps-regen.js";
 export type { VersionType } from "./schemas/git.js";
 export { CommitHashSchema, VersionTypeSchema } from "./schemas/git.js";
 export type { GitHubInfo } from "./schemas/github.js";
