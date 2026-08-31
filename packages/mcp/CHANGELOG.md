@@ -1,5 +1,21 @@
 # @savvy-web/mcp
 
+## 2.6.7
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| zod | dependency | updated | ^4.4.3 | ^4.5.4 |
+
+[#585][#585]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#585]: https://github.com/savvy-web/systems/pull/585
+
 ## 2.6.6
 
 ### Bug Fixes
