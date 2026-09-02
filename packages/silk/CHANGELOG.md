@@ -1,5 +1,25 @@
 # @savvy-web/silk
 
+## 3.11.4
+
+### Build System
+
+- Bump the shipped Biome asset's `$schema` to 2.5.11, matching the `catalog:lint` pin [#589][#589]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli | dependency | updated | 2.8.2 | 2.9.0 |
+| @savvy-web/mcp | dependency | updated | 2.6.7 | 2.6.8 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#589]: https://github.com/savvy-web/systems/pull/589
+
 ## 3.11.3
 
 ### Dependencies
