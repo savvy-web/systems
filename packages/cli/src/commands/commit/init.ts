@@ -10,9 +10,11 @@ import { CommentStyle, ManagedSection, SectionId } from "@effected/templates";
 import {
 	SavvyBaseSection,
 	SavvyHooksSection,
+	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
 	savvyToolSection,
+	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem } from "effect";
 import type { PlatformError } from "effect/PlatformError";
@@ -149,9 +151,17 @@ export function runCommitInit(opts: {
 		);
 
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene.
+		// post-checkout and post-merge additionally carry the savvy-toolchain drift check —
+		// they fire exactly when a pin bump or branch switch can make the local package
+		// manager stale. post-commit does not: it fires on every commit, which is noisier
+		// than the drift warrants.
 		for (const hookPath of [POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH, POST_COMMIT_HOOK_PATH]) {
 			yield* ensureHookFile(hookPath, HYGIENE_HEADER);
-			yield* ms.sync(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
+			const sections = [SavvyHooksSection.section(savvyHooksHygiene())];
+			if (hookPath !== POST_COMMIT_HOOK_PATH) {
+				sections.push(SavvyToolchainSection.section(savvyToolchainCheck()));
+			}
+			yield* ms.syncAll(hookPath, sections);
 			yield* makeExecutable(hookPath);
 			yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
 		}

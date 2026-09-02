@@ -181,6 +181,7 @@ The Silk husky hooks are data. `SavvySections` supplies the section identities a
 
 - `SavvyBaseSection` is the shared preamble's identity (key `SAVVY-BASE`); pair it with `savvyBasePreamble()`, which defines `ROOT`, the `in_ci` predicate, `PM` via package-manager detection and `pm_exec`.
 - `SavvyHooksSection` (key `SAVVY-HOOKS`) pairs with `savvyHooksHygiene()`, a self-guarded repo-hygiene block that runs outside CI.
+- `SavvyToolchainSection` (key `SAVVY-TOOLCHAIN`) pairs with `savvyToolchainCheck()`, a self-guarded block that warns when the running package manager has drifted off the repo's `devEngines.packageManager` pin. Warn only — it never blocks and never installs anything. It is self-contained (its hooks carry no `savvy-base` preamble), honours the manager named in the pin rather than assuming pnpm, strips the `+sha512…` integrity tail, skips inexact pins, and says nothing under CI.
 - `savvyToolSection(toolName, command)` builds a consumer's one-line tool section whose content is exactly `in_ci || pm_exec <command>` — the command is appended verbatim, so shell tokens like `$ROOT` and `$1` survive into the output. A `savvy-base` section must come first in the same hook file, so pass both to `syncAll` in that order.
 
 ```typescript

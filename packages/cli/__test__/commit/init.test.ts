@@ -197,6 +197,26 @@ describe("runCommitInit Effect program", () => {
 		}),
 	);
 
+	it.effect("writes savvy-toolchain into post-checkout and post-merge but not post-commit", () =>
+		Effect.gen(function* () {
+			const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
+			yield* Effect.provide(handler, TestLayer);
+
+			// Drift becomes true on a pull or a branch switch, which is when these two
+			// fire. post-commit fires on every commit — noisier than the drift warrants.
+			for (const hook of [".husky/post-checkout", ".husky/post-merge"]) {
+				const content = readFileSync(join(testDir, hook), "utf8");
+				expect(content).toContain("# --- BEGIN SAVVY-TOOLCHAIN MANAGED SECTION ---");
+				expect(content).toContain("# --- END SAVVY-TOOLCHAIN MANAGED SECTION ---");
+				expect(content).toContain("devEngines.packageManager");
+			}
+
+			const postCommit = readFileSync(join(testDir, ".husky/post-commit"), "utf8");
+			expect(postCommit).toContain("# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---");
+			expect(postCommit).not.toContain("# --- BEGIN SAVVY-TOOLCHAIN MANAGED SECTION ---");
+		}),
+	);
+
 	it.effect("is idempotent across repeated runs", () =>
 		Effect.gen(function* () {
 			const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });

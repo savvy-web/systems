@@ -133,3 +133,64 @@ fi`;
 export function savvyToolSection(toolName: string, command: string): Section {
 	return shellSection(toolName).section(`in_ci || pm_exec ${command}`);
 }
+
+/**
+ * Section identity for the package-manager toolchain drift check.
+ *
+ * `toolName` is `"savvy-toolchain"`; pair with {@link savvyToolchainCheck}.
+ *
+ * @since 7.3.0
+ * @public
+ */
+export const SavvyToolchainSection: SectionId = shellSection("savvy-toolchain");
+
+/**
+ * Package-manager drift check shared across Silk Suite hook files.
+ *
+ * @remarks
+ * Compares the running package manager's version against the repo's
+ * `devEngines.packageManager` pin and prints a warning on mismatch. **Warn only** —
+ * it never blocks the hook and never installs anything, so nobody mid-bisect or
+ * mid-rebase on an older pin is stranded.
+ *
+ * Deliberately self-contained: its homes are `.husky/post-checkout` and
+ * `.husky/post-merge`, which carry {@link SavvyHooksSection} but no
+ * {@link SavvyBaseSection}, so it defines its own root/CI/pin lookups rather than
+ * depending on `ROOT`, `in_ci` or `PM`. It honours the `name` recorded in the pin
+ * rather than assuming pnpm.
+ *
+ * Every input is treated as optional: no `git` root, no `jq`, no `devEngines` block,
+ * or a package manager that is not on `PATH` all mean "say nothing". Only an exact
+ * pin is comparable, so ranges (`^1.2.3`, `>=1 || <2`) and wildcards (`1.x`) are
+ * skipped, and the `+sha512…` integrity tail `devEngines` versions routinely carry is
+ * stripped before comparison. Skipped under CI, where the runtime action installs the
+ * pin by construction.
+ *
+ * @returns The drift-check shell, with no surrounding markers or trailing newline.
+ *
+ * @since 7.3.0
+ * @public
+ */
+export function savvyToolchainCheck(): string {
+	return `if ! { [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; }; then
+  toolchain_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  toolchain_pm=""
+  toolchain_pin=""
+  if [ -n "$toolchain_root" ] && [ -f "$toolchain_root/package.json" ] && command -v jq >/dev/null 2>&1; then
+    toolchain_pm=$(jq -r '.devEngines.packageManager.name // empty' "$toolchain_root/package.json" 2>/dev/null)
+    toolchain_pin=$(jq -r '.devEngines.packageManager.version // empty' "$toolchain_root/package.json" 2>/dev/null | cut -d'+' -f1)
+  fi
+  # Only an exact pin is comparable: drop ranges (^ ~ >= ||) and wildcards (x, *).
+  case "$toolchain_pin" in ""|[!0-9]*|*[!0-9A-Za-z.-]*|*x*|*X*) toolchain_pin="" ;; esac
+  if [ -n "$toolchain_pm" ] && [ -n "$toolchain_pin" ] && command -v "$toolchain_pm" >/dev/null 2>&1; then
+    toolchain_have=$("$toolchain_pm" --version 2>/dev/null | head -n 1 | tr -d '[:space:]')
+    # A manager that failed or answered with prose says nothing about drift.
+    case "$toolchain_have" in [!0-9]*|*[!0-9A-Za-z.-]*) toolchain_have="" ;; esac
+    if [ -n "$toolchain_have" ] && [ "$toolchain_have" != "$toolchain_pin" ]; then
+      printf '⚠ %s %s does not match %s, the version pinned in devEngines.packageManager.\\n' "$toolchain_pm" "$toolchain_have" "$toolchain_pin" >&2
+      printf '  Lockfiles written by this version may differ from CI. Fix: corepack use %s@%s\\n' "$toolchain_pm" "$toolchain_pin" >&2
+    fi
+  fi
+  unset toolchain_root toolchain_pm toolchain_pin toolchain_have
+fi`;
+}

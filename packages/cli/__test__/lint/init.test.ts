@@ -27,6 +27,8 @@ const END_BASE = "# --- END SAVVY-BASE MANAGED SECTION ---";
 const BEGIN_LINT = "# --- BEGIN SAVVY-LINT MANAGED SECTION ---";
 const END_LINT = "# --- END SAVVY-LINT MANAGED SECTION ---";
 const BEGIN_HOOKS = "# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---";
+const BEGIN_TOOLCHAIN = "# --- BEGIN SAVVY-TOOLCHAIN MANAGED SECTION ---";
+const END_TOOLCHAIN = "# --- END SAVVY-TOOLCHAIN MANAGED SECTION ---";
 const END_HOOKS = "# --- END SAVVY-HOOKS MANAGED SECTION ---";
 
 describe("savvyLintBlock", () => {
@@ -125,6 +127,32 @@ describe("runLintInit Effect program", () => {
 
 			const configContent = readFileSync(join(testDir, "lint-staged.config.ts"), "utf8");
 			expect(configContent).toContain("Preset.silk()");
+		}),
+	);
+
+	it.effect("writes savvy-toolchain into post-checkout and post-merge but not post-commit", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
+
+			// Drift becomes true on a pull or a branch switch, which is when these two
+			// fire. post-commit fires on every commit — noisier than the drift warrants.
+			for (const hook of [".husky/post-checkout", ".husky/post-merge"]) {
+				const content = readFileSync(join(testDir, hook), "utf8");
+				expect(content).toContain(BEGIN_TOOLCHAIN);
+				expect(content).toContain(END_TOOLCHAIN);
+				expect(content).toContain("devEngines.packageManager");
+				// The hygiene section comes first, and the toolchain block stands alone.
+				expect(content.indexOf(BEGIN_HOOKS)).toBeLessThan(content.indexOf(BEGIN_TOOLCHAIN));
+			}
+
+			const postCommit = readFileSync(join(testDir, ".husky/post-commit"), "utf8");
+			expect(postCommit).toContain(BEGIN_HOOKS);
+			expect(postCommit).not.toContain(BEGIN_TOOLCHAIN);
 		}),
 	);
 
