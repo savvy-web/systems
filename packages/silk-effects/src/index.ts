@@ -74,9 +74,11 @@ export type { ConfigDiscoveryOptions, ConfigLocation, ConfigSource } from "./sch
 export {
 	SavvyBaseSection,
 	SavvyHooksSection,
+	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
 	savvyToolSection,
+	savvyToolchainCheck,
 } from "./schemas/SavvySections.js";
 export type { ChangesetConfigFile, SilkChangesetConfigFile } from "./schemas/VersioningSchemas.js";
 export { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "./schemas/WorkspaceAnalysisSchemas.js";

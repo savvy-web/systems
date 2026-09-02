@@ -16,8 +16,10 @@ import {
 	Lint,
 	SavvyBaseSection,
 	SavvyHooksSection,
+	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
+	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem } from "effect";
 import type { PlatformError } from "effect/PlatformError";
@@ -323,12 +325,20 @@ export function runLintInit(opts: {
 		);
 
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene (when preset enables it).
+		// post-checkout and post-merge additionally carry the savvy-toolchain drift check —
+		// they fire exactly when a pin bump or branch switch can make the local package
+		// manager stale. post-commit does not: it fires on every commit, which is noisier
+		// than the drift warrants.
 		if (presetIncludesShellScripts(preset)) {
 			for (const hookPath of [Lint.POST_CHECKOUT_HOOK_PATH, Lint.POST_MERGE_HOOK_PATH, Lint.POST_COMMIT_HOOK_PATH]) {
 				yield* ensureHookFile(hookPath, HYGIENE_HEADER);
 				// Migrate legacy SAVVY-LINT hygiene section if present.
 				yield* ms.remove(hookPath, Lint.LegacySavvyLintHygieneDef);
-				yield* ms.sync(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
+				const sections = [SavvyHooksSection.section(savvyHooksHygiene())];
+				if (hookPath !== Lint.POST_COMMIT_HOOK_PATH) {
+					sections.push(SavvyToolchainSection.section(savvyToolchainCheck()));
+				}
+				yield* ms.syncAll(hookPath, sections);
 				yield* makeExecutable(hookPath);
 				yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
 			}

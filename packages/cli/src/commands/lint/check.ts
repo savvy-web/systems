@@ -15,8 +15,10 @@ import {
 	Lint,
 	SavvyBaseSection,
 	SavvyHooksSection,
+	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
+	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Option } from "effect";
 import type { PlatformError } from "effect/PlatformError";
@@ -243,6 +245,8 @@ export function runLintCheck(opts: {
 			Lint.POST_COMMIT_HOOK_PATH,
 		] as const;
 		const shellHookStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
+		// post-commit carries hygiene only; the other two also carry savvy-toolchain.
+		const toolchainStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
 
 		for (const hookPath of shellHookPaths) {
 			const hookExists = yield* fs.exists(hookPath);
@@ -261,6 +265,20 @@ export function runLintCheck(opts: {
 			} else if (!isUpToDate) {
 				sectionsHealthy = false;
 				warnings.push(`${WARNING}  ${hookPath} savvy-hooks section is outdated.\n   Run 'savvy init' to update.`);
+			}
+
+			if (hookPath === Lint.POST_COMMIT_HOOK_PATH) continue;
+			const toolchainResult = yield* ms.check(hookPath, SavvyToolchainSection.section(savvyToolchainCheck()));
+			const toolchainFound = !CheckOutcome.$is("Absent")(toolchainResult);
+			const toolchainUpToDate = CheckOutcome.$is("UpToDate")(toolchainResult);
+			toolchainStatuses.push({ path: hookPath, found: toolchainFound, isUpToDate: toolchainUpToDate });
+
+			if (!toolchainFound) {
+				sectionsHealthy = false;
+				warnings.push(`${WARNING}  ${hookPath} has no savvy-toolchain section.\n   Run 'savvy init' to add it.`);
+			} else if (!toolchainUpToDate) {
+				sectionsHealthy = false;
+				warnings.push(`${WARNING}  ${hookPath} savvy-toolchain section is outdated.\n   Run 'savvy init' to update.`);
 			}
 		}
 
@@ -360,6 +378,17 @@ export function runLintCheck(opts: {
 				yield* Effect.log(`${CHECK_MARK} ${status.path}: up-to-date`);
 			} else {
 				yield* Effect.log(`${WARNING} ${status.path}: outdated (run 'savvy init' to update)`);
+			}
+		}
+
+		// Toolchain drift-check statuses (post-checkout / post-merge only)
+		for (const status of toolchainStatuses) {
+			if (!status.found) {
+				yield* Effect.log(`${BULLET} ${status.path}: savvy-toolchain section not found`);
+			} else if (status.isUpToDate) {
+				yield* Effect.log(`${CHECK_MARK} ${status.path}: savvy-toolchain up-to-date`);
+			} else {
+				yield* Effect.log(`${WARNING} ${status.path}: savvy-toolchain outdated (run 'savvy init' to update)`);
 			}
 		}
 

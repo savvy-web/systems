@@ -19,7 +19,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.0",
+							range: "^2.2.1",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -29,8 +29,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.3.0",
-							peer: "^26.3.0",
+							range: "^26.4.0",
+							peer: "^26.4.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -54,7 +54,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.5",
+							range: "^1.2.6",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -69,8 +69,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsx: {
-							range: "^4.23.12",
-							peer: "^4.23.12",
+							range: "^4.23.13",
+							peer: "^4.23.13",
 							strategy: "lock",
 						},
 					},
@@ -78,18 +78,18 @@ await build({
 				docs: {
 					packages: {
 						"@rspress/core": {
-							range: "^2.0.20",
+							range: "^2.0.21",
 							peer: "^2.0.0",
 							strategy: "lock-minor",
 						},
 						"@rspress/plugin-sitemap": {
-							range: "^2.0.20",
-							peer: "^2.0.20",
+							range: "^2.0.21",
+							peer: "^2.0.21",
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.3.0",
-							peer: "^26.3.0",
+							range: "^26.4.0",
+							peer: "^26.4.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -137,8 +137,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.10",
-							peer: "2.5.10",
+							range: "2.5.11",
+							peer: "2.5.11",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -162,8 +162,8 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.3.0",
-							peer: "^17.3.0",
+							range: "^17.4.1",
+							peer: "^17.4.1",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
@@ -191,8 +191,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.3.0",
-							peer: "^26.3.0",
+							range: "^26.4.0",
+							peer: "^26.4.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -215,8 +215,8 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.3.0",
-							peer: "^17.3.0",
+							range: "^17.4.1",
+							peer: "^17.4.1",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
@@ -240,8 +240,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsx: {
-							range: "^4.23.12",
-							peer: "^4.23.12",
+							range: "^4.23.13",
+							peer: "^4.23.13",
 							strategy: "lock",
 						},
 						typescript: {

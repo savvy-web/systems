@@ -13,8 +13,10 @@ import {
 	Commitlint,
 	SavvyBaseSection,
 	SavvyHooksSection,
+	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
+	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Option } from "effect";
 import type { PlatformError } from "effect/PlatformError";
@@ -211,6 +213,19 @@ export function runCommitCheck(): Effect.Effect<
 			} else {
 				sectionsHealthy = false;
 				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} section not found (run 'savvy init' to add)`);
+			}
+
+			// post-commit carries hygiene only; the other two also carry savvy-toolchain.
+			if (hookPath === POST_COMMIT_HOOK_PATH) continue;
+			const toolchainStatus = yield* ms.check(hookPath, SavvyToolchainSection.section(savvyToolchainCheck()));
+			if (CheckOutcome.$is("UpToDate")(toolchainStatus)) {
+				yield* Effect.log(`${CHECK_MARK} Toolchain check: ${hookPath}`);
+			} else if (CheckOutcome.$is("Drifted")(toolchainStatus)) {
+				sectionsHealthy = false;
+				yield* Effect.log(`${WARNING} Toolchain check: ${hookPath} outdated (run 'savvy init' to update)`);
+			} else {
+				sectionsHealthy = false;
+				yield* Effect.log(`${BULLET} Toolchain check: ${hookPath} section not found (run 'savvy init' to add)`);
 			}
 		}
 
