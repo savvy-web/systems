@@ -1,5 +1,21 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.31.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @biomejs/biome | dependency | updated | 2.5.10 | 2.5.11 |
+
+- The `lint` and `lint:peers` catalogs pin Biome to 2.5.11, so every repo consuming this config dependency picks the upgrade up on its next install. [#589][#589]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#589]: https://github.com/savvy-web/systems/pull/589
+
 ## 0.31.1
 
 ### Bug Fixes
