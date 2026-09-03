@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { decodeBundleManifest } from "@tsdoctor/manifest";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
+import { TsdoctorEmitError } from "../../src/errors.js";
 import type { GenerateMetaOptions } from "../../src/meta/generate.js";
 import { generateMeta } from "../../src/meta/generate.js";
 
@@ -167,6 +168,57 @@ describe("generateMeta tsdoctor sidecar", () => {
 		for (const dir of [s.outMetaDir, join(s.cwd, "models-a"), join(s.cwd, "models-b")]) {
 			expect(existsSync(join(dir, "tsdoctor.json")), dir).toBe(false);
 			expect(existsSync(join(dir, "fixture.api.json")), dir).toBe(true);
+		}
+	});
+
+	it("wraps a sidecar that fails to encode as TsdoctorEmitError naming the path", async () => {
+		const s = scaffold({ private: true });
+		// A leaf image with neither path nor url violates the schema's XOR; the composer passes it
+		// through untouched, so encodeBundleManifest is what rejects it — inside generateMeta's wrapper.
+		const err = await generateMeta({
+			...baseOptions(s),
+			tsdoctor: {
+				config: undefined,
+				leaf: { openGraph: { images: [{} as { url: string }] } },
+				project: undefined,
+				targets: [],
+			},
+		}).catch((e: unknown) => e);
+		expect(err).toBeInstanceOf(TsdoctorEmitError);
+		expect((err as TsdoctorEmitError).path).toBe(join(s.outMetaDir, "tsdoctor.json"));
+		expect((err as TsdoctorEmitError).packageName).toBe("@scope/fixture");
+		expect(existsSync(join(s.outMetaDir, "tsdoctor.json"))).toBe(false);
+	});
+
+	it("wraps a sidecar write that fails on disk as TsdoctorEmitError", async () => {
+		const s = scaffold({ private: true });
+		// The generator runs after the api-model trio is written and before the sidecar write, so it is
+		// the one seam where the meta dir can be made read-only without failing an earlier write. The
+		// og/ dir is created first (writable itself) so the image write still succeeds.
+		try {
+			const err = await generateMeta({
+				...baseOptions(s),
+				tsdoctor: {
+					config: {
+						name: "Fixture",
+						openGraph: {
+							generate: async () => {
+								mkdirSync(join(s.outMetaDir, "og"), { recursive: true });
+								chmodSync(s.outMetaDir, 0o555);
+								return PNG_1X1;
+							},
+						},
+					},
+					leaf: undefined,
+					project: undefined,
+					targets: [],
+				},
+			}).catch((e: unknown) => e);
+			expect(err).toBeInstanceOf(TsdoctorEmitError);
+			expect((err as TsdoctorEmitError).path).toBe(join(s.outMetaDir, "tsdoctor.json"));
+			expect(((err as TsdoctorEmitError).cause as NodeJS.ErrnoException).code).toBe("EACCES");
+		} finally {
+			chmodSync(s.outMetaDir, 0o755);
 		}
 	});
 
