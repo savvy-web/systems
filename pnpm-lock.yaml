@@ -177,7 +177,6 @@ catalogs:
 
 overrides:
   '@microsoft/api-extractor>typescript': ^6.0.3
-  '@tsdoctor/manifest': file:../../spencerbeggs/tsdoctor/packages/manifest/dist/prod/npm/pkg
 
 pnpmfileChecksum: sha256-7aUHu5AwVM2ax3rngLZb9sfyTGHS4j5GrgkMrIV93/c=
 
@@ -460,7 +459,7 @@ importers:
         version: 0.5.0(effect@4.0.0-rc.109)
       '@modelcontextprotocol/inspector':
         specifier: ^2.4.0
-        version: 2.4.0(@modelcontextprotocol/sdk@1.30.0(supports-color@8.1.1)(zod@4.5.4))(@types/node@26.4.1)(@types/react@19.2.18)(esbuild@0.28.2)(express@5.2.1(supports-color@8.1.1))(jiti@2.7.0)(react-dom@19.2.8(react@19.2.8))(supports-color@8.1.1)(tsx@4.23.13)
+        version: 2.5.0(@modelcontextprotocol/sdk@1.30.0(supports-color@8.1.1)(zod@4.5.4))(@types/node@26.4.1)(@types/react@19.2.18)(esbuild@0.28.2)(express@5.2.1(supports-color@8.1.1))(jiti@2.7.0)(react-dom@19.2.8(react@19.2.8))(supports-color@8.1.1)(tsx@4.23.13)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
@@ -808,8 +807,8 @@ importers:
         specifier: ^0.18.1
         version: 0.18.1
       '@tsdoctor/manifest':
-        specifier: file:../../../../spencerbeggs/tsdoctor/packages/manifest/dist/prod/npm/pkg
-        version: file:../../spencerbeggs/tsdoctor/packages/manifest/dist/prod/npm/pkg(effect@4.0.0-rc.109)
+        specifier: ^0.1.0
+        version: 0.1.0(effect@4.0.0-rc.109)
       effect:
         specifier: catalog:effect
         version: 4.0.0-rc.109
@@ -1563,8 +1562,8 @@ packages:
       react-dom:
         optional: true
 
-  '@modelcontextprotocol/inspector@2.4.0':
-    resolution: {integrity: sha512-DlBEtTGpXnlaHtFQwzZi7vE2rjartTCMRnRiuv7YsYIlTlVBLZlNbTIYX3B4mYefL/+e8QS1u9GzcwXWM+FwFA==}
+  '@modelcontextprotocol/inspector@2.5.0':
+    resolution: {integrity: sha512-E7YQiWyuXLVPPbDRO5HpyCXcYnwG8EPHNbqNPn5u+AxDzfNi+6Idw2vRYW9CQplJpkxGkNtquTFXGZ0ZncksIg==}
     engines: {node: '>=22.19.0'}
     hasBin: true
 
@@ -2319,8 +2318,8 @@ packages:
     peerDependencies:
       typescript: '>=5.7.2'
 
-  '@tsdoctor/manifest@file:../../spencerbeggs/tsdoctor/packages/manifest/dist/prod/npm/pkg':
-    resolution: {directory: ../../spencerbeggs/tsdoctor/packages/manifest/dist/prod/npm/pkg, type: directory}
+  '@tsdoctor/manifest@0.1.0':
+    resolution: {integrity: sha512-6GhxDvRE3T/EDDWgEo00NNxb5SeZZuUKxO3GCpL+R3xR7xAaP992Zc2dwtBsUA3rFDc/d4/b7FiXW5CGCunUGg==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-rc.109
@@ -5938,7 +5937,7 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  '@modelcontextprotocol/inspector@2.4.0(@modelcontextprotocol/sdk@1.30.0(supports-color@8.1.1)(zod@4.5.4))(@types/node@26.4.1)(@types/react@19.2.18)(esbuild@0.28.2)(express@5.2.1(supports-color@8.1.1))(jiti@2.7.0)(react-dom@19.2.8(react@19.2.8))(supports-color@8.1.1)(tsx@4.23.13)':
+  '@modelcontextprotocol/inspector@2.5.0(@modelcontextprotocol/sdk@1.30.0(supports-color@8.1.1)(zod@4.5.4))(@types/node@26.4.1)(@types/react@19.2.18)(esbuild@0.28.2)(express@5.2.1(supports-color@8.1.1))(jiti@2.7.0)(react-dom@19.2.8(react@19.2.8))(supports-color@8.1.1)(tsx@4.23.13)':
     dependencies:
       '@hono/node-server': 2.1.1(hono@4.13.5)
       '@modelcontextprotocol/client': 2.0.0
@@ -6581,7 +6580,7 @@ snapshots:
     dependencies:
       typescript: 7.0.2
 
-  '@tsdoctor/manifest@file:../../spencerbeggs/tsdoctor/packages/manifest/dist/prod/npm/pkg(effect@4.0.0-rc.109)':
+  '@tsdoctor/manifest@0.1.0(effect@4.0.0-rc.109)':
     dependencies:
       effect: 4.0.0-rc.109
 

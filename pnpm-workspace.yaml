@@ -150,7 +150,6 @@ minimumReleaseAgeExclude:
   - vitest-bats
 overrides:
   "@microsoft/api-extractor>typescript": ^6.0.3
-  "@tsdoctor/manifest": file:../../spencerbeggs/tsdoctor/packages/manifest/dist/prod/npm/pkg
 peerDependencyRules:
   allowedVersions:
     "@effect/vitest>vitest": ^4.1.0
