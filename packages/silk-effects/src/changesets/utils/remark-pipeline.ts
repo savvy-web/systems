@@ -12,8 +12,9 @@
  * `../utils/markdown-emit.js`, whose output form is a documented stability
  * commitment of that package. The old remark-stringify emit — and with it
  * the literal-text handler that suppressed cell escaping — is gone: the
- * canonical stringifier escapes inline text uniformly (`~` as `\~`, `_` as
- * `\_`), and parsing consumes those escapes, so cell values still round-trip
+ * canonical stringifier escapes inline text minimally (`~` as `\~`, a
+ * word-edge `_` as `\_`; an interior `snake_case` underscore stays raw), and
+ * parsing consumes those escapes, so cell values still round-trip
  * byte-identically through parse.
  *
  * @internal
