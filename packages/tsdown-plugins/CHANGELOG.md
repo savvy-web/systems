@@ -1,5 +1,21 @@
 # @savvy-web/tsdown-plugins
 
+## 2.5.11
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/tsconfig-json | dependency | updated | ^0.6.1 | ^0.7.0 |
+
+[#595][#595]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#595]: https://github.com/savvy-web/systems/pull/595
+
 ## 2.5.10
 
 ### Dependencies
