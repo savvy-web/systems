@@ -1,5 +1,15 @@
 # @savvy-web/silk-effects
 
+## 7.3.2
+
+### Documentation
+
+- Corrects the `RepoDrift` docstring to say five authorities, matching the `DriftKind` description and the reconciliation code
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 7.3.1
 
 ### Dependencies
@@ -152,17 +162,17 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
   };
   ```
   `thanks` defaults to `true` and is plumbed through `.changeset/config.json`'s changelog options, `ChangelogTransformer`, and `ReleasePlanner`.
-  ### Unified CSH005 dependency-section validation (\#456, \#457)
+  ### Unified CSH005 dependency-section validation (#456, #457)
   The remark-lint rule and the markdownlint rule now share one dependency-section scanner. Prose written before or after a `## Dependencies` table is now accepted by both engines — previously markdownlint alone flagged it. Missing-table diagnostics now anchor at the `## Dependencies` heading in both engines. Rule docs (`CSH001`–`CSH005`) moved in-repo under `packages/silk-effects/docs/rules/`, replacing links to the archived `savvy-web/changesets` repo.
-  ### Cross-seeded catalog resolution in dependency diffs (\#539)
+  ### Cross-seeded catalog resolution in dependency diffs (#539)
   `Changesets.DepsRegen`'s dependency diff now seeds each side of the diff with the other side's catalog declarations at lower precedence, via `@effected/workspaces`' `WorkspaceStateSnapshot.crossSeed`. Config-dependency-injected catalogs (e.g. `catalog:effected`) now resolve to their declared ranges instead of falling through to concrete lockfile versions, eliminating false `^` → exact rows in generated dependency tables. The service graph now composes `Workspaces.layerWithGitAndConfigDependenciesSubprocess`, so subprocess-replayed config-dependency catalog hooks work in bundled hosts (like `savvy-mcp`) that can't rely on an in-process dynamic `import()`.
-  ### `runtime` and `packageManager` dependency-table types (\#544)
+  ### `runtime` and `packageManager` dependency-table types (#544)
   The dependency-table `Type` vocabulary gains `runtime` (language runtime bumps, e.g. node) and `packageManager` (the package manager's self-upgrade, e.g. pnpm). Both validate through CSH005 in both lint engines, survive table aggregation, and are classified release-neutral — the same bucket as `devDependency`.
-  ### `coexisting` bucket on dependency regeneration (\#279)
+  ### `coexisting` bucket on dependency regeneration (#279)
   `Changesets.DepsRegen.plan`/`execute` results now include a `coexisting` list: prose-only changesets that reference an in-scope package but aren't touched by the regeneration pass. A new `Changesets.parseChangesetPackages` helper extracts the package names declared in a changeset's frontmatter.
-  ### Better unmapped-file attribution (\#290, \#487)
+  ### Better unmapped-file attribution (#290, #487)
   `Changesets.ConfigInspector` now returns a machine-readable hint on files it can't attribute to a package — for example, a path that used to match a since-deleted `versionFiles`/`additionalScopes` entry, or a known template-mirror path. Discovered package paths are also re-rooted onto the per-call project directory, so inspection now works correctly from git worktrees, not just the primary checkout.
-  ### Vanilla changelog renderer re-export (\#413)
+  ### Vanilla changelog renderer re-export (#413)
   `Changesets.vanillaChangelogFunctions` re-exports `@changesets/changelog-git` unmodified, for consumers (like `silk-release-action`) that need stock changesets rendering — plain summary lines, no sections, no attribution, no dependency tables — without declaring the dependency themselves.
   ```typescript
   import { Changesets } from "@savvy-web/silk-effects";
@@ -1112,7 +1122,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Bug Fixes
 
-- `Lint.PnpmWorkspace.formatContent` no longer post-processes its output through Prettier. It now stringifies directly via `@effected/yaml` with `quoteStyle: "double"` and `indentSequences: true`, producing the repo's byte format in one pass. This fixes a formatter regression where scoped package keys in `pnpm-workspace.yaml` were rewritten from double to single quotes (`"@parcel/watcher"` -\> `'@parcel/watcher'`) on every `savvy lint fmt pnpm-workspace` run, causing churn on every format pass.
+- `Lint.PnpmWorkspace.formatContent` no longer post-processes its output through Prettier. It now stringifies directly via `@effected/yaml` with `quoteStyle: "double"` and `indentSequences: true`, producing the repo's byte format in one pass. This fixes a formatter regression where scoped package keys in `pnpm-workspace.yaml` were rewritten from double to single quotes (`"@parcel/watcher"` -> `'@parcel/watcher'`) on every `savvy lint fmt pnpm-workspace` run, causing churn on every format pass.
 
   `formatContent` also dropped its now-unused `filepath` parameter, since there is no longer a second printer (Prettier) that needed it to resolve config.
   - Fixed scoped-package-key quote-style churn in `pnpm-workspace.yaml` formatting
@@ -1606,11 +1616,11 @@ program.pipe(
 
 `Changesets.listPublishablePackageNames(packages, root)` gains a required `root` parameter (the project root containing `.changeset/`), passed through to the publishability detector. Previously each package's own directory was passed, which made the adaptive detector's changeset-config lookup miss and silently classify every package as non-publishable. Pass the same workspace root you give `DepsRegen.plan`.
 
-### Per-ref catalog/workspace specifier resolution before diffing (\#208)
+### Per-ref catalog/workspace specifier resolution before diffing (#208)
 
 The dependency diff behind `savvy changeset deps regen`/`detect` now resolves `catalog:` and `workspace:` specifiers against each ref's own catalogs and package versions *before* comparing them. A package that merely adopts a `catalog:` specifier without its resolved version changing no longer produces a row; a catalog version bump under a stable specifier now correctly produces an updated row showing the concrete `from`/`to` versions.
 
-### Dependency-changeset gating tightened (\#209)
+### Dependency-changeset gating tightened (#209)
 
 A package is now in scope for dependency-changeset regeneration and stale-changeset cleanup when it is `publishable OR privatePackages.version` **and** not on the changeset ignore list — the ignore list wins over an explicit `--package` target. Previously only publishability was considered.
 
@@ -1702,13 +1712,13 @@ The default is registry-derived rather than keyed to the `npm`/`github` target i
 
 A new constant `Lint.POST_COMMIT_HOOK_PATH` is exported from the `Lint` namespace, resolving to `.husky/post-commit`. It holds the conventional path for the savvy-hooks post-commit hygiene script so callers that create or inspect the hook do not need to hard-code the path themselves.
 
-### `ConfigInspector` augments explicit `packages` records (\#127)
+### `ConfigInspector` augments explicit `packages` records (#127)
 
 `Changesets.ConfigInspector` now **augments** an explicit `.changeset/config.json` `packages` record with the remaining release-surface workspace packages detected via `SilkPublishability`, rather than treating the record as a closed allow-list.
 
 Previously, a `packages` record that existed only to annotate one package's `versionFiles` caused every other workspace package to be classified as unmapped during branch analysis. With this fix, all publishable workspace packages appear in the attribution map; packages whose annotation (`additionalScopes`, `versionFiles`, etc.) comes entirely from the config record retain their annotation, while unannotated packages are added with default attribution.
 
-### Markdownlint template ignores test-fixture directories (\#123)
+### Markdownlint template ignores test-fixture directories (#123)
 
 The generated `.markdownlint-cli2.jsonc` template now adds `**/__test__/**/fixtures/**` and `**/__fixtures__/**` to its `ignores` list. This brings the markdownlint handler into parity with the Yaml, Biome, and PackageJson handlers, which already excluded these paths.
 
