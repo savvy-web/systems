@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -67,6 +67,21 @@ describe("writeGeneratedOgImage", () => {
 		expect(err).toBeInstanceOf(OgGenerateError);
 		expect((err as OgGenerateError).message).toContain("gif");
 		expect(existsSync(join(outMetaDir, "og"))).toBe(false);
+	});
+
+	it("wraps a filesystem failure on the write as OgGenerateError", async () => {
+		// A regular FILE where the meta dir should be: mkdirSync("<file>/og") fails with ENOTDIR.
+		const parent = mkdtempSync(join(tmpdir(), "og-"));
+		const outMetaDir = join(parent, "not-a-dir");
+		writeFileSync(outMetaDir, "");
+		const err = await writeGeneratedOgImage({
+			generate: async () => PNG_1X1,
+			info,
+			outMetaDir,
+			unscopedName: "pkg",
+		}).catch((e: unknown) => e);
+		expect(err).toBeInstanceOf(OgGenerateError);
+		expect(((err as OgGenerateError).cause as NodeJS.ErrnoException).code).toMatch(/ENOTDIR|EEXIST/);
 	});
 
 	it("rejects bytes that are not an image", async () => {

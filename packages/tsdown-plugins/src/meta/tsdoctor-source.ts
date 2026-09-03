@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
-import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
+import { WorkspaceDiscovery, WorkspaceRootNotFoundError, Workspaces } from "@effected/workspaces";
 import type { ManifestSource } from "@tsdoctor/manifest";
 import { TSDOCTOR_MANIFEST_FILENAME, decodeManifestSource } from "@tsdoctor/manifest";
 import { Data, Effect, Layer } from "effect";
@@ -29,6 +29,11 @@ export class TsdoctorSourceError extends Data.TaggedError("TsdoctorSourceError")
 export interface TsdoctorSources {
 	readonly leaf: ManifestSource | undefined;
 	readonly project: ManifestSource | undefined;
+	/**
+	 * Why workspace discovery failed, when it did. The project tier is then unknown rather than
+	 * absent; `runMetaPass` records it as a `meta` warning so the degradation is visible in `issues.json`.
+	 */
+	readonly discoveryFailure?: string | undefined;
 }
 
 /** Bound once: the platform layer is stateless and layers memoize by reference. */
@@ -44,11 +49,20 @@ function canonical(dir: string): string {
 	}
 }
 
+/** `Effect.runPromise` rejects with the failure itself or with a `FiberFailure` wrapping it; check both. */
+function isRootNotFound(cause: unknown): boolean {
+	if (cause instanceof WorkspaceRootNotFoundError) return true;
+	return typeof cause === "object" && cause !== null && "_tag" in cause && cause._tag === "WorkspaceRootNotFoundError";
+}
+
 /**
- * The workspace root containing `cwd`, or `undefined` when `cwd` is not inside any workspace.
- * Mirrors the `WorkspaceDiscovery` invocation in `changesets/next-versions.ts`.
+ * The workspace root containing `cwd`, or the reason discovery failed. A package outside any
+ * workspace is the `root: undefined` case with no failure. Mirrors the `WorkspaceDiscovery`
+ * invocation in `changesets/next-versions.ts`.
  */
-async function findWorkspaceRoot(cwd: string): Promise<string | undefined> {
+async function findWorkspaceRoot(
+	cwd: string,
+): Promise<{ readonly root: string | undefined; readonly failure?: string | undefined }> {
 	try {
 		const packages = await Effect.runPromise(
 			Effect.gen(function* () {
@@ -57,9 +71,13 @@ async function findWorkspaceRoot(cwd: string): Promise<string | undefined> {
 			}).pipe(Effect.provide(Workspaces.layer({ cwd }).pipe(Layer.provide(platform)))),
 		);
 		// listPackages is root-first; the root package's path is the workspace root.
-		return packages[0]?.isRootWorkspace ? packages[0].path : undefined;
-	} catch {
-		return undefined;
+		return { root: packages[0]?.isRootWorkspace ? packages[0].path : undefined };
+	} catch (cause) {
+		// No workspace above cwd is the normal standalone-package case, not a failure. Every OTHER
+		// discovery failure (a root package.json without a version, an unparseable pnpm-workspace.yaml,
+		// a malformed sibling manifest) is surfaced, never swallowed.
+		if (isRootNotFound(cause)) return { root: undefined };
+		return { root: undefined, failure: cause instanceof Error ? cause.message : String(cause) };
 	}
 }
 
@@ -87,10 +105,10 @@ async function readSource(path: string): Promise<ManifestSource | undefined> {
 export async function loadTsdoctorSources(cwd: string): Promise<TsdoctorSources> {
 	const leafDir = canonical(cwd);
 	const leaf = await readSource(join(leafDir, TSDOCTOR_MANIFEST_FILENAME));
-	const root = await findWorkspaceRoot(leafDir);
+	const { root, failure } = await findWorkspaceRoot(leafDir);
 	const project =
 		root !== undefined && canonical(root) !== leafDir
 			? await readSource(join(root, TSDOCTOR_MANIFEST_FILENAME))
 			: undefined;
-	return { leaf, project };
+	return { leaf, project, ...(failure !== undefined ? { discoveryFailure: failure } : {}) };
 }

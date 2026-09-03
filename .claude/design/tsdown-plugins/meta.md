@@ -46,7 +46,7 @@ related:
 - **Next versions:** `resolveNextVersions` (`src/changesets/next-versions.ts`).
 - **Sidecar:** `TsdoctorMetaOptions`/`OgImageInfo` (`tsdoctor-config.ts`), `loadTsdoctorSources` + `TsdoctorSources` (`tsdoctor-source.ts`), `composeTsdoctorManifest`/`ogImageInfoOf`/`registriesFromTargets`/`githubOwnerRepo` + `ComposeManifestInput`/`ManifestTarget`/`ManifestRepository` (`tsdoctor-manifest.ts`), `writeGeneratedOgImage` (`og-image.ts`). Encoding and the source-file decoder come from `@tsdoctor/manifest`; image dimensions from `image-size`.
 - **Errors:** `MetaGenerationError` (`src/errors.ts`), thrown by `runApiExtractor` on a failed extraction; `TsdoctorSourceError` (`tsdoctor-source.ts`, `{ path, cause }`) for a present-but-invalid `tsdoctor.json`; `OgGenerateError` (`og-image.ts`, `{ packageName, cause }`) for a failed image render. Both are `Data.TaggedError` classes like the rest of `src/errors.ts`, matched by `instanceof` in `runMetaPass`.
-- **Dependency note:** `@tsdoctor/manifest` is declared `^0.1.0` but, until tsdoctor publishes 0.1.0, resolves through a dogfood `file:` override in `pnpm-workspace.yaml` pointing at the sibling `spencerbeggs/tsdoctor` checkout's prod artifact.
+- **Dependency note:** `@tsdoctor/manifest` is declared `^0.1.0` and resolves from the registry. Before its first release it was consumed through a dogfood `file:` override against the sibling `spencerbeggs/tsdoctor` checkout (see the root `CLAUDE.md` "Dogfooding" section for the protocol); that override is gone, and a branch carrying one cannot push.
 
 ## The pipeline
 
@@ -136,7 +136,7 @@ Both sidecar errors are recorded to the collector as `source: "meta"` diagnostic
 - **A missing `tsdoctor.json` source is never an error; a present-but-invalid one always is**, and it fails the build before any group is written.
 - **Sidecar failures reach `issues.json` as `source: "meta"` and still fail the build.**
 - **Registries derive only for a public package**, from the final manifest's `private` flag, and `registries: false` wins over every tier.
-- **A registry link is emitted only when it resolves to a real page**: a GitHub Packages target without a parseable `repository.url` is dropped rather than guessed.
+- **A GitHub Packages link is emitted only when it resolves to a real page**: a target on `npm.pkg.github.com` without a parseable `repository.url` is dropped rather than guessed. npmjs gets its well-known page, and every other host keeps the generic `<host>/package/<name>` form — a deliberate upstream (tsdoctor) ruling, since the reader degrades an unknown registry to a plain link and a consumer with a bespoke registry can always declare `registries` explicitly (or `false`).
 
 ## Rationale
 

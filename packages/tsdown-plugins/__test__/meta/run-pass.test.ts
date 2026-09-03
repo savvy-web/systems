@@ -123,6 +123,35 @@ describe("runMetaPass", () => {
 		]);
 	});
 
+	it("records a workspace-discovery failure as a meta warning on every group and continues", async () => {
+		const collector = new BuildCollector();
+		const generated: string[] = [];
+		await runMetaPass({
+			cwd: "/pkg",
+			packageName: "@scope/pkg",
+			tsconfigPath: "/pkg/tsconfig.json",
+			groups: [
+				{ id: "npm", name: "@scope/pkg" },
+				{ id: "github", name: "@org/pkg" },
+			],
+			entries: { index: "./src/index.ts" },
+			exportsMap: { ".": "./src/index.ts" },
+			meta: {},
+			collector,
+			ci: false,
+			loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined, discoveryFailure: "missingVersion" }),
+			generateMeta: async (opts) => {
+				generated.push(opts.outMetaDir);
+				return { apiJsonPath: "/x", apiJsonFilename: "pkg.api.json" };
+			},
+		});
+		expect(generated).toHaveLength(2);
+		const warnings = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.warnings));
+		expect(warnings).toHaveLength(2);
+		expect(warnings[0]).toMatchObject({ source: "meta", code: "tsdoctor-workspace-discovery-failed" });
+		expect(warnings[0]?.text).toContain("missingVersion");
+	});
+
 	it("records an invalid tsdoctor.json source in the collector and fails the pass", async () => {
 		const collector = new BuildCollector();
 		const generated: string[] = [];

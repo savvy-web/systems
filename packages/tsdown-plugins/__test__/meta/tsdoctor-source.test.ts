@@ -85,6 +85,24 @@ describe("loadTsdoctorSources", () => {
 		}
 	});
 
+	it("surfaces a workspace-discovery failure instead of silently dropping the project tier", async () => {
+		const { root: r, pkg } = workspace();
+		// A root manifest without a version is one discovery failure; the leaf still reads.
+		writeFileSync(join(r, "package.json"), JSON.stringify({ name: "root", private: true }));
+		writeFileSync(join(r, "tsdoctor.json"), JSON.stringify({ name: "Project" }));
+		writeFileSync(join(pkg, "tsdoctor.json"), JSON.stringify({ name: "Leaf" }));
+		const sources = await loadTsdoctorSources(pkg);
+		expect(sources.leaf).toEqual({ name: "Leaf" });
+		expect(sources.project).toBeUndefined();
+		expect(sources.discoveryFailure).toMatch(/missingVersion/);
+	});
+
+	it("reports no discovery failure for a package outside any workspace", async () => {
+		const cwd = root();
+		writeFileSync(join(cwd, "package.json"), JSON.stringify({ name: "lonely", version: "1.0.0" }));
+		expect(await loadTsdoctorSources(cwd)).toEqual({ leaf: undefined, project: undefined });
+	});
+
 	it("reads a file at a package that IS the workspace root once, as the leaf", async () => {
 		const { root: r } = workspace();
 		writeFileSync(join(r, "tsdoctor.json"), JSON.stringify({ name: "Root" }));

@@ -71,7 +71,12 @@ export async function writeGeneratedOgImage(options: WriteGeneratedOgImageOption
 		});
 	}
 	const relative = `og/${options.unscopedName}.${ext}`;
-	mkdirSync(join(options.outMetaDir, "og"), { recursive: true });
-	writeFileSync(join(options.outMetaDir, relative), bytes);
+	try {
+		mkdirSync(join(options.outMetaDir, "og"), { recursive: true });
+		writeFileSync(join(options.outMetaDir, relative), bytes);
+	} catch (cause) {
+		// A read-only or full disk is still an OG failure as far as issues.json is concerned.
+		throw new OgGenerateError({ packageName: options.info.packageName, cause });
+	}
 	return { path: relative, type, width: size.width, height: size.height };
 }

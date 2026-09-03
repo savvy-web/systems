@@ -275,6 +275,11 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 	// Layer 3: the tsdoctor.json sidecar. Written only when there is something to say, through the
 	// manifest package's encoder so the file is by construction what a reader decodes. The generated
 	// Open Graph image (when configured) is rendered first so the manifest can list it.
+	// The sidecar and its image are the bundle's only CONDITIONAL members, so a previous build's copies
+	// are removed first: a package that drops its tsdoctor.json or its generator must stop advertising
+	// the identity and og:image it no longer produces, in the meta dir and in every localPaths copy.
+	rmSync(join(outMetaDir, TSDOCTOR_MANIFEST_FILENAME), { force: true });
+	rmSync(join(outMetaDir, "og"), { recursive: true, force: true });
 	let manifestPath: string | undefined;
 	let generatedImageRelative: string | undefined;
 	if (options.tsdoctor !== undefined) {
@@ -316,6 +321,8 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		copyFileSync(bundlePackageJson, join(dest, "package.json"));
 		copyFileSync(bundleTsconfig, join(dest, "tsconfig.json"));
 		if (manifestPath !== undefined) copyFileSync(manifestPath, join(dest, TSDOCTOR_MANIFEST_FILENAME));
+		else rmSync(join(dest, TSDOCTOR_MANIFEST_FILENAME), { force: true });
+		rmSync(join(dest, "og"), { recursive: true, force: true });
 		if (generatedImageRelative !== undefined) {
 			mkdirSync(join(dest, "og"), { recursive: true });
 			copyFileSync(join(outMetaDir, generatedImageRelative), join(dest, generatedImageRelative));

@@ -143,6 +143,33 @@ describe("generateMeta tsdoctor sidecar", () => {
 		expect(existsSync(join(s.cwd, "models-a", "tsdoctor.json"))).toBe(false);
 	});
 
+	it("removes a previous build's sidecar and og/ from the meta dir and every localPaths copy", async () => {
+		const s = scaffold({ private: true });
+		const withImage = {
+			config: { name: "Fixture", openGraph: { generate: async () => PNG_1X1 } },
+			leaf: undefined,
+			project: undefined,
+			targets: [],
+		};
+		await generateMeta({ ...baseOptions(s), tsdoctor: withImage });
+		for (const dir of [s.outMetaDir, join(s.cwd, "models-a"), join(s.cwd, "models-b")]) {
+			expect(existsSync(join(dir, "tsdoctor.json")), dir).toBe(true);
+			expect(existsSync(join(dir, "og", "fixture.png")), dir).toBe(true);
+		}
+		// Same package, generator dropped: the image must disappear everywhere while the manifest stays.
+		await generateMeta({ ...baseOptions(s), tsdoctor: { ...withImage, config: { name: "Fixture" } } });
+		for (const dir of [s.outMetaDir, join(s.cwd, "models-a"), join(s.cwd, "models-b")]) {
+			expect(await decodeAt(join(dir, "tsdoctor.json"))).toEqual({ spec: 1, name: "Fixture" });
+			expect(existsSync(join(dir, "og")), dir).toBe(false);
+		}
+		// Identity dropped too: nothing to say, so the stale sidecar goes as well.
+		await generateMeta(baseOptions(s));
+		for (const dir of [s.outMetaDir, join(s.cwd, "models-a"), join(s.cwd, "models-b")]) {
+			expect(existsSync(join(dir, "tsdoctor.json")), dir).toBe(false);
+			expect(existsSync(join(dir, "fixture.api.json")), dir).toBe(true);
+		}
+	});
+
 	it("writes no sidecar when the tiers are empty and the package is private", async () => {
 		const s = scaffold({ private: true });
 		await generateMeta({

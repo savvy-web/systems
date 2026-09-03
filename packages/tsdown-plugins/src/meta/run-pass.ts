@@ -89,6 +89,17 @@ export async function runMetaPass(o: RunMetaPassOptions): Promise<void> {
 		throw err;
 	}
 
+	if (sources.discoveryFailure !== undefined) {
+		for (const g of o.groups) {
+			o.collector.recordWarning(g.id, {
+				source: "meta",
+				level: "warn",
+				code: "tsdoctor-workspace-discovery-failed",
+				text: `Workspace discovery failed, so tsdoctor.json has no project tier: ${sources.discoveryFailure}`,
+			});
+		}
+	}
+
 	for (const g of o.groups) {
 		// The target's `id` (the publishConfig.targets key, e.g. "npm"/"github") is the human registry label;
 		// its `name` is the resolved package name for that group, which the manifest already knows.
