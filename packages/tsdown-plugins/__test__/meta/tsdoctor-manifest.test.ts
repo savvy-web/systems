@@ -110,6 +110,16 @@ describe("registriesFromTargets", () => {
 		).toEqual([]);
 	});
 
+	it("strips any run of trailing slashes from the registry endpoint", () => {
+		expect(
+			registriesFromTargets({
+				packageName: "@scope/pkg",
+				isPrivate: false,
+				targets: [{ name: "npm", registry: `https://registry.npmjs.org${"/".repeat(5000)}` }],
+			}),
+		).toEqual([{ type: "npm", name: "npm", url: "https://www.npmjs.com/package/@scope/pkg" }]);
+	});
+
 	it("links any other non-npmjs registry to <host>/package/<name> and keeps type npm", () => {
 		expect(
 			registriesFromTargets({

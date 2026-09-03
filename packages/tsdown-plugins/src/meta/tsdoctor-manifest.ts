@@ -72,8 +72,15 @@ function unscopedName(name: string): string {
  * has a well-known page; GitHub Packages pages hang off the repository, so they need a parseable
  * `repository.url` and are omitted rather than emitted as a dead link when it is missing.
  */
+/** Strip trailing slashes without a `/\/+$/` regex, which backtracks polynomially on slash runs (CodeQL js/polynomial-redos). */
+function stripTrailingSlashes(value: string): string {
+	let end = value.length;
+	while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+	return value.slice(0, end);
+}
+
 function packagePageUrl(registry: string, packageName: string, repository: ManifestRepository | undefined) {
-	const host = registry.replace(/\/+$/, "");
+	const host = stripTrailingSlashes(registry);
 	if (host === "https://registry.npmjs.org") return `https://www.npmjs.com/package/${packageName}`;
 	if (/^https?:\/\/npm\.pkg\.github\.com$/i.test(host)) {
 		const gh = repository !== undefined ? githubOwnerRepo(repository.url) : undefined;
