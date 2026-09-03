@@ -1,5 +1,15 @@
 # @savvy-web/bundler
 
+## 2.1.31
+
+### Documentation
+
+- Corrects the README to cite the real tsconfig preset export, `@savvy-web/bundler/tsconfig/ecma.json`
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.1.30
 
 ### Dependencies

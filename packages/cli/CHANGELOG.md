@@ -1,5 +1,13 @@
 # @savvy-web/cli
 
+## 2.9.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 7.3.1 | 7.3.2 |
+
 ## 2.9.1
 
 ### Dependencies
@@ -1339,7 +1347,7 @@ The default markdownlint-cli2 config globs `**/*.{md,mdx}`, which swept ad-hoc s
 
 `@savvy-web/cli` and `@savvy-web/mcp` now declare `@effect/cluster`, `@effect/rpc`, and `@effect/sql` as direct dependencies. The `@effect/platform-node` root barrel eagerly links these clustering submodules at import time. Without these declarations, a fresh install that did not already provide them indirectly would fail with `ERR_MODULE_NOT_FOUND` before any command could run.
 
-### Changeset push-guard no longer blocks tag and delete pushes (\#124)
+### Changeset push-guard no longer blocks tag and delete pushes (#124)
 
 The `changeset-push-guard` plugin hook no longer triggers on `git push --tags`, `git push --delete`/`-d`, or refspec-deletion pushes (`git push origin :branch`). These push forms cannot introduce unreleased commits, so blocking them on an unreleased-changeset check was a false positive.
 

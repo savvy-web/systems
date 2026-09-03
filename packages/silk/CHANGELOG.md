@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 3.11.6
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli | dependency | updated | 2.9.1 | 2.9.2 |
+| @savvy-web/mcp | dependency | updated | 2.6.9 | 2.6.10 |
+
 ## 3.11.5
 
 ### Dependencies
@@ -739,7 +749,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - ### `repos-bash-guard.sh`: stop false-positive denies, name what it's denying
   The repos vendored-tree Bash guard hook now scans a derived `SCAN` string instead of the raw command, stripping heredoc bodies and whitespace-containing quoted segments before matching. This stops it from denying commands that only mention `.repos/` inside prose — a heredoc payload, or a quoted sentence like `--body "run rm -rf .repos/x to reproduce"` — and from denying plain reads (`cat`, `grep`, `rg`, `ls`) of vendored paths, which were never writes.
 
-  The non-git leg's `cp`/`mv` last-operand scan is now clause-scoped, so it no longer misreads an operand from an unrelated `&&`/`;`/`|`-separated command in the same string. `git add`/`git restore` are now allowed when every `.repos/`-mentioning token in the invocation resolves to exactly `.repos/config.json`, so staging the hand-editable manifest no longer trips the guard; a mixed pathspec that also touches vendored content still denies. Deny messages now name the actual operation (`unvendoring a repo is a lifecycle operation...` for `git rm`/`git submodule deinit`) instead of a one-size "re-pin via repos\_manage" message that didn't fit every denied shape.
+  The non-git leg's `cp`/`mv` last-operand scan is now clause-scoped, so it no longer misreads an operand from an unrelated `&&`/`;`/`|`-separated command in the same string. `git add`/`git restore` are now allowed when every `.repos/`-mentioning token in the invocation resolves to exactly `.repos/config.json`, so staging the hand-editable manifest no longer trips the guard; a mixed pathspec that also touches vendored content still denies. Deny messages now name the actual operation (`unvendoring a repo is a lifecycle operation...` for `git rm`/`git submodule deinit`) instead of a one-size "re-pin via repos_manage" message that didn't fit every denied shape.
 
 ### Documentation
 
@@ -1652,7 +1662,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 - Ships `@changesets/cli@^3.0.0-next.8` to consumers (was `^2.31.0`) as both a `devDependency` and `peerDependency`. The v3 CLI is a significant contract change for anyone consuming this package:
   - **ESM-only.** The CLI no longer ships a CommonJS build — projects invoking it programmatically must be able to `import` it.
-  - **Node \>=22.11 required.** Consumers on older Node LTS lines will need to upgrade before adopting this version.
+  - **Node >=22.11 required.** Consumers on older Node LTS lines will need to upgrade before adopting this version.
   - **`changeset tag` is renamed `changeset git-tag`.** Any script or CI step invoking `changeset tag` must be updated to the new subcommand name.
 
 ### Dependencies
@@ -1904,7 +1914,7 @@ Reference either from a package's `tsconfig.json` via `"extends": "@savvy-web/si
 * Broadens the test-fixtures exclusion to `**/__test__/**/fixtures` (any nesting depth).
 * Formats shipped TSConfig presets under `**/public/tsconfig/**/*.json` with the standard tsconfig key-sorting rules.
 
-### Changeset push-guard no longer blocks tag and delete pushes (\#124)
+### Changeset push-guard no longer blocks tag and delete pushes (#124)
 
 The `changeset-push-guard` plugin hook no longer triggers on `git push --tags`, `git push --delete`/`-d`, or refspec-deletion pushes (`git push origin :branch`). These push forms cannot introduce unreleased commits, so blocking them on an unreleased-changeset check was a false positive.
 

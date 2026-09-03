@@ -1,5 +1,21 @@
 # @savvy-web/mcp
 
+## 2.6.10
+
+### Documentation
+
+- Corrects the `repos_inspect` tool description: the `drift` mode reconciles five authorities (manifest, `.gitmodules`, worktree, `git submodule status`, local git config), not four
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 7.3.1 | 7.3.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.6.9
 
 ### Dependencies
@@ -345,7 +361,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Features
 
-- ### repos\_manage action deregister
+- ### repos_manage action deregister
   `repos_manage` gains `action: "deregister"`, clearing a stale `submodule.<section>` registration from the superproject's local git config — the phantom entry `repos_inspect` drift reports as an orphan `localRegistrationDivergence`. It takes `section` (the registration name exactly as the drift report states it), refuses a section still backing a live manifest entry, and its markdown lists the config keys the removed section carried and says outright that nothing is staged, since local config is unversioned. [#494][#494]
 
 ### Dependencies
@@ -1079,7 +1095,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Features
 
-- [`c7e38d4`](https://github.com/savvy-web/systems/commit/c7e38d46b844e26ffc4e6ebb55d949f9a91d5d86) Remove the resource subsystem from savvy-mcp: the silk:// corpus, the manifest, the silk\_docs\_search tool, and the api-doc render pipeline. The server is now tools-only; api documentation moves to a dedicated website built from the api-models.
+- [`c7e38d4`](https://github.com/savvy-web/systems/commit/c7e38d46b844e26ffc4e6ebb55d949f9a91d5d86) Remove the resource subsystem from savvy-mcp: the silk:// corpus, the manifest, the silk_docs_search tool, and the api-doc render pipeline. The server is now tools-only; api documentation moves to a dedicated website built from the api-models.
 
 ## 1.3.5
 
@@ -1146,7 +1162,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Features
 
-- [`ec206d3`](https://github.com/savvy-web/systems/commit/ec206d3cb8b0c1687b6e89f0b2a49c866a53fb7f) Adds a changeset\_preview tool that previews the next release using the real
+- [`ec206d3`](https://github.com/savvy-web/systems/commit/ec206d3cb8b0c1687b6e89f0b2a49c866a53fb7f) Adds a changeset_preview tool that previews the next release using the real
   changeset engine, and refactors savvy changeset version onto the native
   ReleasePlanner apply so it no longer shells out to an installed changeset
   binary. The silk plugin changeset-preview skill renders from the new tool.
@@ -1196,7 +1212,7 @@ The `silk://packages/cli/command-tree` corpus doc that ships in the tarball list
 
 `@savvy-web/cli` and `@savvy-web/mcp` now declare `@effect/cluster`, `@effect/rpc`, and `@effect/sql` as direct dependencies. The `@effect/platform-node` root barrel eagerly links these clustering submodules at import time. Without these declarations, a fresh install that did not already provide them indirectly would fail with `ERR_MODULE_NOT_FOUND` before any command could run.
 
-### Changeset push-guard no longer blocks tag and delete pushes (\#124)
+### Changeset push-guard no longer blocks tag and delete pushes (#124)
 
 The `changeset-push-guard` plugin hook no longer triggers on `git push --tags`, `git push --delete`/`-d`, or refspec-deletion pushes (`git push origin :branch`). These push forms cannot introduce unreleased commits, so blocking them on an unreleased-changeset check was a false positive.
 
@@ -1210,7 +1226,7 @@ The `changeset-push-guard` plugin hook no longer triggers on `git push --tags`, 
 
 ### Features
 
-- [`eac6587`](https://github.com/savvy-web/systems/commit/eac6587a9db1f2936703699b9d55134f80b8868e) ### changeset\_validate tool
+- [`eac6587`](https://github.com/savvy-web/systems/commit/eac6587a9db1f2936703699b9d55134f80b8868e) ### changeset_validate tool
 
 A new `changeset_validate` MCP tool validates changeset files against the section-aware lint rules (CSH001–CSH005). It accepts an optional `dir` path (defaults to `.changeset/`) and returns a structured result with a pass/fail flag, an error count, and per-file diagnostics including file path, rule ID, line, column, and message.
 
@@ -1223,7 +1239,7 @@ A new `changeset_validate` MCP tool validates changeset files against the sectio
 
 Returns `{ dir, ok, errorCount, messages[] }` where each message has `file`, `rule`, `line`, `column`, and `message` fields.
 
-### classify mode for changeset\_inspect
+### classify mode for changeset_inspect
 
 `changeset_inspect` now accepts `mode: "classify"` alongside the existing `branch` and `config` modes. Pass an array of repo-relative file paths and receive the owning package for each, resolved against the workspace configuration.
 
