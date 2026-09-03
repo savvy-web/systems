@@ -5,19 +5,20 @@ category: architecture
 created: 2026-09-03
 updated: 2026-09-03
 last-synced: 2026-09-03
-completeness: 90
+completeness: 92
 related:
   - ./architecture.md
   - ./build-loop.md
   - ./meta.md
   - ./dual-format.md
   - ../bundler/architecture.md
+  - ../bundler/meta-wiring.md
   - ../silk/plugin.md
 ---
 
 # The build report
 
-How build facts are captured from three synchronous runtimes, rendered into one unified report and persisted as a machine-readable artifact. Part of the [tsdown-plugins architecture](./architecture.md).
+How build facts are captured from three synchronous runtimes plus the meta pass's own sidecar work, rendered into one unified report and persisted as a machine-readable artifact. Part of the [tsdown-plugins architecture](./architecture.md).
 
 ## Table of Contents
 
@@ -58,6 +59,8 @@ The collector is optional on `buildTargetGroups` and `runExeBuild`: absent, the 
 - **Seam 2 — emitted-file metrics and rolldown logs via `buildMetricsPlugin`.** Its `writeBundle` records each chunk/asset's byte size (gzip only under `verbose`, the expensive part) for the JS and dts passes. Its `onLog` is a separate channel from the tsdown muzzle: it records rolldown-level diagnostics and returns `false` for warnings so they do not print raw above the unified report; errors are recorded but *not* suppressed, so a build failure is never swallowed. Two special cases: a `SOURCEMAP_BROKEN` from an `@tsdown/css*` plugin is dropped without recording (the synthesized CSS-module locals emit no sourcemap — benign, unfixable upstream, noisy on every CSS-module dev build), and with `suppressMixedExports` set, a `MIXED_EXPORTS` warning routes to the `suppressed` bucket. `buildTargetGroups` sets that flag for exactly the passes that install `cjsDefaultInterop()`, because rolldown's suggested remedy changes no codegen for a default+named module and the consequence it warns about is precisely what the footer removes.
 - **Seam 3 — API Extractor diagnostics via `mapExtractorMessage` + `onMessage`.** The pure mapper turns an extractor message into a `DiagnosticInput` preserving `file`/`line`/`column`; the callback routes it to the collector's group and marks it handled so API Extractor stops printing. Locations are accurate because diagnostics come from the per-module declarations run (see [Meta generation](./meta.md#the-two-input-split)); the synthesized `_base` of an Effect class mixin resolves to its `declarations/*.d.ts` mirror rather than `src/`, since rolldown-plugin-dts does not source-map it. Suppressed messages route through `onSuppressed` for accounting.
 
+- **Seam 4 — meta-pass sidecar failures, recorded directly by `runMetaPass`.** The `tsdoctor.json` sidecar and its Open Graph image are not produced by any of the three runtimes, so their failures have no callback to hook; `runMetaPass` calls `recordError` itself with `source: "meta"` before rethrowing. Two codes exist: `tsdoctor-source-invalid` (a present-but-undecodable `tsdoctor.json`, with `file` set to its path, recorded on EVERY group because the sources load once per package) and `og-generate-failed` (the generator threw, returned no bytes or returned a non-image, recorded on the failing group). Both still fail the build; the seam exists so `issues.json` and the report name the cause instead of an opaque throw. See [Meta generation](./meta.md#failure-routing).
+
 **tsdown's own `suppressWarnings` option is unreachable here.** tsdown's `createLogger` returns early when a `customLogger` is supplied, and this builder always supplies one whenever a collector exists — so every suppression decision has to live in these seams, never in tsdown config.
 
 ## The output reporter
@@ -66,7 +69,7 @@ Four `Context.Service` classes with `layer` statics — `EnvironmentDetector →
 
 - **Executors:** `human` (pretty terminal), `agent` (markdown, failures-first, deduped and token-efficient) and `ci` (GitHub annotations). Environment is auto-detected via `std-env` (agent shell, then GitHub Actions, then generic CI, then TTY); an explicit format override wins. Precedence is settled in `FormatSelector.select`.
 - **Formatter contract:** `render(reports, ctx) → RenderedOutput[]`, sync and pure. Formatters: `terminal`, `json`, `markdown`, `ci-annotations`, `silent`.
-- **`BuildReport` schema:** per package → per TargetGroup, with `passes: PassReport[]` (each carrying `EmittedFile`s and `ms`), `warnings`/`errors`/`suppressed` as `DiagnosticEntry[]` (source, level, text, optional code, `ciFatal` and location) and timings. See `src/report/schema.ts` for the `Schema.Struct`s. A SchemaStore-compatible JSON Schema is generated from core `effect`'s `Schema.toJsonSchemaDocument` so the structured output validates in editors.
+- **`BuildReport` schema:** per package → per TargetGroup, with `passes: PassReport[]` (each carrying `EmittedFile`s and `ms`), `warnings`/`errors`/`suppressed` as `DiagnosticEntry[]` (`source` — one of `tsdown`, `rolldown`, `api-extractor`, `meta` — level, text, optional code, `ciFatal` and location) and timings. See `src/report/schema.ts` for the `Schema.Struct`s. A SchemaStore-compatible JSON Schema is generated from core `effect`'s `Schema.toJsonSchemaDocument` so the structured output validates in editors.
 - **Quiet by default, verbose table.** The terminal formatter prints a bold package name, one line per group, inline warnings/errors with `file:line` and an aggregate line; `verbose` switches to a per-pass file table with sizes.
 - **Human-facing nudges only.** The shared helpers in `src/report/formatters/diagnostics.ts` render a `[fails CI]` tag on `ciFatal` warnings, a per-package fail-the-build callout and a one-line suppressed summary in `terminal` and `markdown`. `ci-annotations` and `json` carry the same fields but render no nudge — the machine-facing channels already fail the build or hand raw fields to a consumer.
 
@@ -78,13 +81,13 @@ Four `Context.Service` classes with `layer` statics — `EnvironmentDetector →
 - **Always written, on every terminal path.** Every dev and prod build writes it, on success and on failure (the bundler writes before rethrowing — a failed build is exactly when an agent wants to read why). An absent file means the package was not built.
 - **`buildOk` is the outcome stamp a reader must gate on, never `errors.length`.** A crashed build can leave every diagnostic bucket empty, byte-identical to a clean gate, so `BuildIssues` carries `buildOk` plus an optional `failure` (`name`/`message`, present only when `buildOk` is false). `flattenIssues` defaults `buildOk` to `true`, so **a caller that writes on a failure path must pass `buildOk: false`** or its crash reads as a pass. A missing `buildOk` is unknown, not a pass.
 - **Atomic write.** The JSON lands in a pid-suffixed sibling temp file that is renamed over the destination, so a concurrent reader — the tsdoc background monitor polls the file — observes either the previous artifact or the complete new one. A failed write removes the temp file and rethrows; the callers swallow it so a read-only filesystem never masks the build outcome.
-- **`ae-*`/`tsdoc-*` are prod-only**, because the meta pass runs only in `--target prod`; `dist/dev/issues.json` carries tsdown/rolldown diagnostics only.
+- **`ae-*`/`tsdoc-*` and every `source: "meta"` entry are prod-only**, because the meta pass runs only in `--target prod`; `dist/dev/issues.json` carries tsdown/rolldown diagnostics only.
 
 ## Boundaries and invariants
 
 - **The collector is sync-write, service-read and optional.** No `Logger.replace`; absent means raw tsdown behavior.
 - **All warning suppression lives in the seams** (`buildMetricsPlugin.onLog`, `suppressWarnings` via `onSuppressed`), never in tsdown config, which cannot reach a build that supplies a `customLogger`.
-- **Errors are recorded, never suppressed.** `onLog` returns `undefined` for error-level logs so rolldown's default error reporting still fires.
+- **Errors are recorded, never suppressed.** `onLog` returns `undefined` for error-level logs so rolldown's default error reporting still fires; the `meta`-source sidecar errors are recorded and then rethrown.
 - **The issues artifact is always written and is a consumed contract.** Absence means not-built; presence means read `buildOk` first.
 - **`flattenIssues` defaults `buildOk` to `true`**; failure-path callers must pass `false` explicitly.
 - **Nudges are human-only.** `json` and `ci-annotations` carry `code`/`ciFatal`/`suppressed` but render no persuasion.

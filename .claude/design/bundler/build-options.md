@@ -13,6 +13,7 @@ related:
   - ./self-hosting.md
   - ./tsconfig-preset.md
   - ../tsdown-plugins/architecture.md
+  - ../tsdown-plugins/meta.md
   - ../silk/architecture.md
   - ../rspress-builder/architecture.md
 dependencies:
@@ -35,6 +36,7 @@ The `defineBuild` option surface and how `runBuild` forwards each option into `@
 - [define and plugins](#define-and-plugins)
 - [Manifest strip, minify and declaration-map defaults](#manifest-strip-minify-and-declaration-map-defaults)
 - [emitDts: skipping declarations](#emitdts-skipping-declarations)
+- [meta.tsdoctor and the og subpath](#metatsdoctor-and-the-og-subpath)
 - [JSX](#jsx)
 - [Ambient .d.ts exports](#ambient-dts-exports)
 - [Boundaries and invariants](#boundaries-and-invariants)
@@ -103,6 +105,12 @@ Three additive `BuildEntryOverride` fields let an override partition build a bro
 
 `emitDts?: boolean` (default `true`) controls whether the bundled-dts pass runs at all, on dev and prod alike. `false` skips the dts pass, the prod declarations pass and therefore the meta pass (which has nothing to read), while still emitting JS, byte-variant folders, catalog resolution and the transformed manifest. It is orthogonal to `meta: false`, which disables only the API-model generation and keeps the dts pass. Intended for JS-only artifacts that never ship declarations (e2e fixtures, bins, internal tools), where skipping the TypeScript compiler load is a material per-build saving. It is named `emitDts` rather than `dts` to avoid confusion with tsdown's nested `dts` option object. `runBuild` treats `undefined` as `true` so a hand-authored `BuildConfig` need not supply it.
 
+## meta.tsdoctor and the og subpath
+
+`meta.tsdoctor?: TsdoctorMetaOptions` (on the `meta` object; see [Meta wiring](./meta-wiring.md#the-meta-option)) is the CONFIG tier of the `tsdoctor.json` SEO sidecar the prod meta bundle emits beside the `.api.json`: `name`/`tagline`/`description`, `openGraph.{images, themeColor, generate}` and `registries` (or `false` to disable the default derived from `publishConfig.targets`). Like every other option it is pure wiring — `runMetaPass` receives it inside `config.meta` and tsdown-plugins ranks it over the package's and the workspace root's `tsdoctor.json` files (see [The tsdoctor.json sidecar](../tsdown-plugins/meta.md#the-tsdoctorjson-sidecar)). A package that sets nothing and has no source files emits no sidecar.
+
+`openGraph.generate` takes any `(info: OgImageInfo) => Promise<Uint8Array>`; the bundler ships a default as the **`./og` subpath** — `ogImage.satori({ accent?, background?, foreground? })` from `@savvy-web/bundler/og`, a 1200×630 PNG over the OPTIONAL peers `satori` and `@resvg/resvg-js` (see [Meta wiring](./meta-wiring.md#the-og-subpath)). `TsdoctorMetaOptions` and `OgImageInfo` are re-exported from the root entry so a config can type a custom generator without importing tsdown-plugins. Because the sidecar is part of the meta pass, `meta: false` and `emitDts: false` both suppress it.
+
 ## JSX
 
 A `.tsx` package builds with the right JSX runtime with zero extra config. `runBuild` computes `resolveJsxConfig(readTsconfigJsx(cwd), config.jsx)` once — an explicit `defineBuild({ jsx })` wins, else the runtime is inferred from the package's own `tsconfig.json` `compilerOptions.jsx`. The resolved value flows ONLY into the generated dts tsconfig (`writeResolvedTsconfig({ jsx, jsxImportSource })`), which both passes consume; it is deliberately not forwarded as a rolldown input option, which tsdown rejects. The mapping itself lives in `tsdown-plugins`' `src/jsx/`.
@@ -121,7 +129,8 @@ A package can declare a types-only export whose source is a hand-authored declar
 - **Per-entry overrides are resolved in `runBuild`, not the build loop**, and a non-canonical or non-existent export path throws.
 - **`externals` lists only departures** from tsdown's auto-externalize default.
 - **Defaults strip and unminify.** `transform` defaults to `defaultManifestTransform`, `minify` defaults off, prod declaration maps are stripped after meta.
-- **`emitDts: false` disables dts and meta together**; `meta: false` disables meta alone.
+- **`emitDts: false` disables dts and meta together**; `meta: false` disables meta alone — and with it the `tsdoctor.json` sidecar and any generated OG image.
+- **`meta.tsdoctor` is wiring only**; the tier ranking and emission rules are tsdown-plugins', and the bundler's `./og` default is an opt-in subpath over optional peers.
 
 ## Rationale
 
