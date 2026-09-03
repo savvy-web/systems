@@ -3,10 +3,11 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-08-23
-last-synced: 2026-08-23
+updated: 2026-09-03
+last-synced: 2026-09-03
 completeness: 92
 related:
+  - ./plugin.md
   - ../cli/architecture.md
   - ../silk-effects/architecture.md
   - ../changelog/architecture.md
@@ -18,16 +19,16 @@ dependencies:
 
 # @savvy-web/silk architecture
 
-The single package a consumer installs to get the whole Silk Suite dev-tooling system. A thin config-integration shim surface over `@savvy-web/silk-effects`, plus a static Biome preset asset.
+The single package a consumer installs to get the whole Silk Suite dev-tooling system: a thin config-integration shim surface over `@savvy-web/silk-effects`, a static Biome preset and two TSConfig convention presets.
 
-## Table of Contents
+## Table of contents
 
 - [Overview](#overview)
 - [Current State](#current-state)
-- [How silk builds: ESM-only base, two CJS overrides that inline the runtime](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime)
+- [How silk builds](#how-silk-builds)
 - [The shim contract](#the-shim-contract)
 - [Export map](#export-map)
-- [The shipped TSConfig convention presets](#the-shipped-tsconfig-convention-presets)
+- [TSConfig convention presets](#tsconfig-convention-presets)
 - [Boundaries and invariants](#boundaries-and-invariants)
 - [The type-portability invariant](#the-type-portability-invariant)
 - [Consumer model](#consumer-model)
@@ -35,112 +36,105 @@ The single package a consumer installs to get the whole Silk Suite dev-tooling s
 
 ## Overview
 
-`@savvy-web/silk` is the install surface, not a library. Each subpath export is a thin **shim** that re-exports `silk-effects` logic shaped into the exact module form an external tool's config loader expects. The shims carry no business logic — they re-export from the `Changesets`, `Commitlint` and `Lint` namespaces of `silk-effects` and reshape the export (default vs named, array vs object) to match what the consuming tool loads. The two config-factory shims (`commitlint`, `lint`) wrap their factory in a silk-local **facade** so the inferred return type stays portable for consumers — see [the type-portability invariant](#the-type-portability-invariant).
+`@savvy-web/silk` is an install surface, not a library. Each subpath export is a **shim** that re-exports `silk-effects` logic shaped into the exact module form an external tool's config loader expects (default vs named, array vs object). The shims carry no business logic; the two config-factory shims (`commitlint`, `lint`) wrap their factory in a silk-local facade so the inferred return type stays portable for consumers — see [the type-portability invariant](#the-type-portability-invariant).
 
-**Package:** `@savvy-web/silk`
-**Location:** `packages/silk` in `savvy-web/systems`
-**Build:** ESM-only base with two dual-format CJS override entries, via `@savvy-web/bundler`; ships the Biome asset through the top-level `public/` convention. See [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime).
-**Versioning:** independent, but auto-coupled to `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/changelog`. silk declares all three as `workspace:*` source dependencies; changesets treats `workspace:*` as their exact current version, so a release of any of them pushes silk's dep out of range and auto-PATCH-bumps silk (via the repo-wide `updateInternalDependencies: patch`), which re-pins the exact version at publish. Because they are source `dependencies` (not source `peerDependencies`), silk gets a PATCH, not a forced major. They ship in the published manifest as EXACT-pinned regular `dependencies` — see [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime) for the manifest transform that keeps them.
+- **Location:** `packages/silk`; one shim file per subpath under `src/`, static assets under `public/`. `private: true` in source; the builder flips it on build.
+- **Build:** ESM-only base with two dual-format CJS override entries, via `@savvy-web/bundler` (`packages/silk/savvy.build.ts`). See [How silk builds](#how-silk-builds).
+- **Versioning:** independent, but auto-coupled to `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/changelog`. silk declares all three as `workspace:*` source `dependencies`; changesets reads that as their exact current version, so any release of the three pushes silk out of range and auto-PATCH-bumps it (`updateInternalDependencies: patch`), re-pinning the exact version at publish. Because they are source `dependencies`, not `peerDependencies`, silk gets a PATCH rather than a forced major.
+- **Dogfooded here:** the repo's `.changeset/config.json`, commitlint, lint-staged, Biome and markdownlint configs all reference `@savvy-web/silk/*`.
 
-It replaces the config-integration subpaths of three standalone packages (`@savvy-web/changesets`, `@savvy-web/commitlint`, `@savvy-web/lint-staged`) as drop-in equivalents.
+The companion Claude Code plugin is documented in [plugin.md](./plugin.md).
 
 ## Current State
 
-Implemented and dogfooded inside `systems` (`.changeset/config.json`, commitlint, lint-staged, biome and markdownlint config reference `@savvy-web/silk/*`). All shims live under `src/`, one file per subpath; the Biome preset is a copied `public/` asset, not a shim. `private: true` in source; the builder flips it on build. silk builds via `@savvy-web/bundler`. See [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime) for the build posture.
+Implemented and published. Every subpath in the [export map](#export-map) has its shim under `src/` or its asset under `public/`, the build posture in [How silk builds](#how-silk-builds) is what `savvy.build.ts` ships today, and the facades in [the type-portability invariant](#the-type-portability-invariant) are in place. `__test__/` pins the shim shapes, the externals and the Biome asset structure against the built output.
 
-## How silk builds: ESM-only base, two CJS overrides that inline the runtime
+## How silk builds
 
-silk is the most demanding consumer of the bundler, and reconciling it drove the bundler's bundling-posture knobs and the per-entry override + node-builtin interop work (see `../tsdown-plugins/architecture.md`). The authoritative config is `packages/silk/savvy.build.ts`; its comment headers are the source of truth for each decision below.
+silk is the bundler's most demanding consumer — it drove the per-entry override and node-builtin interop machinery in `../tsdown-plugins/architecture.md`. `packages/silk/savvy.build.ts` is authoritative; its comment headers explain every decision below in full.
 
-**The shipped posture: ESM-only base, force-bundle only the entries an external tool loads via CJS.** The constraint is that silk-effects is ESM-only (its `@effected/*` kit dependencies have no `require` condition), so any entry an external tool `require()`s cannot externalize silk-effects — it must inline it. The base entries are ESM-only and externalize silk-effects; two per-entry overrides (`./changesets/changelog` and `./changesets/markdownlint`) build dual-format and force-bundle silk-effects so only those two entries pay the inlining cost.
+**The posture: ESM-only base, force-bundle only the entries an external tool loads via CJS.** silk-effects is ESM-only (its `@effected/*` kit dependencies have no `require` condition), so any entry an external tool `require()`s cannot externalize silk-effects — it must inline it. The base entries are ESM and externalize silk-effects; two per-entry overrides build dual-format and inline it, so only those two pay the inlining cost.
 
-- **Base build is `format: ["esm"]` and externalizes silk-effects** (`externals: ["source-map-support", "@savvy-web/silk-effects"]`). The base ESM entries reference silk-effects via `import "@savvy-web/silk-effects"` instead of inlining its large ESM-only transitive tree. `source-map-support` is an undeclared transitive external. `semver` and `typescript` are not listed — they are declared deps that tsdown auto-externalizes. `semver` MUST stay external because rolldown cannot emit its circular CJS modules `comparator` ↔ `range` into ESM without a `require_range is not a function` init-order crash, so it stays a declared runtime dep. Nothing in silk's OWN source imports it — the real importers are the `@changesets/*` packages (`apply-release-plan`, `config`, `get-release-plan`) inside silk-effects' transitive tree, which the CJS overrides force-bundle — so a source-level grep reads it as unused. The #469 determination: there is no externalization escape, because the CJS-requireable entries cannot externalize ESM-only silk-effects, so its semver-importing closure is always bundled and only the manifest declaration keeps `semver` itself external (which the published manifest needs anyway for the external import to resolve). The declaration plus the `__test__/externals.test.ts` regression pin against the built output is the durable state; do not remove either half.
-- **`@savvy-web/silk-effects` is a devDependency, re-injected into published `dependencies` by the transform.** This is load-bearing: a regular `dependency` would be auto-externalized AND would make a CJS override's dts re-emit a bare `require` of ESM-only silk-effects → crash. As a devDependency, the overrides are free to bundle it as node_modules; the base entries externalize it explicitly; and the transform pulls its already-resolved spec from `devDependencies` back into the published `dependencies` so consumers can resolve the base entries' `import`.
-- **`dtsExternals: ["effect", "@effect/platform"]` externalizes those two in the declaration pass only.** The emitted `.d.ts`/`.d.cts` reference effect's types via `import` rather than inlining them. Inlining effect's cross-module `declare module` interface augmentations produced conflicting interface-extension errors (TS2320) when a consumer type-checked silk's dts. effect and `@effect/platform` are declared as runtime dependencies so consumers can resolve those dts type imports.
-- **Two CJS override entries: `./changesets/changelog` and `./changesets/markdownlint`.** Both are loaded by an external tool through a CommonJS `require()` path — the Changesets CLI resolves the changelog formatter via `resolve-from` + `require()`, and markdownlint-cli2 `require()`s its custom rules. An ESM-only export (only `import` + `types`, no `require` condition) makes the CJS resolver throw `ERR_PACKAGE_PATH_NOT_EXPORTED`, which broke `savvy changeset version`. Since CJS cannot `require()` ESM-only silk-effects, each override sets `format: ["esm", "cjs"]` and `bundleNodeModules: true` to INLINE silk-effects and its transitive node_modules; silk-effects is not externalized in an override (a partition does not inherit the base `externals`), so rolldown treats it as bundleable node_modules and inlines it into each override entry's single self-contained `.js`/`.cjs` (`bundleNodeModules` now also turns off the JS pass's preserveModules — previously the esm side emitted co-located per-module chunks under `node_modules/...` paths, which `npm pack` stripped, silently breaking the packed esm artifacts; see `../tsdown-plugins/architecture.md`). The base ESM entries stay external. The markdownlint override additionally sets `bundledPackages: ["@commitlint/types"]` to inline that package's declarations into its own dts; this need not be set top-level because no base entry's `.d.ts` references `@commitlint/types` (those types surface through the published silk-effects `Commitlint` namespace).
-- **The cjs-default-interop and node-builtin default-interop plugins are load-bearing for the CJS overrides.** rolldown's `output.exports` cannot emit `module.exports = <default>` while keeping named exports, so an ESM consumer doing `import(x).default` would receive a `{ default, ...named }` wrapper. silk's `./changesets/markdownlint` default-exports the rules ARRAY, which markdownlint-cli2 reads as `module.default` and `.flat()`s; without the interop footer it gets the wrapper and aborts. Separately, the node-builtin default-interop fix is what made the overrides' CJS work at all: a transitive dep (vfile, `export {default as minproc} from 'node:process'`) bundled into the `.cjs` crashed `savvy changeset version` with `Cannot read properties of undefined` until the rewrite landed. Both activate automatically because these entries build dual-format — see `../tsdown-plugins/architecture.md`.
-- **The dependency-pruning transform.** `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/changelog` are declared as regular `dependencies` in source (so changesets auto-PATCH-bumps silk to re-pin the exact version when any of them releases, rather than force-MAJOR-bumping it as a source `peerDependency` on a released workspace package would), and they ship as regular EXACT-pinned `dependencies` in the published manifest too — the transform no longer promotes them into `peerDependencies`. Publishing them as peers made pnpm's `autoInstallPeers` propagate their Effect dependency graph into consuming repos at the wrong versions; `@savvy-web/pnpm-plugin-silk` publicly hoists all three, so their bins stay available to consumers either way. The transform keeps only those three plus `semver`/`effect`/`@effect/platform`/`@savvy-web/silk-effects` as runtime `dependencies` (the exact-pinned companions plus the externalized and dts-externalized packages consumers must resolve), strips the rest since everything else is bundled, and calls `defaultManifestTransform` itself to keep the standard strip.
+- **Base build is `format: ["esm"]` with `externals: ["source-map-support", "@savvy-web/silk-effects"]`.** `semver` and `typescript` are declared deps tsdown auto-externalizes. `semver` MUST stay external and declared: rolldown cannot emit its circular CJS modules into ESM without an init-order crash, and its importers are the `@changesets/*` packages inside silk-effects' transitive tree (which the CJS overrides bundle), so a source-level grep reads it as unused. `__test__/externals.test.ts` pins this against the built output; do not remove either half.
+- **`@savvy-web/silk-effects` is a devDependency, re-injected into published `dependencies` by the transform.** As a regular dependency it would be auto-externalized AND a CJS override's dts would re-emit a bare `require` of an ESM-only package. As a devDependency the overrides can bundle it, the base entries externalize it explicitly and the transform copies its resolved spec into the published `dependencies` so consumers can resolve the base entries' `import`.
+- **`dtsExternals: ["effect", "@effect/platform"]`** keeps those two as `import`s in the emitted declarations. Inlining effect's cross-module `declare module` augmentations produced TS2320 conflicts when a consumer type-checked silk's dts. Both are declared runtime dependencies so the type imports resolve.
+- **Two CJS override entries: `./changesets/changelog` and `./changesets/markdownlint`.** The Changesets CLI loads the changelog formatter via `resolve-from` + `require()`; markdownlint-cli2 `require()`s its custom rules. An ESM-only export makes the CJS resolver throw `ERR_PACKAGE_PATH_NOT_EXPORTED`. Each override sets `format: ["esm", "cjs"]` and `bundleNodeModules: true`, so silk-effects and its transitive tree inline into one self-contained `.js`/`.cjs` per entry (a partition does not inherit the base `externals`). The markdownlint override also sets `bundledPackages: ["@commitlint/types"]` for its own dts; no base entry's declarations reference that package.
+- **The dual-format build activates the cjs-default-interop footer and the node-builtin default-interop rewrite** (`../tsdown-plugins/architecture.md`). Without the footer an ESM consumer doing `import(x).default` gets a `{ default, ...named }` wrapper instead of the rules array markdownlint-cli2 `.flat()`s; without the rewrite a transitive `export { default } from "node:process"` crashes the `.cjs` at load.
+- **A `jsonc-parser` resolveId plugin steers to its ESM build.** The package publishes no `exports` field, so the CJS overrides would pick up its UMD `main`, whose parameterized `require` rolldown cannot trace. `../changelog/architecture.md` mirrors the same plugin.
+- **The manifest transform is an explicit keep-list.** Everything not on it is bundled and stripped. The kept runtime `dependencies` are: the three exact-pinned companions; `semver`, `effect` and `@effect/platform` (externalized in JS or dts); `@effected/templates` (the `./lint` declarations name kit types — see [the type-portability invariant](#the-type-portability-invariant)); `@effected/commands`, `@effected/git` and `@effected/workspaces` (silk-effects' required peers — silk externalizes silk-effects, so a consumer inherits them and nothing else in the published graph names them); and `@savvy-web/silk-effects` itself, pulled from devDependencies. The transform calls `defaultManifestTransform` itself to keep the standard strip. `meta: false` — silk is not a documented API surface, so no API Extractor pass.
 
 ## The shim contract
 
-A shim is a drop-in replacement: a config file that previously imported a subpath of one of the three old packages must work unchanged after swapping the import to the matching `@savvy-web/silk` subpath. That means each shim must reproduce the **module shape** the tool's loader consumes, not just re-export symbols:
+A shim is a drop-in replacement: a config file that imported a subpath of one of the retired standalone packages (`@savvy-web/changesets`, `@savvy-web/commitlint`, `@savvy-web/lint-staged`) must work unchanged after swapping the import to the matching `@savvy-web/silk` subpath. Each shim therefore reproduces the **module shape** the tool's loader consumes, not just the symbols:
 
-- `./changesets/changelog` — default export is the `@changesets/types` `ChangelogFunctions` object the Changesets CLI loads from `.changeset/config.json`'s `changelog` field. See `src/changesets/changelog.ts`. The canonical config id `savvy changeset init` writes is now the standalone `@savvy-web/changelog` package (which silk ships as an exact-pinned dependency companion — see `../changelog/architecture.md`); this shim remains a supported drop-in for existing configs.
-- `./changesets/markdownlint` — default export is the rule array markdownlint-cli2 loads, plus the named rule objects. See `src/changesets/markdownlint.ts`.
-- `./changesets/remark` — named exports for every transform plugin, preset and lint rule that remark configs import. See `src/changesets/remark.ts`.
-- `./commitlint/static` — default export is the static config object (no auto-detection). The root `./commitlint` default-exports `CommitlintConfig` (the auto-detecting factory, now a silk-local facade — see [the type-portability invariant](#the-type-portability-invariant)).
-- `./lint` — re-exports the full lint-staged consumer surface (handlers, `Preset`, `createConfig`, workspace utils, section/template data). CLI commands are deliberately **not** re-exported here — those are `cli`'s job.
+- `./changesets/changelog` — default export is the `@changesets/types` `ChangelogFunctions` object. The canonical config id `savvy changeset init` writes is now the standalone `@savvy-web/changelog` package (`../changelog/architecture.md`); this shim remains a supported drop-in.
+- `./changesets/markdownlint` — default export is the rule array markdownlint-cli2 loads, plus the named rule objects.
+- `./changesets/remark` — named exports for every transform plugin, preset and lint rule remark configs import.
+- `./commitlint` — default-exports the auto-detecting `CommitlintConfig` facade; `./commitlint/static` default-exports the static config object.
+- `./lint` — the full lint-staged consumer surface (handlers, `Preset`, `createConfig`, workspace utils, section/template data). CLI commands are deliberately not re-exported — those are `cli`'s job.
 
-The shim files are the single source of truth for the exact reshaping; the contract above is what must stay stable so external config files do not break.
+The shim files under `src/` are the single source of truth for the exact reshaping; the contract above is what must stay stable.
 
 ## Export map
 
 ```text
-./changesets              ← changeset class/services API surface
-./changesets/changelog    ← ChangelogFunctions default for .changeset/config.json
-./changesets/markdownlint ← markdownlint-cli2 rules (default array + named)
-./changesets/remark       ← remark transform plugins + presets + lint rules
-./commitlint              ← CommitlintConfig (auto-detecting) + types
-./commitlint/static       ← static config default (no auto-detection)
-./commitlint/prompt       ← commitizen adapter
-./commitlint/formatter    ← custom error formatter
-./lint                    ← handlers / Preset / createConfig / utils / section data
-./biome                   ← static silk.jsonc asset (copied, not a shim)
-./tsconfig/node/root.json ← Node monorepo ROOT preset (convention, no Silk build tool)
-./tsconfig/rspress/website.json ← standard RSPress SITE preset (browser/SSG)
+./changesets                    ← changeset class/services API surface
+./changesets/changelog          ← ChangelogFunctions default (CJS override)
+./changesets/markdownlint       ← markdownlint-cli2 rules (CJS override)
+./changesets/remark             ← remark plugins + presets + lint rules
+./commitlint                    ← CommitlintConfig facade + types
+./commitlint/static             ← static config default
+./commitlint/prompt             ← commitizen adapter
+./commitlint/formatter          ← custom error formatter
+./lint                          ← handlers / Preset / createConfig / utils
+./biome                         ← static public/biome/silk.json asset
+./tsconfig/node/root.json       ← Node monorepo ROOT preset
+./tsconfig/rspress/website.json ← RSPress SITE preset (browser/SSG)
 ```
 
-The mapping from each old package's subpaths into this tree is the load-bearing decision; see the `exports` field in `package.json` for the authoritative wiring.
+The `exports` field in `package.json` is the authoritative wiring.
 
-## The shipped TSConfig convention presets
+## TSConfig convention presets
 
-In the ecosystem-wide TSConfig preset taxonomy, **silk owns the convention presets — roots plus framework configs**, while the build tools own the lib/build base (see the canonical taxonomy in `../bundler/architecture.md`). silk's presets are for repos that FOLLOW Silk conventions but do not have a Silk build tool at the relevant package, so the lib base lives elsewhere. They ship under top-level `public/tsconfig/**` and export under the `tsconfig/` namespace:
+In the ecosystem-wide TSConfig taxonomy, **silk owns the convention presets — roots plus framework configs** — while the build tools own the lib/build base (`../bundler/architecture.md`). silk's presets are for repos that follow Silk conventions but have no Silk build tool at that package. They ship under `public/tsconfig/**`:
 
-- **`./tsconfig/node/root.json`** — a Node monorepo ROOT preset for a root where `@savvy-web/bundler` is not a dependency of the root `package.json` (so it cannot extend the bundler base). Self-contained: it inlines the Node-24 root settings (`module: nodenext`, `target: es2025`, composite/declaration, `types: ["node"]`) rather than extending.
-- **`./tsconfig/rspress/website.json`** — a standard RSPress SITE preset, aligned with RSPress's official website tsconfig. The load-bearing decision is the **es2023/browser split**: a website runs in the browser plus SSG, NOT on Node 24, so it targets `es2023` (not the build base's `es2025`), sets `noEmit`, `module: esnext` + `moduleResolution: bundler`, `jsx: react-jsx` and `mdx: { checkMdx: true }`. See the file for the full compilerOptions and `include` set.
+- **`./tsconfig/node/root.json`** — a self-contained Node-24 monorepo ROOT preset for a root where `@savvy-web/bundler` is not a dependency and so cannot extend the bundler base.
+- **`./tsconfig/rspress/website.json`** — an RSPress SITE preset aligned with RSPress's official website tsconfig. The load-bearing decision is the **es2023/browser split**: a site runs in the browser plus SSG, not on Node 24, so it targets `es2023` with `noEmit`, `module: esnext` + `moduleResolution: bundler` and `jsx: react-jsx`.
 
-The es2025-vs-es2023 split is the reason these are silk's job, not the bundler's: the bundler base is a Node-24 LIBRARY base (`es2025`, emit), which is wrong for a browser/SSG site. The TS6 baseline (explicit `types`, no deprecated `node`/`node10`, `dom` subsuming `dom.iterable`) applies to both — see `../bundler/architecture.md`.
-
-The Biome preset (`./biome`) now also formats these presets under `public/tsconfig/**` and excludes `.claude/worktrees` so a nested Claude Code worktree does not trip Biome's nested-root abort in any consumer.
+The es2025-vs-es2023 split is why these are silk's job, not the bundler's: the bundler base is a Node-24 library base, wrong for a browser/SSG site.
 
 ## Boundaries and invariants
 
-- **`@savvy-web/silk` never imports `@savvy-web/cli`.** Within the repo it depends only on `@savvy-web/silk-effects`. This is grep-guarded.
-- **`peerDependencies` declares the real-tool peers; the suite companions ship as exact-pinned `dependencies`.** `peerDependencies` carries the merged real-tool peers of the three source packages (Biome, husky, the commitlint packages, commitizen, the changesets CLI, lint-staged, markdownlint-cli2, the codequality formatter, turbo) plus the toolchain peers via `catalog:silkPeers`. `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/changelog` are NOT peers — they are EXACT-pinned regular `dependencies` in the published manifest (see [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime)), so installing `silk` pulls the `savvy` bin, the spawnable MCP server and the standalone changelog generator directly, while `autoInstallPeers` pulls the real tools its configs reference. See the `dependencies` and `peerDependencies` fields in `package.json` for the authoritative sets.
-- **CJS is required for two entries, not the whole package.** The Changesets CLI `require()`s `./changesets/changelog` and markdownlint-cli2 `require()`s `./changesets/markdownlint`. silk's base entries are ESM-only (externalizing silk-effects); two per-entry overrides pin those two entries to `format: ["esm", "cjs"]` and force-bundle silk-effects (`bundleNodeModules`) so the `require` resolves from each entry's self-contained bytes rather than chasing an ESM-only transitive dep. The dual-format build activates the cjs-default-interop footer and the node-builtin default-interop rewrite. See [How silk builds](#how-silk-builds-esm-only-base-two-cjs-overrides-that-inline-the-runtime).
-- **silk owns convention presets (roots + framework), not the lib base.** The `./tsconfig/node/root.json` and `./tsconfig/rspress/website.json` presets are for repos following Silk conventions without a Silk build tool at that package; the lib/build base is the build tools' job (`@savvy-web/bundler`). The website preset is browser/SSG-targeted (`es2023`, `noEmit`), deliberately diverging from the Node-24 build base. See [The shipped TSConfig convention presets](#the-shipped-tsconfig-convention-presets) and the taxonomy in `../bundler/architecture.md`.
-- **The Biome asset excludes `.claude/worktrees` and formats `public/tsconfig/**`.** The exclusion keeps a consumer's nested Claude Code worktrees from tripping Biome's nested-root abort; the include adds the shipped tsconfig presets to the formatted set.
-- **The shipped Biome asset is pinned to a Biome version in three coupled hand-update spots that must move together.** The asset (`public/biome/silk.jsonc`) carries an exact `$schema` URL, `package.json` declares the matching `@biomejs/biome` optional peer (a `~`-pinned minor line), and `@savvy-web/cli`'s `BIOME_VERSION` const (`packages/cli/src/commands/lint/biome-version.ts`) is the exact release `savvy lint`/`savvy check` sync consumer `biome.json(c)` `$schema` URLs to. Bump all three on a Biome upgrade — see `packages/silk/CLAUDE.md` for the checklist and `../cli/architecture.md` for the sync path. The asset stays on stable, broadly-supported keys: 2.5-only keys (e.g. `javascript.resolver.experimentalPnpmCatalogs`, dogfooded in the repo root `biome.jsonc`) are deliberately kept OUT of `silk.jsonc` so consumers still on an older Biome do not break. Promoting 2.5-only config into the asset is tracked in savvy-web/systems#169.
-- **The asset's `noUndeclaredDependencies: off` override targets the test surface broadly.** It covers `__test__/` trees, `*.test`/`*.spec` files and the common `vitest.*`/`vite.config.*` config filenames, so test and tooling files can import devDependency-only packages without the rule firing. See the `overrides` block in `public/biome/silk.jsonc` for the authoritative glob set; it tracks the suite-wide `__test__/` convention.
+- **silk never imports `@savvy-web/cli` or `@savvy-web/mcp`.** Within the repo it depends only on `@savvy-web/silk-effects`.
+- **`peerDependencies` declares the real-tool peers; the suite companions ship as exact-pinned `dependencies`.** Peers are the merged real-tool peers of the three retired packages plus the toolchain peers, all via purpose-scoped catalogs. `cli`/`mcp`/`changelog` are NOT peers: publishing them as peers made pnpm `autoInstallPeers` propagate their Effect graph into consumers at wrong versions. `@savvy-web/pnpm-plugin-silk` publicly hoists all three so their bins stay available.
+- **CJS is required for two entries, not the whole package.** See [How silk builds](#how-silk-builds).
+- **The Biome asset is pinned to an exact Biome version in several coupled spots that move together.** `public/biome/silk.json`'s `$schema` URL, the `@biomejs/biome` peer (exact via the `lint` catalog), `@savvy-web/cli`'s `BIOME_VERSION` (`packages/cli/src/commands/lint/biome-version.ts`, which `savvy lint`/`savvy check` sync consumer `$schema` URLs to) and the templates default. `packages/silk/CLAUDE.md` carries the upgrade checklist; `../cli/architecture.md` the sync path.
+- **The asset propagates to every consumer repo, so a config key must exist in the OLDEST Biome any consumer runs.** Check a new key against the older schema before adding it; `packages/silk/CLAUDE.md` names the currently ungated newer keys.
+- **The asset excludes `.repos`, `.claude/worktrees` and the test-fixture trees, and relaxes `noUndeclaredDependencies` on the test surface** (`__test__/`, `*.test`/`*.spec`, vitest/vite configs). The `.claude/worktrees` exclusion keeps a nested Claude Code worktree from tripping Biome's nested-root abort; the `.repos` exclusion keeps a direct Biome run out of vendored read-only trees. See the `overrides` block in the asset for the authoritative globs.
 
 ## The type-portability invariant
 
-A consumer config that infers a silk factory's return type must emit a portable `.d.ts` — its declaration must name the return type from `@savvy-web/silk` (a direct dependency), never from `@savvy-web/silk-effects` (only a transitive dependency). TypeScript names an inferred type from where the function **signature** is declared, not where the value is imported, so a shim that simply re-exports the silk-effects class by value (`export const Preset = Lint.Preset`) leaks the canonical return type back to silk-effects and triggers **TS2883** ("inferred type cannot be named… likely not portable") in any `export default CommitlintConfig.silk()` / `export default Preset.silk()` config.
+A consumer config that infers a silk factory's return type must emit a portable `.d.ts` — its declaration must name the type from `@savvy-web/silk` (a direct dependency), never from `@savvy-web/silk-effects` (transitive). TypeScript names an inferred type from where the function **signature** is declared, so a shim that re-exports the silk-effects class by value leaks the canonical home back to silk-effects and triggers **TS2883** in any `export default CommitlintConfig.silk()` / `Preset.silk()` config.
 
-The fix is a silk-local **facade**: each config-factory shim declares the factory's method signatures in silk itself, annotated with a silk-owned return type, and delegates the body to the silk-effects implementation. This pins the consumer-visible canonical home to `@savvy-web/silk/*`.
+The fix is a silk-local **facade**: the shim declares the factory's method signatures in silk, annotated with a silk-owned return type, and delegates the body to silk-effects:
 
-**The same invariant reaches past silk's own types: a type silk's public surface names must come from a package silk DECLARES.** After the github-split adoption silk's inferred `Lint` surface references kit types — `dist/prod/npm/pkg/lint.d.ts` emits `import("@effected/templates").SectionId` — because silk-effects deliberately re-exports nothing from `@effected/*` (see `../silk-effects/architecture.md#what-the-kit-owns-now`), so the canonical home of those types is the kit package itself. silk therefore declares `@effected/templates` as a direct `dependency`.
+- `src/commitlint/index.ts` — an empty-extends `CommitlintUserConfig` interface (structurally identical, auto-syncing, silk-owned) plus a `CommitlintConfig` object whose `silk()` returns it.
+- `src/lint/index.ts` — a `Preset` object wrapping the silk-effects statics, each returning silk's `LintStagedConfig` alias.
 
-Two things about that are worth carrying forward:
+The facade is behaviorally equivalent: the silk-effects classes have private constructors and only static factories, so consumers never instantiate them. The changesets shims export plain values, not inferred factory results, so they need no facade. The rejected alternative — `dtsBundledPackages: ["@savvy-web/silk-effects"]` — cannot work because API Extractor cannot inline a star-namespace re-export.
 
-- **`types:check` does not catch it.** It checks sources against the workspace's flat `node_modules`, where a transitively-installed package resolves fine. The gap surfaced only in a **dist-level typecheck of the built package** (`pnpm ci:build`), which is the gate to run after any change that widens a shim's exported type closure.
-- **The manifest transform's keep-list has not caught up, and that is a live gap.** `savvy.build.ts` strips every dependency except an explicit keep-list (`semver`, `effect`, `@effect/platform`, the three companions) plus `@savvy-web/silk-effects` pulled from devDependencies, so `@effected/templates` is currently **absent from the published `dependencies`** even though the published `.d.ts` imports it. Under pnpm's strict `node_modules` a consumer type-checking `@savvy-web/silk/lint` has no guaranteed resolution for it. Either add it to the keep-list or externalize it in the dts pass the way `effect` is; do not rely on hoisting.
-
-- `commitlint` — an empty-extends interface (`CommitlintUserConfig extends Commitlint.CommitlintUserConfig`, structurally identical, auto-syncing, silk-owned canonical home) plus a `CommitlintConfig` object facade whose `silk()` returns silk's `CommitlintUserConfig`. See `src/commitlint/index.ts`.
-- `lint` — a `Preset` object facade wrapping the silk-effects statics, each annotated with silk's own `LintStagedConfig` alias. See `src/lint/index.ts`.
-
-The facade is behaviorally equivalent to the silk-effects class: those classes have private constructors and only static factory methods, so consumers never instantiate or use them as a class type. The `Changesets`/`Commitlint`/`Lint` namespaces in silk-effects are unchanged and still consumed by cli/mcp; silk-effects itself is untouched. The changesets shims export plain values, not an inferred factory return type, so they do not need facades. The rejected alternative — `dtsBundledPackages: ["@savvy-web/silk-effects"]` — is invalid because API Extractor cannot inline a star-namespace re-export.
+**The same invariant reaches past silk's own types: any package a shim's emitted `.d.ts` names must ship as a real silk `dependency`.** silk-effects re-exports nothing from `@effected/*` (`../silk-effects/architecture.md`), so silk's `./lint` declarations reference `@effected/templates` directly, and that package is on both silk's `dependencies` and the build transform's keep-list. `types:check` cannot catch a miss here — it resolves against the workspace's flat `node_modules`; the gate is the dist-level typecheck of the built package (`pnpm ci:build`), which is what to run after widening any shim's exported type closure.
 
 ## Consumer model
 
-Install `@savvy-web/silk` → its exact-pinned `dependencies` pull `cli` (the `savvy` bin), `mcp` and `@savvy-web/changelog` (the standalone changesets changelog formatter), `autoInstallPeers` pulls the real tools its configs reference, and `@savvy-web/pnpm-plugin-silk`'s `publicHoistPattern` keeps the three companions' bins resolvable from the consumer workspace → `savvy init` seeds the configs — referencing `@savvy-web/silk/*` shims and `@savvy-web/changelog` as the changelog id — and wires husky hooks to `savvy` subcommands → at runtime both `silk` (via its shims) and `cli` (via its handlers) resolve their logic from `silk-effects`. The Biome preset is referenced as `extends: "@savvy-web/silk/biome"`.
+Install `@savvy-web/silk` → its exact-pinned `dependencies` pull `cli` (the `savvy` bin), `mcp` and `@savvy-web/changelog`; `autoInstallPeers` pulls the real tools its configs reference; `@savvy-web/pnpm-plugin-silk`'s hoist keeps the three companions' bins resolvable → `savvy init` seeds the configs, referencing `@savvy-web/silk/*` shims and `@savvy-web/changelog` as the changelog id, and wires husky hooks to `savvy` subcommands → at runtime both silk (via its shims) and cli (via its handlers) resolve their logic from silk-effects. The Biome preset is referenced as `extends: "@savvy-web/silk/biome"`.
 
 ## Rationale
 
 ### Why silk holds no logic
 
-The source tools couple their CLI commands to their config-export modules through shared internal logic, so that logic cannot sit in silk without `cli` importing silk. The logic lives in `silk-effects` instead. silk is a pure config-integration shim surface; `cli` a pure command host; neither imports the other. See `../silk-effects/architecture.md` for the extraction and `../cli/architecture.md` for the command host.
+The source tools coupled their CLI commands to their config-export modules through shared internal logic, so that logic cannot sit in silk without `cli` importing silk. It lives in silk-effects instead; silk is a pure config-integration surface, cli a pure command host and neither imports the other. See `../silk-effects/architecture.md` and `../cli/architecture.md`.
 
 ### Why nested subpaths, no root barrel
 
-silk is not a library to import wholesale — it is a set of config-integration entry points each loaded by a different tool. A root barrel would imply a coherent API; the nested subpaths instead mirror exactly the module shapes the external tools load.
+silk is not a library to import wholesale — it is a set of config-integration entry points, each loaded by a different tool. A root barrel would imply a coherent API; the nested subpaths mirror exactly the module shapes the external tools load.

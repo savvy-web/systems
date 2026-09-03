@@ -14,6 +14,12 @@
 
 ## Design
 
-Load for the runtime layer and the tool implementations:
+Overview — the runtime layer, root resolution, and plugin integration:
 → `@../../.claude/design/mcp/architecture.md`
-Load when adding a tool, changing the runtime layer (it covers the `ReposDrift` wiring and why `FileSystem`/`Path` are re-exposed on the layer's own output), or touching `__test__/runtime.smoke.test.ts` — the runtime is root-bound at layer build, which makes that suite the repo's canonical suite-boundary `layer(...)` case with two ordering constraints (fixture in `beforeAll`, layer wrapped in `Layer.suspend`). It also covers tool tests: seed an `@effected/memfs` volume at the exact paths the tool reads, and use `MemoryFileSystem.layerFaulty` over a volume where the file exists when a permission failure is the subject, so "denied" and "missing" stay distinguishable (`__test__/tools/repos-inspect.test.ts`).
+Load when changing the runtime layer (it covers the `ReposDrift` wiring and why `FileSystem`/`Path` are re-exposed on the layer's own output) or touching `__test__/runtime.smoke.test.ts` — the runtime is root-bound at layer build, which makes that suite the repo's canonical suite-boundary `layer(...)` case with two ordering constraints (fixture in `beforeAll`, layer wrapped in `Layer.suspend`).
+
+Tool docs (load the one matching the tool you are touching):
+→ `@../../.claude/design/mcp/tools.md` — the contract every tool follows (schema canon, dual-channel result, Effect→zod bridge, read-only/mutating split), `workspace_info`/`turbo_inspect`, and tool-test rules: seed an `@effected/memfs` volume at the exact paths the tool reads, and use `MemoryFileSystem.layerFaulty` over a volume where the file exists when a permission failure is the subject, so "denied" and "missing" stay distinguishable. Load when adding any tool.
+→ `@../../.claude/design/mcp/changeset-tools.md` — the five `changeset_*` tools and the shared-inspector discipline.
+→ `@../../.claude/design/mcp/biome-check.md` — `biome_check`, its severity mapping and containment invariants.
+→ `@../../.claude/design/mcp/repos-tools.md` — `repos_inspect`/`repos_manage` and the `.repos/**` permissions boundary.

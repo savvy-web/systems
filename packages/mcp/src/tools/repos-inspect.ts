@@ -61,7 +61,7 @@ export const ReposInspectResult = Schema.Union([
 	identifier: "ReposInspectResult",
 	title: "repos_inspect result",
 	description:
-		"Drift report (status), the parsed manifest (config), the four-authority reconciliation report (drift), or the decoded .gitmodules sections (gitmodules).",
+		"Drift report (status), the parsed manifest (config), the five-authority reconciliation report (drift), or the decoded .gitmodules sections (gitmodules).",
 });
 
 export type ReposInspectResultType = Schema.Schema.Type<typeof ReposInspectResult>;

@@ -184,6 +184,17 @@
 				"repoDocs": null,
 				"siteDocs": null
 			}
+		},
+		"workspace": {
+			"categories": ["architecture"],
+			"designDocsPath": ".claude/design/workspace",
+			"maintainer": "C. Spencer Beggs",
+			"path": ".",
+			"userDocs": {
+				"readme": null,
+				"repoDocs": null,
+				"siteDocs": null
+			}
 		}
 	},
 	"paths": {

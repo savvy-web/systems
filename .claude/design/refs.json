@@ -4,98 +4,326 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk-effects/kit-peer-dependencies.md",
-			"hash": "793db0bbdde00c201766563bb022b1dc750ad4c84d69cb1c95101a917c8c9e4a",
-			"recordedAt": "2026-08-23"
+			"hash": "f8b0fae86ccc38c424a69f495af19d098e25b7aff30e8622da6dc4d19b113410",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-biome.md",
+			"hash": "c6a1ccf726cc41257e1cfa310e968f6282f27f37a7415d1abf48e8758bddcbc6",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-build-tsdoc.md",
+			"hash": "c6ba10f122a539389d948d21ab0cd879b7f16d44826e872e51fcf53157953557",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-changesets.md",
+			"hash": "77d40773a2cb3180d38c6b4abe66c0ba73f98e18c82115448642008b18b98b41",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-commit-messages.md",
+			"hash": "1399cdc5fcada1aefcfbc33ca980b11c32b2f2f794db6cc54cb25b6f54e676b5",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-dogfood.md",
+			"hash": "ced461a4a9b74fb7ad52bb43b32c5b39ecabad898360bd07277764921df2b69a",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-hooks.md",
+			"hash": "ae22734a5f85c52c5ffd8f61a9914e69a3c6b6154b9443626423dfeb42a9eebb",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-it2.md",
+			"hash": "92a0906e0e76ac3a6816a74b4c20523b06dccd1189ca1e02583a060f88894132",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-repos.md",
+			"hash": "7002ad9a999ce254505b601278d5a03897078b8e46ca510b489ea6ba2b23d7c0",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/silk/plugin-turbo.md",
+			"hash": "f777438794628f5bd897450800b8398bd621bab835953170ec129720a02c49c2",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "e55715d6bdc6f12875a8399b6e583d9314474704aefda3f25f82f0445ce7148e",
-			"recordedAt": "2026-08-23"
+			"hash": "8f037b50cd8f4c2016e13ef2e5d1b5483cd6e253e2b73d64b559eef257731eeb",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/testing/effect-vitest.md",
-			"hash": "79a0d55356d8d3bd767735cbe514f2ec77d05c6d79e95eff146205d015463c68",
-			"recordedAt": "2026-08-16"
+			"hash": "6e4d506e8ef804f40454420beacdf0b1e6bd1cd3e7cdeedd69e07642f777c35f",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/workspace/install-orchestration.md",
+			"hash": "5c162deefa4164bcbb9b317951757d7121b6eb1dd0134275531a282de4d913b9",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "e2e/CLAUDE.md",
 			"target": ".claude/design/e2e/architecture.md",
-			"hash": "7bacd4dd42d6b3dd0f2790df6a81f450af019ad5d9eb698a28cdb05984eea9f5",
-			"recordedAt": "2026-07-12"
+			"hash": "d50092a459094cb38026257bfeace5a2244c637624b84f4add71cb7b59dfb231",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/bundler/CLAUDE.md",
 			"target": ".claude/design/bundler/architecture.md",
-			"hash": "c753978faa32a3e82d1ced5842e75f3667a109533e6aa938062beae187a2dd63",
-			"recordedAt": "2026-08-03"
+			"hash": "15f0520e49919a7b1a883db4cb9ec49c5f60fb1505a60f9fd6df689f3186c020",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/bundler/CLAUDE.md",
+			"target": ".claude/design/bundler/build-options.md",
+			"hash": "0355b2e6eb41b7520d2b6be389fdfd7c0f8c28c54c60c4dd6fe0ca88eb58eff5",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/bundler/CLAUDE.md",
+			"target": ".claude/design/bundler/exe-wiring.md",
+			"hash": "1d5690838a0ac7f7c4f52128716b3746b3cb15c55db4a97709229d8b6880d1ba",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/bundler/CLAUDE.md",
+			"target": ".claude/design/bundler/meta-wiring.md",
+			"hash": "7ded6256d5c425951c314ff762b7fb0b607ecb6e31c072d863a55041ebd41898",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/bundler/CLAUDE.md",
+			"target": ".claude/design/bundler/self-hosting.md",
+			"hash": "0a13a2283f1d64d22131058ac2ddfff8bbb890fddbf665f798705ebaca4b5637",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/bundler/CLAUDE.md",
+			"target": ".claude/design/bundler/tsconfig-preset.md",
+			"hash": "2e904be56606e2f8448dd4aebf333f7c2d0af8b372fac361674965587672a153",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/changelog/CLAUDE.md",
 			"target": ".claude/design/changelog/architecture.md",
-			"hash": "5b45df3b39cc41b74d42e2b52270fc8bd7021b05bd2be2c914ebcef972c8e436",
-			"recordedAt": "2026-07-25"
+			"hash": "b130139a66f72a42e046dca5031a38b14345ae9c0f75e10bb1288ab2ab986f61",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/cli/CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "fb93847e6526c097b1c70e7e9542e3f5055ec39f2f753a1b97b366ae0f5d7f78",
-			"recordedAt": "2026-08-12"
+			"hash": "b5281ec932e39848d524aa6ef0467d90454e511948c3338c1422c96047fd9b84",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/cli/CLAUDE.md",
+			"target": ".claude/design/cli/repos-group.md",
+			"hash": "5287d63cb7a7af5bf390f28f06bb9ed6132626dcd5e3e5da235af65339e44bb0",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/github-action-builder/CLAUDE.md",
 			"target": ".claude/design/github-action-builder/architecture.md",
-			"hash": "79ec0d8fd0915f936d5d38021a5a563422bf97aad4c7177dba603e9eb3d6b915",
-			"recordedAt": "2026-08-03"
+			"hash": "6dd839bad5528ea7de6be06a21329704fe81a36e9d50e0ff4c961047cd814a7e",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "3dcf79661f704b3826ccd7fdbd0683106b2bed6ba7f15eb2dee1aafdc4a99f1d",
-			"recordedAt": "2026-08-23"
+			"hash": "1aa745bca4753aa1b421cd3b2f919ef0ea0b315a9c431398ea15dd75fc7d70a5",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/mcp/CLAUDE.md",
+			"target": ".claude/design/mcp/biome-check.md",
+			"hash": "008df240d1460b04804540b6e42fc1d6d382cf9fbd0b489dd7ad08c216a7bc88",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/mcp/CLAUDE.md",
+			"target": ".claude/design/mcp/changeset-tools.md",
+			"hash": "8d958e9f68ce599b12c0a4e305b2502b855b2970fc0783ca7c280f97e8bc3ff5",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/mcp/CLAUDE.md",
+			"target": ".claude/design/mcp/repos-tools.md",
+			"hash": "36f36bb5549dba73f624c8f9b35f0cbce1f81afae047b4dae9b3c6375728a83b",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/mcp/CLAUDE.md",
+			"target": ".claude/design/mcp/tools.md",
+			"hash": "7219c35d04f5f37488728431f17f22c3cc07e8113ba9c31c40b4a4d4574351b5",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/pnpm-plugin-silk/CLAUDE.md",
 			"target": ".claude/design/pnpm-plugin-silk/architecture.md",
-			"hash": "941b5a80412c2276aff61ca396a8be8c37842828e899899a934450577b1e0f05",
-			"recordedAt": "2026-08-20"
+			"hash": "eeb5b695fb6384068a17a37dccae5b034708e4eda450cbf376a90fcdc013cfa2",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/rspress-builder/CLAUDE.md",
 			"target": ".claude/design/rspress-builder/architecture.md",
-			"hash": "55a0b4e8cd81aa078487b0339ddd9735fe80c1afe5def3e1655bf6fcac604c67",
-			"recordedAt": "2026-08-05"
+			"hash": "ae15fae8e9d7efa7ab48a84ad23fcc44b87755314b69e7c5d91bf7328c4b7103",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
 			"target": ".claude/design/silk-effects/architecture.md",
-			"hash": "6740b36168ea7277cc7331ed05145b5b08250087c9f2164ecfea8639eac02d59",
-			"recordedAt": "2026-08-23"
+			"hash": "ab5d0f0beb6a5e7dad0bd2170bd93a5aef863e87262e1d287d35f9ab1d6dc215",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/changesets.md",
+			"hash": "97d59f1d6d47933e919671fb4252dec7c9e40fc1c4b3d8f9596d0e0cb2500c71",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/commitlint.md",
+			"hash": "277107539267f5aed856f1419e1fe804a78da412777a5ba45029eb7c04bd85cb",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/hook-sections.md",
+			"hash": "144ff39856a9bb72a9d82cb3afbe8a7cc53fc888f1b2f834b03e90dccb3c8731",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/issue-references.md",
+			"hash": "c71b8102ffdb4867f5f69cd94081f31375afd87df54d2459e63c3a2d65a6bc4b",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
 			"target": ".claude/design/silk-effects/kit-peer-dependencies.md",
-			"hash": "793db0bbdde00c201766563bb022b1dc750ad4c84d69cb1c95101a917c8c9e4a",
-			"recordedAt": "2026-08-23"
+			"hash": "f8b0fae86ccc38c424a69f495af19d098e25b7aff30e8622da6dc4d19b113410",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/lint.md",
+			"hash": "c479717ed7b77f2751bcc5812a16ba6b36c179bf6631da9239504bb9dbf38eb3",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/pr-body.md",
+			"hash": "d7aef0dfba8685d927de50acbe1fb3198a8b9b1bcbbd63f41a3b3bcb9563a4ac",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/repos.md",
+			"hash": "ebe9659580efcffb926f15999a536b6ff3efa557cd2268da71c863ae8251bee6",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/turbo.md",
+			"hash": "3688e6a7ea75962704acd3af458686c7c38cff938ff0f37a908a84a234ec2268",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-effects/CLAUDE.md",
+			"target": ".claude/design/silk-effects/workspace-analysis.md",
+			"hash": "e943b4696d2879bae0e848896fa4f422fd9329f1b958df88c3b2b3da44f46c5f",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/silk/CLAUDE.md",
 			"target": ".claude/design/silk/architecture.md",
-			"hash": "68f6327706efc0cb596363887edd67ae1aca490304108d50f94aa53e4d4d4d5d",
-			"recordedAt": "2026-08-23"
+			"hash": "abc6af90ae735fe0bba0dd6af56aa8a9d1ad9ebc9cb037b912f91f56ba56ed7c",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/templates/CLAUDE.md",
 			"target": ".claude/design/templates/architecture.md",
-			"hash": "f930da16a778c549e9999cdb18590f1a3e8430ce06cb36748336e4cbb1c98726",
-			"recordedAt": "2026-07-20"
+			"hash": "f8db94db861c3746d88d46a382260197fb324e5f45f33f66e12fc196c6c963b1",
+			"recordedAt": "2026-09-03"
 		},
 		{
 			"source": "packages/tsdown-plugins/CLAUDE.md",
 			"target": ".claude/design/tsdown-plugins/architecture.md",
-			"hash": "48008ca860bf95d2d1c298717228d214ab9ea2a7f9e674fce9e8794ba7ef43be",
-			"recordedAt": "2026-08-20"
+			"hash": "7b543725f2fab9f9daffd07756bf559b265ff0faf3efb1701623adb11cdd0f45",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/build-loop.md",
+			"hash": "b06fd908df178f073c5475d793ad8ee7baf14253710a4f112390aabe644c29cc",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/config-validation.md",
+			"hash": "db6d82a8f45b1d0e53008b4ddacec5c5ddefb97b30a8ed4f1c5c9ce97516661a",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/dts-emission.md",
+			"hash": "7f2eb5415ba47f68e0f502aeb4f292473a229f60890ecb8c5c73b6eb7b0bbb22",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/dual-format.md",
+			"hash": "4080ba935ce6a22dc9d2ffc728271fa3d155364a8a3dd8886c5af214e9c36979",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/entry-and-manifest.md",
+			"hash": "aab41bb2c895cb0394224f4d39e755d028e8d24e301f58be55a0ac7f54ec30a7",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/exe.md",
+			"hash": "e20beca946a7e8b23cf25167df421147055329a10c5db6690dc23f73cc2e184e",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/meta.md",
+			"hash": "88ac47fb5dfb9c18d2ce79b18f15224929e599d12e274b57369e900fde1fc43c",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/report.md",
+			"hash": "878ff7a906feb8e0bd3758602db39b9feca90c83ebdab5395e563cfef9457fe4",
+			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/tsdown-plugins/CLAUDE.md",
+			"target": ".claude/design/tsdown-plugins/targets.md",
+			"hash": "a4da057f9d6ad867d75ea0a670986c159ad4687fd0aedcd9773a70d615d62bcf",
+			"recordedAt": "2026-09-03"
 		}
 	]
 }

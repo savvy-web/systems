@@ -1,20 +1,31 @@
 ---
-status: needs-review
+status: archived
 module: github-actions
 category: architecture
 created: 2026-07-23
-updated: 2026-07-27
-last-synced: 2026-07-27
+updated: 2026-09-03
+last-synced: 2026-09-03
 completeness: 85
+archived: 2026-09-03
+archival-reason: plugins/github-actions was removed from the repo; action engineering now ships via the separate effected plugin
 related:
-  - ../silk/plugin.md
-  - ../_archive/github-action-effects/index.md
-  - ../github-action-builder/architecture.md
-  - ../mcp/architecture.md
+  - ../../silk/plugin.md
+  - ../github-action-effects/index.md
+  - ../../github-action-builder/architecture.md
+  - ../../mcp/architecture.md
 dependencies: []
 ---
 
 # plugins/github-actions — the action-engineering Claude Code plugin
+
+> **ARCHIVED 2026-09-03 — describes a plugin that no longer exists.**
+> `plugins/github-actions` was removed from this repo; action engineering now ships via the separate `effected`
+> plugin, and `plugins/silk` is the repo's only Claude Code plugin — see
+> [`../../silk/plugin.md`](../../silk/plugin.md). The `@savvy-web/github-action-effects` package the skill suite
+> taught is itself deleted (see [`../github-action-effects/index.md`](../github-action-effects/index.md)).
+> Everything below is preserved for historical reference (the agent/skill topology, the vendored-reference
+> provenance model, and why the plugin was split from silk). Do not read it as current behavior, and do not cite
+> its `plugins/github-actions/*` paths — none of them resolve.
 
 The `github-actions@savvy-web-systems` Claude Code plugin. A single specialist agent (`action-engineer`) over a
 twelve-skill suite that teaches building Node.js 24 GitHub Actions on `@savvy-web/github-action-effects` and
@@ -71,7 +82,7 @@ names, no `file:line` citations into repos the reader cannot open, no "which rep
 > (`@savvy-web/github-action-effects@3.0.4`, the service catalog, the `*Test`-double topology, the `./testing`
 > subpath) name a package a reader will not find in `node_modules`. Re-pointing the twelve skills at the kit is
 > outstanding work and should be done as one deliberate pass — see the archived
-> [`../_archive/github-action-effects/index.md`](../_archive/github-action-effects/index.md) for what the old
+> [`../github-action-effects/index.md`](../github-action-effects/index.md) for what the old
 > surface was, and the `@effected` kit's own `.d.ts` for what replaces it. Until that lands, read every
 > `github-action-effects` mention below as *the thing this plugin currently says*, not as current truth.
 
@@ -238,8 +249,8 @@ has since moved under two of them. `github-api`'s `references/service-signatures
 `fn: (octokit: unknown)` for `GitHubClient.rest`/`paginate`/`paginateStream`, and `action-engineering`'s
 `references/error-taxonomy.md` still lists `GitBranchError` as `branch`/`operation`/`reason` only. The package now
 exports a `GitHubOctokit` type for those callbacks to be annotated with, and `GitBranchError` carries optional
-`status`/`alreadyExists` fields (see `../_archive/github-action-effects/services.md` and
-`../_archive/github-action-effects/errors-and-schemas.md`). Both are outstanding re-sync items for the vendored references —
+`status`/`alreadyExists` fields (see `../github-action-effects/services.md` and
+`../github-action-effects/errors-and-schemas.md`). Both are outstanding re-sync items for the vendored references —
 recorded here rather than silently patched, because the provenance-banner mechanism is what is supposed to catch
 this class of drift and a design doc is the right place to note when it has accrued.
 
@@ -251,7 +262,7 @@ upstream history), the **silk plugin's `repos` capability**, loaded beside this 
 `repos_inspect`/`repos_manage` MCP tools vendor `savvy-web/systems`, the home of both libraries, under `.repos/`
 as read-only reference source. Vendored trees are never written to: silk's `Repos.ReposLockdown` makes them
 OS-level read-only (files 444, dirs 555) and its three PreToolUse guards deny visible write attempts earlier,
-with a clearer message (see `../silk/plugin.md`). Both the agent brief and `action-engineering`'s own
+with a clearer message (see `../../silk/plugin.md`). Both the agent brief and `action-engineering`'s own
 "Source access" section state the same ladder, so it holds whether the agent arrived via delegation or via a
 skill trigger.
 
@@ -329,7 +340,7 @@ Three properties are deliberate:
   any gap or awkward API in the libraries).
 
 The cost is a permanent block in every session's context — the same trade silk made and later reversed when its
-own dogfood prompt outlived its usefulness (see `../silk/plugin.md`, "Dogfood-feedback prompt (removed)"). That
+own dogfood prompt outlived its usefulness (see `../../silk/plugin.md`, "Dogfood-feedback prompt (removed)"). That
 precedent is the exit condition: this block should come out once the plugin stops producing findings.
 
 ## Tests

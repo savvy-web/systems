@@ -48,29 +48,17 @@ pnpm lint:md        # Markdown lint
 
 ## Install & Build Orchestration
 
-Build runs on install, but NOT from the root. The root `prepare` is `husky` and nothing else — it installs the git hooks. Dev outputs get built because each workspace-dependency package carries its OWN `prepare: turbo run build:dev`, which pnpm runs per package during `pnpm install`. A fresh clone gets a working `savvy` bin on PATH and functional git hooks immediately. `pnpm build` (turbo `build:dev` + `build:prod`) produces the prod outputs.
+Build runs on install, but NOT from the root: the root `prepare` is `husky` and nothing else. Each workspace-dependency package carries its OWN `prepare: turbo run build:dev`, which pnpm runs per package during `pnpm install`; consumers resolve it through a `link:` into `dist/dev/pkg` (`publishConfig.directory` + `linkDirectory: true`). `pnpm build` produces the prod outputs.
 
-### Package scripts
+A package needs `"prepare": "turbo run build:dev"` whenever it is a `workspace:*` dependency of ANY other `package.json` — root, a sibling package, or an `e2e/*` fixture. Re-derive the set rather than trusting a list: `grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.json e2e/*/package.json`.
 
-Every package built by `@savvy-web/bundler` (or `@savvy-web/rspress-builder`) declares `publishConfig.directory: dist/dev/pkg` and these scripts (`tsdown-plugins` bootstraps with `tsx` rather than `node`):
+DO NOT delete these scripts. Agents repeatedly remove them as redundant, reasoning that turbo's `dependsOn` already orders the build. It does not: `dependsOn` only orders builds turbo was ALREADY asked to run, has no say over whether a `prepare` fires, and never reaches `pnpm install`'s linking step. Absence of breakage is not evidence the script is unnecessary. The failure mode is `Cannot find package '@savvy-web/<name>'` from anything resolving outside the task graph; `@savvy-web/changelog` hit exactly this and broke `changeset version` / `changeset_preview`. For the same reason `@savvy-web/changelog` must stay a root devDependency (the changesets engine resolves the changelog id from the repo root).
 
-```json
-"build:dev": "node savvy.build.ts --target dev",
-"build:prod": "node savvy.build.ts --target prod",
-"types:check": "tsc --noEmit"
-```
+Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts` to `pnpm-workspace.yaml` — injection hard-links `dist/dev` before `prepare` has built it, so a frozen install aborts with `ENOENT`. A `dist/dev` or `node_modules/@savvy-web/*` link that appears missing mid-test-run is the vitest `globalSetup` rebuilding — transient; let the run finish, then re-check.
 
-A package ALSO needs `"prepare": "turbo run build:dev"` whenever it is a `workspace:*` dependency of ANY other `package.json` in the repo — root, a sibling package, or an `e2e/*` fixture. Its consumer resolves it through a `link:` into `dist/dev/pkg`, and that link has to resolve at install time. That package's own `prepare` is the ONLY thing that builds it then; nothing upstream does it for them.
-
-Today: `@savvy-web/bundler`, `@savvy-web/changelog`, `@savvy-web/cli`, `@savvy-web/mcp`, `@savvy-web/pnpm-plugin-silk` (consumed by `e2e/pnpm-plugin-silk`), `@savvy-web/silk`, `@savvy-web/silk-effects`, `@savvy-web/tsdown-plugins`. Re-derive the list rather than trusting it: `grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.json e2e/*/package.json`.
-
-DO NOT delete these. Agents repeatedly remove them as redundant, reasoning that turbo's `dependsOn` already orders the build. It does not: `dependsOn` only orders builds turbo was ALREADY asked to run, has no say over whether a `prepare` fires, and never reaches `pnpm install`'s linking step. A package that builds fine without one is working by accident of orchestration order — absence of breakage is not evidence the script is unnecessary. The failure mode is `Cannot find package '@savvy-web/<name>'` from anything resolving outside the task graph; `@savvy-web/changelog` hit exactly this and broke `changeset version` / `changeset_preview`.
-
-A package no other `package.json` depends on does not need `prepare` (today: `github-action-builder`, `rspress-builder`, `templates`). Add one the moment something depends on it.
-
-The vitest `globalSetup` runs `pnpm turbo run build:dev`, so when a test run needs to rebuild a package its `dist/dev` (and the `node_modules/@savvy-web/*` `link:` symlinks pointing into it) can momentarily appear missing mid-run. This is transient — do not "fix" it; let the run finish, then re-check. The outputs and links are back once the build completes.
-
-Required `pnpm-workspace.yaml` settings: `autoInstallPeers: true`, `verifyDepsBeforeRun: false`. The plugin is pinned in `pnpm-workspace.yaml` WITH its `+sha512-...` integrity hash (turbo/reproducibility need it); `pnpm add --config` omits the hash, so add it by hand. Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts`: injection hard-links each package's `dist/dev` at link time, which is absent before the `prepare` build runs, so a frozen install aborts with `ENOENT`. Plain `link:` symlinks (publishConfig `directory: dist/dev/pkg` for the eleven bundler-built packages, + `linkDirectory: true`) tolerate the not-yet-built dir, which the package's own `prepare` build then populates. `@savvy-web/changelog`, `@savvy-web/cli`, `@savvy-web/mcp`, and `@savvy-web/silk` are the four direct root devDependencies, so they link to `dist/dev`. The `savvy` bin resolves at `dist/dev/pkg/bin/savvy.js`, on PATH once `@savvy-web/cli`'s `prepare` has run. `@savvy-web/changelog` must be a root devDependency: the changesets engine resolves the changelog id named in `.changeset/config.json` from the repo root, and without that link it fails with `Cannot find package`.
+**Full wiring — package-scripts contract, required workspace settings, root devDependencies, the `savvy` bin path:**
+→ `@./.claude/design/workspace/install-orchestration.md`
+Load when editing any `package.json` scripts or devDependencies, `pnpm-workspace.yaml`, or debugging a `Cannot find package '@savvy-web/*'` error.
 
 ## Ecosystem Context
 
@@ -97,27 +85,30 @@ Key coordination points:
 
 ## Dogfooding `@effected`
 
-A dogfood round consumes the `@effected/*` kit (`spencerbeggs/effected`, a sibling checkout at `../../spencerbeggs/effected`) from LOCAL prod artifacts, so kit APIs get shaped against real consumers before release. This section is the durable pattern, not current state.
+A dogfood round consumes the `@effected/*` kit (`spencerbeggs/effected`, sibling checkout at `../../spencerbeggs/effected`) from LOCAL prod artifacts via `pnpm-workspace.yaml` `overrides:` entries of the form `"@effected/<name>": "file:../../..."`. Check that block before assuming a round is open — the `overrides:` key also carries unrelated pins, so look for `@effected` `file:` entries specifically. **Currently UNLINKED:** there are none, every manifest resolves from the registry, and normal push/PR rules apply.
 
-**Currently UNLINKED:** the github-split wave shipped, so `pnpm-workspace.yaml` carries no `@effected` `file:` overrides and every manifest resolves from the registry. Check for that `overrides:` block before assuming a round is open — no block, normal push/PR rules.
+While `@effected` `file:` overrides are active the branch does NOT push or open PRs — the paths exist only on this machine (the silk plugin's `dogfood-guard` hook denies it). Verify kit signatures against `../../spencerbeggs/effected/packages/<name>/src` or the installed `.d.ts` under `node_modules/@effected/<name>/`, never from summaries relayed between sessions.
 
-**Authorities.** For `effect` core itself: the vendored source at `.repos/effect` (pinned to the catalog tag). For `@effected/*`: the kit source at `../../spencerbeggs/effected/packages/<name>/src` and the installed `.d.ts` under `node_modules/@effected/<name>/` — verify signatures there, never from summaries relayed between sessions.
-
-**pnpm linking.** `pnpm-workspace.yaml` carries an `overrides:` entry per consumed kit package: `"@effected/<name>": "file:../../spencerbeggs/effected/packages/<name>/dist/prod/npm/pkg"` (the manifest lives under `pkg/`, not `npm/`). Package manifests keep ordinary registry semver ranges — the overrides do the linking, and removing them relinks to the registry. Keep the override list covering the FULL transitive `@effected` closure (re-derive from the lockfile, not memory).
-
-**Inter-agent mailbox.** Cross-repo communication lives at `.claude/dogfood/<sending-id>/` in the RECEIVING repo, where `<sending-id>` is the SENDER's root `package.json` name — gitignored on both sides, never in design docs. This repo's id is `savvy-web-systems`; the kit repo's is `effected`. So: outbound requests go to `../../spencerbeggs/effected/.claude/dogfood/savvy-web-systems/` (e.g. `systems-dogfood-feedback.md`), and the kit session's return handoffs arrive here in `.claude/dogfood/effected/`. Reports carry `file:line` references so the other side reads real call sites, and each keeps an item-status table current.
-
-**The loop.** (1) Migrate a piece here. (2) Gather findings — hand-rolled capability the kit should own, API friction, bugs — each with `file:line` references into this repo. (3) Write them as requests into the kit repo's mailbox (above). (4) An agent session in the effected repo implements on a branch there and rebuilds prod artifacts in place. (5) On the return handoff (its mailbox file here), refresh: `pnpm clean --lockfile && pnpm install --ignore-scripts`, then `pnpm rebuild esbuild` — `--ignore-scripts` skips native postinstalls, so esbuild's platform binary is missing and vite/vitest die without that rebuild. (6) Adopt the new surfaces, run the full gates (types:check, build:dev/prod, package tests), and feed the next round of findings back into the report.
-
-**Discipline.** While `file:` overrides are active this branch does NOT push or open PRs — the paths only exist on this machine and the loop isn't done until the kit provides what we need. The exit is: effected cuts a live release, the `overrides:` block is deleted (unlink), `pnpm clean --lockfile && pnpm install` against the registry, full verification, and only then the finalize workflow (docs, changesets, squash, PR).
+**The full protocol — linking, mailbox layout and ids, the refresh sequence, the exit:**
+→ `@./.claude/design/silk/plugin-dogfood.md`
+Load when opening, running, or closing a dogfood round (its "Repo-level convention" section is the pattern).
 
 ## Design Documentation
 
 Design docs live in `.claude/design/` (tracked). Per-package design pointers live in each `packages/<pkg>/CLAUDE.md`. These pointers cover topics with no package subtree to auto-load from:
 
-**`plugins/silk` — the merged Claude Code plugin:**
+**`plugins/silk` — the merged Claude Code plugin (overview/index):**
 → `@./.claude/design/silk/plugin.md`
-Load when working on `plugins/silk` (skills, agents, monitors, hooks, MCP wiring).
+Load when working on `plugins/silk` (layout, capability map, skill naming, MCP server wiring). Per-capability child docs — load the one matching the capability you are touching:
+→ `@./.claude/design/silk/plugin-hooks.md` — hook registration, shared hook infrastructure, the SessionStart orientation payload.
+→ `@./.claude/design/silk/plugin-changesets.md` — the changeset router skill, `changeset-manager` agent, validator and Stop-time nudge.
+→ `@./.claude/design/silk/plugin-commit-messages.md` — `commit-create`/`pr-body` skills and the `savvy commit hook` guards.
+→ `@./.claude/design/silk/plugin-biome.md` — the three Biome channels (LSP, `biome_check`, sanctioned Bash) and the `biome-direct-deny` guard.
+→ `@./.claude/design/silk/plugin-turbo.md` — the read-only Turborepo capability over `turbo_inspect`.
+→ `@./.claude/design/silk/plugin-build-tsdoc.md` — `build`/`tsdoc` skills, the `tsdoctor` agent, the `tsdoc-diagnostics` monitor over `issues.json`.
+→ `@./.claude/design/silk/plugin-repos.md` — the vendored-repos skill, orientation block, PreToolUse guards, and drift monitor.
+→ `@./.claude/design/silk/plugin-dogfood.md` — the dogfood-mailbox protocol.
+→ `@./.claude/design/silk/plugin-it2.md` — the it2 pane-orchestration skill.
 
 **Suite-wide test conventions (`@effect/vitest`, filesystem doubles):**
 → `@./.claude/design/testing/effect-vitest.md`

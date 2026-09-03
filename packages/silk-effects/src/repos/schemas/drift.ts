@@ -22,7 +22,7 @@ export const DriftKind = Schema.Literals([
 export type DriftKind = typeof DriftKind.Type;
 
 /**
- * One detected disagreement between two (or more) of the four authorities
+ * One detected disagreement between two (or more) of the five authorities
  * for a single vendored repo.
  *
  * @remarks

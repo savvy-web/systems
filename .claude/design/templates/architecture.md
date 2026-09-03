@@ -3,11 +3,10 @@ status: current
 module: templates
 category: architecture
 created: 2026-03-31
-updated: 2026-07-20
-last-synced: 2026-07-20
-completeness: 90
+updated: 2026-09-03
+last-synced: 2026-09-03
+completeness: 95
 related:
-  - ../cli/architecture.md
   - ../silk-effects/architecture.md
 dependencies: []
 ---
@@ -17,7 +16,7 @@ dependencies: []
 ## Table of Contents
 
 - [Overview](#overview)
-- [Current State](#current-state)
+- [Current state](#current-state)
 - [Module architecture](#module-architecture)
 - [Core types](#core-types)
 - [Template pattern](#template-pattern)
@@ -29,19 +28,17 @@ dependencies: []
 
 ## Overview
 
-`@savvy-web/templates` is a pure TypeScript library for generating project configuration content from typed options. It replaces the defunct Yeoman-based generators with stateless functions that take options and return generated file content.
+`@savvy-web/templates` is a pure TypeScript library for generating project configuration content from typed options. Stateless functions take options and return generated file content as `TemplateEntry[]` arrays. The library performs no I/O, no file writing, no prompting and no path resolution; consumers decide what to do with the output. Effect Schema validates options at the boundary and invalid input throws `ParseError`.
 
-The library produces `TemplateEntry[]` arrays describing file content. It performs no I/O, no file writing, no prompting and no path resolution. Consumers decide what to do with the output. Effect Schema validates options at the boundary; invalid input throws `ParseError`.
+The package lives at `packages/templates` and runs in any JavaScript runtime with no platform dependencies. Nothing else in this repo consumes it; its consumers are external projects.
 
-The package lives at `packages/templates` in `savvy-web/systems` and runs in any JavaScript runtime with no platform dependencies.
+## Current state
 
-## Current State
-
-All templates are implemented and published. The public API is a single root export (`"."`): consumers import everything from `@savvy-web/templates`. See `src/index.ts` for the full export surface.
+Every template listed in the inventory below is implemented, tested and published to both registries. There is no in-flight work in this package; changes arrive as new templates or as option-schema additions to existing ones.
 
 ## Module architecture
 
-Each template is a single-file module under `src/lib/<name>/index.ts`, with the shared types in `src/lib/types.ts` and the workspace compositor in `src/lib/workspace/index.ts`. Tests live in a dedicated `__test__/` directory, one file per template plus an integration test under `__test__/integration/`.
+Each template is a single-file module under `src/lib/<name>/index.ts`, with the shared types in `src/lib/types.ts` and the workspace compositor in `src/lib/workspace/index.ts`. The public API is a single root export (`"."`) re-exported from `src/index.ts`, which is authoritative for the export surface. Tests live in `__test__/`, one file per template plus an integration test under `__test__/integration/`.
 
 Each template module exports three things:
 
@@ -51,7 +48,7 @@ Each template module exports three things:
 
 ## Core types
 
-The three cardinal types are defined in `src/lib/types.ts` and are load-bearing across every template:
+The cardinal types are defined in `src/lib/types.ts` and are load-bearing across every template:
 
 ```typescript
 interface TemplateEntry {
@@ -67,7 +64,7 @@ type UpdateTemplate<O> = (existing: string, options: Partial<O>) => TemplateEntr
 
 `TemplateEntry.filename` is a sensible default. Directory structure in filenames (e.g. `.vscode/settings.json`, `.changeset/config.json`) is part of the suggested path, not an assertion about filesystem layout. Consumers may use it directly or map entries to their own paths.
 
-`UpdateTemplate<O>` is defined for future config-update work. No template currently exports an update function.
+`UpdateTemplate<O>` is an exported type contract only: no template module implements an update function.
 
 ## Template pattern
 
@@ -97,30 +94,30 @@ Key properties:
 
 ## Template inventory
 
-There are ten template modules. For each, the options schema in the module's `index.ts` is authoritative about its fields; this section records only what each produces and the constraints that are not obvious from the schema.
+For each template module, the options schema in its `index.ts` is authoritative about its fields; this section records only what each produces and the constraints that are not obvious from the schema.
 
-- **package-json** (`createPackageJson`) — emits `package.json`. Uses `@effected/package-json`'s `PackageJsonFormat.sortValue` (the total value-to-value sorter) for field ordering and omits empty or undefined fields.
+- **package-json** (`createPackageJson`) — emits `package.json`. Uses `@effected/package-json`'s `PackageJsonFormat.sortValue` for field ordering and omits empty or undefined fields.
 - **tsconfig** (`createTsConfig`) — emits `tsconfig.json`. `extends` is always normalized to an array. Minimal output; most config lives in the extended base.
 - **biome** (`createBiome`) — emits `biome.jsonc`. The required `version` drives the `$schema` URL.
 - **turbo** (`createTurboRoot`, `createTurboWorkspace`) — two functions because root and workspace `turbo.json` have different schemas. The workspace form emits `extends: ["//"]`.
-- **pnpm** (`createPnpmWorkspace`) — emits `pnpm-workspace.yaml`. Uses `js-yaml` for serialization.
+- **pnpm** (`createPnpmWorkspace`) — emits `pnpm-workspace.yaml`. Serializes through `@effected/yaml`'s `Yaml.stringify`, run synchronously inside the template; this is the only Effect executed anywhere in the package and it requires no services.
 - **gitignore** (`createGitignore`) — emits `.gitignore` from categorized sections via plain string concatenation, no template engine.
 - **changeset** (`createChangeset`) — emits `.changeset/config.json` with Silk Suite defaults.
 - **vscode** (`createVsCode`) — emits two entries, `.vscode/settings.json` and `.vscode/extensions.json`, with conditional Biome/Turbo/Vitest settings.
 - **readme** (`createReadme`) — emits a minimal `README.md` (h1 plus description); README content is project-specific.
-- **workspace** (`createWorkspace`) — the master compositor. See below.
+- **workspace** (`createWorkspace`) — the compositor. See below.
 
 ### Workspace compositor
 
-`createWorkspace` orchestrates the other templates, calling their `create*` functions directly with derived options. It always emits package-json, tsconfig, gitignore and readme; it conditionally adds pnpm (when `packageManager === "pnpm"`) plus biome, turbo, changeset and vscode based on the `features` flags. See `src/lib/workspace/index.ts` for the exact composition and the derived options it threads into each sub-template.
+`createWorkspace` orchestrates the other templates, calling their `create*` functions directly with derived options. It always emits package-json, tsconfig, gitignore and readme; it conditionally adds pnpm (when `packageManager === "pnpm"`) plus biome, turbo, changeset and vscode based on the `features` flags. The `vitest` feature has no template of its own — it only toggles the VS Code settings. `biomeVersion` defaults to the suite's pinned Biome release when omitted. See `src/lib/workspace/index.ts` for the exact composition and the derived options it threads into each sub-template.
 
 ## Dependencies
 
-Runtime dependencies are `@effected/package-json` (package.json field ordering via `PackageJsonFormat.sortValue`) and `js-yaml` (YAML serialization). `effect` is a peer dependency, used only for Schema validation at the boundary. A dormant `sort-package-json` declaration remains in `package.json` but is no longer imported.
+Runtime dependencies are `@effected/package-json` (field ordering) and `@effected/yaml` (YAML serialization). `effect` is a peer dependency, used for Schema validation at the boundary and for running the YAML serialization Effect. See `package.json` for the catalog-pinned ranges.
 
-This package has no platform dependencies. Unlike `@savvy-web/silk-effects` it does not depend on `@effect/platform`, `workspaces-effect` or any other Effect service package. Those require Layer composition, which is overkill for pure content generation — templates serialize in-memory objects with `JSON.stringify`, `js-yaml` and string construction directly.
+This package has no platform dependencies. Unlike `@savvy-web/silk-effects` it does not depend on `@effect/platform` or any Effect service that needs a Layer. Layer composition is overkill for pure content generation — templates serialize in-memory objects with `JSON.stringify`, `Yaml.stringify` and string construction directly. Consumers never provide an Effect runtime.
 
-The package builds with `@savvy-web/bundler`. See `package.json` and `savvy.build.ts` for the build wiring and the dual-registry `publishConfig.targets`.
+The package builds with `@savvy-web/bundler` through the `build()` front door. See `savvy.build.ts` and `publishConfig.targets` in `package.json` for the build wiring and dual-registry publishing.
 
 ## Consumer guide
 
@@ -128,27 +125,12 @@ Install the package alongside its `effect` peer and import everything from the r
 
 ```typescript
 import { createBiome, createWorkspace } from "@savvy-web/templates";
-```
 
-Generate a single config:
-
-```typescript
-const entries = createBiome({ version: "2.3.3", root: true });
+const entries = createBiome({ version: "2.5.9", root: true });
 // => [{ name: "biome", filename: "biome.jsonc", content: "..." }]
 ```
 
-Scaffold a whole workspace with `createWorkspace`, then write the returned entries to disk yourself — placement is the consumer's responsibility:
-
-```typescript
-import { writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-
-for (const entry of entries) {
-  const filepath = join(targetDir, entry.filename);
-  mkdirSync(dirname(filepath), { recursive: true });
-  writeFileSync(filepath, entry.content);
-}
-```
+Scaffold a whole workspace with `createWorkspace`, then write the returned entries to disk yourself — placement is the consumer's responsibility. Join each `entry.filename` onto the target directory, create parent directories and write `entry.content`.
 
 Invalid options throw `ParseError` from Effect Schema. There are no custom error types.
 
@@ -160,7 +142,7 @@ Templates generate content. They do not read files, write files, resolve paths o
 
 ### Why no template engine?
 
-Template engines add complexity (partials, helpers, escaping) without benefit for structured output. JSON configs are best built programmatically with `JSON.stringify`, YAML uses `js-yaml` and gitignore and README are simple string concatenation. TypeScript provides all the control flow needed with type safety a template engine cannot offer.
+Template engines add complexity (partials, helpers, escaping) without benefit for structured output. JSON configs are best built programmatically with `JSON.stringify`, YAML goes through `@effected/yaml` and gitignore and README are simple string concatenation. TypeScript provides all the control flow needed with type safety a template engine cannot offer.
 
 ### Why a single entry point?
 
@@ -176,9 +158,8 @@ Individual functions give per-template autocomplete, tree-shaking of unused temp
 
 ### Why `TemplateEntry` instead of writing directly?
 
-Separating content generation from I/O enables testing without filesystem mocking, preview and dry-run modes, custom path mapping, and batching or conflict resolution in the caller — usable from both CLI tools and programmatic APIs.
+Separating content generation from I/O enables testing without filesystem mocking, preview and dry-run modes, custom path mapping and batching or conflict resolution in the caller — usable from both CLI tools and programmatic APIs.
 
 ## Related documentation
 
-- [`../cli/architecture.md`](../cli/architecture.md) — the `savvy` CLI, a downstream consumer of generated content.
 - [`../silk-effects/architecture.md`](../silk-effects/architecture.md) — the shared Effect library whose pure-function and single-root-export conventions templates mirror.

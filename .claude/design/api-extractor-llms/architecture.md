@@ -3,8 +3,8 @@ status: archived
 module: api-extractor-llms
 category: architecture
 created: 2026-06-01
-updated: 2026-07-01
-last-synced: 2026-07-01
+updated: 2026-09-03
+last-synced: 2026-09-03
 completeness: 100
 archived: 2026-07-01
 archival-reason: obsolete
@@ -13,39 +13,35 @@ related:
 dependencies: []
 ---
 
-# api-extractor-llms (external dependency)
+# api-extractor-llms (former external dependency)
 
-> **ARCHIVED (2026-07-01):** `api-extractor-llms` is no longer a dependency of `@savvy-web/mcp` — the mcp API-doc render pipeline was removed with the server's resource subsystem (see `../mcp/architecture.md`). A future RSPress website spec will reintroduce what it needs from this library. This document is retained for historical context only.
+> **ARCHIVED (2026-07-01) — describes a dependency this repo no longer has.** `api-extractor-llms` was a build-time devDependency of `@savvy-web/mcp`, used only to render the server's API-reference resource tier. That tier was removed with the whole mcp resource subsystem, and with it the dependency, the generator script and the rendered output (see `../mcp/architecture.md`, "Current state"). Nothing in `savvy-web/systems` imports or installs `api-extractor-llms` today. Everything below is preserved for historical reference; do not read it as current behavior, and do not cite the `packages/mcp/lib/scripts/*` or `packages/mcp/public/content/*` paths — none of them resolve.
 
-`api-extractor-llms` is an **external npm package** (unscoped, published from `spencerbeggs/api-extractor-llms`) that renders Microsoft API Extractor `.api.json` models into LLM-lean markdown. It was extracted out of this monorepo and no longer lives here. This doc records why this repo depends on it and where its architecture is documented; it is not the source of truth for the library's internals.
-
-## Table of Contents
+## Table of contents
 
 - [Overview](#overview)
-- [Current State](#current-state)
-- [How this repo consumes it](#how-this-repo-consumes-it)
+- [Current state](#current-state)
+- [What it did for this repo](#what-it-did-for-this-repo)
 - [Rationale](#rationale)
 
 ## Overview
 
-The library turns a package's API Extractor model into plain markdown docs suitable for LLM consumption. Body rendering is identical across consumers; the two things callers customize are the **frontmatter block** prepended to each doc and the **crosslink URL scheme** for intra-package links, both supplied as injected services (a `FrontmatterRenderer` and a `RouteFormatter`). The public surface this repo relies on is `loadApiModel`, `renderPackage` and the `ApiItemRef`/`DocMeta` types.
+`api-extractor-llms` is an unscoped external npm package, published from <https://github.com/spencerbeggs/api-extractor-llms>, that renders Microsoft API Extractor `.api.json` models into LLM-lean markdown. It began life as a workspace package in this monorepo and was extracted to its own repo before mcp dropped it. That repo is the only authority for the library's internals; this doc never was.
 
-The full internal architecture — the shared output system, the injection seams, the ported TSDoc/formatter/cross-linker modules and the boundaries — now lives in the standalone repo: <https://github.com/spencerbeggs/api-extractor-llms>. Treat that repo's `.claude/design/` (or README) as authoritative for the library's shape.
+## Current state
 
-## Current State
+Removed. No `package.json` in `savvy-web/systems` declares `api-extractor-llms`, no source imports it and the mcp generator script that drove it is deleted. `savvy-mcp` is a tools-only server with no resources, corpus or render pipeline. Per-package `.api.json` models are still emitted during builds by the tsdown-plugins `meta` plugin (`packages/tsdown-plugins/src/meta/api-extractor.ts`) for API-report purposes, but nothing in this repo renders them to markdown.
 
-Extracted and published as `api-extractor-llms@^0.1.0` (unscoped name). It is no longer a workspace package in `savvy-web/systems` — `packages/api-extractor-llms/` has been deleted. `@savvy-web/mcp` now consumes it as an **external** `devDependency` (`"api-extractor-llms": "^0.1.0"`), used only by mcp's `generate:api-docs` script. It is a build-time generator dependency, never a server runtime dependency.
+## What it did for this repo
 
-## How this repo consumes it
-
-`packages/mcp/lib/scripts/generate-api-docs.ts` imports `loadApiModel` and `renderPackage` from `"api-extractor-llms"` and drives the mcp API-doc generation pipeline. mcp injects a silk-specific `FrontmatterRenderer` and a `silk://packages/<dir>/api/<kind>/<slug>` `RouteFormatter`, then writes the rendered docs under `packages/mcp/public/content/packages/<dir>/api/`. Both the rendered docs and the upstream `.api.json` models are gitignored, ephemeral build output regenerated deterministically on every build — only the hand-authored corpus and the baseline `manifest.json` are tracked. The full pipeline — targets, turbo orchestration, the gitignored-generated-docs split — is documented in `../mcp/architecture.md` under "The API-doc generation pipeline".
+Historically, mcp's `generate:api-docs` build script loaded each library package's API Extractor model and rendered it to markdown through the library's two injection seams: a silk-specific frontmatter renderer and a `silk://packages/<dir>/api/<kind>/<slug>` route formatter for intra-package crosslinks. The rendered docs landed under mcp's public content directory as gitignored, deterministically regenerated build output and were served as the `silk://packages/<pkg>/api/*` tier of the resource tree. The dependency was a `devDependency` because the published server never imported it at runtime — only the build did.
 
 ## Rationale
 
-### Why this doc is a pointer, not a full architecture
+### Why this doc was a pointer, not a full architecture
 
-The package was extracted into its own repo and published to npm, so its detailed internal architecture is documented and versioned there. Duplicating that architecture here would create a second source of truth that drifts as the external library evolves. This repo only needs to record that mcp depends on the external package at build time and where to find the real docs.
+Once the package was extracted and published, its internal architecture was documented and versioned in its own repo. Duplicating it here would have created a second source of truth that drifted as the library evolved, so this doc only ever recorded that mcp depended on it at build time and where the real docs lived.
 
-### Why it is a build-time devDependency only
+### Why it is retained rather than deleted
 
-The library renders API docs from `.api.json` models during the mcp build; the published server never imports it at runtime. Keeping it a `devDependency` mirrors that: a bare install of the published `@savvy-web/mcp` does not pull it in.
+The `archived` entry keeps the design tree honest about a dependency that appears in mcp's CHANGELOG history and in older design discussion. A reader who meets the name there can resolve it here in one hop and learn that it is stale, without having to reconstruct the timeline from git.

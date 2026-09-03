@@ -49,7 +49,7 @@ import { CURRENT_MCP_VERSION } from "./version.js";
 export const ReposInspectModeSchema = z
 	.enum(["status", "config", "drift", "gitmodules"])
 	.describe(
-		"status = drift report; config = the full agent brief; drift = four-authority submodule reconciliation; gitmodules = decoded .gitmodules sections.",
+		"status = drift report; config = the full agent brief; drift = five-authority submodule reconciliation; gitmodules = decoded .gitmodules sections.",
 	);
 
 /** Wrap a markdown string + structured object in the dual-channel tool result. */

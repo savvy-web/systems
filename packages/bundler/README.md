@@ -326,7 +326,7 @@ That gives you `readonly __PACKAGE_VERSION__?: string` on `NodeJS.ProcessEnv` �
 - **Build targets** — `dev` for local linking, `prod` for a resolved publishable manifest (which also emits an API Extractor api-model) and `exe` for SEA binaries, on disjoint `dist/dev` and `dist/prod` output paths for clean caching.
 - **Bundled declarations** — per-module JavaScript with a single rolled-up `.d.ts` per public entry, so re-exported types stay reachable through your published export subpaths.
 - **Ambient type exports** — a types-only `exports` entry backed by a hand-authored `.d.ts` (a bare string or `{ types }`) is copied verbatim into every target dir with its manifest pointer rewritten to a key-derived path, no custom `transform` or post-build copy needed; the declaration must be self-contained and may not be mixed with a runtime source.
-- **Shared tsconfig base** — extend `@savvy-web/bundler/ecma.json` for the ESNext/NodeNext/strict settings the build expects.
+- **Shared tsconfig base** — extend `@savvy-web/bundler/tsconfig/ecma.json` for the ESNext/NodeNext/strict settings the build expects.
 - **Manifest resolution** — `catalog:` and `workspace:` specifiers are resolved against the workspace for the published target, and preserved for the linked dev target.
 - **Multi-target publishing** — a `publishConfig.targets` map publishes one package to several registries or under several names; `--target prod` builds the distinct byte variants and writes a `targets.json` binding for the release step.
 - **Executable binaries** — an `exe` config compiles SEA binaries from a bin entry via `@tsdown/exe`, inferring the platform from the package's `os`/`cpu` when targets are omitted.
