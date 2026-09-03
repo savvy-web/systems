@@ -1,6 +1,6 @@
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative as relativePath } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TsdoctorSourceError, loadTsdoctorSources } from "../../src/meta/tsdoctor-source.js";
 
@@ -66,6 +66,23 @@ describe("loadTsdoctorSources", () => {
 		writeFileSync(join(cwd, "package.json"), JSON.stringify({ name: "lonely" }));
 		writeFileSync(join(cwd, "tsdoctor.json"), JSON.stringify({ openGraph: { images: [{}] } }));
 		await expect(loadTsdoctorSources(cwd)).rejects.toBeInstanceOf(TsdoctorSourceError);
+	});
+
+	it("does not double-count the root file when cwd is a relative or symlinked spelling of the root", async () => {
+		const { root: r } = workspace();
+		writeFileSync(
+			join(r, "tsdoctor.json"),
+			JSON.stringify({ name: "Root", openGraph: { images: [{ url: "https://x/og.png" }] } }),
+		);
+		const link = join(root(), "link");
+		symlinkSync(r, link);
+		const relative = relativePath(process.cwd(), r);
+		for (const cwd of [link, relative, `${r}/.`]) {
+			expect(await loadTsdoctorSources(cwd), cwd).toEqual({
+				leaf: { name: "Root", openGraph: { images: [{ url: "https://x/og.png" }] } },
+				project: undefined,
+			});
+		}
 	});
 
 	it("reads a file at a package that IS the workspace root once, as the leaf", async () => {

@@ -45,7 +45,7 @@ related:
 - **Support:** `normalizeMetaOptions` + the `MetaOptions` types (`config.ts`), `createMessageSuppressor` (`message-suppressor.ts`), `buildTsdocConfig`/`writeTsdocConfig` (`tsdoc-config.ts`), `mergeApiModels`/`rewriteCanonicalReferences` (`merge-models.ts`), `rewriteMetaVersions` (`optimistic.ts`), `resolvePortableTsconfig` (`tsconfig-resolver.ts`).
 - **Next versions:** `resolveNextVersions` (`src/changesets/next-versions.ts`).
 - **Sidecar:** `TsdoctorMetaOptions`/`OgImageInfo` (`tsdoctor-config.ts`), `loadTsdoctorSources` + `TsdoctorSources` (`tsdoctor-source.ts`), `composeTsdoctorManifest`/`ogImageInfoOf`/`registriesFromTargets`/`githubOwnerRepo` + `ComposeManifestInput`/`ManifestTarget`/`ManifestRepository` (`tsdoctor-manifest.ts`), `writeGeneratedOgImage` (`og-image.ts`). Encoding and the source-file decoder come from `@tsdoctor/manifest`; image dimensions from `image-size`.
-- **Errors:** `MetaGenerationError` (`src/errors.ts`), thrown by `runApiExtractor` on a failed extraction; `TsdoctorSourceError` (`tsdoctor-source.ts`) for a present-but-invalid `tsdoctor.json`; `OgGenerateError` (`og-image.ts`) for a failed image render.
+- **Errors:** `MetaGenerationError` (`src/errors.ts`), thrown by `runApiExtractor` on a failed extraction; `TsdoctorSourceError` (`tsdoctor-source.ts`, `{ path, cause }`) for a present-but-invalid `tsdoctor.json`; `OgGenerateError` (`og-image.ts`, `{ packageName, cause }`) for a failed image render. Both are `Data.TaggedError` classes like the rest of `src/errors.ts`, matched by `instanceof` in `runMetaPass`.
 - **Dependency note:** `@tsdoctor/manifest` is declared `^0.1.0` but, until tsdoctor publishes 0.1.0, resolves through a dogfood `file:` override in `pnpm-workspace.yaml` pointing at the sibling `spencerbeggs/tsdoctor` checkout's prod artifact.
 
 ## The pipeline
@@ -110,7 +110,7 @@ Both source files decode through `decodeManifestSource`. **Absence is normal** a
 
 ### The generated Open Graph image
 
-When `config.openGraph.generate` is set, `writeGeneratedOgImage` runs the generator with the `OgImageInfo`, sizes the returned bytes with `image-size`, writes `og/<unscoped>.<ext>` under `outMetaDir` (`png`/`jpg`/`webp`; unknown types fall back to `png`) and returns the `OpenGraphImage` entry (bundle-relative path, MIME type, width, height) that composition lists first. A generator that throws, returns zero bytes or returns something `image-size` cannot read raises `OgGenerateError` — a half-written image is worse than none. The bundler ships a default generator as `@savvy-web/bundler/og` (see [Meta wiring](../bundler/meta-wiring.md#the-og-subpath)); this package only defines the contract.
+When `config.openGraph.generate` is set, `writeGeneratedOgImage` runs the generator with the `OgImageInfo`, sizes the returned bytes with `image-size`, writes `og/<unscoped>.<ext>` under `outMetaDir` (`png`/`jpg`/`webp` only; any other detected type is rejected rather than mislabeled) and returns the `OpenGraphImage` entry (bundle-relative path, MIME type, width, height) that composition lists first. A generator that throws, returns zero bytes, returns something `image-size` cannot read, or returns a type outside that set raises `OgGenerateError` — a half-written image is worse than none. The bundler ships a default generator as `@savvy-web/bundler/og` (see [Meta wiring](../bundler/meta-wiring.md#the-og-subpath)); this package only defines the contract.
 
 ### Emission and what the generator sees
 

@@ -138,7 +138,7 @@ describe("runMetaPass", () => {
 				collector,
 				ci: false,
 				loadTsdoctorSources: async () => {
-					throw new TsdoctorSourceError("/pkg/tsdoctor.json", new Error("bad"));
+					throw new TsdoctorSourceError({ path: "/pkg/tsdoctor.json", cause: new Error("bad") });
 				},
 				generateMeta: async (opts) => {
 					generated.push(opts.outMetaDir);
@@ -167,7 +167,7 @@ describe("runMetaPass", () => {
 				ci: false,
 				loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined }),
 				generateMeta: async () => {
-					throw new OgGenerateError("@scope/pkg", new Error("renderer exploded"));
+					throw new OgGenerateError({ packageName: "@scope/pkg", cause: new Error("renderer exploded") });
 				},
 			}),
 		).rejects.toBeInstanceOf(OgGenerateError);

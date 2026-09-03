@@ -57,6 +57,18 @@ describe("writeGeneratedOgImage", () => {
 		expect((err as OgGenerateError).message).toContain("renderer exploded");
 	});
 
+	it("rejects an image type Open Graph consumers cannot render instead of mislabeling it", async () => {
+		const outMetaDir = mkdtempSync(join(tmpdir(), "og-"));
+		// A minimal GIF header: image-size detects it as "gif", which has no Open Graph MIME mapping.
+		const gif = Uint8Array.from(Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"));
+		const err = await writeGeneratedOgImage({ generate: async () => gif, info, outMetaDir, unscopedName: "pkg" }).catch(
+			(e: unknown) => e,
+		);
+		expect(err).toBeInstanceOf(OgGenerateError);
+		expect((err as OgGenerateError).message).toContain("gif");
+		expect(existsSync(join(outMetaDir, "og"))).toBe(false);
+	});
+
 	it("rejects bytes that are not an image", async () => {
 		const outMetaDir = mkdtempSync(join(tmpdir(), "og-"));
 		await expect(

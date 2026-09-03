@@ -1,10 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
 import type { ManifestSource } from "@tsdoctor/manifest";
 import { TSDOCTOR_MANIFEST_FILENAME, decodeManifestSource } from "@tsdoctor/manifest";
-import { Effect, Layer } from "effect";
+import { Data, Effect, Layer } from "effect";
 
 /**
  * A present `tsdoctor.json` source file that could not be parsed or decoded. Absence is never
@@ -12,13 +12,12 @@ import { Effect, Layer } from "effect";
  *
  * @public
  */
-export class TsdoctorSourceError extends Error {
-	override readonly name = "TsdoctorSourceError";
-	constructor(
-		readonly path: string,
-		readonly cause: unknown,
-	) {
-		super(`Invalid ${TSDOCTOR_MANIFEST_FILENAME} at ${path}`);
+export class TsdoctorSourceError extends Data.TaggedError("TsdoctorSourceError")<{
+	readonly path: string;
+	readonly cause: unknown;
+}> {
+	get message(): string {
+		return `Invalid ${TSDOCTOR_MANIFEST_FILENAME} at ${this.path}`;
 	}
 }
 
@@ -34,6 +33,16 @@ export interface TsdoctorSources {
 
 /** Bound once: the platform layer is stateless and layers memoize by reference. */
 const platform = Layer.mergeAll(NodeFileSystem.layer, NodePath.layer);
+
+/** The canonical absolute form of a directory, so a relative or symlinked `cwd` compares equal to the discovered root. */
+function canonical(dir: string): string {
+	const absolute = resolve(dir);
+	try {
+		return realpathSync(absolute);
+	} catch {
+		return absolute;
+	}
+}
 
 /**
  * The workspace root containing `cwd`, or `undefined` when `cwd` is not inside any workspace.
@@ -60,10 +69,10 @@ async function readSource(path: string): Promise<ManifestSource | undefined> {
 	try {
 		parsed = JSON.parse(readFileSync(path, "utf-8"));
 	} catch (cause) {
-		throw new TsdoctorSourceError(path, cause);
+		throw new TsdoctorSourceError({ path, cause });
 	}
 	const result = await Effect.runPromise(Effect.result(decodeManifestSource(parsed, path)));
-	if (result._tag === "Failure") throw new TsdoctorSourceError(path, result.failure);
+	if (result._tag === "Failure") throw new TsdoctorSourceError({ path, cause: result.failure });
 	return result.success;
 }
 
@@ -76,9 +85,12 @@ async function readSource(path: string): Promise<ManifestSource | undefined> {
  * @public
  */
 export async function loadTsdoctorSources(cwd: string): Promise<TsdoctorSources> {
-	const leaf = await readSource(join(cwd, TSDOCTOR_MANIFEST_FILENAME));
-	const root = await findWorkspaceRoot(cwd);
+	const leafDir = canonical(cwd);
+	const leaf = await readSource(join(leafDir, TSDOCTOR_MANIFEST_FILENAME));
+	const root = await findWorkspaceRoot(leafDir);
 	const project =
-		root !== undefined && root !== cwd ? await readSource(join(root, TSDOCTOR_MANIFEST_FILENAME)) : undefined;
+		root !== undefined && canonical(root) !== leafDir
+			? await readSource(join(root, TSDOCTOR_MANIFEST_FILENAME))
+			: undefined;
 	return { leaf, project };
 }

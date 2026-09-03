@@ -52,9 +52,9 @@ const first = <A>(...values: ReadonlyArray<A | undefined>): A | undefined => val
  */
 export function githubOwnerRepo(url: string): { readonly owner: string; readonly repo: string } | undefined {
 	const match =
-		/^(?:git\+)?(?:https?:\/\/|git:\/\/|ssh:\/\/(?:git@)?|git@)?(?:www\.)?github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(
+		/^(?:git\+)?(?:https?:\/\/|git:\/\/|ssh:\/\/(?:git@)?|git@)?(?:www\.)?github\.com[/:]([^/]{1,214})\/([^/]{1,214}?)(?:\.git)?\/?$/i.exec(
 			url.trim(),
-		) ?? /^github:([^/]+)\/([^/]+?)(?:\.git)?$/i.exec(url.trim());
+		) ?? /^github:([^/]{1,214})\/([^/]{1,214}?)(?:\.git)?$/i.exec(url.trim());
 	if (match === null) return undefined;
 	const owner = match[1];
 	const repo = match[2];

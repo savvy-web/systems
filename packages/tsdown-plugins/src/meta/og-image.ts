@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { OpenGraphImage } from "@tsdoctor/manifest";
+import { Data } from "effect";
 import { imageSize } from "image-size";
 import type { OgImageInfo } from "./tsdoctor-config.js";
 
@@ -10,19 +11,18 @@ import type { OgImageInfo } from "./tsdoctor-config.js";
  *
  * @public
  */
-export class OgGenerateError extends Error {
-	override readonly name = "OgGenerateError";
-	constructor(
-		readonly packageName: string,
-		readonly cause: unknown,
-	) {
-		super(
-			`Open Graph image generation failed for ${packageName}: ${cause instanceof Error ? cause.message : String(cause)}`,
-		);
+export class OgGenerateError extends Data.TaggedError("OgGenerateError")<{
+	readonly packageName: string;
+	readonly cause: unknown;
+}> {
+	get message(): string {
+		const reason = this.cause instanceof Error ? this.cause.message : String(this.cause);
+		return `Open Graph image generation failed for ${this.packageName}: ${reason}`;
 	}
 }
 
-const MIME_BY_TYPE: Record<string, string> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp" };
+/** The image types an Open Graph consumer can render; anything else fails rather than shipping a mislabeled file. */
+const MIME_BY_TYPE: Readonly<Record<string, string>> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp" };
 
 /**
  * Options for {@link writeGeneratedOgImage}.
@@ -48,20 +48,30 @@ export async function writeGeneratedOgImage(options: WriteGeneratedOgImageOption
 	try {
 		bytes = await options.generate(options.info);
 	} catch (cause) {
-		throw new OgGenerateError(options.info.packageName, cause);
+		throw new OgGenerateError({ packageName: options.info.packageName, cause });
 	}
 	if (bytes.byteLength === 0) {
-		throw new OgGenerateError(options.info.packageName, new Error("generator returned no bytes"));
+		throw new OgGenerateError({
+			packageName: options.info.packageName,
+			cause: new Error("generator returned no bytes"),
+		});
 	}
 	let size: ReturnType<typeof imageSize>;
 	try {
 		size = imageSize(bytes);
 	} catch (cause) {
-		throw new OgGenerateError(options.info.packageName, cause);
+		throw new OgGenerateError({ packageName: options.info.packageName, cause });
 	}
-	const ext = size.type === "jpg" ? "jpg" : (size.type ?? "png");
+	const ext = size.type ?? "png";
+	const type = MIME_BY_TYPE[ext];
+	if (type === undefined) {
+		throw new OgGenerateError({
+			packageName: options.info.packageName,
+			cause: new Error(`generator returned a ${ext} image; Open Graph images must be png, jpg or webp`),
+		});
+	}
 	const relative = `og/${options.unscopedName}.${ext}`;
 	mkdirSync(join(options.outMetaDir, "og"), { recursive: true });
 	writeFileSync(join(options.outMetaDir, relative), bytes);
-	return { path: relative, type: MIME_BY_TYPE[ext] ?? "image/png", width: size.width, height: size.height };
+	return { path: relative, type, width: size.width, height: size.height };
 }
