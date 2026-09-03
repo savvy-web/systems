@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { declarationsDirFor } from "../build/target-groups.js";
 import { resolveNextVersions as realResolveNextVersions } from "../changesets/next-versions.js";
 import { createEntryName } from "../entry/extract.js";
+import { TsdoctorEmitError } from "../errors.js";
 import type { BuildCollector } from "../report/collector.js";
 import type { MetaOptions } from "./config.js";
 import { normalizeMetaOptions } from "./config.js";
@@ -132,6 +133,14 @@ export async function runMetaPass(o: RunMetaPassOptions): Promise<void> {
 					level: "error",
 					code: "og-generate-failed",
 					text: err.message,
+				});
+			} else if (err instanceof TsdoctorEmitError) {
+				o.collector.recordError(g.id, {
+					source: "meta",
+					level: "error",
+					code: "tsdoctor-emit-failed",
+					text: err.message,
+					file: err.path,
 				});
 			}
 			throw err;

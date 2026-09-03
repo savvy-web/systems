@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { ManifestSource, OpenGraphImage } from "@tsdoctor/manifest";
 import { TSDOCTOR_MANIFEST_FILENAME, encodeBundleManifest } from "@tsdoctor/manifest";
 import { Effect } from "effect";
+import { TsdoctorEmitError } from "../errors.js";
 import { runApiExtractor } from "./api-extractor.js";
 import type { NormalizedMeta } from "./config.js";
 import { mergeApiModels } from "./merge-models.js";
@@ -306,9 +307,15 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		}
 		const manifest = composeTsdoctorManifest(composeInput);
 		if (manifest !== undefined) {
-			const encoded = await Effect.runPromise(encodeBundleManifest(manifest));
-			manifestPath = join(outMetaDir, TSDOCTOR_MANIFEST_FILENAME);
-			writeFileSync(manifestPath, `${JSON.stringify(encoded, null, 2)}\n`, "utf-8");
+			const path = join(outMetaDir, TSDOCTOR_MANIFEST_FILENAME);
+			try {
+				const encoded = await Effect.runPromise(encodeBundleManifest(manifest));
+				writeFileSync(path, `${JSON.stringify(encoded, null, 2)}\n`, "utf-8");
+			} catch (cause) {
+				// Same contract as the image: an encode or disk failure is named in issues.json, not raw.
+				throw new TsdoctorEmitError({ packageName, path, cause });
+			}
+			manifestPath = path;
 		}
 	}
 

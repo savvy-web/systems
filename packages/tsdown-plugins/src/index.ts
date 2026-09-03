@@ -46,7 +46,7 @@ export type { ExtractOptions, ExtractResult, PackageJsonLike } from "./entry/ext
 export { createEntryName, extractEntries } from "./entry/extract.js";
 export type { PackageJsonEntriesOptions } from "./entry/package-json-entries.js";
 export { packageJsonEntries } from "./entry/package-json-entries.js";
-export { ConfigValidationError, MetaGenerationError } from "./errors.js";
+export { ConfigValidationError, MetaGenerationError, TsdoctorEmitError } from "./errors.js";
 export type { ExeBuild, RunExeBuildOptions } from "./exe/build.js";
 export { runExeBuild } from "./exe/build.js";
 export type { ExeConfig, ExeSeaConfig, ExeTarget, ExeTargetInput, NormalizedExe, PkgOsCpu } from "./exe/config.js";

@@ -45,7 +45,7 @@ related:
 - **Support:** `normalizeMetaOptions` + the `MetaOptions` types (`config.ts`), `createMessageSuppressor` (`message-suppressor.ts`), `buildTsdocConfig`/`writeTsdocConfig` (`tsdoc-config.ts`), `mergeApiModels`/`rewriteCanonicalReferences` (`merge-models.ts`), `rewriteMetaVersions` (`optimistic.ts`), `resolvePortableTsconfig` (`tsconfig-resolver.ts`).
 - **Next versions:** `resolveNextVersions` (`src/changesets/next-versions.ts`).
 - **Sidecar:** `TsdoctorMetaOptions`/`OgImageInfo` (`tsdoctor-config.ts`), `loadTsdoctorSources` + `TsdoctorSources` (`tsdoctor-source.ts`), `composeTsdoctorManifest`/`ogImageInfoOf`/`registriesFromTargets`/`githubOwnerRepo` + `ComposeManifestInput`/`ManifestTarget`/`ManifestRepository` (`tsdoctor-manifest.ts`), `writeGeneratedOgImage` (`og-image.ts`). Encoding and the source-file decoder come from `@tsdoctor/manifest`; image dimensions from `image-size`.
-- **Errors:** `MetaGenerationError` (`src/errors.ts`), thrown by `runApiExtractor` on a failed extraction; `TsdoctorSourceError` (`tsdoctor-source.ts`, `{ path, cause }`) for a present-but-invalid `tsdoctor.json`; `OgGenerateError` (`og-image.ts`, `{ packageName, cause }`) for a failed image render. Both are `Data.TaggedError` classes like the rest of `src/errors.ts`, matched by `instanceof` in `runMetaPass`.
+- **Errors:** `MetaGenerationError` (`src/errors.ts`), thrown by `runApiExtractor` on a failed extraction; `TsdoctorSourceError` (`tsdoctor-source.ts`, `{ path, cause }`) for a present-but-invalid `tsdoctor.json`; `OgGenerateError` (`og-image.ts`, `{ packageName, cause }`) for a failed image render; `TsdoctorEmitError` (`src/errors.ts`, `{ packageName, path, cause }`) when the composed sidecar does not encode or cannot be written. All three are `Data.TaggedError` classes, matched by `instanceof` in `runMetaPass`.
 - **Dependency note:** `@tsdoctor/manifest` is declared `^0.1.0` and resolves from the registry. Before its first release it was consumed through a dogfood `file:` override against the sibling `spencerbeggs/tsdoctor` checkout (see the root `CLAUDE.md` "Dogfooding" section for the protocol); that override is gone, and a branch carrying one cannot push.
 
 ## The pipeline
@@ -122,6 +122,8 @@ Both sidecar errors are recorded to the collector as `source: "meta"` diagnostic
 
 - `TsdoctorSourceError` → `{ source: "meta", code: "tsdoctor-source-invalid", file: <path> }` on EVERY group (it is per package, recorded before the loop).
 - `OgGenerateError` → `{ source: "meta", code: "og-generate-failed" }` on the group whose `generateMeta` threw.
+- `TsdoctorEmitError` → `{ source: "meta", code: "tsdoctor-emit-failed", file: <path> }` on that group — an encode or disk failure on the sidecar write is named the same way an image failure is, never a bare `failure.message`.
+- A workspace-discovery failure (`TsdoctorSources.discoveryFailure`) → a non-fatal warning `{ source: "meta", code: "tsdoctor-workspace-discovery-failed" }` on every group; the build continues with no project tier. A package outside any workspace (`WorkspaceRootNotFoundError`) is the normal case and records nothing.
 
 ## Boundaries and invariants
 

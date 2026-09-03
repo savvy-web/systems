@@ -1,7 +1,13 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { GenerateMetaOptions } from "../../src/index.js";
-import { BuildCollector, OgGenerateError, TsdoctorSourceError, runMetaPass } from "../../src/index.js";
+import {
+	BuildCollector,
+	OgGenerateError,
+	TsdoctorEmitError,
+	TsdoctorSourceError,
+	runMetaPass,
+} from "../../src/index.js";
 import { applySubdirMetaEntries, deriveExportPaths } from "../../src/meta/run-pass.js";
 
 describe("deriveExportPaths", () => {
@@ -179,6 +185,39 @@ describe("runMetaPass", () => {
 		const errors = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.errors));
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toMatchObject({ source: "meta", code: "tsdoctor-source-invalid", file: "/pkg/tsdoctor.json" });
+	});
+
+	it("records a sidecar emit failure in the collector and fails the pass", async () => {
+		const collector = new BuildCollector();
+		await expect(
+			runMetaPass({
+				cwd: "/pkg",
+				packageName: "@scope/pkg",
+				tsconfigPath: "/pkg/tsconfig.json",
+				groups: [{ id: "npm", name: "@scope/pkg" }],
+				entries: { index: "./src/index.ts" },
+				exportsMap: { ".": "./src/index.ts" },
+				meta: {},
+				collector,
+				ci: false,
+				loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined }),
+				generateMeta: async () => {
+					throw new TsdoctorEmitError({
+						packageName: "@scope/pkg",
+						path: "/pkg/dist/prod/npm/meta/tsdoctor.json",
+						cause: Object.assign(new Error("read-only"), { code: "EACCES" }),
+					});
+				},
+			}),
+		).rejects.toBeInstanceOf(TsdoctorEmitError);
+		const errors = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.errors));
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({
+			source: "meta",
+			code: "tsdoctor-emit-failed",
+			file: "/pkg/dist/prod/npm/meta/tsdoctor.json",
+		});
+		expect(errors[0]?.text).toContain("read-only");
 	});
 
 	it("records an Open Graph generation failure in the collector and fails the pass", async () => {

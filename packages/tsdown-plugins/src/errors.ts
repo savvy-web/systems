@@ -55,3 +55,20 @@ export class ConfigValidationError extends Data.TaggedError("ConfigValidationErr
 		return `Config validation failed at "${this.path}": ${this.reason}`;
 	}
 }
+
+/**
+ * Writing the `tsdoctor.json` sidecar failed — the composed manifest did not encode, or the file
+ * could not be written (a read-only or full disk). Recorded in `issues.json` as a `meta` error.
+ *
+ * @public
+ */
+export class TsdoctorEmitError extends Data.TaggedError("TsdoctorEmitError")<{
+	readonly packageName: string;
+	readonly path: string;
+	readonly cause: unknown;
+}> {
+	get message(): string {
+		const reason = this.cause instanceof Error ? this.cause.message : String(this.cause);
+		return `Could not emit ${this.path} for ${this.packageName}: ${reason}`;
+	}
+}
