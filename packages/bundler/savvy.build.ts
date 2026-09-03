@@ -92,7 +92,8 @@ try {
 		if (targets === undefined) {
 			throw new Error("Missing package.json publishConfig.targets for --target prod");
 		}
-		writeTargetsBinding(cwd, resolveTargets({ targets, baseName: pkg.name }));
+		const resolution = resolveTargets({ targets, baseName: pkg.name });
+		writeTargetsBinding(cwd, resolution);
 		// Emit the api-model meta bundle and copy it into the local consumer paths.
 		// Mirrors what runBuild does for --target prod when meta is configured.
 		// Must run BEFORE removeDeclarationMaps: api-extractor needs .d.ts.map files to
@@ -108,6 +109,7 @@ try {
 			meta,
 			collector,
 			ci,
+			targets: resolution.targets,
 		});
 		// Strip declaration source-maps from the published prod pkg/ AFTER meta. They are
 		// emitted for meta generation (api-extractor reads them for original-source positions),

@@ -7,12 +7,13 @@ export class ReportTimings extends Schema.Class<ReportTimings>("ReportTimings")(
 }) {}
 
 /**
- * A captured warning or error, from tsdown's logger, rolldown's onLog, or API Extractor.
+ * A captured warning or error, from tsdown's logger, rolldown's onLog, API Extractor, or the meta
+ * pass's own sidecar work (`tsdoctor.json` sources, Open Graph generation).
  *
  * @public
  */
 export class DiagnosticEntry extends Schema.Class<DiagnosticEntry>("DiagnosticEntry")({
-	source: Schema.Literals(["tsdown", "rolldown", "api-extractor"]),
+	source: Schema.Literals(["tsdown", "rolldown", "api-extractor", "meta"]),
 	level: Schema.Literals(["warn", "error"]),
 	text: Schema.String,
 	/**

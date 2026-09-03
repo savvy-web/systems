@@ -24,6 +24,7 @@
 		"./env": {
 			"types": "./src/env.d.ts"
 		},
+		"./og": "./src/og.ts",
 		"./tsconfig/ecma.json": "./public/tsconfig/ecma.json"
 	},
 	"scripts": {
@@ -41,21 +42,26 @@
 	},
 	"devDependencies": {
 		"@effect/platform-node": "catalog:effect",
+		"@resvg/resvg-js": "^2.6.2",
 		"@tsdown/css": "catalog:build",
 		"@types/node": "catalog:build",
 		"@types/react": "catalog:build",
 		"@types/react-dom": "catalog:build",
+		"image-size": "^2.0.2",
 		"react": "catalog:build",
 		"react-dom": "catalog:build",
+		"satori": "^0.33.4",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
+		"@resvg/resvg-js": "^2.6.2",
 		"@types/node": "catalog:build:peers",
 		"@types/react": "catalog:build:peers",
 		"@types/react-dom": "catalog:build:peers",
 		"react": "catalog:build:peers",
 		"react-dom": "catalog:build:peers",
+		"satori": "^0.33.4",
 		"typescript": "catalog:build:peers"
 	},
 	"peerDependenciesMeta": {
@@ -69,6 +75,12 @@
 			"optional": true
 		},
 		"react-dom": {
+			"optional": true
+		},
+		"@resvg/resvg-js": {
+			"optional": true
+		},
+		"satori": {
 			"optional": true
 		}
 	},

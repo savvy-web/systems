@@ -2,12 +2,16 @@ import { join } from "node:path";
 import { declarationsDirFor } from "../build/target-groups.js";
 import { resolveNextVersions as realResolveNextVersions } from "../changesets/next-versions.js";
 import { createEntryName } from "../entry/extract.js";
+import { TsdoctorEmitError } from "../errors.js";
 import type { BuildCollector } from "../report/collector.js";
 import type { MetaOptions } from "./config.js";
 import { normalizeMetaOptions } from "./config.js";
 import type { GenerateMetaOptions, MetaResult } from "./generate.js";
 import { generateMeta as realGenerateMeta } from "./generate.js";
+import { OgGenerateError } from "./og-image.js";
 import { rewriteMetaVersions } from "./optimistic.js";
+import type { TsdoctorSources } from "./tsdoctor-source.js";
+import { TsdoctorSourceError, loadTsdoctorSources as realLoadTsdoctorSources } from "./tsdoctor-source.js";
 
 /**
  * Options for the meta-pass orchestrator.
@@ -29,6 +33,13 @@ export interface RunMetaPassOptions {
 	readonly generateMeta?: (o: GenerateMetaOptions) => Promise<MetaResult>;
 	/** Injectable for tests; defaults to the real resolveNextVersions. Only called when optimistic. */
 	readonly resolveNextVersions?: (cwd: string) => Promise<{ versions: ReadonlyMap<string, string> }>;
+	/**
+	 * The resolved `targets.json` targets; each group's `tsdoctor.json` derives its registries from the
+	 * targets bound to that group. Omitted (an escape-hatch build with no resolution) means none.
+	 */
+	readonly targets?: ReadonlyArray<{ group: string; id: string; registry: string }> | undefined;
+	/** Injectable for tests; defaults to the real loadTsdoctorSources. */
+	readonly loadTsdoctorSources?: (cwd: string) => Promise<TsdoctorSources>;
 }
 
 /**
@@ -58,23 +69,82 @@ export async function runMetaPass(o: RunMetaPassOptions): Promise<void> {
 		? (m: Record<string, unknown>) => rewriteMetaVersions(m, nextVersions.versions, o.packageName)
 		: undefined;
 
+	// The tsdoctor.json source tiers are per package, not per group: load them once. A present but
+	// invalid file fails the build here, before any group's meta bundle is written.
+	const loadSources = o.loadTsdoctorSources ?? realLoadTsdoctorSources;
+	let sources: TsdoctorSources;
+	try {
+		sources = await loadSources(o.cwd);
+	} catch (err) {
+		if (err instanceof TsdoctorSourceError) {
+			for (const g of o.groups) {
+				o.collector.recordError(g.id, {
+					source: "meta",
+					level: "error",
+					code: "tsdoctor-source-invalid",
+					text: err.message,
+					file: err.path,
+				});
+			}
+		}
+		throw err;
+	}
+
+	if (sources.discoveryFailure !== undefined) {
+		for (const g of o.groups) {
+			o.collector.recordWarning(g.id, {
+				source: "meta",
+				level: "warn",
+				code: "tsdoctor-workspace-discovery-failed",
+				text: `Workspace discovery failed, so tsdoctor.json has no project tier: ${sources.discoveryFailure}`,
+			});
+		}
+	}
+
 	for (const g of o.groups) {
-		await gen({
-			cwd: o.cwd,
-			packageName: o.packageName,
-			tsconfigPath: o.tsconfigPath,
-			dtsDir: join(o.cwd, "dist", "prod", g.id, "pkg"),
-			aeInputDir: declarationsDirFor(o.cwd, g.id),
-			entries: dtsBasenames,
-			exportPaths,
-			outMetaDir: join(o.cwd, "dist", "prod", g.id, "meta"),
-			localPaths: g.id === canonicalId ? norm.localPaths : [],
-			tsdoc: norm.tsdoc,
-			...(manifestTransform !== undefined ? { manifestTransform } : {}),
-			ci: o.ci,
-			onMessage: (e) => (e.level === "error" ? o.collector.recordError(g.id, e) : o.collector.recordWarning(g.id, e)),
-			onSuppressed: (e) => o.collector.recordSuppressed(g.id, e),
-		} satisfies GenerateMetaOptions);
+		// The target's `id` (the publishConfig.targets key, e.g. "npm"/"github") is the human registry label;
+		// its `name` is the resolved package name for that group, which the manifest already knows.
+		const targets = (o.targets ?? [])
+			.filter((t) => t.group === g.id)
+			.map((t) => ({ name: t.id, registry: t.registry }));
+		try {
+			await gen({
+				cwd: o.cwd,
+				packageName: o.packageName,
+				tsconfigPath: o.tsconfigPath,
+				dtsDir: join(o.cwd, "dist", "prod", g.id, "pkg"),
+				aeInputDir: declarationsDirFor(o.cwd, g.id),
+				entries: dtsBasenames,
+				exportPaths,
+				outMetaDir: join(o.cwd, "dist", "prod", g.id, "meta"),
+				localPaths: g.id === canonicalId ? norm.localPaths : [],
+				tsdoc: norm.tsdoc,
+				...(manifestTransform !== undefined ? { manifestTransform } : {}),
+				ci: o.ci,
+				tsdoctor: { config: norm.tsdoctor, leaf: sources.leaf, project: sources.project, targets },
+				onMessage: (e) => (e.level === "error" ? o.collector.recordError(g.id, e) : o.collector.recordWarning(g.id, e)),
+				onSuppressed: (e) => o.collector.recordSuppressed(g.id, e),
+			} satisfies GenerateMetaOptions);
+		} catch (err) {
+			// Route the sidecar failures into issues.json so the build report names the cause, then fail.
+			if (err instanceof OgGenerateError) {
+				o.collector.recordError(g.id, {
+					source: "meta",
+					level: "error",
+					code: "og-generate-failed",
+					text: err.message,
+				});
+			} else if (err instanceof TsdoctorEmitError) {
+				o.collector.recordError(g.id, {
+					source: "meta",
+					level: "error",
+					code: "tsdoctor-emit-failed",
+					text: err.message,
+					file: err.path,
+				});
+			}
+			throw err;
+		}
 	}
 }
 

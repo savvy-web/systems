@@ -46,7 +46,7 @@ export type { ExtractOptions, ExtractResult, PackageJsonLike } from "./entry/ext
 export { createEntryName, extractEntries } from "./entry/extract.js";
 export type { PackageJsonEntriesOptions } from "./entry/package-json-entries.js";
 export { packageJsonEntries } from "./entry/package-json-entries.js";
-export { ConfigValidationError, MetaGenerationError } from "./errors.js";
+export { ConfigValidationError, MetaGenerationError, TsdoctorEmitError } from "./errors.js";
 export type { ExeBuild, RunExeBuildOptions } from "./exe/build.js";
 export { runExeBuild } from "./exe/build.js";
 export type { ExeConfig, ExeSeaConfig, ExeTarget, ExeTargetInput, NormalizedExe, PkgOsCpu } from "./exe/config.js";
@@ -74,11 +74,23 @@ export type {
 export { normalizeMetaOptions } from "./meta/config.js";
 export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
 export { generateMeta } from "./meta/generate.js";
+export type { WriteGeneratedOgImageOptions } from "./meta/og-image.js";
+export { OgGenerateError, writeGeneratedOgImage } from "./meta/og-image.js";
 export { rewriteMetaVersions } from "./meta/optimistic.js";
 export type { RunMetaPassOptions } from "./meta/run-pass.js";
 export { applySubdirMetaEntries, deriveExportPaths, runMetaPass } from "./meta/run-pass.js";
 export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
 export { resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
+export type { OgImageInfo, TsdoctorMetaOptions } from "./meta/tsdoctor-config.js";
+export type { ComposeManifestInput, ManifestRepository, ManifestTarget } from "./meta/tsdoctor-manifest.js";
+export {
+	composeTsdoctorManifest,
+	githubOwnerRepo,
+	ogImageInfoOf,
+	registriesFromTargets,
+} from "./meta/tsdoctor-manifest.js";
+export type { TsdoctorSources } from "./meta/tsdoctor-source.js";
+export { TsdoctorSourceError, loadTsdoctorSources } from "./meta/tsdoctor-source.js";
 export type { DiagnosticInput, PassKind } from "./report/collector.js";
 export { BuildCollector, BuildCollectorTag } from "./report/collector.js";
 export type { Formatter, FormatterContext, RenderedOutput } from "./report/formatters/index.js";

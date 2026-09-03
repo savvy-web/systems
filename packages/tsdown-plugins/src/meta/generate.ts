@@ -1,14 +1,32 @@
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ManifestSource, OpenGraphImage } from "@tsdoctor/manifest";
+import { TSDOCTOR_MANIFEST_FILENAME, encodeBundleManifest } from "@tsdoctor/manifest";
+import { Effect } from "effect";
+import { TsdoctorEmitError } from "../errors.js";
 import { runApiExtractor } from "./api-extractor.js";
 import type { NormalizedMeta } from "./config.js";
 import { mergeApiModels } from "./merge-models.js";
+import { writeGeneratedOgImage } from "./og-image.js";
 import { resolvePortableTsconfig } from "./tsconfig-resolver.js";
 import { writeTsdocConfig } from "./tsdoc-config.js";
+import type { TsdoctorMetaOptions } from "./tsdoctor-config.js";
+import type { ManifestRepository, ManifestTarget } from "./tsdoctor-manifest.js";
+import { composeTsdoctorManifest, ogImageInfoOf } from "./tsdoctor-manifest.js";
 
 function unscopedName(name: string): string {
 	const slash = name.lastIndexOf("/");
 	return slash >= 0 ? name.slice(slash + 1) : name;
+}
+
+/** Normalize the manifest's `repository` (string shorthand or object) to the composer's shape. */
+function manifestRepositoryOf(value: unknown): ManifestRepository | undefined {
+	if (typeof value === "string") return value.length > 0 ? { url: value } : undefined;
+	if (typeof value === "object" && value !== null && "url" in value && typeof value.url === "string") {
+		const directory = "directory" in value && typeof value.directory === "string" ? value.directory : undefined;
+		return { url: value.url, ...(directory !== undefined ? { directory } : {}) };
+	}
+	return undefined;
 }
 
 /** @public */
@@ -47,6 +65,18 @@ export interface GenerateMetaOptions {
 	readonly ci?: boolean | undefined;
 	/** When set, messages matched by `suppressWarnings` are routed here for accounting. */
 	readonly onSuppressed?: ((entry: import("../report/collector.js").DiagnosticInput) => void) | undefined;
+	/**
+	 * The `tsdoctor.json` sidecar inputs: the config tier, the two source tiers, and the targets bound
+	 * to this group (registries derive from them). Omitted means no sidecar and no Open Graph image.
+	 */
+	readonly tsdoctor?:
+		| {
+				readonly config: TsdoctorMetaOptions | undefined;
+				readonly leaf: ManifestSource | undefined;
+				readonly project: ManifestSource | undefined;
+				readonly targets: ReadonlyArray<ManifestTarget>;
+		  }
+		| undefined;
 }
 
 /** @public */
@@ -243,13 +273,67 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 	const portableTsconfig = resolvePortableTsconfig(cwd, tsconfigPath);
 	writeFileSync(bundleTsconfig, `${JSON.stringify(portableTsconfig, null, 2)}\n`, "utf-8");
 
-	// Copy the trio into each localPaths dir (api.json + package.json + tsconfig.json).
+	// Layer 3: the tsdoctor.json sidecar. Written only when there is something to say, through the
+	// manifest package's encoder so the file is by construction what a reader decodes. The generated
+	// Open Graph image (when configured) is rendered first so the manifest can list it.
+	// The sidecar and its image are the bundle's only CONDITIONAL members, so a previous build's copies
+	// are removed first: a package that drops its tsdoctor.json or its generator must stop advertising
+	// the identity and og:image it no longer produces, in the meta dir and in every localPaths copy.
+	rmSync(join(outMetaDir, TSDOCTOR_MANIFEST_FILENAME), { force: true });
+	rmSync(join(outMetaDir, "og"), { recursive: true, force: true });
+	let manifestPath: string | undefined;
+	let generatedImageRelative: string | undefined;
+	if (options.tsdoctor !== undefined) {
+		const composeInput = {
+			config: options.tsdoctor.config,
+			leaf: options.tsdoctor.leaf,
+			project: options.tsdoctor.project,
+			packageName,
+			isPrivate: finalPkg.private === true,
+			targets: options.tsdoctor.targets,
+			generatedImage: undefined as OpenGraphImage | undefined,
+			repository: manifestRepositoryOf(finalPkg.repository),
+		};
+		const generate = options.tsdoctor.config?.openGraph?.generate;
+		if (generate !== undefined) {
+			const generated = await writeGeneratedOgImage({
+				generate,
+				info: ogImageInfoOf({ ...composeInput, version: String(finalPkg.version ?? "0.0.0") }),
+				outMetaDir,
+				unscopedName: unscopedName(packageName),
+			});
+			composeInput.generatedImage = generated;
+			generatedImageRelative = generated.path;
+		}
+		const manifest = composeTsdoctorManifest(composeInput);
+		if (manifest !== undefined) {
+			const path = join(outMetaDir, TSDOCTOR_MANIFEST_FILENAME);
+			try {
+				const encoded = await Effect.runPromise(encodeBundleManifest(manifest));
+				writeFileSync(path, `${JSON.stringify(encoded, null, 2)}\n`, "utf-8");
+			} catch (cause) {
+				// Same contract as the image: an encode or disk failure is named in issues.json, not raw.
+				throw new TsdoctorEmitError({ packageName, path, cause });
+			}
+			manifestPath = path;
+		}
+	}
+
+	// Copy the trio into each localPaths dir (api.json + package.json + tsconfig.json), plus the
+	// sidecar and its generated image when they exist.
 	for (const localPath of localPaths) {
 		const dest = join(cwd, localPath);
 		mkdirSync(dest, { recursive: true });
 		copyFileSync(apiJsonPath, join(dest, apiJsonFilename));
 		copyFileSync(bundlePackageJson, join(dest, "package.json"));
 		copyFileSync(bundleTsconfig, join(dest, "tsconfig.json"));
+		if (manifestPath !== undefined) copyFileSync(manifestPath, join(dest, TSDOCTOR_MANIFEST_FILENAME));
+		else rmSync(join(dest, TSDOCTOR_MANIFEST_FILENAME), { force: true });
+		rmSync(join(dest, "og"), { recursive: true, force: true });
+		if (generatedImageRelative !== undefined) {
+			mkdirSync(join(dest, "og"), { recursive: true });
+			copyFileSync(join(outMetaDir, generatedImageRelative), join(dest, generatedImageRelative));
+		}
 	}
 
 	return { apiJsonPath, apiJsonFilename };

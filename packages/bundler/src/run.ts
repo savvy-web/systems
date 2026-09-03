@@ -500,6 +500,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 				meta: config.meta ?? {},
 				collector,
 				ci,
+				...(resolution !== undefined ? { targets: resolution.targets } : {}),
 				...(options.generateMeta !== undefined ? { generateMeta: options.generateMeta } : {}),
 				...(options.resolveNextVersions !== undefined ? { resolveNextVersions: options.resolveNextVersions } : {}),
 			});

@@ -1,6 +1,13 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BuildCollector, runMetaPass } from "../../src/index.js";
+import type { GenerateMetaOptions } from "../../src/index.js";
+import {
+	BuildCollector,
+	OgGenerateError,
+	TsdoctorEmitError,
+	TsdoctorSourceError,
+	runMetaPass,
+} from "../../src/index.js";
 import { applySubdirMetaEntries, deriveExportPaths } from "../../src/meta/run-pass.js";
 
 describe("deriveExportPaths", () => {
@@ -74,5 +81,167 @@ describe("runMetaPass", () => {
 		expect(calls[0]?.outMetaDir).toContain("/pkg/dist/prod/npm/meta");
 		expect(calls[0]?.dtsDir).toBe(join(cwd, "dist", "prod", "npm", "pkg"));
 		expect(calls[0]?.aeInputDir).toBe(join(cwd, "dist", "prod", "npm", "declarations"));
+	});
+
+	it("loads the tsdoctor sources once and hands each group its own targets", async () => {
+		const loads: string[] = [];
+		const seen: Array<{ group: string; tsdoctor: GenerateMetaOptions["tsdoctor"] }> = [];
+		await runMetaPass({
+			cwd: "/pkg",
+			packageName: "@scope/pkg",
+			tsconfigPath: "/pkg/tsconfig.json",
+			groups: [
+				{ id: "npm", name: "@scope/pkg" },
+				{ id: "github", name: "@org/pkg" },
+			],
+			entries: { index: "./src/index.ts" },
+			exportsMap: { ".": "./src/index.ts" },
+			meta: { tsdoctor: { name: "Configured" } },
+			collector: new BuildCollector(),
+			ci: false,
+			targets: [
+				{ group: "npm", id: "npm", registry: "https://registry.npmjs.org" },
+				{ group: "github", id: "github", registry: "https://npm.pkg.github.com" },
+			],
+			loadTsdoctorSources: async (cwd) => {
+				loads.push(cwd);
+				return { leaf: { tagline: "leaf" }, project: { name: "Proj" } };
+			},
+			generateMeta: async (opts) => {
+				seen.push({ group: opts.outMetaDir, tsdoctor: opts.tsdoctor });
+				return { apiJsonPath: "/x", apiJsonFilename: "pkg.api.json" };
+			},
+		});
+		expect(loads).toEqual(["/pkg"]);
+		expect(seen.map((s) => s.tsdoctor)).toEqual([
+			{
+				config: { name: "Configured" },
+				leaf: { tagline: "leaf" },
+				project: { name: "Proj" },
+				targets: [{ name: "npm", registry: "https://registry.npmjs.org" }],
+			},
+			{
+				config: { name: "Configured" },
+				leaf: { tagline: "leaf" },
+				project: { name: "Proj" },
+				targets: [{ name: "github", registry: "https://npm.pkg.github.com" }],
+			},
+		]);
+	});
+
+	it("records a workspace-discovery failure as a meta warning on every group and continues", async () => {
+		const collector = new BuildCollector();
+		const generated: string[] = [];
+		await runMetaPass({
+			cwd: "/pkg",
+			packageName: "@scope/pkg",
+			tsconfigPath: "/pkg/tsconfig.json",
+			groups: [
+				{ id: "npm", name: "@scope/pkg" },
+				{ id: "github", name: "@org/pkg" },
+			],
+			entries: { index: "./src/index.ts" },
+			exportsMap: { ".": "./src/index.ts" },
+			meta: {},
+			collector,
+			ci: false,
+			loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined, discoveryFailure: "missingVersion" }),
+			generateMeta: async (opts) => {
+				generated.push(opts.outMetaDir);
+				return { apiJsonPath: "/x", apiJsonFilename: "pkg.api.json" };
+			},
+		});
+		expect(generated).toHaveLength(2);
+		const warnings = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.warnings));
+		expect(warnings).toHaveLength(2);
+		expect(warnings[0]).toMatchObject({ source: "meta", code: "tsdoctor-workspace-discovery-failed" });
+		expect(warnings[0]?.text).toContain("missingVersion");
+	});
+
+	it("records an invalid tsdoctor.json source in the collector and fails the pass", async () => {
+		const collector = new BuildCollector();
+		const generated: string[] = [];
+		await expect(
+			runMetaPass({
+				cwd: "/pkg",
+				packageName: "@scope/pkg",
+				tsconfigPath: "/pkg/tsconfig.json",
+				groups: [{ id: "npm", name: "@scope/pkg" }],
+				entries: { index: "./src/index.ts" },
+				exportsMap: { ".": "./src/index.ts" },
+				meta: {},
+				collector,
+				ci: false,
+				loadTsdoctorSources: async () => {
+					throw new TsdoctorSourceError({ path: "/pkg/tsdoctor.json", cause: new Error("bad") });
+				},
+				generateMeta: async (opts) => {
+					generated.push(opts.outMetaDir);
+					return { apiJsonPath: "/x", apiJsonFilename: "pkg.api.json" };
+				},
+			}),
+		).rejects.toBeInstanceOf(TsdoctorSourceError);
+		expect(generated).toEqual([]);
+		const errors = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.errors));
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({ source: "meta", code: "tsdoctor-source-invalid", file: "/pkg/tsdoctor.json" });
+	});
+
+	it("records a sidecar emit failure in the collector and fails the pass", async () => {
+		const collector = new BuildCollector();
+		await expect(
+			runMetaPass({
+				cwd: "/pkg",
+				packageName: "@scope/pkg",
+				tsconfigPath: "/pkg/tsconfig.json",
+				groups: [{ id: "npm", name: "@scope/pkg" }],
+				entries: { index: "./src/index.ts" },
+				exportsMap: { ".": "./src/index.ts" },
+				meta: {},
+				collector,
+				ci: false,
+				loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined }),
+				generateMeta: async () => {
+					throw new TsdoctorEmitError({
+						packageName: "@scope/pkg",
+						path: "/pkg/dist/prod/npm/meta/tsdoctor.json",
+						cause: Object.assign(new Error("read-only"), { code: "EACCES" }),
+					});
+				},
+			}),
+		).rejects.toBeInstanceOf(TsdoctorEmitError);
+		const errors = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.errors));
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({
+			source: "meta",
+			code: "tsdoctor-emit-failed",
+			file: "/pkg/dist/prod/npm/meta/tsdoctor.json",
+		});
+		expect(errors[0]?.text).toContain("read-only");
+	});
+
+	it("records an Open Graph generation failure in the collector and fails the pass", async () => {
+		const collector = new BuildCollector();
+		await expect(
+			runMetaPass({
+				cwd: "/pkg",
+				packageName: "@scope/pkg",
+				tsconfigPath: "/pkg/tsconfig.json",
+				groups: [{ id: "npm", name: "@scope/pkg" }],
+				entries: { index: "./src/index.ts" },
+				exportsMap: { ".": "./src/index.ts" },
+				meta: {},
+				collector,
+				ci: false,
+				loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined }),
+				generateMeta: async () => {
+					throw new OgGenerateError({ packageName: "@scope/pkg", cause: new Error("renderer exploded") });
+				},
+			}),
+		).rejects.toBeInstanceOf(OgGenerateError);
+		const errors = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.errors));
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({ source: "meta", code: "og-generate-failed" });
+		expect(errors[0]?.text).toContain("renderer exploded");
 	});
 });
