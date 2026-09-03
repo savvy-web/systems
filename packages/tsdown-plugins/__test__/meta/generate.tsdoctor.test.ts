@@ -61,7 +61,9 @@ async function decodeAt(path: string): Promise<unknown> {
 	return Effect.runPromise(decodeBundleManifest(JSON.parse(readFileSync(path, "utf-8"))));
 }
 
-describe("generateMeta tsdoctor sidecar", () => {
+// Every case here runs a real API Extractor pass (about 1.5s locally, slower on CI runners), and the
+// stale-cleanup case runs three, so the 5s default is too tight for the suite.
+describe("generateMeta tsdoctor sidecar", { timeout: 60_000 }, () => {
 	it("writes tsdoctor.json for a private package from config and project tiers and copies it to localPaths", async () => {
 		const s = scaffold({ private: true });
 		await generateMeta({
