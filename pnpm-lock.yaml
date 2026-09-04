@@ -458,7 +458,7 @@ importers:
         specifier: catalog:effected
         version: 0.5.0(effect@4.0.0-rc.109)
       '@modelcontextprotocol/inspector':
-        specifier: ^2.4.0
+        specifier: ^2.5.0
         version: 2.5.0(@modelcontextprotocol/sdk@1.30.0(supports-color@8.1.1)(zod@4.5.4))(@types/node@26.4.1)(@types/react@19.2.18)(esbuild@0.28.2)(express@5.2.1(supports-color@8.1.1))(jiti@2.7.0)(react-dom@19.2.8(react@19.2.8))(supports-color@8.1.1)(tsx@4.23.13)
       '@savvy-web/bundler':
         specifier: workspace:*
