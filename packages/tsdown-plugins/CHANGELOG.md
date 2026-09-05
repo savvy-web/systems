@@ -1,5 +1,25 @@
 # @savvy-web/tsdown-plugins
 
+## 2.6.1
+
+### Bug Fixes
+
+- `resolveNextVersions` no longer seeds a version-less workspace member into its `versions` map with a fabricated current version — there is nothing to seed. A changeset that bumps such a package still overlays its `newVersion` as before. [#605][#605]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.18.3 | ^0.19.0 |
+
+[#605][#605]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#605]: https://github.com/savvy-web/systems/pull/605
+
 ## 2.6.0
 
 ### Features
