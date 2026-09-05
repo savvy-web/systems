@@ -724,3 +724,49 @@ describe("VersionFiles.processVersionFiles", () => {
 		}),
 	);
 });
+
+describe("VersionFiles.processResolvedVersionFiles", () => {
+	const scope = (version: string | undefined) => ({
+		name: "@scope/pkg",
+		workspaceDir: "/project/package",
+		...(version !== undefined ? { version } : {}),
+		additionalScopes: [] as ReadonlyArray<string>,
+		additionalScopeFiles: [] as ReadonlyArray<string>,
+		versionFiles: [{ glob: "plugin.json", paths: ["$.version"], matchedFiles: ["/project/plugin.json"] }] as const,
+	});
+
+	it.effect("stamps the scope version into every matched target", () =>
+		Effect.gen(function* () {
+			const result = yield* withVolume(
+				{ "/project/plugin.json": '{\n\t"version": "0.0.0"\n}\n' },
+				Effect.gen(function* () {
+					const updates = yield* VersionFiles.processResolvedVersionFiles([scope("1.2.0")], false);
+					return { updates, written: yield* readBack("/project/plugin.json") };
+				}),
+			);
+
+			expect(result.updates).toHaveLength(1);
+			expect(result.updates[0].version).toBe("1.2.0");
+			expect(result.written).toContain('"1.2.0"');
+		}),
+	);
+
+	// A manifest with no `version` is a legal workspace member as of @effected/workspaces 0.19.0
+	// (the `missingVersion` discovery failure was retired). There is no version to stamp, so the
+	// target must be left exactly as it was rather than written with a fabricated one.
+	it.effect("leaves targets untouched for a scope whose manifest declares no version", () =>
+		Effect.gen(function* () {
+			const original = '{\n\t"version": "0.0.0"\n}\n';
+			const result = yield* withVolume(
+				{ "/project/plugin.json": original },
+				Effect.gen(function* () {
+					const updates = yield* VersionFiles.processResolvedVersionFiles([scope(undefined)], false);
+					return { updates, written: yield* readBack("/project/plugin.json") };
+				}),
+			);
+
+			expect(result.updates).toHaveLength(0);
+			expect(result.written).toBe(original);
+		}),
+	);
+});

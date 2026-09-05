@@ -510,10 +510,15 @@ export class VersionFiles {
 			const updates: VersionFileUpdate[] = [];
 
 			for (const scope of scopes) {
+				// A scope whose manifest declares no `version` has nothing to stamp. Writing anything
+				// here would fabricate a version the package never claimed, so its targets are left
+				// untouched and contribute no update.
+				if (scope.version === undefined) continue;
+				const version = scope.version;
 				for (const vf of scope.versionFiles) {
 					const jsonPaths = vf.paths.length > 0 ? vf.paths : ["$.version"];
 					for (const filePath of vf.matchedFiles) {
-						const result = yield* VersionFiles.applyOne(filePath, jsonPaths, scope.version, dryRun);
+						const result = yield* VersionFiles.applyOne(filePath, jsonPaths, version, dryRun);
 						if (result) {
 							updates.push(result);
 						}

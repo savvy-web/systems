@@ -14,7 +14,8 @@ import { Effect, Schema, SchemaGetter } from "effect";
 /** A flattened, non-recursive summary of one analyzed workspace. */
 export const WorkspaceSummary = Schema.Struct({
 	name: Schema.String,
-	version: Schema.String,
+	/** Absent when the manifest declares no `version` — legal for a private package or root. */
+	version: Schema.optional(Schema.String),
 	path: Schema.String,
 	root: Schema.Boolean,
 	publishable: Schema.Boolean,
@@ -47,7 +48,7 @@ export type WorkspaceInfoResultType = Schema.Schema.Type<typeof WorkspaceInfoRes
 
 const toSummary = (w: AnalyzedWorkspace): Schema.Schema.Type<typeof WorkspaceSummary> => ({
 	name: w.name,
-	version: w.version.current,
+	...(w.version.current !== undefined ? { version: w.version.current } : {}),
 	path: w.path,
 	root: w.root,
 	publishable: w.publishable,
@@ -87,7 +88,7 @@ export const formatWorkspaceInfoMarkdown = (data: WorkspaceInfoResultType): stri
 		"| --- | --- | --- | --- | --- | --- |",
 	];
 	for (const w of data.workspaces) {
-		lines.push(`| ${w.name} | ${w.version} | ${w.publishable} | ${w.versioned} | ${w.tagged} | ${w.released} |`);
+		lines.push(`| ${w.name} | ${w.version ?? "—"} | ${w.publishable} | ${w.versioned} | ${w.tagged} | ${w.released} |`);
 	}
 	return lines.join("\n");
 };

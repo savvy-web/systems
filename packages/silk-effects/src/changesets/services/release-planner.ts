@@ -374,7 +374,11 @@ function previewEffect(
 }
 
 /** Re-read a package's version from disk (post-bump) to feed versionFiles; unreadable/unparseable falls back. */
-function diskVersion(workspaceDir: string, fallback: string, fs: FileSystem.FileSystem): Effect.Effect<string> {
+function diskVersion(
+	workspaceDir: string,
+	fallback: string | undefined,
+	fs: FileSystem.FileSystem,
+): Effect.Effect<string | undefined> {
 	return fs.readFileString(join(workspaceDir, "package.json")).pipe(
 		Effect.flatMap((raw) => Effect.try(() => (JSON.parse(raw) as { version?: string }).version ?? fallback)),
 		Effect.orElseSucceed(() => fallback),
