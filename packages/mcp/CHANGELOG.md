@@ -1,5 +1,30 @@
 # @savvy-web/mcp
 
+## 2.7.0
+
+### Features
+
+- `workspace_info`'s `WorkspaceSummary.version` and the `changeset_inspect` package listing now treat a version-less workspace member as a normal result instead of an error, following `@effected/workspaces` 0.19.0's retirement of the `missingVersion` discovery failure.
+
+- `WorkspaceSummary.version` is now optional; the `workspace_info` markdown table renders an em dash (`—`) for a package with no version
+
+- `changeset_inspect`'s markdown omits the `(version)` parenthetical after a package name when it has none [#605][#605]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.18.3 | ^0.19.0 |
+| @savvy-web/silk-effects | dependency | updated | 7.3.2 | 7.4.0 |
+
+[#605][#605]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#605]: https://github.com/savvy-web/systems/pull/605
+
 ## 2.6.10
 
 ### Documentation

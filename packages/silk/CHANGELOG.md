@@ -1,5 +1,24 @@
 # @savvy-web/silk
 
+## 3.11.7
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.18.3 | ^0.19.0 |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli | dependency | updated | 2.9.2 | 2.9.3 |
+| @savvy-web/mcp | dependency | updated | 2.6.10 | 2.7.0 |
+
+[#605][#605]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#605]: https://github.com/savvy-web/systems/pull/605
+
 ## 3.11.6
 
 ### Dependencies
