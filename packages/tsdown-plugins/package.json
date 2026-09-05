@@ -30,7 +30,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@changesets/get-release-plan": "^5.0.0",
+		"@changesets/get-release-plan": "^5.0.1",
 		"@effect/platform-node": "catalog:effect",
 		"@effected/npm": "catalog:effected",
 		"@effected/package-json": "catalog:effected",
