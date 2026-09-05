@@ -13,8 +13,10 @@
  * deliberately parameterized per file rather than a preset member, allowing
  * callers to decide which version blocks need maintenance notes.
  *
- * The plugin checks whether a version block is structurally empty (contains no
- * content between its heading and the next version heading). If empty, it inserts
+ * The plugin checks whether a version block is empty — either no content between
+ * its heading and the next version heading, or nothing but the
+ * `No changes in this release.` placeholder `@changesets/apply-release-plan`
+ * (>= 8.1.0) emits for such a block, which the note replaces. If empty, it inserts
  * a `### Maintenance` heading followed by a list item with a descriptive
  * paragraph. The paragraph text varies by {@link MaintenanceReason.kind}:
  *
@@ -51,10 +53,26 @@
  */
 
 import type { Heading, List, Paragraph, PhrasingContent, Root } from "mdast";
+import { toString as mdastToString } from "mdast-util-to-string";
 import type { Plugin } from "unified";
 
 import type { MaintenanceReason } from "../../services/maintenance-reason.js";
+import type { VersionBlock } from "../../utils/version-blocks.js";
 import { getHeadingText, getVersionBlocks } from "../../utils/version-blocks.js";
+
+/**
+ * Placeholder sentence `@changesets/apply-release-plan` (>= 8.1.0) emits as the
+ * body of a version block that would otherwise render as a bare heading. Older
+ * engine versions left such a block structurally empty.
+ */
+const ENGINE_PLACEHOLDER = "No changes in this release.";
+
+/** True when the block's only content is the engine's empty-release placeholder. */
+function isPlaceholderOnly(tree: Root, block: VersionBlock): boolean {
+	if (block.endIndex - block.startIndex !== 1) return false;
+	const node = tree.children[block.startIndex];
+	return node.type === "paragraph" && mdastToString(node).trim() === ENGINE_PLACEHOLDER;
+}
 
 /**
  * Options for {@link MaintenanceNotePlugin}.
@@ -93,10 +111,13 @@ export const MaintenanceNotePlugin: Plugin<[MaintenanceNoteOptions], Root> = (op
 			(b) => getHeadingText(tree.children[b.headingIndex] as Heading) === options.version,
 		);
 		if (!block) return;
-		// Only act on a structurally empty block: a dep-bump-only release also
-		// has zero changesets but carries a Dependencies section; and once the
-		// note exists the block is non-empty, making the plugin idempotent.
-		if (block.endIndex > block.startIndex) return;
+		// Only act on an empty block: a dep-bump-only release also has zero
+		// changesets but carries a Dependencies section; and once the note exists
+		// the block is non-empty, making the plugin idempotent. "Empty" means
+		// either no content at all or nothing but the engine's placeholder
+		// sentence, which replaces the note rather than sitting beside it.
+		const placeholderOnly = isPlaceholderOnly(tree, block);
+		if (block.endIndex > block.startIndex && !placeholderOnly) return;
 
 		const heading: Heading = { type: "heading", depth: 3, children: [{ type: "text", value: "Maintenance" }] };
 		const paragraph: Paragraph = { type: "paragraph", children: buildNoteChildren(options.reason) };
@@ -106,6 +127,6 @@ export const MaintenanceNotePlugin: Plugin<[MaintenanceNoteOptions], Root> = (op
 			spread: false,
 			children: [{ type: "listItem", spread: false, children: [paragraph] }],
 		};
-		tree.children.splice(block.startIndex, 0, heading, list);
+		tree.children.splice(block.startIndex, placeholderOnly ? 1 : 0, heading, list);
 	};
 };

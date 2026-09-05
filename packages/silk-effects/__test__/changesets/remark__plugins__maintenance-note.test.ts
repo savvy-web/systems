@@ -52,6 +52,18 @@ describe("maintenance-note", () => {
 		expect(result).toContain("Version-only release to keep workspace versions consistent");
 	});
 
+	it("replaces the engine's empty-release placeholder with the note", () => {
+		const result = transform("# pkg\n\n## 2.3.1\n\nNo changes in this release.\n", fixedReason);
+		expect(result).toContain("### Maintenance");
+		expect(result).toContain("`@savvy-web/fixed-2@2.3.1`");
+		expect(result).not.toContain("No changes in this release.");
+	});
+
+	it("is idempotent over a placeholder block", () => {
+		const once = transform("## 2.3.1\n\nNo changes in this release.\n", fixedReason);
+		expect(transform(once, fixedReason)).toBe(once);
+	});
+
 	it("no-ops when the version block has content", () => {
 		const md =
 			"## 2.3.1\n\n### Dependencies\n\n| Dependency | Type | Action | From | To |\n| --- | --- | --- | --- | --- |\n| foo | dependency | updated | 1.0.0 | 1.1.0 |\n";
