@@ -4,6 +4,8 @@
 
 ## Features
 
-### Dogfood Protocol Treats Counterpart ID as the Journal Key
+### Simultaneous Loops Against One Counterpart
 
-Two active loops with the same counterpart collided into one state stream. This made status/monitor/guard behavior ambiguous and forced cross-loop event mixing.
+The dogfood journal is now `.claude/dogfood/<counterpart-id>[.<loop-id>].jsonl`, so a counterpart can host two concurrent loops without their state streams colliding. Mail frontmatter gains an optional `loop:` key that routes an inbound file to the matching journal; omitting it preserves the existing single-loop behavior.
+
+Mail that carries no `loop:` key in a mailbox serving several loops is judged against the earliest watermark among that counterpart's journals, so an archive from a previous collaboration is never re-announced when a second loop opens.
