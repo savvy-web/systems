@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.32.0
+
+### Maintenance
+
+- Updates all catalog versions.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.31.2
 
 ### Dependencies
@@ -709,7 +719,7 @@ packages updated to latest compatible versions anchored on `effect@3.21.0`.
   @effect/printer-ansi, @effect/typeclass, @effect/language-service,
   @effect/cluster, @effect/rpc, @effect/sql.
 
-silkPeers uses \>= floor ranges for 0.x @effect/\* packages to correctly handle
+silkPeers uses >= floor ranges for 0.x @effect/\* packages to correctly handle
 semver caret behavior on pre-1.0 versions.
 
 ## 0.8.0
