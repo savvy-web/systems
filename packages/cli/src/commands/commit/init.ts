@@ -7,12 +7,14 @@ import { chmod } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Section, SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
 import { CommentStyle, ManagedSection, SectionId } from "@effected/templates";
+import type { SavvyInstallHook } from "@savvy-web/silk-effects";
 import {
 	SavvyBaseSection,
 	SavvyHooksSection,
 	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
+	savvyInstallBlock,
 	savvyToolSection,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
@@ -38,6 +40,18 @@ export const SECTION_DEF: SectionId = SectionId.make({ key: "SAVVY-COMMIT", comm
 /** Header written when creating a fresh commit-msg hook. */
 const COMMIT_MSG_HEADER =
 	"#!/usr/bin/env sh\n# Commit-msg hook with savvy managed sections\n# Custom hooks can go above, below, or between the managed sections\n\n";
+
+/**
+ * The hygiene hooks, each paired with the install variant it should carry.
+ *
+ * `undefined` means the hook gets hygiene only — post-commit fires on every
+ * commit, where neither a drift warning nor an install is worth the noise.
+ */
+const HYGIENE_HOOKS = [
+	[POST_CHECKOUT_HOOK_PATH, "post-checkout"],
+	[POST_MERGE_HOOK_PATH, "post-merge"],
+	[POST_COMMIT_HOOK_PATH, undefined],
+] as const satisfies ReadonlyArray<readonly [string, SavvyInstallHook | undefined]>;
 
 /** Header written when creating a fresh hygiene hook (post-checkout / post-merge / post-commit). */
 const HYGIENE_HEADER =
@@ -151,15 +165,18 @@ export function runCommitInit(opts: {
 		);
 
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene.
-		// post-checkout and post-merge additionally carry the savvy-toolchain drift check —
-		// they fire exactly when a pin bump or branch switch can make the local package
-		// manager stale. post-commit does not: it fires on every commit, which is noisier
-		// than the drift warrants.
-		for (const hookPath of [POST_CHECKOUT_HOOK_PATH, POST_MERGE_HOOK_PATH, POST_COMMIT_HOOK_PATH]) {
+		// post-checkout and post-merge additionally carry the savvy-toolchain drift check
+		// and the savvy-install dependency sync — they fire exactly when a pin bump or an
+		// incoming lockfile can leave the local tree behind. post-commit carries neither:
+		// it fires on every commit, which is noisier than either is worth. The paired
+		// SavvyInstallHook is what tells the install block which arguments git will hand
+		// it, so it travels with the path rather than being re-derived inside the loop.
+		for (const [hookPath, installHook] of HYGIENE_HOOKS) {
 			yield* ensureHookFile(hookPath, HYGIENE_HEADER);
 			const sections = [SavvyHooksSection.section(savvyHooksHygiene())];
-			if (hookPath !== POST_COMMIT_HOOK_PATH) {
+			if (installHook !== undefined) {
 				sections.push(SavvyToolchainSection.section(savvyToolchainCheck()));
+				sections.push(savvyInstallBlock(installHook));
 			}
 			yield* ms.syncAll(hookPath, sections);
 			yield* makeExecutable(hookPath);

@@ -16,6 +16,7 @@ import {
 	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
+	savvyInstallBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Option } from "effect";
@@ -215,8 +216,22 @@ export function runCommitCheck(): Effect.Effect<
 				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} section not found (run 'savvy init' to add)`);
 			}
 
-			// post-commit carries hygiene only; the other two also carry savvy-toolchain.
+			// post-commit carries hygiene only; the other two also carry savvy-toolchain
+			// and savvy-install. The install block differs per hook, so which one is
+			// checked has to follow the path.
 			if (hookPath === POST_COMMIT_HOOK_PATH) continue;
+			const installHook = hookPath === POST_CHECKOUT_HOOK_PATH ? "post-checkout" : "post-merge";
+			const installStatus = yield* ms.check(hookPath, savvyInstallBlock(installHook));
+			if (CheckOutcome.$is("UpToDate")(installStatus)) {
+				yield* Effect.log(`${CHECK_MARK} Dependency install: ${hookPath}`);
+			} else if (CheckOutcome.$is("Drifted")(installStatus)) {
+				sectionsHealthy = false;
+				yield* Effect.log(`${WARNING} Dependency install: ${hookPath} outdated (run 'savvy init' to update)`);
+			} else {
+				sectionsHealthy = false;
+				yield* Effect.log(`${BULLET} Dependency install: ${hookPath} section not found (run 'savvy init' to add)`);
+			}
+
 			const toolchainStatus = yield* ms.check(hookPath, SavvyToolchainSection.section(savvyToolchainCheck()));
 			if (CheckOutcome.$is("UpToDate")(toolchainStatus)) {
 				yield* Effect.log(`${CHECK_MARK} Toolchain check: ${hookPath}`);

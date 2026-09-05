@@ -29,6 +29,8 @@ const END_LINT = "# --- END SAVVY-LINT MANAGED SECTION ---";
 const BEGIN_HOOKS = "# --- BEGIN SAVVY-HOOKS MANAGED SECTION ---";
 const BEGIN_TOOLCHAIN = "# --- BEGIN SAVVY-TOOLCHAIN MANAGED SECTION ---";
 const END_TOOLCHAIN = "# --- END SAVVY-TOOLCHAIN MANAGED SECTION ---";
+const BEGIN_INSTALL = "# --- BEGIN SAVVY-INSTALL MANAGED SECTION ---";
+const END_INSTALL = "# --- END SAVVY-INSTALL MANAGED SECTION ---";
 const END_HOOKS = "# --- END SAVVY-HOOKS MANAGED SECTION ---";
 
 describe("savvyLintBlock", () => {
@@ -153,6 +155,36 @@ describe("runLintInit Effect program", () => {
 			const postCommit = readFileSync(join(testDir, ".husky/post-commit"), "utf8");
 			expect(postCommit).toContain(BEGIN_HOOKS);
 			expect(postCommit).not.toContain(BEGIN_TOOLCHAIN);
+		}),
+	);
+
+	it.effect("writes savvy-install into post-checkout and post-merge but not post-commit", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
+
+			// The two hooks get DIFFERENT install blocks: post-checkout is handed the
+			// commit pair and the branch flag, post-merge has to recover its range from
+			// ORIG_HEAD. Asserting the shared marker alone would pass with both hooks
+			// carrying the same wrong variant.
+			const postCheckout = readFileSync(join(testDir, ".husky/post-checkout"), "utf8");
+			expect(postCheckout).toContain(BEGIN_INSTALL);
+			expect(postCheckout).toContain(END_INSTALL);
+			expect(postCheckout).toContain('[ "$3" = "1" ]');
+			expect(postCheckout).not.toContain("ORIG_HEAD");
+
+			const postMerge = readFileSync(join(testDir, ".husky/post-merge"), "utf8");
+			expect(postMerge).toContain(BEGIN_INSTALL);
+			expect(postMerge).toContain("ORIG_HEAD");
+			expect(postMerge).not.toContain('[ "$3" = "1" ]');
+
+			// post-commit fires on every commit; an install there would be intolerable.
+			const postCommit = readFileSync(join(testDir, ".husky/post-commit"), "utf8");
+			expect(postCommit).not.toContain(BEGIN_INSTALL);
 		}),
 	);
 

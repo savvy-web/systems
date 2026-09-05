@@ -4,21 +4,25 @@
  * @internal
  */
 import { chmod } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import type { SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
 import { ManagedSection } from "@effected/templates";
 import { WorkspaceDiscovery } from "@effected/workspaces";
+import type { SavvyInstallHook } from "@savvy-web/silk-effects";
 import {
 	BiomeSchemaSync,
+	LIFECYCLE_SCRIPTS_CONFIG_KEY,
 	Lint,
 	SavvyBaseSection,
 	SavvyHooksSection,
 	SavvyToolchainSection,
+	publishesBuiltLinkDirectory,
 	savvyBasePreamble,
 	savvyHooksHygiene,
+	savvyInstallBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem } from "effect";
@@ -43,6 +47,18 @@ type PresetType = "minimal" | "standard" | "silk";
 /** Header written when creating a fresh pre-commit hook. */
 const PRE_COMMIT_HEADER =
 	"#!/usr/bin/env sh\n# Pre-commit hook with savvy managed sections\n# Custom hooks can go above, below, or between the managed sections\n\n";
+
+/**
+ * The hygiene hooks, each paired with the install variant it should carry.
+ *
+ * `undefined` means the hook gets hygiene only — post-commit fires on every
+ * commit, where neither a drift warning nor an install is worth the noise.
+ */
+const HYGIENE_HOOKS = [
+	[Lint.POST_CHECKOUT_HOOK_PATH, "post-checkout"],
+	[Lint.POST_MERGE_HOOK_PATH, "post-merge"],
+	[Lint.POST_COMMIT_HOOK_PATH, undefined],
+] as const satisfies ReadonlyArray<readonly [string, SavvyInstallHook | undefined]>;
 
 /** Header written when creating a fresh hygiene hook (post-checkout / post-merge / post-commit). */
 const HYGIENE_HEADER =
@@ -210,6 +226,44 @@ function biomeConfigRoots(): Effect.Effect<ReadonlyArray<string>, never, Workspa
 }
 
 /**
+ * Point out that this workspace needs lifecycle scripts, and how to allow them.
+ *
+ * @remarks
+ * The `savvy-install` hook block skips lifecycle scripts unless the LOCAL git
+ * config key authorizes them. A workspace publishing through built link
+ * directories cannot survive that default — its own workspace links resolve
+ * through directories a `prepare` script produces — so it has to be told.
+ *
+ * This reports and does not set. Enabling scripts means every later hook-time
+ * install may execute code from whatever revision was just checked out, which is
+ * a trust decision belonging to the person who owns the checkout, not to a
+ * command they ran to write some config files. Setting it for them silently
+ * would give back most of what reading the flag from local config bought.
+ *
+ * Every failure reads as "say nothing": an unreadable or malformed manifest
+ * cannot make the notice wrong, only absent.
+ */
+function noticeLifecycleScripts(): Effect.Effect<void, never, FileSystem.FileSystem | WorkspaceDiscovery> {
+	return Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const roots = yield* biomeConfigRoots();
+		for (const root of roots) {
+			const manifest = yield* fs.readFileString(join(root, "package.json")).pipe(
+				Effect.map((raw) => JSON.parse(raw) as unknown),
+				Effect.catch(() => Effect.succeed(undefined)),
+			);
+			if (publishesBuiltLinkDirectory(manifest)) {
+				yield* Effect.log(
+					`${WARNING} This workspace publishes through built link directories, so a hook-time install must run lifecycle scripts.`,
+				);
+				yield* Effect.log(`   Allow them with: git config --local ${LIFECYCLE_SCRIPTS_CONFIG_KEY} true`);
+				return;
+			}
+		}
+	});
+}
+
+/**
  * Find and sync biome config `$schema` URLs to match the pinned {@link BIOME_VERSION}.
  *
  * @remarks
@@ -325,23 +379,28 @@ export function runLintInit(opts: {
 		);
 
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene (when preset enables it).
-		// post-checkout and post-merge additionally carry the savvy-toolchain drift check —
-		// they fire exactly when a pin bump or branch switch can make the local package
-		// manager stale. post-commit does not: it fires on every commit, which is noisier
-		// than the drift warrants.
+		// post-checkout and post-merge additionally carry the savvy-toolchain drift check
+		// and the savvy-install dependency sync — they fire exactly when a pin bump or an
+		// incoming lockfile can leave the local tree behind. post-commit carries neither:
+		// it fires on every commit, which is noisier than either is worth.
 		if (presetIncludesShellScripts(preset)) {
-			for (const hookPath of [Lint.POST_CHECKOUT_HOOK_PATH, Lint.POST_MERGE_HOOK_PATH, Lint.POST_COMMIT_HOOK_PATH]) {
+			for (const [hookPath, installHook] of HYGIENE_HOOKS) {
 				yield* ensureHookFile(hookPath, HYGIENE_HEADER);
 				// Migrate legacy SAVVY-LINT hygiene section if present.
 				yield* ms.remove(hookPath, Lint.LegacySavvyLintHygieneDef);
 				const sections = [SavvyHooksSection.section(savvyHooksHygiene())];
-				if (hookPath !== Lint.POST_COMMIT_HOOK_PATH) {
+				if (installHook !== undefined) {
 					sections.push(SavvyToolchainSection.section(savvyToolchainCheck()));
+					sections.push(savvyInstallBlock(installHook));
 				}
 				yield* ms.syncAll(hookPath, sections);
 				yield* makeExecutable(hookPath);
 				yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
 			}
+		}
+
+		if (presetIncludesShellScripts(preset)) {
+			yield* noticeLifecycleScripts();
 		}
 
 		// Write markdownlint config (when preset includes Markdown)
