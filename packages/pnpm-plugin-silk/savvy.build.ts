@@ -9,17 +9,17 @@ await build({
 				build: {
 					packages: {
 						"@tsdown/exe": {
-							range: "^0.22.14",
-							peer: "^0.22.0",
+							range: "^0.23.0",
+							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
 						"@tsdown/css": {
-							range: "^0.22.14",
-							peer: "^0.22.0",
+							range: "^0.23.0",
+							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.1",
+							range: "^2.2.3",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -29,7 +29,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.4.0",
+							range: "^26.4.1",
 							peer: "^26.4.0",
 							strategy: "lock-minor",
 						},
@@ -39,7 +39,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@types/react-dom": {
-							range: "^19.2.5",
+							range: "^19.2.7",
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
@@ -54,13 +54,13 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.6",
+							range: "^1.2.7",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
 						tsdown: {
-							range: "^0.22.14",
-							peer: "^0.22.0",
+							range: "^0.23.0",
+							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
 						typescript: {
@@ -88,7 +88,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.4.0",
+							range: "^26.4.1",
 							peer: "^26.4.0",
 							strategy: "lock-minor",
 						},
@@ -98,7 +98,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@types/react-dom": {
-							range: "^19.2.5",
+							range: "^19.2.7",
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
@@ -137,8 +137,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.11",
-							peer: "2.5.11",
+							range: "2.5.12",
+							peer: "2.5.12",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -191,7 +191,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.4.0",
+							range: "^26.4.1",
 							peer: "^26.4.0",
 							strategy: "lock-minor",
 						},
@@ -201,7 +201,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@types/react-dom": {
-							range: "^19.2.5",
+							range: "^19.2.7",
 							peer: "^19.2.0",
 							strategy: "lock-minor",
 						},
