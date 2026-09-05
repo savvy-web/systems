@@ -1,5 +1,22 @@
 # @savvy-web/templates
 
+## 1.1.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/yaml | dependency | updated | ^0.12.0 | ^0.13.0 |
+
+[#612][#612]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#612]: https://github.com/savvy-web/systems/pull/612
+
 ## 1.1.4
 
 ### Dependencies
