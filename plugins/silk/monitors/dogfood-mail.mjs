@@ -232,34 +232,38 @@ export function diagnose(current, prev) {
 		const mailboxNext = new Map();
 
 		for (const file of mailbox.files) {
-			let journal = defaultJournal;
-			if (file.loop) {
-				journal =
-					journalsForCounterpart.find(
+			// `pinned` is the journal this file NAMES; `journal` is only the
+			// attribution hint behind the label. Keeping them apart is the whole
+			// point: a `loop:` key naming a journal that does not exist pins
+			// nothing and must not silently claim the file for the default loop,
+			// and a file with no `loop:` key at all is not pinned merely because
+			// a default happens to exist.
+			const pinned = file.loop
+				? (journalsForCounterpart.find(
 						(candidate) =>
 							candidate.id === file.loop ||
 							candidate.id === `${mailbox.id}.${file.loop}` ||
 							candidate.loopId === file.loop,
-					) ??
-					defaultJournal ??
-					null;
-			}
+					) ?? null)
+				: null;
+			const journal = pinned ?? defaultJournal;
 
-			// Mail that cannot be pinned to ONE journal -- a counterpart hosting
-			// several loops, none of them named for the counterpart itself, and a
-			// file carrying no `loop:` frontmatter (which is every file written
-			// before loop-scoped journals existed) -- is still attributable to the
-			// counterpart. Judge it against the LOWEST watermark among that
-			// counterpart's loops: it is new if it is new to at least one of them.
-			// A bare `journal?.loopStartedAtMs ?? 0` here would be the very 0 the
-			// note above warns against, replaying the whole archive (#344) on the
-			// first tick after a second loop opens.
+			// UNPINNED mail belongs to the counterpart, not to one loop -- which
+			// includes every file written before loop-scoped journals existed, so
+			// it is the migration path, not a corner case. It is judged against
+			// the LOWEST watermark among ALL that counterpart's journals (new if
+			// new to at least one loop) and its notified state is recorded under
+			// EVERY one of their ids.
 			//
-			// Its notification state is recorded under EVERY candidate journal id,
-			// because the journal loop below looks mail up by `journal.id` when
-			// suppressing a self-echoing turn flip (#339); a lone `mailbox.id` key
-			// would be invisible to that lookup for every loop-scoped journal.
-			const candidates = journal ? [journal] : journalsForCounterpart;
+			// Both halves have to key off `pinned`, not `journal`. Narrowing to
+			// the default whenever one exists is what made a bare `effected.jsonl`
+			// sitting beside `effected.loop-b.jsonl` record only under `effected`,
+			// so the turn-flip check below -- which looks mail up by `journal.id`
+			// -- missed it and re-fired for loop-b (#339). And a `?? 0` watermark
+			// here would be the very 0 the note above warns against, replaying a
+			// closed collaboration's archive (#344) the first tick after a second
+			// loop opens.
+			const candidates = pinned ? [pinned] : journalsForCounterpart;
 			const keys = candidates.length > 0 ? candidates.map((candidate) => candidate.id) : [mailbox.id];
 			const threshold = candidates.length > 0 ? Math.min(...candidates.map(thresholdFor)) : 0;
 

@@ -436,3 +436,97 @@ write_mail() {
 	[[ "$output" == *"TICK1:dogfood mail from effected: request (round 1) — Unrouted but genuinely new"* ]]
 	[[ "$output" == *"TICK2:0"* ]]
 }
+
+# --- mixed bare + loop-scoped journals: the migration shape -------------------
+# A counterpart that keeps its bare `<id>.jsonl` and opens `<id>.<loop>.jsonl`
+# beside it has a non-null defaultJournal, so an earlier fix that fanned out only
+# when NO default existed still narrowed unpinned mail to the bare journal. Every
+# existing loop migrates through exactly this shape, so it is the common path.
+
+@test "bare journal beside a loop-scoped one: unpinned mail suppresses loop-b's self-echo (issue #339)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-01-request-round-1.md" request 1 "Genuinely new inbound"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-08-02T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+
+	local harness="${BATS_TEST_TMPDIR}/mixed-echo.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+	const root = process.env.CLAUDE_PROJECT_DIR;
+	let prev = { journals: new Map(), mailboxes: new Map() };
+	const r1 = diagnose(await scan(), prev);
+	prev = r1.next;
+	for (const line of r1.lines) console.log("TICK1:" + line);
+	console.log("KEYS:" + [...prev.mailboxes.keys()].sort().join(","));
+
+	// loop-b's session records the mail the monitor just surfaced.
+	appendFileSync(
+		join(root, ".claude", "dogfood", "effected.loop-b.jsonl"),
+		JSON.stringify({
+			at: "2026-09-02T00:00:00Z",
+			event: "mail-received",
+			role: "upstream",
+			counterpart: { id: "effected", path: "../../x" },
+			phase: "adopting",
+			ball: "ours",
+			round: 1,
+			lastMail: { in: ".claude/dogfood/effected/2026-09-01-request-round-1.md" },
+		}) + "\n",
+	);
+
+	const r2 = diagnose(await scan(), prev);
+	console.log("TICK2:" + r2.lines.length);
+	for (const line of r2.lines) console.log("TICK2LINE:" + line);
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:dogfood mail from effected: request (round 1) — Genuinely new inbound"* ]]
+	[[ "$output" == *"KEYS:effected,effected.loop-b"* ]]
+	[[ "$output" == *"TICK2:0"* ]]
+}
+
+@test "bare journal beside a loop-scoped one: watermark is the earliest loop, not the default journal's" {
+	make_project >/dev/null
+	# The bare journal opened LAST, so judging unpinned mail by it alone would
+	# silence a file that is genuinely new to the older loop-b.
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-15-request-round-1.md" request 1 "New to loop-b, older than the bare loop"
+	touch -t 202607150000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-07-15-request-round-1.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-01-01-handoff-round-9.md" handoff 9 "Archived mail predating every loop"
+	touch -t 202601010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-01-01-handoff-round-9.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-01T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: request (round 1) — New to loop-b, older than the bare loop'* ]]
+	[[ "$output" != *"Archived mail predating every loop"* ]]
+}
+
+@test "loop: naming a journal that does not exist is not pinned to the default journal" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-01-findings-typo.md" findings 2 "Names a loop that is not there" loop-zzz
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-08-02T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+
+	local harness="${BATS_TEST_TMPDIR}/unmatched-loop.mjs"
+	cat > "$harness" <<-EOF
+	import { scan, diagnose } from "${MONITOR}";
+	const r = diagnose(await scan(), { journals: new Map(), mailboxes: new Map() });
+	for (const line of r.lines) console.log("LINE:" + line);
+	console.log("KEYS:" + [...r.next.mailboxes.keys()].sort().join(","));
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"LINE:dogfood mail from effected: findings (round 2) — Names a loop that is not there"* ]]
+	# unmatched loop: pins nothing, so it is recorded against every candidate
+	[[ "$output" == *"KEYS:effected,effected.loop-b"* ]]
+}
