@@ -18,6 +18,7 @@ import {
 	SavvyToolchainSection,
 	savvyBasePreamble,
 	savvyHooksHygiene,
+	savvyInstallBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Option } from "effect";
@@ -245,8 +246,10 @@ export function runLintCheck(opts: {
 			Lint.POST_COMMIT_HOOK_PATH,
 		] as const;
 		const shellHookStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
-		// post-commit carries hygiene only; the other two also carry savvy-toolchain.
+		// post-commit carries hygiene only; the other two also carry savvy-toolchain
+		// and savvy-install.
 		const toolchainStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
+		const installStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
 
 		for (const hookPath of shellHookPaths) {
 			const hookExists = yield* fs.exists(hookPath);
@@ -268,6 +271,23 @@ export function runLintCheck(opts: {
 			}
 
 			if (hookPath === Lint.POST_COMMIT_HOOK_PATH) continue;
+
+			// The install block differs per hook — the two are handed different
+			// arguments by git — so the variant checked has to follow the path.
+			const installHook = hookPath === Lint.POST_CHECKOUT_HOOK_PATH ? "post-checkout" : "post-merge";
+			const installResult = yield* ms.check(hookPath, savvyInstallBlock(installHook));
+			const installFound = !CheckOutcome.$is("Absent")(installResult);
+			const installUpToDate = CheckOutcome.$is("UpToDate")(installResult);
+			installStatuses.push({ path: hookPath, found: installFound, isUpToDate: installUpToDate });
+
+			if (!installFound) {
+				sectionsHealthy = false;
+				warnings.push(`${WARNING}  ${hookPath} has no savvy-install section.\n   Run 'savvy init' to add it.`);
+			} else if (!installUpToDate) {
+				sectionsHealthy = false;
+				warnings.push(`${WARNING}  ${hookPath} savvy-install section is outdated.\n   Run 'savvy init' to update.`);
+			}
+
 			const toolchainResult = yield* ms.check(hookPath, SavvyToolchainSection.section(savvyToolchainCheck()));
 			const toolchainFound = !CheckOutcome.$is("Absent")(toolchainResult);
 			const toolchainUpToDate = CheckOutcome.$is("UpToDate")(toolchainResult);
@@ -378,6 +398,17 @@ export function runLintCheck(opts: {
 				yield* Effect.log(`${CHECK_MARK} ${status.path}: up-to-date`);
 			} else {
 				yield* Effect.log(`${WARNING} ${status.path}: outdated (run 'savvy init' to update)`);
+			}
+		}
+
+		// Dependency-install statuses (post-checkout / post-merge only)
+		for (const status of installStatuses) {
+			if (!status.found) {
+				yield* Effect.log(`${BULLET} ${status.path}: savvy-install section not found`);
+			} else if (status.isUpToDate) {
+				yield* Effect.log(`${CHECK_MARK} ${status.path}: savvy-install up-to-date`);
+			} else {
+				yield* Effect.log(`${WARNING} ${status.path}: savvy-install outdated (run 'savvy init' to update)`);
 			}
 		}
 

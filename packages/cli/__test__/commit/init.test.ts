@@ -217,6 +217,32 @@ describe("runCommitInit Effect program", () => {
 		}),
 	);
 
+	it.effect("writes savvy-install into post-checkout and post-merge but not post-commit", () =>
+		Effect.gen(function* () {
+			const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
+			yield* Effect.provide(handler, TestLayer);
+
+			// The two hooks get DIFFERENT install blocks: post-checkout is handed the
+			// commit pair and the branch flag, post-merge has to recover its range from
+			// ORIG_HEAD. Asserting the shared marker alone would pass with both hooks
+			// carrying the same wrong variant.
+			const postCheckout = readFileSync(join(testDir, ".husky/post-checkout"), "utf8");
+			expect(postCheckout).toContain("# --- BEGIN SAVVY-INSTALL MANAGED SECTION ---");
+			expect(postCheckout).toContain('[ "$3" = "1" ]');
+			expect(postCheckout).toContain('install_from="$1"');
+			expect(postCheckout).not.toContain("ORIG_HEAD");
+
+			const postMerge = readFileSync(join(testDir, ".husky/post-merge"), "utf8");
+			expect(postMerge).toContain("# --- BEGIN SAVVY-INSTALL MANAGED SECTION ---");
+			expect(postMerge).toContain("ORIG_HEAD");
+			expect(postMerge).not.toContain('[ "$3" = "1" ]');
+
+			// post-commit fires on every commit; an install there would be intolerable.
+			const postCommit = readFileSync(join(testDir, ".husky/post-commit"), "utf8");
+			expect(postCommit).not.toContain("# --- BEGIN SAVVY-INSTALL MANAGED SECTION ---");
+		}),
+	);
+
 	it.effect("is idempotent across repeated runs", () =>
 		Effect.gen(function* () {
 			const handler = runCommitInit({ force: false, config: "commitlint.config.ts" });
