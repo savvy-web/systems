@@ -237,13 +237,17 @@ export function diagnose(current, prev) {
 		// purpose -- no delete, no archive step) drags the bar back to its own
 		// `loop-started` and replays both loops' archives (#344).
 		//
-		// Once EVERY loop for a counterpart is closed there is no live loop for
-		// mail to be new TO, so the whole mailbox goes quiescent and announces
-		// nothing -- which is what the pre-loop-scoped monitor already did via its
-		// single journal's `lastMail.in`. Falling back to the closed loops' own
-		// watermarks instead would hand the bar to the earliest dead loop and
-		// replay both archives; falling through to an empty candidate list would
-		// hand it a watermark of 0 and do the same. Both are #344.
+		// Once EVERY loop is closed the direction flips: the counterpart is judged
+		// against the HIGHEST watermark among its closed loops, not the lowest.
+		// Nothing any of them already processed can be new, but anything past all
+		// of them still is -- and a fresh `request` arriving on a closed
+		// collaboration is exactly how a session learns the counterpart wants to
+		// reopen, which `--init` needs a prompt for. Skipping the file instead
+		// swallowed that signal permanently: unannounced, it is also never
+		// recorded, so a later `loop-started` moves the mark past its mtime and it
+		// stays invisible. `unlinked` quiescence is scoped to the TURN alert
+		// (SKILL.md), not to inbound mail. For a single journal this is exactly
+		// the `lastMail.in` watermark the pre-loop-scoped monitor used.
 		//
 		// A counterpart with NO journal at all is a different case and keeps its
 		// existing behavior: nothing has been journaled yet, so every file is new.
@@ -272,7 +276,8 @@ export function diagnose(current, prev) {
 			// includes every file written before loop-scoped journals existed, so
 			// it is the migration path, not a corner case. It is judged against
 			// the LOWEST watermark among that counterpart's LIVE journals (new if
-			// new to at least one open loop) and its notified state is recorded
+			// new to at least one open loop -- see above for the all-closed case,
+			// where the rule inverts) and its notified state is recorded
 			// under EVERY one of their ids, on every tick it is above the mark.
 			//
 			// Both halves have to key off `pinned`, not `journal`. Narrowing to
@@ -283,10 +288,12 @@ export function diagnose(current, prev) {
 			// here would be the very 0 the note above warns against, replaying a
 			// closed collaboration's archive (#344) the first tick after a second
 			// loop opens.
-			if (allLoopsClosed && !pinned) continue;
-			const candidates = pinned ? [pinned] : liveJournals;
+			const fanOut = allLoopsClosed ? journalsForCounterpart : liveJournals;
+			const candidates = pinned ? [pinned] : fanOut;
 			const keys = candidates.length > 0 ? candidates.map((candidate) => candidate.id) : [mailbox.id];
-			const threshold = candidates.length > 0 ? Math.min(...candidates.map(thresholdFor)) : 0;
+			const watermarks = candidates.map(thresholdFor);
+			const threshold =
+				watermarks.length === 0 ? 0 : allLoopsClosed && !pinned ? Math.max(...watermarks) : Math.min(...watermarks);
 
 			const notifiedSets = keys.map((key) => {
 				let notified = mailboxNext.get(key);

@@ -556,7 +556,7 @@ write_mail() {
 	[[ "$output" != *"dogfood mail from"* ]]
 }
 
-@test "every loop for a counterpart closed: the mailbox is quiescent, not replayed" {
+@test "every loop closed: mail they already processed stays silent" {
 	make_project >/dev/null
 	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-03-01-handoff-round-9.md" handoff 9 "Archived mail from a closed loop"
 	touch -t 202603010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-03-01-handoff-round-9.md"
@@ -642,4 +642,41 @@ write_mail() {
 	[[ "$output" == *"TICK2:0"* ]]
 	[[ "$output" == *"LOOPB:2026-09-01-request-round-1.md"* ]]
 	[[ "$output" == *"TICK3:0"* ]]
+}
+
+@test "every loop closed: mail past what they processed IS announced, so the loop can be reopened" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-03-01-status-round-3.md" status 3 "Already processed before the exit"
+	touch -t 202603010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-03-01-status-round-3.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-04-request-round-1.md" request 1 "Fresh request to reopen"
+	touch -t 202609040000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-09-04-request-round-1.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-01-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-03-01T00:00:00Z","event":"mail-received","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"adopting","ball":"ours","round":3,"lastMail":{"in":".claude/dogfood/effected/2026-03-01-status-round-3.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-04-01T00:00:00Z","event":"unlinked","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":3,"lastMail":{"in":".claude/dogfood/effected/2026-03-01-status-round-3.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: request (round 1) — Fresh request to reopen'* ]]
+	[[ "$output" != *"Already processed before the exit"* ]]
+	# quiescence is scoped to the turn alert, which must stay silent
+	[[ "$output" != *"ball is ours"* ]]
+}
+
+@test "every loop closed with two journals: the highest watermark wins, not the earliest" {
+	make_project >/dev/null
+	# loop-b processed further than the bare loop; mail between the two marks is
+	# not new to loop-b, so taking the lowest mark would re-announce it.
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-05-01-status-round-2.md" status 2 "Between the two closed marks"
+	touch -t 202605010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-05-01-status-round-2.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-04-request-round-1.md" request 1 "Past both closed marks"
+	touch -t 202609040000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-09-04-request-round-1.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-04-01T00:00:00Z","event":"unlinked","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":2,"lastMail":{"in":".claude/dogfood/effected/2026-05-01-status-round-2.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-06-01T00:00:00Z","event":"unlinked","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":5,"lastMail":{"in":".claude/dogfood/effected/2026-09-04-request-round-1.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"dogfood mail from"* ]]
 }
