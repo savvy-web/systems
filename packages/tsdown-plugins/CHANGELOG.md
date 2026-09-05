@@ -1,5 +1,32 @@
 # @savvy-web/tsdown-plugins
 
+## 2.7.1
+
+### Bug Fixes
+
+- Fixed `generateBuildReportSchema()` throwing `is not a function` after `effect` 4.0.0-rc.112 removed `JsonSchema.resolveTopLevel$ref` from its public API. The top-level-`$ref` resolution it relied on is now implemented locally: a bare-`$ref` root is inlined from `#/$defs`, its now-redundant `$defs` entry is dropped, and any sibling keywords on the root are preserved.
+- Fixed an orphaned `$defs` entry in the generated schema: the root definition's key is now derived from the `$ref` string itself (with JSON-Pointer unescaping) instead of a hard-coded `"BuildReport"` name, which no longer matched the emitted `"BuildReportEncoded"` key. [#612][#612]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @changesets/get-release-plan | dependency | updated | ^5.0.0 | ^5.0.1 |
+| @effect/platform-node | dependency | updated | 4.0.0-rc.109 | 4.0.0-rc.112 |
+| @effected/npm | dependency | updated | ^0.12.1 | ^0.13.0 |
+| @effected/package-json | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/tsconfig-json | dependency | updated | ^0.7.0 | ^0.8.0 |
+| @effected/workspaces | dependency | updated | ^0.19.0 | ^0.20.0 |
+| effect | dependency | updated | 4.0.0-rc.109 | 4.0.0-rc.112 |
+
+[#612][#612]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#612]: https://github.com/savvy-web/systems/pull/612
+
 ## 2.7.0
 
 ### Dependencies

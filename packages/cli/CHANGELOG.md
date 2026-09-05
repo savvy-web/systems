@@ -1,5 +1,41 @@
 # @savvy-web/cli
 
+## 2.11.0
+
+### Features
+
+#### Dependency auto-install in managed hooks
+
+- `savvy lint init` and `savvy commit init` now write a `SAVVY-INSTALL` section into `.husky/post-checkout` and `.husky/post-merge` (never `post-commit`, which fires on every commit and would make the check too noisy to be useful). `post-merge` matters most in practice: a fast-forward `git pull` fires `post-merge` and never `post-checkout`, so the pull case only works because the section goes into both.
+
+- `savvy lint check` and `savvy commit check` now report the section's status alongside the existing savvy-toolchain drift check, flagging when it is missing or outdated and pointing back to `savvy init`.
+
+- `savvy lint init` additionally reports when the workspace publishes through built link directories, naming the `git config --local savvy.installLifecycleScripts true` command that lets a hook-time install run lifecycle scripts. It reports rather than sets: enabling that means later hook installs may execute code from whatever revision was checked out, which is the checkout owner's decision to make. [#610][#610]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | 4.0.0-rc.109 | 4.0.0-rc.112 |
+| @effected/commands | dependency | updated | ^0.5.0 | ^0.6.0 |
+| @effected/git | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/jsonc | dependency | updated | ^0.8.1 | ^0.9.0 |
+| @effected/templates | dependency | updated | ^0.4.0 | ^0.5.0 |
+| @effected/workspaces | dependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/yaml | dependency | updated | ^0.12.0 | ^0.13.0 |
+| @savvy-web/silk-effects | dependency | updated | 7.4.0 | 7.5.0 |
+| effect | dependency | updated | 4.0.0-rc.109 | 4.0.0-rc.112 |
+
+[#612][#612]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) and [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#610]: https://github.com/savvy-web/systems/pull/610
+
+[#612]: https://github.com/savvy-web/systems/pull/612
+
 ## 2.10.0
 
 ### Features
