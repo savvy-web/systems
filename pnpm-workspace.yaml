@@ -127,7 +127,7 @@ catalogs:
     "@vitest/coverage-v8": ^4.1.0
     vitest: ^4.1.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.6.19+sha512-SPuxsvaaFMSM7yrf+mDv/R0ApNKX6thXdLRy4DfpGDD/M2YW2S9Pus4Fx3MSrj9CXoWqudYw2GnSptxNH86J9w==
+  "@effected/pnpm-plugin-effect": 0.7.0+sha512-p8/hnp+8yDyUWJBVjXbsNCF1K6XGrxfHH+eh86Vm142C/Rtx09JU7WArjaoM0tMSi5xt0vBQ7lEY9Aq1T+cxJQ==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info

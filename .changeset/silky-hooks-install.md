@@ -34,3 +34,7 @@ The decision deliberately does not read the checked-out tree, which failed in bo
 Also adds `publishesBuiltLinkDirectory` and `LIFECYCLE_SCRIPTS_CONFIG_KEY` for consumers that want to detect the shape or name the key themselves.
 
 A fresh clone is not covered, and cannot be: husky sets `core.hooksPath` from its own `prepare` script, so until the first manual install runs there is no hook installed to fire.
+
+## Bug Fixes
+
+* `MaintenanceNotePlugin` now inserts its `### Maintenance` note into a version block whose only content is the `No changes in this release.` placeholder that `@changesets/apply-release-plan` (>= 8.1.0) added for an otherwise-empty release, splicing the note in place of the placeholder rather than leaving both — or, previously, neither — in the rendered changelog. Older engine versions left such a block structurally empty, which is still handled the same way, and the plugin remains idempotent once the note is present.

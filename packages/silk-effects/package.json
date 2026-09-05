@@ -30,11 +30,11 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@changesets/apply-release-plan": "^8.0.0",
+		"@changesets/apply-release-plan": "^8.1.0",
 		"@changesets/changelog-git": "^1.0.0",
 		"@changesets/config": "^4.0.0",
-		"@changesets/get-github-info": "^1.0.0",
-		"@changesets/get-release-plan": "^5.0.0",
+		"@changesets/get-github-info": "^1.0.1",
+		"@changesets/get-release-plan": "^5.0.1",
 		"@effected/github-references": "catalog:effected",
 		"@effected/glob": "catalog:effected",
 		"@effected/jsonc": "catalog:effected",
