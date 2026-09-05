@@ -229,6 +229,26 @@ export function diagnose(current, prev) {
 		const defaultJournal =
 			journalsForCounterpart.find((journal) => journal.id === mailbox.id) ??
 			(journalsForCounterpart.length === 1 ? journalsForCounterpart[0] : null);
+		// A terminated loop is quiescent -- the turn-alert loop below already
+		// refuses to fire for one, and SKILL.md states the monitor skips terminal
+		// `unlinked` snapshots. The mail path has to agree: nothing can be new to
+		// a loop that is over, so a closed loop must not lower the counterpart's
+		// watermark. Left unfiltered, an `--exit`ed loop-scoped journal (kept on
+		// purpose -- no delete, no archive step) drags the bar back to its own
+		// `loop-started` and replays both loops' archives (#344).
+		//
+		// Once EVERY loop for a counterpart is closed there is no live loop for
+		// mail to be new TO, so the whole mailbox goes quiescent and announces
+		// nothing -- which is what the pre-loop-scoped monitor already did via its
+		// single journal's `lastMail.in`. Falling back to the closed loops' own
+		// watermarks instead would hand the bar to the earliest dead loop and
+		// replay both archives; falling through to an empty candidate list would
+		// hand it a watermark of 0 and do the same. Both are #344.
+		//
+		// A counterpart with NO journal at all is a different case and keeps its
+		// existing behavior: nothing has been journaled yet, so every file is new.
+		const liveJournals = journalsForCounterpart.filter((journal) => journal.snapshot?.phase !== "unlinked");
+		const allLoopsClosed = journalsForCounterpart.length > 0 && liveJournals.length === 0;
 		const mailboxNext = new Map();
 
 		for (const file of mailbox.files) {
@@ -251,9 +271,9 @@ export function diagnose(current, prev) {
 			// UNPINNED mail belongs to the counterpart, not to one loop -- which
 			// includes every file written before loop-scoped journals existed, so
 			// it is the migration path, not a corner case. It is judged against
-			// the LOWEST watermark among ALL that counterpart's journals (new if
-			// new to at least one loop) and its notified state is recorded under
-			// EVERY one of their ids.
+			// the LOWEST watermark among that counterpart's LIVE journals (new if
+			// new to at least one open loop) and its notified state is recorded
+			// under EVERY one of their ids, on every tick it is above the mark.
 			//
 			// Both halves have to key off `pinned`, not `journal`. Narrowing to
 			// the default whenever one exists is what made a bare `effected.jsonl`
@@ -263,7 +283,8 @@ export function diagnose(current, prev) {
 			// here would be the very 0 the note above warns against, replaying a
 			// closed collaboration's archive (#344) the first tick after a second
 			// loop opens.
-			const candidates = pinned ? [pinned] : journalsForCounterpart;
+			if (allLoopsClosed && !pinned) continue;
+			const candidates = pinned ? [pinned] : liveJournals;
 			const keys = candidates.length > 0 ? candidates.map((candidate) => candidate.id) : [mailbox.id];
 			const threshold = candidates.length > 0 ? Math.min(...candidates.map(thresholdFor)) : 0;
 
@@ -276,9 +297,18 @@ export function diagnose(current, prev) {
 				return notified;
 			});
 
-			if (file.mtimeMs > threshold && !notifiedSets.some((notified) => notified.has(file.name))) {
-				const fromLabel = journal && journal.id !== mailbox.id ? `${mailbox.id} (loop ${journal.id})` : mailbox.id;
-				lines.push(`dogfood mail from ${fromLabel}: ${file.kind} (round ${file.round}) — ${file.heading}`);
+			// Announce once, but record ALWAYS. A journal can appear after a file
+			// was first surfaced -- `--init` opening a second loop for mail the
+			// monitor just announced is the sequence this whole feature exists to
+			// enable -- and its notified set starts empty. Keeping the `add` inside
+			// the announce branch left that new key empty forever, because the
+			// `.some()` above correctly suppressed the re-announce, so the new
+			// loop's first `ball: ours` append fired a spurious turn alert (#339).
+			if (file.mtimeMs > threshold) {
+				if (!notifiedSets.some((notified) => notified.has(file.name))) {
+					const fromLabel = journal && journal.id !== mailbox.id ? `${mailbox.id} (loop ${journal.id})` : mailbox.id;
+					lines.push(`dogfood mail from ${fromLabel}: ${file.kind} (round ${file.round}) — ${file.heading}`);
+				}
 				for (const notified of notifiedSets) notified.add(file.name);
 			}
 		}
