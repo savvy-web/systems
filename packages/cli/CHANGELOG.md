@@ -1,5 +1,21 @@
 # @savvy-web/cli
 
+## 2.10.0
+
+### Features
+
+- Updates Biome schema to 2.5.12
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 7.4.0 | 7.4.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.9.3
 
 ### Dependencies
