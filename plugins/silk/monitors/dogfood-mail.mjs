@@ -5,7 +5,9 @@
 // -- no network, ever, per the spec's monitor rule:
 //
 //   1. Inbound mailboxes ".claude/dogfood/<counterpart-id>/*.md" -- files
-//      newer than the loop's journaled `lastMail.in`, not yet notified.
+//      newer than the loop's journaled `lastMail.in`, not yet notified. A
+//      mailbox can carry multiple loops with the same counterpart; frontmatter
+//      `loop:` disambiguates to ".claude/dogfood/<counterpart-id>.<loop>.jsonl".
 //   2. Journals ".claude/dogfood/*.jsonl" -- a new tail line (JSONL
 //      snapshot-lines; current state is the last VALID line) whose `ball` is
 //      "ours".
@@ -93,6 +95,7 @@ function parseMailFile(text) {
 	const headingMatch = /^#\s+(.+)$/m.exec(body);
 	return {
 		kind: frontmatter.kind ?? "?",
+		loop: frontmatter.loop ?? "",
 		round: frontmatter.round ?? "?",
 		heading: headingMatch ? headingMatch[1].trim() : "(no heading)",
 	};
@@ -109,7 +112,25 @@ async function scanJournals() {
 		try {
 			const text = await readFile(path, "utf8");
 			const snapshot = lastValidJsonlLine(text);
-			journals.push({ id, path, snapshot, loopStartedAtMs: loopStartedAtMs(text) });
+			const counterpartFromSnapshot =
+				snapshot?.counterpart && typeof snapshot.counterpart === "object" && typeof snapshot.counterpart.id === "string"
+					? snapshot.counterpart.id
+					: null;
+			const counterpartId = counterpartFromSnapshot ?? id;
+			const loopId =
+				id === counterpartId
+					? counterpartId
+					: id.startsWith(`${counterpartId}.`)
+						? id.slice(counterpartId.length + 1)
+						: id;
+			journals.push({
+				id,
+				path,
+				counterpartId,
+				loopId,
+				snapshot,
+				loopStartedAtMs: loopStartedAtMs(text),
+			});
 		} catch {
 			// unreadable journal -- skip, same fail-open posture as the hook
 		}
@@ -166,22 +187,32 @@ export function diagnose(current, prev) {
 	const lines = [];
 	const nextJournals = new Map();
 	const nextMailboxes = new Map();
+	const journalsByCounterpart = new Map();
 
-	for (const mailbox of current.mailboxes) {
-		const journal = current.journals.find((j) => j.id === mailbox.id);
-		const lastMailIn = journal?.snapshot?.lastMail?.in;
-		// Watermark for "new mail". The journal's `lastMail.in` pointer is the
-		// precise answer, but it is absent on a loop that has received nothing
-		// yet and stale if a hand-authored append names a file that does not
-		// exist. Both cases previously fell back to 0, which made every file in
-		// the mailbox newer than the watermark -- so reopening a loop replayed
-		// the entire archive of the previous collaboration as unread (#344).
-		//
-		// Falling back to the current loop's `loop-started` time bounds it
-		// correctly: mail predating this collaboration cannot be new to it, and
-		// `lastMail.in: null` stays honest for a freshly opened loop instead of
-		// having to be back-dated to a previous loop's file to silence the noise.
-		let threshold = journal?.loopStartedAtMs ?? 0;
+	for (const journal of current.journals) {
+		const existing = journalsByCounterpart.get(journal.counterpartId) ?? [];
+		existing.push(journal);
+		journalsByCounterpart.set(journal.counterpartId, existing);
+	}
+
+	// Effective "already seen" watermark for one journal, memoized per tick.
+	// The journal's `lastMail.in` pointer is the precise answer, but it is absent
+	// on a loop that has received nothing yet and stale if a hand-authored append
+	// names a file that does not exist. Both cases previously fell back to 0,
+	// which made every file in the mailbox newer than the watermark -- so
+	// reopening a loop replayed the entire archive of the previous collaboration
+	// as unread (#344).
+	//
+	// Falling back to the current loop's `loop-started` time bounds it correctly:
+	// mail predating this collaboration cannot be new to it, and
+	// `lastMail.in: null` stays honest for a freshly opened loop instead of
+	// having to be back-dated to a previous loop's file to silence the noise.
+	const thresholdCache = new Map();
+	const thresholdFor = (journal) => {
+		const cached = thresholdCache.get(journal.id);
+		if (cached !== undefined) return cached;
+		let threshold = journal.loopStartedAtMs ?? 0;
+		const lastMailIn = journal.snapshot?.lastMail?.in;
 		if (lastMailIn) {
 			try {
 				threshold = statSync(join(ROOT, lastMailIn)).mtimeMs;
@@ -189,15 +220,109 @@ export function diagnose(current, prev) {
 				// dangling pointer -- keep the loop-started watermark
 			}
 		}
-		const before = prev.mailboxes.get(mailbox.id);
-		const notified = new Set(before?.notified ?? []);
+		thresholdCache.set(journal.id, threshold);
+		return threshold;
+	};
+
+	for (const mailbox of current.mailboxes) {
+		const journalsForCounterpart = journalsByCounterpart.get(mailbox.id) ?? [];
+		const defaultJournal =
+			journalsForCounterpart.find((journal) => journal.id === mailbox.id) ??
+			(journalsForCounterpart.length === 1 ? journalsForCounterpart[0] : null);
+		// A terminated loop is quiescent -- the turn-alert loop below already
+		// refuses to fire for one, and SKILL.md states the monitor skips terminal
+		// `unlinked` snapshots. The mail path has to agree: nothing can be new to
+		// a loop that is over, so a closed loop must not lower the counterpart's
+		// watermark. Left unfiltered, an `--exit`ed loop-scoped journal (kept on
+		// purpose -- no delete, no archive step) drags the bar back to its own
+		// `loop-started` and replays both loops' archives (#344).
+		//
+		// Once EVERY loop is closed the direction flips: the counterpart is judged
+		// against the HIGHEST watermark among its closed loops, not the lowest.
+		// Nothing any of them already processed can be new, but anything past all
+		// of them still is -- and a fresh `request` arriving on a closed
+		// collaboration is exactly how a session learns the counterpart wants to
+		// reopen, which `--init` needs a prompt for. Skipping the file instead
+		// swallowed that signal permanently: unannounced, it is also never
+		// recorded, so a later `loop-started` moves the mark past its mtime and it
+		// stays invisible. `unlinked` quiescence is scoped to the TURN alert
+		// (SKILL.md), not to inbound mail. For a single journal this is exactly
+		// the `lastMail.in` watermark the pre-loop-scoped monitor used.
+		//
+		// A counterpart with NO journal at all is a different case and keeps its
+		// existing behavior: nothing has been journaled yet, so every file is new.
+		const liveJournals = journalsForCounterpart.filter((journal) => journal.snapshot?.phase !== "unlinked");
+		const allLoopsClosed = journalsForCounterpart.length > 0 && liveJournals.length === 0;
+		const mailboxNext = new Map();
+
 		for (const file of mailbox.files) {
-			if (file.mtimeMs > threshold && !notified.has(file.name)) {
-				lines.push(`dogfood mail from ${mailbox.id}: ${file.kind} (round ${file.round}) — ${file.heading}`);
-				notified.add(file.name);
+			// `pinned` is the journal this file NAMES; `journal` is only the
+			// attribution hint behind the label. Keeping them apart is the whole
+			// point: a `loop:` key naming a journal that does not exist pins
+			// nothing and must not silently claim the file for the default loop,
+			// and a file with no `loop:` key at all is not pinned merely because
+			// a default happens to exist.
+			const pinned = file.loop
+				? (journalsForCounterpart.find(
+						(candidate) =>
+							candidate.id === file.loop ||
+							candidate.id === `${mailbox.id}.${file.loop}` ||
+							candidate.loopId === file.loop,
+					) ?? null)
+				: null;
+			const journal = pinned ?? defaultJournal;
+
+			// UNPINNED mail belongs to the counterpart, not to one loop -- which
+			// includes every file written before loop-scoped journals existed, so
+			// it is the migration path, not a corner case. It is judged against
+			// the LOWEST watermark among that counterpart's LIVE journals (new if
+			// new to at least one open loop -- see above for the all-closed case,
+			// where the rule inverts) and its notified state is recorded
+			// under EVERY one of their ids, on every tick it is above the mark.
+			//
+			// Both halves have to key off `pinned`, not `journal`. Narrowing to
+			// the default whenever one exists is what made a bare `effected.jsonl`
+			// sitting beside `effected.loop-b.jsonl` record only under `effected`,
+			// so the turn-flip check below -- which looks mail up by `journal.id`
+			// -- missed it and re-fired for loop-b (#339). And a `?? 0` watermark
+			// here would be the very 0 the note above warns against, replaying a
+			// closed collaboration's archive (#344) the first tick after a second
+			// loop opens.
+			const fanOut = allLoopsClosed ? journalsForCounterpart : liveJournals;
+			const candidates = pinned ? [pinned] : fanOut;
+			const keys = candidates.length > 0 ? candidates.map((candidate) => candidate.id) : [mailbox.id];
+			const watermarks = candidates.map(thresholdFor);
+			const threshold =
+				watermarks.length === 0 ? 0 : allLoopsClosed && !pinned ? Math.max(...watermarks) : Math.min(...watermarks);
+
+			const notifiedSets = keys.map((key) => {
+				let notified = mailboxNext.get(key);
+				if (!notified) {
+					notified = new Set(prev.mailboxes.get(key)?.notified ?? []);
+					mailboxNext.set(key, notified);
+				}
+				return notified;
+			});
+
+			// Announce once, but record ALWAYS. A journal can appear after a file
+			// was first surfaced -- `--init` opening a second loop for mail the
+			// monitor just announced is the sequence this whole feature exists to
+			// enable -- and its notified set starts empty. Keeping the `add` inside
+			// the announce branch left that new key empty forever, because the
+			// `.some()` above correctly suppressed the re-announce, so the new
+			// loop's first `ball: ours` append fired a spurious turn alert (#339).
+			if (file.mtimeMs > threshold) {
+				if (!notifiedSets.some((notified) => notified.has(file.name))) {
+					const fromLabel = journal && journal.id !== mailbox.id ? `${mailbox.id} (loop ${journal.id})` : mailbox.id;
+					lines.push(`dogfood mail from ${fromLabel}: ${file.kind} (round ${file.round}) — ${file.heading}`);
+				}
+				for (const notified of notifiedSets) notified.add(file.name);
 			}
 		}
-		nextMailboxes.set(mailbox.id, { notified });
+
+		for (const [key, notified] of mailboxNext.entries()) {
+			nextMailboxes.set(key, { notified });
+		}
 	}
 
 	for (const journal of current.journals) {

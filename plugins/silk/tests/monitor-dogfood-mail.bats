@@ -27,10 +27,10 @@ write_journal_line() {
 	printf '%s\n' "$line" >> "${dir}/${loop_id}.jsonl"
 }
 
-# write_mail <project> <loop-id> <filename> <kind> <round> <heading> -- write
-# a mail file into the inbound mailbox for <loop-id>.
+# write_mail <project> <loop-id> <filename> <kind> <round> <heading> [loop] --
+# write a mail file into the inbound mailbox for <loop-id>.
 write_mail() {
-	local project="$1" loop_id="$2" filename="$3" kind="$4" round="$5" heading="$6"
+	local project="$1" loop_id="$2" filename="$3" kind="$4" round="$5" heading="$6" loop="${7:-}"
 	local dir="${project}/.claude/dogfood/${loop_id}"
 	mkdir -p "$dir"
 	cat > "${dir}/${filename}" <<-EOF
@@ -39,6 +39,7 @@ write_mail() {
 	to: savvy-web-systems
 	kind: ${kind}
 	round: ${round}
+	${loop:+loop: ${loop}}
 	---
 
 	# ${heading}
@@ -235,6 +236,42 @@ write_mail() {
 	[[ "$output" != *'"other-repo"'* ]]
 }
 
+@test "same counterpart with two loop journals: turn alert is per loop id" {
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"downstream","phase":"adopting","ball":"ours","round":2}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"upstream","phase":"upstream-pr","ball":"theirs","round":1}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"effected.loop-a"'* ]]
+	[[ "$output" != *'"effected.loop-b"'* ]]
+}
+
+@test "mail loop frontmatter routes same-counterpart mail to the matching loop journal" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-16-findings-loop-b.md" findings 2 "Loop B findings" loop-b
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"adopting","ball":"ours","round":2,"lastMail":{"in":".claude/dogfood/effected/2026-07-16-findings-loop-b.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"findings","ball":"theirs","round":2,"lastMail":{"in":".claude/dogfood/effected/2026-07-15-handoff-loop-b.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected (loop effected.loop-b): findings (round 2) — Loop B findings'* ]]
+}
+
+@test "loop attribution handles counterpart ids containing dots" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" savvy.web "2026-07-16-findings-loop-b.md" findings 2 "Loop B findings" loop-b
+	write_journal_line "$CLAUDE_PROJECT_DIR" savvy.web.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"downstream","counterpart":{"id":"savvy.web","path":"../../x"},"phase":"adopting","ball":"ours","round":2,"lastMail":{"in":".claude/dogfood/savvy.web/2026-07-16-findings-loop-b.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" savvy.web.loop-b \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"upstream","counterpart":{"id":"savvy.web","path":"../../x"},"phase":"findings","ball":"theirs","round":2,"lastMail":{"in":".claude/dogfood/savvy.web/2026-07-15-handoff-loop-b.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from savvy.web (loop savvy.web.loop-b): findings (round 2) — Loop B findings'* ]]
+}
+
 @test "quiet second tick: no repeated notifications for an unchanged snapshot or already-notified mail" {
 	make_project >/dev/null
 	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-16-handoff-round-2.md" handoff 2 "Round 2 handoff"
@@ -315,4 +352,331 @@ write_mail() {
 	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
 	[ "$status" -eq 0 ]
 	[[ "$output" == *'dogfood mail from effected: request (round 1) — Request with no loop-started anywhere'* ]]
+}
+
+# --- multi-loop mailboxes: unattributed mail still gets a watermark ----------
+# A counterpart hosting two loops has no journal named for the counterpart
+# itself, so mail without `loop:` frontmatter pins to no single journal. That
+# path must not fall back to a watermark of 0 -- doing so replays the whole
+# archive of the earlier collaboration the first tick after the second loop
+# opens, which is #344 reopened through a new door. Every mail file written
+# before loop-scoped journals existed lacks `loop:`, so this is the common case,
+# not a corner one.
+
+@test "multi-loop mailbox: unattributed archived mail is not replayed" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-01-01-handoff-round-9.md" handoff 9 "Archived mail from a closed loop"
+	touch -t 202601010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-01-01-handoff-round-9.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-17T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"dogfood mail from"* ]]
+}
+
+@test "multi-loop mailbox: unattributed mail newer than the earliest loop IS surfaced" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-01-01-handoff-round-9.md" handoff 9 "Archived mail from a closed loop"
+	touch -t 202601010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-01-01-handoff-round-9.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-18-request-round-1.md" request 1 "Unrouted but genuinely new"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-17T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: request (round 1) — Unrouted but genuinely new'* ]]
+	[[ "$output" != *"Archived mail from a closed loop"* ]]
+}
+
+@test "multi-loop mailbox: unattributed mail suppresses a later self-echoing turn flip (issue #339)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-18-request-round-1.md" request 1 "Unrouted but genuinely new"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-17T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+
+	local harness="${BATS_TEST_TMPDIR}/multi-loop-echo.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+	const root = process.env.CLAUDE_PROJECT_DIR;
+	let prev = { journals: new Map(), mailboxes: new Map() };
+	const r1 = diagnose(await scan(), prev);
+	prev = r1.next;
+	for (const line of r1.lines) console.log("TICK1:" + line);
+
+	// loop-a's session records the mail the monitor just surfaced. The flip to
+	// "ours" cites a file already announced, so it carries nothing new.
+	appendFileSync(
+		join(root, ".claude", "dogfood", "effected.loop-a.jsonl"),
+		JSON.stringify({
+			at: "2026-07-18T01:00:00Z",
+			event: "mail-received",
+			role: "downstream",
+			counterpart: { id: "effected", path: "../../x" },
+			phase: "adopting",
+			ball: "ours",
+			round: 1,
+			lastMail: { in: ".claude/dogfood/effected/2026-07-18-request-round-1.md" },
+		}) + "\n",
+	);
+
+	const r2 = diagnose(await scan(), prev);
+	console.log("TICK2:" + r2.lines.length);
+	for (const line of r2.lines) console.log("TICK2LINE:" + line);
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:dogfood mail from effected: request (round 1) — Unrouted but genuinely new"* ]]
+	[[ "$output" == *"TICK2:0"* ]]
+}
+
+# --- mixed bare + loop-scoped journals: the migration shape -------------------
+# A counterpart that keeps its bare `<id>.jsonl` and opens `<id>.<loop>.jsonl`
+# beside it has a non-null defaultJournal, so an earlier fix that fanned out only
+# when NO default existed still narrowed unpinned mail to the bare journal. Every
+# existing loop migrates through exactly this shape, so it is the common path.
+
+@test "bare journal beside a loop-scoped one: unpinned mail suppresses loop-b's self-echo (issue #339)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-01-request-round-1.md" request 1 "Genuinely new inbound"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-08-02T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+
+	local harness="${BATS_TEST_TMPDIR}/mixed-echo.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+	const root = process.env.CLAUDE_PROJECT_DIR;
+	let prev = { journals: new Map(), mailboxes: new Map() };
+	const r1 = diagnose(await scan(), prev);
+	prev = r1.next;
+	for (const line of r1.lines) console.log("TICK1:" + line);
+	console.log("KEYS:" + [...prev.mailboxes.keys()].sort().join(","));
+
+	// loop-b's session records the mail the monitor just surfaced.
+	appendFileSync(
+		join(root, ".claude", "dogfood", "effected.loop-b.jsonl"),
+		JSON.stringify({
+			at: "2026-09-02T00:00:00Z",
+			event: "mail-received",
+			role: "upstream",
+			counterpart: { id: "effected", path: "../../x" },
+			phase: "adopting",
+			ball: "ours",
+			round: 1,
+			lastMail: { in: ".claude/dogfood/effected/2026-09-01-request-round-1.md" },
+		}) + "\n",
+	);
+
+	const r2 = diagnose(await scan(), prev);
+	console.log("TICK2:" + r2.lines.length);
+	for (const line of r2.lines) console.log("TICK2LINE:" + line);
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:dogfood mail from effected: request (round 1) — Genuinely new inbound"* ]]
+	[[ "$output" == *"KEYS:effected,effected.loop-b"* ]]
+	[[ "$output" == *"TICK2:0"* ]]
+}
+
+@test "bare journal beside a loop-scoped one: watermark is the earliest loop, not the default journal's" {
+	make_project >/dev/null
+	# The bare journal opened LAST, so judging unpinned mail by it alone would
+	# silence a file that is genuinely new to the older loop-b.
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-15-request-round-1.md" request 1 "New to loop-b, older than the bare loop"
+	touch -t 202607150000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-07-15-request-round-1.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-01-01-handoff-round-9.md" handoff 9 "Archived mail predating every loop"
+	touch -t 202601010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-01-01-handoff-round-9.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-01T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: request (round 1) — New to loop-b, older than the bare loop'* ]]
+	[[ "$output" != *"Archived mail predating every loop"* ]]
+}
+
+@test "loop: naming a journal that does not exist is not pinned to the default journal" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-01-findings-typo.md" findings 2 "Names a loop that is not there" loop-zzz
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-08-02T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+
+	local harness="${BATS_TEST_TMPDIR}/unmatched-loop.mjs"
+	cat > "$harness" <<-EOF
+	import { scan, diagnose } from "${MONITOR}";
+	const r = diagnose(await scan(), { journals: new Map(), mailboxes: new Map() });
+	for (const line of r.lines) console.log("LINE:" + line);
+	console.log("KEYS:" + [...r.next.mailboxes.keys()].sort().join(","));
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"LINE:dogfood mail from effected: findings (round 2) — Names a loop that is not there"* ]]
+	# unmatched loop: pins nothing, so it is recorded against every candidate
+	[[ "$output" == *"KEYS:effected,effected.loop-b"* ]]
+}
+
+# --- closed loops must not lower the counterpart's watermark ------------------
+# `--exit` keeps the journal deliberately (no delete, no archive step), so a
+# terminated loop-scoped journal outlives its collaboration and sits beside the
+# live one. Nothing can be new to a loop that is over, so it must not contribute
+# a watermark -- fanning out over it drags the bar back to its `loop-started`
+# and replays both loops' archives (#344).
+
+@test "closed loop beside a live one: its watermark does not replay the archive (issue #344)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-03-01-handoff-round-9.md" handoff 9 "Archived mail from the closed loop"
+	touch -t 202603010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-03-01-handoff-round-9.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-08-20-status-round-4.md" status 4 "Last mail the live loop processed"
+	touch -t 202608200000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-08-20-status-round-4.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-20T00:00:00Z","event":"mail-received","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"adopting","ball":"theirs","round":4,"lastMail":{"in":".claude/dogfood/effected/2026-08-20-status-round-4.md"}}'
+	# a loop that opened earlier and has since been --exit'd
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-01-01T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-02-01T00:00:00Z","event":"unlinked","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":3,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"dogfood mail from"* ]]
+}
+
+@test "every loop closed: mail they already processed stays silent" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-03-01-handoff-round-9.md" handoff 9 "Archived mail from a closed loop"
+	touch -t 202603010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-03-01-handoff-round-9.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-25T00:00:00Z","event":"unlinked","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":4,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-01-01T00:00:00Z","event":"loop-started","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-02-01T00:00:00Z","event":"unlinked","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":3,"lastMail":{"in":null,"out":null}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"dogfood mail from"* ]]
+}
+
+# --- notified state back-fills onto a journal that appears later --------------
+# `--init` opening a second loop for mail the monitor just announced is the
+# sequence this feature exists to enable. The new journal's notified set starts
+# empty, and the re-announce is correctly suppressed, so without a back-fill the
+# new loop's first `ball: ours` append fires a spurious turn alert (#339).
+
+@test "journal created after mail was surfaced: back-filled, so its first flip is silent (issue #339)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-01-request-round-1.md" request 1 "New inbound"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+
+	local harness="${BATS_TEST_TMPDIR}/backfill.mjs"
+	cat > "$harness" <<-EOF
+	import { writeFileSync, appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+	const root = process.env.CLAUDE_PROJECT_DIR;
+	const loopB = join(root, ".claude", "dogfood", "effected.loop-b.jsonl");
+	const counterpart = { id: "effected", path: "../../x" };
+	let prev = { journals: new Map(), mailboxes: new Map() };
+
+	const r1 = diagnose(await scan(), prev);
+	prev = r1.next;
+	for (const line of r1.lines) console.log("TICK1:" + line);
+
+	// --init opens a second loop AFTER the mail was already surfaced
+	writeFileSync(
+		loopB,
+		JSON.stringify({
+			at: "2026-08-02T00:00:00Z",
+			event: "loop-started",
+			role: "upstream",
+			counterpart,
+			phase: "requested",
+			ball: "theirs",
+			round: 1,
+			lastMail: { in: null, out: null },
+		}) + "\n",
+	);
+	const r2 = diagnose(await scan(), prev);
+	prev = r2.next;
+	console.log("TICK2:" + r2.lines.length);
+	console.log("LOOPB:" + [...(prev.mailboxes.get("effected.loop-b")?.notified ?? [])].join(","));
+
+	appendFileSync(
+		loopB,
+		JSON.stringify({
+			at: "2026-09-02T00:00:00Z",
+			event: "mail-received",
+			role: "upstream",
+			counterpart,
+			phase: "adopting",
+			ball: "ours",
+			round: 1,
+			lastMail: { in: ".claude/dogfood/effected/2026-09-01-request-round-1.md" },
+		}) + "\n",
+	);
+	const r3 = diagnose(await scan(), prev);
+	console.log("TICK3:" + r3.lines.length);
+	for (const line of r3.lines) console.log("TICK3LINE:" + line);
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:dogfood mail from effected: request (round 1) — New inbound"* ]]
+	[[ "$output" == *"TICK2:0"* ]]
+	[[ "$output" == *"LOOPB:2026-09-01-request-round-1.md"* ]]
+	[[ "$output" == *"TICK3:0"* ]]
+}
+
+@test "every loop closed: mail past what they processed IS announced, so the loop can be reopened" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-03-01-status-round-3.md" status 3 "Already processed before the exit"
+	touch -t 202603010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-03-01-status-round-3.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-04-request-round-1.md" request 1 "Fresh request to reopen"
+	touch -t 202609040000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-09-04-request-round-1.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-01-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"requested","ball":"theirs","round":1,"lastMail":{"in":null,"out":null}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-03-01T00:00:00Z","event":"mail-received","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"adopting","ball":"ours","round":3,"lastMail":{"in":".claude/dogfood/effected/2026-03-01-status-round-3.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-04-01T00:00:00Z","event":"unlinked","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":3,"lastMail":{"in":".claude/dogfood/effected/2026-03-01-status-round-3.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: request (round 1) — Fresh request to reopen'* ]]
+	[[ "$output" != *"Already processed before the exit"* ]]
+	# quiescence is scoped to the turn alert, which must stay silent
+	[[ "$output" != *"ball is ours"* ]]
+}
+
+@test "every loop closed with two journals: the highest watermark wins, not the earliest" {
+	make_project >/dev/null
+	# loop-b processed further than the bare loop; mail between the two marks is
+	# not new to loop-b, so taking the lowest mark would re-announce it.
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-05-01-status-round-2.md" status 2 "Between the two closed marks"
+	touch -t 202605010000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-05-01-status-round-2.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-09-04-request-round-1.md" request 1 "Past both closed marks"
+	touch -t 202609040000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-09-04-request-round-1.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-04-01T00:00:00Z","event":"unlinked","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":2,"lastMail":{"in":".claude/dogfood/effected/2026-05-01-status-round-2.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-06-01T00:00:00Z","event":"unlinked","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"unlinked","ball":"ours","round":5,"lastMail":{"in":".claude/dogfood/effected/2026-09-04-request-round-1.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"dogfood mail from"* ]]
 }

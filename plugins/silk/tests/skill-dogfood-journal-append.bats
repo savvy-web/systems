@@ -136,6 +136,17 @@ seed() {
 	[ "$(jq -r '.ball' <<< "$last")" = "theirs" ]
 }
 
+@test "--init supports a loop-id-qualified journal filename" {
+	local fresh="${BATS_TEST_TMPDIR}/effected.loop-b.jsonl"
+	run bash "$SCRIPT" "$fresh" --init --role upstream \
+		--counterpart-id effected --counterpart-path ../../spencerbeggs/effected --link-type file
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$fresh")"
+	[ "$(jq -r '.counterpart.id' <<< "$last")" = "effected" ]
+	[ "$(jq -r '.role' <<< "$last")" = "upstream" ]
+}
+
 @test "--init as upstream sets ball ours and omits the downstream-only fields" {
 	local fresh="${BATS_TEST_TMPDIR}/upstream.jsonl"
 	run bash "$SCRIPT" "$fresh" --init --role upstream \

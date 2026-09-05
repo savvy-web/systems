@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Appends one snapshot line to a dogfood loop journal
-# (.claude/dogfood/<counterpart-id>.jsonl), carrying forward the loop's static
+# (.claude/dogfood/<counterpart-id>[.<loop-id>].jsonl), carrying forward the loop's static
 # config and patching only what the caller passes (savvy-web/systems#338).
 #
 # The journal is append-only and every line is a COMPLETE snapshot -- current
