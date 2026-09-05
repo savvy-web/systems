@@ -27,10 +27,10 @@ write_journal_line() {
 	printf '%s\n' "$line" >> "${dir}/${loop_id}.jsonl"
 }
 
-# write_mail <project> <loop-id> <filename> <kind> <round> <heading> -- write
-# a mail file into the inbound mailbox for <loop-id>.
+# write_mail <project> <loop-id> <filename> <kind> <round> <heading> [loop] --
+# write a mail file into the inbound mailbox for <loop-id>.
 write_mail() {
-	local project="$1" loop_id="$2" filename="$3" kind="$4" round="$5" heading="$6"
+	local project="$1" loop_id="$2" filename="$3" kind="$4" round="$5" heading="$6" loop="${7:-}"
 	local dir="${project}/.claude/dogfood/${loop_id}"
 	mkdir -p "$dir"
 	cat > "${dir}/${filename}" <<-EOF
@@ -39,6 +39,7 @@ write_mail() {
 	to: savvy-web-systems
 	kind: ${kind}
 	round: ${round}
+	${loop:+loop: ${loop}}
 	---
 
 	# ${heading}
@@ -233,6 +234,42 @@ write_mail() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *'"effected"'* ]]
 	[[ "$output" != *'"other-repo"'* ]]
+}
+
+@test "same counterpart with two loop journals: turn alert is per loop id" {
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"downstream","phase":"adopting","ball":"ours","round":2}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"upstream","phase":"upstream-pr","ball":"theirs","round":1}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"effected.loop-a"'* ]]
+	[[ "$output" != *'"effected.loop-b"'* ]]
+}
+
+@test "mail loop frontmatter routes same-counterpart mail to the matching loop journal" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-07-16-findings-loop-b.md" findings 2 "Loop B findings" loop-b
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"downstream","counterpart":{"id":"effected","path":"../../x"},"phase":"adopting","ball":"ours","round":2,"lastMail":{"in":".claude/dogfood/effected/2026-07-16-findings-loop-b.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected.loop-b \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"upstream","counterpart":{"id":"effected","path":"../../x"},"phase":"findings","ball":"theirs","round":2,"lastMail":{"in":".claude/dogfood/effected/2026-07-15-handoff-loop-b.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected (loop effected.loop-b): findings (round 2) — Loop B findings'* ]]
+}
+
+@test "loop attribution handles counterpart ids containing dots" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" savvy.web "2026-07-16-findings-loop-b.md" findings 2 "Loop B findings" loop-b
+	write_journal_line "$CLAUDE_PROJECT_DIR" savvy.web.loop-a \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"downstream","counterpart":{"id":"savvy.web","path":"../../x"},"phase":"adopting","ball":"ours","round":2,"lastMail":{"in":".claude/dogfood/savvy.web/2026-07-16-findings-loop-b.md"}}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" savvy.web.loop-b \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"upstream","counterpart":{"id":"savvy.web","path":"../../x"},"phase":"findings","ball":"theirs","round":2,"lastMail":{"in":".claude/dogfood/savvy.web/2026-07-15-handoff-loop-b.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from savvy.web (loop savvy.web.loop-b): findings (round 2) — Loop B findings'* ]]
 }
 
 @test "quiet second tick: no repeated notifications for an unchanged snapshot or already-notified mail" {

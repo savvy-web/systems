@@ -1,6 +1,6 @@
 # The JSONL state journal — full snapshot-line shape
 
-One JSONL file per loop, per repo: `.claude/dogfood/<counterpart-id>.jsonl`, gitignored, hand-appended — **never edited in place**. Each line is a complete snapshot of the loop's state plus an event annotation.
+One JSONL file per loop, per repo: `.claude/dogfood/<counterpart-id>[.<loop-id>].jsonl`, gitignored, hand-appended — **never edited in place**. `<loop-id>` defaults to `<counterpart-id>` for the single-loop case, so legacy `.claude/dogfood/<counterpart-id>.jsonl` files remain valid unchanged.
 
 ## Why append-only snapshots, not a mutable JSON document
 
@@ -8,7 +8,7 @@ One JSONL file per loop, per repo: `.claude/dogfood/<counterpart-id>.jsonl`, git
 - **History = the file.** Every ball-flip, phase change, and mail exchange is a line; the journal reads like a log because it is one.
 - **Corrections are appends.** A wrong entry is superseded by appending a corrected snapshot (`event: "correction"`), never by editing in place — safer for hand maintenance than in-place JSON surgery, and the audit trail keeps the mistake visible.
 - **Corrupt tails self-heal.** A malformed last line (a session killed mid-write) is skipped; readers walk back to the previous valid line, and the next append supersedes the damage. Both the enforcement hook and the monitor implement this walk-back.
-- **A new collaboration with the same counterpart continues the same journal.** A fresh `loop-started` line follows a terminal `unlinked` one. No key collisions, no archival ceremony — durable narrative history is the mail files, not the journal.
+- **A new collaboration can either continue a loop's journal or start another loop journal for the same counterpart.** A fresh `loop-started` line after a terminal `unlinked` line reopens that loop; a simultaneous second loop uses a distinct `<loop-id>` in the filename.
 
 Repeating the static config (`counterpart`, `packages`, `linkType`) on every line costs bytes and buys the no-fold property. The trade is deliberate — don't "optimize" it into a diff-only format.
 

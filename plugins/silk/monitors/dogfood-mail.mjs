@@ -5,7 +5,9 @@
 // -- no network, ever, per the spec's monitor rule:
 //
 //   1. Inbound mailboxes ".claude/dogfood/<counterpart-id>/*.md" -- files
-//      newer than the loop's journaled `lastMail.in`, not yet notified.
+//      newer than the loop's journaled `lastMail.in`, not yet notified. A
+//      mailbox can carry multiple loops with the same counterpart; frontmatter
+//      `loop:` disambiguates to ".claude/dogfood/<counterpart-id>.<loop>.jsonl".
 //   2. Journals ".claude/dogfood/*.jsonl" -- a new tail line (JSONL
 //      snapshot-lines; current state is the last VALID line) whose `ball` is
 //      "ours".
@@ -93,6 +95,7 @@ function parseMailFile(text) {
 	const headingMatch = /^#\s+(.+)$/m.exec(body);
 	return {
 		kind: frontmatter.kind ?? "?",
+		loop: frontmatter.loop ?? "",
 		round: frontmatter.round ?? "?",
 		heading: headingMatch ? headingMatch[1].trim() : "(no heading)",
 	};
@@ -109,7 +112,25 @@ async function scanJournals() {
 		try {
 			const text = await readFile(path, "utf8");
 			const snapshot = lastValidJsonlLine(text);
-			journals.push({ id, path, snapshot, loopStartedAtMs: loopStartedAtMs(text) });
+			const counterpartFromSnapshot =
+				snapshot?.counterpart && typeof snapshot.counterpart === "object" && typeof snapshot.counterpart.id === "string"
+					? snapshot.counterpart.id
+					: null;
+			const counterpartId = counterpartFromSnapshot ?? id;
+			const loopId =
+				id === counterpartId
+					? counterpartId
+					: id.startsWith(`${counterpartId}.`)
+						? id.slice(counterpartId.length + 1)
+						: id;
+			journals.push({
+				id,
+				path,
+				counterpartId,
+				loopId,
+				snapshot,
+				loopStartedAtMs: loopStartedAtMs(text),
+			});
 		} catch {
 			// unreadable journal -- skip, same fail-open posture as the hook
 		}
@@ -166,38 +187,74 @@ export function diagnose(current, prev) {
 	const lines = [];
 	const nextJournals = new Map();
 	const nextMailboxes = new Map();
+	const journalsByCounterpart = new Map();
+
+	for (const journal of current.journals) {
+		const existing = journalsByCounterpart.get(journal.counterpartId) ?? [];
+		existing.push(journal);
+		journalsByCounterpart.set(journal.counterpartId, existing);
+	}
 
 	for (const mailbox of current.mailboxes) {
-		const journal = current.journals.find((j) => j.id === mailbox.id);
-		const lastMailIn = journal?.snapshot?.lastMail?.in;
-		// Watermark for "new mail". The journal's `lastMail.in` pointer is the
-		// precise answer, but it is absent on a loop that has received nothing
-		// yet and stale if a hand-authored append names a file that does not
-		// exist. Both cases previously fell back to 0, which made every file in
-		// the mailbox newer than the watermark -- so reopening a loop replayed
-		// the entire archive of the previous collaboration as unread (#344).
-		//
-		// Falling back to the current loop's `loop-started` time bounds it
-		// correctly: mail predating this collaboration cannot be new to it, and
-		// `lastMail.in: null` stays honest for a freshly opened loop instead of
-		// having to be back-dated to a previous loop's file to silence the noise.
-		let threshold = journal?.loopStartedAtMs ?? 0;
-		if (lastMailIn) {
-			try {
-				threshold = statSync(join(ROOT, lastMailIn)).mtimeMs;
-			} catch {
-				// dangling pointer -- keep the loop-started watermark
-			}
-		}
-		const before = prev.mailboxes.get(mailbox.id);
-		const notified = new Set(before?.notified ?? []);
+		const journalsForCounterpart = journalsByCounterpart.get(mailbox.id) ?? [];
+		const defaultJournal =
+			journalsForCounterpart.find((journal) => journal.id === mailbox.id) ??
+			(journalsForCounterpart.length === 1 ? journalsForCounterpart[0] : null);
+		const mailboxNext = new Map();
+
 		for (const file of mailbox.files) {
+			let journal = defaultJournal;
+			if (file.loop) {
+				journal =
+					journalsForCounterpart.find(
+						(candidate) =>
+							candidate.id === file.loop ||
+							candidate.id === `${mailbox.id}.${file.loop}` ||
+							candidate.loopId === file.loop,
+					) ??
+					defaultJournal ??
+					null;
+			}
+
+			const mailboxKey = journal?.id ?? mailbox.id;
+			let notified = mailboxNext.get(mailboxKey);
+			if (!notified) {
+				const before = prev.mailboxes.get(mailboxKey);
+				notified = new Set(before?.notified ?? []);
+				mailboxNext.set(mailboxKey, notified);
+			}
+
+			// Watermark for "new mail". The journal's `lastMail.in` pointer is the
+			// precise answer, but it is absent on a loop that has received nothing
+			// yet and stale if a hand-authored append names a file that does not
+			// exist. Both cases previously fell back to 0, which made every file in
+			// the mailbox newer than the watermark -- so reopening a loop replayed
+			// the entire archive of the previous collaboration as unread (#344).
+			//
+			// Falling back to the current loop's `loop-started` time bounds it
+			// correctly: mail predating this collaboration cannot be new to it, and
+			// `lastMail.in: null` stays honest for a freshly opened loop instead of
+			// having to be back-dated to a previous loop's file to silence the noise.
+			const lastMailIn = journal?.snapshot?.lastMail?.in;
+			let threshold = journal?.loopStartedAtMs ?? 0;
+			if (lastMailIn) {
+				try {
+					threshold = statSync(join(ROOT, lastMailIn)).mtimeMs;
+				} catch {
+					// dangling pointer -- keep the loop-started watermark
+				}
+			}
+
 			if (file.mtimeMs > threshold && !notified.has(file.name)) {
-				lines.push(`dogfood mail from ${mailbox.id}: ${file.kind} (round ${file.round}) — ${file.heading}`);
+				const fromLabel = journal && journal.id !== mailbox.id ? `${mailbox.id} (loop ${journal.id})` : mailbox.id;
+				lines.push(`dogfood mail from ${fromLabel}: ${file.kind} (round ${file.round}) — ${file.heading}`);
 				notified.add(file.name);
 			}
 		}
-		nextMailboxes.set(mailbox.id, { notified });
+
+		for (const [key, notified] of mailboxNext.entries()) {
+			nextMailboxes.set(key, { notified });
+		}
 	}
 
 	for (const journal of current.journals) {

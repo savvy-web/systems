@@ -8,9 +8,12 @@ from: effected            # sender repo id (root package.json "name")
 to: savvy-web-systems     # receiver repo id
 kind: handoff             # briefing | request | handoff | status | findings | release
 round: 2                  # monotonic per loop, shared by both sides; briefing is round 0 (or the current round when reopening a closed loop)
+loop: loop-b              # optional loop id when this counterpart has simultaneous loops
 in-reply-to: 2026-07-16-request-round-2.md   # optional, receiver-relative filename
 ---
 ```
+
+When one counterpart is participating in more than one simultaneous loop, set `loop:` to the loop id used in the journal filename (`<counterpart-id>.<loop-id>.jsonl`). Readers default to the single-loop journal when `loop:` is omitted.
 
 Six kinds. Each section below is both the content contract and a fill-in-the-blanks template.
 
@@ -41,7 +44,7 @@ the following packages against this repo's local prod artifacts:
 - Your outbound mail lands at `savvy-web-systems/.claude/dogfood/effected/` (this repo, relative
   to `../../savvy-web-systems`).
 - Their outbound mail (to you) lands at `.claude/dogfood/savvy-web-systems/` in THIS repo.
-- Your state journal for this loop: `.claude/dogfood/savvy-web-systems.jsonl` (append-only
+- Your state journal for this loop: `.claude/dogfood/savvy-web-systems[.<loop-id>].jsonl` (append-only
   JSONL, see the dogfood skill's jsonl-journal reference).
 
 ## Discipline
