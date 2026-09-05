@@ -4,7 +4,7 @@
  * @internal
  */
 import { chmod } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
@@ -14,10 +14,12 @@ import { WorkspaceDiscovery } from "@effected/workspaces";
 import type { SavvyInstallHook } from "@savvy-web/silk-effects";
 import {
 	BiomeSchemaSync,
+	LIFECYCLE_SCRIPTS_CONFIG_KEY,
 	Lint,
 	SavvyBaseSection,
 	SavvyHooksSection,
 	SavvyToolchainSection,
+	publishesBuiltLinkDirectory,
 	savvyBasePreamble,
 	savvyHooksHygiene,
 	savvyInstallBlock,
@@ -224,6 +226,44 @@ function biomeConfigRoots(): Effect.Effect<ReadonlyArray<string>, never, Workspa
 }
 
 /**
+ * Point out that this workspace needs lifecycle scripts, and how to allow them.
+ *
+ * @remarks
+ * The `savvy-install` hook block skips lifecycle scripts unless the LOCAL git
+ * config key authorizes them. A workspace publishing through built link
+ * directories cannot survive that default — its own workspace links resolve
+ * through directories a `prepare` script produces — so it has to be told.
+ *
+ * This reports and does not set. Enabling scripts means every later hook-time
+ * install may execute code from whatever revision was just checked out, which is
+ * a trust decision belonging to the person who owns the checkout, not to a
+ * command they ran to write some config files. Setting it for them silently
+ * would give back most of what reading the flag from local config bought.
+ *
+ * Every failure reads as "say nothing": an unreadable or malformed manifest
+ * cannot make the notice wrong, only absent.
+ */
+function noticeLifecycleScripts(): Effect.Effect<void, never, FileSystem.FileSystem | WorkspaceDiscovery> {
+	return Effect.gen(function* () {
+		const fs = yield* FileSystem.FileSystem;
+		const roots = yield* biomeConfigRoots();
+		for (const root of roots) {
+			const manifest = yield* fs.readFileString(join(root, "package.json")).pipe(
+				Effect.map((raw) => JSON.parse(raw) as unknown),
+				Effect.catch(() => Effect.succeed(undefined)),
+			);
+			if (publishesBuiltLinkDirectory(manifest)) {
+				yield* Effect.log(
+					`${WARNING} This workspace publishes through built link directories, so a hook-time install must run lifecycle scripts.`,
+				);
+				yield* Effect.log(`   Allow them with: git config --local ${LIFECYCLE_SCRIPTS_CONFIG_KEY} true`);
+				return;
+			}
+		}
+	});
+}
+
+/**
  * Find and sync biome config `$schema` URLs to match the pinned {@link BIOME_VERSION}.
  *
  * @remarks
@@ -357,6 +397,10 @@ export function runLintInit(opts: {
 				yield* makeExecutable(hookPath);
 				yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
 			}
+		}
+
+		if (presetIncludesShellScripts(preset)) {
+			yield* noticeLifecycleScripts();
 		}
 
 		// Write markdownlint config (when preset includes Markdown)

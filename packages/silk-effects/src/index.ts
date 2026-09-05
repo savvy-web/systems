@@ -72,7 +72,13 @@ export * as Repos from "./repos/index.js";
 export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
 export type { ConfigDiscoveryOptions, ConfigLocation, ConfigSource } from "./schemas/ConfigDiscoverySchemas.js";
 export type { SavvyInstallHook } from "./schemas/SavvyInstallSection.js";
-export { SavvyInstallSection, savvyInstallBlock, savvyInstallDeps } from "./schemas/SavvyInstallSection.js";
+export {
+	LIFECYCLE_SCRIPTS_CONFIG_KEY,
+	SavvyInstallSection,
+	publishesBuiltLinkDirectory,
+	savvyInstallBlock,
+	savvyInstallDeps,
+} from "./schemas/SavvyInstallSection.js";
 export {
 	SavvyBaseSection,
 	SavvyHooksSection,

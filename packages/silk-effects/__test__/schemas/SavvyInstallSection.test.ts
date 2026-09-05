@@ -1,10 +1,15 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CommentStyle, SectionId } from "@effected/templates";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { SavvyInstallSection, savvyInstallDeps } from "../../src/schemas/SavvyInstallSection.js";
+import {
+	LIFECYCLE_SCRIPTS_CONFIG_KEY,
+	SavvyInstallSection,
+	publishesBuiltLinkDirectory,
+	savvyInstallDeps,
+} from "../../src/schemas/SavvyInstallSection.js";
 
 /**
  * These tests EXECUTE the generated shell rather than string-match it.
@@ -19,6 +24,8 @@ import { SavvyInstallSection, savvyInstallDeps } from "../../src/schemas/SavvyIn
 
 let repo: string;
 let bin: string;
+/** Stderr from the most recent {@link runHook}, where the hook's own notices land. */
+let lastStderr = "";
 
 /** Path the fake package manager appends one line of argv to per invocation. */
 const logPath = () => join(bin, "invocations.log");
@@ -56,11 +63,20 @@ exit ${options.exitCode ?? 0}
 /** Every line the fakes recorded, in order. */
 const invocations = (): ReadonlyArray<string> => {
 	try {
-		return execFileSync("cat", [logPath()], { encoding: "utf8" }).trim().split("\n").filter(Boolean);
+		return readFileSync(logPath(), "utf8").trim().split("\n").filter(Boolean);
 	} catch {
 		return [];
 	}
 };
+
+/**
+ * Whether `jq` is on PATH.
+ *
+ * The block reads `packageManager` through `jq` and falls back to the lockfile
+ * ladder without it, so the one test that asserts on manifest-driven detection
+ * has to say so rather than quietly asserting the fallback's answer instead.
+ */
+const hasJq = spawnSync("sh", ["-c", "command -v jq"], { encoding: "utf8" }).status === 0;
 
 /**
  * Runs the section for `hook` with `args`, returning its exit code.
@@ -94,10 +110,8 @@ const runHook = (
 	return child.status;
 };
 
-/** Stderr from the most recent {@link runHook}, where the hook's own notices land. */
-let lastStderr = "";
-
 beforeEach(() => {
+	lastStderr = "";
 	repo = mkdtempSync(join(tmpdir(), "savvy-install-"));
 	bin = mkdtempSync(join(tmpdir(), "savvy-bin-"));
 	writeFileSync(logPath(), "");
@@ -210,7 +224,11 @@ describe("savvyInstallDeps (post-checkout)", () => {
 	});
 
 	it("hands yarn berry --mode=skip-build and yarn classic --ignore-scripts", () => {
-		writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "fixture", packageManager: "yarn@4.1.0" }));
+		// Detection runs through the LOCKFILE ladder here, not `packageManager`:
+		// dropping pnpm-lock.yaml leaves yarn.lock the only candidate, which keeps
+		// this test — about the Berry/Classic flag split — independent of `jq`.
+		writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "fixture" }));
+		rmSync(join(repo, "pnpm-lock.yaml"), { force: true });
 		writeFileSync(join(repo, "yarn.lock"), "# yarn\n");
 		git("add", "-A");
 		git("commit", "-m", "yarn");
@@ -260,88 +278,122 @@ describe("savvyInstallDeps (post-merge)", () => {
 	});
 });
 
-describe("savvyInstallDeps (built link directories)", () => {
+describe("savvyInstallDeps (lifecycle scripts)", () => {
 	/**
-	 * A workspace whose packages publish through `publishConfig.directory` with
-	 * `linkDirectory: true` resolves its own workspace dependencies through a
-	 * directory that a lifecycle script has to build first. `--ignore-scripts`
-	 * there produces a populated `node_modules` pointing at nothing, which is
-	 * worse than a slower install — so those repos take the scripts.
+	 * Whether lifecycle scripts run is decided by LOCAL git config, never by the
+	 * revision being checked out.
+	 *
+	 * A workspace that publishes through a built link directory needs its
+	 * `prepare` scripts to materialise the directories its own workspace links
+	 * point at, so it has to be able to ask for a full install. Reading that
+	 * intent out of the checked-out manifest would have made `git checkout` of an
+	 * untrusted branch a code-execution path, and would additionally have gone
+	 * the WRONG way when `jq` is absent — silently skipping scripts in exactly
+	 * the repos that cannot survive it. `.git/config` is neither checked out nor
+	 * parsed with `jq`, so it has neither problem. `savvy init` sets it.
 	 */
-	const declareLinkedPackage = (publishConfig: Record<string, unknown>): void => {
+	const setOptIn = (value: string): void => {
+		git("config", "--local", "savvy.installLifecycleScripts", value);
+	};
+
+	/** Commits a manifest declaring the built-link-directory shape. */
+	const declareLinkedPackage = (): void => {
 		mkdirSync(join(repo, "packages/a"), { recursive: true });
-		writeFileSync(join(repo, "packages/a/package.json"), JSON.stringify({ name: "a", publishConfig }));
+		writeFileSync(
+			join(repo, "packages/a/package.json"),
+			JSON.stringify({ name: "a", publishConfig: { directory: "dist/dev/pkg", linkDirectory: true } }),
+		);
 		git("add", "-A");
 		git("commit", "-m", "add package a");
 	};
 
-	it("drops --ignore-scripts when a workspace package links to a built directory", () => {
-		declareLinkedPackage({ directory: "dist/dev/pkg", linkDirectory: true });
+	const bumpLockfile = (): ReadonlyArray<string> => {
 		const before = git("rev-parse", "HEAD");
 		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
+		return [before, after, "1"];
+	};
 
-		runHook("post-checkout", [before, after, "1"]);
+	it("runs a full install when the local opt-in is set", () => {
+		setOptIn("true");
+
+		runHook("post-checkout", bumpLockfile());
 
 		expect(invocations()).toEqual(["pnpm install"]);
 	});
 
-	it("keeps --ignore-scripts when a directory is published without linkDirectory", () => {
-		// publishConfig.directory alone changes what is PUBLISHED, not how the
-		// workspace resolves itself — nothing needs building for the link to work.
-		declareLinkedPackage({ directory: "dist/dev/pkg" });
-		const before = git("rev-parse", "HEAD");
-		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
-
-		runHook("post-checkout", [before, after, "1"]);
+	it("skips lifecycle scripts by default", () => {
+		runHook("post-checkout", bumpLockfile());
 
 		expect(invocations()).toEqual(["pnpm install --ignore-scripts"]);
 	});
 
-	it("keeps --ignore-scripts for an ordinary workspace with no publishConfig", () => {
-		declareLinkedPackage({});
-		const before = git("rev-parse", "HEAD");
-		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
+	it("skips lifecycle scripts when the opt-in is explicitly false", () => {
+		setOptIn("false");
 
-		runHook("post-checkout", [before, after, "1"]);
+		runHook("post-checkout", bumpLockfile());
 
 		expect(invocations()).toEqual(["pnpm install --ignore-scripts"]);
 	});
 
-	it("ignores an untracked package.json, matching what a checkout can carry", () => {
-		// Detection reads the index, not the working tree: a file git does not
-		// track cannot have arrived with the checkout that triggered this hook.
-		// Written AFTER the commits — commitChange stages everything, so creating
-		// it earlier would quietly track it and test nothing.
-		const before = git("rev-parse", "HEAD");
-		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
-		mkdirSync(join(repo, "packages/b"), { recursive: true });
-		writeFileSync(
-			join(repo, "packages/b/package.json"),
-			JSON.stringify({ name: "b", publishConfig: { directory: "dist", linkDirectory: true } }),
-		);
+	it("does not let a checked-out manifest enable lifecycle scripts", () => {
+		// The security case: a branch that adds the built-link-directory shape
+		// must NOT be able to turn scripts back on by being checked out. Without
+		// the local opt-in this stays suppressed no matter what the tree says.
+		declareLinkedPackage();
 
-		runHook("post-checkout", [before, after, "1"]);
+		runHook("post-checkout", bumpLockfile());
 
 		expect(invocations()).toEqual(["pnpm install --ignore-scripts"]);
 	});
+
 	it("announces a full install without a dangling separator", () => {
-		declareLinkedPackage({ directory: "dist/dev/pkg", linkDirectory: true });
-		const before = git("rev-parse", "HEAD");
-		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
+		setOptIn("true");
 
-		runHook("post-checkout", [before, after, "1"]);
+		runHook("post-checkout", bumpLockfile());
 
 		// No flag to name, so the line ends at the command — not at a stray space.
 		expect(lastStderr).toContain("running pnpm install\n");
 	});
 
 	it("names the flag when there is one to name", () => {
-		const before = git("rev-parse", "HEAD");
-		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
-
-		runHook("post-checkout", [before, after, "1"]);
+		runHook("post-checkout", bumpLockfile());
 
 		expect(lastStderr).toContain("running pnpm install --ignore-scripts\n");
+	});
+});
+
+describe("savvyInstallDeps (package-manager allowlist)", () => {
+	/**
+	 * `packageManager` comes from the checked-out revision, so it names an
+	 * executable an attacker controls. `command -v` proves a binary exists, not
+	 * that it is a package manager — the name has to be checked against the four
+	 * that are actually supported before anything is run.
+	 */
+	const declareManager = (name: string): ReadonlyArray<string> => {
+		writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "fixture", packageManager: `${name}@1.0.0` }));
+		git("add", "-A");
+		git("commit", "-m", `use ${name}`);
+		const before = git("rev-parse", "HEAD");
+		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
+		return [before, after, "1"];
+	};
+
+	it.skipIf(!hasJq)("refuses a manager outside the allowlist even when it is on PATH", () => {
+		fakePm("python");
+		const args = declareManager("python");
+
+		runHook("post-checkout", args);
+
+		expect(invocations()).toEqual([]);
+	});
+
+	it.skipIf(!hasJq)("accepts a manager named in the manifest when it is allowlisted", () => {
+		fakePm("npm");
+		const args = declareManager("npm");
+
+		runHook("post-checkout", args);
+
+		expect(invocations()).toEqual(["npm install --ignore-scripts"]);
 	});
 });
 
@@ -393,6 +445,49 @@ describe("SavvyInstallSection", () => {
 	it("leaves no shell variables behind", () => {
 		for (const hook of ["post-checkout", "post-merge"] as const) {
 			expect(savvyInstallDeps(hook)).toContain("unset install_");
+		}
+	});
+});
+
+describe("publishesBuiltLinkDirectory", () => {
+	it("accepts a directory paired with linkDirectory", () => {
+		expect(publishesBuiltLinkDirectory({ publishConfig: { directory: "dist/dev/pkg", linkDirectory: true } })).toBe(
+			true,
+		);
+	});
+
+	it("rejects a directory without linkDirectory", () => {
+		// publishConfig.directory alone changes what is PUBLISHED, not how the
+		// workspace resolves itself — nothing needs building for the link to work.
+		expect(publishesBuiltLinkDirectory({ publishConfig: { directory: "dist/dev/pkg" } })).toBe(false);
+	});
+
+	it("rejects linkDirectory without a directory", () => {
+		expect(publishesBuiltLinkDirectory({ publishConfig: { linkDirectory: true } })).toBe(false);
+	});
+
+	it("rejects an empty directory", () => {
+		expect(publishesBuiltLinkDirectory({ publishConfig: { directory: "", linkDirectory: true } })).toBe(false);
+	});
+
+	it("rejects a truthy non-true linkDirectory", () => {
+		expect(publishesBuiltLinkDirectory({ publishConfig: { directory: "d", linkDirectory: "yes" } })).toBe(false);
+	});
+
+	it("reads any non-object manifest as false", () => {
+		for (const manifest of [null, undefined, "x", 3, []]) {
+			expect(publishesBuiltLinkDirectory(manifest)).toBe(false);
+		}
+	});
+});
+
+describe("LIFECYCLE_SCRIPTS_CONFIG_KEY", () => {
+	it("is the key the generated block actually reads", () => {
+		// The constant and the shell must not drift: consumers set this key, and
+		// a rename on one side alone would silently stop authorizing anything.
+		expect(LIFECYCLE_SCRIPTS_CONFIG_KEY).toBe("savvy.installLifecycleScripts");
+		for (const hook of ["post-checkout", "post-merge"] as const) {
+			expect(savvyInstallDeps(hook)).toContain(`--get ${LIFECYCLE_SCRIPTS_CONFIG_KEY}`);
 		}
 	});
 });

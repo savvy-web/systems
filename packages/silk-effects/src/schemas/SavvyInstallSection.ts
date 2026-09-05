@@ -13,7 +13,7 @@ import { CommentStyle, SectionId } from "@effected/templates";
  * must ignore a file checkout, while `post-merge` is handed only a squash flag
  * and has to recover its own range from `ORIG_HEAD`.
  *
- * @since 7.4.0
+ * @since 7.5.0
  * @public
  */
 export type SavvyInstallHook = "post-checkout" | "post-merge";
@@ -23,7 +23,7 @@ export type SavvyInstallHook = "post-checkout" | "post-merge";
  *
  * `toolName` is `"savvy-install"`; pair with {@link savvyInstallDeps}.
  *
- * @since 7.4.0
+ * @since 7.5.0
  * @public
  */
 export const SavvyInstallSection: SectionId = SectionId.make({
@@ -69,16 +69,25 @@ const DEPENDENCY_PATHS = [
  * publishes through a built link directory — `publishConfig.directory` with
  * `linkDirectory: true`, which is how this monorepo wires `dist/dev/pkg` — the
  * workspace resolves its own dependencies through a directory that a `prepare`
- * script has to build. Skipping scripts there yields a populated `node_modules`
- * pointing at nothing, so a workspace declaring that combination takes a full
- * install instead. Detection reads the git index, so an untracked manifest does
- * not count: it cannot have arrived with the checkout that triggered the hook.
+ * script has to build, and skipping scripts yields a populated `node_modules`
+ * pointing at nothing.
  *
- * Dropping the flag is narrower than it sounds, because the package managers
- * gate lifecycle scripts themselves — pnpm's `strictDepBuilds` with an
- * `allowBuilds` allowlist being the case in point. Everywhere else the flag
- * stays on, and the hook says on the way out that scripts were skipped rather
- * than leaving it to be discovered.
+ * Those repos ask for a full install through the LOCAL git config key
+ * `savvy.installLifecycleScripts`, which `savvy init` sets when it finds the
+ * shape. The decision deliberately does NOT read the checked-out tree. Doing so
+ * failed in both directions at once: a branch that merely declared the shape
+ * could turn lifecycle scripts back on just by being checked out, making
+ * `git checkout` of an untrusted revision a code-execution path; and the `jq`
+ * the scan needed is absent on stock macOS and Ubuntu, where the missing answer
+ * silently skipped scripts in precisely the repos that cannot survive it.
+ * `.git/config` is neither checked out nor parsed with `jq`, so it has neither
+ * failure mode.
+ *
+ * The package managers gate dependency scripts themselves on top of this —
+ * pnpm's `strictDepBuilds` with an `allowBuilds` allowlist being the case in
+ * point — but workspace and root lifecycle scripts still run, which is why the
+ * opt-in is local rather than inferred. With the flag on, the hook says on the
+ * way out that scripts were skipped rather than leaving it to be discovered.
  *
  * Deliberately self-contained, like `savvyToolchainCheck`: its homes carry
  * `SavvyHooksSection` but no `SavvyBaseSection`, so it defines its own root, CI
@@ -115,7 +124,7 @@ const DEPENDENCY_PATHS = [
  *   argument guard and how the comparison range is recovered.
  * @returns The install shell, with no surrounding markers or trailing newline.
  *
- * @since 7.4.0
+ * @since 7.5.0
  * @public
  */
 export function savvyInstallDeps(hook: SavvyInstallHook): string {
@@ -146,6 +155,13 @@ ${range}
       else install_pm="npm"; fi
     fi
   fi
+  # packageManager comes from the checked-out revision, so it names an executable
+  # the tree controls. 'command -v' proves a binary exists, not that it is a
+  # package manager, so the name is checked against the supported four first.
+  case "$install_pm" in
+    npm|pnpm|yarn|bun) ;;
+    *) install_pm="" ;;
+  esac
   # Nothing to bring up to date unless a manifest or lockfile actually moved.
   # A missing node_modules skips the diff outright: there is no tree to be stale.
   install_stale=""
@@ -157,19 +173,12 @@ ${range}
     fi
   fi
   if [ -n "$install_stale" ] && command -v "$install_pm" >/dev/null 2>&1; then
-    # A workspace that publishes through a BUILT link directory resolves its own
-    # workspace dependencies through a directory a lifecycle script has to produce.
-    # Skipping scripts there leaves node_modules pointing at nothing, which is worse
-    # than a slower install, so those repos take the scripts. Read from the index
-    # rather than the working tree: a file git does not track cannot have arrived
-    # with the checkout that triggered this.
-    install_linked=""
-    if command -v jq >/dev/null 2>&1; then
-      install_linked=$(git -C "$install_root" ls-files -z -- '*package.json' 2>/dev/null \
-        | xargs -0 jq -r 'select(.publishConfig.directory and .publishConfig.linkDirectory == true) | input_filename' 2>/dev/null \
-        | head -n 1) || true
-    fi
-    if [ -n "$install_linked" ]; then
+    # Whether lifecycle scripts run is a LOCAL decision, read from .git/config,
+    # which no checkout can rewrite. Default off. 'savvy init' turns it on for a
+    # workspace that publishes through built link directories, where the links
+    # point at directories a prepare script has to produce.
+    install_scripts=$(git -C "$install_root" config --bool --get savvy.installLifecycleScripts 2>/dev/null) || true
+    if [ "$install_scripts" = "true" ]; then
       install_flag=""
     else
       # Berry dropped --ignore-scripts for the install mode; Classic never knew the
@@ -195,8 +204,48 @@ ${range}
       printf '  Set SAVVY_SKIP_INSTALL=1 to stop this hook from trying.\\n' >&2
     fi
   fi
-  unset install_root install_from install_to install_pm install_stale install_linked install_flag
+  unset install_root install_from install_to install_pm install_stale install_scripts install_flag
 fi`;
+}
+
+/**
+ * The local git config key that authorizes lifecycle scripts during a hook install.
+ *
+ * @remarks
+ * Local scope only. It lives in `.git/config`, which is never checked out, so no
+ * incoming revision can set it — that is the whole point of reading the decision
+ * from here rather than from a manifest in the tree.
+ *
+ * @since 7.5.0
+ * @public
+ */
+export const LIFECYCLE_SCRIPTS_CONFIG_KEY = "savvy.installLifecycleScripts";
+
+/**
+ * Whether `manifest` publishes through a built link directory.
+ *
+ * @remarks
+ * `publishConfig.directory` with `linkDirectory: true` means consumers of this
+ * package resolve it through a directory that a `prepare` script has to produce,
+ * so an install that skips lifecycle scripts leaves the link pointing at nothing.
+ * A workspace containing any such package is one whose owner probably wants
+ * {@link LIFECYCLE_SCRIPTS_CONFIG_KEY} set.
+ *
+ * Reporting the shape is deliberately separate from acting on it: this answers
+ * "does this repo need scripts", and a human still decides whether hook-time
+ * installs may run them.
+ *
+ * @param manifest - A parsed `package.json`; any non-object reads as `false`.
+ *
+ * @since 7.5.0
+ * @public
+ */
+export function publishesBuiltLinkDirectory(manifest: unknown): boolean {
+	if (typeof manifest !== "object" || manifest === null) return false;
+	const { publishConfig } = manifest as { publishConfig?: unknown };
+	if (typeof publishConfig !== "object" || publishConfig === null) return false;
+	const { directory, linkDirectory } = publishConfig as { directory?: unknown; linkDirectory?: unknown };
+	return typeof directory === "string" && directory.length > 0 && linkDirectory === true;
 }
 
 /**
@@ -205,7 +254,7 @@ fi`;
  * @param hook - Which hook the section is destined for.
  * @returns A shell `Section` (`commentStyle: hash`) keyed `SAVVY-INSTALL`.
  *
- * @since 7.4.0
+ * @since 7.5.0
  * @public
  */
 export function savvyInstallBlock(hook: SavvyInstallHook): Section {

@@ -50,6 +50,13 @@ if ! { [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$SAVVY_SKIP_INSTALL" ];
       else install_pm="npm"; fi
     fi
   fi
+  # packageManager comes from the checked-out revision, so it names an executable
+  # the tree controls. 'command -v' proves a binary exists, not that it is a
+  # package manager, so the name is checked against the supported four first.
+  case "$install_pm" in
+    npm|pnpm|yarn|bun) ;;
+    *) install_pm="" ;;
+  esac
   # Nothing to bring up to date unless a manifest or lockfile actually moved.
   # A missing node_modules skips the diff outright: there is no tree to be stale.
   install_stale=""
@@ -61,17 +68,12 @@ if ! { [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$SAVVY_SKIP_INSTALL" ];
     fi
   fi
   if [ -n "$install_stale" ] && command -v "$install_pm" >/dev/null 2>&1; then
-    # A workspace that publishes through a BUILT link directory resolves its own
-    # workspace dependencies through a directory a lifecycle script has to produce.
-    # Skipping scripts there leaves node_modules pointing at nothing, which is worse
-    # than a slower install, so those repos take the scripts. Read from the index
-    # rather than the working tree: a file git does not track cannot have arrived
-    # with the checkout that triggered this.
-    install_linked=""
-    if command -v jq >/dev/null 2>&1; then
-      install_linked=$(git -C "$install_root" ls-files -z -- '*package.json' 2>/dev/null         | xargs -0 jq -r 'select(.publishConfig.directory and .publishConfig.linkDirectory == true) | input_filename' 2>/dev/null         | head -n 1) || true
-    fi
-    if [ -n "$install_linked" ]; then
+    # Whether lifecycle scripts run is a LOCAL decision, read from .git/config,
+    # which no checkout can rewrite. Default off. 'savvy init' turns it on for a
+    # workspace that publishes through built link directories, where the links
+    # point at directories a prepare script has to produce.
+    install_scripts=$(git -C "$install_root" config --bool --get savvy.installLifecycleScripts 2>/dev/null) || true
+    if [ "$install_scripts" = "true" ]; then
       install_flag=""
     else
       # Berry dropped --ignore-scripts for the install mode; Classic never knew the
@@ -97,6 +99,6 @@ if ! { [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$SAVVY_SKIP_INSTALL" ];
       printf '  Set SAVVY_SKIP_INSTALL=1 to stop this hook from trying.\n' >&2
     fi
   fi
-  unset install_root install_from install_to install_pm install_stale install_linked install_flag
+  unset install_root install_from install_to install_pm install_stale install_scripts install_flag
 fi
 # --- END SAVVY-INSTALL MANAGED SECTION ---

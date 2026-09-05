@@ -25,6 +25,12 @@ Four guards keep it a silent no-op outside real dependency events:
 
 The install's exit status is swallowed so a failed install never looks like a failed checkout.
 
-One shape of repo cannot afford `--ignore-scripts` and is detected rather than warned about. Where a package publishes through a built link directory — `publishConfig.directory` together with `linkDirectory: true` — the workspace resolves its own dependencies through a directory that a `prepare` script has to build, and skipping scripts leaves a populated `node_modules` pointing at nothing. A workspace declaring that combination in any tracked manifest takes a full install instead. Detection reads the git index, so an untracked manifest does not count: it cannot have arrived with the checkout that triggered the hook. Everywhere else the flag stays on and the hook prints a line saying scripts were skipped.
+Lifecycle scripts are skipped by default and re-enabled only by the LOCAL git config key `savvy.installLifecycleScripts`. A workspace publishing through built link directories (`publishConfig.directory` with `linkDirectory: true`) needs them — its own workspace links resolve through directories a `prepare` script produces — and `savvy init` now says so and prints the command, leaving the decision to the person who owns the checkout.
+
+The decision deliberately does not read the checked-out tree, which failed in both directions at once. A branch that merely declared the shape could have turned lifecycle scripts back on just by being checked out, making `git checkout` of an untrusted revision a code-execution path; and the `jq` such a scan needs is absent on stock macOS and Ubuntu, where the missing answer silently skipped scripts in precisely the repos that cannot survive it. `.git/config` is neither checked out nor parsed with `jq`.
+
+`packageManager` is likewise attacker-controlled input, so the parsed name is checked against `npm`, `pnpm`, `yarn` and `bun` before anything runs — `command -v` proves a binary exists, not that it is a package manager.
+
+Also adds `publishesBuiltLinkDirectory` and `LIFECYCLE_SCRIPTS_CONFIG_KEY` for consumers that want to detect the shape or name the key themselves.
 
 A fresh clone is not covered, and cannot be: husky sets `core.hooksPath` from its own `prepare` script, so until the first manual install runs there is no hook installed to fire.
