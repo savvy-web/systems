@@ -107,7 +107,12 @@ export interface RawPackageJson {
  */
 export interface PublishablePackage {
 	readonly name: string;
-	readonly version: string;
+	/**
+	 * The declared version, absent when the manifest carries none. Publishability is decided by
+	 * `publishConfig`, not by `version`, so a version-less package can still resolve targets —
+	 * it simply has no version to publish under until one is declared.
+	 */
+	readonly version: string | undefined;
 	readonly path: string;
 	readonly targetCount: number;
 }

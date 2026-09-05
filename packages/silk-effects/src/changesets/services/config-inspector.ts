@@ -62,7 +62,12 @@ export type ResolvedVersionFile = typeof ResolvedVersionFileSchema.Type;
 export const ResolvedPackageScopeSchema = Schema.Struct({
 	name: Schema.String,
 	workspaceDir: Schema.String,
-	version: Schema.String,
+	/**
+	 * The package's declared version, absent when its manifest carries none — legal for a private
+	 * package and the ordinary shape for a private monorepo root. A scope with no version has
+	 * nothing to stamp into its `versionFiles` targets, so `VersionFiles.applyScopes` skips it.
+	 */
+	version: Schema.optional(Schema.String),
 	additionalScopes: Schema.Array(Schema.String),
 	additionalScopeFiles: Schema.Array(Schema.String),
 	versionFiles: Schema.Array(ResolvedVersionFileSchema),
@@ -367,7 +372,7 @@ function isInside(parent: string, child: string): boolean {
  */
 function buildResolvedScopes(params: {
 	readonly options: typeof ChangesetOptionsSchema.Type;
-	readonly workspaces: ReadonlyArray<{ name: string; path: string; version: string }>;
+	readonly workspaces: ReadonlyArray<{ name: string; path: string; version: string | undefined }>;
 	readonly projectDir: string;
 	readonly configPath: string;
 }): Effect.Effect<ReadonlyArray<ResolvedPackageScope>, ConfigurationError, FileSystem.FileSystem> {
@@ -468,7 +473,7 @@ function readRawPackageJson(
  */
 function buildFallbackScopes(
 	fs: FileSystem.FileSystem,
-	workspaces: ReadonlyArray<{ name: string; path: string; version: string }>,
+	workspaces: ReadonlyArray<{ name: string; path: string; version: string | undefined }>,
 	versionPrivate: boolean,
 ): Effect.Effect<ReadonlyArray<ResolvedPackageScope>, ConfigurationError> {
 	return Effect.forEach(workspaces, (ws) =>

@@ -12,7 +12,8 @@ function root(): string {
 
 function workspace(): { root: string; pkg: string } {
 	const r = root();
-	// WorkspaceDiscovery rejects a root manifest without a version (missingVersion), so declare one.
+	// A version-less private root is a legal member as of @effected/workspaces 0.19.0; declare a version
+	// anyway so these fixtures describe an ordinary, fully-formed workspace.
 	writeFileSync(join(r, "package.json"), JSON.stringify({ name: "root", version: "0.0.0", private: true }));
 	writeFileSync(join(r, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
 	const pkg = join(r, "packages", "pkg");
@@ -87,14 +88,16 @@ describe("loadTsdoctorSources", () => {
 
 	it("surfaces a workspace-discovery failure instead of silently dropping the project tier", async () => {
 		const { root: r, pkg } = workspace();
-		// A root manifest without a version is one discovery failure; the leaf still reads.
-		writeFileSync(join(r, "package.json"), JSON.stringify({ name: "root", private: true }));
+		// A member manifest with no name is one discovery failure; the leaf still reads. (A member with
+		// no VERSION is not: @effected/workspaces 0.19.0 retired the missingVersion kind, because pnpm
+		// accepts a version-less private package.)
+		writeFileSync(join(pkg, "package.json"), JSON.stringify({ version: "1.0.0" }));
 		writeFileSync(join(r, "tsdoctor.json"), JSON.stringify({ name: "Project" }));
 		writeFileSync(join(pkg, "tsdoctor.json"), JSON.stringify({ name: "Leaf" }));
 		const sources = await loadTsdoctorSources(pkg);
 		expect(sources.leaf).toEqual({ name: "Leaf" });
 		expect(sources.project).toBeUndefined();
-		expect(sources.discoveryFailure).toMatch(/missingVersion/);
+		expect(sources.discoveryFailure).toMatch(/missingName/);
 	});
 
 	it("reports no discovery failure for a package outside any workspace", async () => {

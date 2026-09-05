@@ -145,7 +145,7 @@ describe("runMetaPass", () => {
 			meta: {},
 			collector,
 			ci: false,
-			loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined, discoveryFailure: "missingVersion" }),
+			loadTsdoctorSources: async () => ({ leaf: undefined, project: undefined, discoveryFailure: "missingName" }),
 			generateMeta: async (opts) => {
 				generated.push(opts.outMetaDir);
 				return { apiJsonPath: "/x", apiJsonFilename: "pkg.api.json" };
@@ -155,7 +155,7 @@ describe("runMetaPass", () => {
 		const warnings = collector.snapshot("@scope/pkg").flatMap((r) => r.targetGroups.flatMap((g) => g.warnings));
 		expect(warnings).toHaveLength(2);
 		expect(warnings[0]).toMatchObject({ source: "meta", code: "tsdoctor-workspace-discovery-failed" });
-		expect(warnings[0]?.text).toContain("missingVersion");
+		expect(warnings[0]?.text).toContain("missingName");
 	});
 
 	it("records an invalid tsdoctor.json source in the collector and fails the pass", async () => {

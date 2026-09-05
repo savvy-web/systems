@@ -55,8 +55,14 @@ const KNOWN_REGISTRIES: Record<string, string> = {
  */
 const sameRegistry = (a: string, b: string): boolean => trimTrailingSlashes(a) === trimTrailingSlashes(b);
 
+/**
+ * The package's declared version. `current` is absent for a member whose manifest carries no
+ * `version` — legal for a private package and the ordinary shape for a private monorepo root,
+ * which `@effected/workspaces` discovers as a member rather than rejecting (its `missingVersion`
+ * failure kind was retired in 0.19.0). Such a package has no version to bump, tag or stamp.
+ */
 const WorkspaceVersion = Schema.Struct({
-	current: Schema.String,
+	current: Schema.optional(Schema.String),
 });
 
 /**
@@ -126,7 +132,7 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 	}
 
 	toString(): string {
-		return `${this.name}@${this.version.current}`;
+		return this.version.current === undefined ? this.name : `${this.name}@${this.version.current}`;
 	}
 
 	toJSON(): unknown {

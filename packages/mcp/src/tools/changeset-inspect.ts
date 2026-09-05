@@ -99,7 +99,10 @@ const renderMarkdown = (data: ChangesetInspectResultType): string => {
 				`## Packages`,
 			];
 			for (const p of r.packages) {
-				lines.push(`### ${mdInline(p.name)} (${mdInline(p.version)})`, `- dir: ${mdInline(p.workspaceDir)}`);
+				lines.push(
+					p.version === undefined ? `### ${mdInline(p.name)}` : `### ${mdInline(p.name)} (${mdInline(p.version)})`,
+					`- dir: ${mdInline(p.workspaceDir)}`,
+				);
 				if (p.additionalScopes.length > 0)
 					lines.push(`- additionalScopes: ${p.additionalScopes.map(mdInline).join(", ")}`);
 				if (p.versionFiles.length > 0)
