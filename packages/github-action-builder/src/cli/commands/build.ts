@@ -26,18 +26,23 @@ export const configOption = Flag.file("config").pipe(
 export const quietOption = Flag.boolean("quiet").pipe(
 	Flag.withAlias("q"),
 	Flag.withDescription("Suppress non-error output"),
+	Flag.withDefault(false),
 );
 
 /**
  * Skip validation option.
  */
-export const noValidateOption = Flag.boolean("no-validate").pipe(Flag.withDescription("Skip validation step"));
+export const noValidateOption = Flag.boolean("no-validate").pipe(
+	Flag.withDescription("Skip validation step"),
+	Flag.withDefault(false),
+);
 
 /**
  * Skip persist-local option.
  */
 export const noPersistOption = Flag.boolean("no-persist").pipe(
 	Flag.withDescription("Skip persisting build output to local action directory"),
+	Flag.withDefault(false),
 );
 
 /**

@@ -17,7 +17,11 @@ const actionNameArg = Argument.string("action-name").pipe(
 /**
  * Force overwrite option.
  */
-const forceOption = Flag.boolean("force").pipe(Flag.withAlias("f"), Flag.withDescription("Overwrite existing files"));
+const forceOption = Flag.boolean("force").pipe(
+	Flag.withAlias("f"),
+	Flag.withDescription("Overwrite existing files"),
+	Flag.withDefault(false),
+);
 
 /**
  * Get current package version (replaced at build time).
