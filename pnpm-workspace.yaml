@@ -120,7 +120,7 @@ catalogs:
     typescript: ^7.0.0
   test:
     "@vitest/coverage-istanbul": ^4.1.11
-    "@vitest/coverage-v8": ^4.1.11
+    "@vitest/coverage-v8": ^5.0.0
     vitest: ^4.1.11
   test:peers:
     "@vitest/coverage-istanbul": ^4.1.0
