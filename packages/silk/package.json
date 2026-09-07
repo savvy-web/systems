@@ -75,6 +75,7 @@
 		"tsx": "catalog:build",
 		"turbo": "catalog:lint",
 		"typescript": "catalog:build",
+		"vite": "catalog:test",
 		"vitest": "catalog:test"
 	},
 	"peerDependenciesMeta": {

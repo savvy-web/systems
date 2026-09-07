@@ -24,8 +24,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@types/bun": {
-							range: "^1.4.0",
-							peer: "^1.4.0",
+							range: "^1.4.1",
+							peer: "^1.4.1",
 							strategy: "lock",
 						},
 						"@types/node": {
@@ -128,8 +128,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						vitepress: {
-							range: "^2.0.0-alpha.19",
-							peer: "^2.0.0-alpha.19",
+							range: "^2.0.0-alpha.20",
+							peer: "^2.0.0-alpha.20",
 							strategy: "lock",
 						},
 					},
@@ -142,8 +142,8 @@ await build({
 							strategy: "lock",
 						},
 						"@changesets/cli": {
-							range: "^3.0.1",
-							peer: "^3.0.1",
+							range: "^3.0.2",
+							peer: "^3.0.2",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
@@ -162,8 +162,8 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.4.1",
-							peer: "^17.4.1",
+							range: "^17.5.0",
+							peer: "^17.5.0",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
@@ -186,8 +186,8 @@ await build({
 				silk: {
 					packages: {
 						"@types/bun": {
-							range: "^1.4.0",
-							peer: "^1.4.0",
+							range: "^1.4.1",
+							peer: "^1.4.1",
 							strategy: "lock",
 						},
 						"@types/node": {
@@ -215,8 +215,8 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.4.1",
-							peer: "^17.4.1",
+							range: "^17.5.0",
+							peer: "^17.5.0",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
@@ -254,18 +254,23 @@ await build({
 				test: {
 					packages: {
 						"@vitest/coverage-istanbul": {
-							range: "^4.1.11",
-							peer: "^4.1.0",
+							range: "^5.0.0",
+							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-v8": {
-							range: "^4.1.11",
-							peer: "^4.1.0",
+							range: "^5.0.0",
+							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						vitest: {
-							range: "^4.1.11",
-							peer: "^4.1.0",
+							range: "^5.0.0",
+							peer: "^5.0.0",
+							strategy: "lock-minor",
+						},
+						vite: {
+							range: "^8.2.2",
+							peer: "^8.2.0",
 							strategy: "lock-minor",
 						},
 					},
@@ -279,15 +284,19 @@ await build({
 				"@oxc-project/*",
 				"@savvy-web/*",
 				"@spencerbeggs/*",
+				"@ofkfi/*",
 				"@tsdoctor/*",
 				"@typescript/*",
+				"@vitest/*",
 				"@vitest-agent/*",
 				"oxc-parser",
 				"reposets",
 				"rolldown-pnpm-config",
 				"rspress-plugin-api-extractor",
+				"vspress-plugin-api-extractor",
 				"runtime-resolver",
 				"std-osc8",
+				"vitest",
 				"vitest-bats",
 			],
 			overrides: {
