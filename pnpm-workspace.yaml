@@ -1,28 +1,31 @@
+packages:
+  - e2e/*
+  - packages/*
 allowBuilds:
-  '@modelcontextprotocol/inspector': true
-  '@parcel/watcher': true
+  "@modelcontextprotocol/inspector": true
+  "@parcel/watcher": true
   better-sqlite3: true
   core-js: true
   esbuild: true
   msgpackr-extract: true
 allowedDeprecatedVersions:
-  '@types/acorn': '*'
-  git-raw-commits: '*'
-  glob: '*'
-  inflight: '*'
-  node-domexception: '*'
-  prebuild-install: '*'
+  "@types/acorn": "*"
+  git-raw-commits: "*"
+  glob: "*"
+  inflight: "*"
+  node-domexception: "*"
+  prebuild-install: "*"
 autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    '@rsbuild/core': ^2.2.3
-    '@tsdown/css': ^0.23.0
-    '@tsdown/exe': ^0.23.0
-    '@types/bun': ^1.4.1
-    '@types/node': ^26.4.1
-    '@types/react': ^19.2.18
-    '@types/react-dom': ^19.2.7
+    "@rsbuild/core": ^2.2.3
+    "@tsdown/css": ^0.23.0
+    "@tsdown/exe": ^0.23.0
+    "@types/bun": ^1.4.1
+    "@types/node": ^26.4.1
+    "@types/react": ^19.2.18
+    "@types/react-dom": ^19.2.7
     react: ^19.2.8
     react-dom: ^19.2.8
     rolldown: ^1.2.7
@@ -30,13 +33,13 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.2
   build:peers:
-    '@rsbuild/core': ^2.2.0
-    '@tsdown/css': ^0.23.0
-    '@tsdown/exe': ^0.23.0
-    '@types/bun': ^1.4.1
-    '@types/node': ^26.4.0
-    '@types/react': ^19.2.0
-    '@types/react-dom': ^19.2.0
+    "@rsbuild/core": ^2.2.0
+    "@tsdown/css": ^0.23.0
+    "@tsdown/exe": ^0.23.0
+    "@types/bun": ^1.4.1
+    "@types/node": ^26.4.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
     react: ^19.2.0
     react-dom: ^19.2.0
     rolldown: ^1.2.0
@@ -44,11 +47,11 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.0
   docs:
-    '@rspress/core': ^2.0.21
-    '@rspress/plugin-sitemap': ^2.0.21
-    '@types/node': ^26.4.1
-    '@types/react': ^19.2.18
-    '@types/react-dom': ^19.2.7
+    "@rspress/core": ^2.0.21
+    "@rspress/plugin-sitemap": ^2.0.21
+    "@types/node": ^26.4.1
+    "@types/react": ^19.2.18
+    "@types/react-dom": ^19.2.7
     react: ^19.2.8
     react-dom: ^19.2.8
     rspress-plugin-mermaid: ^1.0.1
@@ -56,11 +59,11 @@ catalogs:
     vite: ^8.2.2
     vitepress: ^2.0.0-alpha.20
   docs:peers:
-    '@rspress/core': ^2.0.0
-    '@rspress/plugin-sitemap': ^2.0.21
-    '@types/node': ^26.4.0
-    '@types/react': ^19.2.0
-    '@types/react-dom': ^19.2.0
+    "@rspress/core": ^2.0.0
+    "@rspress/plugin-sitemap": ^2.0.21
+    "@types/node": ^26.4.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
     react: ^19.2.0
     react-dom: ^19.2.0
     rspress-plugin-mermaid: ^1.0.1
@@ -68,31 +71,31 @@ catalogs:
     vite: ^8.2.0
     vitepress: ^2.0.0-alpha.20
   lint:
-    '@biomejs/biome': 2.5.12
-    '@changesets/cli': ^3.0.2
-    '@commitlint/cli': ^21.2.2
-    '@commitlint/config-conventional': ^21.2.2
+    "@biomejs/biome": 2.5.12
+    "@changesets/cli": ^3.0.2
+    "@commitlint/cli": ^21.2.2
+    "@commitlint/config-conventional": ^21.2.2
     husky: ^9.1.7
     lint-staged: ^17.5.0
     markdownlint-cli2: ^0.23.2
     markdownlint-cli2-formatter-codequality: ^0.0.7
     turbo: ^2.10.12
   lint:peers:
-    '@biomejs/biome': 2.5.12
-    '@changesets/cli': ^3.0.2
-    '@commitlint/cli': ^21.2.2
-    '@commitlint/config-conventional': ^21.2.2
+    "@biomejs/biome": 2.5.12
+    "@changesets/cli": ^3.0.2
+    "@commitlint/cli": ^21.2.2
+    "@commitlint/config-conventional": ^21.2.2
     husky: ^9.1.7
     lint-staged: ^17.5.0
     markdownlint-cli2: ^0.23.2
     markdownlint-cli2-formatter-codequality: ^0.0.7
     turbo: ^2.10.12
   silk:
-    '@types/bun': ^1.4.1
-    '@types/node': ^26.4.1
-    '@types/react': ^19.2.18
-    '@types/react-dom': ^19.2.7
-    '@typescript/native-preview': ^7.0.0-dev.20260707.2
+    "@types/bun": ^1.4.1
+    "@types/node": ^26.4.1
+    "@types/react": ^19.2.18
+    "@types/react-dom": ^19.2.7
+    "@typescript/native-preview": ^7.0.0-dev.20260707.2
     husky: ^9.1.7
     lint-staged: ^17.5.0
     markdownlint-cli2: ^0.23.2
@@ -102,11 +105,11 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.2
   silk:peers:
-    '@types/bun': ^1.4.1
-    '@types/node': ^26.4.0
-    '@types/react': ^19.2.0
-    '@types/react-dom': ^19.2.0
-    '@typescript/native-preview': ^7.0.0-dev.20260707.2
+    "@types/bun": ^1.4.1
+    "@types/node": ^26.4.0
+    "@types/react": ^19.2.0
+    "@types/react-dom": ^19.2.0
+    "@typescript/native-preview": ^7.0.0-dev.20260707.2
     husky: ^9.1.7
     lint-staged: ^17.5.0
     markdownlint-cli2: ^0.23.2
@@ -116,78 +119,75 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.0
   test:
-    '@vitest/coverage-istanbul': ^5.0.0
-    '@vitest/coverage-v8': ^5.0.0
+    "@vitest/coverage-istanbul": ^5.0.0
+    "@vitest/coverage-v8": ^5.0.0
     vite: ^8.2.2
     vitest: ^5.0.0
   test:peers:
-    '@vitest/coverage-istanbul': ^5.0.0
-    '@vitest/coverage-v8': ^5.0.0
+    "@vitest/coverage-istanbul": ^5.0.0
+    "@vitest/coverage-v8": ^5.0.0
     vite: ^8.2.0
     vitest: ^5.0.0
 configDependencies:
-  '@effected/pnpm-plugin-effect': 0.7.0+sha512-p8/hnp+8yDyUWJBVjXbsNCF1K6XGrxfHH+eh86Vm142C/Rtx09JU7WArjaoM0tMSi5xt0vBQ7lEY9Aq1T+cxJQ==
+  "@effected/pnpm-plugin-effect": 0.7.0+sha512-p8/hnp+8yDyUWJBVjXbsNCF1K6XGrxfHH+eh86Vm142C/Rtx09JU7WArjaoM0tMSi5xt0vBQ7lEY9Aq1T+cxJQ==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-- '@effected/*'
-- '@ofkfi/*'
-- '@oxc-parser/*'
-- '@oxc-project/*'
-- '@savvy-web/*'
-- '@spencerbeggs/*'
-- '@tsdoctor/*'
-- '@typescript/*'
-- '@vitest-agent/*'
-- '@vitest/*'
-- oxc-parser
-- reposets
-- rolldown-pnpm-config
-- rspress-plugin-api-extractor
-- runtime-resolver
-- std-osc8
-- vitest
-- vitest-bats
-- vspress-plugin-api-extractor
+  - "@effected/*"
+  - "@ofkfi/*"
+  - "@oxc-parser/*"
+  - "@oxc-project/*"
+  - "@savvy-web/*"
+  - "@spencerbeggs/*"
+  - "@tsdoctor/*"
+  - "@typescript/*"
+  - "@vitest-agent/*"
+  - "@vitest/*"
+  - oxc-parser
+  - reposets
+  - rolldown-pnpm-config
+  - rspress-plugin-api-extractor
+  - runtime-resolver
+  - std-osc8
+  - vitest
+  - vitest-bats
+  - vspress-plugin-api-extractor
 overrides:
-  '@microsoft/api-extractor>typescript': ^6.0.3
-packages:
-- e2e/*
-- packages/*
+  "@microsoft/api-extractor>typescript": ^6.0.3
 peerDependencyRules:
   allowedVersions:
-    '@effect/vitest>vitest': ^4.1.0
-    '@typescript-eslint/project-service>typescript': ^6.0.0
-    '@typescript-eslint/tsconfig-utils>typescript': ^6.0.0
-    '@typescript-eslint/typescript-estree>typescript': ^6.0.0
-    '@typescript-eslint/util>typescript': ^6.0.0
-    '@typescript-eslint/utils>typescript': ^6.0.0
+    "@effect/vitest>vitest": ^4.1.0
+    "@typescript-eslint/project-service>typescript": ^6.0.0
+    "@typescript-eslint/tsconfig-utils>typescript": ^6.0.0
+    "@typescript-eslint/typescript-estree>typescript": ^6.0.0
+    "@typescript-eslint/util>typescript": ^6.0.0
+    "@typescript-eslint/utils>typescript": ^6.0.0
     eslint-plugin-tsdoc>typescript: ^6.0.0
     ink-tab>ink: ^7.0.0
     tsdown>typescript: ^5.0.0 || ^6.0.0 || ^7.0.0
 publicHoistPattern:
-- '@changesets/cli'
-- '@commitlint/cli'
-- '@commitlint/config-conventional'
-- '@commitlint/cz-commitlint'
-- '@types/bun'
-- '@types/node'
-- '@types/react'
-- '@types/react-dom'
-- '@typescript/native-preview'
-- '@vitest-agent/cli'
-- '@vitest-agent/mcp'
-- '@vitest/coverage-istanbul'
-- '@vitest/coverage-v8'
-- husky
-- lint-staged
-- markdownlint-cli2
-- markdownlint-cli2-formatter-codequality
-- tsx
-- turbo
-- typescript
-- vitest
+  - "@changesets/cli"
+  - "@commitlint/cli"
+  - "@commitlint/config-conventional"
+  - "@commitlint/cz-commitlint"
+  - "@types/bun"
+  - "@types/node"
+  - "@types/react"
+  - "@types/react-dom"
+  - "@typescript/native-preview"
+  - "@vitest-agent/cli"
+  - "@vitest-agent/mcp"
+  - "@vitest/coverage-istanbul"
+  - "@vitest/coverage-v8"
+  - husky
+  - lint-staged
+  - markdownlint-cli2
+  - markdownlint-cli2-formatter-codequality
+  - tsx
+  - turbo
+  - typescript
+  - vitest
 strictDepBuilds: true
 verifyDepsBeforeRun: false
