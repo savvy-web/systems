@@ -1,5 +1,21 @@
 # @savvy-web/cli
 
+## 2.11.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.6.0 | ^0.6.1 |
+| @effected/git | dependency | updated | ^0.11.0 | ^0.12.0 |
+| @effected/workspaces | dependency | updated | ^0.20.0 | ^0.20.1 |
+| @effected/yaml | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @savvy-web/silk-effects | dependency | updated | 7.5.0 | 7.5.1 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.11.0
 
 ### Features

@@ -1,5 +1,27 @@
 # @savvy-web/silk
 
+## 3.14.0
+
+### Features
+
+- Upgrades Vitest peers to v5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.6.0 | ^0.6.1 |
+| @effected/git | dependency | updated | ^0.11.0 | ^0.12.0 |
+| @effected/workspaces | dependency | updated | ^0.20.0 | ^0.20.1 |
+| @savvy-web/changelog | dependency | updated | 0.1.1 | 0.1.1 |
+| @savvy-web/cli | dependency | updated | 2.11.0 | 2.11.1 |
+| @savvy-web/mcp | dependency | updated | 2.7.1 | 2.7.2 |
+| @vitest/expect | peerDependency | added | — | ^5.0.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.13.2
 
 ### Dependencies

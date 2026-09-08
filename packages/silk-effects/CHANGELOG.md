@@ -1,5 +1,19 @@
 # @savvy-web/silk-effects
 
+## 7.5.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/markdown | dependency | updated | ^0.9.0 | ^0.9.1 |
+| @effected/walker | dependency | updated | ^0.6.0 | ^0.7.0 |
+| @effected/yaml | dependency | updated | ^0.13.0 | ^0.14.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 7.5.0
 
 ### Features
