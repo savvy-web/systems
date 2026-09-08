@@ -1,4 +1,20 @@
 {
-	"$schema": "https://json.schemastore.org/tsconfig",
-	"extends": "./packages/silk/public/tsconfig/node/root.json"
+	"$schema": "https://json.schemastore.org/tsconfig.json",
+	"compilerOptions": {
+		// TEMPORARY — remove when vitest ships the fix for
+		// https://github.com/vitest-dev/vitest/issues/11140 (closed COMPLETED
+		// 2026-09-04, unreleased as of 5.0.0, the current latest).
+		//
+		// vitest 5.0.0's own bundled .d.ts files fail type-checking: config.d.ts
+		// imports `@vitest/expect`, which vitest 5 stopped declaring as a
+		// dependency (vitest 4 declared it), and plugin.d.*.d.ts imports a
+		// `MarkOptions` that `vitest/browser` does not export. Neither comes from
+		// code in this repo. @vitest/expect is pinned as a direct devDependency
+		// to cover the first; only skipLibCheck covers the second.
+		//
+		// The shared @savvy-web/silk base deliberately omits skipLibCheck, so this
+		// override is a knowing, local, temporary divergence — not a new house rule.
+		"skipLibCheck": true
+	},
+	"extends": "@savvy-web/silk/tsconfig/node/root.json"
 }

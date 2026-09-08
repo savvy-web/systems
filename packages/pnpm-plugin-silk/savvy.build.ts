@@ -253,6 +253,11 @@ await build({
 				},
 				test: {
 					packages: {
+						"@vitest/expect": {
+							range: "^5.0.0",
+							peer: "^5.0.0",
+							strategy: "lock-minor",
+						},
 						"@vitest/coverage-istanbul": {
 							range: "^5.0.0",
 							peer: "^5.0.0",
@@ -284,7 +289,7 @@ await build({
 				"@oxc-project/*",
 				"@savvy-web/*",
 				"@spencerbeggs/*",
-				"@ofkfi/*",
+				"@ofkfit/*",
 				"@tsdoctor/*",
 				"@typescript/*",
 				"@vitest/*",
@@ -355,7 +360,7 @@ await build({
 			peerDependencyRules: {
 				allowedVersions: {
 					"tsdown>typescript": "^5.0.0 || ^6.0.0 || ^7.0.0",
-					"@effect/vitest>vitest": "^4.1.0",
+					"@effect/vitest>vitest": "^5.0.0",
 					"@typescript-eslint/project-service>typescript": "^6.0.0",
 					"@typescript-eslint/tsconfig-utils>typescript": "^6.0.0",
 					"@typescript-eslint/typescript-estree>typescript": "^6.0.0",

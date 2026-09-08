@@ -68,6 +68,7 @@
 		"@types/node": "catalog:build",
 		"@vitest/coverage-istanbul": "catalog:test",
 		"@vitest/coverage-v8": "catalog:test",
+		"@vitest/expect": "catalog:test",
 		"husky": "catalog:lint",
 		"lint-staged": "catalog:lint",
 		"markdownlint-cli2": "catalog:lint",

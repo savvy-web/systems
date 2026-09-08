@@ -121,22 +121,24 @@ catalogs:
   test:
     "@vitest/coverage-istanbul": ^5.0.0
     "@vitest/coverage-v8": ^5.0.0
+    "@vitest/expect": ^5.0.0
     vite: ^8.2.2
     vitest: ^5.0.0
   test:peers:
     "@vitest/coverage-istanbul": ^5.0.0
     "@vitest/coverage-v8": ^5.0.0
+    "@vitest/expect": ^5.0.0
     vite: ^8.2.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.7.0+sha512-p8/hnp+8yDyUWJBVjXbsNCF1K6XGrxfHH+eh86Vm142C/Rtx09JU7WArjaoM0tMSi5xt0vBQ7lEY9Aq1T+cxJQ==
+  "@effected/pnpm-plugin-effect": 0.7.1+sha512-Y6FL3tc/wRtQb1cBsNIUiPVwmfzH+spnl7gNTWyhPeiMdsScPl3McYEiUBoUYPD+eIvdh1QPA1SDDF1YFvrjCg==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@effected/*"
-  - "@ofkfi/*"
+  - "@ofkfit/*"
   - "@oxc-parser/*"
   - "@oxc-project/*"
   - "@savvy-web/*"
@@ -158,7 +160,7 @@ overrides:
   "@microsoft/api-extractor>typescript": ^6.0.3
 peerDependencyRules:
   allowedVersions:
-    "@effect/vitest>vitest": ^4.1.0
+    "@effect/vitest>vitest": ^5.0.0
     "@typescript-eslint/project-service>typescript": ^6.0.0
     "@typescript-eslint/tsconfig-utils>typescript": ^6.0.0
     "@typescript-eslint/typescript-estree>typescript": ^6.0.0
