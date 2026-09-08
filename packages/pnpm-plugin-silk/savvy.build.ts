@@ -306,6 +306,14 @@ await build({
 			],
 			overrides: {
 				"@microsoft/api-extractor>typescript": "^6.0.3",
+				// @effect/vitest still caps its vitest peer at ">=4.1.0 <5.0.0",
+				// which under autoInstallPeers drags a second, Vitest 4 copy into
+				// the graph and hoists it over the Vitest 5 one the suite expects.
+				// The allowedVersions entry below only silences the resulting
+				// warning -- pnpm consumes it in filterPeerDependencyIssues, not
+				// in resolution -- so the override is what actually forces the
+				// single Vitest 5 resolution.
+				"@effect/vitest>vitest": "^5.0.0",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {
