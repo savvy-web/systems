@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.34.0
+
+### Features
+
+- Upgrades Vitest peers to v5
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.33.0
 
 ### Breaking Changes
