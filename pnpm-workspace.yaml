@@ -23,7 +23,7 @@ catalogs:
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
     "@types/bun": ^1.4.1
-    "@types/node": ^26.4.1
+    "@types/node": ^26.5.0
     "@types/react": ^19.2.18
     "@types/react-dom": ^19.2.7
     react: ^19.2.8
@@ -37,7 +37,7 @@ catalogs:
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
     "@types/bun": ^1.4.1
-    "@types/node": ^26.4.0
+    "@types/node": ^26.5.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
     react: ^19.2.0
@@ -49,7 +49,7 @@ catalogs:
   docs:
     "@rspress/core": ^2.0.21
     "@rspress/plugin-sitemap": ^2.0.21
-    "@types/node": ^26.4.1
+    "@types/node": ^26.5.0
     "@types/react": ^19.2.18
     "@types/react-dom": ^19.2.7
     react: ^19.2.8
@@ -61,7 +61,7 @@ catalogs:
   docs:peers:
     "@rspress/core": ^2.0.0
     "@rspress/plugin-sitemap": ^2.0.21
-    "@types/node": ^26.4.0
+    "@types/node": ^26.5.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
     react: ^19.2.0
@@ -92,7 +92,7 @@ catalogs:
     turbo: ^2.10.12
   silk:
     "@types/bun": ^1.4.1
-    "@types/node": ^26.4.1
+    "@types/node": ^26.5.0
     "@types/react": ^19.2.18
     "@types/react-dom": ^19.2.7
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
@@ -106,7 +106,7 @@ catalogs:
     typescript: ^7.0.2
   silk:peers:
     "@types/bun": ^1.4.1
-    "@types/node": ^26.4.0
+    "@types/node": ^26.5.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
@@ -138,7 +138,7 @@ loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@effected/*"
-  - "@ofkfit/*"
+  - "@okfit/*"
   - "@oxc-parser/*"
   - "@oxc-project/*"
   - "@savvy-web/*"
@@ -153,9 +153,9 @@ minimumReleaseAgeExclude:
   - rspress-plugin-api-extractor
   - runtime-resolver
   - std-osc8
+  - vitepress-plugin-api-extractor
   - vitest
   - vitest-bats
-  - vspress-plugin-api-extractor
 overrides:
   "@effect/vitest>vitest": ^5.0.0
   "@microsoft/api-extractor>typescript": ^6.0.3

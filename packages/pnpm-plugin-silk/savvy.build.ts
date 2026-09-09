@@ -29,8 +29,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.4.1",
-							peer: "^26.4.0",
+							range: "^26.5.0",
+							peer: "^26.5.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -88,8 +88,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.4.1",
-							peer: "^26.4.0",
+							range: "^26.5.0",
+							peer: "^26.5.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -191,8 +191,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.4.1",
-							peer: "^26.4.0",
+							range: "^26.5.0",
+							peer: "^26.5.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -289,7 +289,7 @@ await build({
 				"@oxc-project/*",
 				"@savvy-web/*",
 				"@spencerbeggs/*",
-				"@ofkfit/*",
+				"@okfit/*",
 				"@tsdoctor/*",
 				"@typescript/*",
 				"@vitest/*",
@@ -298,7 +298,7 @@ await build({
 				"reposets",
 				"rolldown-pnpm-config",
 				"rspress-plugin-api-extractor",
-				"vspress-plugin-api-extractor",
+				"vitepress-plugin-api-extractor",
 				"runtime-resolver",
 				"std-osc8",
 				"vitest",
@@ -317,6 +317,7 @@ await build({
 			},
 			publicHoistPattern: {
 				excludeByRepo: {
+					okfit: ["@okfit/cli", "@okfit/mcp"],
 					"savvy-web-systems": ["@savvy-web/changelog", "@savvy-web/cli", "@savvy-web/mcp"],
 					"vitest-agent": ["@vitest-agent/cli", "@vitest-agent/mcp"],
 				},
