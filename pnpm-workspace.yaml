@@ -19,10 +19,10 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    "@rsbuild/core": ^2.2.3
+    "@rsbuild/core": ^2.2.4
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
-    "@types/bun": ^1.4.1
+    "@types/bun": ^1.4.2
     "@types/node": ^26.5.0
     "@types/react": ^19.2.18
     "@types/react-dom": ^19.2.7
@@ -36,7 +36,7 @@ catalogs:
     "@rsbuild/core": ^2.2.0
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
-    "@types/bun": ^1.4.1
+    "@types/bun": ^1.4.2
     "@types/node": ^26.5.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
@@ -91,7 +91,7 @@ catalogs:
     markdownlint-cli2-formatter-codequality: ^0.0.7
     turbo: ^2.10.12
   silk:
-    "@types/bun": ^1.4.1
+    "@types/bun": ^1.4.2
     "@types/node": ^26.5.0
     "@types/react": ^19.2.18
     "@types/react-dom": ^19.2.7
@@ -105,7 +105,7 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.2
   silk:peers:
-    "@types/bun": ^1.4.1
+    "@types/bun": ^1.4.2
     "@types/node": ^26.5.0
     "@types/react": ^19.2.0
     "@types/react-dom": ^19.2.0
@@ -131,7 +131,7 @@ catalogs:
     vite: ^8.2.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.7.1+sha512-Y6FL3tc/wRtQb1cBsNIUiPVwmfzH+spnl7gNTWyhPeiMdsScPl3McYEiUBoUYPD+eIvdh1QPA1SDDF1YFvrjCg==
+  "@effected/pnpm-plugin-effect": 0.7.2+sha512-03whV1VZU6sOnrzyB5DenuMPU8M4KyW+rCSRS/7v0v2DDReXPez5I4ZdWIAEBRGCsWEMi8aOagFHshl6MMkMfw==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info

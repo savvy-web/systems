@@ -3,9 +3,7 @@ import { Schema } from "effect";
 
 import {
 	JsonPathSchema,
-	// biome-ignore lint/suspicious/noDeprecatedImports: tests cover the deprecated 0.9.0 shape until it is removed in 1.0.0
 	LegacyVersionFileConfigSchema,
-	// biome-ignore lint/suspicious/noDeprecatedImports: tests cover the deprecated 0.9.0 shape until it is removed in 1.0.0
 	LegacyVersionFilesSchema,
 	VersionFileConfigSchema,
 	VersionFilesSchema,

@@ -22,18 +22,19 @@
 		}
 	},
 	"files": {
+		"ignoreUnknown": true,
 		"includes": [
 			"**",
 			"!**/node_modules",
-			"!**/dist",
-			"!**/.repos",
-			"!**/.turbo",
-			"!**/.git",
-			"!**/.rslib",
-			"!**/.vitest",
-			"!**/.coverage",
-			"!coverage",
-			"!.claude/worktrees",
+			"!!**/dist",
+			"!!**/.repos",
+			"!!**/.turbo",
+			"!!**/.git",
+			"!!**/.rslib",
+			"!!**/.vitest",
+			"!!**/.coverage",
+			"!!coverage",
+			"!!.claude/worktrees",
 			"!**/__test__/**/fixtures",
 			"!**/__test__/snapshots",
 			"!**/__test__/**/fixtures",
@@ -51,7 +52,7 @@
 	},
 	"javascript": {
 		"resolver": {
-			"experimentalPnpmCatalogs": false
+			"experimentalPnpmCatalogs": true
 		}
 	},
 	"json": {
@@ -68,7 +69,7 @@
 	},
 	"linter": {
 		"domains": {
-			"project": "all"
+			"project": "recommended"
 		},
 		"enabled": true,
 		"rules": {

@@ -21,7 +21,6 @@ import { Effect, Schema } from "effect";
 
 import { ConfigurationError } from "../errors.js";
 import { PackagesRecordSchema } from "./package-scope.js";
-// biome-ignore lint/suspicious/noDeprecatedImports: 0.9.0 cycle accepts the legacy shape with a deprecation warning emitted by ConfigInspector; removed in 1.0.0
 import { LegacyVersionFilesSchema } from "./version-files.js";
 
 /** Regex for `owner/repo` format, shared between schema and validation. */

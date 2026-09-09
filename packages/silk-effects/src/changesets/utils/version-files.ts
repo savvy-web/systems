@@ -27,9 +27,7 @@ import { compileAndExpand } from "@effected/walker";
 import { Effect, FileSystem, Path, Schema } from "effect";
 import type * as PlatformError from "effect/PlatformError";
 import { VersionFileError } from "../errors.js";
-// biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import type { LegacyVersionFileConfig } from "../schemas/version-files.js";
-// biome-ignore lint/suspicious/noDeprecatedImports: parses the deprecated top-level versionFiles array during the 0.9.0 cycle; removed when Phase 5 migrates this to ConfigInspector
 import { LegacyVersionFilesSchema } from "../schemas/version-files.js";
 import type { ResolvedPackageScope } from "../services/config-inspector.js";
 import { jsonPathGet, jsonPathResolve, parseJsonPath } from "./jsonpath.js";

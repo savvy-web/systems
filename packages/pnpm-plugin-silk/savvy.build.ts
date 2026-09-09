@@ -19,13 +19,13 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.3",
+							range: "^2.2.4",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
 						"@types/bun": {
-							range: "^1.4.1",
-							peer: "^1.4.1",
+							range: "^1.4.2",
+							peer: "^1.4.2",
 							strategy: "lock",
 						},
 						"@types/node": {
@@ -186,8 +186,8 @@ await build({
 				silk: {
 					packages: {
 						"@types/bun": {
-							range: "^1.4.1",
-							peer: "^1.4.1",
+							range: "^1.4.2",
+							peer: "^1.4.2",
 							strategy: "lock",
 						},
 						"@types/node": {
