@@ -1,5 +1,16 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.34.2
+
+### Bug Fixes
+
+- Typo in `@okfit/*` minimumReleaseAgeExclude field
+- Typo in `vitepress-plugin-api-extractor` minimumReleaseAgeExclude field
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.34.1
 
 ### Bug Fixes
@@ -190,11 +201,13 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 - ### The `silk` catalog no longer carries the Effect closure or the toolchain packages
   `silk` and `silk:peers` drop from 63 entries to 13. The catalog now holds only
-  what has no more specific home — type packages, `husky`, `lint-staged`,&#10;`markdownlint-cli2`, `react`, `react-dom`, `tsx` and `typescript`. A manifest
+  what has no more specific home — type packages, `husky`, `lint-staged`,
+  `markdownlint-cli2`, `react`, `react-dom`, `tsx` and `typescript`. A manifest
   referencing a moved package through `catalog:silk` will fail to resolve.
 
   **37 Effect-family entries** — `effect` and every `@effect/*` package — are gone
-  from this plugin entirely. They are supplied by `@effected/pnpm-plugin-effect`&#10;instead, which must be installed as a config dependency alongside this one:
+  from this plugin entirely. They are supplied by `@effected/pnpm-plugin-effect`
+  instead, which must be installed as a config dependency alongside this one:
   ```jsonc
   {
     "dependencies": {
@@ -217,9 +230,11 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | `vitest`, `@vitest/coverage-istanbul`, `@vitest/coverage-v8` | `catalog:silk` | `catalog:test` |
   | `@rspress/core` | `catalog:silk` | `catalog:docs` |
 
-  The peer-range equivalents move the same way — `catalog:silk:peers` becomes&#10;`catalog:build:peers`, `catalog:lint:peers`, and so on.
+  The peer-range equivalents move the same way — `catalog:silk:peers` becomes
+  `catalog:build:peers`, `catalog:lint:peers`, and so on.
   ### The `<name>Peers` catalogs are removed — use `<name>:peers`
-  Peer-range catalogs are named with a `:peers` suffix instead of a `Peers`&#10;camelCase suffix. The old spellings are gone, not deprecated:
+  Peer-range catalogs are named with a `:peers` suffix instead of a `Peers`
+  camelCase suffix. The old spellings are gone, not deprecated:
 
   | Removed | Replacement |
   | :-- | :-- |
@@ -236,12 +251,14 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   grep -rl 'catalog:[a-z]*Peers' --include=package.json . \
     | xargs sed -i '' -E 's/catalog:([a-z]+)Peers/catalog:\1:peers/g'
   ```
-  The rename comes from upgrading the underlying `rolldown-pnpm-config` to&#10;`0.6.0`, which emits the colon-delimited form.
+  The rename comes from upgrading the underlying `rolldown-pnpm-config` to
+  `0.6.0`, which emits the colon-delimited form.
 
 ### Documentation
 
 - The README now documents all five catalog pairs in one table, and states
-  explicitly that `effect` and `@effect/*` come from&#10;`@effected/pnpm-plugin-effect` rather than from this plugin
+  explicitly that `effect` and `@effect/*` come from
+  `@effected/pnpm-plugin-effect` rather than from this plugin
 - Quick-start examples source each dependency from its purpose-scoped catalog
   (`catalog:build`, `catalog:test`) instead of the old catch-all `catalog:silk` [#498][#498]
 
@@ -620,7 +637,8 @@ aligns the plugin with that requirement.
 
 ### `allowBuilds` Replaces `onlyBuiltDependencies`
 
-The deprecated pnpm 10 `onlyBuiltDependencies` setting is replaced by pnpm 11's&#10;`allowBuilds` map. The silk catalog now ships a curated `silkAllowBuilds` map
+The deprecated pnpm 10 `onlyBuiltDependencies` setting is replaced by pnpm 11's
+`allowBuilds` map. The silk catalog now ships a curated `silkAllowBuilds` map
 (package matcher → boolean) that child configs can extend key-by-key (child wins
 per key).
 
@@ -793,9 +811,11 @@ If your project relied on Silk to keep Biome schema URLs current, install or upd
 
 New Claude Code skill (`.claude/skills/effect-catalog-resolver/`) that discovers
 all `@effect/*` packages from the npm registry, resolves the latest compatible
-version set using peer dependency analysis, and proposes updates to&#10;`pnpm-workspace.yaml` catalogs.
+version set using peer dependency analysis, and proposes updates to
+`pnpm-workspace.yaml` catalogs.
 
-New tracked packages: `@effect/ai`, `@effect/ai-anthropic`, `@effect/ai-openai`,&#10;`@effect/experimental`, `@effect/workflow`, `@effect/sql-sqlite-node`. All Effect
+New tracked packages: `@effect/ai`, `@effect/ai-anthropic`, `@effect/ai-openai`,
+`@effect/experimental`, `@effect/workflow`, `@effect/sql-sqlite-node`. All Effect
 packages updated to latest compatible versions anchored on `effect@3.21.0`.
 
 ## 0.9.0
