@@ -1,5 +1,17 @@
 # @savvy-web/github-action-builder
 
+## 2.3.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @rsbuild/core | dependency | updated | ^2.2.3 | ^2.2.4 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.3.3
 
 ### Dependencies
@@ -496,11 +508,13 @@ This is a documentation-surface change only — every retagged symbol was alread
 
 ### Bug Fixes
 
-- [`e336b15`](https://github.com/savvy-web/systems/commit/e336b158adf766d9a74777000906308fdf53e9d4) Bundled actions no longer crash on Windows runners. rspack's default&#10;`import.meta` parsing froze each module's `import.meta.url` to its absolute
+- [`e336b15`](https://github.com/savvy-web/systems/commit/e336b158adf766d9a74777000906308fdf53e9d4) Bundled actions no longer crash on Windows runners. rspack's default
+  `import.meta` parsing froze each module's `import.meta.url` to its absolute
   build-machine source path as a `file://` literal during scope hoisting.
   Dependencies that synthesize `require` / `__filename` from `import.meta.url` at
   module top-level — such as `@azure/storage-common`'s crc64 ESM-compat shim
-  (reached via `@azure/storage-blob`) — then handed that frozen POSIX path to&#10;`createRequire`. A driveless POSIX `file://` URL is structurally valid on
+  (reached via `@azure/storage-blob`) — then handed that frozen POSIX path to
+  `createRequire`. A driveless POSIX `file://` URL is structurally valid on
   macOS/Linux but rejected by `createRequire` on Windows, throwing at module load
   before any in-library fallback could run.
 

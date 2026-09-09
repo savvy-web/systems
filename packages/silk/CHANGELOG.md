@@ -1,5 +1,21 @@
 # @savvy-web/silk
 
+## 3.15.0
+
+### Bug Fixes
+
+- Reduces Biome memory usage
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @types/bun | peerDependency | updated | ^1.4.1 | ^1.4.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.14.0
 
 ### Features
@@ -369,7 +385,8 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   requires. Nothing in the published graph named them.
 
   Under pnpm's `autoInstallPeers: true` that silently materialized a second copy of each, which is the duplication
-  the peer change exists to remove. Under yarn, or pnpm with `autoInstallPeers: false`, `import "@savvy-web/silk/lint"`&#10;failed with `ERR_MODULE_NOT_FOUND`.
+  the peer change exists to remove. Under yarn, or pnpm with `autoInstallPeers: false`, `import "@savvy-web/silk/lint"`
+  failed with `ERR_MODULE_NOT_FOUND`.
 
   `@effected/commands`, `@effected/git` and `@effected/workspaces` are now declared, so a consumer installing silk
   alone gets a coherent graph.
@@ -1185,7 +1202,8 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Features
 
 - The github-actions plugin now ships an `action-engineer` agent and a
-  twelve-skill suite for building Node.js 24 GitHub Actions with&#10;`@savvy-web/github-action-effects` and `@savvy-web/github-action-builder`.
+  twelve-skill suite for building Node.js 24 GitHub Actions with
+  `@savvy-web/github-action-effects` and `@savvy-web/github-action-builder`.
   The `action-engineering` routing skill maps every job to the owning service
   and skill (and lists the capabilities that deliberately do not exist), and
   the topic skills carry the house patterns distilled from the production
@@ -1200,14 +1218,16 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   banners, verified against the installed package source. Skill content is
   written for a standalone action repo cloned from `github-action-template`:
   rules are stated directly with self-contained generic examples instead of
-  citing sibling-repo precedent, library citations resolve under&#10;`node_modules/@savvy-web/…`, and example org/repo names are placeholders.
+  citing sibling-repo precedent, library citations resolve under
+  `node_modules/@savvy-web/…`, and example org/repo names are placeholders.
 
   The SessionStart orientation hook now advertises the agent, the full skill
   index, and the shared savvy-mcp server (and fails open when `jq` is
   missing), and closes with a dogfood-feedback block: it asks the session to
   keep a running log of rough edges in the plugin's own guidance and, only
   with the user's explicit agreement, open an issue against this repo. The
-  plugin also gained a BATS + shellcheck suite wired into `pnpm test:hooks`&#10;and the Hook Tests workflow, covering the orientation payload's skill
+  plugin also gained a BATS + shellcheck suite wired into `pnpm test:hooks`
+  and the Hook Tests workflow, covering the orientation payload's skill
   roster and the agent's skill-registration frontmatter. [#355][#355]
 
 ### Minor Changes
@@ -1259,7 +1279,8 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - The SessionStart `<terminal>` orientation block now only renders when the
   session is actually running in iTerm2 with the `it2` CLI on `PATH` (checked
   from environment variables alone, with no `it2` subprocess invoked from the
-  hook). Previously the block appeared unconditionally, pointing users at the&#10;`it2` CLI even in terminals where it wasn't installed or usable. When the
+  hook). Previously the block appeared unconditionally, pointing users at the
+  `it2` CLI even in terminals where it wasn't installed or usable. When the
   gate passes, the block also now teaches proactive pane orchestration for
   spawned subagents and points to the new `/silk:it2` skill. [#347][#347]
 
