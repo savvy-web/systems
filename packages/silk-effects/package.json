@@ -75,10 +75,10 @@
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/commands": "catalog:effected:peers",
-		"@effected/git": "catalog:effected:peers",
-		"@effected/workspaces": "catalog:effected:peers",
-		"effect": "catalog:effect:peers"
+		"@effected/commands": "catalog:effected",
+		"@effected/git": "catalog:effected",
+		"@effected/workspaces": "catalog:effected",
+		"effect": "catalog:effect"
 	},
 	"publishConfig": {
 		"access": "public",
