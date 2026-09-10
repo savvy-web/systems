@@ -15,7 +15,7 @@
 			"name": "silk",
 			"source": {
 				"path": "plugins/silk",
-				"sha": "d4ae30fba81daa0c0d82ecb416a2179205d58161",
+				"sha": "2dae2cb75ffaaa54439c2e5926180557b6bc85c0",
 				"source": "git-subdir",
 				"url": "https://github.com/savvy-web/systems.git"
 			},
