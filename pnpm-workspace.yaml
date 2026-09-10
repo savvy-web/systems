@@ -131,7 +131,7 @@ catalogs:
     vite: ^8.2.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.7.2+sha512-03whV1VZU6sOnrzyB5DenuMPU8M4KyW+rCSRS/7v0v2DDReXPez5I4ZdWIAEBRGCsWEMi8aOagFHshl6MMkMfw==
+  "@effected/pnpm-plugin-effect": 0.7.4+sha512-08h0dEx5YWz5fhy2RjfEgKpTGUovTcR1fRFIypbeB9jCfBZEZQwKxjl8xd4BrKRYY2uXXs9PNfm9oZPuuY21MA==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
