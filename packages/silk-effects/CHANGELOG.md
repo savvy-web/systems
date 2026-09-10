@@ -1,5 +1,18 @@
 # @savvy-web/silk-effects
 
+## 7.5.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | peerDependency | updated | ^0.6.0 | ^0.6.1 |
+| @effected/workspaces | peerDependency | updated | ^0.20.0 | ^0.20.3 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 7.5.1
 
 ### Dependencies
@@ -354,7 +367,8 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   references above so both sides of the peer relationship move together on a single config bump. Otherwise declare
   literal ranges — `@effected/commands@^0.5.0`, `@effected/git@^0.9.0`, `@effected/workspaces@^0.17.0`.
 
-  **Why this is breaking on purpose.** Consuming this package both directly and transitively — through&#10;`@savvy-web/silk` to `cli`/`mcp` — used to put two copies of it in one tree whenever the direct pin drifted, and
+  **Why this is breaking on purpose.** Consuming this package both directly and transitively — through
+  `@savvy-web/silk` to `cli`/`mcp` — used to put two copies of it in one tree whenever the direct pin drifted, and
   each copy dragged its own kit. Both were bundled into the resulting artifact. Nothing failed; the build stayed
   green and shipped two of everything.
 
@@ -364,10 +378,12 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
   **The stop is typecheck, not install.** With `autoInstallPeers: true` and `strictPeerDependencies` unset (pnpm's
   default), a conflicting peer range prints a warning and the install still exits 0. A repo whose CI only bundles,
-  without a typecheck step, will not catch the skew. Turning this into an install-time failure means setting&#10;`strictPeerDependencies: true`, which is a behavior change for every consuming repo and belongs in its own
+  without a typecheck step, will not catch the skew. Turning this into an install-time failure means setting
+  `strictPeerDependencies: true`, which is a behavior change for every consuming repo and belongs in its own
   change.
 
-  Only these three moved. They are the packages whose services and types cross this package's public API boundary —&#10;`WorkspaceSnapshots` in `DepsRegen.layer`, `Git` in the service layers, `ToolDiscovery` in `TurboInspector`. The
+  Only these three moved. They are the packages whose services and types cross this package's public API boundary —
+  `WorkspaceSnapshots` in `DepsRegen.layer`, `Git` in the service layers, `ToolDiscovery` in `TurboInspector`. The
   other seven `@effected/*` dependencies remain ordinary dependencies: a duplicate of a pure-function package costs
   bytes, not correctness.
 
@@ -537,7 +553,8 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Refactoring
 
-- Version-file I/O now runs through the Effect `FileSystem` service instead of&#10;`node:fs`. Behavior is unchanged: `ReleasePlanner.apply` still surfaces a
+- Version-file I/O now runs through the Effect `FileSystem` service instead of
+  `node:fs`. Behavior is unchanged: `ReleasePlanner.apply` still surfaces a
   version-file write failure as a typed `ReleasePlanError`, and the deprecated
   top-level `versionFiles[]` path still fails as a defect.
   - `VersionFiles` reads and writes through `FileSystem`, so its members are now
