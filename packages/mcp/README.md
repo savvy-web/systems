@@ -32,12 +32,17 @@ The server speaks MCP over stdio and is meant to be spawned by an MCP client. A 
 
 The single positional argument is the project directory; if omitted, the server resolves it from `SAVVY_MCP_PROJECT_DIR`, then `CLAUDE_PROJECT_DIR`, then the current working directory.
 
-To exercise it by hand during development, run it through the MCP inspector:
+To exercise it by hand, pipe JSON-RPC to it over stdio. Every response is one JSON line on stdout, logs go to stderr, and the server exits 0 when stdin closes. Keep stdin open until you have read the response you want — a request still in flight when stdin closes is dropped:
 
 ```bash
-npx @modelcontextprotocol/inspector savvy-mcp .
-# opens the inspector UI against a live savvy-mcp instance
+(printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"probe","version":"0.0.0"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'; sleep 2) | savvy-mcp .
+# line 1: the initialize result; line 2: the ten tools
 ```
+
+Any generic MCP client works the same way; nothing extra ships with the package for interactive use.
 
 ## Tools
 

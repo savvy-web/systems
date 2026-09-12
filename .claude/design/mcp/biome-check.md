@@ -3,8 +3,8 @@ status: current
 module: mcp
 category: architecture
 created: 2026-09-03
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 92
 related:
   - ./architecture.md
@@ -33,11 +33,11 @@ The `biome_check` tool — a thin proxy that shells the Biome CLI and returns ty
 
 ## Overview
 
-`biome_check` (`src/tools/biome-check.ts`) departs from every other tool in two ways. No silk-effects service backs it — silk-effects is reused only for `Lint.Biome.findBiome()` binary resolution — and it does not run on the Effect runtime; the handler is a plain async `spawnSync` over Biome. It is one of the three mutating tools (see [tools.md](./tools.md#read-only-versus-mutating)): `write`/`unsafe` apply fixes, both default off, so a bare call only reads. The plugin side — the Biome LSP, the nudge hook that steers agents here instead of to bare `biome`, and the deny hook on every direct Biome route — is in [plugin.md](../silk/plugin.md).
+`biome_check` (`src/tools/biome-check.ts`) departs from every other tool in two ways. No silk-effects service backs it — silk-effects is reused only for `Lint.Biome.findBiome()` binary resolution — and its core is a plain async `spawnSync` over Biome, lifted into the tool's Effect handler with `Effect.tryPromise` so its typed failures pass through and anything else becomes `BiomeFailed`. It is one of the three mutating tools (see [tools.md](./tools.md#read-only-versus-mutating)): `write`/`unsafe` apply fixes, both default off, so a bare call only reads. The plugin side — the Biome LSP, the nudge hook that steers agents here instead of to bare `biome`, and the deny hook on every direct Biome route — is in [plugin.md](../silk/plugin.md).
 
 ## Current state
 
-The result schema is flat: a summary, the diagnostics, a `wrote` flag and a fixed `guidance` string that steers the agent to fix code rather than silence rules (the guidance text varies with whether real errors, only project warnings or strict-upgraded warnings remain). It registers no annotations. The file holds the schema, the gitlab parser, the containment logic and the handler; see it for parameters.
+The result schema is flat: a summary, the diagnostics, a `wrote` flag and a fixed `guidance` string that steers the agent to fix code rather than silence rules (the guidance text varies with whether real errors, only project warnings or strict-upgraded warnings remain). Its `Tool.make` value is annotated `Readonly: false`, `Idempotent: false`, `Destructive: false` and declares no `dependencies` (the handler yields no service). The file holds the schema, the gitlab parser, the containment logic, the tool value and the handler; see it for parameters.
 
 ## Execution flow
 

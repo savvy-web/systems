@@ -3,8 +3,8 @@ status: current
 module: bundler
 category: architecture
 created: 2026-09-03
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 90
 related:
   - ./architecture.md
@@ -59,7 +59,7 @@ All options described here are implemented and exercised in-repo: silk is the du
 tsdown auto-externalizes `dependencies` + `peerDependencies` + `optionalDependencies`, so most packages carry no `externals` at all; `externals` names only undeclared transitives that must stay external. Four knobs cover the postures that depart from that default:
 
 - **`bundleNodeModules`** force-bundles every node_modules/workspace dep not in `externals` into the output, and the dts pass inlines the matching types. It also switches the JS pass from per-module output to a single bundled file per entry, so the artifact survives `npm pack` (which strips any `node_modules`-named directory a per-module layout would emit). silk's and `@savvy-web/changelog`'s self-contained CJS-requireable artifacts depend on it.
-- **`bundle`** force-inlines the listed packages into the JS output (tsdown `deps.alwaysBundle`), even declared deps — the inverse of `externals`. JS-pass only.
+- **`bundle`** force-inlines the listed packages (tsdown `deps.alwaysBundle`), even declared deps — the inverse of `externals`. Forwarded identically to the JS pass, the bundled-dts pass and the prod declarations pass, so the dual-format `.cjs` chunk the dts pass re-emits stays inlined too; it used to reach the JS pass only, which left silk's CJS overrides with a bare `require()` of ESM-only silk-effects until the forwarding was fixed.
 - **`bundledPackages`** inlines ONLY the listed packages' declarations into the bundled dts, externalizing the rest. JS-pass unaffected.
 - **`dtsExternals`** externalizes the listed packages in the dts pass ONLY while the JS pass still bundles them per `bundleNodeModules`. For dependencies whose types cannot be inlined — silk lists `effect` here because its `declare module` augmentations inline into TS2320 conflicts in consumers.
 

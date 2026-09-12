@@ -3,10 +3,11 @@ status: current
 module: changelog
 category: architecture
 created: 2026-07-06
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 85
 related:
+  - ../workspace/package-layering.md
   - ../silk-effects/architecture.md
   - ../silk/architecture.md
   - ../cli/architecture.md
@@ -18,7 +19,7 @@ dependencies:
 
 # @savvy-web/changelog architecture
 
-The Silk Suite changesets changelog generator as a standalone installable package — the canonical `changelog` id for `.changeset/config.json`. A one-file default re-export of `@savvy-web/silk-effects`' `Changesets.changelogFunctions`; silk-effects is the single source of truth for all changelog logic.
+The Silk Suite changesets changelog generator as a standalone installable package — the canonical `changelog` id for `.changeset/config.json`. A one-file host adapter over `@savvy-web/silk-effects`' `Changesets.makeChangelogFunctions`; silk-effects is the single source of truth for all changelog logic, and this package supplies the one thing the engine will not read for itself — the host environment.
 
 ## Table of contents
 
@@ -33,7 +34,7 @@ The Silk Suite changesets changelog generator as a standalone installable packag
 
 `@savvy-web/changelog` gives the silk changelog formatter an **installable identity**. A `.changeset/config.json` `changelog` entry is a module id the vanilla changesets CLI resolves with `resolve-from` + `require()` from the consumer's workspace, so the id must be a real, resolvable installed package with a `require` condition.
 
-- **Source:** `packages/changelog/src/index.ts` — the entire package. It default-exports silk-effects' `Changesets.changelogFunctions` (`packages/silk-effects/src/changesets/changelog/index.ts`), annotated with the nominal `ChangelogFunctions` type from `@changesets/types`. The test in `__test__/` asserts the export is reference-identical to the silk-effects object.
+- **Source:** `packages/changelog/src/index.ts` — the entire package. It default-exports `Changesets.makeChangelogFunctions({ logMode })` (`packages/silk-effects/src/changesets/changelog/index.ts`), annotated with the nominal `ChangelogFunctions` type from `@changesets/types`, where `logMode` is read from `process.env` HERE: `VITEST` → `"silent"`, `GITHUB_ACTIONS=true` → `"github"` (`::warning::` annotations), otherwise `"stderr"`. This package is the host adapter for the changesets CLI — a foreign process that supplies no context — so the environment read belongs in it, not in the engine, whose shared code has no `process` reads (see `../silk-effects/architecture.md`, "The engine boundary"). The test in `__test__/` asserts the export's shape and behaviour; it is no longer reference-identical to `Changesets.changelogFunctions`, whose default is always stderr.
 - **Build:** dual esm+cjs, self-contained, through the `@savvy-web/bundler` front door (`packages/changelog/savvy.build.ts`). See [Build posture](#build-posture).
 - **Versioning:** independent; a release auto-PATCH-bumps `@savvy-web/silk`, which re-pins it as an exact regular dependency. See [Distribution and coupling](#distribution-and-coupling).
 
@@ -56,7 +57,7 @@ The package is a single-file re-export (`packages/changelog/src/index.ts`) built
 Three coordination points make the id resolvable in a consumer workspace without anyone installing it by hand:
 
 - **silk ships it as an exact-pinned dependency.** silk declares `@savvy-web/changelog` as a `workspace:*` source dependency and its build transform (`packages/silk/savvy.build.ts`) keeps it as an EXACT-pinned regular `dependency` in the published manifest — the same mechanism that couples silk to cli and mcp. Changesets reads `workspace:*` as the exact current version, so a changelog release pushes silk's dep out of range, auto-PATCH-bumps silk and re-pins it. See `../silk/architecture.md`.
-- **pnpm-plugin-silk public-hoists it** so the changesets CLI, which resolves the id from the workspace root, finds it. The hoist is excluded inside `systems` itself, where the package is a workspace member; the authored list lives in `packages/pnpm-plugin-silk/savvy.build.ts`.
+- **pnpm-plugin-silk public-hoists it** so the changesets CLI, which resolves the id from the workspace root, finds it. It is the ONE `@savvy-web/*` package still on that hoist list — cli and mcp left it when silk took over their bins (savvy-web/systems#631), but a resolution-by-id need cannot be met by a `bin` entry, so changelog stays; see `../workspace/package-layering.md`. The hoist is excluded inside `systems` itself, where the package is a workspace member; the authored list lives in `packages/pnpm-plugin-silk/savvy.build.ts`.
 - **cli writes it as canonical.** `savvy changeset init` writes `@savvy-web/changelog` into `.changeset/config.json`. Its config check also accepts the silk shim subpath and the retired `@savvy-web/changesets/changelog` id — see the `CHANGELOG_ENTRY` constants in `packages/cli/src/commands/changeset/commands/init.ts` and `../cli/architecture.md`.
 
 `silk-release-action`'s native versioning bundles this package as its changelog module — a standalone id is bundleable in a no-`node_modules` context in a way a silk subpath shim is not.
@@ -65,7 +66,7 @@ Three coordination points make the id resolvable in a consumer workspace without
 
 - **No business logic.** The package is a re-export; every changelog behavior (release lines, dependency tables, GitHub attribution) lives in silk-effects' `Changesets` namespace and is documented in `../silk-effects/architecture.md`. Changing changelog behavior never touches this package.
 - **Within the repo it depends only on `@savvy-web/silk-effects`** (as a bundled devDependency), consistent with the suite's topology around silk-effects as the shared core.
-- **The default export shape is the contract:** the `@changesets/types` `ChangelogFunctions` object the changesets CLI loads. The export is annotated with that nominal type on purpose — a `typeof` chain through the Effect-typed `Changesets` namespace would make the dts bundler materialize the whole silk-effects + effect type graph into the published declarations for a two-function surface. Drift is caught by the reference-identity test, not by the type.
+- **The default export shape is the contract:** the `@changesets/types` `ChangelogFunctions` object the changesets CLI loads. The export is annotated with that nominal type on purpose — a `typeof` chain through the Effect-typed `Changesets` namespace would make the dts bundler materialize the whole silk-effects + effect type graph into the published declarations for a two-function surface. Drift is caught by the shape-and-behaviour test, not by the type.
 
 ## Rationale
 

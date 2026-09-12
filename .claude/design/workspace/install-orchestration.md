@@ -3,10 +3,11 @@ status: current
 module: workspace
 category: architecture
 created: 2026-09-03
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 90
 related:
+  - ./package-layering.md
   - ../bundler/self-hosting.md
   - ../bundler/architecture.md
   - ../e2e/architecture.md
@@ -41,8 +42,10 @@ populates it. `pnpm build` (turbo `build:dev` + `build:prod`) produces the prod 
 
 ## Current State
 
-Implemented and load-bearing. Eight packages carry the `prepare` script because something depends on them; re-derive
-the set with the grep in [The `prepare` rule](#the-prepare-rule) rather than trusting any list written down here.
+Implemented and load-bearing. Nine packages carry the `prepare` script because something depends on them; re-derive
+the set with the grep in [The `prepare` rule](#the-prepare-rule) rather than trusting any list written down here. The
+layer each package sits in, and why the root depends on `@savvy-web/silk` rather than the front ends, is in
+[package-layering.md](./package-layering.md).
 
 ## Who builds what, and when
 
@@ -82,8 +85,8 @@ grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.j
 ```
 
 Today that is `bundler`, `changelog`, `cli`, `mcp`, `pnpm-plugin-silk` (consumed by `e2e/pnpm-plugin-silk`), `silk`,
-`silk-effects` and `tsdown-plugins`. `rspress-builder` and `templates` have no in-repo consumer and carry no `prepare`;
-add one the moment something depends on them.
+`silk-core` (consumed by `silk-effects` and `e2e/silk`), `silk-effects` and `tsdown-plugins`. `rspress-builder` and
+`templates` have no in-repo consumer and carry no `prepare`; add one the moment something depends on them.
 
 **DO NOT delete these scripts.** Agents repeatedly remove them as redundant, reasoning that turbo's `dependsOn` already
 orders the build. It does not: `dependsOn` only orders builds turbo was ALREADY asked to run, has no say over whether a
@@ -109,6 +112,8 @@ link to `dist/dev`. `@savvy-web/cli` and `@savvy-web/mcp` were dropped from this
 now owns the `savvy`/`savvy-mcp` bins itself as shims over the front ends' `./main`, so the root no longer needs a
 direct edge to either front end to put those bins on PATH — the `savvy` bin resolves through
 `node_modules/@savvy-web/silk/dist/dev/pkg`'s own `bin` map, on PATH once `@savvy-web/silk`'s `prepare` has run.
+Three providers of the same bins at the root was the ambiguity the carrier pattern removes. A harness that resolves a
+front end by package name declares its own edge (`e2e/pnpm-plugin-silk` → `@savvy-web/cli`).
 `@savvy-web/changelog` MUST stay a root devDependency for the changesets-engine resolution described above.
 
 ## Transient states that look like breakage

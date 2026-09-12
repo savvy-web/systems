@@ -13,5 +13,10 @@ The bottom layer (L1) of the Silk package graph: schemas, tagged errors, and the
 
 ## Design
 
-Extraction rationale and the layered graph live with silk-effects for now:
-→ `@../../.claude/design/silk-effects/architecture.md`
+What moved, the L1 boundary test, the shared scanner, why `@effected/workspaces` is a peer:
+→ `@../../.claude/design/silk-core/architecture.md`
+Load when moving a symbol across the silk-core/silk-effects edge or changing the boundary scanner.
+
+The four-layer package graph and the carrier pattern this package is the floor of:
+→ `@../../.claude/design/workspace/package-layering.md`
+Load when adding a dependency edge to or from this package.
