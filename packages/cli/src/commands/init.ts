@@ -7,7 +7,7 @@
  * are injected so the orchestration logic is unit-testable in isolation.
  *
  * Runtime layer provision (ManagedSection, FileSystem, WorkspaceRoot,
- * BiomeSchemaSync, etc.) is deferred to Task B7 (root `runCli`). The Effect
+ * BiomeSchemaSync, etc.) is deferred to Task B7 (root `main`). The Effect
  * returned by `initCommand`'s handler therefore carries the full union of the
  * three handlers' requirements in its R channel.
  *

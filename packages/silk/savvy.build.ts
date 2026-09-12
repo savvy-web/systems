@@ -109,7 +109,7 @@ await build({
 		// the published manifest too — publishing them as peers made pnpm's
 		// `autoInstallPeers` propagate their Effect graph into consuming repos at the
 		// wrong versions. silk is the CARRIER: it owns the `savvy` / `savvy-mcp` bins
-		// (`src/bin/*`, four-line shims over `@savvy-web/cli/main` / `@savvy-web/mcp/main`),
+		// (`src/bin/*`, one-import shims over `@savvy-web/cli/main` / `@savvy-web/mcp/main`),
 		// so a consumer's `node_modules/.bin` is created off silk alone, and cli/mcp are
 		// the externalized targets of those shim imports.
 		//

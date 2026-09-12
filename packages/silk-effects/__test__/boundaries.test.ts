@@ -13,8 +13,9 @@ const SRC_ROOT = join(import.meta.dirname, "..", "src");
  * below is the one line that must follow the scanner if it changes.
  */
 const SCANNER_PATH = join(import.meta.dirname, "..", "..", "silk-core", "__test__", "utils", "boundaries.ts");
-const { readsProcess } = (await import(pathToFileURL(SCANNER_PATH).href)) as {
+const { readsProcess, forbiddenSpecifiers } = (await import(pathToFileURL(SCANNER_PATH).href)) as {
 	readonly readsProcess: (source: string) => boolean;
+	readonly forbiddenSpecifiers: (source: string) => ReadonlyArray<string>;
 };
 
 /**
@@ -55,6 +56,17 @@ describe("@savvy-web/silk-effects engine boundary", () => {
 			.filter((s) => readsProcess(s.text))
 			.map((s) => s.path);
 		expect(offenders).toEqual([]);
+	});
+
+	it("no shared-program file under src/ imports the `process`/`node:process` specifier", () => {
+		const offenders = sources()
+			.filter((s) => forbiddenSpecifiers(s.text).some((spec) => spec === "process" || spec === "node:process"))
+			.map((s) => s.path);
+		expect(offenders).toEqual([]);
+	});
+
+	it("control: the specifier check fires on a `node:process` import", () => {
+		expect(forbiddenSpecifiers('import { cwd } from "node:process";')).toContain("node:process");
 	});
 
 	describe("the gate can fail (positive controls)", () => {
