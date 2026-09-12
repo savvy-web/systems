@@ -34,8 +34,13 @@ export default async () => {
 
 					// CLI bootstrap and root wiring — cannot be unit tested (matches source-repo pattern
 					// where lint-staged / changesets excluded src/bin/** and src/cli/**)
-					"packages/cli/src/bin/**",
+					"packages/cli/src/bin.ts",
+					"packages/cli/src/main.ts",
 					"packages/cli/src/cli/**",
+
+					// MCP bootstrap — same rationale: process wiring only, tested via the bin e2e.
+					"packages/mcp/src/bin.ts",
+					"packages/mcp/src/main.ts",
 
 					// Changeset command handlers migrated from @savvy-web/changesets where they lived
 					// under src/cli/commands/** and were excluded from coverage. The monorepo restructured
@@ -79,7 +84,7 @@ export default async () => {
 
 					// Silk-effects schema with complex optional/default branches that are not reached
 					// by the existing test suite (the test file covers the happy path).
-					"packages/silk-effects/src/schemas/WorkspaceAnalysisSchemas.ts",
+					"packages/silk-core/src/schemas/WorkspaceAnalysisSchemas.ts",
 
 					// Lint CLI section helpers: pure template-string builders that are called only
 					// through the CLI integration path, not through the unit tests that moved with them.

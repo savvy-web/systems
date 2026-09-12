@@ -34,8 +34,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin-dogfood.md",
-			"hash": "ced461a4a9b74fb7ad52bb43b32c5b39ecabad898360bd07277764921df2b69a",
-			"recordedAt": "2026-09-03"
+			"hash": "34784d898c9a31e5cab316af5d61e2015a9db50e16216f9f1451dc8382712329",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -64,8 +64,8 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/silk/plugin.md",
-			"hash": "8f037b50cd8f4c2016e13ef2e5d1b5483cd6e253e2b73d64b559eef257731eeb",
-			"recordedAt": "2026-09-03"
+			"hash": "b6258fd446c24690067819eda7ebdef17c94b1ecd96c5ca23ef0fbbaab0c053f",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "CLAUDE.md",
@@ -76,8 +76,14 @@
 		{
 			"source": "CLAUDE.md",
 			"target": ".claude/design/workspace/install-orchestration.md",
-			"hash": "5c162deefa4164bcbb9b317951757d7121b6eb1dd0134275531a282de4d913b9",
-			"recordedAt": "2026-09-03"
+			"hash": "8459c259da04b79f99f4fd63b12188287061e3b0f570651851180a2afda88718",
+			"recordedAt": "2026-09-12"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/workspace/package-layering.md",
+			"hash": "1ed8da8cfb53c51dcfdb10e9c999faea9989f351c242d7adf55899e85635b5a2",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "e2e/CLAUDE.md",
@@ -130,8 +136,8 @@
 		{
 			"source": "packages/cli/CLAUDE.md",
 			"target": ".claude/design/cli/architecture.md",
-			"hash": "b5281ec932e39848d524aa6ef0467d90454e511948c3338c1422c96047fd9b84",
-			"recordedAt": "2026-09-03"
+			"hash": "0efee733fc9aef54865fc41c51ae4b0783fc6ea44ddc417e7aeb2c4d29238149",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/cli/CLAUDE.md",
@@ -148,20 +154,26 @@
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/architecture.md",
-			"hash": "1aa745bca4753aa1b421cd3b2f919ef0ea0b315a9c431398ea15dd75fc7d70a5",
-			"recordedAt": "2026-09-03"
+			"hash": "711be6b43e55bc01850842bf4228baef2af9487c238283d358b28630a297e03c",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/biome-check.md",
-			"hash": "008df240d1460b04804540b6e42fc1d6d382cf9fbd0b489dd7ad08c216a7bc88",
-			"recordedAt": "2026-09-03"
+			"hash": "d4cbc6e400e7dbcc77b0507b274ae71ed0eb98946ce22dda2cff183365efeaf9",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/changeset-tools.md",
 			"hash": "8d958e9f68ce599b12c0a4e305b2502b855b2970fc0783ca7c280f97e8bc3ff5",
 			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/mcp/CLAUDE.md",
+			"target": ".claude/design/mcp/decision-effect-native.md",
+			"hash": "e8e42327d2cc1132f1345512bf909c36bf91f52d9facfe66492194e1f8d0403b",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/mcp/CLAUDE.md",
@@ -172,8 +184,8 @@
 		{
 			"source": "packages/mcp/CLAUDE.md",
 			"target": ".claude/design/mcp/tools.md",
-			"hash": "7219c35d04f5f37488728431f17f22c3cc07e8113ba9c31c40b4a4d4574351b5",
-			"recordedAt": "2026-09-03"
+			"hash": "32ca4ab68714623c2e3c491d9122d0365bf583979702ea4407dbad0ead722226",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/pnpm-plugin-silk/CLAUDE.md",
@@ -186,6 +198,18 @@
 			"target": ".claude/design/rspress-builder/architecture.md",
 			"hash": "ae15fae8e9d7efa7ab48a84ad23fcc44b87755314b69e7c5d91bf7328c4b7103",
 			"recordedAt": "2026-09-03"
+		},
+		{
+			"source": "packages/silk-core/CLAUDE.md",
+			"target": ".claude/design/silk-core/architecture.md",
+			"hash": "8637ac427926ec5dd5a7e83c0ac32c820693e09d5e7c798502a4deb10224e25a",
+			"recordedAt": "2026-09-12"
+		},
+		{
+			"source": "packages/silk-core/CLAUDE.md",
+			"target": ".claude/design/workspace/package-layering.md",
+			"hash": "1ed8da8cfb53c51dcfdb10e9c999faea9989f351c242d7adf55899e85635b5a2",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
@@ -208,8 +232,8 @@
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
 			"target": ".claude/design/silk-effects/hook-sections.md",
-			"hash": "144ff39856a9bb72a9d82cb3afbe8a7cc53fc888f1b2f834b03e90dccb3c8731",
-			"recordedAt": "2026-09-03"
+			"hash": "2c74323d32590bc8a70851f261938cacd4ec0373d044f2e7ee54a91ca3cc2db3",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/silk-effects/CLAUDE.md",
@@ -256,8 +280,8 @@
 		{
 			"source": "packages/silk/CLAUDE.md",
 			"target": ".claude/design/silk/architecture.md",
-			"hash": "abc6af90ae735fe0bba0dd6af56aa8a9d1ad9ebc9cb037b912f91f56ba56ed7c",
-			"recordedAt": "2026-09-03"
+			"hash": "687107bce889ce44f00b31b3bd394ccc391baeb9e287d07ba8616de47a073c2a",
+			"recordedAt": "2026-09-12"
 		},
 		{
 			"source": "packages/templates/CLAUDE.md",

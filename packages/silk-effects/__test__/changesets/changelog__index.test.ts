@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import changelogFunctions from "../../src/changesets/changelog/index.js";
+import changelogFunctions, { makeChangelogFunctions } from "../../src/changesets/changelog/index.js";
 
 // Mock the GitHub API to avoid real network calls
 vi.mock("@changesets/get-github-info", () => ({
@@ -128,5 +128,77 @@ describe("changelog/index (export boundary)", () => {
 				null,
 			),
 		).rejects.toThrow();
+	});
+
+	describe("makeChangelogFunctions", () => {
+		it("builds an independent ChangelogFunctions object each call", () => {
+			const a = makeChangelogFunctions();
+			const b = makeChangelogFunctions({ logMode: "silent" });
+			expect(a).not.toBe(b);
+			expect(typeof b.getReleaseLine).toBe("function");
+			expect(typeof b.getDependencyReleaseLine).toBe("function");
+		});
+
+		it("the default export is the no-option build: a failed lookup warns plainly on stderr", async () => {
+			const { getCommitInfo } = await import("@changesets/get-github-info");
+			vi.mocked(getCommitInfo).mockRejectedValueOnce(new Error("boom"));
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const result = await changelogFunctions.getReleaseLine(
+					{
+						id: "default-mode",
+						summary: "feat: default mode",
+						releases: [{ name: "test-pkg", type: "minor" }],
+						commit: "abc1234567890",
+					},
+					"minor",
+					OPTIONS,
+				);
+				expect(result).toContain("default mode");
+				expect(warn).toHaveBeenCalledTimes(1);
+				expect(warn.mock.calls[0]?.[0]).toBe("Could not fetch GitHub info for commit:");
+				expect(warn.mock.calls[0]?.[0]).not.toMatch(/^::warning::/);
+			} finally {
+				warn.mockRestore();
+			}
+		});
+
+		it("provides the requested log mode to the program", async () => {
+			// A rejected GitHub lookup is the one path that warns: it must be
+			// discarded in silent mode and annotated in github mode.
+			const { getCommitInfo } = await import("@changesets/get-github-info");
+			const mocked = vi.mocked(getCommitInfo);
+			mocked.mockRejectedValueOnce(new Error("boom"));
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				await makeChangelogFunctions({ logMode: "silent" }).getReleaseLine(
+					{
+						id: "silent",
+						summary: "fix: silent",
+						releases: [{ name: "test-pkg", type: "patch" }],
+						commit: "abc1234567890",
+					},
+					"patch",
+					OPTIONS,
+				);
+				expect(warn).not.toHaveBeenCalled();
+
+				mocked.mockRejectedValueOnce(new Error("boom"));
+				await makeChangelogFunctions({ logMode: "github" }).getReleaseLine(
+					{
+						id: "github",
+						summary: "fix: github",
+						releases: [{ name: "test-pkg", type: "patch" }],
+						commit: "abc1234567890",
+					},
+					"patch",
+					OPTIONS,
+				);
+				expect(warn).toHaveBeenCalledTimes(1);
+				expect(warn.mock.calls[0]?.[0]).toMatch(/^::warning::Could not fetch GitHub info for commit:/);
+			} finally {
+				warn.mockRestore();
+			}
+		});
 	});
 });

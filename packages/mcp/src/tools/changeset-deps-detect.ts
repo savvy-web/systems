@@ -13,6 +13,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { McpToolError, mapEngineError } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 
 /** One affected workspace package's resolved dependency diff. */
 export const ChangesetDepsDetectPackage = Schema.Struct({
@@ -152,3 +155,50 @@ export const changesetDepsDetect = (
 			coexisting: plan.coexisting.map((entry) => ({ file: entry.file, packages: [...entry.packages] })),
 		} as ChangesetDepsDetectResultType;
 	});
+
+/** Wire parameters for `changeset_deps_detect`. */
+export const ChangesetDepsDetectParams = Schema.Struct({
+	base: Schema.optionalKey(
+		Schema.String.annotate({ description: "Override the base branch used to compute the merge-base." }),
+	),
+	package: Schema.optionalKey(
+		Schema.String.annotate({ description: "Restrict output to a single workspace package." }),
+	),
+	packages: Schema.optionalKey(
+		Schema.Array(Schema.String).annotate({
+			description: "Restrict output to these workspace packages (unioned with package).",
+		}),
+	),
+	exclude: Schema.optionalKey(
+		Schema.Array(Schema.String).annotate({ description: "Drop these packages from the output entirely." }),
+	),
+	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
+});
+export type ChangesetDepsDetectParams = typeof ChangesetDepsDetectParams.Type;
+
+const REMEDIATION = {
+	hint: "The dependency diff could not be planned; check that the base branch exists locally and that every named package is a workspace member.",
+	suggestedTool: "workspace_info",
+};
+
+/** The `changeset_deps_detect` tool value. */
+export const changesetDepsDetectTool = Tool.make("changeset_deps_detect", {
+	description:
+		"Read-only preview of the cumulative dependency diff (merge-base -> working tree) per workspace package. Returns each affected package's resolved dependency-table rows (catalog:/workspace: specifiers resolved per side; devDependencies retained) as the exact rows a pure-dependency changeset would carry, plus a coexisting list of untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Does NOT write or delete any file. Prefer this over shelling out to savvy changeset deps detect.",
+	parameters: ChangesetDepsDetectParams,
+	success: ChangesetDepsDetectResult,
+	failure: McpToolError,
+	dependencies: [WorkspaceRoot, Changesets.DepsRegen],
+})
+	.annotate(Tool.Title, "Detect dependency changesets")
+	.annotate(Tool.Readonly, true)
+	.annotate(Tool.Destructive, false)
+	.annotate(Tool.Idempotent, true)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown));
+
+/** Wire handler: {@link changesetDepsDetect} with its error channel mapped onto {@link McpToolError}. */
+export const handleChangesetDepsDetect = (fallbackCwd: string, params: ChangesetDepsDetectParams) =>
+	changesetDepsDetect(params, fallbackCwd).pipe(
+		Effect.mapError(mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)),
+	);

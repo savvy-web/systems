@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
+import { BiomeSyncError } from "@savvy-web/silk-core";
 import { Effect, FileSystem, Layer } from "effect";
-import { BiomeSyncError } from "../../src/errors/BiomeSyncError.js";
 import { BiomeSchemaSync, buildSchemaUrl, extractSemver } from "../../src/services/BiomeSchemaSync.js";
 
 // ---------------------------------------------------------------------------

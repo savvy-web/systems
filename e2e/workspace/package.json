@@ -1,0 +1,14 @@
+{
+	"name": "@e2e/workspace",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@savvy-web/bundler": "workspace:*",
+		"@types/node": "catalog:silk",
+		"typescript": "catalog:silk"
+	}
+}

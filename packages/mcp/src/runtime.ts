@@ -4,7 +4,7 @@
  * {@link makeSilkRuntimeLayer} builds the full service graph for ONE workspace
  * root: the `@effected/workspaces` kit layers are root-bound at layer build
  * (single-root by design), so the server resolves its project directory once
- * at startup (bin.ts) and builds the layer with that root. The layer still
+ * at startup (main.ts) and builds the layer with that root. The layer still
  * requires the platform services (`FileSystem` + `Path` +
  * `ChildProcessSpawner`); the host supplies them via `NodeServices.layer`.
  *
@@ -12,6 +12,7 @@
  */
 
 import { ToolDiscovery } from "@effected/commands";
+import type { WorkspaceRoot } from "@effected/workspaces";
 import { Workspaces } from "@effected/workspaces";
 import {
 	ChangesetConfig,
@@ -26,7 +27,33 @@ import type { FileSystem, Path } from "effect";
 import { Effect, Layer } from "effect";
 import type { ChildProcessSpawner } from "effect/unstable/process";
 
-import type { McpServices } from "./context.js";
+/**
+ * Every service the MCP runtime provides to the tool handlers.
+ *
+ * @remarks
+ * `FileSystem.FileSystem | Path.Path` are here so `repos_inspect`'s
+ * `gitmodules` mode can read `.gitmodules` through the ambient service
+ * (mirroring `Repos.ReposDrift.check`) rather than a bare `node:fs` import —
+ * {@link makeSilkRuntimeLayer} passes both through onto its own output via an
+ * `Effect.context` identity layer, so they survive `main.ts`'s
+ * `Layer.provide(NodeServices.layer)` instead of being fully discharged by
+ * it.
+ *
+ * @public
+ */
+export type McpServices =
+	| SilkWorkspaceAnalyzer
+	| WorkspaceRoot
+	| Turbo.TurboInspector
+	| Changesets.BranchAnalyzer
+	| Changesets.ConfigInspector
+	| Changesets.ReleasePlanner
+	| Changesets.DepsRegen
+	| Repos.ReposManager
+	| Repos.ReposConfigStore
+	| Repos.ReposDrift
+	| FileSystem.FileSystem
+	| Path.Path;
 
 /**
  * Build the MCP runtime layer for a workspace root. Provides
@@ -34,7 +61,7 @@ import type { McpServices } from "./context.js";
  * `Changesets.BranchAnalyzer`, `Changesets.ConfigInspector`,
  * `Changesets.ReleasePlanner`, `Changesets.DepsRegen`, `Repos.ReposManager`,
  * `Repos.ReposConfigStore`, and `Repos.ReposDrift`; requires `ChildProcessSpawner` + `FileSystem`
- * + `Path` from the host's platform layer (`NodeServices.layer` in bin.ts).
+ * + `Path` from the host's platform layer (`NodeServices.layer` in main.ts).
  *
  * @remarks
  * The kit graph (`Workspaces.layerWithGitAndConfigDependenciesSubprocess`)

@@ -7,8 +7,8 @@ import {
 	WorkspaceDiscovery,
 	WorkspaceRoot,
 } from "@effected/workspaces";
+import type { AnalyzedWorkspace } from "@savvy-web/silk-core";
 import { Effect, Layer, Logger, Option } from "effect";
-import type { AnalyzedWorkspace } from "../../src/schemas/WorkspaceAnalysisSchemas.js";
 import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 import { SilkWorkspaceAnalyzer } from "../../src/services/SilkWorkspaceAnalyzer.js";
 

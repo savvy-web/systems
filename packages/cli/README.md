@@ -91,12 +91,12 @@ npx savvy changeset --help
 The package also exports the assembled command tree and its handlers for embedding `savvy` in another program:
 
 ```ts
-import { runCli } from "@savvy-web/cli";
+import { main } from "@savvy-web/cli/main";
 
-await runCli(process.argv);
+main();
 ```
 
-The individual command groups (`changesetCommand`, `commitCommand`, `lintCommand`) and their named handlers are exported from the package root.
+The `.` barrel exports the command groups (`changesetCommand`, `commitCommand`, `lintCommand`) and their named handlers only.
 
 ## License
 

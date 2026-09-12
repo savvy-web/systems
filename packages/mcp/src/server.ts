@@ -1,322 +1,300 @@
 /**
- * Constructs the MCP server, registers tools, and connects the stdio
- * transport.
+ * The savvy-mcp server as ONE layer over `effect/unstable/ai`'s `McpServer`:
+ * the ten-tool toolkit registered against the stdio transport, with the
+ * silk-effects service graph discharging every handler's dependencies.
+ *
+ * @remarks
+ * ## Era-agnostic constraints
+ *
+ * Every tool obeys these so a future protocol bump is a one-line `protocols`
+ * change in {@link ServerLayer}:
+ *
+ * - no `initialize`-time state beyond what the framework keeps internally
+ * - no server-initiated requests
+ * - no reliance on sessions
+ * - paging carried in tool arguments (`limit` / `offset`), never a
+ *   protocol-level cursor
+ * - every tool a pure request/response — no streaming, no elicitation
+ *
+ * ## The six gotchas, verified against effect@4.0.0-rc.115
+ *
+ * (Source paths are under `.repos/effect/packages/effect/src/`.)
+ *
+ * 1. **`Tool.make` needs an explicit `dependencies` array.** Still true.
+ *    `Tool.make`'s `Dependencies` type parameter defaults to `[]`, so
+ *    `Tool.HandlerServices` infers `never` (`unstable/ai/Tool.ts:1200-1265`)
+ *    and a handler that yields a service fails `Toolkit.HandlersFrom`
+ *    (`unstable/ai/Toolkit.ts:172-182`). Every tool here declares the
+ *    services its handler yields; `biome_check` yields none and declares
+ *    none.
+ * 2. **`protocols` order is load-bearing.** Still true: the stdio
+ *    serialization selects `protocols.find(version === offered) ??
+ *    protocols[0]` on `initialize` (`unstable/ai/McpServer.ts:1268-1271`),
+ *    so an unrecognised client version negotiates to `protocols[0]`. rc.115
+ *    exports four adapters (`McpProtocol.v2025_11_25`, `v2025_06_18`,
+ *    `v2025_03_26`, `v2024_11_05`; `unstable/ai/McpProtocol.ts:101-146`);
+ *    this server lists the newest two, newest first. Never reduce it to one.
+ * 3. **A declared typed failure reaches the wire as message text only.**
+ *    Still true: `registerToolkit` collapses a caught declared failure to
+ *    `{ isError: true, content: [{ type: "text", text: error.message }] }`
+ *    (`McpServer.ts:1513-1517,1603-1607`) and never sets
+ *    `structuredContent` for it. The custom registration below mirrors that
+ *    exactly, so `errors.ts` composes every member's `message` at
+ *    construction and truncates echoed caller values.
+ * 4. **`Logger.consolePretty`'s `stderr` option is inert.** Still true, and
+ *    the option is not even in the signature any more — rc.115 reads only
+ *    `{ colors, formatDate, mode }` (`internal/effect.ts:6647-6651`). The
+ *    real switch is `Logger.LogToStderr`, read at log time
+ *    (`internal/effect.ts:6688,6832`: `fiber.getRef(LogToStderr) ?
+ *    console.error : console.log`); `main.ts` provides it. Without it every
+ *    log line — and `registerToolkit` logs every failing call at error level
+ *    (`McpServer.ts:1587`) — lands on stdout, the JSON-RPC wire.
+ * 5. **A clean stdin close exits 130 by default.** Still true:
+ *    `Runtime.defaultTeardown` returns 130 when the main fiber's cause has
+ *    interrupts only (`Runtime.ts:108-114`), which is what stdin EOF ending
+ *    `layerStdio`'s scope produces. `main.ts` passes `NodeRuntime.runMain`'s
+ *    `teardown` option (`@effect/platform-node` `NodeRuntime.d.ts`) mapping
+ *    success-or-interrupts-only to 0 and deferring the rest to the default.
+ *    Corollary: a `tools/call` still in flight when stdin closes is
+ *    interrupted, its response never written, and the exit is STILL 0 —
+ *    interrupts-only cannot distinguish the two. A client that pipes a
+ *    request and immediately hits EOF gets no answer and no non-zero exit;
+ *    the e2e helper therefore reads a call's response before closing stdin.
+ * 6. **A resource URI template's parametric segment cannot span a `/`.**
+ *    Not exercised: this server registers no resources (tools only). Left
+ *    on record for the day one is added — register static per-item
+ *    resources at boot rather than a nested-id template.
+ *
+ * ## The dual channel, and why registration is custom
+ *
+ * rc.115's `McpServer.registerToolkit` renders every success as
+ * `content: [{ type: "text", text: JSON.stringify(encodedResult) }]` plus
+ * `structuredContent` (`McpServer.ts:1577-1585`) and offers no hook over the
+ * text. Every tool description promises "markdown in content[] and a typed
+ * object in structuredContent", so {@link registerSilkToolkit} registers the
+ * toolkit through the public `McpServer.addTool` instead: identical
+ * schema/annotation/error handling to `registerToolkit`, with the text
+ * channel taken from each tool's {@link SilkMarkdown} annotation. The success
+ * schemas stay the shared silk-effects definitions, untouched. If a future rc
+ * exposes a text renderer on `registerToolkit`, delete the custom function
+ * and use `McpServer.toolkit(SilkToolkit)`.
+ *
+ * Baseline for the next rc bump — the three places this mirror knowingly
+ * deviates from rc.115's `registerToolkit`, to re-check against the new
+ * source: (i) the success branch renders the `SilkMarkdown` annotation as
+ * `content[0].text` instead of `JSON.stringify(encodedResult)`; (ii) the
+ * success JSON Schema is passed through {@link hoistRootRef} before the
+ * `type === "object"` check (the framework drops `outputSchema` for any
+ * `$ref`-rooted document); (iii) the mirror always emits one text item,
+ * whereas the framework emits `content: []` when the encoded result is
+ * `undefined` (a `Schema.Void` success) — moot here, every tool has an
+ * object result. Everything else — description via `Tool.getDescription`,
+ * `Tool.Meta` → `_meta`, annotation lifting, the `catchCause` ladder — is a
+ * verbatim mirror and must stay one.
+ *
+ * `outputSchema` is served only when the success schema's JSON Schema is
+ * object-rooted (`McpSchema.ToolJsonSchema` requires `type: "object"`;
+ * `McpServer.ts:1548-1551`). Four tools' results are discriminated unions
+ * (`turbo_inspect`, `changeset_inspect`, `repos_inspect`, `repos_manage`),
+ * whose JSON Schema is `anyOf`-rooted, so they serve no `outputSchema`;
+ * their `structuredContent` is unaffected.
  *
  * @packageDocumentation
  */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { Schema } from "effect";
-import { z } from "zod";
+import type { FileSystem, Path, Stdio } from "effect";
+import { Cause, Context, Effect, ErrorReporter, Layer, Option, Result, Schema, Sink, Stream } from "effect";
+import type { Toolkit } from "effect/unstable/ai";
+import { AiError, McpProtocol, McpSchema, McpServer, Tool } from "effect/unstable/ai";
+import type { ChildProcessSpawner } from "effect/unstable/process";
 
-import type { McpContext } from "./context.js";
-import { effectToZodSchema } from "./schema/effect-to-zod.js";
-import type { BiomeCheckArgs } from "./tools/biome-check.js";
-import { BiomeCheckAsMarkdown, BiomeCheckResult, runBiomeCheck } from "./tools/biome-check.js";
-import type { ChangesetDepsDetectArgs } from "./tools/changeset-deps-detect.js";
-import {
-	ChangesetDepsDetectAsMarkdown,
-	ChangesetDepsDetectResult,
-	changesetDepsDetect,
-} from "./tools/changeset-deps-detect.js";
-import type { ChangesetDepsRegenArgs } from "./tools/changeset-deps-regen.js";
-import {
-	ChangesetDepsRegenAsMarkdown,
-	ChangesetDepsRegenResult,
-	changesetDepsRegen,
-} from "./tools/changeset-deps-regen.js";
-import type { ChangesetInspectArgs } from "./tools/changeset-inspect.js";
-import { ChangesetInspectAsMarkdown, ChangesetInspectResult, changesetInspect } from "./tools/changeset-inspect.js";
-import type { ChangesetPreviewArgs } from "./tools/changeset-preview.js";
-import { ChangesetPreviewAsMarkdown, ChangesetPreviewResult, changesetPreview } from "./tools/changeset-preview.js";
-import type { ChangesetValidateArgs } from "./tools/changeset-validate.js";
-import { ChangesetValidateAsMarkdown, ChangesetValidateResult, changesetValidate } from "./tools/changeset-validate.js";
-import type { ReposInspectArgs } from "./tools/repos-inspect.js";
-import { ReposInspectAsMarkdown, ReposInspectResult, reposInspect } from "./tools/repos-inspect.js";
-import type { ReposManageArgs } from "./tools/repos-manage.js";
-import { ReposManageAsMarkdown, ReposManageResult, reposManage } from "./tools/repos-manage.js";
-import type { TurboInspectArgs } from "./tools/turbo-inspect.js";
-import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "./tools/turbo-inspect.js";
-import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, workspaceInfo } from "./tools/workspace-info.js";
+import { SilkMarkdown } from "./markdown.js";
+import { makeSilkRuntimeLayer } from "./runtime.js";
+import { SilkToolkit, ToolsLayer } from "./toolkit.js";
 import { CURRENT_MCP_VERSION } from "./version.js";
 
 /**
- * The `repos_inspect` wire-level `mode` enum. Exported so tests can assert
- * the boundary rejects an unknown mode without duplicating the enum's
- * member list.
+ * Everything {@link ServerLayer} still needs from the platform: the three
+ * services `makeSilkRuntimeLayer` requires, plus `Stdio`, which
+ * `McpServer.layerStdio` itself requires (`McpServer.ts:1217-1225`).
+ * `NodeServices.layer` supplies all four in `main.ts`; tests swap `Stdio`
+ * for `Stdio.layerTest`.
+ *
+ * @public
  */
-export const ReposInspectModeSchema = z
-	.enum(["status", "config", "drift", "gitmodules"])
-	.describe(
-		"status = drift report; config = the full agent brief; drift = five-authority submodule reconciliation; gitmodules = decoded .gitmodules sections.",
-	);
+export type PlatformServices =
+	| FileSystem.FileSystem
+	| Path.Path
+	| ChildProcessSpawner.ChildProcessSpawner
+	| Stdio.Stdio;
 
-/** Wrap a markdown string + structured object in the dual-channel tool result. */
-const structuredResult = <T extends object>(text: string, structured: T) => ({
-	content: [{ type: "text" as const, text }],
-	structuredContent: structured as unknown as Record<string, unknown>,
-});
+const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error.";
 
-/** Build the MCP server for the given context, registering tools. */
-export function buildServer(ctx: McpContext): McpServer {
-	const server = new McpServer({ name: "savvy-mcp", version: CURRENT_MCP_VERSION });
+const toolErrorResult = (message: string): McpSchema.CallToolResult =>
+	new McpSchema.CallToolResult({ isError: true, content: [{ type: "text", text: message }] });
 
-	server.registerTool(
-		"workspace_info",
-		{
-			description:
-				"Use when you need the Silk workspace layout: runtime, package manager, and a per-workspace summary (publishability, versioning, tag/release state). Prefer this over running shell commands to inspect the workspace. Returns markdown in content[] and a typed object in structuredContent.",
-			inputSchema: {
-				cwd: z.optional(z.string()).describe("Workspace root to analyze. Defaults to the server's project dir."),
-			},
-			outputSchema: effectToZodSchema(WorkspaceInfoResult) as never,
-		},
-		async (args) => {
-			const root = args.cwd ?? ctx.cwd;
-			const data = await ctx.runtime.runPromise(workspaceInfo(root));
-			const text = Schema.decodeUnknownSync(WorkspaceInfoAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
+/**
+ * Hoist a `$ref`-rooted JSON Schema document onto its referenced definition.
+ * `Schema.toJsonSchemaDocument` emits `{ $ref: "#/$defs/<id>", $defs }` for
+ * any schema annotated with an `identifier` — every result schema here is —
+ * and `McpSchema.ToolJsonSchema` needs a `type: "object"` root, so without
+ * this no tool would serve an `outputSchema` (rc.115's own `registerToolkit`
+ * has the same blind spot). The definitions stay attached for nested refs.
+ */
+const hoistRootRef = (schema: Record<string, unknown>): Record<string, unknown> => {
+	const ref = schema.$ref;
+	const defs = schema.$defs;
+	if (typeof ref !== "string" || !ref.startsWith("#/$defs/") || typeof defs !== "object" || defs === null) {
+		return schema;
+	}
+	const target = (defs as Record<string, unknown>)[ref.slice("#/$defs/".length)];
+	if (typeof target !== "object" || target === null) return schema;
+	const { $ref: _ref, ...rest } = schema;
+	return { ...rest, ...(target as Record<string, unknown>), $defs: defs };
+};
 
-	server.registerTool(
-		"turbo_inspect",
-		{
-			description:
-				"Read-only Turborepo inspection. mode=cache diagnoses why a task's cache is hitting/missing (per-package status plus the exact hash contributors: input files, env vars, external-dep hashes, global hash). mode=graph returns the task graph and critical path. mode=affected lists changed packages and their dependents. Never executes tasks (uses --dry).",
-			inputSchema: {
-				mode: z.enum(["cache", "graph", "affected"]).describe("Which inspection to run."),
-				task: z.optional(z.string()).describe("Task name (defaults to build:dev for cache/graph)."),
-				base: z.optional(z.string()).describe("Base git ref for affected mode."),
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(TurboInspectResult) as never,
-			annotations: { readOnlyHint: true },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(turboInspect(args as TurboInspectArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
+/** MCP models `structuredContent` as a JSON object, so a `null` or array encoded result is omitted. */
+const toStructuredContent = (value: unknown): Schema.JsonObject | undefined =>
+	typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Schema.JsonObject) : undefined;
 
-	server.registerTool(
-		"changeset_inspect",
-		{
-			description:
-				"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about; an unmapped path may carry a machine-readable unmappedHint reason — e.g. a deleted versionFiles/additionalScopes target or a known template mirror — meaning it is probably already accounted for). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). mode=classify maps arbitrary repo-relative paths to their owning package. Prefer this over shelling out to the savvy CLI.",
-			inputSchema: {
-				mode: z.enum(["branch", "config", "classify"]).describe("Which inspection to run."),
-				base: z.optional(z.string()).describe("Override the base branch (branch mode only)."),
-				paths: z.optional(z.array(z.string())).describe("Paths to classify (classify mode only)."),
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(ChangesetInspectResult) as never,
-			annotations: { readOnlyHint: true },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(changesetInspect(args as ChangesetInspectArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(ChangesetInspectAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
-
-	server.registerTool(
-		"changeset_validate",
-		{
-			description:
-				"Read-only validation of changeset files against the section-aware rules. Pass dir (default .changeset). Returns typed diagnostics (file, rule, line, column, message) plus ok/errorCount in structuredContent. Prefer this over shelling out to savvy changeset lint.",
-			inputSchema: {
-				dir: z.optional(z.string()).describe("Changeset directory to validate (default .changeset)."),
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(ChangesetValidateResult) as never,
-			annotations: { readOnlyHint: true },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(changesetValidate(args as ChangesetValidateArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(ChangesetValidateAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
-
-	server.registerTool(
-		"changeset_deps_detect",
-		{
-			description:
-				"Read-only preview of the cumulative dependency diff (merge-base -> working tree) per workspace package. Returns each affected package's resolved dependency-table rows (catalog:/workspace: specifiers resolved per side; devDependencies retained) as the exact rows a pure-dependency changeset would carry, plus a coexisting list of untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Does NOT write or delete any file. Prefer this over shelling out to savvy changeset deps detect.",
-			inputSchema: {
-				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
-				package: z.optional(z.string()).describe("Restrict output to a single workspace package."),
-				packages: z
-					.optional(z.array(z.string()))
-					.describe("Restrict output to these workspace packages (unioned with package)."),
-				exclude: z.optional(z.array(z.string())).describe("Drop these packages from the output entirely."),
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(ChangesetDepsDetectResult) as never,
-			annotations: { readOnlyHint: true },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(changesetDepsDetect(args as ChangesetDepsDetectArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
-
-	server.registerTool(
-		"changeset_preview",
-		{
-			description:
-				"Read-only preview of the next release. Runs the genuine changesets engine over the pending changesets and returns each package's version bump (old -> new) plus the rendered CHANGELOG block (dependency tables included), exactly as it would ship. Does not modify the repo. Prefer this over hand-merging changeset files.",
-			inputSchema: {
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(ChangesetPreviewResult) as never,
-			annotations: { readOnlyHint: true },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(changesetPreview(args as ChangesetPreviewArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(ChangesetPreviewAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
-
-	server.registerTool(
-		"changeset_deps_regen",
-		{
-			description:
-				"Regenerate pure-dependency changesets: delete stale single-package Dependencies-only changesets and write fresh single-package, patch-bump changesets from the cumulative dependency diff (catalog:/workspace: resolved; devDependencies dropped). Mixed changesets (Dependencies plus other content) are left untouched, and the result's coexisting list accounts for untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Set dryRun=true to preview the plan without touching the filesystem. NOTE: without dryRun this tool MUTATES .changeset/*.md (git-reversible). Prefer this over shelling out to savvy changeset deps regen.",
-			inputSchema: {
-				base: z.optional(z.string()).describe("Override the base branch used to compute the merge-base."),
-				package: z.optional(z.string()).describe("Restrict regeneration to a single workspace package."),
-				packages: z
-					.optional(z.array(z.string()))
-					.describe("Restrict regeneration to these workspace packages (unioned with package)."),
-				exclude: z
-					.optional(z.array(z.string()))
-					.describe("Skip these packages entirely: nothing written, existing changesets untouched."),
-				dryRun: z.optional(z.boolean()).describe("Compute the plan without writing or deleting any file."),
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(ChangesetDepsRegenResult) as never,
-			annotations: { destructiveHint: true, idempotentHint: false },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(changesetDepsRegen(args as ChangesetDepsRegenArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(ChangesetDepsRegenAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
-
-	server.registerTool(
-		"repos_inspect",
-		{
-			title: "Inspect vendored repos",
-			description:
-				"Read-only: drift report or parsed .repos/config.json manifest with orientation and notes. mode=status is the per-repo drift summary from ReposManager (present/dirty/commit); mode=config is the parsed manifest; mode=drift reconciles all four submodule authorities (manifest, .gitmodules, worktree, git submodule status) and reports every disagreement; mode=gitmodules decodes the raw .gitmodules file's submodule sections.",
-			inputSchema: {
-				mode: ReposInspectModeSchema,
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(ReposInspectResult) as never,
-			annotations: { readOnlyHint: true },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(reposInspect(args as ReposInspectArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(ReposInspectAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
-	);
-
-	server.registerTool(
-		"repos_manage",
-		{
-			title: "Manage vendored repos",
-			description:
-				"Mutating: sync (initialize/reconcile submodules per the manifest), pin (re-pin a repo to a new ref), add (vendor a new repo), note (add/remove/promote an agent note), remove (unvendor a repo), rename (rename a vendored repo's manifest key and worktree), restore (hard-reset a repo's worktree back to its pinned gitlink commit and re-apply sparse paths — DESTRUCTIVE to uncommitted worktree edits; never run implicitly), or deregister (clear a STALE submodule.<section> registration from the superproject's local git config — the phantom entry repos_inspect drift reports as localRegistrationDivergence with no matching manifest entry; refuses a section outside .repos/ and any section still backing a live manifest entry — canonically named or gitdir-diverged — and touches local config only, so nothing is staged). Pass action plus the fields that action needs: pin needs name+ref; add needs url+ref+purpose (name/sparse/orientation optional — pass orientation back from a preceding remove's removedEntry to make a re-vendor lossless); note needs name+op, plus note (op=add), id (op=remove), or id+into (op=promote); remove needs name; rename needs name (the old name) + newName; restore takes an optional names list — omitted, it restores every dirty repo and reports the clean ones as skipped; given, it restores exactly those repos even if already clean; deregister needs section (the registration name exactly as the drift report states it, e.g. .repos/old-name — no submodule. prefix). A decode failure names the missing field. The pin result's markdown surfaces commitMessage and staleNoteIds — review and commit after pinning. The remove result's markdown surfaces commitMessage, removedNotes and the removed entry's orientation block — promote any durable notes elsewhere, keep the orientation if you intend to re-vendor, then review and commit. The rename result's markdown surfaces commitMessage — review and commit after renaming. The restore result's markdown names exactly what was discarded. The deregister result's markdown lists the config keys the removed section carried — nothing to commit afterwards.",
-			inputSchema: {
-				action: z
-					.enum(["sync", "pin", "add", "note", "remove", "rename", "restore", "deregister"])
-					.describe("Which mutation to perform."),
-				name: z.optional(z.string()).describe("Repo name (pin, note, remove, rename; optional override for add)."),
-				newName: z.optional(z.string()).describe("New repo name (rename)."),
-				ref: z.optional(z.string()).describe("Git ref to pin/vendor to (pin, add)."),
-				url: z.optional(z.string()).describe("Repo URL to vendor (add)."),
-				purpose: z.optional(z.string()).describe("One-line purpose for the manifest (add)."),
-				sparse: z.optional(z.array(z.string())).describe("Sparse-checkout patterns (add)."),
-				orientation: z
-					.optional(
-						z.object({
-							layout: z.optional(z.string()),
-							keyPaths: z.optional(z.record(z.string(), z.string())),
-							startHere: z.optional(z.string()),
+/**
+ * Register a toolkit with the running `McpServer`, rendering each success as
+ * the tool's markdown transcript in `content[0].text` and the encoded result
+ * in `structuredContent`. A port of rc.115's `McpServer.registerToolkit`
+ * (`McpServer.ts:1525-1611`) that differs in the success branch only.
+ *
+ * @remarks
+ * `Effect.context<never>()` captures the registration-time services (the
+ * handlers' declared dependencies, discharged by the runtime layer) so each
+ * call runs against them; `McpServerClient` is provided per call by the
+ * framework and is the one service excluded from that capture.
+ */
+const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
+	toolkit: Toolkit.Toolkit<Tools>,
+): Effect.Effect<
+	void,
+	never,
+	McpServer.McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpSchema.McpServerClient>
+> =>
+	Effect.gen(function* () {
+		const registry = yield* McpServer.McpServer;
+		const built = yield* toolkit;
+		const services = yield* Effect.context<never>();
+		const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services);
+		for (const tool of Object.values(built.tools) as ReadonlyArray<Tool.Any>) {
+			const annotations = tool.annotations;
+			const renderMarkdown = Context.getOrUndefined(annotations, SilkMarkdown);
+			const isDeclaredFailure = Schema.is(tool.failureSchema);
+			const outputJsonSchema = hoistRootRef(
+				Tool.getJsonSchemaFromSchema(tool.successSchema) as Record<string, unknown>,
+			);
+			const outputSchema =
+				outputJsonSchema.type === "object"
+					? yield* Schema.decodeUnknownEffect(McpSchema.ToolJsonSchema)(outputJsonSchema).pipe(Effect.orDie)
+					: undefined;
+			const inputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolJsonSchema)(Tool.getJsonSchema(tool)).pipe(
+				Effect.orDie,
+			);
+			const toolMeta = Context.getOrUndefined(annotations, Tool.Meta);
+			const description = Tool.getDescription(tool);
+			const mcpTool = new McpSchema.Tool({
+				name: tool.name,
+				...(description === undefined ? {} : { description }),
+				inputSchema,
+				...(outputSchema === undefined ? {} : { outputSchema }),
+				annotations: {
+					...Context.getOption(annotations, Tool.Title).pipe(
+						Option.map((title) => ({ title })),
+						Option.getOrUndefined,
+					),
+					readOnlyHint: Context.get(annotations, Tool.Readonly),
+					destructiveHint: Context.get(annotations, Tool.Destructive),
+					idempotentHint: Context.get(annotations, Tool.Idempotent),
+					openWorldHint: Context.get(annotations, Tool.OpenWorld),
+				},
+				...(toolMeta === undefined ? {} : { _meta: toolMeta as Schema.JsonObject }),
+			});
+			yield* registry.addTool({
+				tool: mcpTool,
+				annotations,
+				handle: (payload: unknown) =>
+					built.handle(tool.name as keyof Tools, (payload ?? {}) as never).pipe(
+						Stream.unwrap,
+						Stream.run(Sink.last()),
+						Effect.flatMap(Effect.fromOption),
+						Effect.map(
+							(result) =>
+								new McpSchema.CallToolResult({
+									isError: false,
+									structuredContent: toStructuredContent(result.encodedResult),
+									content: [
+										{
+											type: "text",
+											text:
+												renderMarkdown === undefined
+													? JSON.stringify(result.encodedResult)
+													: renderMarkdown(result.result),
+										},
+									],
+								}),
+						),
+						Effect.provideContext(services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>),
+						Effect.tapCause(Effect.logError),
+						Effect.catchCause((cause) => {
+							const failure = Cause.findError(cause);
+							if (Result.isFailure(failure)) {
+								return Cause.hasDies(cause)
+									? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+									: Effect.failCause(failure.failure);
+							}
+							const error: unknown = failure.success;
+							if (AiError.isAiError(error)) {
+								const reason = error.reason;
+								return reason._tag === "ToolParameterValidationError"
+									? Effect.fail(new McpSchema.InvalidParams({ message: reason.message }))
+									: Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE));
+							}
+							const message =
+								isDeclaredFailure(error) && error instanceof Error ? error.message : INTERNAL_TOOL_ERROR_MESSAGE;
+							return Effect.as(reportCause(cause), toolErrorResult(message));
 						}),
-					)
-					.describe(
-						"Orientation block to write (add). Pass back what a preceding remove reported as removedEntry.orientation — add does NOT restore it on its own, so a re-vendor loses it otherwise.",
 					),
-				op: z.optional(z.enum(["add", "remove", "promote"])).describe("Note operation (note)."),
-				note: z.optional(z.string()).describe("Note text (note, op=add)."),
-				id: z.optional(z.string()).describe("Note id (note, op=remove|promote)."),
-				into: z.optional(z.enum(["layout", "startHere"])).describe("Orientation target (note, op=promote)."),
-				names: z
-					.optional(z.array(z.string()))
-					.describe("Repo names to restore (restore); omitted restores every dirty repo."),
-				section: z
-					.optional(z.string())
-					.describe(
-						"Stale registration name to clear (deregister), exactly as the drift report states it (e.g. .repos/old-name); the submodule. prefix is implied.",
-					),
-				cwd: z.optional(z.string()).describe("Directory to resolve the workspace root from."),
-			},
-			outputSchema: effectToZodSchema(ReposManageResult) as never,
-			annotations: { destructiveHint: true, idempotentHint: false },
-		},
-		async (args) => {
-			const data = await ctx.runtime.runPromise(reposManage(args as ReposManageArgs, ctx.cwd));
-			const text = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
+			});
+		}
+	});
+
+/**
+ * The toolkit registration as a layer: {@link registerSilkToolkit} over
+ * `McpServer.layer` (the same reference `McpServer.layerStdio` merges, so
+ * layer memoization lands the registration on the served instance), with the
+ * handlers bound to `cwd`.
+ */
+const SilkToolsLayer = (cwd: string) =>
+	Layer.effectDiscard(registerSilkToolkit(SilkToolkit)).pipe(
+		Layer.provide(McpServer.McpServer.layer),
+		Layer.provide(ToolsLayer(cwd)),
 	);
 
-	server.registerTool(
-		"biome_check",
-		{
-			description:
-				"Run Biome over a path and get structured diagnostics back. mode=check (default; lint + format + organize-imports) or mode=lint. Set write=true to apply safe fixes (--write), unsafe=true for unsafe fixes (--write --unsafe). Severities match the project's Biome config (what `biome check` reports); set strict=true to surface project warnings as errors, each marked with its originalSeverity. Prefer this over shelling out to biome; the LSP already covers files you've edited. Returns markdown in content[] and a typed object in structuredContent. NOTE: with write/unsafe this tool MUTATES files (git-reversible).",
-			inputSchema: {
-				paths: z.optional(z.array(z.string())).describe("Paths to check. Defaults to the whole workspace."),
-				mode: z
-					.optional(z.enum(["check", "lint"]))
-					.describe("check = lint+format+imports (default); lint = lint only."),
-				write: z.optional(z.boolean()).describe("Apply safe fixes (--write)."),
-				unsafe: z.optional(z.boolean()).describe("Apply unsafe fixes (--write --unsafe); implies write."),
-				strict: z
-					.optional(z.boolean())
-					.describe("Report project warnings as errors (marked with originalSeverity). Default: honor project config."),
-				cwd: z
-					.optional(z.string())
-					.describe(
-						"Directory to run from. May be the server's workspace root, a directory inside it, or a git worktree of the SAME repository — a worktree contains the run to that worktree instead of the main checkout. Anything else is rejected.",
-					),
-			},
-			outputSchema: effectToZodSchema(BiomeCheckResult) as never,
-		},
-		async (args) => {
-			const data = await runBiomeCheck(args as BiomeCheckArgs, ctx.cwd);
-			const text = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(data);
-			return structuredResult(text, data);
-		},
+/**
+ * The whole server as one layer: the ten-tool toolkit, the silk-effects
+ * runtime discharging its dependencies, over `McpServer.layerStdio`.
+ *
+ * `protocols` lists the newest two adapters, newest first — see gotcha 2 in
+ * the module remarks. `Cause.IllegalArgumentError` in `layerStdio`'s error
+ * channel is `orDie`d: `protocols` is a static two-element literal, so it is
+ * an implementer-time defect, not a runtime condition.
+ *
+ * @public
+ */
+export const ServerLayer = (cwd: string): Layer.Layer<never, never, PlatformServices> =>
+	SilkToolsLayer(cwd).pipe(
+		Layer.provide(makeSilkRuntimeLayer(cwd)),
+		Layer.provide(
+			McpServer.layerStdio({
+				name: "savvy-mcp",
+				version: CURRENT_MCP_VERSION,
+				protocols: [McpProtocol.v2025_11_25, McpProtocol.v2025_06_18],
+			}),
+		),
+		Layer.orDie,
 	);
-
-	return server;
-}
-
-/** Build the server and connect it over stdio. */
-export async function startMcpServer(ctx: McpContext): Promise<void> {
-	const server = buildServer(ctx);
-	const transport = new StdioServerTransport();
-	await server.connect(transport);
-}

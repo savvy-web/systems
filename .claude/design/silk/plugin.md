@@ -3,8 +3,8 @@ status: current
 module: silk
 category: architecture
 created: 2026-05-31
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 90
 related:
   - ./architecture.md
@@ -19,6 +19,7 @@ related:
   - ./plugin-it2.md
   - ../cli/architecture.md
   - ../mcp/architecture.md
+  - ../workspace/package-layering.md
 dependencies: []
 ---
 
@@ -79,7 +80,7 @@ The naming scheme is the load-bearing convention; the `skills/` directory is the
 
 ## Server wiring
 
-- **MCP.** The `mcpServers` block in `plugin.json` spawns the shared `savvy-mcp` server (`@savvy-web/mcp`, tools-only) via `sh bin/start-mcp.sh`. The SessionStart orientation hook then points the agent at the tools it should prefer — see [plugin-hooks.md](./plugin-hooks.md#the-orientation-payload).
+- **MCP.** The `mcpServers` block in `plugin.json` spawns the shared `savvy-mcp` server (`@savvy-web/mcp`, tools-only) via `sh ${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh` (POSIX `sh`, so the stripped exec bit never matters). The loader sets `ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"`, exports it as BOTH `CLAUDE_PROJECT_DIR` and `SAVVY_MCP_PROJECT_DIR` (the server resolves its project dir from argv, then `SAVVY_MCP_PROJECT_DIR`, then `CLAUDE_PROJECT_DIR`, then cwd), and `exec`s `$ROOT/node_modules/.bin/savvy-mcp` when it is executable — the bin the `@savvy-web/silk` carrier installs ([package-layering.md](../workspace/package-layering.md#the-carrier-decision)). Otherwise it detects the package manager (the `packageManager` field read with grep/sed — no `jq` — then the first lockfile in the order `pnpm-lock.yaml`, `bun.lock`, `bun.lockb`, `yarn.lock`, `package-lock.json`, defaulting to npm), prints the matching one-line install hint (`pnpm add -D @savvy-web/silk` and so on) to stderr, and `exec`s `npx --yes @savvy-web/mcp "$@"`. Detection chooses the hint text only; the exec target is never a package-manager dispatch (`pnpm exec`/`yarn exec`/`bunx`), which was the earlier bug — those resolved the bin through the manager's workspace rules rather than the project's installed tree. `tests/bin-start-mcp.bats` covers both branches with a fake `.bin/savvy-mcp` and a stubbed `npx`. The SessionStart orientation hook then points the agent at the tools it should prefer — see [plugin-hooks.md](./plugin-hooks.md#the-orientation-payload).
 - **LSP.** The `lspServers.biome` block launches Biome's language server via `sh bin/biome-lsp.sh`; see [plugin-biome.md](./plugin-biome.md). Neither launcher bundles a binary — both expect the tool on `PATH` or resolvable from the project.
 
 ## Rationale
@@ -87,6 +88,10 @@ The naming scheme is the load-bearing convention; the `skills/` directory is the
 ### Why one plugin, prefixed skills
 
 The three original tools (changesets, commitlint, lint-staged) are installed and configured as a unit, so a consumer wants one plugin, not three. Merging removes per-plugin ceremony; tool-prefixing the user-facing skills keeps the merged namespace legible, while agent-only mechanics stay short because no human types them.
+
+### Why the loader prefers the project's own bin
+
+A plugin is installed per user, but the server it spawns should be the version the project pins — its tools read the project's own silk-effects and kit graph. `node_modules/.bin/savvy-mcp` is exactly that version, put there by `@savvy-web/silk` with no hoist configuration; `npx` is only a fallback so a project that has not installed silk still gets a server, with the install line telling the user how to stop paying the download.
 
 ### Why hooks target the single savvy bin
 

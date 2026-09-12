@@ -4,9 +4,11 @@ category: architecture
 status: current
 completeness: 95
 created: 2026-03-06
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 related:
+  - ../silk-core/architecture.md
+  - ../workspace/package-layering.md
   - ./workspace-analysis.md
   - ./hook-sections.md
   - ./changesets.md
@@ -33,7 +35,9 @@ related:
 - [Subsystem docs](#subsystem-docs)
 - [Export surface](#export-surface)
 - [What the kit owns](#what-the-kit-owns)
+- [What silk-core owns](#what-silk-core-owns)
 - [Source layout](#source-layout)
+- [The engine boundary](#the-engine-boundary)
 - [Service patterns](#service-patterns)
 - [Dependencies and platform requirements](#dependencies-and-platform-requirements)
 - [Consumer guide](#consumer-guide)
@@ -43,13 +47,13 @@ related:
 
 ## Overview
 
-`@savvy-web/silk-effects` (`packages/silk-effects`) is the platform-agnostic Effect library that holds the Silk Suite's *policy*: publishability rules, workspace analysis, changeset configuration, the shared husky-hook shells and the business logic of the dev-tooling namespaces. It is the one library that all three thin consumers import — `@savvy-web/cli` (command host), `@savvy-web/silk` (config-integration shims) and `@savvy-web/mcp` (the `savvy-mcp` server) — and the non-import invariant (none of those three imports another) is what forces every piece of shared logic to live here. See `../cli/architecture.md`, `../silk/architecture.md` and `../mcp/architecture.md`.
+`@savvy-web/silk-effects` (`packages/silk-effects`) is the platform-agnostic Effect library that holds the Silk Suite's *policy*: publishability rules, workspace analysis, changeset configuration, the shared husky-hook shells and the business logic of the dev-tooling namespaces. It is the **engine** (L2) of the [package layering](../workspace/package-layering.md): the one library every front end above it imports — `@savvy-web/cli` (command host), `@savvy-web/mcp` (the `savvy-mcp` server), `@savvy-web/changelog` (the changesets-CLI identity) and `@savvy-web/silk` (carrier + config-integration shims) — and the layering (same-layer packages never reference each other) is what forces every piece of shared logic to live here. Below it sits `@savvy-web/silk-core` (L1), the platform-free domain model this package depends on and re-exports. See `../cli/architecture.md`, `../silk/architecture.md`, `../mcp/architecture.md` and `../silk-core/architecture.md`.
 
-The seam is policy versus mechanism. Generic mechanisms — versioning and tag classification, CLI tool discovery, the managed-section engine, the GitHub issue-reference grammar — live in the `@effected/*` kit; silk-effects layers Silk opinion over them and re-exports nothing from the kit. See [What the kit owns](#what-the-kit-owns).
+The seam is policy versus mechanism. Generic mechanisms — versioning and tag classification, CLI tool discovery, the managed-section engine, the GitHub issue-reference grammar — live in the `@effected/*` kit; silk-effects layers Silk opinion over them and re-exports nothing from the kit. See [What the kit owns](#what-the-kit-owns). A second seam is engine versus host: shared code here reads nothing from `process`; the two host-adapter directories are the only exception. See [The engine boundary](#the-engine-boundary).
 
 ## Current state
 
-Published and consumed by `cli`, `silk` and `mcp`; the version is in `packages/silk-effects/package.json`. Built by `@savvy-web/bundler` (`savvy.build.ts`) as **ESM only** — `dist/*/pkg/package.json` exposes `import` and `default` conditions and no `require`. The CommonJS loaders that reach silk's shims (notably markdownlint-cli2's custom-rule loader) are satisfied by silk's two CJS override entries, which inline silk-effects rather than `require()` it — see `../silk/architecture.md`.
+Published and consumed by `cli`, `mcp`, `changelog` and `silk`; the version is in `packages/silk-effects/package.json`. Since savvy-web/systems#631 the schemas, errors and `PrBody` contract live in `@savvy-web/silk-core` and are re-exported here unchanged, and the engine boundary test enforces that shared code has no `process` reads. Built by `@savvy-web/bundler` (`savvy.build.ts`) as **ESM only** — `dist/*/pkg/package.json` exposes `import` and `default` conditions and no `require`. The CommonJS loaders that reach silk's shims (notably markdownlint-cli2's custom-rule loader) are satisfied by silk's two CJS override entries, which inline silk-effects rather than `require()` it — see `../silk/architecture.md`.
 
 ## Subsystem docs
 
@@ -66,11 +70,11 @@ Each subsystem has its own doc; this file keeps the cross-cutting conventions.
 - [PR body contract](./pr-body.md) — the frozen `silk-release` marker grammar shared with `silk-release-action`.
 - [Kit peer dependencies](./kit-peer-dependencies.md) — why three `@effected/*` packages are required peers and the `configDependencies` bump trap.
 
-Two small standalone services have no doc of their own: `ConfigDiscovery` (`src/services/ConfigDiscovery.ts`) finds a config file by the Silk convention, `{cwd}/lib/configs/{name}` before `{cwd}/{name}`; `BiomeSchemaSync` (`src/services/BiomeSchemaSync.ts`) checks or rewrites the `$schema` URL of `biome.json`/`biome.jsonc` against a target version, touching only URLs whose host is `biomejs.dev`. Both require `FileSystem`.
+Two small standalone services have no doc of their own: `ConfigDiscovery` (`src/services/ConfigDiscovery.ts`) finds a config file by the Silk convention, `{cwd}/lib/configs/{name}` before `{cwd}/{name}`; `BiomeSchemaSync` (`src/services/BiomeSchemaSync.ts`) checks or rewrites the `$schema` URL of `biome.json`/`biome.jsonc` against a target version, touching only URLs whose host is `biomejs.dev`. Both require `FileSystem`, and both take a **required `cwd`** in their options — the former `process.cwd()` default is gone (a breaking change of #631); the host passes its own.
 
 ## Export surface
 
-All public API ships from the package root (`"."`); there are no sub-path exports. `src/index.ts` is the authoritative listing: the six namespaces (`Changesets`, `Commitlint`, `Lint`, `PrBody`, `Repos`, `Turbo`) via `export * as`, plus the flat-exported errors, schemas and services.
+All public API ships from the package root (`"."`); there are no sub-path exports. `src/index.ts` is the authoritative listing: the six namespaces (`Changesets`, `Commitlint`, `Lint`, `PrBody`, `Repos`, `Turbo`) via `export * as`, plus the flat-exported errors, schemas and services. The errors, schemas and `PrBody` are re-exported `from "@savvy-web/silk-core"` under the same names and the same type-only/value split, so the surface is byte-for-byte what it was before the extraction.
 
 Two rules govern the entry:
 
@@ -91,20 +95,33 @@ The table maps each mechanism that once lived here to its kit home. Read it befo
 
 Because `classify` and `classifyTag` are total, the errors that used to accompany them are gone and the analyzer's error channel narrowed with them.
 
+## What silk-core owns
+
+`@savvy-web/silk-core` holds everything from this package that needs no platform: the five `errors/` classes, the six `schemas/` value objects (`BiomeConfig`, `ConfigDiscoverySchemas`, `SavvyInstallSection`, `SavvySections`, `VersioningSchemas`, `WorkspaceAnalysisSchemas`), the whole `pr-body/` contract and `trimTrailingSlashes`. silk-effects declares it as a `workspace:*` dependency, imports from it wherever a service needs a schema, and re-exports it (except `trimTrailingSlashes`, which was never public here). A file that imports a silk-effects sibling stays in silk-effects; a file that needs a `FileSystem`, a subprocess or a clock is a service and belongs here. Cross-package `{@link}`s are written as backticks in both directions because API Extractor cannot resolve a link through a re-export. The full inventory and the boundary rules are in [silk-core/architecture.md](../silk-core/architecture.md).
+
 ## Source layout
 
 The package is organized by role, then by namespace:
 
 ```text
 src/
-  index.ts        ← single root export
-  errors/         ← Data.TaggedError classes (one per file)
-  schemas/        ← Schema.Class / Schema.TaggedClass value objects and the SavvySections content
+  index.ts        ← single root export (errors, schemas and PrBody re-exported from @savvy-web/silk-core)
   services/       ← Context.Service services with `layer` statics
-  utils/          ← small shared helpers
-  changesets/  commitlint/  lint/  pr-body/  repos/  turbo/   ← one subtree per namespace, each with its own index.ts
-__test__/         ← mirrors src/; integration tests and their fixture tree under integration/
+  changesets/  commitlint/  lint/  repos/  turbo/   ← one subtree per namespace, each with its own index.ts
+__test__/         ← mirrors src/; integration tests and their fixture tree under integration/; boundaries.test.ts is the engine gate
 ```
+
+`errors/`, `schemas/`, `pr-body/` and `utils/` moved to silk-core with their tests.
+
+## The engine boundary
+
+silk-effects is the engine both front ends run, so a `process` read here bakes one host's environment into the other. `__test__/boundaries.test.ts` walks `src/` with silk-core's tokenizer scanner (`../silk-core/__test__/utils/boundaries.ts`, imported by computed path rather than copied — why is in [silk-core/architecture.md](../silk-core/architecture.md#the-shared-scanner)) and fails on any file that touches the `process` identifier in code. There is **no per-file allowlist**. The only carve-out is two top-level directories skipped by name — `lint/` and `commitlint/` — because they are **host adapters**: entry points invoked by lint-staged, markdownlint-cli2 and commitlint, foreign host processes that supply no context, so they must read `process` themselves. That is a directory-level decision so the invariant reads "everything else is engine".
+
+What the drain changed in the shared code:
+
+- `ConfigDiscovery.find/findAll` and `BiomeSchemaSync.sync/check` require `cwd` (above).
+- The changesets logger reads its mode from `Changesets.ChangesetLogMode`, a `Context.Reference<ChangesetLogModeValue>` (key `@savvy-web/silk-effects/Changesets/ChangesetLogMode`, default `"stderr"`; values `"silent" | "github" | "stderr"`). rc.115's `Context.Reference` is the plain function form `Reference(key, { defaultValue })` — the class-factory spelling does not exist. `logWarning` became an Effect that yields the reference; `Changesets.makeChangelogFunctions({ logMode? })` provides it around the changesets-CLI adapter, and the default export `Changesets.changelogFunctions` is `makeChangelogFunctions()` — always stderr, no env sniffing. The hosts that need `"silent"`/`"github"` (`@savvy-web/changelog`, silk's deprecated `./changesets/changelog` shim) read `VITEST`/`GITHUB_ACTIONS` from their own `process.env` and call the factory. It is provided there, not in cli/mcp `main.ts`, because neither front end runs `getReleaseLine` in its own Effect context (`ReleasePlanner` resolves the changelog module by id).
+- `changesets/vendor/github-info.ts` is clean at the file level, but the dependency it wraps, `@changesets/get-github-info`, exposes no token option and reads `GITHUB_TOKEN`/`GITHUB_SERVER_URL`/`GITHUB_GRAPHQL_URL` and a `.env` at `process.cwd()` internally. That is a documented gap, not an allowlist entry; the follow-up is an `@effected/github-api`-backed lookup with the token supplied through a reference.
 
 ## Service patterns
 
@@ -130,15 +147,15 @@ export class ServiceName extends Context.Service<ServiceName, ServiceNameShape>(
 
 Two details of the `layer` static are load-bearing. It carries an explicit `Layer.Layer<Service, Error, Requirements>` annotation, so an accidentally added requirement is a type error rather than a silently wider consumer graph — and it is the authoritative statement of what each service needs. And it passes `this`, never the class's own name, as the constructor's first argument: `Layer.succeed`/`Layer.effect` evaluate that argument in the static initializer, where the class name is still in its temporal dead zone and throws at import time.
 
-Errors are `Data.TaggedError` classes with a `message` getter; serialisable value objects are `Schema.Class`/`Schema.TaggedClass`, overriding `[Equal.symbol]`/`[Hash.symbol]` when comparison must ignore a field (`AnalyzedWorkspace` keeps its cyclic `linked`/`fixed` cross-references out of the hash); non-serialisable values with function-valued fields are plain classes with a private constructor and a static `make()`. Discriminated unions that never round-trip through Schema use `Data.taggedEnum` and are matched with `$is`. Result shapes that cross into `@savvy-web/mcp` are `Schema.Struct`s with the TypeScript interface derived from the schema, so the MCP bridge embeds the same source of truth (`../mcp/architecture.md`).
+Errors are `Data.TaggedError` classes with a `message` getter; serialisable value objects are `Schema.Class`/`Schema.TaggedClass`, overriding `[Equal.symbol]`/`[Hash.symbol]` when comparison must ignore a field (`AnalyzedWorkspace` keeps its cyclic `linked`/`fixed` cross-references out of the hash); non-serialisable values with function-valued fields are plain classes with a private constructor and a static `make()`. Discriminated unions that never round-trip through Schema use `Data.taggedEnum` and are matched with `$is`. Result shapes that cross into `@savvy-web/mcp` are `Schema.Struct`s with the TypeScript interface derived from the schema, so the MCP's `Tool.make` values embed the same source of truth as their `success` schema (`../mcp/tools.md`).
 
 ## Dependencies and platform requirements
 
-`effect` is the sole framework peer (v4 folded the platform surface into core). Three kit packages — `@effected/commands`, `@effected/git`, `@effected/workspaces` — are required peers because their service identities cross this package's API boundary; the rest of the kit (including `@effected/markdown`, which owns the canonical markdown stringifier the changelog pipeline emits through) are regular dependencies. See [Kit peer dependencies](./kit-peer-dependencies.md) for the reasoning, and `package.json` for the authoritative ranges — they are `catalog:effected`/`catalog:effected:peers` specifiers, never literals.
+`@savvy-web/silk-core` is a regular `workspace:*` dependency (the L1 domain model, re-exported). `effect` is the sole framework peer (v4 folded the platform surface into core). Three kit packages — `@effected/commands`, `@effected/git`, `@effected/workspaces` — are required peers because their service identities cross this package's API boundary; the rest of the kit (including `@effected/markdown`, which owns the canonical markdown stringifier the changelog pipeline emits through) are regular dependencies. See [Kit peer dependencies](./kit-peer-dependencies.md) for the reasoning, and `package.json` for the authoritative ranges — they are `catalog:effected`/`catalog:effected:peers` specifiers, never literals.
 
 The `Changesets` namespace also runs the genuine changesets **v3** engine at runtime (`@changesets/get-release-plan`, `@changesets/apply-release-plan`, `@changesets/config`, `@manypkg/get-packages`), plus `@changesets/changelog-git` behind `vanillaChangelogFunctions` and a small adapter over `@changesets/get-github-info` in `src/changesets/vendor/`.
 
-Consumers provide the platform layer (`NodeServices.layer`, `BunContext.layer`, …). Read each service's `layer` annotation for its requirements; the recurring shapes are `FileSystem` for the config and publishability services, `FileSystem | Path` for the repos services and a **spawn-capable** platform (`ChildProcessSpawner`) wherever git or a binary is run — `Changesets.DepsRegenDefault`, `Turbo.TurboInspector`, `Repos.ReposManager`. Kit services these need alongside (`WorkspaceDiscovery`, `PackageManagerDetector`, `WorkspaceRoot`, `ToolDiscovery`, `ManagedSection`, `Git`) come from the kit packages directly.
+Consumers provide the platform layer (`NodeServices.layer`, `BunContext.layer`, …) and the working directory — no service defaults to `process.cwd()`. Read each service's `layer` annotation for its requirements; the recurring shapes are `FileSystem` for the config and publishability services, `FileSystem | Path` for the repos services and a **spawn-capable** platform (`ChildProcessSpawner`) wherever git or a binary is run — `Changesets.DepsRegenDefault`, `Turbo.TurboInspector`, `Repos.ReposManager`. Kit services these need alongside (`WorkspaceDiscovery`, `PackageManagerDetector`, `WorkspaceRoot`, `ToolDiscovery`, `ManagedSection`, `Git`) come from the kit packages directly.
 
 ## Consumer guide
 
@@ -192,6 +209,8 @@ One entry point keeps the build simple and the consumer experience flat — ever
 
 ## Related documentation
 
+- [`../silk-core/architecture.md`](../silk-core/architecture.md) — the L1 domain model this package re-exports
+- [`../workspace/package-layering.md`](../workspace/package-layering.md) — the layer table, the engine boundary and the DAG check
 - [Publishability and workspace analysis](./workspace-analysis.md)
 - [Shared hook sections](./hook-sections.md)
 - [Changesets namespace](./changesets.md)

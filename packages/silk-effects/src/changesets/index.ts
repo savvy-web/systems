@@ -66,7 +66,8 @@ export { ChangelogTransformer } from "./api/transformer.js";
 // === Changelog formatter entry point (Changesets API integration) ===
 // This object implements ChangelogFunctions from @changesets/types — it is the
 // value that belongs in .changeset/config.json under "changelog": ["...", opts].
-export { default as changelogFunctions } from "./changelog/index.js";
+export type { MakeChangelogFunctionsOptions } from "./changelog/index.js";
+export { default as changelogFunctions, makeChangelogFunctions } from "./changelog/index.js";
 // The stock changesets renderer (@changesets/changelog-git), re-exported so
 // consumers need not depend on it directly. Exact upstream parity.
 export { vanillaChangelogFunctions } from "./changelog/vanilla.js";
@@ -214,6 +215,8 @@ export type { WorkspaceDependencyDiff } from "./utils/dep-diff.js";
 export { computeWorkspaceDependencyDiffs } from "./utils/dep-diff.js";
 export { serializeDependencyTableToMarkdown } from "./utils/dependency-table.js";
 export { gitMergeBase } from "./utils/git.js";
+export type { ChangesetLogModeValue } from "./utils/logger.js";
+export { ChangesetLogMode } from "./utils/logger.js";
 export { listPublishablePackageNames } from "./utils/publishability.js";
 export type { VersionFileUpdate, WorkspaceVersion } from "./utils/version-files.js";
 export { VersionFiles } from "./utils/version-files.js";

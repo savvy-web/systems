@@ -4,8 +4,8 @@ category: architecture
 status: current
 completeness: 90
 created: 2026-09-03
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 related:
   - ./architecture.md
   - ../mcp/architecture.md
@@ -37,7 +37,7 @@ The namespace splits into a service for I/O and a pure transformer for the math.
 
 The `layer` requires the kit `ToolDiscovery` plus `ChildProcessSpawner | FileSystem | Git`; the spawner is captured at construction and re-provided onto each `Run` effect, so the public methods stay `R = never`. Methods take an explicit `cwd` (the MCP handler resolves the workspace root); the layer guards on a `turbo.json` there (`NotATurboRepoError`) before resolving the binary via `Tool.named("turbo")`.
 
-Schemas (`schemas/`): `TurboDryRun` decodes `--dry=json`; the result structs are deliberately **flat and recursion-free** so the MCP's Effect-Schema→zod bridge round-trips them.
+Schemas (`schemas/`): `TurboDryRun` decodes `--dry=json`; the result structs are deliberately **flat and recursion-free** so the MCP's `turbo_inspect` tool can embed them unchanged in its served JSON Schema.
 
 ## Tool discovery is kit-owned
 

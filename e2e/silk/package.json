@@ -1,0 +1,24 @@
+{
+	"name": "@e2e/silk",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@effect/platform-node": "catalog:effect",
+		"@effect/vitest": "catalog:effect",
+		"@effected/commands": "catalog:effected",
+		"@savvy-web/bundler": "workspace:*",
+		"@savvy-web/changelog": "workspace:*",
+		"@savvy-web/cli": "workspace:*",
+		"@savvy-web/mcp": "workspace:*",
+		"@savvy-web/silk": "workspace:*",
+		"@savvy-web/silk-core": "workspace:*",
+		"@savvy-web/silk-effects": "workspace:*",
+		"@types/node": "catalog:silk",
+		"effect": "catalog:effect",
+		"typescript": "catalog:silk"
+	}
+}

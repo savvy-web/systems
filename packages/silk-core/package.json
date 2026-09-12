@@ -1,0 +1,59 @@
+{
+	"name": "@savvy-web/silk-core",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Platform-free domain core of the Silk Suite: schemas, tagged errors, and the PR-body contract",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk-core",
+	"bugs": {
+		"url": "https://github.com/savvy-web/systems/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/savvy-web/systems.git",
+		"directory": "packages/silk-core"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build:dev": "node savvy.build.ts --target dev",
+		"build:prod": "node savvy.build.ts --target prod",
+		"prepare": "turbo run build:dev",
+		"types:check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@effected/github-references": "catalog:effected",
+		"@effected/templates": "catalog:effected"
+	},
+	"devDependencies": {
+		"@effect/vitest": "catalog:effect",
+		"@effected/workspaces": "catalog:effected",
+		"@savvy-web/bundler": "workspace:*",
+		"@types/node": "catalog:build",
+		"effect": "catalog:effect",
+		"fast-check": "^4.9.0",
+		"typescript": "catalog:build",
+		"vitest": "catalog:test"
+	},
+	"peerDependencies": {
+		"@effected/workspaces": "catalog:effected",
+		"effect": "catalog:effect"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist/dev/pkg",
+		"linkDirectory": true,
+		"targets": {
+			"npm": true,
+			"github": true
+		}
+	}
+}

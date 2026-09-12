@@ -117,7 +117,10 @@ export interface BuildTargetGroupsOptions {
 	/**
 	 * Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`),
 	 * even declared deps that would otherwise be auto-externalized. The inverse of
-	 * `externals`. JS pass only.
+	 * `externals`. Forwarded to the JS pass AND, identically, to the dts pass and the
+	 * prod-only per-module declarations pass — the dts pass RE-EMITS the dual-format `.cjs`
+	 * chunk (see `buildTargetGroups`'s class doc), so a force-bundled dependency must stay
+	 * inlined there too, or the re-emitted `.cjs` re-externalizes it.
 	 */
 	readonly bundle?: ReadonlyArray<string> | undefined;
 	/** Output formats to emit. Defaults to esm-only when unset. */
@@ -451,10 +454,15 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 			// JS pass already emitted per-module JS for every entry. The bundling posture (neverBundle /
 			// bundleNodeModules / bundledPackages) is identical for every entry, so compute it once.
 			const dtsDeps =
-				dtsNeverBundle.length > 0 || dts.bundledPackages
+				dtsNeverBundle.length > 0 || dts.bundledPackages || partBundle?.length
 					? {
 							deps: {
 								...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
+								// The dts pass RE-EMITS the dual-format `.cjs` chunk (see the class doc above),
+								// so it must carry the SAME `alwaysBundle` as the JS pass — otherwise a
+								// force-bundled declared dependency is re-externalized in that re-emitted
+								// `.cjs`. Forwarded exactly as the JS pass does.
+								...(partBundle?.length ? { alwaysBundle: partBundle } : {}),
 								...(dts.bundledPackages
 									? partBundleNodeModules
 										? { dts: { alwaysBundle: dts.bundledPackages } }
@@ -583,10 +591,13 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 						define: decl.define,
 						...timingChecks,
 						logLevel: "silent",
-						...(dtsNeverBundle.length > 0 || decl.bundledPackages
+						...(dtsNeverBundle.length > 0 || decl.bundledPackages || partBundle?.length
 							? {
 									deps: {
 										...(dtsNeverBundle.length > 0 ? { neverBundle: dtsNeverBundle } : {}),
+										// Mirrors the dts pass's deps posture (see there): forward the partition's
+										// `bundle` so this pass's declarations stay consistent with the JS pass too.
+										...(partBundle?.length ? { alwaysBundle: partBundle } : {}),
 										...(decl.bundledPackages
 											? partBundleNodeModules
 												? { dts: { alwaysBundle: decl.bundledPackages } }

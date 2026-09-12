@@ -3,11 +3,12 @@ status: current
 module: cli
 category: architecture
 created: 2026-05-31
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 92
 related:
   - ./repos-group.md
+  - ../workspace/package-layering.md
   - ../silk/architecture.md
   - ../silk-effects/architecture.md
   - ../silk-effects/changesets.md
@@ -27,6 +28,7 @@ The `savvy` binary — the single command host for the Silk Suite's everyday dev
 
 - [Overview](#overview)
 - [Current State](#current-state)
+- [Entry points](#entry-points)
 - [Command tree](#command-tree)
 - [The clean command](#the-clean-command)
 - [The runtime layer stack](#the-runtime-layer-stack)
@@ -37,9 +39,9 @@ The `savvy` binary — the single command host for the Silk Suite's everyday dev
 
 `@savvy-web/cli` owns the `savvy` binary and its statically-defined command tree. Almost all of its business logic lives elsewhere: every command handler imports the work it does from `@savvy-web/silk-effects`, and the package exists to wire those handlers into a single `effect/unstable/cli` tree and provide the runtime layer stack that satisfies their service requirements. The lone exception is `savvy clean`, whose filesystem artifact removal has no `silk-effects` equivalent (see [The clean command](#the-clean-command)).
 
-**Package:** `@savvy-web/cli`, in `packages/cli`.
+**Package:** `@savvy-web/cli`, in `packages/cli` — an L3 front end in the [package layering](../workspace/package-layering.md), a peer of `@savvy-web/mcp` that never imports it.
 
-**Bin:** `savvy` resolves through `src/bin/cli.ts` to `runCli()` in `src/cli/index.ts`.
+**Bin:** `savvy` resolves through `src/bin.ts` to `main()` in `src/main.ts`, which provides `AppLive` from `src/cli/index.ts` over `rootCommand` and hands execution to `NodeRuntime.runMain`. `main` is also exported as `@savvy-web/cli/main`, which is what `@savvy-web/silk`'s carrier bin imports (see [Entry points](#entry-points)).
 
 **Versioning:** independent. `@savvy-web/silk` declares cli as a `workspace:*` source dependency, which changesets reads as cli's exact current version, so every cli release pushes silk's dependency out of range and auto-PATCH-bumps silk (the repo-wide `updateInternalDependencies: patch`), re-pinning it at publish. See `../silk/architecture.md`.
 
@@ -47,7 +49,17 @@ The `savvy` binary — the single command host for the Silk Suite's everyday dev
 
 ## Current State
 
-Shipped and in daily use as `@savvy-web/cli` 2.9.x: seven top-level commands (`init`, `check`, `clean`, `commit`, `changeset`, `lint`, `repos`), one runtime layer stack in `src/cli/index.ts`, and a handler test suite under `__test__/` on `@effect/vitest`. No discovery seam, no per-tool `init`/`check` subcommands, no `peerDependencies`. The package versions independently and is built by `@savvy-web/bundler` with `meta` off.
+Shipped and in daily use: seven top-level commands (`init`, `check`, `clean`, `commit`, `changeset`, `lint`, `repos`), one runtime layer stack in `src/cli/index.ts`, the `bin`/`main`/`index` entry split, and a handler test suite under `__test__/` on `@effect/vitest`. No discovery seam, no per-tool `init`/`check` subcommands, no `peerDependencies`. The package versions independently and is built by `@savvy-web/bundler` with `meta` off. The `runCli` export is gone from the barrel (a breaking change of savvy-web/systems#631): the process owner is `main` at `./main`.
+
+## Entry points
+
+The package follows the `./main` contract shared with the MCP server ([package-layering.md](../workspace/package-layering.md#the-main-entry-contract)):
+
+- `src/bin.ts` — `#!/usr/bin/env node`, `import { main } from "./main.js"; main();`. Nothing else, ever; it is the `bin.savvy` target.
+- `src/main.ts` — owns the process. Builds `Command.run(rootCommand, { version: process.env.__PACKAGE_VERSION__ ?? "0.0.0" })`, provides `AppLive` and calls `NodeRuntime.runMain`. Exported at `@savvy-web/cli/main` as `main(): void`. It is the one module that may read `process` for the version and the only one that runs anything at import time; never import it from the barrel.
+- `src/index.ts` — the library barrel at `.`: command groups and the named `run*` handlers, importable with no side effects. `AppLive` and `rootCommand` stay in `src/cli/index.ts`, which no longer calls `runMain`.
+
+`@savvy-web/silk` owns a mirror `savvy` bin that imports `@savvy-web/cli/main` and calls the same `main()`; installing silk alone puts `savvy` on a consumer's PATH with no hoist. This package keeps its own `bin` so a direct install of `@savvy-web/cli` (and `npx`) keeps working. `package.json` `exports` carries `.`, `./main` and `./package.json`. The bin itself is covered by `packages/silk/__test__/e2e/bins.e2e.test.ts` and `e2e/silk`'s packed-install test rather than by this package's unit suite (`bin.ts`/`main.ts` are coverage-excluded bootstrap).
 
 ## Command tree
 
@@ -90,7 +102,7 @@ The two filesystem-touching units — `collectTargets` (glob plus containment) a
 
 ## The runtime layer stack
 
-This is the load-bearing part of the package. The whole stack is assembled once in `runCli()` (`src/cli/index.ts`) with every inter-layer dependency wired. Read that file before touching layer wiring; the structure below is the topology, not a re-listing of every service.
+This is the load-bearing part of the package. The whole stack is assembled once as `AppLive` in `src/cli/index.ts`, with every inter-layer dependency wired; `main()` (`src/main.ts`) provides it over `rootCommand` and runs it. Read `src/cli/index.ts` before touching layer wiring; the structure below is the topology, not a re-listing of every service.
 
 ```text
 AppLive = mergeAll(ToolDiscoveryGroup, Inspector+Analyzer, ReposGroup)
@@ -132,7 +144,7 @@ The CLI version is injected at build time via `process.env.__PACKAGE_VERSION__`.
 
 A command group built by piping `Command.make` through `Command.withSubcommands` infers a type that references effect's non-exported `Inspectable` module, which cannot survive TypeScript declaration emit (TS4023 "cannot be named"). The fix is to build the group into a private `_nameCommand` and re-export it under an explicit `Command.Command<...>` annotation — see `src/commands/changeset/index.ts` and `src/commands/repos/index.ts`, the two groups that hit this. Sibling groups whose inferred types happen to name only exported modules (`commit`, `lint`) need no annotation and have none; add one only when declaration emit actually fails.
 
-The annotation is exact, never `any`: it restates the group's real Error and Requirements channels so the root layer graph stays compiler-validated. `runCli` provides `AppLive` with no casts, so `tsc` (`types:check`) — not the runtime smoke tests — is the gate that proves every service a handler yields is supplied.
+The annotation is exact, never `any`: it restates the group's real Error and Requirements channels so the root layer graph stays compiler-validated. `main()` provides `AppLive` with no casts, so `tsc` (`types:check`) — not the runtime smoke tests — is the gate that proves every service a handler yields is supplied.
 
 **A group's requirements channel is the union of its subcommands' requirements, not `never`.** `Command.withSubcommands` propagates each subcommand's `R` up into the parent, so `changesetCommand` names `ChildProcessSpawner | ConfigInspector | FileSystem | Path | ReleasePlanner`, and `reposCommand` names `Repos.ReposManager | Repos.ReposDrift` (the latter only because `status --drift` runs `ReposDrift.check`). The same discipline applies to the error channel, where the handlers' `catchTag` coverage narrows it — `reposCommand`'s reads `Repos.GitSubmoduleError` alone (see [repos-group.md](./repos-group.md)). A beta bump that changes the propagation rule surfaces as a type error on exactly these two exports; the fix is to widen the annotation to match, since `AppLive` already discharges those services and the layer graph does not change. Note the qualified `ChildProcessSpawner.ChildProcessSpawner`: `effect/unstable/process` re-exports it as a namespace and the package exports map offers no deeper subpath.
 
@@ -145,15 +157,16 @@ Handler tests run on `@effect/vitest` and provide stub layers per test; the suit
 
 ## Boundaries and invariants
 
-- **`@savvy-web/cli` never imports `@savvy-web/silk` or `@savvy-web/mcp`.** All logic comes from `silk-effects`. This is grep-guarded.
-- **No `peerDependencies` block.** The Effect closure is sealed as regular `dependencies` (the same posture as mcp and tsdown-plugins). A new `@effect/*` dep declares its required peers as regular deps too.
+- **`@savvy-web/cli` never imports `@savvy-web/silk` or `@savvy-web/mcp`.** All logic comes from `silk-effects`. The `@e2e/workspace` DAG check asserts it as a layering rule (same-layer packages never reference each other).
+- **No `peerDependencies` block.** The Effect closure is sealed as regular `dependencies` (the same posture as mcp and tsdown-plugins). A new `@effect/*` dep declares its required peers as regular deps too. `@effected/commands`, `@effected/git`, `@effected/workspaces` and `effect` are load-bearing entries that satisfy silk-effects' required peers; removing one breaks installs, not lint ([package-layering.md](../workspace/package-layering.md#dependencies-versus-peers)).
+- **The engine takes its `cwd` from this package.** silk-effects' `ConfigDiscovery` and `BiomeSchemaSync` no longer default to `process.cwd()`; `savvy lint check`/`lint init` pass `{ cwd: process.cwd() }` explicitly, as the process owner. Any new call into a silk-effects service that needs a root passes it — the engine has no `process` reads outside its host-adapter directories.
 - The real tools (`@biomejs/biome`, `husky`, `@commitlint/*`, `@changesets/cli`, `lint-staged`, `markdownlint-cli2`) are not direct deps; `silk` co-installs them as peers and pnpm's public-hoist-pattern makes them resolvable when `savvy` shells out.
 - **Every hook-section id the CLI declares is spelled UPPERCASE.** `@effected/templates` renders a `SectionId` key verbatim into its markers, and the markers already on disk in consumer repos are `SAVVY-COMMIT` / `SAVVY-LINT` / `SAVVY-BASE`. A lowercase key does not error — `check` reports `Absent` and `sync` appends a second block — so the hook silently grows a duplicate. `SECTION_DEF` in `src/commands/commit/init.ts` and the ids in silk-effects' `src/lint/cli/sections.ts` carry the uppercase spelling for exactly this reason; the shared sections in `SavvySections.ts` uppercase on the way in. Status branching uses the kit's flat `CheckOutcome` (`UpToDate`/`Drifted`/`Absent`), and multi-section writes go through `syncAll`. See `../silk-effects/hook-sections.md`.
 - **The hygiene hooks carry the toolchain drift check, except `post-commit`.** Both `commit init` and `lint init` sync silk-effects' `SavvyHooksSection` into `.husky/post-checkout`, `post-merge` and `post-commit`, and add `SavvyToolchainSection` (the package-manager drift warning) to the first two only — they fire exactly when a pin bump or branch switch can make the local package manager stale, whereas `post-commit` fires on every commit, noisier than the drift warrants. The matching `check` handlers skip `post-commit` for the toolchain section for the same reason.
 - **`savvy commit hook pre-commit-message` inspects two different document kinds, and the rule set is gated on which.** The hook is registered against `git commit`/`--amend` *and* `gh pr create`/`pr edit`, so `Commitlint.parseBashCommand`'s `kind` decides which rules run: the commit-body rules (`forbidden-content`, `verbosity`, `soft-wrap`) apply only to a real commit message, while `plan-leakage` and `closes-trailer` apply to both. A PR description is a markdown document — the ecosystem's canonical release PR body opens a fenced `proposed-squash-commit` block by design, which `forbidden-content` denies outright. Any new rule added here has to declare which side of that gate it belongs on. See `src/commands/commit/hooks/pre-commit-message.ts`.
 - **`savvy lint fmt <name>` owns argument parsing only — never a second copy of the formatting.** Each `fmt` subcommand (`src/commands/lint/fmt.ts`) is the CLI half of a `Lint` handler that lint-staged also invokes directly, so any byte-format step written into the subcommand rather than the handler makes the same file format differently depending on which path ran. `fmt pnpm-workspace` calls `Lint.PnpmWorkspace.formatContent`, `fmt yaml` calls `Lint.Yaml.formatFile` (under `Effect.sync`, because that static is synchronous — the YAML engine is a pure IO-free tier). When adding a `fmt` subcommand, sort/stringify/normalize belongs behind one silk-effects export both callers share.
 - **`savvy lint`/`savvy check` sync each consumer `biome.json(c)` `$schema` URL to the hardcoded `BIOME_VERSION` const** (`src/commands/lint/biome-version.ts`) via silk-effects' `BiomeSchemaSync` service — `check` reports drift, `lint`/`init` writes it — across every workspace root (`Lint.Biome.findAllConfigs()`), not just the repository root. `BIOME_VERSION` is one of the three coupled Biome-version spots that move together on an upgrade, alongside `@savvy-web/silk`'s Biome asset `$schema` and its `@biomejs/biome` peer range — see `../silk/architecture.md` and `packages/silk/CLAUDE.md`.
-- `silk` depends on `cli` as an exact-pinned regular dependency (install-target wiring), so installing `silk` pulls the `savvy` bin. That arrow points at install topology only — `silk`'s code never imports `cli`.
+- `silk` depends on `cli` as an exact-pinned regular dependency (install-target wiring) and its `src/bin/savvy.ts` shim imports `@savvy-web/cli/main` — the ONE sanctioned import of cli from silk. Nothing else in silk imports this package.
 
 ## Rationale
 

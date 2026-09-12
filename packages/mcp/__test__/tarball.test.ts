@@ -74,6 +74,15 @@ describe("published tarball (issue #97)", () => {
 		expect(missing, `entry points declared in package.json but absent from the tarball`).toEqual([]);
 	});
 
+	it("ships the ./main entry point", () => {
+		const mainTargets = new Set<string>();
+		const exportsMap = manifest.exports as Record<string, unknown> | undefined;
+		jsTargets(exportsMap?.["./main"], mainTargets);
+		expect(mainTargets.size, `exports["./main"] should resolve to at least one .js target`).toBeGreaterThan(0);
+		const missing = [...mainTargets].filter((t) => !packed.has(t));
+		expect(missing, `./main target(s) declared in package.json but absent from the tarball`).toEqual([]);
+	});
+
 	it("ships every runtime module reachable from the entry points", () => {
 		const seen = new Set<string>();
 		const queue = [...entries];

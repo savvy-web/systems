@@ -73,9 +73,11 @@ export interface BuildConfigInput {
 	 * Force-bundle (inline) these packages into the JS output, even ones declared in
 	 * package.json that would otherwise be auto-externalized. The inverse of `externals`;
 	 * maps to tsdown `deps.alwaysBundle`. Accepts package names. Use when you declare a
-	 * dependency for metadata/types but want its code inlined. Declarations are NOT
-	 * inlined by this option — use `bundledPackages` to also roll a package's types into
-	 * the emitted `.d.ts`.
+	 * dependency for metadata/types but want its code inlined. Applies to the JS pass and
+	 * the dts pass identically — including the dual-format `.cjs` chunk the dts pass
+	 * re-emits — so a force-bundled dependency stays inlined in every emitted format.
+	 * Declarations are NOT inlined by this option — use `bundledPackages` to also roll a
+	 * package's types into the emitted `.d.ts`.
 	 */
 	readonly bundle?: ReadonlyArray<string> | undefined;
 	/**
@@ -181,7 +183,11 @@ export interface BuildConfig {
 	 * inlining node_modules types into the `.d.ts`. Defaults to false.
 	 */
 	readonly bundleNodeModules?: boolean | undefined;
-	/** Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`). Inverse of `externals`. */
+	/**
+	 * Force-bundle (inline) these packages into the JS output (tsdown `deps.alwaysBundle`).
+	 * Inverse of `externals`. Applies identically to the JS pass and the dts pass (including
+	 * its re-emitted dual-format `.cjs` chunk).
+	 */
 	readonly bundle?: ReadonlyArray<string> | undefined;
 	/** Minify prod output (prod groups only; dev is never minified). defineBuild defaults this to false. */
 	readonly minify?: boolean | undefined;

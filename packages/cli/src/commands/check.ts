@@ -10,7 +10,7 @@
  * regardless of individual failures and then surface the full set of errors.
  *
  * Runtime layer provision (ManagedSection, FileSystem, WorkspaceRoot,
- * ToolDiscovery, etc.) is deferred to Task B7 (root `runCli`). The Effect
+ * ToolDiscovery, etc.) is deferred to Task B7 (root `main`). The Effect
  * returned by `checkCommand`'s handler therefore carries the full union of the
  * three handlers' requirements in its R channel.
  *

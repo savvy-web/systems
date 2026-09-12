@@ -3,11 +3,6 @@
 	"tasks": {
 		"build:prod": {
 			"dependsOn": ["types:check", "build:dev"]
-		},
-		"inspect": {
-			"cache": false,
-			"dependsOn": ["build:dev"],
-			"outputLogs": "full"
 		}
 	}
 }

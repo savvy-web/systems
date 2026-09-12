@@ -3,10 +3,11 @@ status: current
 module: pnpm-plugin-silk
 category: architecture
 created: 2026-06-30
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 85
 related:
+  - ../workspace/package-layering.md
   - ../bundler/architecture.md
   - ../tsdown-plugins/architecture.md
 dependencies:
@@ -40,7 +41,7 @@ The authored configuration is the argument object passed to `PnpmConfigPlugin({.
 Two managed entries carry decisions a first-time reader will not infer from the values:
 
 - **TS7 compatibility shim.** The catalogs put `typescript` on the TS7 line, but `@microsoft/api-extractor` pins TS ~5.9 and TS 7.0 ships no stable compiler API until 7.1, so `overrides` forces TypeScript 6 into api-extractor's dependency graph (`@microsoft/api-extractor>typescript`) — the 5/6 compiler APIs are equivalent for its purposes. Every consuming repo and the exported root workspace config inherit it; drop it when API Extractor supports TS7.
-- **Per-repo hoist exclusion.** `publicHoistPattern` hoists `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/changelog` so their bins are on PATH in every consumer, but `excludeByRepo` drops those three for `savvy-web-systems` — this repo consumes them as `workspace:*` links, and a public hoist would shadow the links with registry copies.
+- **`@savvy-web/changelog` is hoisted; `@savvy-web/cli` and `@savvy-web/mcp` no longer are.** `publicHoistPattern` hoists `@savvy-web/changelog` because the changesets engine resolves the changelog id named in `.changeset/config.json` BY NAME from the consumer root — a resolution need, not a bin. cli and mcp were removed from the list (savvy-web/systems#631): `@savvy-web/silk` now owns the `savvy`/`savvy-mcp` bins itself as shims over the front ends' `./main`, so a consumer's `node_modules/.bin` is created off the single silk dependency under every package manager with no hoist. `excludeByRepo` drops changelog for `savvy-web-systems` — this repo consumes it as a `workspace:*` link, and a public hoist would shadow the link with a registry copy; the exclusion had always dropped cli/mcp here too, so this repo's exported workspace file was byte-identical before and after the removal. The removal changes behaviour only for the other consumer repos, which makes release order load-bearing: **a silk that carries the bins must ship before or with the pnpm-plugin-silk that stops hoisting**, or a consumer on a bin-less silk loses `savvy` from PATH. See [package-layering.md](../workspace/package-layering.md#hoist-removal-and-release-sequencing).
 
 ## Current State
 

@@ -1,10 +1,15 @@
 import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer, Result, Schema } from "effect";
 
-import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
-import { TurboInspectAsMarkdown, TurboInspectResult, turboInspect } from "../../src/tools/turbo-inspect.js";
+import {
+	TurboInspectAsMarkdown,
+	TurboInspectParams,
+	TurboInspectResult,
+	turboInspect,
+	turboInspectTool,
+} from "../../src/tools/turbo-inspect.js";
 
 const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot,
@@ -89,14 +94,18 @@ layer(TestLayer)("turboInspect handler", (it) => {
 	});
 });
 
-describe("turbo_inspect effect->zod bridge", () => {
-	it("converts the result union and parses a valid graph payload", () => {
-		const zodSchema = effectToZodSchema(TurboInspectResult);
-		expect(zodSchema).toBeDefined();
-		const parsed = zodSchema.safeParse({
+describe("turbo_inspect served schemas", () => {
+	it("the result union accepts a valid graph payload", () => {
+		expect(TurboInspectResult).toBeDefined();
+		const parsed = Schema.decodeUnknownResult(TurboInspectResult)({
 			mode: "graph",
 			result: { nodeCount: 0, nodes: [], criticalPath: [] },
 		});
-		expect(parsed.success).toBe(true);
+		expect(Result.isSuccess(parsed)).toBe(true);
+	});
+
+	it("the parameters schema rejects an unknown mode at the wire boundary", () => {
+		expect(Result.isFailure(Schema.decodeUnknownResult(TurboInspectParams)({ mode: "bogus" }))).toBe(true);
+		expect(turboInspectTool.name).toBe("turbo_inspect");
 	});
 });

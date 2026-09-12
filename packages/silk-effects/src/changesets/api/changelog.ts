@@ -7,7 +7,8 @@
  * @internal
  */
 
-import changelogFunctions from "../changelog/index.js";
+import { makeChangelogFunctions } from "../changelog/index.js";
+import type { ChangesetLogModeValue } from "../utils/logger.js";
 import type { ModCompWithPackage, NewChangesetWithCommit, VersionType } from "../vendor/types.js";
 
 /**
@@ -105,14 +106,22 @@ export class Changelog {
 	 * @param versionType - The semantic version bump type (`"major"`, `"minor"`, or `"patch"`)
 	 * @param options - Configuration object; must include `repo` in `"owner/repo"` format.
 	 *   Pass `null` to use defaults (no GitHub link resolution).
+	 * @param logMode - How a failed GitHub lookup is reported (`"stderr"` when omitted);
+	 *   the host reads its own environment and passes `"github"` / `"silent"` — this
+	 *   engine never does. See `ChangesetLogMode`.
 	 * @returns A promise resolving to the formatted markdown string
 	 */
 	static async formatReleaseLine(
 		changeset: NewChangesetWithCommit,
 		versionType: VersionType,
 		options: Record<string, unknown> | null,
+		logMode?: ChangesetLogModeValue,
 	): Promise<string> {
-		return changelogFunctions.getReleaseLine(changeset, versionType, options);
+		return makeChangelogFunctions(logMode === undefined ? {} : { logMode }).getReleaseLine(
+			changeset,
+			versionType,
+			options,
+		);
 	}
 
 	/**
@@ -128,6 +137,8 @@ export class Changelog {
 	 *   old/new versions and package metadata
 	 * @param options - Configuration object; must include `repo` in `"owner/repo"` format.
 	 *   Pass `null` to use defaults.
+	 * @param logMode - How a failed GitHub lookup is reported (`"stderr"` when omitted);
+	 *   see {@link Changelog.formatReleaseLine}.
 	 * @returns A promise resolving to the formatted markdown string containing
 	 *   the dependency update table
 	 */
@@ -135,7 +146,12 @@ export class Changelog {
 		changesets: NewChangesetWithCommit[],
 		dependenciesUpdated: ModCompWithPackage[],
 		options: Record<string, unknown> | null,
+		logMode?: ChangesetLogModeValue,
 	): Promise<string> {
-		return changelogFunctions.getDependencyReleaseLine(changesets, dependenciesUpdated, options);
+		return makeChangelogFunctions(logMode === undefined ? {} : { logMode }).getDependencyReleaseLine(
+			changesets,
+			dependenciesUpdated,
+			options,
+		);
 	}
 }

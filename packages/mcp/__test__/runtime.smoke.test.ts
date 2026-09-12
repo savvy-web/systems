@@ -6,7 +6,7 @@ import { afterAll, beforeAll, expect, layer } from "@effect/vitest";
 import { Changesets, SilkWorkspaceAnalyzer, Turbo } from "@savvy-web/silk-effects";
 import { Effect, Layer } from "effect";
 
-import type { McpServices } from "../src/context.js";
+import type { McpServices } from "../src/runtime.js";
 import { makeSilkRuntimeLayer } from "../src/runtime.js";
 
 function setupFixture(): string {

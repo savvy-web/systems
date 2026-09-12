@@ -335,7 +335,10 @@ await build({
 			publicHoistPattern: {
 				excludeByRepo: {
 					okfit: ["@okfit/cli", "@okfit/mcp"],
-					"savvy-web-systems": ["@savvy-web/changelog", "@savvy-web/cli", "@savvy-web/mcp"],
+					// @savvy-web/cli and @savvy-web/mcp are gone from `value` below (silk
+					// now owns the `savvy`/`savvy-mcp` bins itself as shims, systems#631),
+					// so there is nothing left to exclude for either of them here.
+					"savvy-web-systems": ["@savvy-web/changelog"],
 					"vitest-agent": ["@vitest-agent/cli", "@vitest-agent/mcp"],
 				},
 				value: [
@@ -343,9 +346,11 @@ await build({
 					"@commitlint/cli",
 					"@commitlint/config-conventional",
 					"@commitlint/cz-commitlint",
+					// Resolved BY ID, not a bin: the changesets engine looks up the
+					// changelog id named in .changeset/config.json from the consumer
+					// root, so it must be reachable there — unlike cli/mcp (removed;
+					// silk now carries their bins itself), this is a resolution need.
 					"@savvy-web/changelog",
-					"@savvy-web/cli",
-					"@savvy-web/mcp",
 					"@types/bun",
 					"@types/node",
 					"@types/react",
@@ -366,7 +371,6 @@ await build({
 				],
 			},
 			allowBuilds: {
-				"@modelcontextprotocol/inspector": true,
 				"@parcel/watcher": true,
 				"better-sqlite3": true,
 				"core-js": true,

@@ -1,7 +1,7 @@
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
+import type { BiomeSyncResult } from "@savvy-web/silk-core";
+import { BiomeSyncError } from "@savvy-web/silk-core";
 import { Context, Effect, FileSystem, Layer } from "effect";
-import { BiomeSyncError } from "../errors/BiomeSyncError.js";
-import type { BiomeSyncResult } from "../schemas/BiomeConfig.js";
 
 /**
  * Strip leading semver range operators from a version string.
@@ -69,29 +69,31 @@ export interface BiomeSchemaSyncShape {
 	 * Update the `$schema` URL in all located Biome config files to match `version`.
 	 *
 	 * @param version - Target Biome version (range operators are stripped automatically).
-	 * @param options - Optional `cwd` and `gitignore` overrides.
-	 * @returns An `Effect` that succeeds with a {@link (BiomeSyncResult:type)} or fails with {@link BiomeSyncError}.
+	 * @param options - The `cwd` to scan (required — engine code never reads `process.cwd()`; the front
+	 *   end supplies it) and an optional `gitignore` override.
+	 * @returns An `Effect` that succeeds with a `BiomeSyncResult` or fails with `BiomeSyncError`.
 	 *
 	 * @since 0.1.0
 	 */
 	readonly sync: (
 		version: string,
-		options?: { cwd?: string; gitignore?: boolean },
+		options: { readonly cwd: string; readonly gitignore?: boolean },
 	) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
 
 	/**
 	 * Check whether the `$schema` URL in Biome config files is current, without writing any changes.
 	 *
 	 * @param version - Target Biome version (range operators are stripped automatically).
-	 * @param options - Optional `cwd` and `gitignore` overrides.
-	 * @returns An `Effect` that succeeds with a {@link (BiomeSyncResult:type)} or fails with {@link BiomeSyncError}.
+	 * @param options - The `cwd` to scan (required — engine code never reads `process.cwd()`; the front
+	 *   end supplies it) and an optional `gitignore` override.
+	 * @returns An `Effect` that succeeds with a `BiomeSyncResult` or fails with `BiomeSyncError`.
 	 *   Files that would be updated appear in `updated`; no disk writes occur.
 	 *
 	 * @since 0.1.0
 	 */
 	readonly check: (
 		version: string,
-		options?: { cwd?: string; gitignore?: boolean },
+		options: { readonly cwd: string; readonly gitignore?: boolean },
 	) => Effect.Effect<BiomeSyncResult, BiomeSyncError>;
 }
 
@@ -108,7 +110,7 @@ export interface BiomeSchemaSyncShape {
  * const result = await Effect.runPromise(
  *   Effect.gen(function* () {
  *     const syncer = yield* BiomeSchemaSync;
- *     return yield* syncer.sync("^1.9.3");
+ *     return yield* syncer.sync("^1.9.3", { cwd: "/path/to/repo" });
  *   }).pipe(
  *     Effect.provide(BiomeSchemaSync.layer),
  *     Effect.provide(NodeServices.layer),
@@ -139,11 +141,11 @@ export class BiomeSchemaSync extends Context.Service<BiomeSchemaSync, BiomeSchem
 
 			const run = (
 				version: string,
-				options: { cwd?: string; gitignore?: boolean } | undefined,
+				options: { readonly cwd: string; readonly gitignore?: boolean },
 				write: boolean,
 			): Effect.Effect<BiomeSyncResult, BiomeSyncError> =>
 				Effect.gen(function* () {
-					const cwd = options?.cwd ?? process.cwd();
+					const { cwd } = options;
 					const semver = extractSemver(version);
 					const expectedUrl = buildSchemaUrl(semver);
 

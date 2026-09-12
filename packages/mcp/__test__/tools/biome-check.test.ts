@@ -2,9 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { Schema } from "effect";
+import { Result, Schema } from "effect";
 
-import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import {
 	BiomeCheckAsMarkdown,
 	BiomeCheckResult,
@@ -275,15 +274,14 @@ describe("resolveContainmentRoot (systems#482)", () => {
 	});
 });
 
-describe("biome_check effect->zod bridge", () => {
-	it("parses a valid payload", () => {
-		const zodSchema = effectToZodSchema(BiomeCheckResult);
-		const parsed = zodSchema.safeParse({
+describe("biome_check served schema", () => {
+	it("the result schema accepts a valid payload", () => {
+		const parsed = Schema.decodeUnknownResult(BiomeCheckResult)({
 			summary: { errors: 0, warnings: 0 },
 			diagnostics: [],
 			wrote: false,
 			guidance: "x",
 		});
-		expect(parsed.success).toBe(true);
+		expect(Result.isSuccess(parsed)).toBe(true);
 	});
 });

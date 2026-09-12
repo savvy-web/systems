@@ -20,10 +20,12 @@
 	},
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./main": "./src/main.ts",
+		"./package.json": "./package.json"
 	},
 	"bin": {
-		"savvy": "./src/bin/cli.ts"
+		"savvy": "./src/bin.ts"
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",

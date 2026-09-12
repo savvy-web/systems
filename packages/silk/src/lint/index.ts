@@ -7,7 +7,7 @@
  * \@savvy-web/lint-staged works unchanged against \@savvy-web/silk/lint.
  *
  * Intentionally omitted (not re-exported):
- *   - checkCommand, fmtCommand, initCommand, rootCommand, runCli
+ *   - checkCommand, fmtCommand, initCommand, rootCommand, main
  *     These are \@effect/cli-based CLI commands from cli/index.ts, which was
  *     explicitly excluded from the Lint namespace (Phase A decision). They
  *     will become the savvy lint command group in the \@savvy-web/cli Phase B

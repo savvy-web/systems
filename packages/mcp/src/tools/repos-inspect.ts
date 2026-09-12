@@ -12,6 +12,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Option, Path, Result, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { McpToolError, mapEngineError } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 import { mdInline } from "./md-inline.js";
 
 /** One `.gitmodules` submodule section, decoded into typed fields. */
@@ -250,3 +253,50 @@ export const reposInspect = (
 			}
 		}
 	});
+
+/**
+ * The `repos_inspect` wire-level `mode` enum. Exported so tests can assert
+ * the boundary rejects an unknown mode without duplicating the member list.
+ */
+export const ReposInspectMode = Schema.Literals(["status", "config", "drift", "gitmodules"]).annotate({
+	description:
+		"status = drift report; config = the full agent brief; drift = five-authority submodule reconciliation; gitmodules = decoded .gitmodules sections.",
+});
+
+/** Wire parameters for `repos_inspect`. */
+export const ReposInspectParams = Schema.Struct({
+	mode: ReposInspectMode,
+	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
+});
+export type ReposInspectParams = typeof ReposInspectParams.Type;
+
+const REMEDIATION = {
+	hint: "The vendored-repo state could not be read; check .repos/config.json and .gitmodules, and that git can run in the workspace.",
+};
+
+/** The `repos_inspect` tool value. */
+export const reposInspectTool = Tool.make("repos_inspect", {
+	description:
+		"Read-only: drift report or parsed .repos/config.json manifest with orientation and notes. mode=status is the per-repo drift summary from ReposManager (present/dirty/commit); mode=config is the parsed manifest; mode=drift reconciles all four submodule authorities (manifest, .gitmodules, worktree, git submodule status) and reports every disagreement; mode=gitmodules decodes the raw .gitmodules file's submodule sections.",
+	parameters: ReposInspectParams,
+	success: ReposInspectResult,
+	failure: McpToolError,
+	dependencies: [
+		Repos.ReposManager,
+		Repos.ReposConfigStore,
+		Repos.ReposDrift,
+		WorkspaceRoot,
+		FileSystem.FileSystem,
+		Path.Path,
+	],
+})
+	.annotate(Tool.Title, "Inspect vendored repos")
+	.annotate(Tool.Readonly, true)
+	.annotate(Tool.Destructive, false)
+	.annotate(Tool.Idempotent, true)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ReposInspectAsMarkdown));
+
+/** Wire handler: {@link reposInspect} with its error channel mapped onto {@link McpToolError}. */
+export const handleReposInspect = (fallbackCwd: string, params: ReposInspectParams) =>
+	reposInspect(params, fallbackCwd).pipe(Effect.mapError(mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)));

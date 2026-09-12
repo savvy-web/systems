@@ -1,0 +1,17 @@
+{
+	"layers": [
+		["@savvy-web/silk"],
+		["@savvy-web/cli", "@savvy-web/mcp", "@savvy-web/changelog"],
+		["@savvy-web/silk-effects"],
+		["@savvy-web/silk-core"]
+	],
+	"tooling": [
+		"@savvy-web/bundler",
+		"@savvy-web/tsdown-plugins",
+		"@savvy-web/rspress-builder",
+		"@savvy-web/templates",
+		"@savvy-web/github-action-builder",
+		"@savvy-web/pnpm-plugin-silk"
+	],
+	"harness": ["@e2e/*"]
+}

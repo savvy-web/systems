@@ -13,6 +13,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { ENGINE_ECHO_LIMIT, McpToolError, invalidArgument, mapEngineError, truncateEchoed } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 import { mdInline } from "./md-inline.js";
 
 /** `sync` has no extra fields. */
@@ -454,3 +457,91 @@ export const reposManage = (
 			}
 		}
 	});
+
+/** Wire parameters for `repos_manage`: flat (no `oneOf`); the handler decodes them per action. */
+export const ReposManageParams = Schema.Struct({
+	action: Schema.Literals(["sync", "pin", "add", "note", "remove", "rename", "restore", "deregister"]).annotate({
+		description: "Which mutation to perform.",
+	}),
+	name: Schema.optionalKey(
+		Schema.String.annotate({ description: "Repo name (pin, note, remove, rename; optional override for add)." }),
+	),
+	newName: Schema.optionalKey(Schema.String.annotate({ description: "New repo name (rename)." })),
+	ref: Schema.optionalKey(Schema.String.annotate({ description: "Git ref to pin/vendor to (pin, add)." })),
+	url: Schema.optionalKey(Schema.String.annotate({ description: "Repo URL to vendor (add)." })),
+	purpose: Schema.optionalKey(Schema.String.annotate({ description: "One-line purpose for the manifest (add)." })),
+	sparse: Schema.optionalKey(Schema.Array(Schema.String).annotate({ description: "Sparse-checkout patterns (add)." })),
+	orientation: Schema.optionalKey(
+		Repos.RepoOrientation.annotate({
+			description:
+				"Orientation block to write (add). Pass back what a preceding remove reported as removedEntry.orientation — add does NOT restore it on its own, so a re-vendor loses it otherwise.",
+		}),
+	),
+	op: Schema.optionalKey(
+		Schema.Literals(["add", "remove", "promote"]).annotate({ description: "Note operation (note)." }),
+	),
+	note: Schema.optionalKey(Schema.String.annotate({ description: "Note text (note, op=add)." })),
+	id: Schema.optionalKey(Schema.String.annotate({ description: "Note id (note, op=remove|promote)." })),
+	into: Schema.optionalKey(
+		Schema.Literals(["layout", "startHere"]).annotate({ description: "Orientation target (note, op=promote)." }),
+	),
+	names: Schema.optionalKey(
+		Schema.Array(Schema.String).annotate({
+			description: "Repo names to restore (restore); omitted restores every dirty repo.",
+		}),
+	),
+	section: Schema.optionalKey(
+		Schema.String.annotate({
+			description:
+				"Stale registration name to clear (deregister), exactly as the drift report states it (e.g. .repos/old-name); the submodule. prefix is implied.",
+		}),
+	),
+	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
+});
+export type ReposManageParams = typeof ReposManageParams.Type;
+
+const REMEDIATION = {
+	hint: "The mutation did not complete; inspect the vendored-repo state before retrying.",
+	suggestedTool: "repos_inspect",
+};
+
+const REQUEST_REMEDIATION = {
+	hint: "Pass the fields the chosen action needs (pin: name+ref; add: url+ref+purpose; note: name+op plus note/id/into; remove: name; rename: name+newName; deregister: section).",
+};
+
+/** The `repos_manage` tool value. Mutating: not read-only, not idempotent. */
+export const reposManageTool = Tool.make("repos_manage", {
+	description:
+		"Mutating: sync (initialize/reconcile submodules per the manifest), pin (re-pin a repo to a new ref), add (vendor a new repo), note (add/remove/promote an agent note), remove (unvendor a repo), rename (rename a vendored repo's manifest key and worktree), restore (hard-reset a repo's worktree back to its pinned gitlink commit and re-apply sparse paths — DESTRUCTIVE to uncommitted worktree edits; never run implicitly), or deregister (clear a STALE submodule.<section> registration from the superproject's local git config — the phantom entry repos_inspect drift reports as localRegistrationDivergence with no matching manifest entry; refuses a section outside .repos/ and any section still backing a live manifest entry — canonically named or gitdir-diverged — and touches local config only, so nothing is staged). Pass action plus the fields that action needs: pin needs name+ref; add needs url+ref+purpose (name/sparse/orientation optional — pass orientation back from a preceding remove's removedEntry to make a re-vendor lossless); note needs name+op, plus note (op=add), id (op=remove), or id+into (op=promote); remove needs name; rename needs name (the old name) + newName; restore takes an optional names list — omitted, it restores every dirty repo and reports the clean ones as skipped; given, it restores exactly those repos even if already clean; deregister needs section (the registration name exactly as the drift report states it, e.g. .repos/old-name — no submodule. prefix). A decode failure names the missing field. The pin result's markdown surfaces commitMessage and staleNoteIds — review and commit after pinning. The remove result's markdown surfaces commitMessage, removedNotes and the removed entry's orientation block — promote any durable notes elsewhere, keep the orientation if you intend to re-vendor, then review and commit. The rename result's markdown surfaces commitMessage — review and commit after renaming. The restore result's markdown names exactly what was discarded. The deregister result's markdown lists the config keys the removed section carried — nothing to commit afterwards.",
+	parameters: ReposManageParams,
+	success: ReposManageResult,
+	failure: McpToolError,
+	dependencies: [Repos.ReposManager, WorkspaceRoot],
+})
+	.annotate(Tool.Title, "Manage vendored repos")
+	.annotate(Tool.Readonly, false)
+	.annotate(Tool.Destructive, true)
+	.annotate(Tool.Idempotent, false)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ReposManageAsMarkdown));
+
+/**
+ * Wire handler: {@link reposManage} with its error channel mapped onto
+ * {@link McpToolError}. The per-action request decode failure (`SchemaError`,
+ * which names the missing field, and echoes the decoded value) is an argument
+ * problem and becomes {@link InvalidArgument} keyed on `action`, its text
+ * truncated at {@link ENGINE_ECHO_LIMIT}; the engine's own errors go
+ * through {@link mapEngineError}.
+ */
+export const handleReposManage = (fallbackCwd: string, params: ReposManageParams) =>
+	reposManage(params, fallbackCwd).pipe(
+		Effect.mapError((error) =>
+			error._tag === "SchemaError"
+				? invalidArgument(
+						"action",
+						`repos_manage ${params.action}: ${truncateEchoed(error.message, ENGINE_ECHO_LIMIT)}`,
+						REQUEST_REMEDIATION,
+					)
+				: mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)(error),
+		),
+	);

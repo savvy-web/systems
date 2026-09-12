@@ -43,7 +43,7 @@
  * @internal
  */
 
-import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { NodeServices } from "@effect/platform-node";
 import { ToolDiscovery } from "@effected/commands";
 import { Git } from "@effected/git";
 import { ManagedSection } from "@effected/templates";
@@ -56,7 +56,7 @@ import {
 	Repos,
 	SilkPublishability,
 } from "@savvy-web/silk-effects";
-import { Effect, Layer } from "effect";
+import { Layer } from "effect";
 import { Command } from "effect/unstable/cli";
 
 import { changesetCommand } from "../commands/changeset/index.js";
@@ -72,7 +72,7 @@ import { reposCommand } from "../commands/repos/index.js";
 /**
  * Root `savvy` command nesting the two orchestrators and three command groups.
  */
-const rootCommand = Command.make("savvy").pipe(
+export const rootCommand = Command.make("savvy").pipe(
 	Command.withSubcommands([
 		initCommand,
 		checkCommand,
@@ -83,14 +83,6 @@ const rootCommand = Command.make("savvy").pipe(
 		reposCommand,
 	]),
 );
-
-/**
- * CLI application: reads argv from the Stdio service provided by NodeServices.
- * (v4's `Command.run` takes only `version` — the name comes from the root command.)
- */
-const cli = Command.run(rootCommand, {
-	version: process.env.__PACKAGE_VERSION__ ?? "0.0.0",
-});
 
 /**
  * Shared workspace services from `@effected/workspaces`, wired as a
@@ -161,24 +153,14 @@ const ReposGroupLive = Layer.mergeAll(Repos.ReposManager.layer, Repos.ReposDrift
 const LocalExecLive = Workspaces.localExecLayer();
 const ToolDiscoveryGroupLive = ToolDiscovery.layer.pipe(Layer.provide(LocalExecLive), Layer.provide(WorkspaceLive));
 
-const AppLive = Layer.mergeAll(ToolDiscoveryGroupLive, InspectorAndAnalyzerLive, ReposGroupLive).pipe(
+/**
+ * The merged runtime Layer stack satisfying every command's service
+ * requirements. Provided to `rootCommand`'s assembled `Command.run` Effect by
+ * `main()` in `../main.js`; this module never calls `NodeRuntime.runMain`
+ * itself.
+ */
+export const AppLive = Layer.mergeAll(ToolDiscoveryGroupLive, InspectorAndAnalyzerLive, ReposGroupLive).pipe(
 	Layer.provideMerge(BaseLive),
 	Layer.provideMerge(NodeServices.layer),
 );
-
-/**
- * Bootstrap and run the `savvy` CLI application.
- *
- * @remarks
- * `Command.run` returns an Effect reading `process.argv` from the Stdio
- * service; the merged layer stack is provided and execution handed to
- * `NodeRuntime.runMain`, whose default reporting covers defects (the v3
- * `Cause.defects` wrapper is gone). No type casts: the layer graph is
- * validated by the compiler.
- *
- * @internal
- */
-export function runCli(): void {
-	NodeRuntime.runMain(cli.pipe(Effect.provide(AppLive)));
-}
 /* v8 ignore stop */

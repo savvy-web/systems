@@ -141,6 +141,17 @@
 				"siteDocs": null
 			}
 		},
+		"silk-core": {
+			"categories": ["architecture"],
+			"designDocsPath": ".claude/design/silk-core",
+			"maintainer": "C. Spencer Beggs",
+			"path": "packages/silk-core",
+			"userDocs": {
+				"readme": "packages/silk-core/README.md",
+				"repoDocs": null,
+				"siteDocs": null
+			}
+		},
 		"silk-effects": {
 			"categories": ["architecture", "integration"],
 			"designDocsPath": ".claude/design/silk-effects",

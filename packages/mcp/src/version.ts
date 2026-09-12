@@ -6,4 +6,4 @@
  * @packageDocumentation
  */
 
-export const CURRENT_MCP_VERSION = "0.0.0";
+export const CURRENT_MCP_VERSION = process.env.__PACKAGE_VERSION__ ?? "0.0.0";

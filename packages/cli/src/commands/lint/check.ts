@@ -75,6 +75,10 @@ function findConfigFile(fs: FileSystem.FileSystem) {
 /**
  * Find the first existing config file from a list of candidates using ConfigDiscovery.
  *
+ * The engine takes no ambient cwd; this CLI front end owns the process, so the
+ * discovery root is the process cwd the rest of `lint check` already resolves
+ * its relative paths against.
+ *
  * @param discovery - ConfigDiscovery service
  * @param names - Config file names to search for (in priority order)
  * @returns The config file path or null
@@ -82,7 +86,7 @@ function findConfigFile(fs: FileSystem.FileSystem) {
 function findConfig(discovery: ConfigDiscoveryShape, names: readonly string[]) {
 	return Effect.gen(function* () {
 		for (const name of names) {
-			const result = yield* discovery.find(name);
+			const result = yield* discovery.find(name, { cwd: process.cwd() });
 			if (result) return result.path;
 		}
 		return null;

@@ -3,8 +3,8 @@ status: current
 module: tsdown-plugins
 category: architecture
 created: 2026-09-03
-updated: 2026-09-03
-last-synced: 2026-09-03
+updated: 2026-09-12
+last-synced: 2026-09-12
 completeness: 90
 related:
   - ./architecture.md
@@ -91,7 +91,7 @@ Known limitation: there is no collision guard between a loose `outFile` and a re
 tsdown auto-externalizes every declared `dependencies`/`peerDependencies`/`optionalDependencies` entry, so `externals` only needs to list *undeclared* transitives that must stay external. Four knobs cover the postures that depart from that default; the rule that ties them together is **the dts pass posture mirrors the JS pass posture**, so bundled declarations never reference a type the runtime bundle inlined or vice versa. The exact `deps` shapes are in `buildTargetGroups`; the topology:
 
 - **`bundleNodeModules`** force-bundles every node_modules/workspace dep not in `externals`, and the dts pass inlines their types so the published package is self-contained. It contributes **no `deps` flag** — bundling undeclared node_modules is already tsdown's default — and acts by flipping the JS pass's `unbundle` to `false`, so both formats bundle into one file per entry. A per-module JS pass would write each inlined dep to its own `node_modules/...`-mirroring sibling file, which `npm pack` strips from the tarball. Do not reintroduce tsdown's deprecated `deps.skipNodeModulesBundle`: tsdown warns on the option's presence regardless of value and only branches on it truthily.
-- **`bundle`** force-inlines the listed packages into the JS output (`deps.alwaysBundle`) even if declared — JS-pass-only.
+- **`bundle`** force-inlines the listed packages (`deps.alwaysBundle`) even if declared. A partition's `bundle` is forwarded into all three passes — `dtsDeps` for the bundled dts pass and the Pass-3 declarations `deps` spread it exactly as the JS pass does — because the dts pass re-emits the dual-format `.cjs` chunk and dropping it there left a declared, force-bundled dependency externalized in that one artifact (silk's `./changesets/*` CJS overrides hit this). A `bundle`-only partition, with no `externals`/`dtsExternals`/`bundledPackages`, still gets a `deps` object in every pass. `__test__/build/build-target-groups.test.ts` pins the forwarding for both the dts and Pass-3 derivations.
 - **`bundledPackages`** inlines only the listed packages' declarations (`deps.dts.alwaysBundle`) and externalizes the rest via `deps.neverBundle: true`, rather than tsdown's `onlyBundle`, which would put the dts pass into strict mode and error on every unlisted reachable type dep. dts-pass-only.
 - **`dtsExternals`** externalizes packages in the dts pass only — emitted as `import` references — while the JS pass still bundles them. The dts pass `neverBundle` is the union of `externals` and `dtsExternals`; the JS pass carries `externals` only. The use case is a dependency whose types cannot be safely inlined: `effect`'s cross-module `declare module` augmentations inline into conflicting interface extensions in consumers, so silk lists it here.
 

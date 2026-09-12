@@ -7,12 +7,59 @@
  * synchronization. Versioning and tag classification are `@effected/workspaces`
  * value classes (`VersioningStrategy`, `ReleaseTag`, `TagStyle`), imported from
  * the kit directly rather than re-exported here — the same posture as
- * `PublishTarget` on {@link AnalyzedWorkspace}. Consumers provide their platform
+ * `PublishTarget` on `AnalyzedWorkspace`. Consumers provide their platform
  * layer (NodeContext, BunContext, etc.).
  *
  * @packageDocumentation
  */
 
+// biome-ignore-start assist/source/organizeImports: keep each labelled re-export block under the comment that describes it
+// ── Errors (domain core, re-exported from @savvy-web/silk-core) ──
+export {
+	BiomeSyncError,
+	ChangesetConfigError,
+	ConfigNotFoundError,
+	PublishTargetBindingError,
+	WorkspaceAnalysisError,
+} from "@savvy-web/silk-core";
+/**
+ * The shared PR-body contract: the frozen `silk-release` marker grammar,
+ * managed-region carry-through, and the two closing-reference spellings —
+ * extracted from `silk-release-action` so independent writers agree on one
+ * implementation (savvy-web/systems#419). Owned by `@savvy-web/silk-core`.
+ *
+ * @public
+ */
+export { PrBody } from "@savvy-web/silk-core";
+// ── Schemas (domain core, re-exported from @savvy-web/silk-core) ──
+export type {
+	BiomeSyncOptions,
+	BiomeSyncResult,
+	ChangesetConfigFile,
+	ConfigDiscoveryOptions,
+	ConfigLocation,
+	ConfigSource,
+	SavvyInstallHook,
+	SilkChangesetConfigFile,
+} from "@savvy-web/silk-core";
+export {
+	AnalyzedWorkspace,
+	LIFECYCLE_SCRIPTS_CONFIG_KEY,
+	SavvyBaseSection,
+	SavvyHooksSection,
+	SavvyInstallSection,
+	SavvyToolchainSection,
+	SilkPublishConfig,
+	WorkspaceAnalysis,
+	publishesBuiltLinkDirectory,
+	savvyBasePreamble,
+	savvyHooksHygiene,
+	savvyInstallBlock,
+	savvyInstallDeps,
+	savvyToolSection,
+	savvyToolchainCheck,
+} from "@savvy-web/silk-core";
+// biome-ignore-end assist/source/organizeImports: end of the silk-core re-export blocks
 /**
  * Section-aware changesets business logic — config inspection, branch analysis,
  * changeset linting, and release planning over the genuine `@changesets` engine.
@@ -41,12 +88,6 @@ export type {
  * @public
  */
 export * as Commitlint from "./commitlint/index.js";
-// ── Errors ─────────────────────────────────────────────────────
-export { BiomeSyncError } from "./errors/BiomeSyncError.js";
-export { ChangesetConfigError } from "./errors/ChangesetConfigError.js";
-export { ConfigNotFoundError } from "./errors/ConfigNotFoundError.js";
-export { PublishTargetBindingError } from "./errors/PublishTargetBindingError.js";
-export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
 /**
  * Lint orchestration business logic — Biome and markdownlint configuration and
  * workspace-aware execution.
@@ -55,41 +96,10 @@ export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
  */
 export * as Lint from "./lint/index.js";
 /**
- * The shared PR-body contract: the frozen `silk-release` marker grammar,
- * managed-region carry-through, and the two closing-reference spellings —
- * extracted from `silk-release-action` so independent writers agree on one
- * implementation (savvy-web/systems#419).
- *
- * @public
- */
-export * as PrBody from "./pr-body/index.js";
-/**
  * Vendored reference repos: the .repos/config.json manifest, submodule plumbing, and drift reporting.
  * @public
  */
 export * as Repos from "./repos/index.js";
-// ── Schemas ────────────────────────────────────────────────────
-export type { BiomeSyncOptions, BiomeSyncResult } from "./schemas/BiomeConfig.js";
-export type { ConfigDiscoveryOptions, ConfigLocation, ConfigSource } from "./schemas/ConfigDiscoverySchemas.js";
-export type { SavvyInstallHook } from "./schemas/SavvyInstallSection.js";
-export {
-	LIFECYCLE_SCRIPTS_CONFIG_KEY,
-	SavvyInstallSection,
-	publishesBuiltLinkDirectory,
-	savvyInstallBlock,
-	savvyInstallDeps,
-} from "./schemas/SavvyInstallSection.js";
-export {
-	SavvyBaseSection,
-	SavvyHooksSection,
-	SavvyToolchainSection,
-	savvyBasePreamble,
-	savvyHooksHygiene,
-	savvyToolSection,
-	savvyToolchainCheck,
-} from "./schemas/SavvySections.js";
-export type { ChangesetConfigFile, SilkChangesetConfigFile } from "./schemas/VersioningSchemas.js";
-export { AnalyzedWorkspace, SilkPublishConfig, WorkspaceAnalysis } from "./schemas/WorkspaceAnalysisSchemas.js";
 // ── Services ───────────────────────────────────────────────────
 export type { BiomeSchemaSyncShape } from "./services/BiomeSchemaSync.js";
 export { BiomeSchemaSync, buildSchemaUrl, extractSemver } from "./services/BiomeSchemaSync.js";

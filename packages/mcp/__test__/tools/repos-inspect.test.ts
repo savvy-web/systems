@@ -2,12 +2,15 @@ import { describe, expect, it, layer } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, FileSystem, Layer, Path, Schema } from "effect";
+import { Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
 import { systemError } from "effect/PlatformError";
 
-import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
-import { ReposInspectModeSchema } from "../../src/server.js";
-import { ReposInspectAsMarkdown, ReposInspectResult, reposInspect } from "../../src/tools/repos-inspect.js";
+import {
+	ReposInspectAsMarkdown,
+	ReposInspectMode,
+	ReposInspectResult,
+	reposInspect,
+} from "../../src/tools/repos-inspect.js";
 
 const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot,
@@ -279,10 +282,9 @@ describe("reposInspect gitmodules mode", () => {
 	);
 });
 
-describe("repos_inspect effect->zod bridge", () => {
-	it("converts the result union and parses a status payload", () => {
-		const zodSchema = effectToZodSchema(ReposInspectResult);
-		const parsed = zodSchema.safeParse({
+describe("repos_inspect served schemas", () => {
+	it("the result union accepts a status payload", () => {
+		const parsed = Schema.decodeUnknownResult(ReposInspectResult)({
 			mode: "status",
 			result: {
 				repos: [
@@ -300,12 +302,11 @@ describe("repos_inspect effect->zod bridge", () => {
 				clean: true,
 			},
 		});
-		expect(parsed.success).toBe(true);
+		expect(Result.isSuccess(parsed)).toBe(true);
 	});
 
-	it("converts the result union and parses a config payload", () => {
-		const zodSchema = effectToZodSchema(ReposInspectResult);
-		const parsed = zodSchema.safeParse({
+	it("the result union accepts a config payload", () => {
+		const parsed = Schema.decodeUnknownResult(ReposInspectResult)({
 			mode: "config",
 			result: {
 				repos: {
@@ -313,17 +314,16 @@ describe("repos_inspect effect->zod bridge", () => {
 				},
 			},
 		});
-		expect(parsed.success).toBe(true);
+		expect(Result.isSuccess(parsed)).toBe(true);
 	});
 
 	it("accepts every wire mode, including the new drift and gitmodules modes", () => {
 		for (const mode of ["status", "config", "drift", "gitmodules"]) {
-			expect(ReposInspectModeSchema.safeParse(mode).success).toBe(true);
+			expect(Schema.is(ReposInspectMode)(mode)).toBe(true);
 		}
 	});
 
 	it("rejects an unknown mode at the wire boundary", () => {
-		const parsed = ReposInspectModeSchema.safeParse("bogus");
-		expect(parsed.success).toBe(false);
+		expect(Schema.is(ReposInspectMode)("bogus")).toBe(false);
 	});
 });

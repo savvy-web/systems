@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
+import type { ConfigLocation } from "@savvy-web/silk-core";
 import { Effect, FileSystem, Layer } from "effect";
 import { systemError } from "effect/PlatformError";
-import type { ConfigLocation } from "../../src/schemas/ConfigDiscoverySchemas.js";
 import { ConfigDiscovery } from "../../src/services/ConfigDiscovery.js";
 
 // ---------------------------------------------------------------------------
