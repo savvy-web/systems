@@ -19,7 +19,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.4",
+							range: "^2.2.5",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -29,32 +29,32 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.5.0",
+							range: "^26.5.1",
 							peer: "^26.5.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
-							range: "^19.2.18",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"@types/react-dom": {
-							range: "^19.2.7",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						react: {
-							range: "^19.2.8",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"react-dom": {
-							range: "^19.2.8",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.7",
+							range: "^1.2.8",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -88,28 +88,28 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.5.0",
+							range: "^26.5.1",
 							peer: "^26.5.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
-							range: "^19.2.18",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"@types/react-dom": {
-							range: "^19.2.7",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						react: {
-							range: "^19.2.8",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"react-dom": {
-							range: "^19.2.8",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"rspress-plugin-mermaid": {
@@ -123,8 +123,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.2.2",
-							peer: "^8.2.0",
+							range: "^8.3.0",
+							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
 						vitepress: {
@@ -137,8 +137,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.12",
-							peer: "2.5.12",
+							range: "2.5.13",
+							peer: "2.5.13",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -162,8 +162,8 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.5.0",
-							peer: "^17.5.0",
+							range: "^17.5.1",
+							peer: "^17.5.1",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
@@ -191,18 +191,18 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.5.0",
+							range: "^26.5.1",
 							peer: "^26.5.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
-							range: "^19.2.18",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"@types/react-dom": {
-							range: "^19.2.7",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"@typescript/native-preview": {
@@ -215,8 +215,8 @@ await build({
 							strategy: "lock",
 						},
 						"lint-staged": {
-							range: "^17.5.0",
-							peer: "^17.5.0",
+							range: "^17.5.1",
+							peer: "^17.5.1",
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
@@ -230,13 +230,13 @@ await build({
 							strategy: "lock",
 						},
 						react: {
-							range: "^19.2.8",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"react-dom": {
-							range: "^19.2.8",
-							peer: "^19.2.0",
+							range: "^19.3.0",
+							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						tsx: {
@@ -274,8 +274,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.2.2",
-							peer: "^8.2.0",
+							range: "^8.3.0",
+							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
 					},
