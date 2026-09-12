@@ -1,6 +1,5 @@
+import { ChangesetConfigError, ChangesetConfigFile, SilkChangesetConfigFile } from "@savvy-web/silk-core";
 import { Context, Effect, FileSystem, Layer, Schema } from "effect";
-import { ChangesetConfigError } from "../errors/ChangesetConfigError.js";
-import { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
 
 /**
  * Substrings that identify a Silk changelog adapter entry in `.changeset/config.json`.
@@ -39,7 +38,7 @@ export interface ChangesetConfigReaderShape {
 	 * Read and decode `.changeset/config.json` from the given workspace root.
 	 *
 	 * @param root - Absolute path to the workspace root containing the `.changeset/` directory.
-	 * @returns An `Effect` that succeeds with the decoded config or fails with {@link ChangesetConfigError}.
+	 * @returns An `Effect` that succeeds with the decoded config or fails with `ChangesetConfigError`.
 	 *
 	 * @since 0.1.0
 	 */
@@ -51,8 +50,8 @@ export interface ChangesetConfigReaderShape {
  *
  * @remarks
  * Automatically detects whether the config uses the Silk changelog adapter
- * (`@savvy-web/changesets`) and decodes as {@link (SilkChangesetConfigFile:type)} or the
- * standard {@link (ChangesetConfigFile:type)} accordingly.
+ * (`@savvy-web/changesets`) and decodes as `SilkChangesetConfigFile` or the
+ * standard `ChangesetConfigFile` accordingly.
  *
  * @example
  * ```typescript

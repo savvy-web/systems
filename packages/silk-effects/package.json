@@ -45,6 +45,7 @@
 		"@effected/walker": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
 		"@manypkg/get-packages": "^3.1.0",
+		"@savvy-web/silk-core": "workspace:*",
 		"mdast-util-heading-range": "^4.0.0",
 		"mdast-util-to-string": "^4.0.0",
 		"remark-gfm": "^4.0.1",

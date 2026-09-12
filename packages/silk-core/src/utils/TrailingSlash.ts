@@ -6,6 +6,9 @@
  * unanchored at the start, so the engine retries the match from every position
  * and degrades to O(n²) on a string of many slashes (CodeQL `js/polynomial-redos`).
  * Only a trailing run of slashes is removed; interior slash runs are untouched.
+ *
+ * @since 0.1.0
+ * @public
  */
 export const trimTrailingSlashes = (s: string): string => {
 	let end = s.length;

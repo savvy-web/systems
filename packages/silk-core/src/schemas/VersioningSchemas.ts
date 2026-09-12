@@ -71,7 +71,7 @@ export type ChangesetConfigFile = typeof ChangesetConfigFile.Type;
  *
  * @remarks
  * Extends {@link (ChangesetConfigFile:type)} with a `_isSilk` marker flag that is automatically
- * set to `true`. Detected by {@link ChangesetConfigReader} when the `changelog` field
+ * set to `true`. Detected by `ChangesetConfigReader` when the `changelog` field
  * references `@savvy-web/changesets`.
  *
  * @since 0.1.0

@@ -23,7 +23,7 @@ export const BiomeSyncResult = Schema.Struct({
 export type BiomeSyncResult = typeof BiomeSyncResult.Type;
 
 /**
- * Options for {@link BiomeSchemaSync} operations.
+ * Options for `BiomeSchemaSync` operations.
  *
  * @remarks
  * `cwd` overrides the working directory used to locate `biome.json` / `biome.jsonc`.

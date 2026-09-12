@@ -1,0 +1,8 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"build:prod": {
+			"outputs": ["$TURBO_EXTENDS$", "../../website/lib/models/silk-core"]
+		}
+	}
+}

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
+import { ChangesetConfigError } from "@savvy-web/silk-core";
 import type { Exit } from "effect";
 import { Cause, Effect, Layer, Option } from "effect";
-import { ChangesetConfigError } from "../../src/errors/ChangesetConfigError.js";
 import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 
 // ---------------------------------------------------------------------------

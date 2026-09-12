@@ -1,9 +1,8 @@
 import { isAbsolute, join, relative } from "node:path";
 import type { WorkspacePackage } from "@effected/workspaces";
 import { PublishTarget, PublishabilityDetector, WorkspaceDiscovery } from "@effected/workspaces";
+import { PublishTargetBindingError, trimTrailingSlashes } from "@savvy-web/silk-core";
 import { Effect, FileSystem, Layer } from "effect";
-import { PublishTargetBindingError } from "../errors/PublishTargetBindingError.js";
-import { trimTrailingSlashes } from "../utils/TrailingSlash.js";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 
 /**
@@ -271,7 +270,7 @@ export class SilkPublishability {
 	 * directories it names. A directory outside the binding means detection did
 	 * not select the prod output — the `yaml-effect@0.7.1` shape, where a dev
 	 * manifest carrying `catalog:` specifiers was packed and published. Rather
-	 * than ship those bytes, fail with {@link PublishTargetBindingError}.
+	 * than ship those bytes, fail with `PublishTargetBindingError`.
 	 *
 	 * Before the prod build runs there is no binding, and the detector's
 	 * placeholder directories are left alone.

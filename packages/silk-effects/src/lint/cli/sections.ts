@@ -6,7 +6,7 @@
 
 import type { Section } from "@effected/templates";
 import { CommentStyle, SectionId } from "@effected/templates";
-import { savvyToolSection } from "../../schemas/SavvySections.js";
+import { savvyToolSection } from "@savvy-web/silk-core";
 
 /** Path for the husky pre-commit hook. */
 export const HUSKY_HOOK_PATH = ".husky/pre-commit";

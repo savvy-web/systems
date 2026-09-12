@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * works unchanged against @savvy-web/silk/lint.
  *
  * Omissions (intentionally excluded from this shim):
- *   - checkCommand, fmtCommand, initCommand, rootCommand, runCli
+ *   - checkCommand, fmtCommand, initCommand, rootCommand, main
  *     These are @effect/cli-based CLI commands that live in cli/index.ts,
  *     which was explicitly NOT copied into the Lint namespace (Phase A decision).
  *     A lint-staged.config consumer never imports these; they belong to the

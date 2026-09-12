@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { trimTrailingSlashes } from "../../src/utils/TrailingSlash.js";
+import { trimTrailingSlashes } from "../src/utils/TrailingSlash.js";
 
 describe("trimTrailingSlashes", () => {
 	it("trims a single trailing slash", () => {

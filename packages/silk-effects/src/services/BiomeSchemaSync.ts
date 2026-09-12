@@ -1,7 +1,7 @@
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
+import type { BiomeSyncResult } from "@savvy-web/silk-core";
+import { BiomeSyncError } from "@savvy-web/silk-core";
 import { Context, Effect, FileSystem, Layer } from "effect";
-import { BiomeSyncError } from "../errors/BiomeSyncError.js";
-import type { BiomeSyncResult } from "../schemas/BiomeConfig.js";
 
 /**
  * Strip leading semver range operators from a version string.
@@ -70,7 +70,7 @@ export interface BiomeSchemaSyncShape {
 	 *
 	 * @param version - Target Biome version (range operators are stripped automatically).
 	 * @param options - Optional `cwd` and `gitignore` overrides.
-	 * @returns An `Effect` that succeeds with a {@link (BiomeSyncResult:type)} or fails with {@link BiomeSyncError}.
+	 * @returns An `Effect` that succeeds with a `BiomeSyncResult` or fails with `BiomeSyncError`.
 	 *
 	 * @since 0.1.0
 	 */
@@ -84,7 +84,7 @@ export interface BiomeSchemaSyncShape {
 	 *
 	 * @param version - Target Biome version (range operators are stripped automatically).
 	 * @param options - Optional `cwd` and `gitignore` overrides.
-	 * @returns An `Effect` that succeeds with a {@link (BiomeSyncResult:type)} or fails with {@link BiomeSyncError}.
+	 * @returns An `Effect` that succeeds with a `BiomeSyncResult` or fails with `BiomeSyncError`.
 	 *   Files that would be updated appear in `updated`; no disk writes occur.
 	 *
 	 * @since 0.1.0

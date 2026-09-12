@@ -1,5 +1,5 @@
+import type { ChangesetConfigFile, SilkChangesetConfigFile } from "@savvy-web/silk-core";
 import { Context, Effect, Layer, Option } from "effect";
-import type { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
 import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
 
 /**

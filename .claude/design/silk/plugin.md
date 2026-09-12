@@ -79,7 +79,7 @@ The naming scheme is the load-bearing convention; the `skills/` directory is the
 
 ## Server wiring
 
-- **MCP.** The `mcpServers` block in `plugin.json` spawns the shared `savvy-mcp` server (`@savvy-web/mcp`, tools-only) via `sh bin/start-mcp.sh`. The SessionStart orientation hook then points the agent at the tools it should prefer — see [plugin-hooks.md](./plugin-hooks.md#the-orientation-payload).
+- **MCP.** The `mcpServers` block in `plugin.json` spawns the shared `savvy-mcp` server (`@savvy-web/mcp`, tools-only) via `sh bin/start-mcp.sh`, which execs the project's own `node_modules/.bin/savvy-mcp` (installed by the `@savvy-web/silk` carrier) and falls back to `npx --yes @savvy-web/mcp` with an install hint on stderr — never a package-manager dispatch (covered by `tests/bin-start-mcp.bats`). The SessionStart orientation hook then points the agent at the tools it should prefer — see [plugin-hooks.md](./plugin-hooks.md#the-orientation-payload).
 - **LSP.** The `lspServers.biome` block launches Biome's language server via `sh bin/biome-lsp.sh`; see [plugin-biome.md](./plugin-biome.md). Neither launcher bundles a binary — both expect the tool on `PATH` or resolvable from the project.
 
 ## Rationale

@@ -20,7 +20,9 @@
 	},
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./main": "./src/main.ts",
+		"./package.json": "./package.json"
 	},
 	"bin": {
 		"savvy-mcp": "./src/bin.ts"

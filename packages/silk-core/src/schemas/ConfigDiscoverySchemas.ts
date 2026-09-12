@@ -42,7 +42,7 @@ export type ConfigLocation = typeof ConfigLocation.Type;
  * Options passed to config discovery methods.
  *
  * @remarks
- * `cwd` overrides the working directory for path resolution (defaults to `process.cwd()`).
+ * `cwd` overrides the working directory for path resolution (defaults to the current working directory).
  * `tool` is reserved for future use as a tool-specific discovery hint.
  *
  * @since 0.1.0

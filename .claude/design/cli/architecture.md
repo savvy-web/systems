@@ -39,7 +39,7 @@ The `savvy` binary — the single command host for the Silk Suite's everyday dev
 
 **Package:** `@savvy-web/cli`, in `packages/cli`.
 
-**Bin:** `savvy` resolves through `src/bin/cli.ts` to `runCli()` in `src/cli/index.ts`.
+**Bin:** `savvy` resolves through `src/bin.ts` to `main()` in `src/main.ts`, which provides `AppLive` from `src/cli/index.ts` over `rootCommand` and hands execution to `NodeRuntime.runMain`. Also exported as `@savvy-web/cli/main`.
 
 **Versioning:** independent. `@savvy-web/silk` declares cli as a `workspace:*` source dependency, which changesets reads as cli's exact current version, so every cli release pushes silk's dependency out of range and auto-PATCH-bumps silk (the repo-wide `updateInternalDependencies: patch`), re-pinning it at publish. See `../silk/architecture.md`.
 
@@ -90,7 +90,7 @@ The two filesystem-touching units — `collectTargets` (glob plus containment) a
 
 ## The runtime layer stack
 
-This is the load-bearing part of the package. The whole stack is assembled once in `runCli()` (`src/cli/index.ts`) with every inter-layer dependency wired. Read that file before touching layer wiring; the structure below is the topology, not a re-listing of every service.
+This is the load-bearing part of the package. The whole stack is assembled once as `AppLive` in `src/cli/index.ts`, with every inter-layer dependency wired; `main()` (`src/main.ts`) provides it over `rootCommand` and runs it. Read `src/cli/index.ts` before touching layer wiring; the structure below is the topology, not a re-listing of every service.
 
 ```text
 AppLive = mergeAll(ToolDiscoveryGroup, Inspector+Analyzer, ReposGroup)

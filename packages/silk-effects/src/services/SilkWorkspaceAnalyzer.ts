@@ -4,10 +4,9 @@ import type {
 	WorkspaceDiscoveryFailure,
 } from "@effected/workspaces";
 import { DependencyGraph, PackageManagerDetector, VersioningStrategy, WorkspaceDiscovery } from "@effected/workspaces";
+import type { ChangesetConfigFile, SilkChangesetConfigFile } from "@savvy-web/silk-core";
+import { AnalyzedWorkspace, WorkspaceAnalysis, WorkspaceAnalysisError } from "@savvy-web/silk-core";
 import { Context, Effect, FileSystem, Layer, Option } from "effect";
-import { WorkspaceAnalysisError } from "../errors/WorkspaceAnalysisError.js";
-import type { ChangesetConfigFile, SilkChangesetConfigFile } from "../schemas/VersioningSchemas.js";
-import { AnalyzedWorkspace, WorkspaceAnalysis } from "../schemas/WorkspaceAnalysisSchemas.js";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 import { ChangesetConfigReader } from "./ChangesetConfigReader.js";
 import type { RawPackageJson } from "./SilkPublishability.js";
@@ -21,13 +20,13 @@ import { SilkPublishability, readTargetsBinding } from "./SilkPublishability.js"
  */
 export interface SilkWorkspaceAnalyzerShape {
 	/**
-	 * Analyze a workspace root and produce a full {@link WorkspaceAnalysis}.
+	 * Analyze a workspace root and produce a full `WorkspaceAnalysis`.
 	 *
 	 * @param root - Absolute path to the workspace root directory. Must match
 	 *   the root that the `WorkspaceDiscovery` layer was initialised with. The analyzer
 	 *   is single-root by design — build a fresh layer per workspace root.
-	 * @returns An `Effect` that succeeds with a {@link WorkspaceAnalysis}, or
-	 *   fails with {@link WorkspaceAnalysisError}.
+	 * @returns An `Effect` that succeeds with a `WorkspaceAnalysis`, or
+	 *   fails with `WorkspaceAnalysisError`.
 	 *
 	 * @since 0.2.0
 	 */
@@ -43,7 +42,7 @@ export interface SilkWorkspaceAnalyzerShape {
  * Orchestrates `WorkspaceDiscovery`, `PackageManagerDetector` and
  * {@link ChangesetConfigReader}, then classifies the result with
  * `@effected/workspaces`' pure `VersioningStrategy` value class, to produce a
- * complete {@link WorkspaceAnalysis} for a given workspace root.
+ * complete `WorkspaceAnalysis` for a given workspace root.
  *
  * @example
  * ```typescript

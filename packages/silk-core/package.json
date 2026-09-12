@@ -1,16 +1,16 @@
 {
-	"name": "@savvy-web/cli",
-	"version": "2.11.4",
+	"name": "@savvy-web/silk-core",
+	"version": "0.1.0",
 	"private": true,
-	"description": "The savvy CLI — unified commit, changeset, and lint commands for the Silk Suite",
-	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/cli",
+	"description": "Platform-free domain core of the Silk Suite: schemas, tagged errors, and the PR-body contract",
+	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk-core",
 	"bugs": {
 		"url": "https://github.com/savvy-web/systems/issues"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/savvy-web/systems.git",
-		"directory": "packages/cli"
+		"directory": "packages/silk-core"
 	},
 	"license": "MIT",
 	"author": {
@@ -18,14 +18,10 @@
 		"email": "spencer@savvyweb.systems",
 		"url": "https://savvyweb.systems"
 	},
+	"sideEffects": false,
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts",
-		"./main": "./src/main.ts",
-		"./package.json": "./package.json"
-	},
-	"bin": {
-		"savvy": "./src/bin.ts"
+		".": "./src/index.ts"
 	},
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
@@ -34,24 +30,22 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effect/platform-node": "catalog:effect",
-		"@effected/commands": "catalog:effected",
-		"@effected/git": "catalog:effected",
-		"@effected/jsonc": "catalog:effected",
-		"@effected/templates": "catalog:effected",
-		"@effected/workspaces": "catalog:effected",
-		"@effected/yaml": "catalog:effected",
-		"@savvy-web/silk-effects": "workspace:*",
-		"effect": "catalog:effect"
+		"@effected/github-references": "catalog:effected",
+		"@effected/templates": "catalog:effected"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
-		"@effected/memfs": "catalog:effected",
+		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
-		"tsx": "catalog:build",
+		"effect": "catalog:effect",
+		"fast-check": "^4.9.0",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"
+	},
+	"peerDependencies": {
+		"@effected/workspaces": "catalog:effected",
+		"effect": "catalog:effect"
 	},
 	"publishConfig": {
 		"access": "public",
