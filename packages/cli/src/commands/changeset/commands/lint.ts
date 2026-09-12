@@ -29,9 +29,9 @@ import { Argument, Command, Flag } from "effect/unstable/cli";
 const { ChangesetLinter } = Changesets;
 
 /* v8 ignore start -- CLI option definitions; handler tested via runLint */
-const dirArg = Argument.directory("dir").pipe(Argument.withDefault(".changeset"));
+const dirArg = Argument.Directory("dir").pipe(Argument.withDefault(".changeset"));
 
-const quietOption = Flag.boolean("quiet").pipe(
+const quietOption = Flag.Boolean("quiet").pipe(
 	Flag.withAlias("q"),
 	Flag.withDescription("Only output errors, no summary"),
 	Flag.withDefault(false),

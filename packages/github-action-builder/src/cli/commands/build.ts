@@ -14,7 +14,7 @@ import { ValidationService } from "../../services/validation.js";
 /**
  * Config file option - shared across commands.
  */
-export const configOption = Flag.file("config").pipe(
+export const configOption = Flag.File("config").pipe(
 	Flag.withAlias("c"),
 	Flag.withDescription("Path to configuration file"),
 	Flag.optional,
@@ -23,7 +23,7 @@ export const configOption = Flag.file("config").pipe(
 /**
  * Quiet mode option - suppress non-error output.
  */
-export const quietOption = Flag.boolean("quiet").pipe(
+export const quietOption = Flag.Boolean("quiet").pipe(
 	Flag.withAlias("q"),
 	Flag.withDescription("Suppress non-error output"),
 	Flag.withDefault(false),
@@ -32,7 +32,7 @@ export const quietOption = Flag.boolean("quiet").pipe(
 /**
  * Skip validation option.
  */
-export const noValidateOption = Flag.boolean("no-validate").pipe(
+export const noValidateOption = Flag.Boolean("no-validate").pipe(
 	Flag.withDescription("Skip validation step"),
 	Flag.withDefault(false),
 );
@@ -40,7 +40,7 @@ export const noValidateOption = Flag.boolean("no-validate").pipe(
 /**
  * Skip persist-local option.
  */
-export const noPersistOption = Flag.boolean("no-persist").pipe(
+export const noPersistOption = Flag.Boolean("no-persist").pipe(
 	Flag.withDescription("Skip persisting build output to local action directory"),
 	Flag.withDefault(false),
 );

@@ -29,18 +29,18 @@ import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option/arg definitions */
-const urlArg = Argument.string("url");
-const refOption = Flag.string("ref").pipe(Flag.withDescription("Ref (tag, branch, or commit) to check out"));
-const purposeOption = Flag.string("purpose").pipe(Flag.withDescription("Why this repo is vendored"));
-const nameOption = Flag.string("name").pipe(
+const urlArg = Argument.String("url");
+const refOption = Flag.String("ref").pipe(Flag.withDescription("Ref (tag, branch, or commit) to check out"));
+const purposeOption = Flag.String("purpose").pipe(Flag.withDescription("Why this repo is vendored"));
+const nameOption = Flag.String("name").pipe(
 	Flag.withDescription("Vendored directory name; defaults to the URL's last path segment"),
 	Flag.optional,
 );
-const sparseOption = Flag.string("sparse").pipe(
+const sparseOption = Flag.String("sparse").pipe(
 	Flag.withDescription("Sparse-checkout path; repeatable"),
 	Flag.atLeast(0),
 );
-const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to add within"), Flag.withDefault("."));
+const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to add within"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

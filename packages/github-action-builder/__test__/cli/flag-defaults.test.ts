@@ -1,7 +1,7 @@
 /**
  * Structural guard for CLI boolean flags.
  *
- * In `effect/unstable/cli`, a bare `Flag.boolean(...)` is REQUIRED — omitting it
+ * In `effect/unstable/cli`, a bare `Flag.Boolean(...)` is REQUIRED — omitting it
  * on the command line aborts with "Missing required flag". Only
  * `Flag.withDefault(false)` makes it the opt-in switch it reads as. The v3 to v4
  * migration dropped those defaults and made `--quiet`, `--no-validate` and
@@ -19,11 +19,11 @@ const sourceFiles = readdirSync(commandsDir)
 	.map((name) => ({ name, source: readFileSync(join(commandsDir, name), "utf8") }));
 
 /**
- * Slice each `Flag.boolean("name")...;` declaration out of a source file.
+ * Slice each `Flag.Boolean("name")...;` declaration out of a source file.
  */
 const booleanFlagDeclarations = (source: string): Array<{ flag: string; declaration: string }> => {
 	const declarations: Array<{ flag: string; declaration: string }> = [];
-	const pattern = /Flag\.boolean\(\s*"([^"]+)"\s*\)/g;
+	const pattern = /Flag\.Boolean\(\s*"([^"]+)"\s*\)/g;
 	let match = pattern.exec(source);
 	while (match !== null) {
 		const end = source.indexOf(";", match.index);

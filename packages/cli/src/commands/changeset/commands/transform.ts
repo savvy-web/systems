@@ -40,15 +40,15 @@ import { requireValidConfig } from "../utils/config-gate.js";
 const { ChangelogTransformer } = Changesets;
 
 /* v8 ignore start -- CLI option definitions; handler tested via runTransform */
-const fileArg = Argument.file("file").pipe(Argument.withDefault("CHANGELOG.md"));
+const fileArg = Argument.File("file").pipe(Argument.withDefault("CHANGELOG.md"));
 
-const dryRunOption = Flag.boolean("dry-run").pipe(
+const dryRunOption = Flag.Boolean("dry-run").pipe(
 	Flag.withAlias("n"),
 	Flag.withDescription("Print transformed output instead of writing"),
 	Flag.withDefault(false),
 );
 
-const checkOption = Flag.boolean("check").pipe(
+const checkOption = Flag.Boolean("check").pipe(
 	Flag.withAlias("c"),
 	Flag.withDescription("Exit 1 if file would change (for CI)"),
 	Flag.withDefault(false),

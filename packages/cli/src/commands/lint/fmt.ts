@@ -15,7 +15,7 @@ import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /** Repeated file path arguments. */
-const filesArg = Argument.file("files", { mustExist: true }).pipe(Argument.variadic());
+const filesArg = Argument.File("files", { mustExist: true }).pipe(Argument.variadic());
 
 /**
  * Formatting options forwarded from `Lint.Yaml.fmtCommand`.
@@ -25,7 +25,7 @@ const filesArg = Argument.file("files", { mustExist: true }).pipe(Argument.varia
  * handler only reach the formatter across this flag. Omitting it would make
  * `fmtCommand({ format })` and `create({ format })` write different bytes.
  */
-const yamlFormatOption = Flag.string("format").pipe(
+const yamlFormatOption = Flag.String("format").pipe(
 	Flag.withDescription("JSON-encoded @effected/yaml formatting options"),
 	Flag.optional,
 );

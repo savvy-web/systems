@@ -2978,7 +2978,7 @@ describe("ReposManager.rename — real git", REAL_GIT_TIMEOUT, () => {
 				let renameResult: ReposRenameResult;
 				try {
 					// The discriminating call: `root` is the literal relative string
-					// `"."`, exactly what `Flag.directory("cwd").pipe(Flag.withDefault("."))`
+					// `"."`, exactly what `Flag.Directory("cwd").pipe(Flag.withDefault("."))`
 					// hands `runReposRename` when a caller doesn't pass `--cwd`.
 					renameResult = yield* run(
 						Effect.gen(function* () {

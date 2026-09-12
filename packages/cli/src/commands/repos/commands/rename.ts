@@ -34,9 +34,9 @@ import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option/arg definitions */
-const oldNameArg = Argument.string("old-name");
-const newNameArg = Argument.string("new-name");
-const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to rename within"), Flag.withDefault("."));
+const oldNameArg = Argument.String("old-name");
+const newNameArg = Argument.String("new-name");
+const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to rename within"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

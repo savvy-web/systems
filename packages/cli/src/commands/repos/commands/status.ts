@@ -35,15 +35,15 @@ import { Console, Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option definitions */
-const jsonOption = Flag.boolean("json").pipe(
+const jsonOption = Flag.Boolean("json").pipe(
 	Flag.withDescription("Emit the structured drift report as JSON"),
 	Flag.withDefault(false),
 );
-const driftOption = Flag.boolean("drift").pipe(
+const driftOption = Flag.Boolean("drift").pipe(
 	Flag.withDescription("Also reconcile the manifest, .gitmodules, worktree, and git submodule status"),
 	Flag.withDefault(false),
 );
-const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to inspect"), Flag.withDefault("."));
+const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to inspect"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

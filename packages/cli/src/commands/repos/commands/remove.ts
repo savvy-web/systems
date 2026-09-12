@@ -33,8 +33,8 @@ import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option/arg definitions */
-const nameArg = Argument.string("name");
-const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to remove within"), Flag.withDefault("."));
+const nameArg = Argument.String("name");
+const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to remove within"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

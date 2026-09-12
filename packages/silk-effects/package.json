@@ -41,6 +41,7 @@
 		"@effected/markdown": "catalog:effected",
 		"@effected/package-json": "catalog:effected",
 		"@effected/templates": "catalog:effected",
+		"@effected/toml": "catalog:effected",
 		"@effected/walker": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
 		"@manypkg/get-packages": "^3.1.0",

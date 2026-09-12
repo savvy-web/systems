@@ -2,7 +2,7 @@
 	"repos": {
 		"effect": {
 			"url": "https://github.com/Effect-TS/effect.git",
-			"ref": "effect@4.0.0-rc.112",
+			"ref": "effect@4.0.0-rc.115",
 			"purpose": "Read-only Effect v4 source pinned to the tag matching the effect catalog — the authority on what v4 actually exports, plus the v3→v4 migration notes and the @effect/vitest reference implementation. Vendored from the main Effect-TS/effect monorepo, where v4 development resumed after the effect-smol repo was archived.",
 			"sparse": [
 				"packages/effect",
@@ -13,7 +13,7 @@
 				"MIGRATION.md"
 			],
 			"orientation": {
-				"layout": "Sparse checkout: packages/effect (core source + package.json exports map), packages/vitest (@effect/vitest reference implementation), migration/ (per-domain v3→v4 notes), ai-docs/, LLMS.md, MIGRATION.md. Services/tags live in Context.ts — there is no ServiceMap.ts (agents coming from other Effect lines reliably look for the wrong filename); re-verified at beta.101. Key consumer-side fact settled there: Context.Key<Id, Shape> extends Effect<Shape, never, Id> (Context.ts:65) — v4 tags/Service classes are still first-class Effects, flatMap-able without .asEffect().",
+				"layout": "Sparse checkout: packages/effect (core source + package.json exports map), packages/vitest (@effect/vitest reference implementation), migration/ (per-domain v3→v4 notes), ai-docs/, LLMS.md, MIGRATION.md. Services/tags live in Context.ts — there is no ServiceMap.ts (agents coming from other Effect lines reliably look for the wrong filename); re-verified at rc.115. Key consumer-side fact settled there: Context.Key<Id, Shape> extends Effect<Shape, never, Id> (Context.ts:64) — v4 tags/Service classes are still first-class Effects, flatMap-able without .asEffect().",
 				"keyPaths": {
 					"effect-source": "packages/effect/src",
 					"unstable-modules": "packages/effect/src/unstable",

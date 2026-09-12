@@ -36,8 +36,8 @@ import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option/arg definitions */
-const sectionArg = Argument.string("section");
-const cwdOption = Flag.directory("cwd").pipe(
+const sectionArg = Argument.String("section");
+const cwdOption = Flag.Directory("cwd").pipe(
 	Flag.withDescription("Repo root to deregister within"),
 	Flag.withDefault("."),
 );

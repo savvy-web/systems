@@ -16,7 +16,7 @@ import { Command, Flag } from "effect/unstable/cli";
 import { requireValidConfig } from "../utils/config-gate.js";
 
 /* v8 ignore start -- CLI option definitions; handler tested via runVersion */
-const dryRunOption = Flag.boolean("dry-run").pipe(
+const dryRunOption = Flag.Boolean("dry-run").pipe(
 	Flag.withAlias("n"),
 	Flag.withDescription("Compute and report the release without writing anything"),
 	Flag.withDefault(false),
