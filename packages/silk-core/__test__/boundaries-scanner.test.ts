@@ -137,6 +137,8 @@ describe("readsProcess", () => {
 		"fn(process);",
 		["const s = `$", "{process.pid}`;"].join(""),
 		"process\n\t.exit(1);",
+		"const cwd = globalThis.process.cwd();",
+		"const env = global.process.env;",
 	])("flags %j", (src) => {
 		expect(readsProcess(src)).toBe(true);
 	});
@@ -147,6 +149,7 @@ describe("readsProcess", () => {
 		"const s = `process.env.X`;",
 		"const r = /process\\./;",
 		"const x = foo.process;",
+		"const x = myGlobal.process;",
 		"const processor = 1;",
 		"const preprocess = 2;",
 	])("does not flag %j", (src) => {

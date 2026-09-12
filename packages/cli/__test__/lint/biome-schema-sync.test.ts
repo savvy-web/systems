@@ -136,7 +136,7 @@ describe("syncBiomeSchemas", () => {
 		runOnVolume(
 			// No pnpm-workspace.yaml and no `workspaces` field anywhere above the
 			// process cwd in this volume: discovery fails root-not-found, and the
-			// pass degrades to BiomeSchemaSync's own default directory.
+			// pass degrades to a single scan of the process cwd, supplied by the CLI.
 			{ [`${process.cwd()}/biome.json`]: STALE },
 			process.cwd(),
 			Effect.gen(function* () {

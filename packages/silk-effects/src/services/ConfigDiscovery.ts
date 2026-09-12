@@ -13,24 +13,26 @@ export interface ConfigDiscoveryShape {
 	 * or `null` when none of the candidate paths exist.
 	 *
 	 * @param name - Config file name (e.g. `"biome.json"`).
-	 * @param options - Optional `cwd` override for path resolution.
+	 * @param options - The `cwd` the candidate paths are resolved against (no ambient default: this is
+	 *   engine code and never reads `process.cwd()`; the front end supplies it).
 	 * @returns An `Effect` that always succeeds with a `ConfigLocation` or `null`.
 	 *
 	 * @since 0.1.0
 	 */
-	readonly find: (name: string, options?: { cwd?: string }) => Effect.Effect<ConfigLocation | null>;
+	readonly find: (name: string, options: { readonly cwd: string }) => Effect.Effect<ConfigLocation | null>;
 
 	/**
 	 * Return all existing `ConfigLocation` entries for the given config file name,
 	 * ordered from highest to lowest priority.
 	 *
 	 * @param name - Config file name (e.g. `"biome.json"`).
-	 * @param options - Optional `cwd` override for path resolution.
+	 * @param options - The `cwd` the candidate paths are resolved against (no ambient default: this is
+	 *   engine code and never reads `process.cwd()`; the front end supplies it).
 	 * @returns An `Effect` that always succeeds with an array of `ConfigLocation` records.
 	 *
 	 * @since 0.1.0
 	 */
-	readonly findAll: (name: string, options?: { cwd?: string }) => Effect.Effect<ReadonlyArray<ConfigLocation>>;
+	readonly findAll: (name: string, options: { readonly cwd: string }) => Effect.Effect<ReadonlyArray<ConfigLocation>>;
 }
 
 /**
@@ -55,7 +57,7 @@ function safeExists(fs: FileSystem.FileSystem, path: string): Effect.Effect<bool
  * const result = await Effect.runPromise(
  *   Effect.gen(function* () {
  *     const discovery = yield* ConfigDiscovery;
- *     return yield* discovery.find("biome.json");
+ *     return yield* discovery.find("biome.json", { cwd: "/path/to/repo" });
  *   }).pipe(
  *     Effect.provide(ConfigDiscovery.layer),
  *     Effect.provide(NodeServices.layer),
@@ -84,9 +86,9 @@ export class ConfigDiscovery extends Context.Service<ConfigDiscovery, ConfigDisc
 		Effect.gen(function* () {
 			const fs = yield* FileSystem.FileSystem;
 
-			const findAll = (name: string, options?: { cwd?: string }): Effect.Effect<ReadonlyArray<ConfigLocation>> =>
+			const findAll = (name: string, options: { readonly cwd: string }): Effect.Effect<ReadonlyArray<ConfigLocation>> =>
 				Effect.gen(function* () {
-					const cwd = options?.cwd ?? process.cwd();
+					const { cwd } = options;
 					const results: ConfigLocation[] = [];
 
 					// Priority 1: lib/configs/{name}
@@ -106,7 +108,7 @@ export class ConfigDiscovery extends Context.Service<ConfigDiscovery, ConfigDisc
 					return results;
 				});
 
-			const find = (name: string, options?: { cwd?: string }): Effect.Effect<ConfigLocation | null> =>
+			const find = (name: string, options: { readonly cwd: string }): Effect.Effect<ConfigLocation | null> =>
 				findAll(name, options).pipe(Effect.map((results) => results[0] ?? null));
 
 			return { find, findAll };

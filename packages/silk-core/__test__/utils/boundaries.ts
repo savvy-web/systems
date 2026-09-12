@@ -241,9 +241,10 @@ export const forbiddenSpecifiers = (source: string): ReadonlyArray<string> =>
 /**
  * Whether the source touches the `process` identifier in code — a member read
  * (`process.env`, `process["env"]`), a destructuring (`const { env } = process`),
- * a bare pass-through, or an interpolation. A property named `process` on some
+ * a bare pass-through, an interpolation, or the global reached through
+ * `globalThis.process` / `global.process`. A property named `process` on any
  * other object (`foo.process`) is not the global and is not flagged; neither is
  * a mention inside a string, template text, regex or comment.
  */
 export const readsProcess = (source: string): boolean =>
-	/(?<![\p{L}\p{N}_$.])process(?![\p{L}\p{N}_$])/u.test(stripNonCode(source));
+	/(?:(?<![\p{L}\p{N}_$.])|(?<=\bglobal(?:This)?\s*\.\s*))process(?![\p{L}\p{N}_$])/u.test(stripNonCode(source));

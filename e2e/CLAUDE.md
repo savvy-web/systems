@@ -1,6 +1,8 @@
 # @e2e harness
 
-`e2e/*` are PRIVATE, never-published harness packages (`@e2e/bundler`, `@e2e/pnpm-plugin-silk`) that exercise the BUILT `dist/dev` artifact of the package(s) under test, depended on via `workspace:*`. They are members of the `pnpm-workspace.yaml` `packages:` glob (`e2e/*`), discovered by `AgentPlugin.discover()`, and run in the normal `pnpm test` gate — no separate project or CI job.
+`e2e/*` are PRIVATE, never-published harness packages (`@e2e/bundler`, `@e2e/pnpm-plugin-silk`, `@e2e/workspace`) that exercise the BUILT `dist/dev` artifact of the package(s) under test, depended on via `workspace:*`. They are members of the `pnpm-workspace.yaml` `packages:` glob (`e2e/*`), discovered by `AgentPlugin.discover()`, and run in the normal `pnpm test` gate — no separate project or CI job.
+
+`@e2e/workspace` is the one exception to the built-artifact rule: it reads `packages/*/package.json` and `e2e/*/package.json` straight off disk and asserts the workspace's `workspace:*` dependency graph respects the declared layering in its own `layers.json` (app layers, the tooling band, and the harness). It has no app-layer `devDependencies` and does not spawn a build.
 
 ## Core rule
 

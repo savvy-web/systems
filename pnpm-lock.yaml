@@ -253,6 +253,18 @@ importers:
         specifier: catalog:silk
         version: 7.0.2
 
+  e2e/workspace:
+    devDependencies:
+      '@savvy-web/bundler':
+        specifier: workspace:*
+        version: link:../../packages/bundler/dist/dev/pkg
+      '@types/node':
+        specifier: catalog:silk
+        version: 26.5.1
+      typescript:
+        specifier: catalog:silk
+        version: 7.0.2
+
   packages/bundler:
     dependencies:
       '@savvy-web/tsdown-plugins':

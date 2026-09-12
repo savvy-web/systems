@@ -1,10 +1,4 @@
-import { fileURLToPath } from "node:url";
 import { build, defaultManifestTransform } from "@savvy-web/bundler";
-
-/** Source files of the two CJS-requireable entries that must inline `@savvy-web/silk-effects`. */
-const CJS_ENTRY_SOURCES = ["/src/changesets/changelog.ts", "/src/changesets/markdownlint.ts"] as const;
-/** The resolved ESM entry of `@savvy-web/silk-effects` (the workspace link into its `dist/dev/pkg`). */
-const SILK_EFFECTS_ENTRY = fileURLToPath(import.meta.resolve("@savvy-web/silk-effects"));
 
 await build({
 	// `source-map-support` is referenced transitively but not declared, so tsdown would
@@ -36,28 +30,6 @@ await build({
 	// Base build is ESM-only; only the markdownlint override (below) emits CJS.
 	format: ["esm"],
 	plugins: [
-		{
-			// The two CJS override partitions declare `bundle: ["@savvy-web/silk-effects"]`
-			// (tsdown `deps.alwaysBundle`), and the JS pass honors it — but for a dual-format
-			// partition tsdown's dts pass RE-EMITS the `.cjs` chunk, and the bundler wires only
-			// `neverBundle`/`bundledPackages` into that pass, never the partition's `bundle`.
-			// The re-emitted `.cjs` therefore came out with `require("@savvy-web/silk-effects")`
-			// (verified: with `emitDts: false` the JS-pass artifact inlines it). Until the
-			// bundler forwards `bundle` to the dts pass, resolve the bare import ourselves —
-			// `order: "pre"` beats `tsdown:deps` — and mark it non-external for exactly the two
-			// CJS entry sources, in every pass. `__test__/externals.test.ts` pins the result.
-			name: "silk-effects-inline-cjs-entries",
-			resolveId: {
-				order: "pre",
-				handler(id, importer) {
-					if (id !== "@savvy-web/silk-effects" || importer === undefined) return null;
-					if (!CJS_ENTRY_SOURCES.some((entry) => importer.endsWith(entry))) return null;
-					// Not `this.resolve`: the chain still reaches `tsdown:deps`, which answers with
-					// the bare specifier marked external. Node's own resolver yields the real file.
-					return { id: SILK_EFFECTS_ENTRY, external: false };
-				},
-			},
-		},
 		{
 			// `jsonc-parser` (pulled in by @changesets/apply-release-plan since the
 			// changesets v3 bump) publishes no `exports` field, so the CJS override

@@ -197,10 +197,10 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
  * needed on the happy path.
  *
  * Discovery failing yields an EMPTY list, which the caller reads as "no roots
- * to enumerate — scan `BiomeSchemaSync`'s own default directory instead". The
- * cwd is deliberately not named here: resolving it is the sync service's job,
- * and an ambient `process.cwd()` read in this function would be a second,
- * divergent source of truth for the same directory.
+ * to enumerate — scan the process cwd instead". The cwd is deliberately not
+ * named here: `syncBiomeSchemas` resolves it exactly once for the fallback
+ * pass, and an ambient `process.cwd()` read in this function would be a
+ * second, divergent source of truth for the same directory.
  *
  * The two ways discovery fails mean different things and are reported differently:
  *
@@ -287,9 +287,10 @@ export function syncBiomeSchemas(): Effect.Effect<void, never, BiomeSchemaSync |
 		const roots = yield* biomeConfigRoots();
 
 		// An empty root list means discovery could not enumerate one; fall through
-		// to a single pass over `BiomeSchemaSync`'s own default directory.
-		const passes: ReadonlyArray<{ cwd: string } | undefined> =
-			roots.length > 0 ? roots.map((cwd) => ({ cwd })) : [undefined];
+		// to a single pass over the process cwd. `BiomeSchemaSync` is engine code
+		// and takes no ambient default — this CLI front end owns the process.
+		const passes: ReadonlyArray<{ cwd: string }> =
+			roots.length > 0 ? roots.map((cwd) => ({ cwd })) : [{ cwd: process.cwd() }];
 
 		for (const options of passes) {
 			yield* syncer.sync(BIOME_VERSION, options).pipe(

@@ -474,8 +474,57 @@ describe("buildTargetGroups", () => {
 			"@savvy-web/silk-effects",
 		]);
 		expect((captured[0]?.deps as { neverBundle?: unknown })?.neverBundle).toEqual(["effect"]);
-		// JS-pass-only: the dts pass does NOT carry alwaysBundle from `bundle`.
-		expect((captured[1]?.deps as { alwaysBundle?: unknown } | undefined)?.alwaysBundle).toBeUndefined();
+		// The dts pass RE-EMITS the dual-format `.cjs` chunk (see build-target-groups.ts), so it
+		// must carry the SAME `alwaysBundle` as the JS pass or a force-bundled declared dependency
+		// gets re-externalized in that re-emitted `.cjs` (the silk workaround this closed).
+		expect((captured[1]?.deps as { alwaysBundle?: unknown } | undefined)?.alwaysBundle).toEqual([
+			"semver-effect",
+			"@savvy-web/silk-effects",
+		]);
+	});
+
+	it("creates a `deps` object off `bundle` alone on the dts pass, with no stray neverBundle", async () => {
+		// `bundle` with no `externals`/`dtsExternals`/`bundledPackages` must still widen the
+		// dtsDeps guard (previously `dtsNeverBundle.length > 0 || dts.bundledPackages`, which a
+		// bundle-only partition never satisfied) and produce a `deps` object carrying ONLY
+		// `alwaysBundle` — no `neverBundle` key at all, since nothing was externalized.
+		const captured: Array<{ deps?: unknown }> = [];
+		const build = (async (cfg: { deps?: unknown }) => {
+			captured.push({ deps: cfg.deps });
+		}) as never;
+		await buildTargetGroups({
+			cwd: "/abs/pkg",
+			version: "1.0.0",
+			entry: { index: "src/index.ts" },
+			tsconfigPath: "/abs/pkg/tsconfig.json",
+			groups: [{ id: "dev", name: "base" }],
+			devManifest: "preserve",
+			bundle: ["@savvy-web/silk-effects"],
+			build,
+		});
+		// [0] = JS pass, [1] = dts pass.
+		expect(captured[1]?.deps).toEqual({ alwaysBundle: ["@savvy-web/silk-effects"] });
+	});
+
+	it("creates a `deps` object off `bundle` alone on the declarations pass (Pass 3), with no stray neverBundle", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "npm", name: "pkg" }],
+			devManifest: "preserve",
+			bundle: ["@savvy-web/silk-effects"],
+			emitDeclarations: true,
+			build,
+		});
+		const decl = calls.find((c) => c.unbundle === true && String(c.outDir).endsWith("/dist/prod/npm/declarations"));
+		expect(decl).toBeDefined();
+		expect(decl?.deps).toEqual({ alwaysBundle: ["@savvy-web/silk-effects"] });
 	});
 
 	it("omits alwaysBundle when `bundle` is not set", async () => {
@@ -1210,6 +1259,29 @@ describe("buildTargetGroups", () => {
 		expect(decl).toBeDefined();
 		expect(decl?.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true, generator: "tsc" });
 		expect(decl?.clean).toBe(true);
+	});
+
+	it("threads `bundle` into the declarations pass (Pass 3) deps.alwaysBundle too", async () => {
+		const calls: Array<Record<string, unknown>> = [];
+		const build = async (cfg: Record<string, unknown>) => {
+			calls.push(cfg);
+		};
+		await buildTargetGroups({
+			cwd: "/repo/pkg",
+			version: "1.0.0",
+			entry: { index: "/repo/pkg/src/index.ts" },
+			tsconfigPath: "/tmp/tsconfig.json",
+			groups: [{ id: "npm", name: "pkg" }],
+			devManifest: "preserve",
+			externals: ["effect"],
+			bundle: ["@savvy-web/silk-effects"],
+			emitDeclarations: true,
+			build,
+		});
+		const decl = calls.find((c) => c.unbundle === true && String(c.outDir).endsWith("/dist/prod/npm/declarations"));
+		expect(decl).toBeDefined();
+		expect((decl?.deps as { alwaysBundle?: unknown } | undefined)?.alwaysBundle).toEqual(["@savvy-web/silk-effects"]);
+		expect((decl?.deps as { neverBundle?: unknown } | undefined)?.neverBundle).toEqual(["effect"]);
 	});
 
 	it("declarations pass is best-effort: a failure does not abort the build and is recorded", async () => {

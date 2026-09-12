@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { getReleaseLine } from "../../src/changesets/changelog/getReleaseLine.js";
 import type { ChangesetOptions } from "../../src/changesets/schemas/options.js";
 import { makeGitHubTest } from "../../src/changesets/services/github.js";
+import { ChangesetLogMode } from "../../src/changesets/utils/logger.js";
 import type { GitHubCommitInfo } from "../../src/changesets/vendor/github-info.js";
 
 const OPTIONS: ChangesetOptions = { repo: "owner/repo" };
@@ -324,8 +325,9 @@ it.effect("handles API failure gracefully", () =>
 			},
 			"patch",
 			OPTIONS,
-		).pipe(Effect.provide(failLayer));
+		).pipe(Effect.provide(failLayer), Effect.provideService(ChangesetLogMode, "silent"));
 		expect(result).toContain("update deps");
-		// Should not throw, just omit GitHub info
+		// Should not throw, just omit GitHub info; the warning is discarded in
+		// silent mode (the test runner's mode — the engine no longer sniffs VITEST).
 	}),
 );

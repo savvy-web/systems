@@ -205,10 +205,11 @@ export function getReleaseLine(
 						Effect.catch(() => Effect.succeed(raw)),
 					),
 				),
-				Effect.catch((error) => {
-					logWarning("Could not fetch GitHub info for commit:", changeset.commit ?? "", String(error));
-					return Effect.succeed(null);
-				}),
+				Effect.catch((error) =>
+					logWarning("Could not fetch GitHub info for commit:", changeset.commit ?? "", String(error)).pipe(
+						Effect.as(null),
+					),
+				),
 			);
 		}
 
