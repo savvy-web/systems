@@ -10,14 +10,14 @@ import { Argument, Command, Flag } from "effect/unstable/cli";
 /**
  * Action name positional argument.
  */
-const actionNameArg = Argument.string("action-name").pipe(
+const actionNameArg = Argument.String("action-name").pipe(
 	Argument.withDescription("Name of the GitHub Action (also the output directory)"),
 );
 
 /**
  * Force overwrite option.
  */
-const forceOption = Flag.boolean("force").pipe(
+const forceOption = Flag.Boolean("force").pipe(
 	Flag.withAlias("f"),
 	Flag.withDescription("Overwrite existing files"),
 	Flag.withDefault(false),

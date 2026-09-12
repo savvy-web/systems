@@ -27,7 +27,7 @@ import { Argument, Command } from "effect/unstable/cli";
 const { ConfigInspector } = Changesets;
 
 /* v8 ignore next */
-const dirArg = Argument.directory("dir").pipe(Argument.withDefault("."));
+const dirArg = Argument.Directory("dir").pipe(Argument.withDefault("."));
 
 /**
  * Run validation. Logs a one-line OK on success; logs the error and sets

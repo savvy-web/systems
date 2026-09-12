@@ -199,7 +199,7 @@ export function runClean(opts: {
 }
 
 /* v8 ignore start -- CLI option/registration; orchestration tested via runClean */
-const globsOption = Flag.string("globs").pipe(
+const globsOption = Flag.String("globs").pipe(
 	Flag.withAlias("g"),
 	Flag.withDescription(
 		`Comma-separated glob patterns to remove from each workspace root (default: ${DEFAULT_GLOBS.join(",")})`,
@@ -207,7 +207,7 @@ const globsOption = Flag.string("globs").pipe(
 	Flag.withDefault(DEFAULT_GLOBS.join(",")),
 );
 
-const dryRunOption = Flag.boolean("dry-run").pipe(
+const dryRunOption = Flag.Boolean("dry-run").pipe(
 	Flag.withAlias("n"),
 	Flag.withDescription("Report what would be removed without deleting anything"),
 	Flag.withDefault(false),

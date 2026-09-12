@@ -32,23 +32,23 @@ const DEFAULT_LINT_CONFIG = "lib/configs/lint-staged.config.ts";
 // ---------------------------------------------------------------------------
 
 /* v8 ignore start -- CLI option definitions; orchestration logic tested via runInit */
-const forceOption = Flag.boolean("force").pipe(
+const forceOption = Flag.Boolean("force").pipe(
 	Flag.withAlias("f"),
 	Flag.withDescription("Overwrite existing config files and hooks across all tools"),
 	Flag.withDefault(false),
 );
 
-const commitConfigOption = Flag.string("commit-config").pipe(
+const commitConfigOption = Flag.String("commit-config").pipe(
 	Flag.withDescription("Relative path for the commitlint config file"),
 	Flag.withDefault(DEFAULT_COMMIT_CONFIG),
 );
 
-const lintConfigOption = Flag.string("lint-config").pipe(
+const lintConfigOption = Flag.String("lint-config").pipe(
 	Flag.withDescription("Relative path for the lint-staged config file"),
 	Flag.withDefault(DEFAULT_LINT_CONFIG),
 );
 
-const lintPresetOption = Flag.choice("lint-preset", ["minimal", "standard", "silk"]).pipe(
+const lintPresetOption = Flag.Literals("lint-preset", ["minimal", "standard", "silk"]).pipe(
 	Flag.withDescription("lint-staged preset: minimal, standard, or silk"),
 	Flag.withDefault("silk" as const),
 );

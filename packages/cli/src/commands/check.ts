@@ -35,12 +35,12 @@ const DEFAULT_CHANGESET_DIR = ".changeset";
 // ---------------------------------------------------------------------------
 
 /* v8 ignore start -- CLI option definitions; orchestration logic tested via runCheck */
-const changesetDirOption = Flag.string("changeset-dir").pipe(
+const changesetDirOption = Flag.String("changeset-dir").pipe(
 	Flag.withDescription("Path to the changeset directory"),
 	Flag.withDefault(DEFAULT_CHANGESET_DIR),
 );
 
-const quietOption = Flag.boolean("quiet").pipe(
+const quietOption = Flag.Boolean("quiet").pipe(
 	Flag.withAlias("q"),
 	Flag.withDescription("Only output warnings from lint check"),
 	Flag.withDefault(false),

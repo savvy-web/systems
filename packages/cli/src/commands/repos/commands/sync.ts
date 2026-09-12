@@ -28,7 +28,7 @@ import { Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
 
 /* v8 ignore start -- CLI option definitions */
-const cwdOption = Flag.directory("cwd").pipe(Flag.withDescription("Repo root to sync"), Flag.withDefault("."));
+const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to sync"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**

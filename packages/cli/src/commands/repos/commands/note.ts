@@ -61,13 +61,13 @@ export const runReposNote = (cwd: string, name: string, op: Parameters<Repos.Rep
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposNote */
-const nameArg = Argument.string("name");
-const noteTextArg = Argument.string("text");
-const noteIdArg = Argument.string("id");
-const intoOption = Flag.choice("into", ["layout", "startHere"]).pipe(
+const nameArg = Argument.String("name");
+const noteTextArg = Argument.String("text");
+const noteIdArg = Argument.String("id");
+const intoOption = Flag.Literals("into", ["layout", "startHere"]).pipe(
 	Flag.withDescription("Curated orientation field to promote the note into"),
 );
-const cwdOption = Flag.directory("cwd").pipe(
+const cwdOption = Flag.Directory("cwd").pipe(
 	Flag.withDescription("Repo root whose manifest holds the notes"),
 	Flag.withDefault("."),
 );

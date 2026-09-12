@@ -29,7 +29,7 @@ type LintMessage = Changesets.LintMessage;
 const { ChangesetLinter } = Changesets;
 
 /* v8 ignore next */
-const dirArg = Argument.directory("dir").pipe(Argument.withDefault(".changeset"));
+const dirArg = Argument.Directory("dir").pipe(Argument.withDefault(".changeset"));
 
 /**
  * Run the check validation pipeline on all changeset files in `dir`.

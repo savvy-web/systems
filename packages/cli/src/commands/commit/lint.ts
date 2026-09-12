@@ -96,7 +96,7 @@ export function runCommitLint(file: string) {
 }
 
 /* v8 ignore next */
-const fileArg = Argument.file("file", { mustExist: true });
+const fileArg = Argument.File("file", { mustExist: true });
 
 /* v8 ignore next 3 -- CLI registration; handler tested via runCommitLint */
 export const lintCommand = Command.make("lint", { file: fileArg }, ({ file }) => runCommitLint(file)).pipe(

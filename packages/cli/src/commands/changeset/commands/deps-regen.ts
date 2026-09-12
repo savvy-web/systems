@@ -50,23 +50,23 @@ type RegenPlan = Changesets.RegenPlan;
 const { DepsRegen } = Changesets;
 
 /* v8 ignore start -- CLI option definitions */
-const cwdOption = Flag.directory("cwd").pipe(
+const cwdOption = Flag.Directory("cwd").pipe(
 	Flag.withDescription("Project root (defaults to the current working directory)"),
 	Flag.withDefault("."),
 );
-const baseOption = Flag.string("base").pipe(
+const baseOption = Flag.String("base").pipe(
 	Flag.withDescription("Override the base branch (defaults to config baseBranch)"),
 	Flag.optional,
 );
-const packageOption = Flag.string("package").pipe(
+const packageOption = Flag.String("package").pipe(
 	Flag.withDescription("Restrict regeneration to a single workspace package"),
 	Flag.optional,
 );
-const dryRunOption = Flag.boolean("dry-run").pipe(
+const dryRunOption = Flag.Boolean("dry-run").pipe(
 	Flag.withDescription("Print the plan without writing or deleting"),
 	Flag.withDefault(false),
 );
-const jsonOption = Flag.boolean("json").pipe(
+const jsonOption = Flag.Boolean("json").pipe(
 	Flag.withDescription("Emit a structured plan as JSON"),
 	Flag.withDefault(false),
 );

@@ -20,7 +20,7 @@ import { Argument, Command } from "effect/unstable/cli";
 const { ChangesetLinter } = Changesets;
 
 /* v8 ignore next */
-const fileArg = Argument.file("file");
+const fileArg = Argument.File("file");
 
 /**
  * Run lint validation on a single changeset file.

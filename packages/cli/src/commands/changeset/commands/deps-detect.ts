@@ -31,24 +31,24 @@ type WorkspaceDependencyDiff = Changesets.WorkspaceDependencyDiff;
 const { DepsRegen, serializeDependencyTableToMarkdown } = Changesets;
 
 /* v8 ignore start -- CLI option definitions */
-const fromOption = Flag.string("from").pipe(
+const fromOption = Flag.String("from").pipe(
 	Flag.withDescription("Older ref to diff from (defaults to merge-base with base branch)"),
 	Flag.optional,
 );
-const toOption = Flag.string("to").pipe(
+const toOption = Flag.String("to").pipe(
 	Flag.withDescription("Newer ref to diff to (defaults to working tree)"),
 	Flag.optional,
 );
-const cwdOption = Flag.directory("cwd").pipe(
+const cwdOption = Flag.Directory("cwd").pipe(
 	Flag.withDescription("Project root (defaults to the current working directory)"),
 	Flag.withDefault("."),
 );
-const packageOption = Flag.string("package").pipe(
+const packageOption = Flag.String("package").pipe(
 	Flag.withDescription("Restrict output to a single workspace package"),
 	Flag.optional,
 );
-const jsonOption = Flag.boolean("json").pipe(Flag.withDescription("Emit JSON (default)"), Flag.withDefault(false));
-const markdownOption = Flag.boolean("markdown").pipe(
+const jsonOption = Flag.Boolean("json").pipe(Flag.withDescription("Emit JSON (default)"), Flag.withDefault(false));
+const markdownOption = Flag.Boolean("markdown").pipe(
 	Flag.withDescription("Emit one CSH005 markdown block per workspace package"),
 	Flag.withDefault(false),
 );
