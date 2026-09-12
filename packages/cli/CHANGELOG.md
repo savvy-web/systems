@@ -1,5 +1,33 @@
 # @savvy-web/cli
 
+## 2.11.4
+
+### Refactoring
+
+- Ported every `savvy` command definition to the PascalCase `effect/unstable/cli` constructors introduced in Effect `4.0.0-rc.113` (`Flag.String`, `Flag.Boolean`, `Flag.Directory`, `Flag.File`, `Flag.Literals`, `Argument.String`, `Argument.Directory`, `Argument.File`). Command names, flags, defaults and behaviour are unchanged. [#634][#634]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | 4.0.0-rc.112 | 4.0.0-rc.115 |
+| @effected/commands | dependency | updated | ^0.6.1 | ^0.7.0 |
+| @effected/git | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/jsonc | dependency | updated | ^0.9.0 | ^0.11.0 |
+| @effected/templates | dependency | updated | ^0.5.0 | ^0.6.0 |
+| @effected/workspaces | dependency | updated | ^0.20.3 | ^0.21.0 |
+| @effected/yaml | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @savvy-web/silk-effects | dependency | updated | 7.5.2 | 7.5.3 |
+| effect | dependency | updated | 4.0.0-rc.112 | 4.0.0-rc.115 |
+
+[#634][#634]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#634]: https://github.com/savvy-web/systems/pull/634
+
 ## 2.11.3
 
 ### Dependencies

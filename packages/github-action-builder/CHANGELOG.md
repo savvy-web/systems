@@ -1,5 +1,27 @@
 # @savvy-web/github-action-builder
 
+## 2.3.5
+
+### Refactoring
+
+- Ported the `build` and `init` CLI command definitions to the PascalCase `effect/unstable/cli` constructors introduced in Effect `4.0.0-rc.113` (`Flag.File`, `Flag.Boolean`, `Argument.String`). Command names, flags, defaults and behaviour are unchanged. [#634][#634]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | 4.0.0-rc.112 | 4.0.0-rc.115 |
+| @effected/yaml | dependency | updated | ^0.14.0 | ^0.15.0 |
+| effect | dependency | updated | 4.0.0-rc.112 | 4.0.0-rc.115 |
+
+[#634][#634]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#634]: https://github.com/savvy-web/systems/pull/634
+
 ## 2.3.4
 
 ### Dependencies
