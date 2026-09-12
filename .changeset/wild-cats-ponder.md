@@ -18,3 +18,4 @@
 | @effected/git | peerDependency | updated | ^0.14.0 | ^0.15.0 |
 | @effected/workspaces | peerDependency | updated | ^0.20.3 | ^0.21.0 |
 | effect | peerDependency | updated | 4.0.0-rc.112 | 4.0.0-rc.115 |
+| @effected/toml | dependency | added | — | ^0.7.0 |

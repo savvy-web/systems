@@ -8,3 +8,4 @@
 | --- | --- | --- | --- | --- |
 | @effected/package-json | dependency | updated | ^0.14.0 | ^0.15.0 |
 | @effected/yaml | dependency | updated | ^0.14.0 | ^0.15.0 |
+| effect | peerDependency | updated | 4.0.0-rc.112 | 4.0.0-rc.115 |

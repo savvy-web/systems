@@ -117,6 +117,9 @@ catalogs:
     '@effected/templates':
       specifier: ^0.6.0
       version: 0.6.0
+    '@effected/toml':
+      specifier: ^0.7.0
+      version: 0.7.0
     '@effected/tsconfig-json':
       specifier: ^0.9.0
       version: 0.9.0
@@ -662,13 +665,16 @@ importers:
         version: 0.11.0(effect@4.0.0-rc.115)
       '@effected/markdown':
         specifier: catalog:effected
-        version: 0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.6.0(effect@4.0.0-rc.112))(@effected/yaml@0.15.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
+        version: 0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/yaml@0.15.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
       '@effected/package-json':
         specifier: catalog:effected
         version: 0.15.0(effect@4.0.0-rc.115)
       '@effected/templates':
         specifier: catalog:effected
         version: 0.6.0(effect@4.0.0-rc.115)
+      '@effected/toml':
+        specifier: catalog:effected
+        version: 0.7.0(effect@4.0.0-rc.115)
       '@effected/walker':
         specifier: catalog:effected
         version: 0.8.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
@@ -1383,6 +1389,12 @@ packages:
     engines: {node: '>=24.11.0'}
     peerDependencies:
       effect: 4.0.0-rc.112
+
+  '@effected/toml@0.7.0':
+    resolution: {integrity: sha512-sGRIZmzZ+QoSOL5GO/VoeGCjVMSQgSi0Kolp9oguIAp11X0gLc+dDI/W7p9i4hOJrDLxlQrvjMkKRBGjcuz++w==}
+    engines: {node: '>=24.11.0'}
+    peerDependencies:
+      effect: 4.0.0-rc.115
 
   '@effected/tsconfig-json@0.9.0':
     resolution: {integrity: sha512-fKm/Ia5wxHLG2IYYPNrEFCgQCNE1/WTsb5YZMwF4rqrvcSRVlcLSk6JlEoldqUUa4PNVka4rGU32gFTqZAyBZg==}
@@ -5810,12 +5822,12 @@ snapshots:
       '@effected/yaml': 0.15.0(effect@4.0.0-rc.115)
       effect: 4.0.0-rc.115
 
-  '@effected/markdown@0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.6.0(effect@4.0.0-rc.112))(@effected/yaml@0.15.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)':
+  '@effected/markdown@0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/yaml@0.15.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)':
     dependencies:
       effect: 4.0.0-rc.115
     optionalDependencies:
       '@effected/jsonc': 0.11.0(effect@4.0.0-rc.115)
-      '@effected/toml': 0.6.0(effect@4.0.0-rc.112)
+      '@effected/toml': 0.7.0(effect@4.0.0-rc.115)
       '@effected/yaml': 0.15.0(effect@4.0.0-rc.115)
 
   '@effected/memfs@0.7.0(effect@4.0.0-rc.115)':
@@ -5873,6 +5885,10 @@ snapshots:
   '@effected/toml@0.6.0(effect@4.0.0-rc.112)':
     dependencies:
       effect: 4.0.0-rc.112
+
+  '@effected/toml@0.7.0(effect@4.0.0-rc.115)':
+    dependencies:
+      effect: 4.0.0-rc.115
 
   '@effected/tsconfig-json@0.9.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/walker@0.8.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)':
     dependencies:
