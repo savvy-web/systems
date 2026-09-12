@@ -580,6 +580,9 @@ importers:
       '@savvy-web/mcp':
         specifier: workspace:*
         version: link:../mcp/dist/dev/pkg
+      '@savvy-web/silk-effects':
+        specifier: workspace:*
+        version: link:../silk-effects/dist/dev/pkg
       '@types/bun':
         specifier: catalog:build
         version: 1.4.2
@@ -620,9 +623,6 @@ importers:
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
-      '@savvy-web/silk-effects':
-        specifier: workspace:*
-        version: link:../silk-effects/dist/dev/pkg
       '@types/node':
         specifier: catalog:build
         version: 26.5.1

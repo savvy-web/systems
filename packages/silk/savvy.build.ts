@@ -1,4 +1,10 @@
+import { fileURLToPath } from "node:url";
 import { build, defaultManifestTransform } from "@savvy-web/bundler";
+
+/** Source files of the two CJS-requireable entries that must inline `@savvy-web/silk-effects`. */
+const CJS_ENTRY_SOURCES = ["/src/changesets/changelog.ts", "/src/changesets/markdownlint.ts"] as const;
+/** The resolved ESM entry of `@savvy-web/silk-effects` (the workspace link into its `dist/dev/pkg`). */
+const SILK_EFFECTS_ENTRY = fileURLToPath(import.meta.resolve("@savvy-web/silk-effects"));
 
 await build({
 	// `source-map-support` is referenced transitively but not declared, so tsdown would
@@ -19,17 +25,39 @@ await build({
 	// `__test__/externals.test.ts` pins this against the built output; do not remove
 	// either half.
 	//
-	// `@savvy-web/silk-effects` is a devDependency (NOT a declared runtime dep), so tsdown
-	// would normally bundle it into every entry — externalize it here so the BASE ESM
-	// entries reference it via `import "@savvy-web/silk-effects"` instead of inlining its
-	// large ESM-only transitive tree (unified/micromark/yaml/the *-effect packages). It is
-	// re-added to the published `dependencies` by the transform below (resolved from
-	// devDependencies) so consumers can resolve that import. The markdownlint override
-	// RE-bundles it (see below).
+	// `@savvy-web/silk-effects` is a DECLARED runtime dependency (nine files under `src/`
+	// import it — silk is a carrier plus config shims, not a pure carrier), so tsdown
+	// auto-externalizes it from the manifest and the BASE ESM entries reference it via
+	// `import "@savvy-web/silk-effects"` instead of inlining its large ESM-only transitive
+	// tree (unified/micromark/yaml/the *-effect packages). It is listed here anyway so the
+	// posture survives a manifest edit. The two CJS overrides below force-INLINE it via
+	// `bundle` (see there).
 	externals: ["source-map-support", "@savvy-web/silk-effects"],
 	// Base build is ESM-only; only the markdownlint override (below) emits CJS.
 	format: ["esm"],
 	plugins: [
+		{
+			// The two CJS override partitions declare `bundle: ["@savvy-web/silk-effects"]`
+			// (tsdown `deps.alwaysBundle`), and the JS pass honors it — but for a dual-format
+			// partition tsdown's dts pass RE-EMITS the `.cjs` chunk, and the bundler wires only
+			// `neverBundle`/`bundledPackages` into that pass, never the partition's `bundle`.
+			// The re-emitted `.cjs` therefore came out with `require("@savvy-web/silk-effects")`
+			// (verified: with `emitDts: false` the JS-pass artifact inlines it). Until the
+			// bundler forwards `bundle` to the dts pass, resolve the bare import ourselves —
+			// `order: "pre"` beats `tsdown:deps` — and mark it non-external for exactly the two
+			// CJS entry sources, in every pass. `__test__/externals.test.ts` pins the result.
+			name: "silk-effects-inline-cjs-entries",
+			resolveId: {
+				order: "pre",
+				handler(id, importer) {
+					if (id !== "@savvy-web/silk-effects" || importer === undefined) return null;
+					if (!CJS_ENTRY_SOURCES.some((entry) => importer.endsWith(entry))) return null;
+					// Not `this.resolve`: the chain still reaches `tsdown:deps`, which answers with
+					// the bare specifier marked external. Node's own resolver yields the real file.
+					return { id: SILK_EFFECTS_ENTRY, external: false };
+				},
+			},
+		},
 		{
 			// `jsonc-parser` (pulled in by @changesets/apply-release-plan since the
 			// changesets v3 bump) publishes no `exports` field, so the CJS override
@@ -66,19 +94,26 @@ await build({
 			entries: ["./changesets/changelog"],
 			format: ["esm", "cjs"],
 			bundleNodeModules: true,
+			// silk-effects is a DECLARED dependency, so tsdown auto-externalizes it even under
+			// `bundleNodeModules` (that flag only bundles what the manifest does not declare).
+			// `bundle` maps to tsdown `deps.alwaysBundle` and force-inlines it here; without it
+			// the .cjs would `require("@savvy-web/silk-effects")` and throw at load.
+			bundle: ["@savvy-web/silk-effects"],
 		},
 		{
 			// markdownlint-cli2 require()s this entry, so it must stay CJS-loadable. CJS cannot
 			// require() ESM-only silk-effects (its package exports declare no `require`
 			// condition), so this entry INLINES silk-effects (and its transitive node_modules)
 			// via `bundleNodeModules` — the same bundle-everything mechanism the whole package
-			// used before this split. silk-effects is NOT externalized here (the partition does
-			// not inherit the base `externals`), so it is treated as bundleable node_modules and
-			// rolldown emits co-located `.cjs` chunks the entry requires relatively. The base
-			// ESM entries stay external; only this entry pays the inlining cost.
+			// used before this split. The partition does not inherit the base `externals`, but
+			// silk-effects is a DECLARED dependency, which tsdown auto-externalizes regardless of
+			// `bundleNodeModules`; `bundle` (tsdown `deps.alwaysBundle`) force-inlines it. The
+			// base ESM entries stay external; only the two CJS overrides pay the inlining cost.
+			// `__test__/externals.test.ts` pins both halves against the built output.
 			entries: ["./changesets/markdownlint"],
 			format: ["esm", "cjs"],
 			bundleNodeModules: true,
+			bundle: ["@savvy-web/silk-effects"],
 			// `@commitlint/types` declarations are inlined into THIS entry's dts only, and it
 			// does NOT need to be set top-level: no BASE entry's emitted `.d.ts` references
 			// `@commitlint/types`. The commitlint base entries surface their config types through
@@ -101,16 +136,18 @@ await build({
 		// re-pinning the exact version at publish. They ship as plain `dependencies` in
 		// the published manifest too — publishing them as peers made pnpm's
 		// `autoInstallPeers` propagate their Effect graph into consuming repos at the
-		// wrong versions. `@savvy-web/pnpm-plugin-silk` publicly hoists all three, so
-		// their bins stay available to consumers either way.
+		// wrong versions. silk is the CARRIER: it owns the `savvy` / `savvy-mcp` bins
+		// (`src/bin/*`, four-line shims over `@savvy-web/cli/main` / `@savvy-web/mcp/main`),
+		// so a consumer's `node_modules/.bin` is created off silk alone, and cli/mcp are
+		// the externalized targets of those shim imports.
 		//
 		// The surviving runtime dependencies are those three exact-pinned companions,
 		// `semver` (externalized in JS, see above), the two `dtsExternals` packages
 		// (externalized in the dts so consumers can resolve the type imports), and
-		// `@savvy-web/silk-effects` (externalized in the BASE ESM entries, so the
-		// published package needs it as a real dependency for consumers to resolve those
-		// `import`s). Everything else is bundled into silk's JS, so keep ONLY these and
-		// drop the rest.
+		// `@savvy-web/silk-effects` (a genuine runtime dependency: externalized in the
+		// BASE ESM entries, so the published package needs it declared for consumers to
+		// resolve those `import`s). Everything else is bundled into silk's JS, so keep ONLY
+		// these and drop the rest.
 		const deps = pkg.dependencies as Record<string, string> | undefined;
 		const kept: Record<string, string> = {};
 		for (const name of [
@@ -136,17 +173,14 @@ await build({
 			"@savvy-web/changelog",
 			"@savvy-web/cli",
 			"@savvy-web/mcp",
+			// A real runtime dependency (declared in `dependencies`, imported by nine src
+			// files, externalized in the base ESM entries). The CJS overrides re-inline it
+			// via `bundle` above, so the declaration costs them nothing.
+			"@savvy-web/silk-effects",
 		]) {
 			const range = deps?.[name];
 			if (range) kept[name] = range;
 		}
-		// silk-effects is a DEVDependency (so the markdownlint override can bundle it as
-		// node_modules), but the base ESM entries externalize it, so it must ship as a real
-		// runtime dependency. Pull its already-resolved spec from devDependencies (catalog
-		// resolution runs before this transform) BEFORE the devDependencies field is stripped.
-		const devDeps = pkg.devDependencies as Record<string, string> | undefined;
-		const silkEffects = devDeps?.["@savvy-web/silk-effects"];
-		if (silkEffects) kept["@savvy-web/silk-effects"] = silkEffects;
 		pkg.dependencies = Object.keys(kept).length > 0 ? kept : undefined;
 		// Custom transforms REPLACE the default, so apply the standard strip ourselves.
 		return defaultManifestTransform({ pkg });
