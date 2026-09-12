@@ -15,7 +15,31 @@ silk is "carrier + config shims", not a pure carrier: nine files under `src/` im
 - `@effected/templates` is a direct runtime dependency: the `./lint` entry's declarations name kit `Section`/`SectionId` types, so it must ALSO stay on `savvy.build.ts`'s published-manifest keep-list. Any package whose emitted `.d.ts` references a type must ship that package as a real dependency — dropping it from the keep-list breaks consumer typecheck under pnpm's strict layout.
 - Ships `@savvy-web/changelog`, `@savvy-web/cli`, and `@savvy-web/mcp` as EXACT-pinned regular `dependencies`: source `workspace:*` resolves to the exact version at publish, with no transform promotion to peers — publishing them as peers made pnpm `autoInstallPeers` propagate their Effect graph into consumers at wrong versions; The bins reach a consumer through silk's OWN `bin` map (the carrier shims above), not through hoisting; `@savvy-web/pnpm-plugin-silk`'s public hoist of the three is a secondary mechanism and will be dropped for cli/mcp in a later task (see root CLAUDE.md Conventions for the versioning coupling).
 - Load-bearing deps: `@savvy-web/silk-effects` (imported by nine `src/` files, externalized in the base ESM entries), `@savvy-web/cli` and `@savvy-web/mcp` (the shim import targets), plus everything on the `savvy.build.ts` keep-list. The non-import invariant still holds for library code: `src/bin/savvy.ts` and `src/bin/savvy-mcp.ts` are the ONE sanctioned place silk imports `@savvy-web/cli` / `@savvy-web/mcp`; nothing else under `src/` may.
+- Load-bearing dependencies (systems#631): the `dependencies` block also lists `@effected/commands`, `@effected/git`, `@effected/workspaces`, and `effect` even though no file under `src/` imports any of them directly — they exist to satisfy `@savvy-web/silk-effects`' `peerDependencies`, and removing one breaks installs at install time, not at any lint pass.
 - The Biome asset lives under top-level `public/`.
+
+## Peer audit (systems#631)
+
+Every `peerDependencies` entry in `package.json` is a tool the consumer runs itself, not a delivery mechanism silk merely carries — so none moved to `dependencies`:
+
+- `@biomejs/biome` — consumer runs this tool itself: yes — the consumer invokes the `biome` binary (directly or via the sanctioned lint scripts) against the asset silk ships at `./biome`.
+- `@changesets/cli` — consumer runs this tool itself: yes — the consumer runs `changeset`/`changeset version` in its own release flow.
+- `@commitlint/cli` — consumer runs this tool itself: yes — invoked from the consumer's own `commit-msg` hook.
+- `@commitlint/config-conventional` — consumer runs this tool itself: yes — loaded by the consumer's own commitlint invocation as a config preset, not executed by silk.
+- `@types/bun` — consumer runs this tool itself: yes — consumed by the consumer's OWN `tsc`/type-checker run over its source, not by anything silk executes.
+- `@types/node` — consumer runs this tool itself: yes — same as `@types/bun`: types feed the consumer's own typecheck.
+- `@vitest/coverage-istanbul` — consumer runs this tool itself: yes — selected as a coverage provider by the consumer's own `vitest run --coverage`.
+- `@vitest/coverage-v8` — consumer runs this tool itself: yes — same as `coverage-istanbul`, the other provider choice.
+- `@vitest/expect` — consumer runs this tool itself: yes — used by the consumer's own test files/assertions, not by silk at build or install time.
+- `husky` — consumer runs this tool itself: yes — the consumer's own `prepare` script invokes it to install git hooks.
+- `lint-staged` — consumer runs this tool itself: yes — invoked from the consumer's own pre-commit hook.
+- `markdownlint-cli2` — consumer runs this tool itself: yes — invoked from the consumer's own lint scripts/hooks against its own markdown.
+- `markdownlint-cli2-formatter-codequality` — consumer runs this tool itself: yes — a formatter plugin the consumer's own `markdownlint-cli2` invocation loads.
+- `tsx` — consumer runs this tool itself: yes — the consumer's own `savvy.build.ts`/script entry points run under it.
+- `turbo` — consumer runs this tool itself: yes — the consumer's own `turbo run ...` invocations.
+- `typescript` — consumer runs this tool itself: yes — the consumer's own `tsc --noEmit` / editor typecheck.
+- `vite` — consumer runs this tool itself: yes — the consumer's own `vitest` config resolves against it as vitest's underlying dev-server dependency.
+- `vitest` — consumer runs this tool itself: yes — the consumer's own `vitest run`/`vitest` invocations.
 
 ## Biome version upgrade
 

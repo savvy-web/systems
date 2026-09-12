@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer, Result, Schema } from "effect";
 
-import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
 import {
 	ChangesetInspectAsMarkdown,
 	ChangesetInspectResult,
@@ -182,13 +181,12 @@ layer(TestLayer)("changesetInspect handler", (it) => {
 	});
 });
 
-describe("changeset_inspect effect->zod bridge", () => {
-	it("converts the result union and parses a branch payload", () => {
-		const zodSchema = effectToZodSchema(ChangesetInspectResult);
-		const parsed = zodSchema.safeParse({
+describe("changeset_inspect served schema", () => {
+	it("the result union accepts a branch payload", () => {
+		const parsed = Schema.decodeUnknownResult(ChangesetInspectResult)({
 			mode: "branch",
 			result: { baseBranch: "main", mergeBaseSha: "x", files: [], packagesAffected: [], unmappedFiles: [] },
 		});
-		expect(parsed.success).toBe(true);
+		expect(Result.isSuccess(parsed)).toBe(true);
 	});
 });

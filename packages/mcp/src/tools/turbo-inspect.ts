@@ -10,6 +10,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { McpToolError, mapEngineError } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 
 /** Cache-diagnosis variant of the `turbo_inspect` result. */
 export const TurboCacheResult = Schema.Struct({
@@ -144,3 +147,38 @@ export const turboInspect = (
 			}
 		}
 	});
+
+/** Wire parameters for `turbo_inspect`. */
+export const TurboInspectParams = Schema.Struct({
+	mode: Schema.Literals(["cache", "graph", "affected"]).annotate({ description: "Which inspection to run." }),
+	task: Schema.optionalKey(
+		Schema.String.annotate({ description: "Task name (defaults to build:dev for cache/graph)." }),
+	),
+	base: Schema.optionalKey(Schema.String.annotate({ description: "Base git ref for affected mode." })),
+	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
+});
+export type TurboInspectParams = typeof TurboInspectParams.Type;
+
+const REMEDIATION = {
+	hint: "turbo could not complete the dry run; check that the task exists in turbo.json and that turbo resolves from the workspace.",
+};
+
+/** The `turbo_inspect` tool value. */
+export const turboInspectTool = Tool.make("turbo_inspect", {
+	description:
+		"Read-only Turborepo inspection. mode=cache diagnoses why a task's cache is hitting/missing (per-package status plus the exact hash contributors: input files, env vars, external-dep hashes, global hash). mode=graph returns the task graph and critical path. mode=affected lists changed packages and their dependents. Never executes tasks (uses --dry).",
+	parameters: TurboInspectParams,
+	success: TurboInspectResult,
+	failure: McpToolError,
+	dependencies: [Turbo.TurboInspector, WorkspaceRoot],
+})
+	.annotate(Tool.Title, "Inspect Turborepo")
+	.annotate(Tool.Readonly, true)
+	.annotate(Tool.Destructive, false)
+	.annotate(Tool.Idempotent, true)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(TurboInspectAsMarkdown));
+
+/** Wire handler: {@link turboInspect} with its error channel mapped onto {@link McpToolError}. */
+export const handleTurboInspect = (fallbackCwd: string, params: TurboInspectParams) =>
+	turboInspect(params, fallbackCwd).pipe(Effect.mapError(mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)));

@@ -5,7 +5,7 @@ import { NodeServices } from "@effect/platform-node";
 import { afterAll, beforeAll, expect, layer } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 
-import type { McpServices } from "../src/context.js";
+import type { McpServices } from "../src/runtime.js";
 import { makeSilkRuntimeLayer } from "../src/runtime.js";
 import { workspaceInfo } from "../src/tools/workspace-info.js";
 

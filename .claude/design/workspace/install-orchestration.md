@@ -104,10 +104,12 @@ Required `pnpm-workspace.yaml` settings:
   `dist/dev` at link time, which is absent before the `prepare` build runs, so a frozen install aborts with `ENOENT`.
   Plain `link:` symlinks (from `publishConfig.directory` + `linkDirectory: true`) tolerate the not-yet-built directory.
 
-Root devDependencies: `@savvy-web/changelog`, `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/silk` are the four
-direct root devDependencies, so they link to `dist/dev`. The `savvy` bin resolves at `dist/dev/pkg/bin/savvy.js`, on
-PATH once `@savvy-web/cli`'s `prepare` has run. `@savvy-web/changelog` MUST stay a root devDependency for the
-changesets-engine resolution described above.
+Root devDependencies: `@savvy-web/changelog` and `@savvy-web/silk` are the two direct root devDependencies, so they
+link to `dist/dev`. `@savvy-web/cli` and `@savvy-web/mcp` were dropped from this list (systems#631): `@savvy-web/silk`
+now owns the `savvy`/`savvy-mcp` bins itself as shims over the front ends' `./main`, so the root no longer needs a
+direct edge to either front end to put those bins on PATH — the `savvy` bin resolves through
+`node_modules/@savvy-web/silk/dist/dev/pkg`'s own `bin` map, on PATH once `@savvy-web/silk`'s `prepare` has run.
+`@savvy-web/changelog` MUST stay a root devDependency for the changesets-engine resolution described above.
 
 ## Transient states that look like breakage
 

@@ -11,7 +11,19 @@ import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { Lint } from "@savvy-web/silk-effects";
-import { Schema, SchemaGetter } from "effect";
+import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import type { Remediation } from "../errors.js";
+import {
+	BiomeFailed,
+	BiomeUnavailable,
+	InvalidArgument,
+	McpToolError,
+	composeRemediatedMessage,
+	invalidArgument,
+	truncateEchoed,
+} from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 
 /** Normalized diagnostic severity. */
 export const BiomeSeverity = Schema.Literals(["error", "warning", "info"]);
@@ -246,6 +258,29 @@ export const resolveContainmentRoot = (
 	return from.topLevel;
 };
 
+/** Remediation for a path or cwd that escapes the containment tree. */
+const CONTAINMENT_REMEDIATION: Remediation = {
+	hint: "Keep cwd and every path inside the server's workspace root, or inside a git worktree of the same repository.",
+};
+
+/** Remediation when no Biome binary can be located. */
+const BIOME_REMEDIATION: Remediation = {
+	hint: "Install @biomejs/biome globally (recommended) or as a devDependency of the workspace.",
+};
+
+/** Remediation when Biome itself fails (not "lint issues found", which is a result). */
+const BIOME_FAILED_REMEDIATION: Remediation = {
+	hint: "Biome did not complete; the message carries its stderr. Fix the configuration or invocation and retry.",
+};
+
+/** Build a {@link BiomeFailed} from a spawn error or a non-lint exit status. */
+const biomeFailed = (raw: string, exitCode?: number): BiomeFailed =>
+	new BiomeFailed({
+		...(exitCode === undefined ? {} : { exitCode }),
+		message: composeRemediatedMessage(raw, BIOME_FAILED_REMEDIATION),
+		remediation: BIOME_FAILED_REMEDIATION,
+	});
+
 /** Arguments for the {@link runBiomeCheck} handler. */
 export interface BiomeCheckArgs {
 	readonly paths?: readonly string[];
@@ -262,8 +297,12 @@ export interface BiomeCheckArgs {
  * runs a fix pass first, then a read-only gitlab pass to report what remains.
  *
  * @remarks Resolves the Biome binary via {@link Lint.Biome.findBiome} (global
- * first, then the project's package manager). Throws if Biome is unavailable or
- * exits with status > 1 (Biome itself failed, vs. status 1 = lint issues found).
+ * first, then the project's package manager). Throws a typed
+ * {@link McpToolError} member — {@link InvalidArgument} for a cwd/path outside
+ * the containment tree, {@link BiomeUnavailable} when no binary is found,
+ * {@link BiomeFailed} when Biome exits with status > 1 (Biome itself failed,
+ * vs. status 1 = lint issues found) — which {@link handleBiomeCheck} lifts
+ * into the Effect error channel unchanged.
  */
 export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): Promise<BiomeCheckResultType> => {
 	const mode = args.mode ?? "check";
@@ -276,14 +315,18 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const cwd = canonicalize(args.cwd ?? fallbackCwd);
 	const containmentRoot = resolveContainmentRoot(root, cwd);
 	if (containmentRoot === null) {
-		throw new Error(`cwd escapes the workspace root: ${args.cwd}`);
+		throw invalidArgument(
+			"cwd",
+			`cwd escapes the workspace root: ${truncateEchoed(args.cwd ?? fallbackCwd)}.`,
+			CONTAINMENT_REMEDIATION,
+		);
 	}
 	const within = (abs: string): boolean => abs === containmentRoot || abs.startsWith(`${containmentRoot}${sep}`);
 	const rawPaths = args.paths && args.paths.length > 0 ? args.paths : ["."];
 	const paths = rawPaths.map((p) => {
 		const lexical = resolve(cwd, p);
 		if (!within(canonicalize(lexical))) {
-			throw new Error(`path escapes the workspace root: ${p}`);
+			throw invalidArgument("paths", `path escapes the workspace root: ${truncateEchoed(p)}.`, CONTAINMENT_REMEDIATION);
 		}
 		return relative(cwd, lexical) || ".";
 	});
@@ -291,7 +334,10 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 
 	const biomeCmd = Lint.Biome.findBiome();
 	if (!biomeCmd) {
-		throw new Error("Biome not found. Install @biomejs/biome globally (recommended) or as a devDependency.");
+		throw new BiomeUnavailable({
+			message: composeRemediatedMessage("Biome not found.", BIOME_REMEDIATION),
+			remediation: BIOME_REMEDIATION,
+		});
 	}
 	// `findBiome()` returns "biome", or a package-manager exec form whose final
 	// token is always the tool name: "pnpm exec biome", "npx --no biome",
@@ -321,9 +367,12 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 			...paths,
 		];
 		const fix = spawnSync(bin, writeArgs, { cwd, encoding: "utf8", maxBuffer, timeout, killSignal });
-		if (fix.error) throw fix.error;
+		if (fix.error) throw biomeFailed(`Biome --write could not run: ${fix.error.message}`);
 		if ((fix.status ?? 0) > 1) {
-			throw new Error(`Biome --write failed (exit ${fix.status}): ${(fix.stderr ?? "").trim() || "unknown error"}`);
+			throw biomeFailed(
+				`Biome --write failed (exit ${fix.status}): ${(fix.stderr ?? "").trim() || "unknown error"}`,
+				fix.status ?? undefined,
+			);
 		}
 		wrote = true;
 	}
@@ -334,9 +383,12 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	// severity is preserved on each diagnostic.
 	const readArgs = [...prefix, mode, "--reporter=gitlab", "--no-errors-on-unmatched", ...paths];
 	const read = spawnSync(bin, readArgs, { cwd, encoding: "utf8", maxBuffer, timeout, killSignal });
-	if (read.error) throw read.error;
+	if (read.error) throw biomeFailed(`Biome could not run: ${read.error.message}`);
 	if ((read.status ?? 0) > 1) {
-		throw new Error(`Biome failed (exit ${read.status}): ${(read.stderr ?? "").trim() || "unknown error"}`);
+		throw biomeFailed(
+			`Biome failed (exit ${read.status}): ${(read.stderr ?? "").trim() || "unknown error"}`,
+			read.status ?? undefined,
+		);
 	}
 
 	return buildBiomeResult({
@@ -345,3 +397,68 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 		...(args.strict !== undefined ? { strict: args.strict } : {}),
 	});
 };
+
+/** Wire parameters for `biome_check`. */
+export const BiomeCheckParams = Schema.Struct({
+	paths: Schema.optionalKey(
+		Schema.Array(Schema.String).annotate({ description: "Paths to check. Defaults to the whole workspace." }),
+	),
+	mode: Schema.optionalKey(
+		Schema.Literals(["check", "lint"]).annotate({
+			description: "check = lint+format+imports (default); lint = lint only.",
+		}),
+	),
+	write: Schema.optionalKey(Schema.Boolean.annotate({ description: "Apply safe fixes (--write)." })),
+	unsafe: Schema.optionalKey(
+		Schema.Boolean.annotate({ description: "Apply unsafe fixes (--write --unsafe); implies write." }),
+	),
+	strict: Schema.optionalKey(
+		Schema.Boolean.annotate({
+			description: "Report project warnings as errors (marked with originalSeverity). Default: honor project config.",
+		}),
+	),
+	cwd: Schema.optionalKey(
+		Schema.String.annotate({
+			description:
+				"Directory to run from. May be the server's workspace root, a directory inside it, or a git worktree of the SAME repository — a worktree contains the run to that worktree instead of the main checkout. Anything else is rejected.",
+		}),
+	),
+});
+export type BiomeCheckParams = typeof BiomeCheckParams.Type;
+
+/**
+ * The `biome_check` tool value. Mutating when `write`/`unsafe` is set, so it is
+ * annotated non-read-only and non-idempotent; `dependencies` is empty because
+ * the handler shells out directly and yields no service.
+ */
+export const biomeCheckTool = Tool.make("biome_check", {
+	description:
+		"Run Biome over a path and get structured diagnostics back. mode=check (default; lint + format + organize-imports) or mode=lint. Set write=true to apply safe fixes (--write), unsafe=true for unsafe fixes (--write --unsafe). Severities match the project's Biome config (what `biome check` reports); set strict=true to surface project warnings as errors, each marked with its originalSeverity. Prefer this over shelling out to biome; the LSP already covers files you've edited. Returns markdown in content[] and a typed object in structuredContent. NOTE: with write/unsafe this tool MUTATES files (git-reversible).",
+	parameters: BiomeCheckParams,
+	success: BiomeCheckResult,
+	failure: McpToolError,
+})
+	.annotate(Tool.Title, "Biome check")
+	.annotate(Tool.Readonly, false)
+	.annotate(Tool.Destructive, false)
+	.annotate(Tool.Idempotent, false)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(BiomeCheckAsMarkdown));
+
+const isMcpToolError = (u: unknown): u is McpToolError =>
+	u instanceof InvalidArgument || u instanceof BiomeUnavailable || u instanceof BiomeFailed;
+
+/**
+ * Wire handler: {@link runBiomeCheck} lifted into Effect. The typed members it
+ * throws pass through unchanged; anything else (a defect in the parser, say)
+ * is reported as {@link BiomeFailed} so the error channel stays closed over
+ * {@link McpToolError}.
+ */
+export const handleBiomeCheck = (fallbackCwd: string, params: BiomeCheckParams) =>
+	Effect.tryPromise({
+		try: () => runBiomeCheck(params, fallbackCwd),
+		catch: (cause) =>
+			isMcpToolError(cause)
+				? cause
+				: biomeFailed(`Biome check failed: ${cause instanceof Error ? cause.message : String(cause)}`),
+	});

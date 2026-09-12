@@ -10,6 +10,9 @@ import { WorkspaceRoot } from "@effected/workspaces";
 import type { AnalyzedWorkspace, WorkspaceAnalysis, WorkspaceAnalysisError } from "@savvy-web/silk-effects";
 import { SilkWorkspaceAnalyzer } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { McpToolError, mapEngineError } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 
 /** A flattened, non-recursive summary of one analyzed workspace. */
 export const WorkspaceSummary = Schema.Struct({
@@ -120,3 +123,41 @@ export const workspaceInfo = (
 		const analysis = yield* analyzer.analyze(root);
 		return toWorkspaceInfoResult(analysis);
 	});
+
+/** Wire parameters for `workspace_info`. */
+export const WorkspaceInfoParams = Schema.Struct({
+	cwd: Schema.optionalKey(
+		Schema.String.annotate({ description: "Workspace root to analyze. Defaults to the server's project dir." }),
+	),
+});
+export type WorkspaceInfoParams = typeof WorkspaceInfoParams.Type;
+
+const REMEDIATION = {
+	hint: "The workspace could not be analyzed; check the manifest and lockfile at the root named in the message.",
+};
+
+/**
+ * The `workspace_info` tool value. `dependencies` names the two services the
+ * handler yields so `Tool.HandlerServices` carries them (without it the
+ * handler record fails against `Toolkit.HandlersFrom`).
+ */
+export const workspaceInfoTool = Tool.make("workspace_info", {
+	description:
+		"Use when you need the Silk workspace layout: runtime, package manager, and a per-workspace summary (publishability, versioning, tag/release state). Prefer this over running shell commands to inspect the workspace. Returns markdown in content[] and a typed object in structuredContent.",
+	parameters: WorkspaceInfoParams,
+	success: WorkspaceInfoResult,
+	failure: McpToolError,
+	dependencies: [SilkWorkspaceAnalyzer, WorkspaceRoot],
+})
+	.annotate(Tool.Title, "Workspace info")
+	.annotate(Tool.Readonly, true)
+	.annotate(Tool.Destructive, false)
+	.annotate(Tool.Idempotent, true)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(WorkspaceInfoAsMarkdown));
+
+/** Wire handler: the existing {@link workspaceInfo} program with its error channel mapped onto {@link McpToolError}. */
+export const handleWorkspaceInfo = (fallbackCwd: string, params: WorkspaceInfoParams) => {
+	const cwd = params.cwd ?? fallbackCwd;
+	return workspaceInfo(cwd).pipe(Effect.mapError(mapEngineError(cwd, REMEDIATION)));
+};

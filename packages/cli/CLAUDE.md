@@ -17,6 +17,7 @@
 - Changeset inspection lives in the MCP tools, not the CLI.
 - `savvy lint fmt <name>` subcommands own argument parsing and file I/O ONLY. The formatting itself lives in silk-effects (e.g. `Lint.PnpmWorkspace.formatContent`) so the CLI and the lint-staged handler cannot drift; never inline a second copy of a format step here.
 - `savvy lint`/`savvy check` sync each consumer `biome.json(c)` `$schema` URL to the hand-pinned `BIOME_VERSION` const in `src/commands/lint/biome-version.ts`. On a Biome upgrade, bump it alongside `@savvy-web/silk`'s peer range and Biome asset `$schema` (see that package's CLAUDE.md).
+- Load-bearing dependencies (systems#631): the `dependencies` block lists `@effected/commands`, `@effected/git`, `@effected/workspaces`, and `effect` because they satisfy `@savvy-web/silk-effects`' `peerDependencies` — that need holds independently of whether `src/` also imports each of them directly (here, all four are), so none of the four may be dropped as "unused" from a lint pass alone: removing one breaks installs at install time, not at any lint pass.
 
 ## Design
 

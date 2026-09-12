@@ -30,7 +30,6 @@
 	"scripts": {
 		"build:dev": "node savvy.build.ts --target dev",
 		"build:prod": "node savvy.build.ts --target prod",
-		"inspect": "exec mcp-inspector node ./dist/dev/pkg/bin/savvy-mcp.js",
 		"prepare": "turbo run build:dev",
 		"types:check": "tsc --noEmit"
 	},
@@ -39,15 +38,12 @@
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
-		"@modelcontextprotocol/sdk": "^1.30.0",
 		"@savvy-web/silk-effects": "workspace:*",
-		"effect": "catalog:effect",
-		"zod": "^4.5.4"
+		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
 		"@effected/memfs": "catalog:effected",
-		"@modelcontextprotocol/inspector": "^2.6.0",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
 		"tsx": "catalog:build",

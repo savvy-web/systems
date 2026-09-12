@@ -11,6 +11,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { McpToolError, mapEngineError } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 
 /** Branch-analysis variant. */
 export const ChangesetBranchResult = Schema.Struct({
@@ -186,3 +189,39 @@ export const changesetInspect = (
 			}
 		}
 	});
+
+/** Wire parameters for `changeset_inspect`. */
+export const ChangesetInspectParams = Schema.Struct({
+	mode: Schema.Literals(["branch", "config", "classify"]).annotate({ description: "Which inspection to run." }),
+	base: Schema.optionalKey(Schema.String.annotate({ description: "Override the base branch (branch mode only)." })),
+	paths: Schema.optionalKey(
+		Schema.Array(Schema.String).annotate({ description: "Paths to classify (classify mode only)." }),
+	),
+	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
+});
+export type ChangesetInspectParams = typeof ChangesetInspectParams.Type;
+
+const REMEDIATION = {
+	hint: "Check .changeset/config.json and that the base branch exists locally (fetch it if the merge base cannot be computed).",
+	suggestedTool: "changeset_inspect",
+};
+
+/** The `changeset_inspect` tool value. */
+export const changesetInspectTool = Tool.make("changeset_inspect", {
+	description:
+		"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about; an unmapped path may carry a machine-readable unmappedHint reason — e.g. a deleted versionFiles/additionalScopes target or a known template mirror — meaning it is probably already accounted for). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). mode=classify maps arbitrary repo-relative paths to their owning package. Prefer this over shelling out to the savvy CLI.",
+	parameters: ChangesetInspectParams,
+	success: ChangesetInspectResult,
+	failure: McpToolError,
+	dependencies: [Changesets.BranchAnalyzer, Changesets.ConfigInspector, WorkspaceRoot],
+})
+	.annotate(Tool.Title, "Inspect changesets")
+	.annotate(Tool.Readonly, true)
+	.annotate(Tool.Destructive, false)
+	.annotate(Tool.Idempotent, true)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetInspectAsMarkdown));
+
+/** Wire handler: {@link changesetInspect} with its error channel mapped onto {@link McpToolError}. */
+export const handleChangesetInspect = (fallbackCwd: string, params: ChangesetInspectParams) =>
+	changesetInspect(params, fallbackCwd).pipe(Effect.mapError(mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)));

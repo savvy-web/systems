@@ -10,6 +10,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { McpToolError, mapEngineError } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 
 /** The `changeset_preview` result — the silk-effects preview shape. */
 export const ChangesetPreviewResult = Changesets.ChangesetPreviewSchema.annotate({
@@ -71,3 +74,34 @@ export const changesetPreview = (
 		const planner = yield* Changesets.ReleasePlanner;
 		return yield* planner.preview(root);
 	});
+
+/** Wire parameters for `changeset_preview`. */
+export const ChangesetPreviewParams = Schema.Struct({
+	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
+});
+export type ChangesetPreviewParams = typeof ChangesetPreviewParams.Type;
+
+const REMEDIATION = {
+	hint: "The changesets engine could not render the release; validate the pending changesets first.",
+	suggestedTool: "changeset_validate",
+};
+
+/** The `changeset_preview` tool value. */
+export const changesetPreviewTool = Tool.make("changeset_preview", {
+	description:
+		"Read-only preview of the next release. Runs the genuine changesets engine over the pending changesets and returns each package's version bump (old -> new) plus the rendered CHANGELOG block (dependency tables included), exactly as it would ship. Does not modify the repo. Prefer this over hand-merging changeset files.",
+	parameters: ChangesetPreviewParams,
+	success: ChangesetPreviewResult,
+	failure: McpToolError,
+	dependencies: [Changesets.ReleasePlanner, WorkspaceRoot],
+})
+	.annotate(Tool.Title, "Preview the next release")
+	.annotate(Tool.Readonly, true)
+	.annotate(Tool.Destructive, false)
+	.annotate(Tool.Idempotent, true)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetPreviewAsMarkdown));
+
+/** Wire handler: {@link changesetPreview} with its error channel mapped onto {@link McpToolError}. */
+export const handleChangesetPreview = (fallbackCwd: string, params: ChangesetPreviewParams) =>
+	changesetPreview(params, fallbackCwd).pipe(Effect.mapError(mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)));

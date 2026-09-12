@@ -45,8 +45,6 @@
 	},
 	"devDependencies": {
 		"@savvy-web/changelog": "workspace:*",
-		"@savvy-web/cli": "workspace:*",
-		"@savvy-web/mcp": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
 		"@vitest-agent/plugin": "^3.0.0",
 		"typescript": "catalog:silk"

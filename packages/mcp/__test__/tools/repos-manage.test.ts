@@ -1,10 +1,14 @@
 import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer, Result, Schema } from "effect";
 
-import { effectToZodSchema } from "../../src/schema/effect-to-zod.js";
-import { ReposManageAsMarkdown, ReposManageResult, reposManage } from "../../src/tools/repos-manage.js";
+import {
+	ReposManageAsMarkdown,
+	ReposManageResult,
+	handleReposManage,
+	reposManage,
+} from "../../src/tools/repos-manage.js";
 
 const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot,
@@ -354,88 +358,109 @@ layer(TestLayer)("reposManage handler — pin markdown transcript", (it) => {
 	);
 });
 
-describe("repos_manage effect->zod bridge", () => {
-	it("converts the result union and parses a sync payload", () => {
-		const zodSchema = effectToZodSchema(ReposManageResult);
-		const parsed = zodSchema.safeParse({
-			action: "sync",
-			result: {
-				initialized: ["foo"],
-				sparseApplied: [],
-				upToDate: [],
-				clearedLocks: [],
-				urlSynced: [],
-				registered: [],
-			},
-		});
-		expect(parsed.success).toBe(true);
+describe("repos_manage served schema", () => {
+	const accepts = (payload: unknown) => Result.isSuccess(Schema.decodeUnknownResult(ReposManageResult)(payload));
+
+	it("the result union accepts a sync payload", () => {
+		expect(
+			accepts({
+				action: "sync",
+				result: {
+					initialized: ["foo"],
+					sparseApplied: [],
+					upToDate: [],
+					clearedLocks: [],
+					urlSynced: [],
+					registered: [],
+					boundaryMarked: [],
+				},
+			}),
+		).toBe(true);
 	});
 
-	it("converts the result union and parses a pin payload", () => {
-		const zodSchema = effectToZodSchema(ReposManageResult);
-		const parsed = zodSchema.safeParse({
-			action: "pin",
-			result: {
-				name: "foo",
-				ref: "main",
-				oldCommit: "abc111",
-				newCommit: "def222",
-				commitMessage: "chore(repos): pin foo to main",
-				staleNoteIds: [],
-			},
-		});
-		expect(parsed.success).toBe(true);
+	it("the result union accepts a pin payload", () => {
+		expect(
+			accepts({
+				action: "pin",
+				result: {
+					name: "foo",
+					ref: "main",
+					oldCommit: "abc111",
+					newCommit: "def222",
+					commitMessage: "chore(repos): pin foo to main",
+					staleNoteIds: [],
+				},
+			}),
+		).toBe(true);
 	});
 
-	it("converts the result union and parses a remove payload", () => {
-		const zodSchema = effectToZodSchema(ReposManageResult);
-		const parsed = zodSchema.safeParse({
-			action: "remove",
-			result: {
-				name: "foo",
-				path: ".repos/foo",
-				commitMessage: "chore(repos): remove foo",
-				removedNotes: [{ id: "n-aaaa", date: "2026-01-01", ref: "1.0.0", note: "written against 1.0.0" }],
-			},
-		});
-		expect(parsed.success).toBe(true);
+	it("the result union accepts a remove payload", () => {
+		expect(
+			accepts({
+				action: "remove",
+				result: {
+					name: "foo",
+					path: ".repos/foo",
+					commitMessage: "chore(repos): remove foo",
+					removedNotes: [{ id: "n-aaaa", date: "2026-01-01", ref: "1.0.0", note: "written against 1.0.0" }],
+					removedEntry: { url: "https://example.com/foo.git", ref: "1.0.0", purpose: "vendor lib" },
+				},
+			}),
+		).toBe(true);
 	});
 
-	it("converts the result union and parses a rename payload", () => {
-		const zodSchema = effectToZodSchema(ReposManageResult);
-		const parsed = zodSchema.safeParse({
-			action: "rename",
-			result: {
-				oldName: "foo",
-				newName: "bar",
-				path: ".repos/bar",
-				commitMessage: "chore(repos): rename foo to bar",
-			},
-		});
-		expect(parsed.success).toBe(true);
+	it("the result union accepts a rename payload", () => {
+		expect(
+			accepts({
+				action: "rename",
+				result: {
+					oldName: "foo",
+					newName: "bar",
+					path: ".repos/bar",
+					commitMessage: "chore(repos): rename foo to bar",
+				},
+			}),
+		).toBe(true);
 	});
 
-	it("converts the result union and parses a restore payload", () => {
-		const zodSchema = effectToZodSchema(ReposManageResult);
-		const parsed = zodSchema.safeParse({
-			action: "restore",
-			result: {
-				restored: [{ name: "foo", commit: "abc111" }],
-				skippedClean: ["bar"],
-			},
-		});
-		expect(parsed.success).toBe(true);
+	it("the result union accepts a restore payload", () => {
+		expect(
+			accepts({
+				action: "restore",
+				result: {
+					restored: [{ name: "foo", commit: "abc111" }],
+					skippedClean: ["bar"],
+					stillDirty: [],
+				},
+			}),
+		).toBe(true);
 	});
 
-	it("converts the result union and parses a deregister payload", () => {
-		const zodSchema = effectToZodSchema(ReposManageResult);
-		const parsed = zodSchema.safeParse({
-			action: "deregister",
-			result: {
-				section: ".repos/old",
-				removedKeys: ["submodule..repos/old.url"],
-			},
-		});
-		expect(parsed.success).toBe(true);
+	it("the result union accepts a deregister payload", () => {
+		expect(
+			accepts({
+				action: "deregister",
+				result: {
+					section: ".repos/old",
+					removedKeys: ["submodule..repos/old.url"],
+				},
+			}),
+		).toBe(true);
 	});
+});
+
+describe("handleReposManage argument-decode failures", () => {
+	it.effect("renders the decode failure as InvalidArgument with the echoed text bounded", () =>
+		Effect.gen(function* () {
+			// `pin` without `ref` fails the per-action decode; the decode message
+			// echoes the offending value, so a 50k-character name must not reach
+			// the wire whole.
+			const name = "n".repeat(50_000);
+			const error = yield* Effect.flip(handleReposManage("/repo", { action: "pin", name }));
+			expect(error._tag).toBe("InvalidArgument");
+			expect(error.message).toContain("repos_manage pin:");
+			expect(error.message.length).toBeLessThan(2500);
+			expect(error.message).toContain("Pass the fields the chosen action needs");
+		}).pipe(Effect.provide(Layer.mergeAll(WorkspaceRootTest, ReposManagerTest))),
+	);
 });

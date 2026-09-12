@@ -12,6 +12,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { Tool } from "effect/unstable/ai";
+import { McpToolError, mapEngineError } from "../errors.js";
+import { SilkMarkdown } from "../markdown.js";
 
 /**
  * An untouched prose-only changeset releasing a package in scope for the run
@@ -159,3 +162,53 @@ export const changesetDepsRegen = (
 			dryRun: false,
 		} as ChangesetDepsRegenResultType;
 	});
+
+/** Wire parameters for `changeset_deps_regen`. */
+export const ChangesetDepsRegenParams = Schema.Struct({
+	base: Schema.optionalKey(
+		Schema.String.annotate({ description: "Override the base branch used to compute the merge-base." }),
+	),
+	package: Schema.optionalKey(
+		Schema.String.annotate({ description: "Restrict regeneration to a single workspace package." }),
+	),
+	packages: Schema.optionalKey(
+		Schema.Array(Schema.String).annotate({
+			description: "Restrict regeneration to these workspace packages (unioned with package).",
+		}),
+	),
+	exclude: Schema.optionalKey(
+		Schema.Array(Schema.String).annotate({
+			description: "Skip these packages entirely: nothing written, existing changesets untouched.",
+		}),
+	),
+	dryRun: Schema.optionalKey(
+		Schema.Boolean.annotate({ description: "Compute the plan without writing or deleting any file." }),
+	),
+	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
+});
+export type ChangesetDepsRegenParams = typeof ChangesetDepsRegenParams.Type;
+
+const REMEDIATION = {
+	hint: "The dependency changesets could not be regenerated; preview the plan with dryRun=true, and check that the base branch exists locally and that every named package is a workspace member.",
+	suggestedTool: "changeset_deps_detect",
+};
+
+/** The `changeset_deps_regen` tool value. Mutating: not read-only, not idempotent. */
+export const changesetDepsRegenTool = Tool.make("changeset_deps_regen", {
+	description:
+		"Regenerate pure-dependency changesets: delete stale single-package Dependencies-only changesets and write fresh single-package, patch-bump changesets from the cumulative dependency diff (catalog:/workspace: resolved; devDependencies dropped). Mixed changesets (Dependencies plus other content) are left untouched, and the result's coexisting list accounts for untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Set dryRun=true to preview the plan without touching the filesystem. NOTE: without dryRun this tool MUTATES .changeset/*.md (git-reversible). Prefer this over shelling out to savvy changeset deps regen.",
+	parameters: ChangesetDepsRegenParams,
+	success: ChangesetDepsRegenResult,
+	failure: McpToolError,
+	dependencies: [WorkspaceRoot, Changesets.DepsRegen],
+})
+	.annotate(Tool.Title, "Regenerate dependency changesets")
+	.annotate(Tool.Readonly, false)
+	.annotate(Tool.Destructive, true)
+	.annotate(Tool.Idempotent, false)
+	.annotate(Tool.OpenWorld, false)
+	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetDepsRegenAsMarkdown));
+
+/** Wire handler: {@link changesetDepsRegen} with its error channel mapped onto {@link McpToolError}. */
+export const handleChangesetDepsRegen = (fallbackCwd: string, params: ChangesetDepsRegenParams) =>
+	changesetDepsRegen(params, fallbackCwd).pipe(Effect.mapError(mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)));
