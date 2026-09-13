@@ -1,5 +1,17 @@
 # @savvy-web/tsdown-plugins
 
+## 2.7.5
+
+### Bug Fixes
+
+- A per-override `bundle` list is now forwarded as `alwaysBundle` into the dts pass and the prod-only declarations pass, matching the JS pass. The dts pass re-emits the dual-format `.cjs` chunk, so a force-bundled declared dependency was being re-externalized there; it now stays inlined in every emitted format. [#638][#638]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#638]: https://github.com/savvy-web/systems/pull/638
+
 ## 2.7.4
 
 ### Dependencies
