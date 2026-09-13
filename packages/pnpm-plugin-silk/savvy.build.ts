@@ -334,12 +334,10 @@ await build({
 			},
 			publicHoistPattern: {
 				excludeByRepo: {
-					okfit: ["@okfit/cli", "@okfit/mcp"],
 					// @savvy-web/cli and @savvy-web/mcp are gone from `value` below (silk
 					// now owns the `savvy`/`savvy-mcp` bins itself as shims, systems#631),
 					// so there is nothing left to exclude for either of them here.
 					"savvy-web-systems": ["@savvy-web/changelog"],
-					"vitest-agent": ["@vitest-agent/cli", "@vitest-agent/mcp"],
 				},
 				value: [
 					"@changesets/cli",
