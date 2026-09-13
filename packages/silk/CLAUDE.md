@@ -38,6 +38,10 @@ Config keys in the shared `public/biome/silk.json` asset are a separate concern:
 
 ## Design
 
-Load for the shim contract, export map, peerDep wiring, and the type-portability invariant:
-→ `@../../.claude/design/silk/architecture.md`
-Load when adding a shim entry, changing the export map, or debugging consumer typecheck (TS2883/TS2320).
+Load for the carrier contract, peerDep wiring, and the type-portability invariant:
+→ `@../../okf/modules/silk.md`
+Load when adding a shim entry or debugging consumer typecheck (TS2883/TS2320).
+
+The export map as a consumer-side interface — the subpath exports a config file imports from `@savvy-web/silk`:
+→ `@../../okf/interfaces/silk-shim-exports.md`
+Load when changing the export map — what a consumer config may depend on staying stable.

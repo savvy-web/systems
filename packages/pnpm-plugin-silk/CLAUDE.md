@@ -14,6 +14,10 @@
 
 ## Design
 
-Load for the config-dependency model, the `rolldown-pnpm-config` plugin contract, catalog/strategy semantics, and the self-consumption export flow:
-→ `@../../.claude/design/pnpm-plugin-silk/architecture.md`
-Load when editing the distributed config, the catalogs, or the export/self-consumption pipeline.
+Load for the config-dependency model, the `rolldown-pnpm-config` plugin contract, and the self-consumption export flow:
+→ `@../../okf/modules/pnpm-plugin-silk.md`
+Load when editing the distributed config or the export/self-consumption pipeline.
+
+The catalog names a consumer manifest may reference, as a consumer-side interface:
+→ `@../../okf/interfaces/silk-catalogs.md`
+Load when adding, renaming, or removing a catalog, or changing what the plugin hoists.

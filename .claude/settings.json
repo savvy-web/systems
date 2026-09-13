@@ -3,7 +3,6 @@
 	"enableAllProjectMcpServers": true,
 	"enabledPlugins": {
 		"api-docs@spencerbeggs": true,
-		"design-docs@spencerbeggs": true,
 		"effected@spencerbeggs": true,
 		"okfit@spencerbeggs": true,
 		"plugin-bot@spencerbeggs": true,
@@ -12,7 +11,7 @@
 		"vitest-agent@spencerbeggs": true
 	},
 	"permissions": {
-		"allow": ["Edit(./**)", "Edit(.claude/design/**)", "Edit(.claude/plans/**)"]
+		"allow": ["Edit(./**)", "Edit(okf/**)", "Edit(.claude/plans/**)"]
 	},
 	"plansDirectory": ".claude/plans"
 }

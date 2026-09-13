@@ -1,0 +1,23 @@
+#:schema https://raw.githubusercontent.com/spencerbeggs/okfit/main/schemas/config/okfit-1.0.0.json
+
+[bundle]
+path = "okf"
+profile = "software-project"
+
+[actors]
+agent = "okfit/claude-code"
+humans = ["human:spencer"]
+
+[tags.tooling]
+description = "Concerns the agent- and developer-facing tooling: the Claude Code plugin, MCP tools, the savvy CLI, and their contracts."
+
+[tags.build]
+description = "Concerns the build subsystem: the bundler, tsdown-plugins, the builders, and the artifacts they emit."
+
+[tags.ci]
+description = "Concerns GitHub Actions workflows, the release pipeline, and what runs on push or merge."
+
+# Migrated Decisions are `status: draft` and unverified by design; the human
+# verifies them with `okfit verify`. Restore this to "error" once they are.
+[lint]
+require_verified_unmet = "warn"

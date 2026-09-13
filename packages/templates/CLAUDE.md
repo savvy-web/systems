@@ -12,5 +12,5 @@
 ## Design
 
 Load for the template inventory, the pure-function content-generation approach, and design decisions:
-→ `@../../.claude/design/templates/architecture.md`
+→ `@../../okf/modules/templates.md`
 Load when adding a template, changing the `TemplateEntry` abstraction, or working on the workspace compositor.

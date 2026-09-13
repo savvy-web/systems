@@ -13,5 +13,5 @@
 ## Design
 
 Load for the build posture, distribution/coupling map, and rationale:
-→ `@../../.claude/design/changelog/architecture.md`
+→ `@../../okf/modules/changelog.md`
 Load when changing the build config, the distribution wiring, or the default-export contract.

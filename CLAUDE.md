@@ -4,8 +4,9 @@ Coordination hub for the Silk Suite open-source ecosystem.
 
 ## Packages
 
-Each package has its own `CLAUDE.md` (auto-loaded when you work in its subtree) and a design doc under `.claude/design/<pkg>/`. App packages form a strict layered graph (L4 silk → L3 cli/mcp/changelog → L2 silk-effects → L1 silk-core), asserted by `@e2e/workspace` against its `layers.json`:
-→ `@./.claude/design/workspace/package-layering.md`
+Each package has its own `CLAUDE.md` (auto-loaded when you work in its subtree) and its own Module concept at `okf/modules/<pkg>.md`. App packages form a strict layered graph (L4 silk → L3 cli/mcp/changelog → L2 silk-effects → L1 silk-core), asserted by `@e2e/workspace` against its `layers.json`:
+→ `@./okf/conventions/package-layering.md`
+→ `@./okf/interfaces/layers-json.md`
 Load when adding a `workspace:*` edge between packages or moving code across a layer.
 
 - **silk-core** (`@savvy-web/silk-core`) — L1 domain core: platform-free schemas, tagged errors, the `PrBody` contract. See `packages/silk-core/CLAUDE.md`.
@@ -30,10 +31,12 @@ Also in this repo: the `plugins/silk` Claude Code plugin (the repo's only plugin
 - **Runtime:** Node.js 24.11.0+
 - **Package Manager:** pnpm 11.22.0 with `@savvy-web/pnpm-plugin-silk` config dependency
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all twelve packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other ten via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
-- **Effect:** the whole repo is on Effect v4 (`catalog:effect` / `catalog:effect:peers`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency, which as of `0.6.0` publishes four: `effect`/`effect:peers` and `effected`/`effected:peers`. There is no `effect3` catalog — it was removed upstream and no manifest here resolves against it. Bumping this config dependency has a trap: see `@./.claude/design/silk-effects/kit-peer-dependencies.md` and savvy-web/systems#536. `effect` core source is vendored at `.repos/effect` (pinned to the catalog tag) — the authority for v4 APIs — from `Effect-TS/effect` itself, NOT the archived `effect-smol` repo; `.repos/config.json` is the live record of url/ref/sparse paths. The `@effected/*` kit packages the suite consumes come from the npm registry (re-derive the list from the manifests, never from memory)
+- **Effect:** the whole repo is on Effect v4 (`catalog:effect` / `catalog:effect:peers`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency, which as of `0.6.0` publishes four: `effect`/`effect:peers` and `effected`/`effected:peers`. There is no `effect3` catalog — it was removed upstream and no manifest here resolves against it. Bumping this config dependency has a trap: see `@./okf/decisions/kit-effect-peers-via-catalog.md` and savvy-web/systems#536. `effect` core source is vendored at `.repos/effect` (pinned to the catalog tag) — the authority for v4 APIs — from `Effect-TS/effect` itself, NOT the archived `effect-smol` repo; `.repos/config.json` is the live record of url/ref/sparse paths. The `@effected/*` kit packages the suite consumes come from the npm registry (re-derive the list from the manifests, never from memory)
 - **Linting:** Biome, markdownlint
 - **Testing:** Vitest via `@vitest-agent/plugin`; a test that runs an Effect takes `describe`/`it`/`expect` from `@effect/vitest` (`catalog:effect`), one with no Effect surface stays on plain `vitest`, and `vi` always comes from `"vitest"` (hoisting). A test needing a `FileSystem` builds an `@effected/memfs` volume, not a hand-rolled stub. Built-artifact e2e harness in `e2e/*`; the silk plugin's hook shell suite (bats + shellcheck) under `plugins/silk/tests`, run by `pnpm test:hooks`
 - **Commits:** Conventional commits with DCO signoff via `@savvy-web/commitlint`. Bodies stay short (the repo squash-merges, so a long body is discarded) — use `/silk:commit-create`. A PR body is markdown, NOT held to the commit contract: only `plan-leakage`/`closes-trailer` gate it, so headers and fences are fine — use `/silk:pr-body`.
+→ `@./okf/conventions/lint-staged-exec-bit.md`
+Load before flagging a 755→644 mode change on a .sh file.
 - **Releases:** `@savvy-web/changesets`
 
 ## Key Commands
@@ -60,7 +63,8 @@ DO NOT delete these scripts. Agents repeatedly remove them as redundant, reasoni
 Do NOT add `injectWorkspacePackages` or `syncInjectedDepsAfterScripts` to `pnpm-workspace.yaml` — injection hard-links `dist/dev` before `prepare` has built it, so a frozen install aborts with `ENOENT`. A `dist/dev` or `node_modules/@savvy-web/*` link missing mid-test-run is the vitest `globalSetup` rebuilding — transient; let the run finish, then re-check.
 
 **Full wiring — package-scripts contract, workspace settings, root devDependencies, the `savvy` bin path:**
-→ `@./.claude/design/workspace/install-orchestration.md`
+→ `@./okf/decisions/per-package-prepare-builds.md` — why the rule exists, the alternatives rejected.
+→ `@./okf/conventions/workspace-prepare-scripts.md` — the ongoing rule to follow.
 Load when editing any `package.json` scripts or devDependencies, `pnpm-workspace.yaml`, or debugging a `Cannot find package '@savvy-web/*'` error.
 
 ## Ecosystem Context
@@ -68,19 +72,30 @@ Load when editing any `package.json` scripts or devDependencies, `pnpm-workspace
 This repo is the hub of the Silk Suite ecosystem: 33 repositories in 7 layers (Foundation Libraries → Package Management → Build Systems → Developer Experience → CI/CD Pipeline → AI/Agent Tooling → Documentation & Templates).
 
 - `@savvy-web/pnpm-plugin-silk` provides the version catalogs every repo consumes
-- The GitHub Actions consume `@effected/github-actions` (and the kit) directly; savvy-specific action logic routes through `@savvy-web/silk-effects`. `@savvy-web/github-action-effects` is DELETED (archived under `.claude/design/_archive/`) — any reference to it is stale
+- The GitHub Actions consume `@effected/github-actions` (and the kit) directly; savvy-specific action logic routes through `@savvy-web/silk-effects`. `@savvy-web/github-action-effects` is DELETED — any reference to it is stale
 - `.github-private` houses org-level reusable workflows
 
 ## Conventions
 
 - Source `package.json` `"private": true` is transformed by builders based on `publishConfig.access`.
 - Catalogs are purpose-scoped: `catalog:build`, `catalog:docs`, `catalog:lint`, `catalog:silk`, `catalog:test`, each with a `<name>:peers` companion for peer ranges (the camelCase `<name>Peers` spelling is GONE). `effect` and `@effect/*` come from `catalog:effect`/`catalog:effect:peers`, supplied by `@effected/pnpm-plugin-effect`.
+→ `@./okf/conventions/purpose-scoped-catalogs.md`
+Load when adding a dependency or deciding which catalog it belongs to.
 - Verify any Effect API against the vendored `.repos/effect` source or the installed release, never v3 memory. Vendored WORKTREES are OS-level read-only (`Repos.ReposLockdown`) and local git config declares them off-limits (`submodule.<path>.update = none`); the submodule gitdir stays writable on purpose so ordinary git and GUI clients keep working. An `EACCES` there means route the change through `savvy repos` / the `repos_manage` MCP tool — never `chmod` the tree back by hand. A `git checkout` inside a vendored tree is NOT blocked, so drift is detected, not prevented: `savvy repos status --drift` reports it, `savvy repos restore` repairs it.
 - All Effect code uses class-based `Context.Service` services (each exporting a companion `*Shape` interface), `Schema.Class`/`Schema.TaggedClass`, `Data.TaggedError`.
-- README.md is for external users; `.claude/design/` for architecture docs.
+→ `@./okf/conventions/effect-v4-code-style.md`
+Load before writing or reviewing any Effect v4 service, schema, or error class.
+- README.md is for external users; okf/ is the knowledge bundle.
 - The non-import invariant: `@savvy-web/cli`, `@savvy-web/silk`, and `@savvy-web/mcp` must NOT import each other — cli and mcp are L3 peers depending only on `@savvy-web/silk-effects` in-repo. ONE sanctioned exception: silk's `src/bin/savvy.ts` and `src/bin/savvy-mcp.ts` (the carrier shims) import `@savvy-web/cli/main` and `@savvy-web/mcp/main`; nothing else under silk's `src/` may.
+→ `@./okf/decisions/carrier-pattern-package-graph.md`
+Load when touching the cli/silk/mcp import boundary or the carrier-shim exception.
 - All packages version INDEPENDENTLY — `.changeset/config.json` has no `fixed` or `linked` arrays. silk/cli/mcp/changelog are NOT a fixed group, but silk stays exactly pinned to the other three automatically: silk declares them — and `@savvy-web/silk-effects`, a real runtime dependency (nine `src/` files import it) — as source `dependencies` (`workspace:*`), published as EXACT-pinned regular `dependencies`, never promoted to peers (peer publishing made pnpm `autoInstallPeers` propagate their Effect graph into consumers at wrong versions). The bins reach consumers through silk's own `bin` map, not hoisting: `@savvy-web/pnpm-plugin-silk` no longer hoists cli/mcp, only `@savvy-web/changelog`, which the changesets engine resolves BY ID from the consumer root. Changesets reads `workspace:*` as the exact current version, so a cli/mcp/changelog release auto-PATCH-bumps silk (`updateInternalDependencies: patch`) and re-pins it; plain `dependencies` (never source peerDependencies) means silk is NOT force-major-bumped. silk's `versionFiles` glob still bumps the `plugins/*` manifests in lockstep with silk.
+→ `@./okf/decisions/independent-package-versioning.md`
+→ `@./okf/decisions/silk-pins-siblings-as-dependencies.md`
+Load before changing `.changeset/config.json`, a package's `dependencies`/`peerDependencies`, or `versionFiles`.
 - Integration/e2e tests must NOT resolve `catalog:`/`workspace:` against the host workspace — catalog-resolution coverage lives in `e2e/` via subprocess builds against isolated fixtures (`CatalogResolver` reads `process.cwd()`). See `e2e/CLAUDE.md`.
+→ `@./okf/conventions/e2e-isolation.md`
+Load before writing or reviewing an `e2e/*` test that resolves catalogs or workspace packages.
 - `@savvy-web/bundler`, `@savvy-web/rspress-builder`, and `@savvy-web/tsdown-plugins` version independently (no longer a linked group); changesets still auto-bumps the bundler when tsdown-plugins changes.
 - `@savvy-web/pnpm-plugin-silk` versions independently and is npm-registry-only (the one package not also on GitHub Packages).
 
@@ -91,26 +106,30 @@ A dogfood round consumes the `@effected/*` kit (`spencerbeggs/effected`, sibling
 While `@effected` `file:` overrides are active the branch does NOT push or open PRs — the paths exist only on this machine (the silk plugin's `dogfood-guard` hook denies it). Verify kit signatures against `../../spencerbeggs/effected/packages/<name>/src` or the installed `.d.ts` under `node_modules/@effected/<name>/`, never from relayed summaries.
 
 **The full protocol — linking, mailbox layout and ids, the refresh sequence, the exit:**
-→ `@./.claude/design/silk/plugin-dogfood.md`
-Load when opening, running, or closing a dogfood round (its "Repo-level convention" section is the pattern).
+→ `@./okf/conventions/effected-dogfood-rounds.md`
+Load when opening, running, or closing a dogfood round (its protocol rules and repo-level convention are the pattern).
 
 ## Design Documentation
 
-Design docs live in `.claude/design/` (tracked). Per-package pointers live in each `packages/<pkg>/CLAUDE.md`; these cover topics with no package subtree to auto-load from:
+The knowledge bundle lives at `okf/`, an OKF v0.2 bundle — start at `okf/index.md`. It is validated with `pnpm exec okfit validate`. Concepts are written and edited only via the `okfit:okf-docs` agent, never hand-indexed. Per-package pointers live in each `packages/<pkg>/CLAUDE.md`; these cover topics with no package subtree to auto-load from:
 
-**`plugins/silk` — the merged Claude Code plugin (overview/index):**
-→ `@./.claude/design/silk/plugin.md`
-Load when working on `plugins/silk` (layout, capability map, skill naming, MCP server wiring). Per-capability child docs — load the one you are touching:
-→ `@./.claude/design/silk/plugin-hooks.md` — hook registration, shared hook infrastructure, the SessionStart orientation payload.
-→ `@./.claude/design/silk/plugin-changesets.md` — the changeset router skill, `changeset-manager` agent, validator and Stop-time nudge.
-→ `@./.claude/design/silk/plugin-commit-messages.md` — `commit-create`/`pr-body` skills and the `savvy commit hook` guards.
-→ `@./.claude/design/silk/plugin-biome.md` — the three Biome channels (LSP, `biome_check`, sanctioned Bash) and the `biome-direct-deny` guard.
-→ `@./.claude/design/silk/plugin-turbo.md` — the read-only Turborepo capability over `turbo_inspect`.
-→ `@./.claude/design/silk/plugin-build-tsdoc.md` — `build`/`tsdoc` skills, the `tsdoctor` agent, the `tsdoc-diagnostics` monitor over `issues.json`.
-→ `@./.claude/design/silk/plugin-repos.md` — the vendored-repos skill, orientation block, PreToolUse guards, and drift monitor.
-→ `@./.claude/design/silk/plugin-dogfood.md` — the dogfood-mailbox protocol.
-→ `@./.claude/design/silk/plugin-it2.md` — the it2 pane-orchestration skill.
+**`plugins/silk` — the merged Claude Code plugin (overview, hooks, changesets, turbo, build/tsdoc, it2, dogfood capability map):**
+→ `@./okf/modules/silk-plugin.md`
+Load when working on `plugins/silk` (layout, capability map, skill naming, MCP server wiring, hook registration, the changeset router skill, the read-only Turborepo capability over `turbo_inspect`, the `build`/`tsdoc` skills and `tsdoctor` agent, the it2 pane-orchestration skill, and the dogfood-mailbox capability map).
+
+Commit/PR message contract split out of the plugin doc:
+→ `@./okf/conventions/commit-and-pr-messages.md`
+Load before composing a commit message or PR description, or touching the `savvy commit hook` guards.
+
+Biome invocation contract split out of the plugin doc:
+→ `@./okf/conventions/biome-invocation.md`
+Load before running or scripting Biome (the three channels — LSP, `biome_check`, sanctioned Bash) or touching the `biome-direct-deny` guard.
+
+Vendored-repos enforcement split out of the plugin doc:
+→ `@./okf/decisions/vendored-repos-lockdown.md`
+→ `@./okf/conventions/vendored-repos-handling.md`
+Load when touching the vendored-repos skill, its orientation block, PreToolUse guards, or drift monitor, or making any change to a `.repos/**` tree.
 
 **Suite-wide test conventions (`@effect/vitest`, filesystem doubles):**
-→ `@./.claude/design/testing/effect-vitest.md`
+→ `@./okf/conventions/effect-vitest-testing.md`
 Load before writing or converting any test that runs an Effect or needs a `FileSystem`. Covers `it.effect` vs `it.live` vs suite-boundary `layer(...)` (memoizes, bleeding test-double state — per-test `Effect.provide` is the default), `Effect.flip` for typed failures, the `TestClock`/`TestConsole` swaps, and the `@effected/memfs` rules — `layerWith` volumes over hand-rolled stubs, `layerFaulty` for one failing operation, the per-BUILD volume-sharing trap that makes a write-then-read assertion pass vacuously, and the mode-enforcement carve-out that keeps some blocks on real tmpdirs.

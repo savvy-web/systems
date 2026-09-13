@@ -9,14 +9,14 @@ The bottom layer (L1) of the Silk package graph: schemas, tagged errors, and the
 - **Kit ownership is unchanged.** `VersioningStrategy`/`TagStyle`/`PublishTarget` come from `@effected/workspaces` — a PEER, not a dependency, because `SilkPublishConfig` extends its `PublishConfig` class and `AnalyzedWorkspace` carries its value classes, so silk-core and silk-effects (which also peers on it) must resolve the same single copy or `instanceof`/schema identity breaks across the layer edge; `Section`/`SectionId`/`CommentStyle` from `@effected/templates`, the issue-reference grammar from `@effected/github-references`. `src/index.ts` re-exports nothing from the kit.
 - **`PrBody.Markers` is FROZEN** — the `silk-release:` token names the contract, not the emitting action. Byte-parity with `silk-release-action` is pinned by `__test__/fixtures/pr-body/expected.json`; `__test__/pr-body/skill-sync.test.ts` drift-lints `plugins/silk` skills against the literals.
 - **Cross-package `{@link}` targets use backticks.** A symbol that lives in silk-effects (`BiomeSchemaSync`, `ChangesetConfigReader`) cannot be linked from here without an `ae-unresolved-link` warning.
-- **Manifest wiring:** keep `"prepare": "turbo run build:dev"` — silk-effects consumes this package as `workspace:*` through a `link:` into `dist/dev/pkg`. See `.claude/design/workspace/install-orchestration.md`.
+- **Manifest wiring:** keep `"prepare": "turbo run build:dev"` — silk-effects consumes this package as `workspace:*` through a `link:` into `dist/dev/pkg`. See `okf/conventions/workspace-prepare-scripts.md`.
 
 ## Design
 
 What moved, the L1 boundary test, the shared scanner, why `@effected/workspaces` is a peer:
-→ `@../../.claude/design/silk-core/architecture.md`
+→ `@../../okf/modules/silk-core.md`
 Load when moving a symbol across the silk-core/silk-effects edge or changing the boundary scanner.
 
 The four-layer package graph and the carrier pattern this package is the floor of:
-→ `@../../.claude/design/workspace/package-layering.md`
+→ `@../../okf/conventions/package-layering.md`
 Load when adding a dependency edge to or from this package.

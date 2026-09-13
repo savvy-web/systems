@@ -1,6 +1,8 @@
 # @savvy-web/bundler
 
 `@savvy-web/bundler` is the tsdown-based build orchestrator for the Silk Suite — the `defineBuild`/`runBuild` front door and the self-executing `savvy.build.ts` contract. Drives tsdown programmatically over `@savvy-web/tsdown-plugins`.
+→ `@../../okf/decisions/bundler-tsdown-plugins-split.md`
+Load when changing the boundary between this package and `@savvy-web/tsdown-plugins`.
 
 ## Key surface
 
@@ -19,13 +21,14 @@
 
 ## Design
 
-Overview — the orchestrator→tsdown boundary, the TargetGroup model, dist layout, and the `savvy.build.ts` contract:
-→ `@../../.claude/design/bundler/architecture.md`
-Load first when changing build orchestration; it indexes the child docs below.
+Overview — the orchestrator→tsdown boundary, the TargetGroup model, dist layout, meta/exe wiring, and the self-hosting escape hatch:
+→ `@../../okf/modules/bundler.md`
+Load first when changing build orchestration, the API-model (meta) pass, `--target exe` SEA builds, or the bundler/tsdown-plugins self-hosting `savvy.build.ts` files.
 
-Child docs (load the one matching what you are touching):
-→ `@../../.claude/design/bundler/build-options.md` — the full `defineBuild` option surface and how `runBuild` forwards each option into `buildTargetGroups`.
-→ `@../../.claude/design/bundler/meta-wiring.md` — when and where the API-model (meta) pass runs, `targets.json`, `meta.localPaths`/`optimistic`.
-→ `@../../.claude/design/bundler/exe-wiring.md` — `--target exe` SEA builds via `runExeBuild`.
-→ `@../../.claude/design/bundler/self-hosting.md` — the bundler/tsdown-plugins escape-hatch `savvy.build.ts` files and where the bundler's own tests live.
-→ `@../../.claude/design/bundler/tsconfig-preset.md` — the shipped `tsconfig/ecma.json` preset and the self-containment rule for every shipped preset.
+The `savvy.build.ts` contract as a consumer-side interface:
+→ `@../../okf/interfaces/savvy-build-config.md`
+Load when changing the `build()`/`defineBuild`/`runBuild` surface or the full `defineBuild` option set — what a consumer's `savvy.build.ts` may depend on staying stable.
+
+The shipped tsconfig preset:
+→ `@../../okf/interfaces/bundler-tsconfig-preset.md`
+Load when changing `tsconfig/ecma.json` or the self-containment rule every shipped preset follows.

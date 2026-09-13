@@ -53,6 +53,7 @@ jobs:
             @effected/*
             @manypkg/*
             @modelcontextprotocol/*
+            @okfit/*
             jiti
             jju
             mdast-util-heading-range

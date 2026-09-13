@@ -15,5 +15,5 @@
 ## Design
 
 Load for the dual-bundle model, the `EntryOverride` partition fields it rides, and the peer contract:
-→ `@../../.claude/design/rspress-builder/architecture.md`
+→ `@../../okf/modules/rspress-builder.md`
 Load when changing `definePlugin`, the runtime-subdir model, or the consumer presets.

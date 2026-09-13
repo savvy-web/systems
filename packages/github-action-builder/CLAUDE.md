@@ -13,5 +13,5 @@
 ## Design
 
 Load for the build pipeline and configuration model:
-→ `@../../.claude/design/github-action-builder/architecture.md`
+→ `@../../okf/modules/github-action-builder.md`
 Load when changing the build pipeline or action output configuration.

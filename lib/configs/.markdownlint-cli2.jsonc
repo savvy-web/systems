@@ -94,7 +94,11 @@
 		"**/__fixtures__/**",
 		"**/public/content/packages/*/api/**",
 		"**/public/content/packages/*/api.md",
-		"**/.repos"
+		"**/.repos",
+		// okfit sync regenerates these from concept frontmatter; never hand-edited, never auto-fixed
+		"okf/index.md",
+		"okf/*/index.md",
+		"okf/log.md"
 	],
 	"noBanner": true
 }

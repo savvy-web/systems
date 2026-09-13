@@ -95,3 +95,5 @@ e2e/bundler/__test__/e2e/fixtures/*/tsdoc.json
 
 # Don't store models for now
 website/lib/models/*
+# okfit migration scratch (local-only)
+.okfit-migration/

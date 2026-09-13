@@ -23,21 +23,19 @@ Each one has been broken by an agent before.
 
 ## Design
 
-Overview — export surface, the layered graph and silk-core extraction, what the kit owns (migration table), service patterns, testing strategy:
-→ `@../../.claude/design/silk-effects/architecture.md`
+Overview — export surface, the layered graph and silk-core extraction, what the kit owns (migration table), service patterns, testing strategy, and every namespace section (`SilkWorkspaceAnalyzer`/`SilkPublishability`, `SavvySections`, `Changesets`, `Commitlint`, `Lint`, `Turbo`, `Repos` lifecycle detail):
+→ `@../../okf/modules/silk-effects.md`
 Load when implementing a new service, changing a result schema, moving code to silk-core, or deciding `it.effect` vs `it.live`.
 
 Load before changing any `@effected/*` dependency in this package's manifest, or when a consumer reports a duplicate kit copy:
-→ `@../../.claude/design/silk-effects/kit-peer-dependencies.md`
+→ `@../../okf/decisions/kit-effect-peers-via-catalog.md`
 Why `@effected/workspaces`, `@effected/git` and `@effected/commands` are REQUIRED PEERS, the two-copies type-identity failure, and the `configDependencies` bump trap.
 
-Subsystem docs — load the one for the namespace you are touching:
-→ `@../../.claude/design/silk-effects/workspace-analysis.md` — `SilkWorkspaceAnalyzer`, `SilkPublishability`/`readTargetsBinding`, changeset-config accessors.
-→ `@../../.claude/design/silk-effects/hook-sections.md` — `SavvySections` shared husky hook content, render/reconcile engine, the uppercase `SectionId` marker-compat guard.
-→ `@../../.claude/design/silk-effects/changesets.md` — `ConfigInspector` attribution precedence, `ChangesetLinter` (CSH001–CSH005), `ReleasePlanner`, `DepsRegen` gating, `VersionFiles`, changelog rendering.
-→ `@../../.claude/design/silk-effects/commitlint.md` — config factory, the `silk/*` rule menu, DCO/scope detection, the `savvy commit hook` logic.
-→ `@../../.claude/design/silk-effects/lint.md` — per-file-kind handlers, the two-entry-point contract, `Preset`/`createConfig`, `@effected/yaml` formatting.
-→ `@../../.claude/design/silk-effects/issue-references.md` — why issue-reference parsing is `@effected/github-references` and never re-hand-rolled; `closes-trailer` semantics.
-→ `@../../.claude/design/silk-effects/turbo.md` — `TurboInspector` + `TurboDigest` (`diagnoseCache`/`taskGraph`/`affected`).
-→ `@../../.claude/design/silk-effects/repos.md` — all four `Repos` services, the lifecycle operations, `withUnlocked`, five-authority drift reconciliation, `ReposLockdown`.
-→ `@../../.claude/design/silk-effects/pr-body.md` — the `PrBody` managed PR-description contract: `Markers`, `Region`, `ManagedPrBody`, `ClosingReferences` (two spellings, neither consumer accepts the other's).
+Interfaces split out of the namespace docs — load the one matching what you are touching:
+→ `@../../okf/interfaces/managed-hook-sections.md` — the BEGIN/END MANAGED SECTION marker contract `SavvySections` writes.
+→ `@../../okf/interfaces/issue-reference-grammar.md` — why issue-reference parsing is `@effected/github-references` and never re-hand-rolled; `closes-trailer` semantics.
+→ `@../../okf/interfaces/pr-body-contract.md` — the `PrBody` managed PR-description contract: `Markers`, `Region`, `ManagedPrBody`, `ClosingReferences` (two spellings, neither consumer accepts the other's).
+
+The vendored-repos boundary split out of `repos.md` — load both:
+→ `@../../okf/decisions/vendored-repos-lockdown.md` — why the lock is OS-level permissions, not guards alone.
+→ `@../../okf/conventions/vendored-repos-handling.md` — the consumer-side rule: route changes through `savvy repos`/`repos_manage`, never chmod.
