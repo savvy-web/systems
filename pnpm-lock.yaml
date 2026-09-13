@@ -6,17 +6,17 @@ importers:
   .:
     configDependencies:
       '@effected/pnpm-plugin-effect':
-        specifier: 0.8.2
-        version: 0.8.2
+        specifier: 0.8.3
+        version: 0.8.3
 
 packages:
 
-  '@effected/pnpm-plugin-effect@0.8.2':
-    resolution: {integrity: sha512-i9FWW92WlVXDk9Mlbd2DJC1mtE4P56cH/v+z36N7d/OJsDLjwsnG+nI6WvALVlQmZ/uTMd7rytmAR9MCOIs/CQ==}
+  '@effected/pnpm-plugin-effect@0.8.3':
+    resolution: {integrity: sha512-o19ddEUsrlmDKzg7cobg31Q06RjKJH103DRKzoEGssIK4wt3e4D+eP5Aa0mQk0R4OHI/siCJybanksCvgWIHOQ==}
 
 snapshots:
 
-  '@effected/pnpm-plugin-effect@0.8.2': {}
+  '@effected/pnpm-plugin-effect@0.8.3': {}
 
 ---
 lockfileVersion: '9.0'
@@ -189,7 +189,7 @@ overrides:
   '@effect/vitest>vitest': ^5.0.0
   '@microsoft/api-extractor>typescript': ^6.0.3
 
-pnpmfileChecksum: sha256-PmyN2r6Z+AHuqvmeM1NWk0ziZqbBF3JK2vbaohQ09/0=
+pnpmfileChecksum: sha256-wbfU8ZdKTN3hw0Vl0cWN774kubzk1JH06a9X7q4eq2U=
 
 importers:
 
