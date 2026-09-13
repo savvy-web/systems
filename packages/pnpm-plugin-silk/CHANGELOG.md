@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.37.0
+
+### Maintenance
+
+- Remove hoisting on oktip and vitect agent peer dependencies as the latets version no moget require this.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.36.0
 
 ### Breaking Changes
