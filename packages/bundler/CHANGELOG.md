@@ -1,5 +1,23 @@
 # @savvy-web/bundler
 
+## 2.3.8
+
+### Bug Fixes
+
+- Force bumping all public packages due to npm flakiness in releasing tooling. [#651][#651]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.7.7 | 2.7.8 |
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#651]: https://github.com/savvy-web/systems/pull/651
+
 ## 2.3.7
 
 ### Dependencies

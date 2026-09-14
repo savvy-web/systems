@@ -1,5 +1,17 @@
 # @savvy-web/templates
 
+## 1.1.9
+
+### Bug Fixes
+
+- Force bumping all public packages due to npm flakiness in releasing tooling. [#651][#651]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#651]: https://github.com/savvy-web/systems/pull/651
+
 ## 1.1.8
 
 ### Dependencies

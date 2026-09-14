@@ -1,5 +1,23 @@
 # @savvy-web/silk-effects
 
+## 8.0.4
+
+### Bug Fixes
+
+- Force bumping all public packages due to npm flakiness in releasing tooling. [#651][#651]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.1.2 | 0.1.3 |
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#651]: https://github.com/savvy-web/systems/pull/651
+
 ## 8.0.3
 
 ### Dependencies
