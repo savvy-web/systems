@@ -1,6 +1,6 @@
 {
 	"name": "@savvy-web/silk-core",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"private": true,
 	"description": "Platform-free domain core of the Silk Suite: schemas, tagged errors, and the PR-body contract",
 	"homepage": "https://github.com/savvy-web/systems/tree/main/packages/silk-core",
