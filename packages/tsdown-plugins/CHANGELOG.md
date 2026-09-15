@@ -1,5 +1,21 @@
 # @savvy-web/tsdown-plugins
 
+## 2.7.9
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @changesets/get-release-plan | dependency | updated | ^5.0.1 | ^5.0.2 |
+
+[#654][#654]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#654]: https://github.com/savvy-web/systems/pull/654
+
 ## 2.7.8
 
 ### Bug Fixes

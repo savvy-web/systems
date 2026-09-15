@@ -1,5 +1,24 @@
 # @savvy-web/silk-effects
 
+## 8.0.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @changesets/apply-release-plan | dependency | updated | ^8.1.0 | ^8.1.1 |
+| @changesets/config | dependency | updated | ^4.0.0 | ^4.0.1 |
+| @changesets/get-release-plan | dependency | updated | ^5.0.1 | ^5.0.2 |
+| @savvy-web/silk-core | dependency | updated | 0.1.3 | 0.1.3 |
+
+[#654][#654]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#654]: https://github.com/savvy-web/systems/pull/654
+
 ## 8.0.4
 
 ### Bug Fixes
