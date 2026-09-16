@@ -165,7 +165,7 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
 			const tampered = preCommit.replace(
 				'pm_exec okfit sync --staged "$ROOT" || exit 1',
-				'pm_exec okfit sync --staged --only generated "$ROOT" || exit 1',
+				'pm_exec okfit sync --staged --only index "$ROOT" || exit 1',
 			);
 			expect(tampered).not.toBe(preCommit);
 			writeFileSync(join(testDir, ".husky/pre-commit"), tampered);

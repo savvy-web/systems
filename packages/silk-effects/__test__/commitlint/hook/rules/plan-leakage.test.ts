@@ -35,6 +35,12 @@ describe("planLeakageRule", () => {
 
 			const fenced = yield* check("subj\n\nsee `okf/modules/silk.md`");
 			expect(fenced?.severity).toBe("advise");
+
+			const linked = yield* check("subj\n\nsee [okf/decisions/foo.md](https://example.test/okf/decisions/foo.md)");
+			expect(linked?.severity).toBe("advise");
+
+			const bold = yield* check("subj\n\nmoved to **okf/** last week");
+			expect(bold?.severity).toBe("advise");
 		}),
 	);
 

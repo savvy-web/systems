@@ -194,7 +194,7 @@ Structure it as:
 - Review notes: anything that must be checked by hand, and anything you deliberately did not do that the diff might imply you did.
 - Verification: the commands run and their result. Be concrete; "all tests pass" says nothing.
 
-Do not recap the diff file by file. Do not reference internal paths like .claude/plans/, .claude/design/, or okf/ — this repository is public.
+Do not recap the diff file by file. Do not reference internal paths like .claude/plans/, .claude/design/, or okf/ — carry the reasoning in the body rather than a pointer to where it lives.
 
 THE PROPOSED-SQUASH-COMMIT BLOCK
 This repository squash-merges, so this block becomes the real commit message. Write it under the full commit contract: type(scope): subject under 100 characters, imperative, lowercase, no trailing period; body of three to five single-line "- " bullets; no markdown headings, no code fences, no numbered lists inside it.

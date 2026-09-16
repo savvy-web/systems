@@ -12,10 +12,10 @@ export interface PlanLeakageInput {
 	message: string;
 }
 
-// The `okf/` pattern anchors on line start or a non-identifier lead-in so `okfit`, `@okfit/plugin`
-// and `bookf/` never match: the `/` must follow `okf` immediately, and the char before `o` cannot be
-// a word char.
-const PATH_PATTERNS = [/\.claude\/plans\//i, /\.claude\/design\//i, /(?:^|[\s./`("'])okf\//i];
+// The `okf/` pattern requires a non-word character (or the string start) immediately before `okf`
+// and a `/` immediately after, so `okfit`, `@okfit/plugin` and `bookf/` never match while markdown
+// spellings like `[okf/x.md](…)` and `**okf/**` still do.
+const PATH_PATTERNS = [/\.claude\/plans\//i, /\.claude\/design\//i, /(?<!\w)okf\//i];
 const PHRASE_PATTERNS = [
 	/\bas decided in the plan\b/i,
 	/\bpreviously documented\b/i,

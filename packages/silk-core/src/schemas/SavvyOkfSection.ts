@@ -51,8 +51,18 @@ export const SavvyOkfSection: SectionId = SectionId.make({
  * Once it runs, a non-zero exit FAILS the commit (`|| exit 1`): a bundle the
  * tool cannot sync is a broken bundle, and letting the commit through would
  * land it silently. `--staged` re-adds whatever it writes, so the hook needs no
- * `git add` of its own. With no `--only`, the default `--staged` modes are
- * `generated` and `index`, so `index.md` is re-stamped in the same commit too.
+ * `git add` of its own.
+ *
+ * The default `--staged` modes are `generated` and `index`, so the derived
+ * `index.md` files are re-stamped in the same commit too — but only while the
+ * bundle is clean apart from what is staged. Index mode reads concepts from
+ * DISK, not from the git index, and `--staged` re-adds what it writes, so an
+ * untracked or partially staged concept would otherwise let an unrelated
+ * commit land an `index.md` entry linking a file that commit does not
+ * contain. When `git status --porcelain -- okf` shows any unstaged or
+ * untracked entry (second status column non-blank), the hook narrows to
+ * `--only generated` for that commit and the index catches up on the next
+ * clean one.
  *
  * @returns The sync shell, with no surrounding markers or trailing newline.
  *
@@ -61,7 +71,13 @@ export const SavvyOkfSection: SectionId = SectionId.make({
  */
 export function savvyOkfSync(): string {
 	return `if ! in_ci && [ -d "$ROOT/okf" ] && [ -x "$ROOT/node_modules/.bin/okfit" ]; then
-  pm_exec okfit sync --staged "$ROOT" || exit 1
+  # Index mode reads concepts from disk, so skip it while okf/ carries untracked or
+  # unstaged work: a commit must never link a concept it does not contain.
+  if git -C "$ROOT" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'; then
+    pm_exec okfit sync --staged --only generated "$ROOT" || exit 1
+  else
+    pm_exec okfit sync --staged "$ROOT" || exit 1
+  fi
 fi`;
 }
 

@@ -17,7 +17,13 @@ const rendered = (section: Section): string => {
 // ── Exact content snapshot (the consumer-facing contract) ──────
 
 const EXPECTED_SYNC = `if ! in_ci && [ -d "$ROOT/okf" ] && [ -x "$ROOT/node_modules/.bin/okfit" ]; then
-  pm_exec okfit sync --staged "$ROOT" || exit 1
+  # Index mode reads concepts from disk, so skip it while okf/ carries untracked or
+  # unstaged work: a commit must never link a concept it does not contain.
+  if git -C "$ROOT" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'; then
+    pm_exec okfit sync --staged --only generated "$ROOT" || exit 1
+  else
+    pm_exec okfit sync --staged "$ROOT" || exit 1
+  fi
 fi`;
 
 describe("savvyOkfSync", () => {
@@ -37,8 +43,11 @@ describe("savvyOkfSync", () => {
 		expect(out).toContain('pm_exec okfit sync --staged "$ROOT" || exit 1');
 	});
 
-	it("leaves the default --staged modes in place (no --only)", () => {
-		expect(savvyOkfSync()).not.toContain("--only");
+	it("keeps the default --staged modes on a clean bundle and narrows to --only generated on a dirty one", () => {
+		const out = savvyOkfSync();
+		expect(out).toContain("git -C \"$ROOT\" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'");
+		expect(out).toContain('pm_exec okfit sync --staged --only generated "$ROOT" || exit 1');
+		expect(out).toContain('pm_exec okfit sync --staged "$ROOT" || exit 1');
 	});
 
 	it("depends on the savvy-base preamble rather than redefining it", () => {

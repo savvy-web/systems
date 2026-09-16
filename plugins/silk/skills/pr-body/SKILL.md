@@ -234,9 +234,9 @@ commit body, and a PR description is a different document.
 Two checks do still apply, and both are advisory:
 
 - **plan-leakage** — do not cite `.claude/plans/`, `.claude/design/`, `okf/`, or
-  write "as decided in the plan". This repo is public; internal design docs are not.
-  Restate the reasoning in the summary instead of pointing at a path a reader
-  cannot open.
+  write "as decided in the plan". A PR body carries the reasoning itself, not a
+  pointer to where it lives: plan files are not committed at all, and a design
+  record moves and gets rewritten. Restate the reasoning in the summary.
 - **closes-trailer** — if the branch name encodes a ticket, the body should
   close it. Add the bare `Closes #N` line to the references region.
 
