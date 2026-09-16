@@ -1,5 +1,34 @@
 # @savvy-web/silk
 
+## 4.0.6
+
+### Bug Fixes
+
+- Shipped Biome asset (`public/biome/silk.json`) drops the stale `**/.claude/design/design.config.json` ignore entry
+- Plugin prose (the `changeset-manager` agent, and the `commit-create`, `pr-body`, and `dogfood` skills) now names `okf/` alongside `.claude/design/` wherever it documents planning-artifact exclusions and design-record references [#659][#659]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 0.1.3 | 0.1.3 |
+| @savvy-web/cli | dependency | updated | 3.0.5 | 3.1.0 |
+| @savvy-web/mcp | dependency | updated | 3.0.5 | 3.0.6 |
+| @savvy-web/silk-effects | dependency | updated | 8.0.5 | 8.1.0 |
+| @changesets/cli | peerDependency | updated | ^3.0.2 | ^3.0.3 |
+| @types/node | peerDependency | updated | ^26.5.1 | ^26.6.1 |
+| @vitest/coverage-istanbul | peerDependency | updated | ^5.0.0 | ^5.0.1 |
+| @vitest/coverage-v8 | peerDependency | updated | ^5.0.0 | ^5.0.1 |
+| @vitest/expect | peerDependency | updated | ^5.0.0 | ^5.0.1 |
+| turbo | peerDependency | updated | ^2.10.12 | ^2.10.13 |
+| vitest | peerDependency | updated | ^5.0.0 | ^5.0.1 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#659]: https://github.com/savvy-web/systems/pull/659
+
 ## 4.0.5
 
 ### Dependencies

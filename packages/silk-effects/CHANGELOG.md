@@ -1,5 +1,24 @@
 # @savvy-web/silk-effects
 
+## 8.1.0
+
+### Features
+
+- Re-exports `SavvyOkfSection`, `savvyOkfSync`, and `savvyOkfBlock` from `@savvy-web/silk-core` — the `pre-commit` block that runs `okfit sync --staged` over an `okf/` knowledge bundle
+- The commitlint `plan-leakage` rule now also flags commit bodies that cite an `okf/` path, alongside the existing `.claude/plans/` and `.claude/design/` checks [#659][#659]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.1.3 | 0.2.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#659]: https://github.com/savvy-web/systems/pull/659
+
 ## 8.0.5
 
 ### Dependencies

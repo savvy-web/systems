@@ -1,5 +1,24 @@
 # @savvy-web/cli
 
+## 3.1.0
+
+### Features
+
+- `savvy lint init` now writes the `SAVVY-OKF` managed section to `.husky/pre-commit`, after the lint section, so a staged `okf/` bundle is synced in the same commit
+- `savvy lint check` reports the OKF section's status alongside the base and lint sections: `up-to-date`, `outdated`, or `not found` [#659][#659]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 8.0.5 | 8.1.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#659]: https://github.com/savvy-web/systems/pull/659
+
 ## 3.0.5
 
 ### Dependencies
