@@ -39,7 +39,7 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
 		"effect": "catalog:effect",
-		"fast-check": "^4.9.0",
+		"fast-check": "^4.10.1",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"
 	},
