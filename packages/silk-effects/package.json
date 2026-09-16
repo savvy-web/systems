@@ -70,7 +70,7 @@
 		"@types/node": "catalog:build",
 		"@types/shell-quote": "^1.7.5",
 		"effect": "catalog:effect",
-		"fast-check": "^4.9.0",
+		"fast-check": "^4.10.1",
 		"markdownlint": "^0.41.1",
 		"tsx": "catalog:build",
 		"typescript": "catalog:build",
