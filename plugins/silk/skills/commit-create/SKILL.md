@@ -286,8 +286,8 @@ Write the line only if a reader scanning `git log` next quarter needs it:
   PR-description and design-doc material
 - File-by-file or module-by-module walkthroughs
 - Refactors, renames, and mechanical churn carried along by the real change
-- Routine updates to CLAUDE.md, `.claude/design/`, skills, or any AI context
-  file — unless that update IS the commit
+- Routine updates to CLAUDE.md, `.claude/design/`, `okf/`, skills, or any AI
+  context file — unless that update IS the commit
 - Config tweaks (biome.jsonc, tsconfig, lint-staged) — unless the config
   change is the substantive point
 - Vague qualifiers: "for clarity", "to improve readability", "as a cleanup"

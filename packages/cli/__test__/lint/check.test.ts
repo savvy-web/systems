@@ -44,6 +44,8 @@ function bootstrapWorkspace(dir: string) {
 
 const BEGIN_LINT = "# --- BEGIN SAVVY-LINT MANAGED SECTION ---";
 const END_LINT = "# --- END SAVVY-LINT MANAGED SECTION ---";
+const BEGIN_OKF = "# --- BEGIN SAVVY-OKF MANAGED SECTION ---";
+const END_OKF = "# --- END SAVVY-OKF MANAGED SECTION ---";
 
 const LEGACY_PRE_COMMIT = `#!/usr/bin/env sh
 # Legacy pre-commit (single SAVVY-LINT section, no SAVVY-BASE)
@@ -111,6 +113,7 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			expect(logs.some((l) => l.includes("Some issues found"))).toBe(false);
 			expect(logs.some((l) => l.includes("Base section: up-to-date"))).toBe(true);
 			expect(logs.some((l) => l.includes("Lint section: up-to-date"))).toBe(true);
+			expect(logs.some((l) => l.includes("OKF section: up-to-date"))).toBe(true);
 		}),
 	);
 
@@ -126,6 +129,8 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 
 			// SAVVY-BASE never installed → base section is missing → verdict degraded.
 			expect(logs.some((l) => l.includes("Base section: not found"))).toBe(true);
+			// A legacy hook predates SAVVY-OKF too, so that section reports missing rather than outdated.
+			expect(logs.some((l) => l.includes("OKF section: not found"))).toBe(true);
 			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
 			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
 		}),
@@ -149,6 +154,55 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			expect(logs.some((l) => l.includes("Lint section: outdated"))).toBe(true);
 			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
 			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
+		}),
+	);
+
+	it.effect("degrades the verdict when the savvy-okf section content is outdated", () =>
+		Effect.gen(function* () {
+			yield* runInit("silk");
+			// Corrupt only the savvy-okf section body so the SAVVY-OKF marker still resolves
+			// but the content no longer matches the generated block.
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			const tampered = preCommit.replace(
+				'pm_exec okfit sync --staged "$ROOT" || exit 1',
+				'pm_exec okfit sync --staged --only index "$ROOT" || exit 1',
+			);
+			expect(tampered).not.toBe(preCommit);
+			writeFileSync(join(testDir, ".husky/pre-commit"), tampered);
+
+			logs.length = 0;
+			yield* runCheck(false);
+
+			expect(logs.some((l) => l.includes("OKF section: outdated"))).toBe(true);
+			expect(logs.some((l) => l.includes("Base section: up-to-date"))).toBe(true);
+			expect(logs.some((l) => l.includes("Lint section: up-to-date"))).toBe(true);
+			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
+			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
+		}),
+	);
+
+	it.effect("degrades the verdict when the savvy-okf section is missing from an otherwise current hook", () =>
+		Effect.gen(function* () {
+			yield* runInit("silk");
+			// Strip the whole SAVVY-OKF block (markers included) — the shape of a hook written by a
+			// savvy init that predates the section.
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			const begin = preCommit.indexOf(BEGIN_OKF);
+			const end = preCommit.indexOf(END_OKF) + END_OKF.length;
+			expect(begin).toBeGreaterThanOrEqual(0);
+			writeFileSync(join(testDir, ".husky/pre-commit"), preCommit.slice(0, begin) + preCommit.slice(end));
+
+			logs.length = 0;
+			yield* runCheck(false);
+
+			expect(logs.some((l) => l.includes("OKF section: not found"))).toBe(true);
+			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
+			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
+
+			// Quiet mode surfaces the collected warning that names the fix.
+			logs.length = 0;
+			yield* runCheck(true);
+			expect(logs.some((l) => l.includes("managed sections are out of date"))).toBe(true);
 		}),
 	);
 

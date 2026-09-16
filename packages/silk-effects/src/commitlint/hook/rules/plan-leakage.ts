@@ -1,5 +1,6 @@
 /**
  * plan-leakage rule — advises when commit bodies reference plan files
+ * (`.claude/plans/`, `.claude/design/`, or the `okf/` knowledge bundle)
  * or contain planning-narrative language.
  *
  * @internal
@@ -11,7 +12,10 @@ export interface PlanLeakageInput {
 	message: string;
 }
 
-const PATH_PATTERNS = [/\.claude\/plans\//i, /\.claude\/design\//i];
+// The `okf/` pattern requires a non-word character (or the string start) immediately before `okf`
+// and a `/` immediately after, so `okfit`, `@okfit/plugin` and `bookf/` never match while markdown
+// spellings like `[okf/x.md](…)` and `**okf/**` still do.
+const PATH_PATTERNS = [/\.claude\/plans\//i, /\.claude\/design\//i, /(?<!\w)okf\//i];
 const PHRASE_PATTERNS = [
 	/\bas decided in the plan\b/i,
 	/\bpreviously documented\b/i,
@@ -29,7 +33,8 @@ export const planLeakageRule: Rule<PlanLeakageInput, never> = {
 			if (matchedPaths.length === 0 && matchedPhrases.length === 0) return null;
 
 			const reasons: string[] = [];
-			if (matchedPaths.length > 0) reasons.push("references planning artifacts (.claude/plans/ or .claude/design/)");
+			if (matchedPaths.length > 0)
+				reasons.push("references planning artifacts (.claude/plans/, .claude/design/ or okf/)");
 			if (matchedPhrases.length > 0) reasons.push("contains planning-narrative phrasing");
 
 			return {

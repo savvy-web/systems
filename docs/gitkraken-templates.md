@@ -75,7 +75,7 @@ No code fences (three backticks).
 No numbered lists (1. 2. 3.). Use "- " bullets instead.
 No bold (**text**), no links, no horizontal rules (---).
 Avoid backticks entirely — more than two inline code spans is rejected.
-No references to internal paths like .claude/plans/ or .claude/design/, and no phrases like "as decided in the plan" or "see the design doc".
+No references to internal paths like .claude/plans/, .claude/design/, or okf/, and no phrases like "as decided in the plan" or "see the design doc".
 
 TRAILERS
 If the change closes tracked issues, put them ALL on one line, comma separated:
@@ -194,7 +194,7 @@ Structure it as:
 - Review notes: anything that must be checked by hand, and anything you deliberately did not do that the diff might imply you did.
 - Verification: the commands run and their result. Be concrete; "all tests pass" says nothing.
 
-Do not recap the diff file by file. Do not reference internal paths like .claude/plans/ or .claude/design/ — this repository is public.
+Do not recap the diff file by file. Do not reference internal paths like .claude/plans/, .claude/design/, or okf/ — carry the reasoning in the body rather than a pointer to where it lives.
 
 THE PROPOSED-SQUASH-COMMIT BLOCK
 This repository squash-merges, so this block becomes the real commit message. Write it under the full commit contract: type(scope): subject under 100 characters, imperative, lowercase, no trailing period; body of three to five single-line "- " bullets; no markdown headings, no code fences, no numbered lists inside it.

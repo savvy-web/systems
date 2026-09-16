@@ -19,6 +19,7 @@ import {
 	savvyBasePreamble,
 	savvyHooksHygiene,
 	savvyInstallBlock,
+	savvyOkfBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Option } from "effect";
@@ -193,6 +194,7 @@ export function runLintCheck(opts: {
 		let sectionsHealthy = true;
 		let baseStatusLabel: "up-to-date" | "outdated" | "missing" = "missing";
 		let lintStatusLabel: "up-to-date" | "outdated" | "missing" = "missing";
+		let okfStatusLabel: "up-to-date" | "outdated" | "missing" = "missing";
 		let detectedConfigPath: string | null = null;
 
 		if (hasHuskyHook) {
@@ -229,7 +231,17 @@ export function runLintCheck(opts: {
 				sectionsHealthy = false;
 			}
 
-			if (baseStatusLabel !== "up-to-date" || lintStatusLabel !== "up-to-date") {
+			// savvy-okf section
+			const okfResult = yield* ms.check(Lint.HUSKY_HOOK_PATH, savvyOkfBlock());
+			if (CheckOutcome.$is("Absent")(okfResult)) {
+				sectionsHealthy = false;
+			} else {
+				const upToDate = CheckOutcome.$is("UpToDate")(okfResult);
+				okfStatusLabel = upToDate ? "up-to-date" : "outdated";
+				if (!upToDate) sectionsHealthy = false;
+			}
+
+			if (baseStatusLabel !== "up-to-date" || lintStatusLabel !== "up-to-date" || okfStatusLabel !== "up-to-date") {
 				warnings.push(
 					`${WARNING}  Your ${Lint.HUSKY_HOOK_PATH} managed sections are out of date.\n   Run 'savvy init' to update (preserves your custom hooks).`,
 				);
@@ -391,6 +403,14 @@ export function runLintCheck(opts: {
 				yield* Effect.log(`${WARNING} Lint section: outdated (run 'savvy init' to update)`);
 			} else {
 				yield* Effect.log(`${BULLET} Lint section: not found (run 'savvy init' to add)`);
+			}
+
+			if (okfStatusLabel === "up-to-date") {
+				yield* Effect.log(`${CHECK_MARK} OKF section: up-to-date`);
+			} else if (okfStatusLabel === "outdated") {
+				yield* Effect.log(`${WARNING} OKF section: outdated (run 'savvy init' to update)`);
+			} else {
+				yield* Effect.log(`${BULLET} OKF section: not found (run 'savvy init' to add)`);
 			}
 		}
 

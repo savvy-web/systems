@@ -146,7 +146,6 @@
 				"**/public/tsconfig/**/*.json",
 				"**/.claude/settings.json",
 				"**/.claude/settings.local.json",
-				"**/.claude/design/design.config.json",
 				"**/.changeset/config.json",
 				"**/.markdownlint.json",
 				"**/devcontainer.json",

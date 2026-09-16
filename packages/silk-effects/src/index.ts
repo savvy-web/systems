@@ -48,6 +48,7 @@ export {
 	SavvyBaseSection,
 	SavvyHooksSection,
 	SavvyInstallSection,
+	SavvyOkfSection,
 	SavvyToolchainSection,
 	SilkPublishConfig,
 	WorkspaceAnalysis,
@@ -56,6 +57,8 @@ export {
 	savvyHooksHygiene,
 	savvyInstallBlock,
 	savvyInstallDeps,
+	savvyOkfBlock,
+	savvyOkfSync,
 	savvyToolSection,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-core";
