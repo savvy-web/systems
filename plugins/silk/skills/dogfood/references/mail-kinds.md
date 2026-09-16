@@ -57,7 +57,8 @@ the following packages against this repo's local prod artifacts:
   know. You are upstream here, so this does not gate you in THIS loop either way — but check any
   OTHER loop you're also participating in, where you may be downstream and actually linked.
 - Mailbox content is never design documentation — durable learnings get promoted into
-  `.claude/design/` separately; the mail is history, not the record of truth.
+  the repository's design record (an `okf/` bundle, `.claude/design/`, or wherever the repo
+  keeps durable design docs) separately; the mail is history, not the record of truth.
 
 Round 1 begins with their `request` mail (already delivered, see
 `.claude/dogfood/savvy-web-systems/`). Read it, then send a `handoff` when ready.

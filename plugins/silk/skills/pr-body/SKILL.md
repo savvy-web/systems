@@ -233,8 +233,8 @@ commit body, and a PR description is a different document.
 
 Two checks do still apply, and both are advisory:
 
-- **plan-leakage** — do not cite `.claude/plans/`, `.claude/design/`, or write
-  "as decided in the plan". This repo is public; internal design docs are not.
+- **plan-leakage** — do not cite `.claude/plans/`, `.claude/design/`, `okf/`, or
+  write "as decided in the plan". This repo is public; internal design docs are not.
   Restate the reasoning in the summary instead of pointing at a path a reader
   cannot open.
 - **closes-trailer** — if the branch name encodes a ticket, the body should

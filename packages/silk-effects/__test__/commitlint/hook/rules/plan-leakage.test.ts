@@ -21,6 +21,32 @@ describe("planLeakageRule", () => {
 		}),
 	);
 
+	it.effect("advises when body references an okf/ bundle path", () =>
+		Effect.gen(function* () {
+			const bare = yield* check("subj\n\nsee okf/decisions/foo.md for the rationale");
+			expect(bare?.severity).toBe("advise");
+			expect(bare?.message).toContain("okf/");
+
+			const dotted = yield* check("subj\n\nstart at ./okf/index.md");
+			expect(dotted?.severity).toBe("advise");
+
+			const lineStart = yield* check("subj\n\nokf/conventions/foo.md explains it");
+			expect(lineStart?.severity).toBe("advise");
+
+			const fenced = yield* check("subj\n\nsee `okf/modules/silk.md`");
+			expect(fenced?.severity).toBe("advise");
+		}),
+	);
+
+	it.effect("does not treat okfit or look-alike tokens as an okf/ path", () =>
+		Effect.gen(function* () {
+			expect(yield* check("subj\n\nrun okfit sync --staged before commit")).toBeNull();
+			expect(yield* check("subj\n\nbump @okfit/plugin to 0.3.7")).toBeNull();
+			expect(yield* check("subj\n\nmove bookf/ into the fixtures dir")).toBeNull();
+			expect(yield* check("subj\n\ntighten the guard with no paths mentioned")).toBeNull();
+		}),
+	);
+
 	it.effect("advises on planning-narrative phrases", () =>
 		Effect.gen(function* () {
 			expect((yield* check("subj\n\nas decided in the plan, foo"))?.severity).toBe("advise");
