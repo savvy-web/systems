@@ -32,6 +32,8 @@ const END_TOOLCHAIN = "# --- END SAVVY-TOOLCHAIN MANAGED SECTION ---";
 const BEGIN_INSTALL = "# --- BEGIN SAVVY-INSTALL MANAGED SECTION ---";
 const END_INSTALL = "# --- END SAVVY-INSTALL MANAGED SECTION ---";
 const END_HOOKS = "# --- END SAVVY-HOOKS MANAGED SECTION ---";
+const BEGIN_OKF = "# --- BEGIN SAVVY-OKF MANAGED SECTION ---";
+const END_OKF = "# --- END SAVVY-OKF MANAGED SECTION ---";
 
 describe("savvyLintBlock", () => {
 	it("renders the one-line tool invocation", () => {
@@ -117,6 +119,8 @@ describe("runLintInit Effect program", () => {
 			expect(preCommit).toContain(END_BASE);
 			expect(preCommit).toContain(BEGIN_LINT);
 			expect(preCommit).toContain(END_LINT);
+			expect(preCommit).toContain(BEGIN_OKF);
+			expect(preCommit).toContain(END_OKF);
 			expect(preCommit).toContain("#!/usr/bin/env sh");
 
 			for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
@@ -204,6 +208,31 @@ describe("runLintInit Effect program", () => {
 			expect(lintIdx).toBeGreaterThanOrEqual(0);
 			expect(baseIdx).toBeLessThan(lintIdx);
 			expect(preCommit).toContain('pm_exec lint-staged --config "$ROOT/lint-staged.config.ts"');
+		}),
+	);
+
+	it.effect("writes savvy-okf after savvy-lint in pre-commit so it can use the base preamble", () =>
+		Effect.gen(function* () {
+			const handler = runLintInit({
+				force: false,
+				config: "lint-staged.config.ts",
+				preset: "silk",
+			});
+			yield* Effect.provide(handler, TestLayer);
+
+			const preCommit = readFileSync(join(testDir, ".husky/pre-commit"), "utf8");
+			const baseIdx = preCommit.indexOf(BEGIN_BASE);
+			const lintIdx = preCommit.indexOf(BEGIN_LINT);
+			const okfIdx = preCommit.indexOf(BEGIN_OKF);
+			expect(okfIdx).toBeGreaterThanOrEqual(0);
+			expect(baseIdx).toBeLessThan(okfIdx);
+			expect(lintIdx).toBeLessThan(okfIdx);
+			expect(preCommit).toContain('pm_exec okfit sync --staged "$ROOT" || exit 1');
+			expect(preCommit).toContain('[ -x "$ROOT/node_modules/.bin/okfit" ]');
+			// The okf section is pre-commit only: the hygiene hooks never carry it.
+			for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
+				expect(readFileSync(join(testDir, hook), "utf8")).not.toContain(BEGIN_OKF);
+			}
 		}),
 	);
 

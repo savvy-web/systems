@@ -23,6 +23,7 @@ import {
 	savvyBasePreamble,
 	savvyHooksHygiene,
 	savvyInstallBlock,
+	savvyOkfBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem } from "effect";
@@ -362,7 +363,8 @@ export function runLintInit(opts: {
 
 		yield* fs.makeDirectory(".husky", { recursive: true });
 
-		// pre-commit: savvy-base preamble then savvy-lint tool section, in order.
+		// pre-commit: savvy-base preamble, savvy-lint tool section, then the
+		// savvy-okf bundle sync (which reads ROOT/in_ci/pm_exec from the preamble), in order.
 		if (force) {
 			yield* fs.writeFileString(Lint.HUSKY_HOOK_PATH, PRE_COMMIT_HEADER);
 		} else {
@@ -371,6 +373,7 @@ export function runLintInit(opts: {
 		const preCommitResults = yield* ms.syncAll(Lint.HUSKY_HOOK_PATH, [
 			SavvyBaseSection.section(savvyBasePreamble()),
 			Lint.savvyLintBlock(config),
+			savvyOkfBlock(),
 		]);
 		yield* makeExecutable(Lint.HUSKY_HOOK_PATH);
 		yield* Effect.log(

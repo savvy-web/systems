@@ -38,6 +38,7 @@ export {
 	savvyInstallBlock,
 	savvyInstallDeps,
 } from "./schemas/SavvyInstallSection.js";
+export { SavvyOkfSection, savvyOkfBlock, savvyOkfSync } from "./schemas/SavvyOkfSection.js";
 export {
 	SavvyBaseSection,
 	SavvyHooksSection,

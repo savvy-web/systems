@@ -32,3 +32,9 @@ pm_exec() {
 # --- BEGIN SAVVY-LINT MANAGED SECTION ---
 in_ci || pm_exec lint-staged --config "$ROOT/lib/configs/lint-staged.config.ts"
 # --- END SAVVY-LINT MANAGED SECTION ---
+
+# --- BEGIN SAVVY-OKF MANAGED SECTION ---
+if ! in_ci && [ -d "$ROOT/okf" ] && [ -x "$ROOT/node_modules/.bin/okfit" ]; then
+  pm_exec okfit sync --staged "$ROOT" || exit 1
+fi
+# --- END SAVVY-OKF MANAGED SECTION ---
