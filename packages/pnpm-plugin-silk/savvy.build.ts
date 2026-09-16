@@ -19,7 +19,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.5",
+							range: "^2.2.6",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -29,8 +29,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.5.1",
-							peer: "^26.5.0",
+							range: "^26.6.1",
+							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -88,8 +88,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.5.1",
-							peer: "^26.5.0",
+							range: "^26.6.1",
+							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -142,8 +142,8 @@ await build({
 							strategy: "lock",
 						},
 						"@changesets/cli": {
-							range: "^3.0.2",
-							peer: "^3.0.2",
+							range: "^3.0.3",
+							peer: "^3.0.3",
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
@@ -177,8 +177,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.10.12",
-							peer: "^2.10.12",
+							range: "^2.10.13",
+							peer: "^2.10.13",
 							strategy: "lock",
 						},
 					},
@@ -191,8 +191,8 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.5.1",
-							peer: "^26.5.0",
+							range: "^26.6.1",
+							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
 						"@types/react": {
@@ -254,22 +254,22 @@ await build({
 				test: {
 					packages: {
 						"@vitest/expect": {
-							range: "^5.0.0",
+							range: "^5.0.1",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-istanbul": {
-							range: "^5.0.0",
+							range: "^5.0.1",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-v8": {
-							range: "^5.0.0",
+							range: "^5.0.1",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						vitest: {
-							range: "^5.0.0",
+							range: "^5.0.1",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
@@ -313,25 +313,25 @@ await build({
 				// warning -- pnpm consumes it in filterPeerDependencyIssues, not
 				// in resolution -- so the override is what actually forces the
 				// single Vitest 5 resolution.
-				"@effect/vitest>vitest": "^5.0.0",
+				"@effect/vitest>vitest": "^5.0.1",
 			},
 			// Export-only: lands in THIS repo's pnpm-workspace.yaml, never in the
 			// published plugin. `pnpm:export` regenerates the yaml from this file
 			// and drops any bare-version override it does not know about.
-			local: {
-				overrides: {
-					strategy: "merge",
-					value: {
-						// TEMPORARY effect rc.115 bridge. @vitest-agent/plugin still pins
-						// effect@rc.112 and pulls @effect/platform-node@rc.112, whose
-						// ^rc.112 range on platform-node-shared deduped up to rc.115 --
-						// which imports effect/ByteSize, absent in rc.112 -- so vitest
-						// died at config load. Keep the old pair coherent. Remove once
-						// @vitest-agent/plugin republishes on effect@4.0.0-rc.115.
-						"@effect/platform-node@4.0.0-rc.112>@effect/platform-node-shared": "4.0.0-rc.112",
-					},
-				},
-			},
+			// local: {
+			// 	overrides: {
+			// 		strategy: "merge",
+			// 		value: {
+			// 			// TEMPORARY effect rc.115 bridge. @vitest-agent/plugin still pins
+			// 			// effect@rc.112 and pulls @effect/platform-node@rc.112, whose
+			// 			// ^rc.112 range on platform-node-shared deduped up to rc.115 --
+			// 			// which imports effect/ByteSize, absent in rc.112 -- so vitest
+			// 			// died at config load. Keep the old pair coherent. Remove once
+			// 			// @vitest-agent/plugin republishes on effect@4.0.0-rc.115.
+			// 			"@effect/platform-node@4.0.0-rc.112>@effect/platform-node-shared": "4.0.0-rc.112",
+			// 		},
+			// 	},
+			// },
 			publicHoistPattern: {
 				excludeByRepo: {
 					// @savvy-web/cli and @savvy-web/mcp are gone from `value` below (silk
@@ -388,7 +388,7 @@ await build({
 			peerDependencyRules: {
 				allowedVersions: {
 					"tsdown>typescript": "^5.0.0 || ^6.0.0 || ^7.0.0",
-					"@effect/vitest>vitest": "^5.0.0",
+					"@effect/vitest>vitest": "^5.0.1",
 					"@typescript-eslint/project-service>typescript": "^6.0.0",
 					"@typescript-eslint/tsconfig-utils>typescript": "^6.0.0",
 					"@typescript-eslint/typescript-estree>typescript": "^6.0.0",

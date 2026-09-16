@@ -18,11 +18,11 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    "@rsbuild/core": ^2.2.5
+    "@rsbuild/core": ^2.2.6
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
     "@types/bun": ^1.4.2
-    "@types/node": ^26.5.1
+    "@types/node": ^26.6.1
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
     react: ^19.3.0
@@ -36,7 +36,7 @@ catalogs:
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
     "@types/bun": ^1.4.2
-    "@types/node": ^26.5.0
+    "@types/node": ^26.6.0
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
     react: ^19.3.0
@@ -48,7 +48,7 @@ catalogs:
   docs:
     "@rspress/core": ^2.0.21
     "@rspress/plugin-sitemap": ^2.0.21
-    "@types/node": ^26.5.1
+    "@types/node": ^26.6.1
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
     react: ^19.3.0
@@ -60,7 +60,7 @@ catalogs:
   docs:peers:
     "@rspress/core": ^2.0.0
     "@rspress/plugin-sitemap": ^2.0.21
-    "@types/node": ^26.5.0
+    "@types/node": ^26.6.0
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
     react: ^19.3.0
@@ -71,27 +71,27 @@ catalogs:
     vitepress: ^2.0.0-alpha.20
   lint:
     "@biomejs/biome": 2.5.13
-    "@changesets/cli": ^3.0.2
+    "@changesets/cli": ^3.0.3
     "@commitlint/cli": ^21.2.2
     "@commitlint/config-conventional": ^21.2.2
     husky: ^9.1.7
     lint-staged: ^17.5.1
     markdownlint-cli2: ^0.23.2
     markdownlint-cli2-formatter-codequality: ^0.0.7
-    turbo: ^2.10.12
+    turbo: ^2.10.13
   lint:peers:
     "@biomejs/biome": 2.5.13
-    "@changesets/cli": ^3.0.2
+    "@changesets/cli": ^3.0.3
     "@commitlint/cli": ^21.2.2
     "@commitlint/config-conventional": ^21.2.2
     husky: ^9.1.7
     lint-staged: ^17.5.1
     markdownlint-cli2: ^0.23.2
     markdownlint-cli2-formatter-codequality: ^0.0.7
-    turbo: ^2.10.12
+    turbo: ^2.10.13
   silk:
     "@types/bun": ^1.4.2
-    "@types/node": ^26.5.1
+    "@types/node": ^26.6.1
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
@@ -105,7 +105,7 @@ catalogs:
     typescript: ^7.0.2
   silk:peers:
     "@types/bun": ^1.4.2
-    "@types/node": ^26.5.0
+    "@types/node": ^26.6.0
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
@@ -118,11 +118,11 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.0
   test:
-    "@vitest/coverage-istanbul": ^5.0.0
-    "@vitest/coverage-v8": ^5.0.0
-    "@vitest/expect": ^5.0.0
+    "@vitest/coverage-istanbul": ^5.0.1
+    "@vitest/coverage-v8": ^5.0.1
+    "@vitest/expect": ^5.0.1
     vite: ^8.3.0
-    vitest: ^5.0.0
+    vitest: ^5.0.1
   test:peers:
     "@vitest/coverage-istanbul": ^5.0.0
     "@vitest/coverage-v8": ^5.0.0
@@ -156,12 +156,11 @@ minimumReleaseAgeExclude:
   - vitest
   - vitest-bats
 overrides:
-  "@effect/platform-node@4.0.0-rc.112>@effect/platform-node-shared": 4.0.0-rc.112
-  "@effect/vitest>vitest": ^5.0.0
+  "@effect/vitest>vitest": ^5.0.1
   "@microsoft/api-extractor>typescript": ^6.0.3
 peerDependencyRules:
   allowedVersions:
-    "@effect/vitest>vitest": ^5.0.0
+    "@effect/vitest>vitest": ^5.0.1
     "@typescript-eslint/project-service>typescript": ^6.0.0
     "@typescript-eslint/tsconfig-utils>typescript": ^6.0.0
     "@typescript-eslint/typescript-estree>typescript": ^6.0.0
