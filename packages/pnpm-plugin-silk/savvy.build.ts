@@ -19,7 +19,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.6",
+							range: "^2.2.7",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -54,7 +54,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.8",
+							range: "^1.2.9",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -113,8 +113,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						"rspress-plugin-mermaid": {
-							range: "^1.0.1",
-							peer: "^1.0.1",
+							range: "^1.0.2",
+							peer: "^1.0.2",
 							strategy: "lock",
 						},
 						typescript: {
@@ -137,8 +137,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.13",
-							peer: "2.5.13",
+							range: "2.5.14",
+							peer: "2.5.14",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -403,6 +403,5 @@ await build({
 	bundleNodeModules: true,
 	looseFiles: {
 		"pnpmfile.mjs": "./src/pnpmfile.ts",
-		"pnpmfile.cjs": "./src/pnpmfile.ts",
 	},
 });
