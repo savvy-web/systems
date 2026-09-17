@@ -1,5 +1,21 @@
 # @savvy-web/bundler
 
+## 2.4.0
+
+### Bug Fixes
+
+- Force releasing all packages to fix pnpm v12 flakiness.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.7.9 | 2.8.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.3.10
 
 ### Dependencies

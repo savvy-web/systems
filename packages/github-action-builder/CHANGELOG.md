@@ -1,5 +1,15 @@
 # @savvy-web/github-action-builder
 
+## 2.4.0
+
+### Bug Fixes
+
+- Force releasing all packages to fix pnpm v12 flakiness.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.3.8
 
 ### Dependencies

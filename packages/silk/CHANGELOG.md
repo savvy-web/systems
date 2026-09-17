@@ -1,5 +1,24 @@
 # @savvy-web/silk
 
+## 4.1.0
+
+### Bug Fixes
+
+- Force releasing all packages to fix pnpm v12 flakiness.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 0.1.3 | 0.2.0 |
+| @savvy-web/cli | dependency | updated | 3.1.0 | 3.2.0 |
+| @savvy-web/mcp | dependency | updated | 3.0.6 | 3.1.0 |
+| @savvy-web/silk-effects | dependency | updated | 8.1.0 | 8.2.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 4.0.6
 
 ### Bug Fixes
