@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.39.0
+
+### Bug Fixes
+
+- Force releasing all packages to fix pnpm v12 flakiness.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.38.0
 
 ### Features

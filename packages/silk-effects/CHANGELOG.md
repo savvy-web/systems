@@ -1,5 +1,21 @@
 # @savvy-web/silk-effects
 
+## 8.2.0
+
+### Bug Fixes
+
+- Force releasing all packages to fix pnpm v12 flakiness.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.2.0 | 0.3.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 8.1.0
 
 ### Features
