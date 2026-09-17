@@ -36,6 +36,7 @@ import { Effect } from "effect";
 import type { AppPackage } from "./helpers.js";
 import {
 	APP_PACKAGES,
+	REPO_ROOT,
 	SPAWN_ENV,
 	hasBinary,
 	initializeRequest,
@@ -53,14 +54,16 @@ const INSTALL_TIMEOUT_MS = 240_000;
 const BIN_TIMEOUT_MS = 30_000;
 
 /**
- * pnpm 11 exits non-zero on an install that IGNORED a dependency build script
- * (`ERR_PNPM_IGNORED_BUILDS`, here esbuild's optional postinstall) unless
- * `strictDepBuilds` is off. That is a supply-chain posture, not a hoisting
- * setting, so it is passed on the command line rather than written into the
- * scratch project's config.
+ * pnpm 12 exits non-zero on an install that IGNORED a dependency build script
+ * (`ERR_PNPM_IGNORED_BUILDS`, here esbuild's optional postinstall). pnpm 11
+ * only warned once `strictDepBuilds` was off; on 12 that setting no longer
+ * downgrades the error, so the scripts are skipped outright instead — the same
+ * outcome (no dependency build runs, install succeeds) the 11-era flag gave.
+ * That is a supply-chain posture, not a hoisting setting, so it is passed on
+ * the command line rather than written into the scratch project's config.
  */
 const INSTALL_ARGS: Record<PackageManager, ReadonlyArray<string>> = {
-	pnpm: ["install", "--config.strict-dep-builds=false"],
+	pnpm: ["install", "--config.ignore-scripts=true"],
 	npm: ["install"],
 };
 
@@ -109,6 +112,10 @@ describe("packed tarballs", () => {
 
 const file = (name: AppPackage) => `file:${join(tarballDir, basename(tarballs[name]))}`;
 
+const ROOT_PACKAGE_MANAGER = (
+	JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as { packageManager: string }
+).packageManager;
+
 /** name -> `file:` tarball for the five companions silk exact-pins. */
 const companionOverrides = () =>
 	Object.fromEntries(APP_PACKAGES.filter((name) => name !== "@savvy-web/silk").map((name) => [name, file(name)]));
@@ -129,6 +136,10 @@ const writeScratchProject = (pm: PackageManager, projectDir: string): void => {
 		version: "0.0.0",
 		private: true,
 		type: "module",
+		// Pin the root's pnpm so a local run drives the SAME pnpm CI does: outside
+		// the workspace corepack otherwise falls back to whatever it last cached,
+		// which is how a pnpm 12 install failure passed locally on pnpm 11.
+		packageManager: ROOT_PACKAGE_MANAGER,
 		devDependencies: { "@savvy-web/silk": file("@savvy-web/silk") },
 		...(pm === "npm" ? { overrides } : {}),
 	};
