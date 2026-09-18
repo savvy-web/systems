@@ -1,5 +1,17 @@
 # @savvy-web/silk-core
 
+## 0.4.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.3.0 | ^0.3.1 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.4.0
 
 ### Breaking Changes
