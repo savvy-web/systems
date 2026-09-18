@@ -1,5 +1,17 @@
 # @savvy-web/tsdown-plugins
 
+## 2.8.1
+
+### Bug Fixes
+
+- `@microsoft/api-extractor`, `@microsoft/tsdoc`, and `@microsoft/tsdoc-config` now resolve from `catalog:build` instead of pinning their own version ranges directly, keeping them in lockstep with the rest of the suite's build tooling. [#664][#664]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#664]: https://github.com/savvy-web/systems/pull/664
+
 ## 2.8.0
 
 ### Bug Fixes

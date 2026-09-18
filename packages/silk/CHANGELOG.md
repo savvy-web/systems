@@ -1,5 +1,36 @@
 # @savvy-web/silk
 
+## 4.2.0
+
+### Build System
+
+- Every subpath is now ESM-only. The Changesets CLI (v3), markdownlint-cli2 and commitlint all load their config modules with `import()`, so the dual-format CommonJS build of `./changesets/markdownlint` and the force-bundled copy of `@savvy-web/silk-effects` it carried are gone — the package is smaller and silk-effects is resolved as an ordinary external import.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 0.2.0 | 1.0.0 |
+| @savvy-web/cli | dependency | updated | 3.2.0 | 3.2.1 |
+| @savvy-web/mcp | dependency | updated | 3.1.0 | 3.1.1 |
+| @savvy-web/silk-effects | dependency | updated | 8.2.0 | 8.2.1 |
+
+### Maintenance
+
+- Deletes the dead subpaths that were deprecated when `@savvy-web/changelog` was split out and have had no consumers since:
+
+- `./changesets` and `./changesets/changelog` — the changelog generator lives in `@savvy-web/changelog`, already the canonical `.changeset/config.json` changelog id
+
+- `./changesets/remark`
+
+- `./commitlint/static`, `./commitlint/prompt` and `./commitlint/formatter` — `./commitlint` is the surviving entry [#664][#664]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#664]: https://github.com/savvy-web/systems/pull/664
+
 ## 4.1.0
 
 ### Bug Fixes

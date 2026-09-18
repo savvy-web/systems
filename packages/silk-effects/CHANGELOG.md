@@ -1,5 +1,23 @@
 # @savvy-web/silk-effects
 
+## 8.2.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.3.0 | 0.3.1 |
+
+### Maintenance
+
+- Republished with no source change; the suite is now uniformly ESM-only. [#664][#664]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#664]: https://github.com/savvy-web/systems/pull/664
+
 ## 8.2.0
 
 ### Bug Fixes
