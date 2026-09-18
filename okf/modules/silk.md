@@ -7,8 +7,8 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
-  body_sha256: 60982e0c3319710fe821028e07f1949c57c6e7fce39265929114af1c1b6235eb
+  at: 2026-09-18T02:06:56Z
+  body_sha256: 5b254f149265464d67a2f25c31cff0e37f0a76cf7aced01118efa45a389ac877
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
@@ -16,6 +16,8 @@ sources:
     resource: ../../packages/silk/savvy.build.ts
   - id: silk-shims
     resource: ../../packages/silk/src
+  - id: silk-externals-test
+    resource: ../../packages/silk/__test__/externals.test.ts
 ---
 
 # @savvy-web/silk
@@ -25,7 +27,7 @@ the Silk Suite package graph, "carrier + config shims" over
 `@savvy-web/silk-effects` (L2).[^silk-shims] A consumer installs this one
 package to get the `savvy`/`savvy-mcp` bins on PATH, a static Biome preset,
 two TSConfig convention presets, and one config-integration shim per external
-tool subpath (changesets, commitlint, lint-staged).
+tool subpath (markdownlint, commitlint, lint-staged).
 
 ## Boundary
 
@@ -48,10 +50,25 @@ tool subpath (changesets, commitlint, lint-staged).
   peers made pnpm `autoInstallPeers` propagate their Effect graph into
   consumers at the wrong version. The full reasoning is
   [`decisions/silk-pins-siblings-as-dependencies.md`](../decisions/silk-pins-siblings-as-dependencies.md).
-- **Two build postures coexist in one build.** The base entries are
-  ESM-only and externalize `silk-effects`; two entries
-  (`./changesets/changelog`, `./changesets/markdownlint`) force dual-format
-  CJS and inline `silk-effects` because their consumers `require()` them.[^silk-build]
+- **One build posture: ESM-only, every entry, no per-entry overrides.**
+  The Changesets CLI (v3, `"type": "module"`), markdownlint-cli2 (0.23+)
+  and commitlint (v19+) all `import()` their config modules, so no entry
+  ships a CJS twin and nothing force-bundles `silk-effects`; every entry
+  externalizes `@savvy-web/silk-effects` (a declared runtime dependency),
+  `semver` and `source-map-support`, and `effect`/`@effect/platform` in
+  the declaration pass only. There is no manifest `transform` keep-list
+  either — the default transform publishes `dependencies` as-is, so any
+  package a shim's emitted `.d.ts` names must be a real `dependencies`
+  entry. `__test__/externals.test.ts` pins all of this against the built
+  output: no `.cjs` emitted, and the entries import silk-effects
+  externally.[^silk-build][^silk-externals-test]
+- **The changelog generator is not a silk subpath.** It lives in
+  [`modules/changelog.md`](changelog.md); silk carries that package as an
+  exact-pinned dependency so the changesets engine can resolve it by id
+  from the consumer root, but nothing under `src/` imports it. The
+  long-deprecated `./changesets`, `./changesets/changelog`,
+  `./changesets/remark` and `./commitlint/{static,prompt,formatter}`
+  subpaths that predated the split are gone from the export map.[^silk-shims]
 - **TSConfig convention presets are silk's, not the build tools'.**
   `./tsconfig/node/root.json` (a self-contained Node-24 monorepo ROOT
   preset) and `./tsconfig/rspress/website.json` (an es2023/browser-targeted
@@ -79,3 +96,4 @@ tool subpath (changesets, commitlint, lint-staged).
 [^silk-shims]: `src/silk-shims`
 [^silk-bins]: `src/bin/savvy.ts`, `src/bin/savvy-mcp.ts`
 [^silk-build]: `savvy.build.ts`
+[^silk-externals-test]: `__test__/externals.test.ts`

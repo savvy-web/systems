@@ -10,6 +10,7 @@ okf_version: "0.2"
 
 * [conventions](conventions/index.md)
 * [decisions](decisions/index.md)
+* [gotchas](gotchas/index.md)
 * [interfaces](interfaces/index.md)
 * [modules](modules/index.md)
 * [references](references/index.md)

@@ -11,8 +11,8 @@ sources:
     resource: ../../packages/silk/package.json
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 8f5d106db33a6e933183bf832fd6683be6cf642d4183650fa8e11f9803be7702
+  at: 2026-09-18T02:06:56Z
+  body_sha256: f1440d91e5f7b0c5cb633b3f2c4520fe6350348273b9d2bc56e7e79d30acb55d
 ---
 
 # @savvy-web/silk export map
@@ -26,21 +26,23 @@ wiring. Each subpath is a **shim**: it reproduces the exact module shape
 expects, not merely the underlying symbols.[^silk-architecture]
 
 ```text
-./changesets                    ← changeset class/services API surface
-./changesets/changelog          ← ChangelogFunctions default (CJS)
-./changesets/markdownlint       ← markdownlint-cli2 rules (CJS)
-./changesets/remark             ← remark plugins + presets + lint rules
+./changesets/markdownlint       ← markdownlint-cli2 rules
 ./commitlint                    ← CommitlintConfig facade + types
-./commitlint/static             ← static config default
-./commitlint/prompt             ← commitizen adapter
-./commitlint/formatter          ← custom error formatter
 ./lint                          ← handlers / Preset / createConfig / utils
 ./biome                         ← static public/biome/silk.json asset
 ./tsconfig/node/root.json       ← Node monorepo ROOT preset
 ./tsconfig/rspress/website.json ← RSPress SITE preset (browser/SSG)
+./package.json                  ← the manifest itself
 ```
 
-The export map above is documented in full.[^silk-architecture]
+The export map above is the whole surface.[^silk-architecture] The
+changelog generator is deliberately absent: it ships as
+[`@savvy-web/changelog`](../modules/changelog.md), the package a
+`.changeset/config.json` names by id. The `./changesets`,
+`./changesets/changelog`, `./changesets/remark`, `./commitlint/static`,
+`./commitlint/prompt` and `./commitlint/formatter` subpaths that were
+deprecated when that package was split out no longer exist; a config still
+importing one fails to resolve rather than loading a stale shim.
 
 ## What stays stable
 
@@ -48,11 +50,12 @@ The export map above is documented in full.[^silk-architecture]
   (`@savvy-web/changesets`, `@savvy-web/commitlint`, `@savvy-web/lint-staged`)
   keeps working after swapping the import to the matching silk subpath** —
   the drop-in-replacement guarantee this contract exists to keep.[^silk-architecture]
-- **`./changesets/changelog` and `./changesets/markdownlint` are CJS-capable
-  exports**, because the Changesets CLI and markdownlint-cli2 load them via
-  `require()`. Every other subpath is ESM-only. A consumer's own loader
-  determines which it needs; both keep working regardless of how silk
-  builds internally.[^silk-architecture]
+- **Every subpath is ESM-only.** The tools that load these shims —
+  markdownlint-cli2 (0.23+, `customRules` via `import()`), commitlint
+  (v19+) and lint-staged — all `import()` their config modules, so no
+  subpath carries a `require` condition and none ships a `.cjs` twin. A
+  consumer whose loader can only `require()` a config is outside this
+  contract.[^silk-architecture]
 - **`./lint` exposes the lint-staged consumer surface only** — handlers,
   `Preset`, `createConfig`, workspace utilities, section/template data. CLI
   commands are never re-exported here; that surface belongs to
@@ -71,9 +74,9 @@ The export map above is documented in full.[^silk-architecture]
 ## What may change without notice
 
 - The internal shape of `@savvy-web/silk-effects` behind any shim.
-- Whether a given entry builds ESM-only or dual-format, and any bundling
-  posture that follows from that, as long as the module shape a consumer's
-  loader observes is unchanged.
+- The bundling posture behind an entry — what is inlined and what is
+  externalized — as long as the module shape a consumer's loader observes
+  is unchanged.
 - Which `dependencies` silk declares to support a shim's emitted types,
   beyond the guarantee that any type a shim's `.d.ts` names resolves for the
   consumer without an extra install.

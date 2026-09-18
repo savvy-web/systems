@@ -11,8 +11,8 @@ sources:
     resource: ../../packages/mcp/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: c9839fc1c3ec86de463533747efa106b9baf08ffc8aa2a95807d7a39e4e6302b
+  at: 2026-09-18T02:06:56Z
+  body_sha256: 194f5e725b1d696a22ce9364943454998d367a1a988d69d569438ca2549856e5
 ---
 
 # mcp
@@ -51,7 +51,7 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 
 - **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from silk-effects and the `@effected/*` kit; the `@e2e/workspace` DAG check asserts it.[^arch]
 - **`src/index.ts` never exports `main`.**[^arch]
-- **ESM-only, real Node process.** silk-effects is a normal runtime dependency here, not bundled — the opposite of `@savvy-web/silk`'s CJS-bundling requirement.[^arch]
+- **ESM-only, real Node process.** silk-effects is a normal runtime dependency here, not bundled — the same posture every package in the repo now holds, including `@savvy-web/silk`.[^arch]
 - **Effect Schema is the only schema language.** Parameters, results, and the failure union are Effect `Schema`; the framework derives the wire JSON Schema. No zod, no bridge.[^arch]
 - **stdout is the JSON-RPC wire; logs go to stderr; a clean disconnect exits 0.**[^arch]
 - **Read-only is the convention; `biome_check`, `changeset_deps_regen`, and `repos_manage` are the three documented exceptions.** See [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md).[^arch]

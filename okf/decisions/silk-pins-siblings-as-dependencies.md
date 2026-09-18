@@ -11,8 +11,8 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 5cd8a3006c7362ccb0a7b84475b7599cd05f60305b9bce2bc2a40bbac4dc2871
+  at: 2026-09-18T02:06:56Z
+  body_sha256: 7c2bc44d4fcec70eb6cdb6a030b2a63a0af6e1acaca22a478b1b679dd7108d37
 ---
 
 # silk pins siblings as dependencies, never peers
@@ -29,7 +29,7 @@ Two rules decide where any dependency entry goes: a peer is a tool the consumer 
 
 Because changesets reads `workspace:*` as the exact current version, a cli/mcp/changelog release auto-PATCH-bumps silk (`updateInternalDependencies: patch`) and re-pins it, so silk stays exactly pinned to the other three automatically without silk/cli/mcp/changelog being a fixed changeset group. Plain `dependencies` — never source peerDependencies — also means silk is not force-major-bumped by a sibling's major release. The bins reach consumers through silk's own `bin` map, not through hoisting: `@savvy-web/pnpm-plugin-silk` no longer hoists cli/mcp, only `@savvy-web/changelog` (resolved by id, not by bin, from the consumer root).[^claude-md]
 
-`dependencies` blocks of silk, cli, and mcp additionally list `@effected/commands`, `@effected/git`, `@effected/workspaces`, and `effect`, although few or no files under `src/` import them directly: they satisfy [silk-effects](../modules/silk-effects.md)'s required peers. Removing one silently breaks installs — a duplicated kit copy under pnpm's `autoInstallPeers`, or `ERR_MODULE_NOT_FOUND` under yarn — not any lint pass, so a "remove unused dependency" cleanup on these packages must check the peer graph first. silk's build transform keeps them on its explicit published-manifest allowlist for the same reason.[^layering]
+`dependencies` blocks of silk, cli, and mcp additionally list `@effected/commands`, `@effected/git`, `@effected/workspaces`, and `effect`, although few or no files under `src/` import them directly: they satisfy [silk-effects](../modules/silk-effects.md)'s required peers. Removing one silently breaks installs — a duplicated kit copy under pnpm's `autoInstallPeers`, or `ERR_MODULE_NOT_FOUND` under yarn — not any lint pass, so a "remove unused dependency" cleanup on these packages must check the peer graph first. silk's build has no manifest `transform` keep-list — the default transform publishes `dependencies` as-is — so the source manifest is the only place the edge lives.[^layering]
 
 ## Alternatives rejected
 

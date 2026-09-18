@@ -11,11 +11,9 @@
  *
  * `semver` is the live case. Nothing in `src/` imports it — the importers are
  * the `@changesets/*` packages inside `@savvy-web/silk-effects`' transitive
- * tree, force-bundled into the changelog and markdownlint entries (which must
- * stay CJS-requireable and so cannot externalize ESM-only silk-effects; see
- * the systems#469 determination in savvy.build.ts). Inlining it pulls semver's circular
- * CommonJS modules into the ESM output, which is the documented
- * `require_range is not a function` init-order hazard.
+ * tree. Inlining it pulls semver's circular CommonJS modules into the ESM
+ * output, which is the documented `require_range is not a function`
+ * init-order hazard (see savvy.build.ts).
  *
  * These assertions read the built output rather than the manifest, because the
  * manifest is the input to the behavior under test, not evidence of it.
@@ -137,14 +135,13 @@ describe("published manifest covers silk-effects' required peers", () => {
 	});
 });
 
-describe("silk-effects externalization split", () => {
+describe("silk-effects externalization", () => {
 	// silk-effects is a DECLARED runtime dependency, which makes tsdown auto-externalize
-	// it everywhere. That is the right posture for the base ESM entries (consumers
-	// resolve the `import`), and the WRONG one for the two CJS override partitions:
-	// CJS cannot `require()` ESM-only silk-effects, so those partitions force-inline it
-	// via the override-level `bundle` knob in savvy.build.ts. These assertions pin both
-	// halves against the built output, so dropping `bundle` from an override (or the
-	// `externals` entry from the base) fails here instead of at a consumer's require().
+	// it: consumers resolve the `import`. Every entry is ESM-only — the changesets CLI
+	// (v3), markdownlint-cli2 and commitlint all `import()` their config modules, so
+	// nothing needs a CJS twin any more. These assertions pin both halves against the
+	// built output: no CJS artifact is emitted, and the entries that touch silk-effects
+	// do so through an external import rather than an inlined copy.
 	const targets = ["dist/prod/npm/pkg", "dist/dev/pkg"].map((rel) => ({
 		rel,
 		files: collectArtifacts(join(PKG_ROOT, rel)),
@@ -153,28 +150,21 @@ describe("silk-effects externalization split", () => {
 
 	for (const { rel, files } of built) {
 		describe(rel, () => {
-			const cjs = files.filter((f) => f.endsWith(".cjs"));
-			// Base ESM entries only: the two override partitions' `.js` twins inline silk-effects
-			// just like their `.cjs`, so they are excluded from the externalization assertion.
-			const baseEsmEntries = files.filter(
-				(f) => /\/(changesets|changesets-remark|commitlint(-[a-z]+)?|lint)\.js$/.test(f) && !f.includes("/bin/"),
-			);
+			const entries = files.filter((f) => /\/(changesets-markdownlint|commitlint|lint)\.js$/.test(f));
 
-			it("inlines silk-effects into every CJS artifact (no external require)", () => {
-				expect(cjs.length).toBeGreaterThan(0);
-				const offenders = cjs.filter((f) => /require\(["']@savvy-web\/silk-effects/.test(readFileSync(f, "utf-8")));
-				expect(offenders.map((f) => f.slice(PKG_ROOT.length + 1))).toEqual([]);
+			it("emits no CJS artifacts", () => {
+				const cjs = files.filter((f) => f.endsWith(".cjs")).map((f) => f.slice(PKG_ROOT.length + 1));
+				expect(cjs).toEqual([]);
 			});
 
-			it("externalizes silk-effects from the base ESM entries (import stays external)", () => {
-				expect(baseEsmEntries.length).toBeGreaterThan(0);
+			it("externalizes silk-effects from every entry (import stays external)", () => {
+				expect(entries.length).toBeGreaterThan(0);
 				// A real import STATEMENT at line start — not a doc comment quoting one.
-				const importing = baseEsmEntries.filter((f) =>
+				const importing = entries.filter((f) =>
 					/^import .* from ["']@savvy-web\/silk-effects["'];?$/m.test(readFileSync(f, "utf-8")),
 				);
 				const names = importing.map((f) => f.slice(f.lastIndexOf("/") + 1));
-				// Every base entry that touches silk-effects does so through an external import.
-				expect(names).toEqual(expect.arrayContaining(["changesets.js", "commitlint.js", "lint.js"]));
+				expect(names).toEqual(expect.arrayContaining(["commitlint.js", "lint.js"]));
 			});
 		});
 	}

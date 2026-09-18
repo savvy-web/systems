@@ -204,12 +204,18 @@ importers:
       '@okfit/plugin':
         specifier: ^0.4.0
         version: 0.4.0(@effected/config-file@0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/walker@0.9.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/yaml@0.15.1(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/glob@0.6.0(effect@4.0.0-rc.115))(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/markdown@0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/yaml@0.15.1(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/schemastore@0.13.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/walker@0.9.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/yaml@0.15.1(effect@4.0.0-rc.115))(redis@6.2.1)
+      '@savvy-web/changelog':
+        specifier: workspace:*
+        version: link:packages/changelog/dist/dev/pkg
       '@savvy-web/silk':
         specifier: workspace:*
         version: link:packages/silk/dist/dev/pkg
       '@vitest-agent/plugin':
         specifier: ^4.0.4
         version: 4.0.4(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@types/react@19.3.0)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(redis@6.2.1)(vitest@5.0.1)
+      typescript:
+        specifier: catalog:silk
+        version: 7.0.2
 
   e2e/bundler:
     devDependencies:
@@ -4840,29 +4846,21 @@ snapshots:
       '@biomejs/cli-win32-arm64': 2.5.14
       '@biomejs/cli-win32-x64': 2.5.14
 
-  '@biomejs/cli-darwin-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-arm64@2.5.14': {}
 
-  '@biomejs/cli-darwin-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-x64@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64@2.5.14': {}
 
-  '@biomejs/cli-linux-x64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64@2.5.14': {}
 
-  '@biomejs/cli-win32-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-arm64@2.5.14': {}
 
-  '@biomejs/cli-win32-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-x64@2.5.14': {}
 
   '@changesets/apply-release-plan@8.1.1':
     dependencies:
@@ -6090,23 +6088,17 @@ snapshots:
       tsdown: 0.23.0(@tsdown/css@0.23.0)(@tsdown/exe@0.23.0)(tsx@4.23.13)(typescript@6.0.3)
       verkit: 0.4.0
 
-  '@turbo/darwin-64@2.10.13':
-    optional: true
+  '@turbo/darwin-64@2.10.13': {}
 
-  '@turbo/darwin-arm64@2.10.13':
-    optional: true
+  '@turbo/darwin-arm64@2.10.13': {}
 
-  '@turbo/linux-64@2.10.13':
-    optional: true
+  '@turbo/linux-64@2.10.13': {}
 
-  '@turbo/linux-arm64@2.10.13':
-    optional: true
+  '@turbo/linux-arm64@2.10.13': {}
 
-  '@turbo/windows-64@2.10.13':
-    optional: true
+  '@turbo/windows-64@2.10.13': {}
 
-  '@turbo/windows-arm64@2.10.13':
-    optional: true
+  '@turbo/windows-arm64@2.10.13': {}
 
   '@tybys/wasm-util@0.10.4':
     dependencies:

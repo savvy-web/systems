@@ -173,7 +173,6 @@ publicHoistPattern:
   - "@commitlint/cli"
   - "@commitlint/config-conventional"
   - "@commitlint/cz-commitlint"
-  - "@savvy-web/changelog"
   - "@types/bun"
   - "@types/node"
   - "@types/react"

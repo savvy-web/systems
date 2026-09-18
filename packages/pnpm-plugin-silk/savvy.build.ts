@@ -352,6 +352,10 @@ await build({
 					// @savvy-web/cli and @savvy-web/mcp are gone from `value` below (silk
 					// now owns the `savvy`/`savvy-mcp` bins itself as shims, systems#631),
 					// so there is nothing left to exclude for either of them here.
+					// @savvy-web/changelog stays excluded HERE: the hub declares it as a root
+					// devDependency so the changesets engine resolves the `link:` into
+					// dist/dev/pkg; a public hoist would symlink the source package instead.
+					"savvy-web-systems": ["@savvy-web/changelog"],
 				},
 				value: [
 					"@changesets/cli",
