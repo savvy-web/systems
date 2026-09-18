@@ -27,6 +27,15 @@ settings:
 
 catalogs:
   build:
+    '@microsoft/api-extractor':
+      specifier: ^7.59.1
+      version: 7.59.1
+    '@microsoft/tsdoc':
+      specifier: ~0.16.0
+      version: 0.16.0
+    '@microsoft/tsdoc-config':
+      specifier: ~0.18.2
+      version: 0.18.2
     '@rsbuild/core':
       specifier: ^2.2.7
       version: 2.2.7
@@ -362,12 +371,21 @@ importers:
 
   packages/changelog:
     dependencies:
-      jju:
-        specifier: ^1.4.0
-        version: 1.4.0
-      semver:
-        specifier: ^7.8.5
-        version: 7.8.5
+      '@effected/commands':
+        specifier: catalog:effected
+        version: 0.7.1(effect@4.0.0-rc.115)
+      '@effected/git':
+        specifier: catalog:effected
+        version: 0.15.1(effect@4.0.0-rc.115)
+      '@effected/workspaces':
+        specifier: catalog:effected
+        version: 0.22.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
+      '@savvy-web/silk-effects':
+        specifier: workspace:*
+        version: link:../silk-effects/dist/dev/pkg
+      effect:
+        specifier: catalog:effect
+        version: 4.0.0-rc.115
     devDependencies:
       '@changesets/types':
         specifier: ^7.0.0
@@ -375,15 +393,9 @@ importers:
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
-      '@savvy-web/silk-effects':
-        specifier: workspace:*
-        version: link:../silk-effects/dist/dev/pkg
       '@types/node':
         specifier: catalog:build
         version: 26.6.1
-      effect:
-        specifier: catalog:effect
-        version: 4.0.0-rc.115
       tsx:
         specifier: catalog:build
         version: 4.23.13
@@ -907,13 +919,13 @@ importers:
         specifier: catalog:effected
         version: 0.22.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
       '@microsoft/api-extractor':
-        specifier: ^7.59.1
+        specifier: catalog:build
         version: 7.59.1(@types/node@26.6.1)
       '@microsoft/tsdoc':
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: catalog:build
+        version: 0.16.0
       '@microsoft/tsdoc-config':
-        specifier: ^0.18.2
+        specifier: catalog:build
         version: 0.18.2
       '@tsdoctor/manifest':
         specifier: ^0.1.0
@@ -4828,29 +4840,21 @@ snapshots:
       '@biomejs/cli-win32-arm64': 2.5.14
       '@biomejs/cli-win32-x64': 2.5.14
 
-  '@biomejs/cli-darwin-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-arm64@2.5.14': {}
 
-  '@biomejs/cli-darwin-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-x64@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64@2.5.14': {}
 
-  '@biomejs/cli-linux-x64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64@2.5.14': {}
 
-  '@biomejs/cli-win32-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-arm64@2.5.14': {}
 
-  '@biomejs/cli-win32-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-x64@2.5.14': {}
 
   '@changesets/apply-release-plan@8.1.1':
     dependencies:
@@ -6078,23 +6082,17 @@ snapshots:
       tsdown: 0.23.0(@tsdown/css@0.23.0)(@tsdown/exe@0.23.0)(tsx@4.23.13)(typescript@6.0.3)
       verkit: 0.4.0
 
-  '@turbo/darwin-64@2.10.13':
-    optional: true
+  '@turbo/darwin-64@2.10.13': {}
 
-  '@turbo/darwin-arm64@2.10.13':
-    optional: true
+  '@turbo/darwin-arm64@2.10.13': {}
 
-  '@turbo/linux-64@2.10.13':
-    optional: true
+  '@turbo/linux-64@2.10.13': {}
 
-  '@turbo/linux-arm64@2.10.13':
-    optional: true
+  '@turbo/linux-arm64@2.10.13': {}
 
-  '@turbo/windows-64@2.10.13':
-    optional: true
+  '@turbo/windows-64@2.10.13': {}
 
-  '@turbo/windows-arm64@2.10.13':
-    optional: true
+  '@turbo/windows-arm64@2.10.13': {}
 
   '@tybys/wasm-util@0.10.4':
     dependencies:

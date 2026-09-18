@@ -30,15 +30,16 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"jju": "^1.4.0",
-		"semver": "^7.8.5"
+		"@effected/commands": "catalog:effected",
+		"@effected/git": "catalog:effected",
+		"@effected/workspaces": "catalog:effected",
+		"@savvy-web/silk-effects": "workspace:*",
+		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@changesets/types": "^7.0.0",
 		"@savvy-web/bundler": "workspace:*",
-		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:build",
-		"effect": "catalog:effect",
 		"tsx": "catalog:build",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"

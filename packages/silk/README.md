@@ -44,15 +44,13 @@ Markdownlint (`.markdownlint-cli2.jsonc`) loads the changeset rule module:
 }
 ```
 
-Changesets (`.changeset/config.json`) loads the changelog generator, the standalone [`@savvy-web/changelog`](https://www.npmjs.com/package/@savvy-web/changelog) package that silk ships as a peer:
+Changesets (`.changeset/config.json`) loads the changelog generator, the standalone [`@savvy-web/changelog`](https://www.npmjs.com/package/@savvy-web/changelog) package that silk ships as an exact-pinned dependency:
 
 ```json
 {
   "changelog": ["@savvy-web/changelog", { "repo": "owner/repo" }]
 }
 ```
-
-The `@savvy-web/silk/changesets/changelog` subpath re-exports the same generator and remains accepted by `savvy check`.
 
 Biome (`biome.jsonc`) extends the bundled preset:
 
@@ -66,18 +64,12 @@ Biome (`biome.jsonc`) extends the bundled preset:
 
 | Subpath | What it provides |
 | ------- | ---------------- |
-| `./changesets` | Changeset class and service surface |
-| `./changesets/changelog` | `ChangelogFunctions` default (same generator as `@savvy-web/changelog`) |
 | `./changesets/markdownlint` | markdownlint-cli2 rules (default array plus named rules) |
-| `./changesets/remark` | remark transform plugins, presets and lint rules |
 | `./commitlint` | Auto-detecting `CommitlintConfig` plus types |
-| `./commitlint/static` | Static config default with no auto-detection |
-| `./commitlint/prompt` | commitizen adapter |
-| `./commitlint/formatter` | Custom commitlint error formatter |
 | `./lint` | lint-staged handlers, `Preset`, `createConfig` and workspace utils |
 | `./biome` | Static Biome preset asset |
 
-Most subpaths ship as ESM. The `./changesets/markdownlint` entry additionally ships a CommonJS build, because markdownlint-cli2's custom-rule loader `require()`s it from a CommonJS context.
+Every subpath ships as ESM only. The Changesets CLI (v3), markdownlint-cli2 and commitlint all load their config modules with `import()`, so no CommonJS build is needed.
 
 ## License
 

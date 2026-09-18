@@ -18,6 +18,9 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
+    "@microsoft/api-extractor": ^7.59.1
+    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/tsdoc-config": ~0.18.2
     "@rsbuild/core": ^2.2.7
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
@@ -32,6 +35,9 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.2
   build:peers:
+    "@microsoft/api-extractor": ^7.59.0
+    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/tsdoc-config": ~0.18.0
     "@rsbuild/core": ^2.2.0
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
@@ -161,14 +167,7 @@ overrides:
 peerDependencyRules:
   allowedVersions:
     "@effect/vitest>vitest": ^5.0.1
-    "@typescript-eslint/project-service>typescript": ^6.0.0
-    "@typescript-eslint/tsconfig-utils>typescript": ^6.0.0
-    "@typescript-eslint/typescript-estree>typescript": ^6.0.0
-    "@typescript-eslint/util>typescript": ^6.0.0
-    "@typescript-eslint/utils>typescript": ^6.0.0
-    eslint-plugin-tsdoc>typescript: ^6.0.0
     ink-tab>ink: ^7.0.0
-    tsdown>typescript: ^5.0.0 || ^6.0.0 || ^7.0.0
 publicHoistPattern:
   - "@changesets/cli"
   - "@commitlint/cli"
@@ -179,8 +178,6 @@ publicHoistPattern:
   - "@types/react"
   - "@types/react-dom"
   - "@typescript/native-preview"
-  - "@vitest-agent/cli"
-  - "@vitest-agent/mcp"
   - "@vitest/coverage-istanbul"
   - "@vitest/coverage-v8"
   - husky
