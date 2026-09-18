@@ -27,6 +27,15 @@ settings:
 
 catalogs:
   build:
+    '@microsoft/api-extractor':
+      specifier: ^7.59.1
+      version: 7.59.1
+    '@microsoft/tsdoc':
+      specifier: ~0.16.0
+      version: 0.16.0
+    '@microsoft/tsdoc-config':
+      specifier: ~0.18.2
+      version: 0.18.2
     '@rsbuild/core':
       specifier: ^2.2.7
       version: 2.2.7
@@ -195,18 +204,12 @@ importers:
       '@okfit/plugin':
         specifier: ^0.4.0
         version: 0.4.0(@effected/config-file@0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/walker@0.9.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/yaml@0.15.1(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/glob@0.6.0(effect@4.0.0-rc.115))(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/markdown@0.10.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/yaml@0.15.1(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/schemastore@0.13.0(effect@4.0.0-rc.115))(@effected/toml@0.7.0(effect@4.0.0-rc.115))(@effected/walker@0.9.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(@effected/yaml@0.15.1(effect@4.0.0-rc.115))(redis@6.2.1)
-      '@savvy-web/changelog':
-        specifier: workspace:*
-        version: link:packages/changelog/dist/dev/pkg
       '@savvy-web/silk':
         specifier: workspace:*
         version: link:packages/silk/dist/dev/pkg
       '@vitest-agent/plugin':
         specifier: ^4.0.4
         version: 4.0.4(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@types/react@19.3.0)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(redis@6.2.1)(vitest@5.0.1)
-      typescript:
-        specifier: catalog:silk
-        version: 7.0.2
 
   e2e/bundler:
     devDependencies:
@@ -362,6 +365,21 @@ importers:
 
   packages/changelog:
     dependencies:
+      '@effected/commands':
+        specifier: catalog:effected
+        version: 0.7.1(effect@4.0.0-rc.115)
+      '@effected/git':
+        specifier: catalog:effected
+        version: 0.15.1(effect@4.0.0-rc.115)
+      '@effected/workspaces':
+        specifier: catalog:effected
+        version: 0.22.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
+      '@savvy-web/silk-effects':
+        specifier: workspace:*
+        version: link:../silk-effects/dist/dev/pkg
+      effect:
+        specifier: catalog:effect
+        version: 4.0.0-rc.115
       jju:
         specifier: ^1.4.0
         version: 1.4.0
@@ -375,15 +393,9 @@ importers:
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
-      '@savvy-web/silk-effects':
-        specifier: workspace:*
-        version: link:../silk-effects/dist/dev/pkg
       '@types/node':
         specifier: catalog:build
         version: 26.6.1
-      effect:
-        specifier: catalog:effect
-        version: 4.0.0-rc.115
       tsx:
         specifier: catalog:build
         version: 4.23.13
@@ -907,13 +919,13 @@ importers:
         specifier: catalog:effected
         version: 0.22.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
       '@microsoft/api-extractor':
-        specifier: ^7.59.1
+        specifier: catalog:build
         version: 7.59.1(@types/node@26.6.1)
       '@microsoft/tsdoc':
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: catalog:build
+        version: 0.16.0
       '@microsoft/tsdoc-config':
-        specifier: ^0.18.2
+        specifier: catalog:build
         version: 0.18.2
       '@tsdoctor/manifest':
         specifier: ^0.1.0

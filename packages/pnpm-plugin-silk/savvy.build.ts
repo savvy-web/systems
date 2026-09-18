@@ -8,6 +8,21 @@ await build({
 			catalogs: {
 				build: {
 					packages: {
+						"@microsoft/api-extractor": {
+							range: "^7.59.1",
+							peer: "^7.59.0",
+							strategy: "lock-minor",
+						},
+						"@microsoft/tsdoc": {
+							range: "~0.16.0",
+							peer: "~0.16.0",
+							strategy: "lock-minor",
+						},
+						"@microsoft/tsdoc-config": {
+							range: "~0.18.2",
+							peer: "~0.18.0",
+							strategy: "lock-minor",
+						},
 						"@tsdown/exe": {
 							range: "^0.23.0",
 							peer: "^0.23.0",
@@ -337,7 +352,6 @@ await build({
 					// @savvy-web/cli and @savvy-web/mcp are gone from `value` below (silk
 					// now owns the `savvy`/`savvy-mcp` bins itself as shims, systems#631),
 					// so there is nothing left to exclude for either of them here.
-					"savvy-web-systems": ["@savvy-web/changelog"],
 				},
 				value: [
 					"@changesets/cli",
@@ -354,8 +368,6 @@ await build({
 					"@types/react",
 					"@types/react-dom",
 					"@typescript/native-preview",
-					"@vitest-agent/cli",
-					"@vitest-agent/mcp",
 					"@vitest/coverage-istanbul",
 					"@vitest/coverage-v8",
 					"husky",
@@ -387,14 +399,7 @@ await build({
 			blockExoticSubdeps: true,
 			peerDependencyRules: {
 				allowedVersions: {
-					"tsdown>typescript": "^5.0.0 || ^6.0.0 || ^7.0.0",
 					"@effect/vitest>vitest": "^5.0.1",
-					"@typescript-eslint/project-service>typescript": "^6.0.0",
-					"@typescript-eslint/tsconfig-utils>typescript": "^6.0.0",
-					"@typescript-eslint/typescript-estree>typescript": "^6.0.0",
-					"@typescript-eslint/util>typescript": "^6.0.0",
-					"@typescript-eslint/utils>typescript": "^6.0.0",
-					"eslint-plugin-tsdoc>typescript": "^6.0.0",
 					"ink-tab>ink": "^7.0.0",
 				},
 			},
