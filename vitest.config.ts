@@ -10,7 +10,7 @@ export default async () => {
 		plugins: [
 			AgentPlugin({
 				console: {
-					human: "stream",
+					human: "passthrough",
 					agent: "agent",
 				},
 				coverageTargets: AgentPlugin.COVERAGE_LEVELS.strict.coverageTargets,

@@ -10,18 +10,23 @@ await build({
 					packages: {
 						"@microsoft/api-extractor": {
 							range: "^7.59.1",
-							peer: "^7.59.0",
-							strategy: "lock-minor",
+							peer: "^7.59.1",
+							strategy: "lock",
+						},
+						"@microsoft/api-extractor-model": {
+							range: "^7.33.12",
+							peer: "^7.33.12",
+							strategy: "lock",
 						},
 						"@microsoft/tsdoc": {
 							range: "~0.16.0",
 							peer: "~0.16.0",
-							strategy: "lock-minor",
+							strategy: "lock",
 						},
 						"@microsoft/tsdoc-config": {
 							range: "~0.18.2",
-							peer: "~0.18.0",
-							strategy: "lock-minor",
+							peer: "~0.18.2",
+							strategy: "lock",
 						},
 						"@tsdown/exe": {
 							range: "^0.23.0",
@@ -93,13 +98,13 @@ await build({
 				docs: {
 					packages: {
 						"@rspress/core": {
-							range: "^2.0.21",
+							range: "^2.0.22",
 							peer: "^2.0.0",
 							strategy: "lock-minor",
 						},
 						"@rspress/plugin-sitemap": {
-							range: "^2.0.21",
-							peer: "^2.0.21",
+							range: "^2.0.22",
+							peer: "^2.0.22",
 							strategy: "lock",
 						},
 						"@types/node": {
@@ -403,6 +408,8 @@ await build({
 			blockExoticSubdeps: true,
 			peerDependencyRules: {
 				allowedVersions: {
+					"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
+					"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
 					"@effect/vitest>vitest": "^5.0.1",
 					"ink-tab>ink": "^7.0.0",
 				},

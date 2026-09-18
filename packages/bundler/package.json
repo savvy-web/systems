@@ -47,7 +47,7 @@
 		"@types/node": "catalog:build",
 		"@types/react": "catalog:build",
 		"@types/react-dom": "catalog:build",
-		"image-size": "^2.0.2",
+		"image-size": "^2.0.4",
 		"react": "catalog:build",
 		"react-dom": "catalog:build",
 		"satori": "^0.33.4",

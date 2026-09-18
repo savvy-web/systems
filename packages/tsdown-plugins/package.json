@@ -45,7 +45,7 @@
 		"@microsoft/tsdoc-config": "catalog:build",
 		"@tsdoctor/manifest": "^0.2.0",
 		"effect": "catalog:effect",
-		"image-size": "^2.0.2",
+		"image-size": "^2.0.4",
 		"picocolors": "^1.1.1",
 		"std-env": "^4.2.0",
 		"tsdown": "catalog:build",

@@ -19,6 +19,7 @@ blockExoticSubdeps: true
 catalogs:
   build:
     "@microsoft/api-extractor": ^7.59.1
+    "@microsoft/api-extractor-model": ^7.33.12
     "@microsoft/tsdoc": ~0.16.0
     "@microsoft/tsdoc-config": ~0.18.2
     "@rsbuild/core": ^2.2.7
@@ -35,9 +36,10 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.2
   build:peers:
-    "@microsoft/api-extractor": ^7.59.0
+    "@microsoft/api-extractor": ^7.59.1
+    "@microsoft/api-extractor-model": ^7.33.12
     "@microsoft/tsdoc": ~0.16.0
-    "@microsoft/tsdoc-config": ~0.18.0
+    "@microsoft/tsdoc-config": ~0.18.2
     "@rsbuild/core": ^2.2.0
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
@@ -52,8 +54,8 @@ catalogs:
     tsx: ^4.23.13
     typescript: ^7.0.0
   docs:
-    "@rspress/core": ^2.0.21
-    "@rspress/plugin-sitemap": ^2.0.21
+    "@rspress/core": ^2.0.22
+    "@rspress/plugin-sitemap": ^2.0.22
     "@types/node": ^26.6.1
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
@@ -65,7 +67,7 @@ catalogs:
     vitepress: ^2.0.0-alpha.20
   docs:peers:
     "@rspress/core": ^2.0.0
-    "@rspress/plugin-sitemap": ^2.0.21
+    "@rspress/plugin-sitemap": ^2.0.22
     "@types/node": ^26.6.0
     "@types/react": ^19.3.0
     "@types/react-dom": ^19.3.0
@@ -136,7 +138,7 @@ catalogs:
     vite: ^8.3.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.8.13+sha512-M8IH1McwSOmOY0nfnWxK4rTyzuiSuXvF19I37Zu7zIB7ndYk+Cgf6yU1tBZpR0yu109m+rHmVartZgpkoUh0Lw==
+  "@effected/pnpm-plugin-effect": 0.8.14+sha512-GS/JHpAcryADmzcT1O81rzY7chst+kesLn5oY2NLenz7q3iJ4rzTSYqKiwd1vzA9tA5oFgTljvNJczx834ekKg==
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
@@ -168,6 +170,7 @@ peerDependencyRules:
   allowedVersions:
     "@effect/vitest>vitest": ^5.0.1
     ink-tab>ink: ^7.0.0
+    twoslash-vue>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0
 publicHoistPattern:
   - "@changesets/cli"
   - "@commitlint/cli"
