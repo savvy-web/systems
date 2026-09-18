@@ -386,12 +386,6 @@ importers:
       effect:
         specifier: catalog:effect
         version: 4.0.0-rc.115
-      jju:
-        specifier: ^1.4.0
-        version: 1.4.0
-      semver:
-        specifier: ^7.8.5
-        version: 7.8.5
     devDependencies:
       '@changesets/types':
         specifier: ^7.0.0

@@ -164,7 +164,7 @@ describe("silk-effects externalization", () => {
 					/^import .* from ["']@savvy-web\/silk-effects["'];?$/m.test(readFileSync(f, "utf-8")),
 				);
 				const names = importing.map((f) => f.slice(f.lastIndexOf("/") + 1));
-				expect(names).toEqual(expect.arrayContaining(["commitlint.js", "lint.js"]));
+				expect(names).toEqual(expect.arrayContaining(["changesets-markdownlint.js", "commitlint.js", "lint.js"]));
 			});
 		});
 	}

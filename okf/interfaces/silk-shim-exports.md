@@ -11,8 +11,8 @@ sources:
     resource: ../../packages/silk/package.json
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T02:06:56Z
-  body_sha256: f1440d91e5f7b0c5cb633b3f2c4520fe6350348273b9d2bc56e7e79d30acb55d
+  at: 2026-09-18T02:22:20Z
+  body_sha256: 1d76ac85e709c88d7a3de399bbe212369788bd757d2be620df551df2d85cb59d
 ---
 
 # @savvy-web/silk export map
@@ -50,12 +50,14 @@ importing one fails to resolve rather than loading a stale shim.
   (`@savvy-web/changesets`, `@savvy-web/commitlint`, `@savvy-web/lint-staged`)
   keeps working after swapping the import to the matching silk subpath** —
   the drop-in-replacement guarantee this contract exists to keep.[^silk-architecture]
-- **Every subpath is ESM-only.** The tools that load these shims —
-  markdownlint-cli2 (0.23+, `customRules` via `import()`), commitlint
-  (v19+) and lint-staged — all `import()` their config modules, so no
-  subpath carries a `require` condition and none ships a `.cjs` twin. A
+- **Every JavaScript shim entry is ESM-only.** The tools that load these
+  shims — markdownlint-cli2 (0.23+, `customRules` via `import()`),
+  commitlint (v19+) and lint-staged — all `import()` their config modules,
+  so no shim carries a `require` condition and none ships a `.cjs` twin. A
   consumer whose loader can only `require()` a config is outside this
-  contract.[^silk-architecture]
+  contract. The remaining entries — `./biome`, the `./tsconfig/*` presets
+  and `./package.json` — are JSON assets, not modules, and are read by
+  path.[^silk-architecture]
 - **`./lint` exposes the lint-staged consumer surface only** — handlers,
   `Preset`, `createConfig`, workspace utilities, section/template data. CLI
   commands are never re-exported here; that surface belongs to
