@@ -1,5 +1,13 @@
 # @savvy-web/changelog
 
+## 1.0.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 8.2.1 | 9.0.0 |
+
 ## 1.0.0
 
 ### Breaking Changes
