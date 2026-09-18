@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { CommentStyle, SectionId } from "@effected/templates";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -77,6 +77,27 @@ const invocations = (): ReadonlyArray<string> => {
  * has to say so rather than quietly asserting the fallback's answer instead.
  */
 const hasJq = spawnSync("sh", ["-c", "command -v jq"], { encoding: "utf8" }).status === 0;
+
+/**
+ * A `PATH` holding only the fake bin and the directories of the tools the hook
+ * itself needs (`sh`, `git`, `jq`, `cut`, `head`), with nothing else inherited.
+ *
+ * The default {@link runHook} PATH leads with the fake bin but keeps the
+ * process PATH behind it, so removing a fake does not take the manager off
+ * PATH — it unshadows the REAL one, which then runs a genuine install in the
+ * fixture. Locally that is a vacuous pass (the real manager never writes the
+ * fake's log); in CI it is corepack fetching the fixture's `packageManager`
+ * version and a 5s test timeout. The "not on PATH" case has to build its PATH
+ * from the toolchain alone.
+ */
+const toolchainOnlyPath = (): string => {
+	const dirs = new Set<string>([bin]);
+	for (const tool of ["sh", "git", "jq", "cut", "head"]) {
+		const found = spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" });
+		if (found.status === 0) dirs.add(dirname(found.stdout.trim()));
+	}
+	return [...dirs].join(":");
+};
 
 /**
  * Runs the section for `hook` with `args`, returning its exit code.
@@ -206,12 +227,16 @@ describe("savvyInstallDeps (post-checkout)", () => {
 
 	it("stays silent when the detected manager is not on PATH", () => {
 		rmSync(join(bin, "pnpm"), { force: true });
+		const PATH = toolchainOnlyPath();
+		// Precondition: the confined PATH really has no pnpm, fake or real.
+		expect(spawnSync("sh", ["-c", "command -v pnpm"], { encoding: "utf8", env: { PATH } }).status).not.toBe(0);
 		const before = git("rev-parse", "HEAD");
 		const after = commitChange("pnpm-lock.yaml", "lockfileVersion: '9.1'\n");
 
-		runHook("post-checkout", [before, after, "1"]);
+		expect(runHook("post-checkout", [before, after, "1"], { PATH })).toBe(0);
 
 		expect(invocations()).toEqual([]);
+		expect(lastStderr).not.toContain("running pnpm install");
 	});
 
 	it("does not fail the hook when the install itself fails", () => {
