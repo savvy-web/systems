@@ -30,11 +30,11 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/github-references": "catalog:effected",
-		"@effected/templates": "catalog:effected"
+		"@effected/github-references": "catalog:effected"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
+		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
@@ -44,8 +44,9 @@
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/workspaces": "catalog:effected",
-		"effect": "catalog:effect"
+		"@effected/templates": "catalog:effected:peers",
+		"@effected/workspaces": "catalog:effected:peers",
+		"effect": "catalog:effect:peers"
 	},
 	"publishConfig": {
 		"access": "public",

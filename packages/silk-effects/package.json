@@ -40,8 +40,6 @@
 		"@effected/jsonc": "catalog:effected",
 		"@effected/markdown": "catalog:effected",
 		"@effected/package-json": "catalog:effected",
-		"@effected/templates": "catalog:effected",
-		"@effected/toml": "catalog:effected",
 		"@effected/walker": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
 		"@manypkg/get-packages": "^3.1.0",
@@ -64,6 +62,7 @@
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
 		"@effected/memfs": "catalog:effected",
+		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/mdast": "^4.0.4",
@@ -77,10 +76,11 @@
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/commands": "catalog:effected",
-		"@effected/git": "catalog:effected",
-		"@effected/workspaces": "catalog:effected",
-		"effect": "catalog:effect"
+		"@effected/commands": "catalog:effected:peers",
+		"@effected/git": "catalog:effected:peers",
+		"@effected/templates": "catalog:effected:peers",
+		"@effected/workspaces": "catalog:effected:peers",
+		"effect": "catalog:effect:peers"
 	},
 	"publishConfig": {
 		"access": "public",

@@ -23,8 +23,8 @@ sources:
     resource: ../../packages/silk-effects/src/services
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: f82374ecfc2d486fdaaca036bea23bf24ef0e89d401e0d18b0932d53a5bf86a7
+  at: 2026-09-18T12:53:56Z
+  body_sha256: 39554249ca528970a53fcb0393bbbf7182c52e2ed3b032d2d58ce5a0cae22474
 ---
 
 # silk-effects
@@ -104,14 +104,14 @@ The Silk publishability rule, the changeset-config accessors, and the composite 
 
 ## Dependencies and platform requirements
 
-`@savvy-web/silk-core` is a regular `workspace:*` dependency. `effect` is the sole framework peer. Three kit packages — `@effected/commands`, `@effected/git`, `@effected/workspaces` — are required peers because their service identities cross this package's API boundary; the rest of the kit are regular dependencies. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). Consumers provide the platform layer and the working directory — no service defaults to `process.cwd()`.[^arch]
+`@savvy-web/silk-core` is a regular `workspace:*` dependency. `effect` is the sole framework peer (`catalog:effect:peers`). Four kit packages — `@effected/commands`, `@effected/git`, `@effected/templates`, `@effected/workspaces` — are required peers (`catalog:effected:peers`) because their service or class identities cross this package's API boundary (templates and workspaces through the re-exported silk-core schemas); the rest of the kit are regular dependencies. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). Consumers provide the platform layer and the working directory — no service defaults to `process.cwd()`.[^arch]
 
 ## Related concepts
 
 - [silk-core](silk-core.md) — the L1 domain model this package re-exports
 - [cli](cli.md), [mcp](mcp.md) — the two front ends whose command/tool logic this package supplies
 - [pr-body-contract](../interfaces/pr-body-contract.md), [managed-hook-sections](../interfaces/managed-hook-sections.md), [issue-reference-grammar](../interfaces/issue-reference-grammar.md) — the frozen contracts this package's `PrBody`, `SavvySections`, and reference-parsing rely on
-- [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md) — why three `@effected/*` packages are required peers
+- [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md) — why four `@effected/*` packages are required peers
 
 [^arch]: `../../packages/silk-effects/src`
 [^changesets]: `../../packages/silk-effects/src/changesets`

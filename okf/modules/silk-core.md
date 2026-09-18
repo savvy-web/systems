@@ -11,8 +11,8 @@ sources:
     resource: ../../packages/silk-core/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: f762b55ef49acf0cef426c2079073f0ce2c06b6029362ca054bc0dc1e2ce9906
+  at: 2026-09-18T12:53:56Z
+  body_sha256: 184b76378c130e5866d5df92768735fa87ca4233768ff7115f523a460a35c1aa
 ---
 
 # silk-core
@@ -44,7 +44,7 @@ The rule for future moves: a candidate that imports a silk-effects sibling stays
 
 - **No platform, no `process`, no allowlist** under `src/`, enforced by `__test__/boundaries.test.ts`.[^arch]
 - **`PrBody.Markers` is frozen.** The `silk-release:` token names the contract, not the emitting action; byte-parity with `silk-release-action` is pinned by fixture and drift-lint tests. See [pr-body-contract](../interfaces/pr-body-contract.md).[^arch]
-- **`@effected/workspaces` is a required peer, not a regular dependency.** `SilkPublishConfig` extends its `PublishConfig` class and `AnalyzedWorkspace` carries its value classes; if silk-core held its own copy, silk-core and silk-effects could resolve two instances and `instanceof`/Schema identity would break across the layer edge. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). `@effected/templates` and `@effected/github-references` are regular dependencies because only types and functions cross the boundary there.[^arch]
+- **`@effected/workspaces` and `@effected/templates` are required peers (`catalog:effected:peers`), not regular dependencies.** `SilkPublishConfig` extends workspaces' `PublishConfig` class and `AnalyzedWorkspace` carries its value classes; `SavvySections`, `SavvyOkfSection`, and `SavvyInstallSection` build on templates' nominal `Section`, `CommentStyle`, and `SectionId` classes. If silk-core held its own copy of either, silk-core and silk-effects could resolve two instances and `instanceof`/Schema identity would break across the layer edge. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). `@effected/github-references` stays a regular dependency because `parseBareLines` returns a plain interface — only functions and structural types cross the boundary there.[^arch]
 - **`prepare: turbo run build:dev` stays** — silk-effects consumes this package as `workspace:*` through a `link:` into `dist/dev/pkg`. See [workspace-prepare-scripts](../conventions/workspace-prepare-scripts.md).[^arch]
 - **Cross-package `{@link}` targets are plain backticks, never `{@link}`.** API Extractor cannot resolve a link through a re-export, so a silk-effects doc comment naming a silk-core symbol (and vice versa) uses a code span instead.[^arch]
 

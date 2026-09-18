@@ -1,5 +1,14 @@
 # Log
 
+## 2026-09-18
+
+* Updated @savvy-web/changelog
+* Updated @savvy-web/silk
+* Updated @savvy-web/silk export map
+* Added A public-hoisted workspace package resolves to its source tree, not its built artifact
+* Updated mcp
+* Updated silk pins siblings as dependencies, never peers
+
 ## 2026-09-16
 
 * Updated Managed hook sections

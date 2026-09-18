@@ -29,7 +29,7 @@ Load when implementing a new service, changing a result schema, moving code to s
 
 Load before changing any `@effected/*` dependency in this package's manifest, or when a consumer reports a duplicate kit copy:
 → `@../../okf/decisions/kit-effect-peers-via-catalog.md`
-Why `@effected/workspaces`, `@effected/git` and `@effected/commands` are REQUIRED PEERS, the two-copies type-identity failure, and the `configDependencies` bump trap.
+Why `@effected/workspaces`, `@effected/git`, `@effected/commands` and `@effected/templates` are REQUIRED PEERS (`catalog:effected:peers`), the two-copies type-identity failure, and the `configDependencies` bump trap.
 
 Interfaces split out of the namespace docs — load the one matching what you are touching:
 → `@../../okf/interfaces/managed-hook-sections.md` — the BEGIN/END MANAGED SECTION marker contract `SavvySections` writes.
