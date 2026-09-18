@@ -1,5 +1,17 @@
 # @savvy-web/templates
 
+## 1.2.1
+
+### Maintenance
+
+- Republished with no source change; the suite is now uniformly ESM-only. [#664][#664]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#664]: https://github.com/savvy-web/systems/pull/664
+
 ## 1.2.0
 
 ### Bug Fixes

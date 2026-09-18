@@ -1,5 +1,31 @@
 # @savvy-web/changelog
 
+## 1.0.0
+
+### Breaking Changes
+
+- The package is now ESM-only. The `require` export condition is gone, and the build no longer bundles its dependencies for a CommonJS consumer.
+
+- This requires `@changesets/cli` v3 or later, which loads changelog generators via dynamic `import()` rather than `require()`. Consumers still on `@changesets/cli` 2.x will fail to load this package as their configured changelog generator.
+
+- `@savvy-web/silk-effects`, `effect`, `@effected/commands`, `@effected/git`, and `@effected/workspaces` move from bundled devDependencies to externalized regular `dependencies` — they are resolved at install time rather than inlined into the build output.
+
+#### Migration
+
+- Upgrade `@changesets/cli` to v3 or later alongside this package. [#664][#664]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 8.2.0 | 8.2.1 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#664]: https://github.com/savvy-web/systems/pull/664
+
 ## 0.2.0
 
 ### Bug Fixes

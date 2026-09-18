@@ -1,5 +1,19 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.40.0
+
+### Features
+
+- Adds `build` catalog entries for `@microsoft/api-extractor` (`^7.59.1`, peer `^7.59.0`), `@microsoft/tsdoc` (`~0.16.0`), and `@microsoft/tsdoc-config` (`~0.18.2`, peer `~0.18.0`), pinned the same way `@tsdown/*` and other build-tooling packages already are. Fixes a version mismatch consumers of `@tsdoctor` were hitting.
+- Drops `@vitest-agent/cli` and `@vitest-agent/mcp` from `publicHoistPattern` — `vitest-agent` now ships its own bins, the same pattern `@savvy-web/silk` already uses for `savvy`/`savvy-mcp`.
+- Removes several now-unnecessary `peerDependencyRules.allowedVersions` entries: `tsdown>typescript`, the `@typescript-eslint/*>typescript` set, and `eslint-plugin-tsdoc>typescript`. [#664][#664]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#664]: https://github.com/savvy-web/systems/pull/664
+
 ## 0.39.0
 
 ### Bug Fixes
