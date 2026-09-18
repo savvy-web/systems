@@ -1,5 +1,16 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.41.0
+
+### Features
+
+- Add tsdoc and api-extractor dependencies to `"catalog:build"`
+- Allows Typescript v7 to be using in `twoslash` and `twoslash-vue`
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.40.0
 
 ### Features

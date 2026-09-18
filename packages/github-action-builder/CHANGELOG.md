@@ -1,5 +1,17 @@
 # @savvy-web/github-action-builder
 
+## 2.4.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/yaml | dependency | updated | ^0.15.1 | ^0.15.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.4.1
 
 ### Maintenance

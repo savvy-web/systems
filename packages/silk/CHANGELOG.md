@@ -1,5 +1,24 @@
 # @savvy-web/silk
 
+## 4.2.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.7.1 | ^0.7.2 |
+| @effected/git | dependency | updated | ^0.15.1 | ^0.15.2 |
+| @effected/templates | dependency | updated | ^0.6.0 | ^0.6.1 |
+| @effected/workspaces | dependency | updated | ^0.22.0 | ^0.22.1 |
+| @savvy-web/changelog | dependency | updated | 1.0.1 | 1.0.2 |
+| @savvy-web/cli | dependency | updated | 3.2.2 | 3.2.3 |
+| @savvy-web/mcp | dependency | updated | 3.1.2 | 3.1.3 |
+| @savvy-web/silk-effects | dependency | updated | 9.0.0 | 9.0.1 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 4.2.1
 
 ### Dependencies

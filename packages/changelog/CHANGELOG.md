@@ -1,5 +1,20 @@
 # @savvy-web/changelog
 
+## 1.0.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.7.1 | ^0.7.2 |
+| @effected/git | dependency | updated | ^0.15.1 | ^0.15.2 |
+| @effected/workspaces | dependency | updated | ^0.22.0 | ^0.22.1 |
+| @savvy-web/silk-effects | dependency | updated | 9.0.0 | 9.0.1 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 1.0.1
 
 ### Dependencies
