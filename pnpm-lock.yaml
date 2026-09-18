@@ -123,9 +123,15 @@ catalogs:
     '@effected/package-json':
       specifier: ^0.15.0
       version: 0.15.0
+    '@effected/semver':
+      specifier: ^0.7.0
+      version: 0.7.0
     '@effected/templates':
       specifier: ^0.6.0
       version: 0.6.0
+    '@effected/toml':
+      specifier: ^0.7.0
+      version: 0.7.0
     '@effected/tsconfig-json':
       specifier: ^0.9.1
       version: 0.9.1
@@ -761,6 +767,9 @@ importers:
       '@effected/package-json':
         specifier: catalog:effected
         version: 0.15.0(effect@4.0.0-rc.115)
+      '@effected/toml':
+        specifier: catalog:effected
+        version: 0.7.0(effect@4.0.0-rc.115)
       '@effected/walker':
         specifier: catalog:effected
         version: 0.9.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
@@ -900,15 +909,27 @@ importers:
       '@effect/platform-node':
         specifier: catalog:effect
         version: 4.0.0-rc.115(effect@4.0.0-rc.115)(redis@6.2.1)
+      '@effected/glob':
+        specifier: catalog:effected
+        version: 0.6.0(effect@4.0.0-rc.115)
+      '@effected/jsonc':
+        specifier: catalog:effected
+        version: 0.11.0(effect@4.0.0-rc.115)
       '@effected/npm':
         specifier: catalog:effected
         version: 0.14.0(@effected/semver@0.7.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
       '@effected/package-json':
         specifier: catalog:effected
         version: 0.15.0(effect@4.0.0-rc.115)
+      '@effected/semver':
+        specifier: catalog:effected
+        version: 0.7.0(effect@4.0.0-rc.115)
       '@effected/tsconfig-json':
         specifier: catalog:effected
         version: 0.9.1(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(@effected/walker@0.9.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
+      '@effected/walker':
+        specifier: catalog:effected
+        version: 0.9.0(@effected/glob@0.6.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)
       '@effected/workspaces':
         specifier: catalog:effected
         version: 0.22.0(@effected/jsonc@0.11.0(effect@4.0.0-rc.115))(effect@4.0.0-rc.115)

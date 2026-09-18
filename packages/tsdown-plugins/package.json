@@ -32,9 +32,13 @@
 	"dependencies": {
 		"@changesets/get-release-plan": "^5.0.2",
 		"@effect/platform-node": "catalog:effect",
+		"@effected/glob": "catalog:effected",
+		"@effected/jsonc": "catalog:effected",
 		"@effected/npm": "catalog:effected",
 		"@effected/package-json": "catalog:effected",
+		"@effected/semver": "catalog:effected",
 		"@effected/tsconfig-json": "catalog:effected",
+		"@effected/walker": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@microsoft/api-extractor": "catalog:build",
 		"@microsoft/tsdoc": "catalog:build",
