@@ -12,9 +12,10 @@ import { join, resolve } from "node:path";
 import { assert, describe, it } from "@effect/vitest";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { SERVER_INSTRUCTIONS } from "../src/server.js";
 import { fixtureWorkspace } from "./utils/fixture.js";
-import type { CallToolResult, JsonRpcMessage } from "./utils/harness.js";
-import { makeHarness } from "./utils/harness.js";
+import type { CallToolResult, JsonRpcMessage, SilkMcpHarness, StatefulProtocolVersion } from "./utils/harness.js";
+import { STATELESS_PROTOCOL_VERSION, makeHarness } from "./utils/harness.js";
 
 const open = () =>
 	Effect.gen(function* () {
@@ -67,6 +68,15 @@ describe("ServerLayer over Stdio.layerTest", () => {
 				clientInfo: { name: "savvy-mcp-test", version: "0.0.0" },
 			});
 			assert.strictEqual((response.result as { readonly protocolVersion: string }).protocolVersion, "2025-06-18");
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("answers initialize with the registered instructions", () =>
+		Effect.gen(function* () {
+			const { initialized } = yield* open();
+			const result = initialized.result as { readonly instructions?: string };
+			assert.strictEqual(result.instructions, SERVER_INSTRUCTIONS);
+			assert.ok(SERVER_INSTRUCTIONS.includes("workspace_info"), "instructions name the first tool to reach for");
 		}).pipe(Effect.scoped),
 	);
 
@@ -176,6 +186,118 @@ describe("ServerLayer over Stdio.layerTest", () => {
 			assert.ok(text.includes("Pass dir as a path"), text);
 		}).pipe(Effect.scoped),
 	);
+});
+
+// The stateless 2026-07-28 revision (SEP-2575) the server lists FIRST: no
+// initialize, no session; a client discovers the server with
+// `server/discover` and every request carries its protocol in `_meta`.
+// Claude Code only probes for it on stdio with MCP_PROTOCOL_NEGOTIATION=auto,
+// so the stateful revisions below stay the everyday path — both must serve
+// the same envelope.
+describe("ServerLayer over the stateless 2026-07-28 revision", () => {
+	it.effect("answers server/discover with the supported version, the identity and the instructions", () =>
+		Effect.gen(function* () {
+			const dir = yield* fixtureWorkspace();
+			const harness = yield* makeHarness(dir);
+			const discovered = yield* harness.discover;
+			assert.strictEqual(discovered.error, undefined, JSON.stringify(discovered));
+			const result = discovered.result as {
+				readonly supportedVersions: ReadonlyArray<string>;
+				readonly instructions?: string;
+				readonly resultType: string;
+				readonly _meta: { readonly "io.modelcontextprotocol/serverInfo": { readonly name: string } };
+			};
+			// Discovery advertises every listed adapter, the stateless one first.
+			assert.deepStrictEqual(result.supportedVersions, [STATELESS_PROTOCOL_VERSION, "2025-11-25", "2025-06-18"]);
+			assert.strictEqual(result.instructions, SERVER_INSTRUCTIONS);
+			assert.strictEqual(result.resultType, "complete");
+			assert.strictEqual(result._meta["io.modelcontextprotocol/serverInfo"].name, "savvy-mcp");
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("lists the same ten tools with no handshake", () =>
+		Effect.gen(function* () {
+			const dir = yield* fixtureWorkspace();
+			const harness = yield* makeHarness(dir);
+			const response = yield* harness.sendRequest("tools/list", {}, true);
+			const tools = (response.result as { readonly tools: ReadonlyArray<{ readonly name: string }> }).tools;
+			assert.strictEqual(tools.length, 10);
+		}).pipe(Effect.scoped),
+	);
+});
+
+// One envelope, every revision: a success (markdown + structuredContent), a
+// declared failure (isError text, no structuredContent) and an invalid-params
+// call must render identically whether the client discovered on 2026-07-28
+// or initialized on a stateful revision.
+describe("tool envelope across protocol revisions", () => {
+	const revisions: ReadonlyArray<{
+		readonly label: string;
+		readonly connect: (harness: SilkMcpHarness) => Effect.Effect<unknown>;
+		readonly stateless: boolean;
+		/** Before 2025-11-25 the runtime surfaces a parameter failure as a JSON-RPC -32602 instead of an isError result. */
+		readonly invalidParamsAsRpcError: boolean;
+	}> = [
+		{
+			label: STATELESS_PROTOCOL_VERSION,
+			connect: (harness) => harness.discover,
+			stateless: true,
+			invalidParamsAsRpcError: false,
+		},
+		...(["2025-11-25", "2025-06-18"] satisfies ReadonlyArray<StatefulProtocolVersion>).map((version) => ({
+			label: version,
+			connect: (harness: SilkMcpHarness) => harness.initializeWith(version),
+			stateless: false,
+			invalidParamsAsRpcError: version === "2025-06-18",
+		})),
+	];
+
+	for (const revision of revisions) {
+		it.effect(`${revision.label}: workspace_info success carries markdown and structuredContent`, () =>
+			Effect.gen(function* () {
+				const dir = yield* fixtureWorkspace();
+				const harness = yield* makeHarness(dir);
+				yield* revision.connect(harness);
+				const result = asResult(yield* harness.callTool("workspace_info", {}, revision.stateless));
+				assert.notOk(result.isError, JSON.stringify(result));
+				assert.ok((result.content[0]?.text ?? "").startsWith("#"), "markdown transcript");
+				assert.strictEqual((result.structuredContent as { readonly root: string }).root, dir);
+			}).pipe(Effect.scoped),
+		);
+
+		it.effect(`${revision.label}: a declared failure is isError text with no structuredContent`, () =>
+			Effect.gen(function* () {
+				const dir = yield* fixtureWorkspace();
+				const harness = yield* makeHarness(dir);
+				yield* revision.connect(harness);
+				const result = asResult(yield* harness.callTool("workspace_info", { cwd: "/" }, revision.stateless));
+				assert.strictEqual(result.isError, true);
+				assert.strictEqual(result.structuredContent, undefined);
+				assert.ok((result.content[0]?.text ?? "").includes("Try workspace_info."), result.content[0]?.text);
+			}).pipe(Effect.scoped),
+		);
+
+		it.effect(
+			`${revision.label}: invalid params is ${revision.invalidParamsAsRpcError ? "a JSON-RPC -32602 error" : "an isError result"} naming the bad field`,
+			() =>
+				Effect.gen(function* () {
+					const dir = yield* fixtureWorkspace();
+					const harness = yield* makeHarness(dir);
+					yield* revision.connect(harness);
+					const outcome = yield* harness.callTool("turbo_inspect", { mode: "bogus" }, revision.stateless);
+					if (revision.invalidParamsAsRpcError) {
+						assert.ok("error" in outcome, JSON.stringify(outcome));
+						const error = outcome.error as { readonly code: number; readonly message: string };
+						assert.strictEqual(error.code, -32602);
+						assert.ok(error.message.includes('["mode"]'), error.message);
+					} else {
+						const result = asResult(outcome);
+						assert.strictEqual(result.isError, true);
+						assert.ok((result.content[0]?.text ?? "").includes('["mode"]'), result.content[0]?.text);
+					}
+				}).pipe(Effect.scoped),
+		);
+	}
 });
 
 // F5: one round trip per struct-rooted tool that serves an outputSchema and
