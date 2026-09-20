@@ -19,7 +19,11 @@ import { vi } from "vitest";
 import type { ChangesetIOError } from "../../src/changesets/errors.js";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
 import type { RegenPlan } from "../../src/changesets/services/deps-regen.js";
-import { DepsRegen, isPureDependencyChangeset } from "../../src/changesets/services/deps-regen.js";
+import {
+	DepsRegen,
+	depsChangesetFilename,
+	isPureDependencyChangeset,
+} from "../../src/changesets/services/deps-regen.js";
 import type { WorkspaceDependencyDiff } from "../../src/changesets/utils/dep-diff.js";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 
@@ -61,6 +65,18 @@ const pitStub = (before: WorkspaceStateSnapshot, after: WorkspaceStateSnapshot):
 		at: (ref: string) => Effect.succeed(ref === "BEFORE" ? before : after),
 		worktree: () => Effect.succeed(after),
 	} as never);
+
+describe("depsChangesetFilename", () => {
+	it("maps a scoped package name to <scope>-<name>-deps.md", () => {
+		expect(depsChangesetFilename("@savvy-web/cli")).toBe("savvy-web-cli-deps.md");
+	});
+	it("maps an unscoped package name to <name>-deps.md", () => {
+		expect(depsChangesetFilename("left-pad")).toBe("left-pad-deps.md");
+	});
+	it("sanitizes dots, underscores and uppercase to dashes and collapses dash runs", () => {
+		expect(depsChangesetFilename("@Scope.Weird/Some_Name.Here")).toBe("scope-weird-some-name-here-deps.md");
+	});
+});
 
 describe("DepsRegen changeset detection", () => {
 	it("classifies a single-package Dependencies-only changeset as pure", () => {

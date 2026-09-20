@@ -67,6 +67,33 @@ export type { CoexistingChangeset, RegenDiffRow, RegenPlan, RegenResult } from "
  * Changeset filename helpers (ported verbatim from the CLI command)
  * ----------------------------------------------------------------- */
 
+/**
+ * Derive a stable, package-derived `.changeset/*.md` basename for a pure
+ * dependency changeset, replacing the earlier random
+ * `<adjective>-<noun>-<verb>` slug.
+ *
+ * @remarks
+ * A scoped `@scope/name` package joins its scope and name with `-` before
+ * appending the `-deps.md` suffix (e.g. `@savvy-web/cli` →
+ * `savvy-web-cli-deps.md`); an unscoped `name` package appends the suffix
+ * directly. Any character outside `[a-z0-9-]` in the joined name — dots,
+ * underscores, uppercase letters — is lowercased or replaced with `-`, and
+ * runs of `-` collapse to one, so the result is always a safe, deterministic
+ * filename that a stable-filename overwrite can target run after run.
+ *
+ * @param packageName - The workspace package name (e.g. `@savvy-web/cli`).
+ * @returns The stable changeset basename, including the `.md` extension.
+ * @internal
+ */
+export function depsChangesetFilename(packageName: string): string {
+	const joined = packageName.startsWith("@") ? packageName.slice(1).replace("/", "-") : packageName;
+	const sanitized = joined
+		.toLowerCase()
+		.replace(/[^a-z0-9-]+/g, "-")
+		.replace(/-+/g, "-");
+	return `${sanitized}-deps.md`;
+}
+
 const ADJECTIVES = ["brave", "clever", "swift", "silver", "lucky", "happy", "calm", "bright", "quiet", "wild"] as const;
 const NOUNS = ["dogs", "cats", "wolves", "foxes", "cups", "ships", "trees", "owls", "cranes", "hills"] as const;
 const VERBS = ["laugh", "dream", "fly", "sing", "dance", "wander", "soar", "rest", "leap", "ponder"] as const;
@@ -79,22 +106,9 @@ function pickRandomTriplet(): string {
 }
 
 /**
- * Pick a `<adjective>-<noun>-<verb>` filename slug that does not collide
- * with an existing `.changeset/*.md` OR with a slug already claimed
- * earlier in the same {@link RegenPlan.toWrite} computation. `plan()`
- * never writes to disk, so an on-disk existence check alone cannot see
- * slugs chosen moments earlier in the same call — the `chosen` set closes
- * that gap. The triplet space is 1,000 combinations, so a busy repo can
- * plausibly exhaust it across runs; fall back to a timestamp suffix after
- * 20 unlucky picks.
- *
- * @param fileExists - Effectful on-disk existence check (never fails; a
- *   filesystem error is treated as "does not exist" so filename selection
- *   degrades gracefully rather than blocking the plan).
- * @param changesetDir - Directory checked for on-disk collisions.
- * @param chosen - Basenames (without extension) already picked within this plan;
- *   the picked candidate is added to this set before returning.
  * @internal
+ * @deprecated Superseded by {@link depsChangesetFilename}; retained only
+ * until goal 2 rewires `plan()` in this same change.
  */
 function randomFilename(
 	fileExists: (path: string) => Effect.Effect<boolean>,
@@ -109,10 +123,6 @@ function randomFilename(
 				return candidate;
 			}
 		}
-		// Timestamp fallback after 20 unlucky triplet picks. Loop until the name is
-		// unique against both the on-disk changesets and the slugs already chosen in
-		// this plan, so two packages exhausting the triplet space in the same
-		// millisecond cannot resolve to the same file.
 		let attempt = 0;
 		let fallback = `${pickRandomTriplet()}-${Date.now()}`;
 		while (chosen.has(fallback) || (yield* fileExists(join(changesetDir, `${fallback}.md`)))) {
