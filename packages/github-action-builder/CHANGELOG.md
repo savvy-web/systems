@@ -1,5 +1,23 @@
 # @savvy-web/github-action-builder
 
+## 2.4.3
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | 4.0.0-rc.115 | 4.0.0-rc.116 |
+| @effected/yaml | dependency | updated | ^0.15.2 | ^0.16.0 |
+| effect | dependency | updated | 4.0.0-rc.115 | 4.0.0-rc.116 |
+
+[#672][#672]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#672]: https://github.com/savvy-web/systems/pull/672
+
 ## 2.4.2
 
 ### Dependencies
