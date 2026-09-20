@@ -160,7 +160,7 @@ export const SERVER_INSTRUCTIONS = [
 	"changeset_inspect, changeset_validate, changeset_preview: the branch diff by owning package, typed CSH001-CSH005 diagnostics, and the CHANGELOG the pending changesets would produce.",
 	"changeset_deps_detect (reads) and changeset_deps_regen (deletes and recreates) dependency changesets.",
 	"repos_inspect (reads) and repos_manage (mutates) the vendored reference repos under .repos/; repos_manage restore discards uncommitted worktree edits.",
-	"Every result carries a markdown transcript in content[0].text and the typed object in structuredContent; read structuredContent when you need fields. Every tool takes an optional cwd; omit it to use the server's project directory.",
+	"Every successful result carries a markdown transcript in content[0].text and the typed object in structuredContent; read structuredContent when you need fields. A failure is an isError result whose content[0].text carries the message and remediation, with no structuredContent. Every tool takes an optional cwd; omit it to use the server's project directory.",
 ].join("\n");
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error.";

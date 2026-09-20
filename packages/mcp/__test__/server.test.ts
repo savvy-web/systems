@@ -191,9 +191,11 @@ describe("ServerLayer over Stdio.layerTest", () => {
 // The stateless 2026-07-28 revision (SEP-2575) the server lists FIRST: no
 // initialize, no session; a client discovers the server with
 // `server/discover` and every request carries its protocol in `_meta`.
-// Claude Code only probes for it on stdio with MCP_PROTOCOL_NEGOTIATION=auto,
-// so the stateful revisions below stay the everyday path — both must serve
-// the same envelope.
+// Claude Code only probes for it on stdio with MCP_PROTOCOL_NEGOTIATION=auto
+// (verified 2026-09-19 on 2.1.278 by tee-ing the wire), so the stateful
+// revisions below stay the everyday path for a default client; the tool
+// envelope must hold on both, with one framework-owned exception noted in the
+// matrix below.
 describe("ServerLayer over the stateless 2026-07-28 revision", () => {
 	it.effect("answers server/discover with the supported version, the identity and the instructions", () =>
 		Effect.gen(function* () {
@@ -226,10 +228,12 @@ describe("ServerLayer over the stateless 2026-07-28 revision", () => {
 	);
 });
 
-// One envelope, every revision: a success (markdown + structuredContent), a
-// declared failure (isError text, no structuredContent) and an invalid-params
-// call must render identically whether the client discovered on 2026-07-28
-// or initialized on a stateful revision.
+// One envelope, every revision: a success (markdown + structuredContent) and a
+// declared failure (isError text, no structuredContent) render identically
+// whether the client discovered on 2026-07-28 or initialized on a stateful
+// revision. Invalid params is the one exception, and it is the runtime's, not
+// the port's: 2025-06-18 gets a JSON-RPC -32602 error, the newer revisions an
+// isError result.
 describe("tool envelope across protocol revisions", () => {
 	const revisions: ReadonlyArray<{
 		readonly label: string;

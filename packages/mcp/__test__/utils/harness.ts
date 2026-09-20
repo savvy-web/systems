@@ -155,10 +155,16 @@ export const makeHarness = (cwd: string): Effect.Effect<SilkMcpHarness, never, S
 			"io.modelcontextprotocol/clientCapabilities": {},
 			"io.modelcontextprotocol/clientInfo": { name: "savvy-mcp-test", version: "0.0.0" },
 		};
-		const withStatelessMetadata = (params: unknown): Record<string, unknown> => ({
-			...(typeof params === "object" && params !== null ? params : {}),
-			_meta: statelessMetadata,
-		});
+		const withStatelessMetadata = (params: unknown): Record<string, unknown> => {
+			const requestParams = typeof params === "object" && params !== null ? (params as Record<string, unknown>) : {};
+			const requestMeta =
+				typeof requestParams._meta === "object" && requestParams._meta !== null
+					? (requestParams._meta as Record<string, unknown>)
+					: {};
+			// A caller's own _meta (e.g. a progressToken) survives; the protocol
+			// fields win on conflict.
+			return { ...requestParams, _meta: { ...requestMeta, ...statelessMetadata } };
+		};
 		const sendRequest = (method: string, params?: unknown, stateless = false): Effect.Effect<JsonRpcMessage> =>
 			Effect.gen(function* () {
 				const id = nextRequestId++;
