@@ -139,6 +139,7 @@ export {
 	ConfigurationError,
 	GitError,
 	GitHubApiError,
+	HookReplayError,
 	MarkdownParseError,
 	ReleasePlanError,
 	VersionFileError,

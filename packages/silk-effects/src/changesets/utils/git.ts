@@ -13,7 +13,7 @@
 
 import { basename } from "node:path";
 import { Git } from "@effected/git";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 
 import { GitError } from "../errors.js";
 
@@ -63,5 +63,29 @@ export function gitListChangesetFilesAtRef(cwd: string, ref: string): Effect.Eff
 			.lsTree(cwd, ref, { pathspec: [".changeset"] })
 			.pipe(Effect.catch(() => Effect.succeed([])));
 		return new Set(entries.filter((entry) => entry.path.trim().length > 0).map((entry) => basename(entry.path)));
+	});
+}
+
+/**
+ * Read one tracked file's contents at `ref` via `git show <ref>:<path>`,
+ * as `Option.some(text)`; `Option.none()` when the file is absent at that
+ * ref, `cwd` is not a git repository, or `ref` does not resolve.
+ *
+ * @remarks
+ * Tolerant for the same reason as {@link gitListChangesetFilesAtRef}: the
+ * consumer (`DepsRegen.plan()`'s hook-replay guard) treats "nothing to read"
+ * as "nothing declared", and a synthetic ref against a bare tmpdir must not
+ * turn a unit test into a git failure.
+ *
+ * @internal
+ */
+export function gitShowFileAtRef(
+	cwd: string,
+	ref: string,
+	path: string,
+): Effect.Effect<Option.Option<string>, never, Git> {
+	return Effect.gen(function* () {
+		const git = yield* Git;
+		return yield* git.show(cwd, ref, path).pipe(Effect.catch(() => Effect.succeed(Option.none<string>())));
 	});
 }

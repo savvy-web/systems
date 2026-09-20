@@ -605,3 +605,161 @@ describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-
 		}),
 	);
 });
+
+describe("DepsRegenDefault — config-dependency bump between refs (#674 / effected#794)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	const PLUGIN = "@fix/plugin";
+
+	/** A pnpmfile whose `updateConfig` hook injects one `effect:peers` catalog. */
+	const pnpmfileInjecting = (effectVersion: string): string =>
+		[
+			"export const hooks = {",
+			"\tupdateConfig(config) {",
+			`\t\tconfig.catalogs = { ...(config.catalogs ?? {}), "effect:peers": { effect: ${JSON.stringify(effectVersion)} } };`,
+			"\t\treturn config;",
+			"\t},",
+			"};",
+			"",
+		].join("\n");
+
+	const workspaceYamlDeclaring = (version: string): string =>
+		`packages:\n  - "packages/*"\nconfigDependencies:\n  "${PLUGIN}": ${version}+sha512-AAAA\n`;
+
+	/**
+	 * The disputed case, on disk. The committed base declares `@fix/plugin`
+	 * `0.8.15`, whose pnpmfile injects `effect:peers` at `rc.115`; the
+	 * working tree bumps the declaration to `0.9.0` (rc.116). The LIVE
+	 * `node_modules/.pnpm-config` holds 0.9.0 — the shape after
+	 * `pnpm install` — so the merge-base side can only be answered from the
+	 * store, which `node_modules/.modules.yaml` points at. Nothing about the
+	 * one package's manifest changes between the refs; only the hook does.
+	 */
+	function makeBumpFixture(): string {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-hookbump-"));
+
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), workspaceYamlDeclaring("0.8.15"));
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+		writeFileSync(join(dir, ".gitignore"), "node_modules/\nstore/\n");
+
+		const pkgDir = join(dir, "packages", "lib");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify(
+				{
+					name: "@fix/lib",
+					version: "1.0.0",
+					dependencies: { "left-pad": "^1.0.0" },
+					peerDependencies: { effect: "catalog:effect:peers" },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "public",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		// Live install: .pnpm-config holds the NEW version.
+		const installed = join(dir, "node_modules", ".pnpm-config", PLUGIN);
+		mkdirSync(installed, { recursive: true });
+		writeFileSync(join(installed, "package.json"), `${JSON.stringify({ name: PLUGIN, version: "0.9.0" })}\n`);
+		writeFileSync(join(installed, "pnpmfile.mjs"), pnpmfileInjecting("4.0.0-rc.116"));
+
+		// Store: links/<name>/<version>/<hash>/node_modules/<name> holds the OLD one.
+		const store = join(dir, "store");
+		const stored = join(store, "links", PLUGIN, "0.8.15", "deadbeef", "node_modules", PLUGIN);
+		mkdirSync(stored, { recursive: true });
+		writeFileSync(join(stored, "package.json"), `${JSON.stringify({ name: PLUGIN, version: "0.8.15" })}\n`);
+		writeFileSync(join(stored, "pnpmfile.mjs"), pnpmfileInjecting("4.0.0-rc.115"));
+		writeFileSync(join(dir, "node_modules", ".modules.yaml"), `storeDir: ${JSON.stringify(store)}\n`);
+
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit");
+
+		// Working-tree-only bump of the config dependency.
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), workspaceYamlDeclaring("0.9.0"));
+
+		return dir;
+	}
+
+	it.effect("emits the peerDependency row a hook-only catalog moved across the bump", () =>
+		Effect.gen(function* () {
+			const dir = makeBumpFixture();
+			dirs.push(dir);
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir });
+			}).pipe(Effect.provide(liveFor(dir)));
+
+			expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/lib"]);
+			const rows = plan.toWrite[0]?.diff.rows ?? [];
+			const peer = rows.find((r) => r.dependency === "effect" && r.type === "peerDependency");
+			expect(peer).toBeDefined();
+			expect(peer?.from).toBe("4.0.0-rc.115");
+			expect(peer?.to).toBe("4.0.0-rc.116");
+		}),
+	);
+
+	it.effect("fails with HookReplayError when the graph does not replay a declared config dependency", () =>
+		Effect.gen(function* () {
+			const dir = makeBumpFixture();
+			dirs.push(dir);
+
+			// Same graph shape as makeDepsRegenDefault, but over Workspaces.layerWithGit —
+			// the NON-replaying (noop-hooks) composite. Without the guard this plan
+			// would succeed with zero peer rows: the exact silent omission of #674.
+			const kit = Workspaces.layerWithGit({ cwd: dir });
+			const configGraph = ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer));
+			const noopLive = DepsRegen.layer
+				.pipe(
+					Layer.provide(ConfigInspector.layer.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, kit)))),
+					Layer.provide(SilkPublishability.layerAdaptive.pipe(Layer.provide(Layer.mergeAll(configGraph, kit)))),
+					Layer.provide(configGraph),
+					Layer.provide(kit),
+				)
+				.pipe(Layer.provide(NodeServices.layer));
+
+			const error = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir });
+			}).pipe(Effect.provide(noopLive), Effect.flip);
+
+			expect(error._tag).toBe("HookReplayError");
+			if (error._tag === "HookReplayError") {
+				expect(error.missing).toEqual([PLUGIN]);
+				expect(error.declared).toEqual({ [PLUGIN]: "0.8.15" });
+			}
+		}),
+	);
+});

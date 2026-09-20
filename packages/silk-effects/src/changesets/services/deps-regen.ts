@@ -40,9 +40,11 @@ import type {
 	WorkspaceSnapshotAtFailure,
 	WorkspaceSnapshotWorktreeFailure,
 	WorkspaceSnapshotsShape,
+	WorkspaceStateSnapshot,
 	WorkspacesOptions,
 } from "@effected/workspaces";
 import { PublishabilityDetector, WorkspaceDiscovery, WorkspaceSnapshots, Workspaces } from "@effected/workspaces";
+import { Yaml } from "@effected/yaml";
 import type { Path } from "effect";
 import { Context, Effect, FileSystem, Layer, Option } from "effect";
 import type { ChildProcessSpawner } from "effect/unstable/process";
@@ -51,12 +53,12 @@ import { ChangesetConfig } from "../../services/ChangesetConfig.js";
 import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";
 import { SilkPublishability } from "../../services/SilkPublishability.js";
 import type { GitError } from "../errors.js";
-import { ChangesetIOError } from "../errors.js";
+import { ChangesetIOError, HookReplayError } from "../errors.js";
 import type { RegenPlan, RegenResult } from "../schemas/deps-regen.js";
 import type { WorkspaceDependencyDiff } from "../utils/dep-diff.js";
 import { computeWorkspaceDependencyDiffs } from "../utils/dep-diff.js";
 import { serializeDependencyTableToMarkdown, sortDependencyRows } from "../utils/dependency-table.js";
-import { gitListChangesetFilesAtRef, gitMergeBase } from "../utils/git.js";
+import { gitListChangesetFilesAtRef, gitMergeBase, gitShowFileAtRef } from "../utils/git.js";
 import { listPublishablePackageNames } from "../utils/publishability.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector } from "./config-inspector.js";
@@ -93,6 +95,60 @@ export function depsChangesetFilename(packageName: string): string {
 		.replace(/-+/g, "-");
 	return `${sanitized}-deps.md`;
 }
+
+/**
+ * Extract `configDependencies` (name → declared version, integrity stripped)
+ * from a `pnpm-workspace.yaml` text. Anything unparseable or absent reads as
+ * "nothing declared" — the guard built on this can only ever be as strict as
+ * the committed evidence.
+ *
+ * @internal
+ */
+const declaredConfigDependencies = (text: Option.Option<string>): Effect.Effect<Readonly<Record<string, string>>> =>
+	Effect.gen(function* () {
+		if (Option.isNone(text)) return {};
+		const doc = yield* Yaml.parse(text.value).pipe(Effect.orElseSucceed(() => undefined));
+		if (typeof doc !== "object" || doc === null) return {};
+		const raw = (doc as { configDependencies?: unknown }).configDependencies;
+		if (typeof raw !== "object" || raw === null) return {};
+		const out: Record<string, string> = {};
+		for (const [name, spec] of Object.entries(raw as Record<string, unknown>)) {
+			if (typeof spec !== "string") continue;
+			const plus = spec.indexOf("+");
+			out[name] = plus === -1 ? spec : spec.slice(0, plus);
+		}
+		return out;
+	});
+
+/**
+ * Fail with {@link HookReplayError} unless every config dependency `declared`
+ * at `ref` is recorded in `snapshot.hookReplays` at the declared version.
+ *
+ * @remarks
+ * Catalogs injected by a config-dependency hook (`catalog:*:peers`) leave no
+ * lockfile trace, so a snapshot taken through a NON-replaying
+ * `ConfigDependencyHooks` layer answers them from nothing on both sides and a
+ * real floor change produces no `peerDependency` row (savvy-web/systems#674).
+ * The kit's replaying layers record every declared dependency in
+ * `hookReplays` (and fail typed when one cannot be resolved), so a declared
+ * name missing from the record means the graph is mis-wired — the one
+ * failure a downstream can detect without replaying anything itself. A ref
+ * that declares nothing has nothing to check; a snapshot decoded from a
+ * pre-`hookReplays` payload never reaches here (`plan()` reads fresh).
+ *
+ * @internal
+ */
+const assertHooksReplayed = (
+	ref: string,
+	declared: Readonly<Record<string, string>>,
+	snapshot: WorkspaceStateSnapshot,
+): Effect.Effect<void, HookReplayError> => {
+	const replays = snapshot.hookReplays ?? {};
+	const missing = Object.entries(declared)
+		.filter(([name, version]) => replays[name] !== version)
+		.map(([name]) => name);
+	return missing.length === 0 ? Effect.void : Effect.fail(new HookReplayError({ ref, declared, missing }));
+};
 
 /**
  * Strict detection of "pure dependency changesets" per the documented
@@ -359,6 +415,7 @@ export interface DepsRegenOptions {
 export type DepsRegenPlanError =
 	| GitError
 	| ChangesetIOError
+	| HookReplayError
 	| WorkspaceDiscoveryFailure
 	| WorkspaceSnapshotAtFailure
 	| WorkspaceSnapshotWorktreeFailure;
@@ -521,6 +578,23 @@ function makeShape(
 			// design, so `options.cwd` must sit inside that workspace.
 			const before = yield* snapshots.at(fromRef);
 			const after = options.to ? yield* snapshots.at(options.to) : yield* snapshots.worktree();
+
+			// Hook-replay guard (#674): the only committed evidence that a
+			// hook-injected catalog moved between the refs is `configDependencies`
+			// in each side's pnpm-workspace.yaml, so read that at each side and
+			// insist the snapshot replayed it. Both reads are tolerant — no file,
+			// no git, or a synthetic ref all mean "nothing declared".
+			const workspaceYaml = "pnpm-workspace.yaml";
+			const declaredBefore = yield* declaredConfigDependencies(
+				yield* gitShowFileAtRef(resolvedCwd, fromRef, workspaceYaml).pipe(Effect.provide(provideGit)),
+			);
+			const declaredAfter = yield* declaredConfigDependencies(
+				options.to
+					? yield* gitShowFileAtRef(resolvedCwd, options.to, workspaceYaml).pipe(Effect.provide(provideGit))
+					: yield* fs.readFileString(join(resolvedCwd, workspaceYaml)).pipe(Effect.option),
+			);
+			yield* assertHooksReplayed(fromRef, declaredBefore, before);
+			yield* assertHooksReplayed(options.to ?? "worktree", declaredAfter, after);
 
 			const rawDiffs = computeWorkspaceDependencyDiffs(before, after);
 			const explicitTargets = new Set<string>([

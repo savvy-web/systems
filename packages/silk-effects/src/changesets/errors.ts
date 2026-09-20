@@ -413,6 +413,45 @@ export class ChangesetIOError extends ChangesetIOErrorBase<{
 }
 
 /**
+ * Base class for {@link HookReplayError}.
+ *
+ * @privateRemarks
+ * Required export for api-extractor (anonymous Data.TaggedError base). Do not delete.
+ *
+ * @internal
+ */
+export const HookReplayErrorBase = Data.TaggedError("HookReplayError");
+
+/**
+ * A workspace snapshot did not replay the config-dependency hooks the ref
+ * declares.
+ *
+ * @remarks
+ * Raised by {@link DepsRegen} before diffing when a ref's
+ * `pnpm-workspace.yaml` declares `configDependencies` that the snapshot's
+ * `hookReplays` record does not account for, or records at a different
+ * version. Catalogs that exist only through a config-dependency hook
+ * (`catalog:*:peers`) leave no lockfile trace, so a graph wired with a
+ * non-replaying `ConfigDependencyHooks` layer would diff them as unchanged
+ * and silently drop every `peerDependency` row — the regression this error
+ * exists to make loud (savvy-web/systems#674).
+ *
+ * @public
+ */
+export class HookReplayError extends HookReplayErrorBase<{
+	/** The git ref whose snapshot was checked, or `"worktree"`. */
+	readonly ref: string;
+	/** Config dependencies declared at `ref` (name → declared version). */
+	readonly declared: Readonly<Record<string, string>>;
+	/** Declared names absent from, or mismatched in, the snapshot's replay record. */
+	readonly missing: ReadonlyArray<string>;
+}> {
+	get message() {
+		return `config dependencies declared at ${this.ref} were not replayed into its workspace snapshot (${this.missing.join(", ")}); the DepsRegen graph must be wired with a replaying ConfigDependencyHooks layer, or hook-injected peer catalogs diff as unchanged`;
+	}
+}
+
+/**
  * Base class for {@link ReleasePlanError}.
  *
  * @privateRemarks
