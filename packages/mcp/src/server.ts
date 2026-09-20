@@ -97,17 +97,18 @@
  * `anyOf`-rooted document would break `tools/list` in strict clients;
  * (iii) the mirror always emits one text item, whereas the framework emits
  * `content: []` when the encoded result is `undefined` (a `Schema.Void`
- * success) — moot here, every tool has an object result; (iv) the mirror
- * has no `Tool.Strict` branch: no tool here is strict, and Claude Code sends
- * `_meta`-style extras on some calls, so strict decoding is a per-tool
- * decision deferred until a tool needs it; (v) a declared failure is still
- * logged at error level before it is rendered — rc.116's `registerToolkit`
- * logs only internal failures, but the e2e lifecycle suite pins the stderr
- * routing of gotcha 4 through a declared failure, and a dependency bump is
- * not the place to change what operators see. Everything else — description
- * via `Tool.getDescription`, `Tool.Meta` → `_meta`, annotation lifting, the
- * `omitRequestServices` capture, the `FailureOrigin` ladder — is a verbatim
- * mirror and must stay one.
+ * success) — moot here, every tool has an object result; (iv) a declared
+ * failure is still logged at error level before it is rendered — rc.116's
+ * `registerToolkit` logs only internal failures, but the e2e lifecycle suite
+ * pins the stderr routing of gotcha 4 through a declared failure, and a
+ * dependency bump is not the place to change what operators see. Everything
+ * else — description via `Tool.getDescription`, `Tool.Meta` → `_meta`,
+ * annotation lifting, the `omitRequestServices` capture, the `FailureOrigin`
+ * ladder, the `Tool.Strict` handling (strict decode, `additionalProperties:
+ * false` on the served input schema, a die for a strict dynamic tool) — is a
+ * verbatim mirror and must stay one. No tool here is strict today: Claude
+ * Code sends `_meta`-style extras on some calls, so strict is a per-tool
+ * decision.
  *
  * Four tools' results are discriminated unions (`turbo_inspect`,
  * `changeset_inspect`, `repos_inspect`, `repos_manage`), whose JSON Schema
@@ -117,7 +118,7 @@
  * @packageDocumentation
  */
 
-import type { FileSystem, Path, Stdio } from "effect";
+import type { FileSystem, Path, SchemaAST, Stdio } from "effect";
 import { Cause, Context, Effect, ErrorReporter, Layer, Option, Result, Schema, Stream } from "effect";
 import { CurrentLogLevel } from "effect/References";
 import { AiError, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/unstable/ai";
@@ -206,6 +207,22 @@ const hoistRootRef = (schema: Record<string, unknown>): Record<string, unknown> 
 	return { ...rest, ...(target as Record<string, unknown>), $defs: defs };
 };
 
+/**
+ * The served input schema: MCP requires an object root, so a top-level `$ref`
+ * is inlined, and a strict tool is emitted with `onExcessProperty: "error"`
+ * so the client sees `additionalProperties: false`. Mirrors rc.116's
+ * `toolInputJsonSchema` through public API (`Schema.toJsonSchemaDocument` +
+ * {@link hoistRootRef} in place of the internal `resolveTopLevelReference`).
+ */
+const toolInputJsonSchema = (schema: Schema.Constraint, strict: boolean): Record<string, unknown> => {
+	const document = Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" });
+	const withDefs =
+		Object.keys(document.definitions).length === 0
+			? document.schema
+			: { ...document.schema, $defs: document.definitions };
+	return hoistRootRef(withDefs as Record<string, unknown>);
+};
+
 /** MCP models `structuredContent` as a JSON object, so a `null` or array encoded result is omitted. */
 const toStructuredContent = (value: unknown): Schema.JsonObject | undefined =>
 	typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Schema.JsonObject) : undefined;
@@ -223,8 +240,12 @@ const toStructuredContent = (value: unknown): Schema.JsonObject | undefined =>
  * call runs against them; the per-request services (`McpRequestContext`,
  * the legacy `McpServerClient`, the HTTP request, the request log level) are
  * omitted from that capture because the framework provides them per call.
+ *
+ * @internal exported for the in-process suite, which registers fixture
+ * toolkits (a strict tool, for one) through the same path the served
+ * toolkit takes.
  */
-const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
+export const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
 	toolkit: Toolkit.Toolkit<Tools>,
 ): Effect.Effect<
 	void,
@@ -268,6 +289,14 @@ const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
 		};
 		const registrations: Array<Parameters<typeof registry.addTool>[0]> = [];
 		for (const tool of Object.values(built.tools) as ReadonlyArray<Tool.Any>) {
+			const strict = Tool.getStrictMode(tool) === true;
+			const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined;
+			if (strict && rawJsonSchema !== undefined) {
+				return yield* Effect.die(
+					`McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`,
+				);
+			}
+			const decodeOptions: SchemaAST.ParseOptions | undefined = strict ? { onExcessProperty: "error" } : undefined;
 			const annotations = tool.annotations;
 			const renderMarkdown = Context.getOrUndefined(annotations, SilkMarkdown);
 			const toolMeta = Context.getOrUndefined(annotations, Tool.Meta);
@@ -291,7 +320,7 @@ const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
 						return Effect.fail(new McpSchema.InvalidParams({ message: error.reason.message }));
 					}
 					if (origin === "handler" && isDeclaredFailure(error)) {
-						// Deviation (v): rc.116 stopped logging declared failures; this
+						// Deviation (iv): rc.116 stopped logging declared failures; this
 						// server keeps rc.115's every-failing-call log line so the stderr
 						// routing proof (gotcha 4, the e2e lifecycle suite) stays observable.
 						return Effect.logError(cause).pipe(
@@ -309,7 +338,7 @@ const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
 					? yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(outputJsonSchema).pipe(Effect.orDie)
 					: undefined;
 			const inputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolJson)(
-				hoistRootRef(Tool.getJsonSchema(tool) as Record<string, unknown>),
+				rawJsonSchema ?? toolInputJsonSchema(tool.parametersSchema, strict),
 			).pipe(Effect.orDie);
 			const description = Tool.getDescription(tool);
 			const mcpTool = new McpSchema.Tool({
@@ -333,7 +362,7 @@ const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
 				tool: mcpTool,
 				annotations,
 				handle: (payload: unknown) =>
-					built.handle(tool.name as keyof Tools, (payload ?? {}) as never).pipe(
+					built.handle(tool.name as keyof Tools, (payload ?? {}) as never, undefined, decodeOptions).pipe(
 						Stream.unwrap,
 						Stream.runLast,
 						Effect.flatMap(Effect.fromOption),

@@ -10,6 +10,7 @@ import { NodeServices } from "@effect/platform-node";
 import type { Scope } from "effect";
 import { Deferred, Effect, Layer, Queue, Sink, Stdio, Stream } from "effect";
 
+import type { PlatformServices } from "../../src/server.js";
 import { ServerLayer } from "../../src/server.js";
 
 export interface JsonRpcMessage {
@@ -73,8 +74,15 @@ const requestKey = (id: string | number) => `${typeof id}:${id}`;
 /** The stateless revision (SEP-2575) the server lists first. */
 export const STATELESS_PROTOCOL_VERSION = "2026-07-28";
 
-/** Build the server for `cwd` inside the current scope and return a client over its stdio. */
-export const makeHarness = (cwd: string): Effect.Effect<SilkMcpHarness, never, Scope.Scope> =>
+/**
+ * Build the server for `cwd` inside the current scope and return a client over
+ * its stdio. `serverLayer` swaps the served `ServerLayer(cwd)` for a fixture
+ * layer built the same way (`registerSilkToolkit` over `McpServer.layerStdio`).
+ */
+export const makeHarness = (
+	cwd: string,
+	serverLayer: Layer.Layer<never, never, PlatformServices> = ServerLayer(cwd),
+): Effect.Effect<SilkMcpHarness, never, Scope.Scope> =>
 	Effect.gen(function* () {
 		const stdin = yield* Queue.unbounded<Uint8Array>();
 		const stdout = yield* Queue.unbounded<string | Uint8Array>();
@@ -97,7 +105,7 @@ export const makeHarness = (cwd: string): Effect.Effect<SilkMcpHarness, never, S
 
 		const ready = yield* Deferred.make<void>();
 		yield* Effect.gen(function* () {
-			yield* Layer.build(ServerLayer(cwd).pipe(Layer.provide(stdioLayer), Layer.provide(NodeServices.layer)));
+			yield* Layer.build(serverLayer.pipe(Layer.provide(stdioLayer), Layer.provide(NodeServices.layer)));
 			yield* Deferred.succeed(ready, undefined);
 			return yield* Effect.never;
 		}).pipe(Effect.scoped, Effect.forkScoped);
