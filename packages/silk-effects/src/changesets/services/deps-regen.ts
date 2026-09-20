@@ -608,21 +608,34 @@ function makeShape(
 			const atMergeBase = yield* gitListChangesetFilesAtRef(resolvedCwd, fromRef).pipe(Effect.provide(provideGit));
 			const authoredOnBranch = (file: string): boolean => !atMergeBase.has(basename(file));
 
-			// With explicit targets, only delete pure changesets for those packages
-			// (unless ignored); otherwise delete pure-dep changesets for every
-			// in-scope package that is actually being rewritten this run AND whose
-			// file was authored on this branch (not present at the merge base).
-			// Excluded packages, packages with no surviving diff rows, and
-			// merge-base-authored files keep their existing changesets untouched.
-			const toDelete = existingPure.filter(
-				(p) => inScopeFor(p.package) && rewrittenPackages.has(p.package) && authoredOnBranch(p.file),
-			);
-
 			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = resolved.map((diff) => ({
 				file: join(changesetDir, depsChangesetFilename(diff.package)),
 				package: diff.package,
 				diff,
 			}));
+			// The stable target path each rewritten package writes to this run — an
+			// existing pure-dependency changeset already sitting at exactly that
+			// path is overwritten IN PLACE by execute()'s write pass, so it must
+			// never also appear in toDelete (that would race the overwrite against
+			// a delete of the very file just written, and — with delete running
+			// after write per execute()'s ordering — destroy the fresh content).
+			const stableTargetPaths = new Set(toWrite.map((w) => w.file));
+
+			// With explicit targets, only delete pure changesets for those packages
+			// (unless ignored); otherwise delete pure-dep changesets for every
+			// in-scope package that is actually being rewritten this run AND whose
+			// file was authored on this branch (not present at the merge base).
+			// Excluded packages, packages with no surviving diff rows, files at the
+			// stable target path (overwritten in place, not deleted), and
+			// merge-base-authored files all keep their existing changesets
+			// untouched (or, for the stable path, freshly rewritten).
+			const toDelete = existingPure.filter(
+				(p) =>
+					inScopeFor(p.package) &&
+					rewrittenPackages.has(p.package) &&
+					authoredOnBranch(p.file) &&
+					!stableTargetPaths.has(p.file),
+			);
 
 			return { toDelete, toWrite, skippedMixed, coexisting };
 		});

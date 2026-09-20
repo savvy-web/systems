@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
@@ -158,6 +158,34 @@ describe("DepsRegen plan/execute", () => {
 
 			expect(plan.toWrite).toHaveLength(1);
 			expect(plan.toWrite[0]?.file).toBe(join(csDir, depsChangesetFilename("@scope/foo")));
+		}),
+	);
+
+	it.effect("an existing stable-filename changeset with different content is overwritten in place, not deleted", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-overwrite-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+			writeFileSync(
+				stablePath,
+				["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
+			);
+
+			const { plan, result } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(plan.toWrite.map((w) => w.file)).toEqual([stablePath]);
+			expect(plan.toDelete.map((d) => d.file)).not.toContain(stablePath);
+			expect(result.deleted).not.toContain(stablePath);
+
+			const filesAfter = readdirSync(csDir);
+			expect(filesAfter).toEqual([basename(stablePath)]);
+			expect(readFileSync(stablePath, "utf8")).not.toContain("(old table)");
 		}),
 	);
 
