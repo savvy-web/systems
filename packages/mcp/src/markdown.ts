@@ -3,10 +3,11 @@
  * to the server's registration step.
  *
  * @remarks
- * rc.115's `McpServer.registerToolkit` renders every success as
+ * rc.116's `McpServer.registerToolkit` renders every success as
  * `content: [{ type: "text", text: JSON.stringify(encodedResult) }]` plus
  * `structuredContent` and offers no hook over the text
- * (`unstable/ai/McpServer.ts:1577-1585`). `server.ts` therefore registers the
+ * (`unstable/ai/McpServer.ts`, `toolResultContent`; Effect-TS/effect#8316
+ * proposes one). `server.ts` therefore registers the
  * toolkit itself through the public `McpServer.addTool` and reads this
  * annotation to put the tool's markdown projection in `content[0].text`
  * while `structuredContent` stays the typed object — the dual channel every

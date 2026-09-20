@@ -7,8 +7,9 @@
  * typed failure reaches the client as
  * `{ isError: true, content: [{ type: "text", text: error.message }] }` and
  * `structuredContent` is never populated for it
- * (`.repos/effect/packages/effect/src/unstable/ai/McpServer.ts:1513-1517,1592-1607`
- * at rc.115 — see the header of `server.ts`). So a structured `remediation`
+ * (rc.116's `registerToolkit`, `declaredFailureResult` in
+ * `.repos/effect/packages/effect/src/unstable/ai/McpServer.ts` — see the
+ * header of `server.ts`). So a structured `remediation`
  * field is invisible to a real client: every member folds its hint into
  * `message` at construction through {@link composeRemediatedMessage}, and any
  * caller-supplied value echoed back passes through {@link truncateEchoed}.

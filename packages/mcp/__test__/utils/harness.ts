@@ -10,6 +10,7 @@ import { NodeServices } from "@effect/platform-node";
 import type { Scope } from "effect";
 import { Deferred, Effect, Layer, Queue, Sink, Stdio, Stream } from "effect";
 
+import type { PlatformServices } from "../../src/server.js";
 import { ServerLayer } from "../../src/server.js";
 
 export interface JsonRpcMessage {
@@ -36,13 +37,28 @@ export interface CallToolResult {
 	readonly isError?: boolean;
 }
 
+/** The stateful protocol revisions the server offers; `initialize` handshakes on one of these. */
+export type StatefulProtocolVersion = "2025-11-25" | "2025-06-18";
+
 export interface SilkMcpHarness {
+	/** `initialize` + `notifications/initialized` on a stateful revision (default `2025-11-25`). */
 	readonly initialize: Effect.Effect<JsonRpcMessage>;
-	readonly sendRequest: (method: string, params?: unknown) => Effect.Effect<JsonRpcMessage>;
+	readonly initializeWith: (protocolVersion: StatefulProtocolVersion) => Effect.Effect<JsonRpcMessage>;
+	/**
+	 * `server/discover` on the stateless `2026-07-28` revision: no handshake,
+	 * no session. Every later call carries `_meta["io.modelcontextprotocol/protocolVersion"]`
+	 * when `stateless` is passed to the sending helpers.
+	 */
+	readonly discover: Effect.Effect<JsonRpcMessage>;
+	readonly sendRequest: (method: string, params?: unknown, stateless?: boolean) => Effect.Effect<JsonRpcMessage>;
 	readonly sendNotification: (method: string, params?: unknown) => Effect.Effect<void>;
 	readonly listTools: Effect.Effect<ReadonlyArray<ServedTool>>;
 	/** The `tools/call` result, or the whole JSON-RPC error response when the call was rejected at the protocol level. */
-	readonly callTool: (name: string, args?: unknown) => Effect.Effect<CallToolResult | JsonRpcMessage>;
+	readonly callTool: (
+		name: string,
+		args?: unknown,
+		stateless?: boolean,
+	) => Effect.Effect<CallToolResult | JsonRpcMessage>;
 	/** Everything written to stderr so far. */
 	readonly stderrSoFar: Effect.Effect<string>;
 }
@@ -55,8 +71,18 @@ const isResponse = (message: JsonRpcMessage): message is JsonRpcMessage & { read
 
 const requestKey = (id: string | number) => `${typeof id}:${id}`;
 
-/** Build the server for `cwd` inside the current scope and return a client over its stdio. */
-export const makeHarness = (cwd: string): Effect.Effect<SilkMcpHarness, never, Scope.Scope> =>
+/** The stateless revision (SEP-2575) the server lists first. */
+export const STATELESS_PROTOCOL_VERSION = "2026-07-28";
+
+/**
+ * Build the server for `cwd` inside the current scope and return a client over
+ * its stdio. `serverLayer` swaps the served `ServerLayer(cwd)` for a fixture
+ * layer built the same way (`registerSilkToolkit` over `McpServer.layerStdio`).
+ */
+export const makeHarness = (
+	cwd: string,
+	serverLayer: Layer.Layer<never, never, PlatformServices> = ServerLayer(cwd),
+): Effect.Effect<SilkMcpHarness, never, Scope.Scope> =>
 	Effect.gen(function* () {
 		const stdin = yield* Queue.unbounded<Uint8Array>();
 		const stdout = yield* Queue.unbounded<string | Uint8Array>();
@@ -79,7 +105,7 @@ export const makeHarness = (cwd: string): Effect.Effect<SilkMcpHarness, never, S
 
 		const ready = yield* Deferred.make<void>();
 		yield* Effect.gen(function* () {
-			yield* Layer.build(ServerLayer(cwd).pipe(Layer.provide(stdioLayer), Layer.provide(NodeServices.layer)));
+			yield* Layer.build(serverLayer.pipe(Layer.provide(stdioLayer), Layer.provide(NodeServices.layer)));
 			yield* Deferred.succeed(ready, undefined);
 			return yield* Effect.never;
 		}).pipe(Effect.scoped, Effect.forkScoped);
@@ -129,36 +155,64 @@ export const makeHarness = (cwd: string): Effect.Effect<SilkMcpHarness, never, S
 			Queue.offer(stdin, encoder.encode(`${JSON.stringify(message)}\n`)).pipe(Effect.asVoid);
 		const sendNotification = (method: string, params?: unknown): Effect.Effect<void> =>
 			sendRaw({ jsonrpc: "2.0", method, ...(params === undefined ? {} : { params }) });
-		const sendRequest = (method: string, params?: unknown): Effect.Effect<JsonRpcMessage> =>
+		// The stateless revision has no handshake: every request identifies its
+		// protocol, client and capabilities in `_meta` (mirrors Effect's own
+		// `McpStdioHarness.withRequestMetadata`).
+		const statelessMetadata = {
+			"io.modelcontextprotocol/protocolVersion": STATELESS_PROTOCOL_VERSION,
+			"io.modelcontextprotocol/clientCapabilities": {},
+			"io.modelcontextprotocol/clientInfo": { name: "savvy-mcp-test", version: "0.0.0" },
+		};
+		const withStatelessMetadata = (params: unknown): Record<string, unknown> => {
+			const requestParams = typeof params === "object" && params !== null ? (params as Record<string, unknown>) : {};
+			const requestMeta =
+				typeof requestParams._meta === "object" && requestParams._meta !== null
+					? (requestParams._meta as Record<string, unknown>)
+					: {};
+			// A caller's own _meta (e.g. a progressToken) survives; the protocol
+			// fields win on conflict.
+			return { ...requestParams, _meta: { ...requestMeta, ...statelessMetadata } };
+		};
+		const sendRequest = (method: string, params?: unknown, stateless = false): Effect.Effect<JsonRpcMessage> =>
 			Effect.gen(function* () {
 				const id = nextRequestId++;
 				const responseQueue = yield* Queue.unbounded<JsonRpcMessage>();
 				const key = requestKey(id);
 				responseQueues.set(key, responseQueue);
-				yield* sendRaw({ jsonrpc: "2.0", id, method, ...(params === undefined ? {} : { params }) });
+				const wireParams = stateless ? withStatelessMetadata(params) : params;
+				yield* sendRaw({ jsonrpc: "2.0", id, method, ...(wireParams === undefined ? {} : { params: wireParams }) });
 				return yield* Queue.take(responseQueue).pipe(Effect.ensuring(Effect.sync(() => responseQueues.delete(key))));
 			});
 
-		const initialize: Effect.Effect<JsonRpcMessage> = Effect.gen(function* () {
-			const response = yield* sendRequest("initialize", {
-				protocolVersion: "2025-11-25",
-				capabilities: {},
-				clientInfo: { name: "savvy-mcp-test", version: "0.0.0" },
+		const initializeWith = (protocolVersion: StatefulProtocolVersion): Effect.Effect<JsonRpcMessage> =>
+			Effect.gen(function* () {
+				const response = yield* sendRequest("initialize", {
+					protocolVersion,
+					capabilities: {},
+					clientInfo: { name: "savvy-mcp-test", version: "0.0.0" },
+				});
+				yield* sendNotification("notifications/initialized");
+				return response;
 			});
-			yield* sendNotification("notifications/initialized");
-			return response;
-		});
+		const initialize = initializeWith("2025-11-25");
+		const discover: Effect.Effect<JsonRpcMessage> = sendRequest("server/discover", {}, true);
 
 		const listTools: Effect.Effect<ReadonlyArray<ServedTool>> = sendRequest("tools/list").pipe(
 			Effect.map((response) => (response.result as { readonly tools: ReadonlyArray<ServedTool> }).tools),
 		);
-		const callTool = (name: string, args?: unknown): Effect.Effect<CallToolResult | JsonRpcMessage> =>
-			sendRequest("tools/call", { name, arguments: args ?? {} }).pipe(
+		const callTool = (
+			name: string,
+			args?: unknown,
+			stateless = false,
+		): Effect.Effect<CallToolResult | JsonRpcMessage> =>
+			sendRequest("tools/call", { name, arguments: args ?? {} }, stateless).pipe(
 				Effect.map((response) => (response.error === undefined ? (response.result as CallToolResult) : response)),
 			);
 
 		return {
 			initialize,
+			initializeWith,
+			discover,
 			sendRequest,
 			sendNotification,
 			listTools,
