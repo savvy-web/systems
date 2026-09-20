@@ -164,9 +164,9 @@ describe("ServerLayer over Stdio.layerTest", () => {
 
 	it.effect("a parameter decode failure is rendered as an isError result naming the bad field", () =>
 		Effect.gen(function* () {
-			// rc.115 maps the toolkit's ToolParameterValidationError to an
-			// `isError` tool result (McpServer.ts:369-381 InvalidToolInput), not a
-			// JSON-RPC error, so the model can see it and self-correct.
+			// On 2025-11-25 and newer the runtime maps the port's InvalidParams to
+			// an `isError` tool result, not a JSON-RPC error, so the model can see
+			// it and self-correct (2025-06-18 gets -32602; see the matrix below).
 			const { harness } = yield* open();
 			const result = asResult(yield* harness.callTool("turbo_inspect", { mode: "bogus" }));
 			assert.strictEqual(result.isError, true);

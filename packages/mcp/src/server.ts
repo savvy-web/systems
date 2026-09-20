@@ -321,7 +321,7 @@ export const registerSilkToolkit = <Tools extends Record<string, Tool.Any>>(
 					}
 					if (origin === "handler" && isDeclaredFailure(error)) {
 						// Deviation (iv): rc.116 stopped logging declared failures; this
-						// server keeps rc.115's every-failing-call log line so the stderr
+						// server keeps the pre-rc.116 every-failing-call log line so the stderr
 						// routing proof (gotcha 4, the e2e lifecycle suite) stays observable.
 						return Effect.logError(cause).pipe(
 							Effect.andThen(Effect.catchCause(declaredFailureResult(error), internalToolError)),

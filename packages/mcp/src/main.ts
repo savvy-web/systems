@@ -41,7 +41,7 @@ export const main = async (): Promise<void> => {
 		ServerLayer(cwd).pipe(
 			Layer.provide(NodeServices.layer),
 			Layer.provide(Logger.layer([Logger.consolePretty()])),
-			// `Logger.consolePretty` has no stderr option in rc.115 (it reads only
+			// `Logger.consolePretty` has no stderr option in rc.116 (it reads only
 			// `{ colors, formatDate, mode }`). The real switch is this reference,
 			// read at log time; without it every log line lands on stdout, the
 			// JSON-RPC wire. See gotcha 4 in server.ts.
