@@ -63,8 +63,10 @@ describe("Tool.Strict through registerSilkToolkit", () => {
 			const tools = yield* harness.listTools;
 			const strict = tools.find((t) => t.name === "strict_echo");
 			const lenient = tools.find((t) => t.name === "lenient_echo");
-			assert.strictEqual(strict?.inputSchema.additionalProperties, false);
-			assert.notStrictEqual(lenient?.inputSchema.additionalProperties, false);
+			assert.ok(strict, "strict_echo was not registered");
+			assert.ok(lenient, "lenient_echo was not registered");
+			assert.strictEqual(strict.inputSchema.additionalProperties, false);
+			assert.notStrictEqual(lenient.inputSchema.additionalProperties, false);
 		}).pipe(Effect.scoped),
 	);
 
