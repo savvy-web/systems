@@ -6,7 +6,7 @@
 
 ### MCP protocol 2026-07-28
 
-`savvy-mcp` now offers the stateless `2026-07-28` protocol revision (SEP-2575) alongside the stateful `2025-11-25` and `2025-06-18` revisions it already served. A client that discovers the server with `server/discover` gets every tool with no `initialize` handshake and no session; a client that still opens with `initialize` negotiates one of the stateful revisions exactly as before. Claude Code 2.1.278 opens stdio servers with `server/discover`, so it now runs on the new revision.
+`savvy-mcp` now offers the stateless `2026-07-28` protocol revision (SEP-2575) alongside the stateful `2025-11-25` and `2025-06-18` revisions it already served. A client that discovers the server with `server/discover` gets every tool with no `initialize` handshake and no session; a client that still opens with `initialize` negotiates one of the stateful revisions exactly as before. Claude Code 2.1.278 negotiates a stateful revision by default and opens with `server/discover` on `2026-07-28` when launched with `MCP_PROTOCOL_NEGOTIATION=auto`; both paths were exercised against a real client.
 
 ### Server instructions
 
