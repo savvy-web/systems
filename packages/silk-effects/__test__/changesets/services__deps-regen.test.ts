@@ -189,6 +189,56 @@ describe("DepsRegen plan/execute", () => {
 		}),
 	);
 
+	it.effect(
+		"a legacy random-named pure-deps changeset authored on branch is deleted while the stable one is written",
+		() =>
+			Effect.gen(function* () {
+				const dir = mkdtempSync(join(tmpdir(), "depsregen-legacy-"));
+				const csDir = join(dir, ".changeset");
+				mkdirSync(csDir);
+				const legacyPath = join(csDir, "brave-dogs-laugh.md");
+				writeFileSync(
+					legacyPath,
+					["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(legacy random-named table)", ""].join(
+						"\n",
+					),
+				);
+				const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+
+				const { plan, result } = yield* Effect.gen(function* () {
+					const svc = yield* DepsRegen;
+					const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+					const result = yield* svc.execute(plan);
+					return { plan, result };
+				}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+				expect(plan.toWrite.map((w) => w.file)).toEqual([stablePath]);
+				expect(plan.toDelete.map((d) => d.file)).toEqual([legacyPath]);
+				expect(result.deleted).toEqual([legacyPath]);
+				expect(existsSync(legacyPath)).toBe(false);
+				expect(existsSync(stablePath)).toBe(true);
+			}),
+	);
+
+	it.effect("a no-op regen (plan+execute run twice) is idempotent: same toWrite path, empty second toDelete", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-noop-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+
+			const { firstPlan, secondPlan } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const firstPlan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				yield* svc.execute(firstPlan);
+				const secondPlan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				return { firstPlan, secondPlan };
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(secondPlan.toWrite.map((w) => w.file)).toEqual(firstPlan.toWrite.map((w) => w.file));
+			expect(secondPlan.toDelete).toEqual([]);
+		}),
+	);
+
 	it.effect("plans stale deletes + fresh writes (resolving catalog: rows), then execute applies them", () =>
 		Effect.gen(function* () {
 			const dir = mkdtempSync(join(tmpdir(), "depsregen-"));
