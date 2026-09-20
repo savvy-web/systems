@@ -54,6 +54,7 @@ jobs:
             @manypkg/*
             @vitest-agent/*
             @okfit/*
+            @tsdoctor/*
             jiti
             jju
             mdast-util-heading-range
