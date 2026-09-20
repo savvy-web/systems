@@ -94,45 +94,6 @@ export function depsChangesetFilename(packageName: string): string {
 	return `${sanitized}-deps.md`;
 }
 
-const ADJECTIVES = ["brave", "clever", "swift", "silver", "lucky", "happy", "calm", "bright", "quiet", "wild"] as const;
-const NOUNS = ["dogs", "cats", "wolves", "foxes", "cups", "ships", "trees", "owls", "cranes", "hills"] as const;
-const VERBS = ["laugh", "dream", "fly", "sing", "dance", "wander", "soar", "rest", "leap", "ponder"] as const;
-
-function pickRandomTriplet(): string {
-	const a = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)] as string;
-	const n = NOUNS[Math.floor(Math.random() * NOUNS.length)] as string;
-	const v = VERBS[Math.floor(Math.random() * VERBS.length)] as string;
-	return `${a}-${n}-${v}`;
-}
-
-/**
- * @internal
- * @deprecated Superseded by {@link depsChangesetFilename}; retained only
- * until goal 2 rewires `plan()` in this same change.
- */
-function randomFilename(
-	fileExists: (path: string) => Effect.Effect<boolean>,
-	changesetDir: string,
-	chosen: Set<string>,
-): Effect.Effect<string> {
-	return Effect.gen(function* () {
-		for (let i = 0; i < 20; i++) {
-			const candidate = pickRandomTriplet();
-			if (!chosen.has(candidate) && !(yield* fileExists(join(changesetDir, `${candidate}.md`)))) {
-				chosen.add(candidate);
-				return candidate;
-			}
-		}
-		let attempt = 0;
-		let fallback = `${pickRandomTriplet()}-${Date.now()}`;
-		while (chosen.has(fallback) || (yield* fileExists(join(changesetDir, `${fallback}.md`)))) {
-			fallback = `${pickRandomTriplet()}-${Date.now()}-${++attempt}`;
-		}
-		chosen.add(fallback);
-		return fallback;
-	});
-}
-
 /**
  * Strict detection of "pure dependency changesets" per the documented
  * rules: single-package frontmatter, single `## Dependencies` heading,
@@ -504,7 +465,6 @@ function makeShape(
 	provideGit: Layer.Layer<Git>,
 ): DepsRegenShape {
 	const provideDetector = Layer.succeed(PublishabilityDetector, detector);
-	const fileExists = (p: string): Effect.Effect<boolean> => fs.exists(p).pipe(Effect.orElseSucceed(() => false));
 
 	const plan = (options: DepsRegenOptions): Effect.Effect<RegenPlan, DepsRegenPlanError, never> =>
 		Effect.gen(function* () {
@@ -658,12 +618,11 @@ function makeShape(
 				(p) => inScopeFor(p.package) && rewrittenPackages.has(p.package) && authoredOnBranch(p.file),
 			);
 
-			const chosenFilenames = new Set<string>();
-			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = [];
-			for (const diff of resolved) {
-				const filename = yield* randomFilename(fileExists, changesetDir, chosenFilenames);
-				toWrite.push({ file: join(changesetDir, `${filename}.md`), package: diff.package, diff });
-			}
+			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = resolved.map((diff) => ({
+				file: join(changesetDir, depsChangesetFilename(diff.package)),
+				package: diff.package,
+				diff,
+			}));
 
 			return { toDelete, toWrite, skippedMixed, coexisting };
 		});
@@ -672,11 +631,16 @@ function makeShape(
 		Effect.gen(function* () {
 			const deleted: string[] = [];
 			const written: string[] = [];
-			// Write the fresh changesets first, then remove the stale ones. Fresh
-			// filenames never collide with existing files (randomFilename checks
-			// on-disk existence), so an interrupted write leaves every stale
-			// changeset in place — nothing is lost and the run is safely
-			// re-runnable. Writes fail loudly; deletes are tolerant.
+			// Write the fresh changesets first, then remove the stale ones. Each
+			// `toWrite` entry targets a package's STABLE depsChangesetFilename path,
+			// which by construction is never a member of `toDelete` (see the
+			// toDelete filter above) — so a write here is always an in-place
+			// overwrite of a path the delete pass will never touch, never a
+			// same-run collision. An interrupted run therefore still leaves either
+			// the old content (write not yet reached) or the new content (write
+			// landed) at that path, never nothing — and every stale changeset
+			// stays in place until its own delete succeeds. Writes fail loudly;
+			// deletes are tolerant.
 			for (const entry of plan.toWrite) {
 				yield* fs
 					.writeFileString(entry.file, renderChangesetContent(entry.diff))

@@ -13,9 +13,6 @@ import {
 	WorkspaceStateSnapshot,
 } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-// `vi` stays on the plain "vitest" entrypoint: vitest hoists its mock wiring above all
-// imports, and a re-exported binding is not initialized in time.
-import { vi } from "vitest";
 import type { ChangesetIOError } from "../../src/changesets/errors.js";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
 import type { RegenPlan } from "../../src/changesets/services/deps-regen.js";
@@ -148,6 +145,22 @@ describe("DepsRegen plan/execute", () => {
 		rows: [{ dependency: "effect", type: "dependency", action: "updated", from: "3.18.0", to: "3.19.0" }],
 	};
 
+	it.effect("plan() writes @scope/foo's toWrite entry to its stable depsChangesetFilename path", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-stable-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(plan.toWrite).toHaveLength(1);
+			expect(plan.toWrite[0]?.file).toBe(join(csDir, depsChangesetFilename("@scope/foo")));
+		}),
+	);
+
 	it.effect("plans stale deletes + fresh writes (resolving catalog: rows), then execute applies them", () =>
 		Effect.gen(function* () {
 			const dir = mkdtempSync(join(tmpdir(), "depsregen-"));
@@ -189,61 +202,51 @@ describe("DepsRegen plan/execute", () => {
 		}),
 	);
 
-	it.effect(
-		"plan() picks DISTINCT changeset filenames for two changed packages, even under a forced RNG collision",
-		() =>
-			Effect.gen(function* () {
-				const dir = mkdtempSync(join(tmpdir(), "depsregen-multi-"));
-				const csDir = join(dir, ".changeset");
-				mkdirSync(csDir);
+	it.effect("plan() picks DISTINCT, stable, package-derived changeset filenames for two changed packages", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-multi-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
 
-				const mkMultiSnap = (effectVersion: string) =>
-					wss([
-						{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: effectVersion } },
-						{ name: "@scope/bar", relativePath: "packages/bar", dependencies: { effect: effectVersion } },
-					]);
-				const beforeMulti = mkMultiSnap("3.18.0");
-				const afterMulti = mkMultiSnap("3.19.0");
+			const mkMultiSnap = (effectVersion: string) =>
+				wss([
+					{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: effectVersion } },
+					{ name: "@scope/bar", relativePath: "packages/bar", dependencies: { effect: effectVersion } },
+				]);
+			const beforeMulti = mkMultiSnap("3.18.0");
+			const afterMulti = mkMultiSnap("3.19.0");
 
-				const DiscoveryLayerMulti = Layer.succeed(WorkspaceDiscovery, {
-					listPackages: () =>
-						Effect.succeed([
-							{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" },
-							{ name: "@scope/bar", path: "/x/packages/bar", version: "1.0.0" },
-						]),
-					refresh: () => Effect.void,
-				} as never);
-				const DetectorLayerMulti = Layer.succeed(PublishabilityDetector, {
-					detect: () => Effect.succeed([{}]),
-				} as never);
+			const DiscoveryLayerMulti = Layer.succeed(WorkspaceDiscovery, {
+				listPackages: () =>
+					Effect.succeed([
+						{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" },
+						{ name: "@scope/bar", path: "/x/packages/bar", version: "1.0.0" },
+					]),
+				refresh: () => Effect.void,
+			} as never);
+			const DetectorLayerMulti = Layer.succeed(PublishabilityDetector, {
+				detect: () => Effect.succeed([{}]),
+			} as never);
 
-				const depsMulti = Layer.mergeAll(
-					pitStub(beforeMulti, afterMulti),
-					InspectorLayer,
-					DiscoveryLayerMulti,
-					DetectorLayerMulti,
-					configStub({ versionPrivate: false, ignored: [] }),
-				);
-				const liveMulti = DepsRegen.layer.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
+			const depsMulti = Layer.mergeAll(
+				pitStub(beforeMulti, afterMulti),
+				InspectorLayer,
+				DiscoveryLayerMulti,
+				DetectorLayerMulti,
+				configStub({ versionPrivate: false, ignored: [] }),
+			);
+			const liveMulti = DepsRegen.layer.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
 
-				// Force every `pickRandomTriplet()` pick to be identical so a filename
-				// collision between the two changed packages is deterministic rather
-				// than left to chance (1-in-1000 odds would make this test flaky).
-				const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
-				try {
-					const program = Effect.gen(function* () {
-						const svc = yield* DepsRegen;
-						return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
-					});
-					const plan = yield* program.pipe(Effect.provide(liveMulti), Effect.provide(NodeServices.layer));
+			const program = Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			});
+			const plan = yield* program.pipe(Effect.provide(liveMulti), Effect.provide(NodeServices.layer));
 
-					expect(plan.toWrite).toHaveLength(2);
-					const basenames = plan.toWrite.map((w) => basename(w.file));
-					expect(new Set(basenames).size).toBe(basenames.length);
-				} finally {
-					randomSpy.mockRestore();
-				}
-			}),
+			expect(plan.toWrite).toHaveLength(2);
+			const basenames = plan.toWrite.map((w) => basename(w.file)).sort();
+			expect(basenames).toEqual([depsChangesetFilename("@scope/bar"), depsChangesetFilename("@scope/foo")].sort());
+		}),
 	);
 
 	it.effect("execute fails loudly with ChangesetIOError when a write cannot land", () =>
