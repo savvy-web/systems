@@ -522,6 +522,7 @@ function makeShape(
 	provideGit: Layer.Layer<Git>,
 ): DepsRegenShape {
 	const provideDetector = Layer.succeed(PublishabilityDetector, detector);
+	const fileExists = (p: string): Effect.Effect<boolean> => fs.exists(p).pipe(Effect.orElseSucceed(() => false));
 
 	const plan = (options: DepsRegenOptions): Effect.Effect<RegenPlan, DepsRegenPlanError, never> =>
 		Effect.gen(function* () {
@@ -682,33 +683,63 @@ function makeShape(
 			const atMergeBase = yield* gitListChangesetFilesAtRef(resolvedCwd, fromRef).pipe(Effect.provide(provideGit));
 			const authoredOnBranch = (file: string): boolean => !atMergeBase.has(basename(file));
 
-			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = resolved.map((diff) => ({
-				file: join(changesetDir, depsChangesetFilename(diff.package)),
-				package: diff.package,
-				diff,
-			}));
-			// The stable target path each rewritten package writes to this run — an
-			// existing pure-dependency changeset already sitting at exactly that
-			// path is overwritten IN PLACE by execute()'s write pass, so it must
-			// never also appear in toDelete (that would race the overwrite against
-			// a delete of the very file just written, and — with delete running
-			// after write per execute()'s ordering — destroy the fresh content).
-			const stableTargetPaths = new Set(toWrite.map((w) => w.file));
+			// Write-target rule. A package's preferred target is its stable
+			// depsChangesetFilename path, but that path is only WRITTEN when it is
+			// free: absent on disk, or a pure-dependency changeset for THIS package
+			// that was authored on this branch. Anything else sitting there is
+			// skipped over to the first free deterministic sibling
+			// (`<name>-deps-2.md`, `-3.md`, …), never overwritten:
+			//   - a file present at the merge base (#258) — typically an earlier,
+			//     merged-but-unreleased regen for the same package whose rows are
+			//     below this branch's diff floor and would otherwise vanish from
+			//     the published CHANGELOG (the changelog renderer aggregates the
+			//     two files' rows at release time, so coexisting is correct);
+			//   - a prose or mixed changeset, or another package's pure-dependency
+			//     changeset whose name sanitizes onto the same path;
+			//   - a path already claimed earlier in this plan (two packages that
+			//     sanitize onto one filename).
+			// The candidate sequence is fixed for a given merge base, so a re-run
+			// on the same branch lands on the same sibling and overwrites its own
+			// earlier output in place — no churn.
+			const pureByFile = new Map(existingPure.map((p) => [p.file, p.package] as const));
+			const claimed = new Set<string>();
+			const isFreeFor = (file: string, pkg: string): Effect.Effect<boolean> =>
+				Effect.gen(function* () {
+					if (claimed.has(file) || !authoredOnBranch(file)) return false;
+					const owner = pureByFile.get(file);
+					if (owner !== undefined) return owner === pkg;
+					return !(yield* fileExists(file));
+				});
+			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = [];
+			for (const diff of resolved) {
+				const stable = depsChangesetFilename(diff.package);
+				const stem = stable.slice(0, -".md".length);
+				let file = join(changesetDir, stable);
+				for (let n = 2; !(yield* isFreeFor(file, diff.package)); n++) {
+					file = join(changesetDir, `${stem}-${n}.md`);
+				}
+				claimed.add(file);
+				toWrite.push({ file, package: diff.package, diff });
+			}
+			// Every chosen target is by construction either absent or a
+			// branch-authored pure changeset for the same package, overwritten IN
+			// PLACE by execute()'s write pass — so it must never also appear in
+			// toDelete (delete runs after write and would destroy the fresh content).
+			const writeTargets = claimed;
 
 			// With explicit targets, only delete pure changesets for those packages
 			// (unless ignored); otherwise delete pure-dep changesets for every
 			// in-scope package that is actually being rewritten this run AND whose
-			// file was authored on this branch (not present at the merge base).
-			// Excluded packages, packages with no surviving diff rows, files at the
-			// stable target path (overwritten in place, not deleted), and
-			// merge-base-authored files all keep their existing changesets
-			// untouched (or, for the stable path, freshly rewritten).
+			// file was authored on this branch (not present at the merge base) AND
+			// that is not this run's write target for the package. Excluded
+			// packages, packages with no surviving diff rows, and merge-base files
+			// keep their existing changesets untouched.
 			const toDelete = existingPure.filter(
 				(p) =>
 					inScopeFor(p.package) &&
 					rewrittenPackages.has(p.package) &&
 					authoredOnBranch(p.file) &&
-					!stableTargetPaths.has(p.file),
+					!writeTargets.has(p.file),
 			);
 
 			return { toDelete, toWrite, skippedMixed, coexisting };
@@ -719,15 +750,15 @@ function makeShape(
 			const deleted: string[] = [];
 			const written: string[] = [];
 			// Write the fresh changesets first, then remove the stale ones. Each
-			// `toWrite` entry targets a package's STABLE depsChangesetFilename path,
-			// which by construction is never a member of `toDelete` (see the
-			// toDelete filter above) — so a write here is always an in-place
-			// overwrite of a path the delete pass will never touch, never a
-			// same-run collision. An interrupted run therefore still leaves either
-			// the old content (write not yet reached) or the new content (write
-			// landed) at that path, never nothing — and every stale changeset
-			// stays in place until its own delete succeeds. Writes fail loudly;
-			// deletes are tolerant.
+			// `toWrite` entry targets a path plan() proved free — absent, or a
+			// branch-authored pure changeset for the same package — and never a
+			// member of `toDelete`, so a write here is an in-place overwrite of
+			// this run's own output, never a collision with a merge-base file, a
+			// prose changeset, or another package. An interrupted run therefore
+			// still leaves either the old content (write not yet reached) or the
+			// new content (write landed) at that path, never nothing — and every
+			// stale changeset stays in place until its own delete succeeds. Writes
+			// fail loudly; deletes are tolerant.
 			for (const entry of plan.toWrite) {
 				yield* fs
 					.writeFileString(entry.file, renderChangesetContent(entry.diff))

@@ -58,7 +58,11 @@ What it does:
    derived from the package, so a re-run overwrites the same file in
    place and a no-op regen produces no file churn; a legacy
    random-named pure-dependency changeset for the same package is
-   deleted on the first regen that rewrites it.
+   deleted on the first regen that rewrites it. The stable path is only
+   written when it is free (absent, or this branch's own pure-dependency
+   changeset for that package); a merge-base file, a prose or mixed
+   changeset, or another package's file there is left untouched and the
+   write goes to the first free `…-deps-2.md` sibling.
 
 **Table rows carry resolved versions and omit `devDependency` rows.**
 `catalog:`/`workspace:` specifiers in the table are resolved to concrete

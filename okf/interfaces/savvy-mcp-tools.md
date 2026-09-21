@@ -17,8 +17,8 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-09-21T17:55:06Z
-  body_sha256: d08f7c20c3a12c59a1f03112e70b3c77e7844c35bdbbe8368cc2be2d289f66df
+  at: 2026-09-21T18:15:35Z
+  body_sha256: 21b0b79a8bcaddd28befc6865c0cb69a838c8d03206a0cf2ad2abafc2a49aa82
 ---
 
 # savvy-mcp tool surface
@@ -88,12 +88,18 @@ Computes the same plan and, unless `dryRun` is set, executes it: deletes
 only the single-package dependency-only changesets it plans to replace
 (never a mixed changeset) and writes fresh ones from the current diff.
 Each write lands at a stable, package-derived path —
-`.changeset/<scope>-<name>-deps.md` (unscoped: `<name>-deps.md`) — that a
-re-run overwrites in place, so an unchanged diff produces no file churn;
-any legacy random-named pure-dependency changeset for that package is
-deleted on the first regen that rewrites it. The merge-base guard is
-unchanged: a changeset already present at the merge base is never
-deleted. A bare call with `dryRun: true` only computes the plan and
+`.changeset/<scope>-<name>-deps.md` (unscoped: `<name>-deps.md`) — when
+that path is free: absent, or a pure-dependency changeset for the same
+package authored on this branch, which a re-run overwrites in place so an
+unchanged diff produces no file churn. A path that is not free is skipped
+to the first free deterministic sibling (`…-deps-2.md`, `-3.md`) and never
+overwritten: a file present at the merge base (an earlier, merged-but-
+unreleased regen whose rows the changelog aggregates at release), a prose
+or mixed changeset, another package's file, or a name already claimed in
+the same plan. Any legacy random-named pure-dependency changeset for that
+package is deleted on the first regen that rewrites it. The merge-base
+guard (#258) therefore holds on both paths: a changeset present at the
+merge base is neither deleted nor overwritten. A bare call with `dryRun: true` only computes the plan and
 writes nothing. Every write lands under `.changeset/*.md` and is
 git-reversible.[^mcp-changeset-tools]
 

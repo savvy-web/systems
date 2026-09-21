@@ -20,7 +20,12 @@ import { afterEach, describe, expect, it } from "@effect/vitest";
 import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
-import { DepsRegen, DepsRegenDefault, makeDepsRegenDefault } from "../../src/changesets/services/deps-regen.js";
+import {
+	DepsRegen,
+	DepsRegenDefault,
+	depsChangesetFilename,
+	makeDepsRegenDefault,
+} from "../../src/changesets/services/deps-regen.js";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 import { SilkPublishability } from "../../src/services/SilkPublishability.js";
@@ -602,6 +607,119 @@ describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-
 			expect(firstPlan.toWrite.map((w) => w.package)).toEqual(["@fix/stale-ignore"]);
 			expect(secondPlan.toWrite.map((w) => w.package)).toEqual([]);
 			expect(secondPlan.toDelete.map((d) => d.package)).toEqual([]);
+		}),
+	);
+});
+
+describe("DepsRegenDefault — a stable-named changeset at the merge base is protected, not overwritten", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Branch A's regen output already merged and awaiting release: the
+	 * stable-named pure-deps changeset for `@fix/lib` is COMMITTED at the
+	 * merge base with a marker row. Branch B (this worktree) then moves the
+	 * same package's deps. B's diff runs merge-base→worktree, so A's row is
+	 * never in B's resolved set — overwriting A's file would drop it from the
+	 * published CHANGELOG (the reviewer-reproduced regression on #681).
+	 */
+	function makeMergeBaseFixture(): { dir: string; stablePath: string; marker: string } {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-mergebase-"));
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+		const pkgDir = join(dir, "packages", "lib");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify({ name: "@fix/lib", version: "1.0.0", dependencies: { "left-pad": "^1.1.0" } }, null, 2)}\n`,
+		);
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "public",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		const stablePath = join(dir, ".changeset", depsChangesetFilename("@fix/lib"));
+		const marker = "| left-pad | dependency | updated | 1.0.0 | 1.1.0 |";
+		writeFileSync(
+			stablePath,
+			[
+				"---",
+				'"@fix/lib": patch',
+				"---",
+				"",
+				"## Dependencies",
+				"",
+				"| Dependency | Type | Action | From | To |",
+				"| --- | --- | --- | --- | --- |",
+				marker,
+				"",
+			].join("\n"),
+		);
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit (branch A merged, unreleased)");
+
+		// Branch B: working-tree-only bump of the same package.
+		const raw = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8")) as {
+			dependencies: Record<string, string>;
+		};
+		raw.dependencies["left-pad"] = "^1.2.0";
+		writeFileSync(join(pkgDir, "package.json"), `${JSON.stringify(raw, null, 2)}\n`);
+		return { dir, stablePath, marker };
+	}
+
+	it.effect("writes branch B's rows to the -2 sibling and leaves the merge-base file byte-identical", () =>
+		Effect.gen(function* () {
+			const { dir, stablePath, marker } = makeMergeBaseFixture();
+			dirs.push(dir);
+			const original = readFileSync(stablePath, "utf8");
+
+			const { plan, result } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const plan = yield* svc.plan({ cwd: dir });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
+			}).pipe(Effect.provide(liveFor(dir)));
+
+			const sibling = join(dir, ".changeset", "fix-lib-deps-2.md");
+			expect(plan.toWrite.map((w) => w.file)).toEqual([sibling]);
+			expect(plan.toDelete).toEqual([]);
+			expect(result.written).toEqual([sibling]);
+			expect(readFileSync(stablePath, "utf8")).toBe(original);
+			expect(readFileSync(stablePath, "utf8")).toContain(marker);
+			expect(readFileSync(sibling, "utf8")).toContain("| left-pad | dependency | updated | ^1.1.0 | ^1.2.0 |");
+
+			// Idempotent on re-run: the sibling is branch-authored and ours, so it is
+			// overwritten in place; the merge-base file is still untouched.
+			const second = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir });
+			}).pipe(Effect.provide(liveFor(dir)));
+			expect(second.toWrite.map((w) => w.file)).toEqual([sibling]);
+			expect(second.toDelete).toEqual([]);
 		}),
 	);
 });

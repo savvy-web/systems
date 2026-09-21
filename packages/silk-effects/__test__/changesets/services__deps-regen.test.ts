@@ -327,6 +327,105 @@ describe("DepsRegen plan/execute", () => {
 		}),
 	);
 
+	it.effect(
+		"a prose changeset sitting at the stable path is never overwritten — the write goes to the -2 sibling",
+		() =>
+			Effect.gen(function* () {
+				const dir = mkdtempSync(join(tmpdir(), "depsregen-prose-at-stable-"));
+				const csDir = join(dir, ".changeset");
+				mkdirSync(csDir);
+				const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+				const prose = ["---", '"@scope/foo": minor', "---", "", "## Features", "", "- Hand-written note.", ""].join(
+					"\n",
+				);
+				writeFileSync(stablePath, prose);
+
+				const { plan, result } = yield* Effect.gen(function* () {
+					const svc = yield* DepsRegen;
+					const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+					const result = yield* svc.execute(plan);
+					return { plan, result };
+				}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+				const sibling = join(csDir, "scope-foo-deps-2.md");
+				expect(plan.toWrite.map((w) => w.file)).toEqual([sibling]);
+				expect(plan.toDelete).toEqual([]);
+				expect(result.written).toEqual([sibling]);
+				expect(readFileSync(stablePath, "utf8")).toBe(prose);
+				expect(readdirSync(csDir).sort()).toEqual([basename(stablePath), basename(sibling)].sort());
+			}),
+	);
+
+	it.effect("another package's pure-deps changeset at the stable path is skipped, not clobbered", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-foreign-at-stable-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			// A name that sanitizes onto @scope/foo's path but belongs to a different package.
+			const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+			const foreign = [
+				"---",
+				'"@scope-foo/other": patch',
+				"---",
+				"",
+				"## Dependencies",
+				"",
+				"| Dependency | Type | Action | From | To |",
+				"| --- | --- | --- | --- | --- |",
+				"| left-pad | dependency | updated | 1.0.0 | 1.1.0 |",
+				"",
+			].join("\n");
+			writeFileSync(stablePath, foreign);
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(plan.toWrite.map((w) => w.file)).toEqual([join(csDir, "scope-foo-deps-2.md")]);
+			expect(plan.toDelete).toEqual([]);
+		}),
+	);
+
+	it.effect("two packages whose names sanitize to the same filename get distinct targets in one plan", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-collide-"));
+			mkdirSync(join(dir, ".changeset"));
+
+			const mk = (effectVersion: string) =>
+				wss([
+					{ name: "@scope/a-b", relativePath: "packages/ab", dependencies: { effect: effectVersion } },
+					{ name: "@scope-a/b", relativePath: "packages/b", dependencies: { effect: effectVersion } },
+				]);
+			const DiscoveryCollide = Layer.succeed(WorkspaceDiscovery, {
+				listPackages: () =>
+					Effect.succeed([
+						{ name: "@scope/a-b", path: "/x/packages/ab", version: "1.0.0" },
+						{ name: "@scope-a/b", path: "/x/packages/b", version: "1.0.0" },
+					]),
+				refresh: () => Effect.void,
+			} as never);
+			const depsCollide = Layer.mergeAll(
+				pitStub(mk("3.18.0"), mk("3.19.0")),
+				InspectorLayer,
+				DiscoveryCollide,
+				DetectorLayer,
+				configStub({ versionPrivate: false, ignored: [] }),
+			);
+			const liveCollide = DepsRegen.layer.pipe(Layer.provide(depsCollide), Layer.provide(Git.layer));
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			}).pipe(Effect.provide(liveCollide), Effect.provide(NodeServices.layer));
+
+			expect(depsChangesetFilename("@scope/a-b")).toBe(depsChangesetFilename("@scope-a/b"));
+			const files = plan.toWrite.map((w) => basename(w.file)).sort();
+			expect(files).toEqual(["scope-a-b-deps-2.md", "scope-a-b-deps.md"]);
+			expect(new Set(files).size).toBe(2);
+		}),
+	);
+
 	it.effect("execute fails loudly with ChangesetIOError when a write cannot land", () =>
 		Effect.gen(function* () {
 			const dir = mkdtempSync(join(tmpdir(), "depsregen-io-"));
