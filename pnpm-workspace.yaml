@@ -20,7 +20,7 @@ catalogs:
   build:
     "@microsoft/api-extractor": ^7.59.1
     "@microsoft/api-extractor-model": ^7.33.12
-    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/tsdoc": ~0.17.0
     "@microsoft/tsdoc-config": ~0.18.2
     "@rsbuild/core": ^2.2.8
     "@tsdown/css": ^0.23.0
@@ -38,7 +38,7 @@ catalogs:
   build:peers:
     "@microsoft/api-extractor": ^7.59.1
     "@microsoft/api-extractor-model": ^7.33.12
-    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/tsdoc": ~0.17.0
     "@microsoft/tsdoc-config": ~0.18.2
     "@rsbuild/core": ^2.2.0
     "@tsdown/css": ^0.23.0
