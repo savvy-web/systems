@@ -48,11 +48,21 @@ What it does:
 2. Finds every "pure dependency changeset" in `.changeset/*.md`. Strict
    detection: single-package frontmatter, exactly one `## Dependencies`
    heading, no other body content.
-3. Deletes them all (or, on `dryRun`, reports what it would delete).
-4. Writes one fresh `<adjective>-<noun>-<verb>.md` per workspace
-   package with current dep changes: single-package frontmatter,
-   `patch` bump, one `## Dependencies` section, one CSH005 table
-   (Dependency | Type | Action | From | To).
+3. Deletes the stale ones for each package being rewritten (or, on
+   `dryRun`, reports what it would delete). A changeset already present
+   at the merge base is never deleted.
+4. Writes one `<scope>-<name>-deps.md` (unscoped: `<name>-deps.md`) per
+   workspace package with current dep changes: single-package
+   frontmatter, `patch` bump, one `## Dependencies` section, one CSH005
+   table (Dependency | Type | Action | From | To). The filename is
+   derived from the package, so a re-run overwrites the same file in
+   place and a no-op regen produces no file churn; a legacy
+   random-named pure-dependency changeset for the same package is
+   deleted on the first regen that rewrites it. The stable path is only
+   written when it is free (absent, or this branch's own pure-dependency
+   changeset for that package); a merge-base file, a prose or mixed
+   changeset, or another package's file there is left untouched and the
+   write goes to the first free `…-deps-2.md` sibling.
 
 **Table rows carry resolved versions and omit `devDependency` rows.**
 `catalog:`/`workspace:` specifiers in the table are resolved to concrete

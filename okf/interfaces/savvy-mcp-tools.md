@@ -17,8 +17,8 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 8ea5fc7895a492487f001bd1f26e366638f9b67db81efb1bea1c0cc043492306
+  at: 2026-09-21T18:15:35Z
+  body_sha256: 21b0b79a8bcaddd28befc6865c0cb69a838c8d03206a0cf2ad2abafc2a49aa82
 ---
 
 # savvy-mcp tool surface
@@ -86,9 +86,22 @@ an in-scope package.[^mcp-changeset-tools]
 
 Computes the same plan and, unless `dryRun` is set, executes it: deletes
 only the single-package dependency-only changesets it plans to replace
-(never a mixed changeset) and writes fresh ones from the current diff. A
-bare call with `dryRun: true` only computes the plan and writes nothing.
-Every write lands under `.changeset/*.md` and is git-reversible.[^mcp-changeset-tools]
+(never a mixed changeset) and writes fresh ones from the current diff.
+Each write lands at a stable, package-derived path —
+`.changeset/<scope>-<name>-deps.md` (unscoped: `<name>-deps.md`) — when
+that path is free: absent, or a pure-dependency changeset for the same
+package authored on this branch, which a re-run overwrites in place so an
+unchanged diff produces no file churn. A path that is not free is skipped
+to the first free deterministic sibling (`…-deps-2.md`, `-3.md`) and never
+overwritten: a file present at the merge base (an earlier, merged-but-
+unreleased regen whose rows the changelog aggregates at release), a prose
+or mixed changeset, another package's file, or a name already claimed in
+the same plan. Any legacy random-named pure-dependency changeset for that
+package is deleted on the first regen that rewrites it. The merge-base
+guard (#258) therefore holds on both paths: a changeset present at the
+merge base is neither deleted nor overwritten. A bare call with `dryRun: true` only computes the plan and
+writes nothing. Every write lands under `.changeset/*.md` and is
+git-reversible.[^mcp-changeset-tools]
 
 ## biome_check — mutating, not destructive
 

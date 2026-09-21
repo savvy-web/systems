@@ -39,7 +39,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.7",
+							range: "^2.2.8",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -49,7 +49,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.1",
+							range: "^26.6.2",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -108,7 +108,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.1",
+							range: "^26.6.2",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -133,8 +133,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						"rspress-plugin-mermaid": {
-							range: "^1.0.2",
-							peer: "^1.0.2",
+							range: "^1.0.3",
+							peer: "^1.0.3",
 							strategy: "lock",
 						},
 						typescript: {
@@ -197,8 +197,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.10.13",
-							peer: "^2.10.13",
+							range: "^2.11.2",
+							peer: "^2.11.2",
 							strategy: "lock",
 						},
 					},
@@ -211,7 +211,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.1",
+							range: "^26.6.2",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},

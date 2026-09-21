@@ -40,9 +40,11 @@ import type {
 	WorkspaceSnapshotAtFailure,
 	WorkspaceSnapshotWorktreeFailure,
 	WorkspaceSnapshotsShape,
+	WorkspaceStateSnapshot,
 	WorkspacesOptions,
 } from "@effected/workspaces";
 import { PublishabilityDetector, WorkspaceDiscovery, WorkspaceSnapshots, Workspaces } from "@effected/workspaces";
+import { Yaml } from "@effected/yaml";
 import type { Path } from "effect";
 import { Context, Effect, FileSystem, Layer, Option } from "effect";
 import type { ChildProcessSpawner } from "effect/unstable/process";
@@ -51,12 +53,12 @@ import { ChangesetConfig } from "../../services/ChangesetConfig.js";
 import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";
 import { SilkPublishability } from "../../services/SilkPublishability.js";
 import type { GitError } from "../errors.js";
-import { ChangesetIOError } from "../errors.js";
+import { ChangesetIOError, HookReplayError } from "../errors.js";
 import type { RegenPlan, RegenResult } from "../schemas/deps-regen.js";
 import type { WorkspaceDependencyDiff } from "../utils/dep-diff.js";
 import { computeWorkspaceDependencyDiffs } from "../utils/dep-diff.js";
 import { serializeDependencyTableToMarkdown, sortDependencyRows } from "../utils/dependency-table.js";
-import { gitListChangesetFilesAtRef, gitMergeBase } from "../utils/git.js";
+import { gitListChangesetFilesAtRef, gitMergeBase, gitShowFileAtRef } from "../utils/git.js";
 import { listPublishablePackageNames } from "../utils/publishability.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector } from "./config-inspector.js";
@@ -67,61 +69,86 @@ export type { CoexistingChangeset, RegenDiffRow, RegenPlan, RegenResult } from "
  * Changeset filename helpers (ported verbatim from the CLI command)
  * ----------------------------------------------------------------- */
 
-const ADJECTIVES = ["brave", "clever", "swift", "silver", "lucky", "happy", "calm", "bright", "quiet", "wild"] as const;
-const NOUNS = ["dogs", "cats", "wolves", "foxes", "cups", "ships", "trees", "owls", "cranes", "hills"] as const;
-const VERBS = ["laugh", "dream", "fly", "sing", "dance", "wander", "soar", "rest", "leap", "ponder"] as const;
-
-function pickRandomTriplet(): string {
-	const a = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)] as string;
-	const n = NOUNS[Math.floor(Math.random() * NOUNS.length)] as string;
-	const v = VERBS[Math.floor(Math.random() * VERBS.length)] as string;
-	return `${a}-${n}-${v}`;
+/**
+ * Derive a stable, package-derived `.changeset/*.md` basename for a pure
+ * dependency changeset, replacing the earlier random
+ * `<adjective>-<noun>-<verb>` slug.
+ *
+ * @remarks
+ * A scoped `@scope/name` package joins its scope and name with `-` before
+ * appending the `-deps.md` suffix (e.g. `@savvy-web/cli` →
+ * `savvy-web-cli-deps.md`); an unscoped `name` package appends the suffix
+ * directly. Any character outside `[a-z0-9-]` in the joined name — dots,
+ * underscores, uppercase letters — is lowercased or replaced with `-`, and
+ * runs of `-` collapse to one, so the result is always a safe, deterministic
+ * filename that a stable-filename overwrite can target run after run.
+ *
+ * @param packageName - The workspace package name (e.g. `@savvy-web/cli`).
+ * @returns The stable changeset basename, including the `.md` extension.
+ * @internal
+ */
+export function depsChangesetFilename(packageName: string): string {
+	const joined = packageName.startsWith("@") ? packageName.slice(1).replace("/", "-") : packageName;
+	const sanitized = joined
+		.toLowerCase()
+		.replace(/[^a-z0-9-]+/g, "-")
+		.replace(/-+/g, "-");
+	return `${sanitized}-deps.md`;
 }
 
 /**
- * Pick a `<adjective>-<noun>-<verb>` filename slug that does not collide
- * with an existing `.changeset/*.md` OR with a slug already claimed
- * earlier in the same {@link RegenPlan.toWrite} computation. `plan()`
- * never writes to disk, so an on-disk existence check alone cannot see
- * slugs chosen moments earlier in the same call — the `chosen` set closes
- * that gap. The triplet space is 1,000 combinations, so a busy repo can
- * plausibly exhaust it across runs; fall back to a timestamp suffix after
- * 20 unlucky picks.
+ * Extract `configDependencies` (name → declared version, integrity stripped)
+ * from a `pnpm-workspace.yaml` text. Anything unparseable or absent reads as
+ * "nothing declared" — the guard built on this can only ever be as strict as
+ * the committed evidence.
  *
- * @param fileExists - Effectful on-disk existence check (never fails; a
- *   filesystem error is treated as "does not exist" so filename selection
- *   degrades gracefully rather than blocking the plan).
- * @param changesetDir - Directory checked for on-disk collisions.
- * @param chosen - Basenames (without extension) already picked within this plan;
- *   the picked candidate is added to this set before returning.
  * @internal
  */
-function randomFilename(
-	fileExists: (path: string) => Effect.Effect<boolean>,
-	changesetDir: string,
-	chosen: Set<string>,
-): Effect.Effect<string> {
-	return Effect.gen(function* () {
-		for (let i = 0; i < 20; i++) {
-			const candidate = pickRandomTriplet();
-			if (!chosen.has(candidate) && !(yield* fileExists(join(changesetDir, `${candidate}.md`)))) {
-				chosen.add(candidate);
-				return candidate;
-			}
+const declaredConfigDependencies = (text: Option.Option<string>): Effect.Effect<Readonly<Record<string, string>>> =>
+	Effect.gen(function* () {
+		if (Option.isNone(text)) return {};
+		const doc = yield* Yaml.parse(text.value).pipe(Effect.orElseSucceed(() => undefined));
+		if (typeof doc !== "object" || doc === null) return {};
+		const raw = (doc as { configDependencies?: unknown }).configDependencies;
+		if (typeof raw !== "object" || raw === null) return {};
+		const out: Record<string, string> = {};
+		for (const [name, spec] of Object.entries(raw as Record<string, unknown>)) {
+			if (typeof spec !== "string") continue;
+			const plus = spec.indexOf("+");
+			out[name] = plus === -1 ? spec : spec.slice(0, plus);
 		}
-		// Timestamp fallback after 20 unlucky triplet picks. Loop until the name is
-		// unique against both the on-disk changesets and the slugs already chosen in
-		// this plan, so two packages exhausting the triplet space in the same
-		// millisecond cannot resolve to the same file.
-		let attempt = 0;
-		let fallback = `${pickRandomTriplet()}-${Date.now()}`;
-		while (chosen.has(fallback) || (yield* fileExists(join(changesetDir, `${fallback}.md`)))) {
-			fallback = `${pickRandomTriplet()}-${Date.now()}-${++attempt}`;
-		}
-		chosen.add(fallback);
-		return fallback;
+		return out;
 	});
-}
+
+/**
+ * Fail with {@link HookReplayError} unless every config dependency `declared`
+ * at `ref` is recorded in `snapshot.hookReplays` at the declared version.
+ *
+ * @remarks
+ * Catalogs injected by a config-dependency hook (`catalog:*:peers`) leave no
+ * lockfile trace, so a snapshot taken through a NON-replaying
+ * `ConfigDependencyHooks` layer answers them from nothing on both sides and a
+ * real floor change produces no `peerDependency` row (savvy-web/systems#674).
+ * The kit's replaying layers record every declared dependency in
+ * `hookReplays` (and fail typed when one cannot be resolved), so a declared
+ * name missing from the record means the graph is mis-wired — the one
+ * failure a downstream can detect without replaying anything itself. A ref
+ * that declares nothing has nothing to check; a snapshot decoded from a
+ * pre-`hookReplays` payload never reaches here (`plan()` reads fresh).
+ *
+ * @internal
+ */
+const assertHooksReplayed = (
+	ref: string,
+	declared: Readonly<Record<string, string>>,
+	snapshot: WorkspaceStateSnapshot,
+): Effect.Effect<void, HookReplayError> => {
+	const replays = snapshot.hookReplays ?? {};
+	const missing = Object.entries(declared)
+		.filter(([name, version]) => replays[name] !== version)
+		.map(([name]) => name);
+	return missing.length === 0 ? Effect.void : Effect.fail(new HookReplayError({ ref, declared, missing }));
+};
 
 /**
  * Strict detection of "pure dependency changesets" per the documented
@@ -388,6 +415,7 @@ export interface DepsRegenOptions {
 export type DepsRegenPlanError =
 	| GitError
 	| ChangesetIOError
+	| HookReplayError
 	| WorkspaceDiscoveryFailure
 	| WorkspaceSnapshotAtFailure
 	| WorkspaceSnapshotWorktreeFailure;
@@ -552,6 +580,23 @@ function makeShape(
 			const before = yield* snapshots.at(fromRef);
 			const after = options.to ? yield* snapshots.at(options.to) : yield* snapshots.worktree();
 
+			// Hook-replay guard (#674): the only committed evidence that a
+			// hook-injected catalog moved between the refs is `configDependencies`
+			// in each side's pnpm-workspace.yaml, so read that at each side and
+			// insist the snapshot replayed it. Both reads are tolerant — no file,
+			// no git, or a synthetic ref all mean "nothing declared".
+			const workspaceYaml = "pnpm-workspace.yaml";
+			const declaredBefore = yield* declaredConfigDependencies(
+				yield* gitShowFileAtRef(resolvedCwd, fromRef, workspaceYaml).pipe(Effect.provide(provideGit)),
+			);
+			const declaredAfter = yield* declaredConfigDependencies(
+				options.to
+					? yield* gitShowFileAtRef(resolvedCwd, options.to, workspaceYaml).pipe(Effect.provide(provideGit))
+					: yield* fs.readFileString(join(resolvedCwd, workspaceYaml)).pipe(Effect.option),
+			);
+			yield* assertHooksReplayed(fromRef, declaredBefore, before);
+			yield* assertHooksReplayed(options.to ?? "worktree", declaredAfter, after);
+
 			const rawDiffs = computeWorkspaceDependencyDiffs(before, after);
 			const explicitTargets = new Set<string>([
 				...(options.packages ?? []),
@@ -638,22 +683,64 @@ function makeShape(
 			const atMergeBase = yield* gitListChangesetFilesAtRef(resolvedCwd, fromRef).pipe(Effect.provide(provideGit));
 			const authoredOnBranch = (file: string): boolean => !atMergeBase.has(basename(file));
 
+			// Write-target rule. A package's preferred target is its stable
+			// depsChangesetFilename path, but that path is only WRITTEN when it is
+			// free: absent on disk, or a pure-dependency changeset for THIS package
+			// that was authored on this branch. Anything else sitting there is
+			// skipped over to the first free deterministic sibling
+			// (`<name>-deps-2.md`, `-3.md`, …), never overwritten:
+			//   - a file present at the merge base (#258) — typically an earlier,
+			//     merged-but-unreleased regen for the same package whose rows are
+			//     below this branch's diff floor and would otherwise vanish from
+			//     the published CHANGELOG (the changelog renderer aggregates the
+			//     two files' rows at release time, so coexisting is correct);
+			//   - a prose or mixed changeset, or another package's pure-dependency
+			//     changeset whose name sanitizes onto the same path;
+			//   - a path already claimed earlier in this plan (two packages that
+			//     sanitize onto one filename).
+			// The candidate sequence is fixed for a given merge base, so a re-run
+			// on the same branch lands on the same sibling and overwrites its own
+			// earlier output in place — no churn.
+			const pureByFile = new Map(existingPure.map((p) => [p.file, p.package] as const));
+			const claimed = new Set<string>();
+			const isFreeFor = (file: string, pkg: string): Effect.Effect<boolean> =>
+				Effect.gen(function* () {
+					if (claimed.has(file) || !authoredOnBranch(file)) return false;
+					const owner = pureByFile.get(file);
+					if (owner !== undefined) return owner === pkg;
+					return !(yield* fileExists(file));
+				});
+			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = [];
+			for (const diff of resolved) {
+				const stable = depsChangesetFilename(diff.package);
+				const stem = stable.slice(0, -".md".length);
+				let file = join(changesetDir, stable);
+				for (let n = 2; !(yield* isFreeFor(file, diff.package)); n++) {
+					file = join(changesetDir, `${stem}-${n}.md`);
+				}
+				claimed.add(file);
+				toWrite.push({ file, package: diff.package, diff });
+			}
+			// Every chosen target is by construction either absent or a
+			// branch-authored pure changeset for the same package, overwritten IN
+			// PLACE by execute()'s write pass — so it must never also appear in
+			// toDelete (delete runs after write and would destroy the fresh content).
+			const writeTargets = claimed;
+
 			// With explicit targets, only delete pure changesets for those packages
 			// (unless ignored); otherwise delete pure-dep changesets for every
 			// in-scope package that is actually being rewritten this run AND whose
-			// file was authored on this branch (not present at the merge base).
-			// Excluded packages, packages with no surviving diff rows, and
-			// merge-base-authored files keep their existing changesets untouched.
+			// file was authored on this branch (not present at the merge base) AND
+			// that is not this run's write target for the package. Excluded
+			// packages, packages with no surviving diff rows, and merge-base files
+			// keep their existing changesets untouched.
 			const toDelete = existingPure.filter(
-				(p) => inScopeFor(p.package) && rewrittenPackages.has(p.package) && authoredOnBranch(p.file),
+				(p) =>
+					inScopeFor(p.package) &&
+					rewrittenPackages.has(p.package) &&
+					authoredOnBranch(p.file) &&
+					!writeTargets.has(p.file),
 			);
-
-			const chosenFilenames = new Set<string>();
-			const toWrite: Array<{ file: string; package: string; diff: WorkspaceDependencyDiff }> = [];
-			for (const diff of resolved) {
-				const filename = yield* randomFilename(fileExists, changesetDir, chosenFilenames);
-				toWrite.push({ file: join(changesetDir, `${filename}.md`), package: diff.package, diff });
-			}
 
 			return { toDelete, toWrite, skippedMixed, coexisting };
 		});
@@ -662,11 +749,16 @@ function makeShape(
 		Effect.gen(function* () {
 			const deleted: string[] = [];
 			const written: string[] = [];
-			// Write the fresh changesets first, then remove the stale ones. Fresh
-			// filenames never collide with existing files (randomFilename checks
-			// on-disk existence), so an interrupted write leaves every stale
-			// changeset in place — nothing is lost and the run is safely
-			// re-runnable. Writes fail loudly; deletes are tolerant.
+			// Write the fresh changesets first, then remove the stale ones. Each
+			// `toWrite` entry targets a path plan() proved free — absent, or a
+			// branch-authored pure changeset for the same package — and never a
+			// member of `toDelete`, so a write here is an in-place overwrite of
+			// this run's own output, never a collision with a merge-base file, a
+			// prose changeset, or another package. An interrupted run therefore
+			// still leaves either the old content (write not yet reached) or the
+			// new content (write landed) at that path, never nothing — and every
+			// stale changeset stays in place until its own delete succeeds. Writes
+			// fail loudly; deletes are tolerant.
 			for (const entry of plan.toWrite) {
 				yield* fs
 					.writeFileString(entry.file, renderChangesetContent(entry.diff))

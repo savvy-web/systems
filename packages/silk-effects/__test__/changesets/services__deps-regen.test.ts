@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
@@ -13,13 +13,14 @@ import {
 	WorkspaceStateSnapshot,
 } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
-// `vi` stays on the plain "vitest" entrypoint: vitest hoists its mock wiring above all
-// imports, and a re-exported binding is not initialized in time.
-import { vi } from "vitest";
 import type { ChangesetIOError } from "../../src/changesets/errors.js";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
 import type { RegenPlan } from "../../src/changesets/services/deps-regen.js";
-import { DepsRegen, isPureDependencyChangeset } from "../../src/changesets/services/deps-regen.js";
+import {
+	DepsRegen,
+	depsChangesetFilename,
+	isPureDependencyChangeset,
+} from "../../src/changesets/services/deps-regen.js";
 import type { WorkspaceDependencyDiff } from "../../src/changesets/utils/dep-diff.js";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 
@@ -61,6 +62,18 @@ const pitStub = (before: WorkspaceStateSnapshot, after: WorkspaceStateSnapshot):
 		at: (ref: string) => Effect.succeed(ref === "BEFORE" ? before : after),
 		worktree: () => Effect.succeed(after),
 	} as never);
+
+describe("depsChangesetFilename", () => {
+	it("maps a scoped package name to <scope>-<name>-deps.md", () => {
+		expect(depsChangesetFilename("@savvy-web/cli")).toBe("savvy-web-cli-deps.md");
+	});
+	it("maps an unscoped package name to <name>-deps.md", () => {
+		expect(depsChangesetFilename("left-pad")).toBe("left-pad-deps.md");
+	});
+	it("sanitizes dots, underscores and uppercase to dashes and collapses dash runs", () => {
+		expect(depsChangesetFilename("@Scope.Weird/Some_Name.Here")).toBe("scope-weird-some-name-here-deps.md");
+	});
+});
 
 describe("DepsRegen changeset detection", () => {
 	it("classifies a single-package Dependencies-only changeset as pure", () => {
@@ -132,6 +145,100 @@ describe("DepsRegen plan/execute", () => {
 		rows: [{ dependency: "effect", type: "dependency", action: "updated", from: "3.18.0", to: "3.19.0" }],
 	};
 
+	it.effect("plan() writes @scope/foo's toWrite entry to its stable depsChangesetFilename path", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-stable-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(plan.toWrite).toHaveLength(1);
+			expect(plan.toWrite[0]?.file).toBe(join(csDir, depsChangesetFilename("@scope/foo")));
+		}),
+	);
+
+	it.effect("an existing stable-filename changeset with different content is overwritten in place, not deleted", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-overwrite-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+			writeFileSync(
+				stablePath,
+				["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(old table)", ""].join("\n"),
+			);
+
+			const { plan, result } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(plan.toWrite.map((w) => w.file)).toEqual([stablePath]);
+			expect(plan.toDelete.map((d) => d.file)).not.toContain(stablePath);
+			expect(result.deleted).not.toContain(stablePath);
+
+			const filesAfter = readdirSync(csDir);
+			expect(filesAfter).toEqual([basename(stablePath)]);
+			expect(readFileSync(stablePath, "utf8")).not.toContain("(old table)");
+		}),
+	);
+
+	it.effect(
+		"a legacy random-named pure-deps changeset authored on branch is deleted while the stable one is written",
+		() =>
+			Effect.gen(function* () {
+				const dir = mkdtempSync(join(tmpdir(), "depsregen-legacy-"));
+				const csDir = join(dir, ".changeset");
+				mkdirSync(csDir);
+				const legacyPath = join(csDir, "brave-dogs-laugh.md");
+				writeFileSync(
+					legacyPath,
+					["---", '"@scope/foo": patch', "---", "", "## Dependencies", "", "(legacy random-named table)", ""].join(
+						"\n",
+					),
+				);
+				const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+
+				const { plan, result } = yield* Effect.gen(function* () {
+					const svc = yield* DepsRegen;
+					const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+					const result = yield* svc.execute(plan);
+					return { plan, result };
+				}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+				expect(plan.toWrite.map((w) => w.file)).toEqual([stablePath]);
+				expect(plan.toDelete.map((d) => d.file)).toEqual([legacyPath]);
+				expect(result.deleted).toEqual([legacyPath]);
+				expect(existsSync(legacyPath)).toBe(false);
+				expect(existsSync(stablePath)).toBe(true);
+			}),
+	);
+
+	it.effect("a no-op regen (plan+execute run twice) is idempotent: same toWrite path, empty second toDelete", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-noop-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+
+			const { firstPlan, secondPlan } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const firstPlan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				yield* svc.execute(firstPlan);
+				const secondPlan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+				return { firstPlan, secondPlan };
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(secondPlan.toWrite.map((w) => w.file)).toEqual(firstPlan.toWrite.map((w) => w.file));
+			expect(secondPlan.toDelete).toEqual([]);
+		}),
+	);
+
 	it.effect("plans stale deletes + fresh writes (resolving catalog: rows), then execute applies them", () =>
 		Effect.gen(function* () {
 			const dir = mkdtempSync(join(tmpdir(), "depsregen-"));
@@ -173,61 +280,150 @@ describe("DepsRegen plan/execute", () => {
 		}),
 	);
 
+	it.effect("plan() picks DISTINCT, stable, package-derived changeset filenames for two changed packages", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-multi-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+
+			const mkMultiSnap = (effectVersion: string) =>
+				wss([
+					{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: effectVersion } },
+					{ name: "@scope/bar", relativePath: "packages/bar", dependencies: { effect: effectVersion } },
+				]);
+			const beforeMulti = mkMultiSnap("3.18.0");
+			const afterMulti = mkMultiSnap("3.19.0");
+
+			const DiscoveryLayerMulti = Layer.succeed(WorkspaceDiscovery, {
+				listPackages: () =>
+					Effect.succeed([
+						{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" },
+						{ name: "@scope/bar", path: "/x/packages/bar", version: "1.0.0" },
+					]),
+				refresh: () => Effect.void,
+			} as never);
+			const DetectorLayerMulti = Layer.succeed(PublishabilityDetector, {
+				detect: () => Effect.succeed([{}]),
+			} as never);
+
+			const depsMulti = Layer.mergeAll(
+				pitStub(beforeMulti, afterMulti),
+				InspectorLayer,
+				DiscoveryLayerMulti,
+				DetectorLayerMulti,
+				configStub({ versionPrivate: false, ignored: [] }),
+			);
+			const liveMulti = DepsRegen.layer.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
+
+			const program = Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			});
+			const plan = yield* program.pipe(Effect.provide(liveMulti), Effect.provide(NodeServices.layer));
+
+			expect(plan.toWrite).toHaveLength(2);
+			const basenames = plan.toWrite.map((w) => basename(w.file)).sort();
+			expect(basenames).toEqual([depsChangesetFilename("@scope/bar"), depsChangesetFilename("@scope/foo")].sort());
+		}),
+	);
+
 	it.effect(
-		"plan() picks DISTINCT changeset filenames for two changed packages, even under a forced RNG collision",
+		"a prose changeset sitting at the stable path is never overwritten — the write goes to the -2 sibling",
 		() =>
 			Effect.gen(function* () {
-				const dir = mkdtempSync(join(tmpdir(), "depsregen-multi-"));
+				const dir = mkdtempSync(join(tmpdir(), "depsregen-prose-at-stable-"));
 				const csDir = join(dir, ".changeset");
 				mkdirSync(csDir);
-
-				const mkMultiSnap = (effectVersion: string) =>
-					wss([
-						{ name: "@scope/foo", relativePath: "packages/foo", dependencies: { effect: effectVersion } },
-						{ name: "@scope/bar", relativePath: "packages/bar", dependencies: { effect: effectVersion } },
-					]);
-				const beforeMulti = mkMultiSnap("3.18.0");
-				const afterMulti = mkMultiSnap("3.19.0");
-
-				const DiscoveryLayerMulti = Layer.succeed(WorkspaceDiscovery, {
-					listPackages: () =>
-						Effect.succeed([
-							{ name: "@scope/foo", path: "/x/packages/foo", version: "1.0.0" },
-							{ name: "@scope/bar", path: "/x/packages/bar", version: "1.0.0" },
-						]),
-					refresh: () => Effect.void,
-				} as never);
-				const DetectorLayerMulti = Layer.succeed(PublishabilityDetector, {
-					detect: () => Effect.succeed([{}]),
-				} as never);
-
-				const depsMulti = Layer.mergeAll(
-					pitStub(beforeMulti, afterMulti),
-					InspectorLayer,
-					DiscoveryLayerMulti,
-					DetectorLayerMulti,
-					configStub({ versionPrivate: false, ignored: [] }),
+				const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+				const prose = ["---", '"@scope/foo": minor', "---", "", "## Features", "", "- Hand-written note.", ""].join(
+					"\n",
 				);
-				const liveMulti = DepsRegen.layer.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
+				writeFileSync(stablePath, prose);
 
-				// Force every `pickRandomTriplet()` pick to be identical so a filename
-				// collision between the two changed packages is deterministic rather
-				// than left to chance (1-in-1000 odds would make this test flaky).
-				const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
-				try {
-					const program = Effect.gen(function* () {
-						const svc = yield* DepsRegen;
-						return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
-					});
-					const plan = yield* program.pipe(Effect.provide(liveMulti), Effect.provide(NodeServices.layer));
+				const { plan, result } = yield* Effect.gen(function* () {
+					const svc = yield* DepsRegen;
+					const plan = yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+					const result = yield* svc.execute(plan);
+					return { plan, result };
+				}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
 
-					expect(plan.toWrite).toHaveLength(2);
-					const basenames = plan.toWrite.map((w) => basename(w.file));
-					expect(new Set(basenames).size).toBe(basenames.length);
-				} finally {
-					randomSpy.mockRestore();
-				}
+				const sibling = join(csDir, "scope-foo-deps-2.md");
+				expect(plan.toWrite.map((w) => w.file)).toEqual([sibling]);
+				expect(plan.toDelete).toEqual([]);
+				expect(result.written).toEqual([sibling]);
+				expect(readFileSync(stablePath, "utf8")).toBe(prose);
+				expect(readdirSync(csDir).sort()).toEqual([basename(stablePath), basename(sibling)].sort());
 			}),
+	);
+
+	it.effect("another package's pure-deps changeset at the stable path is skipped, not clobbered", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-foreign-at-stable-"));
+			const csDir = join(dir, ".changeset");
+			mkdirSync(csDir);
+			// A name that sanitizes onto @scope/foo's path but belongs to a different package.
+			const stablePath = join(csDir, depsChangesetFilename("@scope/foo"));
+			const foreign = [
+				"---",
+				'"@scope-foo/other": patch',
+				"---",
+				"",
+				"## Dependencies",
+				"",
+				"| Dependency | Type | Action | From | To |",
+				"| --- | --- | --- | --- | --- |",
+				"| left-pad | dependency | updated | 1.0.0 | 1.1.0 |",
+				"",
+			].join("\n");
+			writeFileSync(stablePath, foreign);
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+
+			expect(plan.toWrite.map((w) => w.file)).toEqual([join(csDir, "scope-foo-deps-2.md")]);
+			expect(plan.toDelete).toEqual([]);
+		}),
+	);
+
+	it.effect("two packages whose names sanitize to the same filename get distinct targets in one plan", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-collide-"));
+			mkdirSync(join(dir, ".changeset"));
+
+			const mk = (effectVersion: string) =>
+				wss([
+					{ name: "@scope/a-b", relativePath: "packages/ab", dependencies: { effect: effectVersion } },
+					{ name: "@scope-a/b", relativePath: "packages/b", dependencies: { effect: effectVersion } },
+				]);
+			const DiscoveryCollide = Layer.succeed(WorkspaceDiscovery, {
+				listPackages: () =>
+					Effect.succeed([
+						{ name: "@scope/a-b", path: "/x/packages/ab", version: "1.0.0" },
+						{ name: "@scope-a/b", path: "/x/packages/b", version: "1.0.0" },
+					]),
+				refresh: () => Effect.void,
+			} as never);
+			const depsCollide = Layer.mergeAll(
+				pitStub(mk("3.18.0"), mk("3.19.0")),
+				InspectorLayer,
+				DiscoveryCollide,
+				DetectorLayer,
+				configStub({ versionPrivate: false, ignored: [] }),
+			);
+			const liveCollide = DepsRegen.layer.pipe(Layer.provide(depsCollide), Layer.provide(Git.layer));
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER" });
+			}).pipe(Effect.provide(liveCollide), Effect.provide(NodeServices.layer));
+
+			expect(depsChangesetFilename("@scope/a-b")).toBe(depsChangesetFilename("@scope-a/b"));
+			const files = plan.toWrite.map((w) => basename(w.file)).sort();
+			expect(files).toEqual(["scope-a-b-deps-2.md", "scope-a-b-deps.md"]);
+			expect(new Set(files).size).toBe(2);
+		}),
 	);
 
 	it.effect("execute fails loudly with ChangesetIOError when a write cannot land", () =>

@@ -13,7 +13,7 @@
 
 import { basename } from "node:path";
 import { Git } from "@effected/git";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 
 import { GitError } from "../errors.js";
 
@@ -63,5 +63,38 @@ export function gitListChangesetFilesAtRef(cwd: string, ref: string): Effect.Eff
 			.lsTree(cwd, ref, { pathspec: [".changeset"] })
 			.pipe(Effect.catch(() => Effect.succeed([])));
 		return new Set(entries.filter((entry) => entry.path.trim().length > 0).map((entry) => basename(entry.path)));
+	});
+}
+
+/**
+ * Read one tracked file's contents at `ref` via `git show <ref>:<path>`,
+ * as `Option.some(text)`; `Option.none()` when the file is absent at that
+ * ref, `cwd` is not a git repository, or `ref` does not resolve.
+ *
+ * @remarks
+ * Tolerant of exactly the three "nothing to read" shapes, for the same
+ * reason as {@link gitListChangesetFilesAtRef}: the consumer
+ * (`DepsRegen.plan()`'s hook-replay guard) treats them as "nothing
+ * declared", and a synthetic ref against a bare tmpdir must not turn a unit
+ * test into a git failure. Any OTHER failure — git itself erroring — is a
+ * {@link GitError}: swallowing it would let an operational fault read as an
+ * empty declaration and silently bypass the guard.
+ *
+ * @internal
+ */
+export function gitShowFileAtRef(
+	cwd: string,
+	ref: string,
+	path: string,
+): Effect.Effect<Option.Option<string>, GitError, Git> {
+	return Effect.gen(function* () {
+		const git = yield* Git;
+		return yield* git.show(cwd, ref, path).pipe(
+			Effect.catchTags({
+				NotARepositoryError: () => Effect.succeed(Option.none<string>()),
+				UnknownRefError: () => Effect.succeed(Option.none<string>()),
+			}),
+			Effect.mapError((error) => new GitError({ command: `git show ${ref}:${path}`, cwd, reason: error.message })),
+		);
 	});
 }

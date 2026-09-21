@@ -23,8 +23,8 @@ sources:
     resource: ../../packages/silk-effects/src/services
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T12:53:56Z
-  body_sha256: 39554249ca528970a53fcb0393bbbf7182c52e2ed3b032d2d58ce5a0cae22474
+  at: 2026-09-21T17:55:06Z
+  body_sha256: 85c08607bd7a13d05b1bc4fb24c5284ce2dd338decf7c796a94d1fe63a79b61b
 ---
 
 # silk-effects
@@ -62,7 +62,7 @@ Every service is a `Context.Service` class with a companion exported `*Shape` in
 - **`ConfigInspector`** resolves `.changeset/config.json` into package scopes and classifies file paths against them, with a release-surface fallback built from `SilkPublishability.detect` when no explicit `packages` record exists, and fixed attribution precedence (directory containment deepest-first, then `additionalScopes`, `versionFiles`, then root-as-package).[^changesets]
 - **`ReleasePlanner`** backs `plan`, `preview`, and `apply` with the real `@changesets/get-release-plan` + `@changesets/apply-release-plan` machinery. `apply` is the destructive native release `savvy changeset version` runs — no `changeset` binary shell-out — and is deliberately not exposed over MCP; only `preview` is.[^changesets]
 - **`VersionFiles`** patches version files with format-preserving minimal edits through `@effected/jsonc`'s `modify` + `applyEdits`; never a `JSON.parse`/`JSON.stringify` round-trip.[^changesets]
-- **`DepsRegen`** (`plan`/`execute`) computes and applies the cumulative dependency-changeset diff between two workspace snapshots (merge-base→worktree by default), cross-seeding catalogs between the two sides so a config-dependency hook injection cannot masquerade as a version change. `DepsRegen.layer` is the injection seam; `DepsRegenDefault` is the batteries-included composition.[^changesets]
+- **`DepsRegen`** (`plan`/`execute`) computes and applies the cumulative dependency-changeset diff between two workspace snapshots (merge-base→worktree by default), cross-seeding catalogs between the two sides so a config-dependency hook injection cannot masquerade as a version change. Since `@effected/workspaces` 0.24.0, `WorkspaceSnapshots.at(ref)` replays each ref's *declared* config-dependency version — resolved from the live `node_modules/.pnpm-config` copy when its version matches, else the local pnpm store's `links/<name>/<version>/…` tree, else a typed `CatalogAssemblyError` — so a hook-only catalog (`catalog:*:peers`) that moved between the refs now produces its `peerDependency` rows. `plan()` fails with a typed `HookReplayError` when a ref's `pnpm-workspace.yaml` declares `configDependencies` its snapshot's `hookReplays` record does not carry at the declared version: the guard against a non-replaying `ConfigDependencyHooks` layer being wired in, which was the silent-omission failure of savvy-web/systems#674. Pure-dependency changesets are written to a stable package-derived filename (`<scope>-<name>-deps.md`, unscoped `<name>-deps.md`, via `depsChangesetFilename`) so a no-op regen produces no file churn (savvy-web/systems#673); detection still classifies a changeset as pure by content, never by name. `DepsRegen.layer` is the injection seam; `DepsRegenDefault` is the batteries-included composition.[^changesets]
 - **Changelog rendering** carries no commit-link prefixes (squash-merge workflows make per-changeset commit links point at squash commits) and is AST-native: `renderSectionNode` decides on MDAST node type, never string prefixes. Changeset-less releases render a `### Maintenance` note via the pure `deriveMaintenanceReason`.[^changesets]
 - The five `CSH00x` lint rules exist twice — as remark rules and as markdownlint rules — kept from drifting by one shared version pattern (`VERSION_RE`) and one shared `## Dependencies` table scanner (`scanDependencySection`).[^changesets]
 

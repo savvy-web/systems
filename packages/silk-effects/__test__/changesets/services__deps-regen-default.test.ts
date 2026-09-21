@@ -20,7 +20,12 @@ import { afterEach, describe, expect, it } from "@effect/vitest";
 import { WorkspaceDiscovery, Workspaces } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
-import { DepsRegen, DepsRegenDefault, makeDepsRegenDefault } from "../../src/changesets/services/deps-regen.js";
+import {
+	DepsRegen,
+	DepsRegenDefault,
+	depsChangesetFilename,
+	makeDepsRegenDefault,
+} from "../../src/changesets/services/deps-regen.js";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
 import { ChangesetConfigReader } from "../../src/services/ChangesetConfigReader.js";
 import { SilkPublishability } from "../../src/services/SilkPublishability.js";
@@ -602,6 +607,277 @@ describe("DepsRegenDefault — ChangesetConfig freshness (regression: #229 long-
 			expect(firstPlan.toWrite.map((w) => w.package)).toEqual(["@fix/stale-ignore"]);
 			expect(secondPlan.toWrite.map((w) => w.package)).toEqual([]);
 			expect(secondPlan.toDelete.map((d) => d.package)).toEqual([]);
+		}),
+	);
+});
+
+describe("DepsRegenDefault — a stable-named changeset at the merge base is protected, not overwritten", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Branch A's regen output already merged and awaiting release: the
+	 * stable-named pure-deps changeset for `@fix/lib` is COMMITTED at the
+	 * merge base with a marker row. Branch B (this worktree) then moves the
+	 * same package's deps. B's diff runs merge-base→worktree, so A's row is
+	 * never in B's resolved set — overwriting A's file would drop it from the
+	 * published CHANGELOG (the reviewer-reproduced regression on #681).
+	 */
+	function makeMergeBaseFixture(): { dir: string; stablePath: string; marker: string } {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-mergebase-"));
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), 'packages:\n  - "packages/*"\n');
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+		const pkgDir = join(dir, "packages", "lib");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify({ name: "@fix/lib", version: "1.0.0", dependencies: { "left-pad": "^1.1.0" } }, null, 2)}\n`,
+		);
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "public",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		const stablePath = join(dir, ".changeset", depsChangesetFilename("@fix/lib"));
+		const marker = "| left-pad | dependency | updated | 1.0.0 | 1.1.0 |";
+		writeFileSync(
+			stablePath,
+			[
+				"---",
+				'"@fix/lib": patch',
+				"---",
+				"",
+				"## Dependencies",
+				"",
+				"| Dependency | Type | Action | From | To |",
+				"| --- | --- | --- | --- | --- |",
+				marker,
+				"",
+			].join("\n"),
+		);
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit (branch A merged, unreleased)");
+
+		// Branch B: working-tree-only bump of the same package.
+		const raw = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8")) as {
+			dependencies: Record<string, string>;
+		};
+		raw.dependencies["left-pad"] = "^1.2.0";
+		writeFileSync(join(pkgDir, "package.json"), `${JSON.stringify(raw, null, 2)}\n`);
+		return { dir, stablePath, marker };
+	}
+
+	it.effect("writes branch B's rows to the -2 sibling and leaves the merge-base file byte-identical", () =>
+		Effect.gen(function* () {
+			const { dir, stablePath, marker } = makeMergeBaseFixture();
+			dirs.push(dir);
+			const original = readFileSync(stablePath, "utf8");
+
+			const { plan, result } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const plan = yield* svc.plan({ cwd: dir });
+				const result = yield* svc.execute(plan);
+				return { plan, result };
+			}).pipe(Effect.provide(liveFor(dir)));
+
+			const sibling = join(dir, ".changeset", "fix-lib-deps-2.md");
+			expect(plan.toWrite.map((w) => w.file)).toEqual([sibling]);
+			expect(plan.toDelete).toEqual([]);
+			expect(result.written).toEqual([sibling]);
+			expect(readFileSync(stablePath, "utf8")).toBe(original);
+			expect(readFileSync(stablePath, "utf8")).toContain(marker);
+			expect(readFileSync(sibling, "utf8")).toContain("| left-pad | dependency | updated | ^1.1.0 | ^1.2.0 |");
+
+			// Idempotent on re-run: the sibling is branch-authored and ours, so it is
+			// overwritten in place; the merge-base file is still untouched.
+			const second = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir });
+			}).pipe(Effect.provide(liveFor(dir)));
+			expect(second.toWrite.map((w) => w.file)).toEqual([sibling]);
+			expect(second.toDelete).toEqual([]);
+		}),
+	);
+});
+
+describe("DepsRegenDefault — config-dependency bump between refs (#674 / effected#794)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	const PLUGIN = "@fix/plugin";
+
+	/** A pnpmfile whose `updateConfig` hook injects one `effect:peers` catalog. */
+	const pnpmfileInjecting = (effectVersion: string): string =>
+		[
+			"export const hooks = {",
+			"\tupdateConfig(config) {",
+			`\t\tconfig.catalogs = { ...(config.catalogs ?? {}), "effect:peers": { effect: ${JSON.stringify(effectVersion)} } };`,
+			"\t\treturn config;",
+			"\t},",
+			"};",
+			"",
+		].join("\n");
+
+	const workspaceYamlDeclaring = (version: string): string =>
+		`packages:\n  - "packages/*"\nconfigDependencies:\n  "${PLUGIN}": ${version}+sha512-AAAA\n`;
+
+	/**
+	 * The disputed case, on disk. The committed base declares `@fix/plugin`
+	 * `0.8.15`, whose pnpmfile injects `effect:peers` at `rc.115`; the
+	 * working tree bumps the declaration to `0.9.0` (rc.116). The LIVE
+	 * `node_modules/.pnpm-config` holds 0.9.0 — the shape after
+	 * `pnpm install` — so the merge-base side can only be answered from the
+	 * store, which `node_modules/.modules.yaml` points at. Nothing about the
+	 * one package's manifest changes between the refs; only the hook does.
+	 */
+	function makeBumpFixture(): string {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-hookbump-"));
+
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), workspaceYamlDeclaring("0.8.15"));
+		writeFileSync(join(dir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+		writeFileSync(join(dir, ".gitignore"), "node_modules/\nstore/\n");
+
+		const pkgDir = join(dir, "packages", "lib");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify(
+				{
+					name: "@fix/lib",
+					version: "1.0.0",
+					dependencies: { "left-pad": "^1.0.0" },
+					peerDependencies: { effect: "catalog:effect:peers" },
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "public",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+				},
+				null,
+				2,
+			)}\n`,
+		);
+
+		// Live install: .pnpm-config holds the NEW version.
+		const installed = join(dir, "node_modules", ".pnpm-config", PLUGIN);
+		mkdirSync(installed, { recursive: true });
+		writeFileSync(join(installed, "package.json"), `${JSON.stringify({ name: PLUGIN, version: "0.9.0" })}\n`);
+		writeFileSync(join(installed, "pnpmfile.mjs"), pnpmfileInjecting("4.0.0-rc.116"));
+
+		// Store: links/<name>/<version>/<hash>/node_modules/<name> holds the OLD one.
+		const store = join(dir, "store");
+		const stored = join(store, "links", PLUGIN, "0.8.15", "deadbeef", "node_modules", PLUGIN);
+		mkdirSync(stored, { recursive: true });
+		writeFileSync(join(stored, "package.json"), `${JSON.stringify({ name: PLUGIN, version: "0.8.15" })}\n`);
+		writeFileSync(join(stored, "pnpmfile.mjs"), pnpmfileInjecting("4.0.0-rc.115"));
+		writeFileSync(join(dir, "node_modules", ".modules.yaml"), `storeDir: ${JSON.stringify(store)}\n`);
+
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit");
+
+		// Working-tree-only bump of the config dependency.
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), workspaceYamlDeclaring("0.9.0"));
+
+		return dir;
+	}
+
+	it.effect("emits the peerDependency row a hook-only catalog moved across the bump", () =>
+		Effect.gen(function* () {
+			const dir = makeBumpFixture();
+			dirs.push(dir);
+
+			const plan = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir });
+			}).pipe(Effect.provide(liveFor(dir)));
+
+			expect(plan.toWrite.map((w) => w.package)).toEqual(["@fix/lib"]);
+			const rows = plan.toWrite[0]?.diff.rows ?? [];
+			const peer = rows.find((r) => r.dependency === "effect" && r.type === "peerDependency");
+			expect(peer).toBeDefined();
+			expect(peer?.from).toBe("4.0.0-rc.115");
+			expect(peer?.to).toBe("4.0.0-rc.116");
+		}),
+	);
+
+	it.effect("fails with HookReplayError when the graph does not replay a declared config dependency", () =>
+		Effect.gen(function* () {
+			const dir = makeBumpFixture();
+			dirs.push(dir);
+
+			// Same graph shape as makeDepsRegenDefault, but over Workspaces.layerWithGit —
+			// the NON-replaying (noop-hooks) composite. Without the guard this plan
+			// would succeed with zero peer rows: the exact silent omission of #674.
+			const kit = Workspaces.layerWithGit({ cwd: dir });
+			const configGraph = ChangesetConfig.layer.pipe(Layer.provide(ChangesetConfigReader.layer));
+			const noopLive = DepsRegen.layer
+				.pipe(
+					Layer.provide(ConfigInspector.layer.pipe(Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, kit)))),
+					Layer.provide(SilkPublishability.layerAdaptive.pipe(Layer.provide(Layer.mergeAll(configGraph, kit)))),
+					Layer.provide(configGraph),
+					Layer.provide(kit),
+				)
+				.pipe(Layer.provide(NodeServices.layer));
+
+			const error = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.plan({ cwd: dir });
+			}).pipe(Effect.provide(noopLive), Effect.flip);
+
+			expect(error._tag).toBe("HookReplayError");
+			if (error._tag === "HookReplayError") {
+				expect(error.missing).toEqual([PLUGIN]);
+				expect(error.declared).toEqual({ [PLUGIN]: "0.8.15" });
+			}
 		}),
 	);
 });
