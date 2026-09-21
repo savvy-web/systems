@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.42.0
+
+### Features
+
+- Bumps the tooling catalogs: `@rsbuild/core` to `^2.2.8`, `@types/node` to `^26.6.2`, `rspress-plugin-mermaid` to `^1.0.3`, and `turbo` to `^2.11.2` (range and peer). [#681][#681]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#681]: https://github.com/savvy-web/systems/pull/681
+
 ## 0.41.0
 
 ### Features
