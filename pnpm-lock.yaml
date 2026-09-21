@@ -557,7 +557,7 @@ importers:
         specifier: catalog:build
         version: 26.6.2
       rolldown-pnpm-config:
-        specifier: ^1.0.1
+        specifier: ^1.0.2
         version: 1.0.2(@types/react@19.3.0)(redis@6.2.1)(rolldown@1.2.9)
       typescript:
         specifier: catalog:build
@@ -725,7 +725,7 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-rc.116
       fast-check:
-        specifier: ^4.10.1
+        specifier: ^4.10.2
         version: 4.10.2
       typescript:
         specifier: catalog:build
@@ -853,7 +853,7 @@ importers:
         specifier: catalog:effect
         version: 4.0.0-rc.116
       fast-check:
-        specifier: ^4.10.1
+        specifier: ^4.10.2
         version: 4.10.2
       markdownlint:
         specifier: ^0.41.1
