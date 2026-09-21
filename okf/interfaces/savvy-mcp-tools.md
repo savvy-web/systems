@@ -17,8 +17,8 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 8ea5fc7895a492487f001bd1f26e366638f9b67db81efb1bea1c0cc043492306
+  at: 2026-09-21T17:55:06Z
+  body_sha256: d08f7c20c3a12c59a1f03112e70b3c77e7844c35bdbbe8368cc2be2d289f66df
 ---
 
 # savvy-mcp tool surface
@@ -86,9 +86,16 @@ an in-scope package.[^mcp-changeset-tools]
 
 Computes the same plan and, unless `dryRun` is set, executes it: deletes
 only the single-package dependency-only changesets it plans to replace
-(never a mixed changeset) and writes fresh ones from the current diff. A
-bare call with `dryRun: true` only computes the plan and writes nothing.
-Every write lands under `.changeset/*.md` and is git-reversible.[^mcp-changeset-tools]
+(never a mixed changeset) and writes fresh ones from the current diff.
+Each write lands at a stable, package-derived path —
+`.changeset/<scope>-<name>-deps.md` (unscoped: `<name>-deps.md`) — that a
+re-run overwrites in place, so an unchanged diff produces no file churn;
+any legacy random-named pure-dependency changeset for that package is
+deleted on the first regen that rewrites it. The merge-base guard is
+unchanged: a changeset already present at the merge base is never
+deleted. A bare call with `dryRun: true` only computes the plan and
+writes nothing. Every write lands under `.changeset/*.md` and is
+git-reversible.[^mcp-changeset-tools]
 
 ## biome_check — mutating, not destructive
 

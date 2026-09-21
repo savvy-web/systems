@@ -1,5 +1,15 @@
 # Log
 
+## 2026-09-21
+
+* Updated savvy-mcp tool surface
+* Updated silk-effects
+
+## 2026-09-20
+
+* Updated An Effect-native MCP server
+* Updated Kit Effect peers supplied via the effected catalog
+
 ## 2026-09-18
 
 * Updated @savvy-web/changelog
@@ -8,6 +18,7 @@
 * Added A public-hoisted workspace package resolves to its source tree, not its built artifact
 * Updated mcp
 * Updated silk pins siblings as dependencies, never peers
+* Updated silk-core
 
 ## 2026-09-16
 
