@@ -1,5 +1,22 @@
 # @savvy-web/changelog
 
+## 1.0.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.23.0 | ^0.24.0 |
+| @savvy-web/silk-effects | dependency | updated | 9.0.2 | 9.1.0 |
+
+[#681][#681]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#681]: https://github.com/savvy-web/systems/pull/681
+
 ## 1.0.3
 
 ### Dependencies

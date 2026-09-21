@@ -1,5 +1,31 @@
 # @savvy-web/silk
 
+## 4.2.4
+
+### Documentation
+
+- The `dependencies` skill describes the stable `<scope>-<name>-deps.md` filenames that `changeset_deps_regen` now writes. [#681][#681]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.23.0 | ^0.24.0 |
+| @savvy-web/changelog | dependency | updated | 1.0.3 | 1.0.4 |
+| @savvy-web/cli | dependency | updated | 3.2.4 | 3.2.5 |
+| @savvy-web/mcp | dependency | updated | 3.2.0 | 3.2.1 |
+| @savvy-web/silk-effects | dependency | updated | 9.0.2 | 9.1.0 |
+| @types/node | peerDependency | updated | ^26.6.1 | ^26.6.2 |
+| turbo | peerDependency | updated | ^2.10.13 | ^2.11.2 |
+
+[#681][#681]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#681]: https://github.com/savvy-web/systems/pull/681
+
 ## 4.2.3
 
 ### Dependencies
