@@ -1,5 +1,24 @@
 # @savvy-web/silk-core
 
+## 0.4.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.4.0 | ^0.5.0 |
+| @effected/templates | peerDependency | updated | ^0.7.0 | ^0.8.0 |
+| @effected/workspaces | peerDependency | updated | ^0.24.0 | ^0.25.0 |
+| effect | peerDependency | updated | 4.0.0-rc.116 | 4.0.0-rc.117 |
+
+[#689][#689]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#689]: https://github.com/savvy-web/systems/pull/689
+
 ## 0.4.3
 
 ### Dependencies
