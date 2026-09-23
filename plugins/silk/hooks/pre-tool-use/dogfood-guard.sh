@@ -55,9 +55,19 @@ set -euo pipefail
 # unresolvable source, `--all`/`--mirror`/`--tags`, and a source matching
 # current HEAD all fall back to the working-tree behavior above -- the safe
 # direction whenever the parse is uncertain. `--delete`/`-d` pushes no
-# content, so it allows outright. `gh pr create`/`gh pr edit` and the
-# GitKraken/GitHub MCP equivalents are NOT ref-parsed -- PR creation targets
-# a branch already on the remote, so there is no local refspec to resolve.
+# content, so that push contributes nothing to scan.
+#
+# ONE decision covers the whole command string, so the command is split on
+# shell control operators (`;`, `&`, `|`, newlines) and every guarded segment
+# contributes to a single union of things to scan: each `git push` its
+# resolved refs (or the working tree, per the fallbacks above), and each
+# `gh pr create`/`gh pr edit` the working tree. The command is allowed
+# without a scan only when every guarded segment was a delete or a
+# dev-destination push. PR creation is judged on the working tree BY DESIGN
+# -- it targets a branch already on the remote, so there is no local refspec
+# to resolve -- which means a clean pushed ref chained with a PR from a linked
+# tree still denies. The GitKraken/GitHub MCP equivalents are judged on the
+# working tree the same way.
 # When every refspec resolved to committed (non-working-tree) content that
 # scanned clean, the packagesDerived:false deny above does not apply either
 # -- that deny is about THIS TREE's unknown link state, and a ref already

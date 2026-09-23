@@ -490,3 +490,15 @@ seed_project_journal() {
 	[ "$(wc -l < "$PROJECT_JOURNAL")" -eq "$before" ]
 	[[ "$output" == *"resolves outside the repo root"* ]]
 }
+
+@test "rejects a --mail-in that is a symlinked file pointing outside the repo" {
+	seed_project_journal
+	touch "${BATS_TEST_TMPDIR}/outside.md"
+	ln -s "${BATS_TEST_TMPDIR}/outside.md" "${PROJECT}/.claude/dogfood/effected/2026-09-23-link.md"
+	local before
+	before="$(wc -l < "$PROJECT_JOURNAL")"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in ".claude/dogfood/effected/2026-09-23-link.md"
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$PROJECT_JOURNAL")" -eq "$before" ]
+	[[ "$output" == *"is a symlink"* ]]
+}
