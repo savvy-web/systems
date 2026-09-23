@@ -671,7 +671,7 @@ init_push_repo_with_diverging_branch() {
 	[ "$(_decision "$output")" != "deny" ]
 }
 
-@test "linked ref pushed while the local journal's packagesDerived is false: the tree-state deny does not apply to already-scanned-clean pushed content" {
+@test "clean ref pushed while the local journal's packagesDerived is false: the tree-state deny does not apply to already-scanned-clean pushed content" {
 	local project
 	project="$(init_push_repo_with_diverging_branch clean)"
 	write_journal_full "$project" effected downstream adopting false
@@ -693,4 +693,45 @@ init_push_repo_with_diverging_branch() {
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" != "deny" ]
 	[[ "$(_context "$output")" == *"effected"* ]]
+}
+
+# --- chained commands must not leak into the refspec parse ------------------
+# A `-d` belonging to a command chained after the push (gh pr create's
+# --draft, ls -d) was read as `git push --delete`, and the delete
+# short-circuit allowed a linked tree unscanned.
+
+@test "linked tree, push chained with gh pr create -d: denied (the draft flag is not a push --delete)" {
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -b feat/thing >/dev/null 2>&1
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-chained-draft-pr.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree, push followed by ; ls -d: denied" {
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -b feat/thing >/dev/null 2>&1
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-chained-semicolon.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree, 'push -d' inside an earlier commit message: denied (parse anchors on the real git push)" {
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -b feat/thing >/dev/null 2>&1
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-after-commit-message.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
 }

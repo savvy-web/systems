@@ -253,11 +253,29 @@ if [ "$IS_GIT_PUSH_BASH" -eq 1 ]; then
 	# GIT_PUSH_RE on. Best-effort word split, not a full shell parse -- same
 	# posture as the rest of this file; a flag that consumes a following
 	# value (other than the ones named below) is a documented miss.
-	REST="${COMMAND#*push}"
+	#
+	# Anchor on the GIT_PUSH_RE match itself rather than the first "push"
+	# substring (which can sit inside an earlier commit message), then cut at
+	# the first shell control operator or newline. Without the cut, a token
+	# from a CHAINED command was parsed as a push argument -- the `-d` of
+	# `&& gh pr create -d` read as `git push --delete`, and the delete
+	# short-circuit below allowed the push unscanned. A quoted separator
+	# (`git push origin "a;b"`) truncates early; that only shrinks REST,
+	# which means more scanning, never less.
+	REST="$COMMAND"
+	[[ "$COMMAND" =~ $GIT_PUSH_RE ]] && REST="${COMMAND#*"${BASH_REMATCH[0]}"}"
+	REST="${REST%%[;&|]*}"
+	REST="${REST%%$'\n'*}"
 	MODE_FLAG=""
 	REMOTE_SEEN=0
 	REFSPECS=()
-	for tok in $REST; do
+	# No pathname expansion during the word split: a refspec like `feat/*`
+	# must stay a literal token, not expand against the hook's cwd.
+	set -f
+	# shellcheck disable=SC2086
+	set -- $REST
+	set +f
+	for tok in "$@"; do
 		case "$tok" in
 			--delete|-d) MODE_FLAG="delete" ;;
 			--all|--mirror|--tags) MODE_FLAG="bulk" ;;
@@ -310,7 +328,8 @@ if [ "$IS_GIT_PUSH_BASH" -eq 1 ]; then
 			fi
 		done
 		if [ "$TARGETS_WORKTREE" -eq 0 ] && [ "${#TARGETS_REF[@]}" -eq 0 ]; then
-			# Every refspec's destination was dev.
+			# Every refspec was a dev destination or a `:branch` delete --
+			# no non-exempt content is being pushed.
 			exit 0
 		fi
 	fi

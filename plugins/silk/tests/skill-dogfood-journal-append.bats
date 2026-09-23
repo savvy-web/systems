@@ -466,3 +466,27 @@ seed_project_journal() {
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.lastMail.out' <<< "$(tail -n1 "$JOURNAL")")" = "../../spencerbeggs/effected/.claude/dogfood/savvy-web-systems/findings.md" ]
 }
+
+@test "rejects a --mail-in that escapes the repo via .. traversal, even though the file exists" {
+	seed_project_journal
+	touch "${BATS_TEST_TMPDIR}/outside.md"
+	local before
+	before="$(wc -l < "$PROJECT_JOURNAL")"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in "../outside.md"
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$PROJECT_JOURNAL")" -eq "$before" ]
+	[[ "$output" == *"resolves outside the repo root"* ]]
+}
+
+@test "rejects a --mail-in reached through a symlinked directory pointing outside the repo" {
+	seed_project_journal
+	mkdir -p "${BATS_TEST_TMPDIR}/elsewhere"
+	touch "${BATS_TEST_TMPDIR}/elsewhere/mail.md"
+	ln -s "${BATS_TEST_TMPDIR}/elsewhere" "${PROJECT}/.claude/dogfood/effected/linked"
+	local before
+	before="$(wc -l < "$PROJECT_JOURNAL")"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in ".claude/dogfood/effected/linked/mail.md"
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$PROJECT_JOURNAL")" -eq "$before" ]
+	[[ "$output" == *"resolves outside the repo root"* ]]
+}

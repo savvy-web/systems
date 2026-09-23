@@ -315,6 +315,20 @@ if [ -n "$MAIL_IN" ]; then
 				;;
 		esac
 	fi
+	# Existence alone does not make a path receiver-repo-relative: `../..`
+	# traversal, an absolute path, or a symlinked directory can all name a real
+	# file outside the repo. Compare physical (symlink-resolved) directories.
+	if [ -n "$REPO_ROOT" ]; then
+		root_phys=$(cd "$REPO_ROOT" 2>/dev/null && pwd -P)
+		target_phys=$(cd "$(dirname "${REPO_ROOT}/${MAIL_IN}")" 2>/dev/null && pwd -P)
+		case "${target_phys}/" in
+			"${root_phys}/"*) : ;;
+			*)
+				echo "journal-append: --mail-in '$MAIL_IN' resolves outside the repo root (expected a receiver-repo-relative path, e.g. .claude/dogfood/<counterpart-id>/<file>.md)" >&2
+				exit 1
+				;;
+		esac
+	fi
 fi
 
 # --mail-out contract: a counterpart-repo-relative path (starts with
