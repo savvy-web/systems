@@ -381,3 +381,88 @@ seed() {
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.packages | length' <<< "$(tail -n1 "$JOURNAL")")" = "0" ]
 }
+
+# --- --mail-in / --mail-out validation (savvy-web/systems#546) --------------
+#
+# The contract (jsonl-journal.md) is a receiver-repo-relative path for
+# --mail-in; validation only applies when the journal path itself sits at
+# <root>/.claude/dogfood/<file>.jsonl, so these tests build a project tree
+# rather than reusing the bare $JOURNAL from `seed`.
+
+seed_project_journal() {
+	PROJECT="${BATS_TEST_TMPDIR}/project"
+	mkdir -p "${PROJECT}/.claude/dogfood/effected"
+	PROJECT_JOURNAL="${PROJECT}/.claude/dogfood/effected.jsonl"
+	cat > "$PROJECT_JOURNAL" <<-'EOF'
+		{"at":"2026-08-01T00:00:00Z","event":"loop-started","role":"downstream","counterpart":{"id":"effected","path":"../../spencerbeggs/effected"},"packages":[],"packagesDerived":false,"linkType":"file","nativeRebuilds":[],"phase":"requested","ball":"theirs","round":0}
+	EOF
+}
+
+@test "rejects a --mail-in path (with a slash) that does not resolve to an existing file" {
+	seed_project_journal
+	local before
+	before="$(wc -l < "$PROJECT_JOURNAL")"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in ".claude/dogfood/effected/does-not-exist.md"
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$PROJECT_JOURNAL")" -eq "$before" ]
+	[[ "$output" == *"does not resolve to an existing file"* ]]
+}
+
+@test "normalizes a bare --mail-in filename that exists in the counterpart mailbox" {
+	seed_project_journal
+	touch "${PROJECT}/.claude/dogfood/effected/2026-08-22-release-catalog-0.6.0.md"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in "2026-08-22-release-catalog-0.6.0.md"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"normalizing bare --mail-in"* ]]
+	[ "$(jq -r '.lastMail.in' <<< "$(tail -n1 "$PROJECT_JOURNAL")")" = ".claude/dogfood/effected/2026-08-22-release-catalog-0.6.0.md" ]
+}
+
+@test "rejects a bare --mail-in filename that does not exist anywhere" {
+	seed_project_journal
+	local before
+	before="$(wc -l < "$PROJECT_JOURNAL")"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in "typo-does-not-exist.md"
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$PROJECT_JOURNAL")" -eq "$before" ]
+}
+
+@test "rejecting an invalid --mail-in leaves the journal byte-identical" {
+	seed_project_journal
+	local before_sum
+	before_sum="$(shasum "$PROJECT_JOURNAL")"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in "typo-does-not-exist.md"
+	[ "$status" -ne 0 ]
+	[ "$(shasum "$PROJECT_JOURNAL")" = "$before_sum" ]
+}
+
+@test "accepts a --mail-in already in receiver-repo-relative form" {
+	seed_project_journal
+	touch "${PROJECT}/.claude/dogfood/effected/2026-08-22-release-catalog-0.6.0.md"
+	run bash "$SCRIPT" "$PROJECT_JOURNAL" --event mail-received --mail-in ".claude/dogfood/effected/2026-08-22-release-catalog-0.6.0.md"
+	[ "$status" -eq 0 ]
+	[ "$(jq -r '.lastMail.in' <<< "$(tail -n1 "$PROJECT_JOURNAL")")" = ".claude/dogfood/effected/2026-08-22-release-catalog-0.6.0.md" ]
+}
+
+@test "--mail-in validation is skipped for a journal outside the .claude/dogfood layout (back-compat)" {
+	seed
+	run bash "$SCRIPT" "$JOURNAL" --event mail-received --mail-in "anything-goes.md"
+	[ "$status" -eq 0 ]
+	[ "$(jq -r '.lastMail.in' <<< "$(tail -n1 "$JOURNAL")")" = "anything-goes.md" ]
+}
+
+@test "rejects a bare --mail-out with no path separator" {
+	seed
+	local before
+	before="$(wc -l < "$JOURNAL")"
+	run bash "$SCRIPT" "$JOURNAL" --event mail-sent --mail-out "handoff.md"
+	[ "$status" -ne 0 ]
+	[ "$(wc -l < "$JOURNAL")" -eq "$before" ]
+}
+
+@test "accepts a --mail-out counterpart-relative path without requiring it to exist" {
+	seed
+	run bash "$SCRIPT" "$JOURNAL" --event mail-sent \
+		--mail-out "../../spencerbeggs/effected/.claude/dogfood/savvy-web-systems/findings.md"
+	[ "$status" -eq 0 ]
+	[ "$(jq -r '.lastMail.out' <<< "$(tail -n1 "$JOURNAL")")" = "../../spencerbeggs/effected/.claude/dogfood/savvy-web-systems/findings.md" ]
+}

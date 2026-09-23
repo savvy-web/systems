@@ -40,6 +40,29 @@ set -euo pipefail
 #     absent (upstream journals, and downstream journals written before this
 #     field existed) must NOT be treated as false.
 #
+# For `git push` (Bash) specifically, the tree scanned is the PUSHED REF's
+# committed content, not always PROJECT_DIR's working tree (savvy-web/systems
+# #603 follow-up 2): the working tree is wrong for both a `git push origin
+# some-clean-branch` cut from a linked checkout (tsdoctor#213 -- falsely
+# denies content that carries no override) and a linked branch pushed by name
+# from an otherwise-clean checkout (falsely allows). Every parsed refspec's
+# source is resolved (`git rev-parse --verify --quiet <src>^{commit}`) and
+# compared against current HEAD; a source that resolves to something else is
+# scanned via `git show <src>:pnpm-workspace.yaml` instead of the working
+# tree, and the `dev` exemption applies to that refspec's PUSHED DESTINATION
+# branch too, not only the currently checked-out branch. Multiple refspecs
+# deny if ANY carries a local override. `HEAD`, no refspec at all, an
+# unresolvable source, `--all`/`--mirror`/`--tags`, and a source matching
+# current HEAD all fall back to the working-tree behavior above -- the safe
+# direction whenever the parse is uncertain. `--delete`/`-d` pushes no
+# content, so it allows outright. `gh pr create`/`gh pr edit` and the
+# GitKraken/GitHub MCP equivalents are NOT ref-parsed -- PR creation targets
+# a branch already on the remote, so there is no local refspec to resolve.
+# When every refspec resolved to committed (non-working-tree) content that
+# scanned clean, the packagesDerived:false deny above does not apply either
+# -- that deny is about THIS TREE's unknown link state, and a ref already
+# proven clean by content isn't that. The advisory context is kept either way.
+#
 # This is a TRIPWIRE, not a security boundary -- same posture as
 # repos-bash-guard.sh/repos-mcp-guard.sh: best-effort command-string matching,
 # not full shell parsing. Fails open, per the spec's explicit posture:
@@ -84,11 +107,16 @@ GIT_PUSH_RE='(^|[^[:alnum:]_])git[[:space:]]+(-[A-Za-z-]+([[:space:]]+[^[:space:
 GH_PR_RE='(^|[^[:alnum:]_])gh[[:space:]]+pr[[:space:]]+(create|edit)([[:space:]]|$)'
 
 applicable=0
+IS_GIT_PUSH_BASH=0
 case "$TOOL" in
 	Bash)
 		COMMAND=$(jq -r '.tool_input.command // empty' <<< "$HOOK_ENVELOPE")
 		[ -z "$COMMAND" ] && exit 0
-		if [[ "$COMMAND" =~ $GIT_PUSH_RE ]] || [[ "$COMMAND" =~ $GH_PR_RE ]]; then
+		if [[ "$COMMAND" =~ $GIT_PUSH_RE ]]; then
+			applicable=1
+			IS_GIT_PUSH_BASH=1
+		fi
+		if [[ "$COMMAND" =~ $GH_PR_RE ]]; then
 			applicable=1
 		fi
 		;;
@@ -162,10 +190,15 @@ BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "
 # --init always writes block style -- so left undetected rather than
 # complicating the parser for a shape nothing produces.
 LOCAL_OVERRIDE_RE='(file|link):(\.\./|/)'
-WS_FILE="${PROJECT_DIR}/pnpm-workspace.yaml"
-has_local_override=0
-if [ -f "$WS_FILE" ]; then
-	overrides_block=$(awk '/^overrides:/{f=1;next} f && /^[a-zA-Z]/{f=0} f' "$WS_FILE" 2>/dev/null \
+
+# Extracted into a function (savvy-web/systems#603 follow-up 2) so the same
+# quote-aware, comment-stripping overrides-block scan runs over EITHER the
+# working tree's pnpm-workspace.yaml or a `git show <ref>:pnpm-workspace.yaml`
+# snapshot of a pushed ref's committed content -- see the refspec-resolution
+# block below for which one applies.
+_overrides_block_has_local_link() {
+	local content="$1" block
+	block=$(awk '/^overrides:/{f=1;next} f && /^[a-zA-Z]/{f=0} f' <<< "$content" 2>/dev/null \
 		| awk '
 			{
 				line = $0
@@ -190,13 +223,127 @@ if [ -f "$WS_FILE" ]; then
 				print out
 			}
 		' 2>/dev/null || true)
-	if [ -n "$overrides_block" ] && grep -Eq "$LOCAL_OVERRIDE_RE" <<< "$overrides_block" 2>/dev/null; then
-		has_local_override=1
+	[ -n "$block" ] && grep -Eq "$LOCAL_OVERRIDE_RE" <<< "$block" 2>/dev/null
+}
+
+# Best-effort refspec resolution, `git push` (Bash) only -- gh pr create/edit
+# and the GitKraken/GitHub MCP equivalents keep the working-tree-only
+# behavior below unchanged: PR creation targets whatever branch is ALREADY on
+# the remote, so there is no local refspec to parse, and the whole question
+# this block exists to answer (which committed content is about to move) does
+# not arise for them.
+#
+# The guard previously scanned only PROJECT_DIR's working tree, which is
+# wrong in both directions (tsdoctor#213 and its mirror): `git push origin
+# some-clean-branch` from a tree that currently carries a LOCAL override
+# falsely denies a push of content that never carries it, and pushing a
+# LINKED branch by name from an otherwise-clean checkout falsely allows.
+#
+# TARGETS_WORKTREE=1 (the default) means "reason about PROJECT_DIR's working
+# tree", preserving every pre-existing code path (including uncommitted
+# overrides denying, and the packagesDerived:false tree-state deny below).
+# It flips to 0 only when EVERY refspec resolved to committed content other
+# than the current HEAD branch -- at that point the working tree is simply
+# not what is being pushed, and TARGETS_REF carries the resolved sources to
+# scan instead (via `git show <src>:pnpm-workspace.yaml`).
+TARGETS_WORKTREE=1
+TARGETS_REF=()
+if [ "$IS_GIT_PUSH_BASH" -eq 1 ]; then
+	# Everything after the literal "push" token this command already matched
+	# GIT_PUSH_RE on. Best-effort word split, not a full shell parse -- same
+	# posture as the rest of this file; a flag that consumes a following
+	# value (other than the ones named below) is a documented miss.
+	REST="${COMMAND#*push}"
+	MODE_FLAG=""
+	REMOTE_SEEN=0
+	REFSPECS=()
+	for tok in $REST; do
+		case "$tok" in
+			--delete|-d) MODE_FLAG="delete" ;;
+			--all|--mirror|--tags) MODE_FLAG="bulk" ;;
+			-*) : ;;
+			*)
+				if [ "$REMOTE_SEEN" -eq 0 ]; then
+					REMOTE_SEEN=1
+				else
+					REFSPECS+=("$tok")
+				fi
+				;;
+		esac
+	done
+
+	if [ "$MODE_FLAG" = "delete" ]; then
+		# A delete pushes no content -- nothing for this guard to scan.
+		exit 0
+	elif [ "$MODE_FLAG" = "bulk" ]; then
+		: # --all/--mirror/--tags: fall back to the working-tree behavior
+		  # below rather than trying to reason about every ref it touches.
+	elif [ "${#REFSPECS[@]}" -gt 0 ]; then
+		TARGETS_WORKTREE=0
+		CURRENT_SHA=$(git -C "$PROJECT_DIR" rev-parse --verify --quiet "HEAD^{commit}" 2>/dev/null || echo "")
+		for spec in "${REFSPECS[@]}"; do
+			spec="${spec#+}" # strip a leading force prefix
+			src="${spec%%:*}"
+			if [[ "$spec" == *:* ]]; then dst="${spec#*:}"; else dst="$src"; fi
+			[ -z "$src" ] && continue # ":branch" delete form -- no content pushed
+			dst_name="${dst#refs/heads/}"
+			# The `dev` exemption applies to the PUSHED destination too, not
+			# only the current checkout (see header comment): a push whose
+			# destination is dev carries no hazard regardless of source.
+			[ "$dst_name" = "dev" ] && continue
+			if [ "$src" = "HEAD" ]; then
+				TARGETS_WORKTREE=1
+				continue
+			fi
+			resolved_sha=$(git -C "$PROJECT_DIR" rev-parse --verify --quiet "${src}^{commit}" 2>/dev/null || echo "")
+			if [ -z "$resolved_sha" ]; then
+				# Unresolvable -- the safe direction is the existing
+				# working-tree behavior, not silently skipping the scan.
+				TARGETS_WORKTREE=1
+			elif [ -n "$CURRENT_SHA" ] && [ "$resolved_sha" = "$CURRENT_SHA" ]; then
+				# Same commit as the current HEAD branch -- reason about the
+				# working tree, which also catches an uncommitted override
+				# the pushed commit itself doesn't yet carry.
+				TARGETS_WORKTREE=1
+			else
+				TARGETS_REF+=("$src")
+			fi
+		done
+		if [ "$TARGETS_WORKTREE" -eq 0 ] && [ "${#TARGETS_REF[@]}" -eq 0 ]; then
+			# Every refspec's destination was dev.
+			exit 0
+		fi
 	fi
 fi
 
+has_local_override=0
+override_found_in=""
+
+if [ "$TARGETS_WORKTREE" -eq 1 ]; then
+	WS_FILE="${PROJECT_DIR}/pnpm-workspace.yaml"
+	if [ -f "$WS_FILE" ] && _overrides_block_has_local_link "$(cat "$WS_FILE")"; then
+		has_local_override=1
+		override_found_in="worktree"
+	fi
+fi
+
+if [ "$has_local_override" -eq 0 ] && [ "${#TARGETS_REF[@]}" -gt 0 ]; then
+	for ref in "${TARGETS_REF[@]}"; do
+		ref_content=$(git -C "$PROJECT_DIR" show "${ref}:pnpm-workspace.yaml" 2>/dev/null || echo "")
+		if [ -n "$ref_content" ] && _overrides_block_has_local_link "$ref_content"; then
+			has_local_override=1
+			override_found_in="$ref"
+			break
+		fi
+	done
+fi
+
 if [ "$has_local_override" -eq 1 ]; then
-	emit_deny "this tree carries a file:/link: dependency override pointing outside the repo, in pnpm-workspace.yaml's overrides block -- it resolves only on this machine, so pushing it breaks the install for every other clone and any CI job that installs. Run /silk:dogfood --exit to unlink first, or push to dev, which is exempt."
+	if [ "$override_found_in" = "worktree" ]; then
+		emit_deny "this tree carries a file:/link: dependency override pointing outside the repo, in pnpm-workspace.yaml's overrides block -- it resolves only on this machine, so pushing it breaks the install for every other clone and any CI job that installs. Run /silk:dogfood --exit to unlink first, or push to dev, which is exempt."
+	else
+		emit_deny "the ref being pushed (${override_found_in}) carries a committed file:/link: dependency override pointing outside the repo, in pnpm-workspace.yaml's overrides block -- it resolves only on this machine, so pushing it breaks the install for every other clone and any CI job that installs. Fix the override on that ref before pushing it, or push to dev, which is exempt."
+	fi
 	exit 0
 fi
 
@@ -249,8 +396,17 @@ for journal in "${journals[@]}"; do
 	fi
 
 	if [ "$derived" = "false" ]; then
-		emit_deny "dogfood loop \"${loop_id}\" has not derived its linked-package closure yet (packagesDerived is false), so whether this tree is linked is unknown rather than known-clean. Derive the closure and append a correction snapshot before pushing, or push to dev, which is exempt."
-		exit 0
+		# The deny is about THIS TREE's unknown link state. When every target
+		# resolved to committed content already scanned clean above
+		# (TARGETS_WORKTREE=0), that content is known, not unknown -- the
+		# tree-state deny doesn't apply to a ref we've already proven clean.
+		# Keep the advisory context either way.
+		if [ "$TARGETS_WORKTREE" -eq 1 ]; then
+			emit_deny "dogfood loop \"${loop_id}\" has not derived its linked-package closure yet (packagesDerived is false), so whether this tree is linked is unknown rather than known-clean. Derive the closure and append a correction snapshot before pushing, or push to dev, which is exempt."
+			exit 0
+		fi
+		advisory="${advisory}${advisory:+, }${loop_id} (${phase}, closure not yet derived in the working tree)"
+		continue
 	fi
 
 	advisory="${advisory}${advisory:+, }${loop_id} (${phase})"

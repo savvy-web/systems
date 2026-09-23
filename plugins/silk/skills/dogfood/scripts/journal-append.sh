@@ -33,6 +33,13 @@ usage() {
 		         (only --ball, --note and --owner are valid alongside --init;
 		         the rest describe a change against a prior line, which --init
 		         has none of)
+
+		--mail-in must be a receiver-repo-relative path that resolves to an
+		existing file (e.g. .claude/dogfood/<counterpart-id>/<file>.md); a bare
+		filename is normalized to that form when it exists in this loop's
+		counterpart mailbox, otherwise rejected (savvy-web/systems#546).
+		--mail-out must be counterpart-repo-relative (contain a "/"); existence
+		is not checked, since the counterpart path may legitimately differ.
 		events:  loop-started mail-sent mail-received phase-change pr-recorded
 		         correction unlinked
 		phases:  requested implementing handoff adopting findings upstream-pr
@@ -75,6 +82,23 @@ while [ "$#" -gt 0 ]; do
 		*) echo "journal-append: unknown flag $1" >&2; usage ;;
 	esac
 done
+
+_repo_root_for_journal() {
+	# Derives the repo root implied by <root>/.claude/dogfood/<file>.jsonl,
+	# without requiring the path to actually exist beyond what the caller has
+	# already checked. Echoes nothing (empty) when the journal path does not
+	# sit inside a .claude/dogfood/ directory -- callers must treat that as
+	# "cannot validate", not as a root of "".
+	local j="$1" dir
+	case "$j" in
+		/*) : ;;
+		*) j="$(pwd)/${j}" ;;
+	esac
+	dir="$(dirname "$j")"
+	if [ "$(basename "$dir")" = "dogfood" ] && [ "$(basename "$(dirname "$dir")")" = ".claude" ]; then
+		dirname "$(dirname "$dir")"
+	fi
+}
 
 _valid_event() {
 	case "$1" in
@@ -258,6 +282,55 @@ while IFS= read -r line; do
 done < <(awk '{ lines[NR] = $0 } END { for (i = NR; i >= 1; i--) print lines[i] }' "$JOURNAL")
 
 [ -n "$PREV" ] || { echo "journal-append: $JOURNAL has no valid line to inherit from" >&2; exit 1; }
+
+# --mail-in contract (jsonl-journal.md): a receiver-repo-relative path, e.g.
+# .claude/dogfood/<counterpart-id>/<file>.md. A bare filename journaled
+# instead (the counterpart-id prefix dropped) leaves the monitor's
+# statSync-based watermark unresolvable, silently falling back to
+# loop-started and re-announcing processed mail every session
+# (savvy-web/systems#546). Validate/normalize here rather than trust the
+# caller -- and reject rather than silently accept, same posture as the
+# other scalar checks above.
+if [ -n "$MAIL_IN" ]; then
+	REPO_ROOT="$(_repo_root_for_journal "$JOURNAL")"
+	if [ -n "$REPO_ROOT" ] && [ ! -f "${REPO_ROOT}/${MAIL_IN}" ]; then
+		case "$MAIL_IN" in
+			*/*)
+				echo "journal-append: --mail-in '$MAIL_IN' does not resolve to an existing file under the repo root (expected a receiver-repo-relative path, e.g. .claude/dogfood/<counterpart-id>/<file>.md)" >&2
+				exit 1
+				;;
+			*)
+				# A bare filename is normalized when it genuinely exists in this
+				# journal's counterpart's mailbox -- the shape a session most
+				# often drops the prefix from.
+				CP_ID_FOR_MAIL_IN=$(jq -r '.counterpart.id // empty' <<< "$PREV")
+				MAIL_IN_NORMALIZED="${REPO_ROOT}/.claude/dogfood/${CP_ID_FOR_MAIL_IN}/${MAIL_IN}"
+				if [ -n "$CP_ID_FOR_MAIL_IN" ] && [ -f "$MAIL_IN_NORMALIZED" ]; then
+					echo "journal-append: normalizing bare --mail-in '$MAIL_IN' to '.claude/dogfood/${CP_ID_FOR_MAIL_IN}/${MAIL_IN}' (receiver-repo-relative form)" >&2
+					MAIL_IN=".claude/dogfood/${CP_ID_FOR_MAIL_IN}/${MAIL_IN}"
+				else
+					echo "journal-append: --mail-in '$MAIL_IN' does not resolve to an existing file under the repo root or under this loop's counterpart mailbox (expected a receiver-repo-relative path, e.g. .claude/dogfood/<counterpart-id>/<file>.md)" >&2
+					exit 1
+				fi
+				;;
+		esac
+	fi
+fi
+
+# --mail-out contract: a counterpart-repo-relative path (starts with
+# "../"). Existence is NOT checked -- the counterpart path may legitimately
+# differ from what this session can see -- but a bare filename with no path
+# separator at all cannot be a valid counterpart-relative path under any
+# reading of the contract, so that shape alone is rejected.
+if [ -n "$MAIL_OUT" ]; then
+	case "$MAIL_OUT" in
+		*/*) : ;;
+		*)
+			echo "journal-append: --mail-out '$MAIL_OUT' is not a valid counterpart-repo-relative path (expected something starting with ../, e.g. ../../<counterpart-path>/.claude/dogfood/<this-id>/<file>.md)" >&2
+			exit 1
+			;;
+	esac
+fi
 
 # Owner-token check (#334): exactly one session may hold a role in a loop. A
 # mismatch warns rather than rejecting -- a hard lease would lock a

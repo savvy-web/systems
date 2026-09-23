@@ -217,7 +217,20 @@ export function diagnose(current, prev) {
 			try {
 				threshold = statSync(join(ROOT, lastMailIn)).mtimeMs;
 			} catch {
-				// dangling pointer -- keep the loop-started watermark
+				// Dangling pointer -- the contract (jsonl-journal.md) is a
+				// receiver-repo-relative path, but a session can journal a bare
+				// filename instead (e.g. "2026-08-22-release-catalog-0.6.0.md"
+				// with no ".claude/dogfood/<counterpart-id>/" prefix). Before
+				// giving up to the loop-started watermark, retry against the
+				// mailbox THIS journal's counterpart owns -- journal-append.sh
+				// now normalizes this at append time (#546), but a journal
+				// written before that fix, or hand-authored, can still carry
+				// the bare form.
+				try {
+					threshold = statSync(join(DOGFOOD_DIR, journal.counterpartId, basename(lastMailIn))).mtimeMs;
+				} catch {
+					// still unresolvable -- keep the loop-started watermark
+				}
 			}
 		}
 		thresholdCache.set(journal.id, threshold);
