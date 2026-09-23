@@ -37,7 +37,10 @@ usage() {
 		--mail-in must be a receiver-repo-relative path that resolves to an
 		existing file (e.g. .claude/dogfood/<counterpart-id>/<file>.md); a bare
 		filename is normalized to that form when it exists in this loop's
-		counterpart mailbox, otherwise rejected (savvy-web/systems#546).
+		counterpart mailbox, otherwise rejected (savvy-web/systems#546). The
+		path must also stay physically under the repo root (.. traversal and
+		symlinked directories are rejected), and the mail file must be a
+		regular file, not a symlink.
 		--mail-out must be counterpart-repo-relative (contain a "/"); existence
 		is not checked, since the counterpart path may legitimately differ.
 		events:  loop-started mail-sent mail-received phase-change pr-recorded
