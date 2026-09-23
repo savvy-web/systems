@@ -664,6 +664,37 @@ write_mail() {
 	[[ "$output" != *"ball is ours"* ]]
 }
 
+# --- issue #546: a dangling bare-filename lastMail.in must not replay mail ---
+# journal-append.sh now normalizes --mail-in at append time, but a journal
+# written before that fix (or hand-authored) can still carry a bare filename
+# with no ".claude/dogfood/<counterpart-id>/" prefix. join(ROOT, lastMailIn)
+# then fails to stat, and without the retry the watermark silently falls back
+# to loop-started (or 0), replaying already-processed mail every session.
+
+@test "lastMail.in as a bare filename: retried against the counterpart mailbox, not re-announced (issue #546)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-08-22-release-catalog-0.6.0.md" release 3 "Release: catalog 0.6.0"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-22T00:00:00Z","event":"mail-received","role":"downstream","phase":"released","ball":"theirs","round":3,"lastMail":{"in":"2026-08-22-release-catalog-0.6.0.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"dogfood mail from"* ]]
+}
+
+@test "lastMail.in as a bare filename: mail genuinely newer than it is still surfaced (issue #546)" {
+	make_project >/dev/null
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-08-22-release-catalog-0.6.0.md" release 3 "Release: catalog 0.6.0"
+	touch -t 202608220000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-08-22-release-catalog-0.6.0.md"
+	write_mail "$CLAUDE_PROJECT_DIR" effected "2026-08-25-status-round-4.md" status 4 "Fresher status after the release"
+	touch -t 202608250000 "${CLAUDE_PROJECT_DIR}/.claude/dogfood/effected/2026-08-25-status-round-4.md"
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-08-22T00:00:00Z","event":"mail-received","role":"downstream","phase":"released","ball":"theirs","round":3,"lastMail":{"in":"2026-08-22-release-catalog-0.6.0.md"}}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood mail from effected: status (round 4) — Fresher status after the release'* ]]
+	[[ "$output" != *"Release: catalog 0.6.0"* ]]
+}
+
 @test "every loop closed with two journals: the highest watermark wins, not the earliest" {
 	make_project >/dev/null
 	# loop-b processed further than the bare loop; mail between the two marks is

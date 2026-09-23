@@ -559,6 +559,129 @@ append_raw() {
 	[[ "$(_reason "$output")" == *"derived"* ]]
 }
 
+# --- savvy-web/systems#603 follow-up 2: the guard reasons about the PUSHED
+# REF's committed content, not always the working tree -----------------------
+#
+# init_push_repo leaves `main` and `feature` at the same root commit. These
+# helpers diverge a `feat/thing` working branch from one or two release
+# branches so the refspec-resolution logic has something genuine to resolve
+# against, instead of every pushed name resolving to the same commit as HEAD
+# (which is what every fixture above exercises, and why they all keep passing
+# unchanged -- see the header comment in dogfood-guard.sh).
+
+# init_push_repo_with_diverging_branch [clean|linked] -- builds on
+# init_push_repo: creates `release-clean` at the shared root commit (never
+# touched again), optionally `release-linked` with a COMMITTED file: override
+# when mode=linked, then checks out `feat/thing` and commits an unrelated
+# change there so its HEAD genuinely diverges from both release branches.
+init_push_repo_with_diverging_branch() {
+	local mode="${1:-clean}"
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -q -b release-clean
+	if [ "$mode" = "linked" ]; then
+		git -C "$project" checkout -q -b release-linked
+		write_override "$project"
+		git -C "$project" add pnpm-workspace.yaml
+		git -C "$project" commit -q -m "chore: linked override"
+		git -C "$project" checkout -q release-clean
+	fi
+	git -C "$project" checkout -q -b feat/thing
+	echo "diverge" >> "${project}/README.md"
+	git -C "$project" add README.md
+	git -C "$project" commit -q -m "chore: diverge from release branches"
+	echo "$project"
+}
+
+@test "clean ref pushed from a currently-linked tree: allowed (pushed content, not the working tree, is scanned)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-release-clean.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" != "deny" ]
+}
+
+@test "linked ref pushed from an otherwise-clean tree: denied (pushed content carries a committed override)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch linked)"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-linked-ref.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+	[[ "$(_reason "$output")" == *"install"* ]]
+	[[ "$(_reason "$output")" == *"ref being pushed"* ]]
+}
+
+@test "src:dst refspec form: pushed content is still what's scanned, not the working tree" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-src-dst.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" != "deny" ]
+}
+
+@test "force-prefixed src:dst refspec: a committed override on the source is still detected" {
+	local project
+	project="$(init_push_repo_with_diverging_branch linked)"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-force-prefix.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "unresolvable refspec source: falls back to the working tree (denied because the working tree carries an override)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-unresolvable-ref.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+	[[ "$(_reason "$output")" == *"this tree"* ]]
+}
+
+@test "bare git push with no refspec at all: unchanged working-tree behavior (denied because the working tree carries an override)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-bare.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "pushed destination is dev even though the current branch is not: allowed regardless of the working tree" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-dev-dest.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" != "deny" ]
+}
+
+@test "clean ref pushed while the local journal's packagesDerived is false: the tree-state deny does not apply to already-scanned-clean pushed content" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_journal_full "$project" effected downstream adopting false
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-release-clean.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" != "deny" ]
+}
+
 @test "packagesDerived absent on a downstream, non-unlinked journal (upstream-shaped or pre-existing): allowed with warning, not denied" {
 	local project
 	project="$(init_push_repo)"
@@ -570,4 +693,107 @@ append_raw() {
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" != "deny" ]
 	[[ "$(_context "$output")" == *"effected"* ]]
+}
+
+# --- chained commands must not leak into the refspec parse ------------------
+# A `-d` belonging to a command chained after the push (gh pr create's
+# --draft, ls -d) was read as `git push --delete`, and the delete
+# short-circuit allowed a linked tree unscanned.
+
+@test "linked tree, push chained with gh pr create -d: denied (the draft flag is not a push --delete)" {
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -b feat/thing >/dev/null 2>&1
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-chained-draft-pr.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree, push followed by ; ls -d: denied" {
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -b feat/thing >/dev/null 2>&1
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-chained-semicolon.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree, 'push -d' inside an earlier commit message: denied (parse anchors on the real git push)" {
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -b feat/thing >/dev/null 2>&1
+	write_override "$project"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push-after-commit-message.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+# --- one guard decision per command string ----------------------------------
+# The ref-aware shortcuts (delete/dev exits, scanning the pushed ref instead
+# of the tree) decide the whole invocation, so they apply only when the push
+# is the command's sole guarded action. These use a pushed source that
+# DIVERGES from HEAD, so the assertion depends on how the chained segment is
+# handled rather than on the resolved==HEAD working-tree fallback.
+
+_run_chained() {
+	local project="$1" fixture="$2"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-${fixture}.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+}
+
+@test "linked tree: clean pushed ref chained with gh pr create is denied (the PR keeps its working-tree deny)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-clean-then-gh-pr
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: gh pr create chained BEFORE a clean pushed ref is denied (order-independent)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-gh-pr-then-push-clean
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: push --delete chained with gh pr create is denied (no delete short-circuit)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-delete-then-gh-pr
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: a dev-destination push does not exempt a chained second push" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-dev-then-push
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "clean tree: a clean pushed ref does not clear a chained push of a linked ref" {
+	local project
+	project="$(init_push_repo_with_diverging_branch linked)"
+	_run_chained "$project" chained-push-clean-then-push-linked
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: dev-destination push chained with an unguarded command stays allowed" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-dev-then-unguarded
+	[ "$(_decision "$output")" != "deny" ]
 }
