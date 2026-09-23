@@ -735,3 +735,65 @@ init_push_repo_with_diverging_branch() {
 	[ "$status" -eq 0 ]
 	[ "$(_decision "$output")" = "deny" ]
 }
+
+# --- one guard decision per command string ----------------------------------
+# The ref-aware shortcuts (delete/dev exits, scanning the pushed ref instead
+# of the tree) decide the whole invocation, so they apply only when the push
+# is the command's sole guarded action. These use a pushed source that
+# DIVERGES from HEAD, so the assertion depends on how the chained segment is
+# handled rather than on the resolved==HEAD working-tree fallback.
+
+_run_chained() {
+	local project="$1" fixture="$2"
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-${fixture}.json" "$project")"
+	run bash -c "cat '${env_file}' | bash '${HOOK}'"
+	[ "$status" -eq 0 ]
+}
+
+@test "linked tree: clean pushed ref chained with gh pr create is denied (the PR keeps its working-tree deny)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-clean-then-gh-pr
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: gh pr create chained BEFORE a clean pushed ref is denied (order-independent)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-gh-pr-then-push-clean
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: push --delete chained with gh pr create is denied (no delete short-circuit)" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-delete-then-gh-pr
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: a dev-destination push does not exempt a chained second push" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-dev-then-push
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "clean tree: a clean pushed ref does not clear a chained push of a linked ref" {
+	local project
+	project="$(init_push_repo_with_diverging_branch linked)"
+	_run_chained "$project" chained-push-clean-then-push-linked
+	[ "$(_decision "$output")" = "deny" ]
+}
+
+@test "linked tree: dev-destination push chained with an unguarded command stays allowed" {
+	local project
+	project="$(init_push_repo_with_diverging_branch clean)"
+	write_override "$project"
+	_run_chained "$project" chained-push-dev-then-unguarded
+	[ "$(_decision "$output")" != "deny" ]
+}

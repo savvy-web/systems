@@ -1,0 +1,8 @@
+{
+	"session_id": "test-dogfood-bash-chained-push-dev-then-unguarded",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "git push origin dev && pnpm test"
+	}
+}

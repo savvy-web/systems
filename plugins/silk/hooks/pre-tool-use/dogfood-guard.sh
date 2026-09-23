@@ -249,56 +249,60 @@ _overrides_block_has_local_link() {
 TARGETS_WORKTREE=1
 TARGETS_REF=()
 if [ "$IS_GIT_PUSH_BASH" -eq 1 ]; then
-	# Everything after the literal "push" token this command already matched
-	# GIT_PUSH_RE on. Best-effort word split, not a full shell parse -- same
-	# posture as the rest of this file; a flag that consumes a following
-	# value (other than the ones named below) is a documented miss.
-	#
-	# Anchor on the GIT_PUSH_RE match itself rather than the first "push"
-	# substring (which can sit inside an earlier commit message), then cut at
-	# the first shell control operator or newline. Without the cut, a token
-	# from a CHAINED command was parsed as a push argument -- the `-d` of
-	# `&& gh pr create -d` read as `git push --delete`, and the delete
-	# short-circuit below allowed the push unscanned. A quoted separator
-	# (`git push origin "a;b"`) truncates early; that only shrinks REST,
-	# which means more scanning, never less.
-	REST="$COMMAND"
-	[[ "$COMMAND" =~ $GIT_PUSH_RE ]] && REST="${COMMAND#*"${BASH_REMATCH[0]}"}"
-	REST="${REST%%[;&|]*}"
-	REST="${REST%%$'\n'*}"
-	MODE_FLAG=""
-	REMOTE_SEEN=0
-	REFSPECS=()
-	# No pathname expansion during the word split: a refspec like `feat/*`
-	# must stay a literal token, not expand against the hook's cwd.
-	set -f
-	# shellcheck disable=SC2086
-	set -- $REST
-	set +f
-	for tok in "$@"; do
-		case "$tok" in
-			--delete|-d) MODE_FLAG="delete" ;;
-			--all|--mirror|--tags) MODE_FLAG="bulk" ;;
-			-*) : ;;
-			*)
-				if [ "$REMOTE_SEEN" -eq 0 ]; then
-					REMOTE_SEEN=1
-				else
-					REFSPECS+=("$tok")
-				fi
-				;;
-		esac
-	done
+	# ONE decision covers the whole command string, so every guarded action in
+	# it has to be accounted for -- not just the first `git push`. Split on
+	# shell control operators and newlines and let each segment contribute:
+	# a `gh pr create|edit` segment needs the working tree; a `git push`
+	# segment contributes its resolved pushed refs, or the working tree when
+	# its target is uncertain. The union is scanned below. (Scoping the parse
+	# to the first push alone let a clean first push -- or a dev/delete
+	# exemption -- wave through a chained PR or a chained push of a linked
+	# ref.) Best-effort, not a full shell parse: a quoted separator splits a
+	# segment early, which at worst makes a push look unresolvable and falls
+	# back to the working-tree scan -- more scanning, never less.
+	TARGETS_WORKTREE=0
+	SAW_PUSH=0
+	CURRENT_SHA=$(git -C "$PROJECT_DIR" rev-parse --verify --quiet "HEAD^{commit}" 2>/dev/null || echo "")
+	SEGMENTS=$(tr ';&|' '\n' <<< "$COMMAND")
+	while IFS= read -r seg; do
+		[[ "$seg" =~ $GH_PR_RE ]] && TARGETS_WORKTREE=1
+		[[ "$seg" =~ $GIT_PUSH_RE ]] || continue
+		SAW_PUSH=1
+		# Anchor on the GIT_PUSH_RE match itself, not the first "push"
+		# substring (which can sit inside an earlier commit message).
+		REST="${seg#*"${BASH_REMATCH[0]}"}"
+		MODE_FLAG=""
+		REMOTE_SEEN=0
+		REFSPECS=()
+		# No pathname expansion during the word split: a refspec like
+		# `feat/*` must stay a literal token, not expand against the cwd.
+		set -f
+		# shellcheck disable=SC2086
+		set -- $REST
+		set +f
+		for tok in "$@"; do
+			case "$tok" in
+				--delete|-d) MODE_FLAG="delete" ;;
+				--all|--mirror|--tags) MODE_FLAG="bulk" ;;
+				-*) : ;;
+				*)
+					if [ "$REMOTE_SEEN" -eq 0 ]; then
+						REMOTE_SEEN=1
+					else
+						REFSPECS+=("$tok")
+					fi
+					;;
+			esac
+		done
 
-	if [ "$MODE_FLAG" = "delete" ]; then
-		# A delete pushes no content -- nothing for this guard to scan.
-		exit 0
-	elif [ "$MODE_FLAG" = "bulk" ]; then
-		: # --all/--mirror/--tags: fall back to the working-tree behavior
-		  # below rather than trying to reason about every ref it touches.
-	elif [ "${#REFSPECS[@]}" -gt 0 ]; then
-		TARGETS_WORKTREE=0
-		CURRENT_SHA=$(git -C "$PROJECT_DIR" rev-parse --verify --quiet "HEAD^{commit}" 2>/dev/null || echo "")
+		if [ "$MODE_FLAG" = "delete" ]; then
+			continue # a delete pushes no content
+		elif [ "$MODE_FLAG" = "bulk" ] || [ "${#REFSPECS[@]}" -eq 0 ]; then
+			# --all/--mirror/--tags, or no refspec (pushes the current
+			# branch): reason about the working tree.
+			TARGETS_WORKTREE=1
+			continue
+		fi
 		for spec in "${REFSPECS[@]}"; do
 			spec="${spec#+}" # strip a leading force prefix
 			src="${spec%%:*}"
@@ -327,11 +331,15 @@ if [ "$IS_GIT_PUSH_BASH" -eq 1 ]; then
 				TARGETS_REF+=("$src")
 			fi
 		done
-		if [ "$TARGETS_WORKTREE" -eq 0 ] && [ "${#TARGETS_REF[@]}" -eq 0 ]; then
-			# Every refspec was a dev destination or a `:branch` delete --
-			# no non-exempt content is being pushed.
-			exit 0
-		fi
+	done <<< "$SEGMENTS"
+
+	# GIT_PUSH_RE matched the whole command but no single segment -- the
+	# split lost it; fall back rather than guess.
+	[ "$SAW_PUSH" -eq 0 ] && TARGETS_WORKTREE=1
+	if [ "$TARGETS_WORKTREE" -eq 0 ] && [ "${#TARGETS_REF[@]}" -eq 0 ]; then
+		# Every guarded action was a delete or a dev-destination push -- no
+		# non-exempt content is being pushed and no PR is being opened.
+		exit 0
 	fi
 fi
 
