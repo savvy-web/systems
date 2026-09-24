@@ -1,5 +1,19 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.43.0
+
+### Features
+
+- Bumps tooling dependencies to latest
+- Re-aligns api-extractor and tsdoc setup
+- Removes local peer dependency warnings [#694][#694]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#694]: https://github.com/savvy-web/systems/pull/694
+
 ## 0.42.0
 
 ### Features
