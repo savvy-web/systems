@@ -1,8 +1,9 @@
 /**
  * Package manager detection for the commit-time hooks.
  *
- * Mirrors the husky hook detection: prefer `package.json#packageManager`,
- * fall back to lockfile presence in priority order pnpm \> yarn \> bun \> npm.
+ * Mirrors the husky hook detection: prefer `package.json#devEngines.packageManager`
+ * (the first entry when it is an array), then the legacy `packageManager` field,
+ * then lockfile presence in priority order pnpm \> yarn \> bun \> npm.
  *
  * @internal
  */
@@ -20,6 +21,17 @@ export interface LockfilePresence {
 	bun: boolean;
 }
 
+const toPackageManager = (name: unknown): PackageManager | null =>
+	typeof name === "string" && VALID_PMS.has(name) ? (name as PackageManager) : null;
+
+const devEnginesName = (manifest: Record<string, unknown>): unknown => {
+	const devEngines = manifest.devEngines;
+	if (typeof devEngines !== "object" || devEngines === null) return undefined;
+	const declared = (devEngines as { packageManager?: unknown }).packageManager;
+	const first: unknown = Array.isArray(declared) ? declared[0] : declared;
+	return typeof first === "object" && first !== null ? (first as { name?: unknown }).name : undefined;
+};
+
 export function parsePackageManagerField(packageJsonContent: string): PackageManager | null {
 	let parsed: unknown;
 	try {
@@ -27,13 +39,13 @@ export function parsePackageManagerField(packageJsonContent: string): PackageMan
 	} catch {
 		return null;
 	}
-	const field =
-		typeof parsed === "object" && parsed !== null && "packageManager" in parsed
-			? (parsed as { packageManager?: unknown }).packageManager
-			: undefined;
+	if (typeof parsed !== "object" || parsed === null) return null;
+	const manifest = parsed as Record<string, unknown>;
+	const fromDevEngines = toPackageManager(devEnginesName(manifest));
+	if (fromDevEngines !== null) return fromDevEngines;
+	const field = manifest.packageManager;
 	if (typeof field !== "string" || field.length === 0) return null;
-	const name = field.split("@")[0];
-	return VALID_PMS.has(name) ? (name as PackageManager) : null;
+	return toPackageManager(field.split("@")[0]);
 }
 
 export function detectFromLockfiles(presence: LockfilePresence): PackageManager {
