@@ -1,5 +1,21 @@
 # @savvy-web/github-action-builder
 
+## 2.4.6
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @rsbuild/core | dependency | updated | ^2.2.8 | ^2.2.9 |
+
+[#694][#694]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#694]: https://github.com/savvy-web/systems/pull/694
+
 ## 2.4.5
 
 ### Dependencies
