@@ -24,6 +24,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { detectFromLockfiles, parsePackageManagerField } from "../../commitlint/hook/diagnostics/package-manager.js";
 
 /**
  * Supported package managers.
@@ -111,10 +112,11 @@ export class Command {
 	}
 
 	/**
-	 * Detect the package manager from the root package.json's `packageManager` field.
+	 * Detect the package manager declared by the root package.json.
 	 *
-	 * Parses the `packageManager` field (e.g., `pnpm\@9.0.0`) and extracts the manager name.
-	 * Falls back to "npm" if no packageManager field is found.
+	 * Reads `devEngines.packageManager.name` (the first entry when it is an array), then the
+	 * legacy `packageManager` field (e.g., `pnpm\@9.0.0`), then lockfile presence in priority
+	 * order pnpm, yarn, bun. Falls back to "npm" when none of them names a manager.
 	 *
 	 * @param cwd - Directory to search for package.json (defaults to `Command.findRoot()`)
 	 * @returns The detected package manager
@@ -132,30 +134,21 @@ export class Command {
 		}
 
 		const packageJsonPath = join(cwd, "package.json");
-
-		if (!existsSync(packageJsonPath)) {
-			Command.cachedPackageManager = "npm";
-			return "npm";
-		}
-
+		let declared: PackageManager | null = null;
 		try {
-			const content = readFileSync(packageJsonPath, "utf-8");
-			const pkg = JSON.parse(content) as { packageManager?: string };
-
-			if (pkg.packageManager) {
-				// Parse "pnpm@9.0.0" -> "pnpm"
-				const match = pkg.packageManager.match(/^(npm|pnpm|yarn|bun)@/);
-				if (match) {
-					Command.cachedPackageManager = match[1] as PackageManager;
-					return Command.cachedPackageManager;
-				}
-			}
+			declared = parsePackageManagerField(readFileSync(packageJsonPath, "utf-8"));
 		} catch {
-			// Failed to read or parse package.json
+			// Missing or unreadable package.json; fall through to lockfile detection
 		}
 
-		Command.cachedPackageManager = "npm";
-		return "npm";
+		Command.cachedPackageManager =
+			declared ??
+			detectFromLockfiles({
+				pnpm: existsSync(join(cwd, "pnpm-lock.yaml")),
+				yarn: existsSync(join(cwd, "yarn.lock")),
+				bun: existsSync(join(cwd, "bun.lock")),
+			});
+		return Command.cachedPackageManager;
 	}
 
 	/**
@@ -222,7 +215,7 @@ export class Command {
 	 *
 	 * Search order:
 	 * 1. Global command (in PATH)
-	 * 2. Project's package manager (detected from package.json `packageManager` field)
+	 * 2. Project's package manager (detected from package.json `devEngines.packageManager`, `packageManager`, or a lockfile)
 	 *
 	 * @param tool - The tool name to find
 	 * @returns Search result with command string if found

@@ -47,6 +47,7 @@ const STARTUP_SWEEP_DELAY_MS = Number(process.env.GITMODULES_DRIFT_STARTUP_DELAY
  * hooks/lib/hook-env.sh's detect_package_manager/package_manager_exec:
  * prefer SILK_PACKAGE_MANAGER (SessionStart's cached detection, same env var
  * changeset-validate-changeset.sh reads), then the package.json
+ * devEngines.packageManager name (first entry when an array), then the legacy
  * "packageManager" field, then a lockfile, falling open to npm at every step.
  */
 export function detectPackageManager(root) {
@@ -54,6 +55,9 @@ export function detectPackageManager(root) {
 	if (cached) return cached;
 	try {
 		const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+		const declared = pkg.devEngines?.packageManager;
+		const engine = Array.isArray(declared) ? declared[0] : declared;
+		if (typeof engine?.name === "string" && engine.name) return engine.name;
 		const field = typeof pkg.packageManager === "string" ? pkg.packageManager.split("@")[0] : "";
 		if (field) return field;
 	} catch {

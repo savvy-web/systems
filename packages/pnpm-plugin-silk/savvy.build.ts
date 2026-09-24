@@ -9,18 +9,18 @@ await build({
 				build: {
 					packages: {
 						"@microsoft/api-extractor": {
-							range: "^7.59.1",
-							peer: "^7.59.1",
+							range: "^7.59.2",
+							peer: "^7.59.2",
 							strategy: "lock",
 						},
 						"@microsoft/api-extractor-model": {
-							range: "^7.33.12",
-							peer: "^7.33.12",
+							range: "^7.33.13",
+							peer: "^7.33.13",
 							strategy: "lock",
 						},
 						"@microsoft/tsdoc": {
-							range: "~0.16.0",
-							peer: "~0.16.0",
+							range: "~0.17.0",
+							peer: "~0.17.0",
 							strategy: "lock",
 						},
 						"@microsoft/tsdoc-config": {
@@ -39,7 +39,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.8",
+							range: "^2.2.9",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -74,7 +74,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.9",
+							range: "^1.2.10",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -89,8 +89,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsx: {
-							range: "^4.23.13",
-							peer: "^4.23.13",
+							range: "^4.23.15",
+							peer: "^4.23.15",
 							strategy: "lock",
 						},
 					},
@@ -167,13 +167,13 @@ await build({
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
-							range: "^21.2.2",
-							peer: "^21.2.2",
+							range: "^21.2.3",
+							peer: "^21.2.3",
 							strategy: "lock",
 						},
 						"@commitlint/config-conventional": {
-							range: "^21.2.2",
-							peer: "^21.2.2",
+							range: "^21.2.3",
+							peer: "^21.2.3",
 							strategy: "lock",
 						},
 						husky: {
@@ -187,18 +187,18 @@ await build({
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
-							range: "^0.23.2",
-							peer: "^0.23.2",
+							range: "^0.23.3",
+							peer: "^0.23.3",
 							strategy: "lock",
 						},
 						"markdownlint-cli2-formatter-codequality": {
-							range: "^0.0.7",
-							peer: "^0.0.7",
+							range: "^0.0.8",
+							peer: "^0.0.8",
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.11.2",
-							peer: "^2.11.2",
+							range: "^2.11.3",
+							peer: "^2.11.3",
 							strategy: "lock",
 						},
 					},
@@ -240,13 +240,13 @@ await build({
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
-							range: "^0.23.2",
-							peer: "^0.23.2",
+							range: "^0.23.3",
+							peer: "^0.23.3",
 							strategy: "lock",
 						},
 						"markdownlint-cli2-formatter-codequality": {
-							range: "^0.0.7",
-							peer: "^0.0.7",
+							range: "^0.0.8",
+							peer: "^0.0.8",
 							strategy: "lock",
 						},
 						react: {
@@ -260,8 +260,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						tsx: {
-							range: "^4.23.13",
-							peer: "^4.23.13",
+							range: "^4.23.15",
+							peer: "^4.23.15",
 							strategy: "lock",
 						},
 						typescript: {
@@ -324,6 +324,36 @@ await build({
 				"vitest",
 				"vitest-bats",
 			],
+			local: {
+				peerDependencyRules: {
+					allowedVersions: {
+						"@savvy-web/bundler>typescript": "^6.0.3",
+						"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
+						"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
+						"@effect/vitest>vitest": "^5.0.1",
+						"ink-tab>ink": "^7.0.0",
+					},
+					ignoreMissing: [
+						"typescript",
+						"@types/node",
+						"@changesets/cli",
+						"@commitlint/cli",
+						"@commitlint/config-conventional",
+						"@types/bun",
+						"@vitest/coverage-istanbul",
+						"@vitest/coverage-v8",
+						"husky",
+						"@vitest/expect",
+						"lint-staged",
+						"markdownlint-cli2",
+						"markdownlint-cli2-formatter-codequality",
+						"tsx",
+						"turbo",
+						"vite",
+						"vitest",
+					],
+				},
+			},
 			overrides: {
 				"@microsoft/api-extractor>typescript": "^6.0.3",
 				// @effect/vitest still caps its vitest peer at ">=4.1.0 <5.0.0",

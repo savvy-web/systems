@@ -42,7 +42,7 @@ fi
 PM="${SILK_PACKAGE_MANAGER:-}"
 if [ -z "$PM" ]; then
 	if [ -f package.json ] && command -v jq >/dev/null 2>&1; then
-		PM=$(jq -r '.packageManager // empty' package.json 2>/dev/null | cut -d'@' -f1)
+		PM=$(jq -r '(.devEngines.packageManager | if type == "array" then .[0] else . end | .name?) // .packageManager // empty' package.json 2>/dev/null | cut -d'@' -f1)
 	fi
 	if [ -z "$PM" ]; then
 		if [ -f pnpm-lock.yaml ]; then PM=pnpm

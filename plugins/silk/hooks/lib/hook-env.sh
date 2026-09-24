@@ -71,7 +71,8 @@ resolve_project_dir() {
 # project root: pnpm | yarn | bun | npm.
 #
 # Resolution order, first hit wins:
-#   1. package.json "packageManager" field (the corepack declaration).
+#   1. package.json devEngines.packageManager.name (first entry when an array),
+#      then the legacy "packageManager" field (the corepack declaration).
 #   2. A lockfile: pnpm-lock.yaml, then yarn.lock, then bun.lock.
 #   3. npm.
 #
@@ -96,7 +97,7 @@ detect_package_manager() {
 
 	if [ -f "${root}/package.json" ] && command -v jq >/dev/null 2>&1; then
 		local pm
-		pm=$(jq -r '.packageManager // empty' "${root}/package.json" 2>/dev/null | cut -d'@' -f1 || true)
+		pm=$(jq -r '(.devEngines.packageManager | if type == "array" then .[0] else . end | .name?) // .packageManager // empty' "${root}/package.json" 2>/dev/null | cut -d'@' -f1 || true)
 		if [ -n "$pm" ]; then
 			printf '%s' "$pm"
 			return

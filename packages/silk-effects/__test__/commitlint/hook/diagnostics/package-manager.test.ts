@@ -18,6 +18,26 @@ describe("parsePackageManagerField", () => {
 		expect(parsePackageManagerField(JSON.stringify({ packageManager: field }))).toBe(expected);
 	});
 
+	it("reads devEngines.packageManager.name", () => {
+		const manifest = { devEngines: { packageManager: { name: "pnpm", version: "12.6.0", onFail: "download" } } };
+		expect(parsePackageManagerField(JSON.stringify(manifest))).toBe("pnpm");
+	});
+
+	it("reads the first entry when devEngines.packageManager is an array", () => {
+		const manifest = { devEngines: { packageManager: [{ name: "yarn" }, { name: "npm" }] } };
+		expect(parsePackageManagerField(JSON.stringify(manifest))).toBe("yarn");
+	});
+
+	it("prefers devEngines.packageManager over the packageManager field", () => {
+		const manifest = { devEngines: { packageManager: { name: "bun" } }, packageManager: "pnpm@9.0.0" };
+		expect(parsePackageManagerField(JSON.stringify(manifest))).toBe("bun");
+	});
+
+	it("falls back to the packageManager field when devEngines names an unknown tool", () => {
+		const manifest = { devEngines: { packageManager: { name: "deno" } }, packageManager: "pnpm@9.0.0" };
+		expect(parsePackageManagerField(JSON.stringify(manifest))).toBe("pnpm");
+	});
+
 	it("returns null when packageManager is missing", () => {
 		expect(parsePackageManagerField(JSON.stringify({}))).toBeNull();
 	});

@@ -173,16 +173,16 @@ settings:
 catalogs:
   build:
     '@microsoft/api-extractor':
-      specifier: ^7.59.1
+      specifier: ^7.59.2
       version: 7.59.2
     '@microsoft/tsdoc':
-      specifier: ~0.16.0
-      version: 0.16.0
+      specifier: ~0.17.0
+      version: 0.17.0
     '@microsoft/tsdoc-config':
       specifier: ~0.18.2
       version: 0.18.2
     '@rsbuild/core':
-      specifier: ^2.2.8
+      specifier: ^2.2.9
       version: 2.2.9
     '@tsdown/css':
       specifier: ^0.23.0
@@ -209,13 +209,13 @@ catalogs:
       specifier: ^19.3.0
       version: 19.3.0
     rolldown:
-      specifier: ^1.2.9
+      specifier: ^1.2.10
       version: 1.2.10
     tsdown:
       specifier: ^0.23.0
       version: 0.23.0
     tsx:
-      specifier: ^4.23.13
+      specifier: ^4.23.15
       version: 4.23.15
     typescript:
       specifier: ^7.0.2
@@ -297,10 +297,10 @@ catalogs:
       specifier: ^3.0.3
       version: 3.0.3
     '@commitlint/cli':
-      specifier: ^21.2.2
+      specifier: ^21.2.3
       version: 21.2.3
     '@commitlint/config-conventional':
-      specifier: ^21.2.2
+      specifier: ^21.2.3
       version: 21.2.3
     husky:
       specifier: ^9.1.7
@@ -309,13 +309,13 @@ catalogs:
       specifier: ^17.5.1
       version: 17.5.1
     markdownlint-cli2:
-      specifier: ^0.23.2
+      specifier: ^0.23.3
       version: 0.23.3
     markdownlint-cli2-formatter-codequality:
-      specifier: ^0.0.7
-      version: 0.0.7
+      specifier: ^0.0.8
+      version: 0.0.8
     turbo:
-      specifier: ^2.11.2
+      specifier: ^2.11.3
       version: 2.11.3
   silk:
     '@types/node':
@@ -361,9 +361,6 @@ importers:
       '@vitest-agent/plugin':
         specifier: ^4.1.7
         version: 4.1.7(@types/react@19.3.0)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(redis@6.2.1)(vitest@5.0.1)
-      typescript:
-        specifier: catalog:silk
-        version: 7.0.2
 
   e2e/bundler:
     devDependencies:
@@ -418,6 +415,15 @@ importers:
       '@effected/commands':
         specifier: catalog:effected
         version: 0.9.0(effect@4.0.0-rc.117)
+      '@effected/git':
+        specifier: catalog:effected
+        version: 0.17.0(effect@4.0.0-rc.117)
+      '@effected/templates':
+        specifier: catalog:effected
+        version: 0.8.0(effect@4.0.0-rc.117)
+      '@effected/workspaces':
+        specifier: catalog:effected
+        version: 0.26.0(effect@4.0.0-rc.117)
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../../packages/bundler/dist/dev/pkg
@@ -525,6 +531,9 @@ importers:
       '@effected/git':
         specifier: catalog:effected
         version: 0.17.0(effect@4.0.0-rc.117)
+      '@effected/templates':
+        specifier: catalog:effected
+        version: 0.8.0(effect@4.0.0-rc.117)
       '@effected/workspaces':
         specifier: catalog:effected
         version: 0.26.0(effect@4.0.0-rc.117)
@@ -660,6 +669,9 @@ importers:
       '@effected/git':
         specifier: catalog:effected
         version: 0.17.0(effect@4.0.0-rc.117)
+      '@effected/templates':
+        specifier: catalog:effected
+        version: 0.8.0(effect@4.0.0-rc.117)
       '@effected/workspaces':
         specifier: catalog:effected
         version: 0.26.0(effect@4.0.0-rc.117)
@@ -811,7 +823,7 @@ importers:
         version: 0.23.3(supports-color@8.1.1)
       markdownlint-cli2-formatter-codequality:
         specifier: catalog:lint
-        version: 0.0.7(markdownlint-cli2@0.23.3(supports-color@8.1.1))
+        version: 0.0.8(markdownlint-cli2@0.23.3(supports-color@8.1.1))
       semver:
         specifier: ^7.8.5
         version: 7.8.5
@@ -1083,7 +1095,7 @@ importers:
         version: 7.59.2(@types/node@26.6.2)
       '@microsoft/tsdoc':
         specifier: catalog:build
-        version: 0.16.0
+        version: 0.17.0
       '@microsoft/tsdoc-config':
         specifier: catalog:build
         version: 0.18.2
@@ -1862,9 +1874,6 @@ packages:
 
   '@microsoft/tsdoc-config@0.18.2':
     resolution: {integrity: sha512-4ymuLTQ9lFwJXK15f41iPcNHflymjk02Ltq5f5wo3fA02O1nHIGSc1TIZwzTSQZep+jXHM644jobt4Q8O3vtqg==}
-
-  '@microsoft/tsdoc@0.16.0':
-    resolution: {integrity: sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA==}
 
   '@microsoft/tsdoc@0.17.0':
     resolution: {integrity: sha512-p68VexhnH7ojf3U27RdryUDqnKJgKaWUbCL96vJR7N0mqDuhKG5OIECk3sCPPdynxjk+yoVhRkScqtv5KQjzsw==}
@@ -3886,10 +3895,10 @@ packages:
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
 
-  markdownlint-cli2-formatter-codequality@0.0.7:
-    resolution: {integrity: sha512-7DmWN/l3SHqCZn8iWik1qTkJq6p2j12Snmt94uNhD8dkZyR18k1rkRFaM6e04AyNAww+frNuUAupVHmnNMspPQ==}
+  markdownlint-cli2-formatter-codequality@0.0.8:
+    resolution: {integrity: sha512-wdrQ3zw99iNE1B5LSYevFo1tRqqXpd6iNBAmG09c36urICYLs8bsTmpDdKdOdXLANYrjjym8gND8ZNE9thBS5g==}
     peerDependencies:
-      markdownlint-cli2: '>=0.0.4'
+      markdownlint-cli2: '>=0.23.3'
 
   markdownlint-cli2-formatter-default@0.0.6:
     resolution: {integrity: sha512-VVDGKsq9sgzu378swJ0fcHfSicUnMxnL8gnLm/Q4J/xsNJ4e5bA6lvAz7PCzIl0/No0lHyaWdqVD2jotxOSFMQ==}
@@ -5031,29 +5040,21 @@ snapshots:
       '@biomejs/cli-win32-arm64': 2.5.14
       '@biomejs/cli-win32-x64': 2.5.14
 
-  '@biomejs/cli-darwin-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-arm64@2.5.14': {}
 
-  '@biomejs/cli-darwin-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-x64@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64@2.5.14': {}
 
-  '@biomejs/cli-linux-x64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64@2.5.14': {}
 
-  '@biomejs/cli-win32-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-arm64@2.5.14': {}
 
-  '@biomejs/cli-win32-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-x64@2.5.14': {}
 
   '@changesets/apply-release-plan@8.1.1':
     dependencies:
@@ -5678,8 +5679,6 @@ snapshots:
       ajv: 8.18.0
       jju: 1.4.0
       resolve: 1.22.12
-
-  '@microsoft/tsdoc@0.16.0': {}
 
   '@microsoft/tsdoc@0.17.0': {}
 
@@ -6317,23 +6316,17 @@ snapshots:
       tsdown: 0.23.0(@tsdown/css@0.23.0)(@tsdown/exe@0.23.0)(tsx@4.23.15)(typescript@6.0.3)
       verkit: 0.4.1
 
-  '@turbo/darwin-64@2.11.3':
-    optional: true
+  '@turbo/darwin-64@2.11.3': {}
 
-  '@turbo/darwin-arm64@2.11.3':
-    optional: true
+  '@turbo/darwin-arm64@2.11.3': {}
 
-  '@turbo/linux-64@2.11.3':
-    optional: true
+  '@turbo/linux-64@2.11.3': {}
 
-  '@turbo/linux-arm64@2.11.3':
-    optional: true
+  '@turbo/linux-arm64@2.11.3': {}
 
-  '@turbo/windows-64@2.11.3':
-    optional: true
+  '@turbo/windows-64@2.11.3': {}
 
-  '@turbo/windows-arm64@2.11.3':
-    optional: true
+  '@turbo/windows-arm64@2.11.3': {}
 
   '@tybys/wasm-util@0.10.4':
     dependencies:
@@ -7547,7 +7540,7 @@ snapshots:
 
   markdown-table@3.0.4: {}
 
-  markdownlint-cli2-formatter-codequality@0.0.7(markdownlint-cli2@0.23.3(supports-color@8.1.1)):
+  markdownlint-cli2-formatter-codequality@0.0.8(markdownlint-cli2@0.23.3(supports-color@8.1.1)):
     dependencies:
       markdownlint-cli2: 0.23.3(supports-color@8.1.1)
 

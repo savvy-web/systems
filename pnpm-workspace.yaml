@@ -18,11 +18,11 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    "@microsoft/api-extractor": ^7.59.1
-    "@microsoft/api-extractor-model": ^7.33.12
-    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/api-extractor": ^7.59.2
+    "@microsoft/api-extractor-model": ^7.33.13
+    "@microsoft/tsdoc": ~0.17.0
     "@microsoft/tsdoc-config": ~0.18.2
-    "@rsbuild/core": ^2.2.8
+    "@rsbuild/core": ^2.2.9
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
     "@types/bun": ^1.4.2
@@ -31,14 +31,14 @@ catalogs:
     "@types/react-dom": ^19.3.0
     react: ^19.3.0
     react-dom: ^19.3.0
-    rolldown: ^1.2.9
+    rolldown: ^1.2.10
     tsdown: ^0.23.0
-    tsx: ^4.23.13
+    tsx: ^4.23.15
     typescript: ^7.0.2
   build:peers:
-    "@microsoft/api-extractor": ^7.59.1
-    "@microsoft/api-extractor-model": ^7.33.12
-    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/api-extractor": ^7.59.2
+    "@microsoft/api-extractor-model": ^7.33.13
+    "@microsoft/tsdoc": ~0.17.0
     "@microsoft/tsdoc-config": ~0.18.2
     "@rsbuild/core": ^2.2.0
     "@tsdown/css": ^0.23.0
@@ -51,7 +51,7 @@ catalogs:
     react-dom: ^19.3.0
     rolldown: ^1.2.0
     tsdown: ^0.23.0
-    tsx: ^4.23.13
+    tsx: ^4.23.15
     typescript: ^7.0.0
   docs:
     "@rspress/core": ^2.0.22
@@ -80,23 +80,23 @@ catalogs:
   lint:
     "@biomejs/biome": 2.5.14
     "@changesets/cli": ^3.0.3
-    "@commitlint/cli": ^21.2.2
-    "@commitlint/config-conventional": ^21.2.2
+    "@commitlint/cli": ^21.2.3
+    "@commitlint/config-conventional": ^21.2.3
     husky: ^9.1.7
     lint-staged: ^17.5.1
-    markdownlint-cli2: ^0.23.2
-    markdownlint-cli2-formatter-codequality: ^0.0.7
-    turbo: ^2.11.2
+    markdownlint-cli2: ^0.23.3
+    markdownlint-cli2-formatter-codequality: ^0.0.8
+    turbo: ^2.11.3
   lint:peers:
     "@biomejs/biome": 2.5.14
     "@changesets/cli": ^3.0.3
-    "@commitlint/cli": ^21.2.2
-    "@commitlint/config-conventional": ^21.2.2
+    "@commitlint/cli": ^21.2.3
+    "@commitlint/config-conventional": ^21.2.3
     husky: ^9.1.7
     lint-staged: ^17.5.1
-    markdownlint-cli2: ^0.23.2
-    markdownlint-cli2-formatter-codequality: ^0.0.7
-    turbo: ^2.11.2
+    markdownlint-cli2: ^0.23.3
+    markdownlint-cli2-formatter-codequality: ^0.0.8
+    turbo: ^2.11.3
   silk:
     "@types/bun": ^1.4.2
     "@types/node": ^26.6.2
@@ -105,11 +105,11 @@ catalogs:
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
     husky: ^9.1.7
     lint-staged: ^17.5.1
-    markdownlint-cli2: ^0.23.2
-    markdownlint-cli2-formatter-codequality: ^0.0.7
+    markdownlint-cli2: ^0.23.3
+    markdownlint-cli2-formatter-codequality: ^0.0.8
     react: ^19.3.0
     react-dom: ^19.3.0
-    tsx: ^4.23.13
+    tsx: ^4.23.15
     typescript: ^7.0.2
   silk:peers:
     "@types/bun": ^1.4.2
@@ -119,11 +119,11 @@ catalogs:
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
     husky: ^9.1.7
     lint-staged: ^17.5.1
-    markdownlint-cli2: ^0.23.2
-    markdownlint-cli2-formatter-codequality: ^0.0.7
+    markdownlint-cli2: ^0.23.3
+    markdownlint-cli2-formatter-codequality: ^0.0.8
     react: ^19.3.0
     react-dom: ^19.3.0
-    tsx: ^4.23.13
+    tsx: ^4.23.15
     typescript: ^7.0.0
   test:
     "@vitest/coverage-istanbul": ^5.0.1
@@ -169,9 +169,28 @@ overrides:
 peerDependencyRules:
   allowedVersions:
     "@effect/vitest>vitest": ^5.0.1
+    "@savvy-web/bundler>typescript": ^6.0.3
     ink-tab>ink: ^7.0.0
     twoslash-vue>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0
     twoslash>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0
+  ignoreMissing:
+    - "@changesets/cli"
+    - "@commitlint/cli"
+    - "@commitlint/config-conventional"
+    - "@types/bun"
+    - "@types/node"
+    - "@vitest/coverage-istanbul"
+    - "@vitest/coverage-v8"
+    - "@vitest/expect"
+    - husky
+    - lint-staged
+    - markdownlint-cli2
+    - markdownlint-cli2-formatter-codequality
+    - tsx
+    - turbo
+    - typescript
+    - vite
+    - vitest
 publicHoistPattern:
   - "@changesets/cli"
   - "@commitlint/cli"
@@ -193,4 +212,3 @@ publicHoistPattern:
   - typescript
   - vitest
 strictDepBuilds: true
-verifyDepsBeforeRun: false
