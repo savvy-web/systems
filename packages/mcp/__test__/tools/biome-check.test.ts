@@ -5,7 +5,6 @@ import { describe, expect, it } from "@effect/vitest";
 import { Result, Schema } from "effect";
 
 import {
-	BiomeCheckAsMarkdown,
 	BiomeCheckResult,
 	buildBiomeResult,
 	parseBiomeGitlab,
@@ -125,39 +124,6 @@ describe("buildBiomeResult", () => {
 		expect(real?.severity).toBe("error");
 		expect(real?.originalSeverity).toBeUndefined();
 		expect(result.guidance).toContain("not CI blockers");
-	});
-});
-
-describe("BiomeCheckAsMarkdown", () => {
-	it("renders diagnostics", () => {
-		const result = buildBiomeResult({ diagnostics: parseBiomeGitlab(SAMPLE), wrote: false });
-		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
-		expect(md).toContain("src/x.ts:12");
-		expect(md).toContain("noExplicitAny");
-	});
-
-	it("renders the clean state", () => {
-		const result = buildBiomeResult({ diagnostics: [], wrote: false });
-		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
-		expect(md).toContain("No remaining diagnostics");
-	});
-
-	it("notes the write pass in the clean state", () => {
-		const result = buildBiomeResult({ diagnostics: [], wrote: true });
-		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
-		expect(md).toContain("No remaining diagnostics");
-		expect(md).toContain("git diff");
-	});
-
-	it("marks strict-upgraded diagnostics in the rendered markdown", () => {
-		const result = buildBiomeResult({ diagnostics: parseBiomeGitlab(SAMPLE), wrote: false, strict: true });
-		const md = Schema.decodeUnknownSync(BiomeCheckAsMarkdown)(result);
-		expect(md).toContain("strict-upgraded from project warnings");
-		expect(md).toContain("(project warning, strict)");
-	});
-
-	it("is one-way (encode forbidden)", () => {
-		expect(() => Schema.encodeUnknownSync(BiomeCheckAsMarkdown)("anything")).toThrow();
 	});
 });
 

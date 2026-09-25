@@ -27,6 +27,8 @@ Serving now goes through `@effected/mcp`'s `McpStdio`: a non-JSON stdin line is 
 
 ## Breaking Changes
 
+Tool results no longer carry a markdown transcript. A successful call returns the typed result in `structuredContent`, and `content[0].text` is that same object as JSON — the framework's own rendering. Claude Code forwards only `structuredContent` to the model, so the transcript reached no model there; a client that shows `content` (Cursor, Copilot, MCP Apps hosts) now sees JSON instead of markdown. The `SilkMarkdown` annotation is removed from the barrel, and a declared tool failure is answered on the wire without an error log line on stderr.
+
 The `Remediation` type, `composeRemediatedMessage`, and `truncateEchoed` are no longer exported from the package barrel — they are replaced by `@effected/engine`'s `Remediation` and `@effected/mcp`'s `ToolFailure`, which every error in `errors.ts` now builds on. Anything importing these directly from `@savvy-web/mcp` should switch to the equivalent kit exports.
 
 ## Dependencies

@@ -1,8 +1,7 @@
 /**
  * The `changeset_inspect` MCP tool: a discriminated-union result keyed by `mode`
  * (branch | config), each variant embedding the corresponding resolved-output
- * schema from silk-effects' Changesets namespace, plus a one-way markdown
- * transform. Read-only.
+ * schema from silk-effects' Changesets namespace. Read-only.
  *
  * @packageDocumentation
  */
@@ -10,10 +9,9 @@
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
 
 /** Branch-analysis variant. */
 export const ChangesetBranchResult = Schema.Struct({
@@ -45,98 +43,6 @@ export const ChangesetInspectResult = Schema.Union([
 });
 
 export type ChangesetInspectResultType = Schema.Schema.Type<typeof ChangesetInspectResult>;
-
-/**
- * Render a repo/config-derived value as an inert markdown code span. Escapes
- * backticks and backslashes so a crafted filename or package name cannot inject
- * markdown structure into the transcript that an agent reads.
- */
-const mdInline = (value: string): string => `\`${value.replace(/[`\\]/g, "\\$&")}\``;
-
-/** Render the structured result as a markdown transcript. */
-const renderMarkdown = (data: ChangesetInspectResultType): string => {
-	switch (data.mode) {
-		case "branch": {
-			const r = data.result;
-			const lines = [
-				`# changeset branch analysis — base ${mdInline(r.baseBranch)}`,
-				``,
-				`merge base: ${mdInline(r.mergeBaseSha)}`,
-				``,
-				`## Packages affected`,
-				r.packagesAffected.map((p) => `- ${mdInline(p)}`).join("\n") || "(none)",
-				``,
-				`## Files`,
-			];
-			for (const f of r.files) {
-				const owner = f.package ? mdInline(f.package) : mdInline("<unmapped>");
-				lines.push(`- ${mdInline(f.status)}  ${mdInline(f.path)}  ->  ${owner}`);
-			}
-			if (r.unmappedFiles.length > 0) {
-				// A hinted unmapped file (#290) is probably already accounted for —
-				// surface the hint so the agent can classify without a manual diff.
-				const hints = new Map<string, string>();
-				for (const f of r.files) {
-					if (typeof f.reason === "object" && f.reason !== null && f.reason.kind === "unmappedHint") {
-						hints.set(f.path, f.reason.hint);
-					}
-				}
-				lines.push(``, `## Unmapped (ask the user)`);
-				for (const p of r.unmappedFiles) {
-					const hint = hints.get(p);
-					lines.push(hint === undefined ? `- ${mdInline(p)}` : `- ${mdInline(p)} — ${mdInline(hint)}`);
-				}
-			}
-			return lines.join("\n");
-		}
-		case "config": {
-			const r = data.result;
-			const lines = [
-				`# changeset config — ${mdInline(r.configPath)}`,
-				``,
-				`base branch: ${mdInline(r.baseBranch)}`,
-				`access: ${r.access}`,
-				`changelog: ${r.changelog ? mdInline(r.changelog) : "(none)"}`,
-				`ignored: ${r.ignore.map(mdInline).join(", ") || "(none)"}`,
-				``,
-				`## Packages`,
-			];
-			for (const p of r.packages) {
-				lines.push(
-					p.version === undefined ? `### ${mdInline(p.name)}` : `### ${mdInline(p.name)} (${mdInline(p.version)})`,
-					`- dir: ${mdInline(p.workspaceDir)}`,
-				);
-				if (p.additionalScopes.length > 0)
-					lines.push(`- additionalScopes: ${p.additionalScopes.map(mdInline).join(", ")}`);
-				if (p.versionFiles.length > 0)
-					lines.push(`- versionFiles: ${p.versionFiles.map((v) => mdInline(v.glob)).join(", ")}`);
-			}
-			if (r.packages.length === 0) lines.push("(none resolved)");
-			return lines.join("\n");
-		}
-		case "classify": {
-			const lines = [`# changeset classify`, ``];
-			for (const c of data.result) {
-				const owner = c.package ? mdInline(c.package) : mdInline("<unmapped>");
-				const hint =
-					typeof c.reason === "object" && c.reason !== null && c.reason.kind === "unmappedHint"
-						? ` — ${mdInline(c.reason.hint)}`
-						: "";
-				lines.push(`- ${mdInline(c.path)}  ->  ${owner}${hint}`);
-			}
-			if (data.result.length === 0) lines.push("(no paths)");
-			return lines.join("\n");
-		}
-	}
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetInspectAsMarkdown = ChangesetInspectResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "ChangesetInspectAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
 
 /** Arguments for the {@link changesetInspect} handler. */
 export interface ChangesetInspectArgs {
@@ -209,7 +115,7 @@ const REMEDIATION = {
 /** The `changeset_inspect` tool value. */
 export const changesetInspectTool = Tool.make("changeset_inspect", {
 	description:
-		"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about; an unmapped path may carry a machine-readable unmappedHint reason — e.g. a deleted versionFiles/additionalScopes target or a known template mirror — meaning it is probably already accounted for). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). mode=classify maps arbitrary repo-relative paths to their owning package. Prefer this over shelling out to the savvy CLI.",
+		"Read-only changeset analysis for the changeset-manager workflow. mode=branch diffs the current branch against its base and classifies every changed file by owning package (with packagesAffected and the unmapped paths to ask the user about; an unmapped path may carry a machine-readable unmappedHint reason — e.g. a deleted versionFiles/additionalScopes target or a known template mirror — meaning it is probably already accounted for). mode=config surfaces the resolved .changeset/config.json (release surfaces, versionFiles, ignore list). mode=classify maps arbitrary repo-relative paths to their owning package. Prefer this over shelling out to the savvy CLI. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: ChangesetInspectParams,
 	success: ChangesetInspectResult,
 	failure: McpToolError,
@@ -219,8 +125,7 @@ export const changesetInspectTool = Tool.make("changeset_inspect", {
 	.annotate(Tool.Readonly, true)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, true)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetInspectAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /** Wire handler: {@link changesetInspect} with its error channel mapped onto {@link McpToolError}. */
 export const handleChangesetInspect = (fallbackCwd: string, params: ChangesetInspectParams) =>

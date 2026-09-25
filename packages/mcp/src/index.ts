@@ -16,7 +16,6 @@ export {
 	McpToolError,
 	WorkspaceNotFound,
 } from "./errors.js";
-export { SilkMarkdown } from "./markdown.js";
 export type { McpServices } from "./runtime.js";
 export { makeSilkRuntimeLayer } from "./runtime.js";
 export type { PlatformServices, ServerOptions } from "./server.js";

@@ -3,11 +3,7 @@ import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 
-import {
-	ChangesetPreviewAsMarkdown,
-	ChangesetPreviewResult,
-	changesetPreview,
-} from "../../src/tools/changeset-preview.js";
+import { ChangesetPreviewResult, changesetPreview } from "../../src/tools/changeset-preview.js";
 
 const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot,
@@ -39,16 +35,4 @@ layer(Layer.mergeAll(WorkspaceRootTest, ReleasePlannerTest))("changeset_preview 
 			expect(data.releases[0].newVersion).toBe("1.1.0");
 		}),
 	);
-
-	it("renders markdown with a bump table and the changelog block", () => {
-		const text = Schema.decodeUnknownSync(ChangesetPreviewAsMarkdown)({ ...fixed });
-		expect(text).toContain("@scope/a");
-		expect(text).toContain("1.0.0");
-		expect(text).toContain("1.1.0");
-		expect(text).toContain("### Features");
-	});
-
-	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeUnknownSync(ChangesetPreviewAsMarkdown)("# nope")).toThrow();
-	});
 });

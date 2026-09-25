@@ -2,9 +2,8 @@
  * The `changeset_deps_detect` MCP tool: a read-only preview of the cumulative
  * dependency diff (merge-base → working tree) over silk-effects'
  * `Changesets.DepsRegen.plan`. Returns one entry per affected workspace package
- * — its resolved dependency-table rows (devDependencies retained) — plus a
- * one-way markdown transform. Read-only: no changeset file is written or
- * deleted.
+ * — its resolved dependency-table rows (devDependencies retained). Read-only:
+ * no changeset file is written or deleted.
  *
  * @packageDocumentation
  */
@@ -12,10 +11,9 @@
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
 
 /** One affected workspace package's resolved dependency diff. */
 export const ChangesetDepsDetectPackage = Schema.Struct({
@@ -50,65 +48,6 @@ export const ChangesetDepsDetectResult = Schema.Struct({
 });
 
 export type ChangesetDepsDetectResultType = Schema.Schema.Type<typeof ChangesetDepsDetectResult>;
-
-/**
- * Render a repo-derived value as an inert markdown code span so a crafted path,
- * package, or dependency name cannot inject markdown structure into the
- * transcript an agent reads. Control characters (which would break table rows
- * and headings) are flattened to spaces, table-cell pipes are escaped, and the
- * span is fenced with a backtick run longer than any in the value — CommonMark
- * forbids backslash-escaping a backtick inside a code span.
- */
-const mdInline = (value: string): string => {
-	// Escape backslashes before pipes so an input `\|` cannot slip a raw pipe past
-	// the escape and split the GFM table cell (the table extension un-escapes both).
-	const safe = value
-		.replace(/\p{Cc}/gu, " ")
-		.replace(/\\/g, "\\\\")
-		.replace(/\|/g, "\\|");
-	const longest = safe.match(/`+/g)?.reduce((m, run) => Math.max(m, run.length), 0) ?? 0;
-	const fence = "`".repeat(longest + 1);
-	const pad = safe.startsWith("`") || safe.endsWith("`") || safe.trim() === "" ? " " : "";
-	return `${fence}${pad}${safe}${pad}${fence}`;
-};
-
-/** Render the structured result as a markdown transcript. */
-const renderMarkdown = (data: ChangesetDepsDetectResultType): string => {
-	const coexistingLines =
-		data.coexisting.length === 0
-			? []
-			: [
-					``,
-					`## Coexisting prose changesets (untouched by regen)`,
-					``,
-					...data.coexisting.map((c) => `- ${mdInline(c.file)} (${c.packages.map(mdInline).join(", ")})`),
-				];
-	if (data.packages.length === 0) {
-		return [`# changeset deps detect — ${mdInline(data.root)}`, ``, `No dependency changes detected.`]
-			.concat(coexistingLines)
-			.join("\n")
-			.trimEnd();
-	}
-	const lines = [`# changeset deps detect — ${mdInline(data.root)}`, ``];
-	for (const pkg of data.packages) {
-		lines.push(`## ${mdInline(pkg.package)} — ${mdInline(pkg.relativePath)}`, ``);
-		lines.push(`| Dependency | Type | Action | From | To |`, `| --- | --- | --- | --- | --- |`);
-		for (const r of pkg.rows) {
-			lines.push(`| ${mdInline(r.dependency)} | ${r.type} | ${r.action} | ${mdInline(r.from)} | ${mdInline(r.to)} |`);
-		}
-		lines.push(``);
-	}
-	lines.push(...coexistingLines);
-	return lines.join("\n").trimEnd();
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetDepsDetectAsMarkdown = ChangesetDepsDetectResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "ChangesetDepsDetectAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
 
 /** Arguments for the {@link changesetDepsDetect} handler. */
 export interface ChangesetDepsDetectArgs {
@@ -184,7 +123,7 @@ const REMEDIATION = {
 /** The `changeset_deps_detect` tool value. */
 export const changesetDepsDetectTool = Tool.make("changeset_deps_detect", {
 	description:
-		"Read-only preview of the cumulative dependency diff (merge-base -> working tree) per workspace package. Returns each affected package's resolved dependency-table rows (catalog:/workspace: specifiers resolved per side; devDependencies retained) as the exact rows a pure-dependency changeset would carry, plus a coexisting list of untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Does NOT write or delete any file. Prefer this over shelling out to savvy changeset deps detect.",
+		"Read-only preview of the cumulative dependency diff (merge-base -> working tree) per workspace package. Returns each affected package's resolved dependency-table rows (catalog:/workspace: specifiers resolved per side; devDependencies retained) as the exact rows a pure-dependency changeset would carry, plus a coexisting list of untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Does NOT write or delete any file. Prefer this over shelling out to savvy changeset deps detect. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: ChangesetDepsDetectParams,
 	success: ChangesetDepsDetectResult,
 	failure: McpToolError,
@@ -194,8 +133,7 @@ export const changesetDepsDetectTool = Tool.make("changeset_deps_detect", {
 	.annotate(Tool.Readonly, true)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, true)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /** Wire handler: {@link changesetDepsDetect} with its error channel mapped onto {@link McpToolError}. */
 export const handleChangesetDepsDetect = (fallbackCwd: string, params: ChangesetDepsDetectParams) =>

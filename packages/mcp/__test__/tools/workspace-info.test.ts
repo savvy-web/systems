@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { AnalyzedWorkspace, WorkspaceAnalysis } from "@savvy-web/silk-effects";
 import { Schema } from "effect";
 
-import { WorkspaceInfoAsMarkdown, WorkspaceInfoResult, toWorkspaceInfoResult } from "../../src/tools/workspace-info.js";
+import { WorkspaceInfoResult, toWorkspaceInfoResult } from "../../src/tools/workspace-info.js";
 
 const fooWorkspace = AnalyzedWorkspace.make({
 	name: "@scope/foo",
@@ -92,19 +92,5 @@ describe("toWorkspaceInfoResult", () => {
 		const result = toWorkspaceInfoResult(relatedAnalysis);
 		expect(result.workspaces[0].linked).toEqual(["@scope/bar"]);
 		expect(result.workspaces[0].fixed).toEqual(["@scope/bar"]);
-	});
-});
-
-describe("WorkspaceInfoAsMarkdown", () => {
-	it("renders a one-way markdown transcript", () => {
-		const result = toWorkspaceInfoResult(analysis);
-		const md = Schema.decodeUnknownSync(WorkspaceInfoAsMarkdown)(result);
-		expect(md).toContain("# Workspace");
-		expect(md).toContain("@scope/foo");
-		expect(md).toContain("pnpm");
-	});
-
-	it("forbids encoding markdown back to the structured result", () => {
-		expect(() => Schema.encodeUnknownSync(WorkspaceInfoAsMarkdown)("anything")).toThrow();
 	});
 });

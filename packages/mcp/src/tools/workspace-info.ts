@@ -1,6 +1,6 @@
 /**
- * The `workspace_info` MCP tool: schema, projection mapper, transcript, and
- * the Effect handler over {@link SilkWorkspaceAnalyzer}.
+ * The `workspace_info` MCP tool: schema, projection mapper, and the
+ * Effect handler over {@link SilkWorkspaceAnalyzer}.
  *
  * @packageDocumentation
  */
@@ -9,10 +9,9 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import type { AnalyzedWorkspace, WorkspaceAnalysis, WorkspaceAnalysisError } from "@savvy-web/silk-effects";
 import { SilkWorkspaceAnalyzer } from "@savvy-web/silk-effects";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
 
 /** A flattened, non-recursive summary of one analyzed workspace. */
 export const WorkspaceSummary = Schema.Struct({
@@ -75,35 +74,6 @@ export const toWorkspaceInfoResult = (analysis: WorkspaceAnalysis): WorkspaceInf
 	workspaces: analysis.workspaces.map(toSummary),
 });
 
-/** Render the structured result as a markdown transcript. */
-export const formatWorkspaceInfoMarkdown = (data: WorkspaceInfoResultType): string => {
-	const pm = data.packageManager.version
-		? `${data.packageManager.type}@${data.packageManager.version}`
-		: data.packageManager.type;
-	const lines: string[] = [
-		`# Workspace: ${data.root}`,
-		"",
-		`- runtime: ${data.runtime}`,
-		`- package manager: ${pm}`,
-		`- workspaces: ${data.workspaceCount}`,
-		"",
-		"| name | version | publishable | versioned | tagged | released |",
-		"| --- | --- | --- | --- | --- | --- |",
-	];
-	for (const w of data.workspaces) {
-		lines.push(`| ${w.name} | ${w.version ?? "—"} | ${w.publishable} | ${w.versioned} | ${w.tagged} | ${w.released} |`);
-	}
-	return lines.join("\n");
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const WorkspaceInfoAsMarkdown = WorkspaceInfoResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(formatWorkspaceInfoMarkdown),
-		encode: SchemaGetter.forbidden(() => "WorkspaceInfoAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
-
 /**
  * Effect handler: resolve the workspace root by walking up from `base`, analyze
  * that root, and project to the tool result. Fails with `WorkspaceRootNotFoundError`
@@ -143,7 +113,7 @@ const REMEDIATION = {
  */
 export const workspaceInfoTool = Tool.make("workspace_info", {
 	description:
-		"Use when you need the Silk workspace layout: runtime, package manager, and a per-workspace summary (publishability, versioning, tag/release state). Prefer this over running shell commands to inspect the workspace. Returns markdown in content[] and a typed object in structuredContent.",
+		"Use when you need the Silk workspace layout: runtime, package manager, and a per-workspace summary (publishability, versioning, tag/release state). Prefer this over running shell commands to inspect the workspace. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: WorkspaceInfoParams,
 	success: WorkspaceInfoResult,
 	failure: McpToolError,
@@ -153,8 +123,7 @@ export const workspaceInfoTool = Tool.make("workspace_info", {
 	.annotate(Tool.Readonly, true)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, true)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(WorkspaceInfoAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /** Wire handler: the existing {@link workspaceInfo} program with its error channel mapped onto {@link McpToolError}. */
 export const handleWorkspaceInfo = (fallbackCwd: string, params: WorkspaceInfoParams) => {

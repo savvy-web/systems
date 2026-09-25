@@ -84,25 +84,27 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 
-	it.effect("tools/call workspace_info against a tmp fixture returns structuredContent and a markdown transcript", () =>
-		Effect.gen(function* () {
-			const dir = yield* fixtureWorkspace("mcp-e2e-");
-			const server = yield* Mcp.spawn(command([dir]));
-			yield* server.handshake();
-			const { response } = yield* callTool(server, 2, "workspace_info", {});
-			const result = response.result as {
-				readonly isError?: boolean;
-				readonly content: ReadonlyArray<{ readonly type: string; readonly text: string }>;
-				readonly structuredContent: { readonly root: string; readonly workspaceCount: number };
-			};
-			assert.notOk(result.isError);
-			assert.strictEqual(result.structuredContent.root, dir);
-			assert.ok(result.structuredContent.workspaceCount >= 1);
-			assert.ok(result.content[0]?.text.startsWith("# Workspace:"));
-			const { code, stderr } = yield* shutdown(server);
-			assert.strictEqual(code, 0);
-			assert.strictEqual(stderr, "");
-		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+	it.effect(
+		"tools/call workspace_info against a tmp fixture returns structuredContent and the same object as JSON text",
+		() =>
+			Effect.gen(function* () {
+				const dir = yield* fixtureWorkspace("mcp-e2e-");
+				const server = yield* Mcp.spawn(command([dir]));
+				yield* server.handshake();
+				const { response } = yield* callTool(server, 2, "workspace_info", {});
+				const result = response.result as {
+					readonly isError?: boolean;
+					readonly content: ReadonlyArray<{ readonly type: string; readonly text: string }>;
+					readonly structuredContent: { readonly root: string; readonly workspaceCount: number };
+				};
+				assert.notOk(result.isError);
+				assert.strictEqual(result.structuredContent.root, dir);
+				assert.ok(result.structuredContent.workspaceCount >= 1);
+				assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), result.structuredContent);
+				const { code, stderr } = yield* shutdown(server);
+				assert.strictEqual(code, 0);
+				assert.strictEqual(stderr, "");
+			}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 
 	it.effect("answers a non-JSON stdin line with a -32700 parse error and keeps serving", () =>
@@ -137,11 +139,12 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 
-	// The server logs every failing tools/call at error level; `McpStdio`
-	// routes that line to stderr. Were it on stdout, `readUntilResponse`'s
-	// JSON-RPC parse would fail. The response is read BEFORE stdin closes: a
-	// piped EOF interrupts an in-flight call and its response is never written.
-	it.effect("a failing tools/call logs to stderr, never to the stdout wire, and still exits 0", () =>
+	// A declared failure is a result the model reads, not an incident: core's
+	// registration answers it as isError text and logs nothing. So the wire
+	// carries only JSON-RPC (`readUntilResponse` would fail on anything else)
+	// and stderr stays empty. The response is read BEFORE stdin closes: a piped
+	// EOF interrupts an in-flight call and its response is never written.
+	it.effect("a failing tools/call answers isError on the wire, logs nothing, and still exits 0", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace("mcp-e2e-");
 			const server = yield* Mcp.spawn(command([dir]));
@@ -155,8 +158,7 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 			assert.ok(result.content[0]?.text.includes("Try workspace_info."));
 			const { code, stderr } = yield* shutdown(server);
 			assert.strictEqual(code, 0);
-			assert.ok(stderr.includes("WorkspaceNotFound"), `stderr should carry the error log line, got: ${stderr}`);
-			assert.notOk(stderr.includes('"jsonrpc"'), stderr);
+			assert.strictEqual(stderr, "");
 		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 });

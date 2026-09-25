@@ -1,7 +1,7 @@
 /**
  * The `changeset_preview` MCP tool: a read-only preview of the next release's
  * CHANGELOG, produced by the genuine changesets engine via silk-effects'
- * ReleasePlanner. Structured result + one-way markdown transform. Read-only.
+ * ReleasePlanner. Returns a structured result. Read-only.
  *
  * @packageDocumentation
  */
@@ -9,10 +9,9 @@
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
 
 /** The `changeset_preview` result — the silk-effects preview shape. */
 export const ChangesetPreviewResult = Changesets.ChangesetPreviewSchema.annotate({
@@ -22,34 +21,6 @@ export const ChangesetPreviewResult = Changesets.ChangesetPreviewSchema.annotate
 });
 
 export type ChangesetPreviewResultType = Schema.Schema.Type<typeof ChangesetPreviewResult>;
-
-/** Render a value as an inert markdown code span (escapes backticks/backslashes). */
-const mdInline = (value: string): string => `\`${value.replace(/[`\\]/g, "\\$&")}\``;
-
-/** Render the structured preview as a markdown transcript. */
-const renderMarkdown = (data: ChangesetPreviewResultType): string => {
-	if (data.releases.length === 0) {
-		return "# changeset preview\n\nNo pending changesets.";
-	}
-	const lines = [`# changeset preview${data.preMode ? ` (pre: ${data.preMode})` : ""}`, ``, `## Version bumps`, ``];
-	lines.push(`| Package | Old | New | Bump |`, `| --- | --- | --- | --- |`);
-	for (const r of data.releases) {
-		lines.push(`| ${mdInline(r.name)} | ${r.oldVersion} | ${r.newVersion} | ${r.type} |`);
-	}
-	lines.push(``, `## Release notes`, ``);
-	for (const r of data.releases) {
-		lines.push(`### ${mdInline(r.name)}`, ``, r.changelogEntry, ``);
-	}
-	return lines.join("\n").trimEnd();
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetPreviewAsMarkdown = ChangesetPreviewResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "ChangesetPreviewAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
 
 /** Arguments for the {@link changesetPreview} handler. */
 export interface ChangesetPreviewArgs {
@@ -89,7 +60,7 @@ const REMEDIATION = {
 /** The `changeset_preview` tool value. */
 export const changesetPreviewTool = Tool.make("changeset_preview", {
 	description:
-		"Read-only preview of the next release. Runs the genuine changesets engine over the pending changesets and returns each package's version bump (old -> new) plus the rendered CHANGELOG block (dependency tables included), exactly as it would ship. Does not modify the repo. Prefer this over hand-merging changeset files.",
+		"Read-only preview of the next release. Runs the genuine changesets engine over the pending changesets and returns each package's version bump (old -> new) plus the rendered CHANGELOG block (dependency tables included), exactly as it would ship. Does not modify the repo. Prefer this over hand-merging changeset files. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: ChangesetPreviewParams,
 	success: ChangesetPreviewResult,
 	failure: McpToolError,
@@ -99,8 +70,7 @@ export const changesetPreviewTool = Tool.make("changeset_preview", {
 	.annotate(Tool.Readonly, true)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, true)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetPreviewAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /** Wire handler: {@link changesetPreview} with its error channel mapped onto {@link McpToolError}. */
 export const handleChangesetPreview = (fallbackCwd: string, params: ChangesetPreviewParams) =>
