@@ -7,24 +7,21 @@ import { ToolDiscovery } from "@effected/commands";
 import { ManagedSection } from "@effected/templates";
 import { Workspaces } from "@effected/workspaces";
 import { BiomeSchemaSync, ConfigDiscovery } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer } from "effect";
 
 const WorkspacesKitLive = Workspaces.layer();
 
 import { runLintCheck } from "../../src/commands/lint/check.js";
 import { runLintInit } from "../../src/commands/lint/init.js";
+import { Capture } from "../utils/capture.js";
 
 const ToolDiscoveryLive = ToolDiscovery.layer.pipe(Layer.provide(Workspaces.localExecLayer()));
 const SilkLive = Layer.mergeAll(ManagedSection.layer, BiomeSchemaSync.layer, ConfigDiscovery.layer, ToolDiscoveryLive);
 const BaseAppLayer = SilkLive.pipe(Layer.provideMerge(WorkspacesKitLive), Layer.provideMerge(NodeServices.layer));
 
-/** Build a TestLayer that captures every Effect.log line into `sink` (replaces the default logger). */
+/** The app stack plus a stdout sink: a line reaches `sink` only if the command printed it as output. */
 function captureLayer(sink: string[]) {
-	const captureLogger = Logger.make(({ message }) => {
-		const text = Array.isArray(message) ? message.join(" ") : String(message);
-		sink.push(text);
-	});
-	return Layer.provideMerge(BaseAppLayer, Logger.layer([captureLogger]));
+	return Layer.provideMerge(BaseAppLayer, Capture.layer(sink));
 }
 
 /** Bootstrap a workspace root + leaf package so workspaces-effect resolves cleanly. */
@@ -103,6 +100,19 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 		const handler = runLintInit({ force: false, config, preset });
 		return Effect.provide(handler, captureLayer([]));
 	}
+
+	it.effect("lint init prints what it wrote and its verdict on stdout", () =>
+		Effect.gen(function* () {
+			const out: string[] = [];
+			yield* Effect.provide(
+				runLintInit({ force: false, config: "lint-staged.config.ts", preset: "silk" }),
+				captureLayer(out),
+			);
+			expect(out[0]).toBe("lint-staged");
+			expect(out.some((l) => l.startsWith("✓ Synced .husky/pre-commit"))).toBe(true);
+			expect(out.at(-1)).toBe("✓ lint-staged is ready to use");
+		}),
+	);
 
 	it.effect("reports an overall PASS verdict when init was just run with silk preset", () =>
 		Effect.gen(function* () {

@@ -44,6 +44,9 @@ export class Output {
 	/** A finding — still output, not a crash: `✗ text`. */
 	static readonly fail = (text: string): Effect.Effect<void, never, Stdio.Stdio> => glyphLine("31", "✗", text);
 
+	/** An item that is absent or not applicable — neither a pass nor a finding: `• text`, dimmed. */
+	static readonly skip = (text: string): Effect.Effect<void, never, Stdio.Stdio> => glyphLine("2", "•", text);
+
 	/** A section title, bold on a terminal. */
 	static readonly heading = (text: string): Effect.Effect<void, never, Stdio.Stdio> =>
 		Effect.flatMap(CliColor.enabled, (on) => Console.log(paint(on, "1", text)));

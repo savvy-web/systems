@@ -8,6 +8,7 @@ import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { BiomeSchemaSync, Lint } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runLintInit } from "../../../src/commands/lint/init.js";
+import { Capture } from "../../utils/capture.js";
 
 // The real `WorkspaceDiscovery` over the real `WorkspaceRoot`, not a double:
 // these suites run in a bare tmpdir with no workspace root above it, so
@@ -19,7 +20,7 @@ const WorkspaceLive = WorkspaceDiscovery.layer().pipe(Layer.provide(WorkspaceRoo
 
 const TestLayer = Layer.provideMerge(
 	Layer.mergeAll(ManagedSection.layer, BiomeSchemaSync.layer, WorkspaceLive),
-	Layer.merge(NodeFileSystem.layer, NodePath.layer),
+	Layer.mergeAll(NodeFileSystem.layer, NodePath.layer, Capture.piped),
 ).pipe(Layer.provide(Logger.layer([])));
 
 describe("runLintInit: .repos ignore propagation", () => {

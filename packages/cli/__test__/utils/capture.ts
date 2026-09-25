@@ -7,8 +7,8 @@
  */
 
 import { CliExit, CliLogger } from "@effected/cli";
-import type { Layer } from "effect";
-import { Console, Effect, MutableRef } from "effect";
+
+import { Console, Effect, Layer, MutableRef, Stdio } from "effect";
 
 /** What a captured run did. */
 export interface CaptureResult<A> {
@@ -42,6 +42,18 @@ export class Capture {
 
 	/** The logger `main()` installs; the tests assert the stream split it produces. */
 	static readonly logger: Layer.Layer<never> = CliLogger.layer({ stderrFrom: "Error" });
+
+	/** A `Stdio` whose stdout is not a terminal, so `Output` writes no colour. For stacks with no platform `Stdio`. */
+	static readonly piped: Layer.Layer<Stdio.Stdio> = Stdio.layerTest({ stdoutIsTerminal: Effect.succeed(false) });
+
+	/**
+	 * The streams as a layer, for handler tests that build their own layer
+	 * stack: `stdout` receives what the command prints as its result, `stderr`
+	 * every log line. Uses the kit-default logger (every level on stderr), so
+	 * a line reaches `stdout` only if the command wrote it as output.
+	 */
+	static readonly layer = (stdout: Array<string>, stderr: Array<string> = []): Layer.Layer<never> =>
+		Layer.merge(Layer.succeed(Console.Console, makeRecordingConsole(stdout, stderr)), CliLogger.layer());
 
 	/** Run `effect` under the CLI logger and a fresh `CliExit`, recording both streams. */
 	static readonly run = <A, E, R>(

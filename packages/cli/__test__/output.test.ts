@@ -26,12 +26,13 @@ describe("Output", () => {
 					Output.ok("done"),
 					Output.warn("careful"),
 					Output.fail("broken"),
+					Output.skip("absent"),
 					Output.heading("Section"),
 					Output.detail("more"),
 					Output.line("raw"),
 				]),
 			);
-			expect(result.stdout).toEqual(["✓ done", "⚠ careful", "✗ broken", "Section", "  more", "raw"]);
+			expect(result.stdout).toEqual(["✓ done", "⚠ careful", "✗ broken", "• absent", "Section", "  more", "raw"]);
 			expect(result.stderr).toEqual([]);
 		}),
 	);
@@ -39,7 +40,14 @@ describe("Output", () => {
 	it.effect("writes no ANSI escapes when stdout is piped", () =>
 		Effect.gen(function* () {
 			const result = yield* capture(
-				Effect.all([Output.ok("a"), Output.warn("b"), Output.fail("c"), Output.heading("d"), Output.detail("e")]),
+				Effect.all([
+					Output.ok("a"),
+					Output.warn("b"),
+					Output.fail("c"),
+					Output.skip("s"),
+					Output.heading("d"),
+					Output.detail("e"),
+				]),
 			);
 			for (const line of result.stdout) expect(line).not.toContain("\u001b[");
 		}),
