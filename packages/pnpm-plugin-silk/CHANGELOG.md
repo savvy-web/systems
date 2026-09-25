@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.44.0
+
+### Bug Fixes
+
+- Rolls back `api-extractor` and `tsdoc` version in `catalog:build` to set that works without line break bug.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.43.0
 
 ### Features
