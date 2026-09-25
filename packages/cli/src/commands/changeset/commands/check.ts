@@ -9,7 +9,7 @@
  * The command resolves the directory argument, delegates to
  * {@link ChangesetLinter.validate}, groups the resulting
  * {@link LintMessage} objects by file path, and logs each file's errors
- * indented under the file name. Sets `process.exitCode = 1` when errors
+ * indented under the file name. Sets exit code 1 through `CliExit.set` when errors
  * are found.
  *
  * @example
@@ -21,9 +21,12 @@
  */
 
 import { resolve } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 type LintMessage = Changesets.LintMessage;
 const { ChangesetLinter } = Changesets;
@@ -35,14 +38,14 @@ const dirArg = Argument.Directory("dir").pipe(Argument.withDefault(".changeset")
  * Run the check validation pipeline on all changeset files in `dir`.
  *
  * Groups lint messages by file and logs a human-readable summary. Sets
- * `process.exitCode = 1` when one or more errors are found.
+ * exit code 1 through `CliExit.set` when one or more errors are found.
  *
  * @param dir - Path to the changeset directory (resolved relative to cwd)
  * @returns An Effect that performs validation and logs results
  *
  * @internal
  */
-export function runChangesetCheck(dir: string): Effect.Effect<void, Error> {
+export function runChangesetCheck(dir: string): Effect.Effect<void, Error, CliExit | Stdio.Stdio> {
 	return Effect.gen(function* () {
 		const resolved = resolve(dir);
 		const messages = yield* Effect.try({
@@ -63,9 +66,10 @@ export function runChangesetCheck(dir: string): Effect.Effect<void, Error> {
 
 		// Log grouped results
 		for (const [file, fileMessages] of byFile) {
-			yield* Effect.log(`\n${file}`);
+			yield* Output.line("");
+			yield* Output.heading(file);
 			for (const msg of fileMessages) {
-				yield* Effect.log(`  ${msg.line}:${msg.column}  ${msg.rule}  ${msg.message}`);
+				yield* Output.detail(`${msg.line}:${msg.column}  ${msg.rule}  ${msg.message}`);
 			}
 		}
 
@@ -74,10 +78,11 @@ export function runChangesetCheck(dir: string): Effect.Effect<void, Error> {
 		const filesWithErrors = byFile.size;
 
 		if (errorCount > 0) {
-			yield* Effect.log(`\n${filesWithErrors} file(s) with errors, ${errorCount} error(s) found`);
-			process.exitCode = 1;
+			yield* Output.line("");
+			yield* Output.fail(`${filesWithErrors} file(s) with errors, ${errorCount} error(s) found`);
+			yield* CliExit.set(1);
 		} else {
-			yield* Effect.log("All changeset files passed validation.");
+			yield* Output.ok("All changeset files passed validation");
 		}
 	});
 }

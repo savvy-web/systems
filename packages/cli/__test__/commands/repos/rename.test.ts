@@ -1,8 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer } from "effect";
 
 import { runReposRename } from "../../../src/commands/repos/commands/rename.js";
+import { Capture } from "../../utils/capture.js";
+import { TestExit } from "../../utils/exit.js";
+
+/** What the last run wrote to stderr: every log line, including a failure's explanation. */
+const stderrLines: string[] = [];
 
 const { ReposManager } = Repos;
 
@@ -45,25 +50,16 @@ function collectLogs(
 ): Effect.Effect<string[]> {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
-		const captureLogger = Logger.make(({ message }) => {
-			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
-		});
-		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
+		stderrLines.length = 0;
+		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
 		yield* runReposRename(cwd, oldName, newName).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposRename (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("passes cwd, oldName, and newName through to ReposManager.rename", () =>
@@ -87,9 +83,9 @@ describe("runReposRename (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
 			expect(logs.some((l) => l.includes("foo") && l.includes("renamed") && l.includes("bar"))).toBe(true);
-			expect(logs).toContain("chore(repos): rename foo to bar");
+			expect(logs).toContain("  chore(repos): rename foo to bar");
 			expect(logs.some((l) => l.includes("staged"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -100,9 +96,10 @@ describe("runReposRename (adapter)", () => {
 				const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
 
 				const logs = yield* collectLogs("/repo", "foo", "bar", layer);
+				expect(logs).toEqual([]);
 
-				expect(logs.some((l) => l.includes("no vendored repo named"))).toBe(true);
-				expect(process.exitCode).toBe(1);
+				expect(stderrLines.some((l) => l.includes("no vendored repo named"))).toBe(true);
+				expect(TestExit.code()).toBe(1);
 			}),
 	);
 
@@ -119,9 +116,10 @@ describe("runReposRename (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("boom"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("boom"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -132,9 +130,10 @@ describe("runReposRename (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("chmod failed"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("chmod failed"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -149,7 +148,7 @@ describe("runReposRename (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -166,9 +165,10 @@ describe("runReposRename (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("already vendored"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("already vendored"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

@@ -1,36 +1,36 @@
+import { ToolFailure } from "@effected/mcp";
 import { describe, expect, it } from "vitest";
 
+import * as Errors from "../src/errors.js";
 import {
-	ENGINE_ECHO_LIMIT,
 	EngineError,
 	InvalidArgument,
 	WorkspaceNotFound,
-	composeRemediatedMessage,
 	engineError,
 	invalidArgument,
 	mapEngineError,
-	truncateEchoed,
 	workspaceNotFound,
 } from "../src/errors.js";
 
-describe("composeRemediatedMessage", () => {
-	it("appends the hint alone when no suggestedTool is given", () => {
-		expect(composeRemediatedMessage("turbo failed", { hint: "check the task name" })).toBe(
-			"turbo failed check the task name",
-		);
+describe("errors module surface", () => {
+	it("no longer carries its own message or truncation helpers — the kit's ToolFailure owns them", () => {
+		expect(Object.keys(Errors)).not.toContain("composeRemediatedMessage");
+		expect(Object.keys(Errors)).not.toContain("truncateEchoed");
+		expect(Object.keys(Errors)).not.toContain("ENGINE_ECHO_LIMIT");
+		expect(Object.keys(Errors)).not.toContain("Remediation");
 	});
+});
 
-	it("appends the hint and a Try <suggestedTool> sentence when suggestedTool is given", () => {
-		expect(
-			composeRemediatedMessage("turbo failed", { hint: "check the task name", suggestedTool: "turbo_inspect" }),
-		).toBe("turbo failed check the task name Try turbo_inspect.");
-	});
-
-	it("is what a constructed McpToolError member carries as its own message", () => {
-		const remediation = { hint: "check the task name", suggestedTool: "turbo_inspect" };
+describe("tagged errors carry ToolFailure fields", () => {
+	it("a constructed McpToolError member keeps its remediation, including the kit's suggestedArgs", () => {
+		const remediation = {
+			hint: "check the task name",
+			suggestedTool: "turbo_inspect",
+			suggestedArgs: { mode: "graph" },
+		};
 		const error = new EngineError({
 			source: "TurboError",
-			message: composeRemediatedMessage("turbo failed", remediation),
+			message: ToolFailure.message("turbo failed", remediation),
 			remediation,
 		});
 		expect(error.message).toBe("turbo failed check the task name Try turbo_inspect.");
@@ -39,24 +39,11 @@ describe("composeRemediatedMessage", () => {
 	});
 });
 
-describe("truncateEchoed", () => {
-	it("leaves a value at or under the limit unchanged", () => {
-		expect(truncateEchoed("packages/mcp")).toBe("packages/mcp");
-	});
-
-	it("truncates a 5,000-character value to 200 characters plus an ellipsis", () => {
-		const value = "a".repeat(5000);
-		const truncated = truncateEchoed(value);
-		expect(truncated).toBe(`${"a".repeat(200)}…`);
-		expect(truncated).toHaveLength(201);
-	});
-});
-
 describe("workspaceNotFound", () => {
 	it("echoes the requested cwd truncated and carries the workspace_info remediation in the message", () => {
 		const error = workspaceNotFound(`/x/${"y".repeat(5000)}`);
 		expect(error).toBeInstanceOf(WorkspaceNotFound);
-		expect(error.message).toContain(`/x/${"y".repeat(197)}…`);
+		expect(error.message).toContain(ToolFailure.truncate(`/x/${"y".repeat(5000)}`));
 		expect(error.message).not.toContain("y".repeat(300));
 		expect(error.message).toContain("Try workspace_info.");
 		expect(error.cwd).toHaveLength(5003);
@@ -79,14 +66,13 @@ describe("invalidArgument / engineError", () => {
 });
 
 describe("engineError echo bound", () => {
-	it("truncates a pathological engine message (which embeds caller values) at ENGINE_ECHO_LIMIT", () => {
+	it("truncates a pathological engine message (which embeds caller values) at the kit's ENGINE_ECHO_LIMIT", () => {
 		const base = "x".repeat(50_000);
 		const error = engineError(
 			{ _tag: "GitError", message: `git command failed in /repo: git merge-base ${base}\nfatal: bad revision` },
 			{ hint: "Retry." },
 		);
-		expect(ENGINE_ECHO_LIMIT).toBe(2000);
-		expect(error.message.length).toBeLessThan(ENGINE_ECHO_LIMIT + 50);
+		expect(error.message.length).toBeLessThan(ToolFailure.ENGINE_ECHO_LIMIT + 50);
 		expect(error.message).toContain("git command failed in /repo");
 		expect(error.message).toContain("…");
 		expect(error.message.endsWith(" Retry.")).toBe(true);

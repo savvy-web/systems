@@ -23,9 +23,12 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const nameArg = Argument.String("name");
@@ -42,31 +45,27 @@ export const runReposPin = (cwd: string, name: string, ref: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.pin(cwd, name, ref);
-		yield* Effect.log(`${result.name}: ${result.oldCommit ?? "unknown"} -> ${result.newCommit}`);
-		yield* Effect.log(result.commitMessage);
-		yield* Effect.log("staged — review and commit");
+		yield* Output.ok(`${result.name}: ${result.oldCommit ?? "unknown"} -> ${result.newCommit}`);
+		yield* Output.detail(result.commitMessage);
+		yield* Output.detail("staged — review and commit");
 		for (const staleId of result.staleNoteIds) {
-			yield* Effect.log(`warning: note ${staleId} is now stale against ${ref}`);
+			yield* Output.warn(`note ${staleId} is now stale against ${ref}`);
 		}
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("RepoNotFoundError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("ReposLockdownError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 

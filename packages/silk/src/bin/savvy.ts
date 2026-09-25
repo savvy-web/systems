@@ -12,5 +12,6 @@
 /* v8 ignore start -- bin shim; covered by the built-artifact tests in __test__/externals.test.ts */
 import { main } from "@savvy-web/cli/main";
 
-main();
+// The bundler defines `process.env.__PACKAGE_VERSION__` per package, so this is silk's own version.
+main({ distribution: { name: "@savvy-web/silk", version: process.env.__PACKAGE_VERSION__ ?? "0.0.0" } });
 /* v8 ignore stop */

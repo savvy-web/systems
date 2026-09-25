@@ -1,8 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer } from "effect";
 
 import { runReposNote } from "../../../src/commands/repos/commands/note.js";
+import { Capture } from "../../utils/capture.js";
+import { TestExit } from "../../utils/exit.js";
+
+/** What the last run wrote to stderr: every log line, including a failure's explanation. */
+const stderrLines: string[] = [];
 
 const { ReposManager, NoteNotFoundError } = Repos;
 
@@ -48,25 +53,16 @@ function collectLogs(
 ): Effect.Effect<string[]> {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
-		const captureLogger = Logger.make(({ message }) => {
-			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
-		});
-		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
+		stderrLines.length = 0;
+		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
 		yield* runReposNote(cwd, name, op).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposNote (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("passes {op: 'add', note} through to ReposManager.note", () =>
@@ -114,7 +110,7 @@ describe("runReposNote (adapter)", () => {
 			expect(logs.some((l) => l.includes("foo") && l.includes("add") && l.includes("n-1234") && l.includes("1"))).toBe(
 				true,
 			);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -123,9 +119,10 @@ describe("runReposNote (adapter)", () => {
 			const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
 
 			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("no vendored repo named"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("no vendored repo named"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -134,9 +131,10 @@ describe("runReposNote (adapter)", () => {
 			const layer = makeStubLayer(() => Effect.fail(new NoteNotFoundError({ name: "foo", id: "n-9999" })));
 
 			const logs = yield* collectLogs("/repo", "foo", { op: "remove", id: "n-9999" }, layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes('no note "n-9999" on vendored repo "foo"'))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes('no note "n-9999" on vendored repo "foo"'))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -151,7 +149,7 @@ describe("runReposNote (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -164,9 +162,10 @@ describe("runReposNote (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("invalid JSON"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

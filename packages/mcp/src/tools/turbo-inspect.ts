@@ -1,7 +1,7 @@
 /**
  * The `turbo_inspect` MCP tool: a discriminated-union result schema keyed by
  * `mode` (cache | graph | affected), each variant embedding the corresponding
- * `Turbo` result schema from silk-effects, plus a one-way markdown transform.
+ * `Turbo` result schema from silk-effects. Read-only.
  *
  * @packageDocumentation
  */
@@ -9,10 +9,9 @@
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
 
 /** Cache-diagnosis variant of the `turbo_inspect` result. */
 export const TurboCacheResult = Schema.Struct({
@@ -40,72 +39,6 @@ export const TurboInspectResult = Schema.Union([TurboCacheResult, TurboGraphResu
 });
 
 export type TurboInspectResultType = Schema.Schema.Type<typeof TurboInspectResult>;
-
-/** Render the structured result as a markdown transcript. */
-const renderMarkdown = (data: TurboInspectResultType): string => {
-	switch (data.mode) {
-		case "cache": {
-			const r = data.result;
-			const lines = [
-				`# turbo cache — ${r.task}`,
-				``,
-				`**${r.hits}/${r.totalTasks} cached**, ${r.misses} miss(es).`,
-				``,
-				`## Global hash`,
-				`- rootKey: \`${r.global.rootKey}\``,
-				`- global files: ${r.global.globalFileCount}`,
-				`- external deps hash: \`${r.global.externalDependenciesHash}\``,
-				`- internal deps hash: \`${r.global.internalDependenciesHash}\``,
-				`- global env: ${r.global.globalEnvVars.join(", ") || "(none)"}`,
-			];
-			if (r.explanations.length > 0) {
-				lines.push(``, `## Misses`);
-				for (const m of r.explanations) {
-					lines.push(
-						`### ${m.package} (\`${m.taskId}\`)`,
-						`- hash: \`${m.hash}\``,
-						`- input files: ${m.inputFileCount}`,
-						`- hashed env: ${m.hashedEnvVars.join(", ") || "(none)"}`,
-						`- external deps hash: \`${m.externalDependenciesHash}\``,
-						`- depends on: ${m.dependsOn.join(", ") || "(none)"}`,
-					);
-				}
-			}
-			return lines.join("\n");
-		}
-		case "graph": {
-			const r = data.result;
-			return [
-				`# turbo task graph${r.task ? ` — ${r.task}` : ""}`,
-				``,
-				`${r.nodeCount} task node(s).`,
-				``,
-				`## Critical path`,
-				r.criticalPath.map((id, i) => `${i + 1}. \`${id}\``).join("\n") || "(empty)",
-			].join("\n");
-		}
-		case "affected": {
-			const r = data.result;
-			return [
-				`# turbo affected — base ${r.base}`,
-				``,
-				`## Changed packages`,
-				r.packages.map((p) => `- ${p}`).join("\n") || "(none)",
-				``,
-				`## Dependents`,
-				r.dependents.map((p) => `- ${p}`).join("\n") || "(none)",
-			].join("\n");
-		}
-	}
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const TurboInspectAsMarkdown = TurboInspectResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "TurboInspectAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
 
 /** Arguments for the {@link turboInspect} handler. */
 export interface TurboInspectArgs {
@@ -166,7 +99,7 @@ const REMEDIATION = {
 /** The `turbo_inspect` tool value. */
 export const turboInspectTool = Tool.make("turbo_inspect", {
 	description:
-		"Read-only Turborepo inspection. mode=cache diagnoses why a task's cache is hitting/missing (per-package status plus the exact hash contributors: input files, env vars, external-dep hashes, global hash). mode=graph returns the task graph and critical path. mode=affected lists changed packages and their dependents. Never executes tasks (uses --dry).",
+		"Read-only Turborepo inspection. mode=cache diagnoses why a task's cache is hitting/missing (per-package status plus the exact hash contributors: input files, env vars, external-dep hashes, global hash). mode=graph returns the task graph and critical path. mode=affected lists changed packages and their dependents. Never executes tasks (uses --dry). Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: TurboInspectParams,
 	success: TurboInspectResult,
 	failure: McpToolError,
@@ -176,8 +109,7 @@ export const turboInspectTool = Tool.make("turbo_inspect", {
 	.annotate(Tool.Readonly, true)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, true)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(TurboInspectAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /** Wire handler: {@link turboInspect} with its error channel mapped onto {@link McpToolError}. */
 export const handleTurboInspect = (fallbackCwd: string, params: TurboInspectParams) =>

@@ -1,8 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer } from "effect";
 
 import { runReposDeregister } from "../../../src/commands/repos/commands/deregister.js";
+import { Capture } from "../../utils/capture.js";
+import { TestExit } from "../../utils/exit.js";
+
+/** What the last run wrote to stderr: every log line, including a failure's explanation. */
+const stderrLines: string[] = [];
 
 const { ReposManager, ReposConfigError, GitSubmoduleError } = Repos;
 
@@ -32,25 +37,16 @@ function makeStubLayer(
 function collectLogs(cwd: string, section: string, layer: Layer.Layer<Repos.ReposManager>): Effect.Effect<string[]> {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
-		const captureLogger = Logger.make(({ message }) => {
-			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
-		});
-		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
+		stderrLines.length = 0;
+		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
 		yield* runReposDeregister(cwd, section).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposDeregister (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("logs the removed keys and the nothing-to-commit posture, exit undefined", () =>
@@ -68,7 +64,7 @@ describe("runReposDeregister (adapter)", () => {
 			expect(logs.some((l) => l.includes("removed submodule..repos/old.url"))).toBe(true);
 			expect(logs.some((l) => l.includes("removed submodule..repos/old.active"))).toBe(true);
 			expect(logs.some((l) => l.includes("nothing to commit"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -85,9 +81,10 @@ describe("runReposDeregister (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", ".repos/spec", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("canonical registration"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("canonical registration"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -104,9 +101,12 @@ describe("runReposDeregister (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", ".repos/old", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("no such section"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("git command failed in /repo") && l.includes("no such section"))).toBe(
+				true,
+			);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

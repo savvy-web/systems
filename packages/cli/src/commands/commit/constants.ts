@@ -4,12 +4,6 @@
  * @internal
  */
 
-/** Unicode checkmark symbol. */
-export const CHECK_MARK = "✓";
-
-/** Unicode warning symbol. */
-export const WARNING = "⚠";
-
 /** Husky commit-msg hook path (savvy-base + savvy-commit sections). */
 export const HUSKY_HOOK_PATH = ".husky/commit-msg";
 

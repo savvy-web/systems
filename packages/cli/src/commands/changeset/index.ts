@@ -1,5 +1,6 @@
+import type { CliExit } from "@effected/cli";
 import type { Changesets } from "@savvy-web/silk-effects";
-import type { Cause, FileSystem, Path } from "effect";
+import type { Cause, FileSystem, Path, Stdio } from "effect";
 import { Command } from "effect/unstable/cli";
 import type { ChildProcessSpawner } from "effect/unstable/process";
 
@@ -65,6 +66,8 @@ export const changesetCommand: Command.Command<
 	| FileSystem.FileSystem
 	| Path.Path
 	| Changesets.ReleasePlanner
+	| CliExit
+	| Stdio.Stdio
 > = _changesetCommand;
 /* v8 ignore stop */
 

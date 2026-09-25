@@ -14,15 +14,11 @@ export {
 	EngineError,
 	InvalidArgument,
 	McpToolError,
-	Remediation,
 	WorkspaceNotFound,
-	composeRemediatedMessage,
-	truncateEchoed,
 } from "./errors.js";
-export { SilkMarkdown } from "./markdown.js";
 export type { McpServices } from "./runtime.js";
 export { makeSilkRuntimeLayer } from "./runtime.js";
-export type { PlatformServices } from "./server.js";
+export type { PlatformServices, ServerOptions } from "./server.js";
 export { ServerLayer } from "./server.js";
 export type { SilkTools } from "./toolkit.js";
 export { SilkToolkit, ToolsLayer } from "./toolkit.js";

@@ -9,6 +9,10 @@ tags: [tooling]
 sources:
   - id: mcp-tools
     resource: ../../packages/mcp/src/toolkit.ts
+  - id: mcp-server
+    resource: ../../packages/mcp/src/server.ts
+  - id: issue-688
+    resource: https://github.com/savvy-web/systems/issues/688
   - id: mcp-changeset-tools
     resource: ../../packages/mcp/src/tools
   - id: mcp-biome-check
@@ -17,19 +21,30 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-09-21T18:15:35Z
-  body_sha256: 21b0b79a8bcaddd28befc6865c0cb69a838c8d03206a0cf2ad2abafc2a49aa82
+  at: 2026-09-25T03:02:46Z
+  body_sha256: 36765af19cbca48c4d6d968f12d30f27fc3e59808cd715fc6ce504a7b27f5982
 ---
 
 # savvy-mcp tool surface
 
 ## The shared shape
 
-Every tool returns a dual channel: a markdown transcript in `content[0].text`
-for a human or agent to read, and a typed object in `structuredContent` for a
-program to consume. A tool's `structuredContent` shape is a silk-effects
-result schema embedded unchanged (or a documented flat projection), so it is
-what to depend on rather than the transcript's prose.[^mcp-tools] Every tool
+A successful call returns the typed result object in `structuredContent`,
+and `content[0].text` carries that same object serialized as JSON — there is
+no prose rendering. A tool's `structuredContent` shape is a silk-effects
+result schema embedded unchanged (or a documented flat projection); that
+schema is the contract to depend on, and the text channel never says more or
+less than it.[^mcp-server] A failed call is an `isError` result whose
+`content[0].text` carries the failure message with its remediation, and no
+`structuredContent`.[^mcp-server]
+
+Claude Code hands the model only `structuredContent` when a result carries
+one, which is why the result is shaped for it. A client that instead displays
+`content` to a human (Cursor, Copilot, MCP Apps hosts) shows the raw JSON;
+that is an accepted trade-off, revisited if MCP adopts per-audience result
+variants (SEP-3279).[^issue-688]
+
+Every tool
 carries all four MCP hints (`readOnlyHint`/`destructiveHint`/`idempotentHint`/
 `openWorldHint`); seven of the ten are read-only and idempotent, three are
 documented mutating exceptions.[^mcp-tools]
@@ -143,6 +158,8 @@ never mutate `.repos/**` by any other route.[^mcp-repos-tools]
 
 ## What a consumer must not assume
 
+- Do not expect a readable transcript in `content[0].text`; it is the
+  `structuredContent` object as JSON, so read `structuredContent` for fields.
 - Do not infer read-only behavior from a tool's name alone — check the
   hints (`readOnlyHint`/`destructiveHint`) or this document.
 - Do not expect `outputSchema` on a union-rooted result (`turbo_inspect`,
@@ -167,6 +184,8 @@ never mutate `.repos/**` by any other route.[^mcp-repos-tools]
   for `.repos/**`.
 
 [^mcp-tools]: `../../packages/mcp/src/toolkit.ts`
+[^mcp-server]: `../../packages/mcp/src/server.ts`
+[^issue-688]: <https://github.com/savvy-web/systems/issues/688>
 [^mcp-changeset-tools]: `../../packages/mcp/src/tools` (the five `changeset_*` tool modules)
 [^mcp-biome-check]: `../../packages/mcp/src/tools/biome-check.ts`
 [^mcp-repos-tools]: `../../packages/mcp/src/tools` (`repos-inspect.ts` and `repos-manage.ts`)

@@ -7,13 +7,13 @@
  */
 
 import { resolve } from "node:path";
+import { ToolFailure } from "@effected/mcp";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Data, Effect, Schema, SchemaGetter } from "effect";
+import { Data, Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
-import { McpToolError, invalidArgument, mapEngineError, truncateEchoed } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
+import { McpToolError, invalidArgument, mapEngineError } from "../errors.js";
 
 /** A thrown failure from the pure {@link Changesets.ChangesetLinter.validate} (e.g. a missing directory). */
 export class ChangesetValidateError extends Data.TaggedError("ChangesetValidateError")<{
@@ -43,33 +43,6 @@ export const ChangesetValidateResult = Schema.Struct({
 });
 
 export type ChangesetValidateResultType = Schema.Schema.Type<typeof ChangesetValidateResult>;
-
-/**
- * Render a repo/lint-derived value as an inert markdown code span. Escapes
- * backticks and backslashes so a crafted filename or message cannot inject
- * markdown structure into the transcript that an agent reads.
- */
-const mdInline = (value: string): string => `\`${value.replace(/[`\\]/g, "\\$&")}\``;
-
-/** Render the structured result as a markdown transcript. */
-const renderMarkdown = (data: ChangesetValidateResultType): string => {
-	if (data.ok) {
-		return `# changeset validate — ${mdInline(data.dir)}\n\nNo changeset issues found.`;
-	}
-	const lines = [`# changeset validate — ${mdInline(data.dir)}`, ``, `${data.errorCount} issue(s):`, ``];
-	for (const m of data.messages) {
-		lines.push(`- ${mdInline(`${m.file}:${m.line}:${m.column}`)} ${mdInline(m.rule)} — ${m.message}`);
-	}
-	return lines.join("\n");
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetValidateAsMarkdown = ChangesetValidateResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "ChangesetValidateAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
 
 /** Arguments for the {@link changesetValidate} handler. */
 export interface ChangesetValidateArgs {
@@ -120,7 +93,7 @@ const DIR_REMEDIATION = {
 /** The `changeset_validate` tool value. */
 export const changesetValidateTool = Tool.make("changeset_validate", {
 	description:
-		"Read-only validation of changeset files against the section-aware rules. Pass dir (default .changeset). Returns typed diagnostics (file, rule, line, column, message) plus ok/errorCount in structuredContent. Prefer this over shelling out to savvy changeset lint.",
+		"Read-only validation of changeset files against the section-aware rules. Pass dir (default .changeset). Returns typed diagnostics (file, rule, line, column, message) plus ok/errorCount in structuredContent. Prefer this over shelling out to savvy changeset lint. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: ChangesetValidateParams,
 	success: ChangesetValidateResult,
 	failure: McpToolError,
@@ -130,8 +103,7 @@ export const changesetValidateTool = Tool.make("changeset_validate", {
 	.annotate(Tool.Readonly, true)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, true)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetValidateAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /**
  * Wire handler: {@link changesetValidate} with its error channel mapped onto
@@ -146,7 +118,7 @@ export const handleChangesetValidate = (fallbackCwd: string, params: ChangesetVa
 			error._tag === "ChangesetValidateError"
 				? invalidArgument(
 						"dir",
-						`Changeset directory "${truncateEchoed(error.dir)}" could not be validated: ${describeCause(error.cause)}`,
+						`Changeset directory "${ToolFailure.truncate(error.dir)}" could not be validated: ${describeCause(error.cause)}`,
 						DIR_REMEDIATION,
 					)
 				: mapEngineError(params.cwd ?? fallbackCwd, DIR_REMEDIATION)(error),
@@ -154,4 +126,4 @@ export const handleChangesetValidate = (fallbackCwd: string, params: ChangesetVa
 	);
 
 const describeCause = (cause: unknown): string =>
-	cause instanceof Error ? truncateEchoed(cause.message) : truncateEchoed(String(cause));
+	cause instanceof Error ? ToolFailure.truncate(cause.message) : ToolFailure.truncate(String(cause));

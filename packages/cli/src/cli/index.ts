@@ -155,12 +155,15 @@ const ToolDiscoveryGroupLive = ToolDiscovery.layer.pipe(Layer.provide(LocalExecL
 
 /**
  * The merged runtime Layer stack satisfying every command's service
- * requirements. Provided to `rootCommand`'s assembled `Command.run` Effect by
- * `main()` in `../main.js`; this module never calls `NodeRuntime.runMain`
- * itself.
+ * requirements, still open on the platform services. Provided to
+ * `rootCommand`'s assembled `Command.run` Effect by `main()` in `../main.js`,
+ * which hands {@link CliPlatform} to `CliRuntime.main` so the platform is
+ * provided once, at the edge; this module never runs anything itself.
  */
 export const AppLive = Layer.mergeAll(ToolDiscoveryGroupLive, InspectorAndAnalyzerLive, ReposGroupLive).pipe(
 	Layer.provideMerge(BaseLive),
-	Layer.provideMerge(NodeServices.layer),
 );
+
+/** The platform `main()` passes to `CliRuntime.main`: Node's filesystem, path, stdio, terminal and spawner. */
+export const CliPlatform = NodeServices.layer;
 /* v8 ignore stop */

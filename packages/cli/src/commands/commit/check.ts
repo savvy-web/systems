@@ -19,23 +19,12 @@ import {
 	savvyInstallBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect, FileSystem, Option } from "effect";
 import type { PlatformError } from "effect/PlatformError";
-import {
-	CHECK_MARK,
-	HUSKY_HOOK_PATH,
-	POST_CHECKOUT_HOOK_PATH,
-	POST_COMMIT_HOOK_PATH,
-	POST_MERGE_HOOK_PATH,
-	WARNING,
-} from "./constants.js";
+import { Output } from "../../internal/output.js";
+import { HUSKY_HOOK_PATH, POST_CHECKOUT_HOOK_PATH, POST_COMMIT_HOOK_PATH, POST_MERGE_HOOK_PATH } from "./constants.js";
 import { SECTION_DEF, savvyCommitBlock } from "./init.js";
-
-/** Unicode cross symbol. */
-const CROSS_MARK = "✗";
-
-/** Unicode bullet symbol. */
-const BULLET = "•";
 
 /** Possible commitlint configuration file names, in priority order. */
 const CONFIG_FILES = [
@@ -140,26 +129,31 @@ const detectReleaseFormat = Effect.gen(function* () {
 export function runCommitCheck(): Effect.Effect<
 	void,
 	SectionParseError | SectionFileError | PlatformError,
-	ManagedSection | FileSystem.FileSystem | ChangesetConfigReader | PublishabilityDetector | WorkspaceDiscovery
+	| ManagedSection
+	| FileSystem.FileSystem
+	| ChangesetConfigReader
+	| PublishabilityDetector
+	| WorkspaceDiscovery
+	| Stdio.Stdio
 > {
 	return Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const ms = yield* ManagedSection;
 
-		yield* Effect.log("Checking commitlint configuration...\n");
+		yield* Output.heading("commitlint configuration");
 
 		const foundConfig = yield* findConfigFile(fs);
 		if (foundConfig) {
-			yield* Effect.log(`${CHECK_MARK} Config file: ${foundConfig}`);
+			yield* Output.ok(`Config file: ${foundConfig}`);
 		} else {
-			yield* Effect.log(`${CROSS_MARK} No commitlint config file found`);
+			yield* Output.fail(`No commitlint config file found`);
 		}
 
 		const hasHuskyHook = yield* fs.exists(HUSKY_HOOK_PATH);
 		if (hasHuskyHook) {
-			yield* Effect.log(`${CHECK_MARK} Husky hook: ${HUSKY_HOOK_PATH}`);
+			yield* Output.ok(`Husky hook: ${HUSKY_HOOK_PATH}`);
 		} else {
-			yield* Effect.log(`${CROSS_MARK} No husky commit-msg hook found`);
+			yield* Output.fail(`No husky commit-msg hook found`);
 		}
 
 		// Managed section status
@@ -167,13 +161,13 @@ export function runCommitCheck(): Effect.Effect<
 		if (hasHuskyHook) {
 			const baseStatus = yield* ms.check(HUSKY_HOOK_PATH, SavvyBaseSection.section(savvyBasePreamble()));
 			if (CheckOutcome.$is("UpToDate")(baseStatus)) {
-				yield* Effect.log(`${CHECK_MARK} Base section: up-to-date`);
+				yield* Output.ok(`Base section: up-to-date`);
 			} else if (CheckOutcome.$is("Drifted")(baseStatus)) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${WARNING} Base section: outdated (run 'savvy init' to update)`);
+				yield* Output.warn(`Base section: outdated (run 'savvy init' to update)`);
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Base section: not found (run 'savvy init' to add)`);
+				yield* Output.skip(`Base section: not found (run 'savvy init' to add)`);
 			}
 
 			const block = yield* ms.read(HUSKY_HOOK_PATH, SECTION_DEF);
@@ -182,18 +176,18 @@ export function runCommitCheck(): Effect.Effect<
 				if (configPath) {
 					const status = yield* ms.check(HUSKY_HOOK_PATH, savvyCommitBlock(configPath));
 					if (CheckOutcome.$is("UpToDate")(status)) {
-						yield* Effect.log(`${CHECK_MARK} Commit section: up-to-date`);
+						yield* Output.ok(`Commit section: up-to-date`);
 					} else {
 						sectionsHealthy = false;
-						yield* Effect.log(`${WARNING} Commit section: outdated (run 'savvy init' to update)`);
+						yield* Output.warn(`Commit section: outdated (run 'savvy init' to update)`);
 					}
 				} else {
 					sectionsHealthy = false;
-					yield* Effect.log(`${WARNING} Commit section: outdated (run 'savvy init' to update)`);
+					yield* Output.warn(`Commit section: outdated (run 'savvy init' to update)`);
 				}
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Commit section: not found (run 'savvy init' to add)`);
+				yield* Output.skip(`Commit section: not found (run 'savvy init' to add)`);
 			}
 		}
 
@@ -202,18 +196,18 @@ export function runCommitCheck(): Effect.Effect<
 			const hygieneExists = yield* fs.exists(hookPath);
 			if (!hygieneExists) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} not found (run 'savvy init' to add)`);
+				yield* Output.skip(`Hygiene hook: ${hookPath} not found (run 'savvy init' to add)`);
 				continue;
 			}
 			const hygieneStatus = yield* ms.check(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
 			if (CheckOutcome.$is("UpToDate")(hygieneStatus)) {
-				yield* Effect.log(`${CHECK_MARK} Hygiene hook: ${hookPath}`);
+				yield* Output.ok(`Hygiene hook: ${hookPath}`);
 			} else if (CheckOutcome.$is("Drifted")(hygieneStatus)) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${WARNING} Hygiene hook: ${hookPath} outdated (run 'savvy init' to update)`);
+				yield* Output.warn(`Hygiene hook: ${hookPath} outdated (run 'savvy init' to update)`);
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Hygiene hook: ${hookPath} section not found (run 'savvy init' to add)`);
+				yield* Output.skip(`Hygiene hook: ${hookPath} section not found (run 'savvy init' to add)`);
 			}
 
 			// post-commit carries hygiene only; the other two also carry savvy-toolchain
@@ -223,50 +217,51 @@ export function runCommitCheck(): Effect.Effect<
 			const installHook = hookPath === POST_CHECKOUT_HOOK_PATH ? "post-checkout" : "post-merge";
 			const installStatus = yield* ms.check(hookPath, savvyInstallBlock(installHook));
 			if (CheckOutcome.$is("UpToDate")(installStatus)) {
-				yield* Effect.log(`${CHECK_MARK} Dependency install: ${hookPath}`);
+				yield* Output.ok(`Dependency install: ${hookPath}`);
 			} else if (CheckOutcome.$is("Drifted")(installStatus)) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${WARNING} Dependency install: ${hookPath} outdated (run 'savvy init' to update)`);
+				yield* Output.warn(`Dependency install: ${hookPath} outdated (run 'savvy init' to update)`);
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Dependency install: ${hookPath} section not found (run 'savvy init' to add)`);
+				yield* Output.skip(`Dependency install: ${hookPath} section not found (run 'savvy init' to add)`);
 			}
 
 			const toolchainStatus = yield* ms.check(hookPath, SavvyToolchainSection.section(savvyToolchainCheck()));
 			if (CheckOutcome.$is("UpToDate")(toolchainStatus)) {
-				yield* Effect.log(`${CHECK_MARK} Toolchain check: ${hookPath}`);
+				yield* Output.ok(`Toolchain check: ${hookPath}`);
 			} else if (CheckOutcome.$is("Drifted")(toolchainStatus)) {
 				sectionsHealthy = false;
-				yield* Effect.log(`${WARNING} Toolchain check: ${hookPath} outdated (run 'savvy init' to update)`);
+				yield* Output.warn(`Toolchain check: ${hookPath} outdated (run 'savvy init' to update)`);
 			} else {
 				sectionsHealthy = false;
-				yield* Effect.log(`${BULLET} Toolchain check: ${hookPath} section not found (run 'savvy init' to add)`);
+				yield* Output.skip(`Toolchain check: ${hookPath} section not found (run 'savvy init' to add)`);
 			}
 		}
 
 		const hasDCOFile = yield* fs.exists(DCO_FILE_PATH);
 		if (hasDCOFile) {
-			yield* Effect.log(`${CHECK_MARK} DCO file: ${DCO_FILE_PATH}`);
+			yield* Output.ok(`DCO file: ${DCO_FILE_PATH}`);
 		} else {
-			yield* Effect.log(`${BULLET} No DCO file (signoff not required)`);
+			yield* Output.skip(`No DCO file (signoff not required)`);
 		}
 
-		yield* Effect.log("\nDetected settings:");
-		yield* Effect.log(`  DCO required: ${Commitlint.detectDCO()}`);
+		yield* Output.line("");
+		yield* Output.heading("Detected settings");
+		yield* Output.detail(`DCO required: ${Commitlint.detectDCO()}`);
 
 		const releaseFormat = yield* detectReleaseFormat;
-		yield* Effect.log(`  Release format: ${releaseFormat}`);
+		yield* Output.detail(`Release format: ${releaseFormat}`);
 
 		const scopes = yield* Effect.catch(Commitlint.detectScopes, () => Effect.succeed([] as string[]));
 		const scopeDisplay = scopes.length > 0 ? scopes.join(", ") : "(none - not a monorepo or no packages found)";
-		yield* Effect.log(`  Detected scopes: ${scopeDisplay}`);
+		yield* Output.detail(`Detected scopes: ${scopeDisplay}`);
 
-		yield* Effect.log("");
+		yield* Output.line("");
 		const hasIssues = !foundConfig || !hasHuskyHook || !sectionsHealthy;
 		if (hasIssues) {
-			yield* Effect.log(`${CROSS_MARK} Commitlint needs configuration. Run: savvy init`);
+			yield* Output.fail(`Commitlint needs configuration. Run: savvy init`);
 		} else {
-			yield* Effect.log(`${CHECK_MARK} Commitlint is configured correctly.`);
+			yield* Output.ok(`Commitlint is configured correctly.`);
 		}
 	});
 }

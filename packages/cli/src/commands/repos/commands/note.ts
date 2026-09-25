@@ -28,9 +28,12 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /**
  * Note handler; exported for tests.
@@ -41,22 +44,19 @@ export const runReposNote = (cwd: string, name: string, op: Parameters<Repos.Rep
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.note(cwd, name, op);
-		yield* Effect.log(`${result.name}: ${result.op} note ${result.id} (${result.noteCount} notes)`);
+		yield* Output.ok(`${result.name}: ${result.op} note ${result.id} (${result.noteCount} notes)`);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("RepoNotFoundError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("NoteNotFoundError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 

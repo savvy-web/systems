@@ -36,12 +36,15 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Git } from "@effected/git";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Data, Effect, Option, Result, Schema } from "effect";
+import { Output } from "../../../internal/output.js";
 
 const { LegacyVersionFilesSchema } = Changesets;
 
@@ -694,7 +697,7 @@ export function runChangesetInit(opts: {
 	quiet: boolean;
 	skipMarkdownlint: boolean;
 	check: boolean;
-}): Effect.Effect<void, never, WorkspaceRoot | Git> {
+}): Effect.Effect<void, never, WorkspaceRoot | Git | CliExit | Stdio.Stdio> {
 	const { force, quiet, skipMarkdownlint, check } = opts;
 	return Effect.gen(function* () {
 		const root = yield* resolveWorkspaceRoot(process.cwd());
@@ -702,7 +705,7 @@ export function runChangesetInit(opts: {
 		// 1. Detect GitHub repo
 		const repo = yield* detectGitHubRepo(root);
 		if (!repo && !quiet) {
-			yield* Effect.log("Warning: could not detect GitHub repo from git remote, using placeholder");
+			yield* Effect.logWarning("could not detect GitHub repo from git remote, using placeholder");
 		}
 		const repoSlug = repo ?? "owner/repo";
 
@@ -717,20 +720,20 @@ export function runChangesetInit(opts: {
 			];
 
 			if (issues.length === 0) {
-				yield* Effect.log("All @savvy-web/changesets config files are up to date.");
+				yield* Output.ok("All @savvy-web/changesets config files are up to date");
 				return;
 			}
 
 			for (const issue of issues) {
-				yield* Effect.logWarning(`${issue.file}: ${issue.message}`);
+				yield* Output.warn(`${issue.file}: ${issue.message}`);
 			}
-			yield* Effect.logWarning('Run "savvy init --force" to fix.');
+			yield* Output.detail('Run "savvy init --force" to fix');
 			return;
 		}
 
 		// 2. Create .changeset/ directory
 		const changesetDir = yield* ensureChangesetDir(root);
-		yield* Effect.log("Ensured .changeset/ directory");
+		yield* Output.ok("Ensured .changeset/ directory");
 
 		// 3–5: Run each step, collecting errors
 		const errors: InitError[] = [];
@@ -738,7 +741,7 @@ export function runChangesetInit(opts: {
 		// 3. Handle config.json
 		const configResult = yield* handleConfig(changesetDir, repoSlug, force).pipe(Effect.result);
 		if (Result.isSuccess(configResult)) {
-			yield* Effect.log(configResult.success);
+			yield* Output.ok(configResult.success);
 			// 3b. Surface deprecation when the (possibly newly patched) config
 			//     still carries the legacy top-level `versionFiles[]`. This is
 			//     never fatal — the warning text names the migration target.
@@ -753,7 +756,7 @@ export function runChangesetInit(opts: {
 		if (!skipMarkdownlint) {
 			const baseResult = yield* handleBaseMarkdownlint(root).pipe(Effect.result);
 			if (Result.isSuccess(baseResult)) {
-				yield* Effect.log(baseResult.success);
+				yield* Output.ok(baseResult.success);
 			} else {
 				errors.push(baseResult.failure);
 			}
@@ -762,7 +765,7 @@ export function runChangesetInit(opts: {
 		// 5. Handle .changeset/.markdownlint.json
 		const mdlintResult = yield* handleChangesetMarkdownlint(changesetDir, root, force).pipe(Effect.result);
 		if (Result.isSuccess(mdlintResult)) {
-			yield* Effect.log(mdlintResult.success);
+			yield* Output.ok(mdlintResult.success);
 		} else {
 			errors.push(mdlintResult.failure);
 		}
@@ -773,18 +776,18 @@ export function runChangesetInit(opts: {
 				yield* Effect.logError(err.message);
 			}
 			if (!quiet) {
-				process.exitCode = 1;
+				yield* CliExit.set(1);
 			}
 			return;
 		}
 
-		yield* Effect.log("Init complete.");
+		yield* Output.ok("Init complete");
 	}).pipe(
 		Effect.catch((error) =>
 			Effect.gen(function* () {
 				if (!quiet) {
 					yield* Effect.logError(error instanceof InitError ? error.message : `Init failed: ${String(error)}`);
-					process.exitCode = 1;
+					yield* CliExit.set(1);
 				}
 			}),
 		),

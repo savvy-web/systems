@@ -5,10 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { runTransform } from "../../src/commands/changeset/commands/transform.js";
+import { Capture } from "../utils/capture.js";
+import { TestExit } from "../utils/exit.js";
 
 const { ConfigurationError, ConfigInspector, makeConfigInspectorTest } = Changesets;
 
-const silentLogger = Logger.layer([]);
+/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
 
 // The tests below do not create a `.changeset/config.json` next to their
 // CHANGELOG fixtures, so `requireValidConfig` short-circuits before
@@ -27,17 +30,14 @@ const StubInspectorLayer = makeConfigInspectorTest({
 
 describe("transform command – runTransform handler", () => {
 	let tempDir: string;
-	let savedExitCode: typeof process.exitCode;
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), "cli-transform-"));
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
+		TestExit.reset();
 	});
 
 	afterEach(() => {
 		rmSync(tempDir, { recursive: true });
-		process.exitCode = savedExitCode;
 	});
 
 	it.effect("writes transformed content to file in normal mode", () =>
@@ -54,7 +54,7 @@ describe("transform command – runTransform handler", () => {
 			const result = readFileSync(filePath, "utf-8");
 			// Features should be reordered before Bug Fixes
 			expect(result.indexOf("### Features")).toBeLessThan(result.indexOf("### Bug Fixes"));
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("does not write to file in dry-run mode", () =>
@@ -68,10 +68,10 @@ describe("transform command – runTransform handler", () => {
 			// File should remain unchanged
 			const result = readFileSync(filePath, "utf-8");
 			expect(result).toBe(input);
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.effect("sets process.exitCode to 1 in check mode when file would change", () =>
+	it.effect("sets the exit code to 1 in check mode when file would change", () =>
 		Effect.gen(function* () {
 			const filePath = join(tempDir, "CHANGELOG.md");
 			// Sections in wrong order will be transformed
@@ -80,11 +80,11 @@ describe("transform command – runTransform handler", () => {
 
 			yield* runTransform(filePath, false, true).pipe(Effect.provide(StubInspectorLayer), Effect.provide(silentLogger));
 
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 			// File should NOT be written in check mode
 			const result = readFileSync(filePath, "utf-8");
 			expect(result).toBe(input);
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("does not set exitCode in check mode when file is already formatted", () =>
@@ -100,14 +100,14 @@ describe("transform command – runTransform handler", () => {
 			const formatted = readFileSync(filePath, "utf-8");
 
 			// Reset exitCode before check run
-			process.exitCode = undefined;
+			TestExit.reset();
 
 			// Now run in check mode against the already-formatted content
 			writeFileSync(filePath, formatted);
 			yield* runTransform(filePath, false, true).pipe(Effect.provide(StubInspectorLayer), Effect.provide(silentLogger));
 
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("rejects with an error when the file does not exist", () =>
@@ -123,7 +123,7 @@ describe("transform command – runTransform handler", () => {
 			// The read goes through `Effect.try`, so the missing file surfaces as
 			// Cause.UnknownError — pinned by tag, not merely "something failed".
 			expect(error._tag).toBe("UnknownError");
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("resolves relative file paths", () =>
@@ -141,7 +141,7 @@ describe("transform command – runTransform handler", () => {
 			const result = readFileSync(filePath, "utf-8");
 			expect(result).toContain("### Features");
 			expect(result).toContain("Added X");
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("refuses to run when a config exists and the inspector returns ConfigurationError", () =>
@@ -167,7 +167,7 @@ describe("transform command – runTransform handler", () => {
 			expect(error._tag).toBe("ConfigurationError");
 			// File must not have been written.
 			expect(readFileSync(filePath, "utf-8")).toBe("## 1.0.0\n\n### Features\n\n- X\n");
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

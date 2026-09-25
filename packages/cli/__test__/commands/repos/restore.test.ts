@@ -1,8 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer } from "effect";
 
 import { runReposRestore } from "../../../src/commands/repos/commands/restore.js";
+import { Capture } from "../../utils/capture.js";
+import { TestExit } from "../../utils/exit.js";
+
+/** What the last run wrote to stderr: every log line, including a failure's explanation. */
+const stderrLines: string[] = [];
 
 const { ReposManager } = Repos;
 
@@ -43,25 +48,16 @@ function collectLogs(
 ): Effect.Effect<string[]> {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
-		const captureLogger = Logger.make(({ message }) => {
-			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
-		});
-		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
+		stderrLines.length = 0;
+		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
 		yield* runReposRestore(cwd, names).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposRestore (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("passes cwd and explicit names through to ReposManager.restore", () =>
@@ -111,7 +107,7 @@ describe("runReposRestore (adapter)", () => {
 
 			expect(logs.some((l) => l.includes("foo") && l.includes("restored") && l.includes("abc111"))).toBe(true);
 			expect(logs.some((l) => l.includes("bar") && l.includes("restored") && l.includes("def222"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -129,7 +125,7 @@ describe("runReposRestore (adapter)", () => {
 
 			expect(logs.some((l) => l.includes("dirty-spec") && l.includes("restored"))).toBe(true);
 			expect(logs.some((l) => l.includes("clean-spec") && l.includes("clean"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -151,7 +147,7 @@ describe("runReposRestore (adapter)", () => {
 
 			expect(logs.some((l) => l.includes("nested-spec") && l.includes("restored"))).toBe(true);
 			expect(logs.some((l) => l.includes("nested-spec") && l.includes("STILL dirty"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -162,7 +158,7 @@ describe("runReposRestore (adapter)", () => {
 			const logs = yield* collectLogs("/repo", [], layer);
 
 			expect(logs.some((l) => l.includes("nothing to restore"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -173,9 +169,10 @@ describe("runReposRestore (adapter)", () => {
 				const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
 
 				const logs = yield* collectLogs("/repo", ["foo"], layer);
+				expect(logs).toEqual([]);
 
-				expect(logs.some((l) => l.includes("no vendored repo named"))).toBe(true);
-				expect(process.exitCode).toBe(1);
+				expect(stderrLines.some((l) => l.includes("no vendored repo named"))).toBe(true);
+				expect(TestExit.code()).toBe(1);
 			}),
 	);
 
@@ -188,9 +185,10 @@ describe("runReposRestore (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", ["foo"], layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("boom"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("boom"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -201,9 +199,10 @@ describe("runReposRestore (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", ["foo"], layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("chmod failed"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("chmod failed"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -218,7 +217,7 @@ describe("runReposRestore (adapter)", () => {
 			const logs = yield* collectLogs("/repo", [], layer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -235,9 +234,10 @@ describe("runReposRestore (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", [], layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("manifest is corrupt"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(stderrLines.some((l) => l.includes("manifest is corrupt"))).toBe(true);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

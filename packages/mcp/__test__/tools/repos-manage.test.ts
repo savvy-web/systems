@@ -3,12 +3,7 @@ import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Result, Schema } from "effect";
 
-import {
-	ReposManageAsMarkdown,
-	ReposManageResult,
-	handleReposManage,
-	reposManage,
-} from "../../src/tools/repos-manage.js";
+import { ReposManageResult, handleReposManage, reposManage } from "../../src/tools/repos-manage.js";
 
 const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot,
@@ -255,105 +250,15 @@ layer(TestLayer)("reposManage handler — request validation", (it) => {
 	);
 });
 
-layer(TestLayer)("reposManage handler — pin markdown transcript", (it) => {
-	it.effect(
-		"surfaces commitMessage and staleNoteIds prominently, neutralizing backtick injection via delimiter runs",
-		() =>
-			Effect.gen(function* () {
-				const data = yield* reposManage({ action: "pin", name: "foo", ref: "main" }, "/repo");
-				const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-				// The transcript must have a dedicated commit-message section...
-				expect(md.toLowerCase()).toContain("commit message");
-				expect(md).toContain("chore(repos): pin");
-				// ...with the backtick-carrying message wrapped in a delimiter run
-				// strictly longer than any backtick run it contains (1-backtick runs
-				// inside -> 2-backtick delimiter, space-padded for the trailing
-				// backtick), so the embedded backticks cannot terminate the span.
-				const commitLine = md.split("\n").find((line) => line.includes("rm -rf /")) ?? "";
-				expect(commitLine).toBe("`` chore(repos): pin `foo` to main; `rm -rf /` ``");
-				const runs = commitLine.match(/`+/g) ?? [];
-				const longest = Math.max(...runs.map((run) => run.length));
-				const embedded = ("chore(repos): pin `foo` to main; `rm -rf /`".match(/`+/g) ?? []).map((run) => run.length);
-				expect(longest).toBeGreaterThan(Math.max(...embedded));
-				// staleNoteIds must be surfaced as the review/commit cue.
-				expect(md.toLowerCase()).toContain("stale");
-				expect(md).toContain("n-aaaa");
-				expect(md).toContain("n-bbbb");
-			}),
-	);
-
-	it.effect("surfaces commitMessage and removedNotes in the remove transcript as the review/commit cue", () =>
+layer(TestLayer)("reposManage handler — pin review/commit cue", (it) => {
+	it.effect("carries commitMessage verbatim and every staleNoteId in the pin result", () =>
 		Effect.gen(function* () {
-			const data = yield* reposManage({ action: "remove", name: "foo" }, "/repo");
-			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-			expect(md.toLowerCase()).toContain("commit message");
-			expect(md).toContain("chore(repos): remove foo");
-			expect(md.toLowerCase()).toContain("removed notes");
-			expect(md).toContain("n-aaaa");
-			expect(md.toUpperCase()).toContain("REVIEW AND COMMIT");
-		}),
-	);
-
-	it.effect("surfaces commitMessage in the rename transcript as the review/commit cue", () =>
-		Effect.gen(function* () {
-			const data = yield* reposManage({ action: "rename", name: "foo", newName: "bar" }, "/repo");
-			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-			expect(md.toLowerCase()).toContain("commit message");
-			expect(md).toContain("chore(repos): rename foo to bar");
-			expect(md.toUpperCase()).toContain("REVIEW AND COMMIT");
-		}),
-	);
-
-	it.effect("names what was discarded in the restore transcript", () =>
-		Effect.gen(function* () {
-			const data = yield* reposManage({ action: "restore", names: ["foo"] }, "/repo");
-			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-			expect(md.toLowerCase()).toContain("restored");
-			expect(md.toLowerCase()).toContain("discarded");
-			expect(md).toContain("foo");
-			expect(md).toContain("abc111");
-		}),
-	);
-
-	it.effect("names the cleared keys and the nothing-to-commit posture in the deregister transcript", () =>
-		Effect.gen(function* () {
-			const data = yield* reposManage({ action: "deregister", section: ".repos/old" }, "/repo");
-			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-			expect(md).toContain("repos deregister");
-			expect(md).toContain("submodule..repos/old.url");
-			expect(md).toContain("submodule..repos/old.active");
-			expect(md.toLowerCase()).toContain("nothing to commit");
-		}),
-	);
-
-	it.effect("keeps a backtick-carrying section token inert in the deregister transcript", () =>
-		Effect.gen(function* () {
-			// The stub echoes the section back, so a hostile registration name
-			// flows into both the heading and the removed-section line; the full
-			// `submodule.<section>` token must render inside a longer backtick
-			// run rather than terminating the span the line wraps it in.
-			const data = yield* reposManage({ action: "deregister", section: "`## heading" }, "/repo");
-			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-			// No space padding here, unlike the note-transcript case: the full
-			// token starts with "submodule.", not a backtick, so mdInline only
-			// lengthens the delimiter run.
-			expect(md).toContain("``submodule.`## heading``");
-			for (const line of md.split("\n")) {
-				expect(line.startsWith("## heading")).toBe(false);
-			}
-		}),
-	);
-
-	it.effect("keeps a heading-injection note payload inert in the note transcript", () =>
-		Effect.gen(function* () {
-			const data = yield* reposManage({ action: "note", name: "`## heading", op: "add", note: "x" }, "/repo");
-			const md = Schema.decodeUnknownSync(ReposManageAsMarkdown)(data);
-			// The payload renders inside a longer backtick run and never lands at
-			// the start of a line as a live markdown heading.
-			expect(md).toContain("`` `## heading ``");
-			for (const line of md.split("\n")) {
-				expect(line.startsWith("## heading")).toBe(false);
-			}
+			const data = yield* reposManage({ action: "pin", name: "foo", ref: "main" }, "/repo");
+			expect(data.action).toBe("pin");
+			expect(data.action === "pin" ? data.result.commitMessage : undefined).toBe(
+				"chore(repos): pin `foo` to main; `rm -rf /`",
+			);
+			expect(data.action === "pin" ? data.result.staleNoteIds : []).toEqual(["n-aaaa", "n-bbbb"]);
 		}),
 	);
 });

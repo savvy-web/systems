@@ -19,7 +19,7 @@
 
 import { Effect, Result } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
-
+import { Output } from "../internal/output.js";
 import { runChangesetCheck } from "./changeset/index.js";
 import { runCommitCheck } from "./commit/check.js";
 import { runLintCheck } from "./lint/check.js";
@@ -73,7 +73,12 @@ export function runCheck<EChangeset, RChangeset, ECommit, RCommit, ELint, RLint>
 	// the first failure is re-raised to preserve the fail-if-any contract.
 	return Effect.gen(function* () {
 		const results: ReadonlyArray<Result.Result<unknown, EChangeset | ECommit | ELint>> = yield* Effect.all(
-			[Effect.result(steps.changeset), Effect.result(steps.commit), Effect.result(steps.lint)],
+			[
+				Effect.result(steps.changeset),
+				// A blank line between sections keeps each tool's report readable as one block.
+				Output.line("").pipe(Effect.andThen(Effect.result(steps.commit))),
+				Output.line("").pipe(Effect.andThen(Effect.result(steps.lint))),
+			],
 			{ concurrency: 1 },
 		);
 		for (const result of results) {

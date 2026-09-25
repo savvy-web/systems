@@ -20,7 +20,7 @@
  *   projects that have not yet been bootstrapped.
  * - **Config present**: the gate invokes
  *   {@link ConfigInspector.inspect}. On `ConfigurationError`, it sets
- *   `process.exitCode = 1` and propagates the error so the caller's
+ *   exit code 1 through `CliExit.set` and propagates the error so the caller's
  *   `Effect.gen` short-circuits.
  *
  * @internal
@@ -28,6 +28,7 @@
 
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 
@@ -47,7 +48,7 @@ const { ConfigInspector } = Changesets;
  */
 export function requireValidConfig(
 	cwd: string,
-): Effect.Effect<void, Changesets.ConfigurationError, Changesets.ConfigInspector> {
+): Effect.Effect<void, Changesets.ConfigurationError, Changesets.ConfigInspector | CliExit> {
 	return Effect.gen(function* () {
 		const projectDir = resolve(cwd);
 		const configPath = join(projectDir, ".changeset", "config.json");
@@ -59,8 +60,7 @@ export function requireValidConfig(
 		const inspector = yield* ConfigInspector;
 		yield* inspector.inspect(projectDir).pipe(
 			Effect.catchTag("ConfigurationError", (err) => {
-				process.exitCode = 1;
-				return Effect.fail(err);
+				return CliExit.set(1).pipe(Effect.andThen(Effect.fail(err)));
 			}),
 		);
 	});

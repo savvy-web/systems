@@ -1,5 +1,20 @@
 # Log
 
+## 2026-09-25
+
+* Updated @savvy-web/silk
+* Updated An Effect-native MCP server
+* Updated Carrier-pattern package graph
+* Updated Respect the four-layer package graph and the non-import invariant
+* Updated Shape and test a savvy-mcp tool
+* Added The savvy front ends adopt the effected front-end kit
+* Updated cli
+* Updated e2e
+* Updated layers.json
+* Updated mcp
+* Updated savvy command tree
+* Updated savvy-mcp tool surface
+
 ## 2026-09-21
 
 * Updated savvy-mcp tool surface

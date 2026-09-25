@@ -24,9 +24,12 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const urlArg = Argument.String("url");
@@ -61,23 +64,20 @@ export const runReposAdd = (
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.add(cwd, opts);
-		yield* Effect.log(`${result.name} @ ${result.ref} -> ${result.path}`);
-		yield* Effect.log("staged — review and commit");
+		yield* Output.ok(`${result.name} @ ${result.ref} -> ${result.path}`);
+		yield* Output.detail("staged — review and commit");
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("ReposLockdownError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 

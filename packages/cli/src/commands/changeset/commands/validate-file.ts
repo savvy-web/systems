@@ -13,9 +13,11 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 const { ChangesetLinter } = Changesets;
 
@@ -26,7 +28,7 @@ const fileArg = Argument.File("file");
  * Run lint validation on a single changeset file.
  *
  * Outputs one line per error in `file:line:col rule message` format.
- * Logs "Valid." when the file passes. Sets `process.exitCode = 1`
+ * Logs "Valid." when the file passes. Sets exit code 1 through `CliExit.set`
  * when errors are found or the file cannot be read.
  *
  * @param filePath - Path to the changeset `.md` file
@@ -39,8 +41,8 @@ export function runValidateFile(filePath: string) {
 		const result = yield* Effect.try(() => ChangesetLinter.validateFile(filePath)).pipe(
 			Effect.catch((error) =>
 				Effect.gen(function* () {
-					yield* Effect.log(`Error: ${error instanceof Error ? error.message : String(error)}`);
-					process.exitCode = 1;
+					yield* Effect.logError(`Error: ${error instanceof Error ? error.message : String(error)}`);
+					yield* CliExit.set(1);
 					return null;
 				}),
 			),
@@ -49,13 +51,13 @@ export function runValidateFile(filePath: string) {
 		if (result === null) return;
 
 		for (const msg of result) {
-			yield* Effect.log(`${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`);
+			yield* Output.line(`${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`);
 		}
 
 		if (result.length > 0) {
-			process.exitCode = 1;
+			yield* CliExit.set(1);
 		} else {
-			yield* Effect.log("Valid.");
+			yield* Output.ok("Valid");
 		}
 	});
 }

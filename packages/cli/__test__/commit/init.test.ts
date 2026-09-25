@@ -6,9 +6,12 @@ import { ManagedSection } from "@effected/templates";
 import { savvyBasePreamble } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
+import { Capture } from "../utils/capture.js";
 
 /** Test layer combining NodeFileSystem and with logs silenced. */
-const TestLayer = Layer.provideMerge(ManagedSection.layer, NodeFileSystem.layer).pipe(Layer.provide(Logger.layer([])));
+const TestLayer = Layer.provideMerge(ManagedSection.layer, Layer.merge(NodeFileSystem.layer, Capture.piped)).pipe(
+	Layer.provide(Logger.layer([])),
+);
 
 /** Marker format used by silk-effects ManagedSection for "savvy-commit" tool. */
 const BEGIN_MARKER = "# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---";
@@ -59,6 +62,18 @@ describe("runCommitInit Effect program", () => {
 		process.chdir(originalCwd);
 		rmSync(testDir, { recursive: true, force: true });
 	});
+
+	it.effect("prints what it created and its closing line on stdout", () =>
+		Effect.gen(function* () {
+			const out: string[] = [];
+			yield* Effect.provide(runCommitInit({ force: false, config: "commitlint.config.ts" }), TestLayer).pipe(
+				Effect.provide(Capture.layer(out)),
+			);
+			expect(out[0]).toBe("commitlint");
+			expect(out).toContain("✓ Created commitlint.config.ts");
+			expect(out.at(-1)).toBe("✓ Install @commitlint/cli if it is not already installed");
+		}),
+	);
 
 	it.effect("creates hook and config files from scratch", () =>
 		Effect.gen(function* () {

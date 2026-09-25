@@ -1,8 +1,8 @@
 import { expect, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer } from "effect";
 
-import { ChangesetValidateAsMarkdown, changesetValidate } from "../../src/tools/changeset-validate.js";
+import { changesetValidate } from "../../src/tools/changeset-validate.js";
 
 const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot,
@@ -16,8 +16,6 @@ layer(WorkspaceRootTest)("changesetValidate handler", (it) => {
 			expect(data.ok).toBe(true);
 			expect(data.messages).toHaveLength(0);
 			expect(data.errorCount).toBe(0);
-			const md = Schema.decodeUnknownSync(ChangesetValidateAsMarkdown)(data);
-			expect(md).toContain("No changeset issues");
 		}),
 	);
 
@@ -28,14 +26,8 @@ layer(WorkspaceRootTest)("changesetValidate handler", (it) => {
 			expect(data.errorCount).toBeGreaterThan(0);
 			expect(data.messages[0]).toHaveProperty("rule");
 			expect(data.messages[0]).toHaveProperty("file");
-			const md = Schema.decodeUnknownSync(ChangesetValidateAsMarkdown)(data);
-			expect(md).toContain("issue(s)");
 		}),
 	);
-
-	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeUnknownSync(ChangesetValidateAsMarkdown)("anything")).toThrow();
-	});
 
 	// `Effect.flip` pins the actual contract the handler's `Effect.try` exists
 	// to provide: the thrown error surfaces as the TYPED `ChangesetValidateError`

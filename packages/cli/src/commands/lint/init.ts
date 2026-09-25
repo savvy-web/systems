@@ -26,15 +26,11 @@ import {
 	savvyOkfBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect, FileSystem } from "effect";
 import type { PlatformError } from "effect/PlatformError";
+import { Output } from "../../internal/output.js";
 import { BIOME_VERSION } from "./biome-version.js";
-
-/** Unicode checkmark symbol. */
-const CHECK_MARK = "✓";
-
-/** Unicode warning symbol. */
-const WARNING = "⚠";
 
 /** Executable file permission mode. */
 const EXECUTABLE_MODE = 0o755;
@@ -115,20 +111,20 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 			// File missing → write full template
 			yield* fs.makeDirectory("lib/configs", { recursive: true });
 			yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, `${fullTemplate}\n`);
-			yield* Effect.log(`${CHECK_MARK} Created ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
+			yield* Output.ok(`Created ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
 			return;
 		}
 
 		if (preset !== "silk") {
 			// Standard preset: don't manage existing files
-			yield* Effect.log(`${CHECK_MARK} ${Lint.MARKDOWNLINT_CONFIG_PATH}: exists (not managed by ${preset} preset)`);
+			yield* Output.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: exists (not managed by ${preset} preset)`);
 			return;
 		}
 
 		if (force) {
 			// Force: overwrite entire file with fresh template
 			yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, `${fullTemplate}\n`);
-			yield* Effect.log(`${CHECK_MARK} Replaced ${Lint.MARKDOWNLINT_CONFIG_PATH} (--force)`);
+			yield* Output.ok(`Replaced ${Lint.MARKDOWNLINT_CONFIG_PATH} (--force)`);
 			return;
 		}
 
@@ -169,16 +165,16 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 		const existingConfig = existingParsed.config as Record<string, unknown> | undefined;
 		const configMatches = existingConfig !== undefined && isDeepStrictEqual(existingConfig, Lint.MARKDOWNLINT_CONFIG);
 		if (!configMatches) {
-			yield* Effect.log(
-				`${WARNING} ${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template (use --force to overwrite)`,
+			yield* Output.warn(
+				`${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template (use --force to overwrite)`,
 			);
 		}
 
 		if (applied.length > 0) {
 			yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, updatedText);
-			yield* Effect.log(`${CHECK_MARK} Updated ${applied.join(", ")} in ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
+			yield* Output.ok(`Updated ${applied.join(", ")} in ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
 		} else if (configMatches) {
-			yield* Effect.log(`${CHECK_MARK} ${Lint.MARKDOWNLINT_CONFIG_PATH}: up-to-date`);
+			yield* Output.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: up-to-date`);
 		}
 	});
 }
@@ -216,7 +212,7 @@ function biomeConfigRoots(): Effect.Effect<ReadonlyArray<string>, never, Workspa
 			Effect.map((packages) => packages.map((pkg) => pkg.path)),
 			Effect.catchTag("WorkspaceRootNotFoundError", () => Effect.succeed<ReadonlyArray<string>>([])),
 			Effect.catch((e) =>
-				Effect.as(Effect.log(`${WARNING} Only syncing biome $schema in the current directory: ${e.message}`), []),
+				Effect.as(Effect.logWarning(`Only syncing biome $schema in the current directory: ${e.message}`), []),
 			),
 		);
 	});
@@ -240,7 +236,11 @@ function biomeConfigRoots(): Effect.Effect<ReadonlyArray<string>, never, Workspa
  * Every failure reads as "say nothing": an unreadable or malformed manifest
  * cannot make the notice wrong, only absent.
  */
-function noticeLifecycleScripts(): Effect.Effect<void, never, FileSystem.FileSystem | WorkspaceDiscovery> {
+function noticeLifecycleScripts(): Effect.Effect<
+	void,
+	never,
+	FileSystem.FileSystem | WorkspaceDiscovery | Stdio.Stdio
+> {
 	return Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
 		const roots = yield* biomeConfigRoots();
@@ -250,10 +250,10 @@ function noticeLifecycleScripts(): Effect.Effect<void, never, FileSystem.FileSys
 				Effect.catch(() => Effect.succeed(undefined)),
 			);
 			if (publishesBuiltLinkDirectory(manifest)) {
-				yield* Effect.log(
-					`${WARNING} This workspace publishes through built link directories, so a hook-time install must run lifecycle scripts.`,
+				yield* Output.warn(
+					"This workspace publishes through built link directories, so a hook-time install must run lifecycle scripts.",
 				);
-				yield* Effect.log(`   Allow them with: git config --local ${LIFECYCLE_SCRIPTS_CONFIG_KEY} true`);
+				yield* Output.detail(`Allow them with: git config --local ${LIFECYCLE_SCRIPTS_CONFIG_KEY} true`);
 				return;
 			}
 		}
@@ -278,7 +278,7 @@ function noticeLifecycleScripts(): Effect.Effect<void, never, FileSystem.FileSys
  *
  * @internal
  */
-export function syncBiomeSchemas(): Effect.Effect<void, never, BiomeSchemaSync | WorkspaceDiscovery> {
+export function syncBiomeSchemas(): Effect.Effect<void, never, BiomeSchemaSync | WorkspaceDiscovery | Stdio.Stdio> {
 	return Effect.gen(function* () {
 		const syncer = yield* BiomeSchemaSync;
 		const roots = yield* biomeConfigRoots();
@@ -294,14 +294,14 @@ export function syncBiomeSchemas(): Effect.Effect<void, never, BiomeSchemaSync |
 				Effect.flatMap((result) =>
 					Effect.gen(function* () {
 						for (const configPath of result.current) {
-							yield* Effect.log(`${CHECK_MARK} ${configPath}: biome $schema up-to-date`);
+							yield* Output.ok(`${configPath}: biome $schema up-to-date`);
 						}
 						for (const configPath of result.updated) {
-							yield* Effect.log(`${CHECK_MARK} Updated $schema in ${configPath}`);
+							yield* Output.ok(`Updated $schema in ${configPath}`);
 						}
 					}),
 				),
-				Effect.catchTag("BiomeSyncError", (e) => Effect.log(`${WARNING} Could not sync biome $schema: ${e.message}`)),
+				Effect.catchTag("BiomeSyncError", (e) => Output.warn(`Could not sync biome $schema: ${e.message}`)),
 			);
 		}
 	});
@@ -344,7 +344,7 @@ export function runLintInit(opts: {
 }): Effect.Effect<
 	void,
 	Error | SectionParseError | SectionRenderError | SectionFileError | PlatformError,
-	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync | WorkspaceDiscovery
+	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync | WorkspaceDiscovery | Stdio.Stdio
 > {
 	const { force, config, preset } = opts;
 	return Effect.gen(function* () {
@@ -355,7 +355,7 @@ export function runLintInit(opts: {
 			yield* Effect.fail(new Error("Config path must be relative to repository root, not absolute"));
 		}
 
-		yield* Effect.log("Initializing lint-staged configuration...\n");
+		yield* Output.heading("lint-staged");
 
 		yield* fs.makeDirectory(".husky", { recursive: true });
 
@@ -372,10 +372,8 @@ export function runLintInit(opts: {
 			savvyOkfBlock(),
 		]);
 		yield* makeExecutable(Lint.HUSKY_HOOK_PATH);
-		yield* Effect.log(
-			`${CHECK_MARK} ${force ? "Replaced" : "Synced"} ${Lint.HUSKY_HOOK_PATH} (${preCommitResults
-				.map((r) => r._tag)
-				.join(", ")})`,
+		yield* Output.ok(
+			`${force ? "Replaced" : "Synced"} ${Lint.HUSKY_HOOK_PATH} (${preCommitResults.map((r) => r._tag).join(", ")})`,
 		);
 
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene (when preset enables it).
@@ -395,7 +393,7 @@ export function runLintInit(opts: {
 				}
 				yield* ms.syncAll(hookPath, sections);
 				yield* makeExecutable(hookPath);
-				yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
+				yield* Output.ok(`Synced ${hookPath}`);
 			}
 		}
 
@@ -415,16 +413,17 @@ export function runLintInit(opts: {
 		const configExists = yield* fs.exists(config);
 
 		if (configExists && !force) {
-			yield* Effect.log(`${WARNING} ${config} already exists (use --force to overwrite)`);
+			yield* Output.warn(`${config} already exists (use --force to overwrite)`);
 		} else {
 			const configDir = dirname(config);
 			if (configDir && configDir !== ".") {
 				yield* fs.makeDirectory(configDir, { recursive: true });
 			}
 			yield* fs.writeFileString(config, generateConfigContent(preset));
-			yield* Effect.log(`${CHECK_MARK} Created ${config} (preset: ${preset})`);
+			yield* Output.ok(`Created ${config} (preset: ${preset})`);
 		}
 
-		yield* Effect.log("\nDone! Lint-staged is ready to use.");
+		yield* Output.line("");
+		yield* Output.ok("lint-staged is ready to use");
 	});
 }

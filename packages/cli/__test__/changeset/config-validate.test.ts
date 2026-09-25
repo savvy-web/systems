@@ -10,6 +10,8 @@ import { Effect, Layer, Logger } from "effect";
 const WorkspacesKitLive = Workspaces.layer();
 
 import { runConfigValidate } from "../../src/commands/changeset/commands/config-validate.js";
+import { Capture } from "../utils/capture.js";
+import { TestExit } from "../utils/exit.js";
 
 const { ConfigInspector } = Changesets;
 
@@ -17,7 +19,8 @@ const TestLive = ConfigInspector.layer.pipe(
 	Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, WorkspacesKitLive)),
 	Layer.provide(NodeServices.layer),
 );
-const silentLogger = Logger.layer([]);
+/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
 
 function setupFixture(opts: { configJson: Record<string, unknown> }): string {
 	const dir = mkdtempSync(join(tmpdir(), "cs-cli-validate-"));
@@ -31,16 +34,13 @@ function setupFixture(opts: { configJson: Record<string, unknown> }): string {
 
 describe("config validate – runConfigValidate handler", () => {
 	let dir: string;
-	let savedExitCode: typeof process.exitCode;
 
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
+		TestExit.reset();
 	});
 
 	afterEach(() => {
 		rmSync(dir, { recursive: true, force: true });
-		process.exitCode = savedExitCode;
 	});
 
 	it.effect("exits 0 on a valid config", () =>
@@ -52,8 +52,8 @@ describe("config validate – runConfigValidate handler", () => {
 				},
 			});
 			yield* runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger));
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("exits 1 on an unknown package key", () =>
@@ -64,8 +64,8 @@ describe("config validate – runConfigValidate handler", () => {
 				},
 			});
 			yield* runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger));
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("exits 1 on dual-shape", () =>
@@ -83,7 +83,7 @@ describe("config validate – runConfigValidate handler", () => {
 				},
 			});
 			yield* runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger));
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

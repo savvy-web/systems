@@ -9,10 +9,18 @@ tags: [architecture, tooling]
 sources:
   - id: arch
     resource: ../../packages/mcp/src
+  - id: main
+    resource: ../../packages/mcp/src/main.ts
+  - id: server
+    resource: ../../packages/mcp/src/server.ts
+  - id: tests
+    resource: ../../packages/mcp/__test__
+  - id: layering
+    resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T02:06:56Z
-  body_sha256: 194f5e725b1d696a22ce9364943454998d367a1a988d69d569438ca2549856e5
+  at: 2026-09-25T03:02:46Z
+  body_sha256: f39c011f0615922bc97fa00f37fb7d7b788be6fab516b8020428e7ded791ad0a
 ---
 
 # mcp
@@ -21,17 +29,17 @@ generated:
 
 `@savvy-web/mcp` (`packages/mcp`) owns the `savvy-mcp` binary: a long-lived MCP server, spawned alongside an agent in the project working directory and shared across Claude Code plugins. It exists to make Silk tooling cheaper for agents to consume than bash — structured JSON tool output instead of parsed console text.[^arch]
 
-It is a tools-only server: one Effect `Layer`, a ten-tool `Toolkit` from `effect/unstable/ai` registered against `McpServer.layerStdio`, zero resources, no MCP SDK, no zod. Tool logic comes from [`silk-effects`](silk-effects.md), the same business layer the `savvy` CLI uses; the tool files are glue. It is not a discovery host and carries no per-project gating — direction lives in the plugins that spawn it.[^arch] It is an L3 front end in the package layering, a peer of [`cli`](cli.md) that never imports it.[^arch]
+It is a tools-only server: one Effect `Layer`, a ten-tool `Toolkit` from `effect/unstable/ai` registered by `@effected/mcp`'s `McpToolkit.layer` against its `McpStdio.layer` (core's `McpServer.layerStdio` with the kit's protocol defaults), zero resources, no MCP SDK, no zod. A success carries the typed result in `structuredContent` and the same object as JSON in `content[0].text`; there is no markdown or other text projection.[^server] Tool logic comes from [`silk-effects`](silk-effects.md), the same business layer the `savvy` CLI uses; the tool files are glue. It is not a discovery host and carries no per-project gating — direction lives in the plugins that spawn it.[^arch] It is an L3 front end in the package layering, a peer of [`cli`](cli.md) that never imports it.[^arch]
 
-The choice to build this server Effect-native, over `effect/unstable/ai`'s `McpServer` rather than the reference SDK, is recorded in [effect-native-mcp-server](../decisions/effect-native-mcp-server.md). The ten tools' individual contracts are documented from the consumer side in [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md), and the shape every tool follows (Effect Schema as canon, `Tool.make` with declared dependencies, read-only versus mutating annotation) is in [mcp-tool-authoring](../conventions/mcp-tool-authoring.md). This concept covers the module's boundary, ownership, and runtime wiring.
+The choice to build this server Effect-native, over `effect/unstable/ai`'s `McpServer` rather than the reference SDK, is recorded in [effect-native-mcp-server](../decisions/effect-native-mcp-server.md). The ten tools' individual contracts are documented from the consumer side in [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md), and the shape every tool follows (Effect Schema as canon, the result schema as the whole wire contract, `Tool.make` with declared dependencies, read-only versus mutating annotation) is in [mcp-tool-authoring](../conventions/mcp-tool-authoring.md). This concept covers the module's boundary, ownership, and runtime wiring.
 
 ## Owner
 
-Bound by [package-layering](../conventions/package-layering.md); shaped by [effect-native-mcp-server](../decisions/effect-native-mcp-server.md) and [carrier-pattern-package-graph](../decisions/carrier-pattern-package-graph.md).
+Bound by [package-layering](../conventions/package-layering.md); shaped by [effect-native-mcp-server](../decisions/effect-native-mcp-server.md), [carrier-pattern-package-graph](../decisions/carrier-pattern-package-graph.md) and [front-ends-adopt-effected-kit](../decisions/front-ends-adopt-effected-kit.md).
 
 ## Entry points
 
-The package follows the same `./main` contract as the CLI: `src/bin.ts` is the shebang shim, `src/main.ts` owns the process and is exported as `@savvy-web/mcp/main`, and `src/index.ts` is the side-effect-free barrel — it never exports `main`, so importing it registers no crash guards and imports no server graph.[^arch] `main()` registers `uncaughtException`/`unhandledRejection` handlers before dynamically importing anything reachable from the tool surface, so an import-time failure is reported by a handler instead of crashing before one exists, then launches the server layer under `NodeRuntime.runMain` with a custom teardown that maps success-or-interrupts-only to exit 0.[^arch]
+The package follows the same `./main` contract as the CLI: `src/bin.ts` is the shebang shim, `src/main.ts` owns the process and is exported as `@savvy-web/mcp/main`, and `src/index.ts` is the side-effect-free barrel — it never exports `main`, so importing it registers no crash guards and imports no server graph.[^arch] `main()` registers `uncaughtException`/`unhandledRejection` handlers before dynamically importing anything reachable from the tool surface, so an import-time failure is reported by a handler instead of crashing before one exists, then runs `NodeRuntime.runMain(McpStdio.launch(ServerLayer(cwd, options)), { teardown: McpStdio.teardown })`: `McpStdio.launch` reports a launch failure on stderr, never onto the wire, and `McpStdio.teardown` maps stdin EOF — a clean disconnect — to exit 0.[^main] `main(options?: MainOptions)` takes an optional `distribution`; `ServerLayer(cwd, options?: ServerOptions)` renders it into `serverInfo.version` as `CURRENT_MCP_VERSION` plus `via <name> <version>`, which is how a server launched through silk's `savvy-mcp` shim names the carrier.[^main]
 
 ## The runtime layer
 
@@ -41,7 +49,7 @@ One long-lived service graph, built from `makeSilkRuntimeLayer(cwd)` and compose
 
 ## Root resolution
 
-`main()` resolves its base directory through `resolveProjectDir(argv, env, cwd)` by precedence `argv[2]` → `SAVVY_MCP_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → `process.cwd()`. Because dev tooling launches the server from `packages/mcp/` rather than the repo root, every Effect-backed tool handler additionally resolves the true workspace root by walking up from the base dir via `WorkspaceRoot.find` before doing anything, so the tools work from any subdirectory — except `biome_check`, which mutates and resolves a containment root instead.[^arch]
+`main()` resolves its base directory through `@effected/engine`'s `LaunchContext.projectDir` by precedence first positional argument → `SAVVY_MCP_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → `process.cwd()`, skipping an empty value or an unsubstituted `${VAR}` placeholder — which some launch paths pass through literally. Only the single positional is offered, so a stray flag cannot become the project directory.[^main] Because dev tooling launches the server from `packages/mcp/` rather than the repo root, every Effect-backed tool handler additionally resolves the true workspace root by walking up from the base dir via `WorkspaceRoot.find` before doing anything, so the tools work from any subdirectory — except `biome_check`, which mutates and resolves a containment root instead.[^arch]
 
 ## Plugin integration
 
@@ -49,11 +57,12 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 
 ## Boundaries and invariants
 
-- **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from silk-effects and the `@effected/*` kit; the `@e2e/workspace` DAG check asserts it.[^arch]
+- **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from silk-effects and the `@effected/*` kit; silk's package-layering test asserts the edge never exists.[^layering]
+- **Only `bin.ts`, `main.ts` and `version.ts` touch `process`.** Everything below takes its facts as values; `__test__/boundaries.test.ts` pins it with `SourceBoundary`.[^tests]
 - **`src/index.ts` never exports `main`.**[^arch]
 - **ESM-only, real Node process.** silk-effects is a normal runtime dependency here, not bundled — the same posture every package in the repo now holds, including `@savvy-web/silk`.[^arch]
 - **Effect Schema is the only schema language.** Parameters, results, and the failure union are Effect `Schema`; the framework derives the wire JSON Schema. No zod, no bridge.[^arch]
-- **stdout is the JSON-RPC wire; logs go to stderr; a clean disconnect exits 0.**[^arch]
+- **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp/testing`'s `McpProcess`/`McpProbe`, and in process by `__test__/server.harness.test.ts` over `McpHarness`.[^tests]
 - **Read-only is the convention; `biome_check`, `changeset_deps_regen`, and `repos_manage` are the three documented exceptions.** See [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md).[^arch]
 - **The runtime is root-bound at layer build.** One server instance serves one project dir; per-call `cwd` arguments walk up to a workspace root but do not rebuild the layer.[^arch]
 
@@ -67,3 +76,7 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 - [package-layering](../conventions/package-layering.md) — the layering rule this package's non-import invariant enforces
 
 [^arch]: `../../packages/mcp/src`
+[^main]: `../../packages/mcp/src/main.ts`
+[^server]: `../../packages/mcp/src/server.ts`
+[^tests]: `../../packages/mcp/__test__`
+[^layering]: `../../packages/silk/__test__/package-layering.test.ts`

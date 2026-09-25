@@ -11,10 +11,9 @@
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
 
 /**
  * An untouched prose-only changeset releasing a package in scope for the run
@@ -45,65 +44,6 @@ export const ChangesetDepsRegenResult = Schema.Struct({
 });
 
 export type ChangesetDepsRegenResultType = Schema.Schema.Type<typeof ChangesetDepsRegenResult>;
-
-/**
- * Render a repo-derived value (path) as an inert markdown code span. Control
- * characters are flattened to spaces and the span is fenced with a backtick run
- * longer than any in the value — CommonMark forbids backslash-escaping a
- * backtick inside a code span.
- */
-const mdInline = (value: string): string => {
-	const safe = value.replace(/\p{Cc}/gu, " ");
-	const longest = safe.match(/`+/g)?.reduce((m, run) => Math.max(m, run.length), 0) ?? 0;
-	const fence = "`".repeat(longest + 1);
-	const pad = safe.startsWith("`") || safe.endsWith("`") || safe.trim() === "" ? " " : "";
-	return `${fence}${pad}${safe}${pad}${fence}`;
-};
-
-/** Render the structured result as a markdown transcript. */
-const renderMarkdown = (data: ChangesetDepsRegenResultType): string => {
-	const heading = `# changeset deps regen — ${mdInline(data.root)}${data.dryRun ? " (dry run)" : ""}`;
-	if (
-		data.deleted.length === 0 &&
-		data.written.length === 0 &&
-		data.skippedMixed.length === 0 &&
-		data.coexisting.length === 0
-	) {
-		return `${heading}\n\nNo dependency changes to regenerate.`;
-	}
-	const lines = [heading, ``];
-	const verb = data.dryRun ? "Would delete" : "Deleted";
-	if (data.deleted.length > 0) {
-		lines.push(`${verb} ${data.deleted.length} pure dependency changeset(s):`);
-		for (const file of data.deleted) lines.push(`- ${mdInline(file)}`);
-		lines.push(``);
-	}
-	if (data.written.length > 0) {
-		lines.push(`${data.dryRun ? "Would write" : "Wrote"} ${data.written.length} fresh dependency changeset(s):`);
-		for (const file of data.written) lines.push(`- ${mdInline(file)}`);
-		lines.push(``);
-	}
-	if (data.skippedMixed.length > 0) {
-		lines.push(`Skipped ${data.skippedMixed.length} mixed changeset(s):`);
-		for (const file of data.skippedMixed) lines.push(`- ${mdInline(file)}`);
-		lines.push(``);
-	}
-	if (data.coexisting.length > 0) {
-		lines.push(`Coexisting prose changeset(s) for in-scope packages, left untouched:`);
-		for (const entry of data.coexisting) {
-			lines.push(`- ${mdInline(entry.file)} (${entry.packages.map(mdInline).join(", ")})`);
-		}
-	}
-	return lines.join("\n").trimEnd();
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ChangesetDepsRegenAsMarkdown = ChangesetDepsRegenResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "ChangesetDepsRegenAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
 
 /** Arguments for the {@link changesetDepsRegen} handler. */
 export interface ChangesetDepsRegenArgs {
@@ -196,7 +136,7 @@ const REMEDIATION = {
 /** The `changeset_deps_regen` tool value. Mutating: not read-only, not idempotent. */
 export const changesetDepsRegenTool = Tool.make("changeset_deps_regen", {
 	description:
-		"Regenerate pure-dependency changesets: delete stale single-package Dependencies-only changesets and write fresh single-package, patch-bump changesets from the cumulative dependency diff (catalog:/workspace: resolved; devDependencies dropped). Mixed changesets (Dependencies plus other content) are left untouched, and the result's coexisting list accounts for untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Set dryRun=true to preview the plan without touching the filesystem. NOTE: without dryRun this tool MUTATES .changeset/*.md (git-reversible). Prefer this over shelling out to savvy changeset deps regen.",
+		"Regenerate pure-dependency changesets: delete stale single-package Dependencies-only changesets and write fresh single-package, patch-bump changesets from the cumulative dependency diff (catalog:/workspace: resolved; devDependencies dropped). Mixed changesets (Dependencies plus other content) are left untouched, and the result's coexisting list accounts for untouched prose-only changesets that reference an in-scope package (informational — no need to re-list .changeset/). Set dryRun=true to preview the plan without touching the filesystem. NOTE: without dryRun this tool MUTATES .changeset/*.md (git-reversible). Prefer this over shelling out to savvy changeset deps regen. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: ChangesetDepsRegenParams,
 	success: ChangesetDepsRegenResult,
 	failure: McpToolError,
@@ -206,8 +146,7 @@ export const changesetDepsRegenTool = Tool.make("changeset_deps_regen", {
 	.annotate(Tool.Readonly, false)
 	.annotate(Tool.Destructive, true)
 	.annotate(Tool.Idempotent, false)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ChangesetDepsRegenAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /** Wire handler: {@link changesetDepsRegen} with its error channel mapped onto {@link McpToolError}. */
 export const handleChangesetDepsRegen = (fallbackCwd: string, params: ChangesetDepsRegenParams) =>

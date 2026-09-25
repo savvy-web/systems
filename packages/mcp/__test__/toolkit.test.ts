@@ -10,7 +10,6 @@ import { Context } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { describe, expect, it } from "vitest";
 
-import { SilkMarkdown } from "../src/markdown.js";
 import { SilkToolkit } from "../src/toolkit.js";
 
 const TOOL_NAMES = [
@@ -62,11 +61,10 @@ describe("SilkToolkit", () => {
 		expect(mutating.toSorted()).toEqual(["biome_check", "changeset_deps_regen", "repos_manage"]);
 	});
 
-	it("gives every tool a title, a description, and a markdown renderer", () => {
+	it("gives every tool a title and a description", () => {
 		for (const tool of tools) {
 			expect(Context.getOrUndefined(tool.annotations, Tool.Title), `${tool.name} title`).toBeTypeOf("string");
 			expect(tool.description?.length ?? 0, `${tool.name} description`).toBeGreaterThan(0);
-			expect(Context.getOrUndefined(tool.annotations, SilkMarkdown), `${tool.name} markdown`).toBeTypeOf("function");
 		}
 	});
 

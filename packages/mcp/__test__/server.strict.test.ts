@@ -1,17 +1,18 @@
 /**
- * `Tool.Strict` through the registration port: a strict tool decodes with
- * `onExcessProperty: "error"` and serves `additionalProperties: false`; a
- * non-strict sibling keeps accepting extras (Claude Code sends `_meta`-style
- * ones on some calls). Registered through the same `registerSilkToolkit` the
- * served toolkit takes, over the same `McpServer.layerStdio`, so a drift in
- * the port's strict branch fails here and nowhere else.
+ * `Tool.Strict` through the registration the served toolkit takes:
+ * `McpToolkit.layer(..., { strict: "annotated" })` over `McpStdio.layer`. A
+ * tool annotated strict decodes with `onExcessProperty: "error"` and serves
+ * `additionalProperties: false`; an unannotated sibling keeps accepting
+ * extras (Claude Code sends `_meta`-style ones on some calls). Every savvy-mcp
+ * tool is unannotated, so this pins that the served tools stay lenient and
+ * that opting one in still works.
  */
 
 import { assert, describe, it } from "@effect/vitest";
+import { McpStdio, McpToolkit } from "@effected/mcp";
 import { Effect, Layer, Schema } from "effect";
-import { McpProtocol, McpServer, Tool, Toolkit } from "effect/unstable/ai";
+import { Tool, Toolkit } from "effect/unstable/ai";
 
-import { registerSilkToolkit } from "../src/server.js";
 import type { CallToolResult, JsonRpcMessage } from "./utils/harness.js";
 import { makeHarness } from "./utils/harness.js";
 
@@ -32,22 +33,14 @@ const lenientTool = Tool.make("lenient_echo", {
 
 const FixtureToolkit = Toolkit.make(strictTool, lenientTool);
 
-const FixtureLayer = Layer.effectDiscard(registerSilkToolkit(FixtureToolkit)).pipe(
-	Layer.provide(McpServer.McpServer.layer),
+const FixtureLayer = McpToolkit.layer(FixtureToolkit, { strict: "annotated" }).pipe(
 	Layer.provide(
 		FixtureToolkit.toLayer({
 			strict_echo: () => Effect.succeed({ ok: true }),
 			lenient_echo: () => Effect.succeed({ ok: true }),
 		}),
 	),
-	Layer.provide(
-		McpServer.layerStdio({
-			name: "strict-fixture",
-			version: "0.0.0",
-			protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25],
-		}),
-	),
-	Layer.orDie,
+	Layer.provide(McpStdio.layer({ name: "strict-fixture", version: "0.0.0" })),
 );
 
 const asResult = (value: CallToolResult | JsonRpcMessage): CallToolResult => {
@@ -55,8 +48,8 @@ const asResult = (value: CallToolResult | JsonRpcMessage): CallToolResult => {
 	return value;
 };
 
-describe("Tool.Strict through registerSilkToolkit", () => {
-	it.effect("serves additionalProperties: false for the strict tool only", () =>
+describe('Tool.Strict through McpToolkit (strict: "annotated")', () => {
+	it.effect("serves additionalProperties: false for the annotated tool only", () =>
 		Effect.gen(function* () {
 			const harness = yield* makeHarness(process.cwd(), FixtureLayer);
 			yield* harness.initialize;
@@ -70,7 +63,7 @@ describe("Tool.Strict through registerSilkToolkit", () => {
 		}).pipe(Effect.scoped),
 	);
 
-	it.effect("rejects an excess property on the strict tool and accepts it on the lenient one", () =>
+	it.effect("rejects an excess property on the annotated tool and accepts it on the unannotated one", () =>
 		Effect.gen(function* () {
 			const harness = yield* makeHarness(process.cwd(), FixtureLayer);
 			yield* harness.initialize;

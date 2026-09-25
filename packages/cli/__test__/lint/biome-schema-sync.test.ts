@@ -2,9 +2,11 @@ import { describe, expect, it } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
 import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { BiomeSchemaSync } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect, FileSystem, Layer, Logger, Path } from "effect";
 import { BIOME_VERSION } from "../../src/commands/lint/biome-version.js";
 import { syncBiomeSchemas } from "../../src/commands/lint/init.js";
+import { Capture } from "../utils/capture.js";
 
 const ROOT = "/repo";
 
@@ -33,9 +35,9 @@ const manifest = (name: string) => JSON.stringify({ name, version: "0.0.0" });
 function runOnVolume<A, E>(
 	seed: Record<string, string>,
 	cwd: string,
-	body: Effect.Effect<A, E, BiomeSchemaSync | WorkspaceDiscovery | FileSystem.FileSystem>,
+	body: Effect.Effect<A, E, BiomeSchemaSync | WorkspaceDiscovery | FileSystem.FileSystem | Stdio.Stdio>,
 ): Effect.Effect<A, E> {
-	const volume = Layer.provideMerge(MemoryFileSystem.layerWith(seed), Path.layer);
+	const volume = Layer.mergeAll(Layer.provideMerge(MemoryFileSystem.layerWith(seed), Path.layer), Capture.piped);
 	const workspace = WorkspaceDiscovery.layer({ cwd }).pipe(Layer.provide(WorkspaceRoot.layer));
 	const services = Layer.mergeAll(BiomeSchemaSync.layer, workspace);
 	return Effect.provide(body, Layer.provideMerge(services, volume).pipe(Layer.provide(Logger.layer([]))));

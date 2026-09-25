@@ -1,9 +1,9 @@
 import { beforeEach, expect, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer } from "effect";
 
-import { ChangesetDepsRegenAsMarkdown, changesetDepsRegen } from "../../src/tools/changeset-deps-regen.js";
+import { changesetDepsRegen } from "../../src/tools/changeset-deps-regen.js";
 
 const ROOT = "/repo";
 
@@ -98,19 +98,6 @@ layer(TestLayer)("changesetDepsRegen handler", (it) => {
 			expect(calls.planOptions[0]).toMatchObject({ packages: ["@scope/foo", "@scope/bar"], exclude: ["@scope/baz"] });
 			expect(calls.planOptions[1]).not.toHaveProperty("packages");
 			expect(calls.planOptions[1]).not.toHaveProperty("exclude");
-		}),
-	);
-
-	it.effect("renders markdown for the plan and forbids encoding back", () =>
-		Effect.gen(function* () {
-			const data = yield* changesetDepsRegen({ dryRun: true }, ROOT);
-			const md = Schema.decodeUnknownSync(ChangesetDepsRegenAsMarkdown)(data);
-			expect(md).toContain("brave-dogs-fly.md");
-			expect(md).toContain("stale-cats-sing.md");
-			// Coexisting prose changesets are surfaced informationally (#279).
-			expect(md).toContain("sweet-cooks-guess.md");
-			expect(md).toContain("Coexisting");
-			expect(() => Schema.encodeUnknownSync(ChangesetDepsRegenAsMarkdown)("anything")).toThrow();
 		}),
 	);
 });

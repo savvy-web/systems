@@ -3,11 +3,7 @@ import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Schema } from "effect";
 
-import {
-	ChangesetDepsDetectAsMarkdown,
-	ChangesetDepsDetectResult,
-	changesetDepsDetect,
-} from "../../src/tools/changeset-deps-detect.js";
+import { ChangesetDepsDetectResult, changesetDepsDetect } from "../../src/tools/changeset-deps-detect.js";
 
 const ROOT = "/repo";
 
@@ -86,22 +82,4 @@ layer(TestLayer)("changesetDepsDetect handler", (it) => {
 			expect(() => Schema.decodeUnknownSync(ChangesetDepsDetectResult)(data)).not.toThrow();
 		}),
 	);
-
-	it.effect("renders the structured result as markdown including the devDependency row", () =>
-		Effect.gen(function* () {
-			const data = yield* changesetDepsDetect({}, ROOT);
-			const md = Schema.decodeUnknownSync(ChangesetDepsDetectAsMarkdown)(data);
-			expect(md).toContain("@scope/foo");
-			expect(md).toContain("packages/foo");
-			expect(md).toContain("effect");
-			expect(md).toContain("typescript");
-			expect(md).toContain("prettier");
-			expect(md).toContain("sweet-cooks-guess.md");
-			expect(md).toContain("Coexisting prose changesets");
-		}),
-	);
-
-	it("forbids encoding markdown back", () => {
-		expect(() => Schema.encodeUnknownSync(ChangesetDepsDetectAsMarkdown)("anything")).toThrow();
-	});
 });

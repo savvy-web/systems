@@ -4,7 +4,6 @@ import { Turbo } from "@savvy-web/silk-effects";
 import { Effect, Layer, Result, Schema } from "effect";
 
 import {
-	TurboInspectAsMarkdown,
 	TurboInspectParams,
 	TurboInspectResult,
 	turboInspect,
@@ -59,13 +58,11 @@ const TurboInspectorTest = Layer.succeed(
 const TestLayer = Layer.mergeAll(TurboInspectorTest, WorkspaceRootTest);
 
 layer(TestLayer)("turboInspect handler", (it) => {
-	it.effect("projects the cache mode and renders markdown", () =>
+	it.effect("projects the cache mode", () =>
 		Effect.gen(function* () {
 			const data = yield* turboInspect({ mode: "cache", task: "build:dev" }, "/repo");
 			expect(data.mode).toBe("cache");
-			const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
-			expect(md).toContain("turbo cache");
-			expect(md).toContain("Misses");
+			expect(data.mode === "cache" ? data.result.misses : undefined).toBe(1);
 		}),
 	);
 
@@ -73,9 +70,7 @@ layer(TestLayer)("turboInspect handler", (it) => {
 		Effect.gen(function* () {
 			const data = yield* turboInspect({ mode: "graph" }, "/repo");
 			expect(data.mode).toBe("graph");
-			const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
-			expect(md).toContain("turbo task graph");
-			expect(md).toContain("a#build:dev");
+			expect(data.mode === "graph" ? data.result.criticalPath : []).toEqual(["a#build:dev"]);
 		}),
 	);
 
@@ -83,15 +78,9 @@ layer(TestLayer)("turboInspect handler", (it) => {
 		Effect.gen(function* () {
 			const data = yield* turboInspect({ mode: "affected", base: "main" }, "/repo");
 			expect(data.mode).toBe("affected");
-			const md = Schema.decodeUnknownSync(TurboInspectAsMarkdown)(data);
-			expect(md).toContain("turbo affected");
-			expect(md).toContain("- a");
+			expect(data.mode === "affected" ? data.result.packages : []).toEqual(["a"]);
 		}),
 	);
-
-	it("forbids encoding markdown back to the structured result", () => {
-		expect(() => Schema.encodeUnknownSync(TurboInspectAsMarkdown)("anything")).toThrow();
-	});
 });
 
 describe("turbo_inspect served schemas", () => {

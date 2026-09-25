@@ -20,9 +20,11 @@
  */
 
 import { resolve } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 const { ConfigInspector } = Changesets;
 
@@ -31,7 +33,7 @@ const dirArg = Argument.Directory("dir").pipe(Argument.withDefault("."));
 
 /**
  * Run validation. Logs a one-line OK on success; logs the error and sets
- * `process.exitCode = 1` on failure.
+ * exit code 1 through `CliExit.set` on failure.
  *
  * @internal
  */
@@ -50,12 +52,12 @@ export function runConfigValidate(dir: string) {
 			const { config } = result;
 			const pkgCount = config.packages.length;
 			const note = config.legacyVersionFilesUsed ? " (warning: legacy versionFiles in use)" : "";
-			yield* Effect.log(`OK  ${config.configPath} — ${pkgCount} package${pkgCount === 1 ? "" : "s"} declared${note}`);
+			yield* Output.ok(`${config.configPath} — ${pkgCount} package${pkgCount === 1 ? "" : "s"} declared${note}`);
 			return;
 		}
 
-		yield* Effect.log(`FAIL  ${result.field}: ${result.reason}`);
-		process.exitCode = 1;
+		yield* Output.fail(`${result.field}: ${result.reason}`);
+		yield* CliExit.set(1);
 	});
 }
 

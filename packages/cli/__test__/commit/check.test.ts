@@ -9,6 +9,7 @@ import { ChangesetConfigReader, SilkPublishability } from "@savvy-web/silk-effec
 import { Effect, Layer, Logger } from "effect";
 import { runCommitCheck } from "../../src/commands/commit/check.js";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
+import { Capture } from "../utils/capture.js";
 
 /** Marker format used by silk-effects ManagedSection for "savvy-commit" tool. */
 const BEGIN_MARKER = "# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---";
@@ -78,6 +79,17 @@ describe("runCommitCheck Effect program", () => {
 		process.chdir(originalCwd);
 		rmSync(testDir, { recursive: true, force: true });
 	});
+
+	it.effect("prints the report and its verdict on stdout", () =>
+		Effect.gen(function* () {
+			const out: string[] = [];
+			yield* Effect.provide(runCommitCheck(), TestLayer).pipe(Effect.provide(Capture.layer(out)));
+			expect(out[0]).toBe("commitlint configuration");
+			expect(out).toContain("✗ No commitlint config file found");
+			expect(out).toContain("• No DCO file (signoff not required)");
+			expect(out.at(-1)).toBe("✗ Commitlint needs configuration. Run: savvy init");
+		}),
+	);
 
 	it.effect("runs without errors when no config exists", () =>
 		Effect.gen(function* () {

@@ -1,13 +1,13 @@
 /**
  * In-process round trips through the real `ServerLayer` over `Stdio.layerTest`
  * (no child process): the initialize handshake, the served tool list, and
- * the dual channel a successful call produces — markdown in
+ * the dual channel a successful call produces — the JSON of the result in
  * `content[0].text`, the typed object in `structuredContent` — plus the two
  * failure renderings (a declared failure as `isError` text carrying its
  * remediation, and a parameter decode failure as a JSON-RPC error).
  */
 
-import { cpSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { assert, describe, it } from "@effect/vitest";
 import { Lint } from "@savvy-web/silk-effects";
@@ -120,25 +120,33 @@ describe("ServerLayer over Stdio.layerTest", () => {
 		}).pipe(Effect.scoped),
 	);
 
-	it.effect("workspace_info returns markdown in content[0].text AND the typed object in structuredContent", () =>
+	// Claude Code forwards only structuredContent to the model (systems#688), so
+	// the text channel is the framework's own rendering: the same object as JSON.
+	it.effect("workspace_info returns the typed object in structuredContent and the same object as JSON text", () =>
 		Effect.gen(function* () {
 			const { dir, harness } = yield* open();
 			const result = asResult(yield* harness.callTool("workspace_info", {}));
 			assert.notOk(result.isError);
 			assert.strictEqual(result.content.length, 1);
 			assert.strictEqual(result.content[0]?.type, "text");
-			const text = result.content[0]?.text ?? "";
-			assert.ok(text.startsWith(`# Workspace: ${dir}`), `markdown transcript, got: ${text.slice(0, 80)}`);
-			assert.ok(text.includes("| @scope/foo |"));
-			// The text channel is the markdown projection, NOT the JSON the framework would render.
-			assert.notOk(text.startsWith("{"));
 			const structured = result.structuredContent as {
 				readonly root: string;
 				readonly workspaces: ReadonlyArray<unknown>;
 			};
 			assert.strictEqual(structured.root, dir);
 			assert.ok(structured.workspaces.length >= 1);
-			assert.notOk("markdown" in (structured as object));
+			assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), structured);
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("a union-rooted tool renders the same way: repos_inspect text is its structuredContent as JSON", () =>
+		Effect.gen(function* () {
+			const { dir, harness } = yield* open();
+			mkdirSync(join(dir, ".repos"), { recursive: true });
+			writeFileSync(join(dir, ".repos", "config.json"), JSON.stringify({ repos: {} }));
+			const result = asResult(yield* harness.callTool("repos_inspect", { mode: "status" }));
+			assert.notOk(result.isError, JSON.stringify(result));
+			assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), result.structuredContent);
 		}).pipe(Effect.scoped),
 	);
 
@@ -228,7 +236,7 @@ describe("ServerLayer over the stateless 2026-07-28 revision", () => {
 	);
 });
 
-// One envelope, every revision: a success (markdown + structuredContent) and a
+// One envelope, every revision: a success (structuredContent + its JSON) and a
 // declared failure (isError text, no structuredContent) render identically
 // whether the client discovered on 2026-07-28 or initialized on a stateful
 // revision. Invalid params is the one exception, and it is the runtime's, not
@@ -257,14 +265,14 @@ describe("tool envelope across protocol revisions", () => {
 	];
 
 	for (const revision of revisions) {
-		it.effect(`${revision.label}: workspace_info success carries markdown and structuredContent`, () =>
+		it.effect(`${revision.label}: workspace_info success carries structuredContent and its JSON text`, () =>
 			Effect.gen(function* () {
 				const dir = yield* fixtureWorkspace();
 				const harness = yield* makeHarness(dir);
 				yield* revision.connect(harness);
 				const result = asResult(yield* harness.callTool("workspace_info", {}, revision.stateless));
 				assert.notOk(result.isError, JSON.stringify(result));
-				assert.ok((result.content[0]?.text ?? "").startsWith("#"), "markdown transcript");
+				assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), result.structuredContent);
 				assert.strictEqual((result.structuredContent as { readonly root: string }).root, dir);
 			}).pipe(Effect.scoped),
 		);
@@ -329,7 +337,7 @@ describe("ServerLayer struct-rooted results round-trip under structuredContent v
 			assert.strictEqual(structured.ok, true);
 			assert.strictEqual(structured.errorCount, 0);
 			assert.deepStrictEqual(structured.messages, []);
-			assert.ok((result.content[0]?.text ?? "").includes("No changeset issues found"));
+			assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), result.structuredContent);
 		}).pipe(Effect.scoped),
 	);
 
@@ -347,7 +355,7 @@ describe("ServerLayer struct-rooted results round-trip under structuredContent v
 			assert.strictEqual(structured.ok, false);
 			assert.ok(structured.errorCount > 0);
 			assert.ok(typeof structured.messages[0]?.rule === "string");
-			assert.ok((result.content[0]?.text ?? "").includes("issue(s)"));
+			assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), result.structuredContent);
 		}).pipe(Effect.scoped),
 	);
 
@@ -369,7 +377,7 @@ describe("ServerLayer struct-rooted results round-trip under structuredContent v
 				assert.deepStrictEqual(structured.diagnostics, []);
 				assert.strictEqual(structured.wrote, false);
 				assert.ok(structured.guidance.length > 0);
-				assert.ok((result.content[0]?.text ?? "").startsWith("# biome — clean"));
+				assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), result.structuredContent);
 			}).pipe(Effect.scoped),
 	);
 });

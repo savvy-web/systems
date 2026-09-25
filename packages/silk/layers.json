@@ -13,5 +13,11 @@
 		"@savvy-web/github-action-builder",
 		"@savvy-web/pnpm-plugin-silk"
 	],
-	"harness": ["@e2e/*"]
+	"unconstrained": ["@e2e/*", "savvy-web-systems"],
+	"requiredEdges": [
+		"@savvy-web/silk -> @savvy-web/cli",
+		"@savvy-web/silk -> @savvy-web/mcp",
+		"@savvy-web/cli -> @savvy-web/silk-effects",
+		"@savvy-web/silk-effects -> @savvy-web/silk-core"
+	]
 }

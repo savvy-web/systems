@@ -23,9 +23,12 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /* v8 ignore start -- CLI option definitions */
 const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to sync"), Flag.withDefault("."));
@@ -41,19 +44,19 @@ export const runReposSync = (cwd: string) =>
 		const manager = yield* Repos.ReposManager;
 		const report = yield* manager.sync(cwd);
 		for (const name of report.clearedLocks) {
-			yield* Effect.log(`${name}: cleared stale lock`);
+			yield* Output.ok(`${name}: cleared stale lock`);
 		}
 		for (const name of report.initialized) {
-			yield* Effect.log(`${name}: initialized`);
+			yield* Output.ok(`${name}: initialized`);
 		}
 		for (const name of report.sparseApplied) {
-			yield* Effect.log(`${name}: sparse-checkout applied`);
+			yield* Output.ok(`${name}: sparse-checkout applied`);
 		}
 		for (const name of report.urlSynced) {
-			yield* Effect.log(`${name}: url reconciled`);
+			yield* Output.ok(`${name}: url reconciled`);
 		}
 		for (const name of report.registered) {
-			yield* Effect.log(`${name}: registered`);
+			yield* Output.ok(`${name}: registered`);
 		}
 		// `boundaryMarked` is deliberately absent from both the per-entry log
 		// above and this idle check: `sync` re-asserts the boundary marker on
@@ -68,23 +71,20 @@ export const runReposSync = (cwd: string) =>
 			report.urlSynced.length === 0 &&
 			report.registered.length === 0
 		) {
-			yield* Effect.log("all vendored repos up to date");
+			yield* Output.ok("all vendored repos up to date");
 		}
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("ReposLockdownError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 

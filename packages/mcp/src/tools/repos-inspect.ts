@@ -1,8 +1,7 @@
 /**
  * The `repos_inspect` MCP tool: a discriminated-union result keyed by `mode`
  * (status | config), each variant embedding the corresponding resolved-output
- * schema from silk-effects' Repos namespace, plus a one-way markdown
- * transform. Read-only.
+ * schema from silk-effects' Repos namespace. Read-only.
  *
  * @packageDocumentation
  */
@@ -11,11 +10,9 @@ import { Gitmodules } from "@effected/git";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, FileSystem, Option, Path, Result, Schema, SchemaGetter } from "effect";
+import { Effect, FileSystem, Option, Path, Result, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
-import { mdInline } from "./md-inline.js";
 
 /** One `.gitmodules` submodule section, decoded into typed fields. */
 const GitmodulesEntrySchema = Schema.Struct({
@@ -68,102 +65,6 @@ export const ReposInspectResult = Schema.Union([
 });
 
 export type ReposInspectResultType = Schema.Schema.Type<typeof ReposInspectResult>;
-
-/** Render the structured result as a markdown transcript. */
-const renderMarkdown = (data: ReposInspectResultType): string => {
-	switch (data.mode) {
-		case "status": {
-			const r = data.result;
-			const lines = [`# repos status`, ``, `clean: ${r.clean}`, ``, `## Repos`];
-			for (const entry of r.repos) {
-				lines.push(
-					`### ${mdInline(entry.name)}`,
-					`- ref: ${mdInline(entry.ref)}`,
-					`- purpose: ${mdInline(entry.purpose)}`,
-					`- present: ${entry.present}`,
-					`- stagedCommit: ${entry.stagedCommit ? mdInline(entry.stagedCommit) : "(none)"}`,
-					`- committedCommit: ${entry.committedCommit ? mdInline(entry.committedCommit) : "(none)"}`,
-					`- checkedOutCommit: ${entry.checkedOutCommit ? mdInline(entry.checkedOutCommit) : "(none)"}`,
-					`- dirty: ${entry.dirty}`,
-				);
-				if (entry.staleNoteIds.length > 0) {
-					lines.push(`- staleNoteIds: ${entry.staleNoteIds.map(mdInline).join(", ")}`);
-				}
-			}
-			if (r.repos.length === 0) lines.push("(none)");
-			return lines.join("\n");
-		}
-		case "config": {
-			const r = data.result;
-			const lines = [`# repos config`, ``, `## Repos`];
-			for (const [name, entry] of Object.entries(r.repos)) {
-				lines.push(
-					`### ${mdInline(name)}`,
-					`- url: ${mdInline(entry.url)}`,
-					`- ref: ${mdInline(entry.ref)}`,
-					`- purpose: ${mdInline(entry.purpose)}`,
-				);
-				if (entry.sparse && entry.sparse.length > 0) {
-					lines.push(`- sparse: ${entry.sparse.map(mdInline).join(", ")}`);
-				}
-				if (entry.orientation) {
-					const o = entry.orientation;
-					if (o.layout) lines.push(`- layout: ${mdInline(o.layout)}`);
-					if (o.startHere) lines.push(`- startHere: ${mdInline(o.startHere)}`);
-					if (o.keyPaths) {
-						lines.push(`- keyPaths:`);
-						for (const [key, value] of Object.entries(o.keyPaths)) {
-							lines.push(`  - ${mdInline(key)}: ${mdInline(value)}`);
-						}
-					}
-				}
-				if (entry.notes && entry.notes.length > 0) {
-					lines.push(`- notes:`);
-					for (const note of entry.notes) {
-						lines.push(
-							`  - ${mdInline(note.id)} (${mdInline(note.date)}, ref ${mdInline(note.ref)}): ${mdInline(note.note)}`,
-						);
-					}
-				}
-			}
-			if (Object.keys(r.repos).length === 0) lines.push("(none)");
-			return lines.join("\n");
-		}
-		case "drift": {
-			const r = data.report;
-			const lines = [`# repos drift`, ``, `clean: ${r.clean}`, ``, `| name | kind | detail |`, `| --- | --- | --- |`];
-			for (const d of r.drifts) {
-				lines.push(`| ${mdInline(d.name)} | ${mdInline(d.kind)} | ${mdInline(d.detail)} |`);
-			}
-			if (r.drifts.length === 0) lines.push(``, `(none)`);
-			return lines.join("\n");
-		}
-		case "gitmodules": {
-			const lines = [`# repos gitmodules`, ``];
-			if (data.parseError) {
-				lines.push(`parse error: ${mdInline(data.parseError)}`, ``);
-			}
-			lines.push(`| name | path | url | branch | shallow |`, `| --- | --- | --- | --- | --- |`);
-			for (const entry of data.entries) {
-				lines.push(
-					`| ${mdInline(entry.name)} | ${mdInline(entry.path)} | ${mdInline(entry.url)} | ${
-						entry.branch === undefined ? "(none)" : mdInline(entry.branch)
-					} | ${entry.shallow === undefined ? "(unset)" : entry.shallow} |`,
-				);
-			}
-			if (data.entries.length === 0) lines.push(``, `(none)`);
-			return lines.join("\n");
-		}
-	}
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const ReposInspectAsMarkdown = ReposInspectResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "ReposInspectAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
 
 /** Arguments for the {@link reposInspect} handler. */
 export interface ReposInspectArgs {
@@ -238,8 +139,8 @@ export const reposInspect = (
 				// is the kit's own `GitmodulesEntry[]`, structurally close enough to
 				// `GitmodulesEntrySchema` that a bare `as` would keep compiling even
 				// if `@effected/git` renamed or added a field, surfacing only as
-				// silently wrong markdown (a missing field reading back
-				// `undefined` → "(none)") instead of a decode error naming the
+				// silently wrong output (a missing field reading back
+				// `undefined`) instead of a decode error naming the
 				// mismatch. `parseError` already gives decode failures a home.
 				const decoded = Schema.decodeUnknownResult(Schema.Array(GitmodulesEntrySchema))(parsed.success.entries);
 				if (Result.isFailure(decoded)) {
@@ -277,7 +178,7 @@ const REMEDIATION = {
 /** The `repos_inspect` tool value. */
 export const reposInspectTool = Tool.make("repos_inspect", {
 	description:
-		"Read-only: drift report or parsed .repos/config.json manifest with orientation and notes. mode=status is the per-repo drift summary from ReposManager (present/dirty/commit); mode=config is the parsed manifest; mode=drift reconciles all four submodule authorities (manifest, .gitmodules, worktree, git submodule status) and reports every disagreement; mode=gitmodules decodes the raw .gitmodules file's submodule sections.",
+		"Read-only: drift report or parsed .repos/config.json manifest with orientation and notes. mode=status is the per-repo drift summary from ReposManager (present/dirty/commit); mode=config is the parsed manifest; mode=drift reconciles all four submodule authorities (manifest, .gitmodules, worktree, git submodule status) and reports every disagreement; mode=gitmodules decodes the raw .gitmodules file's submodule sections. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: ReposInspectParams,
 	success: ReposInspectResult,
 	failure: McpToolError,
@@ -294,8 +195,7 @@ export const reposInspectTool = Tool.make("repos_inspect", {
 	.annotate(Tool.Readonly, true)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, true)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(ReposInspectAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 /** Wire handler: {@link reposInspect} with its error channel mapped onto {@link McpToolError}. */
 export const handleReposInspect = (fallbackCwd: string, params: ReposInspectParams) =>

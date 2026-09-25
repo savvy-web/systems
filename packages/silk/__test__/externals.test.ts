@@ -199,9 +199,12 @@ describe("carrier bins", () => {
 			expect(source.startsWith("#!/usr/bin/env node")).toBe(true);
 			const specifiers = [...source.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)].map((m) => m[1]);
 			expect(specifiers).toEqual([specifier]);
-			// The shim must CALL main, not merely import it. Anchored to a whole statement line so
-			// the doc comment ("call the same `main()`") cannot satisfy it if the call is deleted.
-			expect(source).toMatch(/^(?:await )?main\(\);$/m);
+			// The shim must CALL main, not merely import it. Anchored to the start of a statement line
+			// so the doc comment ("call the same `main()`") cannot satisfy it if the call is deleted.
+			// ...and name silk as the distribution it was installed through, with a real version.
+			expect(source).toMatch(
+				/^(?:await )?main\(\{ distribution: \{\s*name: "@savvy-web\/silk",\s*version: "\d+\.\d+\.\d+"\s*\} \}\);$/m,
+			);
 		});
 	}
 });

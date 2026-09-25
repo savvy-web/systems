@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 
 import { runLint } from "../../src/commands/changeset/commands/lint.js";
+import { TestExit } from "../utils/exit.js";
 
 // `it.live`, NOT `it.effect`, throughout this suite. `runLint` emits through
 // Effect's `Console.log`, and `it.effect` installs `TestConsole`, which captures
@@ -14,17 +15,14 @@ import { runLint } from "../../src/commands/changeset/commands/lint.js";
 // observe the real framing it exists to pin.
 describe("runLint", () => {
 	let tempDir: string;
-	let savedExitCode: typeof process.exitCode;
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), "cli-lint-"));
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
+		TestExit.reset();
 	});
 
 	afterEach(() => {
 		rmSync(tempDir, { recursive: true });
-		process.exitCode = savedExitCode;
 	});
 
 	/**
@@ -87,8 +85,8 @@ describe("runLint", () => {
 			const logs = yield* collectLogs(tempDir, false);
 
 			expect(logs).toContain("No lint errors found.");
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("does not log summary for valid dir with quiet=true", () =>
@@ -101,17 +99,17 @@ describe("runLint", () => {
 			const logs = yield* collectLogs(tempDir, true);
 
 			expect(logs).toEqual([]);
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.live("sets process.exitCode=1 and logs each message for invalid files", () =>
+	it.live("sets the exit code=1 and logs each message for invalid files", () =>
 		Effect.gen(function* () {
 			writeFileSync(join(tempDir, "bad.md"), '---\n"@savvy-web/changesets": minor\n---\n\n# Bad Title\n');
 
 			const logs = yield* collectLogs(tempDir, false);
 
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 			expect(logs.length).toBeGreaterThan(0);
 			for (const log of logs) {
 				// Each error line follows the file:line:col rule message format
@@ -119,7 +117,7 @@ describe("runLint", () => {
 			}
 			// Should NOT contain the success message
 			expect(logs).not.toContain("No lint errors found.");
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("emits violation output with no logger framing on stdout", () =>
@@ -141,7 +139,7 @@ describe("runLint", () => {
 			for (const line of out.split("\n").filter((l) => l.length > 0)) {
 				expect(line).toMatch(/^.+:\d+:\d+ \S+ .+$/);
 			}
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("logs 'No lint errors found.' for empty dir with quiet=false", () =>
@@ -149,8 +147,8 @@ describe("runLint", () => {
 			const logs = yield* collectLogs(tempDir, false);
 
 			expect(logs).toContain("No lint errors found.");
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("produces no output for empty dir with quiet=true", () =>
@@ -158,7 +156,7 @@ describe("runLint", () => {
 			const logs = yield* collectLogs(tempDir, true);
 
 			expect(logs).toEqual([]);
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

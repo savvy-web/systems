@@ -12,7 +12,7 @@
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
-
+import { Output } from "../../../internal/output.js";
 import { requireValidConfig } from "../utils/config-gate.js";
 
 /* v8 ignore start -- CLI option definitions; handler tested via runVersion */
@@ -38,18 +38,18 @@ export function runVersion(dryRun: boolean) {
 		const result = yield* planner.apply(cwd, { dryRun });
 
 		if (result.releases.length === 0) {
-			yield* Effect.log("No pending changesets.");
+			yield* Output.ok("No pending changesets");
 			return;
 		}
 		const verb = dryRun ? "Would release" : "Released";
 		for (const r of result.releases) {
-			yield* Effect.log(`${verb} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`);
+			yield* Output.ok(`${verb} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`);
 		}
 		if (!dryRun) {
-			yield* Effect.log(`Touched ${result.touchedFiles.length} file(s)`);
+			yield* Output.detail(`Touched ${result.touchedFiles.length} file(s)`);
 		}
 		for (const u of result.versionFileUpdates) {
-			yield* Effect.log(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`);
+			yield* Output.detail(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`);
 		}
 	});
 }

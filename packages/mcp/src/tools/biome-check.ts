@@ -10,20 +10,12 @@
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
+import type { Remediation } from "@effected/engine";
+import { ToolFailure } from "@effected/mcp";
 import { Lint } from "@savvy-web/silk-effects";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
-import type { Remediation } from "../errors.js";
-import {
-	BiomeFailed,
-	BiomeUnavailable,
-	InvalidArgument,
-	McpToolError,
-	composeRemediatedMessage,
-	invalidArgument,
-	truncateEchoed,
-} from "../errors.js";
-import { SilkMarkdown } from "../markdown.js";
+import { BiomeFailed, BiomeUnavailable, InvalidArgument, McpToolError, invalidArgument } from "../errors.js";
 
 /** Normalized diagnostic severity. */
 export const BiomeSeverity = Schema.Literals(["error", "warning", "info"]);
@@ -156,32 +148,6 @@ export const buildBiomeResult = (params: {
 	};
 };
 
-/** Render the structured result as markdown. */
-const renderMarkdown = (data: BiomeCheckResultType): string => {
-	if (data.diagnostics.length === 0) {
-		const wroteNote = data.wrote ? " A --write pass ran; check `git diff` for what changed." : "";
-		return `# biome — clean\n\n✅ No remaining diagnostics.${wroteNote}`;
-	}
-	const upgraded = data.summary.upgradedWarnings ?? 0;
-	const upgradedNote = upgraded > 0 ? ` (${upgraded} strict-upgraded from project warnings)` : "";
-	const lines = [`# biome — ${data.summary.errors} error(s)${upgradedNote}, ${data.summary.warnings} warning(s)`, ``];
-	if (data.wrote) lines.push(`A --write pass ran; the diagnostics below remain unfixed.`, ``);
-	for (const d of data.diagnostics) {
-		const severity = d.originalSeverity ? `${d.severity} (project ${d.originalSeverity}, strict)` : d.severity;
-		lines.push(`- \`${d.file}:${d.line}\` **${severity}** ${d.rule} — ${d.message}`);
-	}
-	lines.push(``, `---`, data.guidance);
-	return lines.join("\n");
-};
-
-/** One-way transform: result to markdown. Encoding back is forbidden. */
-export const BiomeCheckAsMarkdown = BiomeCheckResult.pipe(
-	Schema.decodeTo(Schema.String, {
-		decode: SchemaGetter.transform(renderMarkdown),
-		encode: SchemaGetter.forbidden(() => "BiomeCheckAsMarkdown is one-way: markdown cannot be parsed back."),
-	}),
-);
-
 /**
  * Canonicalize a path, falling back to lexical resolution when it does not exist
  * (a non-existent target cannot be a symlink pointing out of tree).
@@ -277,7 +243,7 @@ const BIOME_FAILED_REMEDIATION: Remediation = {
 const biomeFailed = (raw: string, exitCode?: number): BiomeFailed =>
 	new BiomeFailed({
 		...(exitCode === undefined ? {} : { exitCode }),
-		message: composeRemediatedMessage(raw, BIOME_FAILED_REMEDIATION),
+		message: ToolFailure.message(raw, BIOME_FAILED_REMEDIATION),
 		remediation: BIOME_FAILED_REMEDIATION,
 	});
 
@@ -317,7 +283,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	if (containmentRoot === null) {
 		throw invalidArgument(
 			"cwd",
-			`cwd escapes the workspace root: ${truncateEchoed(args.cwd ?? fallbackCwd)}.`,
+			`cwd escapes the workspace root: ${ToolFailure.truncate(args.cwd ?? fallbackCwd)}.`,
 			CONTAINMENT_REMEDIATION,
 		);
 	}
@@ -326,7 +292,11 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const paths = rawPaths.map((p) => {
 		const lexical = resolve(cwd, p);
 		if (!within(canonicalize(lexical))) {
-			throw invalidArgument("paths", `path escapes the workspace root: ${truncateEchoed(p)}.`, CONTAINMENT_REMEDIATION);
+			throw invalidArgument(
+				"paths",
+				`path escapes the workspace root: ${ToolFailure.truncate(p)}.`,
+				CONTAINMENT_REMEDIATION,
+			);
 		}
 		return relative(cwd, lexical) || ".";
 	});
@@ -335,7 +305,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const biomeCmd = Lint.Biome.findBiome();
 	if (!biomeCmd) {
 		throw new BiomeUnavailable({
-			message: composeRemediatedMessage("Biome not found.", BIOME_REMEDIATION),
+			message: ToolFailure.message("Biome not found.", BIOME_REMEDIATION),
 			remediation: BIOME_REMEDIATION,
 		});
 	}
@@ -433,7 +403,7 @@ export type BiomeCheckParams = typeof BiomeCheckParams.Type;
  */
 export const biomeCheckTool = Tool.make("biome_check", {
 	description:
-		"Run Biome over a path and get structured diagnostics back. mode=check (default; lint + format + organize-imports) or mode=lint. Set write=true to apply safe fixes (--write), unsafe=true for unsafe fixes (--write --unsafe). Severities match the project's Biome config (what `biome check` reports); set strict=true to surface project warnings as errors, each marked with its originalSeverity. Prefer this over shelling out to biome; the LSP already covers files you've edited. Returns markdown in content[] and a typed object in structuredContent. NOTE: with write/unsafe this tool MUTATES files (git-reversible).",
+		"Run Biome over a path and get structured diagnostics back. mode=check (default; lint + format + organize-imports) or mode=lint. Set write=true to apply safe fixes (--write), unsafe=true for unsafe fixes (--write --unsafe). Severities match the project's Biome config (what `biome check` reports); set strict=true to surface project warnings as errors, each marked with its originalSeverity. Prefer this over shelling out to biome; the LSP already covers files you've edited. Returns a typed object in structuredContent (content[] carries the same object as JSON). NOTE: with write/unsafe this tool MUTATES files (git-reversible).",
 	parameters: BiomeCheckParams,
 	success: BiomeCheckResult,
 	failure: McpToolError,
@@ -442,8 +412,7 @@ export const biomeCheckTool = Tool.make("biome_check", {
 	.annotate(Tool.Readonly, false)
 	.annotate(Tool.Destructive, false)
 	.annotate(Tool.Idempotent, false)
-	.annotate(Tool.OpenWorld, false)
-	.annotate(SilkMarkdown, Schema.decodeUnknownSync(BiomeCheckAsMarkdown));
+	.annotate(Tool.OpenWorld, false);
 
 const isMcpToolError = (u: unknown): u is McpToolError =>
 	u instanceof InvalidArgument || u instanceof BiomeUnavailable || u instanceof BiomeFailed;

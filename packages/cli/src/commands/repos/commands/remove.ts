@@ -28,9 +28,12 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const nameArg = Argument.String("name");
@@ -46,40 +49,36 @@ export const runReposRemove = (cwd: string, name: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.remove(cwd, name);
-		yield* Effect.log(`${result.name}: removed (${result.path})`);
-		yield* Effect.log(result.commitMessage);
-		yield* Effect.log("staged — review and commit");
+		yield* Output.ok(`${result.name}: removed (${result.path})`);
+		yield* Output.detail(result.commitMessage);
+		yield* Output.detail("staged — review and commit");
 		for (const note of result.removedNotes) {
-			yield* Effect.log(`warning: note ${note.id} (${note.ref}) was removed with the entry — promote first if durable`);
+			yield* Output.warn(`note ${note.id} (${note.ref}) was removed with the entry — promote first if durable`);
 		}
 		// `add` has an `orientation` parameter but does not resurrect anything on
 		// its own, so anyone re-vendoring after this loses the block unless they
 		// are handed it here, while it still exists.
 		if (result.removedEntry.orientation) {
-			yield* Effect.log(
-				`warning: the orientation block for ${result.name} was removed with the entry and add will NOT restore it — re-vendoring? capture it now:`,
+			yield* Output.warn(
+				`the orientation block for ${result.name} was removed with the entry and add will NOT restore it — re-vendoring? capture it now:`,
 			);
-			yield* Effect.log(JSON.stringify(result.removedEntry.orientation, null, 2));
+			yield* Output.line(JSON.stringify(result.removedEntry.orientation, null, 2));
 		}
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("RepoNotFoundError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("ReposLockdownError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 
