@@ -77,7 +77,7 @@ export const STATELESS_PROTOCOL_VERSION = "2026-07-28";
 /**
  * Build the server for `cwd` inside the current scope and return a client over
  * its stdio. `serverLayer` swaps the served `ServerLayer(cwd)` for a fixture
- * layer built the same way (`registerSilkToolkit` over `McpServer.layerStdio`).
+ * layer built the same way (`McpToolkit.layer` over `McpStdio.layer`).
  */
 export const makeHarness = (
 	cwd: string,

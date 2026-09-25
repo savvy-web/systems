@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: The savvy front ends adopt the effected front-end kit
-description: "@savvy-web/cli, @savvy-web/mcp and silk's carrier shims run on @effected/engine, @effected/cli and @effected/mcp, and the layering and source-boundary guards on @effected/workspaces/testing, in place of process wiring this repository hand-rolled; registerSilkToolkit and the mcp crash guards are kept, and cli results move to a local Output helper on stdout."
+description: "@savvy-web/cli, @savvy-web/mcp and silk's carrier shims run on @effected/engine, @effected/cli and @effected/mcp, and the layering and source-boundary guards on @effected/workspaces/testing, in place of process wiring this repository hand-rolled; mcp registers its toolkit through McpToolkit, the mcp crash guards are kept, and cli results move to a local Output helper on stdout."
 status: draft
 tags: [architecture, deps, tooling]
 sources:
@@ -22,6 +22,8 @@ sources:
     resource: ../../packages/mcp/src/server.ts
   - id: mcp-errors
     resource: ../../packages/mcp/src/errors.ts
+  - id: issue-688
+    resource: https://github.com/savvy-web/systems/issues/688
   - id: silk-bins
     resource: ../../packages/silk/src/bin
   - id: layering-test
@@ -46,7 +48,7 @@ Adopt the kit at `@effected/engine` 0.1.0, `@effected/mcp` 0.1.1, `@effected/cli
 
 **cli.** `main.ts` runs `NodeRuntime.runMain(CliRuntime.main(program, { platform: CliPlatform, render: FailureLine.render }))` with the kit-default `CliLogger` (`FailureLine` renders a propagated failure by its message, or its tag and fields, where the kit default `String(error)` would print a bare tag): every log line goes to stderr, with no timestamp or level prefix. `NodeServices` moved out of `AppLive` into `CliPlatform`, so the platform is provided once at the edge. A command reports findings by `CliExit.set(1)`; `CliRuntime.main` owns the process exit and turns a usage error into exit `64` (help on stdout, the error on stderr).[^cli-main] The human result a command prints goes through a local `Output` helper (`src/internal/output.ts`: `ok ✓`, `warn ⚠`, `fail ✗`, `skip •`, `heading`, `detail`, `line`, `summary`) that writes to stdout via `Console.log`, tinting only the glyph or heading, and only when `CliColor.enabled` holds (stdout a TTY and `NO_COLOR` unset).[^cli-output] `--version` renders through `CliColor.formatterLayer` as `savvy v<version>`, plus `via <carrier> <version>` when a `Distribution` was passed in.[^cli-main] A source-boundary test forbids any `process.exitCode` write or `process.exit` call under `src/` and ratchets the files that read `process` at all.[^cli-boundaries]
 
-**mcp.** `main.ts` resolves the project directory with `LaunchContext.projectDir` — the first positional argument, then `SAVVY_MCP_PROJECT_DIR`, then `CLAUDE_PROJECT_DIR`, then the working directory, skipping an empty value or an unsubstituted `${VAR}` placeholder — and runs `NodeRuntime.runMain(McpStdio.launch(ServerLayer(cwd, options)), { teardown: McpStdio.teardown })`.[^mcp-main] `ServerLayer` builds on `McpStdio.layer`, which supplies the kit's default protocol list (the stateless `2026-07-28` adapter first, then `2025-11-25` and `2025-06-18`), merges `LogToStderr`, answers a non-JSON stdin line with `-32700` and keeps serving, and applies `Layer.orDie`; `serverInfo.version` carries the same distribution suffix as the CLI.[^mcp-server] The five tagged errors spread `ToolFailure.fields` and compose their messages through `ToolFailure.message` and `ToolFailure.truncate`, so the local remediation helpers left the public barrel.[^mcp-errors]
+**mcp.** `main.ts` resolves the project directory with `LaunchContext.projectDir` — the first positional argument, then `SAVVY_MCP_PROJECT_DIR`, then `CLAUDE_PROJECT_DIR`, then the working directory, skipping an empty value or an unsubstituted `${VAR}` placeholder — and runs `NodeRuntime.runMain(McpStdio.launch(ServerLayer(cwd, options)), { teardown: McpStdio.teardown })`.[^mcp-main] `ServerLayer` builds on `McpStdio.layer`, which supplies the kit's default protocol list (the stateless `2026-07-28` adapter first, then `2025-11-25` and `2025-06-18`), merges `LogToStderr`, answers a non-JSON stdin line with `-32700` and keeps serving, and applies `Layer.orDie`; `serverInfo.version` carries the same distribution suffix as the CLI.[^mcp-server] The toolkit registers through `McpToolkit.layer(SilkToolkit, { strict: "annotated" })`, so success rendering is core's (`structuredContent` plus the same object as JSON in `content[0].text`) and, with no tool annotated `Tool.Strict`, every tool stays lenient — Claude Code sends `_meta`-style extras on some calls. Registration moved onto the kit in savvy-web/systems#688, which retired the local `registerToolkit` port and its markdown text channel; the reasons are recorded in [effect-native-mcp-server](effect-native-mcp-server.md).[^issue-688] The five tagged errors spread `ToolFailure.fields` and compose their messages through `ToolFailure.message` and `ToolFailure.truncate`, so the local remediation helpers left the public barrel.[^mcp-errors]
 
 **silk.** Both carrier shims call `main({ distribution: { name: "@savvy-web/silk", version } })`, with silk's own build-time version, so a bin launched through the carrier names it in `--version` and in `serverInfo.version`. silk gains no runtime dependency.[^silk-bins]
 
@@ -58,7 +60,6 @@ On the CLI, stdout carries only what a caller ran the command to get: the `Outpu
 
 ### What was kept, and why
 
-- **`registerSilkToolkit`.** The kit's `McpToolkit` runs core's `registerToolkit`, which renders every success as `JSON.stringify(encodedResult)` and exposes no hook over the success text. Every savvy tool's `content[0].text` must be its `SilkMarkdown` projection, so the local `addTool` mirror stays (see [effect-native-mcp-server](effect-native-mcp-server.md)). The tools therefore stay lenient rather than taking `McpToolkit`'s closed input schemas — Claude Code sends `_meta`-style extras on some calls.[^mcp-server]
 - **The mcp crash guards.** The kit does not package the "register `uncaughtException`/`unhandledRejection`, then dynamically import the server graph" pattern, so `main.ts` keeps it verbatim ahead of `McpStdio.launch`.[^mcp-main]
 
 ## Alternatives rejected
@@ -83,6 +84,7 @@ On the CLI, stdout carries only what a caller ran the command to get: the `Outpu
 [^mcp-main]: `../../packages/mcp/src/main.ts`
 [^mcp-server]: `../../packages/mcp/src/server.ts`
 [^mcp-errors]: `../../packages/mcp/src/errors.ts`
+[^issue-688]: <https://github.com/savvy-web/systems/issues/688>
 [^silk-bins]: `../../packages/silk/src/bin`
 [^layering-test]: `../../packages/silk/__test__/package-layering.test.ts`
 [^packed-install]: `../../e2e/silk/__test__/e2e/packed-install.e2e.test.ts`

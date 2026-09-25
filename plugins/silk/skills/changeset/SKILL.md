@@ -97,7 +97,7 @@ The tool runs the real changesets release engine against the pending `.changeset
 - `changesets[]` — the parsed pending changesets.
 - `preMode` — the pre-release mode, if active.
 
-The tool already returns a formatted markdown transcript in its text content: a "Version bumps" table followed by each package's release notes. Present that to the user as-is. If they ask for detail on a specific package, read that package's `changelogEntry` from the structured content. If `releases` is empty, report "No pending changesets" and stop.
+Read `releases[]` from `structuredContent` and present it as a "Version bumps" table (package, old version, new version), then each package's `changelogEntry` as its release notes — the tool no longer renders that transcript itself; `content[0].text` is just the same object serialized as JSON. If they ask for detail on a specific package, read that package's `changelogEntry` directly. If `releases` is empty, report "No pending changesets" and stop.
 
 > **Preview reflects the working tree.** Changeset files are not yet committed, so author and PR links won't resolve until release. `savvy changeset version` run at this same point has the identical gap, so content and ordering match what ships.
 

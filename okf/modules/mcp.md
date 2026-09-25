@@ -11,6 +11,8 @@ sources:
     resource: ../../packages/mcp/src
   - id: main
     resource: ../../packages/mcp/src/main.ts
+  - id: server
+    resource: ../../packages/mcp/src/server.ts
   - id: tests
     resource: ../../packages/mcp/__test__
   - id: layering
@@ -27,9 +29,9 @@ generated:
 
 `@savvy-web/mcp` (`packages/mcp`) owns the `savvy-mcp` binary: a long-lived MCP server, spawned alongside an agent in the project working directory and shared across Claude Code plugins. It exists to make Silk tooling cheaper for agents to consume than bash — structured JSON tool output instead of parsed console text.[^arch]
 
-It is a tools-only server: one Effect `Layer`, a ten-tool `Toolkit` from `effect/unstable/ai` registered against `@effected/mcp`'s `McpStdio.layer` (core's `McpServer.layerStdio` with the kit's protocol defaults), zero resources, no MCP SDK, no zod. Tool logic comes from [`silk-effects`](silk-effects.md), the same business layer the `savvy` CLI uses; the tool files are glue. It is not a discovery host and carries no per-project gating — direction lives in the plugins that spawn it.[^arch] It is an L3 front end in the package layering, a peer of [`cli`](cli.md) that never imports it.[^arch]
+It is a tools-only server: one Effect `Layer`, a ten-tool `Toolkit` from `effect/unstable/ai` registered by `@effected/mcp`'s `McpToolkit.layer` against its `McpStdio.layer` (core's `McpServer.layerStdio` with the kit's protocol defaults), zero resources, no MCP SDK, no zod. A success carries the typed result in `structuredContent` and the same object as JSON in `content[0].text`; there is no markdown or other text projection.[^server] Tool logic comes from [`silk-effects`](silk-effects.md), the same business layer the `savvy` CLI uses; the tool files are glue. It is not a discovery host and carries no per-project gating — direction lives in the plugins that spawn it.[^arch] It is an L3 front end in the package layering, a peer of [`cli`](cli.md) that never imports it.[^arch]
 
-The choice to build this server Effect-native, over `effect/unstable/ai`'s `McpServer` rather than the reference SDK, is recorded in [effect-native-mcp-server](../decisions/effect-native-mcp-server.md). The ten tools' individual contracts are documented from the consumer side in [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md), and the shape every tool follows (Effect Schema as canon, `Tool.make` with declared dependencies, read-only versus mutating annotation) is in [mcp-tool-authoring](../conventions/mcp-tool-authoring.md). This concept covers the module's boundary, ownership, and runtime wiring.
+The choice to build this server Effect-native, over `effect/unstable/ai`'s `McpServer` rather than the reference SDK, is recorded in [effect-native-mcp-server](../decisions/effect-native-mcp-server.md). The ten tools' individual contracts are documented from the consumer side in [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md), and the shape every tool follows (Effect Schema as canon, the result schema as the whole wire contract, `Tool.make` with declared dependencies, read-only versus mutating annotation) is in [mcp-tool-authoring](../conventions/mcp-tool-authoring.md). This concept covers the module's boundary, ownership, and runtime wiring.
 
 ## Owner
 
@@ -75,5 +77,6 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 
 [^arch]: `../../packages/mcp/src`
 [^main]: `../../packages/mcp/src/main.ts`
+[^server]: `../../packages/mcp/src/server.ts`
 [^tests]: `../../packages/mcp/__test__`
 [^layering]: `../../packages/silk/__test__/package-layering.test.ts`

@@ -89,9 +89,9 @@ Document such reclassifications in a hand-written changeset instead.
 }
 ```
 
-The tool also returns a formatted markdown transcript in its text
-content — present that to the user as-is when a human-readable summary
-is wanted.
+Present a human-readable summary by reading `deleted`, `written`, and
+`skippedMixed` from `structuredContent` directly — `content[0].text` is
+just that same object serialized as JSON, not a rendered transcript.
 
 ## Secondary path: `changeset_deps_detect`
 
@@ -155,8 +155,8 @@ Args: `base`, `package`, `packages`, `exclude`, `cwd` — same semantics as `cha
 Both tools propagate typed errors from the MCP server — no stdout
 parsing required:
 
-- **Success** — `structuredContent` plus a formatted markdown transcript
-  in the text content.
+- **Success** — a typed object in `structuredContent`; `content[0].text`
+  carries that same object serialized as JSON, not a rendered transcript.
 - **`GitError`** — typically a missing base branch or git command
   failure. Report the error message and stop.
 - **`WorkspaceRootNotFoundError`** — the `cwd` isn't inside a recognized
