@@ -18,10 +18,10 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    "@microsoft/api-extractor": ^7.59.2
-    "@microsoft/api-extractor-model": ^7.33.13
-    "@microsoft/tsdoc": ~0.17.0
-    "@microsoft/tsdoc-config": ~0.18.2
+    "@microsoft/api-extractor": 7.59.1
+    "@microsoft/api-extractor-model": 7.33.12
+    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/tsdoc-config": 0.18.1
     "@rsbuild/core": ^2.2.9
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0
@@ -36,10 +36,10 @@ catalogs:
     tsx: ^4.23.15
     typescript: ^7.0.2
   build:peers:
-    "@microsoft/api-extractor": ^7.59.2
-    "@microsoft/api-extractor-model": ^7.33.13
-    "@microsoft/tsdoc": ~0.17.0
-    "@microsoft/tsdoc-config": ~0.18.2
+    "@microsoft/api-extractor": 7.59.1
+    "@microsoft/api-extractor-model": 7.33.12
+    "@microsoft/tsdoc": ~0.16.0
+    "@microsoft/tsdoc-config": 0.18.1
     "@rsbuild/core": ^2.2.0
     "@tsdown/css": ^0.23.0
     "@tsdown/exe": ^0.23.0

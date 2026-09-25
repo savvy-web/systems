@@ -9,23 +9,23 @@ await build({
 				build: {
 					packages: {
 						"@microsoft/api-extractor": {
-							range: "^7.59.2",
-							peer: "^7.59.2",
+							range: "7.59.1",
+							peer: "7.59.1",
 							strategy: "lock",
 						},
 						"@microsoft/api-extractor-model": {
-							range: "^7.33.13",
-							peer: "^7.33.13",
+							range: "7.33.12",
+							peer: "7.33.12",
 							strategy: "lock",
 						},
 						"@microsoft/tsdoc": {
-							range: "~0.17.0",
-							peer: "~0.17.0",
+							range: "~0.16.0",
+							peer: "~0.16.0",
 							strategy: "lock",
 						},
 						"@microsoft/tsdoc-config": {
-							range: "~0.18.2",
-							peer: "~0.18.2",
+							range: "0.18.1",
+							peer: "0.18.1",
 							strategy: "lock",
 						},
 						"@tsdown/exe": {
