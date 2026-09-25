@@ -6,15 +6,16 @@
  * Assembles the `Command.run` Effect over `rootCommand`, provides the merged
  * `AppLive` stack and the carrier-aware version formatter, and hands the
  * program to `@effected/cli`'s `CliRuntime.main`, which provides the platform
- * and the CLI logger, reports failures through that logger (never stdout),
- * applies the `CliExit` code a command set, and exits `64` on a usage error.
+ * and the kit-default CLI logger (every log line on stderr), reports failures
+ * through that logger, applies the `CliExit` code a command set, and exits
+ * `64` on a usage error.
  * No type casts: the layer graph is validated by the compiler.
  *
  * @packageDocumentation
  */
 /* v8 ignore start -- bootstrap; commands tested individually, the bin by __test__/e2e/bin.e2e.test.ts */
 import { NodeRuntime } from "@effect/platform-node";
-import { CliColor, CliLogger, CliRuntime } from "@effected/cli";
+import { CliColor, CliRuntime } from "@effected/cli";
 import type { Distribution } from "@effected/engine";
 import { CurrentDistribution } from "@effected/engine";
 import { Effect, Layer, Option } from "effect";
@@ -52,13 +53,8 @@ export const main = (options: MainOptions = {}): void => {
 		Effect.provide(Layer.merge(AppLive, VersionFormatterLive)),
 		Effect.provideService(CurrentDistribution, distribution),
 	);
-	NodeRuntime.runMain(
-		CliRuntime.main(program, {
-			platform: CliPlatform,
-			// Info and warning lines stay on stdout until every command writes its
-			// results through `Output`; errors and failure reports go to stderr.
-			logger: CliLogger.layer({ stderrFrom: "Error" }),
-		}),
-	);
+	// The kit-default logger: every log line goes to stderr, so stdout carries only
+	// what a command prints as its result (`Output`), JSON, and hook envelopes.
+	NodeRuntime.runMain(CliRuntime.main(program, { platform: CliPlatform }));
 };
 /* v8 ignore stop */

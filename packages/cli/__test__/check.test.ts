@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Console, Effect } from "effect";
 
 import { runCheck } from "../src/commands/check.js";
+import { Capture } from "./utils/capture.js";
 
 describe("savvy check orchestrator", () => {
 	it.effect("runs all three checks and succeeds when all pass", () =>
@@ -15,6 +16,15 @@ describe("savvy check orchestrator", () => {
 				lint: Effect.sync(() => calls.push("lint")),
 			});
 			expect(calls.sort()).toEqual(["changeset", "commit", "lint"]);
+		}),
+	);
+
+	it.effect("separates the three sections with a blank line on stdout", () =>
+		Effect.gen(function* () {
+			const result = yield* Capture.run(
+				runCheck({ changeset: Console.log("A"), commit: Console.log("B"), lint: Console.log("C") }),
+			);
+			expect(result.stdout).toEqual(["A", "", "B", "", "C"]);
 		}),
 	);
 

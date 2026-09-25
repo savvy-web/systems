@@ -13,11 +13,11 @@ describe("Capture", () => {
 		}),
 	);
 
-	it.effect("routes log lines through the CLI logger: info on stdout, errors on stderr, no prefix", () =>
+	it.effect("routes every log line through the CLI logger to stderr, with no prefix", () =>
 		Effect.gen(function* () {
 			const result = yield* Capture.run(Effect.log("info line").pipe(Effect.andThen(Effect.logError("bad line"))));
-			expect(result.stdout).toEqual(["info line"]);
-			expect(result.stderr).toEqual(["bad line"]);
+			expect(result.stdout).toEqual([]);
+			expect(result.stderr).toEqual(["info line", "bad line"]);
 		}),
 	);
 

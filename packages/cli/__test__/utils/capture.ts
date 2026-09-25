@@ -41,7 +41,7 @@ export class Capture {
 	private constructor() {}
 
 	/** The logger `main()` installs; the tests assert the stream split it produces. */
-	static readonly logger: Layer.Layer<never> = CliLogger.layer({ stderrFrom: "Error" });
+	static readonly logger: Layer.Layer<never> = CliLogger.layer();
 
 	/** A `Stdio` whose stdout is not a terminal, so `Output` writes no colour. For stacks with no platform `Stdio`. */
 	static readonly piped: Layer.Layer<Stdio.Stdio> = Stdio.layerTest({ stdoutIsTerminal: Effect.succeed(false) });
