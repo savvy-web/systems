@@ -32,8 +32,8 @@ sources:
     resource: ../../e2e/silk/__test__/e2e/packed-install.e2e.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:44:37Z
-  body_sha256: 38f8896c6e780aa2658fe2ddececa25dec9a2dbba834a95421da4d5ea17123b2
+  at: 2026-09-25T03:02:46Z
+  body_sha256: 19f6ae8c3d01d2d96cd5eac06cfa675c65b64320b448da783c83dec391525500
 ---
 
 # The savvy front ends adopt the effected front-end kit

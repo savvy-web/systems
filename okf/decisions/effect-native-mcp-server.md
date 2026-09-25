@@ -15,8 +15,8 @@ sources:
     resource: ../../packages/mcp/__test__/server.strict.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: 53595b9dd0a6fd6c4e81b0fafcfd5e9c808c60664c35a5839bdcce16da1bbf74
+  at: 2026-09-25T03:02:46Z
+  body_sha256: 5999e569c42aeeb72a5d7808637c913aae2f9c7b85064eb845ec28de39821d80
 ---
 
 # An Effect-native MCP server

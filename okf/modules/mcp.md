@@ -19,8 +19,8 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: f77167420c1e4ee7a62393d9c2a14d6c4a06a37dcc7183e76f05578637694d87
+  at: 2026-09-25T03:02:46Z
+  body_sha256: f39c011f0615922bc97fa00f37fb7d7b788be6fab516b8020428e7ded791ad0a
 ---
 
 # mcp

@@ -21,8 +21,8 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-09-21T18:15:35Z
-  body_sha256: 21b0b79a8bcaddd28befc6865c0cb69a838c8d03206a0cf2ad2abafc2a49aa82
+  at: 2026-09-25T03:02:46Z
+  body_sha256: 36765af19cbca48c4d6d968f12d30f27fc3e59808cd715fc6ce504a7b27f5982
 ---
 
 # savvy-mcp tool surface

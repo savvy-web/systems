@@ -11,8 +11,8 @@ sources:
     resource: ../../packages/mcp/src/server.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: 95a5261c2f1a454e5cb1fbad004119965849b78764c3e656b1dd563ad38b896c
+  at: 2026-09-25T03:02:46Z
+  body_sha256: e79b5be0bf3b0fcb6ace0d33f0e5dadca59e71e8fb1c972e18bdb9a2d9433088
 ---
 
 # Shape and test a savvy-mcp tool

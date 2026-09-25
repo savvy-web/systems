@@ -13,6 +13,7 @@
 * Updated layers.json
 * Updated mcp
 * Updated savvy command tree
+* Updated savvy-mcp tool surface
 
 ## 2026-09-21
 
