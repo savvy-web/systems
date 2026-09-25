@@ -245,6 +245,10 @@ describe.each<PackageManager>(["pnpm", "npm"])("%s install of the silk tarball o
 			Effect.gen(function* () {
 				const result = yield* runBin(projectDir, join(binDir, "savvy"), ["--version"]);
 				assert.match(result.stdout.trim(), /^savvy v\d+\.\d+\.\d+/);
+				// Only pnpm guarantees silk's shim wins the `.bin` link (see the pnpm-only test above).
+				if (pm === "pnpm") {
+					assert.match(result.stdout.trim(), / via @savvy-web\/silk \d+\.\d+\.\d+$/);
+				}
 				assert.strictEqual(result.exitCode, 0);
 			}).pipe(Effect.provide(NodeServices.layer)),
 		BIN_TIMEOUT_MS,

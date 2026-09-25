@@ -61,7 +61,7 @@ describe("@savvy-web/silk carrier bins (dist/dev)", () => {
 		() =>
 			Effect.gen(function* () {
 				const result = yield* runBin("savvy.js", ["--version"]);
-				assert.match(result.stdout.trim(), /^savvy v\d+\.\d+\.\d+/);
+				assert.match(result.stdout.trim(), /^savvy v\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+$/);
 				assert.strictEqual(result.exitCode, 0);
 			}).pipe(Effect.provide(NodeServices.layer)),
 		BIN_TIMEOUT_MS,
