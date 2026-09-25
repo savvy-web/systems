@@ -18,16 +18,11 @@ import {
 	savvyToolSection,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect, FileSystem } from "effect";
 import type { PlatformError } from "effect/PlatformError";
-import {
-	CHECK_MARK,
-	HUSKY_HOOK_PATH,
-	POST_CHECKOUT_HOOK_PATH,
-	POST_COMMIT_HOOK_PATH,
-	POST_MERGE_HOOK_PATH,
-	WARNING,
-} from "./constants.js";
+import { Output } from "../../internal/output.js";
+import { HUSKY_HOOK_PATH, POST_CHECKOUT_HOOK_PATH, POST_COMMIT_HOOK_PATH, POST_MERGE_HOOK_PATH } from "./constants.js";
 
 /** Executable file permission mode. */
 const EXECUTABLE_MODE = 0o755;
@@ -134,7 +129,7 @@ export function runCommitInit(opts: {
 }): Effect.Effect<
 	void,
 	Error | SectionParseError | SectionRenderError | SectionFileError | PlatformError,
-	ManagedSection | FileSystem.FileSystem
+	ManagedSection | FileSystem.FileSystem | Stdio.Stdio
 > {
 	const { force, config } = opts;
 	return Effect.gen(function* () {
@@ -145,7 +140,7 @@ export function runCommitInit(opts: {
 			yield* Effect.fail(new Error("Config path must be relative to repository root, not absolute"));
 		}
 
-		yield* Effect.log("Initializing commitlint configuration...\n");
+		yield* Output.heading("commitlint");
 
 		yield* fs.makeDirectory(".husky", { recursive: true });
 
@@ -160,8 +155,8 @@ export function runCommitInit(opts: {
 			savvyCommitBlock(config),
 		]);
 		yield* makeExecutable(HUSKY_HOOK_PATH);
-		yield* Effect.log(
-			`${CHECK_MARK} ${force ? "Replaced" : "Synced"} ${HUSKY_HOOK_PATH} (${commitResults.map((r) => r._tag).join(", ")})`,
+		yield* Output.ok(
+			`${force ? "Replaced" : "Synced"} ${HUSKY_HOOK_PATH} (${commitResults.map((r) => r._tag).join(", ")})`,
 		);
 
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene.
@@ -180,22 +175,23 @@ export function runCommitInit(opts: {
 			}
 			yield* ms.syncAll(hookPath, sections);
 			yield* makeExecutable(hookPath);
-			yield* Effect.log(`${CHECK_MARK} Synced ${hookPath}`);
+			yield* Output.ok(`Synced ${hookPath}`);
 		}
 
 		// Config file.
 		const configExists = yield* fs.exists(config);
 		if (configExists && !force) {
-			yield* Effect.log(`${WARNING} ${config} already exists (use --force to overwrite)`);
+			yield* Output.warn(`${config} already exists (use --force to overwrite)`);
 		} else {
 			const configDir = dirname(config);
 			if (configDir && configDir !== ".") {
 				yield* fs.makeDirectory(configDir, { recursive: true });
 			}
 			yield* fs.writeFileString(config, CONFIG_CONTENT);
-			yield* Effect.log(`${CHECK_MARK} Created ${config}`);
+			yield* Output.ok(`Created ${config}`);
 		}
 
-		yield* Effect.log("\nDone! Install @commitlint/cli if not already installed.");
+		yield* Output.line("");
+		yield* Output.ok("Install @commitlint/cli if it is not already installed");
 	});
 }
