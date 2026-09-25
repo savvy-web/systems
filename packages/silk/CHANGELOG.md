@@ -1,5 +1,28 @@
 # @savvy-web/silk
 
+## 4.2.9
+
+### Bug Fixes
+
+- The `savvy` and `savvy-mcp` carrier shims now pass `@savvy-web/silk` as the distribution, so both bins name it in their version output (`savvy --version`, and `serverInfo.version` for `savvy-mcp`). Guaranteed under pnpm; npm's flat `.bin` layout may link the `cli`/`mcp` packages' own bins instead.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/cli | dependency | updated | 3.2.8 | 3.3.0 |
+| @savvy-web/mcp | dependency | updated | 3.2.4 | 3.3.0 |
+
+### Maintenance
+
+- The package-layering guard now lives in silk's own test suite. [#698][#698]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#698]: https://github.com/savvy-web/systems/pull/698
+
 ## 4.2.8
 
 ### Dependencies
