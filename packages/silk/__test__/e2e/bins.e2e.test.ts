@@ -75,6 +75,8 @@ describe("@savvy-web/silk carrier bins (dist/dev)", () => {
 				// The server answers on stdout and must keep logs off that wire.
 				assert.include(result.stdout, '"jsonrpc":"2.0"');
 				assert.include(result.stdout, '"serverInfo"');
+				// Launched through the carrier, the server names it as its distribution.
+				assert.match(result.stdout, /"version":"\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+"/);
 				// Nothing at all may reach stderr — a client treats it as noise or a fault.
 				assert.strictEqual(result.stderr, "");
 				// A clean stdin close is exit 0, not 130.

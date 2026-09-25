@@ -257,6 +257,12 @@ describe.each<PackageManager>(["pnpm", "npm"])("%s install of the silk tarball o
 				const result = yield* runBin(projectDir, join(binDir, "savvy-mcp"), [], initializeRequest);
 				assert.include(result.stdout, '"jsonrpc":"2.0"');
 				assert.include(result.stdout, '"serverInfo"');
+				// Launched through the carrier, the server names it as its distribution. Only pnpm
+				// guarantees the carrier's shim is the one linked (see the pnpm-only test above);
+				// under npm the mcp package's own bin may win the flat `.bin` link.
+				if (pm === "pnpm") {
+					assert.match(result.stdout, /"version":"\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+"/);
+				}
 				assert.strictEqual(result.stderr, "");
 				assert.strictEqual(result.exitCode, 0);
 			}).pipe(Effect.provide(NodeServices.layer)),
