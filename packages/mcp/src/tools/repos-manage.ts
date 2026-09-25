@@ -9,12 +9,13 @@
  * @packageDocumentation
  */
 
+import { ToolFailure } from "@effected/mcp";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
 import { Tool } from "effect/unstable/ai";
-import { ENGINE_ECHO_LIMIT, McpToolError, invalidArgument, mapEngineError, truncateEchoed } from "../errors.js";
+import { McpToolError, invalidArgument, mapEngineError } from "../errors.js";
 import { SilkMarkdown } from "../markdown.js";
 import { mdInline } from "./md-inline.js";
 
@@ -530,7 +531,7 @@ export const reposManageTool = Tool.make("repos_manage", {
  * {@link McpToolError}. The per-action request decode failure (`SchemaError`,
  * which names the missing field, and echoes the decoded value) is an argument
  * problem and becomes {@link InvalidArgument} keyed on `action`, its text
- * truncated at {@link ENGINE_ECHO_LIMIT}; the engine's own errors go
+ * truncated at `ToolFailure.ENGINE_ECHO_LIMIT`; the engine's own errors go
  * through {@link mapEngineError}.
  */
 export const handleReposManage = (fallbackCwd: string, params: ReposManageParams) =>
@@ -539,7 +540,7 @@ export const handleReposManage = (fallbackCwd: string, params: ReposManageParams
 			error._tag === "SchemaError"
 				? invalidArgument(
 						"action",
-						`repos_manage ${params.action}: ${truncateEchoed(error.message, ENGINE_ECHO_LIMIT)}`,
+						`repos_manage ${params.action}: ${ToolFailure.truncate(error.message, ToolFailure.ENGINE_ECHO_LIMIT)}`,
 						REQUEST_REMEDIATION,
 					)
 				: mapEngineError(params.cwd ?? fallbackCwd, REMEDIATION)(error),

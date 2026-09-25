@@ -244,6 +244,9 @@ catalogs:
     '@effected/commands':
       specifier: ^0.9.0
       version: 0.9.0
+    '@effected/engine':
+      specifier: ^0.1.0
+      version: 0.1.0
     '@effected/git':
       specifier: ^0.17.0
       version: 0.17.0
@@ -259,6 +262,9 @@ catalogs:
     '@effected/markdown':
       specifier: ^0.12.1
       version: 0.12.1
+    '@effected/mcp':
+      specifier: ^0.1.1
+      version: 0.1.1
     '@effected/memfs':
       specifier: ^0.9.0
       version: 0.9.0
@@ -666,9 +672,15 @@ importers:
       '@effected/commands':
         specifier: catalog:effected
         version: 0.9.0(effect@4.0.0-rc.117)
+      '@effected/engine':
+        specifier: catalog:effected
+        version: 0.1.0(effect@4.0.0-rc.117)
       '@effected/git':
         specifier: catalog:effected
         version: 0.17.0(effect@4.0.0-rc.117)
+      '@effected/mcp':
+        specifier: catalog:effected
+        version: 0.1.1(@effected/engine@0.1.0(effect@4.0.0-rc.117))(effect@4.0.0-rc.117)
       '@effected/templates':
         specifier: catalog:effected
         version: 0.8.0(effect@4.0.0-rc.117)
@@ -5040,29 +5052,21 @@ snapshots:
       '@biomejs/cli-win32-arm64': 2.5.14
       '@biomejs/cli-win32-x64': 2.5.14
 
-  '@biomejs/cli-darwin-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-arm64@2.5.14': {}
 
-  '@biomejs/cli-darwin-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-darwin-x64@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-arm64@2.5.14': {}
 
-  '@biomejs/cli-linux-x64-musl@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64-musl@2.5.14': {}
 
-  '@biomejs/cli-linux-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-linux-x64@2.5.14': {}
 
-  '@biomejs/cli-win32-arm64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-arm64@2.5.14': {}
 
-  '@biomejs/cli-win32-x64@2.5.14':
-    optional: true
+  '@biomejs/cli-win32-x64@2.5.14': {}
 
   '@changesets/apply-release-plan@8.1.1':
     dependencies:
@@ -6324,23 +6328,17 @@ snapshots:
       tsdown: 0.23.0(@tsdown/css@0.23.0)(@tsdown/exe@0.23.0)(tsx@4.23.15)(typescript@6.0.3)
       verkit: 0.4.1
 
-  '@turbo/darwin-64@2.11.3':
-    optional: true
+  '@turbo/darwin-64@2.11.3': {}
 
-  '@turbo/darwin-arm64@2.11.3':
-    optional: true
+  '@turbo/darwin-arm64@2.11.3': {}
 
-  '@turbo/linux-64@2.11.3':
-    optional: true
+  '@turbo/linux-64@2.11.3': {}
 
-  '@turbo/linux-arm64@2.11.3':
-    optional: true
+  '@turbo/linux-arm64@2.11.3': {}
 
-  '@turbo/windows-64@2.11.3':
-    optional: true
+  '@turbo/windows-64@2.11.3': {}
 
-  '@turbo/windows-arm64@2.11.3':
-    optional: true
+  '@turbo/windows-arm64@2.11.3': {}
 
   '@tybys/wasm-util@0.10.4':
     dependencies:

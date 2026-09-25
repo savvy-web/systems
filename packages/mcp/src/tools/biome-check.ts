@@ -10,19 +10,12 @@
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
+import type { Remediation } from "@effected/engine";
+import { ToolFailure } from "@effected/mcp";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect, Schema, SchemaGetter } from "effect";
 import { Tool } from "effect/unstable/ai";
-import type { Remediation } from "../errors.js";
-import {
-	BiomeFailed,
-	BiomeUnavailable,
-	InvalidArgument,
-	McpToolError,
-	composeRemediatedMessage,
-	invalidArgument,
-	truncateEchoed,
-} from "../errors.js";
+import { BiomeFailed, BiomeUnavailable, InvalidArgument, McpToolError, invalidArgument } from "../errors.js";
 import { SilkMarkdown } from "../markdown.js";
 
 /** Normalized diagnostic severity. */
@@ -277,7 +270,7 @@ const BIOME_FAILED_REMEDIATION: Remediation = {
 const biomeFailed = (raw: string, exitCode?: number): BiomeFailed =>
 	new BiomeFailed({
 		...(exitCode === undefined ? {} : { exitCode }),
-		message: composeRemediatedMessage(raw, BIOME_FAILED_REMEDIATION),
+		message: ToolFailure.message(raw, BIOME_FAILED_REMEDIATION),
 		remediation: BIOME_FAILED_REMEDIATION,
 	});
 
@@ -317,7 +310,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	if (containmentRoot === null) {
 		throw invalidArgument(
 			"cwd",
-			`cwd escapes the workspace root: ${truncateEchoed(args.cwd ?? fallbackCwd)}.`,
+			`cwd escapes the workspace root: ${ToolFailure.truncate(args.cwd ?? fallbackCwd)}.`,
 			CONTAINMENT_REMEDIATION,
 		);
 	}
@@ -326,7 +319,11 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const paths = rawPaths.map((p) => {
 		const lexical = resolve(cwd, p);
 		if (!within(canonicalize(lexical))) {
-			throw invalidArgument("paths", `path escapes the workspace root: ${truncateEchoed(p)}.`, CONTAINMENT_REMEDIATION);
+			throw invalidArgument(
+				"paths",
+				`path escapes the workspace root: ${ToolFailure.truncate(p)}.`,
+				CONTAINMENT_REMEDIATION,
+			);
 		}
 		return relative(cwd, lexical) || ".";
 	});
@@ -335,7 +332,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const biomeCmd = Lint.Biome.findBiome();
 	if (!biomeCmd) {
 		throw new BiomeUnavailable({
-			message: composeRemediatedMessage("Biome not found.", BIOME_REMEDIATION),
+			message: ToolFailure.message("Biome not found.", BIOME_REMEDIATION),
 			remediation: BIOME_REMEDIATION,
 		});
 	}

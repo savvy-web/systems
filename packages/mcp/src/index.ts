@@ -14,10 +14,7 @@ export {
 	EngineError,
 	InvalidArgument,
 	McpToolError,
-	Remediation,
 	WorkspaceNotFound,
-	composeRemediatedMessage,
-	truncateEchoed,
 } from "./errors.js";
 export { SilkMarkdown } from "./markdown.js";
 export type { McpServices } from "./runtime.js";

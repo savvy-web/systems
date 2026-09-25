@@ -7,12 +7,13 @@
  */
 
 import { resolve } from "node:path";
+import { ToolFailure } from "@effected/mcp";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Data, Effect, Schema, SchemaGetter } from "effect";
 import { Tool } from "effect/unstable/ai";
-import { McpToolError, invalidArgument, mapEngineError, truncateEchoed } from "../errors.js";
+import { McpToolError, invalidArgument, mapEngineError } from "../errors.js";
 import { SilkMarkdown } from "../markdown.js";
 
 /** A thrown failure from the pure {@link Changesets.ChangesetLinter.validate} (e.g. a missing directory). */
@@ -146,7 +147,7 @@ export const handleChangesetValidate = (fallbackCwd: string, params: ChangesetVa
 			error._tag === "ChangesetValidateError"
 				? invalidArgument(
 						"dir",
-						`Changeset directory "${truncateEchoed(error.dir)}" could not be validated: ${describeCause(error.cause)}`,
+						`Changeset directory "${ToolFailure.truncate(error.dir)}" could not be validated: ${describeCause(error.cause)}`,
 						DIR_REMEDIATION,
 					)
 				: mapEngineError(params.cwd ?? fallbackCwd, DIR_REMEDIATION)(error),
@@ -154,4 +155,4 @@ export const handleChangesetValidate = (fallbackCwd: string, params: ChangesetVa
 	);
 
 const describeCause = (cause: unknown): string =>
-	cause instanceof Error ? truncateEchoed(cause.message) : truncateEchoed(String(cause));
+	cause instanceof Error ? ToolFailure.truncate(cause.message) : ToolFailure.truncate(String(cause));
