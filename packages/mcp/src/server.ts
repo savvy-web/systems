@@ -43,7 +43,8 @@
  *    shipping client (Claude Code's default stdio session, Copilot, Cursor,
  *    the Inspector) still opens with `initialize`, which a server offering
  *    ONLY `2026-07-28` answers with `METHOD_NOT_FOUND`. Never drop the
- *    stateful adapters.
+ *    stateful adapters. `@effected/mcp`'s `McpStdio.protocols` — the
+ *    default {@link ServerLayer} serves — is exactly this list.
  * 3. **A declared typed failure reaches the wire as message text only.**
  *    Still true under `failureMode: "error"` (the only mode these tools
  *    use): `Toolkit.handle` fails the stream with a `Cause` annotated
@@ -54,18 +55,15 @@
  *    The custom registration below mirrors that exactly, so `errors.ts`
  *    composes every member's `message` at construction and truncates echoed
  *    caller values.
- * 4. **`Logger.consolePretty`'s `stderr` option is inert.** Still true; the
- *    real switch is `Logger.LogToStderr`, read at log time, which `main.ts`
- *    provides. Without it every log line — and `registerToolkit` logs every
- *    failing call at error level — lands on stdout, the JSON-RPC wire.
- * 5. **A clean stdin close exits 130 by default.** Still true:
- *    `Runtime.defaultTeardown` returns 130 when the main fiber's cause has
- *    interrupts only, which is what stdin EOF ending `layerStdio`'s scope
- *    produces. `main.ts` passes `NodeRuntime.runMain`'s `teardown` option
- *    mapping success-or-interrupts-only to 0 and deferring the rest to the
- *    default. Corollary: a `tools/call` still in flight when stdin closes is
+ * 4. **Every log line must reach stderr, never stdout.** Handled by the kit:
+ *    `McpStdio.layer` merges `References.LogToStderr` into its output and
+ *    `McpStdio.launch` provides it around the whole program, so a failing
+ *    call's error log and a launch failure both stay off the JSON-RPC wire.
+ * 5. **A clean stdin close exits 130 by default.** Handled by the kit:
+ *    `main.ts` passes `McpStdio.teardown`, which maps stdin EOF to exit 0.
+ *    Corollary: a `tools/call` still in flight when stdin closes is
  *    interrupted, its response never written, and the exit is STILL 0; the
- *    e2e helper therefore reads a call's response before closing stdin.
+ *    e2e suite therefore reads a call's response before closing stdin.
  * 6. **A resource URI template's parametric segment cannot span a `/`.**
  *    Not exercised: this server registers no resources (tools only). Left
  *    on record for the day one is added — register static per-item
@@ -118,10 +116,13 @@
  * @packageDocumentation
  */
 
+import type { Distribution } from "@effected/engine";
+import { distributionSuffix } from "@effected/engine";
+import { McpStdio } from "@effected/mcp";
 import type { FileSystem, Path, SchemaAST, Stdio } from "effect";
 import { Cause, Context, Effect, ErrorReporter, Layer, Option, Result, Schema, Stream } from "effect";
 import { CurrentLogLevel } from "effect/References";
-import { AiError, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/unstable/ai";
+import { AiError, McpSchema, McpServer, Tool, Toolkit } from "effect/unstable/ai";
 import { HttpServerRequest } from "effect/unstable/http";
 import type { ChildProcessSpawner } from "effect/unstable/process";
 
@@ -133,7 +134,7 @@ import { CURRENT_MCP_VERSION } from "./version.js";
 /**
  * Everything {@link ServerLayer} still needs from the platform: the three
  * services `makeSilkRuntimeLayer` requires, plus `Stdio`, which
- * `McpServer.layerStdio` itself requires. `NodeServices.layer` supplies all
+ * `McpStdio.layer` itself requires. `NodeServices.layer` supplies all
  * four in `main.ts`; tests swap `Stdio` for `Stdio.layerTest`.
  *
  * @public
@@ -409,28 +410,40 @@ const SilkToolsLayer = (cwd: string) =>
 	);
 
 /**
- * The whole server as one layer: the ten-tool toolkit, the silk-effects
- * runtime discharging its dependencies, over `McpServer.layerStdio`.
- *
- * `protocols` lists the stateless `2026-07-28` adapter first, then the two
- * newest stateful ones — see gotcha 2 in the module remarks.
- * `Cause.IllegalArgumentError` in `layerStdio`'s error channel is `orDie`d:
- * `protocols` is a static literal with exactly one stateless member, so a
- * failure there is an implementer-time defect, not a runtime condition.
+ * Options for {@link ServerLayer}.
  *
  * @public
  */
-export const ServerLayer = (cwd: string): Layer.Layer<never, never, PlatformServices> =>
+export interface ServerOptions {
+	/**
+	 * The carrier this server was installed through (for example
+	 * `@savvy-web/silk`), rendered into `serverInfo.version` as
+	 * `" via <name> <version>"`. Absent for a direct install.
+	 */
+	readonly distribution?: Distribution | undefined;
+}
+
+/**
+ * The whole server as one layer: the ten-tool toolkit, the silk-effects
+ * runtime discharging its dependencies, over `@effected/mcp`'s
+ * `McpStdio.layer`.
+ *
+ * `McpStdio.layer` is `McpServer.layerStdio` with the kit's default
+ * `protocols` (the stateless `2026-07-28` adapter first, then the two newest
+ * stateful ones — see gotcha 2), `LogToStderr` merged into its output, a
+ * stdin guard answering a non-JSON line with `-32700`, and `Layer.orDie`.
+ *
+ * @public
+ */
+export const ServerLayer = (cwd: string, options: ServerOptions = {}): Layer.Layer<never, never, PlatformServices> =>
 	SilkToolsLayer(cwd).pipe(
 		Layer.provide(makeSilkRuntimeLayer(cwd)),
 		Layer.provide(
-			McpServer.layerStdio({
+			McpStdio.layer({
 				name: "savvy-mcp",
-				version: CURRENT_MCP_VERSION,
+				version: `${CURRENT_MCP_VERSION}${distributionSuffix(Option.fromNullishOr(options.distribution))}`,
 				description: "Structured Silk Suite workspace tools: workspace, turbo, biome, changesets and vendored repos.",
 				instructions: SERVER_INSTRUCTIONS,
-				protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25, McpProtocol.v2025_06_18],
 			}),
 		),
-		Layer.orDie,
 	);

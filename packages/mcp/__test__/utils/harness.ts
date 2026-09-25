@@ -6,7 +6,7 @@
  * (`.repos/effect/packages/effect/test/unstable/ai/McpServer/TestUtils/McpStdioHarness.ts`).
  */
 
-import { NodeServices } from "@effect/platform-node";
+import { NodeChildProcessSpawner, NodeFileSystem, NodePath, NodeServices } from "@effect/platform-node";
 import type { Scope } from "effect";
 import { Deferred, Effect, Layer, Queue, Sink, Stdio, Stream } from "effect";
 
@@ -220,3 +220,13 @@ export const makeHarness = (
 			stderrSoFar: Effect.sync(() => stderrText),
 		};
 	});
+
+/**
+ * `PlatformServices` minus `Stdio`, for `@effected/mcp/testing`'s `McpHarness`:
+ * `NodeServices.layer` carries its own `Stdio`, which would win over the
+ * harness's queue-backed one and hang every wait. Mirrors how
+ * `NodeServices.layer` itself builds the spawner over the filesystem and path.
+ */
+export const PlatformWithoutStdio = NodeChildProcessSpawner.layer.pipe(
+	Layer.provideMerge(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer)),
+);
