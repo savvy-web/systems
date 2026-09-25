@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Option } from "effect";
 
 import { runDepsRegen } from "../../../src/commands/changeset/commands/deps-regen.js";
+import { TestExit } from "../../utils/exit.js";
 
 const { DepsRegen } = Changesets;
 
@@ -91,15 +92,8 @@ function collectStdout(
 // writes so they never reach the spy (leaving `out` empty and the JSON.parse
 // assertions failing).
 describe("savvy changeset deps regen (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.live("produces a dry-run plan with no devDependency rows and does not call execute", () =>
@@ -117,7 +111,7 @@ describe("savvy changeset deps regen (adapter)", () => {
 				expect(entry.diff.rows.some((row) => row.type === "devDependency")).toBe(false);
 			}
 			expect(executeCalled).toBe(false);
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("forwards cwd, base, and package to DepsRegen.plan", () =>
@@ -130,7 +124,7 @@ describe("savvy changeset deps regen (adapter)", () => {
 			yield* collectStdout("/repo", true, true, layer, Option.some("develop"), Option.some("@scope/foo"));
 
 			expect(received).toMatchObject({ cwd: "/repo", base: "develop", package: "@scope/foo" });
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("calls execute with the plan when --dry-run is not set", () =>
@@ -147,6 +141,6 @@ describe("savvy changeset deps regen (adapter)", () => {
 			yield* collectStdout("/repo", false, true, layer);
 
 			expect(receivedPlan).toEqual(cannedPlan);
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

@@ -20,6 +20,7 @@
  */
 
 import { resolve } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/unstable/cli";
@@ -31,7 +32,7 @@ const dirArg = Argument.Directory("dir").pipe(Argument.withDefault("."));
 
 /**
  * Run validation. Logs a one-line OK on success; logs the error and sets
- * `process.exitCode = 1` on failure.
+ * exit code 1 through `CliExit.set` on failure.
  *
  * @internal
  */
@@ -55,7 +56,7 @@ export function runConfigValidate(dir: string) {
 		}
 
 		yield* Effect.log(`FAIL  ${result.field}: ${result.reason}`);
-		process.exitCode = 1;
+		yield* CliExit.set(1);
 	});
 }
 

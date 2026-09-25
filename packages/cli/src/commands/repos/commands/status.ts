@@ -30,6 +30,7 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Console, Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
@@ -56,7 +57,7 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 		const manager = yield* Repos.ReposManager;
 		const report = yield* manager.status(cwd);
 		if (!report.clean) {
-			process.exitCode = 1;
+			yield* CliExit.set(1);
 		}
 
 		let driftReport: Repos.ReposDriftReport | undefined;
@@ -64,7 +65,7 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 			const reposDrift = yield* Repos.ReposDrift;
 			driftReport = yield* reposDrift.check(cwd);
 			if (!driftReport.clean) {
-				process.exitCode = 1;
+				yield* CliExit.set(1);
 			}
 		}
 
@@ -94,8 +95,7 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 				}
 				return Effect.log("no .repos/config.json — nothing vendored");
 			}
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
 		}),
 	);
 

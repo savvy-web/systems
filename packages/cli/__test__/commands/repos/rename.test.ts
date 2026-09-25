@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 import { runReposRename } from "../../../src/commands/repos/commands/rename.js";
+import { TestExit } from "../../utils/exit.js";
 
 const { ReposManager } = Repos;
 
@@ -51,19 +52,12 @@ function collectLogs(
 		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
 		yield* runReposRename(cwd, oldName, newName).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposRename (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("passes cwd, oldName, and newName through to ReposManager.rename", () =>
@@ -89,7 +83,7 @@ describe("runReposRename (adapter)", () => {
 			expect(logs.some((l) => l.includes("foo") && l.includes("renamed") && l.includes("bar"))).toBe(true);
 			expect(logs).toContain("chore(repos): rename foo to bar");
 			expect(logs.some((l) => l.includes("staged"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -102,7 +96,7 @@ describe("runReposRename (adapter)", () => {
 				const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
 				expect(logs.some((l) => l.includes("no vendored repo named"))).toBe(true);
-				expect(process.exitCode).toBe(1);
+				expect(TestExit.code()).toBe(1);
 			}),
 	);
 
@@ -121,7 +115,7 @@ describe("runReposRename (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
 			expect(logs.some((l) => l.includes("boom"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -134,7 +128,7 @@ describe("runReposRename (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
 			expect(logs.some((l) => l.includes("chmod failed"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -149,7 +143,7 @@ describe("runReposRename (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -168,7 +162,7 @@ describe("runReposRename (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
 			expect(logs.some((l) => l.includes("already vendored"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

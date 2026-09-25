@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 import { runReposSync } from "../../../src/commands/repos/commands/sync.js";
+import { TestExit } from "../../utils/exit.js";
 
 const { ReposManager, ReposConfigError, GitSubmoduleError, ReposLockdownError } = Repos;
 
@@ -61,19 +62,12 @@ function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Effec
 		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
 		yield* runReposSync(cwd).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposSync (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("logs one line per clearedLocks/initialized/sparseApplied entry, exit undefined", () =>
@@ -87,7 +81,7 @@ describe("runReposSync (adapter)", () => {
 			expect(logs.some((l) => l.includes("baz: sparse-checkout applied"))).toBe(true);
 			expect(logs.some((l) => l.includes("qux: url reconciled"))).toBe(true);
 			expect(logs.some((l) => l.includes("quux: registered"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -98,7 +92,7 @@ describe("runReposSync (adapter)", () => {
 			const logs = yield* collectLogs("/repo", layer);
 
 			expect(logs.some((l) => l.includes("all vendored repos up to date"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -113,7 +107,7 @@ describe("runReposSync (adapter)", () => {
 			const logs = yield* collectLogs("/repo", layer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -128,7 +122,7 @@ describe("runReposSync (adapter)", () => {
 			const logs = yield* collectLogs("/repo", layer);
 
 			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -149,7 +143,7 @@ describe("runReposSync (adapter)", () => {
 			expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch"))).toBe(
 				true,
 			);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -167,7 +161,7 @@ describe("runReposSync (adapter)", () => {
 			const logs = yield* collectLogs("/repo", layer);
 
 			expect(logs.some((l) => l.includes("/repo/.repos/foo") && l.includes("chmod failed: EACCES"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

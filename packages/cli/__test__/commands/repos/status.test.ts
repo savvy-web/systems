@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 import { runReposStatus } from "../../../src/commands/repos/commands/status.js";
+import { TestExit } from "../../utils/exit.js";
 
 const { ReposManager, ReposDrift, ReposConfigError } = Repos;
 
@@ -135,15 +136,8 @@ function collectLogs(
 // Effect's `Console.log` writes before they ever reach the spy. The
 // `collectLogs` tests replace the Logger explicitly and are unaffected.
 describe("runReposStatus (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.live("prints parseable JSON of the report with --json", () =>
@@ -154,7 +148,7 @@ describe("runReposStatus (adapter)", () => {
 			const parsed: Repos.ReposStatusReport = JSON.parse(out);
 
 			expect(parsed).toEqual(cleanReport);
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("logs one human-readable line per repo with name, ref, and flags", () =>
@@ -167,27 +161,27 @@ describe("runReposStatus (adapter)", () => {
 			expect(logs.some((l) => l.includes("bar @ main") && l.includes("missing") && l.includes("1 stale notes"))).toBe(
 				true,
 			);
-		}),
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.effect("sets process.exitCode = 1 when the report is not clean", () =>
+	it.effect("sets the exit code = 1 when the report is not clean", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() => Effect.succeed(dirtyReport));
 
 			yield* collectLogs("/repo", false, layer);
 
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.effect("does not set process.exitCode when the report is clean", () =>
+	it.effect("does not set the exit code when the report is clean", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
 
 			yield* collectLogs("/repo", false, layer);
 
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", () =>
@@ -201,8 +195,8 @@ describe("runReposStatus (adapter)", () => {
 			const logs = yield* collectLogs("/repo", false, layer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid", () =>
@@ -216,8 +210,8 @@ describe("runReposStatus (adapter)", () => {
 			const logs = yield* collectLogs("/repo", false, layer);
 
 			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("prints an empty-but-parseable JSON report and exits 0 on ReposConfigError kind missing with --json", () =>
@@ -232,8 +226,8 @@ describe("runReposStatus (adapter)", () => {
 			const parsed: unknown = JSON.parse(out);
 
 			expect(parsed).toEqual({ repos: [], clean: true });
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("sets exitCode 1 on ReposConfigError kind invalid with --json", () =>
@@ -246,8 +240,8 @@ describe("runReposStatus (adapter)", () => {
 
 			yield* collectLogs("/repo", true, layer);
 
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("--drift logs one line per drift and sets exitCode 1 when drifts exist", () =>
@@ -258,8 +252,8 @@ describe("runReposStatus (adapter)", () => {
 			const logs = yield* collectLogs("/repo", false, layer, true, driftLayer);
 
 			expect(logs.some((l) => l.includes("foo: urlMismatch — ") && l.includes('expects url "a"'))).toBe(true);
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("--drift prints no drift lines and does not set exitCode when the drift report is clean", () =>
@@ -270,8 +264,8 @@ describe("runReposStatus (adapter)", () => {
 			const logs = yield* collectLogs("/repo", false, layer, true, driftLayer);
 
 			expect(logs.some((l) => l.includes(":"))).toBe(false);
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.live("--json --drift merges { drift } into the JSON payload", () =>
@@ -283,8 +277,8 @@ describe("runReposStatus (adapter)", () => {
 			const parsed: unknown = JSON.parse(out);
 
 			expect(parsed).toEqual({ ...cleanReport, drift: dirtyDriftReport });
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("--drift stays friendly-exit-0 when the manifest is missing", () =>
@@ -299,7 +293,7 @@ describe("runReposStatus (adapter)", () => {
 			const logs = yield* collectLogs("/repo", false, layer, true, driftLayer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

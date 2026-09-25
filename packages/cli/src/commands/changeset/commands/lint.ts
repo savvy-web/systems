@@ -9,7 +9,7 @@
  * The command resolves the directory argument, delegates to
  * {@link ChangesetLinter.validate}, and logs each {@link LintMessage} as a
  * single colon-delimited line. When no errors are found and `--quiet` is not
- * set, a success message is printed. Sets `process.exitCode = 1` when errors
+ * set, a success message is printed. Sets exit code 1 through `CliExit.set` when errors
  * are found.
  *
  * @example
@@ -22,6 +22,7 @@
  */
 
 import { resolve } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
@@ -42,7 +43,7 @@ const quietOption = Flag.Boolean("quiet").pipe(
  * Run machine-readable lint validation on all changeset files in `dir`.
  *
  * Outputs one line per error in `file:line:col rule message` format. Sets
- * `process.exitCode = 1` when one or more errors are found.
+ * exit code 1 through `CliExit.set` when one or more errors are found.
  *
  * @param dir - Path to the changeset directory (resolved relative to cwd)
  * @param quiet - When `true`, suppress the "No lint errors found" message
@@ -64,7 +65,7 @@ export function runLint(dir: string, quiet: boolean) {
 		}
 
 		if (messages.length > 0) {
-			process.exitCode = 1;
+			yield* CliExit.set(1);
 		}
 	});
 }

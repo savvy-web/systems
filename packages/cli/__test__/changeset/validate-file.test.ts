@@ -5,20 +5,18 @@ import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Effect, Logger } from "effect";
 
 import { runValidateFile } from "../../src/commands/changeset/commands/validate-file.js";
+import { TestExit } from "../utils/exit.js";
 
 describe("runValidateFile", () => {
 	let tempDir: string;
-	let savedExitCode: typeof process.exitCode;
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), "cli-validate-file-"));
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
+		TestExit.reset();
 	});
 
 	afterEach(() => {
 		rmSync(tempDir, { recursive: true });
-		process.exitCode = savedExitCode;
 	});
 
 	function collectLogs(filePath: string): Effect.Effect<string[]> {
@@ -29,7 +27,7 @@ describe("runValidateFile", () => {
 			});
 			yield* runValidateFile(filePath).pipe(Effect.provide(Logger.layer([collectLogger])));
 			return logs;
-		});
+		}).pipe(Effect.provide(TestExit.layer));
 	}
 
 	it.effect("exits cleanly for a valid changeset file", () =>
@@ -39,32 +37,32 @@ describe("runValidateFile", () => {
 
 			const logs = yield* collectLogs(filePath);
 
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 			expect(logs).toContain("Valid.");
 		}),
 	);
 
-	it.effect("sets process.exitCode=1 and logs errors for invalid file", () =>
+	it.effect("sets the exit code=1 and logs errors for invalid file", () =>
 		Effect.gen(function* () {
 			const filePath = join(tempDir, "bad.md");
 			writeFileSync(filePath, '---\n"@savvy-web/changesets": minor\n---\n\n# Bad Title\n');
 
 			const logs = yield* collectLogs(filePath);
 
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 			expect(logs.length).toBeGreaterThan(0);
 			// Should have at least one error line in file:line:col format
 			expect(logs.some((l) => l.match(/:\d+:\d+ \S+ .+$/))).toBe(true);
 		}),
 	);
 
-	it.effect("sets process.exitCode=1 when file does not exist", () =>
+	it.effect("sets the exit code=1 when file does not exist", () =>
 		Effect.gen(function* () {
 			const filePath = join(tempDir, "nonexistent.md");
 
 			const logs = yield* collectLogs(filePath);
 
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 			expect(logs.some((l) => l.toLowerCase().includes("error"))).toBe(true);
 		}),
 	);

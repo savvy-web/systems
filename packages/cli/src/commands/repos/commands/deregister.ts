@@ -31,6 +31,7 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
@@ -59,12 +60,10 @@ export const runReposDeregister = (cwd: string, section: string) =>
 		yield* Effect.log("local git config only — nothing to commit");
 	}).pipe(
 		Effect.catchTag("ReposConfigError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
 		}),
 	);
 

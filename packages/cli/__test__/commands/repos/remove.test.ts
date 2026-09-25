@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 import { runReposRemove } from "../../../src/commands/repos/commands/remove.js";
+import { TestExit } from "../../utils/exit.js";
 
 const { ReposManager } = Repos;
 
@@ -45,19 +46,12 @@ function collectLogs(cwd: string, name: string, layer: Layer.Layer<Repos.ReposMa
 		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
 		yield* runReposRemove(cwd, name).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposRemove (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("prints the removed entry's orientation block, because add will not restore it", () =>
@@ -109,7 +103,7 @@ describe("runReposRemove (adapter)", () => {
 			expect(logs).toContain("chore(repos): remove foo");
 			expect(logs.some((l) => l.includes("staged"))).toBe(true);
 			expect(logs.some((l) => l.includes("n-1234") && l.includes("promote"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -120,7 +114,7 @@ describe("runReposRemove (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", layer);
 
 			expect(logs.some((l) => l.includes("n-1234"))).toBe(false);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -133,7 +127,7 @@ describe("runReposRemove (adapter)", () => {
 				const logs = yield* collectLogs("/repo", "foo", layer);
 
 				expect(logs.some((l) => l.includes("no vendored repo named"))).toBe(true);
-				expect(process.exitCode).toBe(1);
+				expect(TestExit.code()).toBe(1);
 			}),
 	);
 
@@ -152,7 +146,7 @@ describe("runReposRemove (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", layer);
 
 			expect(logs.some((l) => l.includes("boom"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -165,7 +159,7 @@ describe("runReposRemove (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", layer);
 
 			expect(logs.some((l) => l.includes("chmod failed"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -180,7 +174,7 @@ describe("runReposRemove (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", layer);
 
 			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -195,7 +189,7 @@ describe("runReposRemove (adapter)", () => {
 			const logs = yield* collectLogs("/repo", "foo", layer);
 
 			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

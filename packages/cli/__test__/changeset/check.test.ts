@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, layer } from "@effect/vitest";
 import { Effect, Logger } from "effect";
 
 import { runChangesetCheck } from "../../src/commands/changeset/commands/check.js";
+import { TestExit } from "../utils/exit.js";
 
 const silentLogger = Logger.layer([]);
 
@@ -13,17 +14,14 @@ const silentLogger = Logger.layer([]);
 // freshly-created temp dir passed in as an argument.
 layer(silentLogger)("check command – runChangesetCheck handler", (it) => {
 	let tempDir: string;
-	let savedExitCode: typeof process.exitCode;
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), "cli-check-"));
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
+		TestExit.reset();
 	});
 
 	afterEach(() => {
 		rmSync(tempDir, { recursive: true });
-		process.exitCode = savedExitCode;
 	});
 
 	it.effect("logs success message when all changesets are valid", () =>
@@ -39,26 +37,26 @@ layer(silentLogger)("check command – runChangesetCheck handler", (it) => {
 
 			yield* runChangesetCheck(tempDir);
 
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("logs success message for an empty directory", () =>
 		Effect.gen(function* () {
 			yield* runChangesetCheck(tempDir);
 
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.effect("sets process.exitCode to 1 when errors are found", () =>
+	it.effect("sets the exit code to 1 when errors are found", () =>
 		Effect.gen(function* () {
 			writeFileSync(join(tempDir, "bad.md"), '---\n"@savvy-web/changesets": minor\n---\n\n# Bad Title\n');
 
 			yield* runChangesetCheck(tempDir);
 
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("groups messages by file when multiple files have errors", () =>
@@ -68,8 +66,8 @@ layer(silentLogger)("check command – runChangesetCheck handler", (it) => {
 
 			yield* runChangesetCheck(tempDir);
 
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("reports correct error count in the summary", () =>
@@ -80,8 +78,8 @@ layer(silentLogger)("check command – runChangesetCheck handler", (it) => {
 			yield* runChangesetCheck(tempDir);
 
 			// Only bad.md should produce errors, so exitCode must be set
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("does not set exitCode when only valid files are present", () =>
@@ -94,8 +92,8 @@ layer(silentLogger)("check command – runChangesetCheck handler", (it) => {
 
 			yield* runChangesetCheck(tempDir);
 
-			expect(process.exitCode).toBeUndefined();
-		}),
+			expect(TestExit.code()).toBe(0);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
 	it.effect("handles a single file with multiple lint errors (existing.push branch)", () =>
@@ -106,7 +104,7 @@ layer(silentLogger)("check command – runChangesetCheck handler", (it) => {
 
 			yield* runChangesetCheck(tempDir);
 
-			expect(process.exitCode).toBe(1);
-		}),
+			expect(TestExit.code()).toBe(1);
+		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

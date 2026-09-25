@@ -31,10 +31,10 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
-
 import { requireValidConfig } from "../utils/config-gate.js";
 
 const { ChangelogTransformer } = Changesets;
@@ -88,7 +88,7 @@ export function runTransform(file: string, dryRun: boolean, check: boolean) {
 		if (check) {
 			if (result !== content) {
 				yield* Effect.log(`${resolved} would be modified by transform.`);
-				process.exitCode = 1;
+				yield* CliExit.set(1);
 			} else {
 				yield* Effect.log(`${resolved} is already formatted.`);
 			}

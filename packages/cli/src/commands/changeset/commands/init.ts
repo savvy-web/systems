@@ -36,6 +36,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { CliExit } from "@effected/cli";
 import { Git } from "@effected/git";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
@@ -694,7 +695,7 @@ export function runChangesetInit(opts: {
 	quiet: boolean;
 	skipMarkdownlint: boolean;
 	check: boolean;
-}): Effect.Effect<void, never, WorkspaceRoot | Git> {
+}): Effect.Effect<void, never, WorkspaceRoot | Git | CliExit> {
 	const { force, quiet, skipMarkdownlint, check } = opts;
 	return Effect.gen(function* () {
 		const root = yield* resolveWorkspaceRoot(process.cwd());
@@ -773,7 +774,7 @@ export function runChangesetInit(opts: {
 				yield* Effect.logError(err.message);
 			}
 			if (!quiet) {
-				process.exitCode = 1;
+				yield* CliExit.set(1);
 			}
 			return;
 		}
@@ -784,7 +785,7 @@ export function runChangesetInit(opts: {
 			Effect.gen(function* () {
 				if (!quiet) {
 					yield* Effect.logError(error instanceof InitError ? error.message : `Init failed: ${String(error)}`);
-					process.exitCode = 1;
+					yield* CliExit.set(1);
 				}
 			}),
 		),

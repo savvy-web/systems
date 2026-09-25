@@ -1,3 +1,4 @@
+import type { CliExit } from "@effected/cli";
 import type { Repos } from "@savvy-web/silk-effects";
 import { Command } from "effect/unstable/cli";
 
@@ -60,7 +61,7 @@ export const reposCommand: Command.Command<
 	Record<string, never>,
 	Record<string, never>,
 	Repos.GitSubmoduleError,
-	Repos.ReposManager | Repos.ReposDrift
+	Repos.ReposManager | Repos.ReposDrift | CliExit
 > = _reposCommand;
 /* v8 ignore stop */
 

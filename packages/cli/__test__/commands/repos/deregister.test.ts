@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 import { runReposDeregister } from "../../../src/commands/repos/commands/deregister.js";
+import { TestExit } from "../../utils/exit.js";
 
 const { ReposManager, ReposConfigError, GitSubmoduleError } = Repos;
 
@@ -38,19 +39,12 @@ function collectLogs(cwd: string, section: string, layer: Layer.Layer<Repos.Repo
 		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
 		yield* runReposDeregister(cwd, section).pipe(Effect.provide(captured));
 		return sink;
-	});
+	}).pipe(Effect.provide(TestExit.layer));
 }
 
 describe("runReposDeregister (adapter)", () => {
-	let savedExitCode: typeof process.exitCode;
-
 	beforeEach(() => {
-		savedExitCode = process.exitCode;
-		process.exitCode = undefined;
-	});
-
-	afterEach(() => {
-		process.exitCode = savedExitCode;
+		TestExit.reset();
 	});
 
 	it.effect("logs the removed keys and the nothing-to-commit posture, exit undefined", () =>
@@ -68,7 +62,7 @@ describe("runReposDeregister (adapter)", () => {
 			expect(logs.some((l) => l.includes("removed submodule..repos/old.url"))).toBe(true);
 			expect(logs.some((l) => l.includes("removed submodule..repos/old.active"))).toBe(true);
 			expect(logs.some((l) => l.includes("nothing to commit"))).toBe(true);
-			expect(process.exitCode).toBeUndefined();
+			expect(TestExit.code()).toBe(0);
 		}),
 	);
 
@@ -87,7 +81,7 @@ describe("runReposDeregister (adapter)", () => {
 			const logs = yield* collectLogs("/repo", ".repos/spec", layer);
 
 			expect(logs.some((l) => l.includes("canonical registration"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 
@@ -106,7 +100,7 @@ describe("runReposDeregister (adapter)", () => {
 			const logs = yield* collectLogs("/repo", ".repos/old", layer);
 
 			expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("no such section"))).toBe(true);
-			expect(process.exitCode).toBe(1);
+			expect(TestExit.code()).toBe(1);
 		}),
 	);
 });

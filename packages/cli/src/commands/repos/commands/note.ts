@@ -28,6 +28,7 @@
  * @internal
  */
 
+import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
@@ -47,16 +48,13 @@ export const runReposNote = (cwd: string, name: string, op: Parameters<Repos.Rep
 			if (error.kind === "missing") {
 				return Effect.log("no .repos/config.json — nothing vendored");
 			}
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
 		}),
 		Effect.catchTag("RepoNotFoundError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
 		}),
 		Effect.catchTag("NoteNotFoundError", (error) => {
-			process.exitCode = 1;
-			return Effect.log(error.message);
+			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
 		}),
 	);
 
