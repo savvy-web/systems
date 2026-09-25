@@ -23,8 +23,8 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: 5307a359d84decec8f1b656a3ce32502befc7b6e96419769e81926ee6aff8b4b
+  at: 2026-09-25T02:44:37Z
+  body_sha256: 5520319c26a387b816cc0e316a048b27d55aad3322dd25cb8fe6719cf1457de0
 ---
 
 # cli
