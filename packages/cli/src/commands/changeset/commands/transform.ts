@@ -35,6 +35,7 @@ import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 import { requireValidConfig } from "../utils/config-gate.js";
 
 const { ChangelogTransformer } = Changesets;
@@ -81,22 +82,22 @@ export function runTransform(file: string, dryRun: boolean, check: boolean) {
 		const result = ChangelogTransformer.transformContent(content);
 
 		if (dryRun) {
-			yield* Effect.log(result);
+			yield* Output.line(result);
 			return;
 		}
 
 		if (check) {
 			if (result !== content) {
-				yield* Effect.log(`${resolved} would be modified by transform.`);
+				yield* Output.warn(`${resolved} would be modified by transform`);
 				yield* CliExit.set(1);
 			} else {
-				yield* Effect.log(`${resolved} is already formatted.`);
+				yield* Output.ok(`${resolved} is already formatted`);
 			}
 			return;
 		}
 
 		yield* Effect.try(() => writeFileSync(resolved, result, "utf-8"));
-		yield* Effect.log(`Transformed ${resolved}`);
+		yield* Output.ok(`Transformed ${resolved}`);
 	});
 }
 

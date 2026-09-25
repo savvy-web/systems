@@ -27,6 +27,7 @@ import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 type WorkspaceDependencyDiff = Changesets.WorkspaceDependencyDiff;
 const { DepsRegen, serializeDependencyTableToMarkdown } = Changesets;
@@ -108,7 +109,7 @@ export function runDepsDetect(
 		const emitMarkdown = markdown && !json;
 
 		if (emitMarkdown) {
-			yield* Effect.log(renderMarkdownBlocks(diffs));
+			yield* Output.line(renderMarkdownBlocks(diffs));
 			return;
 		}
 

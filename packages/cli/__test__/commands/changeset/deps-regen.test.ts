@@ -3,6 +3,7 @@ import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Option } from "effect";
 
 import { runDepsRegen } from "../../../src/commands/changeset/commands/deps-regen.js";
+import { Capture } from "../../utils/capture.js";
 import { TestExit } from "../../utils/exit.js";
 
 const { DepsRegen } = Changesets;
@@ -71,19 +72,11 @@ function collectStdout(
 	pkg: Option.Option<string> = Option.none(),
 ) {
 	return Effect.gen(function* () {
-		let out = "";
-		const original = console.log;
-		// biome-ignore lint/suspicious/noExplicitAny: console.log spy for capture
-		console.log = ((...args: any[]): void => {
-			out += `${args.map((a) => (typeof a === "string" ? a : String(a))).join(" ")}\n`;
-		}) as typeof console.log;
-		yield* Effect.ensuring(
-			runDepsRegen(cwd, base, pkg, dryRun, json).pipe(Effect.provide(layer)),
-			Effect.sync(() => {
-				console.log = original;
-			}),
+		const out: string[] = [];
+		yield* runDepsRegen(cwd, base, pkg, dryRun, json).pipe(
+			Effect.provide(Layer.mergeAll(layer, Capture.layer(out), Capture.piped)),
 		);
-		return out;
+		return out.join("\n");
 	});
 }
 

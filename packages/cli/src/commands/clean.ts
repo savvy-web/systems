@@ -11,8 +11,10 @@
 import { glob as nodeGlob, realpath, rm } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { WorkspaceDiscovery } from "@effected/workspaces";
+import type { Stdio } from "effect";
 import { Data, Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
+import { Output } from "../internal/output.js";
 
 /** Default patterns cleaned when `--globs` is omitted. */
 const DEFAULT_GLOBS = ["dist", ".turbo", "coverage", "node_modules", ".rslib"];
@@ -108,11 +110,6 @@ export function removeTargets(targets: ReadonlyArray<Target>, dryRun: boolean): 
 	});
 }
 
-/** Unicode symbols for output. */
-const CHECK_MARK = "✓";
-const BULLET = "•";
-const WARN_MARK = "⚠";
-
 /** Split the comma-separated `--globs` value; fall back to defaults when empty. */
 export function parseGlobs(raw: string): string[] {
 	const parts = raw
@@ -129,7 +126,7 @@ export function parseGlobs(raw: string): string[] {
 export function runClean(opts: {
 	globs: string;
 	dryRun: boolean;
-}): Effect.Effect<void, CleanError, WorkspaceDiscovery> {
+}): Effect.Effect<void, CleanError, WorkspaceDiscovery | Stdio.Stdio> {
 	const patterns = parseGlobs(opts.globs);
 	return Effect.gen(function* () {
 		const discovery = yield* WorkspaceDiscovery;
@@ -171,22 +168,24 @@ export function runClean(opts: {
 			);
 			for (const { g, report } of reports) {
 				if (g.targets.length === 0) continue;
-				yield* Effect.log(`\n${g.pkg.relativePath === "." ? "<root>" : g.pkg.relativePath}`);
+				yield* Output.line("");
+				yield* Output.heading(g.pkg.relativePath === "." ? "<root>" : g.pkg.relativePath);
 				// Only report items that actually succeeded (in dry-run, `removed`
 				// holds every target). Failures are printed inline with a distinct
 				// marker rather than mislabeled as removed.
 				for (const t of report.removed) {
-					yield* Effect.log(`  ${BULLET} ${verb} [${t.kind}] ${t.path}`);
+					yield* Output.detail(`${verb} [${t.kind}] ${t.path}`);
 				}
 				for (const f of report.failed) {
-					yield* Effect.log(`  ${WARN_MARK} failed [${f.target.kind}] ${f.target.path}: ${f.reason}`);
+					yield* Output.warn(`failed [${f.target.kind}] ${f.target.path}: ${f.reason}`);
 				}
 				total += report.removed.length;
 				failures.push(...report.failed);
 			}
 		}
 
-		yield* Effect.log(`\n${CHECK_MARK} ${opts.dryRun ? "Would remove" : "Removed"} ${total} item(s).`);
+		yield* Output.line("");
+		yield* Output.ok(`${opts.dryRun ? "Would remove" : "Removed"} ${total} item(s)`);
 		if (failures.length > 0) {
 			for (const f of failures) {
 				yield* Effect.logError(`Failed to remove ${f.target.path}: ${f.reason}`);

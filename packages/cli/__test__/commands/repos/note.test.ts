@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer } from "effect";
 
 import { runReposNote } from "../../../src/commands/repos/commands/note.js";
 import { Capture } from "../../utils/capture.js";

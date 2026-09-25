@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { WorkspaceDiscovery, WorkspacePackage } from "@effected/workspaces";
 import { Effect, Layer, Logger } from "effect";
 import { collectTargets, removeTargets, runClean } from "../src/commands/clean.js";
+import { Capture } from "./utils/capture.js";
 
 /** Suppresses the command's INFO logging so test output stays clean. */
-const silentLogger = Logger.layer([]);
+/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
 
 describe("collectTargets", () => {
 	let dir: string;

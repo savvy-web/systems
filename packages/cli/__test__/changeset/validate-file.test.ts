@@ -2,10 +2,14 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { Effect, Logger } from "effect";
+import { Effect, Layer } from "effect";
 
 import { runValidateFile } from "../../src/commands/changeset/commands/validate-file.js";
+import { Capture } from "../utils/capture.js";
 import { TestExit } from "../utils/exit.js";
+
+/** What the last run wrote to stderr: every log line, including a read failure. */
+const stderrLines: string[] = [];
 
 describe("runValidateFile", () => {
 	let tempDir: string;
@@ -21,11 +25,12 @@ describe("runValidateFile", () => {
 
 	function collectLogs(filePath: string): Effect.Effect<string[]> {
 		return Effect.gen(function* () {
+			// stdout only: the findings (and the verdict) are the command's output.
 			const logs: string[] = [];
-			const collectLogger = Logger.make(({ message }) => {
-				logs.push(typeof message === "string" ? message : String(message));
-			});
-			yield* runValidateFile(filePath).pipe(Effect.provide(Logger.layer([collectLogger])));
+			stderrLines.length = 0;
+			yield* runValidateFile(filePath).pipe(
+				Effect.provide(Layer.merge(Capture.layer(logs, stderrLines), Capture.piped)),
+			);
 			return logs;
 		}).pipe(Effect.provide(TestExit.layer));
 	}
@@ -38,7 +43,7 @@ describe("runValidateFile", () => {
 			const logs = yield* collectLogs(filePath);
 
 			expect(TestExit.code()).toBe(0);
-			expect(logs).toContain("Valid.");
+			expect(logs).toEqual(["✓ Valid"]);
 		}),
 	);
 
@@ -63,7 +68,8 @@ describe("runValidateFile", () => {
 			const logs = yield* collectLogs(filePath);
 
 			expect(TestExit.code()).toBe(1);
-			expect(logs.some((l) => l.toLowerCase().includes("error"))).toBe(true);
+			expect(logs).toEqual([]);
+			expect(stderrLines.some((l) => l.toLowerCase().includes("error"))).toBe(true);
 		}),
 	);
 });

@@ -1,24 +1,20 @@
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer } from "effect";
 // `vi` is imported from `vitest` directly, NOT from `@effect/vitest`: vitest
 // hoists `vi.mock(...)` above all imports, so a `vi` bound through the
 // `@effect/vitest` re-export is not yet initialized when the hoisted call runs
 // ("Cannot access '__vi_import_N__' before initialization").
 import { vi } from "vitest";
 import { runVersion } from "../../src/commands/changeset/commands/version.js";
+import { Capture } from "../utils/capture.js";
 
 vi.mock("../../src/commands/changeset/utils/config-gate.js", () => ({
 	requireValidConfig: () => Effect.void,
 }));
 
-/** A logger that collects emitted messages so tests can assert on the command's output. */
-const captureLogger = (sink: string[]) =>
-	Logger.layer([
-		Logger.make(({ message }) => {
-			sink.push(Array.isArray(message) ? message.map(String).join(" ") : String(message));
-		}),
-	]);
+/** Collects what the command prints on stdout — its output — so tests can assert on it. */
+const captureLogger = (sink: string[]) => Layer.merge(Capture.layer(sink), Capture.piped);
 
 /** A ReleasePlanner test layer that records how `apply` was invoked. */
 const recordingPlanner = (result: Changesets.AppliedRelease, calls: Array<{ root: string; dryRun: boolean }>) =>
@@ -82,7 +78,7 @@ describe("runVersion", () => {
 				Effect.provide(recordingPlanner(empty, [])),
 				Effect.provide(captureLogger(logs)),
 			) as Effect.Effect<void>;
-			expect(logs.join("\n")).toContain("No pending changesets.");
+			expect(logs).toEqual(["✓ No pending changesets"]);
 		}),
 	);
 });

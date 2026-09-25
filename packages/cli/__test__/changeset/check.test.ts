@@ -2,12 +2,14 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, layer } from "@effect/vitest";
-import { Effect, Logger } from "effect";
+import { Effect, Layer, Logger } from "effect";
 
 import { runChangesetCheck } from "../../src/commands/changeset/commands/check.js";
+import { Capture } from "../utils/capture.js";
 import { TestExit } from "../utils/exit.js";
 
-const silentLogger = Logger.layer([]);
+/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
 
 // A suite-boundary `layer()` is safe here: `Logger.layer([])` is stateless and
 // carries nothing across tests, and this suite never chdirs — each test drives a

@@ -46,6 +46,7 @@ import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 type RegenPlan = Changesets.RegenPlan;
 const { DepsRegen } = Changesets;
@@ -115,29 +116,30 @@ export function runDepsRegen(
 function renderHumanPlan(plan: RegenPlan) {
 	return Effect.gen(function* () {
 		if (plan.toDelete.length === 0 && plan.toWrite.length === 0) {
-			yield* Effect.log("No dependency changes to regenerate.");
+			yield* Output.ok("No dependency changes to regenerate");
 		} else {
 			if (plan.toDelete.length > 0) {
-				yield* Effect.log(`Deleted ${plan.toDelete.length} pure dependency changeset(s):`);
+				yield* Output.ok(`Deleted ${plan.toDelete.length} pure dependency changeset(s):`);
 				for (const entry of plan.toDelete) {
-					yield* Effect.log(`  - ${entry.file}  (${entry.package})`);
+					yield* Output.detail(`${entry.file}  (${entry.package})`);
 				}
 			}
 			if (plan.toWrite.length > 0) {
-				yield* Effect.log(`Wrote ${plan.toWrite.length} fresh dependency changeset(s):`);
+				yield* Output.ok(`Wrote ${plan.toWrite.length} fresh dependency changeset(s):`);
 				for (const entry of plan.toWrite) {
-					yield* Effect.log(
-						`  + ${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`,
+					yield* Output.detail(
+						`+ ${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`,
 					);
 				}
 			}
 		}
 		if (plan.skippedMixed.length > 0) {
-			yield* Effect.log(
-				`\nSkipped ${plan.skippedMixed.length} mixed changeset(s) (have Dependencies but also other content):`,
+			yield* Output.line("");
+			yield* Output.skip(
+				`Skipped ${plan.skippedMixed.length} mixed changeset(s) (have Dependencies but also other content):`,
 			);
 			for (const file of plan.skippedMixed) {
-				yield* Effect.log(`  ~ ${file}`);
+				yield* Output.detail(`~ ${file}`);
 			}
 		}
 	});
