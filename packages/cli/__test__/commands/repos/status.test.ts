@@ -251,6 +251,26 @@ describe("runReposStatus (adapter)", () => {
 		}),
 	);
 
+	it.effect("--json keeps stdout one JSON document when the drift check fails with GitSubmoduleError", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
+			const driftLayer = makeStubDriftLayer(() =>
+				Effect.fail(new Repos.GitSubmoduleError({ command: "git submodule status", cwd: "/repo", reason: "boom" })),
+			);
+			const result = yield* Capture.run(
+				runReposStatus("/repo", true, true).pipe(
+					Effect.provide(Layer.merge(layer, driftLayer)),
+					Effect.provide(Capture.piped),
+				),
+			);
+			const parsed = JSON.parse(result.stdout.join("\n")) as { readonly error: string; readonly clean: boolean };
+			expect(parsed.clean).toBe(false);
+			expect(parsed.error.length).toBeGreaterThan(0);
+			expect(result.stderr.join("\n")).toContain(parsed.error);
+			expect(result.exitCode).toBe(1);
+		}),
+	);
+
 	it.effect("sets exitCode 1 on ReposConfigError kind invalid with --json", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() =>

@@ -29,12 +29,18 @@ describe("savvy bin (dist/dev)", () => {
 		}),
 	);
 
-	it.effect("a usage error exits 64 and reports on stderr, not stdout", () =>
+	// Core's `Command.runWith` prints the subcommand's help on stdout and the parse
+	// error on stderr; `@effected/cli` offers no switch to move the help. The
+	// contract pinned here is exactly that: exit 64, the error only on stderr,
+	// and nothing on stdout but the help text.
+	it.effect("a usage error exits 64 with the error on stderr and only help on stdout", () =>
 		Effect.gen(function* () {
 			const result = yield* run(["lint", "--definitely-not-a-flag"]);
 			expect(result.exitCode).toBe(64);
-			expect(result.stderr).toContain("definitely-not-a-flag");
+			expect(result.stderr).toContain("Unrecognized flag: --definitely-not-a-flag");
 			expect(result.stdout).not.toContain("definitely-not-a-flag");
+			expect(result.stdout.trimStart().startsWith("DESCRIPTION")).toBe(true);
+			expect(result.stdout).toContain("USAGE\n  savvy lint");
 		}),
 	);
 });

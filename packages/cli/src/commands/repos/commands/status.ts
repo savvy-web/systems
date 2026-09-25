@@ -104,6 +104,16 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 			const report = json ? Console.log(JSON.stringify({ error: error.message, clean: false }, null, 2)) : Effect.void;
 			return CliExit.set(1).pipe(Effect.andThen(report), Effect.andThen(Effect.logError(error.message)));
 		}),
+		// A git failure (status or --drift) still leaves a --json consumer one document;
+		// without --json it propagates and CliRuntime reports it on stderr.
+		Effect.catchTag("GitSubmoduleError", (error) =>
+			json
+				? CliExit.set(1).pipe(
+						Effect.andThen(Console.log(JSON.stringify({ error: error.message, clean: false }, null, 2))),
+						Effect.andThen(Effect.logError(error.message)),
+					)
+				: Effect.fail(error),
+		),
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposStatus */

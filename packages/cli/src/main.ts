@@ -22,6 +22,7 @@ import { Effect, Layer, Option } from "effect";
 import { Command } from "effect/unstable/cli";
 
 import { AppLive, CliPlatform, rootCommand } from "./cli/index.js";
+import { FailureLine } from "./internal/failure-line.js";
 import { VersionLine } from "./internal/version-line.js";
 import { CLI_VERSION } from "./version.js";
 
@@ -55,6 +56,6 @@ export const main = (options: MainOptions = {}): void => {
 	);
 	// The kit-default logger: every log line goes to stderr, so stdout carries only
 	// what a command prints as its result (`Output`), JSON, and hook envelopes.
-	NodeRuntime.runMain(CliRuntime.main(program, { platform: CliPlatform }));
+	NodeRuntime.runMain(CliRuntime.main(program, { platform: CliPlatform, render: FailureLine.render }));
 };
 /* v8 ignore stop */

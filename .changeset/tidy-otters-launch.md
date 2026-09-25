@@ -23,7 +23,7 @@ The project directory is now resolved with `@effected/engine`'s `LaunchContext.p
 
 ## Bug Fixes
 
-Serving now goes through `@effected/mcp`'s `McpStdio`: a non-JSON stdin line is answered with a JSON-RPC `-32700` parse error and the server keeps serving, a launch failure is reported on stderr only (never onto the JSON-RPC wire), and a clean stdin close exits `0`.
+Serving now goes through `@effected/mcp`'s `McpStdio`: a non-JSON stdin line is answered with a JSON-RPC `-32700` parse error and the server keeps serving, and a launch failure is reported on stderr only, never onto the JSON-RPC wire.
 
 ## Breaking Changes
 
