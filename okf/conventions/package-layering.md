@@ -13,8 +13,8 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 0c35b0e2295fb4472ceec5f18204f7080c90639891c89450710cf58f84556f3d
+  at: 2026-09-25T02:26:25Z
+  body_sha256: a307f817298979441c45a61eb3811e2265d020ea5cc93b8eb94c97afbd4d5185
 ---
 
 # Respect the four-layer package graph and the non-import invariant

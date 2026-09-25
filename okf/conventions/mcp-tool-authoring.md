@@ -9,8 +9,8 @@ sources:
     resource: ../../packages/mcp/src/toolkit.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: e479cab48393aac012bb6b0e6d1b5f5e59415fe02398c34e238ba13038f8c416
+  at: 2026-09-25T02:26:25Z
+  body_sha256: 95a5261c2f1a454e5cb1fbad004119965849b78764c3e656b1dd563ad38b896c
 ---
 
 # Shape and test a savvy-mcp tool

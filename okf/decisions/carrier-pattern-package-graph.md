@@ -11,8 +11,8 @@ sources:
     resource: front-ends-adopt-effected-kit.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: ffb496e26ec84f20cd29ca9e0484f8f919c885827347a14a6c66a5acde818b3b
+  at: 2026-09-25T02:26:25Z
+  body_sha256: 8375adcfba59add3864dddfe834edc6122e7fff06cbd44242f55b96ab2325319
 ---
 
 # Carrier-pattern package graph

@@ -7,8 +7,8 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T02:06:56Z
-  body_sha256: 5b254f149265464d67a2f25c31cff0e37f0a76cf7aced01118efa45a389ac877
+  at: 2026-09-25T02:26:25Z
+  body_sha256: 03542aaea5f3004b2df8c2f2e2d6bfe12065c2799c35920ba097fb090ea58c31
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin

@@ -11,8 +11,8 @@ sources:
     resource: front-ends-adopt-effected-kit.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-20T00:33:52Z
-  body_sha256: 113a7c20064c7ea869a72f41e85aa9e9aa98f004528c9f89421e98a9dc672350
+  at: 2026-09-25T02:26:25Z
+  body_sha256: 53595b9dd0a6fd6c4e81b0fafcfd5e9c808c60664c35a5839bdcce16da1bbf74
 ---
 
 # An Effect-native MCP server

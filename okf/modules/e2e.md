@@ -7,8 +7,8 @@ resource: ../../e2e
 tags: [testing]
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
-  body_sha256: ce872011619cd2e6344072fd009b5666dd0052c982b2217507778a8acd79c5ac
+  at: 2026-09-25T02:26:25Z
+  body_sha256: 19d8f73361796d918c7ea5b6e1882ce8fcd55176b8b054454fe96677066ce5c2
 sources:
   - id: e2e-bundler
     resource: ../../e2e/bundler/__test__/e2e

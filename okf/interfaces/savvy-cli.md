@@ -17,8 +17,8 @@ sources:
     resource: ../../packages/cli/__test__/e2e/bin.e2e.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: e52a403f453d769c42b98c996373be565ab738e3b54b00ffda3bb4689eb214ac
+  at: 2026-09-25T02:26:25Z
+  body_sha256: f70128b3044a82164d70ce6eac9483f287432c9449f436ff36880dfba5285c9d
 ---
 
 # savvy command tree

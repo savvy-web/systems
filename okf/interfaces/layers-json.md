@@ -16,8 +16,8 @@ sources:
     title: LayerPolicy and WorkspaceLayering
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
-  body_sha256: 1fe32a9b41f5516af97bbca5af1fe470257dac80e704bb43858c7cebaa7ff128
+  at: 2026-09-25T02:26:25Z
+  body_sha256: ac54a22751d1c4a0e672a07a72de56faa175998c876f53637a918b9ac1c101da
 ---
 
 # layers.json
