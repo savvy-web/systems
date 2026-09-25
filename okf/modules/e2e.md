@@ -16,21 +16,19 @@ sources:
     resource: ../../e2e/pnpm-plugin-silk/__test__/e2e
   - id: e2e-silk
     resource: ../../e2e/silk/__test__/e2e
-  - id: e2e-workspace
-    resource: ../../e2e/workspace/__test__/e2e
 ---
 
 # e2e
 
-`e2e/*` is a top-level `pnpm-workspace.yaml` glob matching four harness
-packages — `@e2e/bundler`, `@e2e/pnpm-plugin-silk`, `@e2e/silk` and
-`@e2e/workspace` — each `private: true`, forming the harness band in the
-package layering (which may depend on anything). Each package under test is
-declared as a `workspace:*` devDependency, so on install the harness links
-the real built `dist/dev` artifact and consumes it exactly as a downstream
-repo would: through the published entry points, never the source tree.
-`@e2e/workspace` is the one exception — it reads manifests off disk and
-depends on no app package.
+`e2e/*` is a top-level `pnpm-workspace.yaml` glob matching three harness
+packages — `@e2e/bundler`, `@e2e/pnpm-plugin-silk` and `@e2e/silk` — each
+`private: true` and matched by the `@e2e/*` glob in `layers.json`'s
+`unconstrained` set, so their own dependency edges are not layer-checked.
+Each package under test is declared as a `workspace:*` devDependency, so on
+install the harness links the real built `dist/dev` artifact and consumes it
+exactly as a downstream repo would: through the published entry points,
+never the source tree. The layering guard is not an e2e package: it is a
+unit test in silk (see [`interfaces/layers-json.md`](../interfaces/layers-json.md)).
 
 ## Boundary
 
@@ -41,7 +39,7 @@ depends on no app package.
   resolver's root-walk stops at that file rather than climbing to the
   monorepo root — this is the load-bearing isolation guarantee, detailed in
   [`conventions/e2e-isolation.md`](../conventions/e2e-isolation.md).
-- **Four coverage tiers.** `@e2e/bundler` spawns the built
+- **Three coverage tiers.** `@e2e/bundler` spawns the built
   `@savvy-web/bundler` front door (and its raw-tsdown escape hatch) inside
   subprocess fixtures.[^e2e-bundler] `@e2e/pnpm-plugin-silk` imports the
   built `pnpmfile.mjs` and, separately, spawns the built `savvy` binary
@@ -49,9 +47,9 @@ depends on no app package.
   the repo.[^e2e-pnpm-plugin-silk] `@e2e/silk` packs the six app packages
   and installs silk's tarball into scratch projects under both pnpm and
   npm, proving the carrier bins from a packed install outside the
-  workspace.[^e2e-silk] `@e2e/workspace` walks the live `workspace:*`
-  dependency graph off disk and checks it against `layers.json` — see
-  [`interfaces/layers-json.md`](../interfaces/layers-json.md).[^e2e-workspace]
+  workspace; under pnpm it also asserts the `via @savvy-web/silk` suffix
+  on `savvy --version` and on the MCP `serverInfo.version`, which npm's
+  flat `.bin` linking does not guarantee.[^e2e-silk]
 - **Tests live under `e2e/<pkg>/__test__/e2e/`** and run in the normal
   `pnpm test` gate via `AgentPlugin.discover()` — no separate project
   definition, no separate CI job. The root `vitest.config.ts` gives every
@@ -80,4 +78,3 @@ depends on no app package.
 [^e2e-bundler]: `e2e/bundler/__test__/e2e`
 [^e2e-pnpm-plugin-silk]: `e2e/pnpm-plugin-silk/__test__/e2e`
 [^e2e-silk]: `e2e/silk/__test__/e2e`
-[^e2e-workspace]: `e2e/workspace/__test__/e2e`

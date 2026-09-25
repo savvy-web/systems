@@ -18,6 +18,12 @@ sources:
     resource: ../../packages/silk/src
   - id: silk-externals-test
     resource: ../../packages/silk/__test__/externals.test.ts
+  - id: silk-layers
+    resource: ../../packages/silk/layers.json
+  - id: silk-layering-test
+    resource: ../../packages/silk/__test__/package-layering.test.ts
+  - id: silk-boundaries-test
+    resource: ../../packages/silk/__test__/boundaries.test.ts
 ---
 
 # @savvy-web/silk
@@ -38,8 +44,14 @@ tool subpath (markdownlint, commitlint, lint-staged).
   contract they must hold stable is [`interfaces/silk-shim-exports.md`](../interfaces/silk-shim-exports.md).
 - **The one sanctioned import exception.** `src/bin/savvy.ts` and
   `src/bin/savvy-mcp.ts` import `@savvy-web/cli/main` and
-  `@savvy-web/mcp/main` respectively;[^silk-bins] nothing else under `src/`
-  imports either package. Both bins mirror the front ends' own `main()`
+  `@savvy-web/mcp/main` respectively and pass
+  `main()` a `distribution` naming `@savvy-web/silk` at silk's own
+  build-time version, so `savvy --version` and the MCP `serverInfo.version` end in
+  `via @savvy-web/silk <version>` — guaranteed under pnpm only, since npm's
+  flat `.bin` may link a front end's own bin instead;[^silk-bins] nothing
+  else under `src/` imports either package, which
+  `__test__/boundaries.test.ts` pins with `SourceBoundary`, waiving exactly
+  the two shim imports.[^silk-boundaries-test] Both bins mirror the front ends' own `main()`
   rather than replacing it, so a direct install of `@savvy-web/cli` or
   `@savvy-web/mcp` keeps working — silk only adds a second way onto PATH.
   Why a `bin` entry rather than a hoisted pattern, and what the carrier
@@ -76,10 +88,18 @@ tool subpath (markdownlint, commitlint, lint-staged).
   follows Silk conventions but has no Silk build tool at that package — the
   bundler owns the lib/build base instead.
 
+- **The layering policy lives here.** `layers.json` — the whole
+  repository's package layering, on `@effected/workspaces`' `LayerPolicy`
+  schema — sits at the package root because silk is the top of the graph,
+  and `__test__/package-layering.test.ts` holds the live workspace to it
+  with `WorkspaceLayering`. See
+  [`interfaces/layers-json.md`](../interfaces/layers-json.md).[^silk-layers][^silk-layering-test]
+
 ## What it is bound by
 
 - The non-import invariant: silk's library code never imports
   `@savvy-web/cli` or `@savvy-web/mcp` outside the two bin shims.
+- The package layering in [`conventions/package-layering.md`](../conventions/package-layering.md).
 - The type-portability invariant: a shim whose emitted `.d.ts` infers a
   `silk-effects` factory's return type must name a silk-local facade type,
   never the transitive `silk-effects` type, or a consumer config hits
@@ -89,6 +109,8 @@ tool subpath (markdownlint, commitlint, lint-staged).
 
 - [`decisions/carrier-pattern-package-graph.md`](../decisions/carrier-pattern-package-graph.md)
 - [`decisions/silk-pins-siblings-as-dependencies.md`](../decisions/silk-pins-siblings-as-dependencies.md)
+- [`decisions/front-ends-adopt-effected-kit.md`](../decisions/front-ends-adopt-effected-kit.md)
+- [`interfaces/layers-json.md`](../interfaces/layers-json.md)
 - [`interfaces/silk-shim-exports.md`](../interfaces/silk-shim-exports.md)
 - [`modules/changelog.md`](changelog.md)
 - [`modules/bundler.md`](bundler.md)
@@ -97,3 +119,6 @@ tool subpath (markdownlint, commitlint, lint-staged).
 [^silk-bins]: `src/bin/savvy.ts`, `src/bin/savvy-mcp.ts`
 [^silk-build]: `savvy.build.ts`
 [^silk-externals-test]: `__test__/externals.test.ts`
+[^silk-layers]: `layers.json`
+[^silk-layering-test]: `__test__/package-layering.test.ts`
+[^silk-boundaries-test]: `__test__/boundaries.test.ts`
