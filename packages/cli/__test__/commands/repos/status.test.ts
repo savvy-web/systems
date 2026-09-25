@@ -3,7 +3,11 @@ import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 import { runReposStatus } from "../../../src/commands/repos/commands/status.js";
+import { Capture } from "../../utils/capture.js";
 import { TestExit } from "../../utils/exit.js";
+
+/** What the last run wrote to stderr: every log line, including a failure's explanation. */
+const stderrLines: string[] = [];
 
 const { ReposManager, ReposDrift, ReposConfigError } = Repos;
 
@@ -87,7 +91,7 @@ function makeStubDriftLayer(
 /** Fallback `Repos.ReposDrift` stub for tests that never exercise `--drift`. */
 const unusedDriftLayer = makeStubDriftLayer(() => Effect.die("not used in this test"));
 
-/** Run `runReposStatus` against a stub layer, collecting everything written via `console.log` (the JSON path). */
+/** Run `runReposStatus` against a stub layer, returning everything it printed on stdout (the JSON path). */
 function collectStdout(
 	cwd: string,
 	json: boolean,
@@ -96,19 +100,11 @@ function collectStdout(
 	driftLayer: Layer.Layer<Repos.ReposDrift> = unusedDriftLayer,
 ) {
 	return Effect.gen(function* () {
-		let out = "";
-		const original = console.log;
-		// biome-ignore lint/suspicious/noExplicitAny: console.log spy for capture
-		console.log = ((...args: any[]): void => {
-			out += `${args.map((a) => (typeof a === "string" ? a : String(a))).join(" ")}\n`;
-		}) as typeof console.log;
-		yield* Effect.ensuring(
-			runReposStatus(cwd, json, drift).pipe(Effect.provide(Layer.merge(layer, driftLayer))),
-			Effect.sync(() => {
-				console.log = original;
-			}),
+		const out: string[] = [];
+		yield* runReposStatus(cwd, json, drift).pipe(
+			Effect.provide(Layer.mergeAll(layer, driftLayer, Capture.layer(out), Capture.piped)),
 		);
-		return out;
+		return out.join("\n");
 	});
 }
 
@@ -122,10 +118,11 @@ function collectLogs(
 ) {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
-		const captureLogger = Logger.make(({ message }) => {
-			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
-		});
-		const captured = Layer.provideMerge(Layer.merge(layer, driftLayer), Logger.layer([captureLogger]));
+		stderrLines.length = 0;
+		const captured = Layer.provideMerge(
+			Layer.merge(layer, driftLayer),
+			Layer.merge(Capture.layer(sink, stderrLines), Capture.piped),
+		);
 		yield* runReposStatus(cwd, json, drift).pipe(Effect.provide(captured));
 		return sink;
 	});
@@ -208,8 +205,9 @@ describe("runReposStatus (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", false, layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
+			expect(stderrLines.some((l) => l.includes("invalid JSON"))).toBe(true);
 			expect(TestExit.code()).toBe(1);
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
@@ -228,6 +226,29 @@ describe("runReposStatus (adapter)", () => {
 			expect(parsed).toEqual({ repos: [], clean: true });
 			expect(TestExit.code()).toBe(0);
 		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	// The drift monitor JSON.parses this command's stdout, so no failure path may
+	// put a plain line there — not even under a logger that prints info to stdout.
+	it.effect("--json keeps stdout one JSON document on the config-error path, the message on stderr", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() =>
+				Effect.fail(
+					new ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" }),
+				),
+			);
+			const result = yield* Capture.run(
+				runReposStatus("/repo", true).pipe(
+					Effect.provide(Layer.merge(layer, unusedDriftLayer)),
+					Effect.provide(Capture.piped),
+				),
+			);
+			const parsed = JSON.parse(result.stdout.join("\n")) as { readonly error: string; readonly clean: boolean };
+			expect(parsed.clean).toBe(false);
+			expect(parsed.error).toContain("invalid JSON");
+			expect(result.stderr.join("\n")).toContain("invalid JSON");
+			expect(result.exitCode).toBe(1);
+		}),
 	);
 
 	it.effect("sets exitCode 1 on ReposConfigError kind invalid with --json", () =>

@@ -3,7 +3,11 @@ import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
 
 import { runReposSync } from "../../../src/commands/repos/commands/sync.js";
+import { Capture } from "../../utils/capture.js";
 import { TestExit } from "../../utils/exit.js";
+
+/** What the last run wrote to stderr: every log line, including a failure's explanation. */
+const stderrLines: string[] = [];
 
 const { ReposManager, ReposConfigError, GitSubmoduleError, ReposLockdownError } = Repos;
 
@@ -56,10 +60,8 @@ function makeStubLayer(
 function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Effect.Effect<string[]> {
 	return Effect.gen(function* () {
 		const sink: string[] = [];
-		const captureLogger = Logger.make(({ message }) => {
-			sink.push(Array.isArray(message) ? message.join(" ") : String(message));
-		});
-		const captured = Layer.provideMerge(layer, Logger.layer([captureLogger]));
+		stderrLines.length = 0;
+		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
 		yield* runReposSync(cwd).pipe(Effect.provide(captured));
 		return sink;
 	}).pipe(Effect.provide(TestExit.layer));
@@ -120,8 +122,9 @@ describe("runReposSync (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("invalid JSON"))).toBe(true);
+			expect(stderrLines.some((l) => l.includes("invalid JSON"))).toBe(true);
 			expect(TestExit.code()).toBe(1);
 		}),
 	);
@@ -139,10 +142,11 @@ describe("runReposSync (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch"))).toBe(
-				true,
-			);
+			expect(
+				stderrLines.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch")),
+			).toBe(true);
 			expect(TestExit.code()).toBe(1);
 		}),
 	);
@@ -159,8 +163,9 @@ describe("runReposSync (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", layer);
+			expect(logs).toEqual([]);
 
-			expect(logs.some((l) => l.includes("/repo/.repos/foo") && l.includes("chmod failed: EACCES"))).toBe(true);
+			expect(stderrLines.some((l) => l.includes("/repo/.repos/foo") && l.includes("chmod failed: EACCES"))).toBe(true);
 			expect(TestExit.code()).toBe(1);
 		}),
 	);

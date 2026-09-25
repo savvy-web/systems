@@ -37,8 +37,10 @@
 
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const namesArg = Argument.String("name").pipe(Argument.variadic());
@@ -58,40 +60,38 @@ export const runReposRestore = (cwd: string, names: ReadonlyArray<string>) =>
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.restore(cwd, names.length > 0 ? names : undefined);
 		for (const entry of result.restored) {
-			yield* Effect.log(`${entry.name}: restored to ${entry.commit}`);
+			yield* Output.ok(`${entry.name}: restored to ${entry.commit}`);
 		}
 		for (const name of result.skippedClean) {
-			yield* Effect.log(`${name}: clean — skipped`);
+			yield* Output.skip(`${name}: clean — skipped`);
 		}
 		// Reporting a reset that ran while the tree stayed dirty as a plain
 		// success is what let a nested-submodule divergence look repaired for
 		// months. Say it, and set a failing exit code so a script notices.
 		for (const name of result.stillDirty) {
-			yield* Effect.log(
-				`${name}: WARNING — reset ran but the worktree is STILL dirty; run \`savvy repos status --drift\``,
-			);
+			yield* Output.fail(`${name}: reset ran but the worktree is STILL dirty; run \`savvy repos status --drift\``);
 		}
 		if (result.stillDirty.length > 0) {
 			yield* CliExit.set(1);
 		}
 		if (result.restored.length === 0 && result.skippedClean.length === 0) {
-			yield* Effect.log("nothing to restore");
+			yield* Output.ok("nothing to restore");
 		}
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("RepoNotFoundError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 

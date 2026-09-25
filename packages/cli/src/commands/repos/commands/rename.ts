@@ -31,8 +31,10 @@
 
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const oldNameArg = Argument.String("old-name");
@@ -49,24 +51,24 @@ export const runReposRename = (cwd: string, oldName: string, newName: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.rename(cwd, oldName, newName);
-		yield* Effect.log(`${result.oldName}: renamed to ${result.newName} (${result.path})`);
-		yield* Effect.log(result.commitMessage);
-		yield* Effect.log("staged — review and commit");
+		yield* Output.ok(`${result.oldName}: renamed to ${result.newName} (${result.path})`);
+		yield* Output.detail(result.commitMessage);
+		yield* Output.detail("staged — review and commit");
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("RepoNotFoundError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 

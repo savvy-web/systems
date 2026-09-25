@@ -32,8 +32,10 @@
 
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
+import type { Stdio } from "effect";
 import { Console, Effect } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
+import { Output } from "../../../internal/output.js";
 
 /* v8 ignore start -- CLI option definitions */
 const jsonOption = Flag.Boolean("json").pipe(
@@ -80,22 +82,27 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 				repo.dirty ? "dirty" : undefined,
 				repo.staleNoteIds.length > 0 ? `${repo.staleNoteIds.length} stale notes` : undefined,
 			].filter((f): f is string => f !== undefined);
-			yield* Effect.log(`${repo.name} @ ${repo.ref}${flags.length > 0 ? ` [${flags.join(", ")}]` : " [ok]"}`);
+			yield* flags.length > 0
+				? Output.warn(`${repo.name} @ ${repo.ref} [${flags.join(", ")}]`)
+				: Output.ok(`${repo.name} @ ${repo.ref}`);
 		}
 		if (driftReport !== undefined) {
 			for (const item of driftReport.drifts) {
-				yield* Effect.log(`${item.name}: ${item.kind} — ${item.detail}`);
+				yield* Output.fail(`${item.name}: ${item.kind} — ${item.detail}`);
 			}
 		}
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error) => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
 			if (error.kind === "missing") {
 				if (json) {
 					return Console.log(JSON.stringify({ repos: [], clean: true }, null, 2));
 				}
-				return Effect.log("no .repos/config.json — nothing vendored");
+				return Output.skip("no .repos/config.json — nothing vendored");
 			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.log(error.message)));
+			// Under --json the drift monitor parses stdout, so the failure is a JSON
+			// document there too; the message itself always goes to stderr.
+			const report = json ? Console.log(JSON.stringify({ error: error.message, clean: false }, null, 2)) : Effect.void;
+			return CliExit.set(1).pipe(Effect.andThen(report), Effect.andThen(Effect.logError(error.message)));
 		}),
 	);
 
