@@ -62,6 +62,25 @@ describe("McpToolError / engineError", () => {
 		expect(error.source).toBe("TurboError");
 		expect(error.message).toBe("turbo exited 2 Run turbo by hand.");
 	});
+
+	it("engineError appends the message of an Error cause the engine's one-line rendering omits", () => {
+		const error = engineError(
+			{
+				_tag: "CatalogAssemblyError",
+				message: "Failed to assemble catalogs from hooks @effected/pnpm-plugin-effect",
+				cause: new Error("config dependency @effected/pnpm-plugin-effect@0.11.1 is not installed"),
+			},
+			{ hint: "Retry." },
+		);
+		expect(error.message).toBe(
+			"Failed to assemble catalogs from hooks @effected/pnpm-plugin-effect: config dependency @effected/pnpm-plugin-effect@0.11.1 is not installed Retry.",
+		);
+	});
+
+	it("engineError ignores a non-Error cause", () => {
+		const error = engineError({ _tag: "GitError", message: "git failed", cause: "opaque" }, { hint: "Retry." });
+		expect(error.message).toBe("git failed Retry.");
+	});
 });
 
 describe("engineError echo bound", () => {

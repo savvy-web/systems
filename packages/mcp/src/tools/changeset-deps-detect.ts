@@ -116,7 +116,7 @@ export const ChangesetDepsDetectParams = Schema.Struct({
 export type ChangesetDepsDetectParams = typeof ChangesetDepsDetectParams.Type;
 
 const REMEDIATION = {
-	hint: "The dependency diff could not be planned; check that the base branch exists locally and that every named package is a workspace member.",
+	hint: "The dependency diff could not be planned; check that the base branch exists locally, that every named package is a workspace member, and that every config dependency the base side declares is installed or in the pnpm store (a bumped config dependency's old version usually is not).",
 	suggestedTool: "workspace_info",
 };
 

@@ -12,3 +12,4 @@
 
 * Crash guards now run through the kit's `McpGuard.run`, with stderr text in the kit's format.
 * Fixed `ERR_MODULE_NOT_FOUND 'redis'` on Yarn 1 installs by importing `NodeRuntime`/`NodeServices` from `@effect/platform-node`'s subpaths instead of the package root.
+* An engine failure now carries the detail its error keeps in `cause`, so `changeset_deps_detect`/`changeset_deps_regen` name the config dependency that is not installed instead of only "Failed to assemble catalogs from hooks". Their hint now points at a base-side config dependency missing from the pnpm store.
