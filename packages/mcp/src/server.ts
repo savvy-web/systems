@@ -76,9 +76,11 @@
  * the port of `registerToolkit` that carried it.
  *
  * `strict: "annotated"` with no tool annotated `Tool.Strict` keeps every
- * `Tool.make` tool lenient: Claude Code sends `_meta`-style extras on some
- * calls, so strictness is a per-tool opt-in. The one exception is the union
- * tool `repos_manage` (below), which the kit always decodes strictly.
+ * `Tool.make` tool lenient, a conservative default: strictness is a per-tool
+ * opt-in. MCP carries `_meta` at `params._meta`, not inside `arguments`, and no
+ * client-injected argument extras have been observed from Claude Code. The one
+ * exception is the union tool `repos_manage` (below), which the kit always
+ * decodes strictly.
  *
  * `outputSchema` is served only for an object-rooted success schema (core
  * since rc.117). Four tools' results are discriminated unions

@@ -220,7 +220,7 @@ describe("ServerLayer over McpHarness", () => {
 		}).pipe(Effect.scoped),
 	);
 
-	it.effect("changeset_validate on a missing dir renders InvalidArgument with the echoed directory", () =>
+	it.effect("changeset_validate on a missing dir is refused with the echoed directory", () =>
 		Effect.gen(function* () {
 			const { harness } = yield* open();
 			const result = asResult(yield* harness.callTool("changeset_validate", { dir: "does-not-exist" }));

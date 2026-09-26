@@ -17,6 +17,13 @@ describe("FailureLine.render", () => {
 			expect(typed(new CleanError({ reason: "EACCES on dist" }))).toBe("CleanError: reason: EACCES on dist");
 		});
 
+		it("renders a field JSON cannot serialize instead of throwing", () => {
+			const circular: Record<string, unknown> = { name: "loop" };
+			circular.self = circular;
+			expect(typed({ _tag: "SizeError", bytes: 10n })).toBe("SizeError: bytes: 10");
+			expect(typed({ _tag: "LoopError", node: circular })).toBe("LoopError: node: [object Object]");
+		});
+
 		it("falls back to String for anything else", () => {
 			expect(typed("plain")).toBe("plain");
 		});

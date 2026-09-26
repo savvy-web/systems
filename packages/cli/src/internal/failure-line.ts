@@ -12,13 +12,23 @@ const ISSUES_URL = "https://github.com/savvy-web/systems/issues";
 
 const HIDDEN = new Set(["_tag", "message", "name", "stack", "cause"]);
 
+/** A field value as text; never throws, since a bigint or circular field would make `JSON.stringify` hide the failure. */
+const field = (value: unknown): string => {
+	if (typeof value === "string") return value;
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+};
+
 /** One line for a typed failure: its own message, else its tag with its fields, else `String`. */
 const describe = (error: unknown): string => {
 	if (error instanceof Error && error.message !== "") return error.message;
 	if (typeof error === "object" && error !== null && "_tag" in error) {
 		const fields = Object.entries(error)
 			.filter(([key]) => !HIDDEN.has(key))
-			.map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`);
+			.map(([key, value]) => `${key}: ${field(value)}`);
 		const tag = String(error._tag);
 		return fields.length > 0 ? `${tag}: ${fields.join(", ")}` : tag;
 	}

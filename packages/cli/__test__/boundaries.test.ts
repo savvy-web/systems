@@ -37,7 +37,7 @@ describe("cli source boundaries", () => {
 		Effect.gen(function* () {
 			const scan = yield* SourceBoundary.scan({
 				root: SRC,
-				rules: [{ forbidTokens: ["process.exit(", "process.exitCode"] }],
+				rules: [{ forbidTokens: ["process.exit"] }],
 			});
 			expect(scan.files.length).toBeGreaterThan(20);
 			expect(scan.violations).toEqual([]);

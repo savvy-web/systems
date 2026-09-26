@@ -3,7 +3,7 @@
  * `McpToolkit.layer(..., { strict: "annotated" })` over `McpStdio.layer`. A
  * tool annotated strict decodes with `onExcessProperty: "error"` and serves
  * `additionalProperties: false`; an unannotated sibling keeps accepting
- * extras (Claude Code sends `_meta`-style ones on some calls). Every savvy-mcp
+ * extras (a conservative default; `_meta` travels at `params._meta`). Every savvy-mcp
  * tool is unannotated, so this pins that the served tools stay lenient and
  * that opting one in still works.
  */
