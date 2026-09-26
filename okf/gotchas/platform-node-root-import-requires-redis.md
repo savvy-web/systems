@@ -7,8 +7,8 @@ tags: [deps, compat]
 stale_after: 2027-03-25T00:00:00Z
 generated:
   by: okfit/claude-code
-  at: 2026-09-26T22:54:36Z
-  body_sha256: 73324bf48677a3e6733721d69559d7a61f41b90941d626079dadf7bdee65a317
+  at: 2026-09-26T23:06:57Z
+  body_sha256: d8a875bf194b61de3c9aa81fcda4552600e4dd156d5229c78b17cc233cd01d17
 sources:
   - id: fix-commit
     resource: https://github.com/savvy-web/systems/commit/9720310f9169161e18ec4532d843c5e2951fa8dd
@@ -21,10 +21,9 @@ sources:
     resource: ../../packages/cli/src/main.ts
   - id: packed-install
     resource: ../../e2e/silk/__test__/e2e/packed-install.e2e.test.ts
-  - id: pending
-    resource: conversation with the repository owner
-    author: human:spencer
-    last_modified: 2026-09-26T00:00:00Z
+  - id: fix-commit-rest
+    resource: https://github.com/savvy-web/systems/commit/76a27fb6e67eaec29d76a51d9b5062c574c6aafe
+    title: "fix(github-action-builder,tsdown-plugins): import platform-node by subpath"
 ---
 
 # The @effect/platform-node root import needs redis, and only Yarn 1 shows it
@@ -45,11 +44,11 @@ The root entry is a barrel that re-exports every module, including `NodeRedis`, 
 
 Shipped code imports platform-node by subpath: `import * as NodeRuntime from "@effect/platform-node/NodeRuntime"`, `import * as NodeServices from "@effect/platform-node/NodeServices"`, and so on. That includes dynamic imports (`await import("@effect/platform-node/NodeRuntime")`, as in savvy-mcp's `load`).[^mcp-main][^cli-main] Test files may keep the root import, since they never reach a consumer. The packed-install e2e runs the silk closure under Yarn as well as npm, pnpm and bun, so it catches a regression in the `savvy`/`savvy-mcp` bins.[^packed-install]
 
-Still on the root import in shipped source and pending a decision by the repository owner: `packages/github-action-builder/src/cli/index.ts`, and three tsdown-plugins files (`src/catalog/resolve-catalogs.ts`, `src/meta/tsdoctor-source.ts`, `src/changesets/next-versions.ts`).[^pending] The root import in `packages/silk-effects/src/changesets/services/deps-regen.ts` is a TSDoc example, not code.
+No shipped source uses the root import any more: the last four, `packages/github-action-builder/src/cli/index.ts` and three tsdown-plugins files (`src/catalog/resolve-catalogs.ts`, `src/meta/tsdoctor-source.ts`, `src/changesets/next-versions.ts`), moved to subpaths as well.[^fix-commit-rest] The root import in `packages/silk-effects/src/changesets/services/deps-regen.ts` is a TSDoc example, not code.
 
 [^fix-commit]: <https://github.com/savvy-web/systems/commit/9720310f9169161e18ec4532d843c5e2951fa8dd>
 [^platform-node]: `npm:@effect/platform-node`
 [^mcp-main]: `../../packages/mcp/src/main.ts`
 [^cli-main]: `../../packages/cli/src/main.ts`
 [^packed-install]: `../../e2e/silk/__test__/e2e/packed-install.e2e.test.ts`
-[^pending]: conversation with the repository owner
+[^fix-commit-rest]: <https://github.com/savvy-web/systems/commit/76a27fb6e67eaec29d76a51d9b5062c574c6aafe>

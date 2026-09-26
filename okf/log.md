@@ -1,5 +1,19 @@
 # Log
 
+## 2026-09-26
+
+* Updated @savvy-web/silk
+* Updated An Effect-native MCP server
+* Updated Carrier-pattern package graph
+* Updated Shape and test a savvy-mcp tool
+* Added The @effect/platform-node root import needs redis, and only Yarn 1 shows it
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated cli
+* Updated e2e
+* Updated mcp
+* Updated savvy command tree
+* Updated savvy-mcp tool surface
+
 ## 2026-09-25
 
 * Updated @savvy-web/silk
