@@ -421,6 +421,9 @@ importers:
       '@effect/vitest':
         specifier: catalog:effect
         version: 4.0.0-rc.117(effect@4.0.0-rc.117)(vitest@5.0.2)
+      '@effected/commands':
+        specifier: catalog:effected
+        version: 0.9.0(effect@4.0.0-rc.117)
       '@effected/git':
         specifier: catalog:effected
         version: 0.17.0(effect@4.0.0-rc.117)

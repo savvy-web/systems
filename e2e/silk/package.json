@@ -9,6 +9,7 @@
 	"devDependencies": {
 		"@effect/platform-node": "catalog:effect",
 		"@effect/vitest": "catalog:effect",
+		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
 		"@effected/mcp": "catalog:effected",
 		"@effected/templates": "catalog:effected",
