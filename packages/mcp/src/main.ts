@@ -54,7 +54,10 @@ export const main = (options: MainOptions = {}): Promise<void> =>
 		label: "savvy-mcp",
 		host: process,
 		load: async () => {
-			const { NodeRuntime, NodeServices } = await import("@effect/platform-node");
+			// Subpaths, not the root barrel: the barrel also loads NodeRedis, whose
+			// required `redis` peer a manager that skips peers (Yarn 1) never installs.
+			const NodeRuntime = await import("@effect/platform-node/NodeRuntime");
+			const NodeServices = await import("@effect/platform-node/NodeServices");
 			const { Layer } = await import("effect");
 			const { LaunchContext } = await import("@effected/engine");
 			const { ServerLayer } = await import("./server.js");

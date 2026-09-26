@@ -17,7 +17,7 @@
  * @packageDocumentation
  */
 /* v8 ignore start -- bootstrap; commands tested individually, the bin by __test__/e2e/bin.e2e.test.ts */
-import { NodeRuntime } from "@effect/platform-node";
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import { CliColor, CliRuntime } from "@effected/cli";
 import type { Distribution } from "@effected/engine";
 import { CurrentDistribution } from "@effected/engine";

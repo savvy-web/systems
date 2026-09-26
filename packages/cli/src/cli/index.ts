@@ -43,7 +43,7 @@
  * @internal
  */
 
-import { NodeServices } from "@effect/platform-node";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import { ToolDiscovery } from "@effected/commands";
 import { Git } from "@effected/git";
 import { ManagedSection } from "@effected/templates";
