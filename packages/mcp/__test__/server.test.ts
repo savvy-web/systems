@@ -1,6 +1,6 @@
 /**
- * In-process round trips through the real `ServerLayer` over `Stdio.layerTest`
- * (no child process): the initialize handshake, the served tool list, and
+ * In-process round trips through the real `ServerLayer` under
+ * `@effected/mcp/testing`'s `McpHarness` (no child process): the initialize handshake, the served tool list, and
  * the dual channel a successful call produces — the JSON of the result in
  * `content[0].text`, the typed object in `structuredContent` — plus the two
  * failure renderings (a declared failure as `isError` text carrying its
@@ -10,12 +10,14 @@
 import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { assert, describe, it } from "@effect/vitest";
+import type { JsonRpcMessage, McpHarness } from "@effected/mcp/testing";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+import { McpProtocol } from "effect/unstable/ai";
 import { SERVER_INSTRUCTIONS } from "../src/server.js";
 import { fixtureWorkspace } from "./utils/fixture.js";
-import type { CallToolResult, JsonRpcMessage, SilkMcpHarness, StatefulProtocolVersion } from "./utils/harness.js";
-import { STATELESS_PROTOCOL_VERSION, makeHarness } from "./utils/harness.js";
+import type { CallToolResult } from "./utils/harness.js";
+import { makeHarness } from "./utils/harness.js";
 
 const open = () =>
 	Effect.gen(function* () {
@@ -36,15 +38,12 @@ const FIXTURES = resolve(import.meta.dirname, "fixtures");
  */
 const biomeAvailable = Lint.Biome.findBiome() !== null;
 
-const asResult = (value: CallToolResult | JsonRpcMessage): CallToolResult => {
-	assert.ok("content" in value, `expected a tools/call result, got ${JSON.stringify(value)}`);
-	return value;
+const asResult = (response: JsonRpcMessage): CallToolResult => {
+	assert.strictEqual(response.error, undefined, `expected a tools/call result, got ${JSON.stringify(response)}`);
+	return response.result as CallToolResult;
 };
 
-describe("ServerLayer over Stdio.layerTest", () => {
-	// Stderr is NOT asserted here: the in-process harness has no logger layer
-	// (main.ts owns `Logger.LogToStderr`), so the default logger writes to the
-	// console, not the test sink — the e2e lifecycle suite pins gotcha 4.
+describe("ServerLayer over McpHarness", () => {
 	it.effect("answers initialize with the newest protocol and the server identity", () =>
 		Effect.gen(function* () {
 			const { initialized } = yield* open();
@@ -62,11 +61,17 @@ describe("ServerLayer over Stdio.layerTest", () => {
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace();
 			const harness = yield* makeHarness(dir);
-			const response = yield* harness.sendRequest("initialize", {
-				protocolVersion: "2025-06-18",
-				capabilities: {},
-				clientInfo: { name: "savvy-mcp-test", version: "0.0.0" },
-			});
+			const response = yield* harness.initializeWith("2025-06-18");
+			// The client frames prove what was offered: initialize at 2025-06-18, then the initialized notification.
+			const sent = (yield* harness.sentSoFar) as ReadonlyArray<{
+				readonly method?: string;
+				readonly params?: { readonly protocolVersion?: string };
+			}>;
+			assert.deepStrictEqual(
+				sent.map((frame) => frame.method),
+				["initialize", "notifications/initialized"],
+			);
+			assert.strictEqual(sent[0]?.params?.protocolVersion, "2025-06-18");
 			assert.strictEqual((response.result as { readonly protocolVersion: string }).protocolVersion, "2025-06-18");
 		}).pipe(Effect.scoped),
 	);
@@ -100,23 +105,54 @@ describe("ServerLayer over Stdio.layerTest", () => {
 		}).pipe(Effect.scoped),
 	);
 
-	it.effect("serves an outputSchema for every struct-rooted result and none for the union-rooted four", () =>
+	it.effect("serves an object-rooted outputSchema for every tool, the four union results included", () =>
 		Effect.gen(function* () {
 			const { harness } = yield* open();
 			const tools = yield* harness.listTools;
-			const withOutput = tools.filter((tool) => tool.outputSchema !== undefined).map((tool) => tool.name);
-			assert.deepStrictEqual(withOutput.toSorted(), [
-				"biome_check",
-				"changeset_deps_detect",
-				"changeset_deps_regen",
-				"changeset_preview",
-				"changeset_validate",
-				"workspace_info",
-			]);
-			for (const name of withOutput) {
-				const tool = tools.find((candidate) => candidate.name === name);
-				assert.strictEqual(tool?.outputSchema?.type, "object", `${name} outputSchema`);
+			for (const tool of tools) {
+				assert.strictEqual(tool.outputSchema?.type, "object", `${tool.name} outputSchema`);
 			}
+			for (const name of ["turbo_inspect", "changeset_inspect", "repos_inspect", "repos_manage"]) {
+				const tool = tools.find((candidate) => candidate.name === name);
+				assert.ok(Array.isArray(tool?.outputSchema?.anyOf), `${name} outputSchema keeps its anyOf`);
+			}
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("serves repos_manage's parameters as a strict oneOf keyed by action", () =>
+		Effect.gen(function* () {
+			const { harness } = yield* open();
+			const tools = yield* harness.listTools;
+			const inputSchema = tools.find((tool) => tool.name === "repos_manage")?.inputSchema as {
+				readonly type: string;
+				readonly oneOf: ReadonlyArray<{
+					readonly additionalProperties?: boolean;
+					readonly properties: { readonly action: { readonly const?: string; readonly enum?: ReadonlyArray<string> } };
+				}>;
+				readonly "x-discriminator": string;
+			};
+			assert.strictEqual(inputSchema.type, "object");
+			assert.strictEqual(inputSchema["x-discriminator"], "action");
+			assert.strictEqual(inputSchema.oneOf.length, 8);
+			for (const member of inputSchema.oneOf) {
+				assert.strictEqual(member.additionalProperties, false);
+			}
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("repos_manage rejects a missing field and a key its action does not take, before the handler runs", () =>
+		Effect.gen(function* () {
+			const { harness } = yield* open();
+			const missing = asResult(yield* harness.callTool("repos_manage", { action: "pin", name: "foo" }));
+			assert.strictEqual(missing.isError, true);
+			const missingText = missing.content[0]?.text ?? "";
+			assert.ok(missingText.includes("Invalid parameters for tool 'repos_manage'"), missingText);
+			assert.ok(missingText.includes("ref"), missingText);
+			const stray = asResult(yield* harness.callTool("repos_manage", { action: "sync", name: "foo" }));
+			assert.strictEqual(stray.isError, true);
+			const strayText = stray.content[0]?.text ?? "";
+			assert.ok(strayText.includes("Unrecognized parameter(s): name."), strayText);
+			assert.ok(strayText.includes("Accepted params: action, cwd."), strayText);
 		}).pipe(Effect.scoped),
 	);
 
@@ -208,7 +244,7 @@ describe("ServerLayer over the stateless 2026-07-28 revision", () => {
 	it.effect("answers server/discover with the supported version, the identity and the instructions", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace();
-			const harness = yield* makeHarness(dir);
+			const harness = yield* makeHarness(dir, { protocol: McpProtocol.v2026_07_28 });
 			const discovered = yield* harness.discover;
 			assert.strictEqual(discovered.error, undefined, JSON.stringify(discovered));
 			const result = discovered.result as {
@@ -218,7 +254,7 @@ describe("ServerLayer over the stateless 2026-07-28 revision", () => {
 				readonly _meta: { readonly "io.modelcontextprotocol/serverInfo": { readonly name: string } };
 			};
 			// Discovery advertises every listed adapter, the stateless one first.
-			assert.deepStrictEqual(result.supportedVersions, [STATELESS_PROTOCOL_VERSION, "2025-11-25", "2025-06-18"]);
+			assert.deepStrictEqual(result.supportedVersions, ["2026-07-28", "2025-11-25", "2025-06-18"]);
 			assert.strictEqual(result.instructions, SERVER_INSTRUCTIONS);
 			assert.strictEqual(result.resultType, "complete");
 			assert.strictEqual(result._meta["io.modelcontextprotocol/serverInfo"].name, "savvy-mcp");
@@ -228,9 +264,8 @@ describe("ServerLayer over the stateless 2026-07-28 revision", () => {
 	it.effect("lists the same ten tools with no handshake", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace();
-			const harness = yield* makeHarness(dir);
-			const response = yield* harness.sendRequest("tools/list", {}, true);
-			const tools = (response.result as { readonly tools: ReadonlyArray<{ readonly name: string }> }).tools;
+			const harness = yield* makeHarness(dir, { protocol: McpProtocol.v2026_07_28 });
+			const tools = yield* harness.listTools;
 			assert.strictEqual(tools.length, 10);
 		}).pipe(Effect.scoped),
 	);
@@ -245,32 +280,38 @@ describe("ServerLayer over the stateless 2026-07-28 revision", () => {
 describe("tool envelope across protocol revisions", () => {
 	const revisions: ReadonlyArray<{
 		readonly label: string;
-		readonly connect: (harness: SilkMcpHarness) => Effect.Effect<unknown>;
-		readonly stateless: boolean;
+		readonly protocol: McpProtocol.ProtocolAdapter;
+		readonly connect: (harness: McpHarness) => Effect.Effect<unknown, unknown>;
 		/** Before 2025-11-25 the runtime surfaces a parameter failure as a JSON-RPC -32602 instead of an isError result. */
 		readonly invalidParamsAsRpcError: boolean;
 	}> = [
 		{
-			label: STATELESS_PROTOCOL_VERSION,
+			label: "2026-07-28",
+			protocol: McpProtocol.v2026_07_28,
 			connect: (harness) => harness.discover,
-			stateless: true,
 			invalidParamsAsRpcError: false,
 		},
-		...(["2025-11-25", "2025-06-18"] satisfies ReadonlyArray<StatefulProtocolVersion>).map((version) => ({
-			label: version,
-			connect: (harness: SilkMcpHarness) => harness.initializeWith(version),
-			stateless: false,
-			invalidParamsAsRpcError: version === "2025-06-18",
-		})),
+		{
+			label: "2025-11-25",
+			protocol: McpProtocol.v2025_11_25,
+			connect: (harness) => harness.initialize,
+			invalidParamsAsRpcError: false,
+		},
+		{
+			label: "2025-06-18",
+			protocol: McpProtocol.v2025_06_18,
+			connect: (harness) => harness.initialize,
+			invalidParamsAsRpcError: true,
+		},
 	];
 
 	for (const revision of revisions) {
 		it.effect(`${revision.label}: workspace_info success carries structuredContent and its JSON text`, () =>
 			Effect.gen(function* () {
 				const dir = yield* fixtureWorkspace();
-				const harness = yield* makeHarness(dir);
+				const harness = yield* makeHarness(dir, { protocol: revision.protocol });
 				yield* revision.connect(harness);
-				const result = asResult(yield* harness.callTool("workspace_info", {}, revision.stateless));
+				const result = asResult(yield* harness.callTool("workspace_info", {}));
 				assert.notOk(result.isError, JSON.stringify(result));
 				assert.deepStrictEqual(JSON.parse(result.content[0]?.text ?? ""), result.structuredContent);
 				assert.strictEqual((result.structuredContent as { readonly root: string }).root, dir);
@@ -280,9 +321,9 @@ describe("tool envelope across protocol revisions", () => {
 		it.effect(`${revision.label}: a declared failure is isError text with no structuredContent`, () =>
 			Effect.gen(function* () {
 				const dir = yield* fixtureWorkspace();
-				const harness = yield* makeHarness(dir);
+				const harness = yield* makeHarness(dir, { protocol: revision.protocol });
 				yield* revision.connect(harness);
-				const result = asResult(yield* harness.callTool("workspace_info", { cwd: "/" }, revision.stateless));
+				const result = asResult(yield* harness.callTool("workspace_info", { cwd: "/" }));
 				assert.strictEqual(result.isError, true);
 				assert.strictEqual(result.structuredContent, undefined);
 				assert.ok((result.content[0]?.text ?? "").includes("Try workspace_info."), result.content[0]?.text);
@@ -294,11 +335,11 @@ describe("tool envelope across protocol revisions", () => {
 			() =>
 				Effect.gen(function* () {
 					const dir = yield* fixtureWorkspace();
-					const harness = yield* makeHarness(dir);
+					const harness = yield* makeHarness(dir, { protocol: revision.protocol });
 					yield* revision.connect(harness);
-					const outcome = yield* harness.callTool("turbo_inspect", { mode: "bogus" }, revision.stateless);
+					const outcome = yield* harness.callTool("turbo_inspect", { mode: "bogus" });
 					if (revision.invalidParamsAsRpcError) {
-						assert.ok("error" in outcome, JSON.stringify(outcome));
+						assert.notStrictEqual(outcome.error, undefined, JSON.stringify(outcome));
 						const error = outcome.error as { readonly code: number; readonly message: string };
 						assert.strictEqual(error.code, -32602);
 						assert.ok(error.message.includes('["mode"]'), error.message);

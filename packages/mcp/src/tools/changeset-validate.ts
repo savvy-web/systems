@@ -7,13 +7,13 @@
  */
 
 import { resolve } from "node:path";
-import { ToolFailure } from "@effected/mcp";
+import { ToolFailure, ToolRefusal } from "@effected/mcp";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Data, Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
-import { McpToolError, invalidArgument, mapEngineError } from "../errors.js";
+import { McpToolError, mapEngineError } from "../errors.js";
 
 /** A thrown failure from the pure {@link Changesets.ChangesetLinter.validate} (e.g. a missing directory). */
 export class ChangesetValidateError extends Data.TaggedError("ChangesetValidateError")<{
@@ -109,15 +109,14 @@ export const changesetValidateTool = Tool.make("changeset_validate", {
  * Wire handler: {@link changesetValidate} with its error channel mapped onto
  * {@link McpToolError}. The typed {@link ChangesetValidateError} (a thrown
  * validate — in practice a missing directory) is an argument problem, so it
- * becomes {@link InvalidArgument} naming `dir`; the echoed directory is
+ * becomes a `ToolRefusal` naming the directory; the echoed directory is
  * truncated.
  */
 export const handleChangesetValidate = (fallbackCwd: string, params: ChangesetValidateParams) =>
 	changesetValidate(params, fallbackCwd).pipe(
 		Effect.mapError((error) =>
 			error._tag === "ChangesetValidateError"
-				? invalidArgument(
-						"dir",
+				? ToolRefusal.refuse(
 						`Changeset directory "${ToolFailure.truncate(error.dir)}" could not be validated: ${describeCause(error.cause)}`,
 						DIR_REMEDIATION,
 					)

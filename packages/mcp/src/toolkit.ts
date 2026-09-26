@@ -83,6 +83,6 @@ export const ToolsLayer = (cwd: string): Layer.Layer<Tool.HandlersFor<SilkTools>
 		changeset_preview: (params) => handleChangesetPreview(cwd, params),
 		changeset_deps_regen: (params) => handleChangesetDepsRegen(cwd, params),
 		repos_inspect: (params) => handleReposInspect(cwd, params),
-		repos_manage: (params) => handleReposManage(cwd, params),
+		repos_manage: handleReposManage(cwd),
 		biome_check: (params) => handleBiomeCheck(cwd, params),
 	});

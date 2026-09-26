@@ -11,11 +11,11 @@ import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import type { Remediation } from "@effected/engine";
-import { ToolFailure } from "@effected/mcp";
+import { ToolFailure, ToolRefusal } from "@effected/mcp";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect, Schema } from "effect";
 import { Tool } from "effect/unstable/ai";
-import { BiomeFailed, BiomeUnavailable, InvalidArgument, McpToolError, invalidArgument } from "../errors.js";
+import { BiomeFailed, McpToolError } from "../errors.js";
 
 /** Normalized diagnostic severity. */
 export const BiomeSeverity = Schema.Literals(["error", "warning", "info"]);
@@ -264,11 +264,11 @@ export interface BiomeCheckArgs {
  *
  * @remarks Resolves the Biome binary via {@link Lint.Biome.findBiome} (global
  * first, then the project's package manager). Throws a typed
- * {@link McpToolError} member — {@link InvalidArgument} for a cwd/path outside
- * the containment tree, {@link BiomeUnavailable} when no binary is found,
- * {@link BiomeFailed} when Biome exits with status > 1 (Biome itself failed,
- * vs. status 1 = lint issues found) — which {@link handleBiomeCheck} lifts
- * into the Effect error channel unchanged.
+ * {@link McpToolError} member — a `ToolRefusal` for a cwd/path outside the
+ * containment tree or when no binary is found, {@link BiomeFailed} when Biome
+ * exits with status > 1 (Biome itself failed, vs. status 1 = lint issues
+ * found) — which {@link handleBiomeCheck} lifts into the Effect error channel
+ * unchanged.
  */
 export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): Promise<BiomeCheckResultType> => {
 	const mode = args.mode ?? "check";
@@ -281,8 +281,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const cwd = canonicalize(args.cwd ?? fallbackCwd);
 	const containmentRoot = resolveContainmentRoot(root, cwd);
 	if (containmentRoot === null) {
-		throw invalidArgument(
-			"cwd",
+		throw ToolRefusal.refuse(
 			`cwd escapes the workspace root: ${ToolFailure.truncate(args.cwd ?? fallbackCwd)}.`,
 			CONTAINMENT_REMEDIATION,
 		);
@@ -292,11 +291,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	const paths = rawPaths.map((p) => {
 		const lexical = resolve(cwd, p);
 		if (!within(canonicalize(lexical))) {
-			throw invalidArgument(
-				"paths",
-				`path escapes the workspace root: ${ToolFailure.truncate(p)}.`,
-				CONTAINMENT_REMEDIATION,
-			);
+			throw ToolRefusal.refuse(`path escapes the workspace root: ${ToolFailure.truncate(p)}.`, CONTAINMENT_REMEDIATION);
 		}
 		return relative(cwd, lexical) || ".";
 	});
@@ -304,10 +299,7 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 
 	const biomeCmd = Lint.Biome.findBiome();
 	if (!biomeCmd) {
-		throw new BiomeUnavailable({
-			message: ToolFailure.message("Biome not found.", BIOME_REMEDIATION),
-			remediation: BIOME_REMEDIATION,
-		});
+		throw ToolRefusal.refuse("Biome not found.", BIOME_REMEDIATION);
 	}
 	// `findBiome()` returns "biome", or a package-manager exec form whose final
 	// token is always the tool name: "pnpm exec biome", "npx --no biome",
@@ -414,14 +406,19 @@ export const biomeCheckTool = Tool.make("biome_check", {
 	.annotate(Tool.Idempotent, false)
 	.annotate(Tool.OpenWorld, false);
 
-const isMcpToolError = (u: unknown): u is McpToolError =>
-	u instanceof InvalidArgument || u instanceof BiomeUnavailable || u instanceof BiomeFailed;
+/**
+ * Every declared failure, recognized from the one union the tool declares, so
+ * a member added to {@link McpToolError} is passed through here without a
+ * second list to keep in step.
+ */
+const isMcpToolError = Schema.is(McpToolError);
 
 /**
  * Wire handler: {@link runBiomeCheck} lifted into Effect. The typed members it
  * throws pass through unchanged; anything else (a defect in the parser, say)
  * is reported as {@link BiomeFailed} so the error channel stays closed over
- * {@link McpToolError}.
+ * {@link McpToolError} — nothing undeclared reaches core, which would scrub
+ * it to a generic internal-error text.
  */
 export const handleBiomeCheck = (fallbackCwd: string, params: BiomeCheckParams) =>
 	Effect.tryPromise({

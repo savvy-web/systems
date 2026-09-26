@@ -6,6 +6,7 @@
  * @packageDocumentation
  */
 
+import { ToolOutputSchema } from "@effected/mcp";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
@@ -31,8 +32,13 @@ export const TurboAffectedResult = Schema.Struct({
 	result: Turbo.AffectedResult,
 }).annotate({ identifier: "TurboAffectedResult" });
 
-/** The `turbo_inspect` tool result — a discriminated union keyed by `mode`. */
-export const TurboInspectResult = Schema.Union([TurboCacheResult, TurboGraphResult, TurboAffectedResult]).annotate({
+/**
+ * The `turbo_inspect` tool result — a discriminated union keyed by `mode`,
+ * object-rooted so its `outputSchema` is served.
+ */
+export const TurboInspectResult = ToolOutputSchema.objectRooted(
+	Schema.Union([TurboCacheResult, TurboGraphResult, TurboAffectedResult]),
+).annotate({
 	identifier: "TurboInspectResult",
 	title: "turbo_inspect result",
 	description: "Read-only Turborepo inspection grouped by mode (cache | graph | affected).",

@@ -1,13 +1,13 @@
-import { ToolFailure } from "@effected/mcp";
+import { ToolFailure, ToolRefusal } from "@effected/mcp";
+import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
 import * as Errors from "../src/errors.js";
 import {
 	EngineError,
-	InvalidArgument,
+	McpToolError,
 	WorkspaceNotFound,
 	engineError,
-	invalidArgument,
 	mapEngineError,
 	workspaceNotFound,
 } from "../src/errors.js";
@@ -50,12 +50,11 @@ describe("workspaceNotFound", () => {
 	});
 });
 
-describe("invalidArgument / engineError", () => {
-	it("invalidArgument names the argument and composes the message", () => {
-		const error = invalidArgument("dir", "no such directory.", { hint: "Pass an existing changeset dir." });
-		expect(error).toBeInstanceOf(InvalidArgument);
-		expect(error.argument).toBe("dir");
-		expect(error.message).toBe("no such directory. Pass an existing changeset dir.");
+describe("McpToolError / engineError", () => {
+	it("declares the kit's ToolRefusal for a plain refusal, its remediation folded into the message", () => {
+		const refusal = ToolRefusal.refuse("no such directory.", { hint: "Pass an existing changeset dir." });
+		expect(Schema.is(McpToolError)(refusal)).toBe(true);
+		expect(refusal.message).toBe("no such directory. Pass an existing changeset dir.");
 	});
 
 	it("engineError keeps the engine tag as source and composes the engine's own message", () => {

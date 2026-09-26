@@ -10,10 +10,11 @@
 
 import { assert, describe, it } from "@effect/vitest";
 import { McpStdio, McpToolkit } from "@effected/mcp";
+import type { JsonRpcMessage } from "@effected/mcp/testing";
 import { Effect, Layer, Schema } from "effect";
 import { Tool, Toolkit } from "effect/unstable/ai";
 
-import type { CallToolResult, JsonRpcMessage } from "./utils/harness.js";
+import type { CallToolResult } from "./utils/harness.js";
 import { makeHarness } from "./utils/harness.js";
 
 const Echo = Schema.Struct({ ok: Schema.Boolean });
@@ -43,15 +44,15 @@ const FixtureLayer = McpToolkit.layer(FixtureToolkit, { strict: "annotated" }).p
 	Layer.provide(McpStdio.layer({ name: "strict-fixture", version: "0.0.0" })),
 );
 
-const asResult = (value: CallToolResult | JsonRpcMessage): CallToolResult => {
-	assert.ok("content" in value, `expected a tools/call result, got ${JSON.stringify(value)}`);
-	return value;
+const asResult = (response: JsonRpcMessage): CallToolResult => {
+	assert.strictEqual(response.error, undefined, `expected a tools/call result, got ${JSON.stringify(response)}`);
+	return response.result as CallToolResult;
 };
 
 describe('Tool.Strict through McpToolkit (strict: "annotated")', () => {
 	it.effect("serves additionalProperties: false for the annotated tool only", () =>
 		Effect.gen(function* () {
-			const harness = yield* makeHarness(process.cwd(), FixtureLayer);
+			const harness = yield* makeHarness(process.cwd(), { serverLayer: FixtureLayer });
 			yield* harness.initialize;
 			const tools = yield* harness.listTools;
 			const strict = tools.find((t) => t.name === "strict_echo");
@@ -65,7 +66,7 @@ describe('Tool.Strict through McpToolkit (strict: "annotated")', () => {
 
 	it.effect("rejects an excess property on the annotated tool and accepts it on the unannotated one", () =>
 		Effect.gen(function* () {
-			const harness = yield* makeHarness(process.cwd(), FixtureLayer);
+			const harness = yield* makeHarness(process.cwd(), { serverLayer: FixtureLayer });
 			yield* harness.initialize;
 			const rejected = asResult(yield* harness.callTool("strict_echo", { value: "x", extra: 1 }));
 			assert.strictEqual(rejected.isError, true);

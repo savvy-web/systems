@@ -6,6 +6,7 @@
  * @packageDocumentation
  */
 
+import { ToolOutputSchema } from "@effected/mcp";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
@@ -31,12 +32,13 @@ export const ChangesetClassifyResult = Schema.Struct({
 	result: Schema.Array(Changesets.ClassificationSchema),
 }).annotate({ identifier: "ChangesetClassifyResult" });
 
-/** The `changeset_inspect` tool result — a discriminated union keyed by `mode`. */
-export const ChangesetInspectResult = Schema.Union([
-	ChangesetBranchResult,
-	ChangesetConfigResult,
-	ChangesetClassifyResult,
-]).annotate({
+/**
+ * The `changeset_inspect` tool result — a discriminated union keyed by `mode`,
+ * object-rooted so its `outputSchema` is served.
+ */
+export const ChangesetInspectResult = ToolOutputSchema.objectRooted(
+	Schema.Union([ChangesetBranchResult, ChangesetConfigResult, ChangesetClassifyResult]),
+).annotate({
 	identifier: "ChangesetInspectResult",
 	title: "changeset_inspect result",
 	description: "Read-only changeset analysis grouped by mode (branch | config | classify).",

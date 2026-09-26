@@ -2,6 +2,7 @@ import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Result, Schema } from "effect";
+import { McpSchema } from "effect/unstable/ai";
 
 import { ReposManageResult, handleReposManage, reposManage } from "../../src/tools/repos-manage.js";
 
@@ -192,60 +193,82 @@ layer(TestLayer)("reposManage handler — action dispatch", (it) => {
 	);
 });
 
-// `Effect.flip` (not `Effect.exit`) is the assertion here on purpose: it proves
-// the rejection arrives through the TYPED error channel as a `SchemaError`. An
+// Validation runs in `McpToolkit.unionHandler` — the same check `McpToolkit.layer`
+// runs before the handler on the wire. `Effect.flip` (not `Effect.exit`) proves
+// the rejection arrives through the TYPED error channel as `InvalidParams`; an
 // `Exit.isFailure` check would also pass if the decode escaped as a defect.
-layer(TestLayer)("reposManage handler — request validation", (it) => {
+layer(TestLayer)("handleReposManage — request validation", (it) => {
+	const reject = (payload: unknown) =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(handleReposManage("/repo")(payload));
+			expect(error).toBeInstanceOf(McpSchema.InvalidParams);
+			return error.message;
+		});
+
 	it.effect("rejects pin without ref, naming the missing field", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.flip(reposManage({ action: "pin", name: "foo" }, "/repo"));
-			expect(error._tag).toBe("SchemaError");
-			expect(error.message).toContain("ref");
+			const message = yield* reject({ action: "pin", name: "foo" });
+			expect(message).toContain("Invalid parameters for tool 'repos_manage'");
+			expect(message).toContain("ref");
 		}),
 	);
 
 	it.effect("rejects note op=promote without into/id", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.flip(reposManage({ action: "note", name: "foo", op: "promote" }, "/repo"));
-			expect(error._tag).toBe("SchemaError");
+			expect(yield* reject({ action: "note", name: "foo", op: "promote" })).toContain(
+				'note op "promote" requires both `id` and `into`',
+			);
 		}),
 	);
 
 	it.effect("rejects note op=add without note text", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.flip(reposManage({ action: "note", name: "foo", op: "add" }, "/repo"));
-			expect(error._tag).toBe("SchemaError");
+			expect(yield* reject({ action: "note", name: "foo", op: "add" })).toContain('note op "add" requires `note`');
 		}),
 	);
 
 	it.effect("rejects note op=remove without id", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.flip(reposManage({ action: "note", name: "foo", op: "remove" }, "/repo"));
-			expect(error._tag).toBe("SchemaError");
+			expect(yield* reject({ action: "note", name: "foo", op: "remove" })).toContain('note op "remove" requires `id`');
 		}),
 	);
 
 	it.effect("rejects remove without name", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.flip(reposManage({ action: "remove" }, "/repo"));
-			expect(error._tag).toBe("SchemaError");
-			expect(error.message).toContain("name");
+			expect(yield* reject({ action: "remove" })).toContain("name");
 		}),
 	);
 
 	it.effect("rejects rename without newName", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.flip(reposManage({ action: "rename", name: "foo" }, "/repo"));
-			expect(error._tag).toBe("SchemaError");
-			expect(error.message).toContain("newName");
+			expect(yield* reject({ action: "rename", name: "foo" })).toContain("newName");
 		}),
 	);
 
 	it.effect("rejects deregister without section, naming the missing field", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.flip(reposManage({ action: "deregister" }, "/repo"));
-			expect(error._tag).toBe("SchemaError");
-			expect(error.message).toContain("section");
+			expect(yield* reject({ action: "deregister" })).toContain("section");
+		}),
+	);
+
+	it.effect("rejects an unknown action", () =>
+		Effect.gen(function* () {
+			expect(yield* reject({ action: "explode" })).toContain("Invalid parameters for tool 'repos_manage'");
+		}),
+	);
+
+	it.effect("names every key the chosen action does not take, with that action's accepted params", () =>
+		Effect.gen(function* () {
+			const message = yield* reject({ action: "sync", name: "foo", ref: "main" });
+			expect(message).toContain("Unrecognized parameter(s): name, ref.");
+			expect(message).toContain("Accepted params: action, cwd.");
+		}),
+	);
+
+	it.effect("dispatches a well-formed payload to the manager", () =>
+		Effect.gen(function* () {
+			const data = yield* handleReposManage("/repo")({ action: "pin", name: "foo", ref: "v2" });
+			expect(data.action).toBe("pin");
 		}),
 	);
 });
@@ -355,17 +378,14 @@ describe("repos_manage served schema", () => {
 });
 
 describe("handleReposManage argument-decode failures", () => {
-	it.effect("renders the decode failure as InvalidArgument with the echoed text bounded", () =>
+	it.effect("bounds the echoed value in the decode failure", () =>
 		Effect.gen(function* () {
-			// `pin` without `ref` fails the per-action decode; the decode message
-			// echoes the offending value, so a 50k-character name must not reach
-			// the wire whole.
+			// `pin` without `ref` fails the decode with a 50k-character `name` in the
+			// payload; the message must not carry it to the wire whole.
 			const name = "n".repeat(50_000);
-			const error = yield* Effect.flip(handleReposManage("/repo", { action: "pin", name }));
-			expect(error._tag).toBe("InvalidArgument");
-			expect(error.message).toContain("repos_manage pin:");
-			expect(error.message.length).toBeLessThan(2500);
-			expect(error.message).toContain("Pass the fields the chosen action needs");
+			const error = yield* Effect.flip(handleReposManage("/repo")({ action: "pin", name }));
+			expect(error).toBeInstanceOf(McpSchema.InvalidParams);
+			expect(error.message).not.toContain("n".repeat(5_000));
 		}).pipe(Effect.provide(Layer.mergeAll(WorkspaceRootTest, ReposManagerTest))),
 	);
 });

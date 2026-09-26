@@ -7,6 +7,7 @@
  */
 
 import { Gitmodules } from "@effected/git";
+import { ToolOutputSchema } from "@effected/mcp";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
@@ -51,13 +52,13 @@ export const ReposGitmodulesResult = Schema.Struct({
 	parseError: Schema.optionalKey(Schema.String),
 }).annotate({ identifier: "ReposGitmodulesResult" });
 
-/** The `repos_inspect` tool result — a discriminated union keyed by `mode`. */
-export const ReposInspectResult = Schema.Union([
-	ReposStatusResult,
-	ReposConfigResult,
-	ReposDriftResult,
-	ReposGitmodulesResult,
-]).annotate({
+/**
+ * The `repos_inspect` tool result — a discriminated union keyed by `mode`,
+ * object-rooted so its `outputSchema` is served.
+ */
+export const ReposInspectResult = ToolOutputSchema.objectRooted(
+	Schema.Union([ReposStatusResult, ReposConfigResult, ReposDriftResult, ReposGitmodulesResult]),
+).annotate({
 	identifier: "ReposInspectResult",
 	title: "repos_inspect result",
 	description:

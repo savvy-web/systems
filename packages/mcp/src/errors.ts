@@ -15,11 +15,17 @@
  * `ToolFailure.message`, and passes any caller-supplied value it echoes
  * through `ToolFailure.truncate`.
  *
+ * A refusal with nothing to carry beyond its message — a bad argument, a
+ * missing Biome binary — is the kit's own `ToolRefusal`, built with
+ * `ToolRefusal.refuse(reason, remediation)`. The typed members below stay
+ * for the failures that carry a field of their own (`cwd`, `source`,
+ * `exitCode`).
+ *
  * @packageDocumentation
  */
 
 import type { Remediation } from "@effected/engine";
-import { ToolFailure } from "@effected/mcp";
+import { ToolFailure, ToolRefusal } from "@effected/mcp";
 import { Schema } from "effect";
 
 /**
@@ -32,19 +38,6 @@ import { Schema } from "effect";
 export class WorkspaceNotFound extends Schema.TaggedError<WorkspaceNotFound>()("WorkspaceNotFound", {
 	...ToolFailure.fields,
 	cwd: Schema.String,
-}) {}
-
-/**
- * A tool argument was structurally acceptable but semantically invalid — a
- * `repos_manage` action missing the field it needs, a `biome_check` path
- * outside the workspace, a `changeset_validate` directory that does not
- * exist. `message` is composed through `ToolFailure.message`.
- *
- * @public
- */
-export class InvalidArgument extends Schema.TaggedError<InvalidArgument>()("InvalidArgument", {
-	...ToolFailure.fields,
-	argument: Schema.String,
 }) {}
 
 /**
@@ -61,16 +54,6 @@ export class EngineError extends Schema.TaggedError<EngineError>()("EngineError"
 }) {}
 
 /**
- * No Biome binary could be located. `message` is composed through
- * `ToolFailure.message`.
- *
- * @public
- */
-export class BiomeUnavailable extends Schema.TaggedError<BiomeUnavailable>()("BiomeUnavailable", {
-	...ToolFailure.fields,
-}) {}
-
-/**
  * Biome itself failed (exit status above 1, a spawn error, or a timeout) —
  * distinct from "lint issues found", which is a successful result. `message`
  * is composed through `ToolFailure.message`.
@@ -83,13 +66,7 @@ export class BiomeFailed extends Schema.TaggedError<BiomeFailed>()("BiomeFailed"
 }) {}
 
 /** The one failure schema every savvy-mcp tool declares. @public */
-export const McpToolError = Schema.Union([
-	WorkspaceNotFound,
-	InvalidArgument,
-	EngineError,
-	BiomeUnavailable,
-	BiomeFailed,
-]);
+export const McpToolError = Schema.Union([WorkspaceNotFound, EngineError, BiomeFailed, ToolRefusal]);
 /** @public */
 export type McpToolError = typeof McpToolError.Type;
 
@@ -116,15 +93,6 @@ export const workspaceNotFound = (cwd: string): WorkspaceNotFound =>
 		),
 		remediation: WORKSPACE_REMEDIATION,
 	});
-
-/**
- * Build an {@link InvalidArgument}: `raw` is the human message (already
- * truncated by the caller where it echoes an argument).
- *
- * @public
- */
-export const invalidArgument = (argument: string, raw: string, remediation: Remediation): InvalidArgument =>
-	new InvalidArgument({ argument, message: ToolFailure.message(raw, remediation), remediation });
 
 /**
  * Build an {@link EngineError} from a silk-effects typed error. Every engine
