@@ -11,8 +11,8 @@ sources:
     resource: front-ends-adopt-effected-kit.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: 8375adcfba59add3864dddfe834edc6122e7fff06cbd44242f55b96ab2325319
+  at: 2026-09-26T22:54:36Z
+  body_sha256: d68440d63aa58141050b66466b863977e460379b14094756c69b71909ed855c1
 ---
 
 # Carrier-pattern package graph
@@ -42,7 +42,7 @@ The repo root's own `@savvy-web/*` devDependencies are `@savvy-web/silk` and `@s
 
 ## Consequences
 
-- npm bin ownership is ambiguous by design: under npm's flat layout, `.bin` symlinks may resolve to a front end's own bin file rather than silk's shim; only pnpm's isolated layout proves it is *silk's* shim doing it, so the `via @savvy-web/silk` version suffix is asserted for pnpm only. If silk's shim must be the linked file under npm too, the front ends would have to stop declaring `bin` — a product decision not taken.[^layering]
+- `.bin` slot ownership is the package manager's choice by design, because the front ends share silk's bin names. pnpm links silk's shim, Yarn gives the slot to silk, and npm and bun give it to cli/mcp, whose own bins print no `via @savvy-web/silk` suffix. The carrier's own shims print the suffix under all four managers, and the packed-install e2e asserts that everywhere. Making silk the only owner would mean the front ends stop declaring `bin` — a major bump of cli and mcp, declined for now; see [front-ends-adopt-effected-kit](front-ends-adopt-effected-kit.md).[^layering]
 - `github-info`'s environment read lives inside `@changesets/get-github-info`, a dependency with no token option, so engine behaviour still varies by host `cwd` through that one dependency — a documented gap, not an allowlist entry.[^layering]
 - Release sequencing between silk and pnpm-plugin-silk is now a manual rule, not something changesets enforces, since pnpm-plugin-silk versions independently.
 - See [silk-pins-siblings-as-dependencies](silk-pins-siblings-as-dependencies.md) for the dependency-versus-peer half of this decision, and [package-layering](../conventions/package-layering.md) for the layer table and DAG rule.

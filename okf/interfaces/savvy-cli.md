@@ -17,8 +17,8 @@ sources:
     resource: ../../packages/cli/__test__/e2e/bin.e2e.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: f70128b3044a82164d70ce6eac9483f287432c9449f436ff36880dfba5285c9d
+  at: 2026-09-26T22:54:36Z
+  body_sha256: dc0927cd50db67a6ee4030acab4493250a856652459527a0ed49311adef23c3a
 ---
 
 # savvy command tree
@@ -56,13 +56,18 @@ subcommands of their own.[^cli-architecture]
   the same minus the escapes.[^cli-main]
 - **Exit codes:** `0` success; `1` findings (a check failed, a repo is
   dirty, a deletion failed) — reported as output, not as a crash; `64` a
-  usage error (unknown flag or subcommand, bad argument), with help on
-  stdout and the error on stderr.[^cli-main][^cli-bin-e2e]
+  usage error (unknown flag or subcommand, bad argument), with the error
+  and the help on stderr and nothing on stdout, so a caller parsing stdout
+  never receives help text. An explicit `--help`, or a command group
+  invoked bare, prints its help on stdout and exits `0`. A typed failure is
+  one line on stderr; an unexpected defect is an issue report on stderr —
+  a headline, the pretty-printed cause, and where to file it.[^cli-main][^cli-bin-e2e]
 - **`savvy --version`** prints one line, `savvy v<version>`, for a direct
   install of `@savvy-web/cli`; launched through `@savvy-web/silk`'s bin it
-  appends `via @savvy-web/silk <version>`. The suffix is guaranteed only
-  under pnpm — under npm's flat `.bin` the cli package's own bin may be the
-  one linked.[^cli-main]
+  appends `via @savvy-web/silk <version>`. A typed `savvy` shows that
+  suffix only when the package manager gave the `.bin` slot to silk (pnpm,
+  Yarn); under npm and bun the cli package's own bin takes the slot and
+  prints the bare line.[^cli-main]
 - **`savvy check` separates its three sections** (changeset, commit, lint)
   with a blank line.[^cli-architecture]
 

@@ -21,8 +21,8 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T03:02:46Z
-  body_sha256: 36765af19cbca48c4d6d968f12d30f27fc3e59808cd715fc6ce504a7b27f5982
+  at: 2026-09-26T22:54:36Z
+  body_sha256: 6a1a745f92ed3b515ae0952eab34a2912a917ffc9ce646a6972ecb948aeb9f4d
 ---
 
 # savvy-mcp tool surface
@@ -37,6 +37,9 @@ schema is the contract to depend on, and the text channel never says more or
 less than it.[^mcp-server] A failed call is an `isError` result whose
 `content[0].text` carries the failure message with its remediation, and no
 `structuredContent`.[^mcp-server]
+Every tool serves an `outputSchema` in `tools/list`; for the four tools
+whose result is a discriminated union it is the union's `anyOf` under a
+`type: "object"` root.[^mcp-server]
 
 Claude Code hands the model only `structuredContent` when a result carries
 one, which is why the result is shaped for it. A client that instead displays
@@ -62,8 +65,9 @@ deliberate, permanent simplification, not an omission to work around.[^mcp-tools
 Read-only Turborepo introspection; every path runs `turbo … --dry=json` and
 never executes a task. Result is a **discriminated union keyed by `mode`**
 (`cache` | `graph` | `affected`), each variant embedding the corresponding
-Turbo result schema unchanged. Being union-rooted, it serves no
-`outputSchema` — read the typed `structuredContent` variant instead.[^mcp-tools]
+Turbo result schema unchanged. Its `outputSchema` is the union's `anyOf`
+under a `type: "object"` root, so read the typed `structuredContent`
+variant by its `mode`.[^mcp-tools]
 
 ## changeset_inspect — read-only
 
@@ -147,8 +151,13 @@ broken" is itself the answer an agent inspecting it needs.[^mcp-repos-tools]
 
 One `action`-discriminated tool over the whole vendored-repo lifecycle:
 `sync`, `pin`, `add`, `note`, `remove`, `rename`, `restore`, `deregister`.
-The wire schema is a flat `action` enum plus optional fields (each action's
-required fields are named in the tool description and enforced on decode).
+The input schema is a strict `oneOf` keyed by `action`, one member per
+action carrying exactly that action's fields with `additionalProperties:
+false`. A missing field, or a key the chosen action does not take, is
+rejected as invalid parameters naming it before anything runs — an
+`isError` result on `2025-11-25` and `2026-07-28`, a JSON-RPC `-32602`
+error on `2025-06-18`. Unlike the other nine tools, it does not tolerate
+extra arguments.[^mcp-repos-tools]
 `restore` is explicitly destructive to uncommitted worktree edits — its
 description says so outright. `pin`, `remove`, and `rename` leave staged,
 uncommitted changes for the caller to review and commit; `deregister`
@@ -162,9 +171,12 @@ never mutate `.repos/**` by any other route.[^mcp-repos-tools]
   `structuredContent` object as JSON, so read `structuredContent` for fields.
 - Do not infer read-only behavior from a tool's name alone — check the
   hints (`readOnlyHint`/`destructiveHint`) or this document.
-- Do not expect `outputSchema` on a union-rooted result (`turbo_inspect`,
-  `changeset_inspect`, `repos_inspect`, `repos_manage`); read the typed
-  `structuredContent` instead.
+- Do not expect a union result's `outputSchema` (`turbo_inspect`,
+  `changeset_inspect`, `repos_inspect`, `repos_manage`) to name one shape:
+  it is an `anyOf` under a `type: "object"` root, so branch on the
+  discriminator in `structuredContent`.
+- Do not send `repos_manage` a field its `action` does not take; it is
+  rejected, not ignored.
 - Do not treat `biome_check`'s bare call (no `write`/`unsafe`) as anything
   other than read-only, and do not expect it to reach outside its
   containment root even when asked.
