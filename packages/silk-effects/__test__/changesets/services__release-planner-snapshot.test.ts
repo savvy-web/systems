@@ -93,6 +93,35 @@ describe("ReleasePlanner.apply (snapshot)", () => {
 		}),
 	);
 
+	it.effect("treats an empty tag like the bare --snapshot flag, still exact-pinning dependents", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [
+					{
+						dir: "packages/a",
+						name: "@scope/a",
+						version: "1.0.0",
+						extra: { dependencies: { "@scope/b": "^0.1.0" } },
+					},
+					{ dir: "packages/b", name: "@scope/b", version: "0.1.0" },
+				],
+				changesets: [{ id: "empty-tags-pin", releases: { "@scope/b": "minor" }, summary: "feat: bump b" }],
+			});
+			roots.push(root);
+			const planner = yield* getPlanner(root);
+			const result = yield* planner.apply(root, {
+				snapshot: { tag: "", useCalculatedVersion: true },
+			}) as Effect.Effect<Changesets.AppliedRelease>;
+
+			const bRelease = result.releases.find((r) => r.name === "@scope/b");
+			expect(bRelease?.newVersion).toMatch(/^0\.2\.0-\d{14}$/);
+			const aPkg = JSON.parse(readFileSync(join(root, "packages/a/package.json"), "utf-8")) as {
+				dependencies: Record<string, string>;
+			};
+			expect(aPkg.dependencies["@scope/b"]).toBe(bRelease?.newVersion);
+		}),
+	);
+
 	it.effect("fails typed in pre mode and leaves the tree untouched", () =>
 		Effect.gen(function* () {
 			const root = makeReleaseFixture({

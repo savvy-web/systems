@@ -74,7 +74,7 @@ async function loadConfig(root: string, packages: Packages): Promise<{ config: C
 export interface SnapshotOptions {
 	/**
 	 * The snapshot tag, e.g. `"next"` — like the bare `changeset version
-	 * --snapshot <tag>` argument. Omit for the bare `--snapshot` flag; no
+	 * --snapshot <tag>` argument. Omit it or pass `""` for the bare `--snapshot` flag; no
 	 * boundary validation is performed here (a caller-side check for reserved
 	 * values like `"latest"` or `""` is the caller's responsibility).
 	 */
@@ -265,6 +265,10 @@ function assembleSnapshotPlan(
 		},
 		commit: false,
 	};
+	// An empty tag is the bare `--snapshot` flag: the engine reads "" as a
+	// defined-but-empty placeholder, and `applyReleasePlan` reads it as "not a
+	// snapshot" and would write caret ranges instead of exact pins.
+	const tag = snapshot.tag || undefined;
 	return Effect.gen(function* () {
 		const { changesets, preState } = yield* Effect.tryPromise({
 			try: async () => {
@@ -279,12 +283,12 @@ function assembleSnapshotPlan(
 		const plan = yield* Effect.try({
 			try: () =>
 				assembleReleasePlan(changesets, packages, releaseConfig, preState, {
-					tag: snapshot.tag,
+					tag,
 					commit: snapshot.commit,
 				}),
 			catch: (e) => new ReleasePlanError({ phase, reason: errMsg(e) }),
 		});
-		return { plan, releaseConfig, snapshotArg: (snapshot.tag ?? true) as string | true };
+		return { plan, releaseConfig, snapshotArg: tag ?? true };
 	});
 }
 
