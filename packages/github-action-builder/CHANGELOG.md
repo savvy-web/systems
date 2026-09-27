@@ -1,5 +1,17 @@
 # @savvy-web/github-action-builder
 
+## 2.4.7
+
+### Bug Fixes
+
+- Fixed `ERR_MODULE_NOT_FOUND 'redis'` on Yarn 1 installs by importing `@effect/platform-node`'s subpaths instead of the package root. [#701][#701]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#701]: https://github.com/savvy-web/systems/pull/701
+
 ## 2.4.6
 
 ### Dependencies

@@ -1,5 +1,25 @@
 # @savvy-web/tsdown-plugins
 
+## 2.8.12
+
+### Bug Fixes
+
+- Fixed `ERR_MODULE_NOT_FOUND 'redis'` on Yarn 1 installs by importing `@effect/platform-node`'s subpaths instead of the package root. [#701][#701]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.26.0 | ^0.27.0 |
+
+[#701][#701]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#701]: https://github.com/savvy-web/systems/pull/701
+
 ## 2.8.11
 
 ### Dependencies

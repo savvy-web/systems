@@ -1,5 +1,32 @@
 # @savvy-web/cli
 
+## 3.4.0
+
+### Features
+
+- A usage error now exits `64` with the help text on stderr and stdout left empty, so a caller parsing stdout never sees help mixed in with an error. Passing `--help` or invoking a command group bare still prints help on stdout and exits `0`.
+- An unexpected defect — a bug in `savvy`, not an expected failure — now prints a multi-line issue report: a headline, the full pretty-printed cause with its stack, and where to file it. A typed failure still reads as a single line (its own message, else its tag and fields).
+
+### Bug Fixes
+
+- Fixed `ERR_MODULE_NOT_FOUND 'redis'` on Yarn 1 installs by importing `NodeRuntime`/`NodeServices` from `@effect/platform-node`'s subpaths instead of the package root. [#701][#701]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/cli | dependency | updated | ^0.8.0 | ^0.9.0 |
+| @effected/workspaces | dependency | updated | ^0.26.0 | ^0.27.0 |
+| @savvy-web/silk-effects | dependency | updated | 9.1.3 | 9.1.4 |
+
+[#701][#701]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#701]: https://github.com/savvy-web/systems/pull/701
+
 ## 3.3.0
 
 ### Breaking Changes
