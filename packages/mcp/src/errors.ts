@@ -100,9 +100,11 @@ export const workspaceNotFound = (cwd: string): WorkspaceNotFound =>
  * rendering is the raw message — passed through `ToolFailure.truncate` at
  * `ToolFailure.ENGINE_ECHO_LIMIT`, since the kit embeds caller values in it;
  * `source` keeps the tag for anything that inspects the typed error directly.
- * An `Error` in the engine error's own `cause` is appended to that rendering:
- * some kit errors (`CatalogAssemblyError`) render only a one-line summary and
- * keep the actionable detail in `cause`.
+ * An `Error` in the engine error's own `cause` is appended to that rendering
+ * unless the rendering already contains it: a kit error that renders only a
+ * one-line summary keeps the actionable detail in `cause`, while one that
+ * already folds its cause in (`CatalogAssemblyError` since `@effected/npm`
+ * 0.17.0) would otherwise print the detail twice.
  *
  * @public
  */
@@ -110,7 +112,8 @@ export const engineError = (
 	cause: { readonly _tag: string; readonly message: string; readonly cause?: unknown },
 	remediation: Remediation,
 ): EngineError => {
-	const rendered = cause.cause instanceof Error ? `${cause.message}: ${cause.cause.message}` : cause.message;
+	const detail = cause.cause instanceof Error ? cause.cause.message : "";
+	const rendered = detail && !cause.message.includes(detail) ? `${cause.message}: ${detail}` : cause.message;
 	return new EngineError({
 		source: cause._tag,
 		message: ToolFailure.message(ToolFailure.truncate(rendered, ToolFailure.ENGINE_ECHO_LIMIT), remediation),

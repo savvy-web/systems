@@ -77,6 +77,19 @@ describe("McpToolError / engineError", () => {
 		);
 	});
 
+	it("engineError does not repeat an Error cause the engine's rendering already includes", () => {
+		const detail = "config dependency @effected/pnpm-plugin-effect@0.11.1 is not installed";
+		const error = engineError(
+			{
+				_tag: "CatalogAssemblyError",
+				message: `Failed to assemble catalogs from hooks @effected/pnpm-plugin-effect: ${detail}`,
+				cause: new Error(detail),
+			},
+			{ hint: "Retry." },
+		);
+		expect(error.message).toBe(`Failed to assemble catalogs from hooks @effected/pnpm-plugin-effect: ${detail} Retry.`);
+	});
+
 	it("engineError ignores a non-Error cause", () => {
 		const error = engineError({ _tag: "GitError", message: "git failed", cause: "opaque" }, { hint: "Retry." });
 		expect(error.message).toBe("git failed Retry.");
