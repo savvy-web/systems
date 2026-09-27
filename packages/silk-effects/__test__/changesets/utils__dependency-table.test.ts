@@ -285,11 +285,30 @@ describe("dependency table cells survive the canonical escaping", () => {
 		expect(second).toBe(first);
 	});
 
+	it("normalizes an old escaped-spelling table to the new literal spelling on reserialize", () => {
+		const oldSpelling = `| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+| \\_private | dependency | updated | 1.0.0 | 2.0.0 |`;
+		const rows = parseDependencyTable(getTable(oldSpelling));
+		expect(rows).toEqual([ESCAPE_BAIT[0], ESCAPE_BAIT[2]]);
+		const reserialized = serializeDependencyTableToMarkdown(rows);
+		expect(reserialized).toContain("| ~0.2.0 |");
+		expect(reserialized).toContain("| ~0.2.1 |");
+		expect(reserialized).toContain("| _private |");
+		expect(reserialized).not.toContain("\\~");
+		expect(reserialized).not.toContain("\\_");
+	});
+
 	it("escapes a pipe so it cannot break out of its cell", () => {
 		const withPipe: DependencyTableRow[] = [
 			{ dependency: "weird|name", type: "dependency", action: "updated", from: "1.0.0", to: "2.0.0" },
 		];
 		const md = serializeDependencyTableToMarkdown(withPipe);
+		// The structural escape must survive in the RAW bytes — literal
+		// emission opts out of cosmetic escaping only, never the escape that
+		// keeps a `|` from splitting the cell.
+		expect(md).toContain("weird\\|name");
 		expect(parseDependencyTable(getTable(md))[0]?.dependency).toBe("weird|name");
 	});
 

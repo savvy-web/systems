@@ -10,12 +10,16 @@
  * The EMIT side no longer lives here: {@link stringifyMarkdown} delegates to
  * the canonical `@effected/markdown` stringifier via
  * `../utils/markdown-emit.js`, whose output form is a documented stability
- * commitment of that package. The old remark-stringify emit — and with it
- * the literal-text handler that suppressed cell escaping — is gone: the
- * canonical stringifier escapes inline text minimally (`~` as `\~`, a
- * word-edge `_` as `\_`; an interior `snake_case` underscore stays raw), and
- * parsing consumes those escapes, so cell values still round-trip
- * byte-identically through parse.
+ * commitment of that package. Ordinary text nodes escape canonically (`~` as
+ * `\~`, a word-edge `_` as `\_`; an interior `snake_case` underscore stays
+ * raw). Dependency-table cells opt out of that via the kit's per-node
+ * `escapeStyle: "literal"` instruction (see `dependency-table.ts`'s
+ * `makeCell`), so a version range or package name is written verbatim —
+ * `~0.2.1` stays `~0.2.1` — while escaping that defends the table's own
+ * structure (a cell's `|`) still applies. Either way, parsing consumes
+ * whatever escapes are present in the source, so cell values round-trip
+ * byte-identically through parse regardless of which spelling produced
+ * them.
  *
  * @internal
  */
