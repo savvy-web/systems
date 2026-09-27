@@ -19,7 +19,7 @@
  */
 
 import { Schema } from "effect";
-import type { Table, TableCell, TableRow } from "mdast";
+import type { Table, TableCell, TableRow, Text } from "mdast";
 import { toString as mdastToString } from "mdast-util-to-string";
 
 import type { DependencyTableRow } from "../schemas/dependency-table.js";
@@ -106,15 +106,36 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 }
 
 /**
- * Create a table cell with a text node.
+ * Local widening of mdast's `Text` node to admit `@effected/markdown`'s
+ * opt-in `escapeStyle` emitter instruction.
  *
  * @remarks
- * The cell holds a plain text node; the canonical stringifier escapes any
- * character that could open a markdown construct (`~0.2.1` is written as
- * `\~0.2.1`, `some_pkg` as `some\_pkg`, `|` as `\|`). Parsing consumes the
- * escapes, so cell VALUES round-trip byte-identically through
- * parse-and-reserialize — the escaping is a raw-byte spelling, never a
- * value change, and it cannot compound across cycles.
+ * `@types/mdast`'s `Text` has no `escapeStyle` field; the kit's own `Text`
+ * class does (`readonly escapeStyle?: "canonical" | "literal"`), and
+ * `Mdast.fromMdast` admits the field on a plain mdast `text` node when
+ * present — it is the one emitter instruction a plain tree can carry
+ * straight through the decode boundary. This type widens only that field,
+ * on the exact node type the kit decorates it on; every other field on
+ * `Text` (and the rest of the mdast node graph) is untouched.
+ *
+ * @internal
+ */
+type LiteralText = Text & { readonly escapeStyle: "literal" };
+
+/**
+ * Create a table cell with a text node that emits literally.
+ *
+ * @remarks
+ * The cell holds a text node carrying `escapeStyle: "literal"`, so the
+ * canonical stringifier writes the value verbatim instead of escaping
+ * characters that could open a markdown construct (`~0.2.1` stays `~0.2.1`,
+ * `some_pkg` stays `some_pkg`) — the caller vouches the dependency name and
+ * version-range values in a dependency table are already safe markdown
+ * source. Escaping that defends the table's own structure still applies
+ * (a cell's `|` is still written `\|`), so a value containing a pipe cannot
+ * break out of its cell. Parsing consumes any escapes present in the
+ * source (old or new spelling), so cell VALUES round-trip byte-identically
+ * through parse-and-reserialize regardless of which spelling produced them.
  *
  * @param text - The cell text content
  * @returns An MDAST `TableCell` node
@@ -122,9 +143,10 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
  * @internal
  */
 function makeCell(text: string): TableCell {
+	const node: LiteralText = { type: "text", value: text, escapeStyle: "literal" };
 	return {
 		type: "tableCell",
-		children: [{ type: "text", value: text }],
+		children: [node],
 	};
 }
 
