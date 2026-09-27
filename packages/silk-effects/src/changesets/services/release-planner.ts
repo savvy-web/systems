@@ -13,8 +13,11 @@
 
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { applyReleasePlan } from "@changesets/apply-release-plan";
+import { assembleReleasePlan } from "@changesets/assemble-release-plan";
 import { readConfig } from "@changesets/config";
 import { getReleasePlan } from "@changesets/get-release-plan";
+import { readPreState } from "@changesets/pre";
+import { readChangesets } from "@changesets/read";
 import type { Config, Packages, ReleasePlan } from "@changesets/types";
 import { getPackages } from "@manypkg/get-packages";
 import { Context, Effect, FileSystem, Layer } from "effect";
@@ -49,6 +52,45 @@ async function loadConfig(root: string, packages: Packages): Promise<{ config: C
 	return { config: configResult.config, warnings: configResult.warnings };
 }
 
+/**
+ * Per-call `changeset version --snapshot` parity options, forwarded to
+ * `@changesets/assemble-release-plan`. Mirrors the CLI's `--snapshot [tag]`
+ * flag plus its `--snapshot-prerelease-template` override.
+ *
+ * @remarks
+ * Setting this on either `apply` or `preview` routes plan construction through
+ * `readChangesets`/`readPreState`/`assembleReleasePlan` instead of
+ * `getReleasePlan` — the latter has no snapshot parameter. It is a typed
+ * `ReleasePlanError` (not a defect) when: the workspace is in `pre` mode (CLI
+ * parity — snapshot releases are refused there), or the resolved
+ * `prereleaseTemplate` references a placeholder with no value (e.g. `{commit}`
+ * with no `commit` supplied, or a template omitting `{tag}` while a `tag` is
+ * given) — `assembleReleasePlan` throws synchronously on those, and this
+ * option surfaces the throw as `ReleasePlanError` rather than letting it
+ * escape as an uncaught defect.
+ *
+ * @public
+ */
+export interface SnapshotOptions {
+	/**
+	 * The snapshot tag, e.g. `"next"` — like the bare `changeset version
+	 * --snapshot <tag>` argument. Omit for the bare `--snapshot` flag; no
+	 * boundary validation is performed here (a caller-side check for reserved
+	 * values like `"latest"` or `""` is the caller's responsibility).
+	 */
+	readonly tag?: string;
+	/** Per-call override of `config.snapshot.useCalculatedVersion`. */
+	readonly useCalculatedVersion?: boolean;
+	/** Per-call override of `config.snapshot.prereleaseTemplate`. */
+	readonly prereleaseTemplate?: string;
+	/**
+	 * Value substituted for the `{commit}`/`{commit-short}` prerelease-template
+	 * placeholders. This service never shells out to git to compute one —
+	 * callers that want commit-scoped snapshots must supply it themselves.
+	 */
+	readonly commit?: string;
+}
+
 /** The `ReleasePlanner` service surface. @public */
 export interface ReleasePlannerShape {
 	/** Compute the in-memory release plan (read-only). */
@@ -70,6 +112,8 @@ export interface ReleasePlannerShape {
 			 * is disabled — callers in no-`node_modules` contexts own formatting.
 			 */
 			readonly changelogModules?: Readonly<Record<string, string>>;
+			/** `changeset version --snapshot` parity. See {@link SnapshotOptions}. */
+			readonly snapshot?: SnapshotOptions;
 		},
 	) => Effect.Effect<ChangesetPreview, ReleasePlanError>;
 	/** Natively apply the release (destructive unless `dryRun`). */
@@ -84,6 +128,8 @@ export interface ReleasePlannerShape {
 			 * is disabled — callers in no-`node_modules` contexts own formatting.
 			 */
 			readonly changelogModules?: Readonly<Record<string, string>>;
+			/** `changeset version --snapshot` parity. See {@link SnapshotOptions}. */
+			readonly snapshot?: SnapshotOptions;
 		},
 	) => Effect.Effect<AppliedRelease, ReleasePlanError>;
 }
@@ -109,10 +155,11 @@ function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): 
 			catch: (e) => new ReleasePlanError({ phase: "plan", reason: errMsg(e) }),
 		});
 
-	const preview: ReleasePlannerShape["preview"] = (root, options) => previewEffect(root, options?.changelogModules, fs);
+	const preview: ReleasePlannerShape["preview"] = (root, options) =>
+		previewEffect(root, options?.changelogModules, options?.snapshot, fs);
 
 	const apply: ReleasePlannerShape["apply"] = (root, options) =>
-		applyEffect(root, options?.dryRun ?? false, options?.changelogModules, inspector, fs);
+		applyEffect(root, options?.dryRun ?? false, options?.changelogModules, options?.snapshot, inspector, fs);
 
 	return { plan, preview, apply };
 }
@@ -184,6 +231,64 @@ export function withChangelogModules(
 }
 
 /**
+ * Assemble a release plan for the `snapshot` path.
+ *
+ * @remarks
+ * `getReleasePlan` (`@changesets/get-release-plan`) has no snapshot parameter,
+ * so the snapshot path reads changesets and pre-state directly and calls
+ * `@changesets/assemble-release-plan`'s `assembleReleasePlan` — the same
+ * function `changeset version --snapshot` itself calls — rather than
+ * reimplementing any version math. Mirrors
+ * `@changesets/cli`'s `version.mjs`: `releaseConfig` overlays `snapshot`
+ * overrides and forces `commit: false`, `pre` mode is refused before the
+ * engine call, and a synchronous throw from `assembleReleasePlan` (bad
+ * placeholder templates) is caught and surfaced typed.
+ *
+ * @internal
+ */
+function assembleSnapshotPlan(
+	root: string,
+	packages: Packages,
+	config: Config,
+	snapshot: SnapshotOptions,
+	phase: "preview" | "apply",
+): Effect.Effect<
+	{ readonly plan: ReleasePlan; readonly releaseConfig: Config; readonly snapshotArg: string | true },
+	ReleasePlanError
+> {
+	const releaseConfig: Config = {
+		...config,
+		snapshot: {
+			...config.snapshot,
+			...(snapshot.useCalculatedVersion !== undefined ? { useCalculatedVersion: snapshot.useCalculatedVersion } : {}),
+			...(snapshot.prereleaseTemplate !== undefined ? { prereleaseTemplate: snapshot.prereleaseTemplate } : {}),
+		},
+		commit: false,
+	};
+	return Effect.gen(function* () {
+		const { changesets, preState } = yield* Effect.tryPromise({
+			try: async () => {
+				const [changesets, preState] = await Promise.all([readChangesets(root), readPreState(root)]);
+				return { changesets, preState };
+			},
+			catch: (e) => new ReleasePlanError({ phase, reason: errMsg(e) }),
+		});
+		if (preState?.mode === "pre") {
+			return yield* Effect.fail(new ReleasePlanError({ phase, reason: "Snapshot release is not allowed in pre mode" }));
+		}
+		const plan = yield* Effect.try({
+			try: () =>
+				assembleReleasePlan(changesets, packages, releaseConfig, preState, {
+					tag: snapshot.tag,
+					commit: snapshot.commit,
+				}),
+			catch: (e) => new ReleasePlanError({ phase, reason: errMsg(e) }),
+		});
+		return { plan, releaseConfig, snapshotArg: (snapshot.tag ?? true) as string | true };
+	});
+}
+
+/**
  * Extract the `## <version>` block (down to the next H2 or EOF) from a changelog.
  *
  * @internal
@@ -235,6 +340,7 @@ function maintenanceReasons(plan: ReleasePlan, config: Config): Map<string, Main
 function previewEffect(
 	root: string,
 	changelogModules: Readonly<Record<string, string>> | undefined,
+	snapshot: SnapshotOptions | undefined,
 	fs: FileSystem.FileSystem,
 ): Effect.Effect<ChangesetPreview, ReleasePlanError> {
 	const program = Effect.gen(function* () {
@@ -242,21 +348,44 @@ function previewEffect(
 		// legacy `pre.json` in place as an auto-migration — acceptable, but it
 		// means even this read-only preview path can touch disk when `pre.json`
 		// is stale.
-		const [plan, packages] = yield* Effect.tryPromise({
-			try: () => Promise.all([getReleasePlan(root), getPackages(root)]),
-			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-		});
+		let plan: ReleasePlan;
+		let packages: Packages;
+		let config: Config;
+		let snapshotArg: string | true | undefined;
+		if (snapshot) {
+			packages = yield* Effect.tryPromise({
+				try: () => getPackages(root),
+				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+			});
+			const loaded = yield* Effect.tryPromise({
+				try: () => loadConfig(root, packages),
+				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+			});
+			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
+			const built = yield* assembleSnapshotPlan(root, packages, loaded.config, snapshot, "preview");
+			plan = built.plan;
+			config = built.releaseConfig;
+			snapshotArg = built.snapshotArg;
+		} else {
+			const loaded = yield* Effect.tryPromise({
+				try: () => Promise.all([getReleasePlan(root), getPackages(root)]),
+				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+			});
+			plan = loaded[0];
+			packages = loaded[1];
+			const loadedConfig = yield* Effect.tryPromise({
+				try: () => loadConfig(root, packages),
+				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
+			});
+			yield* Effect.forEach(loadedConfig.warnings, (w) => Effect.logWarning(w));
+			config = loadedConfig.config;
+		}
 		if (!packages.rootPackage) {
 			return yield* Effect.fail(
 				new ReleasePlanError({ phase: "preview", reason: `Workspace root has no package.json: ${root}` }),
 			);
 		}
 		const rootPackage = packages.rootPackage;
-		const { config, warnings } = yield* Effect.tryPromise({
-			try: () => loadConfig(root, packages),
-			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-		});
-		yield* Effect.forEach(warnings, (w) => Effect.logWarning(w));
 		const reasonByName = maintenanceReasons(plan, config);
 		// The rewrite happens before any work is scaffolded so an unmapped id fails
 		// on the caller's config rather than after a temp tree has been built.
@@ -324,7 +453,7 @@ function previewEffect(
 		// run the GENUINE engine; contextDir = real root so config.changelog resolves
 		// when it is an unmapped id (a mapped one is already an absolute path).
 		yield* Effect.tryPromise({
-			try: () => applyReleasePlan(plan, tempPackages, engineConfig, undefined, root),
+			try: () => applyReleasePlan(plan, tempPackages, engineConfig, snapshotArg, root),
 			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 		});
 
@@ -389,6 +518,7 @@ function applyEffect(
 	root: string,
 	dryRun: boolean,
 	changelogModules: Readonly<Record<string, string>> | undefined,
+	snapshot: SnapshotOptions | undefined,
 	inspector: ConfigInspectorShape,
 	fs: FileSystem.FileSystem,
 ): Effect.Effect<AppliedRelease, ReleasePlanError> {
@@ -397,15 +527,38 @@ function applyEffect(
 		// legacy `pre.json` in place as an auto-migration — acceptable, but it
 		// means even this read-only `plan` computation can touch disk when
 		// `pre.json` is stale.
-		const { plan, packages, config, warnings } = yield* Effect.tryPromise({
-			try: async () => {
-				const [plan, packages] = await Promise.all([getReleasePlan(root), getPackages(root)]);
-				const { config, warnings } = await loadConfig(root, packages);
-				return { plan, packages, config, warnings };
-			},
-			catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
-		});
-		yield* Effect.forEach(warnings, (w) => Effect.logWarning(w));
+		let plan: ReleasePlan;
+		let packages: Packages;
+		let config: Config;
+		let snapshotArg: string | true | undefined;
+		if (snapshot) {
+			packages = yield* Effect.tryPromise({
+				try: () => getPackages(root),
+				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
+			});
+			const loaded = yield* Effect.tryPromise({
+				try: () => loadConfig(root, packages),
+				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
+			});
+			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
+			const built = yield* assembleSnapshotPlan(root, packages, loaded.config, snapshot, "apply");
+			plan = built.plan;
+			config = built.releaseConfig;
+			snapshotArg = built.snapshotArg;
+		} else {
+			const loaded = yield* Effect.tryPromise({
+				try: async () => {
+					const [plan, packages] = await Promise.all([getReleasePlan(root), getPackages(root)]);
+					const { config, warnings } = await loadConfig(root, packages);
+					return { plan, packages, config, warnings };
+				},
+				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
+			});
+			plan = loaded.plan;
+			packages = loaded.packages;
+			config = loaded.config;
+			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
+		}
 
 		const engineConfig = changelogModules ? yield* withChangelogModules(config, changelogModules, "apply") : config;
 
@@ -425,7 +578,7 @@ function applyEffect(
 			}
 			touchedFiles = yield* Effect.tryPromise({
 				try: async () => {
-					const touched = await applyReleasePlan(plan, packages, engineConfig);
+					const touched = await applyReleasePlan(plan, packages, engineConfig, snapshotArg);
 					for (const f of touched) {
 						if (!f.endsWith("CHANGELOG.md")) continue;
 						const pkgName = nameByDir.get(dirname(f));
