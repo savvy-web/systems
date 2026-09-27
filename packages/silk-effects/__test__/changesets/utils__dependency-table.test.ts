@@ -300,6 +300,18 @@ describe("dependency table cells survive the canonical escaping", () => {
 		expect(reserialized).not.toContain("\\_");
 	});
 
+	it("parses an escaped-spelling table and a literal-spelling table to identical row values", () => {
+		const escaped = `| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+| some\\_pkg | dependency | updated | 1.0.0 | 2.0.0 |`;
+		const literal = `| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | ~0.2.0 | ~0.2.1 |
+| some_pkg | dependency | updated | 1.0.0 | 2.0.0 |`;
+		expect(parseDependencyTable(getTable(escaped))).toEqual(parseDependencyTable(getTable(literal)));
+	});
+
 	it("escapes a pipe so it cannot break out of its cell", () => {
 		const withPipe: DependencyTableRow[] = [
 			{ dependency: "weird|name", type: "dependency", action: "updated", from: "1.0.0", to: "2.0.0" },

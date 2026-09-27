@@ -36,6 +36,34 @@ ${TABLE_HEADER}
 		expect(axiosIdx).toBeLessThan(zlibIdx);
 	});
 
+	it("merges tables mixing the legacy escaped spelling and the new literal spelling", () => {
+		// This test's own pipeline stringifies with plain remark-stringify (not
+		// the kit's escapeStyle-aware emitter), which escapes underscores
+		// regardless of source spelling — irrelevant to the behavior under
+		// test, so "newpkg" avoids conflating the two concerns. The tilde
+		// range is the character this goal cares about: it must merge and
+		// survive as a value, not that the merge output's own re-escaping
+		// spells it any particular way.
+		const md = `## 1.0.0
+
+### Dependencies
+
+${TABLE_HEADER}
+| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+
+### Dependencies
+
+${TABLE_HEADER}
+| newpkg | dependency | updated | 1.0.0 | 2.0.0 |
+`;
+		const result = transform(md);
+		const headingCount = (result.match(/### Dependencies/g) || []).length;
+		expect(headingCount).toBe(1);
+		expect(result).toContain("@effected/semver");
+		expect(result).toContain("newpkg");
+		expect(result).toContain("0.2.1");
+	});
+
 	it("merges two dependency tables in one version block", () => {
 		const md = `## 1.0.0
 

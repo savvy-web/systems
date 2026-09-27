@@ -204,6 +204,50 @@ describe("dependency-table-format rule", () => {
 		});
 	});
 
+	// --- backward compatibility: literal (unescaped) spelling -----------------
+	// makeCell now emits `escapeStyle: "literal"`, so a freshly-serialized
+	// table spells `~0.2.1` and `some_pkg` without backslashes. This rule must
+	// accept that spelling exactly like the legacy escaped one, since both
+	// parse to the same mdast text value (remark-parse resolves any escapes
+	// present in the source at parse time).
+	describe("backward compatibility: literal (unescaped) spelling", () => {
+		it("accepts a tilde range written without the legacy escape", () => {
+			const md = `## Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | ~0.2.0 | ~0.2.1 |
+`;
+			expect(lint(md)).toEqual([]);
+		});
+
+		it("accepts an underscore package name written without the legacy escape", () => {
+			const md = `## Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| some_pkg | dependency | updated | 1.0.0 | 2.0.0 |
+`;
+			expect(lint(md)).toEqual([]);
+		});
+
+		it("accepts the legacy escaped spelling too, with no drift between the two", () => {
+			const literal = `## Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | ~0.2.0 | ~0.2.1 |
+`;
+			const escaped = `## Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+`;
+			expect(lint(literal)).toEqual(lint(escaped));
+		});
+	});
+
 	it("includes rule documentation URL", () => {
 		const md = `## Dependencies
 
