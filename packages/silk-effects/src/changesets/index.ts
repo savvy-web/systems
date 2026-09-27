@@ -125,7 +125,7 @@ export {
 	MaintenanceTriggerSchema,
 	deriveMaintenanceReason,
 } from "./services/maintenance-reason.js";
-export type { ReleasePlannerShape } from "./services/release-planner.js";
+export type { ReleasePlannerShape, SnapshotOptions } from "./services/release-planner.js";
 export { ReleasePlanner, makeReleasePlannerTest } from "./services/release-planner.js";
 // === Effect Layers ===
 
