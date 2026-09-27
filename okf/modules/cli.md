@@ -15,6 +15,10 @@ sources:
     resource: ../../packages/cli/src/main.ts
   - id: output
     resource: ../../packages/cli/src/internal/output.ts
+  - id: failure-line
+    resource: ../../packages/cli/src/internal/failure-line.ts
+  - id: bin-e2e
+    resource: ../../packages/cli/__test__/e2e/bin.e2e.test.ts
   - id: test-utils
     resource: ../../packages/cli/__test__/utils
   - id: boundaries
@@ -23,8 +27,8 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:44:37Z
-  body_sha256: 5520319c26a387b816cc0e316a048b27d55aad3322dd25cb8fe6719cf1457de0
+  at: 2026-09-26T22:54:36Z
+  body_sha256: acb8192d1099571c42a64189c0a059864aa057ab02484befae801dad120ba837
 ---
 
 # cli
@@ -43,7 +47,7 @@ Bound by [package-layering](../conventions/package-layering.md); shaped by [carr
 
 ## Entry points
 
-The package follows the `./main` contract shared with the MCP server: `src/bin.ts` is the shebang shim, `src/main.ts` owns the process and is exported at `@savvy-web/cli/main`, and `src/index.ts` is the side-effect-free library barrel. `main(options?: MainOptions)` builds `Command.run(rootCommand, { version: CLI_VERSION })`, provides `AppLive`, a `CliColor.formatterLayer` whose `formatVersion` is `VersionLine.format`, and `CurrentDistribution` once, then runs `NodeRuntime.runMain(CliRuntime.main(program, { platform: CliPlatform, render: FailureLine.render }))`. `CliRuntime.main` (`@effected/cli`) provides the platform and the kit-default `CliLogger`, reports a failure through that logger, applies the `CliExit` code a command set, and exits `64` on a usage error.[^main] `MainOptions.distribution` names the carrier the bin was installed through: `@savvy-web/silk` owns a mirror `savvy` bin that imports `@savvy-web/cli/main` and calls `main({ distribution: { name: "@savvy-web/silk", version } })` — the one sanctioned import of cli from silk — so `--version` prints `savvy v<cli> via @savvy-web/silk <silk>`; a direct install prints the bare `savvy v<cli>`. `CLI_VERSION` lives alone in `src/version.ts` so its build-time `process.env` read stays at the edge.[^main]
+The package follows the `./main` contract shared with the MCP server: `src/bin.ts` is the shebang shim, `src/main.ts` owns the process and is exported at `@savvy-web/cli/main`, and `src/index.ts` is the side-effect-free library barrel. `main(options?: MainOptions)` builds `Command.run(rootCommand, { version: CLI_VERSION })` and provides `AppLive` and `CurrentDistribution` once. It then runs `NodeRuntime.runMain(CliRuntime.main(program, { platform, render: FailureLine.render, helpOnUsageError: "stderr" }))`, where `platform` is `VersionFormatterLive` (a `CliColor.formatterLayer` whose `formatVersion` is `VersionLine.format`) merged over `CliPlatform`. The formatter rides in `platform` rather than `program` because help routing only sees a formatter provided there. `CliRuntime.main` (`@effected/cli`) provides the platform and the kit-default `CliLogger`, reports a failure through that logger, applies the `CliExit` code a command set, and exits `64` on a usage error with the help document on stderr beside the error, so stdout stays empty for a caller that parses it.[^main] `FailureLine.render(error, { cause, isDefect })` is the renderer: a typed failure prints as one line (the error's own message, else its tag with its fields, where the kit default `String(error)` would print a bare tag), and a defect — a `die`, a thrown exception — prints as an issue report: a headline, the whole `Cause.pretty` cause with its stack, and the issues URL to file it at.[^failure-line] `MainOptions.distribution` names the carrier the bin was installed through: `@savvy-web/silk` owns a mirror `savvy` bin that imports `@savvy-web/cli/main` and calls `main({ distribution: { name: "@savvy-web/silk", version } })` — the one sanctioned import of cli from silk — so `--version` prints `savvy v<cli> via @savvy-web/silk <silk>`; a direct install prints the bare `savvy v<cli>`. `CLI_VERSION` lives alone in `src/version.ts` so its build-time `process.env` read stays at the edge.[^main]
 
 ## The runtime layer stack
 
@@ -64,11 +68,11 @@ Handlers render outcome, not attempt — `restore`'s `stillDirty` names every re
 
 stdout carries only a command's product: the human result lines written through `Output` (`src/internal/output.ts` — `ok ✓`, `warn ⚠`, `fail ✗`, `skip •`, `heading`, `detail`, `line`, `summary`), JSON documents written with `Console.log`, and hook envelopes written with `process.stdout.write`. Every `Effect.log*` line, including a failure's explanation, goes to stderr through the kit-default `CliLogger`, with no timestamp or level prefix. `Output` tints only the glyph or heading, and only when `CliColor.enabled` holds (stdout a TTY and `NO_COLOR` unset), so piped text reads the same.[^output]
 
-A command reports findings with `CliExit.set(1)` and never writes `process.exitCode` or calls `process.exit`; `CliRuntime.main` owns the exit. `__test__/boundaries.test.ts` pins that with `@effected/workspaces/testing`'s `SourceBoundary`, and ratchets the files under `src/` that read `process` at all to today's list — a new reader fails the test until it is added deliberately.[^boundaries]
+A command reports findings with `CliExit.set(1)` and never touches `process.exitCode` or calls `process.exit`; `CliRuntime.main` owns the exit. A usage error exits `64` with the error and the help on stderr and nothing on stdout, while an explicit `--help` or a bare group invocation prints its help on stdout and exits `0`.[^bin-e2e] `__test__/boundaries.test.ts` pins the exit rule with `@effected/workspaces/testing`'s `SourceBoundary` (`forbidTokens: ["process.exit(", "process.exitCode"]`, any occurrence rather than only a write), confines the build-time `process.env.__PACKAGE_VERSION__` read to `src/version.ts` through an allow rule it asserts was actually waived, and ratchets the files under `src/` that read `process` at all to today's list — a new reader fails the test until it is added deliberately.[^boundaries]
 
 ## Testing the command handlers
 
-A handler test runs the handler as `main()` would and asserts on data, never on patched globals. `__test__/utils/capture.ts`'s `Capture.run(effect)` provides the kit-default `CliLogger`, a fresh `CliExit` and a recording `Console`, and returns `{ value, stdout, stderr, exitCode }`; `Capture.layer(stdout, stderr)` is the same recording for a test that builds its own layer stack, and `Capture.piped` is a `Stdio` whose stdout is not a terminal, so `Output` emits no colour. `__test__/utils/exit.ts`'s `TestExit` is a per-file `CliExit` cell (`TestExit.layer`, `reset()` in `beforeEach`, `code()`). A test that only needs the handler's return value silences logging with `Layer.merge(Logger.layer([]), Capture.piped)`. The capture mechanism decides the runner: `Capture` swaps the `Console` reference and so works under `it.effect`, but a test that spies on the real `console.log` must run under `it.live`, because `it.effect` installs `TestConsole`, which swallows `Console.log` writes before the spy sees them. The built bin is covered by `__test__/e2e/bin.e2e.test.ts`, spawned hermetically through `@effected/cli/testing`'s `CliTest`: the bare `--version` line, and a usage error exiting `64` with the error on stderr.[^test-utils]
+A handler test runs the handler as `main()` would and asserts on data, never on patched globals. `__test__/utils/capture.ts`'s `Capture.run(effect)` provides the kit-default `CliLogger`, a fresh `CliExit` and a recording `Console`, and returns `{ value, stdout, stderr, exitCode }`; `Capture.layer(stdout, stderr)` is the same recording for a test that builds its own layer stack, and `Capture.piped` is a `Stdio` whose stdout is not a terminal, so `Output` emits no colour. `__test__/utils/exit.ts`'s `TestExit` is a per-file `CliExit` cell (`TestExit.layer`, `reset()` in `beforeEach`, `code()`). A test that only needs the handler's return value silences logging with `Layer.merge(Logger.layer([]), Capture.piped)`. The capture mechanism decides the runner: `Capture` swaps the `Console` reference and so works under `it.effect`, but a test that spies on the real `console.log` must run under `it.live`, because `it.effect` installs `TestConsole`, which swallows `Console.log` writes before the spy sees them. The built bin is covered by `__test__/e2e/bin.e2e.test.ts`, spawned hermetically through `@effected/cli/testing`'s `CliTest`: the bare `--version` line, a usage error or unknown subcommand exiting `64` with empty stdout, and `--help` and a bare group invocation printing help on stdout.[^test-utils]
 
 ## Boundaries and invariants
 
@@ -91,6 +95,8 @@ A handler test runs the handler as `main()` would and asserts on data, never on 
 [^repos-group]: `../../packages/cli/src/commands/repos`
 [^main]: `../../packages/cli/src/main.ts`
 [^output]: `../../packages/cli/src/internal/output.ts`
+[^failure-line]: `../../packages/cli/src/internal/failure-line.ts`
+[^bin-e2e]: `../../packages/cli/__test__/e2e/bin.e2e.test.ts`
 [^test-utils]: `../../packages/cli/__test__/utils`
 [^boundaries]: `../../packages/cli/__test__/boundaries.test.ts`
 [^layering]: `../../packages/silk/__test__/package-layering.test.ts`

@@ -76,14 +76,25 @@
  * the port of `registerToolkit` that carried it.
  *
  * `strict: "annotated"` with no tool annotated `Tool.Strict` keeps every
- * tool lenient: Claude Code sends `_meta`-style extras on some calls, so
- * strictness is a per-tool opt-in.
+ * `Tool.make` tool lenient, a conservative default: strictness is a per-tool
+ * opt-in. MCP carries `_meta` at `params._meta`, not inside `arguments`, and no
+ * client-injected argument extras have been observed from Claude Code. The one
+ * exception is the union tool `repos_manage` (below), which the kit always
+ * decodes strictly.
  *
  * `outputSchema` is served only for an object-rooted success schema (core
  * since rc.117). Four tools' results are discriminated unions
  * (`turbo_inspect`, `changeset_inspect`, `repos_inspect`, `repos_manage`),
- * whose JSON Schema is `anyOf`-rooted, so they serve no `outputSchema`;
- * their `structuredContent` is unaffected.
+ * whose JSON Schema would be a bare `anyOf`; each is wrapped in
+ * `@effected/mcp`'s `ToolOutputSchema.objectRooted`, which adds
+ * `type: "object"` beside the `anyOf`, so every tool serves an
+ * `outputSchema`.
+ *
+ * `repos_manage`'s parameters are a union too — one struct per action — so
+ * it is a `McpToolkit.unionTool`: served as a strict `oneOf` keyed by
+ * `action`, decoded by `McpToolkit.unionHandler`, and rejected as invalid
+ * parameters (unknown keys named at every depth) before its handler runs,
+ * whatever the `strict` option says for the `Tool.make` tools.
  *
  * @packageDocumentation
  */

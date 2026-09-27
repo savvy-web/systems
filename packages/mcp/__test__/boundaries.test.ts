@@ -1,7 +1,9 @@
 /**
  * Source-text boundaries for the MCP front end: the process is read only at
- * the edge (`bin.ts`, `main.ts`, and `version.ts`'s build-time define), and
- * everything under `src/` below it takes its facts as values.
+ * the edge (`main.ts`), and everything under `src/` below it takes its facts
+ * as values. The one build-time define, `process.env.__PACKAGE_VERSION__`, is
+ * confined to `version.ts` by a token rule rather than by exempting the file
+ * from the `process` rules wholesale.
  */
 
 import { join } from "node:path";
@@ -17,15 +19,20 @@ describe("mcp source boundaries", () => {
 		expect(SourceBoundary.verifyFixtures()).toEqual([]);
 	});
 
-	it.effect("only bin.ts, main.ts and version.ts touch process", () =>
+	it.effect("only main.ts touches process, and only version.ts reads the build-time version define", () =>
 		Effect.gen(function* () {
 			const scan = yield* SourceBoundary.scan({
 				root: SRC,
-				rules: ["process", "node:process"],
-				allow: ["bin.ts", "main.ts", "version.ts"],
+				rules: ["process", "node:process", { forbidTokens: ["process.env.__PACKAGE_VERSION__"] }],
+				allow: ["main.ts"],
+				allowRules: { forbidTokens: ["version.ts"] },
 			});
 			expect(scan.violations).toEqual([]);
-			expect(scan.allowed).toEqual(["bin.ts", "main.ts", "version.ts"]);
+			expect(scan.allowed).toEqual(["main.ts"]);
+			// Non-vacuity: the define is still read, and only where it is waived.
+			expect(scan.waived.map((offence) => `${offence.file} ${offence.detail}`)).toEqual([
+				"version.ts process.env.__PACKAGE_VERSION__",
+			]);
 			expect(scan.files.length).toBeGreaterThan(10);
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);

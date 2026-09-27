@@ -1,3 +1,4 @@
 # Gotcha
 
 * [A public-hoisted workspace package resolves to its source tree, not its built artifact](hoisted-workspace-package-resolves-source.md) - Hoisting a workspace package via publicHoistPattern symlinks the package's source directory and ignores publishConfig.directory, so a tool that resolves it by id loads raw TypeScript through Node's type-stripping and looks like it works.
+* [The @effect/platform-node root import needs redis, and only Yarn 1 shows it](platform-node-root-import-requires-redis.md) - Importing the root @effect/platform-node entry evaluates NodeRedis, which imports its required redis peer; npm, pnpm and bun auto-install that peer, so a shipped bin works everywhere except under Yarn 1, which fails with ERR\_MODULE\_NOT\_FOUND 'redis'. Shipped code imports platform-node by subpath.

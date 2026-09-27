@@ -15,12 +15,16 @@ sources:
     resource: ../../packages/mcp/src/server.ts
   - id: tests
     resource: ../../packages/mcp/__test__
+  - id: errors
+    resource: ../../packages/mcp/src/errors.ts
+  - id: repos-manage
+    resource: ../../packages/mcp/src/tools/repos-manage.ts
   - id: layering
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T03:02:46Z
-  body_sha256: f39c011f0615922bc97fa00f37fb7d7b788be6fab516b8020428e7ded791ad0a
+  at: 2026-09-26T23:41:51Z
+  body_sha256: 1c9f9d4d2b61cc7df65db991e614cac78558761d10a3f0852289e262fcd54db9
 ---
 
 # mcp
@@ -29,7 +33,7 @@ generated:
 
 `@savvy-web/mcp` (`packages/mcp`) owns the `savvy-mcp` binary: a long-lived MCP server, spawned alongside an agent in the project working directory and shared across Claude Code plugins. It exists to make Silk tooling cheaper for agents to consume than bash — structured JSON tool output instead of parsed console text.[^arch]
 
-It is a tools-only server: one Effect `Layer`, a ten-tool `Toolkit` from `effect/unstable/ai` registered by `@effected/mcp`'s `McpToolkit.layer` against its `McpStdio.layer` (core's `McpServer.layerStdio` with the kit's protocol defaults), zero resources, no MCP SDK, no zod. A success carries the typed result in `structuredContent` and the same object as JSON in `content[0].text`; there is no markdown or other text projection.[^server] Tool logic comes from [`silk-effects`](silk-effects.md), the same business layer the `savvy` CLI uses; the tool files are glue. It is not a discovery host and carries no per-project gating — direction lives in the plugins that spawn it.[^arch] It is an L3 front end in the package layering, a peer of [`cli`](cli.md) that never imports it.[^arch]
+It is a tools-only server: one Effect `Layer`, a ten-tool `Toolkit` from `effect/unstable/ai` registered by `@effected/mcp`'s `McpToolkit.layer` against its `McpStdio.layer` (core's `McpServer.layerStdio` with the kit's protocol defaults), zero resources, no MCP SDK, no zod. A success carries the typed result in `structuredContent` and the same object as JSON in `content[0].text`; there is no markdown or other text projection. Every tool serves an `outputSchema`: the four whose results are discriminated unions wrap them in `@effected/mcp`'s `ToolOutputSchema.objectRooted`, since core serves one only for an object-rooted schema.[^server] Nine tools are `Tool.make` values, lenient toward extra arguments as a deliberate, conservative default; `repos_manage`, whose parameters are one struct per action, is a `McpToolkit.unionTool` served as a strict `oneOf` keyed by `action`, so a missing field or a stray key is rejected as invalid parameters before its handler runs — an `isError` result on `2025-11-25`/`2026-07-28`, a JSON-RPC `-32602` on `2025-06-18`.[^repos-manage] A declared failure is one of `McpToolError`'s members — `WorkspaceNotFound`, `EngineError`, `BiomeFailed`, or the kit's `ToolRefusal` (built with `ToolRefusal.refuse`) for a refusal that carries nothing beyond its message — and reaches the wire as `isError` text.[^errors] Tool logic comes from [`silk-effects`](silk-effects.md), the same business layer the `savvy` CLI uses; the tool files are glue. It is not a discovery host and carries no per-project gating — direction lives in the plugins that spawn it.[^arch] It is an L3 front end in the package layering, a peer of [`cli`](cli.md) that never imports it.[^arch]
 
 The choice to build this server Effect-native, over `effect/unstable/ai`'s `McpServer` rather than the reference SDK, is recorded in [effect-native-mcp-server](../decisions/effect-native-mcp-server.md). The ten tools' individual contracts are documented from the consumer side in [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md), and the shape every tool follows (Effect Schema as canon, the result schema as the whole wire contract, `Tool.make` with declared dependencies, read-only versus mutating annotation) is in [mcp-tool-authoring](../conventions/mcp-tool-authoring.md). This concept covers the module's boundary, ownership, and runtime wiring.
 
@@ -39,7 +43,7 @@ Bound by [package-layering](../conventions/package-layering.md); shaped by [effe
 
 ## Entry points
 
-The package follows the same `./main` contract as the CLI: `src/bin.ts` is the shebang shim, `src/main.ts` owns the process and is exported as `@savvy-web/mcp/main`, and `src/index.ts` is the side-effect-free barrel — it never exports `main`, so importing it registers no crash guards and imports no server graph.[^arch] `main()` registers `uncaughtException`/`unhandledRejection` handlers before dynamically importing anything reachable from the tool surface, so an import-time failure is reported by a handler instead of crashing before one exists, then runs `NodeRuntime.runMain(McpStdio.launch(ServerLayer(cwd, options)), { teardown: McpStdio.teardown })`: `McpStdio.launch` reports a launch failure on stderr, never onto the wire, and `McpStdio.teardown` maps stdin EOF — a clean disconnect — to exit 0.[^main] `main(options?: MainOptions)` takes an optional `distribution`; `ServerLayer(cwd, options?: ServerOptions)` renders it into `serverInfo.version` as `CURRENT_MCP_VERSION` plus `via <name> <version>`, which is how a server launched through silk's `savvy-mcp` shim names the carrier.[^main]
+The package follows the same `./main` contract as the CLI: `src/bin.ts` is the shebang shim, `src/main.ts` owns the process and is exported as `@savvy-web/mcp/main`, and `src/index.ts` is the side-effect-free barrel — it never exports `main`, so importing it registers no crash guards and imports no server graph.[^arch] `main()` is one `@effected/mcp/guard` `McpGuard.run({ label: "savvy-mcp", host: process, load })` call, and the guard and an erased type are its only static imports. The guard registers `uncaughtException`/`unhandledRejection` listeners, then awaits `load`, which dynamically imports the whole server graph, resolves the project dir, and returns `ServerLayer(cwd, options)` with `NodeRuntime.runMain`; an import-time failure is reported on stderr by the guard instead of crashing before a handler exists, and a rejected `load` exits 1. The guard launches the layer through `McpStdio.launch`, which reports a launch failure on stderr, never onto the wire, with `McpStdio.teardown`, which maps stdin EOF — a clean disconnect — to exit 0.[^main] `main(options?: MainOptions)` takes an optional `distribution`; `ServerLayer(cwd, options?: ServerOptions)` renders it into `serverInfo.version` as `CURRENT_MCP_VERSION` plus `via <name> <version>`, which is how a server launched through silk's `savvy-mcp` shim names the carrier.[^main]
 
 ## The runtime layer
 
@@ -58,11 +62,11 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 ## Boundaries and invariants
 
 - **`@savvy-web/mcp` imports neither `@savvy-web/cli` nor `@savvy-web/silk`.** All logic comes from silk-effects and the `@effected/*` kit; silk's package-layering test asserts the edge never exists.[^layering]
-- **Only `bin.ts`, `main.ts` and `version.ts` touch `process`.** Everything below takes its facts as values; `__test__/boundaries.test.ts` pins it with `SourceBoundary`.[^tests]
+- **Only `main.ts` touches `process`.** It is the one file the `process` rules allow wholesale; `version.ts` is waived only for the single `process.env.__PACKAGE_VERSION__` token through `allowRules`, and `bin.ts` may not touch `process` at all. Everything below takes its facts as values; `__test__/boundaries.test.ts` pins it with `SourceBoundary`, and asserts the version token was actually waived.[^tests]
 - **`src/index.ts` never exports `main`.**[^arch]
 - **ESM-only, real Node process.** silk-effects is a normal runtime dependency here, not bundled — the same posture every package in the repo now holds, including `@savvy-web/silk`.[^arch]
 - **Effect Schema is the only schema language.** Parameters, results, and the failure union are Effect `Schema`; the framework derives the wire JSON Schema. No zod, no bridge.[^arch]
-- **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp/testing`'s `McpProcess`/`McpProbe`, and in process by `__test__/server.harness.test.ts` over `McpHarness`.[^tests]
+- **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp/testing`'s `McpProcess`/`McpProbe`, and in process over `McpHarness`, which every in-process suite drives through the thin `__test__/utils/harness.ts` wrapper — there is no hand-ported harness.[^tests]
 - **Read-only is the convention; `biome_check`, `changeset_deps_regen`, and `repos_manage` are the three documented exceptions.** See [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md).[^arch]
 - **The runtime is root-bound at layer build.** One server instance serves one project dir; per-call `cwd` arguments walk up to a workspace root but do not rebuild the layer.[^arch]
 
@@ -79,4 +83,6 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 [^main]: `../../packages/mcp/src/main.ts`
 [^server]: `../../packages/mcp/src/server.ts`
 [^tests]: `../../packages/mcp/__test__`
+[^errors]: `../../packages/mcp/src/errors.ts`
+[^repos-manage]: `../../packages/mcp/src/tools/repos-manage.ts`
 [^layering]: `../../packages/silk/__test__/package-layering.test.ts`

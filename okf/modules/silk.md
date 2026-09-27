@@ -7,8 +7,8 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: 03542aaea5f3004b2df8c2f2e2d6bfe12065c2799c35920ba097fb090ea58c31
+  at: 2026-09-26T22:54:36Z
+  body_sha256: 33b574972fc56d5a1c85d648753b4a513c33a99594545ec160ee140619807b14
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
@@ -47,8 +47,10 @@ tool subpath (markdownlint, commitlint, lint-staged).
   `@savvy-web/mcp/main` respectively and pass
   `main()` a `distribution` naming `@savvy-web/silk` at silk's own
   build-time version, so `savvy --version` and the MCP `serverInfo.version` end in
-  `via @savvy-web/silk <version>` — guaranteed under pnpm only, since npm's
-  flat `.bin` may link a front end's own bin instead;[^silk-bins] nothing
+  `via @savvy-web/silk <version>` on every package manager. A user typing
+  the bin name gets that suffix only when the manager gives the `.bin` slot
+  to silk (pnpm, Yarn); npm and bun give it to the front end's own bin,
+  which carries no suffix;[^silk-bins] nothing
   else under `src/` imports either package, which
   `__test__/boundaries.test.ts` pins with `SourceBoundary`, waiving exactly
   the two shim imports.[^silk-boundaries-test] Both bins mirror the front ends' own `main()`

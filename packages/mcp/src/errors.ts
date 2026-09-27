@@ -15,11 +15,17 @@
  * `ToolFailure.message`, and passes any caller-supplied value it echoes
  * through `ToolFailure.truncate`.
  *
+ * A refusal with nothing to carry beyond its message — a bad argument, a
+ * missing Biome binary — is the kit's own `ToolRefusal`, built with
+ * `ToolRefusal.refuse(reason, remediation)`. The typed members below stay
+ * for the failures that carry a field of their own (`cwd`, `source`,
+ * `exitCode`).
+ *
  * @packageDocumentation
  */
 
 import type { Remediation } from "@effected/engine";
-import { ToolFailure } from "@effected/mcp";
+import { ToolFailure, ToolRefusal } from "@effected/mcp";
 import { Schema } from "effect";
 
 /**
@@ -32,19 +38,6 @@ import { Schema } from "effect";
 export class WorkspaceNotFound extends Schema.TaggedError<WorkspaceNotFound>()("WorkspaceNotFound", {
 	...ToolFailure.fields,
 	cwd: Schema.String,
-}) {}
-
-/**
- * A tool argument was structurally acceptable but semantically invalid — a
- * `repos_manage` action missing the field it needs, a `biome_check` path
- * outside the workspace, a `changeset_validate` directory that does not
- * exist. `message` is composed through `ToolFailure.message`.
- *
- * @public
- */
-export class InvalidArgument extends Schema.TaggedError<InvalidArgument>()("InvalidArgument", {
-	...ToolFailure.fields,
-	argument: Schema.String,
 }) {}
 
 /**
@@ -61,16 +54,6 @@ export class EngineError extends Schema.TaggedError<EngineError>()("EngineError"
 }) {}
 
 /**
- * No Biome binary could be located. `message` is composed through
- * `ToolFailure.message`.
- *
- * @public
- */
-export class BiomeUnavailable extends Schema.TaggedError<BiomeUnavailable>()("BiomeUnavailable", {
-	...ToolFailure.fields,
-}) {}
-
-/**
  * Biome itself failed (exit status above 1, a spawn error, or a timeout) —
  * distinct from "lint issues found", which is a successful result. `message`
  * is composed through `ToolFailure.message`.
@@ -83,13 +66,7 @@ export class BiomeFailed extends Schema.TaggedError<BiomeFailed>()("BiomeFailed"
 }) {}
 
 /** The one failure schema every savvy-mcp tool declares. @public */
-export const McpToolError = Schema.Union([
-	WorkspaceNotFound,
-	InvalidArgument,
-	EngineError,
-	BiomeUnavailable,
-	BiomeFailed,
-]);
+export const McpToolError = Schema.Union([WorkspaceNotFound, EngineError, BiomeFailed, ToolRefusal]);
 /** @public */
 export type McpToolError = typeof McpToolError.Type;
 
@@ -118,32 +95,28 @@ export const workspaceNotFound = (cwd: string): WorkspaceNotFound =>
 	});
 
 /**
- * Build an {@link InvalidArgument}: `raw` is the human message (already
- * truncated by the caller where it echoes an argument).
- *
- * @public
- */
-export const invalidArgument = (argument: string, raw: string, remediation: Remediation): InvalidArgument =>
-	new InvalidArgument({ argument, message: ToolFailure.message(raw, remediation), remediation });
-
-/**
  * Build an {@link EngineError} from a silk-effects typed error. Every engine
  * error in this server renders itself through a `message` getter, so that
  * rendering is the raw message — passed through `ToolFailure.truncate` at
  * `ToolFailure.ENGINE_ECHO_LIMIT`, since the kit embeds caller values in it;
  * `source` keeps the tag for anything that inspects the typed error directly.
+ * An `Error` in the engine error's own `cause` is appended to that rendering:
+ * some kit errors (`CatalogAssemblyError`) render only a one-line summary and
+ * keep the actionable detail in `cause`.
  *
  * @public
  */
 export const engineError = (
-	cause: { readonly _tag: string; readonly message: string },
+	cause: { readonly _tag: string; readonly message: string; readonly cause?: unknown },
 	remediation: Remediation,
-): EngineError =>
-	new EngineError({
+): EngineError => {
+	const rendered = cause.cause instanceof Error ? `${cause.message}: ${cause.cause.message}` : cause.message;
+	return new EngineError({
 		source: cause._tag,
-		message: ToolFailure.message(ToolFailure.truncate(cause.message, ToolFailure.ENGINE_ECHO_LIMIT), remediation),
+		message: ToolFailure.message(ToolFailure.truncate(rendered, ToolFailure.ENGINE_ECHO_LIMIT), remediation),
 		remediation,
 	});
+};
 
 /**
  * The shared mapping every handler applies to its engine error channel: the
@@ -159,5 +132,9 @@ export const engineError = (
  */
 export const mapEngineError =
 	(requestedCwd: string, remediation: Remediation) =>
-	(cause: { readonly _tag: string; readonly message: string }): WorkspaceNotFound | EngineError =>
+	(cause: {
+		readonly _tag: string;
+		readonly message: string;
+		readonly cause?: unknown;
+	}): WorkspaceNotFound | EngineError =>
 		cause._tag === "WorkspaceRootNotFoundError" ? workspaceNotFound(requestedCwd) : engineError(cause, remediation);

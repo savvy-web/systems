@@ -2,274 +2,230 @@
  * Proves the carrier pattern from OUTSIDE the workspace: a scratch project
  * whose only direct dependency is a packed `@savvy-web/silk` tarball ends up
  * with `node_modules/.bin/savvy` and `node_modules/.bin/savvy-mcp`, and both
- * run — under pnpm and under npm, with no hoisting help of any kind (no
- * `publicHoistPattern`, no `.npmrc`, no pnpm config dependency).
+ * run — under every package manager available (pnpm, npm, Yarn, bun), with no
+ * hoisting help of any kind (no `publicHoistPattern`, no `.npmrc`, no pnpm
+ * config dependency).
  *
  * @remarks
- * The five companions silk exact-pins (`cli`, `mcp`, `changelog`,
- * `silk-effects`, `silk-core`) are unpublished at the versions on this branch,
- * so the scratch project maps each name to its local tarball through the
- * package manager's `overrides`. Everything else — `effect`, the `@effected`
- * kit, the peers — comes from the registry, which is why these tests need the
- * network and are slow. They live in `@e2e/silk` so the root config serialises
- * them.
+ * `PackedInstall.run` (`@effected/workspaces/testing`) does the packing and
+ * installing: it packs silk and its runtime workspace closure, installs the
+ * silk tarball into one scratch consumer per available manager, steers the
+ * closure to its local tarballs through each manager's own override field,
+ * and checks both bins are present and executable. The companions are
+ * unpublished at the versions on this branch, which is what the overrides
+ * are for; everything else (`effect`, the `@effected` kit, the peers) comes
+ * from the registry, so these tests need the network and are slow. They live
+ * in `@e2e/silk` so the root config serialises them.
+ *
+ * Packing is `packFrom: "source"`: `pnpm pack` in each SOURCE package dir,
+ * which honours `publishConfig.directory` (the tarball IS `dist/dev/pkg`) and
+ * rewrites `workspace:*` / `catalog:` to concrete ranges. The bundler's
+ * `dist/dev/pkg` manifest keeps the protocol specifiers, so it cannot be
+ * packed directly, and no `dist/prod` npm artifact exists at test time.
+ *
+ * The front ends declare the carrier's bin names too (`@savvy-web/cli` has
+ * `savvy`, `@savvy-web/mcp` has `savvy-mcp`) — a deliberate choice, so the
+ * run passes `allowSharedBins: true`. Under a flat layout (npm, bun) the
+ * `.bin` slot may go to a front end's own bin, which carries no
+ * `via @savvy-web/silk` suffix. So the test proves two things per manager:
+ * what a user typing the bin name gets (`runBin`, with `binProvenance`
+ * recording who owns the slot) and the carrier's own shim
+ * (`runCarrierBin` / `carrierCommand`), which must name silk everywhere.
  */
 
-import { execFileSync } from "node:child_process";
-import {
-	accessSync,
-	constants,
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	readdirSync,
-	realpathSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
-import { afterAll, assert, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
-import type { AppPackage } from "./helpers.js";
-import {
-	APP_PACKAGES,
-	REPO_ROOT,
-	SPAWN_ENV,
-	hasBinary,
-	initializeRequest,
-	installedVersions,
-	packAll,
-	runBin,
-	tarballManifest,
-} from "./helpers.js";
+import { assert, describe, it } from "@effect/vitest";
+import { McpProbe } from "@effected/mcp/testing";
+import { Workspaces } from "@effected/workspaces";
+import type { PackedInstallOptions } from "@effected/workspaces/testing";
+import { PackedInstall } from "@effected/workspaces/testing";
+import { Duration, Effect, FileSystem, Layer } from "effect";
 
-type PackageManager = "pnpm" | "npm";
+/** Monorepo root, walked up from this harness package. */
+const REPO_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 
-const INSTALL_TIMEOUT_MS = 240_000;
+const CARRIER = "@savvy-web/silk";
 
-/** Shim -> node -> the front end's import graph; the 5 s default is tight on CI. */
-const BIN_TIMEOUT_MS = 30_000;
+/** What `closure: "auto"` must plan: the carrier first, then its runtime workspace closure. */
+const EXPECTED_CLOSURE = [
+	"@savvy-web/changelog",
+	"@savvy-web/cli",
+	"@savvy-web/mcp",
+	"@savvy-web/silk",
+	"@savvy-web/silk-core",
+	"@savvy-web/silk-effects",
+];
 
-/**
- * pnpm 12 exits non-zero on an install that IGNORED a dependency build script
- * (`ERR_PNPM_IGNORED_BUILDS`, here esbuild's optional postinstall). pnpm 11
- * only warned once `strictDepBuilds` was off; on 12 that setting no longer
- * downgrades the error, so the scripts are skipped outright instead — the same
- * outcome (no dependency build runs, install succeeds) the 11-era flag gave.
- * That is a supply-chain posture, not a hoisting setting, so it is passed on
- * the command line rather than written into the scratch project's config.
- */
-const INSTALL_ARGS: Record<PackageManager, ReadonlyArray<string>> = {
-	pnpm: ["install", "--config.ignore-scripts=true"],
-	npm: ["install"],
+/** The four packages silk declares as exact-pinned regular `dependencies`. */
+const PINNED = ["@savvy-web/cli", "@savvy-web/mcp", "@savvy-web/changelog", "@savvy-web/silk-effects"] as const;
+
+/** Which package may own each `.bin` slot: the carrier, or the front end that shares the name. */
+const SLOT_OWNERS: Record<string, ReadonlyArray<string>> = {
+	savvy: [CARRIER, "@savvy-web/cli"],
+	"savvy-mcp": [CARRIER, "@savvy-web/mcp"],
 };
 
-// realpath'd so the `file:` specs and the install cwd agree even when the OS
-// tmpdir is a symlink (macOS `/var` -> `/private/var`); otherwise pnpm records
-// the tarballs under a `../../../../private/var/...` relative path.
-const scratch = realpathSync(mkdtempSync(join(tmpdir(), "silk-packed-install-")));
-const tarballDir = join(scratch, "tarballs");
-let tarballs: Record<AppPackage, string>;
+const BIN_TIMEOUT = "30 seconds";
 
-beforeAll(() => {
-	tarballs = packAll(tarballDir);
-}, 120_000);
+// PackedInstall is POSIX-only (it fails UnsupportedPlatform elsewhere).
+const RUNNABLE = process.platform !== "win32";
 
-afterAll(() => {
-	rmSync(scratch, { recursive: true, force: true });
-});
+const Live = Workspaces.layer({ cwd: REPO_ROOT }).pipe(Layer.provideMerge(NodeServices.layer));
 
-describe("packed tarballs", () => {
-	it("pnpm pack rewrote every workspace:/catalog: specifier to a concrete range", () => {
-		for (const name of APP_PACKAGES) {
-			const manifest = tarballManifest(tarballs[name]);
-			const json = JSON.stringify(manifest);
-			expect(json, `${name} manifest`).not.toContain("workspace:");
-			expect(json, `${name} manifest`).not.toContain("catalog:");
-			expect(manifest.name).toBe(name);
-			expect(manifest.private).toBe(false);
-		}
-	});
-
-	it("silk's tarball pins its five companions to the exact versions packed beside it", () => {
-		const silk = tarballManifest(tarballs["@savvy-web/silk"]);
-		const deps = silk.dependencies as Record<string, string>;
-		for (const name of [
-			"@savvy-web/cli",
-			"@savvy-web/mcp",
-			"@savvy-web/changelog",
-			"@savvy-web/silk-effects",
-		] as const) {
-			const packed = tarballManifest(tarballs[name]).version;
-			expect(deps[name], `${name} pin`).toBe(packed);
-		}
-		expect(silk.bin).toEqual({ savvy: "bin/savvy.js", "savvy-mcp": "bin/savvy-mcp.js" });
-	});
-});
-
-const file = (name: AppPackage) => `file:${join(tarballDir, basename(tarballs[name]))}`;
-
-const ROOT_PACKAGE_MANAGER = (
-	JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as { packageManager: string }
-).packageManager;
-
-/** name -> `file:` tarball for the five companions silk exact-pins. */
-const companionOverrides = () =>
-	Object.fromEntries(APP_PACKAGES.filter((name) => name !== "@savvy-web/silk").map((name) => [name, file(name)]));
-
-/**
- * Write the scratch consumer for `pm`. The ONLY dependency is the silk
- * tarball; the companions are steered to their local tarballs through
- * `overrides`. npm reads them from the manifest; pnpm 11 no longer reads a
- * `pnpm` field in package.json, so its overrides go in a `pnpm-workspace.yaml`
- * that carries NOTHING else — no hoist pattern, no `configDependencies`, no
- * `.npmrc`.
- */
-const writeScratchProject = (pm: PackageManager, projectDir: string): void => {
-	mkdirSync(projectDir, { recursive: true });
-	const overrides = companionOverrides();
-	const manifest = {
-		name: `scratch-${pm}`,
-		version: "0.0.0",
-		private: true,
-		type: "module",
-		// Pin the root's pnpm so a local run drives the SAME pnpm CI does: outside
-		// the workspace corepack otherwise falls back to whatever it last cached,
-		// which is how a pnpm 12 install failure passed locally on pnpm 11.
-		packageManager: ROOT_PACKAGE_MANAGER,
-		devDependencies: { "@savvy-web/silk": file("@savvy-web/silk") },
-		...(pm === "npm" ? { overrides } : {}),
-	};
-	writeFileSync(join(projectDir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-	if (pm === "pnpm") {
-		const yaml = Object.entries(overrides)
-			.map(([name, spec]) => `  "${name}": "${spec}"`)
-			.join("\n");
-		writeFileSync(join(projectDir, "pnpm-workspace.yaml"), `overrides:\n${yaml}\n`);
-	}
+/** ONE options object: `closure` plans with it, `run` installs with it. */
+const RUN: PackedInstallOptions = {
+	carrier: CARRIER,
+	closure: "auto",
+	packFrom: "source",
+	managers: ["pnpm", "npm", "yarn", "bun"],
+	bins: ["savvy", "savvy-mcp"],
+	allowSharedBins: true,
+	env: process.env,
+	// A manager missing from PATH is skipped and logged, never a failure: CI
+	// provisions pnpm and npm, not necessarily Yarn or bun.
+	require: "any",
+	installTimeout: "4 minutes",
+	packTimeout: "1 minute",
 };
 
-describe.each<PackageManager>(["pnpm", "npm"])("%s install of the silk tarball outside the workspace", (pm) => {
-	const available = hasBinary(pm);
-	const projectDir = join(scratch, `${pm}-project`);
-	const binDir = join(projectDir, "node_modules", ".bin");
-	let installMs = 0;
+// Module evaluation, before describe runs: vitest fixes a test's timeout when
+// it is declared, so the closure is planned here with the run's own planner.
+const PACKED = RUNNABLE
+	? await Effect.runPromise(PackedInstall.closure(RUN.carrier, RUN).pipe(Effect.provide(Live)))
+	: [];
 
-	beforeAll(() => {
-		if (!available) return;
-		writeScratchProject(pm, projectDir);
-		const started = performance.now();
-		execFileSync(pm, [...INSTALL_ARGS[pm]], {
-			cwd: projectDir,
-			env: SPAWN_ENV,
-			stdio: "pipe",
-			timeout: INSTALL_TIMEOUT_MS,
-		});
-		installMs = Math.round(performance.now() - started);
-	}, INSTALL_TIMEOUT_MS + 10_000);
+// Each consumer: two runBins and two MCP probes, at BIN_TIMEOUT each, plus headroom.
+const BUDGET = PackedInstall.timeoutBudget({
+	managers: RUN.managers,
+	installTimeout: RUN.installTimeout,
+	packTimeout: RUN.packTimeout,
+	packages: PACKED,
+	perConsumer: "3 minutes",
+});
 
-	it.skipIf(!available)("installs with no hoisting configuration of any kind", () => {
-		const entries = readdirSync(projectDir);
-		expect(entries, "no .npmrc in the scratch project").not.toContain(".npmrc");
-		// Every config file the project has, concatenated: the only setting anywhere is `overrides`.
-		const config = ["package.json", "pnpm-workspace.yaml"]
-			.filter((f) => entries.includes(f))
-			.map((f) => readFileSync(join(projectDir, f), "utf8"))
-			.join("\n");
-		for (const forbidden of [
-			"publicHoistPattern",
-			"public-hoist-pattern",
-			"hoistPattern",
-			"configDependencies",
-			"shamefully",
-		]) {
-			expect(config, `no ${forbidden} in the scratch project config`).not.toContain(forbidden);
-		}
-		expect(existsSync(join(projectDir, "node_modules", "@savvy-web", "pnpm-plugin-silk"))).toBe(false);
-		expect(installMs, `${pm} install took ${installMs}ms`).toBeGreaterThan(0);
-	});
+/**
+ * Layered over the install's scrubbed environment for every bin. The two
+ * project-dir variables are removed so an agent session's own
+ * `CLAUDE_PROJECT_DIR` cannot root the MCP server outside the consumer.
+ */
+const BIN_ENV = { NO_COLOR: "1", CLAUDE_PROJECT_DIR: undefined, SAVVY_MCP_PROJECT_DIR: undefined };
 
-	it.skipIf(!available)("exposes both carrier bins in node_modules/.bin, executable", () => {
-		for (const bin of ["savvy", "savvy-mcp"]) {
-			const p = join(binDir, bin);
-			expect(existsSync(p), `${p} exists`).toBe(true);
-			expect(() => accessSync(p, constants.X_OK), `${p} is executable`).not.toThrow();
-			// npm links `.bin` entries to the JS file; whichever @savvy-web mirror of the
-			// bin won the flat hoist, it must be one INSIDE this scratch project's tree.
-			if (pm === "npm") {
-				const scope = `${join(realpathSync(projectDir), "node_modules", "@savvy-web")}/`;
-				expect(realpathSync(p).startsWith(scope), `${bin} resolves inside ${scope}`).toBe(true);
-			}
-		}
-	});
+const readVersion = (dir: string): string =>
+	(JSON.parse(readFileSync(join(REPO_ROOT, dir, "package.json"), "utf8")) as { version: string }).version;
 
-	// pnpm's isolated layout is the strong form of the carrier claim: silk is the
-	// ONLY package under node_modules/@savvy-web, and both shims target silk's
-	// own bin files. npm hoists the whole graph flat, and since cli/mcp declare
-	// the same bin names their JS may win the `.bin` link — the bins still come
-	// off the single silk dependency, but which package's shim wins is npm's call.
-	it.skipIf(!available || pm !== "pnpm")(
-		"links both .bin entries to silk's own bin files, with silk the only top-level @savvy-web package",
-		() => {
-			expect(readdirSync(join(projectDir, "node_modules", "@savvy-web"))).toEqual(["silk"]);
-			for (const bin of ["savvy", "savvy-mcp"]) {
-				const shim = readFileSync(join(binDir, bin), "utf8");
-				expect(shim, `${bin} shim target`).toContain(`/@savvy-web/silk/bin/${bin}.js`);
-			}
-		},
-	);
+/** Source versions: `pnpm pack` publishes each package at its source `version`. */
+const SOURCE_VERSIONS: Record<(typeof PINNED)[number], string> = {
+	"@savvy-web/cli": readVersion("packages/cli"),
+	"@savvy-web/mcp": readVersion("packages/mcp"),
+	"@savvy-web/changelog": readVersion("packages/changelog"),
+	"@savvy-web/silk-effects": readVersion("packages/silk-effects"),
+};
+const SILK_VERSION = readVersion("packages/silk");
 
-	it.skipIf(!available)("resolved the exact-pinned companions to the local tarballs", () => {
-		const installed = installedVersions(projectDir);
-		for (const name of APP_PACKAGES) {
-			const expected = tarballManifest(tarballs[name]).version;
-			expect(installed[name], `${name} version`).toBe(expected);
-		}
-		// The lockfile, not just the resolved version, must record each companion as
-		// a `file:` tarball — a same-version registry hit would pass the check above.
-		const lockfile = readFileSync(join(projectDir, pm === "pnpm" ? "pnpm-lock.yaml" : "package-lock.json"), "utf8");
-		for (const name of APP_PACKAGES) {
-			const tarball = basename(tarballs[name]).replaceAll(".", "\\.");
-			expect(lockfile, `${name} recorded as file: in the ${pm} lockfile`).toMatch(
-				new RegExp(`file:[^\\s'"(),]*/${tarball}`),
-			);
-		}
-	});
+interface ServerInfo {
+	readonly serverInfo: { readonly name: string; readonly version: string };
+}
 
-	it.effect.skipIf(!available)(
-		"savvy runs from .bin and reports a version",
+const CARRIER_SUFFIX = ` via @savvy-web/silk ${SILK_VERSION}`;
+
+describe.skipIf(!RUNNABLE)("silk packed install outside the workspace", () => {
+	it.effect(
+		"packs the closure and runs both carrier bins under every available manager",
 		() =>
 			Effect.gen(function* () {
-				const result = yield* runBin(projectDir, join(binDir, "savvy"), ["--version"]);
-				assert.match(result.stdout.trim(), /^savvy v\d+\.\d+\.\d+/);
-				// Only pnpm guarantees silk's shim wins the `.bin` link (see the pnpm-only test above).
-				if (pm === "pnpm") {
-					assert.match(result.stdout.trim(), / via @savvy-web\/silk \d+\.\d+\.\d+$/);
+				const fs = yield* FileSystem.FileSystem;
+				const result = yield* PackedInstall.run(RUN);
+				if (result.unavailable.length > 0) {
+					yield* Effect.logWarning(`packed-install: skipped unavailable managers: ${result.unavailable.join(", ")}`);
 				}
-				assert.strictEqual(result.exitCode, 0);
-			}).pipe(Effect.provide(NodeServices.layer)),
-		BIN_TIMEOUT_MS,
-	);
 
-	it.effect.skipIf(!available)(
-		"savvy-mcp runs from .bin: initialize on stdout, silent stderr, exit 0",
-		() =>
-			Effect.gen(function* () {
-				const result = yield* runBin(projectDir, join(binDir, "savvy-mcp"), [], initializeRequest);
-				assert.include(result.stdout, '"jsonrpc":"2.0"');
-				assert.include(result.stdout, '"serverInfo"');
-				// Launched through the carrier, the server names it as its distribution. Only pnpm
-				// guarantees the carrier's shim is the one linked (see the pnpm-only test above);
-				// under npm the mcp package's own bin may win the flat `.bin` link.
-				if (pm === "pnpm") {
-					assert.match(result.stdout, /"version":"\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+"/);
+				// The planned closure is exactly what the run packed, and it is the
+				// carrier plus the five packages its exact pins reach.
+				assert.deepStrictEqual(Object.keys(result.tarballs), [...PACKED]);
+				assert.strictEqual(PACKED[0], CARRIER);
+				assert.deepStrictEqual([...PACKED].sort(), EXPECTED_CLOSURE);
+				assert.isAbove(result.consumers.length, 0);
+
+				for (const consumer of result.consumers) {
+					const pm = consumer.manager;
+
+					// The consumer carries no hoisting configuration of any kind: the
+					// only settings the kit writes are overrides and the manager pin.
+					const entries = yield* fs.readDirectory(consumer.directory);
+					assert.notInclude(entries, ".npmrc", `${pm}: no .npmrc`);
+					const config: Array<string> = [];
+					for (const file of ["package.json", "pnpm-workspace.yaml", ".yarnrc.yml"]) {
+						if (entries.includes(file)) config.push(yield* fs.readFileString(join(consumer.directory, file)));
+					}
+					for (const forbidden of [
+						"publicHoistPattern",
+						"public-hoist-pattern",
+						"hoistPattern",
+						"configDependencies",
+						"shamefully",
+					]) {
+						assert.notInclude(config.join("\n"), forbidden, `${pm}: no ${forbidden} in the consumer config`);
+					}
+					assert.isFalse(
+						yield* fs.exists(join(consumer.directory, "node_modules", "@savvy-web", "pnpm-plugin-silk")),
+						`${pm}: no pnpm-plugin-silk installed`,
+					);
+
+					// The installed carrier exact-pins its companions to the versions packed
+					// beside it, and owns both bin names.
+					const silk = JSON.parse(
+						yield* fs.readFileString(join(consumer.directory, "node_modules", "@savvy-web", "silk", "package.json")),
+					) as { readonly dependencies: Record<string, string>; readonly bin: unknown };
+					for (const name of PINNED) {
+						assert.strictEqual(silk.dependencies[name], SOURCE_VERSIONS[name], `${pm}: ${name} pin`);
+					}
+					assert.deepStrictEqual(silk.bin, { savvy: "bin/savvy.js", "savvy-mcp": "bin/savvy-mcp.js" });
+
+					for (const bin of ["savvy", "savvy-mcp"]) {
+						// Who owns the `.bin` slot. `undefined` is pnpm's shell shim; its
+						// isolated layout links only the consumer's direct dependency.
+						const provenance = yield* consumer.binProvenance(bin);
+						if (provenance !== undefined) {
+							assert.include(SLOT_OWNERS[bin], provenance.package, `${pm}: ${bin} slot owner`);
+						}
+						yield* Effect.logInfo(`packed-install: ${pm} ${bin} -> ${provenance?.package ?? "shim"}`);
+					}
+
+					// What a user typing `savvy` gets: some package's bin, exit 0.
+					const typed = yield* consumer.runBin("savvy", ["--version"], { env: BIN_ENV, timeout: BIN_TIMEOUT });
+					assert.strictEqual(typed.exitCode, 0, `${pm}: savvy --version\n${typed.stderr}`);
+					assert.match(typed.stdout.trim(), /^savvy v\d+\.\d+\.\d+/, pm);
+
+					// The carrier's own shim, whichever package took the slot.
+					const own = yield* consumer.runCarrierBin("savvy", ["--version"], { env: BIN_ENV, timeout: BIN_TIMEOUT });
+					assert.strictEqual(own.exitCode, 0, `${pm}: carrier savvy --version\n${own.stderr}`);
+					assert.match(own.stdout.trim(), /^savvy v\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+$/, pm);
+					assert.isTrue(own.stdout.trim().endsWith(CARRIER_SUFFIX), `${pm}: ${own.stdout}`);
+
+					// What a user's MCP client launching `savvy-mcp` gets.
+					const typedMcp = yield* McpProbe.initialize(consumer.command("savvy-mcp", [], { env: BIN_ENV })).pipe(
+						Effect.timeout(BIN_TIMEOUT),
+					);
+					assert.isUndefined(typedMcp.response.error, `${pm}: savvy-mcp initialize`);
+					assert.strictEqual(typedMcp.stderr, "", `${pm}: savvy-mcp stderr`);
+					assert.strictEqual(typedMcp.exitCode, 0, `${pm}: savvy-mcp exit code`);
+
+					// The carrier's own MCP shim names silk as its distribution.
+					const ownMcp = yield* McpProbe.initialize(
+						yield* consumer.carrierCommand("savvy-mcp", [], { env: BIN_ENV }),
+					).pipe(Effect.timeout(BIN_TIMEOUT));
+					assert.isUndefined(ownMcp.response.error, `${pm}: carrier savvy-mcp initialize`);
+					const info = ownMcp.response.result as ServerInfo;
+					assert.strictEqual(info.serverInfo.name, "savvy-mcp");
+					assert.match(info.serverInfo.version, /^\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+$/, pm);
+					assert.isTrue(info.serverInfo.version.endsWith(CARRIER_SUFFIX), `${pm}: ${info.serverInfo.version}`);
+					assert.strictEqual(ownMcp.stderr, "", `${pm}: carrier savvy-mcp stderr`);
+					assert.strictEqual(ownMcp.exitCode, 0, `${pm}: carrier savvy-mcp exit code`);
 				}
-				assert.strictEqual(result.stderr, "");
-				assert.strictEqual(result.exitCode, 0);
-			}).pipe(Effect.provide(NodeServices.layer)),
-		BIN_TIMEOUT_MS,
+			}).pipe(Effect.scoped, Effect.timeout(BUDGET), Effect.provide(Live)),
+		// vitest's own guard a minute above the Effect's, so a named PackedInstallError fires first.
+		Duration.toMillis(BUDGET) + 60_000,
 	);
 });

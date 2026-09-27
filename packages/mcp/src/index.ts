@@ -8,14 +8,7 @@
  * @packageDocumentation
  */
 
-export {
-	BiomeFailed,
-	BiomeUnavailable,
-	EngineError,
-	InvalidArgument,
-	McpToolError,
-	WorkspaceNotFound,
-} from "./errors.js";
+export { BiomeFailed, EngineError, McpToolError, WorkspaceNotFound } from "./errors.js";
 export type { McpServices } from "./runtime.js";
 export { makeSilkRuntimeLayer } from "./runtime.js";
 export type { PlatformServices, ServerOptions } from "./server.js";

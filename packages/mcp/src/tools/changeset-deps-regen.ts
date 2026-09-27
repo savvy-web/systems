@@ -129,7 +129,7 @@ export const ChangesetDepsRegenParams = Schema.Struct({
 export type ChangesetDepsRegenParams = typeof ChangesetDepsRegenParams.Type;
 
 const REMEDIATION = {
-	hint: "The dependency changesets could not be regenerated; preview the plan with dryRun=true, and check that the base branch exists locally and that every named package is a workspace member.",
+	hint: "The dependency changesets could not be regenerated; preview the plan with dryRun=true, and check that the base branch exists locally, that every named package is a workspace member, and that every config dependency the base side declares is installed or in the pnpm store (a bumped config dependency's old version usually is not).",
 	suggestedTool: "changeset_deps_detect",
 };
 

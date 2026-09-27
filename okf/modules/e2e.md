@@ -7,8 +7,8 @@ resource: ../../e2e
 tags: [testing]
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: 19d8f73361796d918c7ea5b6e1882ce8fcd55176b8b054454fe96677066ce5c2
+  at: 2026-09-26T22:54:36Z
+  body_sha256: 04d59a44f9bc773b11c151850b143552bd41f344e10a8616df6cd3d3fda2a88e
 sources:
   - id: e2e-bundler
     resource: ../../e2e/bundler/__test__/e2e
@@ -44,12 +44,18 @@ unit test in silk (see [`interfaces/layers-json.md`](../interfaces/layers-json.m
   subprocess fixtures.[^e2e-bundler] `@e2e/pnpm-plugin-silk` imports the
   built `pnpmfile.mjs` and, separately, spawns the built `savvy` binary
   against a real `CatalogResolver` from a git-initialised temp dir outside
-  the repo.[^e2e-pnpm-plugin-silk] `@e2e/silk` packs the six app packages
-  and installs silk's tarball into scratch projects under both pnpm and
-  npm, proving the carrier bins from a packed install outside the
-  workspace; under pnpm it also asserts the `via @savvy-web/silk` suffix
-  on `savvy --version` and on the MCP `serverInfo.version`, which npm's
-  flat `.bin` linking does not guarantee.[^e2e-silk]
+  the repo.[^e2e-pnpm-plugin-silk] `@e2e/silk` runs the kit's
+  `PackedInstall` (`@effected/workspaces/testing`): it packs silk's
+  six-package closure and installs silk's tarball into one scratch
+  consumer per available manager — pnpm, npm, Yarn and bun, a missing one
+  skipped and logged — with `allowSharedBins: true`, since cli and mcp
+  deliberately keep their own `savvy`/`savvy-mcp` bins. For each consumer
+  it records who owns each `.bin` slot (`binProvenance`) and runs what a
+  user types (`runBin`, `McpProbe` over `command`). It also runs the
+  carrier's own shims (`runCarrierBin`, `McpProbe` over `carrierCommand`)
+  and asserts they print the `via @savvy-web/silk` suffix on
+  `savvy --version` and on the MCP `serverInfo.version` on every manager.
+  The test's timeouts come from `PackedInstall.timeoutBudget`.[^e2e-silk]
 - **Tests live under `e2e/<pkg>/__test__/e2e/`** and run in the normal
   `pnpm test` gate via `AgentPlugin.discover()` — no separate project
   definition, no separate CI job. The root `vitest.config.ts` gives every
@@ -60,12 +66,12 @@ unit test in silk (see [`interfaces/layers-json.md`](../interfaces/layers-json.m
   triggers resolution owns its own `pnpm-workspace.yaml`; the `e2e/*` glob
   never matches a fixture or its siblings, and the shared Biome config
   excludes `__test__/**/fixtures`.
-- **`@e2e/silk` packs from the source package dir with
-  `--config.ignore-scripts=true`**, never from `dist/dev/pkg` (packing from
-  inside `dist/dev/pkg` fails with `ERR_PNPM_CANNOT_RESOLVE_WORKSPACE_PROTOCOL`
-  because the dir is not a workspace member), and asserts the absence of
-  any `.npmrc`, hoist pattern or config dependency in the scratch project —
-  the absence is itself the assertion.
+- **`@e2e/silk` packs from the source package dir** (`packFrom:
+  "source"`), never from `dist/dev/pkg`: `pnpm pack` in the source dir
+  honours `publishConfig.directory` and rewrites `workspace:*`/`catalog:`,
+  while the `dist/dev/pkg` manifest keeps the protocol specifiers. It
+  asserts the absence of any `.npmrc`, hoist pattern or config dependency
+  in each scratch consumer — the absence is itself the assertion.
 
 ## Related
 

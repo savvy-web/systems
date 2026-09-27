@@ -9,15 +9,14 @@
 
 import { describe, expect, it } from "@effect/vitest";
 import type { Distribution } from "@effected/engine";
-import { McpHarness } from "@effected/mcp/testing";
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
 
 import { ServerLayer } from "../src/server.js";
 import { fixtureWorkspace } from "./utils/fixture.js";
-import { PlatformWithoutStdio } from "./utils/harness.js";
+import { makeHarness } from "./utils/harness.js";
 
 const serve = (cwd: string, distribution?: Distribution) =>
-	ServerLayer(cwd, distribution === undefined ? {} : { distribution }).pipe(Layer.provide(PlatformWithoutStdio));
+	ServerLayer(cwd, distribution === undefined ? {} : { distribution });
 
 const serverVersion = (initialize: { readonly result?: unknown }): string =>
 	(initialize.result as { readonly serverInfo: { readonly version: string } }).serverInfo.version;
@@ -28,7 +27,7 @@ describe("savvy-mcp over McpHarness", () => {
 		() =>
 			Effect.gen(function* () {
 				const cwd = yield* fixtureWorkspace();
-				const harness = yield* McpHarness.make(serve(cwd), { strictStdout: false });
+				const harness = yield* makeHarness(cwd, { serverLayer: serve(cwd), strictStdout: false });
 				yield* harness.initialize;
 				yield* harness.sendRaw("this is not json");
 				const tools = yield* harness.listTools;
@@ -43,7 +42,9 @@ describe("savvy-mcp over McpHarness", () => {
 		() =>
 			Effect.gen(function* () {
 				const cwd = yield* fixtureWorkspace();
-				const harness = yield* McpHarness.make(serve(cwd, { name: "@savvy-web/silk", version: "9.9.9" }));
+				const harness = yield* makeHarness(cwd, {
+					serverLayer: serve(cwd, { name: "@savvy-web/silk", version: "9.9.9" }),
+				});
 				expect(serverVersion(yield* harness.initialize)).toMatch(/ via @savvy-web\/silk 9\.9\.9$/);
 			}).pipe(Effect.scoped),
 		30_000,
@@ -54,7 +55,7 @@ describe("savvy-mcp over McpHarness", () => {
 		() =>
 			Effect.gen(function* () {
 				const cwd = yield* fixtureWorkspace();
-				const harness = yield* McpHarness.make(serve(cwd));
+				const harness = yield* makeHarness(cwd);
 				expect(serverVersion(yield* harness.initialize)).not.toContain(" via ");
 			}).pipe(Effect.scoped),
 		30_000,
@@ -65,7 +66,7 @@ describe("savvy-mcp over McpHarness", () => {
 		() =>
 			Effect.gen(function* () {
 				const cwd = yield* fixtureWorkspace();
-				const harness = yield* McpHarness.make(serve(cwd));
+				const harness = yield* makeHarness(cwd);
 				yield* harness.initialize;
 				const response = yield* harness.callTool("workspace_info", { unexpected_extra: true });
 				expect(response.error).toBeUndefined();

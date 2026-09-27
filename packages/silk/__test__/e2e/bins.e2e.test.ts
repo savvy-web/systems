@@ -19,7 +19,8 @@ import { resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { Run } from "@effected/commands";
-import { Effect, Stream } from "effect";
+import { McpProbe } from "@effected/mcp/testing";
+import { Effect } from "effect";
 import { ChildProcess } from "effect/unstable/process";
 
 const binDir = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin");
@@ -28,39 +29,23 @@ const binDir = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "b
 const BIN_TIMEOUT_MS = 30_000;
 
 /**
- * `stdin` is a `ChildProcess.CommandOptions` field, not a `Run.collect` option.
- * Its type is `CommandInput`, which does not accept a string, so the request is
- * encoded to bytes and wrapped in a `Stream`; stdin closes when the stream
- * ends, which is what makes the MCP server exit.
- *
- * `env` is passed whole and `extendEnv` is never set, so `PATH` and `HOME`
- * must be listed explicitly.
+ * An explicit environment, not `process.env`: `env` is passed whole and
+ * `extendEnv` is never set, so `PATH` and `HOME` are listed. This is the
+ * kit's own guidance for a bin run straight out of `dist` (see `McpProcess`
+ * in `@effected/mcp/testing`); `PackedInstall`'s `consumer.command` builds it
+ * only for a packed-install consumer, which `@e2e/silk` covers.
  */
-const runBin = (name: string, args: ReadonlyArray<string>, stdin?: string) =>
-	Run.collect(
-		ChildProcess.make(process.execPath, [resolve(binDir, name), ...args], {
-			env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", NO_COLOR: "1" },
-			...(stdin === undefined ? {} : { stdin: Stream.make(new TextEncoder().encode(stdin)) }),
-		}),
-	);
+const ENV = { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", NO_COLOR: "1" } as const;
 
-const initializeRequest = `${JSON.stringify({
-	jsonrpc: "2.0",
-	id: 1,
-	method: "initialize",
-	params: {
-		protocolVersion: "2025-06-18",
-		capabilities: {},
-		clientInfo: { name: "silk-bins-e2e", version: "0.0.0" },
-	},
-})}\n`;
+const command = (name: string, args: ReadonlyArray<string> = []) =>
+	ChildProcess.make(process.execPath, [resolve(binDir, name), ...args], { env: ENV });
 
 describe("@savvy-web/silk carrier bins (dist/dev)", () => {
 	it.effect(
 		"savvy.js runs and reports a version",
 		() =>
 			Effect.gen(function* () {
-				const result = yield* runBin("savvy.js", ["--version"]);
+				const result = yield* Run.collect(command("savvy.js", ["--version"]));
 				assert.match(result.stdout.trim(), /^savvy v\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+$/);
 				assert.strictEqual(result.exitCode, 0);
 			}).pipe(Effect.provide(NodeServices.layer)),
@@ -71,16 +56,18 @@ describe("@savvy-web/silk carrier bins (dist/dev)", () => {
 		"savvy-mcp.js completes an initialize handshake on stdout, silent on stderr, exit 0",
 		() =>
 			Effect.gen(function* () {
-				const result = yield* runBin("savvy-mcp.js", [], initializeRequest);
-				// The server answers on stdout and must keep logs off that wire.
-				assert.include(result.stdout, '"jsonrpc":"2.0"');
-				assert.include(result.stdout, '"serverInfo"');
+				// McpProbe keeps stdin open until the id-1 response arrives, then closes
+				// it: closing right after the write would let a slow boot drop the
+				// response and still exit 0.
+				const probe = yield* McpProbe.initialize(command("savvy-mcp.js")).pipe(Effect.timeout("30 seconds"));
+				assert.isUndefined(probe.response.error);
+				const result = probe.response.result as { readonly serverInfo: { readonly version: string } };
 				// Launched through the carrier, the server names it as its distribution.
-				assert.match(result.stdout, /"version":"\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+"/);
+				assert.match(result.serverInfo.version, /^\d+\.\d+\.\d+ via @savvy-web\/silk \d+\.\d+\.\d+$/);
 				// Nothing at all may reach stderr — a client treats it as noise or a fault.
-				assert.strictEqual(result.stderr, "");
+				assert.strictEqual(probe.stderr, "");
 				// A clean stdin close is exit 0, not 130.
-				assert.strictEqual(result.exitCode, 0);
+				assert.strictEqual(probe.exitCode, 0);
 			}).pipe(Effect.provide(NodeServices.layer)),
 		BIN_TIMEOUT_MS,
 	);
