@@ -122,6 +122,25 @@ describe("ReleasePlanner.apply (snapshot)", () => {
 		}),
 	);
 
+	it.effect("reads changesets from the workspace root when called with a package subdirectory", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+				changesets: [{ id: "deep-roots-grow", releases: { "@scope/a": "minor" }, summary: "feat: bump a" }],
+			});
+			roots.push(root);
+			const subdir = join(root, "packages/a");
+			const planner = yield* getPlanner(root);
+			const result = yield* planner.apply(subdir, {
+				snapshot: { tag: "next", useCalculatedVersion: true, prereleaseTemplate: "{tag}-{datetime}" },
+			}) as Effect.Effect<Changesets.AppliedRelease>;
+
+			const release = result.releases.find((r) => r.name === "@scope/a");
+			expect(release?.newVersion).toMatch(/^1\.1\.0-next-\d{14}$/);
+			expect(existsSync(join(root, ".changeset", "deep-roots-grow.md"))).toBe(false);
+		}),
+	);
+
 	it.effect("fails typed in pre mode and leaves the tree untouched", () =>
 		Effect.gen(function* () {
 			const root = makeReleaseFixture({

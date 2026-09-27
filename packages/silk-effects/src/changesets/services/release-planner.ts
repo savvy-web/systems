@@ -247,7 +247,6 @@ export function withChangelogModules(
  * @internal
  */
 function assembleSnapshotPlan(
-	root: string,
 	packages: Packages,
 	config: Config,
 	snapshot: SnapshotOptions,
@@ -272,7 +271,10 @@ function assembleSnapshotPlan(
 	return Effect.gen(function* () {
 		const { changesets, preState } = yield* Effect.tryPromise({
 			try: async () => {
-				const [changesets, preState] = await Promise.all([readChangesets(root), readPreState(root)]);
+				const [changesets, preState] = await Promise.all([
+					readChangesets(packages.rootDir),
+					readPreState(packages.rootDir),
+				]);
 				return { changesets, preState };
 			},
 			catch: (e) => new ReleasePlanError({ phase, reason: errMsg(e) }),
@@ -366,7 +368,7 @@ function previewEffect(
 				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 			});
 			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
-			const built = yield* assembleSnapshotPlan(root, packages, loaded.config, snapshot, "preview");
+			const built = yield* assembleSnapshotPlan(packages, loaded.config, snapshot, "preview");
 			plan = built.plan;
 			config = built.releaseConfig;
 			snapshotArg = built.snapshotArg;
@@ -545,7 +547,7 @@ function applyEffect(
 				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
 			});
 			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
-			const built = yield* assembleSnapshotPlan(root, packages, loaded.config, snapshot, "apply");
+			const built = yield* assembleSnapshotPlan(packages, loaded.config, snapshot, "apply");
 			plan = built.plan;
 			config = built.releaseConfig;
 			snapshotArg = built.snapshotArg;
