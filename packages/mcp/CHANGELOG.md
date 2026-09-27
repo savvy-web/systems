@@ -1,5 +1,26 @@
 # @savvy-web/mcp
 
+## 3.4.1
+
+### Bug Fixes
+
+- Fixed a duplicated error detail in tool failure messages: when an engine error's own message already folds in its cause (e.g. `CatalogAssemblyError` since `@effected/npm` 0.17.0), the cause's message is no longer appended a second time. [#703][#703]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.27.0 | ^0.28.0 |
+| @savvy-web/silk-effects | dependency | updated | 9.1.4 | 9.2.0 |
+
+[#703][#703]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#703]: https://github.com/savvy-web/systems/pull/703
+
 ## 3.4.0
 
 ### Features
