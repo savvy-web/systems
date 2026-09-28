@@ -11,15 +11,15 @@ sources:
     resource: ../../packages/silk-core/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T12:53:56Z
-  body_sha256: 184b76378c130e5866d5df92768735fa87ca4233768ff7115f523a460a35c1aa
+  at: 2026-09-28T19:31:10Z
+  body_sha256: ec6d67c55c3614e0e8c70dd5f1c7d70f0ee2f637eab8a27dbc61acd2483641bd
 ---
 
 # silk-core
 
 ## Boundary
 
-`@savvy-web/silk-core` (`packages/silk-core`) is the bottom layer (L1) of the Silk package graph: Effect `Schema` value objects, `Data.TaggedError` classes, and pure contracts, with nothing else. Nothing under `src/` may import `node:*`, `@effect/platform*`, or `effect/unstable/process`, or touch the `process` identifier at all — there is no directory carve-out, unlike the engine layer above it.[^arch] `__test__/boundaries.test.ts` enforces this by tokenizing `src/` (rather than pattern-matching) and failing on the first file that touches `process` or names a forbidden module, with no exception list (`packages/silk-core/__test__/boundaries.test.ts`).[^arch] [`silk-effects`](silk-effects.md) imports this package's shared scanner by computed-path `import()` rather than duplicating it, so its own engine-boundary gate cannot drift from this one.[^arch]
+`@savvy-web/silk-core` (`packages/silk-core`) is the bottom layer (L1) of the Silk package graph: Effect `Schema` value objects, `Data.TaggedError` classes, and pure contracts, with nothing else. Nothing under `src/` may import `node:*`, `@effect/platform*`, or `effect/process`, or touch the `process` identifier at all — there is no directory carve-out, unlike the engine layer above it.[^arch] `__test__/boundaries.test.ts` enforces this by tokenizing `src/` (rather than pattern-matching) and failing on the first file that touches `process` or names a forbidden module, with no exception list (`packages/silk-core/__test__/boundaries.test.ts`).[^arch] [`silk-effects`](silk-effects.md) imports this package's shared scanner by computed-path `import()` rather than duplicating it, so its own engine-boundary gate cannot drift from this one.[^arch]
 
 It ships as a documented API surface (`meta: true`, API Extractor runs on prod builds) with a single root export, ESM-only, built through the `@savvy-web/bundler` front door.[^arch] `@savvy-web/silk-effects` depends on it as a `workspace:*` dependency and re-exports every symbol under the same name, with the same type-only/value split, so downstream consumers of silk-effects see no change.[^arch]
 

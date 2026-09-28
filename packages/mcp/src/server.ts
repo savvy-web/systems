@@ -31,7 +31,7 @@
  *    services its handler yields; `biome_check` yields none and declares
  *    none.
  * 2. **`protocols` order is load-bearing.** The runtime
- *    (`unstable/ai/internal/mcpRuntime.ts`) routes a request that carries
+ *    (`ai/internal/mcpRuntime.ts`) routes a request that carries
  *    `_meta["io.modelcontextprotocol/protocolVersion"]` to that adapter,
  *    matches an `initialize` against the STATEFUL adapters only, and sends
  *    anything else with no session to `protocols[0]`. At most one stateless
