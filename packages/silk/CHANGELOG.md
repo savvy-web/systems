@@ -1,5 +1,33 @@
 # @savvy-web/silk
 
+## 4.2.12
+
+### Bug Fixes
+
+- Fixed a fresh-install crash on startup for the `savvy` and `savvy-mcp` binaries silk carries: `ERR_MODULE_NOT_FOUND` for `effect/process/ChildProcess` (or a sibling `effect` submodule) coming out of `@effect/platform-node`. The suite now pins `effect` at `4.0.0-rc.118` throughout, matching the `@effect/platform-node-shared` build the underlying `@savvy-web/cli` and `@savvy-web/mcp` binaries actually run against, so installing `@savvy-web/silk` alone starts both bins cleanly. [#711][#711]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.9.0 | ^0.10.0 |
+| @effected/git | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/templates | dependency | updated | ^0.8.0 | ^0.9.0 |
+| @effected/workspaces | dependency | updated | ^0.28.0 | ^0.30.0 |
+| @savvy-web/changelog | dependency | updated | 1.0.9 | 1.0.10 |
+| @savvy-web/cli | dependency | updated | 3.4.1 | 3.4.2 |
+| @savvy-web/mcp | dependency | updated | 3.4.1 | 3.4.2 |
+| @savvy-web/silk-effects | dependency | updated | 9.2.0 | 9.2.1 |
+| effect | dependency | updated | 4.0.0-rc.117 | 4.0.0-rc.118 |
+
+[#711][#711]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#711]: https://github.com/savvy-web/systems/pull/711
+
 ## 4.2.11
 
 ### Dependencies
