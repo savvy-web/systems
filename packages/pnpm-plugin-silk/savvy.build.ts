@@ -298,6 +298,11 @@ await build({
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
+						"@yarnpkg/cli-dist": {
+							range: "^4.18.1",
+							peer: "^4.0.0",
+							strategy: "lock-minor",
+						},
 					},
 				},
 			},
@@ -314,6 +319,7 @@ await build({
 				"@typescript/*",
 				"@vitest/*",
 				"@vitest-agent/*",
+				"@yarnpkg/cli-dist",
 				"oxc-parser",
 				"reposets",
 				"rolldown-pnpm-config",
@@ -325,6 +331,9 @@ await build({
 				"vitest-bats",
 			],
 			local: {
+				// Temporary: pnpm-plugin-effect will carry these excludes itself;
+				// drop this entry when this repo adopts that kit release.
+				minimumReleaseAgeExclude: { strategy: "union", value: ["effect", "@effect/*"] },
 				peerDependencyRules: {
 					allowedVersions: {
 						"@savvy-web/bundler>typescript": "^6.0.3",

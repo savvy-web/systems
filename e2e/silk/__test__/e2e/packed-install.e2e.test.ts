@@ -34,7 +34,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { McpProbe } from "@effected/mcp/testing";
@@ -69,6 +69,14 @@ const SLOT_OWNERS: Record<string, ReadonlyArray<string>> = {
 
 const BIN_TIMEOUT = "30 seconds";
 
+/**
+ * This harness's own `.bin`, put first on the managers' PATH so `yarn` is the
+ * Berry this package declares. The suite runs from the root, whose PATH has no
+ * `yarn` of its own, so it would otherwise fall through to whatever the host
+ * provides: a GitHub runner ships Yarn Classic, which the suite does not support.
+ */
+const HARNESS_BIN = resolve(import.meta.dirname, "..", "..", "node_modules", ".bin");
+
 // PackedInstall is POSIX-only (it fails UnsupportedPlatform elsewhere).
 const RUNNABLE = process.platform !== "win32";
 
@@ -82,7 +90,7 @@ const RUN: PackedInstallOptions = {
 	managers: ["pnpm", "npm", "yarn", "bun"],
 	bins: ["savvy", "savvy-mcp"],
 	allowSharedBins: true,
-	env: process.env,
+	env: { ...process.env, PATH: `${HARNESS_BIN}${delimiter}${process.env.PATH ?? ""}` },
 	// A manager missing from PATH is skipped and logged, never a failure: CI
 	// provisions pnpm and npm, not necessarily Yarn or bun.
 	require: "any",

@@ -22,6 +22,7 @@
 		"@savvy-web/silk-core": "workspace:*",
 		"@savvy-web/silk-effects": "workspace:*",
 		"@types/node": "catalog:silk",
+		"@yarnpkg/cli-dist": "catalog:test",
 		"effect": "catalog:effect",
 		"typescript": "catalog:silk"
 	}
