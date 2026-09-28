@@ -55,7 +55,7 @@ import { Schema } from "effect";
  * @public
  */
 export const JsonPathSchema = Schema.String.check(
-	Schema.isPattern(/^\$\.[^.]/, {
+	Schema.isPattern(/^\$\.[^.]/u, {
 		message: 'JSONPath must start with "$." followed by a property (e.g., "$.version", "$.metadata.version")',
 	}),
 );

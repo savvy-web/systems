@@ -24,7 +24,7 @@ import { PackagesRecordSchema } from "./package-scope.js";
 import { LegacyVersionFilesSchema } from "./version-files.js";
 
 /** Regex for `owner/repo` format, shared between schema and validation. */
-const REPO_PATTERN = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
+const REPO_PATTERN = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/u;
 
 /**
  * Schema for a GitHub repository in `owner/repo` format.

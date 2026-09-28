@@ -116,7 +116,7 @@ export type DependencyTableType = typeof DependencyTableTypeSchema.Type;
  * @public
  */
 export const VERSION_RE =
-	/^(\u2014|[~^]?\d+\.\d+\.\d+(?:[-+.][\w.+-]+)?|(?:catalog|workspace|npm|jsr|file|link|portal):[^\s|]+)$/;
+	/^(\u2014|[~^]?\d+\.\d+\.\d+(?:[-+.][\w.+-]+)?|(?:catalog|workspace|npm|jsr|file|link|portal):[^\s|]+)$/u;
 
 /**
  * Version string or em dash (U+2014) sentinel for added/removed entries.

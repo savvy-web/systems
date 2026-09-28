@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect";
 import type { TemplateEntry } from "../types.js";
 
-const RepoPattern = Schema.String.check(Schema.isPattern(/^[^/\s]+\/[^/\s]+$/));
+const RepoPattern = Schema.String.check(Schema.isPattern(/^[^/\s]+\/[^/\s]+$/u));
 
 /**
  * Options for generating a Changesets configuration file.

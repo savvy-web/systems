@@ -55,7 +55,7 @@ function isValidUrl(value: string): boolean {
  * @public
  */
 export const UsernameSchema = Schema.String.check(
-	Schema.isPattern(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, {
+	Schema.isPattern(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/u, {
 		message:
 			'Invalid GitHub username format. Usernames must contain only alphanumeric characters and hyphens, and cannot start or end with a hyphen. Example: "octocat" or "my-user-123"',
 	}),
