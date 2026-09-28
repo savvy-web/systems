@@ -4,14 +4,14 @@
  * @remarks
  * The `gh` invocations are not git, so they stay hand-rolled — the spawn
  * mechanism moved from promisified `node:child_process.execFile` onto
- * `effect/unstable/process` `ChildProcess`. Any failure (gh missing, not
+ * `effect/process` `ChildProcess`. Any failure (gh missing, not
  * logged in, no repo, malformed JSON) degrades to `null`, preserving the
  * never-fails contract of the v3 implementation.
  *
  * @internal
  */
 import { Effect } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { readCache, writeCache } from "./cache.js";
 
 export interface OpenIssue {

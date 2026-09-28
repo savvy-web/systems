@@ -18,7 +18,7 @@
  */
 
 import { Effect, Result } from "effect";
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 import { Output } from "../internal/output.js";
 import { runChangesetCheck } from "./changeset/index.js";
 import { runCommitCheck } from "./commit/check.js";

@@ -140,13 +140,12 @@ catalogs:
     vite: ^8.3.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.11.4
+  "@effected/pnpm-plugin-effect": 0.12.0
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - "@effect/*"
   - "@effected/*"
   - "@okfit/*"
   - "@oxc-parser/*"
@@ -157,8 +156,7 @@ minimumReleaseAgeExclude:
   - "@typescript/*"
   - "@vitest-agent/*"
   - "@vitest/*"
-  - "@yarnpkg/cli-dist"
-  - effect
+  - "@yarnpkg/*"
   - oxc-parser
   - reposets
   - rolldown-pnpm-config
@@ -168,7 +166,9 @@ minimumReleaseAgeExclude:
   - vitepress-plugin-api-extractor
   - vitest
   - vitest-bats
+  - yarn
 overrides:
+  "@effect/platform-node@4.0.0-rc.117>@effect/platform-node-shared": 4.0.0-rc.117
   "@effect/vitest>vitest": ^5.0.1
   "@microsoft/api-extractor>typescript": ^6.0.3
 peerDependencyRules:

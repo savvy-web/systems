@@ -223,7 +223,7 @@ const BUILTINS: ReadonlySet<string> = new Set(builtinModules);
 /**
  * Whether a specifier reaches the platform: a `node:` module, a bare Node
  * builtin (`fs`, `fs/promises`, `process`), `@effect/platform*`, or
- * `effect/unstable/process`.
+ * `effect/process`.
  */
 export const isForbiddenSpecifier = (specifier: string): boolean =>
 	specifier.startsWith("node:") ||
@@ -231,8 +231,8 @@ export const isForbiddenSpecifier = (specifier: string): boolean =>
 	BUILTINS.has(specifier.split("/")[0] as string) ||
 	specifier === "process" ||
 	specifier.startsWith("@effect/platform") ||
-	specifier === "effect/unstable/process" ||
-	specifier.startsWith("effect/unstable/process/");
+	specifier === "effect/process" ||
+	specifier.startsWith("effect/process/");
 
 /** Forbidden specifiers the source names. */
 export const forbiddenSpecifiers = (source: string): ReadonlyArray<string> =>

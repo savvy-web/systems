@@ -12,7 +12,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { McpStdio, McpToolkit } from "@effected/mcp";
 import type { JsonRpcMessage } from "@effected/mcp/testing";
 import { Effect, Layer, Schema } from "effect";
-import { Tool, Toolkit } from "effect/unstable/ai";
+import { Tool, Toolkit } from "effect/ai";
 
 import type { CallToolResult } from "./utils/harness.js";
 import { makeHarness } from "./utils/harness.js";

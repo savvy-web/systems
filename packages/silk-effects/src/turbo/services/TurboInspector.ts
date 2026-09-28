@@ -1,7 +1,7 @@
 import { Run, Tool, ToolDiscovery } from "@effected/commands";
 import { Git } from "@effected/git";
 import { Context, Effect, FileSystem, Layer, Schema } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { TurboDigest } from "../digest.js";
 import type { TurboError } from "../errors.js";
 import { DryRunParseError, NotATurboRepoError, TurboExecError, TurboNotInstalledError } from "../errors.js";

@@ -1,7 +1,7 @@
 import type { CliExit } from "@effected/cli";
 import type { Repos } from "@savvy-web/silk-effects";
 import type { Stdio } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 
 import { addCommand } from "./commands/add.js";
 import { deregisterCommand } from "./commands/deregister.js";

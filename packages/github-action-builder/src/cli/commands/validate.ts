@@ -3,7 +3,7 @@
  * Validate command for GitHub Action Builder CLI.
  */
 import { Console, Effect, Option } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 
 import { ConfigService } from "../../services/config.js";
 import { ValidationService } from "../../services/validation.js";

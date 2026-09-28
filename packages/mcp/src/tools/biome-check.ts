@@ -14,7 +14,7 @@ import type { Remediation } from "@effected/engine";
 import { ToolFailure, ToolRefusal } from "@effected/mcp";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect, Schema } from "effect";
-import { Tool } from "effect/unstable/ai";
+import { Tool } from "effect/ai";
 import { BiomeFailed, McpToolError } from "../errors.js";
 
 /** Normalized diagnostic severity. */

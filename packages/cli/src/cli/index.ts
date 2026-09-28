@@ -1,5 +1,5 @@
 /**
- * Root `savvy` CLI entry point using `effect/unstable/cli`.
+ * Root `savvy` CLI entry point using `effect/cli`.
  *
  * @remarks
  * Assembles the five Phase-B command pieces — the `init` and `check` top-level
@@ -57,7 +57,7 @@ import {
 	SilkPublishability,
 } from "@savvy-web/silk-effects";
 import { Layer } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 
 import { changesetCommand } from "../commands/changeset/index.js";
 import { checkCommand } from "../commands/check.js";

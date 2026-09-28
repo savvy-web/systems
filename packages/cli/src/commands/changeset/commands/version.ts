@@ -11,7 +11,7 @@
 
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 import { Output } from "../../../internal/output.js";
 import { requireValidConfig } from "../utils/config-gate.js";
 

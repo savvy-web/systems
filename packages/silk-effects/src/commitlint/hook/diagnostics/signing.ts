@@ -5,7 +5,7 @@
  * The `git config` reads run through `@effected/git`'s `configGet`
  * (Option-shaped: an unset key is `Option.none`). The `gpg` /
  * `gpg-connect-agent` probes are not git, so they stay hand-rolled on
- * `effect/unstable/process` `ChildProcess`; every probe degrades to its v3
+ * `effect/process` `ChildProcess`; every probe degrades to its v3
  * fallback value (`keyResolves: false`, `agentResponsive: false`) on any
  * failure, and the diagnostic as a whole degrades to
  * {@link FALLBACK_DIAGNOSTIC}, preserving the never-fails contract.
@@ -15,7 +15,7 @@
 import { stat } from "node:fs/promises";
 import { Git } from "@effected/git";
 import { Effect, Option } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 export interface SigningDiagnostic {
 	format: "gpg" | "ssh" | "none";

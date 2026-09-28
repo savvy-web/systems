@@ -10,7 +10,7 @@ import type { Option } from "effect";
 
 /**
  * Renders the `savvy --version` line: the same `<name> v<version>` shape
- * `effect/unstable/cli`'s default formatter prints, plus the
+ * `effect/cli`'s default formatter prints, plus the
  * `" via <carrier> <version>"` suffix when the bin was installed through a
  * carrier such as `@savvy-web/silk`.
  *

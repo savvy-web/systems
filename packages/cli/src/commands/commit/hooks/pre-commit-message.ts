@@ -7,7 +7,7 @@
 import { resolve } from "node:path";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect, Schema } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 
 export interface EvaluateCtx {
 	branchInfo: Commitlint.BranchInfo;

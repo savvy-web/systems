@@ -23,7 +23,7 @@ import { resolve } from "node:path";
 import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { Argument, Command } from "effect/unstable/cli";
+import { Argument, Command } from "effect/cli";
 import { Output } from "../../../internal/output.js";
 
 const { ConfigInspector } = Changesets;

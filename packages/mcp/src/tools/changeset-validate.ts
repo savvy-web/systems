@@ -12,7 +12,7 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Data, Effect, Schema } from "effect";
-import { Tool } from "effect/unstable/ai";
+import { Tool } from "effect/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
 
 /** A thrown failure from the pure {@link Changesets.ChangesetLinter.validate} (e.g. a missing directory). */

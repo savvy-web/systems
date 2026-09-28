@@ -3,7 +3,7 @@
  * Build command for GitHub Action Builder CLI.
  */
 import { Console, Effect, Option } from "effect";
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 
 import { BuildFailed, ValidationFailed } from "../../errors.js";
 import { BuildService } from "../../services/build.js";

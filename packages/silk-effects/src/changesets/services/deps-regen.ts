@@ -47,7 +47,7 @@ import { PublishabilityDetector, WorkspaceDiscovery, WorkspaceSnapshots, Workspa
 import { Yaml } from "@effected/yaml";
 import type { Path } from "effect";
 import { Context, Effect, FileSystem, Layer, Option } from "effect";
-import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { ChildProcessSpawner } from "effect/process";
 import type { ChangesetConfigShape } from "../../services/ChangesetConfig.js";
 import { ChangesetConfig } from "../../services/ChangesetConfig.js";
 import { ChangesetConfigReader } from "../../services/ChangesetConfigReader.js";

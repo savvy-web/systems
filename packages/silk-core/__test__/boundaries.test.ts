@@ -46,7 +46,7 @@ describe("@savvy-web/silk-core boundaries", () => {
 		it.each([
 			'import { readFileSync } from "node:fs";',
 			'import type { FileSystem } from "@effect/platform";',
-			'import { ChildProcess } from "effect/unstable/process";',
+			'import { ChildProcess } from "effect/process";',
 			'import "node:process";',
 			'import * as fs from "fs";',
 			'import { readFile } from "fs/promises";',

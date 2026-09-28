@@ -14,7 +14,7 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Result, Schema } from "effect";
-import { Tool } from "effect/unstable/ai";
+import { Tool } from "effect/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
 
 /** The optional `cwd` every action takes. */

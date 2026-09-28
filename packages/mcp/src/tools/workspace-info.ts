@@ -10,7 +10,7 @@ import { WorkspaceRoot } from "@effected/workspaces";
 import type { AnalyzedWorkspace, WorkspaceAnalysis, WorkspaceAnalysisError } from "@savvy-web/silk-effects";
 import { SilkWorkspaceAnalyzer } from "@savvy-web/silk-effects";
 import { Effect, Schema } from "effect";
-import { Tool } from "effect/unstable/ai";
+import { Tool } from "effect/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
 
 /** A flattened, non-recursive summary of one analyzed workspace. */

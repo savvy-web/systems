@@ -13,7 +13,7 @@ import { join, sep } from "node:path";
 import { WorkspaceDiscovery } from "@effected/workspaces";
 import type { Stdio } from "effect";
 import { Data, Effect } from "effect";
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 import { Output } from "../internal/output.js";
 
 /** Default patterns cleaned when `--globs` is omitted. */

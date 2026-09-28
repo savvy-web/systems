@@ -12,7 +12,7 @@ Load when adding a `workspace:*` edge between packages or moving code across a l
 - **silk-core** (`@savvy-web/silk-core`) — L1 domain core: platform-free schemas, tagged errors, the `PrBody` contract. See `packages/silk-core/CLAUDE.md`.
 - **silk-effects** (`@savvy-web/silk-effects`) — L2 engine: shared Effect library and dev-tooling business-logic core (`Changesets`/`Commitlint`/`Lint`/`Turbo`/`Repos`); re-exports silk-core. See `packages/silk-effects/CLAUDE.md`.
 - **cli** (`@savvy-web/cli`) — the `savvy` binary (`init`/`check`/`commit`/`changeset`/`lint`/`clean`/`repos`). See `packages/cli/CLAUDE.md`.
-- **mcp** (`@savvy-web/mcp`) — the spawnable `savvy-mcp` server: an Effect-native `McpServer` (`effect/unstable/ai`), one Layer over stdio, ten tools, no resources. See `packages/mcp/CLAUDE.md`.
+- **mcp** (`@savvy-web/mcp`) — the spawnable `savvy-mcp` server: an Effect-native `McpServer` (`effect/ai`), one Layer over stdio, ten tools, no resources. See `packages/mcp/CLAUDE.md`.
 - **silk** (`@savvy-web/silk`) — the single install-target of config-integration shims + Biome asset, AND the carrier of the `savvy`/`savvy-mcp` bins. See `packages/silk/CLAUDE.md`.
 - **changelog** (`@savvy-web/changelog`) — the standalone changesets changelog generator; the installable identity for silk-effects' `Changesets.changelogFunctions` and the canonical `.changeset/config.json` changelog id. See `packages/changelog/CLAUDE.md`.
 - **bundler** (`@savvy-web/bundler`) — tsdown-based build orchestrator (`defineBuild`/`runBuild`). See `packages/bundler/CLAUDE.md`.

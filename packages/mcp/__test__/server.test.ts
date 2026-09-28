@@ -13,7 +13,7 @@ import { assert, describe, it } from "@effect/vitest";
 import type { JsonRpcMessage, McpHarness } from "@effected/mcp/testing";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { McpProtocol } from "effect/unstable/ai";
+import { McpProtocol } from "effect/ai";
 import { SERVER_INSTRUCTIONS } from "../src/server.js";
 import { fixtureWorkspace } from "./utils/fixture.js";
 import type { CallToolResult } from "./utils/harness.js";
@@ -151,8 +151,8 @@ describe("ServerLayer over McpHarness", () => {
 			const stray = asResult(yield* harness.callTool("repos_manage", { action: "sync", name: "foo" }));
 			assert.strictEqual(stray.isError, true);
 			const strayText = stray.content[0]?.text ?? "";
-			assert.ok(strayText.includes("Unrecognized parameter(s): name."), strayText);
-			assert.ok(strayText.includes("Accepted params: action, cwd."), strayText);
+			assert.ok(strayText.includes('Expected no excess property\n  at ["name"]'), strayText);
+			assert.ok(strayText.includes("Accepted params at the root: action, cwd."), strayText);
 		}).pipe(Effect.scoped),
 	);
 

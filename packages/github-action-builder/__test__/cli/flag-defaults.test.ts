@@ -1,7 +1,7 @@
 /**
  * Structural guard for CLI boolean flags.
  *
- * In `effect/unstable/cli`, a bare `Flag.Boolean(...)` is REQUIRED — omitting it
+ * In `effect/cli`, a bare `Flag.Boolean(...)` is REQUIRED — omitting it
  * on the command line aborts with "Missing required flag". Only
  * `Flag.withDefault(false)` makes it the opt-in switch it reads as. The v3 to v4
  * migration dropped those defaults and made `--quiet`, `--no-validate` and
