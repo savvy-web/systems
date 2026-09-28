@@ -47,7 +47,7 @@
 		"@okfit/plugin": "^0.5.4",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^5.0.2"
+		"@vitest-agent/plugin": "^5.0.3"
 	},
 	"engines": {
 		"node": ">=24.11.0"
