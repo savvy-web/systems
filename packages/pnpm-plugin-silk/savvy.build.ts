@@ -332,13 +332,6 @@ await build({
 				"yarn",
 			],
 			local: {
-				// Dev tools still built on effect rc.117 (okfit, tsdoctor, rolldown-pnpm-config)
-				// pull @effect/platform-node rc.117, whose caret on platform-node-shared would
-				// float to rc.118 and import modules rc.117 lacks. Drop once they ship on rc.118.
-				overrides: {
-					strategy: "union",
-					value: { "@effect/platform-node@4.0.0-rc.117>@effect/platform-node-shared": "4.0.0-rc.117" },
-				},
 				peerDependencyRules: {
 					allowedVersions: {
 						"@savvy-web/bundler>typescript": "^6.0.3",

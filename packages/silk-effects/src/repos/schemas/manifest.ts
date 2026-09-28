@@ -6,7 +6,7 @@ import { Schema } from "effect";
  * (`.repos/<name>`) without escaping the `.repos/` directory.
  * @public
  */
-export const RepoName = Schema.String.check(Schema.isPattern(/^(?!\.{1,2}$)[A-Za-z0-9][A-Za-z0-9._-]*$/)).annotate({
+export const RepoName = Schema.String.check(Schema.isPattern(/^(?!\.{1,2}$)[A-Za-z0-9][A-Za-z0-9._-]*$/u)).annotate({
 	identifier: "RepoName",
 });
 /** @public */
