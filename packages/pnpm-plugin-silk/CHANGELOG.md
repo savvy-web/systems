@@ -1,5 +1,18 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.44.1
+
+### Features
+
+- `catalog:test` and `catalog:test:peers` now carry `@yarnpkg/cli-dist` (Yarn Berry 4), for harnesses that exercise packages under Yarn and need a pinned Berry rather than whatever `yarn` the host provides.
+- `yarn` and every `@yarnpkg/*` package are excluded from `minimumReleaseAge`, so a new Yarn release is usable right away instead of a day later. [#711][#711]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#711]: https://github.com/savvy-web/systems/pull/711
+
 ## 0.44.0
 
 ### Bug Fixes

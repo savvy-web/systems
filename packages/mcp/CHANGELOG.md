@@ -1,5 +1,34 @@
 # @savvy-web/mcp
 
+## 3.4.2
+
+### Bug Fixes
+
+- Fixed a fresh-install crash on startup: `ERR_MODULE_NOT_FOUND` for `effect/process/ChildProcess` (or a sibling `effect` submodule) coming out of `@effect/platform-node`. The caret range `@effect/platform-node` carried on `@effect/platform-node-shared` could resolve a build of `-shared` that only ships modules present in a newer `effect` than the one actually installed alongside it. The suite now pins `effect` at `4.0.0-rc.118` throughout, matching the `@effect/platform-node-shared` build the `savvy-mcp` binary actually runs against, so `npx @savvy-web/mcp` starts cleanly on a fresh install.
+- Strict-tool parameter validation errors (e.g. calling `repos_manage` with keys its chosen `action` doesn't take) now report through the Effect core all-errors path: `Invalid parameters for tool '<name>': Expected no excess property\n  at ["key"]`, one problem per offending key, followed by `Accepted params at the root: action, cwd.` This replaces the previous `Unrecognized parameter(s): ... Accepted params: ...` sentence. The change is a wording change only — invalid calls still fail the same way — but any client-side string matching on the old sentence should be updated. [#711][#711]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | 4.0.0-rc.117 | 4.0.0-rc.118 |
+| @effected/commands | dependency | updated | ^0.9.0 | ^0.10.0 |
+| @effected/engine | dependency | updated | ^0.1.0 | ^0.2.0 |
+| @effected/git | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/mcp | dependency | updated | ^0.2.0 | ^0.3.0 |
+| @effected/templates | dependency | updated | ^0.8.0 | ^0.9.0 |
+| @effected/workspaces | dependency | updated | ^0.28.0 | ^0.30.0 |
+| @savvy-web/silk-effects | dependency | updated | 9.2.0 | 9.2.1 |
+| effect | dependency | updated | 4.0.0-rc.117 | 4.0.0-rc.118 |
+
+[#711][#711]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#711]: https://github.com/savvy-web/systems/pull/711
+
 ## 3.4.1
 
 ### Bug Fixes
