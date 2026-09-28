@@ -22,7 +22,7 @@ import { CliColor, CliRuntime } from "@effected/cli";
 import type { Distribution } from "@effected/engine";
 import { CurrentDistribution } from "@effected/engine";
 import { Effect, Layer, Option } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 
 import { AppLive, CliPlatform, rootCommand } from "./cli/index.js";
 import { FailureLine } from "./internal/failure-line.js";

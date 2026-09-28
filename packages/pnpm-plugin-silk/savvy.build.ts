@@ -298,6 +298,11 @@ await build({
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
+						"@yarnpkg/cli-dist": {
+							range: "^4.18.1",
+							peer: "^4.0.0",
+							strategy: "lock-minor",
+						},
 					},
 				},
 			},
@@ -314,6 +319,7 @@ await build({
 				"@typescript/*",
 				"@vitest/*",
 				"@vitest-agent/*",
+				"@yarnpkg/*",
 				"oxc-parser",
 				"reposets",
 				"rolldown-pnpm-config",
@@ -323,8 +329,16 @@ await build({
 				"std-osc8",
 				"vitest",
 				"vitest-bats",
+				"yarn",
 			],
 			local: {
+				// Dev tools still built on effect rc.117 (okfit, tsdoctor, rolldown-pnpm-config)
+				// pull @effect/platform-node rc.117, whose caret on platform-node-shared would
+				// float to rc.118 and import modules rc.117 lacks. Drop once they ship on rc.118.
+				overrides: {
+					strategy: "union",
+					value: { "@effect/platform-node@4.0.0-rc.117>@effect/platform-node-shared": "4.0.0-rc.117" },
+				},
 				peerDependencyRules: {
 					allowedVersions: {
 						"@savvy-web/bundler>typescript": "^6.0.3",

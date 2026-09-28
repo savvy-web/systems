@@ -12,7 +12,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { Yaml } from "@effected/yaml";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect, Option } from "effect";
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Argument, Command, Flag } from "effect/cli";
 
 /** Repeated file path arguments. */
 const filesArg = Argument.File("files", { mustExist: true }).pipe(Argument.variadic());

@@ -6,7 +6,7 @@
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, Layer } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 
 import { AppLayer } from "../layers/app.js";
 import { buildCommand, initCommand, validateCommand } from "./commands/index.js";

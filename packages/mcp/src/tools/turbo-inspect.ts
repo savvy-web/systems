@@ -11,7 +11,7 @@ import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Turbo } from "@savvy-web/silk-effects";
 import { Effect, Schema } from "effect";
-import { Tool } from "effect/unstable/ai";
+import { Tool } from "effect/ai";
 import { McpToolError, mapEngineError } from "../errors.js";
 
 /** Cache-diagnosis variant of the `turbo_inspect` result. */

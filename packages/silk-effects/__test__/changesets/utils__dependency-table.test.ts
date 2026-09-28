@@ -250,10 +250,12 @@ describe("sortDependencyRows", () => {
 
 describe("dependency table cells survive the canonical escaping", () => {
 	/**
-	 * Cells whose characters the canonical stringifier escapes in the raw
-	 * bytes. The escaping is a spelling, not a value change: parsing consumes
-	 * the backslashes, so cell VALUES round-trip byte-identically and never
-	 * accumulate escape layers across emit/parse cycles.
+	 * Cells whose characters the canonical stringifier would otherwise escape
+	 * in the raw bytes. Dependency-table cells opt into literal emission
+	 * (`escapeStyle: "literal"`), so these values are written verbatim; only
+	 * escaping that defends the containing table's structure (a cell's `|`)
+	 * still applies. Cell VALUES still round-trip byte-identically through
+	 * parse and never accumulate escape layers across emit/parse cycles.
 	 */
 	const ESCAPE_BAIT: DependencyTableRow[] = [
 		{ dependency: "@effected/semver", type: "dependency", action: "updated", from: "~0.2.0", to: "~0.2.1" },
@@ -261,15 +263,14 @@ describe("dependency table cells survive the canonical escaping", () => {
 		{ dependency: "_private", type: "dependency", action: "updated", from: "1.0.0", to: "2.0.0" },
 	];
 
-	it("escapes ~ and word-edge _ in the raw bytes (canonical form)", () => {
-		// @effected/markdown >= 0.8.0 escapes minimally: `_` between two
-		// alphanumerics is not markup, so it stays raw; at a word edge it
-		// still escapes. `~` always escapes.
+	it("emits ~ and word-edge _ literally, with no backslash escaping", () => {
 		const md = serializeDependencyTableToMarkdown(ESCAPE_BAIT);
-		expect(md).toContain("\\~0.2.0");
-		expect(md).toContain("\\~0.2.1");
+		expect(md).toContain("| ~0.2.0 |");
+		expect(md).toContain("| ~0.2.1 |");
 		expect(md).toContain("| some_pkg |");
-		expect(md).toContain("| \\_private |");
+		expect(md).toContain("| _private |");
+		expect(md).not.toContain("\\~");
+		expect(md).not.toContain("\\_");
 	});
 
 	it("round-trips cell values byte-identically through markdown", () => {
@@ -284,11 +285,42 @@ describe("dependency table cells survive the canonical escaping", () => {
 		expect(second).toBe(first);
 	});
 
+	it("normalizes an old escaped-spelling table to the new literal spelling on reserialize", () => {
+		const oldSpelling = `| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+| \\_private | dependency | updated | 1.0.0 | 2.0.0 |`;
+		const rows = parseDependencyTable(getTable(oldSpelling));
+		expect(rows).toEqual([ESCAPE_BAIT[0], ESCAPE_BAIT[2]]);
+		const reserialized = serializeDependencyTableToMarkdown(rows);
+		expect(reserialized).toContain("| ~0.2.0 |");
+		expect(reserialized).toContain("| ~0.2.1 |");
+		expect(reserialized).toContain("| _private |");
+		expect(reserialized).not.toContain("\\~");
+		expect(reserialized).not.toContain("\\_");
+	});
+
+	it("parses an escaped-spelling table and a literal-spelling table to identical row values", () => {
+		const escaped = `| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+| some\\_pkg | dependency | updated | 1.0.0 | 2.0.0 |`;
+		const literal = `| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/semver | dependency | updated | ~0.2.0 | ~0.2.1 |
+| some_pkg | dependency | updated | 1.0.0 | 2.0.0 |`;
+		expect(parseDependencyTable(getTable(escaped))).toEqual(parseDependencyTable(getTable(literal)));
+	});
+
 	it("escapes a pipe so it cannot break out of its cell", () => {
 		const withPipe: DependencyTableRow[] = [
 			{ dependency: "weird|name", type: "dependency", action: "updated", from: "1.0.0", to: "2.0.0" },
 		];
 		const md = serializeDependencyTableToMarkdown(withPipe);
+		// The structural escape must survive in the RAW bytes — literal
+		// emission opts out of cosmetic escaping only, never the escape that
+		// keeps a `|` from splitting the cell.
+		expect(md).toContain("weird\\|name");
 		expect(parseDependencyTable(getTable(md))[0]?.dependency).toBe("weird|name");
 	});
 

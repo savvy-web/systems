@@ -46,7 +46,7 @@
 import type { GitCommandError, GitShape, NameStatusEntry, NotARepositoryError, UnknownRefError } from "@effected/git";
 import { Git } from "@effected/git";
 import { Context, Effect, Layer, Option, Schema } from "effect";
-import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { ChildProcessSpawner } from "effect/process";
 import type { ConfigurationError } from "../errors.js";
 import { GitError } from "../errors.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";

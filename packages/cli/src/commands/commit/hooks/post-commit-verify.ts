@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 import { Git } from "@effected/git";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { buildCommitlintInvocation } from "../commitlint-invocation.js";
 
 const execFileP = promisify(execFile);

@@ -11,8 +11,8 @@ sources:
     resource: ../../packages/github-action-builder/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 679b9d1debc62ee92c9d8f6751f53d7f3607a1f42bec546fb168c1c7b576502e
+  at: 2026-09-28T19:31:10Z
+  body_sha256: eb4d560475a90cb5cb82f6adfb838e2dca25309097513177b8e0bc80992a7cf3
 ---
 
 # github-action-builder
@@ -25,7 +25,7 @@ The hard constraint shaping everything else: **Node.js 24 ESM only** — `action
 
 ## Owner
 
-Effect-first on Effect v4: class-based `Context.Service` definitions per `src/services/`, live layers providing implementations, the CLI (`effect/unstable/cli`) consuming services directly, and the `GitHubAction` class wrapping them behind a `ManagedRuntime` for non-Effect consumers.[^arch] The pipeline runs load config → detect entries → validate → build → persist-local, each stage owned by one service (`ConfigService`, `ValidationService`, `BuildService`, `PersistLocalService`); persist runs automatically unless disabled via `--no-persist` or `persistLocal.enabled: false`.[^arch]
+Effect-first on Effect v4: class-based `Context.Service` definitions per `src/services/`, live layers providing implementations, the CLI (`effect/cli`) consuming services directly, and the `GitHubAction` class wrapping them behind a `ManagedRuntime` for non-Effect consumers.[^arch] The pipeline runs load config → detect entries → validate → build → persist-local, each stage owned by one service (`ConfigService`, `ValidationService`, `BuildService`, `PersistLocalService`); persist runs automatically unless disabled via `--no-persist` or `persistLocal.enabled: false`.[^arch]
 
 ## Build pipeline
 

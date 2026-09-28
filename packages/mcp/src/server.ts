@@ -1,5 +1,5 @@
 /**
- * The savvy-mcp server as ONE layer over `effect/unstable/ai`'s `McpServer`:
+ * The savvy-mcp server as ONE layer over `effect/ai`'s `McpServer`:
  * the ten-tool toolkit registered against the stdio transport, with the
  * silk-effects service graph discharging every handler's dependencies.
  *
@@ -31,7 +31,7 @@
  *    services its handler yields; `biome_check` yields none and declares
  *    none.
  * 2. **`protocols` order is load-bearing.** The runtime
- *    (`unstable/ai/internal/mcpRuntime.ts`) routes a request that carries
+ *    (`ai/internal/mcpRuntime.ts`) routes a request that carries
  *    `_meta["io.modelcontextprotocol/protocolVersion"]` to that adapter,
  *    matches an `initialize` against the STATEFUL adapters only, and sends
  *    anything else with no session to `protocols[0]`. At most one stateless
@@ -104,7 +104,7 @@ import { distributionSuffix } from "@effected/engine";
 import { McpStdio, McpToolkit } from "@effected/mcp";
 import type { FileSystem, Path, Stdio } from "effect";
 import { Layer, Option } from "effect";
-import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { ChildProcessSpawner } from "effect/process";
 
 import { makeSilkRuntimeLayer } from "./runtime.js";
 import { SilkToolkit, ToolsLayer } from "./toolkit.js";

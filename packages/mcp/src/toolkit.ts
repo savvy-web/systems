@@ -7,8 +7,8 @@
  */
 
 import type { Layer } from "effect";
-import type { Tool } from "effect/unstable/ai";
-import { Toolkit } from "effect/unstable/ai";
+import type { Tool } from "effect/ai";
+import { Toolkit } from "effect/ai";
 
 import { biomeCheckTool, handleBiomeCheck } from "./tools/biome-check.js";
 import { changesetDepsDetectTool, handleChangesetDepsDetect } from "./tools/changeset-deps-detect.js";

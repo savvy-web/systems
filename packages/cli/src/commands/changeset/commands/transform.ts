@@ -34,7 +34,7 @@ import { dirname, resolve } from "node:path";
 import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Argument, Command, Flag } from "effect/cli";
 import { Output } from "../../../internal/output.js";
 import { requireValidConfig } from "../utils/config-gate.js";
 

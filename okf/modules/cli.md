@@ -27,15 +27,15 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-26T22:54:36Z
-  body_sha256: acb8192d1099571c42a64189c0a059864aa057ab02484befae801dad120ba837
+  at: 2026-09-28T19:31:10Z
+  body_sha256: c2e25585fbf3b786117e7a45662a321832f0f48dccdcedcc69b868b3880e11cf
 ---
 
 # cli
 
 ## Boundary
 
-`@savvy-web/cli` (`packages/cli`) owns the `savvy` binary and its statically-defined command tree — a thin command shell over [`silk-effects`](silk-effects.md), built on Effect v4's in-core `effect/unstable/cli` and `@effect/platform-node`. Almost all of its business logic lives in silk-effects: every command handler imports the work it does from there, and this package exists to wire those handlers into one `effect/unstable/cli` tree and provide the runtime layer stack that satisfies their service requirements. The lone exception is `savvy clean`, whose filesystem artifact removal has no silk-effects equivalent.[^arch]
+`@savvy-web/cli` (`packages/cli`) owns the `savvy` binary and its statically-defined command tree — a thin command shell over [`silk-effects`](silk-effects.md), built on Effect v4's in-core `effect/cli` and `@effect/platform-node`. Almost all of its business logic lives in silk-effects: every command handler imports the work it does from there, and this package exists to wire those handlers into one `effect/cli` tree and provide the runtime layer stack that satisfies their service requirements. The lone exception is `savvy clean`, whose filesystem artifact removal has no silk-effects equivalent.[^arch]
 
 It is an L3 front end in the package layering, a peer of [`mcp`](mcp.md) that never imports it — silk's package-layering test asserts this as a layering rule. See [package-layering](../conventions/package-layering.md).[^layering]
 

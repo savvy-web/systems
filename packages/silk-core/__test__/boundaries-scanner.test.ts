@@ -104,14 +104,14 @@ describe("isForbiddenSpecifier", () => {
 		"process",
 		"@effect/platform",
 		"@effect/platform-node",
-		"effect/unstable/process",
-		"effect/unstable/process/Command",
+		"effect/process",
+		"effect/process/Command",
 	])("flags %s", (spec) => {
 		expect(isForbiddenSpecifier(spec)).toBe(true);
 	});
 	it.each([
 		"effect",
-		"effect/unstable/cli",
+		"effect/cli",
 		"@effected/templates",
 		"@effected/workspaces",
 		"./region.js",

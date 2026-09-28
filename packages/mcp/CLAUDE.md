@@ -1,6 +1,6 @@
 # @savvy-web/mcp
 
-`@savvy-web/mcp` is the spawnable `savvy-mcp` server — a tools-only MCP server (not a discovery host) exposing Silk tooling over silk-effects, Effect-native on `effect/unstable/ai`'s `McpServer` (no MCP SDK, no zod). No resource/corpus layer. An L3 front end: `@savvy-web/silk` carries its bin as a shim over `./main`. Built via `@savvy-web/bundler`.
+`@savvy-web/mcp` is the spawnable `savvy-mcp` server — a tools-only MCP server (not a discovery host) exposing Silk tooling over silk-effects, Effect-native on `effect/ai`'s `McpServer` (no MCP SDK, no zod). No resource/corpus layer. An L3 front end: `@savvy-web/silk` carries its bin as a shim over `./main`. Built via `@savvy-web/bundler`.
 
 ## Key surface
 

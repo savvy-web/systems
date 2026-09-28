@@ -25,7 +25,7 @@ import {
 } from "@savvy-web/silk-effects";
 import type { FileSystem, Path } from "effect";
 import { Effect, Layer } from "effect";
-import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { ChildProcessSpawner } from "effect/process";
 
 /**
  * Every service the MCP runtime provides to the tool handlers.

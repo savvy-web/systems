@@ -7,7 +7,7 @@
  */
 
 import { Context } from "effect";
-import { Tool } from "effect/unstable/ai";
+import { Tool } from "effect/ai";
 import { describe, expect, it } from "vitest";
 
 import { SilkToolkit } from "../src/toolkit.js";

@@ -16,7 +16,7 @@ import { promisify } from "node:util";
 import { Git } from "@effected/git";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
-import { Argument, CliError, Command } from "effect/unstable/cli";
+import { Argument, CliError, Command } from "effect/cli";
 import { Output } from "../../internal/output.js";
 import { buildCommitlintInvocation } from "./commitlint-invocation.js";
 

@@ -1,4 +1,4 @@
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 
 import { hookCommand } from "./hook.js";
 import { lintCommand } from "./lint.js";

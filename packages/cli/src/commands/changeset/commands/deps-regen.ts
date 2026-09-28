@@ -45,7 +45,7 @@ import { resolve } from "node:path";
 import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 import { Output } from "../../../internal/output.js";
 
 type RegenPlan = Changesets.RegenPlan;

@@ -32,7 +32,7 @@ import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import type { Stdio } from "effect";
 import { Effect } from "effect";
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Argument, Command, Flag } from "effect/cli";
 import { Output } from "../../../internal/output.js";
 
 /**

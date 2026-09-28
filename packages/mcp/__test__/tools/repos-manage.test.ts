@@ -2,7 +2,7 @@ import { describe, expect, it, layer } from "@effect/vitest";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Layer, Result, Schema } from "effect";
-import { McpSchema } from "effect/unstable/ai";
+import { McpSchema } from "effect/ai";
 
 import { ReposManageResult, handleReposManage, reposManage } from "../../src/tools/repos-manage.js";
 
@@ -260,8 +260,9 @@ layer(TestLayer)("handleReposManage — request validation", (it) => {
 	it.effect("names every key the chosen action does not take, with that action's accepted params", () =>
 		Effect.gen(function* () {
 			const message = yield* reject({ action: "sync", name: "foo", ref: "main" });
-			expect(message).toContain("Unrecognized parameter(s): name, ref.");
-			expect(message).toContain("Accepted params: action, cwd.");
+			expect(message).toContain('Expected no excess property\n  at ["name"]');
+			expect(message).toContain('Expected no excess property\n  at ["ref"]');
+			expect(message).toContain("Accepted params at the root: action, cwd.");
 		}),
 	);
 

@@ -25,7 +25,7 @@ import { resolve } from "node:path";
 import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect } from "effect";
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Argument, Command, Flag } from "effect/cli";
 
 const { ChangesetLinter } = Changesets;
 

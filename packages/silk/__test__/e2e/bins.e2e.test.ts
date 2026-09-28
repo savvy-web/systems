@@ -21,7 +21,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { Run } from "@effected/commands";
 import { McpProbe } from "@effected/mcp/testing";
 import { Effect } from "effect";
-import { ChildProcess } from "effect/unstable/process";
+import { ChildProcess } from "effect/process";
 
 const binDir = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin");
 

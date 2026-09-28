@@ -12,7 +12,7 @@ import { assert, describe, it } from "@effect/vitest";
 import type { McpProcess } from "@effected/mcp/testing";
 import { McpProcess as Mcp, McpProbe } from "@effected/mcp/testing";
 import { Effect } from "effect";
-import { ChildProcess } from "effect/unstable/process";
+import { ChildProcess } from "effect/process";
 
 import { fixtureWorkspace } from "../utils/fixture.js";
 

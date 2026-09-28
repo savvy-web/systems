@@ -1,3 +1,4 @@
+import type { Table } from "mdast";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
@@ -5,6 +6,7 @@ import { unified } from "unified";
 import { describe, expect, it } from "vitest";
 
 import { AggregateDependencyTablesPlugin } from "../../src/changesets/remark/plugins/aggregate-dependency-tables.js";
+import { parseDependencyTable } from "../../src/changesets/utils/dependency-table.js";
 
 function transform(md: string): string {
 	return unified()
@@ -34,6 +36,33 @@ ${TABLE_HEADER}
 		const axiosIdx = result.indexOf("axios");
 		const zlibIdx = result.indexOf("zlib");
 		expect(axiosIdx).toBeLessThan(zlibIdx);
+	});
+
+	it("collapses one dependency written in the legacy escaped spelling and the new literal spelling", () => {
+		// Rows collapse on dependency + type, so the NAME carries the spelling
+		// difference: if either spelling decoded to a different value, the two
+		// rows would not collapse and a stray backslash would survive.
+		const md = `## 1.0.0
+
+### Dependencies
+
+${TABLE_HEADER}
+| some\\_pkg | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+
+### Dependencies
+
+${TABLE_HEADER}
+| some_pkg | dependency | updated | ~0.2.1 | ~0.3.0 |
+`;
+		const tables = unified()
+			.use(remarkParse)
+			.use(remarkGfm)
+			.parse(transform(md))
+			.children.filter((node): node is Table => node.type === "table");
+		expect(tables).toHaveLength(1);
+		expect(parseDependencyTable(tables[0])).toEqual([
+			{ dependency: "some_pkg", type: "dependency", action: "updated", from: "~0.2.0", to: "~0.3.0" },
+		]);
 	});
 
 	it("merges two dependency tables in one version block", () => {

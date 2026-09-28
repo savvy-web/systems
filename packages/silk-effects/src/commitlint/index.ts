@@ -80,7 +80,7 @@
 //   hook/diagnostics/* — COPIED (v4: child_process spawns restructured)
 //     All six diagnostic modules (branch, cache, commitlint-config, open-issues,
 //     package-manager, signing). Git reads run through @effected/git (branch,
-//     signing); non-git spawns (gh, gpg) run on effect/unstable/process
+//     signing); non-git spawns (gh, gpg) run on effect/process
 //     ChildProcess via ChildProcessSpawner. cache, commitlint-config, and
 //     package-manager keep node:fs builtins directly. No equivalent in
 //     silk-effects.
