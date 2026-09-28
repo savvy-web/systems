@@ -1,5 +1,26 @@
 # @savvy-web/silk-effects
 
+## 9.2.2
+
+### Bug Fixes
+
+- `VersionOrEmptySchema`, `CommitHashSchema`, `UsernameSchema`, `RepoSchema`, `JsonPathSchema` and `RepoName` keep their regex as `pattern` when converted with `Schema.toJsonSchemaDocument`. Since effect `4.0.0-rc.118`, a `Schema.isPattern` check only exports its pattern when the RegExp carries the `u` flag; without it the exported JSON Schema silently accepted any string. The regexes now carry `u`, and decoding accepts exactly the same strings as before. [#718][#718]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.19.0 | ^0.19.1 |
+| @savvy-web/silk-core | dependency | updated | 0.4.8 | 0.4.8 |
+
+[#718][#718]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#718]: https://github.com/savvy-web/systems/pull/718
+
 ## 9.2.1
 
 ### Bug Fixes
