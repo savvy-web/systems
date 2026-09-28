@@ -173,14 +173,14 @@ settings:
 catalogs:
   build:
     '@microsoft/api-extractor':
-      specifier: 7.59.1
-      version: 7.59.1
+      specifier: 7.59.2
+      version: 7.59.2
     '@microsoft/tsdoc':
-      specifier: ~0.16.0
-      version: 0.16.0
+      specifier: ~0.17.0
+      version: 0.17.0
     '@microsoft/tsdoc-config':
-      specifier: 0.18.1
-      version: 0.18.1
+      specifier: 0.18.2
+      version: 0.18.2
     '@rsbuild/core':
       specifier: ^2.2.9
       version: 2.2.10
@@ -1123,13 +1123,13 @@ importers:
         version: 0.30.1(effect@4.0.0-rc.118)
       '@microsoft/api-extractor':
         specifier: catalog:build
-        version: 7.59.1(@types/node@26.6.3)
+        version: 7.59.2(@types/node@26.6.3)
       '@microsoft/tsdoc':
         specifier: catalog:build
-        version: 0.16.0
+        version: 0.17.0
       '@microsoft/tsdoc-config':
         specifier: catalog:build
-        version: 0.18.1
+        version: 0.18.2
       '@tsdoctor/manifest':
         specifier: ^0.2.3
         version: 0.2.3(effect@4.0.0-rc.118)
@@ -1992,20 +1992,20 @@ packages:
       '@types/react': '>=16'
       react: '>=16'
 
-  '@microsoft/api-extractor-model@7.33.12':
-    resolution: {integrity: sha512-TdKOYgwf98xLjNW+y3iXIiCf4ZLQbilGAlqkMTTAqqAWfgRXAn9YCSGMsaiB1U7OPRvslUWg6n08EqQPbP93tA==}
+  '@microsoft/api-extractor-model@7.33.13':
+    resolution: {integrity: sha512-OVL/dDvHstFJMJb2amgI7S9p9wAVMyrt18R2aSBOP9tVAARWiEJAM3wVsgxXymMOvnvKO/np9X7PeJpNZv3eLg==}
     engines: {node: '>=20.9.0'}
 
-  '@microsoft/api-extractor@7.59.1':
-    resolution: {integrity: sha512-GjRUqx1MTY7xuH36urwASkfBPzrdxYG+irVeV7C9JEdRtn509AgMmwit/BhvztQzIoFk9vhFDTVYOp2cjw+9Uw==}
+  '@microsoft/api-extractor@7.59.2':
+    resolution: {integrity: sha512-hhkH6p2AmJtneC1cyxDTzUBg3DJHxvsCW5ciTrFSY8H9nTWB+lwa1nmmmTAqNFc9mufMATlH6hwdOI/Jc1wjfw==}
     engines: {node: '>=20.9.0'}
     hasBin: true
 
-  '@microsoft/tsdoc-config@0.18.1':
-    resolution: {integrity: sha512-9brPoVdfN9k9g0dcWkFeA7IH9bbcttzDJlXvkf8b2OBzd5MueR1V2wkKBL0abn0otvmkHJC6aapBOTJDDeMCZg==}
+  '@microsoft/tsdoc-config@0.18.2':
+    resolution: {integrity: sha512-4ymuLTQ9lFwJXK15f41iPcNHflymjk02Ltq5f5wo3fA02O1nHIGSc1TIZwzTSQZep+jXHM644jobt4Q8O3vtqg==}
 
-  '@microsoft/tsdoc@0.16.0':
-    resolution: {integrity: sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA==}
+  '@microsoft/tsdoc@0.17.0':
+    resolution: {integrity: sha512-p68VexhnH7ojf3U27RdryUDqnKJgKaWUbCL96vJR7N0mqDuhKG5OIECk3sCPPdynxjk+yoVhRkScqtv5KQjzsw==}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
@@ -2570,8 +2570,8 @@ packages:
   '@rspress/shared@2.0.22':
     resolution: {integrity: sha512-1UXwG6gAhWBw5vClv3wb2Oy8hPXYNgQwQ5zWXEG8auY5ZcMywvHCBi6pFJtYNOgXe5327lNgiOG0S1R8l0OLeg==}
 
-  '@rushstack/node-core-library@5.24.1':
-    resolution: {integrity: sha512-ZlOrzv92MwnsCXA45qWfDj4L/kTasKghXezu+M2WmdtkbnXyPnZSCovfeBZx1Yc5qm+LkElbLw6IeSSWZDhZUg==}
+  '@rushstack/node-core-library@5.24.2':
+    resolution: {integrity: sha512-sgSqy/lqce+uMrggF/wEIISIfpMX8pAXE5qSzGgDYFrWJkrsttrw/MzU4GFVNcbHSkPz5KbSh/A4/JSpDHoNQA==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       '@types/node': '*'
@@ -2590,8 +2590,8 @@ packages:
   '@rushstack/rig-package@0.7.3':
     resolution: {integrity: sha512-aAA518n6wxxjCfnTAOjQnm7ngNE0FVHxHAw2pxKlIhxrMn0XQjGcXKF0oKWpjBgJOmsaJpVob/v+zr3zxgPWuA==}
 
-  '@rushstack/terminal@0.24.4':
-    resolution: {integrity: sha512-3fRBWK0IMY293lBx5ycgit1DTMUi+nhOjALHlrIad9hQsqzM9Ak+XdBI1gJ/tZPxW+LraeAc4SsmMdcOflBmAQ==}
+  '@rushstack/terminal@0.24.5':
+    resolution: {integrity: sha512-AkbHjc48S7g4HkFO2wKHVMuJiZs/KaRI/rjcSpEj7o6SXgRYZrpXDE10NFa8ov/bxm4F5x+A8iqxkAGfEUTuTA==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       '@types/node': '*'
@@ -2599,8 +2599,8 @@ packages:
       '@types/node':
         optional: true
 
-  '@rushstack/ts-command-line@5.3.14':
-    resolution: {integrity: sha512-lT2JKZk2dukBMp4GFOh4RaDfVzpZehGgQOGpzpSliUn317NgEmOOCXyd7/d0eU46HHsbRxizP83GAm39s0lAlg==}
+  '@rushstack/ts-command-line@5.3.15':
+    resolution: {integrity: sha512-9oUS23ebDfbl8ED6CANdQ3qqBc/xhrQvzhQAv61oN391FvNRww6RzdUbo97NEXaMm7lNEQsTjdE3zqtgiMv/eQ==}
     engines: {node: '>=20.9.0'}
 
   '@shikijs/core@4.4.3':
@@ -5179,21 +5179,29 @@ snapshots:
       '@biomejs/cli-win32-arm64': 2.5.14
       '@biomejs/cli-win32-x64': 2.5.14
 
-  '@biomejs/cli-darwin-arm64@2.5.14': {}
+  '@biomejs/cli-darwin-arm64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-darwin-x64@2.5.14': {}
+  '@biomejs/cli-darwin-x64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-arm64-musl@2.5.14': {}
+  '@biomejs/cli-linux-arm64-musl@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-arm64@2.5.14': {}
+  '@biomejs/cli-linux-arm64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-x64-musl@2.5.14': {}
+  '@biomejs/cli-linux-x64-musl@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-x64@2.5.14': {}
+  '@biomejs/cli-linux-x64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-win32-arm64@2.5.14': {}
+  '@biomejs/cli-win32-arm64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-win32-x64@2.5.14': {}
+  '@biomejs/cli-win32-x64@2.5.14':
+    optional: true
 
   '@changesets/apply-release-plan@8.1.1':
     dependencies:
@@ -5884,23 +5892,23 @@ snapshots:
       '@types/react': 19.3.0
       react: 19.3.0
 
-  '@microsoft/api-extractor-model@7.33.12(@types/node@26.6.3)':
+  '@microsoft/api-extractor-model@7.33.13(@types/node@26.6.3)':
     dependencies:
-      '@microsoft/tsdoc': 0.16.0
-      '@microsoft/tsdoc-config': 0.18.1
-      '@rushstack/node-core-library': 5.24.1(@types/node@26.6.3)
+      '@microsoft/tsdoc': 0.17.0
+      '@microsoft/tsdoc-config': 0.18.2
+      '@rushstack/node-core-library': 5.24.2(@types/node@26.6.3)
     transitivePeerDependencies:
       - '@types/node'
 
-  '@microsoft/api-extractor@7.59.1(@types/node@26.6.3)':
+  '@microsoft/api-extractor@7.59.2(@types/node@26.6.3)':
     dependencies:
-      '@microsoft/api-extractor-model': 7.33.12(@types/node@26.6.3)
-      '@microsoft/tsdoc': 0.16.0
-      '@microsoft/tsdoc-config': 0.18.1
-      '@rushstack/node-core-library': 5.24.1(@types/node@26.6.3)
+      '@microsoft/api-extractor-model': 7.33.13(@types/node@26.6.3)
+      '@microsoft/tsdoc': 0.17.0
+      '@microsoft/tsdoc-config': 0.18.2
+      '@rushstack/node-core-library': 5.24.2(@types/node@26.6.3)
       '@rushstack/rig-package': 0.7.3
-      '@rushstack/terminal': 0.24.4(@types/node@26.6.3)
-      '@rushstack/ts-command-line': 5.3.14(@types/node@26.6.3)
+      '@rushstack/terminal': 0.24.5(@types/node@26.6.3)
+      '@rushstack/ts-command-line': 5.3.15(@types/node@26.6.3)
       diff: 8.0.4
       minimatch: 10.2.3
       resolve: 1.22.12
@@ -5910,14 +5918,14 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@microsoft/tsdoc-config@0.18.1':
+  '@microsoft/tsdoc-config@0.18.2':
     dependencies:
-      '@microsoft/tsdoc': 0.16.0
+      '@microsoft/tsdoc': 0.17.0
       ajv: 8.18.0
       jju: 1.4.0
       resolve: 1.22.12
 
-  '@microsoft/tsdoc@0.16.0': {}
+  '@microsoft/tsdoc@0.17.0': {}
 
   '@napi-rs/wasm-runtime@1.1.6(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
     dependencies:
@@ -6414,7 +6422,7 @@ snapshots:
       - core-js
       - supports-color
 
-  '@rushstack/node-core-library@5.24.1(@types/node@26.6.3)':
+  '@rushstack/node-core-library@5.24.2(@types/node@26.6.3)':
     dependencies:
       ajv: 8.20.0
       ajv-draft-04: 1.0.0(ajv@8.20.0)
@@ -6436,17 +6444,17 @@ snapshots:
       jju: 1.4.0
       resolve: 1.22.12
 
-  '@rushstack/terminal@0.24.4(@types/node@26.6.3)':
+  '@rushstack/terminal@0.24.5(@types/node@26.6.3)':
     dependencies:
-      '@rushstack/node-core-library': 5.24.1(@types/node@26.6.3)
+      '@rushstack/node-core-library': 5.24.2(@types/node@26.6.3)
       '@rushstack/problem-matcher': 0.2.1(@types/node@26.6.3)
       supports-color: 8.1.1
     optionalDependencies:
       '@types/node': 26.6.3
 
-  '@rushstack/ts-command-line@5.3.14(@types/node@26.6.3)':
+  '@rushstack/ts-command-line@5.3.15(@types/node@26.6.3)':
     dependencies:
-      '@rushstack/terminal': 0.24.4(@types/node@26.6.3)
+      '@rushstack/terminal': 0.24.5(@types/node@26.6.3)
       '@types/argparse': 1.0.38
       argparse: 1.0.10
       string-argv: 0.3.2
@@ -6545,17 +6553,23 @@ snapshots:
       tsdown: 0.23.0(@tsdown/css@0.23.0)(@tsdown/exe@0.23.0)(tsx@4.23.15)(typescript@6.0.3)
       verkit: 0.4.1
 
-  '@turbo/darwin-64@2.11.4': {}
+  '@turbo/darwin-64@2.11.4':
+    optional: true
 
-  '@turbo/darwin-arm64@2.11.4': {}
+  '@turbo/darwin-arm64@2.11.4':
+    optional: true
 
-  '@turbo/linux-64@2.11.4': {}
+  '@turbo/linux-64@2.11.4':
+    optional: true
 
-  '@turbo/linux-arm64@2.11.4': {}
+  '@turbo/linux-arm64@2.11.4':
+    optional: true
 
-  '@turbo/windows-64@2.11.4': {}
+  '@turbo/windows-64@2.11.4':
+    optional: true
 
-  '@turbo/windows-arm64@2.11.4': {}
+  '@turbo/windows-arm64@2.11.4':
+    optional: true
 
   '@tybys/wasm-util@0.10.4':
     dependencies:
