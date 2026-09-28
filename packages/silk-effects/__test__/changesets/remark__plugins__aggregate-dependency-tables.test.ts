@@ -1,3 +1,4 @@
+import type { Table } from "mdast";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
@@ -5,6 +6,7 @@ import { unified } from "unified";
 import { describe, expect, it } from "vitest";
 
 import { AggregateDependencyTablesPlugin } from "../../src/changesets/remark/plugins/aggregate-dependency-tables.js";
+import { parseDependencyTable } from "../../src/changesets/utils/dependency-table.js";
 
 function transform(md: string): string {
 	return unified()
@@ -36,32 +38,31 @@ ${TABLE_HEADER}
 		expect(axiosIdx).toBeLessThan(zlibIdx);
 	});
 
-	it("merges tables mixing the legacy escaped spelling and the new literal spelling", () => {
-		// This test's own pipeline stringifies with plain remark-stringify (not
-		// the kit's escapeStyle-aware emitter), which escapes underscores
-		// regardless of source spelling — irrelevant to the behavior under
-		// test, so "newpkg" avoids conflating the two concerns. The tilde
-		// range is the character this goal cares about: it must merge and
-		// survive as a value, not that the merge output's own re-escaping
-		// spells it any particular way.
+	it("collapses one dependency written in the legacy escaped spelling and the new literal spelling", () => {
+		// Rows collapse on dependency + type, so the NAME carries the spelling
+		// difference: if either spelling decoded to a different value, the two
+		// rows would not collapse and a stray backslash would survive.
 		const md = `## 1.0.0
 
 ### Dependencies
 
 ${TABLE_HEADER}
-| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |
+| some\\_pkg | dependency | updated | \\~0.2.0 | \\~0.2.1 |
 
 ### Dependencies
 
 ${TABLE_HEADER}
-| newpkg | dependency | updated | 1.0.0 | 2.0.0 |
+| some_pkg | dependency | updated | ~0.2.1 | ~0.3.0 |
 `;
-		const result = transform(md);
-		const headingCount = (result.match(/### Dependencies/g) || []).length;
-		expect(headingCount).toBe(1);
-		expect(result).toContain("@effected/semver");
-		expect(result).toContain("newpkg");
-		expect(result).toContain("0.2.1");
+		const tables = unified()
+			.use(remarkParse)
+			.use(remarkGfm)
+			.parse(transform(md))
+			.children.filter((node): node is Table => node.type === "table");
+		expect(tables).toHaveLength(1);
+		expect(parseDependencyTable(tables[0])).toEqual([
+			{ dependency: "some_pkg", type: "dependency", action: "updated", from: "~0.2.0", to: "~0.3.0" },
+		]);
 	});
 
 	it("merges two dependency tables in one version block", () => {
