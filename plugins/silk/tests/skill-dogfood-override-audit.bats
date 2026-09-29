@@ -166,3 +166,167 @@ make_workspace() {
 	run node "$SCRIPT" "${WORKSPACE}/nope.yaml"
 	[ "$status" -eq 2 ]
 }
+
+@test "names EBADDEVENGINES as the cause of an unverified probe" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	write_stub npm <<-'EOF'
+		#!/usr/bin/env bash
+		echo 'npm error code EBADDEVENGINES' >&2
+		exit 1
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"UNVERIFIED"* ]]
+	[[ "$output" == *"EBADDEVENGINES"* ]]
+	[[ "$output" != *"network or registry error"* ]]
+	[[ "$output" == *"1 unverified probe(s)"* ]]
+}
+
+# fail_all_stubs — every package manager binary fails with a generic error, so
+# the UNVERIFIED line (which names the detected manager and its source) is the
+# observable for detection tests.
+fail_all_stubs() {
+	local name
+	for name in npm pnpm bun yarn; do
+		write_stub "$name" <<-'EOF'
+			#!/usr/bin/env bash
+			printf '%s %s\n' "$(basename "$0")" "$*" >> "$NPM_CALL_LOG"
+			echo "boom" >&2
+			exit 1
+		EOF
+	done
+}
+
+# detect <expected> — run the audit and assert which manager it detected.
+assert_detected() {
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"repo package manager: $1"* ]]
+}
+
+@test "detects the package manager from devEngines first" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	fail_all_stubs
+	cat > "${WORKSPACE}/package.json" <<-'EOF'
+		{"name":"root","devEngines":{"packageManager":{"name":"bun"}},"packageManager":"pnpm@11.0.0"}
+	EOF
+	touch "${WORKSPACE}/yarn.lock"
+	assert_detected "bun via devEngines.packageManager"
+}
+
+@test "detects the package manager from the packageManager field before a lockfile" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	fail_all_stubs
+	echo '{"name":"root","packageManager":"pnpm@11.0.0"}' > "${WORKSPACE}/package.json"
+	touch "${WORKSPACE}/yarn.lock"
+	assert_detected "pnpm via packageManager field"
+}
+
+@test "detects the package manager from a lockfile, then defaults to npm" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	fail_all_stubs
+	touch "${WORKSPACE}/yarn.lock"
+	assert_detected "yarn via yarn.lock"
+	rm "${WORKSPACE}/yarn.lock"
+	touch "${WORKSPACE}/pnpm-lock.yaml"
+	assert_detected "pnpm via pnpm-lock.yaml"
+	rm "${WORKSPACE}/pnpm-lock.yaml"
+	assert_detected "npm via default"
+}
+
+@test "probes a pnpm repo with pnpm from the repo, never with npm" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	echo '{"name":"root","devEngines":{"packageManager":{"name":"pnpm"}}}' > "${WORKSPACE}/package.json"
+	write_stub pnpm <<-'EOF'
+		#!/usr/bin/env bash
+		printf 'pnpm %s @ %s\n' "$*" "$PWD" >> "$NPM_CALL_LOG"
+		printf '"0.2.1"\n'
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"1 warning(s)"* ]]
+	[[ "$output" != *"UNVERIFIED"* ]]
+	grep -q '^pnpm view @effected/glob@^0.2.0 version --json' "$NPM_CALL_LOG"
+	! grep -q '^npm ' "$NPM_CALL_LOG"
+}
+
+@test "treats a pnpm no-matching-version JSON error as definitively none" {
+	make_workspace "file:./artifact/pkg" "^0.3.0"
+	echo '{"name":"root","packageManager":"pnpm@11.0.0"}' > "${WORKSPACE}/package.json"
+	write_stub pnpm <<-'EOF'
+		#!/usr/bin/env bash
+		echo '{"error":{"code":"ERR_PNPM_PACKAGE_NOT_FOUND","message":"No matching version found for @effected/glob@^0.3.0"}}'
+		exit 1
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 unverified probe(s)"* ]]
+	[[ "$output" == *"0 warning(s)"* ]]
+}
+
+@test "probes a bun repo with bun info" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	echo '{"name":"root","packageManager":"bun@1.4.0"}' > "${WORKSPACE}/package.json"
+	write_stub bun <<-'EOF'
+		#!/usr/bin/env bash
+		printf 'bun %s\n' "$*" >> "$NPM_CALL_LOG"
+		printf '"0.2.1"\n'
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"1 warning(s)"* ]]
+	grep -q '^bun info @effected/glob@^0.2.0 version --json' "$NPM_CALL_LOG"
+}
+
+@test "probes a yarn repo through npm, because yarn npm info cannot resolve ranges" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	echo '{"name":"root","packageManager":"yarn@4.18.1"}' > "${WORKSPACE}/package.json"
+	export NPM_VIEW_OUTPUT='"0.2.1"'
+	write_stub yarn <<-'EOF'
+		#!/usr/bin/env bash
+		echo "yarn" >> "$NPM_CALL_LOG"
+		exit 1
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"1 warning(s)"* ]]
+	grep -q '^view @effected/glob@^0.2.0 version --json' "$NPM_CALL_LOG"
+	! grep -qx yarn "$NPM_CALL_LOG"
+}
+
+@test "falls back to npm from outside the repo when the detected binary is missing" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	echo '{"name":"root","packageManager":"pnpm@11.0.0"}' > "${WORKSPACE}/package.json"
+	write_stub npm <<-'EOF'
+		#!/usr/bin/env bash
+		printf 'npm %s @ %s\n' "$*" "$PWD" >> "$NPM_CALL_LOG"
+		if grep -q packageManager package.json 2>/dev/null; then
+			echo 'npm error code EBADDEVENGINES' >&2
+			exit 1
+		fi
+		printf '"0.2.1"\n'
+	EOF
+	# A PATH holding only node and the stub's own tools: no pnpm resolves.
+	mkdir -p "${BATS_TEST_TMPDIR}/node-only"
+	for tool in node bash env grep; do
+		ln -s "$(command -v "$tool")" "${BATS_TEST_TMPDIR}/node-only/$tool"
+	done
+	PATH="${STUB_BIN}:${BATS_TEST_TMPDIR}/node-only" run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"1 warning(s)"* ]]
+	[[ "$output" != *"UNVERIFIED"* ]]
+	! grep -q "@ ${WORKSPACE}\$" "$NPM_CALL_LOG"
+}
+
+@test "names the manager, the commands tried and EBADDEVENGINES when npm is the cause" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	fail_all_stubs
+	write_stub npm <<-'EOF'
+		#!/usr/bin/env bash
+		echo 'npm error code EBADDEVENGINES' >&2
+		exit 1
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"npm view @effected/glob@^0.2.0 version --json"* ]]
+}
