@@ -182,7 +182,7 @@ catalogs:
       specifier: 0.18.1
       version: 0.18.1
     '@rsbuild/core':
-      specifier: ^2.2.9
+      specifier: ^2.2.10
       version: 2.2.10
     '@tsdown/css':
       specifier: ^0.23.0
@@ -194,7 +194,7 @@ catalogs:
       specifier: ^1.4.2
       version: 1.4.2
     '@types/node':
-      specifier: ^26.6.2
+      specifier: ^26.6.3
       version: 26.6.3
     '@types/react':
       specifier: ^19.3.0
@@ -209,7 +209,7 @@ catalogs:
       specifier: ^19.3.0
       version: 19.3.0
     rolldown:
-      specifier: ^1.2.10
+      specifier: ^1.2.11
       version: 1.2.11
     tsdown:
       specifier: ^0.23.0
@@ -315,7 +315,7 @@ catalogs:
       specifier: ^9.1.7
       version: 9.1.7
     lint-staged:
-      specifier: ^17.5.1
+      specifier: ^17.6.0
       version: 17.6.0
     markdownlint-cli2:
       specifier: ^0.23.3
@@ -324,33 +324,33 @@ catalogs:
       specifier: ^0.0.8
       version: 0.0.8
     turbo:
-      specifier: ^2.11.3
+      specifier: ^2.11.5
       version: 2.11.5
   silk:
     '@types/node':
-      specifier: ^26.6.2
+      specifier: ^26.6.3
       version: 26.6.3
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
   test:
     '@vitest/coverage-istanbul':
-      specifier: ^5.0.1
+      specifier: ^5.0.2
       version: 5.0.2
     '@vitest/coverage-v8':
-      specifier: ^5.0.1
+      specifier: ^5.0.2
       version: 5.0.2
     '@vitest/expect':
-      specifier: ^5.0.1
+      specifier: ^5.0.2
       version: 5.0.2
     '@yarnpkg/cli-dist':
       specifier: ^4.18.1
       version: 4.18.1
     vite:
-      specifier: ^8.3.0
+      specifier: ^8.3.1
       version: 8.3.1
     vitest:
-      specifier: ^5.0.1
+      specifier: ^5.0.2
       version: 5.0.2
 
 overrides:
