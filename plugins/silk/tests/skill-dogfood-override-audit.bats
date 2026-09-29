@@ -305,7 +305,7 @@ assert_detected() {
 	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"1 warning(s)"* ]]
-	grep -q "@ ${WORKSPACE}\$" "$NPM_CALL_LOG"
+	grep -q "@ $(cd "$WORKSPACE" && pwd -P)\$" "$NPM_CALL_LOG"
 }
 
 @test "falls back to npm from outside the repo when the detected binary is missing" {
@@ -343,4 +343,42 @@ assert_detected() {
 	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"npm view @effected/glob@^0.2.0 version --json"* ]]
+}
+
+@test "falls back to npm when the pnpm probe exits 0 with output that is not JSON" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	echo '{"name":"root","packageManager":"pnpm@11.0.0"}' > "${WORKSPACE}/package.json"
+	write_stub pnpm <<-'EOF2'
+		#!/usr/bin/env bash
+		printf 'pnpm %s\n' "$*" >> "$NPM_CALL_LOG"
+		echo "Progress: resolved 1, reused 0"
+	EOF2
+	write_stub npm <<-'EOF2'
+		#!/usr/bin/env bash
+		printf 'npm %s\n' "$*" >> "$NPM_CALL_LOG"
+		printf '"0.2.1"\n'
+	EOF2
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"UNVERIFIED"* ]]
+	[[ "$output" == *"1 warning(s)"* ]]
+	grep -q '^pnpm view ' "$NPM_CALL_LOG"
+	grep -q '^npm view ' "$NPM_CALL_LOG"
+}
+
+@test "names every command tried when all probes print output that is not JSON" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	echo '{"name":"root","packageManager":"pnpm@11.0.0"}' > "${WORKSPACE}/package.json"
+	for name in pnpm npm; do
+		write_stub "$name" <<-'EOF2'
+			#!/usr/bin/env bash
+			echo "not json at all"
+		EOF2
+	done
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"UNVERIFIED"* ]]
+	[[ "$output" == *"\`pnpm view @effected/glob@^0.2.0 version --json\`, then \`npm view @effected/glob@^0.2.0 version --json\`"* ]]
+	[[ "$output" == *"unparseable"* ]]
+	[[ "$output" == *"1 unverified probe(s)"* ]]
 }

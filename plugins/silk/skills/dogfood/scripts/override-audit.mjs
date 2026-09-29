@@ -163,7 +163,14 @@ function registryVersionSatisfying(packageName, range) {
 		const { command, args, cwd } = probeCommand(manager, spec, workspaceDir);
 		const result = run(command, args, cwd);
 		attempts.push(`${command} ${args.join(" ")}`);
-		if (result.ok) return interpret(result.stdout);
+		if (result.ok) {
+			const answer = interpret(result.stdout);
+			if (answer.status !== "unavailable") return answer;
+			// Exit 0 but not JSON (a progress banner, a proxy page) is not an answer:
+			// keep the command in the record and let the next manager try.
+			last = { status: "unavailable", cause: answer.cause, attempts };
+			continue;
+		}
 		if (
 			/E404|404 Not Found|ERR_PNPM_FETCH_404|ERR_PNPM_PACKAGE_NOT_FOUND|No matching version found/i.test(result.output)
 		) {
@@ -184,7 +191,7 @@ function interpret(stdout) {
 		if (typeof parsed === "string") return { status: "found", version: parsed };
 		if (Array.isArray(parsed) && parsed.length > 0) return { status: "found", version: parsed[parsed.length - 1] };
 	} catch {
-		return { status: "unavailable", cause: "other", attempts: [] };
+		return { status: "unavailable", cause: "unparseable" };
 	}
 	return { status: "none" };
 }
@@ -220,6 +227,7 @@ for (const { name, override } of overrides) {
 	const causes = {
 		devengines: "EBADDEVENGINES — a devEngines.packageManager constraint is being enforced against npm",
 		"binary-missing": "the package manager binary was not found on PATH",
+		unparseable: "the probe exited 0 but printed output that is not JSON (unparseable probe output)",
 		other: "network or registry error",
 	};
 	for (const { range, result } of probes) {
