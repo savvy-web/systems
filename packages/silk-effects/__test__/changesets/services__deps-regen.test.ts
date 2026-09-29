@@ -6,8 +6,10 @@ import { describe, expect, it } from "@effect/vitest";
 import { Git } from "@effected/git";
 import {
 	CatalogSet,
+	LockfileReader,
 	PackageStateSnapshot,
 	PublishabilityDetector,
+	WorkspaceCatalogs,
 	WorkspaceDiscovery,
 	WorkspaceSnapshots,
 	WorkspaceStateSnapshot,
@@ -62,6 +64,13 @@ const pitStub = (before: WorkspaceStateSnapshot, after: WorkspaceStateSnapshot):
 		at: (ref: string) => Effect.succeed(ref === "BEFORE" ? before : after),
 		worktree: () => Effect.succeed(after),
 	} as never);
+
+/**
+ * The worktree memos `plan()` refreshes before snapshotting (#715). The kit's
+ * doubles hold no memo, so their `refresh` is an honest no-op; every other
+ * method dies loudly if the code under test ever reads through them.
+ */
+const worktreeMemoStubs = Layer.mergeAll(WorkspaceCatalogs.layerTest(), LockfileReader.layerTest());
 
 describe("depsChangesetFilename", () => {
 	it("maps a scoped package name to <scope>-<name>-deps.md", () => {
@@ -137,7 +146,7 @@ describe("DepsRegen plan/execute", () => {
 		DetectorLayer,
 		configStub({ versionPrivate: false, ignored: [] }),
 	);
-	const live = DepsRegen.layer.pipe(Layer.provide(deps), Layer.provide(Git.layer));
+	const live = DepsRegen.layer.pipe(Layer.provide(worktreeMemoStubs), Layer.provide(deps), Layer.provide(Git.layer));
 
 	const cannedDiff: WorkspaceDependencyDiff = {
 		package: "@x/a",
@@ -313,7 +322,11 @@ describe("DepsRegen plan/execute", () => {
 				DetectorLayerMulti,
 				configStub({ versionPrivate: false, ignored: [] }),
 			);
-			const liveMulti = DepsRegen.layer.pipe(Layer.provide(depsMulti), Layer.provide(Git.layer));
+			const liveMulti = DepsRegen.layer.pipe(
+				Layer.provide(worktreeMemoStubs),
+				Layer.provide(depsMulti),
+				Layer.provide(Git.layer),
+			);
 
 			const program = Effect.gen(function* () {
 				const svc = yield* DepsRegen;
@@ -412,7 +425,11 @@ describe("DepsRegen plan/execute", () => {
 				DetectorLayer,
 				configStub({ versionPrivate: false, ignored: [] }),
 			);
-			const liveCollide = DepsRegen.layer.pipe(Layer.provide(depsCollide), Layer.provide(Git.layer));
+			const liveCollide = DepsRegen.layer.pipe(
+				Layer.provide(worktreeMemoStubs),
+				Layer.provide(depsCollide),
+				Layer.provide(Git.layer),
+			);
 
 			const plan = yield* Effect.gen(function* () {
 				const svc = yield* DepsRegen;
@@ -481,6 +498,7 @@ describe("DepsRegen — coexisting prose changesets are surfaced, not silently i
 		detect: () => Effect.succeed([{}]),
 	} as never);
 	const live = DepsRegen.layer.pipe(
+		Layer.provide(worktreeMemoStubs),
 		Layer.provide(
 			Layer.mergeAll(
 				pitStub(before, after),
@@ -617,7 +635,11 @@ describe("DepsRegen — devDependency-only diffs must not delete pure changesets
 		DevDepDetectorLayer,
 		configStub({ versionPrivate: false, ignored: [] }),
 	);
-	const devDepLive = DepsRegen.layer.pipe(Layer.provide(devDeps), Layer.provide(Git.layer));
+	const devDepLive = DepsRegen.layer.pipe(
+		Layer.provide(worktreeMemoStubs),
+		Layer.provide(devDeps),
+		Layer.provide(Git.layer),
+	);
 
 	it.effect("plan() excludes the pre-existing pure changeset from toDelete, and execute() leaves it on disk", () =>
 		Effect.gen(function* () {
@@ -712,7 +734,7 @@ describe("DepsRegen gating matrix — versionable minus ignored (#209)", () => {
 			GatingDetectorLayer,
 			config,
 		);
-		const live = DepsRegen.layer.pipe(Layer.provide(deps), Layer.provide(Git.layer));
+		const live = DepsRegen.layer.pipe(Layer.provide(worktreeMemoStubs), Layer.provide(deps), Layer.provide(Git.layer));
 		const program = Effect.gen(function* () {
 			const svc = yield* DepsRegen;
 			return yield* svc.plan({ cwd: dir, from: "BEFORE", to: "AFTER", ...options });

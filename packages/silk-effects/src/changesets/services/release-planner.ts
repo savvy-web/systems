@@ -607,6 +607,11 @@ function applyEffect(
 		// rather than thrown inside `Effect.map` — where it would become an uncaught
 		// defect and crash `apply()`.
 		const newVersionByName = new Map(plan.releases.map((r) => [r.name, r.newVersion]));
+		// ConfigInspector caches per root for the service's lifetime; refresh
+		// this root so a long-lived host resolves versionFiles against the
+		// config and workspace on disk now, not an earlier call's
+		// (savvy-web/systems#715). Invalidate-only; inspect re-reads.
+		yield* inspector.refreshIn(root);
 		const inspected = yield* inspector
 			.inspect(root)
 			.pipe(

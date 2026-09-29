@@ -234,6 +234,13 @@ function makeShape(inspector: ConfigInspectorShape, git: GitReads): BranchAnalyz
 		opts?: { readonly baseBranch?: string },
 	): Effect.Effect<BranchAnalysis, ConfigurationError | GitError> =>
 		Effect.gen(function* () {
+			// ConfigInspector caches per root with no self-expiry, and in a
+			// long-lived host (savvy-mcp) this service outlives any one tree
+			// state. Refresh the root being analyzed before reading it so the
+			// release surface is the tree as it is now, whichever front end
+			// calls in (savvy-web/systems#715, the #229 precedent moved into the
+			// service). Per-root: only this tree's cache is dropped.
+			yield* inspector.refreshIn(cwd);
 			const inspected = yield* inspector.inspect(cwd);
 
 			const baseBranch = yield* resolveBaseBranch(git, {

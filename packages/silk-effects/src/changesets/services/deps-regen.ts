@@ -34,7 +34,9 @@
 import { basename, join, resolve } from "node:path";
 import { Git } from "@effected/git";
 import type {
+	LockfileReaderShape,
 	PublishabilityDetectorShape,
+	WorkspaceCatalogsShape,
 	WorkspaceDiscoveryFailure,
 	WorkspaceDiscoveryShape,
 	WorkspaceSnapshotAtFailure,
@@ -43,7 +45,14 @@ import type {
 	WorkspaceStateSnapshot,
 	WorkspacesOptions,
 } from "@effected/workspaces";
-import { PublishabilityDetector, WorkspaceDiscovery, WorkspaceSnapshots, Workspaces } from "@effected/workspaces";
+import {
+	LockfileReader,
+	PublishabilityDetector,
+	WorkspaceCatalogs,
+	WorkspaceDiscovery,
+	WorkspaceSnapshots,
+	Workspaces,
+} from "@effected/workspaces";
 import { Yaml } from "@effected/yaml";
 import type { Path } from "effect";
 import { Context, Effect, FileSystem, Layer, Option } from "effect";
@@ -58,7 +67,7 @@ import type { RegenPlan, RegenResult } from "../schemas/deps-regen.js";
 import type { WorkspaceDependencyDiff } from "../utils/dep-diff.js";
 import { computeWorkspaceDependencyDiffs } from "../utils/dep-diff.js";
 import { serializeDependencyTableToMarkdown, sortDependencyRows } from "../utils/dependency-table.js";
-import { gitListChangesetFilesAtRef, gitMergeBase, gitShowFileAtRef } from "../utils/git.js";
+import { gitListChangesetFilesAtRef, gitMergeBase, gitResolveRef, gitShowFileAtRef } from "../utils/git.js";
 import { listPublishablePackageNames } from "../utils/publishability.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
 import { ConfigInspector } from "./config-inspector.js";
@@ -469,12 +478,18 @@ export class DepsRegen extends Context.Service<DepsRegen, DepsRegenShape>()("Cha
 	/**
 	 * Production layer for {@link DepsRegen}.
 	 *
-	 * Requires `WorkspaceSnapshots`, `WorkspaceDiscovery`,
-	 * `PublishabilityDetector` (all from `@effected/workspaces`),
+	 * Requires `WorkspaceSnapshots`, `WorkspaceDiscovery`, `WorkspaceCatalogs`,
+	 * `LockfileReader`, `PublishabilityDetector` (all from `@effected/workspaces`),
 	 * `Git` (from `@effected/git`, backing merge-base resolution),
 	 * {@link ConfigInspector}, {@link ChangesetConfig}, and
 	 * `FileSystem.FileSystem` (resolved once at construction and closed over by
 	 * the shape, keeping `plan`/`execute` themselves requirement-free).
+	 *
+	 * `WorkspaceCatalogs` and `LockfileReader` must be the SAME instances the
+	 * provided `WorkspaceSnapshots` reads its worktree through (one shared kit
+	 * graph, as `Workspaces.*` composites give): `plan` refreshes them before
+	 * snapshotting the worktree so a long-lived host never diffs against a
+	 * memo from an earlier call (savvy-web/systems#715).
 	 *
 	 * @public
 	 */
@@ -484,6 +499,8 @@ export class DepsRegen extends Context.Service<DepsRegen, DepsRegenShape>()("Cha
 		| WorkspaceSnapshots
 		| ConfigInspector
 		| WorkspaceDiscovery
+		| WorkspaceCatalogs
+		| LockfileReader
 		| PublishabilityDetector
 		| ChangesetConfig
 		| Git
@@ -494,11 +511,22 @@ export class DepsRegen extends Context.Service<DepsRegen, DepsRegenShape>()("Cha
 			const snapshots = yield* WorkspaceSnapshots;
 			const inspector = yield* ConfigInspector;
 			const discovery = yield* WorkspaceDiscovery;
+			const catalogs = yield* WorkspaceCatalogs;
+			const lockfiles = yield* LockfileReader;
 			const detector = yield* PublishabilityDetector;
 			const config = yield* ChangesetConfig;
 			const fs = yield* FileSystem.FileSystem;
 			const git = yield* Git;
-			return makeShape(snapshots, inspector, discovery, detector, config, fs, Layer.succeed(Git, git));
+			return makeShape(
+				snapshots,
+				inspector,
+				discovery,
+				{ catalogs, lockfiles },
+				detector,
+				config,
+				fs,
+				Layer.succeed(Git, git),
+			);
 		}),
 	);
 }
@@ -516,6 +544,7 @@ function makeShape(
 	snapshots: WorkspaceSnapshotsShape,
 	inspector: ConfigInspectorShape,
 	discovery: WorkspaceDiscoveryShape,
+	worktreeMemos: { readonly catalogs: WorkspaceCatalogsShape; readonly lockfiles: LockfileReaderShape },
 	detector: PublishabilityDetectorShape,
 	config: ChangesetConfigShape,
 	fs: FileSystem.FileSystem,
@@ -554,9 +583,30 @@ function makeShape(
 			yield* inspector.refresh();
 			yield* config.refresh();
 
+			// The worktree snapshot below is assembled from THREE kit memos, and
+			// the inspector refresh above drops only discovery's. WorkspaceCatalogs
+			// memoizes catalogs, importer versions and the config-dependency hook
+			// replays; LockfileReader memoizes the parsed lockfile that catalog
+			// assembly reads first. Both live for the layer's lifetime, so in a
+			// long-lived host (savvy-mcp) a branch switch plus `pnpm install`
+			// left worktree() answering from the first call's tree while
+			// configDependencies below are read fresh — the #674 guard then
+			// failed HookReplayError, and a catalog or lockfile edit silently
+			// diffed as unchanged (savvy-web/systems#715). Both refreshes only
+			// invalidate; the next read re-assembles. The lockfile goes first
+			// because catalog assembly reads through it.
+			yield* worktreeMemos.lockfiles.refresh();
+			yield* worktreeMemos.catalogs.refresh();
+
 			// Resolve the "from" ref — explicit `from`, else merge-base with the
-			// (possibly overridden) base branch.
-			let fromRef = options.from;
+			// (possibly overridden) base branch. An explicit ref is pinned to its
+			// SHA: `snapshots.at()` caches per ref string for the layer's lifetime,
+			// so a branch name would otherwise be frozen at the commit it named on
+			// the first call of a long-lived host (#715). The merge-base is
+			// already a SHA.
+			let fromRef = options.from
+				? yield* gitResolveRef(resolvedCwd, options.from).pipe(Effect.provide(provideGit))
+				: "";
 			if (!fromRef) {
 				let baseBranch = options.base;
 				if (!baseBranch) {
@@ -577,8 +627,12 @@ function makeShape(
 			// diff already resolved. The kit's WorkspaceSnapshots resolves its root
 			// from the layer it was built with (`{ cwd }` option) — single-root by
 			// design, so `options.cwd` must sit inside that workspace.
+			// `to`, like an explicit `from`, is pinned to its SHA first (#715).
+			const toRef = options.to
+				? yield* gitResolveRef(resolvedCwd, options.to).pipe(Effect.provide(provideGit))
+				: undefined;
 			const before = yield* snapshots.at(fromRef);
-			const after = options.to ? yield* snapshots.at(options.to) : yield* snapshots.worktree();
+			const after = toRef ? yield* snapshots.at(toRef) : yield* snapshots.worktree();
 
 			// Hook-replay guard (#674): the only committed evidence that a
 			// hook-injected catalog moved between the refs is `configDependencies`
@@ -590,11 +644,11 @@ function makeShape(
 				yield* gitShowFileAtRef(resolvedCwd, fromRef, workspaceYaml).pipe(Effect.provide(provideGit)),
 			);
 			const declaredAfter = yield* declaredConfigDependencies(
-				options.to
-					? yield* gitShowFileAtRef(resolvedCwd, options.to, workspaceYaml).pipe(Effect.provide(provideGit))
+				toRef
+					? yield* gitShowFileAtRef(resolvedCwd, toRef, workspaceYaml).pipe(Effect.provide(provideGit))
 					: yield* fs.readFileString(join(resolvedCwd, workspaceYaml)).pipe(Effect.option),
 			);
-			yield* assertHooksReplayed(fromRef, declaredBefore, before);
+			yield* assertHooksReplayed(options.from || fromRef, declaredBefore, before);
 			yield* assertHooksReplayed(options.to ?? "worktree", declaredAfter, after);
 
 			const rawDiffs = computeWorkspaceDependencyDiffs(before, after);
