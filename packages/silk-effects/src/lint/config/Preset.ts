@@ -59,6 +59,7 @@ export class Preset {
 			yaml: extend.yaml ?? false,
 			pnpmWorkspace: extend.pnpmWorkspace ?? false,
 			shellScripts: extend.shellScripts ?? false,
+			textFiles: extend.textFiles ?? false,
 			typescript: extend.typescript ?? false,
 		};
 
@@ -80,6 +81,7 @@ export class Preset {
 	 * - Yaml (format + lint)
 	 * - PnpmWorkspace (sort + format)
 	 * - ShellScripts (chmod management)
+	 * - TextFiles (NUL-byte / invalid UTF-8 check)
 	 *
 	 * @param extend - Options to customize or extend the preset
 	 * @returns A lint-staged configuration object
@@ -102,6 +104,7 @@ export class Preset {
 			yaml: extend.yaml ?? {},
 			pnpmWorkspace: extend.pnpmWorkspace ?? {},
 			shellScripts: extend.shellScripts ?? {},
+			textFiles: extend.textFiles ?? {},
 
 			// Disable advanced handlers
 			typescript: extend.typescript ?? false,
@@ -125,6 +128,7 @@ export class Preset {
 	 * - Yaml (format + lint)
 	 * - PnpmWorkspace (sort + format)
 	 * - ShellScripts (chmod management)
+	 * - TextFiles (NUL-byte / invalid UTF-8 check)
 	 * - TypeScript (TSDoc + typecheck)
 	 *
 	 * @param extend - Options to customize or extend the preset
@@ -148,6 +152,7 @@ export class Preset {
 			yaml: extend.yaml ?? {},
 			pnpmWorkspace: extend.pnpmWorkspace ?? {},
 			shellScripts: extend.shellScripts ?? {},
+			textFiles: extend.textFiles ?? {},
 			typescript: extend.typescript ?? {},
 		};
 

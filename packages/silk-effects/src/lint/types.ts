@@ -124,6 +124,25 @@ export interface ShellScriptsOptions extends BaseHandlerOptions {
 }
 
 /**
+ * Options for the TextFiles handler: only the shared `exclude` list.
+ */
+export type TextFilesOptions = BaseHandlerOptions;
+
+/**
+ * Options for `TextFiles.listTracked`.
+ */
+export interface TextFilesListOptions extends BaseHandlerOptions {
+	/**
+	 * List for a staged (index) check: keep every regular-file index entry,
+	 * including one deleted from the working tree without the deletion being
+	 * staged — the commit still records its blob. When `false`, entries with
+	 * no working-tree file are dropped, since a worktree read would fail.
+	 * @defaultValue false
+	 */
+	staged?: boolean;
+}
+
+/**
  * Options for the Yaml handler.
  */
 export interface YamlOptions extends BaseHandlerOptions {
@@ -195,6 +214,11 @@ export interface CreateConfigOptions {
 	 * Options for ShellScripts handler, or false to disable.
 	 */
 	shellScripts?: ShellScriptsOptions | false;
+
+	/**
+	 * Options for TextFiles handler (NUL-byte / invalid UTF-8 check), or false to disable.
+	 */
+	textFiles?: TextFilesOptions | false;
 
 	/**
 	 * Options for Yaml handler, or false to disable.

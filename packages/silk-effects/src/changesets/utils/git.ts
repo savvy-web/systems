@@ -40,6 +40,30 @@ export function gitMergeBase(cwd: string, base: string): Effect.Effect<string, G
 }
 
 /**
+ * Pin `ref` to the commit it names right now (`git rev-parse --verify`).
+ *
+ * @remarks
+ * `WorkspaceSnapshots.at(ref)` caches per ref STRING for the layer's
+ * lifetime, which is only sound for an immutable ref. A branch or tag name
+ * handed to a long-lived host (savvy-mcp) would otherwise keep answering
+ * from the commit it named on first use (savvy-web/systems#715); keying the
+ * snapshot on the SHA makes every cache hit correct by construction.
+ *
+ * Tolerant: an unresolvable ref, or a `cwd` outside a git repository, hands
+ * back `ref` unchanged, so the snapshot read that follows reports the
+ * failure in its own typed terms (and synthetic refs keep working against
+ * test doubles).
+ *
+ * @internal
+ */
+export function gitResolveRef(cwd: string, ref: string): Effect.Effect<string, never, Git> {
+	return Effect.gen(function* () {
+		const git = yield* Git;
+		return yield* git.revParse(cwd, ref).pipe(Effect.orElseSucceed(() => ref));
+	});
+}
+
+/**
  * List the basenames of `.changeset/*.md` files tracked at `ref` (e.g. the
  * merge base), via `git ls-tree -r`. Used by `DepsRegen.plan()`
  * to protect changesets authored by already-merged PRs from being deleted by

@@ -38,7 +38,7 @@
 //     equivalent in silk-effects. Lint-specific and platform-agnostic.
 //
 //   handlers/* — COPIED
-//     All seven handlers (Biome, Markdown, PackageJson, PnpmWorkspace,
+//     All seven original handlers (Biome, Markdown, PackageJson, PnpmWorkspace,
 //     ShellScripts, TypeScript, Yaml). No equivalent in silk-effects.
 //     Handlers use ../utils/Command.ts, ../utils/Filter.ts, ../utils/Workspace.ts
 //     which are correct relative to their location in handlers/.
@@ -100,6 +100,15 @@ export { PackageJson } from "./handlers/PackageJson.js";
 export type { PnpmWorkspaceContent } from "./handlers/PnpmWorkspace.js";
 export { PnpmWorkspace } from "./handlers/PnpmWorkspace.js";
 export { ShellScripts } from "./handlers/ShellScripts.js";
+export type { TextFileStagedCheck } from "./handlers/TextFiles.js";
+export {
+	TextFileFinding,
+	TextFileStagedReadError,
+	TextFileStagedReadErrorBase,
+	TextFileViolation,
+	TextFileViolationReason,
+	TextFiles,
+} from "./handlers/TextFiles.js";
 export type { TypeScriptCompiler } from "./handlers/TypeScript.js";
 export { TypeScript } from "./handlers/TypeScript.js";
 export { Yaml } from "./handlers/Yaml.js";
@@ -124,6 +133,8 @@ export type {
 	PnpmWorkspaceOptions,
 	PresetType,
 	ShellScriptsOptions,
+	TextFilesListOptions,
+	TextFilesOptions,
 	TypeScriptOptions,
 	YamlOptions,
 } from "./types.js";

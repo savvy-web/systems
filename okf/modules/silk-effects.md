@@ -23,8 +23,8 @@ sources:
     resource: ../../packages/silk-effects/src/services
 generated:
   by: okfit/claude-code
-  at: 2026-09-27T16:20:22Z
-  body_sha256: 03d4aee0ccec87ca671d56a1b422eadbda057628acc74c638b1f5b329bc4cfc6
+  at: 2026-09-29T08:12:15Z
+  body_sha256: 465b3b61d7343487df227b8399b6b36489b5da458b9e56d13af18a76df6f4449
 ---
 
 # silk-effects
@@ -76,9 +76,9 @@ Each rule under `hook/rules/` is an independent `Rule` with its own severity —
 
 ### Lint
 
-`Lint` (`src/lint/`, `export * as Lint`) holds the business logic of the former `@savvy-web/lint-staged` package: one handler per file kind (`Biome`, `Markdown`, `PackageJson`, `PnpmWorkspace`, `ShellScripts`, `TypeScript`, `Yaml`), the `Preset`/`createConfig` lint-staged configuration builders, and the `SAVVY-LINT` managed-section id the CLI installs.[^lint]
+`Lint` (`src/lint/`, `export * as Lint`) holds the business logic of the former `@savvy-web/lint-staged` package: one handler per file kind (`Biome`, `Markdown`, `PackageJson`, `PnpmWorkspace`, `ShellScripts`, `TextFiles`, `TypeScript`, `Yaml`), the `Preset`/`createConfig` lint-staged configuration builders, and the `SAVVY-LINT` managed-section id the CLI installs.[^lint]
 
-Every handler is reachable two ways — as a lint-staged handler and as a `savvy lint fmt <name>` CLI subcommand — so a handler's byte-format step must be a public static both entry points call, and the operation must be idempotent, or the two paths silently rewrite a file differently.[^lint] `Lint.Yaml` formats user-authored YAML synchronously through `@effected/yaml` (a pure IO-free tier); it has no config-file tier, and `indentSequences` is the option that matters — `quoteStyle` governs only newly-created scalars.[^lint]
+Every handler is reachable two ways — as a lint-staged handler and as a `savvy lint fmt <name>` CLI subcommand — so a handler's byte-format step must be a public static both entry points call, and the operation must be idempotent, or the two paths silently rewrite a file differently.[^lint] `Lint.TextFiles` is a read-only check rather than a formatter — it fails a file containing a NUL byte or invalid UTF-8, which `grep`/`rg` would skip — so its CLI entry point is `savvy lint text`, not a `fmt` subcommand, and the rule above does not apply to it. It is on in `Preset.silk()`, `Preset.standard()` and `createConfig`, off in `Preset.minimal()`. `Lint.Yaml` formats user-authored YAML synchronously through `@effected/yaml` (a pure IO-free tier); it has no config-file tier, and `indentSequences` is the option that matters — `quoteStyle` governs only newly-created scalars.[^lint]
 
 ### Turbo
 

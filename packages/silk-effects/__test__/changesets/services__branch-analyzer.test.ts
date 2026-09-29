@@ -364,6 +364,42 @@ describe("BranchAnalyzer.analyzeBranch", () => {
 		}),
 	);
 
+	it.effect("refreshes the analyzed root's inspector cache before reading it (#715)", () =>
+		Effect.gen(function* () {
+			const { dir } = setupGitFixture({ inspectedFor: (d) => inspectedConfig(d) });
+			trash.push(dir);
+			git(dir, "branch", "trunk", "main");
+
+			// A caching inspector double: `inspect` serves its memo until
+			// `refreshIn` drops it, the contract the live ConfigInspector keeps.
+			// The config on "disk" changes between the two analyses; only a
+			// refresh inside analyzeBranch lets the second one see it.
+			let onDisk = inspectedConfig(dir);
+			let memo: InspectedConfig | undefined;
+			const refreshed: string[] = [];
+			const inspectorModule = yield* Effect.promise(() => import("../../src/changesets/services/config-inspector.js"));
+			const cachingInspector = Layer.succeed(inspectorModule.ConfigInspector, {
+				inspect: () => Effect.sync(() => (memo ??= onDisk)),
+				classify: () => Effect.sync(() => []),
+				refresh: () => Effect.sync(() => (memo = undefined)),
+				refreshIn: (directory: string) =>
+					Effect.sync(() => {
+						refreshed.push(directory);
+						memo = undefined;
+					}),
+			});
+			const layer = BranchAnalyzer.layer.pipe(Layer.provide(cachingInspector), Layer.provide(NodeServices.layer));
+
+			const first = yield* runAnalyze(layer, dir);
+			onDisk = inspectedConfig(dir, { baseBranch: "trunk" });
+			const second = yield* runAnalyze(layer, dir);
+
+			expect(first.baseBranch).toBe("main");
+			expect(second.baseBranch).toBe("trunk");
+			expect(refreshed).toEqual([dir, dir]);
+		}),
+	);
+
 	it.effect("includes unstaged modifications to tracked files", () =>
 		Effect.gen(function* () {
 			const { dir, layer } = setupGitFixture({

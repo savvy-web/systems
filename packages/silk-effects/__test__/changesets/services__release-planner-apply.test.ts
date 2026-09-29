@@ -2,7 +2,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
-import { Cause, Effect, Exit, Result } from "effect";
+import { Cause, Effect, Exit, Layer, Result } from "effect";
 import { Changesets } from "../../src/index.js";
 import { makeReleaseFixture, readFixtureChangelog } from "./support/release-fixture.js";
 
@@ -143,6 +143,66 @@ describe("ReleasePlanner.apply (versionFiles)", () => {
 			// (b) non-dry: the file on disk is updated to 1.1.0
 			const diskContent = JSON.parse(readFileSync(pluginJsonPath, "utf-8")) as { version: string };
 			expect(diskContent.version).toBe("1.1.0");
+		}),
+	);
+
+	it.effect("refreshes the root's inspector cache so a later apply sees versionFiles added since (#715)", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+				changesets: [{ id: "brave-lions-sing", releases: { "@scope/a": "minor" }, summary: "feat: vf test" }],
+			});
+			roots.push(root);
+			const pkgDir = join(root, "packages/a");
+			const pluginJsonPath = join(pkgDir, "plugin.json");
+			writeFileSync(pluginJsonPath, `${JSON.stringify({ version: "1.0.0" }, null, 2)}\n`, "utf-8");
+
+			// A caching inspector double: `inspect` serves its memo until
+			// `refreshIn` drops it — the live ConfigInspector's contract. The
+			// versionFiles config on "disk" appears between the two applies,
+			// as it would across calls into a long-lived host.
+			const base: Changesets.InspectedConfig = {
+				configPath: join(root, ".changeset/config.json"),
+				projectDir: root,
+				changelog: "@changesets/cli/changelog",
+				baseBranch: "main",
+				access: "restricted",
+				ignore: [],
+				packages: [],
+				legacyVersionFilesUsed: false,
+			};
+			let onDisk = base;
+			let memo: Changesets.InspectedConfig | undefined;
+			const cachingInspector = Layer.succeed(Changesets.ConfigInspector, {
+				inspect: () => Effect.sync(() => (memo ??= onDisk)),
+				classify: () => Effect.sync(() => []),
+				refresh: () => Effect.sync(() => (memo = undefined)),
+				refreshIn: () => Effect.sync(() => (memo = undefined)),
+			});
+			const planner = yield* Changesets.ReleasePlanner.pipe(
+				Effect.provide(Changesets.ReleasePlanner.layer),
+				Effect.provide(cachingInspector),
+				Effect.provide(NodeServices.layer),
+			);
+
+			const first = yield* planner.apply(root, { dryRun: true });
+			onDisk = {
+				...base,
+				packages: [
+					{
+						name: "@scope/a",
+						workspaceDir: pkgDir,
+						version: "1.0.0",
+						additionalScopes: [],
+						additionalScopeFiles: [],
+						versionFiles: [{ glob: "plugin.json", paths: ["$.version"], matchedFiles: [pluginJsonPath] }],
+					},
+				],
+			};
+			const second = yield* planner.apply(root, { dryRun: true });
+
+			expect(first.versionFileUpdates).toEqual([]);
+			expect(second.versionFileUpdates.map((u) => [u.filePath, u.version])).toEqual([[pluginJsonPath, "1.1.0"]]);
 		}),
 	);
 

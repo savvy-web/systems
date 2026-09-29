@@ -14,13 +14,14 @@
 // Warn, never fail: a deliberate override of a package that also exists on the
 // registry is the normal mid-loop state once the upstream has published an
 // older version. Exit 0 whether or not warnings were printed; exit 2 only for
-// usage/read errors. Network access is action-time and explicit (`npm view`),
+// usage/read errors. Network access is action-time and explicit (the repo package manager's view command),
 // invoked by --init/--adopt per the skill — never from the background monitor.
 //
 // usage: override-audit.mjs [path/to/pnpm-workspace.yaml]
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 const PRUNED_DIRS = new Set([".claude", ".git", ".repos", "dist", "node_modules"]);
@@ -82,33 +83,115 @@ function collectDeclaredRanges(dir, packageName, ranges) {
 	}
 }
 
-// Ask the registry whether any published version satisfies the range. `npm
-// view '<pkg>@<range>' version --json` does the semver math server-side: empty
-// output means no published version satisfies, and an E404 means the package
-// is not on the registry at all — both are definitive "the override is doing
-// real work" answers ({ status: "none" }). Any other command failure (npm
-// missing, DNS, registry outage) is NOT an answer: it comes back as
-// { status: "unavailable" } so the audit reports the probe as unverified
-// instead of claiming a clean result it never obtained.
-function registryVersionSatisfying(packageName, range) {
-	let stdout;
+// Which package manager the audited repo uses. The probe asks the registry
+// through THAT manager's own view command, not a bare `npm view`: npm 11
+// enforces `devEngines.packageManager` and fails every probe inside a pnpm repo
+// with EBADDEVENGINES (savvy-web/systems#713). Order: devEngines, then the
+// `packageManager` field, then a lockfile, then npm.
+const KNOWN_MANAGERS = new Set(["npm", "pnpm", "yarn", "bun"]);
+function detectPackageManager(dir) {
+	let manifest = {};
 	try {
-		stdout = execFileSync("npm", ["view", `${packageName}@${range}`, "version", "--json"], {
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-	} catch (error) {
-		const stderr = typeof error?.stderr === "string" ? error.stderr : (error?.stderr?.toString?.() ?? "");
-		if (/E404|404 Not Found/i.test(stderr)) return { status: "none" };
-		return { status: "unavailable" };
+		manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+	} catch {
+		// no readable root manifest — fall through to the lockfile check
 	}
+	const devEngine = manifest.devEngines?.packageManager;
+	for (const entry of Array.isArray(devEngine) ? devEngine : [devEngine]) {
+		if (KNOWN_MANAGERS.has(entry?.name)) return { name: entry.name, source: "devEngines.packageManager" };
+	}
+	if (typeof manifest.packageManager === "string") {
+		const name = manifest.packageManager.split("@")[0];
+		if (KNOWN_MANAGERS.has(name)) return { name, source: "packageManager field" };
+	}
+	for (const [file, name] of [
+		["pnpm-lock.yaml", "pnpm"],
+		["yarn.lock", "yarn"],
+		["bun.lock", "bun"],
+		["bun.lockb", "bun"],
+		["package-lock.json", "npm"],
+	]) {
+		if (existsSync(join(dir, file))) return { name, source: file };
+	}
+	return { name: "npm", source: "default" };
+}
+const packageManager = detectPackageManager(workspaceDir);
+
+function run(command, args, cwd) {
+	try {
+		const stdout = execFileSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], cwd });
+		return { ok: true, stdout };
+	} catch (error) {
+		const text = (value) => (typeof value === "string" ? value : (value?.toString?.() ?? ""));
+		// pnpm and bun print their JSON error on stdout, so judge both streams.
+		return { ok: false, missing: error?.code === "ENOENT", output: `${text(error?.stdout)}\n${text(error?.stderr)}` };
+	}
+}
+
+// Probe commands per manager. pnpm and bun run from the repo (bun needs a
+// package.json; each is the repo's own manager, so nothing is enforced against
+// it). Yarn Berry's `yarn npm info` does NOT resolve semver ranges (an
+// unsatisfiable range still answers with the latest version), so it is unusable
+// as an oracle; yarn repos probe through npm from outside the repo, the same
+// route as the fallback. npm runs from the repo only when npm IS the repo's
+// manager, so a project `.npmrc` (a private registry for a scope) still applies;
+// otherwise it runs from the OS tmpdir, out of reach of the repo's devEngines.
+function probeCommand(manager, spec, repoDir) {
+	if (manager === "pnpm") return { command: "pnpm", args: ["view", spec, "version", "--json"], cwd: repoDir };
+	if (manager === "bun") return { command: "bun", args: ["info", spec, "version", "--json"], cwd: repoDir };
+	const cwd = packageManager.name === "npm" ? repoDir : tmpdir();
+	return { command: "npm", args: ["view", spec, "version", "--json"], cwd };
+}
+
+// Ask the registry whether any published version satisfies the range. The
+// manager's view command does the semver math server-side: empty output or a
+// "no matching version" answer means no published version satisfies, and a
+// 404 means the package is not on the registry at all — both are definitive
+// "the override is doing real work" answers ({ status: "none" }). Any other
+// failure (binary missing, DNS, registry outage) is NOT an answer: it comes back
+// as { status: "unavailable", cause, attempts } so the audit reports the probe
+// as unverified instead of claiming a clean result it never obtained. When the
+// detected manager's binary is missing or its probe fails, npm from the tmpdir
+// is tried before giving up.
+function registryVersionSatisfying(packageName, range) {
+	const spec = `${packageName}@${range}`;
+	const managers =
+		packageManager.name === "pnpm" || packageManager.name === "bun" ? [packageManager.name, "npm"] : ["npm"];
+	const attempts = [];
+	let last;
+	for (const manager of managers) {
+		const { command, args, cwd } = probeCommand(manager, spec, workspaceDir);
+		const result = run(command, args, cwd);
+		attempts.push(`${command} ${args.join(" ")}`);
+		if (result.ok) {
+			const answer = interpret(result.stdout);
+			if (answer.status !== "unavailable") return answer;
+			// Exit 0 but not JSON (a progress banner, a proxy page) is not an answer:
+			// keep the command in the record and let the next manager try.
+			last = { status: "unavailable", cause: answer.cause, attempts };
+			continue;
+		}
+		if (
+			/E404|404 Not Found|ERR_PNPM_FETCH_404|ERR_PNPM_PACKAGE_NOT_FOUND|No matching version found/i.test(result.output)
+		) {
+			return { status: "none" };
+		}
+		let cause = "other";
+		if (/EBADDEVENGINES/.test(result.output)) cause = "devengines";
+		else if (result.missing) cause = "binary-missing";
+		last = { status: "unavailable", cause, attempts };
+	}
+	return last;
+}
+
+function interpret(stdout) {
 	if (stdout.trim() === "") return { status: "none" };
 	try {
 		const parsed = JSON.parse(stdout);
 		if (typeof parsed === "string") return { status: "found", version: parsed };
 		if (Array.isArray(parsed) && parsed.length > 0) return { status: "found", version: parsed[parsed.length - 1] };
 	} catch {
-		return { status: "unavailable" };
+		return { status: "unavailable", cause: "unparseable" };
 	}
 	return { status: "none" };
 }
@@ -141,10 +224,18 @@ for (const { name, override } of overrides) {
 	// needs the linked build. Warn only when EVERY declared range has a
 	// satisfying published version — and a failed probe forfeits the claim
 	// entirely, because "unverified" is not "satisfied".
+	const causes = {
+		devengines: "EBADDEVENGINES — a devEngines.packageManager constraint is being enforced against npm",
+		"binary-missing": "the package manager binary was not found on PATH",
+		unparseable: "the probe exited 0 but printed output that is not JSON (unparseable probe output)",
+		other: "network or registry error",
+	};
 	for (const { range, result } of probes) {
 		if (result.status === "unavailable") {
+			const tried =
+				result.attempts.length > 0 ? result.attempts.map((c) => `\`${c}\``).join(", then ") : "the registry probe";
 			console.log(
-				`override-audit: UNVERIFIED — could not probe the registry for ${name}@${range} (npm view failed: npm missing, network, or registry error). This is not a clean audit result for ${name}.`,
+				`override-audit: UNVERIFIED — could not probe the registry for ${name}@${range} (repo package manager: ${packageManager.name} via ${packageManager.source}; tried ${tried}: ${causes[result.cause] ?? causes.other}). This is not a clean audit result for ${name}.`,
 			);
 			unverified += 1;
 		}

@@ -44,6 +44,13 @@ export type PnpmWorkspaceContent = Lint.PnpmWorkspaceContent;
 export const ShellScripts = Lint.ShellScripts;
 export type ShellScripts = typeof Lint.ShellScripts;
 
+export const TextFiles = Lint.TextFiles;
+export type TextFiles = typeof Lint.TextFiles;
+export type TextFileFinding = Lint.TextFileFinding;
+export type TextFileViolation = Lint.TextFileViolation;
+export type TextFileViolationReason = Lint.TextFileViolationReason;
+export type TextFileStagedReadError = Lint.TextFileStagedReadError;
+
 export const TypeScript = Lint.TypeScript;
 export type TypeScript = typeof Lint.TypeScript;
 export type TypeScriptCompiler = Lint.TypeScriptCompiler;
@@ -87,6 +94,7 @@ export type PackageJsonOptions = Lint.PackageJsonOptions;
 export type PnpmWorkspaceOptions = Lint.PnpmWorkspaceOptions;
 export type PresetType = Lint.PresetType;
 export type ShellScriptsOptions = Lint.ShellScriptsOptions;
+export type TextFilesOptions = Lint.TextFilesOptions;
 export type TypeScriptOptions = Lint.TypeScriptOptions;
 export type YamlOptions = Lint.YamlOptions;
 

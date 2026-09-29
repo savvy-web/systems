@@ -7,6 +7,7 @@ import { Markdown } from "../handlers/Markdown.js";
 import { PackageJson } from "../handlers/PackageJson.js";
 import { PnpmWorkspace } from "../handlers/PnpmWorkspace.js";
 import { ShellScripts } from "../handlers/ShellScripts.js";
+import { TextFiles } from "../handlers/TextFiles.js";
 import { TypeScript } from "../handlers/TypeScript.js";
 import { Yaml } from "../handlers/Yaml.js";
 import type { CreateConfigOptions, LintStagedConfig } from "../types.js";
@@ -93,6 +94,12 @@ export function createConfig(options: CreateConfigOptions = {}): LintStagedConfi
 	if (options.shellScripts !== false) {
 		const handlerOptions = typeof options.shellScripts === "object" ? options.shellScripts : {};
 		config[ShellScripts.glob] = ShellScripts.create(handlerOptions);
+	}
+
+	// TextFiles handler (read-only: fails on NUL bytes or invalid UTF-8)
+	if (options.textFiles !== false) {
+		const handlerOptions = typeof options.textFiles === "object" ? options.textFiles : {};
+		config[TextFiles.glob] = TextFiles.create(handlerOptions);
 	}
 
 	// TypeScript handler

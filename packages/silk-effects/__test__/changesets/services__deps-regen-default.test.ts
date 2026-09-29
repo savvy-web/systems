@@ -881,3 +881,257 @@ describe("DepsRegenDefault — config-dependency bump between refs (#674 / effec
 		}),
 	);
 });
+
+describe("DepsRegenDefault — long-lived host sees worktree changes between plans (#715)", () => {
+	const dirs: string[] = [];
+
+	afterEach(() => {
+		while (dirs.length > 0) {
+			const d = dirs.pop();
+			if (d) rmSync(d, { recursive: true, force: true });
+		}
+	});
+
+	const PLUGIN = "@fix/plugin";
+
+	/** A pnpmfile whose `updateConfig` hook injects one `effect:peers` catalog. */
+	const pnpmfileInjecting = (effectVersion: string): string =>
+		[
+			"export const hooks = {",
+			"\tupdateConfig(config) {",
+			`\t\tconfig.catalogs = { ...(config.catalogs ?? {}), "effect:peers": { effect: ${JSON.stringify(effectVersion)} } };`,
+			"\t\treturn config;",
+			"\t},",
+			"};",
+			"",
+		].join("\n");
+
+	const workspaceYamlDeclaring = (version: string): string =>
+		`packages:\n  - "packages/*"\nconfigDependencies:\n  "${PLUGIN}": ${version}+sha512-AAAA\n`;
+
+	/** Install `version` of the plugin as the LIVE `.pnpm-config` copy, as `pnpm install` would. */
+	const installPlugin = (dir: string, version: string, effectVersion: string): void => {
+		const installed = join(dir, "node_modules", ".pnpm-config", PLUGIN);
+		mkdirSync(installed, { recursive: true });
+		writeFileSync(join(installed, "package.json"), `${JSON.stringify({ name: PLUGIN, version })}\n`);
+		writeFileSync(join(installed, "pnpmfile.mjs"), pnpmfileInjecting(effectVersion));
+	};
+
+	/**
+	 * One public package over a committed base, with an injected base-time
+	 * `root/package.json`, `pnpm-workspace.yaml` and `pnpm-lock.yaml` supplied
+	 * by the caller. The worktree starts IDENTICAL to the base, so the first
+	 * `plan()` is a no-op that primes every kit memo.
+	 */
+	function makeFixture(files: {
+		readonly workspaceYaml: string;
+		readonly lockfile?: string;
+		readonly lib: Record<string, unknown>;
+		readonly setup?: (dir: string) => void;
+	}): string {
+		const dir = mkdtempSync(join(tmpdir(), "depsregen-longlived-"));
+		writeFileSync(
+			join(dir, "package.json"),
+			`${JSON.stringify({ name: "fixture-root", version: "0.0.0", private: true }, null, 2)}\n`,
+		);
+		writeFileSync(join(dir, "pnpm-workspace.yaml"), files.workspaceYaml);
+		writeFileSync(join(dir, "pnpm-lock.yaml"), files.lockfile ?? "lockfileVersion: '9.0'\n");
+		writeFileSync(join(dir, ".gitignore"), "node_modules/\nstore/\n");
+		const pkgDir = join(dir, "packages", "lib");
+		mkdirSync(pkgDir, { recursive: true });
+		writeFileSync(
+			join(pkgDir, "package.json"),
+			`${JSON.stringify({ name: "@fix/lib", version: "1.0.0", ...files.lib }, null, 2)}\n`,
+		);
+		mkdirSync(join(dir, ".changeset"), { recursive: true });
+		writeFileSync(
+			join(dir, ".changeset", "config.json"),
+			`${JSON.stringify(
+				{
+					$schema: "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+					changelog: ["@savvy-web/changesets/changelog", {}],
+					commit: false,
+					access: "public",
+					baseBranch: "main",
+					updateInternalDependencies: "patch",
+					ignore: [],
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		files.setup?.(dir);
+		git(dir, "init", "--quiet", "-b", "main");
+		git(dir, "config", "commit.gpgsign", "false");
+		git(dir, "add", "-A");
+		git(dir, "commit", "--quiet", "-m", "base commit");
+		return dir;
+	}
+
+	/**
+	 * Plan, run `mutate` against the tree, plan again — both through ONE built
+	 * layer, the lifetime the savvy-mcp server gives its DepsRegen.
+	 */
+	const planTwice = (dir: string, mutate: () => void) =>
+		Effect.gen(function* () {
+			const svc = yield* DepsRegen;
+			const first = yield* svc.plan({ cwd: dir });
+			mutate();
+			const second = yield* svc.plan({ cwd: dir });
+			return { first, second };
+		}).pipe(Effect.provide(liveFor(dir)));
+
+	it.effect("replays a config dependency bumped after the first plan instead of failing HookReplayError", () =>
+		Effect.gen(function* () {
+			const dir = makeFixture({
+				workspaceYaml: workspaceYamlDeclaring("0.8.15"),
+				lib: { peerDependencies: { effect: "catalog:effect:peers" } },
+				setup: (d) => {
+					installPlugin(d, "0.8.15", "4.0.0-rc.115");
+					// The store keeps the merge-base version once the install moves on.
+					const store = join(d, "store");
+					const stored = join(store, "links", PLUGIN, "0.8.15", "deadbeef", "node_modules", PLUGIN);
+					mkdirSync(stored, { recursive: true });
+					writeFileSync(join(stored, "package.json"), `${JSON.stringify({ name: PLUGIN, version: "0.8.15" })}\n`);
+					writeFileSync(join(stored, "pnpmfile.mjs"), pnpmfileInjecting("4.0.0-rc.115"));
+					writeFileSync(join(d, "node_modules", ".modules.yaml"), `storeDir: ${JSON.stringify(store)}\n`);
+				},
+			});
+			dirs.push(dir);
+
+			// A branch switch plus `pnpm install`: the declaration AND the live
+			// install both move to 0.9.0 between the two calls.
+			const { first, second } = yield* planTwice(dir, () => {
+				writeFileSync(join(dir, "pnpm-workspace.yaml"), workspaceYamlDeclaring("0.9.0"));
+				installPlugin(dir, "0.9.0", "4.0.0-rc.116");
+			});
+
+			expect(first.toWrite).toEqual([]);
+			expect(second.toWrite.map((w) => w.package)).toEqual(["@fix/lib"]);
+			const peer = second.toWrite[0]?.diff.rows.find((r) => r.dependency === "effect" && r.type === "peerDependency");
+			expect(peer?.from).toBe("4.0.0-rc.115");
+			expect(peer?.to).toBe("4.0.0-rc.116");
+		}),
+	);
+
+	it.effect("resolves catalog: specifiers against an inline catalog edited after the first plan", () =>
+		Effect.gen(function* () {
+			const inlineCatalog = (range: string): string =>
+				`packages:\n  - "packages/*"\ncatalog:\n  left-pad: ${JSON.stringify(range)}\n`;
+			const dir = makeFixture({
+				workspaceYaml: inlineCatalog("^1.0.0"),
+				lib: { dependencies: { "left-pad": "catalog:" } },
+			});
+			dirs.push(dir);
+
+			const { first, second } = yield* planTwice(dir, () => {
+				writeFileSync(join(dir, "pnpm-workspace.yaml"), inlineCatalog("^1.1.0"));
+			});
+
+			expect(first.toWrite).toEqual([]);
+			const rows = second.toWrite[0]?.diff.rows ?? [];
+			expect(rows.map((r) => [r.dependency, r.type, r.from, r.to])).toEqual([
+				["left-pad", "dependency", "^1.0.0", "^1.1.0"],
+			]);
+		}),
+	);
+
+	it.effect("resolves catalog: specifiers against a lockfile-recorded catalog changed after the first plan", () =>
+		Effect.gen(function* () {
+			const lockfileCatalog = (range: string, version: string): string =>
+				[
+					"lockfileVersion: '9.0'",
+					"",
+					"settings:",
+					"  autoInstallPeers: true",
+					"  excludeLinksFromLockfile: false",
+					"",
+					"catalogs:",
+					"  default:",
+					"    left-pad:",
+					`      specifier: ${range}`,
+					`      version: ${version}`,
+					"",
+					"importers:",
+					"",
+					"  .: {}",
+					"",
+					"  packages/lib:",
+					"    dependencies:",
+					"      left-pad:",
+					"        specifier: 'catalog:'",
+					`        version: ${version}`,
+					"",
+				].join("\n");
+			const dir = makeFixture({
+				workspaceYaml: 'packages:\n  - "packages/*"\n',
+				lockfile: lockfileCatalog("^1.0.0", "1.0.0"),
+				lib: { dependencies: { "left-pad": "catalog:" } },
+			});
+			dirs.push(dir);
+
+			const { first, second } = yield* planTwice(dir, () => {
+				writeFileSync(join(dir, "pnpm-lock.yaml"), lockfileCatalog("^1.1.0", "1.1.0"));
+			});
+
+			expect(first.toWrite).toEqual([]);
+			const rows = second.toWrite[0]?.diff.rows ?? [];
+			expect(rows.map((r) => [r.dependency, r.type, r.from, r.to])).toEqual([
+				["left-pad", "dependency", "^1.0.0", "^1.1.0"],
+			]);
+		}),
+	);
+
+	it.effect("re-reads a moving branch-name ref passed as `to` after it advances", () =>
+		Effect.gen(function* () {
+			const dir = makeFixture({
+				workspaceYaml: 'packages:\n  - "packages/*"\n',
+				lib: { dependencies: { "left-pad": "^1.0.0" } },
+			});
+			dirs.push(dir);
+			const base = git(dir, "rev-parse", "HEAD").trim();
+			git(dir, "branch", "feature");
+
+			// `to: "feature"` names a branch, not a commit: the kit caches at(ref)
+			// per ref STRING, so the second plan must not be served the branch's
+			// first-seen commit after it moves.
+			const { first, second } = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				const first = yield* svc.plan({ cwd: dir, from: base, to: "feature" });
+				git(dir, "checkout", "--quiet", "feature");
+				const pkgJsonPath = join(dir, "packages", "lib", "package.json");
+				const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
+				raw.dependencies["left-pad"] = "^1.1.0";
+				writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
+				git(dir, "commit", "--quiet", "-am", "bump on feature");
+				const second = yield* svc.plan({ cwd: dir, from: base, to: "feature" });
+				return { first, second };
+			}).pipe(Effect.provide(liveFor(dir)));
+
+			expect(first.toWrite).toEqual([]);
+			const rows = second.toWrite[0]?.diff.rows ?? [];
+			expect(rows.map((r) => [r.dependency, r.from, r.to])).toEqual([["left-pad", "^1.0.0", "^1.1.0"]]);
+		}),
+	);
+
+	it.effect("reports a manifest edit made after the first plan", () =>
+		Effect.gen(function* () {
+			const dir = makeFixture({
+				workspaceYaml: 'packages:\n  - "packages/*"\n',
+				lib: { dependencies: { "left-pad": "^1.0.0" } },
+			});
+			dirs.push(dir);
+
+			const { first, second } = yield* planTwice(dir, () => {
+				const pkgJsonPath = join(dir, "packages", "lib", "package.json");
+				const raw = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies: Record<string, string> };
+				raw.dependencies["is-odd"] = "^3.0.0";
+				writeFileSync(pkgJsonPath, `${JSON.stringify(raw, null, 2)}\n`);
+			});
+
+			expect(first.toWrite).toEqual([]);
+			const rows = second.toWrite[0]?.diff.rows ?? [];
+			expect(rows.map((r) => [r.dependency, r.type])).toEqual([["is-odd", "dependency"]]);
+		}),
+	);
+});

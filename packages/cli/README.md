@@ -54,7 +54,7 @@ npx savvy clean --globs dist,.turbo,coverage
 - `savvy clean` — removes build and cache artifacts (`dist`, `.turbo`, `coverage`, `node_modules`, `.rslib` by default) from every workspace package (leaves first) and the repo root (last); `--globs` to customize, `--dry-run` to preview.
 - `savvy commit` — the husky/Claude hook handlers (session-start, pre-commit-message, post-commit-verify).
 - `savvy changeset` — changeset lint, check, transform, version, config validation, and dependency changesets.
-- `savvy lint` — formatters for package.json, the pnpm workspace file and YAML.
+- `savvy lint` — formatters for package.json, the pnpm workspace file and YAML, plus `savvy lint text`, which fails files that contain a NUL byte or invalid UTF-8 (`--staged` checks the git index copy).
 - `savvy repos` — the vendored reference repos declared in `.repos/config.json`: `status` (with `--drift`), `sync`, `pin`, `add`, `note`, `remove`, `rename` and `restore`.
 
 ## Vendored repos are read-only
