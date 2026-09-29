@@ -97,9 +97,9 @@ describe("savvy changeset deps regen (adapter)", () => {
 			});
 
 			const out = yield* collectStdout("/repo", true, true, layer);
-			const rendered: Changesets.RegenPlan = JSON.parse(out);
+			const rendered: Changesets.RegenPlan & { dryRun: boolean } = JSON.parse(out);
 
-			expect(rendered).toEqual(cannedPlan);
+			expect(rendered).toEqual({ ...cannedPlan, dryRun: true });
 			for (const entry of rendered.toWrite) {
 				expect(entry.diff.rows.some((row) => row.type === "devDependency")).toBe(false);
 			}
@@ -134,6 +134,38 @@ describe("savvy changeset deps regen (adapter)", () => {
 			yield* collectStdout("/repo", false, true, layer);
 
 			expect(receivedPlan).toEqual(cannedPlan);
+		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	it.live("reports dryRun: false alongside the plan fields in real-run JSON", () =>
+		Effect.gen(function* () {
+			const out = yield* collectStdout("/repo", false, true, makeStubLayer());
+
+			expect(JSON.parse(out)).toEqual({ ...cannedPlan, dryRun: false });
+		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	it.live("renders dry-run human output as a plan, not as completed work", () =>
+		Effect.gen(function* () {
+			const out = yield* collectStdout("/repo", true, false, makeStubLayer());
+
+			expect(out).toContain("Would delete 1 pure dependency changeset(s):");
+			expect(out).toContain("Would write 1 dependency changeset(s):");
+			expect(out).toContain("/repo/.changeset/stale-changeset.md  (@scope/foo)");
+			expect(out).toContain("+ /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)");
+			expect(out).not.toContain("✓");
+			expect(out).not.toContain("Deleted");
+			expect(out).not.toContain("Wrote");
+		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	it.live("renders real-run human output as completed work", () =>
+		Effect.gen(function* () {
+			const out = yield* collectStdout("/repo", false, false, makeStubLayer());
+
+			expect(out).toContain("✓ Deleted 1 pure dependency changeset(s):");
+			expect(out).toContain("✓ Wrote 1 fresh dependency changeset(s):");
+			expect(out).not.toContain("Would");
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

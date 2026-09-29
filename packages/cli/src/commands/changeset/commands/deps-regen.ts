@@ -31,6 +31,12 @@
  * (the regen default) and protocol specifiers (`catalog:`/`workspace:`)
  * are resolved to concrete versions.
  *
+ * **Dry-run reporting.** With `--dry-run` nothing is written or deleted, so
+ * the human output is phrased as a plan (`Would delete N pure dependency
+ * changeset(s):` / `Would write N dependency changeset(s):`) rather than the
+ * real run's `✓ Deleted …` / `✓ Wrote …`. `--json` emits the plan's fields
+ * plus an explicit `dryRun` boolean in both modes.
+ *
  * @example
  * ```bash
  * savvy changeset deps regen
@@ -106,26 +112,34 @@ export function runDepsRegen(
 		}
 
 		if (json) {
-			yield* Console.log(JSON.stringify(plan, null, 2));
+			yield* Console.log(JSON.stringify({ ...plan, dryRun }, null, 2));
 		} else {
-			yield* renderHumanPlan(plan);
+			yield* renderHumanPlan(plan, dryRun);
 		}
 	});
 }
 
-function renderHumanPlan(plan: RegenPlan) {
+/**
+ * Render the plan for a person. A dry run changed nothing, so its headings are
+ * plan-phrased and carry no `✓`; a real run reports the completed work.
+ */
+function renderHumanPlan(plan: RegenPlan, dryRun: boolean) {
 	return Effect.gen(function* () {
 		if (plan.toDelete.length === 0 && plan.toWrite.length === 0) {
 			yield* Output.ok("No dependency changes to regenerate");
 		} else {
 			if (plan.toDelete.length > 0) {
-				yield* Output.ok(`Deleted ${plan.toDelete.length} pure dependency changeset(s):`);
+				yield* dryRun
+					? Output.heading(`Would delete ${plan.toDelete.length} pure dependency changeset(s):`)
+					: Output.ok(`Deleted ${plan.toDelete.length} pure dependency changeset(s):`);
 				for (const entry of plan.toDelete) {
 					yield* Output.detail(`${entry.file}  (${entry.package})`);
 				}
 			}
 			if (plan.toWrite.length > 0) {
-				yield* Output.ok(`Wrote ${plan.toWrite.length} fresh dependency changeset(s):`);
+				yield* dryRun
+					? Output.heading(`Would write ${plan.toWrite.length} dependency changeset(s):`)
+					: Output.ok(`Wrote ${plan.toWrite.length} fresh dependency changeset(s):`);
 				for (const entry of plan.toWrite) {
 					yield* Output.detail(
 						`+ ${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`,
