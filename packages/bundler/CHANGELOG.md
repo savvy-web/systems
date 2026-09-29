@@ -1,5 +1,17 @@
 # @savvy-web/bundler
 
+## 2.4.16
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| rolldown | dependency | updated | ^1.2.10 | ^1.2.11 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.4.15
 
 ### Dependencies
