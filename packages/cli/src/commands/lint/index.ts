@@ -1,10 +1,11 @@
 import { Command } from "effect/cli";
 
 import { fmtCommand } from "./fmt.js";
+import { textCommand } from "./text.js";
 
 /* v8 ignore start -- CLI registration; each command tested via exported handler */
 const _lintCommand = Command.make("lint").pipe(
-	Command.withSubcommands([fmtCommand]),
+	Command.withSubcommands([fmtCommand, textCommand]),
 	Command.withDescription("Code-quality: lint-staged config, checks, and in-place formatting"),
 );
 
@@ -22,3 +23,4 @@ export const lintCommand = _lintCommand;
 // Re-export named handlers for B5/B6 orchestrator consumption.
 export { runLintCheck } from "./check.js";
 export { runLintInit } from "./init.js";
+export { runLintText } from "./text.js";

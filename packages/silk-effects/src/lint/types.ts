@@ -124,6 +124,11 @@ export interface ShellScriptsOptions extends BaseHandlerOptions {
 }
 
 /**
+ * Options for the TextFiles handler: only the shared `exclude` list.
+ */
+export type TextFilesOptions = BaseHandlerOptions;
+
+/**
  * Options for the Yaml handler.
  */
 export interface YamlOptions extends BaseHandlerOptions {
@@ -195,6 +200,11 @@ export interface CreateConfigOptions {
 	 * Options for ShellScripts handler, or false to disable.
 	 */
 	shellScripts?: ShellScriptsOptions | false;
+
+	/**
+	 * Options for TextFiles handler (NUL-byte / invalid UTF-8 check), or false to disable.
+	 */
+	textFiles?: TextFilesOptions | false;
 
 	/**
 	 * Options for Yaml handler, or false to disable.

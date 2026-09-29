@@ -59,6 +59,19 @@ describe("lint shims", () => {
 			expect(typeof mod.ShellScripts.create).toBe("function");
 		});
 
+		it("exports TextFiles handler with glob, create() and classify()", async () => {
+			const mod = await import("../src/lint/index.js");
+			expect(mod.TextFiles).toBeDefined();
+			expect(mod.TextFiles.glob).toContain("ts");
+			expect(typeof mod.TextFiles.create).toBe("function");
+			expect(mod.TextFiles.classify(Uint8Array.of(0x61, 0x00))).toHaveLength(1);
+		});
+
+		it("includes the TextFiles handler in the silk preset", async () => {
+			const mod = await import("../src/lint/index.js");
+			expect(mod.Preset.silk()[mod.TextFiles.glob]).toBeDefined();
+		});
+
 		it("exports TypeScript handler with glob and create()", async () => {
 			const mod = await import("../src/lint/index.js");
 			expect(mod.TypeScript).toBeDefined();
