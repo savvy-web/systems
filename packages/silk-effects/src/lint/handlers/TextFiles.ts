@@ -10,7 +10,7 @@ import { Git } from "@effected/git";
 import type { PlatformError } from "effect";
 import { Data, Effect, FileSystem, Path, Schema, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
-import type { LintStagedHandler, TextFilesOptions } from "../types.js";
+import type { LintStagedHandler, TextFilesListOptions, TextFilesOptions } from "../types.js";
 import { Command } from "../utils/Command.js";
 import { Filter } from "../utils/Filter.js";
 
@@ -102,6 +102,25 @@ export class TextFileStagedReadError extends TextFileStagedReadErrorBase<{
 		const detail = this.stderr.trim();
 		return `cannot read the staged content of ${this.path} (git cat-file exited ${this.exitCode})${detail ? `: ${detail}` : ""}`;
 	}
+}
+
+/**
+ * The outcome of {@link TextFiles.checkStagedFiles}: the findings in every
+ * staged blob that could be read, and a read error for each file that could
+ * not.
+ *
+ * @remarks
+ * An unreadable file does not stop the check: every other file is still read
+ * and classified, so one path without an index entry cannot hide a finding
+ * elsewhere. Both arrays keep the input order.
+ *
+ * @public
+ */
+export interface TextFileStagedCheck {
+	/** One finding per violation across the readable files. */
+	readonly findings: ReadonlyArray<TextFileFinding>;
+	/** One error per file whose staged content could not be read. */
+	readonly unreadable: ReadonlyArray<TextFileStagedReadError>;
 }
 
 /**
@@ -308,6 +327,9 @@ export class TextFiles {
 	 * Runs `git cat-file blob :./<name>` from the file's own directory, so an
 	 * absolute path (what lint-staged passes) and a relative one both resolve
 	 * against the right repository without computing a repo-relative path.
+	 * When that directory is gone from the working tree (a staged file whose
+	 * directory was deleted, deletion unstaged), it runs from the nearest
+	 * existing ancestor with the path relative to it instead.
 	 * Stdout is collected as raw bytes — `\@effected/git`'s `show` decodes to a
 	 * string, which would erase exactly the NULs and invalid bytes this check
 	 * looks for. Reading the index makes the lint-staged run race-free against
@@ -322,15 +344,21 @@ export class TextFiles {
 	): Effect.Effect<
 		Uint8Array,
 		TextFileStagedReadError | PlatformError.PlatformError,
-		ChildProcessSpawner.ChildProcessSpawner | Path.Path
+		ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
 	> {
 		return Effect.scoped(
 			Effect.gen(function* () {
 				const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+				const fs = yield* FileSystem.FileSystem;
 				const pathService = yield* Path.Path;
-				const command = ChildProcess.make("git", ["cat-file", "blob", `:./${pathService.basename(path)}`], {
-					cwd: pathService.dirname(path),
-				});
+				let cwd = pathService.dirname(path);
+				while (!(yield* fs.exists(cwd))) {
+					const parent = pathService.dirname(cwd);
+					if (parent === cwd) break;
+					cwd = parent;
+				}
+				const relative = pathService.relative(cwd, path).split(pathService.sep).join("/");
+				const command = ChildProcess.make("git", ["cat-file", "blob", `:./${relative}`], { cwd });
 				const handle = yield* spawner.spawn(command);
 				const [chunks, stderr, exitCode] = yield* Effect.all(
 					[Stream.runCollect(handle.stdout), Stream.mkString(Stream.decodeText(handle.stderr)), handle.exitCode],
@@ -354,26 +382,36 @@ export class TextFiles {
 	 * Read each file's STAGED content (see {@link TextFiles.readStaged}) and
 	 * classify it, in order.
 	 *
+	 * @remarks
+	 * Every file is checked: a file whose staged content cannot be read is
+	 * collected into {@link TextFileStagedCheck.unreadable} rather than
+	 * failing the whole check, so it cannot hide findings in the others. Only
+	 * a platform failure (git could not be spawned) fails the effect.
+	 *
 	 * @param paths - Files to check
-	 * @returns One finding per violation, empty when every staged blob passes
+	 * @returns The findings, and a read error per unreadable file; both empty when every staged blob passes
 	 */
 	static checkStagedFiles(
 		paths: ReadonlyArray<string>,
 	): Effect.Effect<
-		ReadonlyArray<TextFileFinding>,
-		TextFileStagedReadError | PlatformError.PlatformError,
-		ChildProcessSpawner.ChildProcessSpawner | Path.Path
+		TextFileStagedCheck,
+		PlatformError.PlatformError,
+		ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
 	> {
 		return Effect.map(
 			Effect.forEach(
 				paths,
 				(path) =>
-					Effect.map(TextFiles.readStaged(path), (bytes) =>
-						TextFiles.classify(bytes).map((v) => TextFileFinding.make({ path, ...v })),
+					TextFiles.readStaged(path).pipe(
+						Effect.map((bytes) => TextFiles.classify(bytes).map((v) => TextFileFinding.make({ path, ...v }))),
+						Effect.catchTag("TextFileStagedReadError", (error) => Effect.succeed(error)),
 					),
 				{ concurrency: 8 },
 			),
-			(perFile) => perFile.flat(),
+			(perFile) => ({
+				findings: perFile.flatMap((outcome) => (Array.isArray(outcome) ? outcome : [])),
+				unreadable: perFile.filter((outcome): outcome is TextFileStagedReadError => !Array.isArray(outcome)),
+			}),
 		);
 	}
 
@@ -383,17 +421,20 @@ export class TextFiles {
 	 * @remarks
 	 * Reads the index (`git ls-files`), keeping regular files (modes `100644`
 	 * and `100755`) — gitlinks and symlinks are not file contents — that match
-	 * {@link TextFiles.matches}, are not excluded, and still exist in the
-	 * working tree. Paths come back joined onto `cwd`, deduplicated across the
-	 * stages of an unresolved merge.
+	 * {@link TextFiles.matches} and are not excluded. For a worktree check the
+	 * file must also still exist in the working tree; with `staged: true` it
+	 * need not, since a file deleted from the worktree without the deletion
+	 * staged is still in the commit and {@link TextFiles.readStaged} reads its
+	 * blob from the index. Paths come back joined onto `cwd`, deduplicated
+	 * across the stages of an unresolved merge.
 	 *
 	 * @param cwd - Repository directory to list from
-	 * @param options - `exclude` patterns; defaults to {@link TextFiles.defaultExcludes}
+	 * @param options - `exclude` patterns (defaults to {@link TextFiles.defaultExcludes}) and `staged`
 	 * @returns The files to check
 	 */
 	static listTracked(
 		cwd: string,
-		options: TextFilesOptions = {},
+		options: TextFilesListOptions = {},
 	): Effect.Effect<
 		ReadonlyArray<string>,
 		GitCommandError | NotARepositoryError | UnknownRefError | PlatformError.PlatformError,
@@ -414,6 +455,7 @@ export class TextFiles {
 				),
 			];
 			const kept = Filter.exclude(candidates, excludes).map((file) => path.join(cwd, file));
+			if (options.staged) return kept;
 			return yield* Effect.filter(kept, (file) => fs.exists(file), { concurrency: 16 });
 		});
 	}

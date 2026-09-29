@@ -323,9 +323,10 @@ describe("TextFiles.readStaged / checkStagedFiles (real temp git repo)", () => {
 		Effect.gen(function* () {
 			const files = [join(root, "src/index-dirty.ts"), join(root, "clean-in-index.md")];
 			const staged = yield* TextFiles.checkStagedFiles(files);
-			expect(staged.map((f) => [f.path, f.reason, f.line, f.column])).toEqual([
+			expect(staged.findings.map((f) => [f.path, f.reason, f.line, f.column])).toEqual([
 				[join(root, "src/index-dirty.ts"), "nul", 1, 12],
 			]);
+			expect(staged.unreadable).toEqual([]);
 			// Control: the worktree read of the same paths sees the opposite.
 			const worktree = yield* TextFiles.checkFiles(files);
 			expect(worktree.map((f) => [f.path, f.reason])).toEqual([[join(root, "clean-in-index.md"), "invalid-utf8"]]);
@@ -341,5 +342,70 @@ describe("TextFiles.readStaged / checkStagedFiles (real temp git repo)", () => {
 			expect(error.exitCode).not.toBe(0);
 			expect(error.message).toContain("untracked.ts");
 		}).pipe(Effect.provide(NodeServices.layer)),
+	);
+
+	it.effect("checks every file when one has no index entry, reporting the unreadable one per file", () =>
+		Effect.gen(function* () {
+			const files = [join(root, "src/index-dirty.ts"), join(root, "untracked.ts"), join(root, "clean-in-index.md")];
+			const staged = yield* TextFiles.checkStagedFiles(files);
+			// The NUL in the file listed first is still found; the unreadable file does not abort the run.
+			expect(staged.findings.map((f) => [f.path, f.reason])).toEqual([[join(root, "src/index-dirty.ts"), "nul"]]);
+			expect(staged.unreadable.map((e) => [e._tag, e.path])).toEqual([
+				["TextFileStagedReadError", join(root, "untracked.ts")],
+			]);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	);
+
+	it.effect("reads the index blob of a file whose directory is gone from the worktree", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(root, "gone"));
+			writeFileSync(join(root, "gone/deleted.ts"), bytes("x", [0], "\n"));
+			git("add", "gone/deleted.ts");
+			rmSync(join(root, "gone"), { recursive: true, force: true });
+			const staged = yield* TextFiles.readStaged(join(root, "gone/deleted.ts"));
+			expect(Array.from(staged)).toEqual([0x78, 0x00, 0x0a]);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	);
+});
+
+/**
+ * A file staged and then deleted from the worktree (the deletion NOT staged)
+ * is still in the commit: the staged listing must keep it, the worktree
+ * listing must not.
+ */
+describe("TextFiles.listTracked (real temp git repo)", () => {
+	let root: string;
+	const git = (...args: ReadonlyArray<string>) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+	const layer = Layer.provideMerge(Git.layer, NodeServices.layer);
+
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "text-files-list-"));
+		git("init", "-q");
+		writeFileSync(join(root, "kept.ts"), "export {};\n");
+		mkdirSync(join(root, "gone"));
+		writeFileSync(join(root, "gone/index-only.ts"), bytes("x", [0], "\n"));
+		git("add", "kept.ts", "gone/index-only.ts");
+		rmSync(join(root, "gone"), { recursive: true, force: true });
+	});
+
+	afterEach(() => {
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	it.effect("keeps an index-only entry when listing for a staged check", () =>
+		Effect.gen(function* () {
+			const files = yield* TextFiles.listTracked(root, { staged: true });
+			expect([...files].sort()).toEqual([join(root, "gone/index-only.ts"), join(root, "kept.ts")]);
+			const staged = yield* TextFiles.checkStagedFiles(files);
+			expect(staged.findings.map((f) => [f.path, f.reason])).toEqual([[join(root, "gone/index-only.ts"), "nul"]]);
+			expect(staged.unreadable).toEqual([]);
+		}).pipe(Effect.provide(layer)),
+	);
+
+	it.effect("drops an index-only entry when listing for a worktree check", () =>
+		Effect.gen(function* () {
+			expect(yield* TextFiles.listTracked(root)).toEqual([join(root, "kept.ts")]);
+			expect(yield* TextFiles.listTracked(root, { staged: false })).toEqual([join(root, "kept.ts")]);
+		}).pipe(Effect.provide(layer)),
 	);
 });

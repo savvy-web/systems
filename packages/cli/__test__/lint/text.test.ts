@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
@@ -120,8 +120,47 @@ describe("savvy lint text --staged (real temp git repo)", () => {
 			writeFileSync(file, "export {};\n");
 			const result = yield* Capture.run(runLintText([file], { staged: true }));
 			expect(result.exitCode).toBe(1);
-			expect(result.stdout).toEqual([]);
+			// No finding line; the unreadable file only shows in the summary, counted as failed.
+			expect(result.stdout).toEqual(["1 failed"]);
 			expect(result.stderr.join("\n")).toContain(`cannot read the staged content of ${file}`);
+		}).pipe(Effect.provide(Capture.piped), Effect.provide(Layer.provideMerge(Git.layer, NodeServices.layer))),
+	);
+
+	it.effect("reports the other files' findings when one path is unstaged, and exits 1", () =>
+		Effect.gen(function* () {
+			writeFileSync(join(root, "b.ts"), "export const b = 1;\n");
+			git("add", "b.ts");
+			const unstaged = join(root, "never-added.ts");
+			writeFileSync(unstaged, "export {};\n");
+			const a = join(root, "a.ts");
+			const result = yield* Capture.run(runLintText([unstaged, a, join(root, "b.ts")], { staged: true }));
+			expect(result.exitCode).toBe(1);
+			expect(result.value.map((finding) => finding.path)).toEqual([a]);
+			expect(result.stdout[0]?.startsWith(`✗ ${a}:1:2  contains a NUL byte`)).toBe(true);
+			// The unreadable file is a diagnostic: stderr, never stdout, and counted as failed.
+			expect(result.stderr.join("\n")).toContain(`cannot read the staged content of ${unstaged}`);
+			expect(result.stdout.join("\n")).not.toContain("never-added.ts");
+			expect(result.stdout.at(-1)).toBe("1 ok · 2 failed");
+		}).pipe(Effect.provide(Capture.piped), Effect.provide(Layer.provideMerge(Git.layer, NodeServices.layer))),
+	);
+
+	it.effect("with no arguments checks a staged file deleted from the worktree under --staged only", () =>
+		Effect.gen(function* () {
+			mkdirSync(join(root, "gone"));
+			const gone = join(root, "gone/index-only.ts");
+			writeFileSync(gone, Uint8Array.of(0x79, 0x00, 0x0a));
+			git("add", "gone/index-only.ts");
+			rmSync(join(root, "gone"), { recursive: true, force: true });
+
+			const staged = yield* Capture.run(runLintText([], { cwd: root, staged: true }));
+			expect(staged.exitCode).toBe(1);
+			expect(staged.value.map((finding) => finding.path).sort()).toEqual([join(root, "a.ts"), gone].sort());
+			expect(staged.stderr).toEqual([]);
+
+			// Control: the worktree listing drops the index-only entry (and a.ts is clean on disk).
+			const worktree = yield* Capture.run(runLintText([], { cwd: root }));
+			expect(worktree.exitCode).toBe(0);
+			expect(worktree.stdout).toEqual(["✓ 1 file is grep-visible text"]);
 		}).pipe(Effect.provide(Capture.piped), Effect.provide(Layer.provideMerge(Git.layer, NodeServices.layer))),
 	);
 });

@@ -49,20 +49,28 @@ export interface RunLintTextOptions {
 
 /**
  * Check `files` (or, when empty, every tracked file under `cwd`) and print one
- * line per finding; any finding sets exit code 1. Under `--staged`, a file with
- * no index entry is logged to stderr and also sets exit code 1. Exported for
+ * line per finding; any finding sets exit code 1. Under `--staged`, every file
+ * is still checked when one has no index entry: that file's read error is
+ * logged to stderr, counted as failed, and also sets exit code 1. Exported for
  * tests.
  *
  * @internal
  */
 export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOptions = {}) =>
 	Effect.gen(function* () {
-		const targets = files.length > 0 ? files : yield* Lint.TextFiles.listTracked(options.cwd ?? ".");
-		const findings = options.staged
+		const staged = options.staged ?? false;
+		const targets = files.length > 0 ? files : yield* Lint.TextFiles.listTracked(options.cwd ?? ".", { staged });
+		const { findings, unreadable } = staged
 			? yield* Lint.TextFiles.checkStagedFiles(targets)
-			: yield* Lint.TextFiles.checkFiles(targets);
+			: { findings: yield* Lint.TextFiles.checkFiles(targets), unreadable: [] };
 
-		if (findings.length === 0) {
+		// A file with no index entry cannot be checked under --staged: a
+		// diagnostic, so stderr — the findings stay on stdout.
+		for (const error of unreadable) {
+			yield* Effect.logError(error.message);
+		}
+
+		if (findings.length === 0 && unreadable.length === 0) {
 			yield* Output.ok(`${targets.length} ${targets.length === 1 ? "file is" : "files are"} grep-visible text`);
 			return findings;
 		}
@@ -70,22 +78,12 @@ export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOp
 		for (const finding of findings) {
 			yield* Output.fail(`${finding.location}  ${finding.message}`);
 		}
-		const failedFiles = new Set(findings.map((finding) => finding.path)).size;
+		const failedFiles = new Set([...findings.map((finding) => finding.path), ...unreadable.map((error) => error.path)])
+			.size;
 		yield* Output.summary({ ok: targets.length - failedFiles, fail: failedFiles });
 		yield* CliExit.set(1);
 		return findings;
-	}).pipe(
-		// A file with no index entry cannot be checked under --staged: explain it
-		// on stderr and exit 1, rather than letting the error reach the command's
-		// channel (where it would also break declaration emit, TS4023).
-		Effect.catchTag("TextFileStagedReadError", (error) =>
-			Effect.gen(function* () {
-				yield* Effect.logError(error.message);
-				yield* CliExit.set(1);
-				return [] as ReadonlyArray<Lint.TextFileFinding>;
-			}),
-		),
-	);
+	});
 
 /** The `savvy lint text` subcommand. */
 export const textCommand = Command.make("text", { files: filesArg, staged: stagedFlag }, ({ files, staged }) =>

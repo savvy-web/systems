@@ -100,6 +100,7 @@ export { PackageJson } from "./handlers/PackageJson.js";
 export type { PnpmWorkspaceContent } from "./handlers/PnpmWorkspace.js";
 export { PnpmWorkspace } from "./handlers/PnpmWorkspace.js";
 export { ShellScripts } from "./handlers/ShellScripts.js";
+export type { TextFileStagedCheck } from "./handlers/TextFiles.js";
 export {
 	TextFileFinding,
 	TextFileStagedReadError,
@@ -132,6 +133,7 @@ export type {
 	PnpmWorkspaceOptions,
 	PresetType,
 	ShellScriptsOptions,
+	TextFilesListOptions,
 	TextFilesOptions,
 	TypeScriptOptions,
 	YamlOptions,

@@ -129,6 +129,20 @@ export interface ShellScriptsOptions extends BaseHandlerOptions {
 export type TextFilesOptions = BaseHandlerOptions;
 
 /**
+ * Options for `TextFiles.listTracked`.
+ */
+export interface TextFilesListOptions extends BaseHandlerOptions {
+	/**
+	 * List for a staged (index) check: keep every regular-file index entry,
+	 * including one deleted from the working tree without the deletion being
+	 * staged — the commit still records its blob. When `false`, entries with
+	 * no working-tree file are dropped, since a worktree read would fail.
+	 * @defaultValue false
+	 */
+	staged?: boolean;
+}
+
+/**
  * Options for the Yaml handler.
  */
 export interface YamlOptions extends BaseHandlerOptions {
