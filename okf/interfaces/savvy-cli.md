@@ -17,8 +17,8 @@ sources:
     resource: ../../packages/cli/__test__/e2e/bin.e2e.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-26T22:54:36Z
-  body_sha256: dc0927cd50db67a6ee4030acab4493250a856652459527a0ed49311adef23c3a
+  at: 2026-09-29T08:12:24Z
+  body_sha256: f8585076473bc1f51fd93c08578e32e8c198862a3490a69987c51bdc0ce80816
 ---
 
 # savvy command tree
@@ -33,7 +33,7 @@ savvy commit      hook(session-start · pre-commit-message · post-commit-verify
                   · lint <file>
 savvy changeset   lint · check · transform · validate-file · version
                   · config(validate) · deps(detect · regen)
-savvy lint        fmt(package-json · pnpm-workspace · yaml)
+savvy lint        fmt(package-json · pnpm-workspace · yaml) · text
 savvy repos       status · sync · pin · add · note · remove · rename
                   · restore · deregister
 ```
@@ -97,6 +97,12 @@ subcommands of their own.[^cli-architecture]
 - **`savvy lint fmt <name>` and lint-staged's direct call format a file
   identically** — both paths call the same underlying formatting handler,
   so there is exactly one behavior to depend on, not two that can drift.[^cli-architecture]
+- **`savvy lint text [files…]` is a read-only check, not a formatter.** It
+  exits `1` when a file contains a NUL byte or is not valid UTF-8 (either
+  makes `grep`/`rg` skip it), reporting `path:line:col` and the byte offset.
+  With no arguments it checks every git-tracked source/text file; `--staged`
+  reads each file from the git index instead of the working tree, which is
+  what the lint-staged handler passes.[^cli-architecture]
 - **`savvy lint`/`savvy check` sync every workspace root's
   `biome.json(c)` `$schema` URL**, not just the repository root's; `check`
   reports drift, `lint`/`init` writes it.[^cli-architecture]

@@ -171,8 +171,8 @@ describe("savvy changeset deps regen (adapter)", () => {
 
 	it.live("reports what execute actually deleted, not what the plan listed", () =>
 		Effect.gen(function* () {
-			// A tolerant delete that found nothing to remove is absent from
-			// result.deleted, so the adapter must not claim it.
+			// A tolerant delete that found nothing to remove (or could not
+			// remove it) is absent from result.deleted, so the adapter must not claim it.
 			const layer = Layer.succeed(DepsRegen, {
 				plan: () => Effect.succeed(cannedPlan),
 				execute: () => Effect.succeed({ ...cannedResult, deleted: [] }),
@@ -181,7 +181,7 @@ describe("savvy changeset deps regen (adapter)", () => {
 			const out = yield* collectStdout("/repo", false, false, layer);
 
 			expect(out).not.toContain("Deleted");
-			expect(out).toContain("1 planned deletion(s) already gone:");
+			expect(out).toContain("1 planned deletion(s) not removed (already gone or undeletable):");
 			expect(out).toContain("/repo/.changeset/stale-changeset.md  (@scope/foo)");
 			expect(out).toContain("✓ Wrote 1 fresh dependency changeset(s):");
 		}).pipe(Effect.provide(TestExit.layer)),

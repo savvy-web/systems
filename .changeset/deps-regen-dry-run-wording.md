@@ -10,4 +10,4 @@
 
 ### Real-Run Dependency Regen Reports What Happened
 
-A real `savvy changeset deps regen` run now reports the files `execute` actually deleted and wrote, not the plan's lists. A planned deletion whose file was already gone is reported as such instead of being counted as deleted, and `--json` adds the `result` of the run.
+A real `savvy changeset deps regen` run now reports the files `execute` actually deleted and wrote, not the plan's lists. A planned deletion whose file was already gone or could not be removed is reported as not removed instead of being counted as deleted, and `--json` adds the `result` of the run.

@@ -133,11 +133,14 @@ function run(command, args, cwd) {
 // it). Yarn Berry's `yarn npm info` does NOT resolve semver ranges (an
 // unsatisfiable range still answers with the latest version), so it is unusable
 // as an oracle; yarn repos probe through npm from outside the repo, the same
-// route as the fallback. npm always runs from the OS tmpdir.
+// route as the fallback. npm runs from the repo only when npm IS the repo's
+// manager, so a project `.npmrc` (a private registry for a scope) still applies;
+// otherwise it runs from the OS tmpdir, out of reach of the repo's devEngines.
 function probeCommand(manager, spec, repoDir) {
 	if (manager === "pnpm") return { command: "pnpm", args: ["view", spec, "version", "--json"], cwd: repoDir };
 	if (manager === "bun") return { command: "bun", args: ["info", spec, "version", "--json"], cwd: repoDir };
-	return { command: "npm", args: ["view", spec, "version", "--json"], cwd: tmpdir() };
+	const cwd = packageManager.name === "npm" ? repoDir : tmpdir();
+	return { command: "npm", args: ["view", spec, "version", "--json"], cwd };
 }
 
 // Ask the registry whether any published version satisfies the range. The

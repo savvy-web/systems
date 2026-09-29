@@ -294,6 +294,20 @@ assert_detected() {
 	! grep -qx yarn "$NPM_CALL_LOG"
 }
 
+@test "probes an npm repo with npm from the repo, so its .npmrc applies" {
+	make_workspace "file:./artifact/pkg" "^0.2.0"
+	echo '{"name":"root","packageManager":"npm@11.0.0"}' > "${WORKSPACE}/package.json"
+	write_stub npm <<-'EOF'
+		#!/usr/bin/env bash
+		printf 'npm %s @ %s\n' "$*" "$PWD" >> "$NPM_CALL_LOG"
+		printf '"0.2.1"\n'
+	EOF
+	run node "$SCRIPT" "${WORKSPACE}/pnpm-workspace.yaml"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"1 warning(s)"* ]]
+	grep -q "@ ${WORKSPACE}\$" "$NPM_CALL_LOG"
+}
+
 @test "falls back to npm from outside the repo when the detected binary is missing" {
 	make_workspace "file:./artifact/pkg" "^0.2.0"
 	echo '{"name":"root","packageManager":"pnpm@11.0.0"}' > "${WORKSPACE}/package.json"

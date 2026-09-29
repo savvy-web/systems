@@ -36,7 +36,8 @@
  * changeset(s):` / `Would write N dependency changeset(s):`) rather than the
  * real run's `✓ Deleted …` / `✓ Wrote …`. A real run reports what
  * `execute()` returned, not what the plan listed: deletes are tolerant, so a
- * planned delete that found nothing is reported as already gone. `--json`
+ * planned delete that found nothing or could not remove the file is reported
+ * as not removed. `--json`
  * emits the plan's fields plus an explicit `dryRun` boolean in both modes,
  * and a real run adds `execute()`'s `result`.
  *
@@ -125,7 +126,8 @@ export function runDepsRegen(
  * Render the plan for a person. A dry run (no `result`) changed nothing, so its
  * headings are plan-phrased and carry no `✓`. A real run reports what
  * `execute` actually did: deletes are tolerant, so a planned delete absent from
- * `result.deleted` was already gone and is reported as such, never as deleted.
+ * `result.deleted` was already gone or could not be removed, and is reported as
+ * not removed, never as deleted.
  */
 function renderHumanPlan(plan: RegenPlan, result: RegenResult | undefined) {
 	return Effect.gen(function* () {
@@ -142,16 +144,16 @@ function renderHumanPlan(plan: RegenPlan, result: RegenResult | undefined) {
 			if (!dryRun) {
 				const deleted = new Set(result.deleted);
 				const removed = plan.toDelete.filter((entry) => deleted.has(entry.file));
-				const alreadyGone = plan.toDelete.filter((entry) => !deleted.has(entry.file));
+				const notRemoved = plan.toDelete.filter((entry) => !deleted.has(entry.file));
 				if (removed.length > 0) {
 					yield* Output.ok(`Deleted ${removed.length} pure dependency changeset(s):`);
 					for (const entry of removed) {
 						yield* Output.detail(`${entry.file}  (${entry.package})`);
 					}
 				}
-				if (alreadyGone.length > 0) {
-					yield* Output.skip(`${alreadyGone.length} planned deletion(s) already gone:`);
-					for (const entry of alreadyGone) {
+				if (notRemoved.length > 0) {
+					yield* Output.skip(`${notRemoved.length} planned deletion(s) not removed (already gone or undeletable):`);
+					for (const entry of notRemoved) {
 						yield* Output.detail(`${entry.file}  (${entry.package})`);
 					}
 				}
