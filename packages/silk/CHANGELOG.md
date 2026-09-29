@@ -1,5 +1,28 @@
 # @savvy-web/silk
 
+## 4.2.14
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 1.0.11 | 1.0.11 |
+| @savvy-web/cli | dependency | updated | 3.4.3 | 3.4.3 |
+| @savvy-web/mcp | dependency | updated | 3.4.3 | 3.4.3 |
+| @savvy-web/silk-effects | dependency | updated | 9.2.2 | 9.2.2 |
+| @types/node | peerDependency | updated | ^26.6.2 | ^26.6.3 |
+| @vitest/coverage-istanbul | peerDependency | updated | ^5.0.1 | ^5.0.2 |
+| @vitest/coverage-v8 | peerDependency | updated | ^5.0.1 | ^5.0.2 |
+| @vitest/expect | peerDependency | updated | ^5.0.1 | ^5.0.2 |
+| lint-staged | peerDependency | updated | ^17.5.1 | ^17.6.0 |
+| turbo | peerDependency | updated | ^2.11.3 | ^2.11.5 |
+| vite | peerDependency | updated | ^8.3.0 | ^8.3.1 |
+| vitest | peerDependency | updated | ^5.0.1 | ^5.0.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 4.2.13
 
 ### Dependencies

@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.45.0
+
+### Features
+
+- Adds rolldown and pnpm to minimuReleaseAgeExcludes
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.44.1
 
 ### Features
