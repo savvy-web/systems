@@ -1,5 +1,50 @@
 # @savvy-web/silk
 
+## 4.3.0
+
+### Features
+
+#### TextFiles Lint Handler
+
+- `@savvy-web/silk/lint` re-exports the `TextFiles` handler and its types, so repos using the `silk` or `standard` lint-staged preset now reject commits that stage a file with a NUL byte or invalid UTF-8. [#725][#725]
+
+### Bug Fixes
+
+#### Override Audit Probes With the Repo's Package Manager
+
+- The dogfood skill's `override-audit.mjs` now detects the audited repo's package manager (`devEngines.packageManager`, then `packageManager`, then the lockfile, then npm) and probes the registry with that manager's own view command. Previously it always ran `npm view` from inside the repo, which npm 11 rejects with `EBADDEVENGINES` in any repo declaring pnpm in `devEngines`, so every override was reported unverified. Yarn repos probe through npm because `yarn npm info` does not resolve ranges, and npm probes run from outside the repo unless npm is the repo's own manager, so an npm repo's `.npmrc` still applies. When a probe still cannot answer, the unverified line names the detected manager, the commands tried, and the cause (`EBADDEVENGINES`, a missing binary, or a network or registry error).
+
+#### Dogfood Doorbell Retries Delivery
+
+- The `--send` doorbell now rings the counterpart with `it2 session send-text --retry 3 --retry-delay 2s`. Idle sessions routinely rejected the first attempts, so most mails reached the counterpart only through the filesystem monitor. A doorbell that still fails stays silent.
+
+### Documentation
+
+#### Release Probes Use the Repo's Package Manager
+
+- The dogfood skill's release-verification guidance now probes each published version with the repo's own package manager (for example `pnpm view "<pkg>@<version>" version`) instead of a bare `npm view` from the repo root. [#725][#725]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/git | dependency | updated | ^0.18.1 | ^0.19.0 |
+| @effected/workspaces | dependency | updated | ^0.30.1 | ^0.30.2 |
+| @savvy-web/changelog | dependency | updated | 1.0.11 | 1.0.12 |
+| @savvy-web/cli | dependency | updated | 3.4.3 | 3.5.0 |
+| @savvy-web/mcp | dependency | updated | 3.4.3 | 3.4.4 |
+| @savvy-web/silk-effects | dependency | updated | 9.2.2 | 9.3.0 |
+
+[#727][#727]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) and [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#725]: https://github.com/savvy-web/systems/pull/725
+
+[#727]: https://github.com/savvy-web/systems/pull/727
+
 ## 4.2.14
 
 ### Dependencies

@@ -1,5 +1,41 @@
 # @savvy-web/cli
 
+## 3.5.0
+
+### Features
+
+#### savvy lint text
+
+- `savvy lint text [files…]` reports every file that is not grep-visible text (a NUL byte or invalid UTF-8) as `path:line:col` with a fix hint, and exits 1 on any finding. With no arguments it checks every git-tracked source and text file; `--staged` reads each file from the git index instead of the working tree. [#725][#725]
+
+### Bug Fixes
+
+#### Dry-Run Dependency Regen Reports a Plan
+
+- `savvy changeset deps regen --dry-run` now reports `Would delete` and `Would write` instead of the `Deleted` and `Wrote` success lines of a real run, so a dry run no longer reads as if files changed. The `--json` output carries an explicit `dryRun` field in both modes.
+
+#### Real-Run Dependency Regen Reports What Happened
+
+- A real `savvy changeset deps regen` run now reports the files `execute` actually deleted and wrote, not the plan's lists. A planned deletion whose file was already gone or could not be removed is reported as not removed instead of being counted as deleted, and `--json` adds the `result` of the run. [#725][#725]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/git | dependency | updated | ^0.18.1 | ^0.19.0 |
+| @effected/workspaces | dependency | updated | ^0.30.1 | ^0.30.2 |
+| @savvy-web/silk-effects | dependency | updated | 9.2.2 | 9.3.0 |
+
+[#727][#727]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) and [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#725]: https://github.com/savvy-web/systems/pull/725
+
+[#727]: https://github.com/savvy-web/systems/pull/727
+
 ## 3.4.3
 
 ### Dependencies

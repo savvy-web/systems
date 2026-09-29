@@ -1,5 +1,45 @@
 # @savvy-web/silk-effects
 
+## 9.3.0
+
+### Breaking Changes
+
+#### DepsRegen.layer Requires Catalogs and Lockfile Services
+
+- `DepsRegen.layer` now requires `WorkspaceCatalogs` and `LockfileReader`, which it refreshes before each plan. They must be the same instances the provided `WorkspaceSnapshots` reads. `DepsRegenDefault` and `makeDepsRegenDefault` already provide both, so only a hand-composed `DepsRegen.layer` graph needs to add them. [#725][#725]
+
+### Features
+
+#### Grep-Visible Text Lint
+
+- `Lint.TextFiles` fails any source or text file that grep and ripgrep would silently skip as binary: a file containing a NUL byte anywhere, or bytes that are not valid UTF-8. Each finding carries the path, the reason, and the line, column and byte offset of the first offending byte. A literal NUL is fixed mechanically by writing the `\0` escape instead.
+
+- The lint-staged handler runs `savvy lint text --staged` over the matching files, reading each file's staged copy from the git index so the check sees exactly what is committed and cannot race a concurrent formatter. It is on by default in `Preset.silk()`, `Preset.standard()` and `createConfig`, off in `Preset.minimal()`, and can be disabled with `textFiles: false`. [#725][#725]
+
+### Bug Fixes
+
+#### Dependency Regen Stays Fresh in Long-Lived Hosts
+
+- `DepsRegen.plan` now refreshes the memoized lockfile and catalog assembly before snapshotting the working tree, so a long-lived host such as the savvy-mcp server sees the tree as it is on each call. Previously the first call's catalogs and config-dependency replays were reused for the process lifetime: after a branch switch that changed a config dependency the plan failed with `HookReplayError`, and catalog or lockfile edits silently produced an empty diff. Explicit `from` and `to` refs are now resolved to a commit before lookup, so a moving branch name is no longer frozen at the first commit seen. `BranchAnalyzer` and `ReleasePlanner.apply` refresh workspace discovery per call for the same reason.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/walker | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @savvy-web/silk-core | dependency | updated | 0.4.8 | 0.4.8 |
+| @effected/git | peerDependency | updated | ^0.18.0 | ^0.19.0 |
+
+[#727][#727]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) and [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#725]: https://github.com/savvy-web/systems/pull/725
+
+[#727]: https://github.com/savvy-web/systems/pull/727
+
 ## 9.2.2
 
 ### Bug Fixes
