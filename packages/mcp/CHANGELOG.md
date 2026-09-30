@@ -1,5 +1,22 @@
 # @savvy-web/mcp
 
+## 3.4.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.30.2 | ^0.30.3 |
+| @savvy-web/silk-effects | dependency | updated | 9.3.0 | 9.3.1 |
+
+[#732][#732]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#732]: https://github.com/savvy-web/systems/pull/732
+
 ## 3.4.4
 
 ### Dependencies

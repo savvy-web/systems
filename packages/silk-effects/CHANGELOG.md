@@ -1,5 +1,22 @@
 # @savvy-web/silk-effects
 
+## 9.3.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.4.8 | 0.4.8 |
+| shell-quote | dependency | updated | ^1.10.0 | ^1.11.0 |
+
+[#732][#732]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#732]: https://github.com/savvy-web/systems/pull/732
+
 ## 9.3.0
 
 ### Breaking Changes
