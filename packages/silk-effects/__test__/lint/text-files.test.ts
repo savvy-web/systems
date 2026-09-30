@@ -145,7 +145,9 @@ describe("TextFiles.classify", () => {
 			}
 		}
 		expect({ count: disagreements.length, first: disagreements.slice(0, 8) }).toEqual({ count: 0, first: [] });
-	});
+		// ~376k synchronous inputs, most of which make the decoder throw: about 1s on an idle
+		// machine, past the 5s default on a contended CI runner.
+	}, 30_000);
 });
 
 describe("TextFiles.matches", () => {

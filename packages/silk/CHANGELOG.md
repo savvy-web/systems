@@ -1,5 +1,25 @@
 # @savvy-web/silk
 
+## 4.3.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.30.2 | ^0.30.3 |
+| @savvy-web/changelog | dependency | updated | 1.0.12 | 1.0.13 |
+| @savvy-web/cli | dependency | updated | 3.5.0 | 3.5.1 |
+| @savvy-web/mcp | dependency | updated | 3.4.4 | 3.4.5 |
+| @savvy-web/silk-effects | dependency | updated | 9.3.0 | 9.3.1 |
+
+[#732][#732]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#732]: https://github.com/savvy-web/systems/pull/732
+
 ## 4.3.0
 
 ### Features
