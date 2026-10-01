@@ -43,10 +43,11 @@ const describe = (error: unknown): string => {
  * or a defect, so nothing here guesses that from the error's shape.
  *
  * - A typed failure is an expected outcome and reads as one line. The kit's
- *   default is `String(error)`, which prints a `Data.TaggedError` with no
- *   `message` as its bare tag and drops the fields that say what went wrong
- *   (`CleanError`, with the `reason` lost), so this prefers the error's own
- *   message, then its tag with its fields, then `String`.
+ *   default report (`details.defaultLines`) is a status line plus a cleaned
+ *   stack, which is noise for an expected outcome, and a `Data.TaggedError`
+ *   with no `message` loses the fields that say what went wrong (`CleanError`,
+ *   with the `reason` lost), so this prefers the error's own message, then
+ *   its tag with its fields, then `String`.
  * - A defect — a `die`, a thrown exception — is a bug in savvy. It gets the
  *   issue-report treatment: a headline, the whole pretty-printed cause with
  *   its stack, and where to report it.

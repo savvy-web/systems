@@ -1,3 +1,4 @@
+import type { FailureDetails } from "@effected/cli";
 import { Cause, Data } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -5,7 +6,15 @@ import { FailureLine } from "../src/internal/failure-line.js";
 
 class CleanError extends Data.TaggedError("CleanError")<{ readonly reason: string }> {}
 
-const typed = (error: unknown) => FailureLine.render(error, { cause: Cause.fail(error), isDefect: false });
+/** A `FailureDetails` for a render under test; the kit-default report is never read by `FailureLine`. */
+const details = (cause: Cause.Cause<unknown>, isDefect: boolean): FailureDetails => ({
+	cause,
+	isDefect,
+	defaultLines: [],
+	lines: () => [],
+});
+
+const typed = (error: unknown) => FailureLine.render(error, details(Cause.fail(error), false));
 
 describe("FailureLine.render", () => {
 	describe("a typed failure renders as one line", () => {
@@ -31,7 +40,7 @@ describe("FailureLine.render", () => {
 
 	describe("a defect renders as an issue report", () => {
 		const boom = new TypeError("cannot read properties of undefined");
-		const lines = FailureLine.render(boom, { cause: Cause.die(boom), isDefect: true });
+		const lines = FailureLine.render(boom, details(Cause.die(boom), true));
 
 		it("is several lines: a headline, the pretty cause with its stack, and where to report it", () => {
 			expect(Array.isArray(lines)).toBe(true);
@@ -46,7 +55,7 @@ describe("FailureLine.render", () => {
 
 		it("follows isDefect, not the error's shape: a tagged value that died is still a defect", () => {
 			const died = new CleanError({ reason: "x" });
-			const report = FailureLine.render(died, { cause: Cause.die(died), isDefect: true });
+			const report = FailureLine.render(died, details(Cause.die(died), true));
 			expect(Array.isArray(report)).toBe(true);
 			expect((report as ReadonlyArray<string>)[0]).toBe("savvy hit an unexpected error: CleanError: reason: x");
 		});
