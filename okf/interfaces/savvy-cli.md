@@ -17,8 +17,8 @@ sources:
     resource: ../../packages/cli/__test__/e2e/bin.e2e.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-29T08:12:24Z
-  body_sha256: f8585076473bc1f51fd93c08578e32e8c198862a3490a69987c51bdc0ce80816
+  at: 2026-10-01T23:55:04Z
+  body_sha256: 24491a5c1083c6f92e2f7e7f2734d19be62f1a23dda10ec05f2930df8ebbdd65
 ---
 
 # savvy command tree
@@ -44,16 +44,30 @@ are the only setup and validation entry points; the three tool groups
 (`commit`, `changeset`, `lint`) expose no per-tool `init`/`check`
 subcommands of their own.[^cli-architecture]
 
-## Streams, exit codes, and `--version`
+## Streams, audience, exit codes, and `--version`
 
-- **stdout carries only the result.** A command's human result lines
-  (`✓` pass, `⚠` caveat, `✗` finding, `•` skipped or not applicable, plus
-  headings, indented detail and a closing summary), its JSON documents, and
-  the hook envelopes the `commit hook` subcommands emit. Every log line —
-  progress, diagnostics, and a failure's explanation — goes to stderr, with
-  no timestamp or level prefix. Colour only tints a glyph or heading, and
-  only when stdout is a TTY and `NO_COLOR` is unset, so piped output reads
-  the same minus the escapes.[^cli-main]
+- **stdout carries only the result.** A command's human report (`✓` pass,
+  `⚠` caveat, `✗` finding, `↷` skipped or not applicable, plus headings,
+  indented detail and a closing summary such as `3 ok, 1 warning, 2
+  failed`), its JSON documents, and the hook envelopes the `commit hook`
+  subcommands emit. A read-only command prints its report as one document;
+  a command that writes files prints one per completed step. Every log
+  line — progress, diagnostics, and a failure's explanation — goes to
+  stderr, as a plain line with no timestamp or level prefix.[^cli-main]
+- **The report renders for its audience.** ANSI colour for a person at a
+  terminal, plain text for an agent or a pipe, a GitHub Actions log under
+  Actions. Colour only tints a glyph or heading, so piped output reads the
+  same minus the escapes, and off a terminal no line is wrapped. `NO_COLOR`
+  disables colour and `FORCE_COLOR` (which wins over it) forces
+  it.[^cli-main][^cli-bin-e2e]
+- **Audience flags, on every command.** `--audience <human|agent|ci>`, or
+  its shorthands `--human`, `--agent`, `--ci`; more than one is a usage
+  error. Without a flag the audience comes from `SAVVY_AUDIENCE`, else
+  agent and CI detection from the environment.[^cli-main][^cli-bin-e2e]
+- **Diagnostics are opt-in.** `SAVVY_LOG_LEVEL` (or core's `--log-level`)
+  turns on a diagnostics sink on stderr — NDJSON for an agent or CI
+  audience, a pretty line for a person; unset, it writes
+  nothing.[^cli-main]
 - **Exit codes:** `0` success; `1` findings (a check failed, a repo is
   dirty, a deletion failed) — reported as output, not as a crash; `64` a
   usage error (unknown flag or subcommand, bad argument), with the error
@@ -61,7 +75,7 @@ subcommands of their own.[^cli-architecture]
   never receives help text. An explicit `--help`, or a command group
   invoked bare, prints its help on stdout and exits `0`. A typed failure is
   one line on stderr; an unexpected defect is an issue report on stderr —
-  a headline, the pretty-printed cause, and where to file it.[^cli-main][^cli-bin-e2e]
+  the kit's failure report with the program's stack, and where to file it.[^cli-main][^cli-bin-e2e]
 - **`savvy --version`** prints one line, `savvy v<version>`, for a direct
   install of `@savvy-web/cli`; launched through `@savvy-web/silk`'s bin it
   appends `via @savvy-web/silk <version>`. A typed `savvy` shows that

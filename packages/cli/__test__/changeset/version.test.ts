@@ -14,7 +14,7 @@ vi.mock("../../src/commands/changeset/utils/config-gate.js", () => ({
 }));
 
 /** Collects what the command prints on stdout — its output — so tests can assert on it. */
-const captureLogger = (sink: string[]) => Layer.merge(Capture.layer(sink), Capture.piped);
+const captureLogger = (sink: string[]) => Capture.layer(sink);
 
 /** A ReleasePlanner test layer that records how `apply` was invoked. */
 const recordingPlanner = (result: Changesets.AppliedRelease, calls: Array<{ root: string; dryRun: boolean }>) =>

@@ -107,9 +107,7 @@ describe("runReposNote (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "discovered the entry point" }, layer);
 
-			expect(logs.some((l) => l.includes("foo") && l.includes("add") && l.includes("n-1234") && l.includes("1"))).toBe(
-				true,
-			);
+			expect(logs).toEqual(["✓ foo: add note n-1234 (1 notes)"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -148,7 +146,7 @@ describe("runReposNote (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
 
-			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(logs).toEqual(["↷ no .repos/config.json — nothing vendored"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);

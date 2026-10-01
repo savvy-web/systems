@@ -5,7 +5,6 @@
  */
 
 import type { FailureDetails } from "@effected/cli";
-import { Cause } from "effect";
 
 /** Where a defect report asks to be filed; mirrors `package.json#bugs.url`. */
 const ISSUES_URL = "https://github.com/savvy-web/systems/issues";
@@ -49,8 +48,9 @@ const describe = (error: unknown): string => {
  *   with the `reason` lost), so this prefers the error's own message, then
  *   its tag with its fields, then `String`.
  * - A defect — a `die`, a thrown exception — is a bug in savvy. It gets the
- *   issue-report treatment: a headline, the whole pretty-printed cause with
- *   its stack, and where to report it.
+ *   kit's default report (`details.defaultLines`: the status line and the
+ *   program's own stack frames, drawn for the run's audience) followed by
+ *   where to report it.
  *
  * @internal
  */
@@ -59,10 +59,6 @@ export class FailureLine {
 
 	static readonly render = (error: unknown, details: FailureDetails): string | ReadonlyArray<string> =>
 		details.isDefect
-			? [
-					`savvy hit an unexpected error: ${describe(error)}`,
-					...Cause.pretty(details.cause).split("\n"),
-					`This is a bug in savvy. Please report it with the output above at ${ISSUES_URL}`,
-				]
+			? [...details.defaultLines, `This is a bug in savvy. Please report it with the output above at ${ISSUES_URL}`]
 			: describe(error);
 }

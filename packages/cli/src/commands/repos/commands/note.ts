@@ -30,10 +30,10 @@
 
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 /**
  * Note handler; exported for tests.
@@ -44,11 +44,11 @@ export const runReposNote = (cwd: string, name: string, op: Parameters<Repos.Rep
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.note(cwd, name, op);
-		yield* Output.ok(`${result.name}: ${result.op} note ${result.id} (${result.noteCount} notes)`);
+		yield* Report.print([Report.ok(`${result.name}: ${result.op} note ${result.id} (${result.noteCount} notes)`)]);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
 			if (error.kind === "missing") {
-				return Output.skip("no .repos/config.json — nothing vendored");
+				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
 			}
 			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),

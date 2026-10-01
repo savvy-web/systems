@@ -1146,8 +1146,8 @@ importers:
         specifier: catalog:build
         version: 0.18.1
       '@tsdoctor/manifest':
-        specifier: ^0.2.3
-        version: 0.2.3(effect@4.0.0)
+        specifier: ^0.2.4
+        version: 0.2.4(effect@4.0.0)
       effect:
         specifier: catalog:effect
         version: 4.0.0
@@ -2702,11 +2702,11 @@ packages:
   '@swc/helpers@0.5.23':
     resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
 
-  '@tsdoctor/manifest@0.2.3':
-    resolution: {integrity: sha512-pNkiz5MjijxQDahEQu91NFk3fz6Tg7xTgx2wVM0LjLkE1ZW6pJbHEjAZjw1mcMahil9VssoDrG8dstNZi9/lOw==}
+  '@tsdoctor/manifest@0.2.4':
+    resolution: {integrity: sha512-T9KnGGTJwR0AD7v3qfhnPXhsrlhITlopDBuCzRv/HdDM6QB3lzMOKRP1gjGYp5UwYH9q9/7287rwo5gRceSbEw==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
-      effect: 4.0.0-rc.118
+      effect: ^4.0.0
 
   '@tsdown/css@0.23.0':
     resolution: {integrity: sha512-EfSQCVAz24CRz92WdJj/Yb+gJMV3m2C/iDsFO4XJkd12Ez9WnW0KtpLohAFtc4gDzflFlh9I0UHTZc6BQmxSHw==}
@@ -6584,7 +6584,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@tsdoctor/manifest@0.2.3(effect@4.0.0)':
+  '@tsdoctor/manifest@0.2.4(effect@4.0.0)':
     dependencies:
       effect: 4.0.0
 

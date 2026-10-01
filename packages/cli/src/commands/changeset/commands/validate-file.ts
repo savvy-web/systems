@@ -17,7 +17,7 @@ import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { Report } from "../../../internal/report.js";
 
 const { ChangesetLinter } = Changesets;
 
@@ -50,14 +50,16 @@ export function runValidateFile(filePath: string) {
 
 		if (result === null) return;
 
-		for (const msg of result) {
-			yield* Output.line(`${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`);
-		}
-
 		if (result.length > 0) {
+			// Verbatim, never wrapped: hooks and editors parse each line as `file:line:col rule message`.
+			yield* Report.print([
+				Report.verbatim(
+					result.map((msg) => `${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`).join("\n"),
+				),
+			]);
 			yield* CliExit.set(1);
 		} else {
-			yield* Output.ok("Valid");
+			yield* Report.print([Report.ok("Valid")]);
 		}
 	});
 }

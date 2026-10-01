@@ -154,10 +154,7 @@ describe("runReposStatus (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", false, layer);
 
-			expect(logs.some((l) => l.includes("foo @ v1.0.0") && l.includes("dirty"))).toBe(true);
-			expect(logs.some((l) => l.includes("bar @ main") && l.includes("missing") && l.includes("1 stale notes"))).toBe(
-				true,
-			);
+			expect(logs).toEqual(["⚠ foo @ v1.0.0 [dirty]\n⚠ bar @ main [missing, 1 stale notes]"]);
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
@@ -292,7 +289,12 @@ describe("runReposStatus (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", false, layer, true, driftLayer);
 
-			expect(logs.some((l) => l.includes("foo: urlMismatch — ") && l.includes('expects url "a"'))).toBe(true);
+			expect(logs).toEqual([
+				[
+					"✓ foo @ v1.0.0",
+					'✗ foo: urlMismatch — manifest entry "foo" expects url "a" but .gitmodules records "b"',
+				].join("\n"),
+			]);
 			expect(TestExit.code()).toBe(1);
 		}).pipe(Effect.provide(TestExit.layer)),
 	);

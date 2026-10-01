@@ -105,8 +105,7 @@ describe("runReposRestore (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", ["foo", "bar"], layer);
 
-			expect(logs.some((l) => l.includes("foo") && l.includes("restored") && l.includes("abc111"))).toBe(true);
-			expect(logs.some((l) => l.includes("bar") && l.includes("restored") && l.includes("def222"))).toBe(true);
+			expect(logs).toEqual(["✓ foo: restored to abc111\n✓ bar: restored to def222"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -123,8 +122,7 @@ describe("runReposRestore (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", [], layer);
 
-			expect(logs.some((l) => l.includes("dirty-spec") && l.includes("restored"))).toBe(true);
-			expect(logs.some((l) => l.includes("clean-spec") && l.includes("clean"))).toBe(true);
+			expect(logs).toEqual(["✓ dirty-spec: restored to abc111\n↷ clean-spec: clean — skipped"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -145,8 +143,12 @@ describe("runReposRestore (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", ["nested-spec"], layer);
 
-			expect(logs.some((l) => l.includes("nested-spec") && l.includes("restored"))).toBe(true);
-			expect(logs.some((l) => l.includes("nested-spec") && l.includes("STILL dirty"))).toBe(true);
+			expect(logs).toEqual([
+				[
+					"✓ nested-spec: restored to abc111",
+					"✗ nested-spec: reset ran but the worktree is STILL dirty; run `savvy repos status --drift`",
+				].join("\n"),
+			]);
 			expect(TestExit.code()).toBe(1);
 		}),
 	);
@@ -157,7 +159,7 @@ describe("runReposRestore (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", [], layer);
 
-			expect(logs.some((l) => l.includes("nothing to restore"))).toBe(true);
+			expect(logs).toEqual(["✓ nothing to restore"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -216,7 +218,7 @@ describe("runReposRestore (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", [], layer);
 
-			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(logs).toEqual(["↷ no .repos/config.json — nothing vendored"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);

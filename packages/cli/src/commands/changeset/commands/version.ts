@@ -9,10 +9,11 @@
  * @internal
  */
 
+import type { Block } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { Report } from "../../../internal/report.js";
 import { requireValidConfig } from "../utils/config-gate.js";
 
 /* v8 ignore start -- CLI option definitions; handler tested via runVersion */
@@ -38,19 +39,20 @@ export function runVersion(dryRun: boolean) {
 		const result = yield* planner.apply(cwd, { dryRun });
 
 		if (result.releases.length === 0) {
-			yield* Output.ok("No pending changesets");
+			yield* Report.print([Report.ok("No pending changesets")]);
 			return;
 		}
 		const verb = dryRun ? "Would release" : "Released";
-		for (const r of result.releases) {
-			yield* Output.ok(`${verb} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`);
-		}
+		const blocks: Block[] = result.releases.map((r) =>
+			Report.ok(`${verb} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`),
+		);
 		if (!dryRun) {
-			yield* Output.detail(`Touched ${result.touchedFiles.length} file(s)`);
+			blocks.push(Report.detail(`Touched ${result.touchedFiles.length} file(s)`));
 		}
 		for (const u of result.versionFileUpdates) {
-			yield* Output.detail(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`);
+			blocks.push(Report.detail(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`));
 		}
+		yield* Report.print(blocks);
 	});
 }
 

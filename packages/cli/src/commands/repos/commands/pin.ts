@@ -25,10 +25,10 @@
 
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const nameArg = Argument.String("name");
@@ -45,16 +45,18 @@ export const runReposPin = (cwd: string, name: string, ref: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.pin(cwd, name, ref);
-		yield* Output.ok(`${result.name}: ${result.oldCommit ?? "unknown"} -> ${result.newCommit}`);
-		yield* Output.detail(result.commitMessage);
-		yield* Output.detail("staged — review and commit");
-		for (const staleId of result.staleNoteIds) {
-			yield* Output.warn(`note ${staleId} is now stale against ${ref}`);
-		}
+		yield* Report.print([
+			Report.ok(
+				`${result.name}: ${result.oldCommit ?? "unknown"} -> ${result.newCommit}`,
+				result.commitMessage,
+				"staged — review and commit",
+			),
+			...result.staleNoteIds.map((staleId) => Report.warn(`note ${staleId} is now stale against ${ref}`)),
+		]);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
 			if (error.kind === "missing") {
-				return Output.skip("no .repos/config.json — nothing vendored");
+				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
 			}
 			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),

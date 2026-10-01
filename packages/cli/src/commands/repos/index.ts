@@ -1,7 +1,7 @@
 import type { CliExit } from "@effected/cli";
 import type { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Command } from "effect/cli";
+import type { ReportEnv } from "../../internal/report.js";
 
 import { addCommand } from "./commands/add.js";
 import { deregisterCommand } from "./commands/deregister.js";
@@ -62,7 +62,7 @@ export const reposCommand: Command.Command<
 	Record<string, never>,
 	Record<string, never>,
 	Repos.GitSubmoduleError,
-	Repos.ReposManager | Repos.ReposDrift | CliExit | Stdio.Stdio
+	Repos.ReposManager | Repos.ReposDrift | CliExit | ReportEnv
 > = _reposCommand;
 /* v8 ignore stop */
 

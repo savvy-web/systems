@@ -8,8 +8,8 @@ import { runChangesetCheck } from "../../src/commands/changeset/commands/check.j
 import { Capture } from "../utils/capture.js";
 import { TestExit } from "../utils/exit.js";
 
-/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
-const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
+/** Logs silenced, plus the fixed presentation environment the handler's report renders under. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.env);
 
 // A suite-boundary `layer()` is safe here: `Logger.layer([])` is stateless and
 // carries nothing across tests, and this suite never chdirs — each test drives a

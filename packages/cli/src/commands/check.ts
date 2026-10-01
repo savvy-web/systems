@@ -17,9 +17,8 @@
  * @internal
  */
 
-import { Effect, Result } from "effect";
+import { Console, Effect, Result } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../internal/output.js";
 import { runChangesetCheck } from "./changeset/index.js";
 import { runCommitCheck } from "./commit/check.js";
 import { runLintCheck } from "./lint/check.js";
@@ -76,8 +75,10 @@ export function runCheck<EChangeset, RChangeset, ECommit, RCommit, ELint, RLint>
 			[
 				Effect.result(steps.changeset),
 				// A blank line between sections keeps each tool's report readable as one block.
-				Output.line("").pipe(Effect.andThen(Effect.result(steps.commit))),
-				Output.line("").pipe(Effect.andThen(Effect.result(steps.lint))),
+				// It sits between documents the steps print themselves, so it cannot be a
+				// `Report` block: `Report.print` renders a blank-only document as nothing.
+				Console.log("").pipe(Effect.andThen(Effect.result(steps.commit))),
+				Console.log("").pipe(Effect.andThen(Effect.result(steps.lint))),
 			],
 			{ concurrency: 1 },
 		);

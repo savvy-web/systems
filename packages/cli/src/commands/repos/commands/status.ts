@@ -30,12 +30,13 @@
  * @internal
  */
 
+import type { Block } from "@effected/cli";
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Console, Effect } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 /* v8 ignore start -- CLI option definitions */
 const jsonOption = Flag.Boolean("json").pipe(
@@ -76,28 +77,32 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 			yield* Console.log(JSON.stringify(payload, null, 2));
 			return;
 		}
+		const blocks: Array<Block> = [];
 		for (const repo of report.repos) {
 			const flags = [
 				repo.present ? undefined : "missing",
 				repo.dirty ? "dirty" : undefined,
 				repo.staleNoteIds.length > 0 ? `${repo.staleNoteIds.length} stale notes` : undefined,
 			].filter((f): f is string => f !== undefined);
-			yield* flags.length > 0
-				? Output.warn(`${repo.name} @ ${repo.ref} [${flags.join(", ")}]`)
-				: Output.ok(`${repo.name} @ ${repo.ref}`);
+			blocks.push(
+				flags.length > 0
+					? Report.warn(`${repo.name} @ ${repo.ref} [${flags.join(", ")}]`)
+					: Report.ok(`${repo.name} @ ${repo.ref}`),
+			);
 		}
 		if (driftReport !== undefined) {
 			for (const item of driftReport.drifts) {
-				yield* Output.fail(`${item.name}: ${item.kind} — ${item.detail}`);
+				blocks.push(Report.fail(`${item.name}: ${item.kind} — ${item.detail}`));
 			}
 		}
+		yield* Report.print(blocks);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
 			if (error.kind === "missing") {
 				if (json) {
 					return Console.log(JSON.stringify({ repos: [], clean: true }, null, 2));
 				}
-				return Output.skip("no .repos/config.json — nothing vendored");
+				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
 			}
 			// Under --json the drift monitor parses stdout, so the failure is a JSON
 			// document there too; the message itself always goes to stderr.

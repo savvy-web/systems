@@ -26,7 +26,7 @@ import { CliExit } from "@effected/cli";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../internal/output.js";
+import { Report } from "../../internal/report.js";
 
 /* v8 ignore start -- CLI option definitions */
 const filesArg = Argument.File("files", { mustExist: true }).pipe(
@@ -71,16 +71,18 @@ export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOp
 		}
 
 		if (findings.length === 0 && unreadable.length === 0) {
-			yield* Output.ok(`${targets.length} ${targets.length === 1 ? "file is" : "files are"} grep-visible text`);
+			yield* Report.print([
+				Report.ok(`${targets.length} ${targets.length === 1 ? "file is" : "files are"} grep-visible text`),
+			]);
 			return findings;
 		}
 
-		for (const finding of findings) {
-			yield* Output.fail(`${finding.location}  ${finding.message}`);
-		}
 		const failedFiles = new Set([...findings.map((finding) => finding.path), ...unreadable.map((error) => error.path)])
 			.size;
-		yield* Output.summary({ ok: targets.length - failedFiles, fail: failedFiles });
+		yield* Report.print([
+			...findings.map((finding) => Report.fail(`${finding.location}  ${finding.message}`)),
+			Report.summary({ ok: targets.length - failedFiles, fail: failedFiles }),
+		]);
 		yield* CliExit.set(1);
 		return findings;
 	});

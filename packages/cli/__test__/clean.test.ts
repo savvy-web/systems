@@ -3,13 +3,9 @@ import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { WorkspaceDiscovery, WorkspacePackage } from "@effected/workspaces";
-import { Effect, Layer, Logger } from "effect";
-import { collectTargets, removeTargets, runClean } from "../src/commands/clean.js";
+import { Effect, Layer } from "effect";
+import { CleanError, collectTargets, removeTargets, runClean } from "../src/commands/clean.js";
 import { Capture } from "./utils/capture.js";
-
-/** Suppresses the command's INFO logging so test output stays clean. */
-/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
-const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
 
 describe("collectTargets", () => {
 	let dir: string;
@@ -219,9 +215,21 @@ describe("runClean", () => {
 		Effect.gen(function* () {
 			const rootPkg = makePkg(root, true);
 			const leafPkg = makePkg(leaf, false);
-			yield* runClean({ globs: "dist,.turbo", dryRun: true }).pipe(
-				Effect.provide(discoveryLayer([leafPkg, rootPkg])),
-				Effect.provide(silentLogger),
+			const { stdout } = yield* Capture.run(
+				runClean({ globs: "dist,.turbo", dryRun: true }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
+			);
+			// One entry per printed document (each workspace group, then the summary).
+			expect(stdout.join("\n")).toEqual(
+				[
+					"",
+					"pkg",
+					`  would remove [dir] ${join(leaf, "dist")}`,
+					"",
+					"<root>",
+					`  would remove [dir] ${join(root, ".turbo")}`,
+					"",
+					"✓ Would remove 2 item(s)",
+				].join("\n"),
 			);
 			expect(existsSync(join(leaf, "dist"))).toBe(true);
 			expect(existsSync(join(root, ".turbo"))).toBe(true);
@@ -232,22 +240,48 @@ describe("runClean", () => {
 		Effect.gen(function* () {
 			const rootPkg = makePkg(root, true);
 			const leafPkg = makePkg(leaf, false);
-			yield* runClean({ globs: "dist,.turbo", dryRun: false }).pipe(
-				Effect.provide(discoveryLayer([leafPkg, rootPkg])),
-				Effect.provide(silentLogger),
+			const { stdout } = yield* Capture.run(
+				runClean({ globs: "dist,.turbo", dryRun: false }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
 			);
+			expect(stdout.join("\n").split("\n").at(-1)).toBe("✓ Removed 2 item(s)");
 			expect(existsSync(join(leaf, "dist"))).toBe(false);
 			expect(existsSync(join(root, ".turbo"))).toBe(false);
+		}),
+	);
+
+	it.effect("a later workspace's failure leaves the earlier workspace's lines on stdout", () =>
+		Effect.gen(function* () {
+			// root can remove anything regardless of mode bits
+			if (process.getuid?.() === 0) return;
+			const rootPkg = makePkg(root, true);
+			const leafPkg = makePkg(leaf, false);
+			const turbo = join(root, ".turbo");
+			writeFileSync(join(turbo, "cache"), "x");
+			chmodSync(turbo, 0o555); // no write: rm of its child fails, so the root's removal fails
+			try {
+				const { value: error, stdout } = yield* Capture.run(
+					Effect.flip(
+						runClean({ globs: "dist,.turbo", dryRun: false }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
+					),
+				);
+				expect(error).toBeInstanceOf(CleanError);
+				// The leaf printed as its own document before the root was attempted.
+				expect(stdout[0]).toBe(["", "pkg", `  removed [dir] ${join(leaf, "dist")}`].join("\n"));
+				const lines = stdout.join("\n").split("\n");
+				expect(lines.slice(3, 5)).toEqual(["", "<root>"]);
+				expect(lines[5]?.startsWith(`⚠ failed [dir] ${turbo}: `)).toBe(true);
+				expect(lines.slice(6)).toEqual(["", "✓ Removed 1 item(s)"]);
+				expect(existsSync(join(leaf, "dist"))).toBe(false);
+			} finally {
+				chmodSync(turbo, 0o755); // restore so afterEach cleanup can remove it
+			}
 		}),
 	);
 
 	it.effect("applies DEFAULT globs when the string is empty/whitespace", () =>
 		Effect.gen(function* () {
 			const rootPkg = makePkg(root, true);
-			yield* runClean({ globs: "  ", dryRun: false }).pipe(
-				Effect.provide(discoveryLayer([rootPkg])),
-				Effect.provide(silentLogger),
-			);
+			yield* Capture.run(runClean({ globs: "  ", dryRun: false }).pipe(Effect.provide(discoveryLayer([rootPkg]))));
 			expect(existsSync(join(root, ".turbo"))).toBe(false); // .turbo is a default
 		}),
 	);

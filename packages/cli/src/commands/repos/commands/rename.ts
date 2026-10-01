@@ -31,10 +31,10 @@
 
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const oldNameArg = Argument.String("old-name");
@@ -51,13 +51,17 @@ export const runReposRename = (cwd: string, oldName: string, newName: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.rename(cwd, oldName, newName);
-		yield* Output.ok(`${result.oldName}: renamed to ${result.newName} (${result.path})`);
-		yield* Output.detail(result.commitMessage);
-		yield* Output.detail("staged — review and commit");
+		yield* Report.print([
+			Report.ok(
+				`${result.oldName}: renamed to ${result.newName} (${result.path})`,
+				result.commitMessage,
+				"staged — review and commit",
+			),
+		]);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
 			if (error.kind === "missing") {
-				return Output.skip("no .repos/config.json — nothing vendored");
+				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
 			}
 			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),

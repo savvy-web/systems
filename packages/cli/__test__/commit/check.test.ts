@@ -35,6 +35,7 @@ const TestLayer = Layer.mergeAll(
 	SilkPublishability.layer,
 	WorkspaceDiscoveryStub,
 	WorkspaceRoot.layer.pipe(Layer.provide(NodeServices.layer)),
+	Capture.env,
 ).pipe(Layer.provideMerge(NodeServices.layer), Layer.provide(Logger.layer([])));
 
 describe("runCommitCheck", () => {
@@ -84,10 +85,24 @@ describe("runCommitCheck Effect program", () => {
 		Effect.gen(function* () {
 			const out: string[] = [];
 			yield* Effect.provide(runCommitCheck(), TestLayer).pipe(Effect.provide(Capture.layer(out)));
-			expect(out[0]).toBe("commitlint configuration");
-			expect(out).toContain("✗ No commitlint config file found");
-			expect(out).toContain("• No DCO file (signoff not required)");
-			expect(out.at(-1)).toBe("✗ Commitlint needs configuration. Run: savvy init");
+			expect(out).toEqual([
+				[
+					"commitlint configuration",
+					"✗ No commitlint config file found",
+					"✗ No husky commit-msg hook found",
+					"↷ Hygiene hook: .husky/post-checkout not found (run 'savvy init' to add)",
+					"↷ Hygiene hook: .husky/post-merge not found (run 'savvy init' to add)",
+					"↷ Hygiene hook: .husky/post-commit not found (run 'savvy init' to add)",
+					"↷ No DCO file (signoff not required)",
+					"",
+					"Detected settings",
+					"  DCO required: false",
+					"  Release format: semver",
+					"  Detected scopes: (none - not a monorepo or no packages found)",
+					"",
+					"✗ Commitlint needs configuration. Run: savvy init",
+				].join("\n"),
+			]);
 		}),
 	);
 

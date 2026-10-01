@@ -6,12 +6,15 @@ import { FailureLine } from "../src/internal/failure-line.js";
 
 class CleanError extends Data.TaggedError("CleanError")<{ readonly reason: string }> {}
 
-/** A `FailureDetails` for a render under test; the kit-default report is never read by `FailureLine`. */
+/** The kit-default report a test hands in, so a defect's pass-through is observable. */
+const KIT_REPORT = ["✗ kit status line", "  at kit frame"];
+
+/** A `FailureDetails` for a render under test. */
 const details = (cause: Cause.Cause<unknown>, isDefect: boolean): FailureDetails => ({
 	cause,
 	isDefect,
-	defaultLines: [],
-	lines: () => [],
+	defaultLines: KIT_REPORT,
+	lines: () => KIT_REPORT,
 });
 
 const typed = (error: unknown) => FailureLine.render(error, details(Cause.fail(error), false));
@@ -42,22 +45,21 @@ describe("FailureLine.render", () => {
 		const boom = new TypeError("cannot read properties of undefined");
 		const lines = FailureLine.render(boom, details(Cause.die(boom), true));
 
-		it("is several lines: a headline, the pretty cause with its stack, and where to report it", () => {
-			expect(Array.isArray(lines)).toBe(true);
-			const all = lines as ReadonlyArray<string>;
-			expect(all[0]).toBe("savvy hit an unexpected error: cannot read properties of undefined");
-			expect(all.slice(1, -1).join("\n")).toContain("TypeError: cannot read properties of undefined");
-			expect(all.slice(1, -1).some((line) => line.trimStart().startsWith("at "))).toBe(true);
-			expect(all.at(-1)).toBe(
+		it("is the kit's default report followed by where to report it", () => {
+			expect(lines).toEqual([
+				...KIT_REPORT,
 				"This is a bug in savvy. Please report it with the output above at https://github.com/savvy-web/systems/issues",
-			);
+			]);
 		});
 
 		it("follows isDefect, not the error's shape: a tagged value that died is still a defect", () => {
 			const died = new CleanError({ reason: "x" });
 			const report = FailureLine.render(died, details(Cause.die(died), true));
-			expect(Array.isArray(report)).toBe(true);
-			expect((report as ReadonlyArray<string>)[0]).toBe("savvy hit an unexpected error: CleanError: reason: x");
+			expect(report).toEqual(lines);
+		});
+
+		it("never hands a typed failure the kit's report", () => {
+			expect(typed(new CleanError({ reason: "x" }))).not.toContain(KIT_REPORT[0]);
 		});
 	});
 });

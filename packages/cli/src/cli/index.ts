@@ -44,6 +44,7 @@
  */
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { CliAudience } from "@effected/cli";
 import { ToolDiscovery } from "@effected/commands";
 import { Git } from "@effected/git";
 import { ManagedSection } from "@effected/templates";
@@ -73,6 +74,7 @@ import { reposCommand } from "../commands/repos/index.js";
  * Root `savvy` command nesting the two orchestrators and three command groups.
  */
 export const rootCommand = Command.make("savvy").pipe(
+	Command.withSharedFlags(CliAudience.flags()),
 	Command.withSubcommands([
 		initCommand,
 		checkCommand,

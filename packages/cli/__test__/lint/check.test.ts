@@ -108,9 +108,12 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 				runLintInit({ force: false, config: "lint-staged.config.ts", preset: "silk" }),
 				captureLayer(out),
 			);
-			expect(out[0]).toBe("lint-staged");
-			expect(out.some((l) => l.startsWith("✓ Synced .husky/pre-commit"))).toBe(true);
-			expect(out.at(-1)).toBe("✓ lint-staged is ready to use");
+			// Printed step by step: one write per completed step, read back as lines.
+			const lines = out.flatMap((write) => write.split("\n"));
+			expect(lines[0]).toBe("lint-staged");
+			expect(lines.some((l) => l.startsWith("✓ Synced .husky/pre-commit"))).toBe(true);
+			expect(lines.at(-2)).toBe("");
+			expect(lines.at(-1)).toBe("✓ lint-staged is ready to use");
 		}),
 	);
 

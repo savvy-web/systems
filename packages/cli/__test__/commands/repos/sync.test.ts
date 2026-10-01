@@ -78,11 +78,15 @@ describe("runReposSync (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", layer);
 
-			expect(logs.some((l) => l.includes("foo: cleared stale lock"))).toBe(true);
-			expect(logs.some((l) => l.includes("bar: initialized"))).toBe(true);
-			expect(logs.some((l) => l.includes("baz: sparse-checkout applied"))).toBe(true);
-			expect(logs.some((l) => l.includes("qux: url reconciled"))).toBe(true);
-			expect(logs.some((l) => l.includes("quux: registered"))).toBe(true);
+			expect(logs).toEqual([
+				[
+					"✓ foo: cleared stale lock",
+					"✓ bar: initialized",
+					"✓ baz: sparse-checkout applied",
+					"✓ qux: url reconciled",
+					"✓ quux: registered",
+				].join("\n"),
+			]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -93,7 +97,7 @@ describe("runReposSync (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", layer);
 
-			expect(logs.some((l) => l.includes("all vendored repos up to date"))).toBe(true);
+			expect(logs).toEqual(["✓ all vendored repos up to date"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -108,7 +112,7 @@ describe("runReposSync (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", layer);
 
-			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(logs).toEqual(["↷ no .repos/config.json — nothing vendored"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);

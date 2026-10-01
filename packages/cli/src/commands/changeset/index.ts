@@ -1,8 +1,10 @@
 import type { CliExit } from "@effected/cli";
 import type { Changesets } from "@savvy-web/silk-effects";
-import type { Cause, FileSystem, Path, Stdio } from "effect";
+import type { Cause, FileSystem, Path } from "effect";
 import { Command } from "effect/cli";
 import type { ChildProcessSpawner } from "effect/process";
+
+import type { ReportEnv } from "../../internal/report.js";
 
 import { checkCommand } from "./commands/check.js";
 import { configValidateCommand } from "./commands/config-validate.js";
@@ -67,7 +69,7 @@ export const changesetCommand: Command.Command<
 	| Path.Path
 	| Changesets.ReleasePlanner
 	| CliExit
-	| Stdio.Stdio
+	| ReportEnv
 > = _changesetCommand;
 /* v8 ignore stop */
 

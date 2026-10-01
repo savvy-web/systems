@@ -24,7 +24,7 @@ import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { Report } from "../../../internal/report.js";
 
 const { ConfigInspector } = Changesets;
 
@@ -52,11 +52,13 @@ export function runConfigValidate(dir: string) {
 			const { config } = result;
 			const pkgCount = config.packages.length;
 			const note = config.legacyVersionFilesUsed ? " (warning: legacy versionFiles in use)" : "";
-			yield* Output.ok(`${config.configPath} — ${pkgCount} package${pkgCount === 1 ? "" : "s"} declared${note}`);
+			yield* Report.print([
+				Report.ok(`${config.configPath} — ${pkgCount} package${pkgCount === 1 ? "" : "s"} declared${note}`),
+			]);
 			return;
 		}
 
-		yield* Output.fail(`${result.field}: ${result.reason}`);
+		yield* Report.print([Report.fail(`${result.field}: ${result.reason}`)]);
 		yield* CliExit.set(1);
 	});
 }

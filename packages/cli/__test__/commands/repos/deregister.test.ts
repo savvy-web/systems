@@ -60,10 +60,14 @@ describe("runReposDeregister (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", ".repos/old", layer);
 
-			expect(logs.some((l) => l.includes(".repos/old: deregistered (2 config keys removed)"))).toBe(true);
-			expect(logs.some((l) => l.includes("removed submodule..repos/old.url"))).toBe(true);
-			expect(logs.some((l) => l.includes("removed submodule..repos/old.active"))).toBe(true);
-			expect(logs.some((l) => l.includes("nothing to commit"))).toBe(true);
+			expect(logs).toEqual([
+				[
+					"✓ .repos/old: deregistered (2 config keys removed)",
+					"  removed submodule..repos/old.url",
+					"  removed submodule..repos/old.active",
+					"  local git config only — nothing to commit",
+				].join("\n"),
+			]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);

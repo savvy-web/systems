@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
 
 import { runValidateFile } from "../../src/commands/changeset/commands/validate-file.js";
 import { Capture } from "../utils/capture.js";
@@ -28,9 +28,7 @@ describe("runValidateFile", () => {
 			// stdout only: the findings (and the verdict) are the command's output.
 			const logs: string[] = [];
 			stderrLines.length = 0;
-			yield* runValidateFile(filePath).pipe(
-				Effect.provide(Layer.merge(Capture.layer(logs, stderrLines), Capture.piped)),
-			);
+			yield* runValidateFile(filePath).pipe(Effect.provide(Capture.layer(logs, stderrLines)));
 			return logs;
 		}).pipe(Effect.provide(TestExit.layer));
 	}
@@ -55,9 +53,14 @@ describe("runValidateFile", () => {
 			const logs = yield* collectLogs(filePath);
 
 			expect(TestExit.code()).toBe(1);
-			expect(logs.length).toBeGreaterThan(0);
-			// Should have at least one error line in file:line:col format
-			expect(logs.some((l) => l.match(/:\d+:\d+ \S+ .+$/))).toBe(true);
+			// One report, one unwrapped `file:line:col rule message` line per error.
+			expect(logs).toHaveLength(1);
+			const lines = logs[0].split("\n");
+			expect(lines.length).toBeGreaterThan(0);
+			for (const line of lines) {
+				expect(line.startsWith(`${filePath}:`)).toBe(true);
+				expect(line.slice(filePath.length)).toMatch(/^:\d+:\d+ \S+ .+$/);
+			}
 		}),
 	);
 

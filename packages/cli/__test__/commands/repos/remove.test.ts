@@ -71,13 +71,18 @@ describe("runReposRemove (adapter)", () => {
 			);
 
 			const logs = yield* collectLogs("/repo", "foo", layer);
-			const joined = logs.join("\n");
 
-			expect(joined).toContain("orientation");
-			expect(joined).toContain("will NOT restore it");
-			// The block itself must be emitted verbatim enough to hand back to `add`.
-			expect(joined).toContain("src/ holds the spec");
-			expect(joined).toContain("src/index.ts");
+			// The block itself is emitted verbatim (never wrapped), so it can be handed back to `add`.
+			expect(logs).toEqual([
+				[
+					"✓ foo: removed (.repos/foo)",
+					"  chore(repos): remove foo",
+					"  staged — review and commit",
+					"⚠ note n-1234 (1.0.0) was removed with the entry — promote first if durable",
+					"⚠ the orientation block for foo was removed with the entry and add will NOT restore it — re-vendoring? capture it now:",
+					JSON.stringify(orientation, null, 2),
+				].join("\n"),
+			]);
 		}),
 	);
 
@@ -101,10 +106,14 @@ describe("runReposRemove (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", "foo", layer);
 
-			expect(logs.some((l) => l.includes("foo") && l.includes("removed") && l.includes(".repos/foo"))).toBe(true);
-			expect(logs).toContain("  chore(repos): remove foo");
-			expect(logs.some((l) => l.includes("staged"))).toBe(true);
-			expect(logs.some((l) => l.includes("n-1234") && l.includes("promote"))).toBe(true);
+			expect(logs).toEqual([
+				[
+					"✓ foo: removed (.repos/foo)",
+					"  chore(repos): remove foo",
+					"  staged — review and commit",
+					"⚠ note n-1234 (1.0.0) was removed with the entry — promote first if durable",
+				].join("\n"),
+			]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -178,7 +187,7 @@ describe("runReposRemove (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", "foo", layer);
 
-			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(logs).toEqual(["↷ no .repos/config.json — nothing vendored"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);

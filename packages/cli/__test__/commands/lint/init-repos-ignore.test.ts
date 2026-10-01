@@ -20,7 +20,7 @@ const WorkspaceLive = WorkspaceDiscovery.layer().pipe(Layer.provide(WorkspaceRoo
 
 const TestLayer = Layer.provideMerge(
 	Layer.mergeAll(ManagedSection.layer, BiomeSchemaSync.layer, WorkspaceLive),
-	Layer.mergeAll(NodeFileSystem.layer, NodePath.layer, Capture.piped),
+	Layer.mergeAll(NodeFileSystem.layer, NodePath.layer, Capture.env),
 ).pipe(Layer.provide(Logger.layer([])));
 
 describe("runLintInit: .repos ignore propagation", () => {

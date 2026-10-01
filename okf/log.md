@@ -1,5 +1,16 @@
 # Log
 
+## 2026-09-29
+
+* Updated silk-effects
+
+## 2026-09-28
+
+* Updated An Effect-native MCP server
+* Updated github-action-builder
+* Updated mcp
+* Updated silk-core
+
 ## 2026-09-27
 
 * Updated silk-effects

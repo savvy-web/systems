@@ -33,10 +33,10 @@
 
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const sectionArg = Argument.String("section");
@@ -55,13 +55,15 @@ export const runReposDeregister = (cwd: string, section: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.deregister(cwd, section);
-		yield* Output.ok(`${result.section}: deregistered (${result.removedKeys.length} config keys removed)`);
-		for (const key of result.removedKeys) {
-			yield* Output.detail(`removed ${key}`);
-		}
-		yield* Output.detail("local git config only — nothing to commit");
+		yield* Report.print([
+			Report.ok(
+				`${result.section}: deregistered (${result.removedKeys.length} config keys removed)`,
+				...result.removedKeys.map((key) => `removed ${key}`),
+				"local git config only — nothing to commit",
+			),
+		]);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
 			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),
 		Effect.catchTag("GitSubmoduleError", (error) => {

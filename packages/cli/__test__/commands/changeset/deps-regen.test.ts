@@ -73,9 +73,7 @@ function collectStdout(
 ) {
 	return Effect.gen(function* () {
 		const out: string[] = [];
-		yield* runDepsRegen(cwd, base, pkg, dryRun, json).pipe(
-			Effect.provide(Layer.mergeAll(layer, Capture.layer(out), Capture.piped)),
-		);
+		yield* runDepsRegen(cwd, base, pkg, dryRun, json).pipe(Effect.provide(Layer.mergeAll(layer, Capture.layer(out))));
 		return out.join("\n");
 	});
 }

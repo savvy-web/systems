@@ -35,12 +35,13 @@
  * @internal
  */
 
+import type { Block } from "@effected/cli";
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const namesArg = Argument.String("name").pipe(Argument.variadic());
@@ -59,28 +60,29 @@ export const runReposRestore = (cwd: string, names: ReadonlyArray<string>) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.restore(cwd, names.length > 0 ? names : undefined);
-		for (const entry of result.restored) {
-			yield* Output.ok(`${entry.name}: restored to ${entry.commit}`);
-		}
-		for (const name of result.skippedClean) {
-			yield* Output.skip(`${name}: clean — skipped`);
-		}
+		const blocks: Array<Block> = [
+			...result.restored.map((entry) => Report.ok(`${entry.name}: restored to ${entry.commit}`)),
+			...result.skippedClean.map((name) => Report.skip(`${name}: clean — skipped`)),
+		];
 		// Reporting a reset that ran while the tree stayed dirty as a plain
 		// success is what let a nested-submodule divergence look repaired for
 		// months. Say it, and set a failing exit code so a script notices.
 		for (const name of result.stillDirty) {
-			yield* Output.fail(`${name}: reset ran but the worktree is STILL dirty; run \`savvy repos status --drift\``);
+			blocks.push(
+				Report.fail(`${name}: reset ran but the worktree is STILL dirty; run \`savvy repos status --drift\``),
+			);
 		}
 		if (result.stillDirty.length > 0) {
 			yield* CliExit.set(1);
 		}
 		if (result.restored.length === 0 && result.skippedClean.length === 0) {
-			yield* Output.ok("nothing to restore");
+			blocks.push(Report.ok("nothing to restore"));
 		}
+		yield* Report.print(blocks);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
 			if (error.kind === "missing") {
-				return Output.skip("no .repos/config.json — nothing vendored");
+				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
 			}
 			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),

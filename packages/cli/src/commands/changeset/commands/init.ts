@@ -42,9 +42,9 @@ import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Data, Effect, Option, Result, Schema } from "effect";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 const { LegacyVersionFilesSchema } = Changesets;
 
@@ -697,7 +697,7 @@ export function runChangesetInit(opts: {
 	quiet: boolean;
 	skipMarkdownlint: boolean;
 	check: boolean;
-}): Effect.Effect<void, never, WorkspaceRoot | Git | CliExit | Stdio.Stdio> {
+}): Effect.Effect<void, never, WorkspaceRoot | Git | CliExit | ReportEnv> {
 	const { force, quiet, skipMarkdownlint, check } = opts;
 	return Effect.gen(function* () {
 		const root = yield* resolveWorkspaceRoot(process.cwd());
@@ -720,20 +720,20 @@ export function runChangesetInit(opts: {
 			];
 
 			if (issues.length === 0) {
-				yield* Output.ok("All @savvy-web/changesets config files are up to date");
+				yield* Report.print([Report.ok("All @savvy-web/changesets config files are up to date")]);
 				return;
 			}
 
-			for (const issue of issues) {
-				yield* Output.warn(`${issue.file}: ${issue.message}`);
-			}
-			yield* Output.detail('Run "savvy init --force" to fix');
+			yield* Report.print([
+				...issues.map((issue) => Report.warn(`${issue.file}: ${issue.message}`)),
+				Report.detail('Run "savvy init --force" to fix'),
+			]);
 			return;
 		}
 
 		// 2. Create .changeset/ directory
 		const changesetDir = yield* ensureChangesetDir(root);
-		yield* Output.ok("Ensured .changeset/ directory");
+		yield* Report.print([Report.ok("Ensured .changeset/ directory")]);
 
 		// 3–5: Run each step, collecting errors
 		const errors: InitError[] = [];
@@ -741,7 +741,7 @@ export function runChangesetInit(opts: {
 		// 3. Handle config.json
 		const configResult = yield* handleConfig(changesetDir, repoSlug, force).pipe(Effect.result);
 		if (Result.isSuccess(configResult)) {
-			yield* Output.ok(configResult.success);
+			yield* Report.print([Report.ok(configResult.success)]);
 			// 3b. Surface deprecation when the (possibly newly patched) config
 			//     still carries the legacy top-level `versionFiles[]`. This is
 			//     never fatal — the warning text names the migration target.
@@ -756,7 +756,7 @@ export function runChangesetInit(opts: {
 		if (!skipMarkdownlint) {
 			const baseResult = yield* handleBaseMarkdownlint(root).pipe(Effect.result);
 			if (Result.isSuccess(baseResult)) {
-				yield* Output.ok(baseResult.success);
+				yield* Report.print([Report.ok(baseResult.success)]);
 			} else {
 				errors.push(baseResult.failure);
 			}
@@ -765,7 +765,7 @@ export function runChangesetInit(opts: {
 		// 5. Handle .changeset/.markdownlint.json
 		const mdlintResult = yield* handleChangesetMarkdownlint(changesetDir, root, force).pipe(Effect.result);
 		if (Result.isSuccess(mdlintResult)) {
-			yield* Output.ok(mdlintResult.success);
+			yield* Report.print([Report.ok(mdlintResult.success)]);
 		} else {
 			errors.push(mdlintResult.failure);
 		}
@@ -781,7 +781,7 @@ export function runChangesetInit(opts: {
 			return;
 		}
 
-		yield* Output.ok("Init complete");
+		yield* Report.print([Report.ok("Init complete")]);
 	}).pipe(
 		Effect.catch((error) =>
 			Effect.gen(function* () {

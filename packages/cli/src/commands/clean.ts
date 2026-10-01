@@ -10,11 +10,12 @@
 
 import { glob as nodeGlob, realpath, rm } from "node:fs/promises";
 import { join, sep } from "node:path";
+import type { Block } from "@effected/cli";
 import { WorkspaceDiscovery } from "@effected/workspaces";
-import type { Stdio } from "effect";
 import { Data, Effect } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../internal/output.js";
+import type { ReportEnv } from "../internal/report.js";
+import { Report } from "../internal/report.js";
 
 /** Default patterns cleaned when `--globs` is omitted. */
 const DEFAULT_GLOBS = ["dist", ".turbo", "coverage", "node_modules", ".rslib"];
@@ -126,7 +127,7 @@ export function parseGlobs(raw: string): string[] {
 export function runClean(opts: {
 	globs: string;
 	dryRun: boolean;
-}): Effect.Effect<void, CleanError, WorkspaceDiscovery | Stdio.Stdio> {
+}): Effect.Effect<void, CleanError, WorkspaceDiscovery | ReportEnv> {
 	const patterns = parseGlobs(opts.globs);
 	return Effect.gen(function* () {
 		const discovery = yield* WorkspaceDiscovery;
@@ -168,24 +169,28 @@ export function runClean(opts: {
 			);
 			for (const { g, report } of reports) {
 				if (g.targets.length === 0) continue;
-				yield* Output.line("");
-				yield* Output.heading(g.pkg.relativePath === "." ? "<root>" : g.pkg.relativePath);
+				// Printed per workspace, as each group finishes, so a run that stops
+				// part-way still shows what was already removed.
+				const blocks: Array<Block> = [
+					Report.line(""),
+					Report.heading(g.pkg.relativePath === "." ? "<root>" : g.pkg.relativePath),
+				];
 				// Only report items that actually succeeded (in dry-run, `removed`
 				// holds every target). Failures are printed inline with a distinct
 				// marker rather than mislabeled as removed.
 				for (const t of report.removed) {
-					yield* Output.detail(`${verb} [${t.kind}] ${t.path}`);
+					blocks.push(Report.detail(`${verb} [${t.kind}] ${t.path}`));
 				}
 				for (const f of report.failed) {
-					yield* Output.warn(`failed [${f.target.kind}] ${f.target.path}: ${f.reason}`);
+					blocks.push(Report.warn(`failed [${f.target.kind}] ${f.target.path}: ${f.reason}`));
 				}
+				yield* Report.print(blocks);
 				total += report.removed.length;
 				failures.push(...report.failed);
 			}
 		}
 
-		yield* Output.line("");
-		yield* Output.ok(`${opts.dryRun ? "Would remove" : "Removed"} ${total} item(s)`);
+		yield* Report.print([Report.line(""), Report.ok(`${opts.dryRun ? "Would remove" : "Removed"} ${total} item(s)`)]);
 		if (failures.length > 0) {
 			for (const f of failures) {
 				yield* Effect.logError(`Failed to remove ${f.target.path}: ${f.reason}`);

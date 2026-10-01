@@ -52,11 +52,12 @@
  */
 
 import { resolve } from "node:path";
+import type { Block } from "@effected/cli";
 import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { Report } from "../../../internal/report.js";
 
 type RegenPlan = Changesets.RegenPlan;
 type RegenResult = Changesets.RegenResult;
@@ -130,59 +131,59 @@ export function runDepsRegen(
  * not removed, never as deleted.
  */
 function renderHumanPlan(plan: RegenPlan, result: RegenResult | undefined) {
-	return Effect.gen(function* () {
-		const dryRun = result === undefined;
-		if (plan.toDelete.length === 0 && plan.toWrite.length === 0) {
-			yield* Output.ok("No dependency changes to regenerate");
-		} else {
-			if (dryRun && plan.toDelete.length > 0) {
-				yield* Output.heading(`Would delete ${plan.toDelete.length} pure dependency changeset(s):`);
-				for (const entry of plan.toDelete) {
-					yield* Output.detail(`${entry.file}  (${entry.package})`);
-				}
+	const dryRun = result === undefined;
+	const row = (entry: { readonly file: string; readonly package: string }) => `${entry.file}  (${entry.package})`;
+	const blocks: Block[] = [];
+	if (plan.toDelete.length === 0 && plan.toWrite.length === 0) {
+		blocks.push(Report.ok("No dependency changes to regenerate"));
+	} else {
+		if (dryRun && plan.toDelete.length > 0) {
+			blocks.push(Report.heading(`Would delete ${plan.toDelete.length} pure dependency changeset(s):`));
+			blocks.push(...plan.toDelete.map((entry) => Report.detail(row(entry))));
+		}
+		if (!dryRun) {
+			const deleted = new Set(result.deleted);
+			const removed = plan.toDelete.filter((entry) => deleted.has(entry.file));
+			const notRemoved = plan.toDelete.filter((entry) => !deleted.has(entry.file));
+			if (removed.length > 0) {
+				blocks.push(Report.ok(`Deleted ${removed.length} pure dependency changeset(s):`, ...removed.map(row)));
 			}
-			if (!dryRun) {
-				const deleted = new Set(result.deleted);
-				const removed = plan.toDelete.filter((entry) => deleted.has(entry.file));
-				const notRemoved = plan.toDelete.filter((entry) => !deleted.has(entry.file));
-				if (removed.length > 0) {
-					yield* Output.ok(`Deleted ${removed.length} pure dependency changeset(s):`);
-					for (const entry of removed) {
-						yield* Output.detail(`${entry.file}  (${entry.package})`);
-					}
-				}
-				if (notRemoved.length > 0) {
-					yield* Output.skip(`${notRemoved.length} planned deletion(s) not removed (already gone or undeletable):`);
-					for (const entry of notRemoved) {
-						yield* Output.detail(`${entry.file}  (${entry.package})`);
-					}
-				}
-			}
-			// Writes fail loudly in execute, so a completed real run wrote every
-			// planned entry; filter by result.written anyway so the line can only
-			// ever name files execute reports.
-			const writes = dryRun ? plan.toWrite : plan.toWrite.filter((entry) => result.written.includes(entry.file));
-			if (writes.length > 0) {
-				yield* dryRun
-					? Output.heading(`Would write ${writes.length} dependency changeset(s):`)
-					: Output.ok(`Wrote ${writes.length} fresh dependency changeset(s):`);
-				for (const entry of writes) {
-					yield* Output.detail(
-						`+ ${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`,
-					);
-				}
+			if (notRemoved.length > 0) {
+				blocks.push(
+					Report.skip(
+						`${notRemoved.length} planned deletion(s) not removed (already gone or undeletable):`,
+						...notRemoved.map(row),
+					),
+				);
 			}
 		}
-		if (plan.skippedMixed.length > 0) {
-			yield* Output.line("");
-			yield* Output.skip(
-				`Skipped ${plan.skippedMixed.length} mixed changeset(s) (have Dependencies but also other content):`,
+		// Writes fail loudly in execute, so a completed real run wrote every
+		// planned entry; filter by result.written anyway so the line can only
+		// ever name files execute reports.
+		const writes = dryRun ? plan.toWrite : plan.toWrite.filter((entry) => result.written.includes(entry.file));
+		if (writes.length > 0) {
+			const lines = writes.map(
+				(entry) =>
+					`+ ${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`,
 			);
-			for (const file of plan.skippedMixed) {
-				yield* Output.detail(`~ ${file}`);
+			if (dryRun) {
+				blocks.push(Report.heading(`Would write ${writes.length} dependency changeset(s):`));
+				blocks.push(...lines.map((line) => Report.detail(line)));
+			} else {
+				blocks.push(Report.ok(`Wrote ${writes.length} fresh dependency changeset(s):`, ...lines));
 			}
 		}
-	});
+	}
+	if (plan.skippedMixed.length > 0) {
+		blocks.push(
+			Report.line(""),
+			Report.skip(
+				`Skipped ${plan.skippedMixed.length} mixed changeset(s) (have Dependencies but also other content):`,
+				...plan.skippedMixed.map((file) => `~ ${file}`),
+			),
+		);
+	}
+	return Report.print(blocks);
 }
 
 /* v8 ignore next 12 */

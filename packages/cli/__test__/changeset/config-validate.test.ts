@@ -19,8 +19,8 @@ const TestLive = ConfigInspector.layer.pipe(
 	Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, WorkspacesKitLive)),
 	Layer.provide(NodeServices.layer),
 );
-/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
-const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
+/** Logs silenced, plus the fixed presentation environment the handler's report renders under. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.env);
 
 function setupFixture(opts: { configJson: Record<string, unknown> }): string {
 	const dir = mkdtempSync(join(tmpdir(), "cs-cli-validate-"));

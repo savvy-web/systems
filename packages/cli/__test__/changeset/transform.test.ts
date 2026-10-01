@@ -10,8 +10,8 @@ import { TestExit } from "../utils/exit.js";
 
 const { ConfigurationError, ConfigInspector, makeConfigInspectorTest } = Changesets;
 
-/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
-const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
+/** Logs silenced, plus the fixed presentation environment the handler's report renders under. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.env);
 
 // The tests below do not create a `.changeset/config.json` next to their
 // CHANGELOG fixtures, so `requireValidConfig` short-circuits before

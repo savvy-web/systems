@@ -28,12 +28,13 @@
  * @internal
  */
 
+import type { Block } from "@effected/cli";
 import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const nameArg = Argument.String("name");
@@ -49,25 +50,28 @@ export const runReposRemove = (cwd: string, name: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.remove(cwd, name);
-		yield* Output.ok(`${result.name}: removed (${result.path})`);
-		yield* Output.detail(result.commitMessage);
-		yield* Output.detail("staged — review and commit");
-		for (const note of result.removedNotes) {
-			yield* Output.warn(`note ${note.id} (${note.ref}) was removed with the entry — promote first if durable`);
-		}
+		const blocks: Array<Block> = [
+			Report.ok(`${result.name}: removed (${result.path})`, result.commitMessage, "staged — review and commit"),
+			...result.removedNotes.map((note) =>
+				Report.warn(`note ${note.id} (${note.ref}) was removed with the entry — promote first if durable`),
+			),
+		];
 		// `add` has an `orientation` parameter but does not resurrect anything on
 		// its own, so anyone re-vendoring after this loses the block unless they
 		// are handed it here, while it still exists.
 		if (result.removedEntry.orientation) {
-			yield* Output.warn(
-				`the orientation block for ${result.name} was removed with the entry and add will NOT restore it — re-vendoring? capture it now:`,
+			blocks.push(
+				Report.warn(
+					`the orientation block for ${result.name} was removed with the entry and add will NOT restore it — re-vendoring? capture it now:`,
+				),
+				Report.verbatim(JSON.stringify(result.removedEntry.orientation, null, 2)),
 			);
-			yield* Output.line(JSON.stringify(result.removedEntry.orientation, null, 2));
 		}
+		yield* Report.print(blocks);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
+		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
 			if (error.kind === "missing") {
-				return Output.skip("no .repos/config.json — nothing vendored");
+				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
 			}
 			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
 		}),

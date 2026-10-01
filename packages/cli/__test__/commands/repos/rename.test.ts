@@ -82,9 +82,13 @@ describe("runReposRename (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
-			expect(logs.some((l) => l.includes("foo") && l.includes("renamed") && l.includes("bar"))).toBe(true);
-			expect(logs).toContain("  chore(repos): rename foo to bar");
-			expect(logs.some((l) => l.includes("staged"))).toBe(true);
+			expect(logs).toEqual([
+				[
+					"✓ foo: renamed to bar (.repos/bar)",
+					"  chore(repos): rename foo to bar",
+					"  staged — review and commit",
+				].join("\n"),
+			]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
@@ -147,7 +151,7 @@ describe("runReposRename (adapter)", () => {
 
 			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
 
-			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
+			expect(logs).toEqual(["↷ no .repos/config.json — nothing vendored"]);
 			expect(TestExit.code()).toBe(0);
 		}),
 	);
