@@ -1,5 +1,52 @@
 # @savvy-web/silk-effects
 
+## 9.4.0
+
+### Features
+
+- `Changesets.DepsRegen.execute` and `Changesets.ReleasePlanner.apply` accept an optional `onStep` callback that reports each completed write as it lands, so a caller can show partial progress when a run fails partway.
+
+```ts
+yield* regen.execute(plan, {
+  onStep: (step) => Effect.logInfo(`${step._tag} ${step.file}`),
+})
+```
+
+- `execute` reports `RegenStep.Written` after each changeset write and `RegenStep.Deleted` after each successful stale-changeset delete.
+
+- `apply` reports `ApplyStep.EngineApplied` once versions, CHANGELOGs and changeset deletions are done, then `ApplyStep.VersionFilesUpdated` when any version file changed. A dry run reports nothing.
+
+- New exported types: `RegenStep`, `DepsRegenExecuteOptions`, `ApplyStep`, `ApplyOptions`, `AppliedReleaseEntry`, `VersionFileUpdateRecord`. Callers that pass no `onStep` are unchanged.
+
+- `savvy changeset deps regen` and `savvy changeset version` now print each completed step as it happens. `deps regen` lists each written and deleted changeset on its own line and ends with `Wrote N fresh and deleted M pure dependency changeset(s)`. `--json` and `--dry-run` output are unchanged. [#736][#736]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.6.0 | ^0.7.0 |
+| @effected/glob | dependency | updated | ^0.9.0 | ^0.10.0 |
+| @effected/jsonc | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/markdown | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/package-json | dependency | updated | ^0.19.1 | ^0.20.0 |
+| @effected/toml | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/walker | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/yaml | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @savvy-web/silk-core | dependency | updated | 0.4.8 | 0.4.9 |
+| @effected/commands | peerDependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/git | peerDependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/templates | peerDependency | updated | ^0.9.0 | ^0.10.0 |
+| @effected/workspaces | peerDependency | updated | ^0.30.0 | ^0.31.0 |
+| effect | peerDependency | updated | 4.0.0-rc.118 | ^4.0.0 |
+
+[#736][#736]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#736]: https://github.com/savvy-web/systems/pull/736
+
 ## 9.3.1
 
 ### Dependencies

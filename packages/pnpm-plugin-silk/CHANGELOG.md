@@ -1,5 +1,17 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.46.0
+
+### Features
+
+- The `silk` catalog now names `ink` (`^7.1.1`, peer `^7.1.0`) beside `react`, so a package that draws terminal screens with Ink can declare it as `catalog:silk`. [#736][#736]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#736]: https://github.com/savvy-web/systems/pull/736
+
 ## 0.45.0
 
 ### Features
