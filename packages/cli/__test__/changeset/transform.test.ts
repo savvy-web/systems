@@ -296,6 +296,18 @@ describe("transform command – runTransform handler", () => {
 			}),
 		);
 
+		it.effect("caps a long insertion's listing like the diff, eliding the rest", () =>
+			Effect.gen(function* () {
+				const appended = Array.from({ length: 45 }, (_, i) => `[ref-${i}]: https://example.com/${i}`);
+				const printed = yield* report("# A\n", `# A\n${appended.join("\n")}\n`);
+				expect(printed[1]).toBe("  inserts 45 lines after line 1");
+				// The finding, its detail, 40 listed lines, then one elision line.
+				expect(printed).toHaveLength(43);
+				expect(printed[41]).toBe("  + [ref-39]: https://example.com/39");
+				expect(printed[42]).toBe("    … 5 more lines");
+			}),
+		);
+
 		it.effect("names an insertion at the top of the file", () =>
 			Effect.gen(function* () {
 				expect((yield* report("x\n", "# Title\nx\n")).slice(0, 2)).toEqual([

@@ -86,11 +86,18 @@ const lineCount = (lines: ReadonlyArray<string>): string => {
 	return `${lines.length} ${blank}${lines.length === 1 ? "line" : "lines"}`;
 };
 
-/** `lines` drawn as one side of a diff (`+ text`, or a bare `+` for a blank line), unless every one is blank. */
-const listed = (sign: "+" | "-", lines: ReadonlyArray<string>) =>
-	lines.every((line) => line.trim() === "")
-		? []
-		: [Doc.verbatim(lines.map((line) => (line === "" ? sign : `${sign} ${line}`)).join("\n"), { indent: 2 })];
+/**
+ * `lines` drawn as one side of a diff (`+ text`, or a bare `+` for a blank
+ * line), unless every one is blank; capped at {@link DIFF_CAP} lines with an
+ * elision line, as `Doc.diff` caps each side.
+ */
+const listed = (sign: "+" | "-", lines: ReadonlyArray<string>) => {
+	if (lines.every((line) => line.trim() === "")) return [];
+	const shown = lines.slice(0, DIFF_CAP).map((line) => (line === "" ? sign : `${sign} ${line}`));
+	const hidden = lines.length - shown.length;
+	if (hidden > 0) shown.push(`  … ${hidden} more ${hidden === 1 ? "line" : "lines"}`);
+	return [Doc.verbatim(shown.join("\n"), { indent: 2 })];
+};
 
 /**
  * What `--check` shows under its finding for one drifted region.
