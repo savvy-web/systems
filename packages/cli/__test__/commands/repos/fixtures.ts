@@ -10,8 +10,8 @@ import { NodeServices } from "@effect/platform-node";
 import { CliAudience } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import type { Effect as EffectType } from "effect";
-import { Effect, Layer } from "effect";
-import { Command } from "effect/cli";
+import { Cause, Effect, Exit, Layer } from "effect";
+import { CliError, Command } from "effect/cli";
 
 import { reposCommand } from "../../../src/commands/repos/index.js";
 import { Capture } from "../../utils/capture.js";
@@ -21,6 +21,19 @@ type ManagerShape = Repos.ReposManagerShape;
 const unused = (method: string) => () => Effect.die(`ReposManager.${method} is not used in this test`);
 
 export class ReposStub {
+	/**
+	 * `"<command path>: <argument>"` when `exit` is a handler's missing-argument
+	 * usage error (a `ShowHelp` carrying `MissingArgument`, as core's parser
+	 * raises), otherwise `undefined`.
+	 */
+	static readonly missingArgument = (exit: Exit.Exit<unknown, unknown>): string | undefined => {
+		if (!Exit.isFailure(exit)) return undefined;
+		const error = Cause.squash(exit.cause);
+		if (!CliError.isCliError(error) || error._tag !== "ShowHelp") return undefined;
+		const missing = error.errors.find((e) => e._tag === "MissingArgument");
+		return missing?._tag === "MissingArgument" ? `${error.commandPath.join(" ")}: ${missing.argument}` : undefined;
+	};
+
 	private constructor() {}
 
 	/** A `ReposManager` whose named methods are given and every other one dies. */

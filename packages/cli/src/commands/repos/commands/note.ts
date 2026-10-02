@@ -53,17 +53,29 @@ const complete = (name: string, request: ReposNoteRequest) => {
 	switch (request.op) {
 		case "add":
 			return Effect.map(
-				ReposCli.textOrAsk(request.note, { argument: "text", message: `Note to add to ${name}:` }),
+				ReposCli.textOrAsk(request.note, {
+					command: ["note", "add"],
+					argument: "text",
+					message: `Note to add to ${name}:`,
+				}),
 				(note) => ({ op: "add" as const, note }),
 			);
 		case "remove":
 			return Effect.map(
-				ReposCli.textOrAsk(request.id, { argument: "id", message: `Id of the ${name} note to remove:` }),
+				ReposCli.textOrAsk(request.id, {
+					command: ["note", "remove"],
+					argument: "id",
+					message: `Id of the ${name} note to remove:`,
+				}),
 				(id) => ({ op: "remove" as const, id }),
 			);
 		case "promote":
 			return Effect.map(
-				ReposCli.textOrAsk(request.id, { argument: "id", message: `Id of the ${name} note to promote:` }),
+				ReposCli.textOrAsk(request.id, {
+					command: ["note", "promote"],
+					argument: "id",
+					message: `Id of the ${name} note to promote:`,
+				}),
 				(id) => ({ op: "promote" as const, id, into: request.into }),
 			);
 	}
@@ -77,6 +89,7 @@ const complete = (name: string, request: ReposNoteRequest) => {
 export const runReposNote = (cwd: string, name: string | undefined, request: ReposNoteRequest) =>
 	Effect.gen(function* () {
 		const target = yield* ReposCli.nameOrPick(cwd, name, {
+			command: ["note", request.op],
 			argument: "name",
 			message: `Which repo's notes (${request.op})?`,
 		});

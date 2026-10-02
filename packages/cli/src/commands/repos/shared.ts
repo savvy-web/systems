@@ -71,11 +71,18 @@ export class ReposCli {
 			Effect.fail(ReposCli.toCommandError(action, error, hint));
 
 	/**
-	 * A missing required positional as core reports it — a usage error, which
-	 * `Command.runWith` renders and `CliRuntime.main` exits `64` on.
+	 * A missing required positional exactly as core's parser reports one: a
+	 * `ShowHelp` carrying `MissingArgument`, which `Command.runWith` renders as
+	 * the error followed by the subcommand's help (on stderr under
+	 * `helpOnUsageError: "stderr"`) and `CliRuntime.main` exits `64` on.
+	 *
+	 * @param command - The path below `savvy repos`, e.g. `["pin"]` or `["note", "add"]`.
 	 */
-	static readonly missingArgument = (argument: string): CliError.UserError =>
-		new CliError.UserError({ cause: `Missing required argument: ${argument}` });
+	static readonly missingArgument = (command: ReadonlyArray<string>, argument: string): CliError.ShowHelp =>
+		new CliError.ShowHelp({
+			commandPath: ["savvy", "repos", ...command],
+			errors: [new CliError.MissingArgument({ argument })],
+		});
 
 	/**
 	 * The vendored repos (name, ref, and whether dirty), read from
@@ -107,23 +114,28 @@ export class ReposCli {
 	static readonly nameOrPick = (
 		cwd: string,
 		given: string | undefined,
-		options: { readonly argument: string; readonly message: string },
+		options: { readonly command: ReadonlyArray<string>; readonly argument: string; readonly message: string },
 	): Effect.Effect<
 		string,
-		CliError.UserError | Cancelled | Repos.ReposConfigError | Repos.GitSubmoduleError,
+		CliError.ShowHelp | Cancelled | Repos.ReposConfigError | Repos.GitSubmoduleError,
 		Repos.ReposManager | ReportEnv
 	> =>
 		Effect.gen(function* () {
 			if (given !== undefined) return given;
-			if (!(yield* CliInteractive)) return yield* Effect.fail(ReposCli.missingArgument(options.argument));
+			if (!(yield* CliInteractive))
+				return yield* Effect.fail(ReposCli.missingArgument(options.command, options.argument));
 			const repos = yield* ReposCli.vendored(cwd);
-			if (repos.length === 0) return yield* Effect.fail(ReposCli.missingArgument(options.argument));
+			if (repos.length === 0) return yield* Effect.fail(ReposCli.missingArgument(options.command, options.argument));
 			return yield* CliUi.prompt(
 				Select.screen({
 					message: options.message,
 					choices: repos.map((repo) => ({ label: repo.name, value: repo.name, detail: `@ ${repo.ref}` })),
 				}),
-			).pipe(Effect.catchTag("NotInteractive", () => Effect.fail(ReposCli.missingArgument(options.argument))));
+			).pipe(
+				Effect.catchTag("NotInteractive", () =>
+					Effect.fail(ReposCli.missingArgument(options.command, options.argument)),
+				),
+			);
 		});
 
 	/**
@@ -137,11 +149,17 @@ export class ReposCli {
 	 */
 	static readonly textOrAsk = (
 		given: string | undefined,
-		options: { readonly argument: string; readonly message: string; readonly initial?: string | undefined },
-	): Effect.Effect<string, CliError.UserError | Cancelled, ReportEnv> =>
+		options: {
+			readonly command: ReadonlyArray<string>;
+			readonly argument: string;
+			readonly message: string;
+			readonly initial?: string | undefined;
+		},
+	): Effect.Effect<string, CliError.ShowHelp | Cancelled, ReportEnv> =>
 		Effect.gen(function* () {
 			if (given !== undefined) return given;
-			if (!(yield* CliInteractive)) return yield* Effect.fail(ReposCli.missingArgument(options.argument));
+			if (!(yield* CliInteractive))
+				return yield* Effect.fail(ReposCli.missingArgument(options.command, options.argument));
 			return yield* CliUi.prompt(
 				TextInput.screen({
 					message: options.message,
@@ -150,7 +168,9 @@ export class ReposCli {
 				}),
 			).pipe(
 				Effect.map((value) => value.trim()),
-				Effect.catchTag("NotInteractive", () => Effect.fail(ReposCli.missingArgument(options.argument))),
+				Effect.catchTag("NotInteractive", () =>
+					Effect.fail(ReposCli.missingArgument(options.command, options.argument)),
+				),
 			);
 		});
 

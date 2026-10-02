@@ -100,7 +100,10 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 
 	/** A hook-table row: `hook  section  ✓ state`, however the columns pad. */
 	const row = (section: string, state: string, hook = ".husky/pre-commit") =>
-		logs.some((l) => new RegExp(`^${hook.replace(/[./]/g, "\\$&")} +${section} +${state}$`).test(l));
+		logs.some((l) => new RegExp(`^${escapeRegExp(hook)} +${escapeRegExp(section)} +${escapeRegExp(state)}$`).test(l));
+
+	/** `text` as a literal inside a `RegExp`: every metacharacter, the backslash included, escaped. */
+	const escapeRegExp = (text: string) => text.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&");
 
 	function runInit(preset: "minimal" | "standard" | "silk", config = "lint-staged.config.ts") {
 		const handler = runLintInit({ force: false, config, preset });
@@ -241,7 +244,7 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 
 			const result = yield* runCheck(false);
 			expect(result.exitCode).toBe(0);
-			expect(row("\\(hook file\\)", "↷ not installed", ".husky/post-checkout")).toBe(true);
+			expect(row("(hook file)", "↷ not installed", ".husky/post-checkout")).toBe(true);
 
 			// A missing hygiene hook FILE does not degrade sectionsHealthy — this locks in the
 			// preset-agnostic behavior. The overall verdict still passes.

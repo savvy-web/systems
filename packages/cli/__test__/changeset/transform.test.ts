@@ -179,6 +179,24 @@ describe("transform command – runTransform handler", () => {
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
+	it.effect("says so instead of drawing a diff when only the final line break differs", () =>
+		Effect.gen(function* () {
+			const filePath = join(tempDir, "CHANGELOG.md");
+			writeFileSync(filePath, UNORDERED);
+			const once = yield* Capture.run(runTransform(filePath, true, false).pipe(Effect.provide(StubInspectorLayer)));
+			// The dry run prints the transformed text verbatim; strip its final line
+			// break so the file differs from the transform's output only there.
+			writeFileSync(filePath, once.stdout.join("\n").replace(/\n+$/, ""));
+
+			const result = yield* Capture.run(runTransform(filePath, false, true).pipe(Effect.provide(StubInspectorLayer)));
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([
+				`⚠ ${filePath} would be modified by transform\n  only its final line break differs`,
+			]);
+		}),
+	);
+
 	it.effect("shows the drift as a diff under the finding in check mode", () =>
 		Effect.gen(function* () {
 			const filePath = join(tempDir, "CHANGELOG.md");
@@ -188,12 +206,12 @@ describe("transform command – runTransform handler", () => {
 
 			expect(result.exitCode).toBe(1);
 			expect(result.stdout).toHaveLength(1);
-			// Only the drifted lines (3-9 of 9, plus one unchanged line of context
-			// before them), original then transformed, under the finding.
+			// Only the drifted lines (3-9 of 9), original then transformed, under
+			// the finding. No unchanged context: `Doc.diff` would draw it as removed
+			// and re-added.
 			expect(result.stdout[0].split("\n")).toEqual([
 				`⚠ ${filePath} would be modified by transform`,
-				"  lines 2-9:",
-				"-",
+				"  lines 3-9:",
 				"- ### Bug Fixes",
 				"-",
 				"- - Fix A",
@@ -201,7 +219,6 @@ describe("transform command – runTransform handler", () => {
 				"- ### Features",
 				"-",
 				"- - Feat A",
-				"+",
 				"+ ### Features",
 				"+",
 				"+ - Feat A",

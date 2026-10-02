@@ -44,9 +44,6 @@ const { ChangelogTransformer } = Changesets;
 /** The most diff lines `--check` shows under its finding; the rest is elided. */
 const DIFF_CAP = 40;
 
-/** Unchanged lines kept around the drifted region. */
-const DIFF_CONTEXT = 1;
-
 /** The drifted region of a file: both sides, and its 1-based line range in the original. */
 interface DriftWindow {
 	readonly original: string;
@@ -55,14 +52,6 @@ interface DriftWindow {
 	readonly to: number;
 }
 
-/**
- * Narrow `original` and `transformed` to the region between their common
- * leading and trailing lines, plus {@link DIFF_CONTEXT} lines either side.
- *
- * @remarks
- * `Doc.diff` draws both texts whole, so on a long CHANGELOG its cap would
- * otherwise show only the unchanged head of the file.
- */
 /** A text's lines; a final line break ends the last line rather than starting an empty one. */
 const lines = (text: string): string[] => {
 	const all = text.split("\n");
@@ -70,20 +59,30 @@ const lines = (text: string): string[] => {
 	return all;
 };
 
-const driftWindow = (original: string, transformed: string): DriftWindow => {
+/**
+ * Narrow `original` and `transformed` to the lines between their common
+ * leading and trailing lines, or `undefined` when the two differ only in the
+ * file's final line break.
+ *
+ * @remarks
+ * `Doc.diff` is not a line diff: it draws every expected line as removed and
+ * every received line as added. So the window holds only lines that changed —
+ * an unchanged context line would read as removed and re-added — and on a long
+ * CHANGELOG the cap never spends itself on the unchanged head of the file.
+ */
+const driftWindow = (original: string, transformed: string): DriftWindow | undefined => {
 	const a = lines(original);
 	const b = lines(transformed);
 	let head = 0;
 	while (head < a.length && head < b.length && a[head] === b[head]) head++;
 	let tail = 0;
 	while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail++;
-	const start = Math.max(0, head - DIFF_CONTEXT);
-	const keep = Math.max(0, tail - DIFF_CONTEXT);
+	if (head + tail >= a.length && head + tail >= b.length) return undefined;
 	return {
-		original: a.slice(start, a.length - keep).join("\n"),
-		transformed: b.slice(start, b.length - keep).join("\n"),
-		from: start + 1,
-		to: a.length - keep,
+		original: a.slice(head, a.length - tail).join("\n"),
+		transformed: b.slice(head, b.length - tail).join("\n"),
+		from: head + 1,
+		to: Math.max(head + 1, a.length - tail),
 	};
 };
 
@@ -136,10 +135,14 @@ export function runTransform(file: string, dryRun: boolean, check: boolean) {
 		if (check) {
 			if (result !== content) {
 				const drift = driftWindow(content, result);
-				yield* Report.print([
-					Report.warn(`${resolved} would be modified by transform`, `lines ${drift.from}-${drift.to}:`),
-					Doc.diff(drift.original, drift.transformed, { cap: DIFF_CAP }),
-				]);
+				yield* Report.print(
+					drift === undefined
+						? [Report.warn(`${resolved} would be modified by transform`, "only its final line break differs")]
+						: [
+								Report.warn(`${resolved} would be modified by transform`, `lines ${drift.from}-${drift.to}:`),
+								Doc.diff(drift.original, drift.transformed, { cap: DIFF_CAP }),
+							],
+				);
 				yield* CliExit.set(1);
 			} else {
 				yield* Report.print([Report.ok(`${resolved} is already formatted`)]);

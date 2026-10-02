@@ -58,18 +58,18 @@ const cwdOption = Flag.Directory("cwd").pipe(
 const sectionOrPick = (cwd: string, given: string | undefined) =>
 	Effect.gen(function* () {
 		if (given !== undefined) return given;
-		if (!(yield* CliInteractive)) return yield* Effect.fail(ReposCli.missingArgument("section"));
+		if (!(yield* CliInteractive)) return yield* Effect.fail(ReposCli.missingArgument(["deregister"], "section"));
 		const drift = yield* Repos.ReposDrift;
 		const stale = (yield* drift.check(cwd)).drifts.filter(
 			(item) => item.kind === "localRegistrationDivergence" && item.manifestValue === undefined,
 		);
-		if (stale.length === 0) return yield* Effect.fail(ReposCli.missingArgument("section"));
+		if (stale.length === 0) return yield* Effect.fail(ReposCli.missingArgument(["deregister"], "section"));
 		return yield* CliUi.prompt(
 			Select.screen({
 				message: "Deregister which stale registration?",
 				choices: stale.map((item) => ({ label: item.name, value: item.name, detail: item.detail })),
 			}),
-		).pipe(Effect.catchTag("NotInteractive", () => Effect.fail(ReposCli.missingArgument("section"))));
+		).pipe(Effect.catchTag("NotInteractive", () => Effect.fail(ReposCli.missingArgument(["deregister"], "section"))));
 	});
 
 /**

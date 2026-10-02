@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-02
+
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated silk-effects
+
 ## 2026-10-01
 
 * Updated Kit Effect peers supplied via the effected catalog

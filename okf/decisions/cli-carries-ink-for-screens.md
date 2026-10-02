@@ -6,8 +6,8 @@ status: draft
 tags: [deps, architecture, performance]
 generated:
   by: okfit/claude-code
-  at: 2026-10-02T01:43:20Z
-  body_sha256: 1b93e9b7228601d9e9be2d3f0c70c4d318bdef87017710c70e04f925abe6cb1f
+  at: 2026-10-02T02:45:02Z
+  body_sha256: d1dabf9bf4bffbc2e69f831ef1b1d05d843051711b30a96416da43b748f61c4d
 sources:
   - id: cli-manifest
     resource: ../../packages/cli/package.json
@@ -31,7 +31,7 @@ The `feat/interactive-cli` work moved `savvy`'s prompts, confirmations and live 
 
 Declare `ink` and `react` as regular `dependencies` of `@savvy-web/cli`, spelled `catalog:silk` (with `ink` added to the `silk` catalog in `@savvy-web/pnpm-plugin-silk`), and `@types/react` as a devDependency. Every install of cli, and therefore of silk, carries `ink`, `react` and ink's own `react-reconciler` and `yoga-layout`.[^cli-manifest][^plugin-silk-build]
 
-The weight is paid on disk, not at run time. A screen lives in its own `.tsx` module and is mounted through `CliUi.lazy(() => import(...))`. No command module imports `ink` or `react`, so the dynamic import runs only on the path that draws: a person at a terminal. An agent, CI, or a pipe answers every prompt from its non-interactive fallback without loading React — `confirmDestructive` returns before any screen is built, and `savvy clean` takes its plain path.[^confirm][^clean]
+The weight is paid on disk, not at run time. JSX lives only in a screen's own `.tsx` module, reached only through a dynamic `import()` on the path that draws: a person at a terminal. No command module statically imports `ink` or `react`. The one screen today, `src/commands/clean/view.tsx`, exports `cleanView` by name and is loaded with `import("./clean/view.js")` only on `savvy clean`'s interactive branch; `CliUi.lazy(() => import(...))` is another acceptable way to defer the load, though nothing here uses it. The kit's own widgets (`Select`, `Confirm`, `MultiSelect`, `TextInput`, shown through `CliUi.prompt`/`CliUi.fallback`) load Ink themselves only when they mount. An agent, CI, or a pipe answers every prompt from its non-interactive fallback without loading React — `confirmDestructive` returns before any screen is built, and `savvy clean` takes its plain path.[^confirm][^clean]
 
 ## Alternatives rejected
 
@@ -44,7 +44,7 @@ The weight is paid on disk, not at run time. A screen lives in its own `.tsx` mo
 - Every silk and cli install is heavier by ink, react, react-reconciler and yoga-layout, even where no one ever draws a screen.
 - Process start-up does not grow: nothing on a non-interactive path imports the screen modules.
 - An `ink` or `react` major bump is now a cli dependency bump, managed through the `silk` catalog like any other.
-- A new screen must stay behind `CliUi.lazy`. A static `ink`/`react` import in a command module would load React on every run.
+- A new screen must stay behind a dynamic import on its drawing path (a plain `import()` or `CliUi.lazy`). A static `ink`/`react` import in a command module would load React on every run.
 
 [^cli-manifest]: `../../packages/cli/package.json`
 [^confirm]: `../../packages/cli/src/internal/confirm.ts`

@@ -54,8 +54,16 @@ const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to 
  */
 export const runReposRename = (cwd: string, oldName: string | undefined, newName: string | undefined) =>
 	Effect.gen(function* () {
-		const from = yield* ReposCli.nameOrPick(cwd, oldName, { argument: "old-name", message: "Rename which repo?" });
-		const to = yield* ReposCli.textOrAsk(newName, { argument: "new-name", message: `Rename ${from} to?` });
+		const from = yield* ReposCli.nameOrPick(cwd, oldName, {
+			command: ["rename"],
+			argument: "old-name",
+			message: "Rename which repo?",
+		});
+		const to = yield* ReposCli.textOrAsk(newName, {
+			command: ["rename"],
+			argument: "new-name",
+			message: `Rename ${from} to?`,
+		});
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.rename(cwd, from, to);
 		yield* Report.print([

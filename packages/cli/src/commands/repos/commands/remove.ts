@@ -63,7 +63,11 @@ export interface ReposRemoveOptions {
  */
 export const runReposRemove = (cwd: string, name: string | undefined, options: ReposRemoveOptions = {}) =>
 	Effect.gen(function* () {
-		const target = yield* ReposCli.nameOrPick(cwd, name, { argument: "name", message: "Unvendor which repo?" });
+		const target = yield* ReposCli.nameOrPick(cwd, name, {
+			command: ["remove"],
+			argument: "name",
+			message: "Unvendor which repo?",
+		});
 		const proceed = yield* confirmDestructive({
 			message: `Remove ${target} from .repos/? (staged, not committed)`,
 			yes: options.yes === true,

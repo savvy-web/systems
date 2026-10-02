@@ -50,7 +50,7 @@ describe("repos rename", () => {
 				{ interactive: false },
 			);
 			const exit = yield* Fiber.await(fiber);
-			expect(String(exit)).toContain("Missing required argument: old-name");
+			expect(ReposStub.missingArgument(exit)).toBe("savvy repos rename: old-name");
 			expect(yield* session.mounts).toBe(0);
 		}).pipe(Effect.scoped),
 	);

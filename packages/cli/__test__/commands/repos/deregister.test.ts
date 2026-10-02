@@ -85,7 +85,7 @@ describe("repos deregister", () => {
 				runReposDeregister("/repo", undefined).pipe(Effect.provide(layer)),
 			);
 			const exit = yield* Fiber.await(fiber);
-			expect(String(exit)).toContain("Missing required argument: section");
+			expect(ReposStub.missingArgument(exit)).toBe("savvy repos deregister: section");
 			expect(yield* session.mounts).toBe(0);
 		}).pipe(Effect.scoped),
 	);
@@ -101,7 +101,7 @@ describe("repos deregister", () => {
 				},
 			);
 			const exit = yield* Fiber.await(fiber);
-			expect(String(exit)).toContain("Missing required argument: section");
+			expect(ReposStub.missingArgument(exit)).toBe("savvy repos deregister: section");
 			expect(yield* session.mounts).toBe(0);
 		}).pipe(Effect.scoped),
 	);

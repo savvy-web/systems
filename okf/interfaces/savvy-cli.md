@@ -25,8 +25,8 @@ sources:
     resource: ../../packages/cli/src/internal/command-error.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-02T01:43:20Z
-  body_sha256: 44a971055dc886e72be7d7cb1cf86baedfa88bd208fa5c1bdfeb00a9d022b709
+  at: 2026-10-02T02:45:02Z
+  body_sha256: 922195b8a620a2f9a705dd5c904bb0faa2439ce0009387d4a0b7126cbb5ca877
 ---
 
 # savvy command tree
@@ -209,7 +209,8 @@ deregister [section]           clear a stale submodule.<section> local-config
   registrations, `restore` a multi-select, `note promote` a picker for
   `--into`, and `add` prompts for a missing `--ref`/`--purpose`; help marks
   those positionals "(optional)". Off a terminal the same omission is a
-  usage error, exit `64`, and nothing is drawn. `restore` and `remove`
+  usage error, exactly like a parse error: the subcommand's help on stderr
+  beside the error, exit `64`, nothing on stdout, and nothing is drawn. `restore` and `remove`
   confirm before acting unless `--yes` is passed or no one can be asked.
   `sync` never prompts. `status --json` output is byte-for-byte unchanged by
   any of this.[^cli-repos-group]

@@ -53,14 +53,14 @@ const _reposCommand = Command.make("repos").pipe(
  * `status` read) can produce to a self-rendering `CommandError` (exit 1),
  * except the friendly missing-manifest case and `status --json`'s JSON error
  * document. A repo name or other positional left off is a
- * `CliError.UserError` (exit 64) when no one can be asked, and backing out of
+ * `CliError.ShowHelp` (exit 64) when no one can be asked, and backing out of
  * a picker or a confirm is the kit's `Cancelled` (exit 130).
  */
 export const reposCommand: Command.Command<
 	"repos",
 	Record<string, never>,
 	Record<string, never>,
-	CommandError | CliError.UserError | Cancelled,
+	CommandError | CliError.ShowHelp | Cancelled,
 	Repos.ReposManager | Repos.ReposDrift | CliExit | ReportEnv
 > = _reposCommand;
 /* v8 ignore stop */

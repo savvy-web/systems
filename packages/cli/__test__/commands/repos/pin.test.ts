@@ -60,7 +60,7 @@ describe("repos pin", () => {
 			);
 			const exit = yield* Fiber.await(fiber);
 			expect(exit._tag).toBe("Failure");
-			expect(String(exit)).toContain("Missing required argument: name");
+			expect(ReposStub.missingArgument(exit)).toBe("savvy repos pin: name");
 			expect(yield* session.mounts).toBe(0);
 		}).pipe(Effect.scoped),
 	);
@@ -72,6 +72,8 @@ describe("repos pin", () => {
 			expect(noName.exitCode).toBe(64);
 			expect(noName.stdout).toEqual([]);
 			expect(noName.stderr.join("\n")).toContain("Missing required argument: name");
+			// The handler's usage error carries the subcommand's help, like a parse error.
+			expect(noName.stderr.join("\n")).toContain("USAGE\n  savvy repos pin");
 
 			const noRef = yield* ReposStub.cli(["pin", "foo"], services);
 			expect(noRef.exitCode).toBe(64);

@@ -48,11 +48,11 @@ describe("repos note", () => {
 		Effect.gen(function* () {
 			const layer = ReposStub.manager({});
 			for (const [name, expected] of [
-				[undefined, "Missing required argument: name"],
-				["foo", "Missing required argument: text"],
+				[undefined, "savvy repos note add: name"],
+				["foo", "savvy repos note add: text"],
 			] as const) {
 				const exit = yield* Effect.exit(Capture.run(run(name, { op: "add" }, layer)));
-				expect(String(exit)).toContain(expected);
+				expect(ReposStub.missingArgument(exit)).toBe(expected);
 			}
 		}),
 	);
@@ -68,11 +68,11 @@ describe("repos note", () => {
 			] as const) {
 				const result = yield* ReposStub.cli(argv, services);
 				expect(result.exitCode).toBe(64);
-				// Core's own missing-flag error also prints help; `main()` moves it to stderr
-				// (`helpOnUsageError`), which `Capture.main` does not set, so only the handler's
-				// usage errors are held to an empty stdout here.
-				if (expected !== "--into") expect(result.stdout).toEqual([]);
+				// Every usage error, the parser's or a handler's, prints the error and the
+				// subcommand's help on stderr and leaves stdout empty.
+				expect(result.stdout).toEqual([]);
 				expect(result.stderr.join("\n")).toContain(expected);
+				expect(result.stderr.join("\n")).toContain("USAGE\n  savvy repos note");
 			}
 		}),
 	);

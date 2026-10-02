@@ -49,13 +49,18 @@ const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to 
  */
 export const runReposPin = (cwd: string, name: string | undefined, ref: string | undefined) =>
 	Effect.gen(function* () {
-		const target = yield* ReposCli.nameOrPick(cwd, name, { argument: "name", message: "Re-pin which repo?" });
+		const target = yield* ReposCli.nameOrPick(cwd, name, {
+			command: ["pin"],
+			argument: "name",
+			message: "Re-pin which repo?",
+		});
 		// The current pin seeds the ref prompt; read only when someone can be asked.
 		const current =
 			ref === undefined && (yield* CliInteractive)
 				? (yield* ReposCli.vendored(cwd)).find((repo) => repo.name === target)?.ref
 				: undefined;
 		const newRef = yield* ReposCli.textOrAsk(ref, {
+			command: ["pin"],
 			argument: "ref",
 			message: `Re-pin ${target} to which ref? (tag, branch, or commit)`,
 			initial: current,
