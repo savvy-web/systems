@@ -40,7 +40,15 @@ const item = (status: CoreStatus, text: InlineInput, detail: ReadonlyArray<strin
  * Actions log under Actions. Only the status glyph and headings are painted,
  * so the text reads the same piped. Progress and diagnostics stay on
  * `Effect.log*`, which the CLI logger sends to stderr; a failure is the
- * runtime's to report, never a block here.
+ * runtime's to report, never a block here — fail with `CommandError`
+ * (`./command-error.ts`), which draws itself.
+ *
+ * `Report` covers what every command repeats: status items, headings, detail
+ * lines, the summary and the audience-aware print. Anything richer — a
+ * table, a titled section, a callout, a tree, a file link, a GitHub Actions
+ * annotation — is built with `Doc.*` from `@effected/cli` directly and mixed
+ * into the same document (both build `Block`s); `Report` deliberately does not
+ * re-wrap those constructors.
  *
  * @internal
  */

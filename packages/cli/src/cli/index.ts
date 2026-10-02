@@ -58,7 +58,7 @@ import {
 	SilkPublishability,
 } from "@savvy-web/silk-effects";
 import { Layer } from "effect";
-import { Command } from "effect/cli";
+import { CliConfig, Command, GlobalFlag } from "effect/cli";
 
 import { changesetCommand } from "../commands/changeset/index.js";
 import { checkCommand } from "../commands/check.js";
@@ -165,6 +165,19 @@ const ToolDiscoveryGroupLive = ToolDiscovery.layer.pipe(Layer.provide(LocalExecL
 export const AppLive = Layer.mergeAll(ToolDiscoveryGroupLive, InspectorAndAnalyzerLive, ReposGroupLive).pipe(
 	Layer.provideMerge(BaseLive),
 );
+
+/**
+ * Core's built-in global flags for the whole program: `--help`, `--version`,
+ * `--completions` and `--log-level`. Core's generic `--wizard` is trimmed —
+ * savvy asks its own questions through `@effected/cli/ui` screens. Provided
+ * around the program by `main()`, inside `CliRuntime.main`'s environment, so
+ * help, parsing and `CliAudience`'s interactive `--wizard` restore all read
+ * it (the kit only restores a wizard its own gate removed, never one a
+ * consumer's `builtIns` left out).
+ */
+export const CliConfigLive = CliConfig.layer({
+	builtIns: [GlobalFlag.Help, GlobalFlag.Version, GlobalFlag.Completions, GlobalFlag.LogLevel],
+});
 
 /** The platform `main()` passes to `CliRuntime.main`: Node's filesystem, path, stdio, terminal and spawner. */
 export const CliPlatform = NodeServices.layer;

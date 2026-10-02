@@ -1,10 +1,18 @@
-import type { FailureDetails } from "@effected/cli";
+import type { Document, FailureDetails } from "@effected/cli";
+import { CliDoc, Doc } from "@effected/cli";
 import { Cause, Data } from "effect";
 import { describe, expect, it } from "vitest";
 
 import { FailureLine } from "../src/internal/failure-line.js";
 
 class CleanError extends Data.TaggedError("CleanError")<{ readonly reason: string }> {}
+
+/** A typed failure that draws itself through the kit's `CliDoc` protocol. */
+class DrawnError extends Data.TaggedError("DrawnError")<{ readonly message: string }> {
+	[CliDoc](): Document {
+		return [Doc.line(this.message)];
+	}
+}
 
 /** The kit-default report a test hands in, so a defect's pass-through is observable. */
 const KIT_REPORT = ["✗ kit status line", "  at kit frame"];
@@ -38,6 +46,22 @@ describe("FailureLine.render", () => {
 
 		it("falls back to String for anything else", () => {
 			expect(typed("plain")).toBe("plain");
+		});
+	});
+
+	describe("a typed failure that implements CliDoc renders its own document", () => {
+		it("hands it the kit's report of that document, not its message", () => {
+			expect(typed(new DrawnError({ message: "drawn" }))).toEqual(KIT_REPORT);
+		});
+
+		it("needs a callable CliDoc member: a non-function value under the key is still one line", () => {
+			expect(typed({ _tag: "Fake", [CliDoc]: "not a function" })).toBe("Fake");
+		});
+
+		it("still gets the issue footer when it died as a defect", () => {
+			const died = new DrawnError({ message: "drawn" });
+			const report = FailureLine.render(died, details(Cause.die(died), true));
+			expect(report).toEqual([...KIT_REPORT, expect.stringContaining("This is a bug in savvy")]);
 		});
 	});
 

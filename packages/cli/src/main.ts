@@ -5,7 +5,8 @@
  * @remarks
  * Runs `rootCommand` through `CliAudience.run`, which resolves `--audience`,
  * `--human`, `--agent` and `--ci` before core parses, provides the merged
- * `AppLive` stack, and hands the program to `@effected/cli`'s
+ * `AppLive` stack and `CliConfigLive` (core's built-in flags minus
+ * `--wizard`), and hands the program to `@effected/cli`'s
  * `CliRuntime.main`. Its `env` builds the presentation environment once — the
  * audience (overridable through `SAVVY_AUDIENCE`), the terminal, the theme,
  * editor links and the prompt gate — installs `CliLog` (diagnostics opt-in
@@ -24,9 +25,9 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import { CliAudience, CliRuntime } from "@effected/cli";
 import type { Distribution } from "@effected/engine";
 import { CurrentDistribution } from "@effected/engine";
-import { Effect, Option } from "effect";
+import { Effect, Layer, Option } from "effect";
 
-import { AppLive, CliPlatform, rootCommand } from "./cli/index.js";
+import { AppLive, CliConfigLive, CliPlatform, rootCommand } from "./cli/index.js";
 import { FailureLine } from "./internal/failure-line.js";
 import { VersionLine } from "./internal/version-line.js";
 import { CLI_VERSION } from "./version.js";
@@ -53,7 +54,7 @@ export interface MainOptions {
 export const main = (options: MainOptions = {}): void => {
 	const distribution = Option.fromNullishOr(options.distribution);
 	const program = CliAudience.run(rootCommand, { version: CLI_VERSION }).pipe(
-		Effect.provide(AppLive),
+		Effect.provide(Layer.merge(AppLive, CliConfigLive)),
 		Effect.provideService(CurrentDistribution, distribution),
 	);
 	NodeRuntime.runMain(

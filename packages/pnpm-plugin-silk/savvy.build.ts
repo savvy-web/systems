@@ -234,6 +234,11 @@ await build({
 							peer: "^9.1.7",
 							strategy: "lock",
 						},
+						ink: {
+							range: "^7.1.1",
+							peer: "^7.1.0",
+							strategy: "lock-minor",
+						},
 						"lint-staged": {
 							range: "^17.6.0",
 							peer: "^17.6.0",
