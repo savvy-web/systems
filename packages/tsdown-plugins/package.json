@@ -47,7 +47,7 @@
 		"effect": "catalog:effect",
 		"image-size": "^2.0.4",
 		"picocolors": "^1.1.1",
-		"std-env": "^4.2.0",
+		"std-env": "^4.3.0",
 		"tsdown": "catalog:build",
 		"typescript": "^6.0.3"
 	},

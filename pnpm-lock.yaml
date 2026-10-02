@@ -328,7 +328,7 @@ catalogs:
       version: 0.0.8
     turbo:
       specifier: ^2.11.5
-      version: 2.11.5
+      version: 2.11.6
   silk:
     '@types/node':
       specifier: ^26.6.3
@@ -783,7 +783,7 @@ importers:
         version: link:../bundler/dist/dev/pkg
       '@tsdown/css':
         specifier: catalog:build
-        version: 0.23.0(jiti@2.7.0)(postcss@8.5.28)(tsdown@0.23.0)(tsx@4.23.15)(yaml@2.9.1)
+        version: 0.23.0(postcss@8.5.28)(tsdown@0.23.0)(tsx@4.23.15)
       '@types/react-dom':
         specifier: catalog:docs:peers
         version: 19.3.0(@types/react@19.3.0)
@@ -881,7 +881,7 @@ importers:
         version: 7.8.5
       turbo:
         specifier: catalog:lint
-        version: 2.11.5
+        version: 2.11.6
       vite:
         specifier: catalog:test
         version: 8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1176,7 +1176,7 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       std-env:
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: 4.3.0
       tsdown:
         specifier: catalog:build
@@ -2754,33 +2754,33 @@ packages:
     peerDependencies:
       tsdown: 0.23.0
 
-  '@turbo/darwin-64@2.11.5':
-    resolution: {integrity: sha512-KdY4y7BBjIisl+jAkb3FFaRjClGqHyaeHCcVcCT8LBzFFwUu6thgfxyRZAx0uL4KoxLmH+iOan8UhVf/aDDcaA==}
+  '@turbo/darwin-64@2.11.6':
+    resolution: {integrity: sha512-nAvJwDBgz/cKoSPhB7YOGPFmDEwCRavFjy0jUsrGqR97cLyJqXU2rZC/zTnw+9J3DkB2gfjpolX7mKsBatMcCQ==}
     cpu: [x64]
     os: [darwin]
 
-  '@turbo/darwin-arm64@2.11.5':
-    resolution: {integrity: sha512-ToZDGi2u410+TfRtC/O1/LpujGgvNJoRBZnwVXob7oO0+3OSlwIO3zofXKUvwQvlba7a8ZXPyCZwufjAXd7f0w==}
+  '@turbo/darwin-arm64@2.11.6':
+    resolution: {integrity: sha512-odk6UHW9hympllPlezz7oJhPmO40+oU8BUh4zvNuSIqQ1QQll4zo1DN4IrD/3jUzkLefvMJ8UHEHlGq9WdR7tw==}
     cpu: [arm64]
     os: [darwin]
 
-  '@turbo/linux-64@2.11.5':
-    resolution: {integrity: sha512-Ub2d/nAbdWLaSytcEaPp1wm/YuIvHEIqNrCRMI/UgOGyFdOhgxm8VyWPAJilQWRYxYVrqEUoy2K5S5K8SG50rA==}
+  '@turbo/linux-64@2.11.6':
+    resolution: {integrity: sha512-PvXbwMqZPEWdWnJSIJ5D/tugnSOrRvLYKkH7iC8TLGVI+4J5znSLn3Tx1YkH5OUzFEFhxJQyHjtiRqBPbCoVlg==}
     cpu: [x64]
     os: [android, linux]
 
-  '@turbo/linux-arm64@2.11.5':
-    resolution: {integrity: sha512-JQjmGxp724Wuft9FAxPMtmBur1CEdUyxJ+FVoIvKkgj63rXHl9PYCWrsU2tMjVi609XTQ3M8vZD9Yc9qVAVYrw==}
+  '@turbo/linux-arm64@2.11.6':
+    resolution: {integrity: sha512-8FKA3SqJk6fTv7Hqrmv2JnJfqiXslTRJYBwiI6eU3QXokVMYFLh1wUywF+w3MPtDfx1O/1otbps5AnijbzY1Kg==}
     cpu: [arm64]
     os: [android, linux]
 
-  '@turbo/windows-64@2.11.5':
-    resolution: {integrity: sha512-AFkbPmXNd8XgCi/66YEHR2bVl3gtusXyDihTIVEPAuSB+7ulLmJePvz1unWPVKLHdbCTTIdKq2mpJ1B1e3lJXw==}
+  '@turbo/windows-64@2.11.6':
+    resolution: {integrity: sha512-XPSgTg494cV31u0Uch8zRq/Jnpe8h4muwNpg9IRPrJqADrjjzxzFMtJCtBZTKVaSEDUU/ol8Gr4SYxtiHt2Tzg==}
     cpu: [x64]
     os: [win32]
 
-  '@turbo/windows-arm64@2.11.5':
-    resolution: {integrity: sha512-52ziXYP3snGOxjv19xA3WL1WDKv9Q6uDAa/7EKIR5j4hocMlYURkrOHbJ2ZZI+VfPU5MwKpcGeRfHxHJu7Y/Pw==}
+  '@turbo/windows-arm64@2.11.6':
+    resolution: {integrity: sha512-dZ0/ZFH2AU/l1KdqISVkWUSnm0ufWZyiYRLDYCL+rJAhkUDMFhTZkSnYEL2O/m0tOu/Jy/EKAnZfocuyMX3LMQ==}
     cpu: [arm64]
     os: [win32]
 
@@ -4860,8 +4860,8 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  turbo@2.11.5:
-    resolution: {integrity: sha512-qLXheqz3TUvJpHIV6MUBwkNkvwKxMVG/QsimyiKT9DfNWPHJ294G/i5nDaH+fbHJt3UH7orubNNxAqYkbUNGAQ==}
+  turbo@2.11.6:
+    resolution: {integrity: sha512-UppAr5XEHLfVdVp75nd+tzPp/wVEwS7Ken9aYjMlBnHqXynKn9IcQHd6GDOXBxDViSjpS+SzJcOF86v9Hf8GfQ==}
     hasBin: true
 
   type-fest@5.10.0:
@@ -5237,21 +5237,29 @@ snapshots:
       '@biomejs/cli-win32-arm64': 2.5.14
       '@biomejs/cli-win32-x64': 2.5.14
 
-  '@biomejs/cli-darwin-arm64@2.5.14': {}
+  '@biomejs/cli-darwin-arm64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-darwin-x64@2.5.14': {}
+  '@biomejs/cli-darwin-x64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-arm64-musl@2.5.14': {}
+  '@biomejs/cli-linux-arm64-musl@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-arm64@2.5.14': {}
+  '@biomejs/cli-linux-arm64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-x64-musl@2.5.14': {}
+  '@biomejs/cli-linux-x64-musl@2.5.14':
+    optional: true
 
-  '@biomejs/cli-linux-x64@2.5.14': {}
+  '@biomejs/cli-linux-x64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-win32-arm64@2.5.14': {}
+  '@biomejs/cli-win32-arm64@2.5.14':
+    optional: true
 
-  '@biomejs/cli-win32-x64@2.5.14': {}
+  '@biomejs/cli-win32-x64@2.5.14':
+    optional: true
 
   '@changesets/apply-release-plan@8.1.1':
     dependencies:
@@ -6619,6 +6627,19 @@ snapshots:
       - tsx
       - yaml
 
+  '@tsdown/css@0.23.0(postcss@8.5.28)(tsdown@0.23.0)(tsx@4.23.15)':
+    dependencies:
+      lightningcss: 1.33.0
+      postcss-load-config: 6.0.1(jiti@2.7.0)(postcss@8.5.28)(tsx@4.23.15)(yaml@2.9.1)
+      rolldown: 1.2.12
+      tsdown: 0.23.0(@tsdown/css@0.23.0)(@tsdown/exe@0.23.0)(tsx@4.23.15)(typescript@7.0.2)
+    optionalDependencies:
+      postcss: 8.5.28
+    transitivePeerDependencies:
+      - jiti
+      - tsx
+      - yaml
+
   '@tsdown/exe@0.23.0(tsdown@0.23.0)':
     dependencies:
       obug: 2.2.1
@@ -6626,17 +6647,23 @@ snapshots:
       tsdown: 0.23.0(@tsdown/css@0.23.0)(@tsdown/exe@0.23.0)(tsx@4.23.15)(typescript@6.0.3)
       verkit: 0.4.1
 
-  '@turbo/darwin-64@2.11.5': {}
+  '@turbo/darwin-64@2.11.6':
+    optional: true
 
-  '@turbo/darwin-arm64@2.11.5': {}
+  '@turbo/darwin-arm64@2.11.6':
+    optional: true
 
-  '@turbo/linux-64@2.11.5': {}
+  '@turbo/linux-64@2.11.6':
+    optional: true
 
-  '@turbo/linux-arm64@2.11.5': {}
+  '@turbo/linux-arm64@2.11.6':
+    optional: true
 
-  '@turbo/windows-64@2.11.5': {}
+  '@turbo/windows-64@2.11.6':
+    optional: true
 
-  '@turbo/windows-arm64@2.11.5': {}
+  '@turbo/windows-arm64@2.11.6':
+    optional: true
 
   '@tybys/wasm-util@0.10.4':
     dependencies:
@@ -9110,14 +9137,14 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  turbo@2.11.5:
+  turbo@2.11.6:
     optionalDependencies:
-      '@turbo/darwin-64': 2.11.5
-      '@turbo/darwin-arm64': 2.11.5
-      '@turbo/linux-64': 2.11.5
-      '@turbo/linux-arm64': 2.11.5
-      '@turbo/windows-64': 2.11.5
-      '@turbo/windows-arm64': 2.11.5
+      '@turbo/darwin-64': 2.11.6
+      '@turbo/darwin-arm64': 2.11.6
+      '@turbo/linux-64': 2.11.6
+      '@turbo/linux-arm64': 2.11.6
+      '@turbo/windows-64': 2.11.6
+      '@turbo/windows-arm64': 2.11.6
 
   type-fest@5.10.0:
     dependencies:
