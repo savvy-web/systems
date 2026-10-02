@@ -36,25 +36,65 @@ export function runVersion(dryRun: boolean) {
 		yield* requireValidConfig(cwd);
 
 		const planner = yield* Changesets.ReleasePlanner;
-		const result = yield* planner.apply(cwd, { dryRun });
+		if (dryRun) {
+			const result = yield* planner.apply(cwd, { dryRun });
+			if (result.releases.length === 0) {
+				yield* Report.print([Report.ok("No pending changesets")]);
+				return;
+			}
+			yield* Report.print([
+				...releaseBlocks(result.releases, true),
+				...versionFileBlocks(result.versionFileUpdates, true),
+			]);
+			return;
+		}
+
+		// A real run prints each phase as apply reports it landing, so a failure
+		// in a later phase still leaves what reached disk on stdout. Whatever no
+		// step reported is printed from the result at the end.
+		let engineReported = false;
+		let versionFilesReported = false;
+		const onStep = (step: Changesets.ApplyStep) =>
+			Effect.suspend(() => {
+				if (step._tag === "EngineApplied") {
+					engineReported = true;
+					return step.releases.length === 0
+						? Effect.void
+						: Report.print([
+								...releaseBlocks(step.releases, false),
+								Report.detail(`Touched ${step.touchedFiles.length} file(s)`),
+							]);
+				}
+				versionFilesReported = true;
+				return Report.print(versionFileBlocks(step.updates, false));
+			});
+		const result = yield* planner.apply(cwd, { onStep });
 
 		if (result.releases.length === 0) {
 			yield* Report.print([Report.ok("No pending changesets")]);
 			return;
 		}
-		const verb = dryRun ? "Would release" : "Released";
-		const blocks: Block[] = result.releases.map((r) =>
-			Report.ok(`${verb} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`),
-		);
-		if (!dryRun) {
-			blocks.push(Report.detail(`Touched ${result.touchedFiles.length} file(s)`));
+		const remaining: Block[] = [];
+		if (!engineReported) {
+			remaining.push(
+				...releaseBlocks(result.releases, false),
+				Report.detail(`Touched ${result.touchedFiles.length} file(s)`),
+			);
 		}
-		for (const u of result.versionFileUpdates) {
-			blocks.push(Report.detail(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`));
-		}
-		yield* Report.print(blocks);
+		if (!versionFilesReported) remaining.push(...versionFileBlocks(result.versionFileUpdates, false));
+		if (remaining.length > 0) yield* Report.print(remaining);
 	});
 }
+
+/** One `✓` line per package release, plan-phrased on a dry run. */
+const releaseBlocks = (releases: ReadonlyArray<Changesets.AppliedReleaseEntry>, dryRun: boolean): Block[] =>
+	releases.map((r) =>
+		Report.ok(`${dryRun ? "Would release" : "Released"} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`),
+	);
+
+/** One detail line per versionFiles update, plan-phrased on a dry run. */
+const versionFileBlocks = (updates: ReadonlyArray<Changesets.VersionFileUpdateRecord>, dryRun: boolean): Block[] =>
+	updates.map((u) => Report.detail(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`));
 
 /* v8 ignore next 4 -- CLI registration; handler tested via runVersion */
 export const versionCommand = Command.make("version", { dryRun: dryRunOption }, ({ dryRun }) =>

@@ -49,11 +49,17 @@ export const AppliedReleaseEntrySchema = Schema.Struct({
 	newVersion: Schema.String,
 }).annotate({ identifier: "AppliedReleaseEntry" });
 
+/** One applied package release (version transition). @public */
+export type AppliedReleaseEntry = Schema.Schema.Type<typeof AppliedReleaseEntrySchema>;
+
 /** A single versionFiles update applied (or planned, when dry). @public */
 export const VersionFileUpdateRecordSchema = Schema.Struct({
 	filePath: Schema.String,
 	version: Schema.String,
 }).annotate({ identifier: "VersionFileUpdateRecord" });
+
+/** A single versionFiles update applied (or planned, when dry). @public */
+export type VersionFileUpdateRecord = Schema.Schema.Type<typeof VersionFileUpdateRecordSchema>;
 
 /** Result of {@link ReleasePlanner.apply}. @public */
 export const AppliedReleaseSchema = Schema.Struct({

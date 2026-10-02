@@ -20,15 +20,17 @@ import { readPreState } from "@changesets/pre";
 import { readChangesets } from "@changesets/read";
 import type { Config, Packages, ReleasePlan } from "@changesets/types";
 import { getPackages } from "@manypkg/get-packages";
-import { Context, Effect, FileSystem, Layer } from "effect";
+import { Context, Data, Effect, FileSystem, Layer } from "effect";
 import { ChangelogTransformer } from "../api/transformer.js";
 import { ReleasePlanError } from "../errors.js";
 import type {
 	AppliedRelease,
+	AppliedReleaseEntry,
 	BumpType,
 	ChangesetPreview,
 	PendingChangeset,
 	PreviewRelease,
+	VersionFileUpdateRecord,
 } from "../schemas/release-plan.js";
 import { VersionFiles } from "../utils/version-files.js";
 import type { ConfigInspectorShape } from "./config-inspector.js";
@@ -91,6 +93,57 @@ export interface SnapshotOptions {
 	readonly commit?: string;
 }
 
+/**
+ * One completed phase of a non-dry {@link ReleasePlannerShape.apply}, reported
+ * to {@link ApplyOptions.onStep} as it lands.
+ *
+ * @remarks
+ * `EngineApplied` fires once the changesets engine has bumped versions,
+ * written and transformed CHANGELOGs, and deleted consumed changesets.
+ * `VersionFilesUpdated` fires after the versionFiles phase, only when it
+ * updated at least one file. A `dryRun` writes nothing and reports no steps.
+ *
+ * @public
+ */
+export type ApplyStep = Data.TaggedEnum<{
+	/** The engine phase completed: `touchedFiles` were written for `releases`. */
+	readonly EngineApplied: {
+		readonly touchedFiles: ReadonlyArray<string>;
+		readonly releases: ReadonlyArray<AppliedReleaseEntry>;
+	};
+	/** The versionFiles phase wrote `updates`. */
+	readonly VersionFilesUpdated: { readonly updates: ReadonlyArray<VersionFileUpdateRecord> };
+}>;
+
+const ApplyStep = Data.taggedEnum<ApplyStep>();
+
+/**
+ * Options for {@link ReleasePlannerShape.apply}.
+ *
+ * @typeParam R - Services the `onStep` callback requires.
+ *
+ * @public
+ */
+export interface ApplyOptions<R = never> {
+	/** Compute and report the release without writing anything. */
+	readonly dryRun?: boolean;
+	/**
+	 * Map configured changelog ids to absolute module paths. When set,
+	 * `config.changelog[0]` must be a key of this map (rewritten before the
+	 * engine call; unmapped ids fail) and the engine's `format` integration
+	 * is disabled — callers in no-`node_modules` contexts own formatting.
+	 */
+	readonly changelogModules?: Readonly<Record<string, string>>;
+	/** `changeset version --snapshot` parity. See {@link SnapshotOptions}. */
+	readonly snapshot?: SnapshotOptions;
+	/**
+	 * Called after each completed phase, in order, before the next one starts —
+	 * so a caller can report what already reached disk even if a later phase
+	 * fails. Never called on a `dryRun`.
+	 */
+	readonly onStep?: (step: ApplyStep) => Effect.Effect<void, never, R>;
+}
+
 /** The `ReleasePlanner` service surface. @public */
 export interface ReleasePlannerShape {
 	/** Compute the in-memory release plan (read-only). */
@@ -116,22 +169,11 @@ export interface ReleasePlannerShape {
 			readonly snapshot?: SnapshotOptions;
 		},
 	) => Effect.Effect<ChangesetPreview, ReleasePlanError>;
-	/** Natively apply the release (destructive unless `dryRun`). */
-	readonly apply: (
+	/** Natively apply the release (destructive unless `dryRun`). See {@link ApplyOptions}. */
+	readonly apply: <R = never>(
 		root: string,
-		options?: {
-			readonly dryRun?: boolean;
-			/**
-			 * Map configured changelog ids to absolute module paths. When set,
-			 * `config.changelog[0]` must be a key of this map (rewritten before the
-			 * engine call; unmapped ids fail) and the engine's `format` integration
-			 * is disabled — callers in no-`node_modules` contexts own formatting.
-			 */
-			readonly changelogModules?: Readonly<Record<string, string>>;
-			/** `changeset version --snapshot` parity. See {@link SnapshotOptions}. */
-			readonly snapshot?: SnapshotOptions;
-		},
-	) => Effect.Effect<AppliedRelease, ReleasePlanError>;
+		options?: ApplyOptions<R>,
+	) => Effect.Effect<AppliedRelease, ReleasePlanError, R>;
 }
 
 /** Effect service tag for the release planner. @public */
@@ -159,7 +201,15 @@ function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): 
 		previewEffect(root, options?.changelogModules, options?.snapshot, fs);
 
 	const apply: ReleasePlannerShape["apply"] = (root, options) =>
-		applyEffect(root, options?.dryRun ?? false, options?.changelogModules, options?.snapshot, inspector, fs);
+		applyEffect(
+			root,
+			options?.dryRun ?? false,
+			options?.changelogModules,
+			options?.snapshot,
+			options?.onStep,
+			inspector,
+			fs,
+		);
 
 	return { plan, preview, apply };
 }
@@ -520,14 +570,16 @@ function diskVersion(
 	);
 }
 
-function applyEffect(
+function applyEffect<R>(
 	root: string,
 	dryRun: boolean,
 	changelogModules: Readonly<Record<string, string>> | undefined,
 	snapshot: SnapshotOptions | undefined,
+	onStepOption: ((step: ApplyStep) => Effect.Effect<void, never, R>) | undefined,
 	inspector: ConfigInspectorShape,
 	fs: FileSystem.FileSystem,
-): Effect.Effect<AppliedRelease, ReleasePlanError> {
+): Effect.Effect<AppliedRelease, ReleasePlanError, R> {
+	const onStep = onStepOption ?? (() => Effect.void);
 	return Effect.gen(function* () {
 		// v3 `readPreState` (invoked internally by `getReleasePlan`) rewrites a
 		// legacy `pre.json` in place as an auto-migration — acceptable, but it
@@ -599,6 +651,7 @@ function applyEffect(
 				},
 				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
 			});
+			yield* onStep(ApplyStep.EngineApplied({ touchedFiles, releases }));
 		}
 
 		// versionFiles via the resolved config inspector. A missing/invalid config
@@ -643,6 +696,9 @@ function applyEffect(
 							Effect.mapError((e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) })),
 						)
 					: [];
+		}
+		if (!dryRun && versionFileUpdates.length > 0) {
+			yield* onStep(ApplyStep.VersionFilesUpdated({ updates: versionFileUpdates }));
 		}
 
 		return { dryRun, touchedFiles, releases, versionFileUpdates };

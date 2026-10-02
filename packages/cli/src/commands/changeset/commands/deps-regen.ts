@@ -34,8 +34,10 @@
  * **Dry-run reporting.** With `--dry-run` nothing is written or deleted, so
  * the human output is phrased as a plan (`Would delete N pure dependency
  * changeset(s):` / `Would write N dependency changeset(s):`) rather than the
- * real run's `✓ Deleted …` / `✓ Wrote …`. A real run reports what
- * `execute()` returned, not what the plan listed: deletes are tolerant, so a
+ * real run's `✓ Wrote …` / `✓ Deleted …`. A real run prints each write and
+ * delete as `execute()` reports it landing (its `onStep`), so a run that
+ * fails partway still shows what already reached disk; it reports what
+ * `execute()` did, not what the plan listed: deletes are tolerant, so a
  * planned delete that found nothing or could not remove the file is reported
  * as not removed. `--json`
  * emits the plan's fields plus an explicit `dryRun` boolean in both modes,
@@ -61,6 +63,7 @@ import { Report } from "../../../internal/report.js";
 
 type RegenPlan = Changesets.RegenPlan;
 type RegenResult = Changesets.RegenResult;
+type RegenStep = Changesets.RegenStep;
 const { DepsRegen } = Changesets;
 
 /* v8 ignore start -- CLI option definitions */
@@ -113,67 +116,121 @@ export function runDepsRegen(
 				Effect.tapError(() => CliExit.set(1)),
 			);
 
-		const result = dryRun ? undefined : yield* service.execute(plan);
-
 		if (json) {
+			const result = dryRun ? undefined : yield* service.execute(plan);
 			yield* Console.log(JSON.stringify({ ...plan, dryRun, ...(result ? { result } : {}) }, null, 2));
+		} else if (dryRun) {
+			yield* renderDryRunPlan(plan);
 		} else {
-			yield* renderHumanPlan(plan, result);
+			yield* runAndReport(plan, service);
 		}
 	});
 }
 
+interface RegenEntry {
+	readonly file: string;
+	readonly package: string;
+}
+type WriteEntry = RegenPlan["toWrite"][number];
+
+const row = (entry: RegenEntry) => `${entry.file}  (${entry.package})`;
+const writeRow = (entry: WriteEntry) =>
+	`${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`;
+
 /**
- * Render the plan for a person. A dry run (no `result`) changed nothing, so its
- * headings are plan-phrased and carry no `✓`. A real run reports what
- * `execute` actually did: deletes are tolerant, so a planned delete absent from
- * `result.deleted` was already gone or could not be removed, and is reported as
- * not removed, never as deleted.
+ * Apply the plan for a person, printing each write and delete as `execute`
+ * reports it landing, so a failure partway still leaves what reached disk on
+ * stdout. The closing summary covers what no step reported: a planned delete
+ * absent from `result.deleted` was already gone or could not be removed, and
+ * is reported as not removed, never as deleted. Only paths `execute` reports
+ * are ever named as written or deleted.
  */
-function renderHumanPlan(plan: RegenPlan, result: RegenResult | undefined) {
-	const dryRun = result === undefined;
-	const row = (entry: { readonly file: string; readonly package: string }) => `${entry.file}  (${entry.package})`;
+function runAndReport(plan: RegenPlan, service: Changesets.DepsRegenShape) {
+	return Effect.gen(function* () {
+		const writes = new Map(plan.toWrite.map((entry) => [entry.file, entry]));
+		const deletes = new Map(plan.toDelete.map((entry) => [entry.file, entry]));
+		const reported = new Set<string>();
+		const stepBlock = (step: RegenStep): Block => {
+			if (step._tag === "Written") {
+				const entry = writes.get(step.file);
+				return Report.ok(`Wrote ${entry ? writeRow(entry) : step.file}`);
+			}
+			const entry = deletes.get(step.file);
+			return Report.ok(`Deleted ${entry ? row(entry) : step.file}`);
+		};
+		const printStep = (step: RegenStep) =>
+			Effect.suspend(() => {
+				reported.add(`${step._tag}:${step.file}`);
+				return Report.print([stepBlock(step)]);
+			});
+
+		const result = yield* service.execute(plan, { onStep: printStep });
+
+		// An implementation that reports no steps still gets every landed file
+		// named, once, from its result.
+		const unreported: Block[] = [
+			...result.written
+				.filter((file) => !reported.has(`Written:${file}`))
+				.map((file) => stepBlock({ _tag: "Written", file })),
+			...result.deleted
+				.filter((file) => !reported.has(`Deleted:${file}`))
+				.map((file) => stepBlock({ _tag: "Deleted", file })),
+		];
+		yield* renderRunSummary(plan, result, unreported);
+	});
+}
+
+/** The closing document of a real run: whatever no step printed, then the totals. */
+function renderRunSummary(plan: RegenPlan, result: RegenResult, unreported: ReadonlyArray<Block>) {
+	const blocks: Block[] = [...unreported];
+	if (plan.toDelete.length === 0 && plan.toWrite.length === 0) {
+		blocks.push(Report.ok("No dependency changes to regenerate"));
+	} else {
+		const deleted = new Set(result.deleted);
+		const notRemoved = plan.toDelete.filter((entry) => !deleted.has(entry.file));
+		if (notRemoved.length > 0) {
+			blocks.push(
+				Report.skip(
+					`${notRemoved.length} planned deletion(s) not removed (already gone or undeletable):`,
+					...notRemoved.map(row),
+				),
+			);
+		}
+		if (result.written.length > 0 || result.deleted.length > 0) {
+			blocks.push(
+				Report.ok(
+					`Wrote ${result.written.length} fresh and deleted ${result.deleted.length} pure dependency changeset(s)`,
+				),
+			);
+		}
+	}
+	return Report.print([...blocks, ...mixedBlocks(plan)]);
+}
+
+/**
+ * Render a dry run for a person. Nothing changed, so its headings are
+ * plan-phrased and carry no `✓`.
+ */
+function renderDryRunPlan(plan: RegenPlan) {
 	const blocks: Block[] = [];
 	if (plan.toDelete.length === 0 && plan.toWrite.length === 0) {
 		blocks.push(Report.ok("No dependency changes to regenerate"));
 	} else {
-		if (dryRun && plan.toDelete.length > 0) {
+		if (plan.toDelete.length > 0) {
 			blocks.push(Report.heading(`Would delete ${plan.toDelete.length} pure dependency changeset(s):`));
 			blocks.push(...plan.toDelete.map((entry) => Report.detail(row(entry))));
 		}
-		if (!dryRun) {
-			const deleted = new Set(result.deleted);
-			const removed = plan.toDelete.filter((entry) => deleted.has(entry.file));
-			const notRemoved = plan.toDelete.filter((entry) => !deleted.has(entry.file));
-			if (removed.length > 0) {
-				blocks.push(Report.ok(`Deleted ${removed.length} pure dependency changeset(s):`, ...removed.map(row)));
-			}
-			if (notRemoved.length > 0) {
-				blocks.push(
-					Report.skip(
-						`${notRemoved.length} planned deletion(s) not removed (already gone or undeletable):`,
-						...notRemoved.map(row),
-					),
-				);
-			}
-		}
-		// Writes fail loudly in execute, so a completed real run wrote every
-		// planned entry; filter by result.written anyway so the line can only
-		// ever name files execute reports.
-		const writes = dryRun ? plan.toWrite : plan.toWrite.filter((entry) => result.written.includes(entry.file));
-		if (writes.length > 0) {
-			const lines = writes.map(
-				(entry) =>
-					`+ ${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`,
-			);
-			if (dryRun) {
-				blocks.push(Report.heading(`Would write ${writes.length} dependency changeset(s):`));
-				blocks.push(...lines.map((line) => Report.detail(line)));
-			} else {
-				blocks.push(Report.ok(`Wrote ${writes.length} fresh dependency changeset(s):`, ...lines));
-			}
+		if (plan.toWrite.length > 0) {
+			blocks.push(Report.heading(`Would write ${plan.toWrite.length} dependency changeset(s):`));
+			blocks.push(...plan.toWrite.map((entry) => Report.detail(`+ ${writeRow(entry)}`)));
 		}
 	}
+	return Report.print([...blocks, ...mixedBlocks(plan)]);
+}
+
+/** The skipped-mixed note both a dry and a real run close with. */
+function mixedBlocks(plan: RegenPlan): ReadonlyArray<Block> {
+	const blocks: Block[] = [];
 	if (plan.skippedMixed.length > 0) {
 		blocks.push(
 			Report.line(""),
@@ -183,7 +240,7 @@ function renderHumanPlan(plan: RegenPlan, result: RegenResult | undefined) {
 			),
 		);
 	}
-	return Report.print(blocks);
+	return blocks;
 }
 
 /* v8 ignore next 12 */

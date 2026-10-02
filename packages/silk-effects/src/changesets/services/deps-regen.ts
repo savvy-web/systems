@@ -55,7 +55,7 @@ import {
 } from "@effected/workspaces";
 import { Yaml } from "@effected/yaml";
 import type { Path } from "effect";
-import { Context, Effect, FileSystem, Layer, Option } from "effect";
+import { Context, Data, Effect, FileSystem, Layer, Option } from "effect";
 import type { ChildProcessSpawner } from "effect/process";
 import type { ChangesetConfigShape } from "../../services/ChangesetConfig.js";
 import { ChangesetConfig } from "../../services/ChangesetConfig.js";
@@ -430,6 +430,41 @@ export type DepsRegenPlanError =
 	| WorkspaceSnapshotWorktreeFailure;
 
 /**
+ * One completed filesystem step of {@link DepsRegenShape.execute}, reported to
+ * {@link DepsRegenExecuteOptions.onStep} as it lands.
+ *
+ * @remarks
+ * `Written` fires right after a fresh changeset is written; `Deleted` right
+ * after a stale one is removed. A tolerated delete failure fires nothing, so
+ * the steps are exactly what reached disk, in order.
+ *
+ * @public
+ */
+export type RegenStep = Data.TaggedEnum<{
+	/** A fresh dependency changeset was written at `file`. */
+	readonly Written: { readonly file: string };
+	/** A stale pure dependency changeset at `file` was removed. */
+	readonly Deleted: { readonly file: string };
+}>;
+
+const RegenStep = Data.taggedEnum<RegenStep>();
+
+/**
+ * Options for {@link DepsRegenShape.execute}.
+ *
+ * @typeParam R - Services the `onStep` callback requires.
+ *
+ * @public
+ */
+export interface DepsRegenExecuteOptions<R = never> {
+	/**
+	 * Called after each completed step, in order, before the next one starts —
+	 * so a caller can report progress that survives a later failure.
+	 */
+	readonly onStep?: (step: RegenStep) => Effect.Effect<void, never, R>;
+}
+
+/**
  * Effect service interface for the deps regen/detect orchestration.
  *
  * @public
@@ -452,9 +487,14 @@ export interface DepsRegenShape {
 	 * safely re-runnable.
 	 *
 	 * @param plan - The plan produced by {@link DepsRegenShape.plan}.
+	 * @param options - See {@link DepsRegenExecuteOptions}; `onStep` reports
+	 *   each write and successful delete as it lands.
 	 * @returns An Effect yielding a {@link RegenResult}.
 	 */
-	readonly execute: (plan: RegenPlan) => Effect.Effect<RegenResult, ChangesetIOError, never>;
+	readonly execute: <R = never>(
+		plan: RegenPlan,
+		options?: DepsRegenExecuteOptions<R>,
+	) => Effect.Effect<RegenResult, ChangesetIOError, R>;
 }
 
 /**
@@ -799,8 +839,12 @@ function makeShape(
 			return { toDelete, toWrite, skippedMixed, coexisting };
 		});
 
-	const execute = (plan: RegenPlan): Effect.Effect<RegenResult, ChangesetIOError, never> =>
+	const execute = <R = never>(
+		plan: RegenPlan,
+		options?: DepsRegenExecuteOptions<R>,
+	): Effect.Effect<RegenResult, ChangesetIOError, R> =>
 		Effect.gen(function* () {
+			const onStep = options?.onStep ?? (() => Effect.void);
 			const deleted: string[] = [];
 			const written: string[] = [];
 			// Write the fresh changesets first, then remove the stale ones. Each
@@ -820,11 +864,15 @@ function makeShape(
 						Effect.mapError((e) => new ChangesetIOError({ path: entry.file, operation: "write", reason: String(e) })),
 					);
 				written.push(entry.file);
+				yield* onStep(RegenStep.Written({ file: entry.file }));
 			}
 			for (const entry of plan.toDelete) {
 				// Tolerant: missing or undeletable stale changesets are skipped.
 				const removed = yield* Effect.isSuccess(fs.remove(entry.file));
-				if (removed) deleted.push(entry.file);
+				if (removed) {
+					deleted.push(entry.file);
+					yield* onStep(RegenStep.Deleted({ file: entry.file }));
+				}
 			}
 			return { deleted, written, skippedMixed: plan.skippedMixed, coexisting: plan.coexisting };
 		});

@@ -161,8 +161,9 @@ describe("savvy changeset deps regen (adapter)", () => {
 		Effect.gen(function* () {
 			const out = yield* collectStdout("/repo", false, false, makeStubLayer());
 
-			expect(out).toContain("✓ Deleted 1 pure dependency changeset(s):");
-			expect(out).toContain("✓ Wrote 1 fresh dependency changeset(s):");
+			expect(out).toContain("✓ Wrote /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)");
+			expect(out).toContain("✓ Deleted /repo/.changeset/stale-changeset.md  (@scope/foo)");
+			expect(out).toContain("✓ Wrote 1 fresh and deleted 1 pure dependency changeset(s)");
 			expect(out).not.toContain("Would");
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
@@ -181,7 +182,7 @@ describe("savvy changeset deps regen (adapter)", () => {
 			expect(out).not.toContain("Deleted");
 			expect(out).toContain("1 planned deletion(s) not removed (already gone or undeletable):");
 			expect(out).toContain("/repo/.changeset/stale-changeset.md  (@scope/foo)");
-			expect(out).toContain("✓ Wrote 1 fresh dependency changeset(s):");
+			expect(out).toContain("✓ Wrote /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)");
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
@@ -195,6 +196,75 @@ describe("savvy changeset deps regen (adapter)", () => {
 			const out = yield* collectStdout("/repo", false, true, layer);
 
 			expect(JSON.parse(out)).toEqual({ ...cannedPlan, dryRun: false, result: { ...cannedResult, deleted: [] } });
+		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	it.live("prints each step as its own stdout entry, as execute reports it, before the summary", () =>
+		Effect.gen(function* () {
+			const twoWrites: Changesets.RegenPlan = {
+				...cannedPlan,
+				toWrite: [
+					...cannedPlan.toWrite,
+					{
+						...cannedPlan.toWrite[0],
+						file: "/repo/.changeset/calm-owls-sing.md",
+					} as Changesets.RegenPlan["toWrite"][number],
+				],
+			};
+			const layer = Layer.succeed(DepsRegen, {
+				plan: () => Effect.succeed(twoWrites),
+				execute: (plan, options) =>
+					Effect.gen(function* () {
+						for (const entry of plan.toWrite)
+							yield* options?.onStep?.({ _tag: "Written", file: entry.file }) ?? Effect.void;
+						for (const entry of plan.toDelete)
+							yield* options?.onStep?.({ _tag: "Deleted", file: entry.file }) ?? Effect.void;
+						return {
+							deleted: plan.toDelete.map((e) => e.file),
+							written: plan.toWrite.map((e) => e.file),
+							skippedMixed: [],
+							coexisting: [],
+						};
+					}),
+			});
+			const out: string[] = [];
+			yield* runDepsRegen("/repo", Option.none(), Option.none(), false, false).pipe(
+				Effect.provide(Layer.mergeAll(layer, Capture.layer(out))),
+			);
+
+			expect(out).toEqual([
+				"✓ Wrote /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)",
+				"✓ Wrote /repo/.changeset/calm-owls-sing.md  (@scope/foo — 1 row)",
+				"✓ Deleted /repo/.changeset/stale-changeset.md  (@scope/foo)",
+				"✓ Wrote 2 fresh and deleted 1 pure dependency changeset(s)",
+			]);
+		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	it.live("a write already reported reaches stdout even when execute fails partway", () =>
+		Effect.gen(function* () {
+			const layer = Layer.succeed(DepsRegen, {
+				plan: () => Effect.succeed(cannedPlan),
+				execute: (_plan, options) =>
+					Effect.gen(function* () {
+						yield* options?.onStep?.({ _tag: "Written", file: "/repo/.changeset/brave-dogs-laugh.md" }) ?? Effect.void;
+						return yield* Effect.fail(
+							new Changesets.ChangesetIOError({
+								path: "/repo/.changeset/next.md",
+								operation: "write",
+								reason: "EACCES",
+							}),
+						);
+					}),
+			});
+			const out: string[] = [];
+			const error = yield* runDepsRegen("/repo", Option.none(), Option.none(), false, false).pipe(
+				Effect.provide(Layer.mergeAll(layer, Capture.layer(out))),
+				Effect.flip,
+			);
+
+			expect(error._tag).toBe("ChangesetIOError");
+			expect(out).toEqual(["✓ Wrote /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)"]);
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

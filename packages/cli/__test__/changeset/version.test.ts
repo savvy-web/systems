@@ -81,4 +81,65 @@ describe("runVersion", () => {
 			expect(logs).toEqual(["✓ No pending changesets"]);
 		}),
 	);
+
+	it.effect("prints each applied phase as it completes, before a later phase fails", () =>
+		Effect.gen(function* () {
+			const logs: string[] = [];
+			const failingAfterEngine = Layer.succeed(
+				Changesets.ReleasePlanner,
+				Changesets.ReleasePlanner.of({
+					plan: () => Effect.die("plan not used in this test"),
+					preview: () => Effect.die("preview not used in this test"),
+					apply: (_root, options) =>
+						Effect.gen(function* () {
+							yield* options?.onStep?.({
+								_tag: "EngineApplied",
+								touchedFiles: applied.touchedFiles,
+								releases: applied.releases,
+							}) ?? Effect.void;
+							return yield* Effect.fail(new Changesets.ReleasePlanError({ phase: "apply", reason: "versionFiles" }));
+						}),
+				}),
+			);
+			const error = yield* runVersion(false).pipe(
+				Effect.provide(failingAfterEngine),
+				Effect.provide(captureLogger(logs)),
+				Effect.flip,
+			) as Effect.Effect<Changesets.ReleasePlanError>;
+			expect(error._tag).toBe("ReleasePlanError");
+			expect(logs).toEqual(["✓ Released @scope/a: 1.0.0 -> 1.1.0 (minor)\n  Touched 2 file(s)"]);
+		}),
+	);
+
+	it.effect("reports engine and versionFiles phases as separate entries when apply reports steps", () =>
+		Effect.gen(function* () {
+			const logs: string[] = [];
+			const stepping = Layer.succeed(
+				Changesets.ReleasePlanner,
+				Changesets.ReleasePlanner.of({
+					plan: () => Effect.die("plan not used in this test"),
+					preview: () => Effect.die("preview not used in this test"),
+					apply: (_root, options) =>
+						Effect.gen(function* () {
+							yield* options?.onStep?.({
+								_tag: "EngineApplied",
+								touchedFiles: applied.touchedFiles,
+								releases: applied.releases,
+							}) ?? Effect.void;
+							yield* options?.onStep?.({ _tag: "VersionFilesUpdated", updates: applied.versionFileUpdates }) ??
+								Effect.void;
+							return applied;
+						}),
+				}),
+			);
+			yield* runVersion(false).pipe(
+				Effect.provide(stepping),
+				Effect.provide(captureLogger(logs)),
+			) as Effect.Effect<void>;
+			expect(logs).toEqual([
+				"✓ Released @scope/a: 1.0.0 -> 1.1.0 (minor)\n  Touched 2 file(s)",
+				"  Updated /p/plugin.json -> 1.1.0",
+			]);
+		}),
+	);
 });
