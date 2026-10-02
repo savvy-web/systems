@@ -91,10 +91,16 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 		rmSync(testDir, { recursive: true, force: true });
 	});
 
+	/** Run the check under a fresh exit cell; its stdout lines land in `logs`. */
 	function runCheck(quiet: boolean) {
-		const handler = runLintCheck({ quiet });
-		return Effect.provide(handler, captureLayer(logs));
+		return Capture.run(Effect.provide(runLintCheck({ quiet }), BaseAppLayer)).pipe(
+			Effect.tap((result) => Effect.sync(() => logs.push(...result.stdout.flatMap((write) => write.split("\n"))))),
+		);
 	}
+
+	/** A hook-table row: `hook  section  ✓ state`, however the columns pad. */
+	const row = (section: string, state: string, hook = ".husky/pre-commit") =>
+		logs.some((l) => new RegExp(`^${hook.replace(/[./]/g, "\\$&")} +${section} +${state}$`).test(l));
 
 	function runInit(preset: "minimal" | "standard" | "silk", config = "lint-staged.config.ts") {
 		const handler = runLintInit({ force: false, config, preset });
@@ -120,13 +126,14 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 	it.effect("reports an overall PASS verdict when init was just run with silk preset", () =>
 		Effect.gen(function* () {
 			yield* runInit("silk");
-			yield* runCheck(false);
+			const result = yield* runCheck(false);
+			expect(result.exitCode).toBe(0);
 
-			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(true);
-			expect(logs.some((l) => l.includes("Some issues found"))).toBe(false);
-			expect(logs.some((l) => l.includes("Base section: up-to-date"))).toBe(true);
-			expect(logs.some((l) => l.includes("Lint section: up-to-date"))).toBe(true);
-			expect(logs.some((l) => l.includes("OKF section: up-to-date"))).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged is configured correctly"))).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged needs configuration"))).toBe(false);
+			expect(row("savvy-base", "✓ up-to-date")).toBe(true);
+			expect(row("savvy-lint", "✓ up-to-date")).toBe(true);
+			expect(row("savvy-okf", "✓ up-to-date")).toBe(true);
 		}),
 	);
 
@@ -138,14 +145,15 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			writeFileSync(join(testDir, ".husky/pre-commit"), LEGACY_PRE_COMMIT);
 			writeFileSync(join(testDir, "lint-staged.config.ts"), "export default {};\n");
 
-			yield* runCheck(false);
+			const result = yield* runCheck(false);
+			expect(result.exitCode).toBe(1);
 
 			// SAVVY-BASE never installed → base section is missing → verdict degraded.
-			expect(logs.some((l) => l.includes("Base section: not found"))).toBe(true);
+			expect(row("savvy-base", "✗ missing")).toBe(true);
 			// A legacy hook predates SAVVY-OKF too, so that section reports missing rather than outdated.
-			expect(logs.some((l) => l.includes("OKF section: not found"))).toBe(true);
-			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
-			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
+			expect(row("savvy-okf", "✗ missing")).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged needs configuration"))).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged is configured correctly"))).toBe(false);
 		}),
 	);
 
@@ -162,11 +170,12 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			writeFileSync(join(testDir, ".husky/pre-commit"), tampered);
 
 			logs.length = 0;
-			yield* runCheck(false);
+			const result = yield* runCheck(false);
+			expect(result.exitCode).toBe(1);
 
-			expect(logs.some((l) => l.includes("Lint section: outdated"))).toBe(true);
-			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
-			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
+			expect(row("savvy-lint", "✗ outdated")).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged needs configuration"))).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged is configured correctly"))).toBe(false);
 		}),
 	);
 
@@ -186,11 +195,11 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			logs.length = 0;
 			yield* runCheck(false);
 
-			expect(logs.some((l) => l.includes("OKF section: outdated"))).toBe(true);
-			expect(logs.some((l) => l.includes("Base section: up-to-date"))).toBe(true);
-			expect(logs.some((l) => l.includes("Lint section: up-to-date"))).toBe(true);
-			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
-			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
+			expect(row("savvy-okf", "✗ outdated")).toBe(true);
+			expect(row("savvy-base", "✓ up-to-date")).toBe(true);
+			expect(row("savvy-lint", "✓ up-to-date")).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged needs configuration"))).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged is configured correctly"))).toBe(false);
 		}),
 	);
 
@@ -208,14 +217,16 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			logs.length = 0;
 			yield* runCheck(false);
 
-			expect(logs.some((l) => l.includes("OKF section: not found"))).toBe(true);
-			expect(logs.some((l) => l.includes("Some issues found"))).toBe(true);
-			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(false);
+			expect(row("savvy-okf", "✗ missing")).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged needs configuration"))).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged is configured correctly"))).toBe(false);
 
 			// Quiet mode surfaces the collected warning that names the fix.
 			logs.length = 0;
-			yield* runCheck(true);
+			const quiet = yield* runCheck(true);
 			expect(logs.some((l) => l.includes("managed sections are out of date"))).toBe(true);
+			// --quiet trims the output, never the findings exit code.
+			expect(quiet.exitCode).toBe(1);
 		}),
 	);
 
@@ -228,12 +239,14 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 			expect(() => readFileSync(join(testDir, ".husky/post-merge"), "utf8")).toThrow();
 			expect(() => readFileSync(join(testDir, ".husky/post-commit"), "utf8")).toThrow();
 
-			yield* runCheck(false);
+			const result = yield* runCheck(false);
+			expect(result.exitCode).toBe(0);
+			expect(row("\\(hook file\\)", "↷ not installed", ".husky/post-checkout")).toBe(true);
 
 			// A missing hygiene hook FILE does not degrade sectionsHealthy — this locks in the
 			// preset-agnostic behavior. The overall verdict still passes.
-			expect(logs.some((l) => l.includes("Lint-staged is configured correctly"))).toBe(true);
-			expect(logs.some((l) => l.includes("Some issues found"))).toBe(false);
+			expect(logs.some((l) => l.includes("lint-staged is configured correctly"))).toBe(true);
+			expect(logs.some((l) => l.includes("lint-staged needs configuration"))).toBe(false);
 		}),
 	);
 
@@ -241,18 +254,23 @@ describe("runLintCheck", TOOL_DISCOVERY_TIMEOUT, () => {
 		Effect.gen(function* () {
 			yield* runInit("silk");
 			logs.length = 0;
-			yield* runCheck(true);
+			const result = yield* runCheck(true);
 
-			// In quiet mode, only warnings are printed. A clean install should print nothing.
-			const warningLines = logs.filter((l) => l.includes("⚠"));
-			expect(warningLines).toEqual([]);
+			// In quiet mode, only warnings are printed. A clean install prints nothing.
+			expect(result.stdout).toEqual([]);
+			expect(result.exitCode).toBe(0);
 		}),
 	);
 
 	it.effect("emits exactly the section warnings in quiet mode when pre-commit is missing", () =>
 		Effect.gen(function* () {
 			// No init — no .husky/ at all. Quiet mode should warn about the missing hook.
-			yield* runCheck(true);
+			const result = yield* runCheck(true);
+			expect(result.exitCode).toBe(1);
+			// Quiet prints the warnings alone: no heading, no table, no verdict.
+			expect(logs.some((l) => l.includes("lint-staged"))).toBe(true);
+			expect(logs).not.toContain("lint-staged");
+			expect(logs.some((l) => l.includes("needs configuration"))).toBe(false);
 
 			expect(logs.some((l) => l.includes("No husky pre-commit hook found"))).toBe(true);
 			expect(logs.some((l) => l.includes("No lint-staged config file found"))).toBe(true);

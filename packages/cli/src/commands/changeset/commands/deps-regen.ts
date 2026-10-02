@@ -33,7 +33,8 @@
  *
  * **Dry-run reporting.** With `--dry-run` nothing is written or deleted, so
  * the human output is phrased as a plan (`Would delete N pure dependency
- * changeset(s):` / `Would write N dependency changeset(s):`) rather than the
+ * changeset(s):` / `Would write N dependency changeset(s):`, each over a
+ * file / package (/ rows) table) rather than the
  * real run's `✓ Wrote …` / `✓ Deleted …`. A real run prints each write and
  * delete as `execute()` reports it landing (its `onStep`), so a run that
  * fails partway still shows what already reached disk; it reports what
@@ -55,7 +56,7 @@
 
 import { resolve } from "node:path";
 import type { Block } from "@effected/cli";
-import { CliExit } from "@effected/cli";
+import { CliExit, Doc } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag } from "effect/cli";
@@ -133,6 +134,11 @@ interface RegenEntry {
 }
 type WriteEntry = RegenPlan["toWrite"][number];
 
+/** The columns of a table of changesets to delete (or not removed). */
+const DELETE_COLUMNS = [{ header: "file" }, { header: "package" }] as const;
+/** The columns of a table of changesets to write. */
+const WRITE_COLUMNS = [{ header: "file" }, { header: "package" }, { header: "rows", align: "right" }] as const;
+
 const row = (entry: RegenEntry) => `${entry.file}  (${entry.package})`;
 const writeRow = (entry: WriteEntry) =>
 	`${entry.file}  (${entry.package} — ${entry.diff.rows.length} row${entry.diff.rows.length === 1 ? "" : "s"})`;
@@ -190,9 +196,10 @@ function renderRunSummary(plan: RegenPlan, result: RegenResult, unreported: Read
 		const notRemoved = plan.toDelete.filter((entry) => !deleted.has(entry.file));
 		if (notRemoved.length > 0) {
 			blocks.push(
-				Report.skip(
-					`${notRemoved.length} planned deletion(s) not removed (already gone or undeletable):`,
-					...notRemoved.map(row),
+				Report.skip(`${notRemoved.length} planned deletion(s) not removed (already gone or undeletable):`),
+				Doc.table(
+					DELETE_COLUMNS,
+					notRemoved.map((entry) => [entry.file, entry.package]),
 				),
 			);
 		}
@@ -217,12 +224,24 @@ function renderDryRunPlan(plan: RegenPlan) {
 		blocks.push(Report.ok("No dependency changes to regenerate"));
 	} else {
 		if (plan.toDelete.length > 0) {
-			blocks.push(Report.heading(`Would delete ${plan.toDelete.length} pure dependency changeset(s):`));
-			blocks.push(...plan.toDelete.map((entry) => Report.detail(row(entry))));
+			blocks.push(
+				Doc.section(`Would delete ${plan.toDelete.length} pure dependency changeset(s):`, [
+					Doc.table(
+						DELETE_COLUMNS,
+						plan.toDelete.map((entry) => [entry.file, entry.package]),
+					),
+				]),
+			);
 		}
 		if (plan.toWrite.length > 0) {
-			blocks.push(Report.heading(`Would write ${plan.toWrite.length} dependency changeset(s):`));
-			blocks.push(...plan.toWrite.map((entry) => Report.detail(`+ ${writeRow(entry)}`)));
+			blocks.push(
+				Doc.section(`Would write ${plan.toWrite.length} dependency changeset(s):`, [
+					Doc.table(
+						WRITE_COLUMNS,
+						plan.toWrite.map((entry) => [entry.file, entry.package, String(entry.diff.rows.length)]),
+					),
+				]),
+			);
 		}
 	}
 	return Report.print([...blocks, ...mixedBlocks(plan)]);

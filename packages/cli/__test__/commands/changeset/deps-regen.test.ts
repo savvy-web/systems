@@ -147,10 +147,24 @@ describe("savvy changeset deps regen (adapter)", () => {
 		Effect.gen(function* () {
 			const out = yield* collectStdout("/repo", true, false, makeStubLayer());
 
-			expect(out).toContain("Would delete 1 pure dependency changeset(s):");
-			expect(out).toContain("Would write 1 dependency changeset(s):");
-			expect(out).toContain("/repo/.changeset/stale-changeset.md  (@scope/foo)");
-			expect(out).toContain("+ /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)");
+			expect(out).toContain(
+				[
+					"Would delete 1 pure dependency changeset(s):",
+					"",
+					"file                                 package",
+					"-----------------------------------  ----------",
+					"/repo/.changeset/stale-changeset.md  @scope/foo",
+				].join("\n"),
+			);
+			expect(out).toContain(
+				[
+					"Would write 1 dependency changeset(s):",
+					"",
+					"file                                  package     rows",
+					"------------------------------------  ----------  ----",
+					"/repo/.changeset/brave-dogs-laugh.md  @scope/foo     1",
+				].join("\n"),
+			);
 			expect(out).not.toContain("✓");
 			expect(out).not.toContain("Deleted");
 			expect(out).not.toContain("Wrote");
@@ -180,8 +194,14 @@ describe("savvy changeset deps regen (adapter)", () => {
 			const out = yield* collectStdout("/repo", false, false, layer);
 
 			expect(out).not.toContain("Deleted");
-			expect(out).toContain("1 planned deletion(s) not removed (already gone or undeletable):");
-			expect(out).toContain("/repo/.changeset/stale-changeset.md  (@scope/foo)");
+			expect(out).toContain(
+				[
+					"↷ 1 planned deletion(s) not removed (already gone or undeletable):",
+					"file                                 package",
+					"-----------------------------------  ----------",
+					"/repo/.changeset/stale-changeset.md  @scope/foo",
+				].join("\n"),
+			);
 			expect(out).toContain("✓ Wrote /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)");
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
@@ -265,6 +285,16 @@ describe("savvy changeset deps regen (adapter)", () => {
 
 			expect(error._tag).toBe("ChangesetIOError");
 			expect(out).toEqual(["✓ Wrote /repo/.changeset/brave-dogs-laugh.md  (@scope/foo — 1 row)"]);
+		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	it.live("emits the --json document as two-space-indented JSON, byte for byte", () =>
+		Effect.gen(function* () {
+			const dry = yield* collectStdout("/repo", true, true, makeStubLayer());
+			const real = yield* collectStdout("/repo", false, true, makeStubLayer());
+
+			expect(dry).toBe(JSON.stringify({ ...cannedPlan, dryRun: true }, null, 2));
+			expect(real).toBe(JSON.stringify({ ...cannedPlan, dryRun: false, result: cannedResult }, null, 2));
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 });

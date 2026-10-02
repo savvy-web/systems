@@ -188,6 +188,7 @@ export class Capture {
 				platform: Capture.mainPlatform(options.tty === true),
 				env: { audienceEnvVar: "SAVVY_AUDIENCE", stderrIsTerminal: Effect.succeed(false) },
 				render: FailureLine.render,
+				helpOnUsageError: "stderr",
 			}).pipe(
 				Effect.provideService(Console.Console, makeRecordingConsole(stdout, stderr)),
 				Effect.provideService(

@@ -50,7 +50,7 @@ describe("runVersion", () => {
 			) as Effect.Effect<void>;
 			// Asserts observable behavior: the command invoked apply for the cwd and logged the bump.
 			expect(calls).toEqual([{ root: process.cwd(), dryRun: false }]);
-			expect(logs.join("\n")).toContain("@scope/a: 1.0.0 -> 1.1.0");
+			expect(logs.join("\n")).toContain("@scope/a  1.0.0 → 1.1.0  minor");
 		}),
 	);
 
@@ -107,7 +107,7 @@ describe("runVersion", () => {
 				Effect.flip,
 			) as Effect.Effect<Changesets.ReleasePlanError>;
 			expect(error._tag).toBe("ReleasePlanError");
-			expect(logs).toEqual(["✓ Released @scope/a: 1.0.0 -> 1.1.0 (minor)\n  Touched 2 file(s)"]);
+			expect(logs).toEqual([RELEASED]);
 		}),
 	);
 
@@ -136,10 +136,46 @@ describe("runVersion", () => {
 				Effect.provide(stepping),
 				Effect.provide(captureLogger(logs)),
 			) as Effect.Effect<void>;
-			expect(logs).toEqual([
-				"✓ Released @scope/a: 1.0.0 -> 1.1.0 (minor)\n  Touched 2 file(s)",
-				"  Updated /p/plugin.json -> 1.1.0",
-			]);
+			expect(logs).toEqual([RELEASED, "  Updated /p/plugin.json -> 1.1.0"]);
+		}),
+	);
+
+	it.effect("prints a dry run as a plan-phrased releases table, for a person and an agent alike", () =>
+		Effect.gen(function* () {
+			const dry: Changesets.AppliedRelease = {
+				...applied,
+				dryRun: true,
+				touchedFiles: [],
+				releases: [
+					...applied.releases,
+					{ name: "@scope/longer-name", type: "patch", oldVersion: "0.1.0", newVersion: "0.1.1" },
+				],
+			};
+			const expected = [
+				[
+					"Would release 2 packages:",
+					"package             version        bump",
+					"------------------  -------------  -----",
+					"@scope/a            1.0.0 → 1.1.0  minor",
+					"@scope/longer-name  0.1.0 → 0.1.1  patch",
+					"  Would update /p/plugin.json -> 1.1.0",
+				].join("\n"),
+			];
+			for (const audience of ["human", "agent"] as const) {
+				// The config gate is mocked away, so ConfigInspector is never read.
+				const run = runVersion(true).pipe(Effect.provide(recordingPlanner(dry, []))) as Effect.Effect<void>;
+				const result = yield* Capture.run(run, { audience });
+				expect(result.stdout).toEqual(expected);
+			}
 		}),
 	);
 });
+
+/** What a real run prints when the engine step lands one release. */
+const RELEASED = [
+	"✓ Released 1 package",
+	"package   version        bump",
+	"--------  -------------  -----",
+	"@scope/a  1.0.0 → 1.1.0  minor",
+	"  Touched 2 file(s)",
+].join("\n");

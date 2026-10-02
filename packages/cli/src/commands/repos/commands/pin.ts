@@ -12,8 +12,14 @@
  * `GitSubmoduleError` means the underlying git command failed,
  * `RepoNotFoundError` means the named repo isn't in the manifest, and
  * `ReposLockdownError` means the OS-permission lockdown pass on a vendored
- * tree failed -- all four are real failures, logged and reported via a
- * non-zero exit code.
+ * tree failed -- all four are real failures, failing as a `CommandError`
+ * (exit 1) with a hint.
+ *
+ * Both positionals are optional to the parser so a person can leave them off:
+ * at a terminal a missing name is picked from the vendored repos (`Select`)
+ * and a missing ref typed (`TextInput`, starting at the current pin). Anywhere
+ * else (an agent, CI, a pipe) a missing one is the usage error it always was,
+ * exit 64, and nothing is read.
  *
  * @example
  * ```bash
@@ -23,56 +29,56 @@
  * @internal
  */
 
-import { CliExit } from "@effected/cli";
+import { CliInteractive, Doc } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import type { ReportEnv } from "../../../internal/report.js";
 import { Report } from "../../../internal/report.js";
+import { ReposCli } from "../shared.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
-const nameArg = Argument.String("name");
-const refArg = Argument.String("ref");
+const nameArg = Argument.String("name").pipe(Argument.optional);
+const refArg = Argument.String("ref").pipe(Argument.optional);
 const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to pin within"), Flag.withDefault("."));
 /* v8 ignore stop */
 
 /**
- * Pin handler; exported for tests.
+ * Pin handler; exported for tests. `name`/`ref` are `undefined` when left off.
  *
  * @internal
  */
-export const runReposPin = (cwd: string, name: string, ref: string) =>
+export const runReposPin = (cwd: string, name: string | undefined, ref: string | undefined) =>
 	Effect.gen(function* () {
+		const target = yield* ReposCli.nameOrPick(cwd, name, { argument: "name", message: "Re-pin which repo?" });
+		// The current pin seeds the ref prompt; read only when someone can be asked.
+		const current =
+			ref === undefined && (yield* CliInteractive)
+				? (yield* ReposCli.vendored(cwd)).find((repo) => repo.name === target)?.ref
+				: undefined;
+		const newRef = yield* ReposCli.textOrAsk(ref, {
+			argument: "ref",
+			message: `Re-pin ${target} to which ref? (tag, branch, or commit)`,
+			initial: current,
+		});
 		const manager = yield* Repos.ReposManager;
-		const result = yield* manager.pin(cwd, name, ref);
+		const result = yield* manager.pin(cwd, target, newRef);
 		yield* Report.print([
 			Report.ok(
 				`${result.name}: ${result.oldCommit ?? "unknown"} -> ${result.newCommit}`,
-				result.commitMessage,
 				"staged — review and commit",
 			),
-			...result.staleNoteIds.map((staleId) => Report.warn(`note ${staleId} is now stale against ${ref}`)),
+			Doc.codeBlock(result.commitMessage),
+			...result.staleNoteIds.map((staleId) => Report.warn(`note ${staleId} is now stale against ${newRef}`)),
 		]);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
-			if (error.kind === "missing") {
-				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
-			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("RepoNotFoundError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
+		Effect.catchTag("ReposConfigError", (error) =>
+			error.kind === "missing" ? ReposCli.nothingVendored : ReposCli.fail("re-pin the repo")(error),
+		),
+		Effect.catchTag(["GitSubmoduleError", "RepoNotFoundError", "ReposLockdownError"], ReposCli.fail("re-pin the repo")),
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposPin */
 export const pinCommand = Command.make("pin", { name: nameArg, ref: refArg, cwd: cwdOption }, ({ name, ref, cwd }) =>
-	runReposPin(cwd, name, ref),
+	runReposPin(cwd, Option.getOrUndefined(name), Option.getOrUndefined(ref)),
 ).pipe(Command.withDescription("Re-pin a vendored repo to a new ref; stages the change without committing"));
 /* v8 ignore stop */

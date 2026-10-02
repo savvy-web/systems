@@ -148,13 +148,20 @@ describe("runReposStatus (adapter)", () => {
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.effect("logs one human-readable line per repo with name, ref, and flags", () =>
+	it.effect("prints a table of repos: name, ref, and a status cell naming every flag", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() => Effect.succeed(dirtyReport));
 
 			const logs = yield* collectLogs("/repo", false, layer);
 
-			expect(logs).toEqual(["⚠ foo @ v1.0.0 [dirty]\n⚠ bar @ main [missing, 1 stale notes]"]);
+			expect(logs).toEqual([
+				[
+					"name  ref     state",
+					"----  ------  ------------------------",
+					"foo   v1.0.0  ⚠ dirty",
+					"bar   main    ⚠ missing, 1 stale notes",
+				].join("\n"),
+			]);
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
@@ -193,7 +200,7 @@ describe("runReposStatus (adapter)", () => {
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid", () =>
+	it.effect("fails as a CommandError with a hint on ReposConfigError kind invalid, exit 1", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() =>
 				Effect.fail(
@@ -201,11 +208,39 @@ describe("runReposStatus (adapter)", () => {
 				),
 			);
 
-			const logs = yield* collectLogs("/repo", false, layer);
-			expect(logs).toEqual([]);
+			const result = yield* Capture.main(
+				runReposStatus("/repo", false).pipe(Effect.provide(Layer.merge(layer, unusedDriftLayer))),
+			);
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([]);
+			const stderr = result.stderr.join("\n");
+			expect(stderr).toContain("✗ could not read the repos manifest");
+			expect(stderr).toContain("invalid JSON");
+			expect(stderr).toContain("TIP: fix .repos/config.json");
+		}),
+	);
 
-			expect(stderrLines.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
+	it.effect("fails as a CommandError on a git failure without --json, exit 1", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
+			const driftLayer = makeStubDriftLayer(() =>
+				Effect.fail(new Repos.GitSubmoduleError({ command: "git submodule status", cwd: "/repo", reason: "boom" })),
+			);
+			const result = yield* Capture.main(
+				runReposStatus("/repo", false, true).pipe(Effect.provide(Layer.merge(layer, driftLayer))),
+			);
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([]);
+			expect(result.stderr.join("\n")).toContain("✗ could not check the vendored repos");
+			expect(result.stderr.join("\n")).toContain("  boom");
+		}),
+	);
+
+	it.effect("says the manifest lists no repos rather than printing an empty table", () =>
+		Effect.gen(function* () {
+			const layer = makeStubLayer(() => Effect.succeed({ repos: [], clean: true }));
+			const logs = yield* collectLogs("/repo", false, layer);
+			expect(logs).toEqual(["↷ the manifest lists no repos"]);
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
@@ -248,6 +283,23 @@ describe("runReposStatus (adapter)", () => {
 		}),
 	);
 
+	it.effect("--json's config-error document is byte-for-byte what the drift monitor parses", () =>
+		Effect.gen(function* () {
+			const error = new ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" });
+			const layer = makeStubLayer(() => Effect.fail(error));
+			const result = yield* Capture.run(
+				runReposStatus("/repo", true).pipe(
+					Effect.provide(Layer.merge(layer, unusedDriftLayer)),
+					Effect.provide(Capture.piped),
+				),
+			);
+			expect(result.stdout).toEqual([
+				'{\n  "error": "repos manifest invalid at /repo/.repos/config.json: invalid JSON",\n  "clean": false\n}',
+			]);
+			expect(result.exitCode).toBe(1);
+		}),
+	);
+
 	it.effect("--json keeps stdout one JSON document when the drift check fails with GitSubmoduleError", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
@@ -282,7 +334,7 @@ describe("runReposStatus (adapter)", () => {
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
 
-	it.effect("--drift logs one line per drift and sets exitCode 1 when drifts exist", () =>
+	it.effect("--drift adds a table of drifts and sets exitCode 1 when drifts exist", () =>
 		Effect.gen(function* () {
 			const layer = makeStubLayer(() => Effect.succeed(cleanReport));
 			const driftLayer = makeStubDriftLayer(() => Effect.succeed(dirtyDriftReport));
@@ -291,8 +343,14 @@ describe("runReposStatus (adapter)", () => {
 
 			expect(logs).toEqual([
 				[
-					"✓ foo @ v1.0.0",
-					'✗ foo: urlMismatch — manifest entry "foo" expects url "a" but .gitmodules records "b"',
+					"name  ref     state",
+					"----  ------  -------",
+					"foo   v1.0.0  ✓ clean",
+					"",
+					"drift",
+					"name   kind         detail",
+					"-----  -----------  ----------------------------------------------------------------",
+					'✗ foo  urlMismatch  manifest entry "foo" expects url "a" but .gitmodules records "b"',
 				].join("\n"),
 			]);
 			expect(TestExit.code()).toBe(1);

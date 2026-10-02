@@ -75,6 +75,31 @@ describe("savvy lint text", () => {
 		}).pipe(Effect.provide(stack(trackedGit))),
 	);
 
+	it.effect("writes an error annotation per finding, path relative to cwd, only under GitHub Actions", () =>
+		Effect.gen(function* () {
+			const actions = yield* Capture.run(runLintText([], { cwd: "/repo" }), { audience: "ci", githubActions: true });
+			expect(actions.exitCode).toBe(1);
+			const actionLines = lines(actions);
+			// The plain finding line stays (agents and logs grep it), followed by its annotation.
+			expect(actionLines[0]).toMatch(/^✗ \/repo\/src\/nul\.ts:2:2 {2}contains a NUL byte/);
+			expect(actionLines[1]).toMatch(
+				/^::error title=grep-invisible text,file=src\/nul\.ts,line=2,col=2::contains a NUL byte/,
+			);
+			expect(actionLines).toContainEqual(
+				expect.stringMatching(
+					/^::error title=grep-invisible text,file=docs\/latin1\.md,line=1,col=4::is not valid UTF-8/,
+				),
+			);
+
+			// Control: an agent and a plain CI log get the same finding lines and no workflow command.
+			for (const options of [{ audience: "agent" }, { audience: "ci" }] as const) {
+				const plain = yield* Capture.run(runLintText([], { cwd: "/repo" }), options);
+				expect(plain.stdout.join("\n")).not.toContain("::error");
+				expect(lines(plain)).toEqual([actionLines[0], expect.stringMatching(/latin1\.md:1:4/), "1 ok, 2 failed"]);
+			}
+		}).pipe(Effect.provide(stack(trackedGit))),
+	);
+
 	it.effect("with no arguments over a clean index exits 0", () =>
 		Effect.gen(function* () {
 			const result = yield* Capture.run(runLintText([], { cwd: "/repo" }));

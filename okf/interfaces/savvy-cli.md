@@ -15,10 +15,18 @@ sources:
     resource: ../../packages/cli/src/main.ts
   - id: cli-bin-e2e
     resource: ../../packages/cli/__test__/e2e/bin.e2e.test.ts
+  - id: cli-check
+    resource: ../../packages/cli/src/commands/check.ts
+  - id: cli-clean
+    resource: ../../packages/cli/src/commands/clean.ts
+  - id: cli-confirm
+    resource: ../../packages/cli/src/internal/confirm.ts
+  - id: cli-command-error
+    resource: ../../packages/cli/src/internal/command-error.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-01T23:55:04Z
-  body_sha256: 24491a5c1083c6f92e2f7e7f2734d19be62f1a23dda10ec05f2930df8ebbdd65
+  at: 2026-10-02T01:43:20Z
+  body_sha256: 44a971055dc886e72be7d7cb1cf86baedfa88bd208fa5c1bdfeb00a9d022b709
 ---
 
 # savvy command tree
@@ -70,12 +78,23 @@ subcommands of their own.[^cli-architecture]
   nothing.[^cli-main]
 - **Exit codes:** `0` success; `1` findings (a check failed, a repo is
   dirty, a deletion failed) — reported as output, not as a crash; `64` a
-  usage error (unknown flag or subcommand, bad argument), with the error
+  usage error (unknown flag or subcommand, bad argument, or a prompt-able
+  positional left off where no one can be asked), with the error
   and the help on stderr and nothing on stdout, so a caller parsing stdout
   never receives help text. An explicit `--help`, or a command group
   invoked bare, prints its help on stdout and exits `0`. A typed failure is
   one line on stderr; an unexpected defect is an issue report on stderr —
-  the kit's failure report with the program's stack, and where to file it.[^cli-main][^cli-bin-e2e]
+  the kit's failure report with the program's stack, and where to file it.
+  `130` means a person backed out of a prompt or confirmation (Esc, `q`,
+  Ctrl-C).[^cli-main][^cli-bin-e2e]
+- **Prompts appear only for a person at a terminal.** Where a command can
+  ask — a picker for a left-off `savvy repos` name, `savvy init`'s
+  `--lint-preset`, a destructive confirmation — it does so only when the
+  audience is human and stdin/stdout are terminals. An agent, CI, or a pipe
+  never sees a screen: a missing positional is a usage error (`64`), an
+  omitted `--lint-preset` is `silk`, and a confirmation proceeds as the
+  command always has. `--yes`/`-y` answers a confirmation without
+  asking.[^cli-confirm]
 - **`savvy --version`** prints one line, `savvy v<version>`, for a direct
   install of `@savvy-web/cli`; launched through `@savvy-web/silk`'s bin it
   appends `via @savvy-web/silk <version>`. A typed `savvy` shows that
@@ -83,13 +102,31 @@ subcommands of their own.[^cli-architecture]
   Yarn); under npm and bun the cli package's own bin takes the slot and
   prints the bare line.[^cli-main]
 - **`savvy check` separates its three sections** (changeset, commit, lint)
-  with a blank line.[^cli-architecture]
+  as one document: a collapsible section per tool — a `::group::` under
+  GitHub Actions — then a combined summary and, when something `savvy init`
+  would fix is not clean, a `run savvy init` tip.[^cli-check]
+- **Under GitHub Actions, findings are annotations.** `savvy lint text`
+  and `savvy changeset check` emit `::error` workflow commands for each
+  finding, so it lands on the file in the PR view.[^cli-architecture]
+- **Built-in flags:** `--help`, `--version`, `--completions` and
+  `--log-level`. Core's generic `--wizard` is not offered.[^cli-architecture]
+- **Typed failures draw a report on stderr.** A command that cannot do
+  what it was asked prints a failure line, indented detail, and usually a
+  tip saying what to do, and exits `1` — distinct from findings, which
+  are stdout output with exit `1`.[^cli-command-error]
 
 ## What a caller may depend on
 
-- **`savvy init` and `savvy check` compose the same three underlying checks
-  in the same order** (changeset, commit, lint), short-circuiting on first
-  failure; a `check` failure names `savvy init` as its remediation.[^cli-architecture]
+- **`savvy init` and `savvy check` compose the same three tools in the
+  same order** (changeset, commit, lint). `check` runs all three without
+  short-circuiting and exits `1` on anything a plain `savvy init` would
+  fix — a missing or outdated hook section, config or template, in the
+  commit and lint checks as well as changesets (before this, the commit and
+  lint checks reported such findings but exited `0`); advisory items stay
+  exit `0`. `init` stops at a failing commit or lint step, but a changeset
+  step failure is reported, sets exit `1`, and the commit and lint steps
+  still run. `init --force` asks before overwriting files that exist, at a
+  terminal only.[^cli-check]
 - **`savvy commit lint <file>` runs the real commitlint preset** over a
   candidate message file — this is the authoritative "would this message
   pass" check, distinct from the advisory heuristics in the pre-commit
@@ -106,8 +143,10 @@ subcommands of their own.[^cli-architecture]
   stays within its own workspace root — a symlink or `..` cannot escape
   containment. `--dry-run`/`-n` previews with no filesystem write;
   `--globs`/`-g` overrides the default pattern set. Failures are collected,
-  not thrown: a non-empty failure set is a non-zero exit without aborting
-  the remaining deletions.[^cli-architecture]
+  not thrown: every deletion still runs, and a non-empty failure set ends
+  the run as one failure report listing the paths, exit `1`. A person at a
+  terminal sees a live progress view; every other run prints the same
+  per-workspace documents as before.[^cli-clean]
 - **`savvy lint fmt <name>` and lint-staged's direct call format a file
   identically** — both paths call the same underlying formatting handler,
   so there is exactly one behavior to depend on, not two that can drift.[^cli-architecture]
@@ -127,15 +166,15 @@ subcommands of their own.[^cli-architecture]
 status [--json] [--drift]      render the manifest state; --drift reconciles it
 sync                           reconcile submodules with the manifest: init
                                missing, apply sparse paths, clear locks
-pin                            re-pin an entry to a new ref (staged, not
+pin [name] [ref]               re-pin an entry to a new ref (staged, not
                                committed)
 add                            vendor a new repo (staged, not committed)
-note add|remove|promote <name> manage the per-entry agent notes; promote folds
+note add|remove|promote [name] manage the per-entry agent notes; promote folds
                                one into the curated orientation (--into)
-remove <name>                  drop an entry, submodule and worktree
-rename <old> <new>              rename an entry and its paths
-restore [names...]             hard-reset dirty checkouts (destructive)
-deregister <section>           clear a stale submodule.<section> local-config
+remove [name] [--yes]          drop an entry, submodule and worktree
+rename [old] [new]             rename an entry and its paths
+restore [names...] [--yes]     hard-reset dirty checkouts (destructive)
+deregister [section]           clear a stale submodule.<section> local-config
                                registration (the drift report's orphan case)
 ```
 
@@ -165,6 +204,19 @@ deregister <section>           clear a stale submodule.<section> local-config
 - **`deregister` touches local git config only and stages nothing** — no
   friendly missing-manifest exit-0 case, and it never opens the vendored
   worktree.[^cli-repos-group]
+- **A left-off name is asked for, at a terminal only.** `pin`, `rename`,
+  `note` and `remove` show a picker of vendored repos, `deregister` of stale
+  registrations, `restore` a multi-select, `note promote` a picker for
+  `--into`, and `add` prompts for a missing `--ref`/`--purpose`; help marks
+  those positionals "(optional)". Off a terminal the same omission is a
+  usage error, exit `64`, and nothing is drawn. `restore` and `remove`
+  confirm before acting unless `--yes` is passed or no one can be asked.
+  `sync` never prompts. `status --json` output is byte-for-byte unchanged by
+  any of this.[^cli-repos-group]
+- **Every repos failure is a typed failure report with a hint**, exit `1`
+  — never a raw engine error. The exceptions stay outputs: the missing
+  manifest's "nothing vendored" line (exit `0`) and `status --json`'s error
+  document.[^cli-repos-group]
 - **Every mutating op that unlocks the vendored tree
   (`sync`/`add`/`pin`/`remove`/`rename`/`restore`) re-locks it afterward
   even on a caught error** — a caller never observes `.repos/**` left
@@ -183,6 +235,9 @@ deregister <section>           clear a stale submodule.<section> local-config
   `repos_inspect` tool (see [`savvy-mcp-tools`](savvy-mcp-tools.md)).
 - Do not expect `savvy repos remove`/`restore` to be non-destructive, or
   `deregister` to stage anything.
+- Do not script against the interactive screens; pass every positional and
+  `--yes` explicitly, or run with `--agent`/`--ci`, so no prompt can
+  appear.
 
 ## Related
 
@@ -198,3 +253,7 @@ deregister <section>           clear a stale submodule.<section> local-config
 [^cli-repos-group]: `../../packages/cli/src/commands/repos`
 [^cli-main]: `../../packages/cli/src/main.ts`
 [^cli-bin-e2e]: `../../packages/cli/__test__/e2e/bin.e2e.test.ts`
+[^cli-check]: `../../packages/cli/src/commands/check.ts`
+[^cli-clean]: `../../packages/cli/src/commands/clean.ts`
+[^cli-confirm]: `../../packages/cli/src/internal/confirm.ts`
+[^cli-command-error]: `../../packages/cli/src/internal/command-error.ts`

@@ -18,76 +18,94 @@
  * see. `GitSubmoduleError` means the underlying git command failed, and
  * `ReposLockdownError` means the OS-permission lockdown pass on a vendored
  * tree failed -- all four (invalid config, not-found, git failure, lockdown
- * failure) are real failures, logged and reported via a non-zero exit code.
+ * failure) are real failures, failing as a `CommandError` (exit 1) with a
+ * hint.
+ *
+ * At a terminal it asks before removing (`Confirm`; `--yes` skips it), and a
+ * missing name is picked from the vendored repos (`Select`). Declining prints
+ * `remove cancelled — <name> left vendored` and exits 0 with nothing changed.
+ * Anywhere else (an agent, CI, a pipe) it proceeds unasked, as it always did,
+ * and a missing name is the usage error it always was, exit 64.
  *
  * @example
  * ```bash
  * savvy repos remove my-repo
+ * savvy repos remove my-repo --yes
  * ```
  *
  * @internal
  */
 
 import type { Block } from "@effected/cli";
-import { CliExit } from "@effected/cli";
+import { Doc } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import type { ReportEnv } from "../../../internal/report.js";
+import { confirmDestructive, yesFlag } from "../../../internal/confirm.js";
 import { Report } from "../../../internal/report.js";
+import { ReposCli } from "../shared.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
-const nameArg = Argument.String("name");
+const nameArg = Argument.String("name").pipe(Argument.optional);
 const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to remove within"), Flag.withDefault("."));
 /* v8 ignore stop */
 
+/** Options for {@link runReposRemove}. */
+export interface ReposRemoveOptions {
+	/** `--yes`: proceed without asking. */
+	readonly yes?: boolean | undefined;
+}
+
 /**
- * Remove handler; exported for tests.
+ * Remove handler; exported for tests. `name` is `undefined` when left off.
  *
  * @internal
  */
-export const runReposRemove = (cwd: string, name: string) =>
+export const runReposRemove = (cwd: string, name: string | undefined, options: ReposRemoveOptions = {}) =>
 	Effect.gen(function* () {
+		const target = yield* ReposCli.nameOrPick(cwd, name, { argument: "name", message: "Unvendor which repo?" });
+		const proceed = yield* confirmDestructive({
+			message: `Remove ${target} from .repos/? (staged, not committed)`,
+			yes: options.yes === true,
+		});
+		if (!proceed) {
+			return yield* Report.print([Report.skip(`remove cancelled — ${target} left vendored`)]);
+		}
 		const manager = yield* Repos.ReposManager;
-		const result = yield* manager.remove(cwd, name);
+		const result = yield* manager.remove(cwd, target);
 		const blocks: Array<Block> = [
-			Report.ok(`${result.name}: removed (${result.path})`, result.commitMessage, "staged — review and commit"),
-			...result.removedNotes.map((note) =>
-				Report.warn(`note ${note.id} (${note.ref}) was removed with the entry — promote first if durable`),
-			),
+			Report.ok(`${result.name}: removed (${result.path})`, "staged — review and commit"),
+			Doc.codeBlock(result.commitMessage),
 		];
+		const lost: Array<Block> = result.removedNotes.map((note) =>
+			Doc.paragraph(`note ${note.id} (${note.ref}) was removed with the entry — promote it first if it is durable`),
+		);
 		// `add` has an `orientation` parameter but does not resurrect anything on
 		// its own, so anyone re-vendoring after this loses the block unless they
 		// are handed it here, while it still exists.
 		if (result.removedEntry.orientation) {
-			blocks.push(
-				Report.warn(
+			lost.push(
+				Doc.paragraph(
 					`the orientation block for ${result.name} was removed with the entry and add will NOT restore it — re-vendoring? capture it now:`,
 				),
-				Report.verbatim(JSON.stringify(result.removedEntry.orientation, null, 2)),
+				Doc.codeBlock(JSON.stringify(result.removedEntry.orientation, null, 2), "json"),
 			);
+		}
+		if (lost.length > 0) {
+			blocks.push(Doc.callout("warning", lost));
 		}
 		yield* Report.print(blocks);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
-			if (error.kind === "missing") {
-				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
-			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("RepoNotFoundError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
+		Effect.catchTag("ReposConfigError", (error) =>
+			error.kind === "missing" ? ReposCli.nothingVendored : ReposCli.fail("remove the repo")(error),
+		),
+		Effect.catchTag(["RepoNotFoundError", "GitSubmoduleError", "ReposLockdownError"], ReposCli.fail("remove the repo")),
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposRemove */
-export const removeCommand = Command.make("remove", { name: nameArg, cwd: cwdOption }, ({ name, cwd }) =>
-	runReposRemove(cwd, name),
+export const removeCommand = Command.make(
+	"remove",
+	{ name: nameArg, yes: yesFlag, cwd: cwdOption },
+	({ name, yes, cwd }) => runReposRemove(cwd, Option.getOrUndefined(name), { yes }),
 ).pipe(Command.withDescription("Unvendor a repo under .repos/; stages the removal without committing"));
 /* v8 ignore stop */

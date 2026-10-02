@@ -12,8 +12,11 @@
  * `"invalid"` means the manifest exists but is corrupt or unreadable,
  * `GitSubmoduleError` means the underlying git command failed, and
  * `ReposLockdownError` means the OS-permission lockdown pass on a vendored
- * tree failed -- all three are real failures, logged and reported via a
- * non-zero exit code.
+ * tree failed -- all three are real failures, failing as a `CommandError`
+ * (exit 1) with a hint.
+ *
+ * Never asks anything, at a terminal or not: the session hook runs it under a
+ * watchdog, so a prompt would hang it.
  *
  * @example
  * ```bash
@@ -24,12 +27,11 @@
  */
 
 import type { Block } from "@effected/cli";
-import { CliExit } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/cli";
-import type { ReportEnv } from "../../../internal/report.js";
 import { Report } from "../../../internal/report.js";
+import { ReposCli } from "../shared.js";
 
 /* v8 ignore start -- CLI option definitions */
 const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to sync"), Flag.withDefault("."));
@@ -77,18 +79,10 @@ export const runReposSync = (cwd: string) =>
 		}
 		yield* Report.print(blocks);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
-			if (error.kind === "missing") {
-				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
-			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
+		Effect.catchTag("ReposConfigError", (error) =>
+			error.kind === "missing" ? ReposCli.nothingVendored : ReposCli.fail("sync the vendored repos")(error),
+		),
+		Effect.catchTag(["GitSubmoduleError", "ReposLockdownError"], ReposCli.fail("sync the vendored repos")),
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposSync */

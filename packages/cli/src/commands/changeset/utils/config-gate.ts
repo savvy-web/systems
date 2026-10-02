@@ -19,36 +19,36 @@
  *   pre-0.9.0 behavior where `transform` and `version` worked on
  *   projects that have not yet been bootstrapped.
  * - **Config present**: the gate invokes
- *   {@link ConfigInspector.inspect}. On `ConfigurationError`, it sets
- *   exit code 1 through `CliExit.set` and propagates the error so the caller's
- *   `Effect.gen` short-circuits.
+ *   {@link ConfigInspector.inspect}. A `ConfigurationError` becomes a
+ *   {@link CommandError} (the refusal, the config problem as its detail, and
+ *   a `config validate` hint) that short-circuits the caller's `Effect.gen`;
+ *   the runtime reports it on stderr and exits 1.
  *
  * @internal
  */
 
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
+
+import { CommandError } from "../../../internal/command-error.js";
 
 const { ConfigInspector } = Changesets;
 
 /**
  * Require a valid `.changeset/config.json` (when one exists) before
  * proceeding. Resolves to `void` on a clean config OR on a project that
- * doesn't have a config at all; fails with {@link ConfigurationError} on
- * an invalid config.
+ * doesn't have a config at all; fails with a {@link CommandError} wrapping
+ * the {@link ConfigurationError} on an invalid config.
  *
  * @param cwd - Project root (will be resolved against the process cwd)
  * @returns Effect that succeeds on valid/absent config, fails with
- *   {@link ConfigurationError} otherwise
+ *   {@link CommandError} otherwise
  *
  * @internal
  */
-export function requireValidConfig(
-	cwd: string,
-): Effect.Effect<void, Changesets.ConfigurationError, Changesets.ConfigInspector | CliExit> {
+export function requireValidConfig(cwd: string): Effect.Effect<void, CommandError, Changesets.ConfigInspector> {
 	return Effect.gen(function* () {
 		const projectDir = resolve(cwd);
 		const configPath = join(projectDir, ".changeset", "config.json");
@@ -59,9 +59,14 @@ export function requireValidConfig(
 
 		const inspector = yield* ConfigInspector;
 		yield* inspector.inspect(projectDir).pipe(
-			Effect.catchTag("ConfigurationError", (err) => {
-				return CliExit.set(1).pipe(Effect.andThen(Effect.fail(err)));
-			}),
+			Effect.catchTag("ConfigurationError", (err) =>
+				Effect.fail(
+					CommandError.from(err, {
+						message: `refusing to run: ${configPath} is invalid`,
+						hint: "Run savvy changeset config validate to see the full report.",
+					}),
+				),
+			),
 		);
 	});
 }

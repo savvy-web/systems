@@ -164,10 +164,84 @@ describe("transform command – runTransform handler", () => {
 			const error = yield* Effect.flip(
 				runTransform(filePath, false, false).pipe(Effect.provide(failingInspector), Effect.provide(silentLogger)),
 			);
-			expect(error._tag).toBe("ConfigurationError");
+			expect(error._tag).toBe("CommandError");
 			// File must not have been written.
 			expect(readFileSync(filePath, "utf-8")).toBe("## 1.0.0\n\n### Features\n\n- X\n");
-			expect(TestExit.code()).toBe(1);
+
+			// Through the runtime: the refusal draws itself on stderr and exits 1.
+			const result = yield* Capture.main(runTransform(filePath, false, false).pipe(Effect.provide(failingInspector)));
+			const stderr = result.stderr.join("\n").replace(/\s+/g, " ");
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([]);
+			expect(stderr).toContain(`✗ refusing to run: ${join(tempDir, ".changeset", "config.json")} is invalid`);
+			expect(stderr).toContain("Configuration error (options): synthetic");
+			expect(stderr).toContain("savvy changeset config validate");
 		}).pipe(Effect.provide(TestExit.layer)),
 	);
+
+	it.effect("shows the drift as a diff under the finding in check mode", () =>
+		Effect.gen(function* () {
+			const filePath = join(tempDir, "CHANGELOG.md");
+			writeFileSync(filePath, UNORDERED);
+
+			const result = yield* Capture.run(runTransform(filePath, false, true).pipe(Effect.provide(StubInspectorLayer)));
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toHaveLength(1);
+			// Only the drifted lines (3-9 of 9, plus one unchanged line of context
+			// before them), original then transformed, under the finding.
+			expect(result.stdout[0].split("\n")).toEqual([
+				`⚠ ${filePath} would be modified by transform`,
+				"  lines 2-9:",
+				"-",
+				"- ### Bug Fixes",
+				"-",
+				"- - Fix A",
+				"-",
+				"- ### Features",
+				"-",
+				"- - Feat A",
+				"+",
+				"+ ### Features",
+				"+",
+				"+ - Feat A",
+				"+",
+				"+ ### Bug Fixes",
+				"+",
+				"+ - Fix A",
+			]);
+		}),
+	);
+
+	it.effect("prints no diff in check mode when the file is already formatted", () =>
+		Effect.gen(function* () {
+			const filePath = join(tempDir, "CHANGELOG.md");
+			writeFileSync(filePath, Changesets.ChangelogTransformer.transformContent(UNORDERED));
+
+			const result = yield* Capture.run(runTransform(filePath, false, true).pipe(Effect.provide(StubInspectorLayer)));
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toEqual([`✓ ${filePath} is already formatted`]);
+		}),
+	);
+
+	it.effect("prints exactly the transformed text in dry-run mode, for every audience", () =>
+		Effect.gen(function* () {
+			const filePath = join(tempDir, "CHANGELOG.md");
+			writeFileSync(filePath, UNORDERED);
+			const expected = Changesets.ChangelogTransformer.transformContent(UNORDERED);
+
+			for (const options of [{}, { audience: "agent" as const }, { audience: "ci" as const, githubActions: true }]) {
+				const result = yield* Capture.run(
+					runTransform(filePath, true, false).pipe(Effect.provide(StubInspectorLayer)),
+					options,
+				);
+				// One document: the transformed text, which `Console.log` ends with a newline.
+				expect(result.stdout).toEqual([expected.replace(/\n$/, "")]);
+			}
+		}),
+	);
 });
+
+/** A changelog whose sections are out of order, so the transform reorders them. */
+const UNORDERED = "## 1.0.0\n\n### Bug Fixes\n\n- Fix A\n\n### Features\n\n- Feat A\n";

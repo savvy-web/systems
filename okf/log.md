@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-01
+
+* Updated Kit Effect peers supplied via the effected catalog
+
 ## 2026-09-29
 
 * Updated silk-effects

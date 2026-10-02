@@ -22,9 +22,9 @@
  * @internal
  */
 
-import { CliExit } from "@effected/cli";
+import { CliExit, Doc } from "@effected/cli";
 import { Lint } from "@savvy-web/silk-effects";
-import { Effect } from "effect";
+import { Effect, Path } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
 import { Report } from "../../internal/report.js";
 
@@ -48,18 +48,23 @@ export interface RunLintTextOptions {
 }
 
 /**
- * Check `files` (or, when empty, every tracked file under `cwd`) and print one
- * line per finding; any finding sets exit code 1. Under `--staged`, every file
- * is still checked when one has no index entry: that file's read error is
- * logged to stderr, counted as failed, and also sets exit code 1. Exported for
- * tests.
+ * Check `files` (or, when empty, every tracked file under `cwd`) and print the
+ * findings as one document: a `✗ path:line:col  message` line per finding (the
+ * form editors link and agents grep), a GitHub Actions error annotation per
+ * finding (written only under Actions, with the path relative to `cwd`), and a
+ * summary. Any finding sets exit code 1. Under `--staged`, every file is still
+ * checked when one has no index entry: that file's read error is logged to
+ * stderr (a diagnostic, not a finding in its content), counted as failed, and
+ * also sets exit code 1. Exported for tests.
  *
  * @internal
  */
 export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOptions = {}) =>
 	Effect.gen(function* () {
+		const path = yield* Path.Path;
+		const cwd = options.cwd ?? ".";
 		const staged = options.staged ?? false;
-		const targets = files.length > 0 ? files : yield* Lint.TextFiles.listTracked(options.cwd ?? ".", { staged });
+		const targets = files.length > 0 ? files : yield* Lint.TextFiles.listTracked(cwd, { staged });
 		const { findings, unreadable } = staged
 			? yield* Lint.TextFiles.checkStagedFiles(targets)
 			: { findings: yield* Lint.TextFiles.checkFiles(targets), unreadable: [] };
@@ -77,10 +82,30 @@ export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOp
 			return findings;
 		}
 
+		// The runner shows an annotation against a path relative to the
+		// workspace; one outside `cwd` keeps the path it was given.
+		const root = path.resolve(cwd);
+		const annotationPath = (file: string): string => {
+			const relative = path.relative(root, path.resolve(file));
+			return relative.startsWith("..") || path.isAbsolute(relative) ? file : relative;
+		};
+
 		const failedFiles = new Set([...findings.map((finding) => finding.path), ...unreadable.map((error) => error.path)])
 			.size;
 		yield* Report.print([
-			...findings.map((finding) => Report.fail(`${finding.location}  ${finding.message}`)),
+			...findings.flatMap((finding) => [
+				Report.fail(`${finding.location}  ${finding.message}`),
+				Doc.annotation(
+					{
+						level: "error",
+						file: annotationPath(finding.path),
+						line: finding.line,
+						col: finding.column,
+						title: "grep-invisible text",
+					},
+					finding.message,
+				),
+			]),
 			Report.summary({ ok: targets.length - failedFiles, fail: failedFiles }),
 		]);
 		yield* CliExit.set(1);

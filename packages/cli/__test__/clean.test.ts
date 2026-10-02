@@ -2,10 +2,15 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, wri
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { CliUiTest } from "@effected/cli/ui/testing";
 import { WorkspaceDiscovery, WorkspacePackage } from "@effected/workspaces";
-import { Effect, Layer } from "effect";
-import { CleanError, collectTargets, removeTargets, runClean } from "../src/commands/clean.js";
+import { Effect, Fiber, Layer } from "effect";
+import { initialCleanState, reduceClean } from "../src/commands/clean/progress.js";
+import { cleanView } from "../src/commands/clean/view.js";
+import { collectTargets, removeTargets, runClean } from "../src/commands/clean.js";
+import { CommandError } from "../src/internal/command-error.js";
 import { Capture } from "./utils/capture.js";
+import { Interactive } from "./utils/interactive.js";
 
 describe("collectTargets", () => {
 	let dir: string;
@@ -264,7 +269,9 @@ describe("runClean", () => {
 						runClean({ globs: "dist,.turbo", dryRun: false }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
 					),
 				);
-				expect(error).toBeInstanceOf(CleanError);
+				expect(error).toBeInstanceOf(CommandError);
+				expect(error.message).toBe("1 target(s) could not be removed");
+				expect(error.detail?.[0]?.startsWith(`${turbo}: `)).toBe(true);
 				// The leaf printed as its own document before the root was attempted.
 				expect(stdout[0]).toBe(["", "pkg", `  removed [dir] ${join(leaf, "dist")}`].join("\n"));
 				const lines = stdout.join("\n").split("\n");
@@ -284,5 +291,119 @@ describe("runClean", () => {
 			yield* Capture.run(runClean({ globs: "  ", dryRun: false }).pipe(Effect.provide(discoveryLayer([rootPkg]))));
 			expect(existsSync(join(root, ".turbo"))).toBe(false); // .turbo is a default
 		}),
+	);
+
+	it.effect("targets that cannot be removed draw a CommandError with a hint on stderr and exit 1", () =>
+		Effect.gen(function* () {
+			if (process.getuid?.() === 0) return;
+			const rootPkg = makePkg(root, true);
+			const turbo = join(root, ".turbo");
+			writeFileSync(join(turbo, "cache"), "x");
+			chmodSync(turbo, 0o555);
+			try {
+				const result = yield* Capture.main(
+					runClean({ globs: ".turbo", dryRun: false }).pipe(Effect.provide(discoveryLayer([rootPkg]))),
+				);
+				expect(result.exitCode).toBe(1);
+				const stderr = result.stderr.join("\n");
+				expect(stderr).toContain("✗ 1 target(s) could not be removed");
+				expect(stderr).toContain(`${turbo}: `);
+				expect(stderr).toContain("re-run savvy clean");
+			} finally {
+				chmodSync(turbo, 0o755);
+			}
+		}),
+	);
+
+	it.effect("a person at a terminal gets the live view, not the plain documents", () =>
+		Effect.gen(function* () {
+			const rootPkg = makePkg(root, true);
+			const leafPkg = makePkg(leaf, false);
+			const { session, fiber } = yield* Interactive.run(
+				runClean({ globs: "dist,.turbo", dryRun: false }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
+			);
+			const result = yield* Fiber.join(fiber);
+			// Every line went to the view's console (above the frame), none to the
+			// program's own stdout, and no plain total was printed.
+			expect(result.stdout).toEqual([]);
+			// The live run mounted once on the session's terminal; its committed frame is the summary.
+			expect(yield* session.mounts).toBe(1);
+			const frame = yield* (yield* session.next()).plainFrame;
+			expect(frame).toContain("2 removed");
+			expect(frame).not.toContain("failed");
+			expect(existsSync(join(leaf, "dist"))).toBe(false);
+			expect(existsSync(join(root, ".turbo"))).toBe(false);
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("a run that cannot prompt prints exactly the plain documents", () =>
+		Effect.gen(function* () {
+			const rootPkg = makePkg(root, true);
+			const leafPkg = makePkg(leaf, false);
+			const { session, fiber } = yield* Interactive.run(
+				runClean({ globs: "dist,.turbo", dryRun: true }).pipe(Effect.provide(discoveryLayer([leafPkg, rootPkg]))),
+				{ interactive: false },
+			);
+			const result = yield* Fiber.join(fiber);
+			expect(result.stdout.join("\n")).toEqual(
+				[
+					"",
+					"pkg",
+					`  would remove [dir] ${join(leaf, "dist")}`,
+					"",
+					"<root>",
+					`  would remove [dir] ${join(root, ".turbo")}`,
+					"",
+					"✓ Would remove 2 item(s)",
+				].join("\n"),
+			);
+			expect(yield* session.mounts).toBe(0);
+		}).pipe(Effect.scoped),
+	);
+});
+
+describe("clean live view", () => {
+	const dist = { path: "/repo/packages/a/dist", kind: "dir" as const };
+	const turbo = { path: "/repo/.turbo", kind: "dir" as const };
+
+	it("folds workspaces into counts and failures, and a start begins afresh", () => {
+		const done = [
+			{ _tag: "Started", workspaces: 2, dryRun: false } as const,
+			{ _tag: "WorkspaceStarted", name: "packages/a" } as const,
+			{ _tag: "WorkspaceDone", name: "packages/a", removed: [dist], failed: [] } as const,
+			{ _tag: "WorkspaceDone", name: "<root>", removed: [], failed: [{ target: turbo, reason: "EACCES" }] } as const,
+			{ _tag: "Ended" } as const,
+		].reduce(reduceClean, initialCleanState);
+		expect(done).toMatchObject({ phase: "done", finished: 2, removed: 1, failed: [{ reason: "EACCES" }] });
+		expect(reduceClean(done, { _tag: "Started", workspaces: 1, dryRun: true })).toMatchObject({
+			phase: "running",
+			removed: 0,
+			failed: [],
+			dryRun: true,
+		});
+	});
+
+	it.effect("shows progress while running, then commits the counts and a failure table", () =>
+		Effect.gen(function* () {
+			const view = yield* CliUiTest.live({ ...cleanView, color: "none", columns: 100 });
+			yield* view.publish({ _tag: "Started", workspaces: 2, dryRun: false });
+			yield* view.publish({ _tag: "WorkspaceStarted", name: "packages/a" });
+			expect(yield* view.plainFrame).toContain("Cleaning packages/a (0/2 workspaces)");
+			yield* view.publish({ _tag: "WorkspaceDone", name: "packages/a", removed: [dist], failed: [] });
+			yield* view.publish({
+				_tag: "WorkspaceDone",
+				name: "<root>",
+				removed: [],
+				failed: [{ target: turbo, reason: "EACCES: permission denied" }],
+			});
+			yield* view.publish({ _tag: "Ended" });
+			yield* view.end;
+			const transcript = yield* view.transcript;
+			expect(transcript).toContain("1 removed");
+			expect(transcript).toContain("1 failed");
+			expect(transcript).toContain("could not remove");
+			expect(transcript).toContain("/repo/.turbo");
+			expect(transcript).toContain("EACCES: permission denied");
+		}).pipe(Effect.scoped),
 	);
 });

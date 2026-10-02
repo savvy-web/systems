@@ -19,7 +19,7 @@
  * @internal
  */
 
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
@@ -32,8 +32,11 @@ const { ConfigInspector } = Changesets;
 const dirArg = Argument.Directory("dir").pipe(Argument.withDefault("."));
 
 /**
- * Run validation. Logs a one-line OK on success; logs the error and sets
- * exit code 1 through `CliExit.set` on failure.
+ * Run validation and print the outcome as one stdout line: `✓ <config> —
+ * N packages declared` on success, `✗ <config> — field: reason` plus exit
+ * code 1 through `CliExit.set` on a finding. Both outcomes stay on stdout as
+ * `Report` lines (not `CliMessage`, whose failure line goes to stderr), so a
+ * gate reading the result reads one stream.
  *
  * @internal
  */
@@ -58,7 +61,9 @@ export function runConfigValidate(dir: string) {
 			return;
 		}
 
-		yield* Report.print([Report.fail(`${result.field}: ${result.reason}`)]);
+		yield* Report.print([
+			Report.fail(`${join(resolved, ".changeset", "config.json")} — ${result.field}: ${result.reason}`),
+		]);
 		yield* CliExit.set(1);
 	});
 }

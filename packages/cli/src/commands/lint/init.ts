@@ -7,7 +7,7 @@ import { chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import type { Block } from "@effected/cli";
-import type { JsoncFormattingOptions } from "@effected/jsonc";
+import type { JsoncFormattingOptions, JsoncModificationError, JsoncParseError } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import type { SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
 import { ManagedSection } from "@effected/templates";
@@ -29,6 +29,7 @@ import {
 } from "@savvy-web/silk-effects";
 import { Effect, FileSystem } from "effect";
 import type { PlatformError } from "effect/PlatformError";
+import { CommandError } from "../../internal/command-error.js";
 import type { ReportEnv } from "../../internal/report.js";
 import { Report } from "../../internal/report.js";
 import { BIOME_VERSION } from "./biome-version.js";
@@ -315,10 +316,23 @@ export function syncBiomeSchemas(): Effect.Effect<ReadonlyArray<Block>, never, B
 }
 
 /** Make a file executable. */
-function makeExecutable(path: string) {
+function makeExecutable(path: string): Effect.Effect<void, CommandError> {
 	return Effect.tryPromise({
 		try: () => chmod(path, EXECUTABLE_MODE),
-		catch: (e) => new Error(String(e)),
+		catch: (e) =>
+			CommandError.from(e, {
+				message: `could not make ${path} executable`,
+				hint: `Check that you own ${path}, then re-run the init.`,
+			}),
+	});
+}
+
+/** The failure for a `--config` path given as absolute. */
+function absoluteConfigError(config: string): CommandError {
+	return new CommandError({
+		message: "Config path must be relative to repository root, not absolute",
+		detail: [`got ${config}`],
+		hint: "Pass the config path relative to the repository root, e.g. lib/configs/<name>.config.ts.",
 	});
 }
 
@@ -354,7 +368,13 @@ export function runLintInit(opts: {
 	preset: "minimal" | "standard" | "silk";
 }): Effect.Effect<
 	void,
-	Error | SectionParseError | SectionRenderError | SectionFileError | PlatformError,
+	| CommandError
+	| JsoncParseError
+	| JsoncModificationError
+	| SectionParseError
+	| SectionRenderError
+	| SectionFileError
+	| PlatformError,
 	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync | WorkspaceDiscovery | ReportEnv
 > {
 	const { force, config, preset } = opts;
@@ -363,7 +383,7 @@ export function runLintInit(opts: {
 		const ms = yield* ManagedSection;
 
 		if (config.startsWith("/")) {
-			yield* Effect.fail(new Error("Config path must be relative to repository root, not absolute"));
+			return yield* Effect.fail(absoluteConfigError(config));
 		}
 
 		yield* Report.print([Report.heading("lint-staged")]);

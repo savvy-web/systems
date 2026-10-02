@@ -1,15 +1,11 @@
-import { beforeEach, describe, expect, it } from "@effect/vitest";
-import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer } from "effect";
+import { describe, expect, it } from "@effect/vitest";
+import type { Repos } from "@savvy-web/silk-effects";
+import { Effect, Fiber } from "effect";
 
 import { runReposSync } from "../../../src/commands/repos/commands/sync.js";
 import { Capture } from "../../utils/capture.js";
-import { TestExit } from "../../utils/exit.js";
-
-/** What the last run wrote to stderr: every log line, including a failure's explanation. */
-const stderrLines: string[] = [];
-
-const { ReposManager, ReposConfigError, GitSubmoduleError, ReposLockdownError } = Repos;
+import { Interactive } from "../../utils/interactive.js";
+import { ReposStub } from "./fixtures.js";
 
 /** A canned report with one entry in each of the five actionable buckets. */
 const activeReport: Repos.ReposSyncReport = {
@@ -30,55 +26,21 @@ const emptyReport: Repos.ReposSyncReport = {
 	upToDate: ["foo"],
 	urlSynced: [],
 	registered: [],
-	boundaryMarked: [],
+	boundaryMarked: ["foo"],
 };
 
-/** Build a stub `Repos.ReposManager` layer whose `sync` resolves/fails as given. */
-function makeStubLayer(
-	sync: (
-		root: string,
-	) => Effect.Effect<
+const sync = (
+	result: Effect.Effect<
 		Repos.ReposSyncReport,
 		Repos.ReposConfigError | Repos.GitSubmoduleError | Repos.ReposLockdownError
 	>,
-): Layer.Layer<Repos.ReposManager> {
-	return Layer.succeed(ReposManager, {
-		status: () => Effect.die("not used in this test"),
-		sync,
-		add: () => Effect.die("not used in this test"),
-		pin: () => Effect.die("not used in this test"),
-		note: () => Effect.die("not used in this test"),
-	} as never);
-}
+) => runReposSync("/repo").pipe(Effect.provide(ReposStub.manager({ sync: () => result })));
 
-/**
- * Run `runReposSync` against a stub layer, collecting every `Effect.log`
- * line. `runReposSync` `catchTag`s `ReposConfigError`/`GitSubmoduleError`/
- * `ReposLockdownError` uniformly (friendly exit 0 for a missing manifest,
- * `exitCode = 1` for everything else), so the returned effect never fails.
- */
-function collectLogs(cwd: string, layer: Layer.Layer<Repos.ReposManager>): Effect.Effect<string[]> {
-	return Effect.gen(function* () {
-		const sink: string[] = [];
-		stderrLines.length = 0;
-		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
-		yield* runReposSync(cwd).pipe(Effect.provide(captured));
-		return sink;
-	}).pipe(Effect.provide(TestExit.layer));
-}
-
-describe("runReposSync (adapter)", () => {
-	beforeEach(() => {
-		TestExit.reset();
-	});
-
-	it.effect("logs one line per clearedLocks/initialized/sparseApplied entry, exit undefined", () =>
+describe("repos sync", () => {
+	it.effect("prints one line per actionable entry, exit 0", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.succeed(activeReport));
-
-			const logs = yield* collectLogs("/repo", layer);
-
-			expect(logs).toEqual([
+			const result = yield* Capture.run(sync(Effect.succeed(activeReport)));
+			expect(result.stdout).toEqual([
 				[
 					"✓ foo: cleared stale lock",
 					"✓ bar: initialized",
@@ -87,90 +49,49 @@ describe("runReposSync (adapter)", () => {
 					"✓ quux: registered",
 				].join("\n"),
 			]);
-			expect(TestExit.code()).toBe(0);
+			expect(result.exitCode).toBe(0);
 		}),
 	);
 
-	it.effect("logs the up-to-date fallback when all buckets are empty", () =>
+	it.effect("says up to date when nothing changed (boundaryMarked is not news)", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.succeed(emptyReport));
-
-			const logs = yield* collectLogs("/repo", layer);
-
-			expect(logs).toEqual(["✓ all vendored repos up to date"]);
-			expect(TestExit.code()).toBe(0);
+			const result = yield* Capture.run(sync(Effect.succeed(emptyReport)));
+			expect(result.stdout).toEqual(["✓ all vendored repos up to date"]);
 		}),
 	);
 
-	it.effect("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", () =>
+	// The session hook runs sync under a watchdog: a prompt would hang it.
+	it.effect("never mounts anything, even at a terminal", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
-				),
-			);
+			const { session, fiber } = yield* Interactive.run(sync(Effect.succeed(activeReport)));
+			yield* Fiber.join(fiber);
+			expect(yield* session.mounts).toBe(0);
+		}).pipe(Effect.scoped),
+	);
 
-			const logs = yield* collectLogs("/repo", layer);
-
-			expect(logs).toEqual(["↷ no .repos/config.json — nothing vendored"]);
-			expect(TestExit.code()).toBe(0);
+	it.effect("with no manifest it says nothing is vendored and exits 0", () =>
+		Effect.gen(function* () {
+			const result = yield* Capture.run(sync(Effect.fail(ReposStub.configMissing)));
+			expect(result.stdout).toEqual(["↷ no .repos/config.json — nothing vendored"]);
+			expect(result.exitCode).toBe(0);
 		}),
 	);
 
-	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid", () =>
+	it.effect("each repos failure is a CommandError with a hint on stderr, exit 1, stdout empty", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" }),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
-		}),
-	);
-
-	it.effect("logs the error message and sets exitCode 1 on GitSubmoduleError", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new GitSubmoduleError({
-						command: "git submodule update --init --depth 1 -- .repos/foo",
-						cwd: "/repo",
-						reason: "fatal: could not fetch",
-					}),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", layer);
-			expect(logs).toEqual([]);
-
-			expect(
-				stderrLines.some((l) => l.includes("git command failed in /repo") && l.includes("fatal: could not fetch")),
-			).toBe(true);
-			expect(TestExit.code()).toBe(1);
-		}),
-	);
-
-	it.effect("logs the error message and sets exitCode 1 on ReposLockdownError", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new ReposLockdownError({
-						path: "/repo/.repos/foo",
-						reason: "chmod failed: EACCES",
-					}),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("/repo/.repos/foo") && l.includes("chmod failed: EACCES"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
+			for (const [error, expected, hint] of [
+				[ReposStub.configInvalid("invalid JSON"), "invalid JSON", "TIP: fix .repos/config.json"],
+				[ReposStub.git("fatal: could not fetch"), "  fatal: could not fetch", "TIP: run `savvy repos status --drift`"],
+				[ReposStub.lockdown("chmod failed: EACCES"), "chmod failed: EACCES", "TIP: run `savvy repos sync`"],
+			] as const) {
+				const result = yield* Capture.main(sync(Effect.fail(error)));
+				expect(result.exitCode).toBe(1);
+				expect(result.stdout).toEqual([]);
+				const stderr = result.stderr.join("\n");
+				expect(stderr).toContain("✗ could not sync the vendored repos");
+				expect(stderr).toContain(expected);
+				expect(stderr).toContain(hint);
+			}
 		}),
 	);
 });

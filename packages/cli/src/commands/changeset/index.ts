@@ -4,6 +4,7 @@ import type { Cause, FileSystem, Path } from "effect";
 import { Command } from "effect/cli";
 import type { ChildProcessSpawner } from "effect/process";
 
+import type { CommandError } from "../../internal/command-error.js";
 import type { ReportEnv } from "../../internal/report.js";
 
 import { checkCommand } from "./commands/check.js";
@@ -58,11 +59,7 @@ export const changesetCommand: Command.Command<
 	"changeset",
 	Record<string, never>,
 	Record<string, never>,
-	| Changesets.ConfigurationError
-	| Error
-	| Changesets.ReleasePlanError
-	| Cause.UnknownError
-	| Changesets.DepsRegenPlanError,
+	CommandError | Error | Changesets.ReleasePlanError | Cause.UnknownError | Changesets.DepsRegenPlanError,
 	| ChildProcessSpawner.ChildProcessSpawner
 	| Changesets.ConfigInspector
 	| FileSystem.FileSystem
@@ -74,5 +71,5 @@ export const changesetCommand: Command.Command<
 /* v8 ignore stop */
 
 // Re-export named handlers for B5/B6 orchestrator consumption.
-export { runChangesetCheck } from "./commands/check.js";
-export { runChangesetInit } from "./commands/init.js";
+export { changesetCheckSection, runChangesetCheck } from "./commands/check.js";
+export { runChangesetInit, runChangesetInitOrFail } from "./commands/init.js";

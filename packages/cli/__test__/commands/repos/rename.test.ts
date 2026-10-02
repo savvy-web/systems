@@ -1,17 +1,12 @@
-import { beforeEach, describe, expect, it } from "@effect/vitest";
-import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer } from "effect";
+import { describe, expect, it } from "@effect/vitest";
+import type { Repos } from "@savvy-web/silk-effects";
+import { Effect, Fiber, Layer } from "effect";
 
 import { runReposRename } from "../../../src/commands/repos/commands/rename.js";
 import { Capture } from "../../utils/capture.js";
-import { TestExit } from "../../utils/exit.js";
+import { Interactive } from "../../utils/interactive.js";
+import { ReposStub } from "./fixtures.js";
 
-/** What the last run wrote to stderr: every log line, including a failure's explanation. */
-const stderrLines: string[] = [];
-
-const { ReposManager } = Repos;
-
-/** A canned result for a successful rename. */
 const renameResult: Repos.ReposRenameResult = {
 	oldName: "foo",
 	newName: "bar",
@@ -19,160 +14,126 @@ const renameResult: Repos.ReposRenameResult = {
 	commitMessage: "chore(repos): rename foo to bar",
 };
 
-/** Build a stub `Repos.ReposManager` layer whose `rename` resolves/fails as given, recording the args it was called with. */
-function makeStubLayer(
-	rename: (
-		root: string,
-		oldName: string,
-		newName: string,
-	) => Effect.Effect<
-		Repos.ReposRenameResult,
-		Repos.ReposConfigError | Repos.GitSubmoduleError | Repos.RepoNotFoundError | Repos.ReposLockdownError
-	>,
-): Layer.Layer<Repos.ReposManager> {
-	return Layer.succeed(ReposManager, {
-		status: () => Effect.die("not used in this test"),
-		sync: () => Effect.die("not used in this test"),
-		add: () => Effect.die("not used in this test"),
-		pin: () => Effect.die("not used in this test"),
-		note: () => Effect.die("not used in this test"),
-		remove: () => Effect.die("not used in this test"),
-		rename,
-	} as never);
-}
-
-/** Run `runReposRename` against a stub layer, collecting every `Effect.log` line. */
-function collectLogs(
-	cwd: string,
-	oldName: string,
-	newName: string,
-	layer: Layer.Layer<Repos.ReposManager>,
-): Effect.Effect<string[]> {
-	return Effect.gen(function* () {
-		const sink: string[] = [];
-		stderrLines.length = 0;
-		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
-		yield* runReposRename(cwd, oldName, newName).pipe(Effect.provide(captured));
-		return sink;
-	}).pipe(Effect.provide(TestExit.layer));
-}
-
-describe("runReposRename (adapter)", () => {
-	beforeEach(() => {
-		TestExit.reset();
+const recording = () => {
+	const calls: Array<{ readonly root: string; readonly oldName: string; readonly newName: string }> = [];
+	const layer = ReposStub.manager({
+		status: () => Effect.succeed(ReposStub.status([{ name: "foo" }, { name: "baz" }])),
+		rename: (root, oldName, newName) => {
+			calls.push({ root, oldName, newName });
+			return Effect.succeed({ ...renameResult, oldName, newName, path: `.repos/${newName}` });
+		},
 	});
+	return { calls, layer };
+};
 
-	it.effect("passes cwd, oldName, and newName through to ReposManager.rename", () =>
+describe("repos rename", () => {
+	it.effect("renames, printing the outcome and the commit message as a code block", () =>
 		Effect.gen(function* () {
-			let captured: unknown;
-			const layer = makeStubLayer((root, oldName, newName) => {
-				captured = { root, oldName, newName };
-				return Effect.succeed(renameResult);
-			});
-
-			yield* collectLogs("/repo", "foo", "bar", layer);
-
-			expect(captured).toEqual({ root: "/repo", oldName: "foo", newName: "bar" });
-		}),
-	);
-
-	it.effect("logs the result, commit message, and review cue on success", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.succeed(renameResult));
-
-			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
-
-			expect(logs).toEqual([
+			const { calls, layer } = recording();
+			const result = yield* Capture.run(runReposRename("/repo", "foo", "bar").pipe(Effect.provide(layer)));
+			expect(calls).toEqual([{ root: "/repo", oldName: "foo", newName: "bar" }]);
+			expect(result.stdout).toEqual([
 				[
 					"✓ foo: renamed to bar (.repos/bar)",
-					"  chore(repos): rename foo to bar",
 					"  staged — review and commit",
+					"    chore(repos): rename foo to bar",
 				].join("\n"),
 			]);
-			expect(TestExit.code()).toBe(0);
+			expect(result.exitCode).toBe(0);
 		}),
 	);
 
-	it.effect(
-		"logs the error and sets exitCode 1 on RepoNotFoundError (renaming an unvendored name is a real error)",
-		() =>
-			Effect.gen(function* () {
-				const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
-
-				const logs = yield* collectLogs("/repo", "foo", "bar", layer);
-				expect(logs).toEqual([]);
-
-				expect(stderrLines.some((l) => l.includes("no vendored repo named"))).toBe(true);
-				expect(TestExit.code()).toBe(1);
-			}),
+	it.effect("a run that cannot prompt fails a missing name as a usage error, reading nothing", () =>
+		Effect.gen(function* () {
+			const { session, fiber } = yield* Interactive.run(
+				runReposRename("/repo", undefined, undefined).pipe(Effect.provide(ReposStub.manager({}))),
+				{ interactive: false },
+			);
+			const exit = yield* Fiber.await(fiber);
+			expect(String(exit)).toContain("Missing required argument: old-name");
+			expect(yield* session.mounts).toBe(0);
+		}).pipe(Effect.scoped),
 	);
 
-	it.effect("logs the error and sets exitCode 1 on GitSubmoduleError", () =>
+	it.effect("left off at the CLI, a missing old or new name is a usage error, exit 64", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.GitSubmoduleError({
-						command: "git mv .repos/foo .repos/bar",
-						cwd: "/repo",
-						reason: "boom",
-					}),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("boom"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
+			const services = Layer.merge(ReposStub.manager({}), ReposStub.drift());
+			const none = yield* ReposStub.cli(["rename"], services);
+			expect(none.exitCode).toBe(64);
+			expect(none.stderr.join("\n")).toContain("Missing required argument: old-name");
+			const one = yield* ReposStub.cli(["rename", "foo"], services);
+			expect(one.exitCode).toBe(64);
+			expect(one.stderr.join("\n")).toContain("Missing required argument: new-name");
+			expect(one.stdout).toEqual([]);
 		}),
 	);
 
-	it.effect("logs the error and sets exitCode 1 on ReposLockdownError", () =>
+	it.effect("at a terminal, the repo is picked and the new name typed", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(new Repos.ReposLockdownError({ path: "/repo/.repos/foo", reason: "chmod failed" })),
+			const { calls, layer } = recording();
+			const { session, fiber } = yield* Interactive.run(
+				runReposRename("/repo", undefined, undefined).pipe(Effect.provide(layer)),
 			);
+			yield* (yield* session.next({ contains: "Rename which repo?" })).press("down", "enter");
+			const input = yield* session.next({ contains: "Rename baz to?" });
+			yield* input.type("qux");
+			yield* input.press("enter");
+			yield* Fiber.join(fiber);
+			expect(calls).toEqual([{ root: "/repo", oldName: "baz", newName: "qux" }]);
+			expect(yield* session.mounts).toBe(2);
+		}).pipe(Effect.scoped),
+	);
 
-			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
-			expect(logs).toEqual([]);
+	it.effect("Esc on the picker is the kit's Cancelled and renames nothing", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording();
+			const { session, fiber } = yield* Interactive.run(
+				runReposRename("/repo", undefined, undefined).pipe(Effect.provide(layer)),
+			);
+			yield* (yield* session.next({ contains: "Rename which repo?" })).press("escape");
+			const exit = yield* Fiber.await(fiber);
+			expect(String(exit)).toContain("Cancelled");
+			expect(calls).toEqual([]);
+		}).pipe(Effect.scoped),
+	);
 
-			expect(stderrLines.some((l) => l.includes("chmod failed"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
+	it.effect("an invalid or taken new name fails as a CommandError with the rename hint, exit 1", () =>
+		Effect.gen(function* () {
+			const layer = ReposStub.manager({
+				rename: () => Effect.fail(ReposStub.configInvalid('"bar" is already vendored')),
+			});
+			const result = yield* Capture.main(runReposRename("/repo", "foo", "bar").pipe(Effect.provide(layer)));
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([]);
+			const stderr = result.stderr.join("\n");
+			expect(stderr).toContain("could not rename the repo");
+			expect(stderr).toContain('"bar" is already vendored');
+			expect(stderr).toContain("TIP: the manifest is unreadable, or the new name is invalid or already vendored");
 		}),
 	);
 
-	it.effect("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", () =>
+	it.effect("not-found, git and lockdown failures each fail as a CommandError, exit 1", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
-
-			expect(logs).toEqual(["↷ no .repos/config.json — nothing vendored"]);
-			expect(TestExit.code()).toBe(0);
+			for (const [error, expected] of [
+				[ReposStub.notFound("foo"), 'no vendored repo named "foo"'],
+				[ReposStub.git("boom"), "boom"],
+				[ReposStub.lockdown("chmod failed"), "chmod failed"],
+			] as const) {
+				const layer = ReposStub.manager({ rename: () => Effect.fail(error) });
+				const result = yield* Capture.main(runReposRename("/repo", "foo", "bar").pipe(Effect.provide(layer)));
+				expect(result.exitCode).toBe(1);
+				expect(result.stderr.join("\n")).toContain(expected);
+				expect(result.stderr.join("\n")).toContain("could not rename the repo");
+			}
 		}),
 	);
 
-	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid (e.g. newName already vendored)", () =>
+	it.effect("with no manifest it says nothing is vendored and exits 0", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.ReposConfigError({
-						path: "/repo/.repos/config.json",
-						reason: `"bar" is already vendored — choose a different name`,
-						kind: "invalid",
-					}),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", "bar", layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("already vendored"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
+			const layer = ReposStub.manager({ rename: () => Effect.fail(ReposStub.configMissing) });
+			const result = yield* Capture.run(runReposRename("/repo", "foo", "bar").pipe(Effect.provide(layer)));
+			expect(result.stdout).toEqual(["↷ no .repos/config.json — nothing vendored"]);
+			expect(result.exitCode).toBe(0);
 		}),
 	);
 });

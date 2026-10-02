@@ -8,8 +8,10 @@
  * @remarks
  * The command resolves the directory argument, delegates to
  * {@link ChangesetLinter.validate}, groups the resulting
- * {@link LintMessage} objects by file path, and logs each file's errors
- * indented under the file name. Sets exit code 1 through `CliExit.set` when errors
+ * {@link LintMessage} objects by file path, and prints one section per file
+ * (titled by the file, its findings as a position/rule/message table) plus a
+ * GitHub Actions error annotation per finding, which only the Actions log
+ * renders. Sets exit code 1 through `CliExit.set` when errors
  * are found.
  *
  * @example
@@ -20,33 +22,57 @@
  * @internal
  */
 
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import type { Block } from "@effected/cli";
-import { CliExit } from "@effected/cli";
+import { CliExit, Doc } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/cli";
 import type { ReportEnv } from "../../../internal/report.js";
 import { Report } from "../../../internal/report.js";
+import type { CheckSection } from "../../check-section.js";
 
 type LintMessage = Changesets.LintMessage;
 const { ChangesetLinter } = Changesets;
+
+/** The title `savvy check` gives this section. */
+const SECTION_TITLE = "changesets";
+
+/** The columns of a file's findings table. */
+const FINDING_COLUMNS = [{ header: "position" }, { header: "rule" }, { header: "message" }] as const;
+
+/**
+ * A finding's file as the report and the runner show it: relative to the
+ * working directory when it lies under it (what a GitHub Actions annotation
+ * resolves against the workspace), absolute otherwise.
+ */
+const displayPath = (cwd: string, file: string): string => {
+	const rel = relative(cwd, file);
+	return rel === "" || rel.startsWith("..") || isAbsolute(rel) ? file : rel;
+};
 
 /* v8 ignore next */
 const dirArg = Argument.Directory("dir").pipe(Argument.withDefault(".changeset"));
 
 /**
- * Run the check validation pipeline on all changeset files in `dir`.
+ * The changeset check as a {@link CheckSection}: its blocks and verdict,
+ * unprinted, for `savvy check` to fold into its one document.
  *
- * Groups lint messages by file and prints a human-readable report. Sets
- * exit code 1 through `CliExit.set` when one or more errors are found.
+ * @remarks
+ * One titled section per file with errors (its findings as a
+ * position/rule/message table), each followed by one GitHub Actions error
+ * annotation per finding, then the summary line. The annotations sit at the
+ * top level of `blocks`, not inside the file sections: the kit draws an
+ * annotation only at the top level, as a top-level section's child, or as a
+ * direct child of a group's body, so this placement survives the caller
+ * wrapping `blocks` in a collapsible.
  *
  * @param dir - Path to the changeset directory (resolved relative to cwd)
- * @returns An Effect that performs validation and prints the report
+ * @returns The section; `verdict` is `failure` when any file has errors
  *
  * @internal
  */
-export function runChangesetCheck(dir: string): Effect.Effect<void, Error, CliExit | ReportEnv> {
+export function changesetCheckSection(dir: string): Effect.Effect<CheckSection, Error> {
 	return Effect.gen(function* () {
 		const resolved = resolve(dir);
 		const messages = yield* Effect.try({
@@ -54,7 +80,6 @@ export function runChangesetCheck(dir: string): Effect.Effect<void, Error, CliEx
 			catch: (e) => new Error(String(e)),
 		});
 
-		// Group messages by file
 		const byFile = new Map<string, LintMessage[]>();
 		for (const msg of messages) {
 			const existing = byFile.get(msg.file);
@@ -65,27 +90,55 @@ export function runChangesetCheck(dir: string): Effect.Effect<void, Error, CliEx
 			}
 		}
 
-		// Report grouped results
+		if (messages.length === 0) {
+			return {
+				title: SECTION_TITLE,
+				blocks: [Report.ok("All changeset files passed validation")],
+				verdict: "success",
+				fixedByInit: false,
+			};
+		}
+
+		const cwd = resolve();
 		const blocks: Block[] = [];
 		for (const [file, fileMessages] of byFile) {
-			blocks.push(Report.line(""), Report.heading(file));
-			for (const msg of fileMessages) {
-				blocks.push(Report.detail(`${msg.line}:${msg.column}  ${msg.rule}  ${msg.message}`));
-			}
+			const display = displayPath(cwd, file);
+			blocks.push(
+				Doc.section(Doc.file(display), [
+					Doc.table(
+						FINDING_COLUMNS,
+						fileMessages.map((msg) => [`${msg.line}:${msg.column}`, msg.rule, msg.message]),
+					),
+				]),
+				...fileMessages.map((msg) =>
+					Doc.annotation(
+						{ level: "error", file: display, line: msg.line, col: msg.column, title: msg.rule },
+						msg.message,
+					),
+				),
+			);
 		}
+		blocks.push(Report.fail(`${byFile.size} file(s) with errors, ${messages.length} error(s) found`));
+		return { title: SECTION_TITLE, blocks, verdict: "failure", fixedByInit: false };
+	});
+}
 
-		// Count files checked (all md files, not just those with errors)
-		const errorCount = messages.length;
-		const filesWithErrors = byFile.size;
-
-		if (errorCount > 0) {
-			blocks.push(Report.line(""), Report.fail(`${filesWithErrors} file(s) with errors, ${errorCount} error(s) found`));
-			yield* Report.print(blocks);
-			yield* CliExit.set(1);
-		} else {
-			blocks.push(Report.ok("All changeset files passed validation"));
-			yield* Report.print(blocks);
-		}
+/**
+ * Run the check validation pipeline on all changeset files in `dir` and
+ * print {@link changesetCheckSection}'s blocks (no title heading: the
+ * standalone `savvy changeset check` output). Sets exit code 1 through
+ * `CliExit.set` when one or more errors are found.
+ *
+ * @param dir - Path to the changeset directory (resolved relative to cwd)
+ * @returns An Effect that performs validation and prints the report
+ *
+ * @internal
+ */
+export function runChangesetCheck(dir: string): Effect.Effect<void, Error, CliExit | ReportEnv> {
+	return Effect.gen(function* () {
+		const section = yield* changesetCheckSection(dir);
+		yield* Report.print(section.blocks);
+		if (section.verdict === "failure") yield* CliExit.set(1);
 	});
 }
 

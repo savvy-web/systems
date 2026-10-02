@@ -10,6 +10,7 @@
  */
 
 import type { Block } from "@effected/cli";
+import { Doc } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/cli";
@@ -86,11 +87,23 @@ export function runVersion(dryRun: boolean) {
 	});
 }
 
-/** One `✓` line per package release, plan-phrased on a dry run. */
-const releaseBlocks = (releases: ReadonlyArray<Changesets.AppliedReleaseEntry>, dryRun: boolean): Block[] =>
-	releases.map((r) =>
-		Report.ok(`${dryRun ? "Would release" : "Released"} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`),
-	);
+/** The columns of the releases table. */
+const RELEASE_COLUMNS = [{ header: "package" }, { header: "version" }, { header: "bump" }] as const;
+
+/**
+ * The releases as one status line (plan-phrased on a dry run) over a
+ * package / old → new / bump table.
+ */
+const releaseBlocks = (releases: ReadonlyArray<Changesets.AppliedReleaseEntry>, dryRun: boolean): Block[] => {
+	const count = `${releases.length} package${releases.length === 1 ? "" : "s"}`;
+	return [
+		dryRun ? Report.line(`Would release ${count}:`) : Report.ok(`Released ${count}`),
+		Doc.table(
+			RELEASE_COLUMNS,
+			releases.map((r) => [r.name, `${r.oldVersion} → ${r.newVersion}`, r.type]),
+		),
+	];
+};
 
 /** One detail line per versionFiles update, plan-phrased on a dry run. */
 const versionFileBlocks = (updates: ReadonlyArray<Changesets.VersionFileUpdateRecord>, dryRun: boolean): Block[] =>

@@ -22,26 +22,35 @@
  * underlying git command failed (including the case where a repo has
  * neither a staged nor a committed gitlink commit to restore to), and
  * `ReposLockdownError` means the OS-permission lockdown pass on a vendored
- * tree failed -- all four are real failures, logged and reported via a
- * non-zero exit code.
+ * tree failed -- all four are real failures, failing as a `CommandError`
+ * (exit 1) with a hint.
+ *
+ * At a terminal it asks first. With no names, the dirty repos are offered on a
+ * `MultiSelect`, all preselected (choosing none prints `nothing selected —
+ * left unchanged`, exit 0); then a `Confirm` (`--yes` skips it) whose refusal
+ * prints `restore cancelled — nothing changed`, exit 0. With names, only the
+ * `Confirm`. Anywhere else (an agent, CI, a pipe) nothing is asked and it
+ * behaves exactly as it always did.
  *
  * @example
  * ```bash
  * savvy repos restore my-repo
  * savvy repos restore my-repo other-repo
  * savvy repos restore
+ * savvy repos restore --yes
  * ```
  *
  * @internal
  */
 
 import type { Block } from "@effected/cli";
-import { CliExit } from "@effected/cli";
+import { CliExit, CliInteractive } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import type { ReportEnv } from "../../../internal/report.js";
+import { confirmDestructive, yesFlag } from "../../../internal/confirm.js";
 import { Report } from "../../../internal/report.js";
+import { ReposCli } from "../shared.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const namesArg = Argument.String("name").pipe(Argument.variadic());
@@ -51,15 +60,48 @@ const cwdOption = Flag.Directory("cwd").pipe(
 );
 /* v8 ignore stop */
 
+/** Options for {@link runReposRestore}. */
+export interface ReposRestoreOptions {
+	/** `--yes`: proceed without asking. */
+	readonly yes?: boolean | undefined;
+}
+
+/** Which repos to restore: the names given, or (at a terminal, with none given) the dirty ones a person picks. */
+const choose = (cwd: string, names: ReadonlyArray<string>) =>
+	Effect.gen(function* () {
+		if (names.length > 0 || !(yield* CliInteractive)) return { names, asked: false };
+		const dirty = (yield* ReposCli.vendored(cwd)).filter((repo) => repo.dirty).map((repo) => repo.name);
+		// Nothing dirty: let the manager report every repo as skipped-clean, as it always has.
+		if (dirty.length === 0) return { names, asked: false };
+		return { names: yield* ReposCli.pickDirty(dirty), asked: true };
+	});
+
 /**
  * Restore handler; exported for tests.
  *
  * @internal
  */
-export const runReposRestore = (cwd: string, names: ReadonlyArray<string>) =>
+export const runReposRestore = (cwd: string, names: ReadonlyArray<string>, options: ReposRestoreOptions = {}) =>
 	Effect.gen(function* () {
+		const chosen = yield* choose(cwd, names);
+		if (chosen.asked && chosen.names.length === 0) {
+			return yield* Report.print([Report.skip("nothing selected — left unchanged")]);
+		}
+		const targets = chosen.names;
+		// No targets is the restore-every-dirty-repo form: at a terminal it is only
+		// reached when nothing is dirty, so there is nothing to confirm; anywhere
+		// else nothing is ever asked.
+		if (targets.length > 0) {
+			const proceed = yield* confirmDestructive({
+				message: `Hard-reset ${targets.join(", ")}? Uncommitted edits and untracked files there are lost.`,
+				yes: options.yes === true,
+			});
+			if (!proceed) {
+				return yield* Report.print([Report.skip("restore cancelled — nothing changed")]);
+			}
+		}
 		const manager = yield* Repos.ReposManager;
-		const result = yield* manager.restore(cwd, names.length > 0 ? names : undefined);
+		const result = yield* manager.restore(cwd, targets.length > 0 ? targets : undefined);
 		const blocks: Array<Block> = [
 			...result.restored.map((entry) => Report.ok(`${entry.name}: restored to ${entry.commit}`)),
 			...result.skippedClean.map((name) => Report.skip(`${name}: clean — skipped`)),
@@ -80,29 +122,23 @@ export const runReposRestore = (cwd: string, names: ReadonlyArray<string>) =>
 		}
 		yield* Report.print(blocks);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | ReportEnv> => {
-			if (error.kind === "missing") {
-				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
-			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("RepoNotFoundError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
+		Effect.catchTag("ReposConfigError", (error) =>
+			error.kind === "missing" ? ReposCli.nothingVendored : ReposCli.fail("restore the vendored repos")(error),
+		),
+		Effect.catchTag(
+			["RepoNotFoundError", "GitSubmoduleError", "ReposLockdownError"],
+			ReposCli.fail("restore the vendored repos"),
+		),
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposRestore */
-export const restoreCommand = Command.make("restore", { names: namesArg, cwd: cwdOption }, ({ names, cwd }) =>
-	runReposRestore(cwd, names),
+export const restoreCommand = Command.make(
+	"restore",
+	{ names: namesArg, yes: yesFlag, cwd: cwdOption },
+	({ names, yes, cwd }) => runReposRestore(cwd, names, { yes }),
 ).pipe(
 	Command.withDescription(
-		"Hard-reset vendored repos to their pinned commit; DESTRUCTIVE to uncommitted worktree edits. Given no names, restores every dirty repo",
+		"Hard-reset vendored repos to their pinned commit; DESTRUCTIVE to uncommitted worktree edits. Given no names, restores every dirty repo (asks first at a terminal)",
 	),
 );
 /* v8 ignore stop */

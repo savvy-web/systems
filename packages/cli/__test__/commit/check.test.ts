@@ -3,6 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
+import { CliExit } from "@effected/cli";
 import { ManagedSection } from "@effected/templates";
 import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { ChangesetConfigReader, SilkPublishability } from "@savvy-web/silk-effects";
@@ -81,35 +82,48 @@ describe("runCommitCheck Effect program", () => {
 		rmSync(testDir, { recursive: true, force: true });
 	});
 
-	it.effect("prints the report and its verdict on stdout", () =>
+	/** Run the check the way `main()` does: a fresh exit cell, stdout and stderr recorded. */
+	const runCheck = () => Capture.run(Effect.provide(runCommitCheck(), TestLayer));
+
+	it.effect("prints the report and its verdict on stdout, and exits 1 on a misconfigured repo", () =>
 		Effect.gen(function* () {
-			const out: string[] = [];
-			yield* Effect.provide(runCommitCheck(), TestLayer).pipe(Effect.provide(Capture.layer(out)));
-			expect(out).toEqual([
+			const result = yield* runCheck();
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([
 				[
-					"commitlint configuration",
+					"commitlint",
 					"✗ No commitlint config file found",
 					"✗ No husky commit-msg hook found",
-					"↷ Hygiene hook: .husky/post-checkout not found (run 'savvy init' to add)",
-					"↷ Hygiene hook: .husky/post-merge not found (run 'savvy init' to add)",
-					"↷ Hygiene hook: .husky/post-commit not found (run 'savvy init' to add)",
+					"hook                  section      state",
+					"--------------------  -----------  ---------",
+					".husky/post-checkout  (hook file)  ✗ missing",
+					".husky/post-merge     (hook file)  ✗ missing",
+					".husky/post-commit    (hook file)  ✗ missing",
 					"↷ No DCO file (signoff not required)",
-					"",
 					"Detected settings",
 					"  DCO required: false",
 					"  Release format: semver",
 					"  Detected scopes: (none - not a monorepo or no packages found)",
-					"",
-					"✗ Commitlint needs configuration. Run: savvy init",
+					"✗ Commitlint needs configuration",
 				].join("\n"),
 			]);
 		}),
 	);
 
+	it.effect("renders the same plain report for an agent", () =>
+		Effect.gen(function* () {
+			const human = yield* runCheck();
+			const agent = yield* Capture.run(
+				Effect.provide(runCommitCheck(), TestLayer.pipe(Layer.merge(Capture.envFor({ audience: "agent" })))),
+			);
+			expect(agent.stdout).toEqual(human.stdout);
+			expect(agent.exitCode).toBe(1);
+		}),
+	);
+
 	it.effect("runs without errors when no config exists", () =>
 		Effect.gen(function* () {
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			yield* runCheck();
 		}),
 	);
 
@@ -117,8 +131,7 @@ describe("runCommitCheck Effect program", () => {
 		Effect.gen(function* () {
 			writeFileSync(join(testDir, "commitlint.config.ts"), "export default {};");
 
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			yield* runCheck();
 		}),
 	);
 
@@ -127,8 +140,7 @@ describe("runCommitCheck Effect program", () => {
 			mkdirSync(join(testDir, ".husky"), { recursive: true });
 			writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\necho test\n");
 
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			yield* runCheck();
 		}),
 	);
 
@@ -139,8 +151,7 @@ describe("runCommitCheck Effect program", () => {
 			const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\n${generateManagedContent(configPath)}\n${END_MARKER}\n`;
 			writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
 
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			yield* runCheck();
 		}),
 	);
 
@@ -150,8 +161,9 @@ describe("runCommitCheck Effect program", () => {
 			const hookContent = `#!/usr/bin/env sh\n${BEGIN_MARKER}\nold outdated content\n${END_MARKER}\n`;
 			writeFileSync(join(testDir, ".husky/commit-msg"), hookContent);
 
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			const result = yield* runCheck();
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout.join("\n")).toMatch(/\.husky\/commit-msg +savvy-commit +✗ outdated/);
 		}),
 	);
 
@@ -162,8 +174,7 @@ describe("runCommitCheck Effect program", () => {
 			mkdirSync(join(testDir, ".husky"), { recursive: true });
 			writeFileSync(join(testDir, ".husky/commit-msg"), "#!/usr/bin/env sh\n");
 
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			yield* runCheck();
 		}),
 	);
 
@@ -171,18 +182,21 @@ describe("runCommitCheck Effect program", () => {
 		Effect.gen(function* () {
 			writeFileSync(join(testDir, ".commitlintrc.json"), "{}");
 
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			yield* runCheck();
 		}),
 	);
 
 	it.effect("validates cleanly when fully initialized via init", () =>
 		Effect.gen(function* () {
 			const init = runCommitInit({ force: false, config: "commitlint.config.ts" });
-			yield* Effect.provide(init, TestLayer);
+			yield* Effect.provide(init, TestLayer.pipe(Layer.merge(CliExit.layer)));
 
-			const handler = runCommitCheck();
-			yield* Effect.provide(handler, TestLayer);
+			const result = yield* runCheck();
+			expect(result.exitCode).toBe(0);
+			const out = result.stdout.join("\n");
+			expect(out).toContain("✓ Commitlint is configured correctly");
+			expect(out).toMatch(/\.husky\/commit-msg +savvy-commit +✓ up-to-date/);
+			expect(out).not.toContain("✗");
 
 			// init wrote all three hooks; check should find the base, commit, and hygiene sections present.
 			// A dynamic `import()` is a Promise, not an Effect — it has to be

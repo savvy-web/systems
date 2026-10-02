@@ -29,7 +29,7 @@ Also in this repo: the `plugins/silk` Claude Code plugin (the repo's only plugin
 ## Tech Stack
 
 - **Runtime:** Node.js 24.11.0+
-- **Package Manager:** pnpm 11.22.0 with `@savvy-web/pnpm-plugin-silk` config dependency
+- **Package Manager:** pnpm 12.8.2 with `@savvy-web/pnpm-plugin-silk` config dependency
 - **Build:** Turborepo orchestration; `@savvy-web/bundler` builds all twelve packages (bundler + tsdown-plugins self-host via their escape-hatch `savvy.build.ts`, the other ten via the front door — `build()`/`defineBuild`/`runBuild`; `pnpm-plugin-silk` uses the `build()` entry); build scripts run `node savvy.build.ts` (Node 24+ native type-stripping), except `tsdown-plugins` which bootstraps via `tsx`
 - **Effect:** the whole repo is on Effect v4 (`catalog:effect` / `catalog:effect:peers`). Catalogs come from the `@effected/pnpm-plugin-effect` config dependency, which as of `0.6.0` publishes four: `effect`/`effect:peers` and `effected`/`effected:peers`. There is no `effect3` catalog — it was removed upstream and no manifest here resolves against it. Bumping this config dependency has a trap: see `@./okf/decisions/kit-effect-peers-via-catalog.md` and savvy-web/systems#536. `effect` core source is vendored at `.repos/effect` (pinned to the catalog tag) — the authority for v4 APIs — from `Effect-TS/effect` itself, NOT the archived `effect-smol` repo; `.repos/config.json` is the live record of url/ref/sparse paths. The `@effected/*` kit packages the suite consumes come from the npm registry (re-derive the list from the manifests, never from memory)
 - **Linting:** Biome, markdownlint
