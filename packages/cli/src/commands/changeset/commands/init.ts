@@ -36,15 +36,17 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CliExit } from "@effected/cli";
+import { CliDoc, CliExit, Doc } from "@effected/cli";
+import { TerminalEnv } from "@effected/env";
 import { Git } from "@effected/git";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Data, Effect, Option, Result, Schema } from "effect";
-import { Output } from "../../../internal/output.js";
+import { CommandError } from "../../../internal/command-error.js";
+import type { ReportEnv } from "../../../internal/report.js";
+import { Report } from "../../../internal/report.js";
 
 const { LegacyVersionFilesSchema } = Changesets;
 
@@ -682,22 +684,23 @@ export function checkChangesetMarkdownlint(changesetDir: string): CheckIssue[] {
 }
 
 /**
- * Run the full init pipeline.
+ * Run the full init pipeline, failing when a step fails.
  *
- * Exported so Task B5's unified `savvy init` orchestrator can invoke the
- * changeset init step directly without going through the CLI command layer.
+ * Steps 3–5 each run even when an earlier one fails; the run then fails with
+ * one {@link CommandError} listing every failed step. `quiet` swallows that
+ * failure (and any other) instead.
  *
  * @param opts - The same options the CLI command receives
  * @returns An Effect that performs initialization
  *
  * @internal
  */
-export function runChangesetInit(opts: {
+export function runChangesetInitOrFail(opts: {
 	force: boolean;
 	quiet: boolean;
 	skipMarkdownlint: boolean;
 	check: boolean;
-}): Effect.Effect<void, never, WorkspaceRoot | Git | CliExit | Stdio.Stdio> {
+}): Effect.Effect<void, CommandError, WorkspaceRoot | Git | ReportEnv> {
 	const { force, quiet, skipMarkdownlint, check } = opts;
 	return Effect.gen(function* () {
 		const root = yield* resolveWorkspaceRoot(process.cwd());
@@ -720,20 +723,20 @@ export function runChangesetInit(opts: {
 			];
 
 			if (issues.length === 0) {
-				yield* Output.ok("All @savvy-web/changesets config files are up to date");
+				yield* Report.print([Report.ok("All @savvy-web/changesets config files are up to date")]);
 				return;
 			}
 
-			for (const issue of issues) {
-				yield* Output.warn(`${issue.file}: ${issue.message}`);
-			}
-			yield* Output.detail('Run "savvy init --force" to fix');
+			yield* Report.print([
+				...issues.map((issue) => Report.warn(`${issue.file}: ${issue.message}`)),
+				Report.detail('Run "savvy init --force" to fix'),
+			]);
 			return;
 		}
 
 		// 2. Create .changeset/ directory
 		const changesetDir = yield* ensureChangesetDir(root);
-		yield* Output.ok("Ensured .changeset/ directory");
+		yield* Report.print([Report.ok("Ensured .changeset/ directory")]);
 
 		// 3–5: Run each step, collecting errors
 		const errors: InitError[] = [];
@@ -741,7 +744,7 @@ export function runChangesetInit(opts: {
 		// 3. Handle config.json
 		const configResult = yield* handleConfig(changesetDir, repoSlug, force).pipe(Effect.result);
 		if (Result.isSuccess(configResult)) {
-			yield* Output.ok(configResult.success);
+			yield* Report.print([Report.ok(configResult.success)]);
 			// 3b. Surface deprecation when the (possibly newly patched) config
 			//     still carries the legacy top-level `versionFiles[]`. This is
 			//     never fatal — the warning text names the migration target.
@@ -756,7 +759,7 @@ export function runChangesetInit(opts: {
 		if (!skipMarkdownlint) {
 			const baseResult = yield* handleBaseMarkdownlint(root).pipe(Effect.result);
 			if (Result.isSuccess(baseResult)) {
-				yield* Output.ok(baseResult.success);
+				yield* Report.print([Report.ok(baseResult.success)]);
 			} else {
 				errors.push(baseResult.failure);
 			}
@@ -765,30 +768,75 @@ export function runChangesetInit(opts: {
 		// 5. Handle .changeset/.markdownlint.json
 		const mdlintResult = yield* handleChangesetMarkdownlint(changesetDir, root, force).pipe(Effect.result);
 		if (Result.isSuccess(mdlintResult)) {
-			yield* Output.ok(mdlintResult.success);
+			yield* Report.print([Report.ok(mdlintResult.success)]);
 		} else {
 			errors.push(mdlintResult.failure);
 		}
 
-		// Report collected errors
+		// Every step ran; fail with what the failing ones said.
 		if (errors.length > 0) {
-			for (const err of errors) {
-				yield* Effect.logError(err.message);
-			}
-			if (!quiet) {
-				yield* CliExit.set(1);
-			}
-			return;
+			if (quiet) return;
+			return yield* Effect.fail(
+				new CommandError({
+					message: `changeset init could not finish ${errors.length} step(s)`,
+					detail: errors.map((err) => err.message),
+					hint: 'Fix the files named above, then re-run "savvy init".',
+				}),
+			);
 		}
 
-		yield* Output.ok("Init complete");
+		yield* Report.print([Report.ok("Init complete")]);
 	}).pipe(
 		Effect.catch((error) =>
+			quiet
+				? Effect.void
+				: Effect.fail(
+						error instanceof CommandError
+							? error
+							: CommandError.from(error, {
+									message: "changeset init failed",
+									hint: 'Fix the problem above, then re-run "savvy init".',
+								}),
+					),
+		),
+	);
+}
+
+/**
+ * Run the changeset init as one step of the orchestrated `savvy init`: a
+ * failure is reported, not propagated, so the commit and lint steps still
+ * run.
+ *
+ * @remarks
+ * Runs {@link runChangesetInitOrFail}. Its {@link CommandError} is drawn on
+ * stderr exactly as the runtime draws a failure (its `CliDoc` document,
+ * rendered for the audience; never wrapped off a terminal), exit code 1 is
+ * set through `CliExit.set`, and the step succeeds. A caller that wants the
+ * failure to end the run calls {@link runChangesetInitOrFail} instead.
+ *
+ * Exported so the unified `savvy init` orchestrator can invoke the changeset
+ * init step directly without going through the CLI command layer.
+ *
+ * @param opts - The same options the CLI command receives
+ * @returns An Effect that never fails
+ *
+ * @internal
+ */
+export function runChangesetInit(opts: {
+	force: boolean;
+	quiet: boolean;
+	skipMarkdownlint: boolean;
+	check: boolean;
+}): Effect.Effect<void, never, WorkspaceRoot | Git | CliExit | ReportEnv> {
+	return runChangesetInitOrFail(opts).pipe(
+		Effect.catchTag("CommandError", (error) =>
 			Effect.gen(function* () {
-				if (!quiet) {
-					yield* Effect.logError(error instanceof InitError ? error.message : `Init failed: ${String(error)}`);
-					yield* CliExit.set(1);
-				}
+				const terminal = yield* TerminalEnv;
+				yield* Doc.print(error[CliDoc](), {
+					stream: "stderr",
+					...(terminal.stderr.isTerminal ? {} : { width: Number.POSITIVE_INFINITY }),
+				});
+				yield* CliExit.set(1);
 			}),
 		),
 	);

@@ -5,7 +5,7 @@
  */
 
 import type { FailureDetails } from "@effected/cli";
-import { Cause } from "effect";
+import { CliDoc } from "@effected/cli";
 
 /** Where a defect report asks to be filed; mirrors `package.json#bugs.url`. */
 const ISSUES_URL = "https://github.com/savvy-web/systems/issues";
@@ -35,6 +35,10 @@ const describe = (error: unknown): string => {
 	return String(error);
 };
 
+/** Whether a typed failure draws itself through the kit's `CliDoc` protocol. */
+const drawsItself = (error: unknown): boolean =>
+	typeof error === "object" && error !== null && CliDoc in error && typeof error[CliDoc] === "function";
+
 /**
  * Renders a failure for `CliRuntime.main`'s `render` option.
  *
@@ -43,25 +47,40 @@ const describe = (error: unknown): string => {
  * or a defect, so nothing here guesses that from the error's shape.
  *
  * - A typed failure is an expected outcome and reads as one line. The kit's
- *   default is `String(error)`, which prints a `Data.TaggedError` with no
- *   `message` as its bare tag and drops the fields that say what went wrong
- *   (`CleanError`, with the `reason` lost), so this prefers the error's own
- *   message, then its tag with its fields, then `String`.
+ *   default report (`details.defaultLines`) is a status line plus a cleaned
+ *   stack, which is noise for an expected outcome, and a `Data.TaggedError`
+ *   with no `message` loses the fields that say what went wrong (`CleanError`,
+ *   with the `reason` lost), so this prefers the error's own message, then
+ *   its tag with its fields, then `String`.
+ * - A typed failure whose error implements the kit's `CliDoc` protocol (the
+ *   CLI's own `CommandError`) has already said how it reads, so it gets the
+ *   kit's report of that document (`details.defaultLines`), drawn for the
+ *   run's audience, instead of one line.
  * - A defect — a `die`, a thrown exception — is a bug in savvy. It gets the
- *   issue-report treatment: a headline, the whole pretty-printed cause with
- *   its stack, and where to report it.
+ *   kit's default report (`details.defaultLines`: the status line and the
+ *   program's own stack frames, drawn for the run's audience) followed by
+ *   where to report it.
  *
  * @internal
  */
 export class FailureLine {
 	private constructor() {}
 
-	static readonly render = (error: unknown, details: FailureDetails): string | ReadonlyArray<string> =>
-		details.isDefect
-			? [
-					`savvy hit an unexpected error: ${describe(error)}`,
-					...Cause.pretty(details.cause).split("\n"),
-					`This is a bug in savvy. Please report it with the output above at ${ISSUES_URL}`,
-				]
-			: describe(error);
+	static readonly render = (error: unknown, details: FailureDetails): string | ReadonlyArray<string> => {
+		if (details.isDefect) {
+			return [
+				...details.defaultLines,
+				`This is a bug in savvy. Please report it with the output above at ${ISSUES_URL}`,
+			];
+		}
+		return drawsItself(error) ? details.defaultLines : describe(error);
+	};
+
+	/**
+	 * One line for a typed failure: its own message, else its tag with its
+	 * fields, else `String`. What {@link FailureLine.render} prints for a typed
+	 * failure that does not draw itself, and what `CommandError.from` keeps of
+	 * a foreign error.
+	 */
+	static readonly describe = (error: unknown): string => describe(error);
 }

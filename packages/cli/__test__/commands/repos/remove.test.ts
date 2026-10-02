@@ -1,17 +1,12 @@
-import { beforeEach, describe, expect, it } from "@effect/vitest";
-import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer } from "effect";
+import { describe, expect, it } from "@effect/vitest";
+import type { Repos } from "@savvy-web/silk-effects";
+import { Effect, Fiber, Layer } from "effect";
 
 import { runReposRemove } from "../../../src/commands/repos/commands/remove.js";
 import { Capture } from "../../utils/capture.js";
-import { TestExit } from "../../utils/exit.js";
+import { Interactive } from "../../utils/interactive.js";
+import { ReposStub } from "./fixtures.js";
 
-/** What the last run wrote to stderr: every log line, including a failure's explanation. */
-const stderrLines: string[] = [];
-
-const { ReposManager } = Repos;
-
-/** A canned result for a successful remove, carrying one removed note. */
 const removeResult: Repos.ReposRemoveResult = {
 	name: "foo",
 	path: ".repos/foo",
@@ -20,182 +15,145 @@ const removeResult: Repos.ReposRemoveResult = {
 	removedEntry: { url: "https://example.test/foo.git", ref: "1.0.0", purpose: "fixture" },
 };
 
-/** Build a stub `Repos.ReposManager` layer whose `remove` resolves/fails as given, recording the args it was called with. */
-function makeStubLayer(
-	remove: (
-		root: string,
-		name: string,
-	) => Effect.Effect<
-		Repos.ReposRemoveResult,
-		Repos.ReposConfigError | Repos.GitSubmoduleError | Repos.RepoNotFoundError | Repos.ReposLockdownError
-	>,
-): Layer.Layer<Repos.ReposManager> {
-	return Layer.succeed(ReposManager, {
-		status: () => Effect.die("not used in this test"),
-		sync: () => Effect.die("not used in this test"),
-		add: () => Effect.die("not used in this test"),
-		pin: () => Effect.die("not used in this test"),
-		note: () => Effect.die("not used in this test"),
-		remove,
-	} as never);
-}
-
-/** Run `runReposRemove` against a stub layer, collecting every `Effect.log` line. */
-function collectLogs(cwd: string, name: string, layer: Layer.Layer<Repos.ReposManager>): Effect.Effect<string[]> {
-	return Effect.gen(function* () {
-		const sink: string[] = [];
-		stderrLines.length = 0;
-		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
-		yield* runReposRemove(cwd, name).pipe(Effect.provide(captured));
-		return sink;
-	}).pipe(Effect.provide(TestExit.layer));
-}
-
-describe("runReposRemove (adapter)", () => {
-	beforeEach(() => {
-		TestExit.reset();
+const recording = (result: Repos.ReposRemoveResult = removeResult) => {
+	const calls: Array<{ readonly root: string; readonly name: string }> = [];
+	const layer = ReposStub.manager({
+		status: () => Effect.succeed(ReposStub.status([{ name: "foo" }, { name: "bar" }])),
+		remove: (root, name) => {
+			calls.push({ root, name });
+			return Effect.succeed({ ...result, name });
+		},
 	});
+	return { calls, layer };
+};
 
-	it.effect("prints the removed entry's orientation block, because add will not restore it", () =>
+describe("repos remove", () => {
+	it.effect("a run that cannot prompt removes without asking, as it always did", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording({ ...removeResult, removedNotes: [] });
+			const { session, fiber } = yield* Interactive.run(runReposRemove("/repo", "foo").pipe(Effect.provide(layer)), {
+				interactive: false,
+			});
+			const result = yield* Fiber.join(fiber);
+			expect(calls).toEqual([{ root: "/repo", name: "foo" }]);
+			expect(yield* session.mounts).toBe(0);
+			expect(result.stdout).toEqual([
+				["✓ foo: removed (.repos/foo)", "  staged — review and commit", "    chore(repos): remove foo"].join("\n"),
+			]);
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("puts lost notes and the orientation JSON in a warning callout, so a re-vendor can pass it back", () =>
 		Effect.gen(function* () {
 			// Remove-then-re-add is the standing remedy for several vendored-tree
-			// problems, and `add` resurrects nothing. If this block is not put in
-			// front of the caller while it still exists, the re-vendor destroys it
-			// silently — no report downstream mentions an orientation that is gone.
+			// problems, and `add` resurrects nothing: the block must be in front of
+			// the caller while it still exists.
 			const orientation = { layout: "src/ holds the spec", startHere: "src/index.ts" };
-			const layer = makeStubLayer(() =>
-				Effect.succeed({
-					...removeResult,
-					removedEntry: { ...removeResult.removedEntry, orientation },
-				}),
+			const { layer } = recording({ ...removeResult, removedEntry: { ...removeResult.removedEntry, orientation } });
+			const result = yield* Capture.run(runReposRemove("/repo", "foo").pipe(Effect.provide(layer)));
+			const out = result.stdout.join("\n");
+			expect(out).toContain("WARNING");
+			expect(out).toContain("note n-1234 (1.0.0) was removed with the entry — promote it first if it is durable");
+			expect(out).toContain("add will NOT restore it");
+			// Every line of the JSON survives, so it can be handed back to `add`.
+			for (const line of JSON.stringify(orientation, null, 2).split("\n")) {
+				expect(out).toContain(line);
+			}
+		}),
+	);
+
+	it.effect("no callout when nothing was lost", () =>
+		Effect.gen(function* () {
+			const { layer } = recording({ ...removeResult, removedNotes: [] });
+			const result = yield* Capture.run(runReposRemove("/repo", "foo").pipe(Effect.provide(layer)));
+			expect(result.stdout.join("\n")).not.toContain("WARNING");
+		}),
+	);
+
+	it.effect("at a terminal it asks, and y removes", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording();
+			const { session, fiber } = yield* Interactive.run(runReposRemove("/repo", "foo").pipe(Effect.provide(layer)));
+			const confirm = yield* session.next({ contains: "Remove foo from .repos/?" });
+			yield* confirm.type("y");
+			yield* confirm.press("enter");
+			yield* Fiber.join(fiber);
+			expect(calls).toEqual([{ root: "/repo", name: "foo" }]);
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("declining leaves the repo vendored, says so, and exits 0", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording();
+			const { session, fiber } = yield* Interactive.run(runReposRemove("/repo", "foo").pipe(Effect.provide(layer)));
+			yield* (yield* session.next({ contains: "Remove foo from .repos/?" })).press("enter");
+			const result = yield* Fiber.join(fiber);
+			expect(calls).toEqual([]);
+			expect(result.stdout).toEqual(["↷ remove cancelled — foo left vendored"]);
+			expect(result.exitCode).toBe(0);
+		}).pipe(Effect.scoped),
+	);
+
+	it.effect("--yes removes at a terminal without asking", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording();
+			const { session, fiber } = yield* Interactive.run(
+				runReposRemove("/repo", "foo", { yes: true }).pipe(Effect.provide(layer)),
 			);
+			yield* Fiber.join(fiber);
+			expect(calls).toEqual([{ root: "/repo", name: "foo" }]);
+			expect(yield* session.mounts).toBe(0);
+		}).pipe(Effect.scoped),
+	);
 
-			const logs = yield* collectLogs("/repo", "foo", layer);
-			const joined = logs.join("\n");
+	it.effect("at a terminal with no name, the repo is picked, then confirmed", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording();
+			const { session, fiber } = yield* Interactive.run(runReposRemove("/repo", undefined).pipe(Effect.provide(layer)));
+			yield* (yield* session.next({ contains: "Unvendor which repo?" })).press("down", "enter");
+			const confirm = yield* session.next({ contains: "Remove bar from .repos/?" });
+			yield* confirm.type("y");
+			yield* confirm.press("enter");
+			yield* Fiber.join(fiber);
+			expect(calls).toEqual([{ root: "/repo", name: "bar" }]);
+		}).pipe(Effect.scoped),
+	);
 
-			expect(joined).toContain("orientation");
-			expect(joined).toContain("will NOT restore it");
-			// The block itself must be emitted verbatim enough to hand back to `add`.
-			expect(joined).toContain("src/ holds the spec");
-			expect(joined).toContain("src/index.ts");
+	it.effect("left off at the CLI, a missing name is a usage error, exit 64", () =>
+		Effect.gen(function* () {
+			const result = yield* ReposStub.cli(["remove"], Layer.merge(ReposStub.manager({}), ReposStub.drift()));
+			expect(result.exitCode).toBe(64);
+			expect(result.stdout).toEqual([]);
+			expect(result.stderr.join("\n")).toContain("Missing required argument: name");
 		}),
 	);
 
-	it.effect("passes cwd and name through to ReposManager.remove", () =>
+	it.effect("each repos failure is a CommandError with a hint, exit 1", () =>
 		Effect.gen(function* () {
-			let captured: unknown;
-			const layer = makeStubLayer((root, name) => {
-				captured = { root, name };
-				return Effect.succeed(removeResult);
-			});
-
-			yield* collectLogs("/repo", "foo", layer);
-
-			expect(captured).toEqual({ root: "/repo", name: "foo" });
+			for (const [error, expected, hint] of [
+				[ReposStub.notFound("foo"), 'no vendored repo named "foo"', "savvy repos status"],
+				[ReposStub.git("boom"), "boom", "savvy repos status --drift"],
+				[ReposStub.lockdown("chmod failed"), "chmod failed", "savvy repos sync"],
+				[ReposStub.configInvalid("manifest is corrupt"), "manifest is corrupt", ".repos/config.json"],
+			] as const) {
+				const layer = ReposStub.manager({ remove: () => Effect.fail(error) });
+				const result = yield* Capture.main(runReposRemove("/repo", "foo").pipe(Effect.provide(layer)));
+				expect(result.exitCode).toBe(1);
+				expect(result.stdout).toEqual([]);
+				const stderr = result.stderr.join("\n");
+				expect(stderr).toContain("could not remove the repo");
+				expect(stderr).toContain(expected);
+				expect(stderr).toContain(hint);
+			}
 		}),
 	);
 
-	it.effect("logs the result, commit message, review cue, and removed-note warnings on success", () =>
+	it.effect("with no manifest it says nothing is vendored and exits 0", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.succeed(removeResult));
-
-			const logs = yield* collectLogs("/repo", "foo", layer);
-
-			expect(logs.some((l) => l.includes("foo") && l.includes("removed") && l.includes(".repos/foo"))).toBe(true);
-			expect(logs).toContain("  chore(repos): remove foo");
-			expect(logs.some((l) => l.includes("staged"))).toBe(true);
-			expect(logs.some((l) => l.includes("n-1234") && l.includes("promote"))).toBe(true);
-			expect(TestExit.code()).toBe(0);
-		}),
-	);
-
-	it.effect("logs nothing about removed notes when the entry carried none", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.succeed({ ...removeResult, removedNotes: [] }));
-
-			const logs = yield* collectLogs("/repo", "foo", layer);
-
-			expect(logs.some((l) => l.includes("n-1234"))).toBe(false);
-			expect(TestExit.code()).toBe(0);
-		}),
-	);
-
-	it.effect(
-		"logs the error and sets exitCode 1 on RepoNotFoundError (removing an unvendored name is a real error)",
-		() =>
-			Effect.gen(function* () {
-				const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
-
-				const logs = yield* collectLogs("/repo", "foo", layer);
-				expect(logs).toEqual([]);
-
-				expect(stderrLines.some((l) => l.includes("no vendored repo named"))).toBe(true);
-				expect(TestExit.code()).toBe(1);
-			}),
-	);
-
-	it.effect("logs the error and sets exitCode 1 on GitSubmoduleError", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.GitSubmoduleError({
-						command: "git submodule deinit --force -- .repos/foo",
-						cwd: "/repo",
-						reason: "boom",
-					}),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("boom"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
-		}),
-	);
-
-	it.effect("logs the error and sets exitCode 1 on ReposLockdownError", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(new Repos.ReposLockdownError({ path: "/repo/.repos/foo", reason: "chmod failed" })),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("chmod failed"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
-		}),
-	);
-
-	it.effect("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", layer);
-
-			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(TestExit.code()).toBe(0);
-		}),
-	);
-
-	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" }),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
+			const layer = ReposStub.manager({ remove: () => Effect.fail(ReposStub.configMissing) });
+			const result = yield* Capture.run(runReposRemove("/repo", "foo").pipe(Effect.provide(layer)));
+			expect(result.stdout).toEqual(["↷ no .repos/config.json — nothing vendored"]);
+			expect(result.exitCode).toBe(0);
 		}),
 	);
 });

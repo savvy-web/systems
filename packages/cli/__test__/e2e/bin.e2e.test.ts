@@ -13,10 +13,18 @@ import { Effect } from "effect";
 
 const BIN = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin", "savvy.js");
 
-const run = (args: ReadonlyArray<string>) =>
+/**
+ * `FORCE_COLOR=0` is pinned: colour follows Node, so a `FORCE_COLOR` inherited
+ * from CI would otherwise paint output these assertions read as plain text.
+ */
+const run = (args: ReadonlyArray<string>, env: Readonly<Record<string, string>> = {}) =>
 	Effect.gen(function* () {
 		const sandbox = yield* CliTest.sandbox({ path: process.env.PATH ?? "" });
-		return yield* CliTest.run(BIN, args, { sandbox, execPath: process.execPath });
+		return yield* CliTest.run(BIN, args, {
+			sandbox,
+			execPath: process.execPath,
+			env: { FORCE_COLOR: "0", ...env },
+		});
 	}).pipe(Effect.scoped, Effect.provide(NodeServices.layer));
 
 describe("savvy bin (dist/dev)", () => {
@@ -69,6 +77,34 @@ describe("savvy bin (dist/dev)", () => {
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("USAGE\n  savvy lint");
 			expect(result.stderr).toBe("");
+		}),
+	);
+
+	// `CliAudience.run` resolves the audience flags before core parses, on any
+	// command, and `--help` lists them beside core's built-in flags.
+	it.effect("accepts an audience flag on any command and lists the flags in help", () =>
+		Effect.gen(function* () {
+			const result = yield* run(["lint", "--agent", "--help"]);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("--audience");
+			expect(result.stdout).toContain("--agent");
+			expect(result.stderr).toBe("");
+		}),
+	);
+
+	it.effect("more than one audience flag is a usage error with clean stdout", () =>
+		Effect.gen(function* () {
+			const result = yield* run(["--human", "--agent", "lint"]);
+			expect(result.exitCode).toBe(64);
+			expect(result.stdout).toBe("");
+		}),
+	);
+
+	it.effect("an invalid SAVVY_AUDIENCE warns and is ignored, never failing the run", () =>
+		Effect.gen(function* () {
+			const result = yield* run(["--version"], { SAVVY_AUDIENCE: "robot" });
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.trim()).toMatch(/^savvy v\d+\.\d+\.\d+$/);
 		}),
 	);
 });

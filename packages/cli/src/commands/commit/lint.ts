@@ -17,7 +17,7 @@ import { Git } from "@effected/git";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, CliError, Command } from "effect/cli";
-import { Output } from "../../internal/output.js";
+import { Report } from "../../internal/report.js";
 import { buildCommitlintInvocation } from "./commitlint-invocation.js";
 
 const execFileP = promisify(execFile);
@@ -92,7 +92,7 @@ export function runCommitLint(file: string) {
 			);
 		}
 
-		yield* Output.ok("Commit message passes the Silk commitlint preset");
+		yield* Report.print([Report.ok("Commit message passes the Silk commitlint preset")]);
 	});
 }
 

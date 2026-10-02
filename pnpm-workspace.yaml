@@ -104,6 +104,7 @@ catalogs:
     "@types/react-dom": ^19.3.0
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
     husky: ^9.1.7
+    ink: ^7.1.1
     lint-staged: ^17.6.0
     markdownlint-cli2: ^0.23.3
     markdownlint-cli2-formatter-codequality: ^0.0.8
@@ -118,6 +119,7 @@ catalogs:
     "@types/react-dom": ^19.3.0
     "@typescript/native-preview": ^7.0.0-dev.20260707.2
     husky: ^9.1.7
+    ink: ^7.1.0
     lint-staged: ^17.6.0
     markdownlint-cli2: ^0.23.3
     markdownlint-cli2-formatter-codequality: ^0.0.8
@@ -140,7 +142,7 @@ catalogs:
     vite: ^8.3.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.12.7
+  "@effected/pnpm-plugin-effect": 0.13.0
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
@@ -218,4 +220,5 @@ publicHoistPattern:
   - turbo
   - typescript
   - vitest
+resolvePeersFromWorkspaceRoot: false
 strictDepBuilds: true

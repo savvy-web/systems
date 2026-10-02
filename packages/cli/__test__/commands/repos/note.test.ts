@@ -1,171 +1,142 @@
-import { beforeEach, describe, expect, it } from "@effect/vitest";
+import { NodeServices } from "@effect/platform-node";
+import { describe, expect, it } from "@effect/vitest";
+import { CliAudience } from "@effected/cli";
+import { TestTerminal } from "@effected/cli/testing";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, Layer } from "effect";
+import { Effect, Fiber, Layer } from "effect";
+import { Command } from "effect/cli";
 
+import type { ReposNoteRequest } from "../../../src/commands/repos/commands/note.js";
 import { runReposNote } from "../../../src/commands/repos/commands/note.js";
+import { reposCommand } from "../../../src/commands/repos/index.js";
 import { Capture } from "../../utils/capture.js";
-import { TestExit } from "../../utils/exit.js";
+import { Interactive } from "../../utils/interactive.js";
+import { ReposStub } from "./fixtures.js";
 
-/** What the last run wrote to stderr: every log line, including a failure's explanation. */
-const stderrLines: string[] = [];
+type NoteOp = Parameters<Repos.ReposManagerShape["note"]>[2];
 
-const { ReposManager, NoteNotFoundError } = Repos;
-
-/** A canned result for a successful note mutation. */
-const addResult: Repos.ReposNoteResult = {
-	name: "foo",
-	op: "add",
-	id: "n-1234",
-	noteCount: 1,
-};
-
-/** A canned result for a successful promote mutation. */
-const promoteResult: Repos.ReposNoteResult = {
-	name: "foo",
-	op: "promote",
-	id: "n-5678",
-	noteCount: 0,
-};
-
-/** Build a stub `Repos.ReposManager` layer whose `note` resolves/fails as given, recording the args it was called with. */
-function makeStubLayer(
-	note: (
-		root: string,
-		name: string,
-		op: Parameters<Repos.ReposManagerShape["note"]>[2],
-	) => Effect.Effect<Repos.ReposNoteResult, Repos.ReposConfigError | Repos.RepoNotFoundError | Repos.NoteNotFoundError>,
-): Layer.Layer<Repos.ReposManager> {
-	return Layer.succeed(ReposManager, {
-		status: () => Effect.die("not used in this test"),
-		sync: () => Effect.die("not used in this test"),
-		add: () => Effect.die("not used in this test"),
-		pin: () => Effect.die("not used in this test"),
-		note,
-	} as never);
-}
-
-/** Run `runReposNote` against a stub layer, collecting every `Effect.log` line. */
-function collectLogs(
-	cwd: string,
-	name: string,
-	op: Parameters<Repos.ReposManagerShape["note"]>[2],
-	layer: Layer.Layer<Repos.ReposManager>,
-): Effect.Effect<string[]> {
-	return Effect.gen(function* () {
-		const sink: string[] = [];
-		stderrLines.length = 0;
-		const captured = Layer.provideMerge(layer, Layer.merge(Capture.layer(sink, stderrLines), Capture.piped));
-		yield* runReposNote(cwd, name, op).pipe(Effect.provide(captured));
-		return sink;
-	}).pipe(Effect.provide(TestExit.layer));
-}
-
-describe("runReposNote (adapter)", () => {
-	beforeEach(() => {
-		TestExit.reset();
+const recording = () => {
+	const calls: Array<{ readonly name: string; readonly op: NoteOp }> = [];
+	const layer = ReposStub.manager({
+		status: () => Effect.succeed(ReposStub.status([{ name: "foo" }, { name: "bar" }])),
+		note: (_root, name, op) => {
+			calls.push({ name, op });
+			return Effect.succeed({ name, op: op.op, id: "n-1234", noteCount: 1 });
+		},
 	});
+	return { calls, layer };
+};
 
-	it.effect("passes {op: 'add', note} through to ReposManager.note", () =>
+const run = (name: string | undefined, request: ReposNoteRequest, layer: Layer.Layer<Repos.ReposManager>) =>
+	runReposNote("/repo", name, request).pipe(Effect.provide(layer));
+
+describe("repos note", () => {
+	it.effect("passes add and promote through and prints the result", () =>
 		Effect.gen(function* () {
-			let captured: unknown;
-			const layer = makeStubLayer((root, name, op) => {
-				captured = { root, name, op };
-				return Effect.succeed(addResult);
-			});
-
-			yield* collectLogs("/repo", "foo", { op: "add", note: "discovered the entry point" }, layer);
-
-			expect(captured).toEqual({
-				root: "/repo",
-				name: "foo",
-				op: { op: "add", note: "discovered the entry point" },
-			});
+			const { calls, layer } = recording();
+			const added = yield* Capture.run(run("foo", { op: "add", note: "entry point is src/index.ts" }, layer));
+			yield* Capture.run(run("foo", { op: "promote", id: "n-5678", into: "startHere" }, layer));
+			expect(calls).toEqual([
+				{ name: "foo", op: { op: "add", note: "entry point is src/index.ts" } },
+				{ name: "foo", op: { op: "promote", id: "n-5678", into: "startHere" } },
+			]);
+			expect(added.stdout).toEqual(["✓ foo: add note n-1234 (1 notes)"]);
 		}),
 	);
 
-	it.effect("passes {op: 'promote', id, into: 'startHere'} through to ReposManager.note", () =>
+	it.effect("a run that cannot prompt fails a missing name or text as a usage error, reading nothing", () =>
 		Effect.gen(function* () {
-			let captured: unknown;
-			const layer = makeStubLayer((root, name, op) => {
-				captured = { root, name, op };
-				return Effect.succeed(promoteResult);
-			});
-
-			yield* collectLogs("/repo", "foo", { op: "promote", id: "n-5678", into: "startHere" }, layer);
-
-			expect(captured).toEqual({
-				root: "/repo",
-				name: "foo",
-				op: { op: "promote", id: "n-5678", into: "startHere" },
-			});
+			const layer = ReposStub.manager({});
+			for (const [name, expected] of [
+				[undefined, "savvy repos note add: name"],
+				["foo", "savvy repos note add: text"],
+			] as const) {
+				const exit = yield* Effect.exit(Capture.run(run(name, { op: "add" }, layer)));
+				expect(ReposStub.missingArgument(exit)).toBe(expected);
+			}
 		}),
 	);
 
-	it.effect("logs the ReposNoteResult on success", () =>
+	it.effect("left off at the CLI, a missing name, text, id or --into is a usage error, exit 64", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.succeed(addResult));
+			const services = Layer.merge(ReposStub.manager({}), ReposStub.drift());
+			for (const [argv, expected] of [
+				[["note", "add"], "Missing required argument: name"],
+				[["note", "add", "foo"], "Missing required argument: text"],
+				[["note", "remove", "foo"], "Missing required argument: id"],
+				[["note", "promote", "foo", "n-1"], "--into"],
+			] as const) {
+				const result = yield* ReposStub.cli(argv, services);
+				expect(result.exitCode).toBe(64);
+				// Every usage error, the parser's or a handler's, prints the error and the
+				// subcommand's help on stderr and leaves stdout empty.
+				expect(result.stdout).toEqual([]);
+				expect(result.stderr.join("\n")).toContain(expected);
+				expect(result.stderr.join("\n")).toContain("USAGE\n  savvy repos note");
+			}
+		}),
+	);
 
-			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "discovered the entry point" }, layer);
+	it.effect("at a terminal, the repo is picked and the note typed", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording();
+			const { session, fiber } = yield* Interactive.run(run(undefined, { op: "add" }, layer));
+			yield* (yield* session.next({ contains: "Which repo's notes (add)?" })).press("down", "enter");
+			const input = yield* session.next({ contains: "Note to add to bar:" });
+			yield* input.type("look in lib/");
+			yield* input.press("enter");
+			yield* Fiber.join(fiber);
+			expect(calls).toEqual([{ name: "bar", op: { op: "add", note: "look in lib/" } }]);
+		}).pipe(Effect.scoped),
+	);
 
-			expect(logs.some((l) => l.includes("foo") && l.includes("add") && l.includes("n-1234") && l.includes("1"))).toBe(
-				true,
+	it.effect("at a terminal, a missing promote --into is picked while parsing", () =>
+		Effect.gen(function* () {
+			const { calls, layer } = recording();
+			const terminal = yield* TestTerminal.make();
+			const root = Command.make("savvy").pipe(
+				Command.withSharedFlags(CliAudience.flags()),
+				Command.withSubcommands([reposCommand]),
 			);
-			expect(TestExit.code()).toBe(0);
-		}),
-	);
-
-	it.effect("logs the error and sets exitCode 1 on RepoNotFoundError", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.fail(new Repos.RepoNotFoundError({ name: "foo" })));
-
-			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("no vendored repo named"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
-		}),
-	);
-
-	it.effect("logs the error and sets exitCode 1 on NoteNotFoundError", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() => Effect.fail(new NoteNotFoundError({ name: "foo", id: "n-9999" })));
-
-			const logs = yield* collectLogs("/repo", "foo", { op: "remove", id: "n-9999" }, layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes('no note "n-9999" on vendored repo "foo"'))).toBe(true);
-			expect(TestExit.code()).toBe(1);
-		}),
-	);
-
-	it.effect("logs a friendly no-manifest message and exits 0 on ReposConfigError kind missing", () =>
-		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "no such file", kind: "missing" }),
+			const { session, fiber } = yield* Interactive.run(
+				Command.runWith(root, { version: "0.0.0" })(["repos", "note", "promote", "foo", "n-1"]).pipe(
+					Effect.provide(Layer.mergeAll(layer, ReposStub.drift(), terminal.layer)),
+					Effect.provide(NodeServices.layer),
 				),
 			);
+			yield* (yield* session.next({ contains: "Promote the note into which orientation field?" })).press(
+				"down",
+				"enter",
+			);
+			yield* Fiber.join(fiber);
+			expect(calls).toEqual([{ name: "foo", op: { op: "promote", id: "n-1", into: "startHere" } }]);
+		}).pipe(Effect.scoped),
+	);
 
-			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
-
-			expect(logs.some((l) => l.includes("no .repos/config.json — nothing vendored"))).toBe(true);
-			expect(TestExit.code()).toBe(0);
+	it.effect("an unknown note or repo fails as a CommandError with a hint, exit 1", () =>
+		Effect.gen(function* () {
+			for (const [error, expected] of [
+				[new Repos.NoteNotFoundError({ name: "foo", id: "n-9999" }), 'no note "n-9999"'],
+				[ReposStub.notFound("foo"), 'no vendored repo named "foo"'],
+				[ReposStub.configInvalid("manifest is corrupt"), "manifest is corrupt"],
+			] as const) {
+				const layer = ReposStub.manager({ note: () => Effect.fail(error) });
+				const result = yield* Capture.main(run("foo", { op: "remove", id: "n-9999" }, layer));
+				expect(result.exitCode).toBe(1);
+				expect(result.stdout).toEqual([]);
+				expect(result.stderr.join("\n")).toContain("could not remove the note");
+				expect(result.stderr.join("\n")).toContain(expected);
+				expect(result.stderr.join("\n")).toContain("TIP:");
+			}
 		}),
 	);
 
-	it.effect("logs the error and sets exitCode 1 on ReposConfigError kind invalid", () =>
+	it.effect("with no manifest it says nothing is vendored and exits 0", () =>
 		Effect.gen(function* () {
-			const layer = makeStubLayer(() =>
-				Effect.fail(
-					new Repos.ReposConfigError({ path: "/repo/.repos/config.json", reason: "invalid JSON", kind: "invalid" }),
-				),
-			);
-
-			const logs = yield* collectLogs("/repo", "foo", { op: "add", note: "x" }, layer);
-			expect(logs).toEqual([]);
-
-			expect(stderrLines.some((l) => l.includes("invalid JSON"))).toBe(true);
-			expect(TestExit.code()).toBe(1);
+			const layer = ReposStub.manager({ note: () => Effect.fail(ReposStub.configMissing) });
+			const result = yield* Capture.run(run("foo", { op: "add", note: "x" }, layer));
+			expect(result.stdout).toEqual(["↷ no .repos/config.json — nothing vendored"]);
+			expect(result.exitCode).toBe(0);
 		}),
 	);
 });

@@ -1,8 +1,11 @@
 import type { CliExit } from "@effected/cli";
 import type { Changesets } from "@savvy-web/silk-effects";
-import type { Cause, FileSystem, Path, Stdio } from "effect";
+import type { Cause, FileSystem, Path } from "effect";
 import { Command } from "effect/cli";
 import type { ChildProcessSpawner } from "effect/process";
+
+import type { CommandError } from "../../internal/command-error.js";
+import type { ReportEnv } from "../../internal/report.js";
 
 import { checkCommand } from "./commands/check.js";
 import { configValidateCommand } from "./commands/config-validate.js";
@@ -56,21 +59,17 @@ export const changesetCommand: Command.Command<
 	"changeset",
 	Record<string, never>,
 	Record<string, never>,
-	| Changesets.ConfigurationError
-	| Error
-	| Changesets.ReleasePlanError
-	| Cause.UnknownError
-	| Changesets.DepsRegenPlanError,
+	CommandError | Error | Changesets.ReleasePlanError | Cause.UnknownError | Changesets.DepsRegenPlanError,
 	| ChildProcessSpawner.ChildProcessSpawner
 	| Changesets.ConfigInspector
 	| FileSystem.FileSystem
 	| Path.Path
 	| Changesets.ReleasePlanner
 	| CliExit
-	| Stdio.Stdio
+	| ReportEnv
 > = _changesetCommand;
 /* v8 ignore stop */
 
 // Re-export named handlers for B5/B6 orchestrator consumption.
-export { runChangesetCheck } from "./commands/check.js";
-export { runChangesetInit } from "./commands/init.js";
+export { changesetCheckSection, runChangesetCheck } from "./commands/check.js";
+export { runChangesetInit, runChangesetInitOrFail } from "./commands/init.js";

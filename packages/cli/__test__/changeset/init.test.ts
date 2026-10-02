@@ -25,8 +25,11 @@ import {
 	handleConfig,
 	legacyVersionFilesWarning,
 	resolveWorkspaceRoot,
+	runChangesetInit,
+	runChangesetInitOrFail,
 	warnIfLegacyVersionFiles,
 } from "../../src/commands/changeset/commands/init.js";
+import { Capture } from "../utils/capture.js";
 
 vi.mock("node:fs", async () => {
 	const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
@@ -1325,4 +1328,86 @@ describe("checkConfig — legacy versionFiles detection", () => {
 		const issues = checkConfig(changesetDir, "owner/repo");
 		expect(issues.every((i) => !/legacy.*versionFiles/.test(i.message))).toBe(true);
 	});
+});
+
+// ---------------------------------------------------------------------------
+// runChangesetInit — failure reporting
+// ---------------------------------------------------------------------------
+describe("runChangesetInitOrFail", () => {
+	const services = Layer.mergeAll(
+		Layer.succeed(WorkspaceRoot, { find: () => Effect.succeed("/project") }),
+		gitRemoteStub(Effect.succeed(Option.some("https://github.com/owner/repo.git"))),
+	);
+	const init = (quiet: boolean) =>
+		runChangesetInitOrFail({ force: false, quiet, skipMarkdownlint: true, check: false }).pipe(
+			Effect.provide(services),
+		);
+
+	it.effect("fails with a CommandError the runtime draws on stderr, exit 1, when a step throws", () =>
+		Effect.gen(function* () {
+			vi.mocked(mkdirSync).mockImplementation(() => {
+				throw new Error("EACCES: permission denied, mkdir '/project/.changeset'");
+			});
+
+			const error = yield* Effect.flip(init(false).pipe(Effect.provide(Capture.env)));
+			expect(error._tag).toBe("CommandError");
+
+			const result = yield* Capture.main(init(false));
+			const stderr = result.stderr.join("\n").replace(/\s+/g, " ");
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([]);
+			expect(stderr).toContain("✗ changeset init failed");
+			expect(stderr).toContain("EACCES: permission denied");
+			expect(stderr).toContain('re-run "savvy init"');
+		}),
+	);
+
+	it.effect("swallows the failure when quiet", () =>
+		Effect.gen(function* () {
+			vi.mocked(mkdirSync).mockImplementation(() => {
+				throw new Error("EACCES");
+			});
+
+			const result = yield* Capture.run(init(true));
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toEqual([]);
+		}),
+	);
+});
+
+// ---------------------------------------------------------------------------
+// runChangesetInit — the orchestrated `savvy init` step
+// ---------------------------------------------------------------------------
+describe("runChangesetInit (continues on failure)", () => {
+	const services = Layer.mergeAll(
+		Layer.succeed(WorkspaceRoot, { find: () => Effect.succeed("/project") }),
+		gitRemoteStub(Effect.succeed(Option.some("https://github.com/owner/repo.git"))),
+	);
+
+	it.effect("reports a failure on stderr, sets exit 1, and lets the next step run", () =>
+		Effect.gen(function* () {
+			vi.mocked(mkdirSync).mockImplementation(() => {
+				throw new Error("EACCES: permission denied, mkdir '/project/.changeset'");
+			});
+			let nextStepRan = false;
+			const steps = runChangesetInit({ force: false, quiet: false, skipMarkdownlint: true, check: false }).pipe(
+				Effect.provide(services),
+				Effect.andThen(
+					Effect.sync(() => {
+						nextStepRan = true;
+					}),
+				),
+			);
+
+			const result = yield* Capture.main(steps);
+			const stderr = result.stderr.join("\n");
+
+			expect(nextStepRan).toBe(true);
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toEqual([]);
+			expect(stderr).toContain("✗ changeset init failed");
+			expect(stderr).toContain("EACCES: permission denied, mkdir '/project/.changeset'");
+			expect(stderr).toContain('re-run "savvy init"');
+		}),
+	);
 });

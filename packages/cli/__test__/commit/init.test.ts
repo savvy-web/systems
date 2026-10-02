@@ -8,8 +8,8 @@ import { Effect, Layer, Logger } from "effect";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
 import { Capture } from "../utils/capture.js";
 
-/** Test layer combining NodeFileSystem and with logs silenced. */
-const TestLayer = Layer.provideMerge(ManagedSection.layer, Layer.merge(NodeFileSystem.layer, Capture.piped)).pipe(
+/** Test layer combining NodeFileSystem and the report environment, with logs silenced. */
+const TestLayer = Layer.provideMerge(ManagedSection.layer, Layer.merge(NodeFileSystem.layer, Capture.env)).pipe(
 	Layer.provide(Logger.layer([])),
 );
 
@@ -69,9 +69,36 @@ describe("runCommitInit Effect program", () => {
 			yield* Effect.provide(runCommitInit({ force: false, config: "commitlint.config.ts" }), TestLayer).pipe(
 				Effect.provide(Capture.layer(out)),
 			);
-			expect(out[0]).toBe("commitlint");
-			expect(out).toContain("✓ Created commitlint.config.ts");
-			expect(out.at(-1)).toBe("✓ Install @commitlint/cli if it is not already installed");
+			// One print per completed step, so a mid-run failure still shows what was written.
+			expect(out).toEqual([
+				"commitlint",
+				"✓ Synced .husky/commit-msg (Created, Created)",
+				"✓ Synced .husky/post-checkout",
+				"✓ Synced .husky/post-merge",
+				"✓ Synced .husky/post-commit",
+				"✓ Created commitlint.config.ts",
+				"\n✓ Install @commitlint/cli if it is not already installed",
+			]);
+		}),
+	);
+
+	it.effect("still shows the hooks it wrote when a later step fails", () =>
+		Effect.gen(function* () {
+			// A FILE where the config's directory must go: the hooks sync, then makeDirectory fails.
+			writeFileSync(join(testDir, "blocker"), "");
+			const out: string[] = [];
+			yield* Effect.flip(
+				Effect.provide(runCommitInit({ force: false, config: "blocker/commitlint.config.ts" }), TestLayer).pipe(
+					Effect.provide(Capture.layer(out)),
+				),
+			);
+			expect(out).toEqual([
+				"commitlint",
+				"✓ Synced .husky/commit-msg (Created, Created)",
+				"✓ Synced .husky/post-checkout",
+				"✓ Synced .husky/post-merge",
+				"✓ Synced .husky/post-commit",
+			]);
 		}),
 	);
 

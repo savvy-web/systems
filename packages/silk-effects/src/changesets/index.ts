@@ -103,12 +103,14 @@ export {
 } from "./services/config-inspector.js";
 export type {
 	CoexistingChangeset,
+	DepsRegenExecuteOptions,
 	DepsRegenOptions,
 	DepsRegenPlanError,
 	DepsRegenShape,
 	RegenDiffRow,
 	RegenPlan,
 	RegenResult,
+	RegenStep,
 } from "./services/deps-regen.js";
 export {
 	DepsRegen,
@@ -125,7 +127,7 @@ export {
 	MaintenanceTriggerSchema,
 	deriveMaintenanceReason,
 } from "./services/maintenance-reason.js";
-export type { ReleasePlannerShape, SnapshotOptions } from "./services/release-planner.js";
+export type { ApplyOptions, ApplyStep, ReleasePlannerShape, SnapshotOptions } from "./services/release-planner.js";
 export { ReleasePlanner, makeReleasePlannerTest } from "./services/release-planner.js";
 // === Effect Layers ===
 
@@ -186,10 +188,12 @@ export { GlobSchema, PackageScopeSchema, PackagesRecordSchema } from "./schemas/
 export { NonEmptyString, PositiveInteger } from "./schemas/primitives.js";
 export type {
 	AppliedRelease,
+	AppliedReleaseEntry,
 	BumpType,
 	ChangesetPreview,
 	PendingChangeset,
 	PreviewRelease,
+	VersionFileUpdateRecord,
 } from "./schemas/release-plan.js";
 export {
 	AppliedReleaseEntrySchema,

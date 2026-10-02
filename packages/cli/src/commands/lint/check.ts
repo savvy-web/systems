@@ -4,10 +4,12 @@
  * @internal
  */
 import { isDeepStrictEqual } from "node:util";
+import type { Block } from "@effected/cli";
+import { CliExit } from "@effected/cli";
 import { Tool, ToolDiscovery } from "@effected/commands";
 import type { JsoncParseError } from "@effected/jsonc";
 import { Jsonc } from "@effected/jsonc";
-import type { SectionFileError, SectionParseError } from "@effected/templates";
+import type { Section, SectionFileError, SectionParseError } from "@effected/templates";
 import { CheckOutcome, ManagedSection } from "@effected/templates";
 import type { ConfigDiscoveryShape } from "@savvy-web/silk-effects";
 import {
@@ -22,10 +24,12 @@ import {
 	savvyOkfBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect, FileSystem, Option } from "effect";
 import type { PlatformError } from "effect/PlatformError";
-import { Output } from "../../internal/output.js";
+import type { ReportEnv } from "../../internal/report.js";
+import { Report } from "../../internal/report.js";
+import type { CheckSection, SectionState } from "../check-section.js";
+import { hookTable } from "../check-section.js";
 import { BIOME_VERSION } from "./biome-version.js";
 
 /** Unicode warning symbol, for the quiet-mode warning lines. */
@@ -151,23 +155,34 @@ function checkBiomeSchemas() {
 	});
 }
 
+/** What {@link lintCheckSection} needs from the environment. */
+type LintCheckRequirements = ManagedSection | FileSystem.FileSystem | ToolDiscovery | ConfigDiscovery;
+
 /**
- * Run the lint check validation pipeline.
+ * Check the lint-staged setup and return it as a {@link CheckSection}.
  *
- * Exported so Task B6's unified `savvy check` orchestrator can invoke the
- * lint check step directly without going through the CLI command layer.
+ * @remarks
+ * Severity rule: anything `savvy init` would write or rewrite is a finding
+ * (`✗`, verdict `failure`) — a missing config file or `pre-commit` hook, a
+ * managed section that is absent or drifted in a hook file that exists, a
+ * biome `$schema` behind {@link BIOME_VERSION}, a markdownlint `$schema` that
+ * differs from the template. Advice is `⚠` (verdict `warning`): markdownlint
+ * rules that differ from the template (only `savvy init --force` overwrites
+ * them, so they may be deliberate) and biome configs that could not be read.
+ * Absent is not a finding where a preset may leave it out: a missing hygiene
+ * hook FILE (the minimal preset writes none) or an uninstalled tool is `↷`.
  *
- * @param opts - Options for the check command
- * @returns An Effect that performs validation and logs results
+ * Under `quiet` the body is only the collected warning lines (none when
+ * there are none); the verdict is the same.
  *
  * @internal
  */
-export function runLintCheck(opts: {
-	quiet: boolean;
+export function lintCheckSection(opts: {
+	readonly quiet: boolean;
 }): Effect.Effect<
-	void,
+	CheckSection,
 	JsoncParseError | SectionParseError | SectionFileError | PlatformError,
-	ManagedSection | FileSystem.FileSystem | ToolDiscovery | ConfigDiscovery | Stdio.Stdio
+	LintCheckRequirements
 > {
 	const { quiet } = opts;
 	return Effect.gen(function* () {
@@ -177,70 +192,46 @@ export function runLintCheck(opts: {
 		const discovery = yield* ConfigDiscovery;
 
 		const warnings: string[] = [];
+		const rows: Array<readonly [string, string, SectionState]> = [];
+		const stateOf = (outcome: CheckOutcome): SectionState =>
+			CheckOutcome.$is("UpToDate")(outcome)
+				? "up-to-date"
+				: CheckOutcome.$is("Drifted")(outcome)
+					? "outdated"
+					: "missing";
 
-		// Check config file
 		const foundConfig = yield* findConfigFile(fs);
-
-		// Check husky hook
 		const hasHuskyHook = yield* fs.exists(Lint.HUSKY_HOOK_PATH);
-
-		let sectionsHealthy = true;
-		let baseStatusLabel: "up-to-date" | "outdated" | "missing" = "missing";
-		let lintStatusLabel: "up-to-date" | "outdated" | "missing" = "missing";
-		let okfStatusLabel: "up-to-date" | "outdated" | "missing" = "missing";
 		let detectedConfigPath: string | null = null;
 
 		if (hasHuskyHook) {
-			// savvy-base section
-			const baseResult = yield* ms.check(Lint.HUSKY_HOOK_PATH, SavvyBaseSection.section(savvyBasePreamble()));
-			if (CheckOutcome.$is("Absent")(baseResult)) {
-				sectionsHealthy = false;
-			} else {
-				const upToDate = CheckOutcome.$is("UpToDate")(baseResult);
-				baseStatusLabel = upToDate ? "up-to-date" : "outdated";
-				if (!upToDate) sectionsHealthy = false;
-			}
+			rows.push([
+				Lint.HUSKY_HOOK_PATH,
+				"savvy-base",
+				stateOf(yield* ms.check(Lint.HUSKY_HOOK_PATH, SavvyBaseSection.section(savvyBasePreamble()))),
+			]);
 
-			// savvy-lint section
 			const existing = yield* ms.read(Lint.HUSKY_HOOK_PATH, Lint.SavvyLintSectionDef);
 			if (Option.isSome(existing)) {
-				const configPath = extractConfigPathFromManaged(existing.value.content);
-				detectedConfigPath = configPath;
-				if (configPath) {
-					const lintResult = yield* ms.check(Lint.HUSKY_HOOK_PATH, Lint.savvyLintBlock(configPath));
-					if (CheckOutcome.$is("Absent")(lintResult)) {
-						lintStatusLabel = "outdated";
-						sectionsHealthy = false;
-					} else {
-						const upToDate = CheckOutcome.$is("UpToDate")(lintResult);
-						lintStatusLabel = upToDate ? "up-to-date" : "outdated";
-						if (!upToDate) sectionsHealthy = false;
-					}
-				} else {
-					lintStatusLabel = "outdated";
-					sectionsHealthy = false;
-				}
+				detectedConfigPath = extractConfigPathFromManaged(existing.value.content);
+				const state: SectionState = detectedConfigPath
+					? CheckOutcome.$is("UpToDate")(yield* ms.check(Lint.HUSKY_HOOK_PATH, Lint.savvyLintBlock(detectedConfigPath)))
+						? "up-to-date"
+						: "outdated"
+					: "outdated";
+				rows.push([Lint.HUSKY_HOOK_PATH, "savvy-lint", state]);
 			} else {
-				sectionsHealthy = false;
+				rows.push([Lint.HUSKY_HOOK_PATH, "savvy-lint", "missing"]);
 			}
 
-			// savvy-okf section
-			const okfResult = yield* ms.check(Lint.HUSKY_HOOK_PATH, savvyOkfBlock());
-			if (CheckOutcome.$is("Absent")(okfResult)) {
-				sectionsHealthy = false;
-			} else {
-				const upToDate = CheckOutcome.$is("UpToDate")(okfResult);
-				okfStatusLabel = upToDate ? "up-to-date" : "outdated";
-				if (!upToDate) sectionsHealthy = false;
-			}
+			rows.push([Lint.HUSKY_HOOK_PATH, "savvy-okf", stateOf(yield* ms.check(Lint.HUSKY_HOOK_PATH, savvyOkfBlock()))]);
 
-			if (baseStatusLabel !== "up-to-date" || lintStatusLabel !== "up-to-date" || okfStatusLabel !== "up-to-date") {
+			if (rows.some(([, , state]) => state !== "up-to-date")) {
 				warnings.push(
 					`${WARNING}  Your ${Lint.HUSKY_HOOK_PATH} managed sections are out of date.\n   Run 'savvy init' to update (preserves your custom hooks).`,
 				);
 			}
 		} else {
-			sectionsHealthy = false;
 			warnings.push(`${WARNING}  No husky pre-commit hook found.\n   Run 'savvy init' to create it.`);
 		}
 
@@ -248,211 +239,130 @@ export function runLintCheck(opts: {
 			warnings.push(`${WARNING}  No lint-staged config file found.\n   Run 'savvy init' to create one.`);
 		}
 
-		// Hygiene hooks: co-owned savvy-hooks section.
-		const shellHookPaths = [
-			Lint.POST_CHECKOUT_HOOK_PATH,
-			Lint.POST_MERGE_HOOK_PATH,
-			Lint.POST_COMMIT_HOOK_PATH,
-		] as const;
-		const shellHookStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
-		// post-commit carries hygiene only; the other two also carry savvy-toolchain
-		// and savvy-install.
-		const toolchainStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
-		const installStatuses: { path: string; found: boolean; isUpToDate: boolean }[] = [];
-
-		for (const hookPath of shellHookPaths) {
-			const hookExists = yield* fs.exists(hookPath);
-			if (!hookExists) {
-				shellHookStatuses.push({ path: hookPath, found: false, isUpToDate: false });
+		// Hygiene hooks: the co-owned savvy-hooks section; post-checkout and
+		// post-merge also carry savvy-install (which differs per hook — git hands
+		// the two different arguments — so the variant checked follows the path)
+		// and savvy-toolchain.
+		for (const hookPath of [Lint.POST_CHECKOUT_HOOK_PATH, Lint.POST_MERGE_HOOK_PATH, Lint.POST_COMMIT_HOOK_PATH]) {
+			if (!(yield* fs.exists(hookPath))) {
+				rows.push([hookPath, "(hook file)", "not installed"]);
 				continue;
 			}
-			const hygieneResult = yield* ms.check(hookPath, SavvyHooksSection.section(savvyHooksHygiene()));
-			const found = !CheckOutcome.$is("Absent")(hygieneResult);
-			const isUpToDate = CheckOutcome.$is("UpToDate")(hygieneResult);
-			shellHookStatuses.push({ path: hookPath, found, isUpToDate });
-
-			if (!found) {
-				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} has no savvy-hooks section.\n   Run 'savvy init' to add it.`);
-			} else if (!isUpToDate) {
-				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} savvy-hooks section is outdated.\n   Run 'savvy init' to update.`);
+			const sections: Array<readonly [string, Section]> = [
+				["savvy-hooks", SavvyHooksSection.section(savvyHooksHygiene())],
+			];
+			if (hookPath !== Lint.POST_COMMIT_HOOK_PATH) {
+				const installHook = hookPath === Lint.POST_CHECKOUT_HOOK_PATH ? "post-checkout" : "post-merge";
+				sections.push(
+					["savvy-install", savvyInstallBlock(installHook)],
+					["savvy-toolchain", SavvyToolchainSection.section(savvyToolchainCheck())],
+				);
 			}
-
-			if (hookPath === Lint.POST_COMMIT_HOOK_PATH) continue;
-
-			// The install block differs per hook — the two are handed different
-			// arguments by git — so the variant checked has to follow the path.
-			const installHook = hookPath === Lint.POST_CHECKOUT_HOOK_PATH ? "post-checkout" : "post-merge";
-			const installResult = yield* ms.check(hookPath, savvyInstallBlock(installHook));
-			const installFound = !CheckOutcome.$is("Absent")(installResult);
-			const installUpToDate = CheckOutcome.$is("UpToDate")(installResult);
-			installStatuses.push({ path: hookPath, found: installFound, isUpToDate: installUpToDate });
-
-			if (!installFound) {
-				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} has no savvy-install section.\n   Run 'savvy init' to add it.`);
-			} else if (!installUpToDate) {
-				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} savvy-install section is outdated.\n   Run 'savvy init' to update.`);
-			}
-
-			const toolchainResult = yield* ms.check(hookPath, SavvyToolchainSection.section(savvyToolchainCheck()));
-			const toolchainFound = !CheckOutcome.$is("Absent")(toolchainResult);
-			const toolchainUpToDate = CheckOutcome.$is("UpToDate")(toolchainResult);
-			toolchainStatuses.push({ path: hookPath, found: toolchainFound, isUpToDate: toolchainUpToDate });
-
-			if (!toolchainFound) {
-				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} has no savvy-toolchain section.\n   Run 'savvy init' to add it.`);
-			} else if (!toolchainUpToDate) {
-				sectionsHealthy = false;
-				warnings.push(`${WARNING}  ${hookPath} savvy-toolchain section is outdated.\n   Run 'savvy init' to update.`);
+			for (const [name, section] of sections) {
+				const state = stateOf(yield* ms.check(hookPath, section));
+				rows.push([hookPath, name, state]);
+				if (state === "missing") {
+					warnings.push(`${WARNING}  ${hookPath} has no ${name} section.\n   Run 'savvy init' to add it.`);
+				} else if (state === "outdated") {
+					warnings.push(`${WARNING}  ${hookPath} ${name} section is outdated.\n   Run 'savvy init' to update.`);
+				}
 			}
 		}
 
-		// Check biome schemas
 		const biomeSchemaStatus = yield* checkBiomeSchemas().pipe(
+			Effect.map((status) => ({ ...status, readable: true })),
 			Effect.catch(() =>
 				Effect.succeed({
 					statuses: [] as { path: string; matches: boolean }[],
 					warnings: [`${WARNING}  Could not check biome $schema URLs.`],
+					readable: false,
 				}),
 			),
 		);
 		warnings.push(...biomeSchemaStatus.warnings);
 
-		// Check markdownlint config
 		const hasMarkdownlintConfig = yield* fs.exists(Lint.MARKDOWNLINT_CONFIG_PATH);
-		let markdownlintStatus: {
-			exists: boolean;
-			schemaMatches: boolean;
-			configMatches: boolean;
-			isUpToDate: boolean;
-		} = {
-			exists: false,
-			schemaMatches: false,
-			configMatches: false,
-			isUpToDate: false,
-		};
+		const markdownlintStatus = hasMarkdownlintConfig
+			? yield* checkMarkdownlintConfig(yield* fs.readFileString(Lint.MARKDOWNLINT_CONFIG_PATH))
+			: { exists: false, schemaMatches: false, configMatches: false, isUpToDate: false };
+		if (hasMarkdownlintConfig && !markdownlintStatus.schemaMatches) {
+			warnings.push(
+				`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: $schema differs from template.\n   Run 'savvy init' to update it.`,
+			);
+		}
+		if (hasMarkdownlintConfig && !markdownlintStatus.configMatches) {
+			warnings.push(
+				`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template.\n   Run 'savvy init --force' to overwrite.`,
+			);
+		}
+
+		// A hook FILE a preset left out is advisory; every other non-current row is a finding.
+		const sectionsHealthy = rows.every(([, , state]) => state === "up-to-date" || state === "not installed");
+		const findings =
+			!foundConfig ||
+			!hasHuskyHook ||
+			!sectionsHealthy ||
+			(hasMarkdownlintConfig && !markdownlintStatus.schemaMatches) ||
+			biomeSchemaStatus.statuses.some((status) => !status.matches);
+		const advice = (hasMarkdownlintConfig && !markdownlintStatus.configMatches) || !biomeSchemaStatus.readable;
+		const verdict = findings ? "failure" : advice ? "warning" : "success";
+		const title = "lint-staged";
+
+		if (quiet) {
+			return {
+				title,
+				blocks: warnings.map((warning) => Report.verbatim(warning)),
+				verdict,
+				fixedByInit: findings,
+			};
+		}
+
+		const blocks: Array<Block> = [];
+		blocks.push(
+			foundConfig ? Report.ok(`Config file: ${foundConfig}`) : Report.fail("No lint-staged config file found"),
+		);
+		blocks.push(
+			hasHuskyHook ? Report.ok(`Husky hook: ${Lint.HUSKY_HOOK_PATH}`) : Report.fail("No husky pre-commit hook found"),
+		);
+		if (detectedConfigPath) blocks.push(Report.detail(`savvy-lint runs: ${detectedConfigPath}`));
+		if (rows.length > 0) blocks.push(hookTable(rows));
 
 		if (hasMarkdownlintConfig) {
-			const mdContent = yield* fs.readFileString(Lint.MARKDOWNLINT_CONFIG_PATH);
-			markdownlintStatus = yield* checkMarkdownlintConfig(mdContent);
-
-			if (!markdownlintStatus.schemaMatches) {
-				warnings.push(
-					`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: $schema differs from template.\n   Run 'savvy init' to update it.`,
-				);
-			}
-			if (!markdownlintStatus.configMatches) {
-				warnings.push(
-					`${WARNING}  ${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template.\n   Run 'savvy init --force' to overwrite.`,
-				);
-			}
-		}
-
-		// Quiet mode: only output warnings
-		if (quiet) {
-			if (warnings.length > 0) {
-				for (const warning of warnings) {
-					yield* Output.line(warning);
+			if (markdownlintStatus.isUpToDate) {
+				blocks.push(Report.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: up-to-date`));
+			} else {
+				if (!markdownlintStatus.schemaMatches) {
+					blocks.push(Report.fail(`${Lint.MARKDOWNLINT_CONFIG_PATH}: $schema differs from template`));
+				}
+				if (!markdownlintStatus.configMatches) {
+					blocks.push(
+						Report.warn(
+							`${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template (savvy init --force overwrites)`,
+						),
+					);
 				}
 			}
-			return;
-		}
-
-		// Full output mode
-		yield* Output.heading("lint-staged configuration");
-
-		// Config file status
-		if (foundConfig) {
-			yield* Output.ok(`Config file: ${foundConfig}`);
 		} else {
-			yield* Output.fail(`No lint-staged config file found`);
+			blocks.push(Report.skip(`${Lint.MARKDOWNLINT_CONFIG_PATH}: not found`));
 		}
 
-		// Husky hook status
-		if (hasHuskyHook) {
-			yield* Output.ok(`Husky hook: ${Lint.HUSKY_HOOK_PATH}`);
-		} else {
-			yield* Output.fail(`No husky pre-commit hook found`);
+		if (!biomeSchemaStatus.readable) blocks.push(Report.warn("Could not check biome $schema URLs"));
+		for (const status of biomeSchemaStatus.statuses) {
+			blocks.push(
+				status.matches
+					? Report.ok(`${status.path}: biome $schema up-to-date`)
+					: Report.fail(`${status.path}: biome $schema outdated`),
+			);
 		}
 
-		// Managed section status (independent per-section reporting)
-		if (hasHuskyHook) {
-			if (baseStatusLabel === "up-to-date") {
-				yield* Output.ok(`Base section: up-to-date`);
-			} else if (baseStatusLabel === "outdated") {
-				yield* Output.warn(`Base section: outdated (run 'savvy init' to update)`);
-			} else {
-				yield* Output.skip(`Base section: not found (run 'savvy init' to add)`);
-			}
-
-			const lintLabel = detectedConfigPath ? ` (config: ${detectedConfigPath})` : "";
-			if (lintStatusLabel === "up-to-date") {
-				yield* Output.ok(`Lint section: up-to-date${lintLabel}`);
-			} else if (lintStatusLabel === "outdated") {
-				yield* Output.warn(`Lint section: outdated (run 'savvy init' to update)`);
-			} else {
-				yield* Output.skip(`Lint section: not found (run 'savvy init' to add)`);
-			}
-
-			if (okfStatusLabel === "up-to-date") {
-				yield* Output.ok(`OKF section: up-to-date`);
-			} else if (okfStatusLabel === "outdated") {
-				yield* Output.warn(`OKF section: outdated (run 'savvy init' to update)`);
-			} else {
-				yield* Output.skip(`OKF section: not found (run 'savvy init' to add)`);
-			}
-		}
-
-		// Hygiene hook statuses
-		for (const status of shellHookStatuses) {
-			if (!status.found) {
-				yield* Output.skip(`${status.path}: savvy-hooks section not found`);
-			} else if (status.isUpToDate) {
-				yield* Output.ok(`${status.path}: up-to-date`);
-			} else {
-				yield* Output.warn(`${status.path}: outdated (run 'savvy init' to update)`);
-			}
-		}
-
-		// Dependency-install statuses (post-checkout / post-merge only)
-		for (const status of installStatuses) {
-			if (!status.found) {
-				yield* Output.skip(`${status.path}: savvy-install section not found`);
-			} else if (status.isUpToDate) {
-				yield* Output.ok(`${status.path}: savvy-install up-to-date`);
-			} else {
-				yield* Output.warn(`${status.path}: savvy-install outdated (run 'savvy init' to update)`);
-			}
-		}
-
-		// Toolchain drift-check statuses (post-checkout / post-merge only)
-		for (const status of toolchainStatuses) {
-			if (!status.found) {
-				yield* Output.skip(`${status.path}: savvy-toolchain section not found`);
-			} else if (status.isUpToDate) {
-				yield* Output.ok(`${status.path}: savvy-toolchain up-to-date`);
-			} else {
-				yield* Output.warn(`${status.path}: savvy-toolchain outdated (run 'savvy init' to update)`);
-			}
-		}
-
-		// Tool availability
-		yield* Output.line("");
-		yield* Output.heading("Tool availability");
-
+		blocks.push(Report.line("Tool availability"));
 		const biomeAvailable = yield* td.isAvailable(Tool.named("biome"));
 		const biomeConfig = yield* findConfig(discovery, ["biome.jsonc", "biome.json"]);
-		if (biomeAvailable) {
-			const configInfo = biomeConfig ? ` (config: ${biomeConfig})` : "";
-			yield* Output.ok(`Biome${configInfo}`);
-		} else {
-			yield* Output.skip(`Biome: not installed`);
-		}
-
+		blocks.push(
+			biomeAvailable
+				? Report.ok(`Biome${biomeConfig ? ` (config: ${biomeConfig})` : ""}`)
+				: Report.skip("Biome: not installed"),
+		);
 		const markdownAvailable = yield* td.isAvailable(Tool.named("markdownlint-cli2"));
 		const markdownConfig = yield* findConfig(discovery, [
 			".markdownlint-cli2.jsonc",
@@ -463,57 +373,52 @@ export function runLintCheck(opts: {
 			".markdownlint.json",
 			".markdownlint.yaml",
 		]);
-		if (markdownAvailable) {
-			const configInfo = markdownConfig ? ` (config: ${markdownConfig})` : "";
-			yield* Output.ok(`markdownlint-cli2${configInfo}`);
-		} else {
-			yield* Output.skip(`markdownlint-cli2: not installed`);
-		}
-
+		blocks.push(
+			markdownAvailable
+				? Report.ok(`markdownlint-cli2${markdownConfig ? ` (config: ${markdownConfig})` : ""}`)
+				: Report.skip("markdownlint-cli2: not installed"),
+		);
 		const tscAvailable = yield* td.isAvailable(Tool.named("tsc"));
-		const tsgoAvailable = yield* td.isAvailable(Tool.named("tsgo"));
-		if (tscAvailable) {
-			yield* Output.ok(`TypeScript (tsc)`);
-		} else if (tsgoAvailable) {
-			yield* Output.ok(`TypeScript (tsgo)`);
-		} else {
-			yield* Output.skip(`TypeScript: not installed`);
-		}
+		const tsgoAvailable = tscAvailable ? false : yield* td.isAvailable(Tool.named("tsgo"));
+		blocks.push(
+			tscAvailable
+				? Report.ok("TypeScript (tsc)")
+				: tsgoAvailable
+					? Report.ok("TypeScript (tsgo)")
+					: Report.skip("TypeScript: not installed"),
+		);
 
-		// Markdownlint config status
-		if (hasMarkdownlintConfig) {
-			if (markdownlintStatus.isUpToDate) {
-				yield* Output.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: up-to-date`);
-			} else {
-				const issues: string[] = [];
-				if (!markdownlintStatus.schemaMatches) issues.push("$schema");
-				if (!markdownlintStatus.configMatches) issues.push("config");
-				yield* Output.warn(`${Lint.MARKDOWNLINT_CONFIG_PATH}: ${issues.join(", ")} differ from template`);
-			}
-		} else {
-			yield* Output.skip(`${Lint.MARKDOWNLINT_CONFIG_PATH}: not found`);
-		}
+		blocks.push(
+			verdict === "failure"
+				? Report.fail("lint-staged needs configuration")
+				: verdict === "warning"
+					? Report.warn("lint-staged is configured, with advisories")
+					: Report.ok("lint-staged is configured correctly"),
+		);
+		return { title, blocks, verdict, fixedByInit: findings };
+	});
+}
 
-		// Biome schema status
-		for (const status of biomeSchemaStatus.statuses) {
-			if (status.matches) {
-				yield* Output.ok(`${status.path}: biome $schema up-to-date`);
-			} else {
-				yield* Output.warn(`${status.path}: biome $schema outdated (run 'savvy init' to update)`);
-			}
-		}
-
-		// Overall status
-		yield* Output.line("");
-		const hasMarkdownlintIssues = hasMarkdownlintConfig && !markdownlintStatus.isUpToDate;
-		const hasBiomeSchemaIssues = biomeSchemaStatus.statuses.some((s) => !s.matches);
-		const hasIssues =
-			!foundConfig || !hasHuskyHook || !sectionsHealthy || hasMarkdownlintIssues || hasBiomeSchemaIssues;
-
-		if (hasIssues) {
-			yield* Output.warn(`Some issues found. Run 'savvy init' to fix.`);
-		} else {
-			yield* Output.ok(`Lint-staged is configured correctly.`);
-		}
+/**
+ * Check the lint-staged setup, print its report on stdout, and set exit code
+ * 1 when it found a misconfiguration (see {@link lintCheckSection} for the
+ * severity rule). Under `quiet` only the warnings are printed.
+ *
+ * @param opts - Options for the check command
+ * @returns An Effect that performs validation and prints its report
+ *
+ * @internal
+ */
+export function runLintCheck(opts: {
+	quiet: boolean;
+}): Effect.Effect<
+	void,
+	JsoncParseError | SectionParseError | SectionFileError | PlatformError,
+	LintCheckRequirements | ReportEnv | CliExit
+> {
+	return Effect.gen(function* () {
+		const section = yield* lintCheckSection(opts);
+		yield* Report.print(opts.quiet ? section.blocks : [Report.heading(section.title), ...section.blocks]);
+		if (section.verdict === "failure") yield* CliExit.set(1);
 	});
 }

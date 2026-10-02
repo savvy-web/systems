@@ -2,27 +2,28 @@
  * Unified `savvy check` orchestrator.
  *
  * @remarks
- * Runs all three tool-specific check handlers — changeset, commit, lint —
- * sequentially so each tool's console output is cleanly grouped rather than
- * interleaved. Unlike the `init` orchestrator, check MUST NOT short-circuit:
- * the user wants to see every failing check in a single pass. Uses
- * `Effect.all` with `{ concurrency: 1, mode: "validate" }` to run all three
- * regardless of individual failures and then surface the full set of errors.
+ * Runs all three tool checks — changeset, commit, lint — sequentially. Unlike
+ * the `init` orchestrator, check MUST NOT short-circuit: every check runs and
+ * reports in one pass, and only then is the first step failure re-raised.
  *
- * Runtime layer provision (ManagedSection, FileSystem, WorkspaceRoot,
- * ToolDiscovery, etc.) is deferred to Task B7 (root `main`). The Effect
- * returned by `checkCommand`'s handler therefore carries the full union of the
- * three handlers' requirements in its R channel.
+ * Each step returns a {@link CheckSection}; this orchestrator prints them
+ * as ONE document: a collapsible per tool (a `::group::` under GitHub Actions), a summary of the
+ * three verdicts, and a `savvy init` tip when a section `savvy init` would fix
+ * is not clean. Any finding sets exit code 1.
  *
  * @internal
  */
 
+import type { Block } from "@effected/cli";
+import { CliExit, Doc } from "@effected/cli";
 import { Effect, Result } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../internal/output.js";
-import { runChangesetCheck } from "./changeset/index.js";
-import { runCommitCheck } from "./commit/check.js";
-import { runLintCheck } from "./lint/check.js";
+import type { ReportEnv } from "../internal/report.js";
+import { Report } from "../internal/report.js";
+import { changesetCheckSection } from "./changeset/index.js";
+import type { CheckSection, CheckVerdict } from "./check-section.js";
+import { commitCheckSection } from "./commit/check.js";
+import { lintCheckSection } from "./lint/check.js";
 
 // ---------------------------------------------------------------------------
 // Default option values
@@ -52,39 +53,58 @@ const quietOption = Flag.Boolean("quiet").pipe(
 // ---------------------------------------------------------------------------
 
 /**
- * Run all three check step Effects without short-circuiting.
+ * Run the three checks without short-circuiting and print them as one
+ * document.
  *
- * All three checks always run, sequentially (concurrency 1) so per-tool
- * output stays grouped. If any fail, the combined Effect fails with all
- * accumulated errors. Uses `Effect.all` with `{ concurrency: 1, mode: "validate" }`
- * to collect every failure rather than stopping at the first.
+ * @remarks
+ * Each step builds a {@link CheckSection}; each section is folded into a
+ * collapsible (a `::group::` under GitHub Actions, whose body is where a
+ * section's annotations are written, so its blocks are never nested deeper).
+ * A step that fails still lets the others run and report; the first failure
+ * is re-raised after the document is printed.
  *
- * @param steps - The three step Effects to run. Injected for testability.
- * @returns An Effect that resolves to `void` on success, or fails with the
- *   union of all failing steps' errors.
+ * @param steps - The three step Effects. Injected for testability.
+ * @returns An Effect that prints the report and sets exit code 1 on any
+ *   finding, or fails with the first failing step's error.
  */
 export function runCheck<EChangeset, RChangeset, ECommit, RCommit, ELint, RLint>(steps: {
-	changeset: Effect.Effect<unknown, EChangeset, RChangeset>;
-	commit: Effect.Effect<unknown, ECommit, RCommit>;
-	lint: Effect.Effect<unknown, ELint, RLint>;
-}): Effect.Effect<void, EChangeset | ECommit | ELint, RChangeset | RCommit | RLint> {
-	// v4's Effect.all dropped the v3 "validate" mode; "result" collects a
-	// Result per step so every step still RUNS (nothing short-circuits), then
-	// the first failure is re-raised to preserve the fail-if-any contract.
+	changeset: Effect.Effect<CheckSection, EChangeset, RChangeset>;
+	commit: Effect.Effect<CheckSection, ECommit, RCommit>;
+	lint: Effect.Effect<CheckSection, ELint, RLint>;
+}): Effect.Effect<void, EChangeset | ECommit | ELint, RChangeset | RCommit | RLint | CliExit | ReportEnv> {
 	return Effect.gen(function* () {
-		const results: ReadonlyArray<Result.Result<unknown, EChangeset | ECommit | ELint>> = yield* Effect.all(
-			[
-				Effect.result(steps.changeset),
-				// A blank line between sections keeps each tool's report readable as one block.
-				Output.line("").pipe(Effect.andThen(Effect.result(steps.commit))),
-				Output.line("").pipe(Effect.andThen(Effect.result(steps.lint))),
-			],
-			{ concurrency: 1 },
-		);
-		for (const result of results) {
+		const sections: ReadonlyArray<readonly [string, Result.Result<CheckSection, EChangeset | ECommit | ELint>]> = [
+			["changesets", yield* Effect.result(steps.changeset)],
+			["commitlint", yield* Effect.result(steps.commit)],
+			["lint-staged", yield* Effect.result(steps.lint)],
+		];
+
+		const blocks: Array<Block> = [];
+		const verdicts: Array<CheckVerdict> = [];
+		let initFixes = false;
+		for (const [title, result] of sections) {
 			if (Result.isFailure(result)) {
-				return yield* Effect.fail(result.failure);
+				verdicts.push("failure");
+				blocks.push(Report.fail(`${title}: the check could not run`));
+				continue;
 			}
+			const section = result.success;
+			verdicts.push(section.verdict);
+			initFixes ||= section.fixedByInit;
+			// An empty body (a clean `--quiet` lint run) has nothing to fold.
+			if (section.blocks.length > 0) blocks.push(Doc.collapsible(section.title, section.blocks), Report.line(""));
+		}
+
+		const count = (verdict: CheckVerdict) => verdicts.filter((v) => v === verdict).length;
+		blocks.push(Report.summary({ ok: count("success"), warn: count("warning"), fail: count("failure") }));
+		if (initFixes) {
+			blocks.push(Doc.callout("tip", [Doc.paragraph("run savvy init to install or update the missing pieces")]));
+		}
+		yield* Report.print(blocks);
+
+		if (verdicts.includes("failure")) yield* CliExit.set(1);
+		for (const [, result] of sections) {
+			if (Result.isFailure(result)) return yield* Effect.fail(result.failure);
 		}
 	});
 }
@@ -96,9 +116,9 @@ export function runCheck<EChangeset, RChangeset, ECommit, RCommit, ELint, RLint>
 /* v8 ignore start -- CLI registration; orchestration logic tested via runCheck */
 const _checkCommand = Command.make("check", { changesetDir: changesetDirOption, quiet: quietOption }, (opts) =>
 	runCheck({
-		changeset: runChangesetCheck(opts.changesetDir),
-		commit: runCommitCheck(),
-		lint: runLintCheck({ quiet: opts.quiet }),
+		changeset: changesetCheckSection(opts.changesetDir),
+		commit: commitCheckSection(),
+		lint: lintCheckSection({ quiet: opts.quiet }),
 	}),
 ).pipe(Command.withDescription("Validate all Silk Suite tool configurations in one pass"));
 /* v8 ignore stop */

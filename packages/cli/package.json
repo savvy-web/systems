@@ -38,19 +38,25 @@
 		"@effected/cli": "catalog:effected",
 		"@effected/commands": "catalog:effected",
 		"@effected/engine": "catalog:effected",
+		"@effected/env": "catalog:effected",
 		"@effected/git": "catalog:effected",
+		"@effected/glob": "catalog:effected",
 		"@effected/jsonc": "catalog:effected",
 		"@effected/templates": "catalog:effected",
+		"@effected/walker": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
 		"@savvy-web/silk-effects": "workspace:*",
-		"effect": "catalog:effect"
+		"effect": "catalog:effect",
+		"ink": "catalog:silk",
+		"react": "catalog:silk"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
 		"@effected/memfs": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
+		"@types/react": "catalog:silk",
 		"tsx": "catalog:build",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"

@@ -19,8 +19,8 @@ const TestLive = ConfigInspector.layer.pipe(
 	Layer.provide(Layer.mergeAll(ChangesetConfigReader.layer, WorkspacesKitLive)),
 	Layer.provide(NodeServices.layer),
 );
-/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
-const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
+/** Logs silenced, plus the fixed presentation environment the handler's report renders under. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.env);
 
 function setupFixture(opts: { configJson: Record<string, unknown> }): string {
 	const dir = mkdtempSync(join(tmpdir(), "cs-cli-validate-"));
@@ -85,5 +85,37 @@ describe("config validate – runConfigValidate handler", () => {
 			yield* runConfigValidate(dir).pipe(Effect.provide(TestLive), Effect.provide(silentLogger));
 			expect(TestExit.code()).toBe(1);
 		}).pipe(Effect.provide(TestExit.layer)),
+	);
+
+	it.effect("prints the outcome as one stdout line: the config path and its package count", () =>
+		Effect.gen(function* () {
+			dir = setupFixture({
+				configJson: { changelog: ["@savvy-web/changesets/changelog", { repo: "owner/repo" }], baseBranch: "main" },
+			});
+			const result = yield* Capture.run(runConfigValidate(dir).pipe(Effect.provide(TestLive)));
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toEqual([`✓ ${join(dir, ".changeset", "config.json")} — 0 packages declared`]);
+		}),
+	);
+
+	it.effect("prints a finding as one stdout line naming the config, the field and the reason", () =>
+		Effect.gen(function* () {
+			dir = setupFixture({
+				configJson: {
+					changelog: ["@savvy-web/changesets/changelog", { repo: "owner/repo", packages: { "@scope/ghost": {} } }],
+				},
+			});
+			const result = yield* Capture.run(runConfigValidate(dir).pipe(Effect.provide(TestLive)), { audience: "agent" });
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toEqual([]);
+			expect(result.stdout).toHaveLength(1);
+			expect(result.stdout[0]).toMatch(
+				new RegExp(
+					`^✗ ${join(dir, ".changeset", "config.json").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — \\S+: .+@scope/ghost`,
+				),
+			);
+		}),
 	);
 });

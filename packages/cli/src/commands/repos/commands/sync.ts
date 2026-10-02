@@ -12,8 +12,11 @@
  * `"invalid"` means the manifest exists but is corrupt or unreadable,
  * `GitSubmoduleError` means the underlying git command failed, and
  * `ReposLockdownError` means the OS-permission lockdown pass on a vendored
- * tree failed -- all three are real failures, logged and reported via a
- * non-zero exit code.
+ * tree failed -- all three are real failures, failing as a `CommandError`
+ * (exit 1) with a hint.
+ *
+ * Never asks anything, at a terminal or not: the session hook runs it under a
+ * watchdog, so a prompt would hang it.
  *
  * @example
  * ```bash
@@ -23,12 +26,12 @@
  * @internal
  */
 
-import { CliExit } from "@effected/cli";
+import type { Block } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { Report } from "../../../internal/report.js";
+import { ReposCli } from "../shared.js";
 
 /* v8 ignore start -- CLI option definitions */
 const cwdOption = Flag.Directory("cwd").pipe(Flag.withDescription("Repo root to sync"), Flag.withDefault("."));
@@ -43,20 +46,21 @@ export const runReposSync = (cwd: string) =>
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const report = yield* manager.sync(cwd);
+		const blocks: Array<Block> = [];
 		for (const name of report.clearedLocks) {
-			yield* Output.ok(`${name}: cleared stale lock`);
+			blocks.push(Report.ok(`${name}: cleared stale lock`));
 		}
 		for (const name of report.initialized) {
-			yield* Output.ok(`${name}: initialized`);
+			blocks.push(Report.ok(`${name}: initialized`));
 		}
 		for (const name of report.sparseApplied) {
-			yield* Output.ok(`${name}: sparse-checkout applied`);
+			blocks.push(Report.ok(`${name}: sparse-checkout applied`));
 		}
 		for (const name of report.urlSynced) {
-			yield* Output.ok(`${name}: url reconciled`);
+			blocks.push(Report.ok(`${name}: url reconciled`));
 		}
 		for (const name of report.registered) {
-			yield* Output.ok(`${name}: registered`);
+			blocks.push(Report.ok(`${name}: registered`));
 		}
 		// `boundaryMarked` is deliberately absent from both the per-entry log
 		// above and this idle check: `sync` re-asserts the boundary marker on
@@ -71,21 +75,14 @@ export const runReposSync = (cwd: string) =>
 			report.urlSynced.length === 0 &&
 			report.registered.length === 0
 		) {
-			yield* Output.ok("all vendored repos up to date");
+			blocks.push(Report.ok("all vendored repos up to date"));
 		}
+		yield* Report.print(blocks);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
-			if (error.kind === "missing") {
-				return Output.skip("no .repos/config.json — nothing vendored");
-			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
+		Effect.catchTag("ReposConfigError", (error) =>
+			error.kind === "missing" ? ReposCli.nothingVendored : ReposCli.fail("sync the vendored repos")(error),
+		),
+		Effect.catchTag(["GitSubmoduleError", "ReposLockdownError"], ReposCli.fail("sync the vendored repos")),
 	);
 
 /* v8 ignore start -- CLI registration; handler tested via runReposSync */

@@ -37,6 +37,10 @@ const noSpawn = Layer.succeed(
 
 const stack = (git: Layer.Layer<Git>) => Layer.mergeAll(volume, git, Path.layer, noSpawn, Capture.piped);
 
+/** Every stdout line: a report prints as one write, so split it into the lines a reader sees. */
+const lines = (result: { readonly stdout: ReadonlyArray<string> }): ReadonlyArray<string> =>
+	result.stdout.flatMap((write) => write.split("\n"));
+
 describe("savvy lint text", () => {
 	it.effect("passes clean files given as arguments and exits 0", () =>
 		Effect.gen(function* () {
@@ -51,11 +55,12 @@ describe("savvy lint text", () => {
 		Effect.gen(function* () {
 			const result = yield* Capture.run(runLintText(["/repo/src/ok.ts", "/repo/src/nul.ts", "/repo/docs/latin1.md"]));
 			expect(result.exitCode).toBe(1);
-			expect(result.stdout[0]).toMatch(
+			expect(lines(result)[0]).toMatch(
 				/^✗ \/repo\/src\/nul\.ts:2:2 {2}contains a NUL byte — write it as the \\0 escape/,
 			);
-			expect(result.stdout[1]).toMatch(/^✗ \/repo\/docs\/latin1\.md:1:4 {2}is not valid UTF-8 \(byte offset 3\)/);
-			expect(result.stdout[2]).toBe("1 ok · 2 failed");
+			expect(lines(result)[1]).toMatch(/^✗ \/repo\/docs\/latin1\.md:1:4 {2}is not valid UTF-8 \(byte offset 3\)/);
+			expect(lines(result)[2]).toBe("1 ok, 2 failed");
+			expect(lines(result)).toHaveLength(3);
 			expect(result.stderr).toEqual([]);
 		}).pipe(Effect.provide(stack(untouchedGit))),
 	);
@@ -67,6 +72,31 @@ describe("savvy lint text", () => {
 			expect(result.value.map((finding) => finding.path)).toEqual(["/repo/src/nul.ts", "/repo/docs/latin1.md"]);
 			// The PNG is tracked but out of scope, so its NUL is never reported.
 			expect(result.stdout.join("\n")).not.toContain("logo.png");
+		}).pipe(Effect.provide(stack(trackedGit))),
+	);
+
+	it.effect("writes an error annotation per finding, path relative to cwd, only under GitHub Actions", () =>
+		Effect.gen(function* () {
+			const actions = yield* Capture.run(runLintText([], { cwd: "/repo" }), { audience: "ci", githubActions: true });
+			expect(actions.exitCode).toBe(1);
+			const actionLines = lines(actions);
+			// The plain finding line stays (agents and logs grep it), followed by its annotation.
+			expect(actionLines[0]).toMatch(/^✗ \/repo\/src\/nul\.ts:2:2 {2}contains a NUL byte/);
+			expect(actionLines[1]).toMatch(
+				/^::error title=grep-invisible text,file=src\/nul\.ts,line=2,col=2::contains a NUL byte/,
+			);
+			expect(actionLines).toContainEqual(
+				expect.stringMatching(
+					/^::error title=grep-invisible text,file=docs\/latin1\.md,line=1,col=4::is not valid UTF-8/,
+				),
+			);
+
+			// Control: an agent and a plain CI log get the same finding lines and no workflow command.
+			for (const options of [{ audience: "agent" }, { audience: "ci" }] as const) {
+				const plain = yield* Capture.run(runLintText([], { cwd: "/repo" }), options);
+				expect(plain.stdout.join("\n")).not.toContain("::error");
+				expect(lines(plain)).toEqual([actionLines[0], expect.stringMatching(/latin1\.md:1:4/), "1 ok, 2 failed"]);
+			}
 		}).pipe(Effect.provide(stack(trackedGit))),
 	);
 
@@ -105,7 +135,7 @@ describe("savvy lint text --staged (real temp git repo)", () => {
 			const file = join(root, "a.ts");
 			const staged = yield* Capture.run(runLintText([file], { staged: true }));
 			expect(staged.exitCode).toBe(1);
-			expect(staged.stdout[0]).toBe(
+			expect(lines(staged)[0]).toBe(
 				`✗ ${file}:1:2  contains a NUL byte — write it as the \\0 escape so grep and ripgrep do not skip the file`,
 			);
 			// Control: without --staged the same path reads the clean worktree copy.
@@ -136,11 +166,11 @@ describe("savvy lint text --staged (real temp git repo)", () => {
 			const result = yield* Capture.run(runLintText([unstaged, a, join(root, "b.ts")], { staged: true }));
 			expect(result.exitCode).toBe(1);
 			expect(result.value.map((finding) => finding.path)).toEqual([a]);
-			expect(result.stdout[0]?.startsWith(`✗ ${a}:1:2  contains a NUL byte`)).toBe(true);
+			expect(lines(result)[0]?.startsWith(`✗ ${a}:1:2  contains a NUL byte`)).toBe(true);
 			// The unreadable file is a diagnostic: stderr, never stdout, and counted as failed.
 			expect(result.stderr.join("\n")).toContain(`cannot read the staged content of ${unstaged}`);
 			expect(result.stdout.join("\n")).not.toContain("never-added.ts");
-			expect(result.stdout.at(-1)).toBe("1 ok · 2 failed");
+			expect(lines(result).at(-1)).toBe("1 ok, 2 failed");
 		}).pipe(Effect.provide(Capture.piped), Effect.provide(Layer.provideMerge(Git.layer, NodeServices.layer))),
 	);
 

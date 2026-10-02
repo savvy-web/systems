@@ -17,7 +17,8 @@ import { CliExit } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { CommandError } from "../../../internal/command-error.js";
+import { Report } from "../../../internal/report.js";
 
 const { ChangesetLinter } = Changesets;
 
@@ -28,8 +29,9 @@ const fileArg = Argument.File("file");
  * Run lint validation on a single changeset file.
  *
  * Outputs one line per error in `file:line:col rule message` format.
- * Logs "Valid." when the file passes. Sets exit code 1 through `CliExit.set`
- * when errors are found or the file cannot be read.
+ * Prints `✓ Valid` when the file passes. Sets exit code 1 through
+ * `CliExit.set` when errors are found; fails with a {@link CommandError}
+ * (reported on stderr, exit 1) when the file cannot be read.
  *
  * @param filePath - Path to the changeset `.md` file
  * @returns An Effect that performs validation and logs results
@@ -38,26 +40,24 @@ const fileArg = Argument.File("file");
  */
 export function runValidateFile(filePath: string) {
 	return Effect.gen(function* () {
-		const result = yield* Effect.try(() => ChangesetLinter.validateFile(filePath)).pipe(
-			Effect.catch((error) =>
-				Effect.gen(function* () {
-					yield* Effect.logError(`Error: ${error instanceof Error ? error.message : String(error)}`);
-					yield* CliExit.set(1);
-					return null;
+		const result = yield* Effect.try({
+			try: () => ChangesetLinter.validateFile(filePath),
+			catch: (error) =>
+				CommandError.from(error instanceof Error ? error : String(error), {
+					message: `could not validate ${filePath}`,
 				}),
-			),
-		);
-
-		if (result === null) return;
-
-		for (const msg of result) {
-			yield* Output.line(`${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`);
-		}
+		});
 
 		if (result.length > 0) {
+			// Verbatim, never wrapped: hooks and editors parse each line as `file:line:col rule message`.
+			yield* Report.print([
+				Report.verbatim(
+					result.map((msg) => `${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`).join("\n"),
+				),
+			]);
 			yield* CliExit.set(1);
 		} else {
-			yield* Output.ok("Valid");
+			yield* Report.print([Report.ok("Valid")]);
 		}
 	});
 }

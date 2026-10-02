@@ -17,7 +17,7 @@ import {
 import { Effect, Layer } from "effect";
 import type { ChangesetIOError } from "../../src/changesets/errors.js";
 import { ConfigInspector } from "../../src/changesets/services/config-inspector.js";
-import type { RegenPlan } from "../../src/changesets/services/deps-regen.js";
+import type { RegenPlan, RegenStep } from "../../src/changesets/services/deps-regen.js";
 import {
 	DepsRegen,
 	depsChangesetFilename,
@@ -458,6 +458,57 @@ describe("DepsRegen plan/execute", () => {
 			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
 			expect(result._tag).toBe("ChangesetIOError");
 			expect((result as ChangesetIOError).operation).toBe("write");
+		}),
+	);
+
+	it.effect("execute reports each write then each successful delete to onStep, in order", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-steps-"));
+			writeFileSync(join(dir, "stale-one.md"), "stale");
+			const plan: RegenPlan = {
+				toDelete: [
+					{ file: join(dir, "stale-one.md"), package: "@x/a" },
+					{ file: join(dir, "never-existed.md"), package: "@x/a" },
+				],
+				toWrite: [
+					{ file: join(dir, "first.md"), package: "@x/a", diff: cannedDiff },
+					{ file: join(dir, "second.md"), package: "@x/a", diff: cannedDiff },
+				],
+				skippedMixed: [],
+				coexisting: [],
+			};
+			const steps: Array<RegenStep> = [];
+			yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.execute(plan, { onStep: (step) => Effect.sync(() => steps.push(step)) });
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+			expect(steps.map((s) => [s._tag, basename(s.file)])).toEqual([
+				["Written", "first.md"],
+				["Written", "second.md"],
+				["Deleted", "stale-one.md"],
+			]);
+		}),
+	);
+
+	it.effect("execute delivers earlier Written steps before a later write fails", () =>
+		Effect.gen(function* () {
+			const dir = mkdtempSync(join(tmpdir(), "depsregen-steps-"));
+			const plan: RegenPlan = {
+				toDelete: [],
+				toWrite: [
+					{ file: join(dir, "landed.md"), package: "@x/a", diff: cannedDiff },
+					{ file: join(dir, "no-such-subdir", "blocked.md"), package: "@x/a", diff: cannedDiff },
+				],
+				skippedMixed: [],
+				coexisting: [],
+			};
+			const steps: Array<RegenStep> = [];
+			const error = yield* Effect.gen(function* () {
+				const svc = yield* DepsRegen;
+				return yield* svc.execute(plan, { onStep: (step) => Effect.sync(() => steps.push(step)) }).pipe(Effect.flip);
+			}).pipe(Effect.provide(live), Effect.provide(NodeServices.layer));
+			expect(error._tag).toBe("ChangesetIOError");
+			expect(steps.map((s) => [s._tag, basename(s.file)])).toEqual([["Written", "landed.md"]]);
 		}),
 	);
 

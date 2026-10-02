@@ -13,7 +13,11 @@
  * manifest exists but is corrupt or unreadable, `GitSubmoduleError` means
  * the underlying git command failed, and `ReposLockdownError` means the
  * OS-permission lockdown pass on a vendored tree failed -- all three are
- * real failures, logged and reported via a non-zero exit code.
+ * real failures, failing as a `CommandError` (exit 1) with a hint.
+ *
+ * `--ref` and `--purpose` are required. Left off at a terminal, each is asked
+ * for with core's line prompt (`CliPrompt.fallback`); left off anywhere else
+ * (an agent, CI, a pipe) it stays core's missing-flag usage error, exit 64.
  *
  * @example
  * ```bash
@@ -24,17 +28,28 @@
  * @internal
  */
 
-import { CliExit } from "@effected/cli";
+import { CliPrompt } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect, Option } from "effect";
-import { Argument, Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { Argument, Command, Flag, Prompt } from "effect/cli";
+import { Report } from "../../../internal/report.js";
+import { ReposCli } from "../shared.js";
 
 /* v8 ignore start -- CLI option/arg definitions */
 const urlArg = Argument.String("url");
-const refOption = Flag.String("ref").pipe(Flag.withDescription("Ref (tag, branch, or commit) to check out"));
-const purposeOption = Flag.String("purpose").pipe(Flag.withDescription("Why this repo is vendored"));
+// Asked for at a terminal when left off; a missing-flag usage error everywhere else (no `otherwise`).
+const refOption = Flag.String("ref").pipe(
+	Flag.withDescription("Ref (tag, branch, or commit) to check out"),
+	Flag.withFallbackPrompt(
+		CliPrompt.fallback(Prompt.String({ message: "Ref to check out (tag, branch, or commit)" }), { flag: "ref" }),
+	),
+);
+const purposeOption = Flag.String("purpose").pipe(
+	Flag.withDescription("Why this repo is vendored"),
+	Flag.withFallbackPrompt(
+		CliPrompt.fallback(Prompt.String({ message: "Why is this repo vendored?" }), { flag: "purpose" }),
+	),
+);
 const nameOption = Flag.String("name").pipe(
 	Flag.withDescription("Vendored directory name; defaults to the URL's last path segment"),
 	Flag.optional,
@@ -64,24 +79,15 @@ export const runReposAdd = (
 	Effect.gen(function* () {
 		const manager = yield* Repos.ReposManager;
 		const result = yield* manager.add(cwd, opts);
-		yield* Output.ok(`${result.name} @ ${result.ref} -> ${result.path}`);
-		yield* Output.detail("staged — review and commit");
+		yield* Report.print([Report.ok(`${result.name} @ ${result.ref} -> ${result.path}`, "staged — review and commit")]);
 	}).pipe(
-		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, never, CliExit | Stdio.Stdio> => {
-			if (error.kind === "missing") {
-				return Output.skip("no .repos/config.json — nothing vendored");
-			}
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("GitSubmoduleError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
-		Effect.catchTag("ReposLockdownError", (error) => {
-			return CliExit.set(1).pipe(Effect.andThen(Effect.logError(error.message)));
-		}),
+		Effect.catchTag("ReposConfigError", (error) =>
+			error.kind === "missing" ? ReposCli.nothingVendored : ReposCli.fail(`vendor ${opts.url}`)(error),
+		),
+		Effect.catchTag(["GitSubmoduleError", "ReposLockdownError"], ReposCli.fail(`vendor ${opts.url}`)),
 	);
 
-/* v8 ignore start -- CLI registration; handler tested via runReposAdd */
+/* v8 ignore start -- CLI registration; handler tested via runReposAdd, the fallbacks via the command itself */
 export const addCommand = Command.make(
 	"add",
 	{ url: urlArg, ref: refOption, purpose: purposeOption, name: nameOption, sparse: sparseOption, cwd: cwdOption },

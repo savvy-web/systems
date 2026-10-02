@@ -26,6 +26,7 @@ const PROCESS_READERS: ReadonlyArray<string> = [
 	"commands/commit/lint.ts",
 	"commands/lint/check.ts",
 	"commands/lint/init.ts",
+	"main.ts",
 ];
 
 describe("cli source boundaries", () => {

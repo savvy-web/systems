@@ -1,7 +1,9 @@
-import type { CliExit } from "@effected/cli";
+import type { Cancelled, CliExit } from "@effected/cli";
 import type { Repos } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
+import type { CliError } from "effect/cli";
 import { Command } from "effect/cli";
+import type { CommandError } from "../../internal/command-error.js";
+import type { ReportEnv } from "../../internal/report.js";
 
 import { addCommand } from "./commands/add.js";
 import { deregisterCommand } from "./commands/deregister.js";
@@ -46,23 +48,20 @@ const _reposCommand = Command.make("repos").pipe(
  * discharges via `AppLive`. `Repos.ReposDrift` joins the union because
  * `status --drift` runs `Repos.ReposDrift.check` after the status check.
  *
- * The error channel is `Repos.GitSubmoduleError` alone: `add`/`pin`/`note`/
- * `remove`/`rename`/`restore`/`sync`/`deregister` each `catchTag` every error
- * their underlying `ReposManager` method can produce — `ReposConfigError`,
- * `GitSubmoduleError`, `RepoNotFoundError`, `NoteNotFoundError`, and (for the
- * six ops that unlock/re-lock the vendored tree around a git mutation)
- * `ReposLockdownError` — down to a logged message and a non-zero exit code,
- * so none of those propagate past the handler. `status` only `catchTag`s
- * `ReposConfigError`; `GitSubmoduleError` from either `ReposManager.status`
- * or (under `--drift`) `Repos.ReposDrift.check` is the sole channel that
- * escapes uncaught, so it is the only member left in this union.
+ * The error channel is what a handler fails with, never a raw `Repos` error:
+ * every handler maps each error its `ReposManager` method (or the picker's
+ * `status` read) can produce to a self-rendering `CommandError` (exit 1),
+ * except the friendly missing-manifest case and `status --json`'s JSON error
+ * document. A repo name or other positional left off is a
+ * `CliError.ShowHelp` (exit 64) when no one can be asked, and backing out of
+ * a picker or a confirm is the kit's `Cancelled` (exit 130).
  */
 export const reposCommand: Command.Command<
 	"repos",
 	Record<string, never>,
 	Record<string, never>,
-	Repos.GitSubmoduleError,
-	Repos.ReposManager | Repos.ReposDrift | CliExit | Stdio.Stdio
+	CommandError | CliError.ShowHelp | Cancelled,
+	Repos.ReposManager | Repos.ReposDrift | CliExit | ReportEnv
 > = _reposCommand;
 /* v8 ignore stop */
 

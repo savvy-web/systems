@@ -361,3 +361,75 @@ describe("ReleasePlanner.apply changelogModules", () => {
 		}),
 	);
 });
+
+describe("ReleasePlanner.apply onStep", () => {
+	const vfFixture = () => {
+		const root = makeReleaseFixture({
+			packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+			changesets: [{ id: "brave-lions-sing", releases: { "@scope/a": "minor" }, summary: "feat: vf test" }],
+		});
+		roots.push(root);
+		const pkgDir = join(root, "packages/a");
+		const pluginJsonPath = join(pkgDir, "plugin.json");
+		writeFileSync(pluginJsonPath, `${JSON.stringify({ version: "1.0.0" }, null, 2)}\n`, "utf-8");
+		return { root, pkgDir, pluginJsonPath };
+	};
+
+	it.effect("a non-dry apply reports EngineApplied then VersionFilesUpdated, matching the result", () =>
+		Effect.gen(function* () {
+			const { root, pkgDir, pluginJsonPath } = vfFixture();
+			const planner = yield* getPlannerWithVersionFiles({
+				projectDir: root,
+				pkgName: "@scope/a",
+				pkgVersion: "1.0.0",
+				pkgWorkspaceDir: pkgDir,
+				targetFile: pluginJsonPath,
+			});
+			const steps: Array<Changesets.ApplyStep> = [];
+			const result = yield* planner.apply(root, { onStep: (step) => Effect.sync(() => steps.push(step)) });
+			expect(steps.map((s) => s._tag)).toEqual(["EngineApplied", "VersionFilesUpdated"]);
+			const [engine, vf] = steps;
+			if (engine?._tag !== "EngineApplied" || vf?._tag !== "VersionFilesUpdated") {
+				throw new Error("unexpected step order");
+			}
+			expect(engine.touchedFiles).toEqual(result.touchedFiles);
+			expect(engine.releases).toEqual(result.releases);
+			expect(vf.updates).toEqual(result.versionFileUpdates);
+			expect(vf.updates.map((u) => [u.filePath, u.version])).toEqual([[pluginJsonPath, "1.1.0"]]);
+		}),
+	);
+
+	it.effect("a non-dry apply with no versionFiles reports only EngineApplied", () =>
+		Effect.gen(function* () {
+			const root = makeReleaseFixture({
+				packages: [{ dir: "packages/a", name: "@scope/a", version: "1.0.0" }],
+				changesets: [{ id: "brave-pandas-learn", releases: { "@scope/a": "minor" }, summary: "feat: thing" }],
+			});
+			roots.push(root);
+			const planner = yield* getPlanner(root);
+			const steps: Array<Changesets.ApplyStep> = [];
+			yield* planner.apply(root, { onStep: (step) => Effect.sync(() => steps.push(step)) });
+			expect(steps.map((s) => s._tag)).toEqual(["EngineApplied"]);
+		}),
+	);
+
+	it.effect("a dryRun apply reports no steps", () =>
+		Effect.gen(function* () {
+			const { root, pkgDir, pluginJsonPath } = vfFixture();
+			const planner = yield* getPlannerWithVersionFiles({
+				projectDir: root,
+				pkgName: "@scope/a",
+				pkgVersion: "1.0.0",
+				pkgWorkspaceDir: pkgDir,
+				targetFile: pluginJsonPath,
+			});
+			const steps: Array<Changesets.ApplyStep> = [];
+			const result = yield* planner.apply(root, {
+				dryRun: true,
+				onStep: (step) => Effect.sync(() => steps.push(step)),
+			});
+			expect(result.versionFileUpdates).toHaveLength(1);
+			expect(steps).toEqual([]);
+		}),
+	);
+});

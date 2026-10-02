@@ -9,10 +9,12 @@
  * @internal
  */
 
+import type { Block } from "@effected/cli";
+import { Doc } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/cli";
-import { Output } from "../../../internal/output.js";
+import { Report } from "../../../internal/report.js";
 import { requireValidConfig } from "../utils/config-gate.js";
 
 /* v8 ignore start -- CLI option definitions; handler tested via runVersion */
@@ -35,24 +37,77 @@ export function runVersion(dryRun: boolean) {
 		yield* requireValidConfig(cwd);
 
 		const planner = yield* Changesets.ReleasePlanner;
-		const result = yield* planner.apply(cwd, { dryRun });
-
-		if (result.releases.length === 0) {
-			yield* Output.ok("No pending changesets");
+		if (dryRun) {
+			const result = yield* planner.apply(cwd, { dryRun });
+			if (result.releases.length === 0) {
+				yield* Report.print([Report.ok("No pending changesets")]);
+				return;
+			}
+			yield* Report.print([
+				...releaseBlocks(result.releases, true),
+				...versionFileBlocks(result.versionFileUpdates, true),
+			]);
 			return;
 		}
-		const verb = dryRun ? "Would release" : "Released";
-		for (const r of result.releases) {
-			yield* Output.ok(`${verb} ${r.name}: ${r.oldVersion} -> ${r.newVersion} (${r.type})`);
+
+		// A real run prints each phase as apply reports it landing, so a failure
+		// in a later phase still leaves what reached disk on stdout. Whatever no
+		// step reported is printed from the result at the end.
+		let engineReported = false;
+		let versionFilesReported = false;
+		const onStep = (step: Changesets.ApplyStep) =>
+			Effect.suspend(() => {
+				if (step._tag === "EngineApplied") {
+					engineReported = true;
+					return step.releases.length === 0
+						? Effect.void
+						: Report.print([
+								...releaseBlocks(step.releases, false),
+								Report.detail(`Touched ${step.touchedFiles.length} file(s)`),
+							]);
+				}
+				versionFilesReported = true;
+				return Report.print(versionFileBlocks(step.updates, false));
+			});
+		const result = yield* planner.apply(cwd, { onStep });
+
+		if (result.releases.length === 0) {
+			yield* Report.print([Report.ok("No pending changesets")]);
+			return;
 		}
-		if (!dryRun) {
-			yield* Output.detail(`Touched ${result.touchedFiles.length} file(s)`);
+		const remaining: Block[] = [];
+		if (!engineReported) {
+			remaining.push(
+				...releaseBlocks(result.releases, false),
+				Report.detail(`Touched ${result.touchedFiles.length} file(s)`),
+			);
 		}
-		for (const u of result.versionFileUpdates) {
-			yield* Output.detail(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`);
-		}
+		if (!versionFilesReported) remaining.push(...versionFileBlocks(result.versionFileUpdates, false));
+		if (remaining.length > 0) yield* Report.print(remaining);
 	});
 }
+
+/** The columns of the releases table. */
+const RELEASE_COLUMNS = [{ header: "package" }, { header: "version" }, { header: "bump" }] as const;
+
+/**
+ * The releases as one status line (plan-phrased on a dry run) over a
+ * package / old → new / bump table.
+ */
+const releaseBlocks = (releases: ReadonlyArray<Changesets.AppliedReleaseEntry>, dryRun: boolean): Block[] => {
+	const count = `${releases.length} package${releases.length === 1 ? "" : "s"}`;
+	return [
+		dryRun ? Report.line(`Would release ${count}:`) : Report.ok(`Released ${count}`),
+		Doc.table(
+			RELEASE_COLUMNS,
+			releases.map((r) => [r.name, `${r.oldVersion} → ${r.newVersion}`, r.type]),
+		),
+	];
+};
+
+/** One detail line per versionFiles update, plan-phrased on a dry run. */
+const versionFileBlocks = (updates: ReadonlyArray<Changesets.VersionFileUpdateRecord>, dryRun: boolean): Block[] =>
+	updates.map((u) => Report.detail(`${dryRun ? "Would update" : "Updated"} ${u.filePath} -> ${u.version}`));
 
 /* v8 ignore next 4 -- CLI registration; handler tested via runVersion */
 export const versionCommand = Command.make("version", { dryRun: dryRunOption }, ({ dryRun }) =>

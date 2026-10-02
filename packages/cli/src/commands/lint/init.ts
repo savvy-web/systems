@@ -6,7 +6,8 @@
 import { chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import type { JsoncFormattingOptions } from "@effected/jsonc";
+import type { Block } from "@effected/cli";
+import type { JsoncFormattingOptions, JsoncModificationError, JsoncParseError } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import type { SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
 import { ManagedSection } from "@effected/templates";
@@ -26,10 +27,11 @@ import {
 	savvyOkfBlock,
 	savvyToolchainCheck,
 } from "@savvy-web/silk-effects";
-import type { Stdio } from "effect";
 import { Effect, FileSystem } from "effect";
 import type { PlatformError } from "effect/PlatformError";
-import { Output } from "../../internal/output.js";
+import { CommandError } from "../../internal/command-error.js";
+import type { ReportEnv } from "../../internal/report.js";
+import { Report } from "../../internal/report.js";
 import { BIOME_VERSION } from "./biome-version.js";
 
 /** Executable file permission mode. */
@@ -100,10 +102,11 @@ export default Preset.${preset}();
  * @param fs - FileSystem service
  * @param preset - The active preset
  * @param force - Whether to overwrite the entire file
- * @returns Effect that manages the markdownlint config
+ * @returns Effect that manages the markdownlint config, yielding the report lines for what it did
  */
 function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, force: boolean) {
 	return Effect.gen(function* () {
+		const blocks: Array<Block> = [];
 		const configExists = yield* fs.exists(Lint.MARKDOWNLINT_CONFIG_PATH);
 		const fullTemplate = JSON.stringify(Lint.MARKDOWNLINT_TEMPLATE, null, "\t");
 
@@ -111,21 +114,21 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 			// File missing → write full template
 			yield* fs.makeDirectory("lib/configs", { recursive: true });
 			yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, `${fullTemplate}\n`);
-			yield* Output.ok(`Created ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
-			return;
+			blocks.push(Report.ok(`Created ${Lint.MARKDOWNLINT_CONFIG_PATH}`));
+			return blocks;
 		}
 
 		if (preset !== "silk") {
 			// Standard preset: don't manage existing files
-			yield* Output.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: exists (not managed by ${preset} preset)`);
-			return;
+			blocks.push(Report.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: exists (not managed by ${preset} preset)`));
+			return blocks;
 		}
 
 		if (force) {
 			// Force: overwrite entire file with fresh template
 			yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, `${fullTemplate}\n`);
-			yield* Output.ok(`Replaced ${Lint.MARKDOWNLINT_CONFIG_PATH} (--force)`);
-			return;
+			blocks.push(Report.ok(`Replaced ${Lint.MARKDOWNLINT_CONFIG_PATH} (--force)`));
+			return blocks;
 		}
 
 		// Silk preset, no force: surgical management of $schema + ignores; config
@@ -165,17 +168,18 @@ function writeMarkdownlintConfig(fs: FileSystem.FileSystem, preset: PresetType, 
 		const existingConfig = existingParsed.config as Record<string, unknown> | undefined;
 		const configMatches = existingConfig !== undefined && isDeepStrictEqual(existingConfig, Lint.MARKDOWNLINT_CONFIG);
 		if (!configMatches) {
-			yield* Output.warn(
-				`${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template (use --force to overwrite)`,
+			blocks.push(
+				Report.warn(`${Lint.MARKDOWNLINT_CONFIG_PATH}: config rules differ from template (use --force to overwrite)`),
 			);
 		}
 
 		if (applied.length > 0) {
 			yield* fs.writeFileString(Lint.MARKDOWNLINT_CONFIG_PATH, updatedText);
-			yield* Output.ok(`Updated ${applied.join(", ")} in ${Lint.MARKDOWNLINT_CONFIG_PATH}`);
+			blocks.push(Report.ok(`Updated ${applied.join(", ")} in ${Lint.MARKDOWNLINT_CONFIG_PATH}`));
 		} else if (configMatches) {
-			yield* Output.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: up-to-date`);
+			blocks.push(Report.ok(`${Lint.MARKDOWNLINT_CONFIG_PATH}: up-to-date`));
 		}
+		return blocks;
 	});
 }
 
@@ -235,11 +239,13 @@ function biomeConfigRoots(): Effect.Effect<ReadonlyArray<string>, never, Workspa
  *
  * Every failure reads as "say nothing": an unreadable or malformed manifest
  * cannot make the notice wrong, only absent.
+ *
+ * @returns Effect yielding the notice's report lines, empty when none is due
  */
 function noticeLifecycleScripts(): Effect.Effect<
-	void,
+	ReadonlyArray<Block>,
 	never,
-	FileSystem.FileSystem | WorkspaceDiscovery | Stdio.Stdio
+	FileSystem.FileSystem | WorkspaceDiscovery
 > {
 	return Effect.gen(function* () {
 		const fs = yield* FileSystem.FileSystem;
@@ -250,13 +256,15 @@ function noticeLifecycleScripts(): Effect.Effect<
 				Effect.catch(() => Effect.succeed(undefined)),
 			);
 			if (publishesBuiltLinkDirectory(manifest)) {
-				yield* Output.warn(
-					"This workspace publishes through built link directories, so a hook-time install must run lifecycle scripts.",
-				);
-				yield* Output.detail(`Allow them with: git config --local ${LIFECYCLE_SCRIPTS_CONFIG_KEY} true`);
-				return;
+				return [
+					Report.warn(
+						"This workspace publishes through built link directories, so a hook-time install must run lifecycle scripts.",
+						`Allow them with: git config --local ${LIFECYCLE_SCRIPTS_CONFIG_KEY} true`,
+					),
+				];
 			}
 		}
+		return [];
 	});
 }
 
@@ -274,12 +282,14 @@ function noticeLifecycleScripts(): Effect.Effect<
  * volume — `runLintInit` itself chmods hook files through `node:fs/promises`,
  * which no `FileSystem` double can intercept.
  *
- * @returns Effect that syncs biome schemas and logs results
+ * @returns Effect that syncs biome schemas, yielding one report line per config
+ * checked or updated and per root that could not be synced
  *
  * @internal
  */
-export function syncBiomeSchemas(): Effect.Effect<void, never, BiomeSchemaSync | WorkspaceDiscovery | Stdio.Stdio> {
+export function syncBiomeSchemas(): Effect.Effect<ReadonlyArray<Block>, never, BiomeSchemaSync | WorkspaceDiscovery> {
 	return Effect.gen(function* () {
+		const blocks: Array<Block> = [];
 		const syncer = yield* BiomeSchemaSync;
 		const roots = yield* biomeConfigRoots();
 
@@ -290,28 +300,39 @@ export function syncBiomeSchemas(): Effect.Effect<void, never, BiomeSchemaSync |
 			roots.length > 0 ? roots.map((cwd) => ({ cwd })) : [{ cwd: process.cwd() }];
 
 		for (const options of passes) {
-			yield* syncer.sync(BIOME_VERSION, options).pipe(
-				Effect.flatMap((result) =>
-					Effect.gen(function* () {
-						for (const configPath of result.current) {
-							yield* Output.ok(`${configPath}: biome $schema up-to-date`);
-						}
-						for (const configPath of result.updated) {
-							yield* Output.ok(`Updated $schema in ${configPath}`);
-						}
-					}),
+			const passBlocks = yield* syncer.sync(BIOME_VERSION, options).pipe(
+				Effect.map((result) => [
+					...result.current.map((configPath) => Report.ok(`${configPath}: biome $schema up-to-date`)),
+					...result.updated.map((configPath) => Report.ok(`Updated $schema in ${configPath}`)),
+				]),
+				Effect.catchTag("BiomeSyncError", (e) =>
+					Effect.succeed([Report.warn(`Could not sync biome $schema: ${e.message}`)]),
 				),
-				Effect.catchTag("BiomeSyncError", (e) => Output.warn(`Could not sync biome $schema: ${e.message}`)),
 			);
+			blocks.push(...passBlocks);
 		}
+		return blocks;
 	});
 }
 
 /** Make a file executable. */
-function makeExecutable(path: string) {
+function makeExecutable(path: string): Effect.Effect<void, CommandError> {
 	return Effect.tryPromise({
 		try: () => chmod(path, EXECUTABLE_MODE),
-		catch: (e) => new Error(String(e)),
+		catch: (e) =>
+			CommandError.from(e, {
+				message: `could not make ${path} executable`,
+				hint: `Check that you own ${path}, then re-run the init.`,
+			}),
+	});
+}
+
+/** The failure for a `--config` path given as absolute. */
+function absoluteConfigError(config: string): CommandError {
+	return new CommandError({
+		message: "Config path must be relative to repository root, not absolute",
+		detail: [`got ${config}`],
+		hint: "Pass the config path relative to the repository root, e.g. lib/configs/<name>.config.ts.",
 	});
 }
 
@@ -332,6 +353,10 @@ function ensureHookFile(path: string, header: string) {
  * Exported so Task B5's unified `savvy init` orchestrator can invoke the
  * lint-staged init step directly without going through the CLI command layer.
  *
+ * @remarks
+ * Prints a `lint-staged` report section on stdout, one step at a time as each
+ * completes, so a later step's failure still leaves what was written on screen.
+ *
  * @param opts - The same options the CLI command receives
  * @returns An Effect that performs initialization
  *
@@ -343,8 +368,14 @@ export function runLintInit(opts: {
 	preset: "minimal" | "standard" | "silk";
 }): Effect.Effect<
 	void,
-	Error | SectionParseError | SectionRenderError | SectionFileError | PlatformError,
-	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync | WorkspaceDiscovery | Stdio.Stdio
+	| CommandError
+	| JsoncParseError
+	| JsoncModificationError
+	| SectionParseError
+	| SectionRenderError
+	| SectionFileError
+	| PlatformError,
+	ManagedSection | FileSystem.FileSystem | BiomeSchemaSync | WorkspaceDiscovery | ReportEnv
 > {
 	const { force, config, preset } = opts;
 	return Effect.gen(function* () {
@@ -352,10 +383,10 @@ export function runLintInit(opts: {
 		const ms = yield* ManagedSection;
 
 		if (config.startsWith("/")) {
-			yield* Effect.fail(new Error("Config path must be relative to repository root, not absolute"));
+			return yield* Effect.fail(absoluteConfigError(config));
 		}
 
-		yield* Output.heading("lint-staged");
+		yield* Report.print([Report.heading("lint-staged")]);
 
 		yield* fs.makeDirectory(".husky", { recursive: true });
 
@@ -372,9 +403,11 @@ export function runLintInit(opts: {
 			savvyOkfBlock(),
 		]);
 		yield* makeExecutable(Lint.HUSKY_HOOK_PATH);
-		yield* Output.ok(
-			`${force ? "Replaced" : "Synced"} ${Lint.HUSKY_HOOK_PATH} (${preCommitResults.map((r) => r._tag).join(", ")})`,
-		);
+		yield* Report.print([
+			Report.ok(
+				`${force ? "Replaced" : "Synced"} ${Lint.HUSKY_HOOK_PATH} (${preCommitResults.map((r) => r._tag).join(", ")})`,
+			),
+		]);
 
 		// post-checkout / post-merge / post-commit: co-owned savvy-hooks hygiene (when preset enables it).
 		// post-checkout and post-merge additionally carry the savvy-toolchain drift check
@@ -393,37 +426,36 @@ export function runLintInit(opts: {
 				}
 				yield* ms.syncAll(hookPath, sections);
 				yield* makeExecutable(hookPath);
-				yield* Output.ok(`Synced ${hookPath}`);
+				yield* Report.print([Report.ok(`Synced ${hookPath}`)]);
 			}
 		}
 
 		if (presetIncludesShellScripts(preset)) {
-			yield* noticeLifecycleScripts();
+			yield* Report.print(yield* noticeLifecycleScripts());
 		}
 
 		// Write markdownlint config (when preset includes Markdown)
 		if (presetIncludesMarkdown(preset)) {
-			yield* writeMarkdownlintConfig(fs, preset, force);
+			yield* Report.print(yield* writeMarkdownlintConfig(fs, preset, force));
 		}
 
 		// Sync biome $schema URLs across every workspace root
-		yield* syncBiomeSchemas();
+		yield* Report.print(yield* syncBiomeSchemas());
 
 		// Handle config file
 		const configExists = yield* fs.exists(config);
 
 		if (configExists && !force) {
-			yield* Output.warn(`${config} already exists (use --force to overwrite)`);
+			yield* Report.print([Report.warn(`${config} already exists (use --force to overwrite)`)]);
 		} else {
 			const configDir = dirname(config);
 			if (configDir && configDir !== ".") {
 				yield* fs.makeDirectory(configDir, { recursive: true });
 			}
 			yield* fs.writeFileString(config, generateConfigContent(preset));
-			yield* Output.ok(`Created ${config} (preset: ${preset})`);
+			yield* Report.print([Report.ok(`Created ${config} (preset: ${preset})`)]);
 		}
 
-		yield* Output.line("");
-		yield* Output.ok("lint-staged is ready to use");
+		yield* Report.print([Report.line(""), Report.ok("lint-staged is ready to use")]);
 	});
 }

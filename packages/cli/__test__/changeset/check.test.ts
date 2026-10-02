@@ -1,15 +1,17 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, layer } from "@effect/vitest";
+import { afterEach, beforeEach, describe, expect, it, layer } from "@effect/vitest";
+import { Doc } from "@effected/cli";
 import { Effect, Layer, Logger } from "effect";
 
-import { runChangesetCheck } from "../../src/commands/changeset/commands/check.js";
+import { changesetCheckSection, runChangesetCheck } from "../../src/commands/changeset/commands/check.js";
+import { Report } from "../../src/internal/report.js";
 import { Capture } from "../utils/capture.js";
 import { TestExit } from "../utils/exit.js";
 
-/** Logs silenced, plus a non-terminal `Stdio` for the command output the handler now writes. */
-const silentLogger = Layer.merge(Logger.layer([]), Capture.piped);
+/** Logs silenced, plus the fixed presentation environment the handler's report renders under. */
+const silentLogger = Layer.merge(Logger.layer([]), Capture.env);
 
 // A suite-boundary `layer()` is safe here: `Logger.layer([])` is stateless and
 // carries nothing across tests, and this suite never chdirs — each test drives a
@@ -108,5 +110,106 @@ layer(silentLogger)("check command – runChangesetCheck handler", (it) => {
 
 			expect(TestExit.code()).toBe(1);
 		}).pipe(Effect.provide(TestExit.layer)),
+	);
+});
+
+describe("check command – rendering", () => {
+	let tempDir: string;
+
+	beforeEach(() => {
+		tempDir = mkdtempSync(join(tmpdir(), "cli-check-render-"));
+		writeFileSync(join(tempDir, "bad.md"), "# Bad\n");
+	});
+
+	afterEach(() => {
+		rmSync(tempDir, { recursive: true });
+	});
+
+	it.effect("prints a section per file with a position/rule/message table, then the summary", () =>
+		Effect.gen(function* () {
+			const result = yield* Capture.run(runChangesetCheck(tempDir));
+			const file = join(tempDir, "bad.md");
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stdout).toHaveLength(1);
+			const lines = result.stdout[0].split("\n");
+			expect(lines[0]).toBe(file);
+			expect(lines[2]).toMatch(/^position {2}rule {2,}message/);
+			expect(lines[4]).toMatch(/^1:1 {7}changeset-heading-hierarchy {2}h1 headings are not allowed/);
+			expect(lines.at(-1)).toBe("✗ 1 file(s) with errors, 1 error(s) found");
+			// Only the Actions log draws an annotation.
+			expect(result.stdout[0]).not.toContain("::error");
+		}),
+	);
+
+	it.effect("prints the same escape-free table for an agent", () =>
+		Effect.gen(function* () {
+			const human = yield* Capture.run(runChangesetCheck(tempDir));
+			const agent = yield* Capture.run(runChangesetCheck(tempDir), { audience: "agent" });
+
+			expect(agent.stdout).toEqual(human.stdout);
+			expect(agent.stdout[0]).not.toContain("\u001b");
+		}),
+	);
+
+	it.effect("adds an error annotation per finding under GitHub Actions", () =>
+		Effect.gen(function* () {
+			const result = yield* Capture.run(runChangesetCheck(tempDir), { audience: "ci", githubActions: true });
+			const file = join(tempDir, "bad.md");
+
+			expect(result.exitCode).toBe(1);
+			const annotations = result.stdout[0].split("\n").filter((line) => line.startsWith("::error "));
+			expect(annotations).toHaveLength(1);
+			expect(annotations[0]).toMatch(
+				new RegExp(
+					`^::error title=changeset-heading-hierarchy,file=${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")},line=1,col=1::h1 headings`,
+				),
+			);
+		}),
+	);
+
+	it.effect("prints only the success line, with no annotation, when every file passes", () =>
+		Effect.gen(function* () {
+			rmSync(join(tempDir, "bad.md"));
+			const result = yield* Capture.run(runChangesetCheck(tempDir), { audience: "ci", githubActions: true });
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toEqual(["✓ All changeset files passed validation"]);
+		}),
+	);
+
+	it.effect("returns the check as an unprinted section with a failure verdict", () =>
+		Effect.gen(function* () {
+			const result = yield* Capture.run(changesetCheckSection(tempDir));
+
+			expect(result.stdout).toEqual([]);
+			expect(result.exitCode).toBe(0);
+			expect(result.value).toMatchObject({ title: "changesets", verdict: "failure", fixedByInit: false });
+		}),
+	);
+
+	it.effect("returns a success verdict when every file passes", () =>
+		Effect.gen(function* () {
+			rmSync(join(tempDir, "bad.md"));
+			const section = yield* changesetCheckSection(tempDir);
+
+			expect(section.verdict).toBe("success");
+			expect(section.blocks).toEqual([Report.ok("All changeset files passed validation")]);
+		}),
+	);
+
+	it.effect("keeps its annotations when the caller folds the section into a collapsible under Actions", () =>
+		Effect.gen(function* () {
+			const section = yield* changesetCheckSection(tempDir);
+			const result = yield* Capture.run(Report.print([Doc.collapsible(section.title, section.blocks)]), {
+				audience: "ci",
+				githubActions: true,
+			});
+
+			const lines = result.stdout[0].split("\n");
+			expect(lines[0]).toBe("::group::changesets");
+			expect(lines.filter((line) => line.startsWith("::error title=changeset-heading-hierarchy,"))).toHaveLength(1);
+			expect(lines.at(-1)).toBe("::endgroup::");
+		}),
 	);
 });
