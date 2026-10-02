@@ -1,5 +1,104 @@
 # @savvy-web/cli
 
+## 3.6.0
+
+### Features
+
+- `savvy` now renders its output for whoever is reading it, with new global flags to choose the audience explicitly:
+
+```bash
+savvy check --agent        # plain text, never an escape sequence
+savvy check --human        # ANSI colour and links at a terminal
+savvy check --ci           # GitHub Actions log formatting
+savvy check --audience ci  # equivalent long form
+```
+
+- The audience is detected automatically (a terminal, an agent, or CI) and can be forced with `--audience <human|agent|ci>`, `--human`, `--agent`, `--ci`, or the `SAVVY_AUDIENCE` environment variable.
+- Output is ANSI for a person, plain text for an agent or a pipe, and a GitHub Actions log under Actions. It never wraps when piped.
+- Set `SAVVY_LOG_LEVEL` to opt in to diagnostic logging on stderr.
+
+* `savvy` asks for what it needs when a person runs it at a terminal, and confirms before it discards work. Agents, CI and pipes behave as before: a missing required argument is still a usage error (exit 64), and nothing prompts.
+
+* `savvy init` offers a preset picker when `--lint-preset` is omitted, and `--force` asks before overwriting files that already exist.
+
+* `savvy repos` commands that take a repo name (`pin`, `rename`, `note`, `remove`, `deregister`) offer a picker when the name is omitted. `repos add` asks for a missing `--ref` or `--purpose`, and `repos note promote` for a missing `--into`.
+
+* `savvy repos restore` with no names offers the dirty repos to choose from, and `repos restore` and `repos remove` confirm first. Pass `--yes` (`-y`) to skip a confirmation.
+
+* `savvy clean` draws a live progress view at a terminal.
+
+* Reports are richer documents: `savvy check` is one report with a section per tool (a collapsible group under GitHub Actions); `changeset check`, `changeset version`, `changeset deps regen` and `repos status` render tables; `changeset transform --check` shows a diff of the drift.
+
+* Under GitHub Actions, `changeset check` and `lint text` findings are emitted as `::error` annotations.
+
+* Failures render as a short report with a hint for what to do next.
+
+- `Changesets.DepsRegen.execute` and `Changesets.ReleasePlanner.apply` accept an optional `onStep` callback that reports each completed write as it lands, so a caller can show partial progress when a run fails partway.
+
+* Core's generic `--wizard` flag is gone; `--help`, `--version`, `--completions` and `--log-level` remain.
+* A failing changeset step in `savvy init` is reported and sets exit 1, but the commitlint and lint-staged steps still run.
+* The exported command handlers (`run*` from the package index) now require the presentation environment (`CliTheme`, `TerminalEnv`, `Audience` and `CliLinks`, which `savvy` provides from its runtime) in place of `Stdio`. `runCommitCheck` and `runLintCheck` also require `CliExit`, since they set the findings exit code, and `runCheck` now composes sections that each return a `CheckSection`.
+* `@savvy-web/cli` now depends on `ink` and `react`. They load only when a prompt or live view is drawn, never on a non-interactive run.
+* Unchanged: the Claude Code hook handlers, `lint fmt`, the `changeset lint` and `changeset validate-file` line formats, `deps detect`, every `--json` document and `transform --dry-run`. [#736][#736]
+
+```ts
+yield* regen.execute(plan, {
+  onStep: (step) => Effect.logInfo(`${step._tag} ${step.file}`),
+})
+```
+
+- `execute` reports `RegenStep.Written` after each changeset write and `RegenStep.Deleted` after each successful stale-changeset delete.
+
+- `apply` reports `ApplyStep.EngineApplied` once versions, CHANGELOGs and changeset deletions are done, then `ApplyStep.VersionFilesUpdated` when any version file changed. A dry run reports nothing.
+
+- New exported types: `RegenStep`, `DepsRegenExecuteOptions`, `ApplyStep`, `ApplyOptions`, `AppliedReleaseEntry`, `VersionFileUpdateRecord`. Callers that pass no `onStep` are unchanged.
+
+- `savvy changeset deps regen` and `savvy changeset version` now print each completed step as it happens. `deps regen` lists each written and deleted changeset on its own line and ends with `Wrote N fresh and deleted M pure dependency changeset(s)`. `--json` and `--dry-run` output are unchanged. [#736][#736]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | 4.0.0-rc.118 | ^4.0.0 |
+| @effected/cli | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/commands | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/engine | dependency | updated | ^0.2.0 | ^0.3.0 |
+| @effected/git | dependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/jsonc | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/templates | dependency | updated | ^0.9.1 | ^0.10.0 |
+| @effected/workspaces | dependency | updated | ^0.30.3 | ^0.31.0 |
+| @effected/yaml | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @savvy-web/silk-effects | dependency | updated | 9.3.1 | 9.4.0 |
+| effect | dependency | updated | 4.0.0-rc.118 | ^4.0.0 |
+| @effected/env | dependency | added | — | ^0.1.0 |
+| @effected/glob | dependency | added | — | ^0.10.0 |
+| @effected/walker | dependency | added | — | ^0.15.0 |
+| ink | dependency | added | — | ^7.1.1 |
+| react | dependency | added | — | ^19.3.0 |
+
+[#736][#736]
+
+### Other
+
+- The summary line now reads like `3 ok, 1 warning, 2 failed`.
+- The skip glyph is now `↷`.
+- A defect's report now uses a cleaned stack trace followed by the link for filing an issue.
+- The stdout/stderr split, exit codes, and `--json` output are unchanged. [#736][#736]
+
+### Other
+
+- Core's generic `--wizard` flag is gone; `--help`, `--version`, `--completions` and `--log-level` remain.
+- A failing changeset step in `savvy init` is reported and sets exit 1, but the commitlint and lint-staged steps still run.
+- The exported command handlers (`run*` from the package index) now require the presentation environment (`CliTheme`, `TerminalEnv`, `Audience` and `CliLinks`, which `savvy` provides from its runtime) in place of `Stdio`. `runCommitCheck` and `runLintCheck` also require `CliExit`, since they set the findings exit code, and `runCheck` now composes sections that each return a `CheckSection`.
+- `@savvy-web/cli` now depends on `ink` and `react`. They load only when a prompt or live view is drawn, never on a non-interactive run.
+- Unchanged: the Claude Code hook handlers, `lint fmt`, the `changeset lint` and `changeset validate-file` line formats, `deps detect`, every `--json` document and `transform --dry-run`. [#736][#736]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#736]: https://github.com/savvy-web/systems/pull/736
+
 ## 3.5.1
 
 ### Dependencies
