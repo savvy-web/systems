@@ -44,12 +44,15 @@ const { ChangelogTransformer } = Changesets;
 /** The most diff lines `--check` shows under its finding; the rest is elided. */
 const DIFF_CAP = 40;
 
-/** The drifted region of a file: both sides, and its 1-based line range in the original. */
+/**
+ * The drifted region of a file: the original lines the transform removes, the
+ * lines it adds in their place, and how many lines both sides share before
+ * the region.
+ */
 interface DriftWindow {
-	readonly original: string;
-	readonly transformed: string;
-	readonly from: number;
-	readonly to: number;
+	readonly removed: ReadonlyArray<string>;
+	readonly added: ReadonlyArray<string>;
+	readonly head: number;
 }
 
 /** A text's lines; a final line break ends the last line rather than starting an empty one. */
@@ -62,15 +65,11 @@ const lines = (text: string): string[] => {
 /**
  * Narrow `original` and `transformed` to the lines between their common
  * leading and trailing lines, or `undefined` when the two differ only in the
- * file's final line break.
+ * file's final line break. Exported for tests only.
  *
- * @remarks
- * `Doc.diff` is not a line diff: it draws every expected line as removed and
- * every received line as added. So the window holds only lines that changed —
- * an unchanged context line would read as removed and re-added — and on a long
- * CHANGELOG the cap never spends itself on the unchanged head of the file.
+ * @internal
  */
-const driftWindow = (original: string, transformed: string): DriftWindow | undefined => {
+export const driftWindow = (original: string, transformed: string): DriftWindow | undefined => {
 	const a = lines(original);
 	const b = lines(transformed);
 	let head = 0;
@@ -78,12 +77,49 @@ const driftWindow = (original: string, transformed: string): DriftWindow | undef
 	let tail = 0;
 	while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail++;
 	if (head + tail >= a.length && head + tail >= b.length) return undefined;
-	return {
-		original: a.slice(head, a.length - tail).join("\n"),
-		transformed: b.slice(head, b.length - tail).join("\n"),
-		from: head + 1,
-		to: Math.max(head + 1, a.length - tail),
-	};
+	return { removed: a.slice(head, a.length - tail), added: b.slice(head, b.length - tail), head };
+};
+
+/** `1 line`, `3 blank lines`: a count of `lines`, called blank when every one is. */
+const lineCount = (lines: ReadonlyArray<string>): string => {
+	const blank = lines.every((line) => line.trim() === "") ? "blank " : "";
+	return `${lines.length} ${blank}${lines.length === 1 ? "line" : "lines"}`;
+};
+
+/** `lines` drawn as one side of a diff (`+ text`, or a bare `+` for a blank line), unless every one is blank. */
+const listed = (sign: "+" | "-", lines: ReadonlyArray<string>) =>
+	lines.every((line) => line.trim() === "")
+		? []
+		: [Doc.verbatim(lines.map((line) => (line === "" ? sign : `${sign} ${line}`)).join("\n"), { indent: 2 })];
+
+/**
+ * What `--check` shows under its finding for one drifted region.
+ *
+ * @remarks
+ * `Doc.diff` is not a line diff: it draws every expected line as removed and
+ * every received line as added, and an empty side joins to the same `""` as a
+ * single blank line. So the window holds only lines that changed (an unchanged
+ * context line would read as removed and re-added), and a region that only
+ * inserts or only removes lines is described in words, with its non-blank
+ * lines listed, rather than drawn as a diff against nothing. A replacement is
+ * a `Doc.diff`, capped so a long CHANGELOG never floods the report.
+ * Exported for tests only.
+ *
+ * @internal
+ */
+export const driftReport = (file: string, drift: DriftWindow | undefined) => {
+	const finding = `${file} would be modified by transform`;
+	if (drift === undefined) return [Report.warn(finding, "only its final line break differs")];
+	const { removed, added, head } = drift;
+	if (removed.length === 0) {
+		const where = head === 0 ? "at the top" : `after line ${head}`;
+		return [Report.warn(finding, `inserts ${lineCount(added)} ${where}`), ...listed("+", added)];
+	}
+	const span = removed.length === 1 ? `line ${head + 1}` : `lines ${head + 1}-${head + removed.length}`;
+	if (added.length === 0) {
+		return [Report.warn(finding, `removes ${lineCount(removed)} at ${span}`), ...listed("-", removed)];
+	}
+	return [Report.warn(finding, `${span}:`), Doc.diff(removed.join("\n"), added.join("\n"), { cap: DIFF_CAP })];
 };
 
 /* v8 ignore start -- CLI option definitions; handler tested via runTransform */
@@ -134,15 +170,7 @@ export function runTransform(file: string, dryRun: boolean, check: boolean) {
 
 		if (check) {
 			if (result !== content) {
-				const drift = driftWindow(content, result);
-				yield* Report.print(
-					drift === undefined
-						? [Report.warn(`${resolved} would be modified by transform`, "only its final line break differs")]
-						: [
-								Report.warn(`${resolved} would be modified by transform`, `lines ${drift.from}-${drift.to}:`),
-								Doc.diff(drift.original, drift.transformed, { cap: DIFF_CAP }),
-							],
-				);
+				yield* Report.print(driftReport(resolved, driftWindow(content, result)));
 				yield* CliExit.set(1);
 			} else {
 				yield* Report.print([Report.ok(`${resolved} is already formatted`)]);

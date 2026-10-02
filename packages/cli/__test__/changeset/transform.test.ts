@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Layer, Logger } from "effect";
-import { runTransform } from "../../src/commands/changeset/commands/transform.js";
+import { driftReport, driftWindow, runTransform } from "../../src/commands/changeset/commands/transform.js";
+import { Report } from "../../src/internal/report.js";
 import { Capture } from "../utils/capture.js";
 import { TestExit } from "../utils/exit.js";
 
@@ -258,6 +259,63 @@ describe("transform command – runTransform handler", () => {
 			}
 		}),
 	);
+
+	describe("the drift report", () => {
+		/** The `--check` finding for `original` → `transformed`, as printed lines. */
+		const report = (original: string, transformed: string) =>
+			Capture.run(Report.print(driftReport("CHANGELOG.md", driftWindow(original, transformed)))).pipe(
+				Effect.map((result) => result.stdout.join("\n").split("\n")),
+			);
+
+		it.effect("says a blank-line insertion in words instead of drawing an empty diff", () =>
+			Effect.gen(function* () {
+				expect(yield* report("x\ny\n", "x\n\ny\n")).toEqual([
+					"⚠ CHANGELOG.md would be modified by transform",
+					"  inserts 1 blank line after line 1",
+				]);
+			}),
+		);
+
+		it.effect("says a blank-line deletion in words, naming the lines", () =>
+			Effect.gen(function* () {
+				expect(yield* report("x\n\n\ny\n", "x\ny\n")).toEqual([
+					"⚠ CHANGELOG.md would be modified by transform",
+					"  removes 2 blank lines at lines 2-3",
+				]);
+			}),
+		);
+
+		it.effect("lists a non-blank insertion's lines with no phantom removed line", () =>
+			Effect.gen(function* () {
+				expect(yield* report("# A\n", "# A\n\n- added\n")).toEqual([
+					"⚠ CHANGELOG.md would be modified by transform",
+					"  inserts 2 lines after line 1",
+					"  +",
+					"  + - added",
+				]);
+			}),
+		);
+
+		it.effect("names an insertion at the top of the file", () =>
+			Effect.gen(function* () {
+				expect((yield* report("x\n", "# Title\nx\n")).slice(0, 2)).toEqual([
+					"⚠ CHANGELOG.md would be modified by transform",
+					"  inserts 1 line at the top",
+				]);
+			}),
+		);
+
+		it.effect("still draws a replacement as a diff of only the changed lines", () =>
+			Effect.gen(function* () {
+				expect(yield* report("a\nold\nz\n", "a\nnew\nz\n")).toEqual([
+					"⚠ CHANGELOG.md would be modified by transform",
+					"  line 2:",
+					"- old",
+					"+ new",
+				]);
+			}),
+		);
+	});
 });
 
 /** A changelog whose sections are out of order, so the transform reorders them. */
