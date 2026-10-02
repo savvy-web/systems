@@ -1,5 +1,21 @@
 # @savvy-web/tsdown-plugins
 
+## 2.8.19
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| std-env | dependency | updated | ^4.2.0 | ^4.3.0 |
+
+[#738][#738]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#738]: https://github.com/savvy-web/systems/pull/738
+
 ## 2.8.18
 
 ### Dependencies
