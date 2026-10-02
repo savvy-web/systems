@@ -36,7 +36,7 @@
 	"devDependencies": {
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
-		"rolldown-pnpm-config": "^1.0.10",
+		"rolldown-pnpm-config": "^2.0.0",
 		"typescript": "catalog:build"
 	},
 	"engines": {
