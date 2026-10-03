@@ -1,5 +1,21 @@
 # @savvy-web/cli
 
+## 3.7.0
+
+### Features
+
+- upgrades Biome of 2.5.15
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 9.4.0 | 9.4.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 3.6.0
 
 ### Features
@@ -85,13 +101,11 @@ yield* regen.execute(plan, {
 - A defect's report now uses a cleaned stack trace followed by the link for filing an issue.
 - The stdout/stderr split, exit codes, and `--json` output are unchanged. [#736][#736]
 
-### Other
-
-- Core's generic `--wizard` flag is gone; `--help`, `--version`, `--completions` and `--log-level` remain.
-- A failing changeset step in `savvy init` is reported and sets exit 1, but the commitlint and lint-staged steps still run.
-- The exported command handlers (`run*` from the package index) now require the presentation environment (`CliTheme`, `TerminalEnv`, `Audience` and `CliLinks`, which `savvy` provides from its runtime) in place of `Stdio`. `runCommitCheck` and `runLintCheck` also require `CliExit`, since they set the findings exit code, and `runCheck` now composes sections that each return a `CheckSection`.
-- `@savvy-web/cli` now depends on `ink` and `react`. They load only when a prompt or live view is drawn, never on a non-interactive run.
-- Unchanged: the Claude Code hook handlers, `lint fmt`, the `changeset lint` and `changeset validate-file` line formats, `deps detect`, every `--json` document and `transform --dry-run`. [#736][#736]
+* Core's generic `--wizard` flag is gone; `--help`, `--version`, `--completions` and `--log-level` remain.
+* A failing changeset step in `savvy init` is reported and sets exit 1, but the commitlint and lint-staged steps still run.
+* The exported command handlers (`run*` from the package index) now require the presentation environment (`CliTheme`, `TerminalEnv`, `Audience` and `CliLinks`, which `savvy` provides from its runtime) in place of `Stdio`. `runCommitCheck` and `runLintCheck` also require `CliExit`, since they set the findings exit code, and `runCheck` now composes sections that each return a `CheckSection`.
+* `@savvy-web/cli` now depends on `ink` and `react`. They load only when a prompt or live view is drawn, never on a non-interactive run.
+* Unchanged: the Claude Code hook handlers, `lint fmt`, the `changeset lint` and `changeset validate-file` line formats, `deps detect`, every `--json` document and `transform --dry-run`. [#736][#736]
 
 ### Thanks
 
