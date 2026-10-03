@@ -39,7 +39,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.10",
+							range: "^2.2.11",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -49,7 +49,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.3",
+							range: "^26.6.4",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -74,7 +74,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.11",
+							range: "^1.2.12",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -98,17 +98,17 @@ await build({
 				docs: {
 					packages: {
 						"@rspress/core": {
-							range: "^2.0.22",
+							range: "^2.0.23",
 							peer: "^2.0.0",
 							strategy: "lock-minor",
 						},
 						"@rspress/plugin-sitemap": {
-							range: "^2.0.22",
-							peer: "^2.0.22",
+							range: "^2.0.23",
+							peer: "^2.0.23",
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.3",
+							range: "^26.6.4",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -143,7 +143,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.1",
+							range: "^8.3.2",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
@@ -157,8 +157,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.14",
-							peer: "2.5.14",
+							range: "2.5.15",
+							peer: "2.5.15",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -197,8 +197,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.11.5",
-							peer: "^2.11.5",
+							range: "^2.11.6",
+							peer: "^2.11.6",
 							strategy: "lock",
 						},
 					},
@@ -211,7 +211,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.3",
+							range: "^26.6.4",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -279,27 +279,27 @@ await build({
 				test: {
 					packages: {
 						"@vitest/expect": {
-							range: "^5.0.2",
+							range: "^5.0.3",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-istanbul": {
-							range: "^5.0.2",
+							range: "^5.0.3",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-v8": {
-							range: "^5.0.2",
+							range: "^5.0.3",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						vitest: {
-							range: "^5.0.2",
+							range: "^5.0.3",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.1",
+							range: "^8.3.2",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
@@ -320,6 +320,7 @@ await build({
 				"@savvy-web/*",
 				"@spencerbeggs/*",
 				"@okfit/*",
+				"@pluginfinity/*",
 				"@pnpm/*",
 				"@rolldown/*",
 				"@tsdoctor/*",
@@ -328,6 +329,7 @@ await build({
 				"@vitest-agent/*",
 				"@yarnpkg/*",
 				"oxc-parser",
+				"pluginfinity",
 				"pnpm",
 				"reposets",
 				"rolldown-pnpm-config",
