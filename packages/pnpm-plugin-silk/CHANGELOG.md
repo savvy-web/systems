@@ -1,5 +1,16 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.47.0
+
+### Features
+
+- adds `@pluginfinity/*` and `pluginfinity` packages to `minimumReleaseAgeExcludes`
+- bumps standard tooling dependencies
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.46.0
 
 ### Features
