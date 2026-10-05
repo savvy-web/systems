@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: spencerbeggs/claude-code-marketplace-manager@v1
+      - uses: spencerbeggs/claude-code-marketplace-manager@v2
         with:
           app-client-id: ${{ secrets.APP_CLIENT_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
