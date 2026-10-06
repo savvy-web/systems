@@ -1,5 +1,24 @@
 # @savvy-web/tsdown-plugins
 
+## 2.8.20
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.0 | ^4.0.1 |
+| @effected/jsonc | dependency | updated | ^0.15.0 | ^0.15.1 |
+| @effected/workspaces | dependency | updated | ^0.31.0 | ^0.32.0 |
+| effect | dependency | updated | ^4.0.0 | ^4.0.1 |
+
+[#746][#746]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#746]: https://github.com/savvy-web/systems/pull/746
+
 ## 2.8.19
 
 ### Dependencies

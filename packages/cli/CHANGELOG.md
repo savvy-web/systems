@@ -1,5 +1,28 @@
 # @savvy-web/cli
 
+## 3.7.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.0 | ^4.0.1 |
+| @effected/cli | dependency | updated | ^0.11.0 | ^0.13.0 |
+| @effected/engine | dependency | updated | ^0.3.0 | ^0.4.0 |
+| @effected/jsonc | dependency | updated | ^0.15.0 | ^0.15.1 |
+| @effected/workspaces | dependency | updated | ^0.31.0 | ^0.32.0 |
+| @effected/yaml | dependency | updated | ^0.19.0 | ^0.19.1 |
+| @savvy-web/silk-effects | dependency | updated | 9.4.0 | 9.4.1 |
+| effect | dependency | updated | ^4.0.0 | ^4.0.1 |
+
+[#746][#746]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#746]: https://github.com/savvy-web/systems/pull/746
+
 ## 3.7.0
 
 ### Features

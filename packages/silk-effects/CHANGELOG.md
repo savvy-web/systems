@@ -1,5 +1,27 @@
 # @savvy-web/silk-effects
 
+## 9.4.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/jsonc | dependency | updated | ^0.15.0 | ^0.15.1 |
+| @effected/markdown | dependency | updated | ^0.15.0 | ^0.15.1 |
+| @effected/toml | dependency | updated | ^0.11.0 | ^0.11.1 |
+| @effected/yaml | dependency | updated | ^0.19.0 | ^0.19.1 |
+| @savvy-web/silk-core | dependency | updated | 0.4.9 | 0.4.10 |
+| shell-quote | dependency | updated | ^1.11.0 | ^1.12.0 |
+| @effected/workspaces | peerDependency | updated | ^0.31.0 | ^0.32.0 |
+
+[#746][#746]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#746]: https://github.com/savvy-web/systems/pull/746
+
 ## 9.4.0
 
 ### Features
