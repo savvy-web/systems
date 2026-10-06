@@ -50,7 +50,7 @@
 		"image-size": "^2.0.4",
 		"react": "catalog:build",
 		"react-dom": "catalog:build",
-		"satori": "^0.33.4",
+		"satori": "^0.35.0",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"
 	},
@@ -61,7 +61,7 @@
 		"@types/react-dom": "catalog:build:peers",
 		"react": "catalog:build:peers",
 		"react-dom": "catalog:build:peers",
-		"satori": "^0.33.4",
+		"satori": "^0.35.0",
 		"typescript": "catalog:build:peers"
 	},
 	"peerDependenciesMeta": {
