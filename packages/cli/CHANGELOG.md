@@ -1,5 +1,34 @@
 # @savvy-web/cli
 
+## 3.7.1
+
+### Bug Fixes
+
+- A cancelled prompt (Esc, Ctrl-C) or a prompt refused in a non-interactive run no longer prints the "This is a bug in savvy" footer; it gets the kit's fixed one-line report, matching the `isCancelled` and `isNotInteractive` flags `@effected/cli` 0.13 adds to `FailureDetails`. [#749][#749]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.0 | ^4.0.1 |
+| @effected/cli | dependency | updated | ^0.11.0 | ^0.13.0 |
+| @effected/engine | dependency | updated | ^0.3.0 | ^0.4.0 |
+| @effected/jsonc | dependency | updated | ^0.15.0 | ^0.15.1 |
+| @effected/workspaces | dependency | updated | ^0.31.0 | ^0.32.0 |
+| @effected/yaml | dependency | updated | ^0.19.0 | ^0.19.1 |
+| @savvy-web/silk-effects | dependency | updated | 9.4.0 | 9.4.1 |
+| effect | dependency | updated | ^4.0.0 | ^4.0.1 |
+
+[#746][#746]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) and [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#746]: https://github.com/savvy-web/systems/pull/746
+
+[#749]: https://github.com/savvy-web/systems/pull/749
+
 ## 3.7.0
 
 ### Features
