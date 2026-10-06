@@ -18,9 +18,15 @@ class DrawnError extends Data.TaggedError("DrawnError")<{ readonly message: stri
 const KIT_REPORT = ["✗ kit status line", "  at kit frame"];
 
 /** A `FailureDetails` for a render under test. */
-const details = (cause: Cause.Cause<unknown>, isDefect: boolean): FailureDetails => ({
+const details = (
+	cause: Cause.Cause<unknown>,
+	isDefect: boolean,
+	flags: { readonly isCancelled?: boolean; readonly isNotInteractive?: boolean } = {},
+): FailureDetails => ({
 	cause,
 	isDefect,
+	isCancelled: flags.isCancelled ?? false,
+	isNotInteractive: flags.isNotInteractive ?? false,
 	defaultLines: KIT_REPORT,
 	lines: () => KIT_REPORT,
 });
@@ -84,6 +90,22 @@ describe("FailureLine.render", () => {
 
 		it("never hands a typed failure the kit's report", () => {
 			expect(typed(new CleanError({ reason: "x" }))).not.toContain(KIT_REPORT[0]);
+		});
+	});
+
+	describe("a cancel or a not-interactive refusal is not a bug", () => {
+		const quit = new CleanError({ reason: "quit" });
+
+		it("gives a cancel that died the kit's line without the issue footer", () => {
+			expect(FailureLine.render(quit, details(Cause.die(quit), true, { isCancelled: true }))).toEqual(KIT_REPORT);
+		});
+
+		it("gives a typed cancel the kit's line, not a one-line description", () => {
+			expect(FailureLine.render(quit, details(Cause.fail(quit), false, { isCancelled: true }))).toEqual(KIT_REPORT);
+		});
+
+		it("gives a not-interactive refusal that died the kit's line without the issue footer", () => {
+			expect(FailureLine.render(quit, details(Cause.die(quit), true, { isNotInteractive: true }))).toEqual(KIT_REPORT);
 		});
 	});
 });

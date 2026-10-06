@@ -56,6 +56,11 @@ const drawsItself = (error: unknown): boolean =>
  *   CLI's own `CommandError`) has already said how it reads, so it gets the
  *   kit's report of that document (`details.defaultLines`), drawn for the
  *   run's audience, instead of one line.
+ * - A cancel (the person quit a prompt) or a not-interactive refusal (a
+ *   prompt asked for in a pipe, an agent or CI) is neither a bug nor a
+ *   typed failure of savvy's own, whichever channel it arrived through, so
+ *   it gets the kit's fixed line (`details.defaultLines`) and is checked
+ *   before `isDefect`: a cancel from a prompt fallback arrives as a defect.
  * - A defect — a `die`, a thrown exception — is a bug in savvy. It gets the
  *   kit's default report (`details.defaultLines`: the status line and the
  *   program's own stack frames, drawn for the run's audience) followed by
@@ -67,6 +72,7 @@ export class FailureLine {
 	private constructor() {}
 
 	static readonly render = (error: unknown, details: FailureDetails): string | ReadonlyArray<string> => {
+		if (details.isCancelled || details.isNotInteractive) return details.defaultLines;
 		if (details.isDefect) {
 			return [
 				...details.defaultLines,
