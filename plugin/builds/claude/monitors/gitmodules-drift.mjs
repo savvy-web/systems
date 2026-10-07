@@ -1,0 +1,260 @@
+#!/usr/bin/env node
+// Background monitor: watches the two local sources the vendored-repos
+// manifest is reconciled against -- <project>/.gitmodules and
+// <project>/.repos/config.json (see skills/repos/SKILL.md) -- and notifies
+// when `savvy repos status --drift --json` reports drift between the
+// manifest, .gitmodules, the worktree, and `git submodule status`.
+//
+// Filesystem + subprocess only -- no network, ever. Never mutates anything:
+// this only ever runs the read-only `repos status --drift` report.
+//
+// Fails open (silent) whenever the savvy CLI is not available in this
+// project, same posture and probe (`<runner> savvy --version`) as
+// hooks/post-tool-use/changeset-validate-changeset.sh.
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, realpathSync, watch } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+const REPOS_DIR = join(ROOT, ".repos");
+// Debounce window for a burst of fs.watch events (e.g. an editor's
+// write-then-rename save sequence) collapsing into a single drift check.
+// Kept >= 500ms per the monitor's spec.
+const DEBOUNCE_MS = 500;
+
+// Finite timeout for both spawnSync calls below -- a hung/stalled `savvy`
+// process (e.g. a runner wedged waiting on a registry) used to block this
+// monitor forever, since spawnSync with no `timeout` waits indefinitely.
+// `spawnSync` reports a timed-out child via `result.error` (ETIMEDOUT), which
+// the existing `probe.error`/`result.error` fail-open checks below already
+// route to `null` -- no new branch needed, only the option. Overridable via
+// env so a test can set it to a few milliseconds and assert the stalled-
+// runner case without actually waiting 30s.
+const SPAWN_TIMEOUT_MS = Number(process.env.GITMODULES_DRIFT_SPAWN_TIMEOUT_MS) || 30_000;
+
+// Delay before the one startup sweep (see `main`). Must clear the SessionStart
+// hook's `savvy repos sync`, whose own watchdog is 6s (SILK_REPOS_SYNC_TIMEOUT)
+// -- that sync unlocks and re-locks vendored trees and writes git config, so a
+// drift read landing mid-sync reports transient state that is nobody's actual
+// problem. Overridable via env so a test need not wait.
+const STARTUP_SWEEP_DELAY_MS = Number(process.env.GITMODULES_DRIFT_STARTUP_DELAY_MS) || 8000;
+
+// --- package manager resolution --------------------------------------------
+
+/**
+ * Detect the package manager for `root`. Mirrors
+ * hooks/lib/hook-env.sh's detect_package_manager/package_manager_exec:
+ * prefer SILK_PACKAGE_MANAGER (SessionStart's cached detection, same env var
+ * changeset-validate-changeset.sh reads), then the package.json
+ * devEngines.packageManager name (first entry when an array), then the legacy
+ * "packageManager" field, then a lockfile, falling open to npm at every step.
+ */
+export function detectPackageManager(root) {
+	const cached = process.env.SILK_PACKAGE_MANAGER;
+	if (cached) return cached;
+	try {
+		const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+		const declared = pkg.devEngines?.packageManager;
+		const engine = Array.isArray(declared) ? declared[0] : declared;
+		if (typeof engine?.name === "string" && engine.name) return engine.name;
+		const field = typeof pkg.packageManager === "string" ? pkg.packageManager.split("@")[0] : "";
+		if (field) return field;
+	} catch {
+		// no package.json / unreadable / malformed -- fall through to lockfiles
+	}
+	if (existsSync(join(root, "pnpm-lock.yaml"))) return "pnpm";
+	if (existsSync(join(root, "yarn.lock"))) return "yarn";
+	if (existsSync(join(root, "bun.lock"))) return "bun";
+	return "npm";
+}
+
+/** Runner argv prefix (including the "savvy" binary name) for a package manager. */
+function runnerFor(pm) {
+	switch (pm) {
+		case "pnpm":
+			return ["pnpm", "exec", "savvy"];
+		case "yarn":
+			return ["yarn", "exec", "savvy"];
+		case "bun":
+			return ["bunx", "savvy"];
+		default:
+			return ["npx", "--no", "--", "savvy"];
+	}
+}
+
+// --- drift check -------------------------------------------------------------
+
+/**
+ * Run `savvy repos status --drift --json` and return the parsed payload, or
+ * null when the CLI is unavailable or its output is not parseable JSON.
+ *
+ * `savvy repos status --drift` intentionally exits 1 when drift (or a plain
+ * !clean status) is present, mirroring the CLI's existing convention -- that
+ * is data, not failure, so only a genuine spawn error or unparseable stdout
+ * falls back to null. The `--version` probe first (same as
+ * changeset-validate-changeset.sh) keeps the "CLI unavailable" case
+ * (unknown command, project has no savvy installed, ...) from ever reaching
+ * the drift call at all.
+ */
+export function checkDrift(root = ROOT) {
+	const [bin, ...rest] = runnerFor(detectPackageManager(root));
+	let probe;
+	try {
+		probe = spawnSync(bin, [...rest, "--version"], { cwd: root, encoding: "utf8", timeout: SPAWN_TIMEOUT_MS });
+	} catch {
+		return null;
+	}
+	if (probe.error || probe.status !== 0) return null;
+
+	let result;
+	try {
+		result = spawnSync(bin, [...rest, "repos", "status", "--drift", "--json"], {
+			cwd: root,
+			encoding: "utf8",
+			timeout: SPAWN_TIMEOUT_MS,
+		});
+	} catch {
+		return null;
+	}
+	if (result.error || typeof result.stdout !== "string") return null;
+	try {
+		return JSON.parse(result.stdout);
+	} catch {
+		return null;
+	}
+}
+
+// --- pure diagnose ------------------------------------------------------------
+
+/**
+ * Pure formatting step: given the parsed `repos status --drift --json`
+ * payload (or null, for "CLI unavailable" / "unparseable"), return one line
+ * per detected drift naming its kind -- or no lines at all when the payload
+ * is absent or reports no drift. Mirrors the CLI's own
+ * `${name}: ${kind} — ${detail}` per-drift line (packages/cli's
+ * `repos status` handler).
+ */
+export function diagnose(payload) {
+	const drifts = payload?.drift?.drifts;
+	if (!Array.isArray(drifts) || drifts.length === 0) return [];
+	return drifts.map((d) => `.repos drift: ${d?.name ?? "?"}: ${d?.kind ?? "?"} — ${d?.detail ?? "(no detail)"}`);
+}
+
+function notify(root = ROOT) {
+	try {
+		for (const line of diagnose(checkDrift(root))) console.log(line);
+	} catch {
+		// never crash the session
+	}
+}
+
+// --- main ----------------------------------------------------------------------
+
+/**
+ * Watch a directory for a specific filename, tolerating the directory not
+ * existing yet (e.g. a project with nothing vendored has no .repos/ at all).
+ * Returns the FSWatcher, or null if the directory could not be watched.
+ */
+function watchFileIn(dir, filename, onEvent) {
+	try {
+		return watch(dir, (_event, changedFile) => {
+			if (changedFile === filename) onEvent();
+		});
+	} catch {
+		return null;
+	}
+}
+
+async function main() {
+	// pluginfinity's monitor contract: PLUGINFINITY_MONITOR_MAX_TICKS=<n> stops
+	// the monitor after n polls (bats run_monitor sets it; the plugin never
+	// does). The registered command passes no argv, so 1 stands in for --once.
+	// This monitor is event-driven: a poll is one drift check.
+	const maxTicks = maxTicksFromEnv();
+	const once = process.argv.includes("--once") || maxTicks === 1;
+	if (once) {
+		notify();
+		return;
+	}
+
+	let timer = null;
+	let sweep = null;
+	let ticks = 0;
+	const watchers = [];
+	const check = () => {
+		notify();
+		ticks += 1;
+		if (maxTicks !== undefined && ticks >= maxTicks) {
+			if (timer) clearTimeout(timer);
+			if (sweep) clearTimeout(sweep);
+			for (const w of watchers) w.close();
+		}
+	};
+	const scheduled = () => {
+		if (maxTicks !== undefined && ticks >= maxTicks) return;
+		if (timer) clearTimeout(timer);
+		timer = setTimeout(check, DEBOUNCE_MS);
+	};
+
+	// One startup sweep, then watch. The watchers below only ever fire on a
+	// CHANGE to .gitmodules or .repos/config.json, so drift that already exists
+	// when the session opens is invisible to them -- and several drift kinds
+	// touch neither file by construction: a stale local registration lives in
+	// .git/config, and a diverged nested submodule lives one level down inside
+	// a vendored tree. Those could sit unreported indefinitely while every
+	// authority this monitor watches stayed byte-identical.
+	//
+	// `unref` so this timer alone never holds the process open, and it is
+	// deliberately NOT routed through `scheduled`: a real file change arriving
+	// inside the delay window must not push the sweep later, and the sweep
+	// must not cancel that change's own debounce.
+	sweep = setTimeout(check, STARTUP_SWEEP_DELAY_MS);
+	sweep.unref?.();
+
+	// Every watcher is kept so a bounded run (PLUGINFINITY_MONITOR_MAX_TICKS)
+	// can close them all once its last check is done.
+	const keep = (w) => {
+		if (w) watchers.push(w);
+		return w;
+	};
+
+	// .gitmodules lives directly under the project root, which always exists.
+	keep(watchFileIn(ROOT, ".gitmodules", scheduled));
+
+	// .repos/config.json needs .repos/ to exist first. If it is missing at
+	// startup (nothing vendored yet), watch the root for the directory's
+	// creation and establish the config.json watcher once it appears.
+	let reposWatcher = keep(watchFileIn(REPOS_DIR, "config.json", scheduled));
+	if (!reposWatcher) {
+		keep(
+			watchFileIn(ROOT, ".repos", () => {
+				if (!reposWatcher) reposWatcher = keep(watchFileIn(REPOS_DIR, "config.json", scheduled));
+				scheduled();
+			}),
+		);
+	}
+}
+
+/** PLUGINFINITY_MONITOR_MAX_TICKS as a positive integer, else undefined (unbounded). */
+function maxTicksFromEnv() {
+	const n = Number(process.env.PLUGINFINITY_MONITOR_MAX_TICKS);
+	return Number.isInteger(n) && n > 0 ? n : undefined;
+}
+
+// Compare via realpathSync so a symlinked plugin root (argv[1] is the
+// symlink, import.meta.url the resolved real path) still matches -- same
+// rationale as the sibling monitors.
+function invokedDirectly() {
+	const entry = process.argv[1];
+	if (!entry) return false;
+	try {
+		return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+	} catch {
+		return false;
+	}
+}
+
+if (invokedDirectly()) {
+	await main();
+}

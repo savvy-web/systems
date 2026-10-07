@@ -1,0 +1,11 @@
+{
+	"session_id": "test-post-bash-unrelated",
+	"hook_event_name": "PostToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "ls -la"
+	},
+	"tool_response": {
+		"interrupted": false
+	}
+}

@@ -1,5 +1,5 @@
 /**
- * Drift lint: the silk plugin skills duplicate the marker literals and the
+ * Drift lint: the silk plugin skills (this package's `skills/` source) duplicate the marker literals and the
  * two closing-reference spellings for agent readability, and this suite is
  * what keeps those copies honest (ruled in savvy-web/systems#419: the PrBody
  * exports are the single source of truth; the skills are duplicated WITH a
@@ -13,18 +13,17 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PrBody } from "@savvy-web/silk-core";
 import { describe, expect, it } from "vitest";
-import { Markers } from "../../src/pr-body/markers.js";
+
+const { Markers } = PrBody;
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, "..", "..", "..", "..");
-const prBodySkill = readFileSync(join(repoRoot, "plugins", "silk", "skills", "pr-body", "SKILL.md"), "utf8");
-const commitCreateSkill = readFileSync(
-	join(repoRoot, "plugins", "silk", "skills", "commit-create", "SKILL.md"),
-	"utf8",
-);
+const pluginRoot = join(here, "..");
+const prBodySkill = readFileSync(join(pluginRoot, "skills", "pr-body", "SKILL.md"), "utf8");
+const commitCreateSkill = readFileSync(join(pluginRoot, "skills", "commit-create", "SKILL.md"), "utf8");
 
-describe("plugins/silk/skills/pr-body/SKILL.md carries the exported contract", () => {
+describe("skills/pr-body/SKILL.md carries the exported contract", () => {
 	it("control: the skill file was found and is substantial", () => {
 		// A moved or truncated file would green every substring miss below.
 		expect(prBodySkill.length).toBeGreaterThan(1000);
@@ -55,7 +54,7 @@ describe("plugins/silk/skills/pr-body/SKILL.md carries the exported contract", (
 	});
 });
 
-describe("plugins/silk/skills/commit-create/SKILL.md carries the trailer spelling", () => {
+describe("skills/commit-create/SKILL.md carries the trailer spelling", () => {
 	it("control: the skill file was found and is substantial", () => {
 		expect(commitCreateSkill.length).toBeGreaterThan(1000);
 		expect(commitCreateSkill).toContain("# commit-create");

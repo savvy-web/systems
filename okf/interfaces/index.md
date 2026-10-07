@@ -2,6 +2,7 @@
 
 * [@savvy-web/pnpm-plugin-silk catalog names](silk-catalogs.md) - The catalog names a consumer manifest may reference after adding this config dependency, what the plugin hoists, and what a consumer must not assume about catalog contents.
 * [@savvy-web/silk export map](silk-shim-exports.md) - The subpath exports a config file imports from @savvy-web/silk: the module shape each shim promises to reproduce, stable independent of how silk-effects implements it.
+* [Copilot plugin marketplace](copilot-plugin-marketplace.md) - The GitHub Copilot marketplace file at .github/plugin/marketplace.json, which lists the silk plugin from plugin/builds/copilot at a pinned commit sha that CI advances on release.
 * [Issue reference grammar](issue-reference-grammar.md) - The single GitHub closing-keyword and #N grammar every call site in this repo parses issue references with, so no two parsers disagree with each other or with GitHub.
 * [Managed hook sections](managed-hook-sections.md) - The BEGIN/END MANAGED SECTION marker contract that lets multiple Silk tools own adjacent blocks inside one shared husky hook file without clobbering each other or user content.
 * [PrBody contract](pr-body-contract.md) - The managed-region contract shared by every writer of a Silk PR description: what survives regeneration, the two closing-reference spellings, and the frozen silk-release marker grammar.

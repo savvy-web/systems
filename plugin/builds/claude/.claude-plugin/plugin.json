@@ -1,0 +1,63 @@
+{
+	"name": "silk",
+	"version": "4.3.4",
+	"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@savvyweb.systems",
+		"url": "https://savvyweb.systems"
+	},
+	"homepage": "https://github.com/savvy-web/systems",
+	"repository": "https://github.com/savvy-web/systems.git",
+	"license": "MIT",
+	"keywords": [
+		"silk-suite",
+		"changesets",
+		"commitlint",
+		"lint-staged",
+		"biome",
+		"code-quality",
+		"turborepo"
+	],
+	"mcpServers": {
+		"savvy-mcp": {
+			"command": "sh",
+			"args": [
+				"${CLAUDE_PLUGIN_ROOT}/bin/start-mcp.sh"
+			],
+			"env": {
+				"PLUGINFINITY_HOST": "claude",
+				"PLUGINFINITY_PLUGIN": "silk",
+				"PLUGINFINITY_LIB": "${CLAUDE_PLUGIN_ROOT}/lib/pluginfinity"
+			}
+		}
+	},
+	"lspServers": {
+		"biome": {
+			"command": "sh",
+			"args": [
+				"${CLAUDE_PLUGIN_ROOT}/bin/biome-lsp.sh"
+			],
+			"extensionToLanguage": {
+				".cjs": "javascript",
+				".css": "css",
+				".cts": "typescript",
+				".gql": "graphql",
+				".graphql": "graphql",
+				".js": "javascript",
+				".json": "json",
+				".jsonc": "jsonc",
+				".jsx": "javascriptreact",
+				".mjs": "javascript",
+				".mts": "typescript",
+				".ts": "typescript",
+				".tsx": "typescriptreact"
+			},
+			"env": {
+				"PLUGINFINITY_HOST": "claude",
+				"PLUGINFINITY_PLUGIN": "silk",
+				"PLUGINFINITY_LIB": "${CLAUDE_PLUGIN_ROOT}/lib/pluginfinity"
+			}
+		}
+	}
+}

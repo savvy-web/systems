@@ -1,0 +1,6 @@
+{
+	"session_id": "test-mcp-gitkraken-commit",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "mcp__gitkraken__git_add_or_commit",
+	"tool_input": {}
+}

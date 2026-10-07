@@ -1,0 +1,31 @@
+{
+	"name": "savvy-web-systems",
+	"metadata": {
+		"description": "GitHub Copilot plugins for the Savvy Web Silk Suite",
+		"version": "1.0.0"
+	},
+	"owner": {
+		"name": "Savvy Web Systems",
+		"email": "spencer@savvyweb.systems"
+	},
+	"plugins": [
+		{
+			"name": "silk",
+			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
+			"author": {
+				"name": "C. Spencer Beggs",
+				"url": "https://savvyweb.systems"
+			},
+			"homepage": "https://github.com/savvy-web/systems",
+			"keywords": ["silk-suite", "changesets", "commitlint", "biome", "code-quality", "turborepo"],
+			"license": "MIT",
+			"repository": "https://github.com/savvy-web/systems",
+			"source": {
+				"source": "github",
+				"repo": "savvy-web/systems",
+				"path": "plugin/builds/copilot",
+				"sha": ""
+			}
+		}
+	]
+}

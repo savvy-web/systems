@@ -10,14 +10,14 @@ sources:
     resource: ../../lib/configs/lint-staged.config.ts
   - id: shell-scripts-handler
     resource: ../../packages/silk-effects/src/lint/handlers/ShellScripts.ts
-  - id: hooks-tests-readme
-    resource: ../../plugins/silk/tests/README.md
+  - id: plugin-config
+    resource: ../../plugin/pluginfinity.config.ts
   - id: startup-hook
-    resource: ../../plugins/silk/hooks/session-start/startup-only.sh
+    resource: ../../plugin/hooks/session-start/startup-only.sh
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
-  body_sha256: a7610fee3a0759c404499335ddee381a42b0940c5ae52149d3d9d5eef3d3a85e
+  at: 2026-10-07T16:26:44Z
+  body_sha256: 00ff5d685107b79ae58599a3855b273ddf65e6df55b5a359436611b8ba42ed3f
 ---
 
 # Committed shell scripts land as 100644, never 100755
@@ -29,8 +29,9 @@ it in review, and do not open an issue about it. It is the lint-staged
 ## The rule
 
 - Every committed `.sh` file is invoked as `bash <script>` — plugin hooks
-  through `hooks.json`, the bats runner — so nothing needs the executable
-  bit at runtime.[^lint-staged-config]
+  through the built hook registrations (`scripts.invoke: "bash"` in
+  `plugin/pluginfinity.config.ts`), the bats runner — so nothing needs the
+  executable bit at runtime.[^lint-staged-config][^plugin-config]
 - The pre-commit lint-staged pipeline (`Preset.silk()`) runs the
   `ShellScripts` handler over every staged `**/*.sh` file and strips the
   executable bit (`chmod -x`) by default, normalizing the mode to `100644`
@@ -44,7 +45,11 @@ it in review, and do not open an issue about it. It is the lint-staged
 - A freshly added hook script that starts life at `755` will show `644` in
   its own commit while older siblings predating the handler may still carry
   `755` — that inconsistency is historical, not a bug to reconcile in an
-  unrelated change.[^hooks-tests-readme]
+  unrelated change.[^shell-scripts-handler]
+- The handler deliberately still covers the generated `plugin/builds/**`,
+  which Biome and markdownlint skip: stripping the bit from a built script
+  and its source in the same commit keeps their modes equal, which
+  `pluginfinity build --check` compares.[^lint-staged-config]
 
 ## Why
 
@@ -53,9 +58,8 @@ it is checked; keeping it out of the tree keeps diffs clean and removes any
 incentive for a reviewer to chase 100755 as a signal of anything. The rule
 is spelled out at the point of enforcement — the lint-staged config's
 header comment and the handler's own doc comment — and at the point most
-likely to trip an agent — the plugin's hook-test README and its
-`SessionStart` orientation payload — rather than being enforced silently and
-rediscovered as a surprise.[^lint-staged-config][^hooks-tests-readme][^startup-hook]
+likely to trip an agent — the plugin's `SessionStart` orientation payload —
+rather than being enforced silently and rediscovered as a surprise.[^lint-staged-config][^startup-hook]
 
 Tracked as savvy-web/systems#289.
 
@@ -69,5 +73,5 @@ Tracked as savvy-web/systems#289.
 
 [^lint-staged-config]: ../../lib/configs/lint-staged.config.ts
 [^shell-scripts-handler]: ../../packages/silk-effects/src/lint/handlers/ShellScripts.ts
-[^hooks-tests-readme]: ../../plugins/silk/tests/README.md
-[^startup-hook]: ../../plugins/silk/hooks/session-start/startup-only.sh
+[^plugin-config]: ../../plugin/pluginfinity.config.ts
+[^startup-hook]: ../../plugin/hooks/session-start/startup-only.sh

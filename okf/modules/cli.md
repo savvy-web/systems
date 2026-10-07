@@ -35,8 +35,8 @@ sources:
     resource: ../../packages/cli/src/commands/clean.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-02T02:45:02Z
-  body_sha256: b51ae1f59a269613f3dcbf514847393903648129e337f1d0dad8f5c1c8ea41eb
+  at: 2026-10-06T01:33:29Z
+  body_sha256: e23e2b96dc75acc09a3436d4fa855cd3562c5989bcde2946a9168816a3e5b409
 ---
 
 # cli

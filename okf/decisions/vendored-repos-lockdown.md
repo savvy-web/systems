@@ -12,7 +12,7 @@ sources:
   - id: silk-effects-repos
     resource: ../../packages/silk-effects/src/repos/services/lockdown.ts
   - id: plugin-repos
-    resource: ../../plugins/silk/hooks/pre-tool-use/repos-fs-guard.sh
+    resource: ../../plugin/hooks/pre-tool-use/repos-fs-guard.sh
 ---
 
 # Enforce vendored-repo read-only via OS permissions, not guards alone

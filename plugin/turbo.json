@@ -1,0 +1,31 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"build:dev": {
+			"cache": false,
+			"inputs": [
+				"package.json",
+				"pluginfinity.config.ts",
+				"skills/**",
+				"agents/**",
+				"hooks/**",
+				"bin/**",
+				"monitors/**"
+			],
+			"outputs": ["builds/**"]
+		},
+		"build:prod": {
+			"cache": false,
+			"inputs": [
+				"package.json",
+				"pluginfinity.config.ts",
+				"skills/**",
+				"agents/**",
+				"hooks/**",
+				"bin/**",
+				"monitors/**"
+			],
+			"outputs": ["builds/**"]
+		}
+	}
+}

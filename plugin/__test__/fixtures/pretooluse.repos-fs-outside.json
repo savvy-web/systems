@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-fs-outside",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Write",
+	"tool_input": {
+		"file_path": "src/index.ts"
+	}
+}

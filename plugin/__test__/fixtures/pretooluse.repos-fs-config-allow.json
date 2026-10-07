@@ -1,0 +1,8 @@
+{
+	"session_id": "test-repos-fs-config-allow",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Edit",
+	"tool_input": {
+		"file_path": ".repos/config.json"
+	}
+}

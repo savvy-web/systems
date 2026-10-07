@@ -12,5 +12,5 @@
 * [rspress-builder](rspress-builder.md) - Thin bundler sibling that builds RSPress plugin packages as a dual-bundle (node plugin + browser runtime) preset over @savvy-web/bundler.
 * [silk-core](silk-core.md) - L1 domain core of the Silk package graph — platform-free schemas, tagged errors, and the frozen PrBody contract.
 * [silk-effects](silk-effects.md) - L2 engine of the Silk package graph — the shared, platform-agnostic Effect library holding Silk's policy and the business logic of six dev-tooling namespaces.
-* [silk-plugin](silk-plugin.md) - The silk@savvy-web-systems Claude Code plugin — skills, agents, hooks and background monitors for every Silk capability behind the savvy bin and the shared savvy-mcp server.
+* [silk-plugin](silk-plugin.md) - The silk agent plugin: one pluginfinity source at plugin/ (the private workspace package @savvy-web/ai-plugins) built into a Claude Code plugin and a GitHub Copilot plugin, carrying the skills, agents, hooks, monitors and server launchers for every Silk capability behind the savvy bin and the shared savvy-mcp server.
 * [templates](templates.md) - Pure-function project scaffolding library — stateless functions that turn typed options into generated file content, with no I/O of its own.

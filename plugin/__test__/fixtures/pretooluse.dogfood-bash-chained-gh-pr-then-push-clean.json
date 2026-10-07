@@ -1,0 +1,8 @@
+{
+	"session_id": "test-dogfood-bash-chained-gh-pr-then-push-clean",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "gh pr create --title x && git push origin release-clean"
+	}
+}

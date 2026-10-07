@@ -1,23 +1,22 @@
 name: Hook Tests
 
-# BATS + shellcheck coverage for the silk Claude Code plugin's hook scripts.
-# The suite is shell-first (bash + bats + shellcheck + jq + git) and also
-# requires Node.js 24.11.0+ because monitor tests execute Node-based scripts.
+# BATS + shellcheck coverage for the silk plugin (pluginfinity source at
+# plugin/), run against both built hosts (Claude Code and Copilot). The suite
+# is shell-first (bash + bats + shellcheck + jq + git) and also requires
+# Node.js 24.11.0+ and an installed workspace: it runs `pluginfinity build`
+# and `build --check` from plugin/node_modules, and monitor tests execute
+# Node-based scripts.
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - plugins/silk/hooks/**
-      - plugins/silk/tests/**
-      - plugins/silk/bin/**
+      - plugin/**
       - .github/workflows/hook-tests.yml
   push:
     branches: [main]
     paths:
-      - plugins/silk/hooks/**
-      - plugins/silk/tests/**
-      - plugins/silk/bin/**
+      - plugin/**
       - .github/workflows/hook-tests.yml
 
 concurrency:
@@ -50,5 +49,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bats shellcheck jq git
 
-      - name: Run silk hook tests
-        run: bash plugins/silk/tests/run-hook-tests.sh
+      # Re-enabling also needs pnpm setup and `pnpm install` before this step.
+      - name: Run silk plugin tests
+        run: bash plugin/__test__/run-tests.sh

@@ -1,0 +1,20 @@
+{
+	"name": "@savvy-web/ai-plugins",
+	"version": "4.3.4",
+	"private": true,
+	"description": "The silk agent plugin source, built with pluginfinity into a Claude Code and a GitHub Copilot plugin. Never published to npm.",
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"build:check": "node node_modules/pluginfinity/bin/pluginfinity.js build --check",
+		"build:dev": "node node_modules/pluginfinity/bin/pluginfinity.js build",
+		"build:prod": "node node_modules/pluginfinity/bin/pluginfinity.js build",
+		"test:hooks": "bash __test__/run-tests.sh",
+		"validate": "node node_modules/pluginfinity/bin/pluginfinity.js validate"
+	},
+	"devDependencies": {
+		"@savvy-web/silk-core": "workspace:*",
+		"pluginfinity": "^0.3.0",
+		"vitest": "catalog:test"
+	}
+}

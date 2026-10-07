@@ -95,6 +95,7 @@
 		"**/public/content/packages/*/api/**",
 		"**/public/content/packages/*/api.md",
 		"**/.repos",
+		"plugin/builds/**",
 		"okf/index.md",
 		"okf/*/index.md",
 		"okf/log.md"

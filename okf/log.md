@@ -1,9 +1,16 @@
 # Log
 
+## 2026-10-06
+
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated cli
+
 ## 2026-10-02
 
 * Updated The savvy front ends adopt the effected front-end kit
 * Updated silk-effects
+* Added The savvy CLI carries ink and react as regular dependencies, loaded only to draw
+* Updated savvy command tree
 
 ## 2026-10-01
 
