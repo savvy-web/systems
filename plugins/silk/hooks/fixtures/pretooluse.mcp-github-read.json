@@ -1,6 +1,0 @@
-{
-	"session_id": "test-mcp-github-read",
-	"hook_event_name": "PreToolUse",
-	"tool_name": "mcp__github__list_issues",
-	"tool_input": {}
-}

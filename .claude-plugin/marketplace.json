@@ -11,11 +11,11 @@
 	"plugins": [
 		{
 			"category": "developer-tools",
-			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
+			"description": "Companion plugin for @savvy-web/silk \u2014 changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 			"name": "silk",
 			"source": {
-				"path": "plugins/silk",
-				"sha": "67237741095d7b3fc9b872224dcdcdfc924785e3",
+				"path": "plugin/builds/claude",
+				"sha": "cd94afe7ff9e8078d7c649798b867c6debdf965f",
 				"source": "git-subdir",
 				"url": "https://github.com/savvy-web/systems.git"
 			},

@@ -18,15 +18,6 @@
 							"paths": ["$.version"]
 						}
 					]
-				},
-				"@savvy-web/silk": {
-					"additionalScopes": ["plugins/silk/**"],
-					"versionFiles": [
-						{
-							"glob": "plugins/*/.claude-plugin/plugin.json",
-							"paths": ["$.version"]
-						}
-					]
 				}
 			},
 			"repo": "savvy-web/systems"

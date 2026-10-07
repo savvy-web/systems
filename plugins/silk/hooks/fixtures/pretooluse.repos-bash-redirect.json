@@ -1,8 +1,0 @@
-{
-	"session_id": "test-repos-bash-redirect",
-	"hook_event_name": "PreToolUse",
-	"tool_name": "Bash",
-	"tool_input": {
-		"command": "echo broken > .repos/effect/src/index.ts"
-	}
-}

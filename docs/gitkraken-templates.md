@@ -4,7 +4,7 @@ Working drafts for GitKraken's seven AI prompt fields, aligned with this reposit
 
 This is a living document. The GitKraken integration used to produce usable output and no longer does reliably, so treat every template below as a hypothesis rather than a settled answer. Change one field at a time, record what happened in the observations log at the bottom, and keep the templates and the log in sync.
 
-The authorities these templates encode are `plugins/silk/skills/commit-create/SKILL.md` (the commit contract) and `plugins/silk/skills/pr-body/SKILL.md` (the PR contract). When those change, these templates are stale until updated. They are a copy of the rules, not the rules themselves.
+The authorities these templates encode are `plugin/skills/commit-create/SKILL.md` (the commit contract) and `plugin/skills/pr-body/SKILL.md` (the PR contract). When those change, these templates are stale until updated. They are a copy of the rules, not the rules themselves.
 
 ## Why a copy, and what that costs
 
@@ -279,7 +279,7 @@ Things these templates assume that have not been verified. Confirm before trusti
 A template is doing its job when the generated message passes `validate-message.sh` unedited. That is the only objective test available, and it is worth running the output through it while tuning:
 
 ```bash
-bash plugins/silk/skills/commit-create/scripts/validate-message.sh <file>
+bash plugin/builds/claude/skills/commit-create/scripts/validate-message.sh <file>
 ```
 
 Paste the generated message into a scratch file and run it. A PASS means the template encoded the contract correctly; a specific violation tells you exactly which instruction the model ignored, which is far more actionable than "the output looks wrong".
