@@ -13,7 +13,10 @@
 		"validate": "node node_modules/pluginfinity/bin/pluginfinity.js validate"
 	},
 	"devDependencies": {
+		"@effected/templates": "catalog:effected",
+		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/silk-core": "workspace:*",
+		"effect": "catalog:effect",
 		"pluginfinity": "^0.3.0",
 		"vitest": "catalog:test"
 	}
