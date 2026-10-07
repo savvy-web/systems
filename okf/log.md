@@ -1,5 +1,30 @@
 # Log
 
+## 2026-10-07
+
+* Added Author silk plugin hooks, scripts, skills and tests on the pluginfinity libraries
+* Added Build the silk plugin from one pluginfinity source for two hosts
+* Updated Committed shell scripts land as 100644, never 100755
+* Added Copilot plugin marketplace
+* Added Copilot reports SessionStart source new and gives an MCP server no project
+* Updated Deny Biome by whether the command reaches the binary, not by script name
+* Added Edit the plugin source, never plugin/builds/; rebuild and commit the builds with it
+* Updated Every package versions independently
+* Updated Handling vendored reference repos under .repos/
+* Updated Run Biome only through biome_check or the three sanctioned root scripts
+* Updated Run an @effected dogfood round through the mailbox protocol
+* Updated Split commit messages and PR descriptions on document, not command
+* Added The Copilot build of silk drops context nudges, monitors and project discovery
+* Added The it2 dogfood doorbell's --retry delivers the notice several times
+* Added The plugin package @savvy-web/ai-plugins versions independently of @savvy-web/silk
+* Added The pluginfinity Claude build matches plugins/silk except for listed, intended differences
+* Added What Claude Code passes to a plugin's monitors and the Bash tool (2.1.291/2.1.292)
+* Added markdownlint --fix renumbers a list split by a column-0 host-block marker
+* Updated mcp
+* Added pkill on a monitor script name kills every session's monitor
+* Updated silk-plugin
+* Updated systems
+
 ## 2026-10-06
 
 * Updated The savvy front ends adopt the effected front-end kit
