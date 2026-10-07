@@ -23,8 +23,8 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-28T19:31:10Z
-  body_sha256: d572a9ea4a4126ec5d001abbc11c6c05938930494aa4e4a65a7917b2e1c39a34
+  at: 2026-10-07T16:26:44Z
+  body_sha256: 82c4b061d621bd7c3aa3d0e43f75f7f8af6efceec0b4df21886c044c080865c9
 ---
 
 # mcp
@@ -57,7 +57,7 @@ One long-lived service graph, built from `makeSilkRuntimeLayer(cwd)` and compose
 
 ## Plugin integration
 
-A plugin declares the server via an `mcpServers` block in its `.claude-plugin/plugin.json` whose command runs a launcher that execs the project's own installed `savvy-mcp` binary, falling back to `npx --yes @savvy-web/mcp`, and exports the project dir as both `CLAUDE_PROJECT_DIR` and `SAVVY_MCP_PROJECT_DIR`. `plugins/silk` is the only plugin in this repository that does so. Information lives in the server; direction lives in the plugin — a spawning plugin adds its own orientation hooks pointing the agent at the tools it should prefer, since the shared server carries every tool regardless of the current project.[^arch]
+A plugin declares the server via an `mcpServers` block in its `.claude-plugin/plugin.json` whose command runs a launcher that execs the project's own installed `savvy-mcp` binary, falling back to a one-off run of `@savvy-web/mcp` through the project's package manager (`pnpm dlx`, `yarn dlx`, `bunx`, else `npx --yes`; a bare `npx --yes` fails with `EBADDEVENGINES` in a project declaring `devEngines.packageManager`), and exports the project dir as both `CLAUDE_PROJECT_DIR` and `SAVVY_MCP_PROJECT_DIR`. The silk plugin (source `plugin/`, built for Claude Code and GitHub Copilot; see [silk-plugin](silk-plugin.md)) is the only plugin in this repository that does so. On Copilot the server starts at the plugin root and cannot learn the project, so the silk orientation tells the model to pass `cwd` to every tool. Information lives in the server; direction lives in the plugin — a spawning plugin adds its own orientation hooks pointing the agent at the tools it should prefer, since the shared server carries every tool regardless of the current project.[^arch]
 
 ## Boundaries and invariants
 

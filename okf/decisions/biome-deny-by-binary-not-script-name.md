@@ -6,13 +6,13 @@ status: draft
 tags: [tooling, security]
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 5a134526d5e37a3fd633973dd69921cf0002df2d3ab01c4287cb8e3c26046bd2
+  at: 2026-10-07T16:26:44Z
+  body_sha256: 382ff4a8783c13ceac0eaf2b7b459769a96181ddf61ca8a428481b77bd2c297c
 sources:
   - id: biome-direct-deny
-    resource: ../../plugins/silk/hooks/pre-tool-use/biome-direct-deny.sh
+    resource: ../../plugin/hooks/pre-tool-use/biome-direct-deny.sh
   - id: biome-direct-deny-bats
-    resource: ../../plugins/silk/tests/pre-tool-use-biome-direct-deny.bats
+    resource: ../../plugin/__test__/pre-tool-use-biome-direct-deny.bats
 ---
 
 # Deny Biome by whether the command reaches the binary, not by script name
@@ -103,5 +103,5 @@ themselves, not by a recoverable prior diff.
   [modules/silk-plugin.md](../modules/silk-plugin.md) for where the hook
   sits in the plugin's overall Biome capability.
 
-[^biome-direct-deny]: `plugins/silk/hooks/pre-tool-use/biome-direct-deny.sh`
-[^biome-direct-deny-bats]: `plugins/silk/tests/pre-tool-use-biome-direct-deny.bats`
+[^biome-direct-deny]: `plugin/hooks/pre-tool-use/biome-direct-deny.sh`
+[^biome-direct-deny-bats]: `plugin/__test__/pre-tool-use-biome-direct-deny.bats`

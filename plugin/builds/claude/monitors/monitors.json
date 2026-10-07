@@ -1,0 +1,17 @@
+[
+	{
+		"name": "tsdoc-diagnostics",
+		"command": "export PLUGINFINITY_MONITOR='tsdoc-diagnostics'; node \"${CLAUDE_PLUGIN_ROOT}/monitors/watch-issues.mjs\"",
+		"description": "Surfaces ae-*/tsdoc- diagnostics from dist/<target>/issues.json as builds change them"
+	},
+	{
+		"name": "dogfood-mail",
+		"command": "export PLUGINFINITY_MONITOR='dogfood-mail'; node \"${CLAUDE_PLUGIN_ROOT}/monitors/dogfood-mail.mjs\"",
+		"description": "Surfaces incoming .claude/dogfood/ mail and journal turn-flips (ball changes) as they land, filesystem-only"
+	},
+	{
+		"name": "gitmodules-drift",
+		"command": "export PLUGINFINITY_MONITOR='gitmodules-drift'; node \"${CLAUDE_PLUGIN_ROOT}/monitors/gitmodules-drift.mjs\"",
+		"description": "Notifies when `savvy repos status --drift --json` reports drift after .gitmodules or .repos/config.json changes"
+	}
+]

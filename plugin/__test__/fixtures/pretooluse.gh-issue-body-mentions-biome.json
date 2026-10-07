@@ -1,0 +1,12 @@
+{
+	"session_id": "test-gh-issue-body-mentions-biome",
+	"transcript_path": "/tmp/transcript.jsonl",
+	"cwd": "/tmp/silk-fixture-project",
+	"permission_mode": "default",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_use_id": "toolu_gh_issue_body",
+	"tool_input": {
+		"command": "gh issue create --title \"Fix nudge\" --body \"This PreToolUse hook nudges toward biome_check even when the reporter's subagent only mentions biome in prose, not an actual invocation.\""
+	}
+}

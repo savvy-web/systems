@@ -1,0 +1,12 @@
+{
+	"session_id": "test-npx-biome-mention",
+	"transcript_path": "/tmp/transcript.jsonl",
+	"cwd": "/tmp/silk-fixture-project",
+	"permission_mode": "default",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_use_id": "toolu_npx_biome_mention",
+	"tool_input": {
+		"command": "gh issue comment 380 --body \"never run npx biome here\""
+	}
+}

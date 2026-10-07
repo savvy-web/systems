@@ -1,0 +1,11 @@
+{
+	"session_id": "test-post-bash-interrupted",
+	"hook_event_name": "PostToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": "git commit -m \"feat: add a thing\""
+	},
+	"tool_response": {
+		"interrupted": true
+	}
+}

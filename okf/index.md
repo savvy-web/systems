@@ -12,5 +12,7 @@ okf_version: "0.2"
 * [decisions](decisions/index.md)
 * [gotchas](gotchas/index.md)
 * [interfaces](interfaces/index.md)
+* [limitations](limitations/index.md)
+* [measurements](measurements/index.md)
 * [modules](modules/index.md)
 * [references](references/index.md)

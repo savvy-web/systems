@@ -1,0 +1,6 @@
+{
+	"session_id": "test-dogfood-mcp-github-create-pull-request",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "mcp__github__create_pull_request",
+	"tool_input": {}
+}

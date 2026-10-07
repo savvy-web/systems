@@ -2,17 +2,18 @@
 type: Convention
 title: Split commit messages and PR descriptions on document, not command
 description: "Anything that becomes a conventional-commit subject (the commit message, the PR title, a proposed-squash-commit fence) follows the commit-create contract; PR description prose follows pr-body and is not held to the commit contract — load the matching skill before composing, not after a hook rejection."
+status: draft
 stale_after: 2027-03-12T00:00:00-04:00
 tags: [tooling]
 sources:
   - id: plugin-commit-messages
-    resource: ../../plugins/silk/hooks
+    resource: ../../plugin/hooks
   - id: claude-md
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 22446b4f1d9c2b206f180ef2f08a4485ed98a3f4b7af8cf7c4c562f29c4e3d0c
+  at: 2026-10-07T16:26:44Z
+  body_sha256: a1c7a386db558873671daa088e83bda4da6ce6395c968760bb79cbf77393eb67
 ---
 
 # Split commit messages and PR descriptions on document, not command
@@ -35,5 +36,5 @@ The two `Closes` spellings are both load-bearing and are NOT interchangeable: co
 
 Three PreToolUse hooks route commit-shaped operations through `savvy commit hook pre-commit-message`: `commit-bash.sh` (matches `Bash`, auto-allowing safe read-only commands and routing commit-related ones — `git commit`, `gh pr create`/`pr edit` — through the CLI gate), `commit-mcp.sh` (the same for GitKraken/GitHub MCP operations), and `commit-fs.sh` (message files written to disk via `Read`/`Write`/`Edit`). A PostToolUse hook, `commit-bash.sh`, runs `savvy commit hook post-commit-verify` after a commit lands. All four route through the single `savvy` bin. Never work around one of these hooks or disable a check to get a commit through — stop and report if something blocks you.[^plugin-commit-messages]
 
-[^plugin-commit-messages]: `../../plugins/silk/hooks` — the four commit guards: `pre-tool-use/commit-bash.sh`, `pre-tool-use/commit-mcp.sh`, `pre-tool-use/commit-fs.sh`, `post-tool-use/commit-bash.sh`
+[^plugin-commit-messages]: `../../plugin/hooks` — the four commit guards: `pre-tool-use/commit-bash.sh`, `pre-tool-use/commit-mcp.sh`, `pre-tool-use/commit-fs.sh`, `post-tool-use/commit-bash.sh`
 [^claude-md]: [CLAUDE.md](../../CLAUDE.md), "Commits"

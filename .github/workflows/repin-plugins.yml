@@ -6,6 +6,14 @@ on:
         description: Name of the plugin to repin
         required: false
         type: string
+      marketplace:
+        description: The marketplace to repin the plugin to
+        required: false
+        type: choice
+        default: claude-code
+        options:
+          - claude-code
+          - copilot
       sha:
         description: Commit SHA to repin to
         required: false
@@ -36,13 +44,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: spencerbeggs/claude-code-marketplace-manager@v1
+      - uses: spencerbeggs/ai-plugin-marketplace-manager@v2
         with:
           app-client-id: ${{ secrets.APP_CLIENT_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          name: ${{ github.event_name == 'workflow_dispatch' && inputs.name || github.event.client_payload.name }}
-          sha: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.event.client_payload.sha }}
-          path: ${{ github.event_name == 'workflow_dispatch' && inputs.path || github.event.client_payload.path }}
+          name: ${{ inputs.name }}
+          marketplace: ${{ inputs.marketplace }}
+          sha: ${{ inputs.sha }}
+          path: ${{ inputs.path }}
           json: ${{ github.event_name == 'workflow_dispatch' && inputs.json || github.event.client_payload.json }}
           # main's "workflow" ruleset restricts PRs to allowed_merge_methods: [squash] —
           # rebase/merge are rejected by the auto-merge GraphQL call at runtime.

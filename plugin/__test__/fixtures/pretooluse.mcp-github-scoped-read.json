@@ -1,0 +1,6 @@
+{
+	"session_id": "test-mcp-github-scoped-read",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "mcp__github-savvy-web__list_issues",
+	"tool_input": {}
+}

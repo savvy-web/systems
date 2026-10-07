@@ -1,0 +1,6 @@
+{
+	"session_id": "test-mcp-gitkraken-cased-read",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "mcp__GitKraken__git_log_or_diff",
+	"tool_input": {}
+}

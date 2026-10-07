@@ -1,0 +1,168 @@
+{
+	"version": 1,
+	"hooks": {
+		"SessionStart": [
+			{
+				"type": "command",
+				"bash": "sh \"${PLUGIN_ROOT}/lib/pluginfinity/env-run.sh\"",
+				"timeoutSec": 15,
+				"env": {
+					"PLUGINFINITY_EVENT": "SessionStart"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/session-start/orientation.sh\"",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "SessionStart"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/session-start/startup-only.sh\"",
+				"timeoutSec": 10,
+				"env": {
+					"PLUGINFINITY_EVENT": "SessionStart",
+					"PLUGINFINITY_MATCHER": "startup|new"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/session-start/repos-orientation.sh\"",
+				"timeoutSec": 10,
+				"env": {
+					"PLUGINFINITY_EVENT": "SessionStart"
+				}
+			}
+		],
+		"PreToolUse": [
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/commit-bash.sh\"",
+				"matcher": "Bash",
+				"timeoutSec": 15,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/biome-prefer-mcp.sh\"",
+				"matcher": "Bash",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/biome-direct-deny.sh\"",
+				"matcher": "Bash",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/repos-bash-guard.sh\"",
+				"matcher": "Bash",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/commit-mcp.sh\"",
+				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/repos-mcp-guard.sh\"",
+				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/commit-fs.sh\"",
+				"matcher": "Read|Write|Edit",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/dogfood-guard.sh\"",
+				"matcher": "Bash",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/dogfood-guard.sh\"",
+				"matcher": "mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/repos-fs-guard.sh\"",
+				"matcher": "Write|Edit|NotebookEdit",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
+			}
+		],
+		"PostToolUse": [
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/post-tool-use/changeset-validate-changeset.sh\"",
+				"matcher": "Write|Edit",
+				"timeoutSec": 15,
+				"env": {
+					"PLUGINFINITY_EVENT": "PostToolUse"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/post-tool-use/commit-bash.sh\"",
+				"matcher": "Bash",
+				"timeoutSec": 15,
+				"env": {
+					"PLUGINFINITY_EVENT": "PostToolUse"
+				}
+			}
+		],
+		"Stop": [
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/stop/changeset-nudge.sh\"",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "Stop"
+				}
+			}
+		]
+	}
+}

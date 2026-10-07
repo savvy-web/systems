@@ -72,7 +72,7 @@ function assemble(version: string, ...entries: string[]): string {
 	return `## ${version}\n\n${entries.filter((e) => e.length > 0).join("\n\n")}\n`;
 }
 
-/** The Structured-tier shape from plugins/silk/skills/changeset-style/SKILL.md. */
+/** The Structured-tier shape from plugin/skills/changeset-style/SKILL.md. */
 const STRUCTURED_TIER = [
 	"## Features",
 	"",

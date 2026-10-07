@@ -1,0 +1,14 @@
+{
+	"session_id": "test-biome-direct-sub",
+	"transcript_path": "/tmp/transcript.jsonl",
+	"cwd": "/tmp/silk-fixture-project",
+	"permission_mode": "default",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Bash",
+	"tool_use_id": "toolu_biome_subagent",
+	"agent_id": "agent-effect-dev-1234",
+	"agent_type": "effect-dev-agent",
+	"tool_input": {
+		"command": "biome check ."
+	}
+}

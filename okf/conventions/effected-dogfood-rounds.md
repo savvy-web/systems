@@ -2,15 +2,16 @@
 type: Convention
 title: Run an @effected dogfood round through the mailbox protocol
 description: "Link a kit package under active dogfooding via a pnpm-workspace.yaml overrides: entry of the form file:../../spencerbeggs/effected/packages/<name>/dist/prod/npm/pkg, verify kit signatures against the sibling checkout's src or its installed .d.ts (never a relayed summary), and never push or open a PR while any @effected file: override is linked."
+status: draft
 tags: [tooling, release]
 stale_after: 2026-12-11T00:00:00Z
 sources:
   - id: plugin-dogfood
-    resource: ../../plugins/silk/hooks/pre-tool-use/dogfood-guard.sh
+    resource: ../../plugin/hooks/pre-tool-use/dogfood-guard.sh
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 51a8fb19a568fbcfb66c1b482a89f14e4c7edc9dfdd8e7c016f06586caa6f221
+  at: 2026-10-07T16:26:44Z
+  body_sha256: 8e5b70ae3e86d142031d0643335056295415a26c99705b355ce09c2ffd84158e
 ---
 
 # Run an @effected dogfood round through the mailbox protocol
@@ -21,7 +22,7 @@ Link a kit package under active dogfooding as `"@effected/<name>": "file:../../s
 
 Verify a kit signature against the sibling checkout's `../../spencerbeggs/effected/packages/<name>/src` or the installed `.d.ts` under `node_modules/@effected/<name>/` — never trust a summary of kit behavior relayed from an earlier session or a different agent. For `effect` core itself, the authority stays the vendored `.repos/effect` checkout pinned to the catalog tag, unaffected by any dogfood link.[^plugin-dogfood]
 
-Never push or open a pull request while any `@effected` `file:` override is linked, on any branch except `dev` (a long-lived integration branch exempt unconditionally because nothing downstream installs against it). The linked paths exist only on the authoring machine; every other clone and any CI install would fail to resolve them. The `dogfood-guard` hook denies this mechanically and carries no bypass flag — correct a wrong deny by appending a `correction` journal entry, never by routing around the guard.[^plugin-dogfood]
+Never push or open a pull request while any `@effected` `file:` override is linked, on any branch except `dev` (a long-lived integration branch exempt unconditionally because nothing downstream installs against it). The linked paths exist only on the authoring machine; every other clone and any CI install would fail to resolve them. The `dogfood-guard` hook denies this mechanically (fail-closed, so a crashing guard denies too) and carries no bypass flag — correct a wrong deny by appending a `correction` journal entry, never by routing around the guard.[^plugin-dogfood]
 
 Route cross-repo communication for a round through the file mailbox, never through the `okf/` bundle directly: mail lands at `.claude/dogfood/<sending-id>/` in the receiving repo (`savvy-web-systems` and `effected` are the two ids in play), and it is history, not documentation — promote a durable learning into an `okf/` concept afterward (via the `okfit:okf-docs` agent) rather than leaving it to live only in mail.[^plugin-dogfood]
 
@@ -29,4 +30,4 @@ Follow the exit sequence in order when a round concludes: wait for effected to c
 
 See [silk-plugin](../modules/silk-plugin.md) for the skill, guard and monitor that implement this protocol.
 
-[^plugin-dogfood]: `../../plugins/silk/hooks/pre-tool-use/dogfood-guard.sh` — the no-push-while-linked guard; the full protocol is `../../plugins/silk/skills/dogfood/SKILL.md`
+[^plugin-dogfood]: `../../plugin/hooks/pre-tool-use/dogfood-guard.sh` — the no-push-while-linked guard; the full protocol is `../../plugin/skills/dogfood/SKILL.md`

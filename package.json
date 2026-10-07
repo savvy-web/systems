@@ -40,7 +40,7 @@
 		"pnpm:up": "pnpm --filter '@savvy-web/pnpm-plugin-silk' run pnpm:up",
 		"prepare": "husky",
 		"test": "vitest run",
-		"test:hooks": "bash plugins/silk/tests/run-hook-tests.sh",
+		"test:hooks": "bash plugin/__test__/run-tests.sh",
 		"typecheck": "turbo run types:check",
 		"types:check": "tsc --noEmit"
 	},

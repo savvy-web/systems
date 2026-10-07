@@ -1,0 +1,11 @@
+{
+	"session_id": "test-post-bash-empty",
+	"hook_event_name": "PostToolUse",
+	"tool_name": "Bash",
+	"tool_input": {
+		"command": ""
+	},
+	"tool_response": {
+		"interrupted": false
+	}
+}

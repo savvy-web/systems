@@ -1,0 +1,8 @@
+{
+	"session_id": "test-validate-changeset",
+	"hook_event_name": "PostToolUse",
+	"tool_name": "Write",
+	"tool_input": {
+		"file_path": ".changeset/tricky-lions.md"
+	}
+}

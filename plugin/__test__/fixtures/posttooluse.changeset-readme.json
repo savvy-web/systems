@@ -1,0 +1,8 @@
+{
+	"session_id": "test-validate-readme",
+	"hook_event_name": "PostToolUse",
+	"tool_name": "Write",
+	"tool_input": {
+		"file_path": ".changeset/README.md"
+	}
+}

@@ -11,8 +11,8 @@ sources:
     resource: ../../.changeset/config.json
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: a175387bb6ad5aa25387b0e4647c23e7f39d617ae7b64405aa33235bfa6dfc9b
+  at: 2026-10-07T16:26:44Z
+  body_sha256: c7668a42d3cd590b72d14b0e6c31b99fc6e0fe557f62d1f5df12f918e1f0144c
 ---
 
 # Every package versions independently
@@ -37,7 +37,7 @@ The repo-wide `updateInternalDependencies: patch` setting means any internal `wo
 
 ## Consequences
 
-- A release of any one package never forces a version bump on an unrelated sibling; only real `workspace:*` edges (via `updateInternalDependencies: patch`) or the explicit `versionFiles` glob (silk → `plugins/*`) propagate a bump.
+- A release of any one package never forces a version bump on an unrelated sibling; only real `workspace:*` edges (via `updateInternalDependencies: patch`) or the explicit `versionFiles` glob (silk → `plugins/*`, which now reaches only the legacy `plugins/silk` copy; the plugin source versions on its own as `@savvy-web/ai-plugins`, see [ai-plugins-versions-independently](ai-plugins-versions-independently.md)) propagate a bump.
 - Release-order sequencing between related packages (for example, silk and pnpm-plugin-silk around a hoist change) is a manual coordination rule at release time, not something the changeset config enforces — see [carrier-pattern-package-graph](carrier-pattern-package-graph.md#hoist-removal-and-release-sequencing) for the case this bites.
 - `@savvy-web/pnpm-plugin-silk` cannot be reached via a `@savvy-web/pnpm-plugin-silk` GitHub Packages install; every consumer resolves it from npm only.
 
