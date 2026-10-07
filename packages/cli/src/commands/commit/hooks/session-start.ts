@@ -4,7 +4,6 @@
  *
  * @internal
  */
-import { resolve } from "node:path";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command } from "effect/cli";
@@ -13,10 +12,7 @@ export const sessionStartCommand = Command.make("session-start", {}, () =>
 	Effect.gen(function* () {
 		const branch = yield* Commitlint.readBranchInfo();
 		const signing = yield* Commitlint.readSigningDiagnostic();
-		const issuesCachePath = resolve(
-			process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
-			Commitlint.ISSUES_CACHE_RELATIVE_PATH,
-		);
+		const issuesCachePath = yield* Commitlint.resolveIssuesCachePath();
 		const issues = yield* Commitlint.readOrFetchOpenIssues(issuesCachePath);
 
 		const blocks: string[] = [];

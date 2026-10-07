@@ -156,8 +156,8 @@ run_runner() {
 	if [ "$SILK_TARGET" = claude ]; then
 		grep -qx "export SILK_PACKAGE_MANAGER='pnpm'" "$CLAUDE_ENV_FILE"
 		grep -qx "export SILK_SKIP_CHANGESET_NUDGE=''" "$CLAUDE_ENV_FILE"
-		# SILK_PROJECT_DIR must never reach the model's shell: it is an explicit
-		# override for the skill scripts (resolve-cli-project-dir.sh rule 2).
+		# SILK_PROJECT_DIR must never reach the model's shell: it would leak the
+		# session-start tree into every worktree subagent (resolve-cli-project-dir.sh rule 2).
 		! grep -q 'SILK_PROJECT_DIR\|SILK_PLUGIN_ROOT\|SILK_SESSION_ID\|SILK_DATA_DIR' "$CLAUDE_ENV_FILE"
 	else
 		# Copilot has no env channel to the model's shell (env-shell-unsupported).

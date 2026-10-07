@@ -248,6 +248,7 @@ export {
 	fetchAndCacheOpenIssues,
 	readOpenIssuesFromCache,
 	readOrFetchOpenIssues,
+	resolveIssuesCachePath,
 } from "./hook/diagnostics/open-issues.js";
 export type { LockfilePresence, PackageManager } from "./hook/diagnostics/package-manager.js";
 export {
