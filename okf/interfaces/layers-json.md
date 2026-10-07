@@ -16,8 +16,8 @@ sources:
     title: LayerPolicy and WorkspaceLayering
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: ac54a22751d1c4a0e672a07a72de56faa175998c876f53637a918b9ac1c101da
+  at: 2026-10-07T16:45:20Z
+  body_sha256: 001187efa4500f66436db41378b3054b22b2b67bdb63b00d997ea7851ce9d457
 ---
 
 # layers.json
@@ -41,9 +41,13 @@ Every entry is an npm package name, never a path:[^layers-json]
   pnpm-plugin-silk). They may depend on each other and may be depended on
   from any layer, but never reach back into a layer.
 - **`unconstrained`**: name globs, today `["@e2e/*",
-  "savvy-web-systems"]` — the harness packages and the private workspace
-  root. Their own edges are not checked, but no layered or tooling package
-  may depend on one.
+  "@savvy-web/ai-plugins", "savvy-web-systems"]` — the harness packages,
+  the private plugin-source package, and the private workspace root.
+  `@savvy-web/ai-plugins` sits here rather than in `tooling` because its
+  one workspace edge, a devDependency on `@savvy-web/silk-core` for the
+  `pr-body` skill drift test, reaches into a layer, which `tooling` may not
+  do. Nothing depends on it. Their own edges are not checked, but no
+  layered or tooling package may depend on one.
 - **`requiredEdges`**: edges written `"a -> b"` that must exist — today
   `silk -> cli`, `silk -> mcp`, `cli -> silk-effects` and
   `silk-effects -> silk-core`. They are the non-vacuity guard: a discovery

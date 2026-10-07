@@ -1,8 +1,0 @@
-{
-	"session_id": "test-mcp-non-matching",
-	"hook_event_name": "PreToolUse",
-	"tool_name": "Bash",
-	"tool_input": {
-		"command": "echo hi"
-	}
-}

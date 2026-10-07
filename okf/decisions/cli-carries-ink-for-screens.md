@@ -2,7 +2,7 @@
 type: Decision
 title: The savvy CLI carries ink and react as regular dependencies, loaded only to draw
 description: "@savvy-web/cli declares ink and react — optional peers of @effected/cli — as regular dependencies, so every install of the cli (and of @savvy-web/silk, which pins it) carries ink, react and yoga-layout, while each screen module is imported lazily and only a person at a terminal ever loads them."
-status: draft
+status: stable
 tags: [deps, architecture, performance]
 generated:
   by: okfit/claude-code
@@ -17,6 +17,9 @@ sources:
     resource: ../../packages/cli/src/commands/clean.ts
   - id: plugin-silk-build
     resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # The savvy CLI carries ink and react as regular dependencies, loaded only to draw

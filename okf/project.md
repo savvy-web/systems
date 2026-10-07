@@ -11,8 +11,8 @@ sources:
     resource: ../package.json
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
-  body_sha256: ed7f75aad9ff923bdf2764cdef3bf74cd53c117314e72626f310aa5dd46cb67e
+  at: 2026-10-07T16:43:24Z
+  body_sha256: 4c8667b3b9c2b75212b21941a33eda547ac0a203d86c78f6e0fce37756f80e5b
 ---
 
 # systems
@@ -23,7 +23,7 @@ generated:
 
 ## Boundaries
 
-This project owns twelve published npm packages forming a strict layered graph — L4 [`silk`](modules/silk.md) → L3 [`cli`](modules/cli.md)/[`mcp`](modules/mcp.md)/`changelog` → L2 [`silk-effects`](modules/silk-effects.md) → L1 [`silk-core`](modules/silk-core.md) — plus `bundler`, `tsdown-plugins`, `rspress-builder`, `templates`, `github-action-builder`, and `pnpm-plugin-silk`, each under `packages/*` with its own `CLAUDE.md` and design doc.[^claude-md] It also owns `e2e/*`, a separate harness of private, test-only packages that exercise built `dist/dev` artifacts against isolated fixtures, and the silk agent plugin, the repository's one plugin: its pluginfinity source at `plugin/` (the private workspace package `@savvy-web/ai-plugins`) builds a Claude Code plugin and a GitHub Copilot plugin carrying the `savvy-mcp` wiring, hooks, and skills, while the legacy `plugins/silk/` copy stays in the tree until the release branch removes it (see [silk-plugin](modules/silk-plugin.md)).[^claude-md] It owns the shared Effect v4 toolchain conventions, the pnpm catalog strategy, and the Turborepo build orchestration that ties all of the above together.[^claude-md]
+This project owns twelve published npm packages forming a strict layered graph — L4 [`silk`](modules/silk.md) → L3 [`cli`](modules/cli.md)/[`mcp`](modules/mcp.md)/`changelog` → L2 [`silk-effects`](modules/silk-effects.md) → L1 [`silk-core`](modules/silk-core.md) — plus `bundler`, `tsdown-plugins`, `rspress-builder`, `templates`, `github-action-builder`, and `pnpm-plugin-silk`, each under `packages/*` with its own `CLAUDE.md` and design doc.[^claude-md] It also owns `e2e/*`, a separate harness of private, test-only packages that exercise built `dist/dev` artifacts against isolated fixtures, and the silk agent plugin, the repository's one plugin: its pluginfinity source at `plugin/` (the private workspace package `@savvy-web/ai-plugins`) builds a Claude Code plugin and a GitHub Copilot plugin carrying the `savvy-mcp` wiring, hooks, and skills; the Claude Code marketplace installs the built `plugin/builds/claude` (see [silk-plugin](modules/silk-plugin.md)).[^claude-md] It owns the shared Effect v4 toolchain conventions, the pnpm catalog strategy, and the Turborepo build orchestration that ties all of the above together.[^claude-md]
 
 ## Non-goals
 

@@ -62,6 +62,7 @@ jobs:
             picocolors
             remark-gfm
             fast-check
+            pluginfinity
             remark-parse
             remark-stringify
             rolldown-pnpm-config

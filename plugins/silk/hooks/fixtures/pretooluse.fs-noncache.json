@@ -1,8 +1,0 @@
-{
-	"session_id": "test-fs-noncache",
-	"hook_event_name": "PreToolUse",
-	"tool_name": "Edit",
-	"tool_input": {
-		"file_path": "src/index.ts"
-	}
-}

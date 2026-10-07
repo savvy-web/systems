@@ -1,5 +1,6 @@
 ---
 type: Convention
+status: draft
 title: Spell dependency ranges through purpose-scoped catalogs
 description: "Declare a dependency against catalog:build / catalog:docs / catalog:lint / catalog:silk / catalog:test (each with a <name>:peers companion) or catalog:effect / catalog:effect:peers — never a hand-pinned version, and never the retired camelCase <name>Peers spelling."
 tags: [release, build]

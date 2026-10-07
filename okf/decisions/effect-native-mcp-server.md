@@ -2,7 +2,7 @@
 type: Decision
 title: An Effect-native MCP server
 description: "@savvy-web/mcp runs on effect/ai's McpServer instead of the @modelcontextprotocol/sdk, registering its toolkit through @effected/mcp's McpToolkit so every success is the typed result in structuredContent with the same object as JSON in content[0].text."
-status: draft
+status: stable
 tags: [architecture, tooling]
 sources:
   - id: decision
@@ -27,6 +27,9 @@ generated:
   by: okfit/claude-code
   at: 2026-09-28T19:31:10Z
   body_sha256: b4bf46935a1152683e1a824967d824287f0cae67b3ae73ae92b980bb7a622518
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # An Effect-native MCP server

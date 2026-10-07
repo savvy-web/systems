@@ -2,7 +2,7 @@
 type: Decision
 title: Split the build orchestrator from the plugin pack
 description: "@savvy-web/bundler and @savvy-web/tsdown-plugins are two packages, split on an interface boundary, rather than one build-tool package."
-status: draft
+status: stable
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
@@ -13,6 +13,9 @@ sources:
     resource: ../../packages/bundler/package.json
   - id: tp-arch
     resource: ../../packages/tsdown-plugins/package.json
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # Split the build orchestrator from the plugin pack

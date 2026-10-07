@@ -2,7 +2,7 @@
 type: Decision
 title: Kit Effect peers supplied via the effected catalog
 description: "silk-core and silk-effects declare only the identity-carrying @effected/* packages (commands, git, templates, workspaces) as required peers, spelled catalog:effected:peers, with ranges supplied by @effected/pnpm-plugin-effect's catalogs rather than hand-pinned versions."
-status: draft
+status: stable
 tags: [architecture, release, deps]
 sources:
   - id: kit-peers
@@ -17,6 +17,9 @@ generated:
   by: okfit/claude-code
   at: 2026-10-01T23:55:04Z
   body_sha256: 247b9267101b119e4a382730a8d7a68fc50ae246ae494329b7d41cc981f65626
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # Kit Effect peers supplied via the effected catalog

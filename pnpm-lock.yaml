@@ -1204,9 +1204,18 @@ importers:
 
   plugin:
     devDependencies:
+      '@effected/templates':
+        specifier: catalog:effected
+        version: 0.10.0(effect@4.0.1)
+      '@effected/workspaces':
+        specifier: catalog:effected
+        version: 0.32.0(effect@4.0.1)
       '@savvy-web/silk-core':
         specifier: workspace:*
         version: link:../packages/silk-core/dist/dev/pkg
+      effect:
+        specifier: catalog:effect
+        version: 4.0.1
       pluginfinity:
         specifier: ^0.3.0
         version: 0.3.0(@effected/config-file@0.14.2(@effected/glob@0.10.0(effect@4.0.1))(@effected/jsonc@0.15.1(effect@4.0.1))(@effected/toml@0.11.1(effect@4.0.1))(@effected/walker@0.15.0(@effected/glob@0.10.0(effect@4.0.1))(effect@4.0.1))(@effected/yaml@0.19.1(effect@4.0.1))(effect@4.0.1))(@types/react@19.3.0)(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)

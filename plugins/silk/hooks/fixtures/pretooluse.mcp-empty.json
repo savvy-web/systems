@@ -1,6 +1,0 @@
-{
-	"session_id": "test-mcp-empty",
-	"hook_event_name": "PreToolUse",
-	"tool_name": "",
-	"tool_input": {}
-}

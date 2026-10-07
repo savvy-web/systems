@@ -45,7 +45,6 @@ package**, not a summary of your diff.
 Work out which workspace packages your branch touched. A "release surface" is either a
 directory listed in `pnpm-workspace.yaml` (the package whose `package.json#name` lives
 there), or a path linked to a package by `.changeset/config.json` — today that is
-`plugins/silk/**` (the legacy plugin copy), which belongs to `@savvy-web/silk`, and
 `.github/workflows/hook-tests.yml` plus `.github/plugin/**`, which belong to
 `@savvy-web/ai-plugins`. The plugin source `plugin/` is itself a workspace directory,
 so a change there belongs to `@savvy-web/ai-plugins` too.

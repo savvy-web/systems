@@ -1,5 +1,6 @@
 ---
 type: Module
+status: draft
 title: "@savvy-web/bundler"
 description: The tsdown-based build orchestrator every Silk Suite TypeScript package builds through — a thin driver over @savvy-web/tsdown-plugins.
 kind: package

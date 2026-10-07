@@ -2,7 +2,7 @@
 type: Decision
 title: The savvy front ends adopt the effected front-end kit
 description: "@savvy-web/cli, @savvy-web/mcp and silk's carrier shims run on @effected/engine, @effected/cli and @effected/mcp, and the layering and source-boundary guards on @effected/workspaces/testing, in place of process wiring this repository hand-rolled; mcp registers its toolkit through McpToolkit and its crash guards through McpGuard, and cli results print as audience-rendered @effected/cli documents on stdout through a thin local Report builder."
-status: draft
+status: stable
 tags: [architecture, deps, tooling]
 sources:
   - id: okfit-precedent
@@ -46,6 +46,9 @@ generated:
   by: okfit/claude-code
   at: 2026-10-06T01:33:29Z
   body_sha256: 2a7afbbe1863f5f19b5223f1bc60f8fb18499c8e2c36c0e64d99336e3bc5b035
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # The savvy front ends adopt the effected front-end kit

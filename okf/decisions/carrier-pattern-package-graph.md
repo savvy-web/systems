@@ -2,7 +2,7 @@
 type: Decision
 title: Carrier-pattern package graph
 description: "@savvy-web/silk carries the savvy/savvy-mcp bins as ordinary bin entries over the front ends' ./main contract, replacing a pnpm-only publicHoistPattern that only ever worked for one package manager."
-status: draft
+status: stable
 tags: [architecture, release]
 sources:
   - id: layering
@@ -13,6 +13,9 @@ generated:
   by: okfit/claude-code
   at: 2026-09-26T22:54:36Z
   body_sha256: d68440d63aa58141050b66466b863977e460379b14094756c69b71909ed855c1
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # Carrier-pattern package graph

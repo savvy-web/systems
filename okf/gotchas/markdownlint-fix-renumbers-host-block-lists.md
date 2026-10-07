@@ -13,8 +13,8 @@ sources:
     resource: ../../lib/configs/lint-staged.config.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
-  body_sha256: 86dd2ad0d73dd6ebb9dc76d74dc22b7e513c8f90e0c310004e484dfaf3ffa1b6
+  at: 2026-10-07T16:43:24Z
+  body_sha256: c09481e846c1b7016761faa254817ce1ecabf5ae4470fd69f719895c4597b4e1
 ---
 
 # markdownlint --fix renumbers a list split by a column-0 host-block marker
@@ -29,7 +29,7 @@ That pluginfinity's host-block rendering or the Claude build broke the numbering
 
 ## What is actually true
 
-lint-staged runs `markdownlint-cli2 --fix` on every staged `*.md`.[^lint-staged] A host-block marker at column 0 ends a Markdown list, so MD029 and MD007 see a new list after it and "fix" its numbering and indentation in the source. That is how round 1's `commit-create` came to render `1.` where `plugins/silk` had `4.`, and a fix pass rewrote `config` and `changeset-manager` the same way before they were restored.[^authoring]
+lint-staged runs `markdownlint-cli2 --fix` on every staged `*.md`.[^lint-staged] A host-block marker at column 0 ends a Markdown list, so MD029 and MD007 see a new list after it and "fix" its numbering and indentation in the source. That is how round 1's `commit-create` came to render `1.` where the retired `plugins/silk` had `4.`, and a fix pass rewrote `config` and `changeset-manager` the same way before they were restored.[^authoring]
 
 Indent a marker inside a list to the item's content column (3 spaces for `1.`); pluginfinity accepts and strips it there. Where a whole item has two host versions, the two alternative items still look like a duplicate number to MD029, so put the markdownlint disable comment in the Copilot block only (`disable-next-line` for a last item, `disable-file MD029` otherwise). The Claude build stays free of those comments.[^authoring]
 

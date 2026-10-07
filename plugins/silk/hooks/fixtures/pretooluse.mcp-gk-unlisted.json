@@ -1,6 +1,0 @@
-{
-	"session_id": "test-mcp-gk-unlisted",
-	"hook_event_name": "PreToolUse",
-	"tool_name": "mcp__gk__git_reflog",
-	"tool_input": {}
-}

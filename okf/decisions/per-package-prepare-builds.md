@@ -2,7 +2,7 @@
 type: Decision
 title: Build each workspace-dependency package via its own prepare script
 description: "Every package another manifest depends on as workspace:* carries its own prepare script (turbo run build:dev) instead of relying on a root prepare or turbo's dependsOn."
-status: draft
+status: stable
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
@@ -11,6 +11,9 @@ generated:
 sources:
   - id: install-orchestration
     resource: ../../package.json
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # Build each workspace-dependency package via its own prepare script

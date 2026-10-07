@@ -2,7 +2,7 @@
 type: Decision
 title: Deny Biome by whether the command reaches the binary, not by script name
 description: "biome-direct-deny denies a command only when it syntactically reduces to the Biome binary itself; it never inspects or denies a package-manager script by name, since a script always resolves package.json (and therefore the repo's Biome config) before anything runs."
-status: draft
+status: stable
 tags: [tooling, security]
 generated:
   by: okfit/claude-code
@@ -13,6 +13,9 @@ sources:
     resource: ../../plugin/hooks/pre-tool-use/biome-direct-deny.sh
   - id: biome-direct-deny-bats
     resource: ../../plugin/__test__/pre-tool-use-biome-direct-deny.bats
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # Deny Biome by whether the command reaches the binary, not by script name
