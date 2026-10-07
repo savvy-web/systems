@@ -24,6 +24,8 @@
 * Added pkill on a monitor script name kills every session's monitor
 * Updated silk-plugin
 * Updated systems
+* Added The repo-wide build ignore rule hides the plugin's build skill while build --check stays green
+* Updated layers.json
 
 ## 2026-10-06
 
