@@ -11,7 +11,7 @@
 	"plugins": [
 		{
 			"category": "developer-tools",
-			"description": "Companion plugin for @savvy-web/silk \u2014 changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
+			"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 			"name": "silk",
 			"source": {
 				"path": "plugin/builds/claude",

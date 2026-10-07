@@ -22,21 +22,21 @@ sources:
     resource: ../../plugin/hooks/lib/silk/hook-env.sh
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
-  body_sha256: 784eb5d60fc7125b7f582a6608e5dc8fa0cc4c712351035d70af190bbed02479
+  at: 2026-10-07T16:43:24Z
+  body_sha256: 7bc6a0c297dabb5f5315f7e5b868c241eabb822fb74f6af1df9dcece23418ee0
 ---
 
 # The pluginfinity Claude build matches plugins/silk except for listed, intended differences
 
 ## What was measured
 
-Whether `plugin/builds/claude/`, built by pluginfinity 0.3.0 from `plugin/`, is the same Claude Code plugin as the hand-written `plugins/silk/` it replaces. The comparison was kept through the three dogfood rounds of 2026-10-06/07. It used three methods:
+Whether `plugin/builds/claude/`, built by pluginfinity 0.3.0 from `plugin/`, is the same Claude Code plugin as the hand-written `plugins/silk/` it replaced. The comparison was kept through the three dogfood rounds of 2026-10-06/07. It used three methods:
 
 - a mechanical field-by-field comparison of the manifests and hook registrations;
 - running both trees' SessionStart scripts on one input and comparing the `additionalContext` bytes, with and without `TERM_PROGRAM=iTerm.app` and a stub `it2`;
 - a frontmatter-stripped diff of every skill and agent after token expansion.
 
-The difference list below is complete: anything not in it matched.[^fidelity-diff] Re-run the comparison before the release branch deletes `plugins/silk/`, and treat this concept as history once it is gone.
+The difference list below is complete: anything not in it matched.[^fidelity-diff] `plugins/silk/` has since been deleted (2026-10-07, on the `@savvy-web/ai-plugins` 4.4.0 release branch), so this comparison can no longer be re-run against the working tree; read it as the record of what the cutover preserved. It compared trees on disk, so it could not see that git tracked no `skills/build/` in either build: [gitignore-build-rule-hides-plugin-build-skill](../gotchas/gitignore-build-rule-hides-plugin-build-skill.md).
 
 ## Results
 

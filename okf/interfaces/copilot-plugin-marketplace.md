@@ -18,8 +18,8 @@ sources:
     resource: ../../plugin/builds/copilot/plugin.json
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
-  body_sha256: d79f232c08503cd5b044e59c36e1ff33df0cbf874761cebf33b4991608ee609d
+  at: 2026-10-07T16:43:24Z
+  body_sha256: 8753185584725e9afbe972b2fe1ca3d1013537ab97bddf17a9d22b68a4f10888
 ---
 
 # Copilot plugin marketplace
@@ -36,7 +36,7 @@ What a consumer can rely on:
 
 ## How the pin moves
 
-The `sha` is committed empty on this branch. On release, `.github/workflows/repin-plugins.yml` runs `spencerbeggs/ai-plugin-marketplace-manager@v2` with `marketplace: copilot` (the input defaults to `claude-code`, which edits `.claude-plugin/marketplace.json` instead), writes the new sha into this file, and lands the change through a squash-merged pull request.[^repin] An empty `sha` therefore means "not yet released from this file", not "track the default branch".
+The `sha` is committed empty until the first release repins it. On release, `.github/workflows/repin-plugins.yml` runs `spencerbeggs/ai-plugin-marketplace-manager@v2` with `marketplace: copilot` (the input defaults to `claude-code`, which edits `.claude-plugin/marketplace.json` instead), writes the new sha into this file, and lands the change through a squash-merged pull request.[^repin] An empty `sha` therefore means "not yet released from this file", not "track the default branch".
 
 ## What is not promised
 
