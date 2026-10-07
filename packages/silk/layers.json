@@ -13,7 +13,7 @@
 		"@savvy-web/github-action-builder",
 		"@savvy-web/pnpm-plugin-silk"
 	],
-	"unconstrained": ["@e2e/*", "savvy-web-systems"],
+	"unconstrained": ["@e2e/*", "@savvy-web/ai-plugins", "savvy-web-systems"],
 	"requiredEdges": [
 		"@savvy-web/silk -> @savvy-web/cli",
 		"@savvy-web/silk -> @savvy-web/mcp",
