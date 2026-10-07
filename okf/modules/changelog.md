@@ -1,5 +1,6 @@
 ---
 type: Module
+status: draft
 title: "@savvy-web/changelog"
 description: The standalone changesets changelog generator; a one-file host adapter over silk-effects' Changesets.makeChangelogFunctions, and the canonical .changeset/config.json changelog id.
 kind: package
@@ -7,8 +8,8 @@ resource: ../../packages/changelog
 tags: [release]
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T02:06:56Z
-  body_sha256: d76dc9dcf64ac6bf6bbfc42de31bae2872ca4b22b6de397449631c7b65cf7b1b
+  at: 2026-10-07T16:50:36Z
+  body_sha256: a35fa3e04545e9395e5af48caa82922a2bcb937efe2451f44bb384cbb8b8d2e0
 sources:
   - id: changelog-index
     resource: ../../packages/changelog/src/index.ts
@@ -48,10 +49,9 @@ without a consumer `node_modules`.
   resolver plugins — because `@changesets/cli` v3 is `"type": "module"`
   and `import()`s the changelog module, so no `require` condition is
   needed.[^changelog-build] `@savvy-web/silk-effects`, `effect` and the
-  `@effected/{commands,git,workspaces}` kit packages are declared runtime
-  `dependencies`, externalized by the build, and resolved by the consumer
-  at import time; `jju` and `semver` sit beside them for the same
-  reason.[^changelog-manifest]
+  `@effected/{commands,git,templates,workspaces}` kit packages are the
+  declared runtime `dependencies`, externalized by the build, and resolved
+  by the consumer at import time.[^changelog-manifest]
 - **The default export's shape is the contract**, not its type: the
   `@changesets/types` `ChangelogFunctions` object the changesets CLI loads,
   annotated with that nominal type on purpose so the dts bundler never

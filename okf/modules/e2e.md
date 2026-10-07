@@ -1,5 +1,6 @@
 ---
 type: Module
+status: draft
 title: "e2e"
 description: The private, never-published harness area exercising the repo's build and release tooling through the BUILT dist/dev artifact, against isolated fixtures outside the workspace.
 kind: workspace

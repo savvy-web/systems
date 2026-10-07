@@ -1,5 +1,6 @@
 ---
 type: Module
+status: draft
 title: "@savvy-web/tsdown-plugins"
 description: The interface-only plugin pack holding every build behavior @savvy-web/bundler orchestrates — entry detection, the build loop, dts emission, dual-format output, targets, exe, meta, config validation.
 kind: package

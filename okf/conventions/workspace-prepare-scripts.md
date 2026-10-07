@@ -1,5 +1,6 @@
 ---
 type: Convention
+status: draft
 title: Keep prepare:turbo run build:dev on every workspace:* dependency
 description: "Any package that is a workspace:* dependency of any package.json (root, sibling, or e2e/* fixture) must carry its own `prepare: turbo run build:dev` script; never delete it as redundant, and never add injectWorkspacePackages to route around it."
 stale_after: 2027-03-12T00:00:00-04:00
@@ -11,8 +12,8 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
-  body_sha256: 0cf7631787be9c5256777f1a79868b5ba3689e2e42caae4640b4e25e294df3eb
+  at: 2026-10-07T16:50:36Z
+  body_sha256: 1cba528f84218a7ef2209c6c98f4899f4a40560339cd851f07599d4657fead45
 ---
 
 # Keep prepare:turbo run build:dev on every workspace:* dependency
@@ -22,7 +23,7 @@ Build a package via its own `prepare` script whenever it is a `workspace:*` depe
 Re-derive the current set rather than trusting a list written down anywhere:
 
 ```bash
-grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.json e2e/*/package.json
+grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.json plugin/package.json e2e/*/package.json
 ```
 
 ## DO NOT delete these scripts

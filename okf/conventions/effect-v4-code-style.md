@@ -1,5 +1,6 @@
 ---
 type: Convention
+status: draft
 title: Write Effect v4 code in the house style
 description: "Model a service as a class-based Context.Service exporting a companion *Shape interface, model a serialisable value with Schema.Class or Schema.TaggedClass, model a typed failure with Data.TaggedError, and verify every API against .repos/effect or the installed release — never against v3 memory."
 tags: [architecture]

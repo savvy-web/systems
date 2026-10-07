@@ -1,5 +1,6 @@
 ---
 type: Convention
+status: draft
 title: Shape and test a savvy-mcp tool
 description: "Define a tool's parameters, result and failure union as Effect Schema only, declare every yielded service in the tool's dependencies array, serve action-keyed parameters through McpToolkit.unionTool and union results through ToolOutputSchema.objectRooted, refuse with ToolRefusal.refuse, annotate all four MCP hints (Readonly, Destructive, Idempotent, OpenWorld), add no text projection since the result schema is the whole contract, and default a tool to read-only unless it is one of the three documented mutating exceptions."
 tags: [tooling, testing]

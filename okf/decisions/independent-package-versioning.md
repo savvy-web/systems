@@ -2,7 +2,7 @@
 type: Decision
 title: Every package versions independently
 description: "`.changeset/config.json` declares no fixed or linked groups; every one of the twelve published packages, including former linked groups, cuts its own release, with changesets auto-bumping dependents and npm-registry-only release posture where that applies."
-status: draft
+status: stable
 tags: [release]
 sources:
   - id: claude-md
@@ -11,8 +11,11 @@ sources:
     resource: ../../.changeset/config.json
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:43:24Z
-  body_sha256: aabf3ef77af6c06f27e1bb16bd0c9dccf539edb4cf47a1d136cfd52f927d5735
+  at: 2026-10-07T16:50:36Z
+  body_sha256: d6859faf9e3d630bb2468ac1dea8de9e83072cee76f7f17452e25e81d326384f
+verified:
+  - by: human:spencer
+    at: 2026-10-07T16:50:25Z
 ---
 
 # Every package versions independently
@@ -38,7 +41,7 @@ The repo-wide `updateInternalDependencies: patch` setting means any internal `wo
 ## Consequences
 
 - A release of any one package never forces a version bump on an unrelated sibling; only real `workspace:*` edges (via `updateInternalDependencies: patch`) or a package's own explicit `versionFiles` (`@savvy-web/ai-plugins` bumping its built plugin manifests, see [ai-plugins-versions-independently](ai-plugins-versions-independently.md)) propagate a bump.
-- Release-order sequencing between related packages (for example, silk and pnpm-plugin-silk around a hoist change) is a manual coordination rule at release time, not something the changeset config enforces — see [carrier-pattern-package-graph](carrier-pattern-package-graph.md#hoist-removal-and-release-sequencing) for the case this bites.
+- Release-order sequencing between related packages (for example, silk and pnpm-plugin-silk around a hoist change) is a manual coordination rule at release time, not something the changeset config enforces — see [carrier-pattern-package-graph](carrier-pattern-package-graph.md#consequences) for the case this bites.
 - `@savvy-web/pnpm-plugin-silk` cannot be reached via a `@savvy-web/pnpm-plugin-silk` GitHub Packages install; every consumer resolves it from npm only.
 
 [^claude-md]: ../../CLAUDE.md

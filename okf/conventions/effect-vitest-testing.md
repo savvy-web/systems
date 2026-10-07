@@ -1,5 +1,6 @@
 ---
 type: Convention
+status: draft
 title: Use @effect/vitest per file, not per package
 description: "Choose the test entry point by whether the file runs an Effect: it.effect by default, it.live for real time/console, layer(...) only for a stateless or read-only-shared group; provide layers per test, double filesystems with @effected/memfs, and assert typed failures with Effect.flip."
 stale_after: 2027-03-12T00:00:00-04:00

@@ -1,5 +1,6 @@
 ---
 type: Convention
+status: draft
 title: Respect the four-layer package graph and the non-import invariant
 description: "An edge may only point from a higher layer to a strictly lower one (L4 silk -> L3 cli/mcp/changelog -> L2 silk-effects -> L1 silk-core), same-layer packages never reference each other, and cli/silk/mcp never import each other except silk's src/bin/ carrier shims — asserted by silk's package-layering test against packages/silk/layers.json."
 stale_after: 2027-03-12T00:00:00-04:00
@@ -13,8 +14,8 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-25T02:26:25Z
-  body_sha256: a307f817298979441c45a61eb3811e2265d020ea5cc93b8eb94c97afbd4d5185
+  at: 2026-10-07T16:50:36Z
+  body_sha256: 372b34feee4394dbdd55d6aa4028e9cc8ab1fa3e896191dfa9519e0317be32cb
 ---
 
 # Respect the four-layer package graph and the non-import invariant
@@ -32,6 +33,8 @@ L1  @savvy-web/silk-core                 domain model: schemas, errors, pure con
     @savvy-web/templates  @savvy-web/github-action-builder  @savvy-web/pnpm-plugin-silk
 --- unconstrained (own edges not checked) ---
     @e2e/*  savvy-web-systems (the private root)
+    @savvy-web/ai-plugins  (private plugin source; its one edge, a silk-core
+                            devDependency, reaches into a layer, so not tooling)
 ```
 
 The rules:

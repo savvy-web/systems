@@ -1,5 +1,6 @@
 ---
 type: Module
+status: draft
 title: "@savvy-web/silk"
 description: The single install-target package that carries the savvy/savvy-mcp bins and a thin config-integration shim surface over silk-effects.
 kind: package
