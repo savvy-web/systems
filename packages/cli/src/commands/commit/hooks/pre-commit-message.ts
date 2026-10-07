@@ -4,7 +4,6 @@
  *
  * @internal
  */
-import { resolve } from "node:path";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect, Schema } from "effect";
 import { Command } from "effect/cli";
@@ -88,7 +87,7 @@ export const preCommitMessageCommand = Command.make("pre-commit-message", {}, ()
 
 		const branchInfo = yield* Commitlint.readBranchInfo();
 		const signing = yield* Commitlint.readSigningDiagnostic();
-		const issuesPath = resolve(process.env.CLAUDE_PROJECT_DIR ?? process.cwd(), Commitlint.ISSUES_CACHE_RELATIVE_PATH);
+		const issuesPath = yield* Commitlint.resolveIssuesCachePath();
 		const issues = (yield* Commitlint.readOpenIssuesFromCache(issuesPath)) ?? [];
 
 		const out = yield* Effect.promise(() =>

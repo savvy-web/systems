@@ -22,8 +22,8 @@ export default defineConfig({
 	// (lib/pluginfinity/env-run.sh) and applied before every hook body. The
 	// defaults are empty so each reader's detect-when-empty fallback still runs.
 	// SILK_PROJECT_DIR is deliberately NOT declared: every declared name is
-	// appended to CLAUDE_ENV_FILE, which would pin the skill scripts to the
-	// session-start tree (resolve-cli-project-dir.sh rule 2).
+	// appended to CLAUDE_ENV_FILE, which would leak the session-start tree
+	// into every worktree subagent (resolve-cli-project-dir.sh rule 2).
 	// SILK_REPOS_SYNC_TIMEOUT stays ambient-only.
 	env: {
 		prefix: "SILK",

@@ -115,32 +115,27 @@ way, and the current working directory is the primary authority:
    worktree (e.g. `.claude/worktrees/agent-*/`) this correctly resolves to
    the WORKTREE's own root, never the primary checkout — that is where the
    commit belongs.
-2. **`CLAUDE_PROJECT_DIR` is a fallback, not an override.** It is the host's
-   pin to the session's primary checkout and is expected to differ from cwd
-   whenever you are working in a worktree — that disagreement is silently
-   ignored and cwd still wins. If `CLAUDE_PROJECT_DIR` instead names a
-   genuinely different repository (no shared git history with cwd — a
-   cross-repo agent session, or a stale value left over from earlier,
-   unrelated work) the scripts refuse rather than guess, printing an error
-   that names both paths. Fix this by `cd`-ing to the repo you mean to
-   operate on, or by setting `SILK_PROJECT_DIR` (below).
-3. **`SILK_PROJECT_DIR` is an explicit, deliberate override.** Set it to
-   force resolution to a specific repository regardless of cwd — the
-   documented lever for a cross-repo agent session that genuinely needs to
-   target a repo other than the one it is standing in. It always wins over
-   cwd, and a one-line `NOTICE` goes to stderr whenever it overrides a
-   differing cwd, so the override is never silent:
+2. **`CLAUDE_PROJECT_DIR` and `SILK_PROJECT_DIR` are fallbacks, not
+   overrides.** Both are routinely inherited: `CLAUDE_PROJECT_DIR` is the
+   host's pin to the session's primary checkout, and a coordinating
+   session's `SILK_PROJECT_DIR` reaches every subagent it starts in a
+   worktree. When either names another worktree of the same repository, cwd
+   still wins (a `SILK_PROJECT_DIR` mismatch prints a one-line `NOTICE`). If
+   either instead names a genuinely different repository (no shared git
+   history with cwd — a cross-repo agent session, or a stale value left over
+   from earlier, unrelated work) the scripts refuse rather than guess,
+   printing an error that names both paths. Fix this by `cd`-ing to the repo
+   you mean to operate on, or by unsetting the variable.
+3. Outside any git repository entirely (cwd resolution itself fails), the
+   fallback chain is `SILK_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → the literal
+   cwd. To target another repository, `cd` into it:
 
    ```bash
-   SILK_PROJECT_DIR=/path/to/intended/repo bash "{{skill_dir}}/scripts/commit.sh" <message-file>
+   cd /path/to/intended/repo && bash "{{skill_dir}}/scripts/commit.sh" <message-file>
    ```
 
-4. Outside any git repository entirely (cwd resolution itself fails), the
-   fallback chain is `SILK_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → the literal
-   cwd.
-
 This is the fix for a family of reproduced bugs — savvy-web/systems issues
-474, 434 and 418 — where an inherited, stale
+706, 474, 434 and 418 — where an inherited, stale
 `SILK_PROJECT_DIR`/`CLAUDE_PROJECT_DIR` silently outranked the actual working
 tree, including a near-miss where one agent's commit almost landed on another
 agent's staged tree. If `commit.sh` ever reports the wrong repository, that

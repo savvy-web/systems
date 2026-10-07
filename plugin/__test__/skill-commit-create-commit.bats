@@ -261,6 +261,33 @@ _write_msg() {
 	done
 }
 
+@test "cwd inside a git worktree: an inherited SILK_PROJECT_DIR naming the primary checkout does not redirect the commit (#706)" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_stub_commitlint 0
+	git -C "$GIT_PROJECT" add -A
+	git -C "$GIT_PROJECT" commit -q -m "chore: seed"
+	local wt="${SILK_TMP}/wt"
+	git -C "$GIT_PROJECT" worktree add -q -b feature "$wt" main
+	echo "wt-only" >"${wt}/wt-file.txt"
+	git -C "$wt" add wt-file.txt
+	# Something staged in the primary checkout too: the #706 hazard is this
+	# landing on the wrong branch.
+	echo "main-only" >"${GIT_PROJECT}/main-file.txt"
+	git -C "$GIT_PROJECT" add main-file.txt
+	cd "$wt"
+	local msg
+	msg=$(_write_msg $'chore: commit from the worktree\n\nSigned-off-by: Silk Test <test@example.com>\n')
+	silk_script skills/commit-create/scripts/commit.sh --env SILK_PROJECT_DIR="$GIT_PROJECT" "$msg"
+	[ "$status" -eq 0 ]
+	[[ "$stderr" == *"NOTICE: ignoring SILK_PROJECT_DIR (${GIT_PROJECT})"* ]]
+	run git -C "$wt" log -1 --format='%s'
+	[ "$output" = "chore: commit from the worktree" ]
+	run git -C "$GIT_PROJECT" log --oneline
+	[ "${#lines[@]}" -eq 1 ]
+	done
+}
+
 @test "CLAUDE_PROJECT_DIR naming a genuinely different repo than cwd: refuses, nothing committed anywhere" {
 	for SILK_TARGET in $SILK_TARGETS; do
 	silk_setup "$SILK_TARGET"

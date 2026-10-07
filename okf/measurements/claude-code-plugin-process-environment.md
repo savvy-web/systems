@@ -18,8 +18,8 @@ sources:
     resource: ../../plugin/hooks/lib/silk/resolve-cli-project-dir.sh
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
-  body_sha256: e4434db34b457beaebb58f9ba8146703e9fba09919d9b6b17afa00a17da4e779
+  at: 2026-10-07T19:16:22Z
+  body_sha256: 4a73b786301b95ec3db4770edcbd6de73f9c5ffd3cfd455dd8e647e47656bc4b
 ---
 
 # What Claude Code passes to a plugin's monitors and the Bash tool (2.1.291/2.1.292)
@@ -45,7 +45,7 @@ The pluginfinity side measured the same on 2.1.292: `CLAUDE_ENV_FILE` is `~/.cla
 ## What it ruled in and out
 
 - **A monitor must find the project from its cwd**, and a skill script from its own `$0` and the caller's cwd. Neither can rely on `CLAUDE_PROJECT_DIR` or `CLAUDE_PLUGIN_ROOT`, so `plugin/`'s monitors and resolver scripts walk from those instead.[^fidelity]
-- **Anything written to `CLAUDE_ENV_FILE` becomes ambient in every skill script.** `plugins/silk` wrote `SILK_PROJECT_DIR` there. `resolve-cli-project-dir.sh` treats a set `SILK_PROJECT_DIR` as a deliberate override that beats the caller's cwd, so `commit.sh` was pinned to the session-start tree even when the agent worked in a worktree. `plugin/` stops declaring it.[^resolver]
+- **Anything written to `CLAUDE_ENV_FILE` becomes ambient in every skill script.** `plugins/silk` wrote `SILK_PROJECT_DIR` there. `resolve-cli-project-dir.sh` then treated a set `SILK_PROJECT_DIR` as a deliberate override that beat the caller's cwd (it no longer does, since #706), so `commit.sh` was pinned to the session-start tree even when the agent worked in a worktree. `plugin/` stops declaring it.[^resolver]
 - **`plugins/silk`'s `silk-hook.sh` reached hooks only because silk sourced it itself**, not through any host mechanism. pluginfinity's declared session env replaces it.
 - **`CLAUDE_CODE_SESSION_ID` is the one stable session key outside hooks.** pluginfinity's `monitor_once` dedupe and the session-env project pointer key on it.
 

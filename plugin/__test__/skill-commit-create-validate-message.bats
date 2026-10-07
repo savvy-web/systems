@@ -268,22 +268,43 @@ _make_git_project_with_config() {
 	done
 }
 
-@test "explicit SILK_PROJECT_DIR override wins over a differing cwd, with a NOTICE naming both paths" {
+@test "SILK_PROJECT_DIR naming a genuinely different repo than cwd refuses (#706)" {
 	for SILK_TARGET in $SILK_TARGETS; do
 	silk_setup "$SILK_TARGET"
 	_stub_commitlint 0
-	local target decoy
-	target=$(_make_git_project_with_config target)
+	local claimed decoy
+	claimed=$(_make_git_project_with_config claimed)
 	decoy=$(_make_git_project_with_config decoy)
 	unset CLAUDE_PROJECT_DIR
-	export SILK_PROJECT_DIR="$target"
+	export SILK_PROJECT_DIR="$claimed"
 	cd "$decoy"
+	local msg
+	msg=$(_write_msg $'chore: bump lockfile\n\nSigned-off-by: Silk Test <test@example.com>\n')
+	silk_script skills/commit-create/scripts/validate-message.sh "$msg"
+	[ "$status" -eq 1 ]
+	[[ "$stderr" == *"ERROR: refusing to guess the target repository"* ]]
+	[[ "$stderr" == *"SILK_PROJECT_DIR names a different repository, '${claimed}'"* ]]
+	[[ "$stderr" == *"$decoy"* ]]
+	[[ "$output" != *"PASS:"* ]]
+	done
+}
+
+@test "SILK_PROJECT_DIR is the fallback when cwd is outside any git repository" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_stub_commitlint 0
+	local target loose
+	target=$(_make_git_project_with_config target)
+	loose="${SILK_TMP}/loose"
+	mkdir -p "$loose"
+	unset CLAUDE_PROJECT_DIR
+	export SILK_PROJECT_DIR="$target"
+	cd "$loose"
 	local msg
 	msg=$(_write_msg $'chore: bump lockfile\n\nSigned-off-by: Silk Test <test@example.com>\n')
 	silk_script skills/commit-create/scripts/validate-message.sh "$msg"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"PASS: commit message satisfies the @savvy-web/commitlint preset."* ]]
-	[[ "$stderr" == *"NOTICE: SILK_PROJECT_DIR (${target}) overrides the resolved cwd toplevel (${decoy})."* ]]
 	done
 }
 

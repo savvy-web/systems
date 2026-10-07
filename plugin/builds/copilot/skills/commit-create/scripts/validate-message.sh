@@ -91,9 +91,8 @@ fi
 # `git -C "$PWD" rev-parse --show-toplevel` is the primary authority so this
 # always resolves the CALLER's actual working tree — including a linked git
 # worktree, which returns its own root, never the main checkout.
-# SILK_PROJECT_DIR remains an explicit override; CLAUDE_PROJECT_DIR (the
-# session's primary-checkout pin) is a fallback only, never silently
-# preferred over a resolved cwd.
+# SILK_PROJECT_DIR and CLAUDE_PROJECT_DIR are fallbacks only, never preferred
+# over a resolved cwd.
 PROJECT_DIR=$(resolve_cli_project_dir) || exit 1
 if [ ! -d "$PROJECT_DIR" ]; then
 	echo "ERROR: project dir not found: $PROJECT_DIR" >&2

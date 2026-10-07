@@ -14,42 +14,37 @@
 #   . "${PLUGIN_ROOT}/hooks/lib/silk/resolve-cli-project-dir.sh"
 #   PROJECT_DIR=$(resolve_cli_project_dir) || exit 1
 #
-# Contract (savvy-web/systems#474, #434, #418 — one root-cause family: an
-# inherited, stale SILK_PROJECT_DIR/CLAUDE_PROJECT_DIR silently outranking
-# the caller's actual working tree):
+# Contract (savvy-web/systems#706, #474, #434, #418 — one root-cause family:
+# an inherited, stale SILK_PROJECT_DIR/CLAUDE_PROJECT_DIR silently
+# outranking the caller's actual working tree):
 #
 #   1. `git -C "$PWD" rev-parse --show-toplevel` is the PRIMARY authority.
 #      Inside a linked git worktree this returns the WORKTREE root — that is
 #      correct, and is where a commit belongs; this helper never resolves
 #      through to the main checkout.
 #
-#   2. SILK_PROJECT_DIR, if set, is an EXPLICIT, deliberate override: it
-#      always wins over cwd, so an agent can still target another tree on
-#      purpose (the documented remedy in #418/#434). A one-line NOTICE goes
-#      to stderr whenever it overrides a differing cwd, so the override is
-#      never silent — the exact "near-miss" gap #474 flagged.
+#   2. Neither SILK_PROJECT_DIR nor CLAUDE_PROJECT_DIR overrides a cwd that
+#      is inside a git repository. Both are routinely INHERITED: the host
+#      pins CLAUDE_PROJECT_DIR to the session's primary checkout (see
+#      hooks/lib/silk/hook-env.sh's header comment), and a coordinating
+#      session's SILK_PROJECT_DIR leaks into every subagent it starts in a
+#      worktree (#706). When a variable names another worktree of the SAME
+#      repository (a shared `git rev-parse --git-common-dir`), cwd wins:
+#      silently for CLAUDE_PROJECT_DIR, whose disagreement is expected, and
+#      with a one-line stderr NOTICE for SILK_PROJECT_DIR.
 #
-#   3. CLAUDE_PROJECT_DIR is NOT an override — it is the host's pin to the
-#      session's PRIMARY checkout for the whole session (see
-#      hooks/lib/silk/hook-env.sh's header comment), and is EXPECTED to differ
-#      from cwd in the single most common case this fixes: a
-#      worktree-isolated agent. That disagreement is IGNORED whenever cwd
-#      and CLAUDE_PROJECT_DIR are worktrees of the SAME repository (a shared
-#      `git rev-parse --git-common-dir`) — cwd wins silently, with no notice
-#      and no refusal, because nothing is actually wrong.
-#
-#   4. A CLAUDE_PROJECT_DIR naming a genuinely DIFFERENT repository (no
-#      shared git-common-dir with cwd — the cross-repo-agent case in #418,
-#      or a stale value left over from unrelated earlier work per #474) is a
+#   3. A variable naming a genuinely DIFFERENT repository (no shared
+#      git-common-dir with cwd — the cross-repo-agent case in #418, or a
+#      stale value left over from unrelated earlier work per #474) is a
 #      real, actionable disagreement: REFUSE rather than guess, naming both
 #      paths on stderr, so a silent wrong-repo commit is impossible. A
-#      CLAUDE_PROJECT_DIR that cannot be resolved as a git repo at all (unset,
-#      missing, not a checkout) cannot be proven to disagree, so it is
-#      treated the same as rule 3 — ignored, cwd wins.
+#      variable that cannot be resolved as a git repo at all (missing, not a
+#      checkout) cannot be proven to disagree, so it is ignored — cwd wins.
 #
-#   5. Outside any git repository (cwd resolution itself fails), the env
-#      vars become the fallback chain: SILK_PROJECT_DIR (already handled by
-#      rule 2, unconditionally) → CLAUDE_PROJECT_DIR → $PWD.
+#   4. Outside any git repository (cwd resolution itself fails), the env
+#      vars become the fallback chain: SILK_PROJECT_DIR → CLAUDE_PROJECT_DIR
+#      → $PWD. This is the only case where either variable selects the
+#      target.
 
 # _physical_path <dir> — echo <dir> with symlinks resolved (`pwd -P`), or
 # <dir> unchanged if it is not a real, accessible directory. Load-bearing on
@@ -86,8 +81,8 @@ _resolve_git_common_dir_abs() {
 # resolve to a git repository and their common dirs are confirmed to differ.
 # If either side fails to resolve at all (not a git repo, missing, unset),
 # there is no affirmative EVIDENCE of disagreement, so this returns false
-# (not confirmed different) — rule 4's fail-open default for an unresolvable
-# CLAUDE_PROJECT_DIR. A refusal must be backed by two real, differing
+# (not confirmed different) — rule 3's fail-open default for an unresolvable
+# project variable. A refusal must be backed by two real, differing
 # git-common-dirs, never by a bare string mismatch.
 _confirmed_different_repo() {
 	local a b
@@ -101,38 +96,37 @@ _confirmed_different_repo() {
 # on stdout. Callers MUST check the exit status:
 #   PROJECT_DIR=$(resolve_cli_project_dir) || exit 1
 resolve_cli_project_dir() {
-	local cwd_toplevel="" cwd_toplevel_norm=""
+	local cwd_toplevel="" cwd_toplevel_norm="" var value
 	cwd_toplevel=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)
 	[ -n "$cwd_toplevel" ] && cwd_toplevel_norm=$(_physical_path "$cwd_toplevel")
 
-	# Rule 2: SILK_PROJECT_DIR is an explicit override — always wins. Every
-	# comparison below is against the symlink-resolved forms (see
-	# _physical_path) so a path that is merely spelled differently — e.g.
-	# `/tmp/x` vs macOS's real `/private/tmp/x` — never reads as a
-	# disagreement; only the ORIGINAL SILK_PROJECT_DIR value is ever echoed
-	# or shown to the caller.
-	if [ -n "${SILK_PROJECT_DIR:-}" ]; then
-		if [ -n "$cwd_toplevel_norm" ] && [ "$(_physical_path "$SILK_PROJECT_DIR")" != "$cwd_toplevel_norm" ]; then
-			echo "NOTICE: SILK_PROJECT_DIR (${SILK_PROJECT_DIR}) overrides the resolved cwd toplevel (${cwd_toplevel})." >&2
-		fi
-		printf '%s' "$SILK_PROJECT_DIR"
-		return 0
-	fi
-
-	# Rule 1/3/4: cwd resolved to a real git repo.
+	# Rules 1-3: cwd resolved to a real git repo, so it is the target. Every
+	# comparison is against the symlink-resolved forms (see _physical_path)
+	# so a path that is merely spelled differently — e.g. `/tmp/x` vs
+	# macOS's real `/private/tmp/x` — never reads as a disagreement; only the
+	# ORIGINAL variable values are ever shown to the caller.
 	if [ -n "$cwd_toplevel" ]; then
-		if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ "$(_physical_path "$CLAUDE_PROJECT_DIR")" != "$cwd_toplevel_norm" ] &&
-			_confirmed_different_repo "$cwd_toplevel" "$CLAUDE_PROJECT_DIR"; then
-			echo "ERROR: refusing to guess the target repository — cwd resolves to '${cwd_toplevel}' but CLAUDE_PROJECT_DIR names a different repository, '${CLAUDE_PROJECT_DIR}'. cd to the repo you mean to operate on, or set SILK_PROJECT_DIR explicitly to override." >&2
-			return 1
-		fi
-		# Rule 3 (same repo, different worktree) or an unresolvable
-		# CLAUDE_PROJECT_DIR both fall through here silently — cwd wins.
+		for var in SILK_PROJECT_DIR CLAUDE_PROJECT_DIR; do
+			value="${!var:-}"
+			[ -n "$value" ] || continue
+			[ "$(_physical_path "$value")" = "$cwd_toplevel_norm" ] && continue
+			if _confirmed_different_repo "$cwd_toplevel" "$value"; then
+				echo "ERROR: refusing to guess the target repository — cwd resolves to '${cwd_toplevel}' but ${var} names a different repository, '${value}'. cd to the repo you mean to operate on, or unset ${var}." >&2
+				return 1
+			fi
+			if [ "$var" = SILK_PROJECT_DIR ]; then
+				echo "NOTICE: ignoring SILK_PROJECT_DIR (${value}); the cwd toplevel (${cwd_toplevel}) is the target." >&2
+			fi
+		done
 		printf '%s' "$cwd_toplevel"
 		return 0
 	fi
 
-	# Rule 5: cwd is not inside a git repo at all — env-var fallback.
+	# Rule 4: cwd is not inside a git repo at all — env-var fallback.
+	if [ -n "${SILK_PROJECT_DIR:-}" ]; then
+		printf '%s' "$SILK_PROJECT_DIR"
+		return 0
+	fi
 	if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
 		printf '%s' "$CLAUDE_PROJECT_DIR"
 		return 0

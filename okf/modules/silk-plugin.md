@@ -39,8 +39,8 @@ sources:
     resource: ../../plugin/skills/dogfood
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:43:24Z
-  body_sha256: 9c886b405769d5ee23c745845589412891e745e561a9d20cfbc71753dff26e85
+  at: 2026-10-07T19:16:22Z
+  body_sha256: e975ca0e8dbdb09083e2cb4bba79a2c14e6e679261be315353b8b15f2cf51db0
 ---
 
 # silk-plugin
@@ -112,7 +112,7 @@ Three SessionStart hooks split by responsibility: `orientation.sh` (no matcher, 
 
 **Session env.** The config's `env` block declares two variables, both defaulting to `""`: `SILK_PACKAGE_MANAGER` (printed by `scripts/env-setup.sh`) and `SILK_SKIP_CHANGESET_NUDGE` (set by the user). A generated SessionStart runner resolves them once per session with precedence default < setup script < project `.env` < `.env.local` < ambient environment, and the library applies the values before every hook body. On Claude the runner also appends them to `CLAUDE_ENV_FILE` so the model's shell sees them; Copilot has no such channel. The empty defaults keep every reader's detect-when-empty fallback live for a reader that races the runner.[^config] This replaces the old `~/.claude/session-env/<id>/silk-hook.sh` file, which reached hooks only because silk sourced it itself. `SILK_PROJECT_DIR` is deliberately NOT declared, because every declared name is appended to `CLAUDE_ENV_FILE`.[^authoring]
 
-**Working-tree resolution (#274).** `hook_project_dir` takes an absolute input `cwd` first, walked up to the nearest `.git` (a worktree's `.git` file counts), else that `cwd` as given; only with no usable `cwd` does Claude fall back to `CLAUDE_PROJECT_DIR`. This is load-bearing because agents routinely work in `.claude/worktrees/agent-*/` on their own branch. Standalone skill scripts with no envelope resolve separately through `hooks/lib/silk/resolve-cli-project-dir.sh`, where the caller's `$PWD` is primary and a user-set `SILK_PROJECT_DIR` is an explicit override.[^authoring]
+**Working-tree resolution (#274).** `hook_project_dir` takes an absolute input `cwd` first, walked up to the nearest `.git` (a worktree's `.git` file counts), else that `cwd` as given; only with no usable `cwd` does Claude fall back to `CLAUDE_PROJECT_DIR`. This is load-bearing because agents routinely work in `.claude/worktrees/agent-*/` on their own branch. Standalone skill scripts with no envelope resolve separately through `hooks/lib/silk/resolve-cli-project-dir.sh`, where the caller's `$PWD` toplevel always wins inside a git repository: `SILK_PROJECT_DIR` and `CLAUDE_PROJECT_DIR` naming another worktree of the same repository are ignored, and one naming a different repository makes the script refuse. Neither is an override; they select the target only outside any git repository, as the fallback chain `SILK_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → `$PWD` (#706).[^authoring]
 
 **Logging.** One standard: `$XDG_STATE_HOME/pluginfinity/silk/error.log`, plus `debug.log` under `PLUGINFINITY_DEBUG=1`, read with `pluginfinity logs --plugin silk`. The old `SILK_HOOK_DEBUG` and `SILK_HOOK_*_LOG` overrides are gone. Skill scripts log refusals through `script_log`.[^authoring]
 

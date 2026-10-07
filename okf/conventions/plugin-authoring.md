@@ -22,8 +22,8 @@ sources:
     resource: ../../plugin/__test__/run-tests.sh
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
-  body_sha256: a181d0e45723ce561739feaa9162b6a4f4f25f8478d4ac7cde0b2e3ad2dcb4e2
+  at: 2026-10-07T19:16:22Z
+  body_sha256: 2d451e7aabdf1dad3454f7bba5a43c446e0c35ac82b8a1fdc089651e8fc3ce61
 ---
 
 # Author silk plugin hooks, scripts, skills and tests on the pluginfinity libraries
@@ -44,7 +44,7 @@ These rules apply to everything under `plugin/`. Where to make a change, and com
 
 - **Declare a session variable in the config's `env` block; never export it from a hook.** The generated runner resolves each declared name once per SessionStart, with precedence default < `scripts/env-setup.sh` < project `.env` < `.env.local` < ambient environment. The library applies the values before every hook body, and on Claude the runner appends them to `CLAUDE_ENV_FILE`.[^config]
 - **Give every variable an empty default and keep the reader's detect-when-empty fallback.** A reader that races the runner, a Copilot event with no `cwd`, or a deleted worktree all see `""`.[^config]
-- **Never declare `SILK_PROJECT_DIR`.** Every declared name lands in `CLAUDE_ENV_FILE` and so becomes ambient in skill scripts. `resolve-cli-project-dir.sh` treats a set `SILK_PROJECT_DIR` as a deliberate override, so declaring it pins the skill scripts to the session-start tree. It stays a user-set override only. `SILK_REPOS_SYNC_TIMEOUT` stays ambient-only too.[^resolver]
+- **Never declare `SILK_PROJECT_DIR`.** Every declared name lands in `CLAUDE_ENV_FILE` and so becomes ambient in skill scripts. Declaring `SILK_PROJECT_DIR` would export the session-start tree into every subagent the session starts, including worktree-isolated ones (#706). It is not an override: inside a git repository `resolve-cli-project-dir.sh` always targets the cwd's toplevel, ignores a `SILK_PROJECT_DIR` naming another worktree of the same repository (with a stderr NOTICE), and refuses one naming a different repository. Only outside any git repository does it act, as the first link of the `SILK_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` → `$PWD` fallback chain. `SILK_REPOS_SYNC_TIMEOUT` stays ambient-only too.[^resolver]
 - **`env-setup.sh` prints only `NAME=value` lines** and runs with no hook library, from the project, under a 10 s bound.[^env-setup]
 - Per-session debounce markers (`changeset-nudge.sh`, `biome-prefer-mcp.sh`) live under `~/.claude/session-env/<id>/`. They are markers, not env.
 

@@ -36,7 +36,7 @@ _pf_log_dir="${PLUGIN_ROOT}/lib/pluginfinity"
 # `git -C "$PWD" rev-parse --show-toplevel` is the primary authority, so a
 # worktree-isolated invocation resolves its OWN worktree, not the main
 # checkout SILK_PROJECT_DIR/CLAUDE_PROJECT_DIR are pinned to
-# (savvy-web/systems#474, #434, #418).
+# (savvy-web/systems#706, #474, #434, #418).
 PROJECT_DIR=$(resolve_cli_project_dir) || exit 1
 if [ ! -d "$PROJECT_DIR" ]; then
 	echo "ERROR: project dir not found: $PROJECT_DIR" >&2
