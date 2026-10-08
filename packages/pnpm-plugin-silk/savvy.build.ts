@@ -39,7 +39,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.11",
+							range: "^2.2.12",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -143,7 +143,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.2",
+							range: "^8.3.3",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
@@ -197,8 +197,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.11.6",
-							peer: "^2.11.6",
+							range: "^2.11.7",
+							peer: "^2.11.7",
 							strategy: "lock",
 						},
 					},
@@ -235,8 +235,8 @@ await build({
 							strategy: "lock",
 						},
 						ink: {
-							range: "^7.1.1",
-							peer: "^7.1.0",
+							range: "^8.0.0",
+							peer: "^8.0.0",
 							strategy: "lock-minor",
 						},
 						"lint-staged": {
@@ -299,7 +299,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.2",
+							range: "^8.3.3",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
@@ -348,7 +348,6 @@ await build({
 						"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
 						"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
 						"@effect/vitest>vitest": "^5.0.1",
-						"ink-tab>ink": "^7.0.0",
 					},
 					ignoreMissing: [
 						"typescript",
@@ -441,7 +440,6 @@ await build({
 					"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
 					"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
 					"@effect/vitest>vitest": "^5.0.1",
-					"ink-tab>ink": "^7.0.0",
 				},
 			},
 		}),
