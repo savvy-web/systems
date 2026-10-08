@@ -1,5 +1,22 @@
 # @savvy-web/changelog
 
+## 1.0.16
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 9.4.1 | 9.5.0 |
+| effect | dependency | updated | ^4.0.1 | ^4.0.2 |
+
+[#764][#764]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#764]: https://github.com/savvy-web/systems/pull/764
+
 ## 1.0.15
 
 ### Dependencies
