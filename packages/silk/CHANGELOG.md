@@ -1,5 +1,27 @@
 # @savvy-web/silk
 
+## 4.3.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 1.0.15 | 1.0.16 |
+| @savvy-web/cli | dependency | updated | 3.7.1 | 3.7.2 |
+| @savvy-web/mcp | dependency | updated | 3.4.7 | 3.4.8 |
+| @savvy-web/silk-effects | dependency | updated | 9.4.1 | 9.5.0 |
+| effect | dependency | updated | ^4.0.1 | ^4.0.2 |
+| turbo | peerDependency | updated | ^2.11.6 | ^2.11.7 |
+| vite | peerDependency | updated | ^8.3.2 | ^8.3.3 |
+
+[#764][#764]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#764]: https://github.com/savvy-web/systems/pull/764
+
 ## 4.3.4
 
 ### Dependencies

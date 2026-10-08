@@ -1,5 +1,35 @@
 # @savvy-web/cli
 
+## 3.7.2
+
+### Features
+
+- `Commitlint.resolveIssuesCachePath()` resolves the open-issues cache path from `CLAUDE_PROJECT_DIR`, then the git repository root, then the working directory. Both `savvy commit hook` readers use it. [#763][#763]
+
+### Bug Fixes
+
+- The commitlint open-issues cache no longer lands under whichever subdirectory a hook ran from. When `CLAUDE_PROJECT_DIR` is unset, the cache path now resolves to the git repository root instead of the working directory, so a run from `packages/<pkg>` reuses the root `.claude/cache/issues.json` instead of leaving an untracked copy beside the package.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.1 | ^4.0.2 |
+| @effected/cli | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @savvy-web/silk-effects | dependency | updated | 9.4.1 | 9.5.0 |
+| effect | dependency | updated | ^4.0.1 | ^4.0.2 |
+| ink | dependency | updated | ^7.1.1 | ^8.0.0 |
+
+[#764][#764]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) and [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#763]: https://github.com/savvy-web/systems/pull/763
+
+[#764]: https://github.com/savvy-web/systems/pull/764
+
 ## 3.7.1
 
 ### Bug Fixes
