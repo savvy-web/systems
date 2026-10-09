@@ -74,14 +74,14 @@ export type {
 export { normalizeMetaOptions } from "./meta/config.js";
 export type { GenerateMetaOptions, MetaResult } from "./meta/generate.js";
 export { generateMeta } from "./meta/generate.js";
-export type { WriteGeneratedOgImageOptions } from "./meta/og-image.js";
-export { OgGenerateError, writeGeneratedOgImage } from "./meta/og-image.js";
+export type { OgImageCacheOptions, WriteGeneratedOgImageOptions } from "./meta/og-image.js";
+export { OgGenerateError, resolveOgCacheSalt, writeGeneratedOgImage } from "./meta/og-image.js";
 export { rewriteMetaVersions } from "./meta/optimistic.js";
 export type { RunMetaPassOptions } from "./meta/run-pass.js";
 export { applySubdirMetaEntries, deriveExportPaths, runMetaPass } from "./meta/run-pass.js";
 export type { PortableTsconfig, ResolvedCompilerOptions } from "./meta/tsconfig-resolver.js";
 export { resolvePortableTsconfig } from "./meta/tsconfig-resolver.js";
-export type { OgImageInfo, TsdoctorMetaOptions } from "./meta/tsdoctor-config.js";
+export type { OgImageGenerator, OgImageInfo, TsdoctorMetaOptions } from "./meta/tsdoctor-config.js";
 export type { ComposeManifestInput, ManifestRepository, ManifestTarget } from "./meta/tsdoctor-manifest.js";
 export {
 	composeTsdoctorManifest,

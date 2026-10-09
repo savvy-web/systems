@@ -8,8 +8,8 @@ resource: ../../packages/tsdown-plugins
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
-  body_sha256: 8ec96fe5cf35e6cd19163127034929dab9c7df5becc5dea550a5904847b6bcb2
+  at: 2026-10-09T17:54:20Z
+  body_sha256: 14ff5436f17a0790c49147bb2469a86ce90a165585a95ef504ed36ed28dedfc8
 sources:
   - id: tp-index
     resource: ../../packages/tsdown-plugins/src/index.ts
@@ -19,6 +19,10 @@ sources:
     resource: ../../packages/tsdown-plugins/src/dts
   - id: tp-meta
     resource: ../../packages/tsdown-plugins/src/meta
+  - id: tp-og-image
+    resource: ../../packages/tsdown-plugins/src/meta/og-image.ts
+  - id: tp-generate
+    resource: ../../packages/tsdown-plugins/src/meta/generate.ts
   - id: tp-targets
     resource: ../../packages/tsdown-plugins/src/targets
   - id: tp-exe
@@ -155,6 +159,36 @@ absent one never does. The sidecar's schema is
 [`interfaces/build-issues-json.md`](../interfaces/build-issues-json.md)'s
 sibling artifact family, not itself the issues contract.
 
+### Generated Open Graph images
+
+A config-tier `openGraph.generate` (an `OgImageGenerator`: a function from
+`OgImageInfo` to image bytes, with an optional `readonly cacheSalt`) is run
+by `writeGeneratedOgImage` and its result listed first among the sidecar's
+images.[^tp-og-image] The bytes go through `@effected/images`
+(`catalog:effected`): `ImageCache.getOrGenerate` from
+`@effected/images/cache`, with `accept` set to `png`, `jpeg` and `webp`,
+validates the generator's output and returns its `ImageFacts` — format,
+MIME type and dimensions — so a renderer that throws, returns nothing, or
+returns bytes that are not an accepted image fails the build with
+`OgGenerateError` rather than shipping a mislabeled file. The image lands
+at `meta/og/<unscoped>.<ext>`, the extension taken from `facts.extension`
+(`png`, `jpg` or `webp`), and the manifest entry carries the facts' MIME
+type, width and height.
+
+Renders are cached across builds. `generateMeta` still `rmSync`s the
+`meta/og` output directory each build, so the cache lives outside it, at
+`<pkg>/node_modules/.cache/tsdown-plugins/og` (`ImageBackend.layerDirectory`;
+`ImageBackend.layerNone` when not caching).[^tp-generate] The key is
+SHA-256 over a salt plus the canonical encoding of the `OgImageInfo` the
+generator receives, so any change to its input is a miss. Which salt — if
+any — comes from the exported pure function
+`resolveOgCacheSalt(generate, cacheSalt)` over `openGraph.cacheSalt?:
+string | false`: a string caches under that salt, `false` always
+regenerates, and an omitted value falls back to the generator's own
+`cacheSalt`, else always regenerates. Why the cache is not on by default
+for every generator is
+[`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md).
+
 ## The targets derivation
 
 `resolveTargets({ targets, baseName })` is pure and is the single source of
@@ -193,11 +227,14 @@ any build work on every target path.
 
 - [`modules/bundler.md`](bundler.md)
 - [`decisions/typescript-6-dts-pin.md`](../decisions/typescript-6-dts-pin.md)
+- [`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md)
 - [`interfaces/build-issues-json.md`](../interfaces/build-issues-json.md)
 
 [^tp-build]: `src/build`
 [^tp-dts]: `src/dts`
 [^tp-meta]: `src/meta`
+[^tp-og-image]: `src/meta/og-image.ts`
+[^tp-generate]: `src/meta/generate.ts`
 [^tp-targets]: `src/targets`
 [^tp-exe]: `src/exe`
 [^tp-config-validation]: `src/config-validation`
