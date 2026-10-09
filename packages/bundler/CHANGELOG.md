@@ -1,5 +1,24 @@
 # @savvy-web/bundler
 
+## 2.5.0
+
+### Features
+
+- `ogImage.satori()` from `@savvy-web/bundler/og` now returns an `OgImageGenerator` carrying a `cacheSalt` derived from the bundler version, the installed `satori` and `@resvg/resvg-js` versions, and the card colors. The built-in Open Graph card is therefore cached across builds by default; set `openGraph.cacheSalt: false` to always regenerate.
+- The `OgImageGenerator` type is re-exported from `@savvy-web/bundler`. [#773][#773]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.8.22 | 2.9.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#773]: https://github.com/savvy-web/systems/pull/773
+
 ## 2.4.24
 
 ### Dependencies
