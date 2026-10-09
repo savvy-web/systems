@@ -7,7 +7,7 @@ import { TsdoctorEmitError } from "../errors.js";
 import { runApiExtractor } from "./api-extractor.js";
 import type { NormalizedMeta } from "./config.js";
 import { mergeApiModels } from "./merge-models.js";
-import { writeGeneratedOgImage } from "./og-image.js";
+import { resolveOgCacheSalt, writeGeneratedOgImage } from "./og-image.js";
 import { resolvePortableTsconfig } from "./tsconfig-resolver.js";
 import { writeTsdocConfig } from "./tsdoc-config.js";
 import type { TsdoctorMetaOptions } from "./tsdoctor-config.js";
@@ -296,11 +296,16 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		};
 		const generate = options.tsdoctor.config?.openGraph?.generate;
 		if (generate !== undefined) {
+			// The cache lives outside the meta dir, so the rmSync above clears only the output copy.
+			const cacheSalt = resolveOgCacheSalt(generate, options.tsdoctor.config?.openGraph?.cacheSalt);
 			const generated = await writeGeneratedOgImage({
 				generate,
 				info: ogImageInfoOf({ ...composeInput, version: String(finalPkg.version ?? "0.0.0") }),
 				outMetaDir,
 				unscopedName: unscopedName(packageName),
+				...(cacheSalt === undefined
+					? {}
+					: { cache: { directory: join(cwd, "node_modules", ".cache", "tsdown-plugins", "og"), salt: cacheSalt } }),
 			});
 			composeInput.generatedImage = generated;
 			generatedImageRelative = generated.path;

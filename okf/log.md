@@ -1,5 +1,11 @@
 # Log
 
+## 2026-10-09
+
+* Updated @savvy-web/bundler
+* Updated @savvy-web/tsdown-plugins
+* Added OG image renders are cached only under a named salt
+
 ## 2026-10-07
 
 * Added Author silk plugin hooks, scripts, skills and tests on the pluginfinity libraries

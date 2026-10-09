@@ -8,8 +8,8 @@ resource: ../../packages/bundler
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
-  body_sha256: c1352b30c80f566b59758c9113235acbbf15af7c0cc4ff27727d7ec33f25c781
+  at: 2026-10-09T17:54:20Z
+  body_sha256: d211e72b0d394cbfb4423690a399c2bf0affd3224e497f1c212e13086f945f9d
 sources:
   - id: bundler-config
     resource: ../../packages/bundler/src/config.ts
@@ -17,6 +17,8 @@ sources:
     resource: ../../packages/bundler/src/run.ts
   - id: bundler-index
     resource: ../../packages/bundler/src/index.ts
+  - id: bundler-og
+    resource: ../../packages/bundler/src/og.ts
 ---
 
 # @savvy-web/bundler
@@ -97,7 +99,15 @@ meta bundle's manifest, never the published one. The one piece of
 meta-adjacent code the bundler itself owns is the optional
 `@savvy-web/bundler/og` Open Graph image renderer (`ogImage.satori()`),
 behind optional peers (`satori`, `@resvg/resvg-js`) that are dynamic-imported
-only on first render.
+only on first render. It returns an `OgImageGenerator` carrying its own
+`cacheSalt` — the JSON of its renderer id, `process.env.__PACKAGE_VERSION__`
+(or `"source"` when running unbuilt), the installed `satori` and
+`@resvg/resvg-js` versions, and the resolved colors — so the built-in card
+is cached across builds by default under tsdown-plugins' image cache, and
+`openGraph.cacheSalt: false` turns that off.[^bundler-og] Running unbuilt
+source, an edit to `og.ts` does not change the salt; deleting
+`node_modules/.cache` does. The policy is
+[`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md).
 
 ## Exe wiring
 
@@ -136,5 +146,7 @@ from a `finally` exactly like the front door.
 - [`decisions/bundler-tsdown-plugins-split.md`](../decisions/bundler-tsdown-plugins-split.md)
 - [`interfaces/savvy-build-config.md`](../interfaces/savvy-build-config.md)
 - [`interfaces/bundler-tsconfig-preset.md`](../interfaces/bundler-tsconfig-preset.md)
+- [`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md)
 
 [^bundler-run]: `src/run.ts`
+[^bundler-og]: `src/og.ts`

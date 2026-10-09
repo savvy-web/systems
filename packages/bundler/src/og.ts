@@ -1,7 +1,8 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import type { OgImageInfo } from "@savvy-web/tsdown-plugins";
+import type { OgImageGenerator, OgImageInfo } from "@savvy-web/tsdown-plugins";
 
 /**
  * The bundled Inter SemiBold face (SIL OFL 1.1; see `assets/LICENSE-Inter.txt`). Resolved
@@ -19,6 +20,16 @@ function fontPath(): string {
 		if (existsSync(path)) return path;
 	}
 	throw new Error("ogImage.satori() could not locate its bundled font assets/Inter-SemiBold.ttf");
+}
+
+/** The installed version of an optional renderer peer, or `"absent"` (rendering then fails, and nothing is cached). */
+function peerVersion(name: string): string {
+	try {
+		const manifest = createRequire(import.meta.url).resolve(`${name}/package.json`);
+		return (JSON.parse(readFileSync(manifest, "utf-8")) as { version?: string }).version ?? "unknown";
+	} catch {
+		return "absent";
+	}
 }
 
 async function loadRenderers(): Promise<{
@@ -109,6 +120,10 @@ function card(info: OgImageInfo, colors: Colors): OgNode {
  * 1200×630 PNG, rendered through the optional peers `satori` and `@resvg/resvg-js`. The peers
  * load lazily on first render, so a build that does not generate an image never needs them.
  *
+ * The returned generator carries a `cacheSalt` (this package's version, the peers' versions and
+ * the colors), so its renders are cached across builds by default; `openGraph.cacheSalt: false`
+ * turns that off.
+ *
  * @example
  * ```ts
  * import { defineBuild } from "@savvy-web/bundler";
@@ -122,13 +137,22 @@ function card(info: OgImageInfo, colors: Colors): OgNode {
  * @public
  */
 export const ogImage = {
-	satori(options: SatoriOgOptions = {}): (info: OgImageInfo) => Promise<Uint8Array> {
+	satori(options: SatoriOgOptions = {}): OgImageGenerator {
 		const colors: Colors = {
 			accent: options.accent ?? "#38bdf8",
 			background: options.background ?? "#0f172a",
 			foreground: options.foreground ?? "#f8fafc",
 		};
-		return async (info: OgImageInfo): Promise<Uint8Array> => {
+		// Everything besides the info that shapes the bytes: the card layout and font ship with this
+		// package's version, the colors are the options, and the two peers do the rendering.
+		const cacheSalt = JSON.stringify({
+			renderer: "@savvy-web/bundler/og#satori",
+			version: process.env.__PACKAGE_VERSION__ ?? "source",
+			satori: peerVersion("satori"),
+			resvg: peerVersion("@resvg/resvg-js"),
+			colors,
+		});
+		const render = async (info: OgImageInfo): Promise<Uint8Array> => {
 			const { satori, Resvg } = await loadRenderers();
 			const font = await readFile(fontPath());
 			// satori's element type is React's ReactNode; the plain `{ type, props }` tree is the shape it
@@ -140,5 +164,6 @@ export const ogImage = {
 			});
 			return new Uint8Array(new Resvg(svg, { fitTo: { mode: "width", value: 1200 } }).render().asPng());
 		};
+		return Object.assign(render, { cacheSalt });
 	},
 };
