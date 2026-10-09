@@ -2,9 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import type { ImageFormat } from "@effected/images";
+import type { ImageBackendSetParams } from "@effected/images/cache";
 import { ImageBackend, ImageCache, ImageCacheKey } from "@effected/images/cache";
 import type { OpenGraphImage } from "@tsdoctor/manifest";
-import { Data, Effect, Layer, Result, Schema } from "effect";
+import { Data, Effect, Layer, Option, Result, Schema } from "effect";
 import type { OgImageGenerator, OgImageInfo } from "./tsdoctor-config.js";
 
 /**
@@ -26,7 +27,11 @@ export class OgGenerateError extends Data.TaggedError("OgGenerateError")<{
 /** The image types an Open Graph consumer can render; anything else fails rather than shipping a mislabeled file. */
 const ACCEPT = ["png", "jpeg", "webp"] as const satisfies ReadonlyArray<ImageFormat>;
 
-/** The cache key's params: exactly what the generator receives, so any change to its input is a miss. */
+/**
+ * The cache key's params: exactly what the generator receives, so any change to its input is a miss.
+ * `Schema.Struct` drops undeclared keys, so the `satisfies` clauses fail to compile when a field is
+ * added to {@link OgImageInfo} without being keyed here (or removed from it but kept here).
+ */
 const OgImageInfoKey = Schema.Struct({
 	name: Schema.String,
 	packageName: Schema.String,
@@ -34,9 +39,29 @@ const OgImageInfoKey = Schema.Struct({
 	tagline: Schema.optional(Schema.String),
 	description: Schema.optional(Schema.String),
 	project: Schema.optional(
-		Schema.Struct({ name: Schema.optional(Schema.String), tagline: Schema.optional(Schema.String) }),
+		Schema.Struct({
+			name: Schema.optional(Schema.String),
+			tagline: Schema.optional(Schema.String),
+		} satisfies Record<keyof NonNullable<OgImageInfo["project"]>, Schema.Top>),
 	),
-});
+} satisfies Record<keyof OgImageInfo, Schema.Top>);
+
+/**
+ * The cache is an optimization, never a reason to fail a build that rendered a valid image: an
+ * unreadable entry is a miss and a failed store is dropped. Generator and validation failures still
+ * surface, because those come from `ImageCache` itself, not the backend.
+ */
+const tolerantDirectory = (directory: string) =>
+	Layer.effect(
+		ImageBackend,
+		Effect.gen(function* () {
+			const backend = yield* ImageBackend;
+			return {
+				get: (key: string) => backend.get(key).pipe(Effect.orElseSucceed(() => Option.none())),
+				set: (params: ImageBackendSetParams) => backend.set(params).pipe(Effect.ignore),
+			};
+		}),
+	).pipe(Layer.provide(ImageBackend.layerDirectory({ directory })));
 
 /**
  * Where generated images persist across builds, and the salt naming the generator's identity.
@@ -86,10 +111,7 @@ export interface WriteGeneratedOgImageOptions {
  */
 export async function writeGeneratedOgImage(options: WriteGeneratedOgImageOptions): Promise<OpenGraphImage> {
 	const { packageName } = options.info;
-	const backend =
-		options.cache === undefined
-			? ImageBackend.layerNone
-			: ImageBackend.layerDirectory({ directory: options.cache.directory });
+	const backend = options.cache === undefined ? ImageBackend.layerNone : tolerantDirectory(options.cache.directory);
 	const result = await Effect.gen(function* () {
 		const key = yield* ImageCacheKey.fromParams(OgImageInfoKey, options.info, {
 			salt: options.cache?.salt ?? "",

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -184,6 +184,57 @@ describe("writeGeneratedOgImage with a cache", () => {
 			});
 		}
 		expect(gen.calls()).toBe(1);
+	});
+
+	it("treats a cache path it cannot use as a miss and still writes the image", async () => {
+		// A regular FILE where the cache directory should be: every read and write fails with ENOTDIR.
+		const directory = join(mkdtempSync(join(tmpdir(), "og-cache-")), "blocked");
+		writeFileSync(directory, "");
+		const gen = counting();
+		const outMetaDir = mkdtempSync(join(tmpdir(), "og-"));
+		const image = await writeGeneratedOgImage({
+			generate: gen.generate,
+			info,
+			outMetaDir,
+			unscopedName: "pkg",
+			cache: { directory, salt: "v1" },
+		});
+		expect(image).toEqual({ path: "og/pkg.png", type: "image/png", width: 1, height: 1 });
+		expect(readFileSync(join(outMetaDir, "og", "pkg.png"))).toEqual(Buffer.from(PNG_1X1));
+		expect(gen.calls()).toBe(1);
+	});
+
+	it.skipIf(process.getuid?.() === 0)("ignores a cache directory it cannot write", async () => {
+		const parent = mkdtempSync(join(tmpdir(), "og-cache-"));
+		chmodSync(parent, 0o555);
+		try {
+			const outMetaDir = mkdtempSync(join(tmpdir(), "og-"));
+			const image = await writeGeneratedOgImage({
+				generate: async () => PNG_1X1,
+				info,
+				outMetaDir,
+				unscopedName: "pkg",
+				cache: { directory: join(parent, "og"), salt: "v1" },
+			});
+			expect(image.path).toBe("og/pkg.png");
+			expect(existsSync(join(outMetaDir, "og", "pkg.png"))).toBe(true);
+		} finally {
+			chmodSync(parent, 0o755);
+		}
+	});
+
+	it("still fails a rejected render when the cache is unusable", async () => {
+		const directory = join(mkdtempSync(join(tmpdir(), "og-cache-")), "blocked");
+		writeFileSync(directory, "");
+		await expect(
+			writeGeneratedOgImage({
+				generate: async () => new Uint8Array(0),
+				info,
+				outMetaDir: mkdtempSync(join(tmpdir(), "og-")),
+				unscopedName: "pkg",
+				cache: { directory, salt: "v1" },
+			}),
+		).rejects.toBeInstanceOf(OgGenerateError);
 	});
 
 	it("never stores a rejected render", async () => {
