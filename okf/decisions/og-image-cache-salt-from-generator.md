@@ -2,7 +2,7 @@
 type: Decision
 title: OG image renders are cached only under a named salt
 description: "tsdown-plugins caches openGraph.generate renders across builds only when openGraph.cacheSalt is a string or the generator carries its own cacheSalt; otherwise, and when cacheSalt is false, it always regenerates — because the cache cannot see a generator's code."
-status: draft
+status: stable
 tags: [build, performance, dx]
 generated:
   by: okfit/claude-code
@@ -21,6 +21,9 @@ sources:
     resource: conversation with the repository owner
     author: human:spencer
     last_modified: 2026-10-09T00:00:00Z
+verified:
+  - by: human:spencer
+    at: 2026-10-09T17:59:10Z
 ---
 
 # OG image renders are cached only under a named salt
