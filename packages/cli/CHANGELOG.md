@@ -1,5 +1,23 @@
 # @savvy-web/cli
 
+## 3.7.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/cli | dependency | updated | ^0.16.0 | ^0.16.1 |
+| @effected/env | dependency | updated | ^0.1.0 | ^0.1.1 |
+| @savvy-web/silk-effects | dependency | updated | 9.5.0 | 9.5.0 |
+
+[#778][#778]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#778]: https://github.com/savvy-web/systems/pull/778
+
 ## 3.7.4
 
 ### Dependencies
