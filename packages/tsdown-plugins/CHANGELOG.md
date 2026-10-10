@@ -1,5 +1,21 @@
 # @savvy-web/tsdown-plugins
 
+## 2.9.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/images | dependency | updated | ^0.1.0 | ^0.1.1 |
+
+[#778][#778]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#778]: https://github.com/savvy-web/systems/pull/778
+
 ## 2.9.0
 
 ### Features
