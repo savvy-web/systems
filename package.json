@@ -45,10 +45,10 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@okfit/plugin": "^0.5.14",
+		"@okfit/plugin": "^0.5.15",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^5.4.0"
+		"@vitest-agent/plugin": "^5.4.1"
 	},
 	"engines": {
 		"node": ">=24.11.0"
@@ -56,7 +56,7 @@
 	"devEngines": {
 		"packageManager": {
 			"name": "pnpm",
-			"version": "12.10.1",
+			"version": "12.11.2",
 			"onFail": "download"
 		},
 		"runtime": [
