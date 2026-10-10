@@ -1,5 +1,21 @@
 # @savvy-web/cli
 
+## 3.7.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/cli | dependency | updated | ^0.15.0 | ^0.16.0 |
+
+[#776][#776]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#776]: https://github.com/savvy-web/systems/pull/776
+
 ## 3.7.3
 
 ### Dependencies
