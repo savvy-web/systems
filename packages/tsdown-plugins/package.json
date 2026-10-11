@@ -44,7 +44,7 @@
 		"@microsoft/api-extractor": "catalog:build",
 		"@microsoft/tsdoc": "catalog:build",
 		"@microsoft/tsdoc-config": "catalog:build",
-		"@tsdoctor/manifest": "^0.2.5",
+		"@tsdoctor/manifest": "^0.2.6",
 		"effect": "catalog:effect",
 		"picocolors": "^1.1.1",
 		"std-env": "^4.3.0",
