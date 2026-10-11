@@ -1,5 +1,29 @@
 # @savvy-web/mcp
 
+## 3.4.9
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.2 | ^4.0.3 |
+| @effected/commands | dependency | updated | ^0.11.0 | ^0.12.0 |
+| @effected/engine | dependency | updated | ^0.4.0 | ^0.5.0 |
+| @effected/git | dependency | updated | ^0.20.0 | ^0.21.0 |
+| @effected/mcp | dependency | updated | ^0.5.0 | ^0.6.0 |
+| @effected/templates | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/workspaces | dependency | updated | ^0.32.0 | ^0.33.0 |
+| @savvy-web/silk-effects | dependency | updated | 9.5.0 | 9.5.1 |
+| effect | dependency | updated | ^4.0.2 | ^4.0.3 |
+
+[#783][#783]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#783]: https://github.com/savvy-web/systems/pull/783
+
 ## 3.4.8
 
 ### Dependencies
