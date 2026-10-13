@@ -228,7 +228,7 @@ describe("runLintInit Effect program", () => {
 			expect(okfIdx).toBeGreaterThanOrEqual(0);
 			expect(baseIdx).toBeLessThan(okfIdx);
 			expect(lintIdx).toBeLessThan(okfIdx);
-			expect(preCommit).toContain('pm_exec okfit sync --staged "$ROOT" || exit 1');
+			expect(preCommit).toContain('(cd "$ROOT" && pm_exec okfit sync --staged) || exit 1');
 			expect(preCommit).toContain('[ -x "$ROOT/node_modules/.bin/okfit" ]');
 			// The okf section is pre-commit only: the hygiene hooks never carry it.
 			for (const hook of [".husky/post-checkout", ".husky/post-merge", ".husky/post-commit"]) {
