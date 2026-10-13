@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-13
+
+* Updated Managed hook sections
+
 ## 2026-10-09
 
 * Updated @savvy-web/bundler
