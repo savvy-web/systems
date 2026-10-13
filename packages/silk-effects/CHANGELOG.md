@@ -1,5 +1,13 @@
 # @savvy-web/silk-effects
 
+## 9.5.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.4.11 | 0.4.12 |
+
 ## 9.5.1
 
 ### Dependencies
