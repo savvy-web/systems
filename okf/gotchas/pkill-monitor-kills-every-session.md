@@ -16,7 +16,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: aa375c1240852de42f52d275cae6a3f25eb18f2290ae5a8c9d875ff402180b37
+integrity:
+  generated:
+    body: aa375c1240852de4
 ---
 
 # pkill on a monitor script name kills every session's monitor

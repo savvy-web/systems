@@ -18,7 +18,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 451cf61d9cffc8df159c3aa95602e534dc7160481ca97c15f5328280f55ddb63
+integrity:
+  generated:
+    body: 451cf61d9cffc8df
 ---
 
 # Copilot reports SessionStart source new and gives an MCP server no project

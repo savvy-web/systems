@@ -16,10 +16,18 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-01T23:55:04Z
-  body_sha256: 247b9267101b119e4a382730a8d7a68fc50ae246ae494329b7d41cc981f65626
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: 247b9267101b119e
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: c32630924e3ab336
 ---
 
 # Kit Effect peers supplied via the effected catalog

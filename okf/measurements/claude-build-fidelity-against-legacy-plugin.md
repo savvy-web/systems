@@ -23,7 +23,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-  body_sha256: 7bc6a0c297dabb5f5315f7e5b868c241eabb822fb74f6af1df9dcece23418ee0
+integrity:
+  generated:
+    body: 7bc6a0c297dabb5f
 ---
 
 # The pluginfinity Claude build matches plugins/silk except for listed, intended differences

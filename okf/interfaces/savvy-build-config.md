@@ -16,7 +16,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 03893afc6173d5f79383a13271ab7284ccd87d53b67dc21fc4b7028ce42179df
+integrity:
+  generated:
+    body: 03893afc6173d5f7
 ---
 
 # savvy.build.ts contract

@@ -22,7 +22,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-26T22:54:36Z
-  body_sha256: 6a1a745f92ed3b515ae0952eab34a2912a917ffc9ce646a6972ecb948aeb9f4d
+integrity:
+  generated:
+    body: 6a1a745f92ed3b51
 ---
 
 # savvy-mcp tool surface

@@ -11,7 +11,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:05:33Z
-  body_sha256: 69c5657a2eaa75d4f8735d42d9ed1e3c337540ddf4ca287c7a112deef8620bc5
+integrity:
+  generated:
+    body: 69c5657a2eaa75d4
 ---
 
 # Catalog and workspace resolution coverage lives only in e2e/

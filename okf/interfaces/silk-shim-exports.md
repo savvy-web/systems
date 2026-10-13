@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-18T02:22:20Z
-  body_sha256: 1d76ac85e709c88d7a3de399bbe212369788bd757d2be620df551df2d85cb59d
+integrity:
+  generated:
+    body: 1d76ac85e709c88d
 ---
 
 # @savvy-web/silk export map

@@ -26,7 +26,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-02T02:45:02Z
-  body_sha256: 922195b8a620a2f9a705dd5c904bb0faa2439ce0009387d4a0b7126cbb5ca877
+integrity:
+  generated:
+    body: 922195b8a620a2f9
 ---
 
 # savvy command tree

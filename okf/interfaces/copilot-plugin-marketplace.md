@@ -19,7 +19,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-  body_sha256: 8753185584725e9afbe972b2fe1ca3d1013537ab97bddf17a9d22b68a4f10888
+integrity:
+  generated:
+    body: 8753185584725e9a
 ---
 
 # Copilot plugin marketplace

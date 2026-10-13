@@ -40,7 +40,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T19:16:22Z
-  body_sha256: e975ca0e8dbdb09083e2cb4bba79a2c14e6e679261be315353b8b15f2cf51db0
+integrity:
+  generated:
+    body: e975ca0e8dbdb090
 ---
 
 # silk-plugin

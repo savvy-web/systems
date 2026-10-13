@@ -7,13 +7,21 @@ tags: [build, architecture]
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:05:33Z
-  body_sha256: 9f3b2d4e8b30017686de56b5aa58601c2689c3285489be19ccb2ee3232a04fc1
 sources:
   - id: install-orchestration
     resource: ../../package.json
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: 9f3b2d4e8b300176
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: a5231e172eaf66fd
 ---
 
 # Build each workspace-dependency package via its own prepare script

@@ -9,7 +9,6 @@ tags: [build]
 generated:
   by: okfit/claude-code
   at: 2026-10-09T17:54:20Z
-  body_sha256: d211e72b0d394cbfb4423690a399c2bf0affd3224e497f1c212e13086f945f9d
 sources:
   - id: bundler-config
     resource: ../../packages/bundler/src/config.ts
@@ -19,6 +18,9 @@ sources:
     resource: ../../packages/bundler/src/index.ts
   - id: bundler-og
     resource: ../../packages/bundler/src/og.ts
+integrity:
+  generated:
+    body: d211e72b0d394cbf
 ---
 
 # @savvy-web/bundler

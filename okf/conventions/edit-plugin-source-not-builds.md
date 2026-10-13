@@ -19,7 +19,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-  body_sha256: bcb738f92e5cdc1be0fecffa38d0784fee082d13efe31504e9ff8f2d14194d46
+integrity:
+  generated:
+    body: bcb738f92e5cdc1b
 ---
 
 # Edit the plugin source, never plugin/builds/; rebuild and commit the builds with it

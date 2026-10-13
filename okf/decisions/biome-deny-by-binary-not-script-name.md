@@ -7,7 +7,6 @@ tags: [tooling, security]
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 382ff4a8783c13ceac0eaf2b7b459769a96181ddf61ca8a428481b77bd2c297c
 sources:
   - id: biome-direct-deny
     resource: ../../plugin/hooks/pre-tool-use/biome-direct-deny.sh
@@ -16,6 +15,15 @@ sources:
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: 382ff4a8783c13ce
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: 204168feeb067516
 ---
 
 # Deny Biome by whether the command reaches the binary, not by script name

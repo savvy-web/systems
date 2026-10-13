@@ -9,7 +9,6 @@ tags: [testing]
 generated:
   by: okfit/claude-code
   at: 2026-09-26T22:54:36Z
-  body_sha256: 04d59a44f9bc773b11c151850b143552bd41f344e10a8616df6cd3d3fda2a88e
 sources:
   - id: e2e-bundler
     resource: ../../e2e/bundler/__test__/e2e
@@ -17,6 +16,9 @@ sources:
     resource: ../../e2e/pnpm-plugin-silk/__test__/e2e
   - id: e2e-silk
     resource: ../../e2e/silk/__test__/e2e
+integrity:
+  generated:
+    body: 04d59a44f9bc773b
 ---
 
 # e2e

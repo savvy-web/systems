@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 5fed326922cd14cbc82b474e26060128d0f68e19bd9fe32c046fbe436bdb1510
+integrity:
+  generated:
+    body: 5fed326922cd14cb
 ---
 
 # pnpm-plugin-silk

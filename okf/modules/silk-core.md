@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-28T19:31:10Z
-  body_sha256: ec6d67c55c3614e0e8c70dd5f1c7d70f0ee2f637eab8a27dbc61acd2483641bd
+integrity:
+  generated:
+    body: ec6d67c55c3614e0
 ---
 
 # silk-core

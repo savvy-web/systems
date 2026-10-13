@@ -16,12 +16,20 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 31ecf5e4bdaab25d4a492df5d030053509441f137083bfbde64d8dc7e7ad079b
 verified:
   - by: human:spencer
     at: 2026-10-07T16:22:24Z
   - by: human:spencer
     at: 2026-10-07T16:22:50Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: 31ecf5e4bdaab25d
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: 83e30a6eabd355b5
 ---
 
 # The plugin package @savvy-web/ai-plugins versions independently of @savvy-web/silk

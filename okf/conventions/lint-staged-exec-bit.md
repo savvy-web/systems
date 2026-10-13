@@ -17,7 +17,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 00ff5d685107b79ae58599a3855b273ddf65e6df55b5a359436611b8ba42ed3f
+integrity:
+  generated:
+    body: 00ff5d685107b79a
 ---
 
 # Committed shell scripts land as 100644, never 100755

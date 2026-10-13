@@ -23,7 +23,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T19:16:22Z
-  body_sha256: 2d451e7aabdf1dad3454f7bba5a43c446e0c35ac82b8a1fdc089651e8fc3ce61
+integrity:
+  generated:
+    body: 2d451e7aabdf1dad
 ---
 
 # Author silk plugin hooks, scripts, skills and tests on the pluginfinity libraries

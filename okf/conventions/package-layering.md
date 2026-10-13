@@ -15,7 +15,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:50:36Z
-  body_sha256: 372b34feee4394dbdd55d6aa4028e9cc8ab1fa3e896191dfa9519e0317be32cb
+integrity:
+  generated:
+    body: 372b34feee4394db
 ---
 
 # Respect the four-layer package graph and the non-import invariant

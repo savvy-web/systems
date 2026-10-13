@@ -11,7 +11,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: a7ecd551cb34818c9f1a33b750fc8a466db3515e0efc17d477c3c9be8c52b0dd
+integrity:
+  generated:
+    body: a7ecd551cb34818c
 ---
 
 # Spell dependency ranges through purpose-scoped catalogs

@@ -24,7 +24,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-02T01:43:20Z
-  body_sha256: b8dbeae10dac04690cc2545beab267fca6c257fba70e77a292b0f68aeb2e4541
+integrity:
+  generated:
+    body: b8dbeae10dac0469
 ---
 
 # silk-effects

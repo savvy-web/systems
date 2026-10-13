@@ -7,7 +7,6 @@ tags: [deps, architecture, performance]
 generated:
   by: okfit/claude-code
   at: 2026-10-02T02:45:02Z
-  body_sha256: d1dabf9bf4bffbc2e69f831ef1b1d05d843051711b30a96416da43b748f61c4d
 sources:
   - id: cli-manifest
     resource: ../../packages/cli/package.json
@@ -20,6 +19,15 @@ sources:
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: d1dabf9bf4bffbc2
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: 91c14ab13adb9ed8
 ---
 
 # The savvy CLI carries ink and react as regular dependencies, loaded only to draw

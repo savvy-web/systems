@@ -7,7 +7,6 @@ tags: [build, architecture]
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:05:33Z
-  body_sha256: 9ff26b2dcb05b3b42863331b65b741aa04f65dd566c43e08d035b9c2944f1da5
 sources:
   - id: bundler-arch
     resource: ../../packages/bundler/package.json
@@ -16,6 +15,15 @@ sources:
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: 9ff26b2dcb05b3b4
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: de6281b94b003d22
 ---
 
 # Split the build orchestrator from the plugin pack

@@ -14,7 +14,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 767542a68aeb436b4576573d87075c7440f720adc0a08b91627fad54273feeab
+integrity:
+  generated:
+    body: 767542a68aeb436b
 ---
 
 # The it2 dogfood doorbell's --retry delivers the notice several times

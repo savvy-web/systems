@@ -2,17 +2,26 @@
 type: Decision
 title: Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission
 description: "@savvy-web/tsdown-plugins pins typescript ^6.0.3 directly (not catalog:silk) and forces dts.generator: tsc, because TypeScript >=7 has no stable compiler API until 7.1 and flips rolldown-plugin-dts to a generator that breaks emit."
-status: draft
+status: stable
 tags: [build]
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:05:33Z
-  body_sha256: e8e2ee0ceb4bd0b1e0e68e0f7f4aab1f0f937fab65057a338c011fd0ed0d395a
 sources:
   - id: dts-emission
     resource: ../../packages/tsdown-plugins/package.json
   - id: tsconfig-preset
     resource: ../../packages/bundler/public/tsconfig/ecma.json
+integrity:
+  generated:
+    body: e8e2ee0ceb4bd0b1
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: a7f94068ffb8078f
+verified:
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
 ---
 
 # Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission
