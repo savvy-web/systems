@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 5d31488bbb3fc781177525dfac9b5990dc78a2212546d9c8a064fe0111dcdd75
+integrity:
+  generated:
+    body: 5d31488bbb3fc781
 ---
 
 # @savvy-web/pnpm-plugin-silk catalog names

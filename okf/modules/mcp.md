@@ -24,7 +24,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 82c4b061d621bd7c3aa3d0e43f75f7f8af6efceec0b4df21886c044c080865c9
+integrity:
+  generated:
+    body: 82c4b061d621bd7c
 ---
 
 # mcp

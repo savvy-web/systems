@@ -12,10 +12,18 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:50:36Z
-  body_sha256: d6859faf9e3d630bb2468ac1dea8de9e83072cee76f7f17452e25e81d326384f
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: d6859faf9e3d630b
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: debb994829283170
 ---
 
 # Every package versions independently

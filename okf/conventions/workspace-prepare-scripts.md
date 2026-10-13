@@ -13,7 +13,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:50:36Z
-  body_sha256: 1cba528f84218a7ef2209c6c98f4899f4a40560339cd851f07599d4657fead45
+integrity:
+  generated:
+    body: 1cba528f84218a7e
 ---
 
 # Keep prepare:turbo run build:dev on every workspace:* dependency

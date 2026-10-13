@@ -14,7 +14,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-  body_sha256: c09481e846c1b7016761faa254817ce1ecabf5ae4470fd69f719895c4597b4e1
+integrity:
+  generated:
+    body: c09481e846c1b701
 ---
 
 # markdownlint --fix renumbers a list split by a column-0 host-block marker

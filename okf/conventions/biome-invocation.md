@@ -13,7 +13,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: f46630a633a267a1cc5d4792f2a32a1610c1abf911d1704dd2886b4887c6c030
+integrity:
+  generated:
+    body: f46630a633a267a1
 ---
 
 # Run Biome only through biome_check or the three sanctioned root scripts

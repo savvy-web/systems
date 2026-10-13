@@ -8,7 +8,6 @@ stale_after: 2027-03-25T00:00:00Z
 generated:
   by: okfit/claude-code
   at: 2026-09-26T23:06:57Z
-  body_sha256: d8a875bf194b61de3c9aa81fcda4552600e4dd156d5229c78b17cc233cd01d17
 sources:
   - id: fix-commit
     resource: https://github.com/savvy-web/systems/commit/9720310f9169161e18ec4532d843c5e2951fa8dd
@@ -24,6 +23,9 @@ sources:
   - id: fix-commit-rest
     resource: https://github.com/savvy-web/systems/commit/76a27fb6e67eaec29d76a51d9b5062c574c6aafe
     title: "fix(github-action-builder,tsdown-plugins): import platform-node by subpath"
+integrity:
+  generated:
+    body: d8a875bf194b61de
 ---
 
 # The @effect/platform-node root import needs redis, and only Yarn 1 shows it

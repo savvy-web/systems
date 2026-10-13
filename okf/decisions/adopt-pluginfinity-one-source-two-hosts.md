@@ -17,12 +17,20 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 6e63e0d8ec82d2b0370eb0c4322af0746aa78b703a55cbb0a8c8c8da941c106d
 verified:
   - by: human:spencer
     at: 2026-10-07T16:15:02Z
   - by: human:spencer
     at: 2026-10-07T16:22:37Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: 6e63e0d8ec82d2b0
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: fa21b9d1b116ee38
 ---
 
 # Build the silk plugin from one pluginfinity source for two hosts

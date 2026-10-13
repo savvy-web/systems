@@ -16,7 +16,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 29751c3ce2b1795f6a63baf2dc76163436438b15173a947d85c2b5350326b0dd
+integrity:
+  generated:
+    body: 29751c3ce2b1795f
 ---
 
 # dist/\<target\>/issues.json

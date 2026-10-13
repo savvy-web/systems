@@ -19,7 +19,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T19:16:22Z
-  body_sha256: 4a73b786301b95ec3db4770edcbd6de73f9c5ffd3cfd455dd8e647e47656bc4b
+integrity:
+  generated:
+    body: 4a73b786301b95ec
 ---
 
 # What Claude Code passes to a plugin's monitors and the Bash tool (2.1.291/2.1.292)

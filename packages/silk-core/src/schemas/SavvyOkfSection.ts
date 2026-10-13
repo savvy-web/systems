@@ -44,9 +44,13 @@ export const SavvyOkfSection: SectionId = SectionId.make({
  *   `node_modules/.bin` is common to all four supported package managers, so
  *   one probe covers them.
  *
- * The positional argument is `"$ROOT"`, the PROJECT root `okfit` starts config
- * discovery from — not the bundle directory. Passing `"$ROOT/okf"` makes the
- * tool look for the bundle at `okf/okf` and exit 3.
+ * The sync runs in a subshell that `cd`s to `"$ROOT"`, the PROJECT root `okfit`
+ * starts config discovery from — not the bundle directory (`"$ROOT/okf"` makes
+ * the tool look for the bundle at `okf/okf` and exit 3). The root is never
+ * passed as an argument: `@okfit/cli` before 0.13.0 accepts only a trailing
+ * positional, 0.13.0 and later accept only `--root` and refuse the positional,
+ * but every version defaults the root to the current directory, so the `cd`
+ * works across the whole range without a version probe.
  *
  * Once it runs, a non-zero exit FAILS the commit (`|| exit 1`): a bundle the
  * tool cannot sync is a broken bundle, and letting the commit through would
@@ -74,9 +78,9 @@ export function savvyOkfSync(): string {
   # Index mode reads concepts from disk, so skip it while okf/ carries untracked or
   # unstaged work: a commit must never link a concept it does not contain.
   if git -C "$ROOT" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'; then
-    pm_exec okfit sync --staged --only generated "$ROOT" || exit 1
+    (cd "$ROOT" && pm_exec okfit sync --staged --only generated) || exit 1
   else
-    pm_exec okfit sync --staged "$ROOT" || exit 1
+    (cd "$ROOT" && pm_exec okfit sync --staged) || exit 1
   fi
 fi`;
 }

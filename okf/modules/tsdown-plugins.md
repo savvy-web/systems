@@ -9,7 +9,6 @@ tags: [build]
 generated:
   by: okfit/claude-code
   at: 2026-10-09T17:54:20Z
-  body_sha256: 14ff5436f17a0790c49147bb2469a86ce90a165585a95ef504ed36ed28dedfc8
 sources:
   - id: tp-index
     resource: ../../packages/tsdown-plugins/src/index.ts
@@ -29,6 +28,9 @@ sources:
     resource: ../../packages/tsdown-plugins/src/exe
   - id: tp-config-validation
     resource: ../../packages/tsdown-plugins/src/config-validation
+integrity:
+  generated:
+    body: 14ff5436f17a0790
 ---
 
 # @savvy-web/tsdown-plugins

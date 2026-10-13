@@ -2,17 +2,26 @@
 type: Decision
 title: Enforce vendored-repo read-only via OS permissions, not guards alone
 description: "Repos.ReposLockdown chmods vendored worktrees read-only as the actual boundary; the plugin's Bash/fs/MCP guards are early-warning UX in front of it, not a substitute for it."
-status: draft
+status: stable
 tags: [security, tooling]
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:05:33Z
-  body_sha256: 20d8d8ac0796bcf49fdff69cd38804e38ceab5a99771516c2ca134fcd558ea26
 sources:
   - id: silk-effects-repos
     resource: ../../packages/silk-effects/src/repos/services/lockdown.ts
   - id: plugin-repos
     resource: ../../plugin/hooks/pre-tool-use/repos-fs-guard.sh
+integrity:
+  generated:
+    body: 20d8d8ac0796bcf4
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: 96210c1259fdfe46
+verified:
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
 ---
 
 # Enforce vendored-repo read-only via OS permissions, not guards alone

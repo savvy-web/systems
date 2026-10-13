@@ -2,7 +2,7 @@
 type: Decision
 title: silk pins siblings as dependencies, never peers
 description: "@savvy-web/silk declares cli, mcp, changelog, and silk-effects as exact-pinned regular dependencies rather than peerDependencies, because publishing them as peers made pnpm's autoInstallPeers propagate their Effect graph into consumers at the wrong version."
-status: draft
+status: stable
 tags: [release, architecture]
 sources:
   - id: layering
@@ -12,7 +12,16 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-18T02:06:56Z
-  body_sha256: 7c2bc44d4fcec70eb6cdb6a030b2a63a0af6e1acaca22a478b1b679dd7108d37
+integrity:
+  generated:
+    body: 7c2bc44d4fcec70e
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: e95b743da2e87636
+verified:
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
 ---
 
 # silk pins siblings as dependencies, never peers

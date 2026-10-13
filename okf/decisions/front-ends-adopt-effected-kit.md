@@ -45,10 +45,18 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-06T01:33:29Z
-  body_sha256: 2a7afbbe1863f5f19b5223f1bc60f8fb18499c8e2c36c0e64d99336e3bc5b035
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: 2a7afbbe1863f5f1
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: 4335c6881ae38d12
 ---
 
 # The savvy front ends adopt the effected front-end kit

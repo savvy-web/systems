@@ -11,7 +11,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 6e4348c9a158c42280d6edf7b1f5da400ff73f4c0da5c0a90713f138df324d2a
+integrity:
+  generated:
+    body: 6e4348c9a158c422
 ---
 
 # Use @effect/vitest per file, not per package

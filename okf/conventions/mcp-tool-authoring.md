@@ -17,7 +17,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-26T22:54:36Z
-  body_sha256: a285143b168714e7ca475942847adc40fc8d6e9bd0cc9ba0a72bbaa1cff2885c
+integrity:
+  generated:
+    body: a285143b168714e7
 ---
 
 # Shape and test a savvy-mcp tool

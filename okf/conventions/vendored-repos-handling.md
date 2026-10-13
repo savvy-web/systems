@@ -13,7 +13,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 3403e1aafbe3eee809f0865f6cbaa63bd4e3a79e0534a728f66cd874363929ac
+integrity:
+  generated:
+    body: 3403e1aafbe3eee8
 ---
 
 # Handling vendored reference repos under .repos/

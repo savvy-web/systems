@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 4251c418ce964f98a8c21c4afb8303c7c7604d5e30652953f35e130286fcd0de
+integrity:
+  generated:
+    body: 4251c418ce964f98
 ---
 
 # rspress-builder

@@ -9,7 +9,6 @@ tags: [release]
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:50:36Z
-  body_sha256: a35fa3e04545e9395e5af48caa82922a2bcb937efe2451f44bb384cbb8b8d2e0
 sources:
   - id: changelog-index
     resource: ../../packages/changelog/src/index.ts
@@ -17,6 +16,9 @@ sources:
     resource: ../../packages/changelog/savvy.build.ts
   - id: changelog-manifest
     resource: ../../packages/changelog/package.json
+integrity:
+  generated:
+    body: a35fa3e04545e939
 ---
 
 # @savvy-web/changelog

@@ -13,7 +13,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 50394910c9a3736b7e753f2ac8b3c2892647b44672ff3ac9b321aa397d7aa076
+integrity:
+  generated:
+    body: 50394910c9a3736b
 ---
 
 # The Copilot build of silk drops context nudges, monitors and project discovery

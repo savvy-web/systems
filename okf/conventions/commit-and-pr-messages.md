@@ -13,7 +13,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: a1c7a386db558873671daa088e83bda4da6ce6395c968760bb79cbf77393eb67
+integrity:
+  generated:
+    body: a1c7a386db558873
 ---
 
 # Split commit messages and PR descriptions on document, not command

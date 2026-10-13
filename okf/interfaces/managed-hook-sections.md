@@ -17,8 +17,10 @@ sources:
     resource: ../../packages/silk-core/src/schemas/SavvyOkfSection.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-16T23:14:45Z
-  body_sha256: aa1ef3e52bb3e9862cc965f3eb87921fdf86e71120746db62cb374938fa955f2
+  at: 2026-10-13T17:20:58Z
+integrity:
+  generated:
+    body: f6cc1231583e51ae
 ---
 
 # Managed hook sections
@@ -107,10 +109,30 @@ validate.[^savvy-okf-section]
   the tool cannot sync is a broken bundle. `--staged` re-adds whatever it
   writes, so the hook needs no `git add` of its
   own.[^savvy-okf-section]
-- The positional argument is `"$ROOT"`, the PROJECT root `okfit` starts
-  config discovery from — not the bundle directory. Passing `"$ROOT/okf"`
-  makes the tool look for the bundle at `okf/okf` and exit
-  3.[^savvy-okf-section]
+- The sync runs in a subshell that changes into `"$ROOT"`, the PROJECT
+  root `okfit` starts config discovery from — not the bundle directory
+  (starting from `"$ROOT/okf"` makes the tool look for the bundle at
+  `okf/okf` and exit 3). The root is never passed as an argument:
+  `@okfit/cli` before 0.13.0 accepts it only as a trailing positional,
+  0.13.0 and later accept it only as `--root` and refuse the positional
+  as an unknown concept target, but every version defaults the root to
+  the current directory. Running from the project root therefore works
+  on both sides of that break with no version probe, which is what lets
+  one rendered hook serve consumers on either CLI
+  (savvy-web/systems#788):[^savvy-okf-section]
+
+  ```sh
+  if ! in_ci && [ -d "$ROOT/okf" ] && [ -x "$ROOT/node_modules/.bin/okfit" ]; then
+    # Index mode reads concepts from disk, so skip it while okf/ carries untracked or
+    # unstaged work: a commit must never link a concept it does not contain.
+    if git -C "$ROOT" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'; then
+      (cd "$ROOT" && pm_exec okfit sync --staged --only generated) || exit 1
+    else
+      (cd "$ROOT" && pm_exec okfit sync --staged) || exit 1
+    fi
+  fi
+  ```
+
 - The default `--staged` modes are `generated` and `index`, so the
   derived `index.md` files are re-stamped in the same commit too — but
   only while the bundle is clean apart from what is staged. Index mode

@@ -12,10 +12,18 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-26T22:54:36Z
-  body_sha256: d68440d63aa58141050b66466b863977e460379b14094756c69b71909ed855c1
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: d68440d63aa58141
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: 0e0dd308b8094d95
 ---
 
 # Carrier-pattern package graph

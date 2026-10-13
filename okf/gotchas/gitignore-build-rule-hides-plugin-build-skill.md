@@ -16,7 +16,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-  body_sha256: fd3ec19befe0a6fbe861936652e11123530a6c50fedba7934e2eac1046ef0782
+integrity:
+  generated:
+    body: fd3ec19befe0a6fb
 ---
 
 # The repo-wide build ignore rule hides the plugin's build skill while build --check stays green

@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: a0e26243358f467afcf6b6bd9344d315f606a644eefd50dfd2a36686991053e1
+integrity:
+  generated:
+    body: a0e26243358f467a
 ---
 
 # bundler tsconfig preset

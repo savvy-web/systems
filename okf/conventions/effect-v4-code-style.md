@@ -11,7 +11,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 2d08dbba6e5455fc7ff78bc8ec0d8ffcd1ecae861cf76bf5dab13e2b408b92b9
+integrity:
+  generated:
+    body: 2d08dbba6e5455fc
 ---
 
 # Write Effect v4 code in the house style

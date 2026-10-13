@@ -16,7 +16,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 3a4d5cfc842d07549b7b1cd60dbb715b68bc83f979cc6456e137a8a52c611dee
+integrity:
+  generated:
+    body: 3a4d5cfc842d0754
 ---
 
 # PrBody contract

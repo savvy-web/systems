@@ -11,7 +11,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-  body_sha256: 8e5b70ae3e86d142031d0643335056295415a26c99705b355ce09c2ffd84158e
+integrity:
+  generated:
+    body: 8e5b70ae3e86d142
 ---
 
 # Run an @effected dogfood round through the mailbox protocol

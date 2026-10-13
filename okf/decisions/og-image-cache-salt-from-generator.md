@@ -7,7 +7,6 @@ tags: [build, performance, dx]
 generated:
   by: okfit/claude-code
   at: 2026-10-09T17:54:20Z
-  body_sha256: d2eb7e8ae821cf55f8b1f6862d58e7c039cb0767ee2a2ab98c95ab2155b712a1
 sources:
   - id: og-image
     resource: ../../packages/tsdown-plugins/src/meta/og-image.ts
@@ -24,6 +23,15 @@ sources:
 verified:
   - by: human:spencer
     at: 2026-10-09T17:59:10Z
+  - by: human:spencer
+    at: 2026-10-13T17:19:17Z
+integrity:
+  generated:
+    body: d2eb7e8ae821cf55
+  verified:
+    by: human:spencer
+    at: 2026-10-13T17:19:17Z
+    content: 9b1c8c3df5ec34ff
 ---
 
 # OG image renders are cached only under a named salt

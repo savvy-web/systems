@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-28T19:31:10Z
-  body_sha256: eb4d560475a90cb5cb82f6adfb838e2dca25309097513177b8e0bc80992a7cf3
+integrity:
+  generated:
+    body: eb4d560475a90cb5
 ---
 
 # github-action-builder

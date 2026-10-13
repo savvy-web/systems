@@ -9,7 +9,6 @@ tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
   at: 2026-09-26T22:54:36Z
-  body_sha256: 33b574972fc56d5a1c85d648753b4a513c33a99594545ec160ee140619807b14
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
@@ -25,6 +24,9 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
   - id: silk-boundaries-test
     resource: ../../packages/silk/__test__/boundaries.test.ts
+integrity:
+  generated:
+    body: 33b574972fc56d5a
 ---
 
 # @savvy-web/silk

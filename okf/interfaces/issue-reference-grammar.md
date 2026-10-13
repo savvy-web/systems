@@ -16,7 +16,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-  body_sha256: 3ab85f2985079ac773fd4497e88230e78328eb7f012f0742c5cdf84190cd9d33
+integrity:
+  generated:
+    body: 3ab85f2985079ac7
 ---
 
 # Issue reference grammar

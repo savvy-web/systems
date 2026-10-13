@@ -12,7 +12,9 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-  body_sha256: 4c8667b3b9c2b75212b21941a33eda547ac0a203d86c78f6e0fce37756f80e5b
+integrity:
+  generated:
+    body: 4c8667b3b9c2b752
 ---
 
 # systems

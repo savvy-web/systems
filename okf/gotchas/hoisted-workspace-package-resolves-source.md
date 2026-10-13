@@ -9,7 +9,6 @@ stale_after: 2027-03-17T00:00:00Z
 generated:
   by: okfit/claude-code
   at: 2026-09-18T02:06:56Z
-  body_sha256: f07552401813c001221e8780546d04f5bb4d7a4b1f2d59d64e243782bc7baddf
 sources:
   - id: hoist-config
     resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
@@ -17,6 +16,9 @@ sources:
     resource: ../../package.json
   - id: changelog-manifest
     resource: ../../packages/changelog/package.json
+integrity:
+  generated:
+    body: f07552401813c001
 ---
 
 # A public-hoisted workspace package resolves to its source tree, not its built artifact
