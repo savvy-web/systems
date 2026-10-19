@@ -29,27 +29,27 @@ await build({
 							strategy: "lock",
 						},
 						"@tsdown/exe": {
-							range: "^0.23.0",
+							range: "^0.23.1",
 							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
 						"@tsdown/css": {
-							range: "^0.23.0",
+							range: "^0.23.1",
 							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.12",
+							range: "^2.2.13",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
 						"@types/bun": {
-							range: "^1.4.2",
-							peer: "^1.4.2",
+							range: "^1.4.3",
+							peer: "^1.4.3",
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.4",
+							range: "^26.6.5",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -64,22 +64,22 @@ await build({
 							strategy: "lock-minor",
 						},
 						react: {
-							range: "^19.3.0",
+							range: "^19.3.1",
 							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"react-dom": {
-							range: "^19.3.0",
+							range: "^19.3.1",
 							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.12",
+							range: "^1.2.14",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
 						tsdown: {
-							range: "^0.23.0",
+							range: "^0.23.1",
 							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
@@ -108,7 +108,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.4",
+							range: "^26.6.5",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -123,12 +123,12 @@ await build({
 							strategy: "lock-minor",
 						},
 						react: {
-							range: "^19.3.0",
+							range: "^19.3.1",
 							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"react-dom": {
-							range: "^19.3.0",
+							range: "^19.3.1",
 							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
@@ -143,7 +143,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.3",
+							range: "^8.3.4",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
@@ -167,13 +167,13 @@ await build({
 							strategy: "lock",
 						},
 						"@commitlint/cli": {
-							range: "^21.2.3",
-							peer: "^21.2.3",
+							range: "^21.2.4",
+							peer: "^21.2.4",
 							strategy: "lock",
 						},
 						"@commitlint/config-conventional": {
-							range: "^21.2.3",
-							peer: "^21.2.3",
+							range: "^21.2.4",
+							peer: "^21.2.4",
 							strategy: "lock",
 						},
 						husky: {
@@ -197,8 +197,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.11.7",
-							peer: "^2.11.7",
+							range: "^2.11.9",
+							peer: "^2.11.9",
 							strategy: "lock",
 						},
 					},
@@ -206,12 +206,12 @@ await build({
 				silk: {
 					packages: {
 						"@types/bun": {
-							range: "^1.4.2",
-							peer: "^1.4.2",
+							range: "^1.4.3",
+							peer: "^1.4.3",
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.4",
+							range: "^26.6.5",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -255,12 +255,12 @@ await build({
 							strategy: "lock",
 						},
 						react: {
-							range: "^19.3.0",
+							range: "^19.3.1",
 							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
 						"react-dom": {
-							range: "^19.3.0",
+							range: "^19.3.1",
 							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
@@ -279,27 +279,27 @@ await build({
 				test: {
 					packages: {
 						"@vitest/expect": {
-							range: "^5.0.3",
+							range: "^5.0.5",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-istanbul": {
-							range: "^5.0.3",
+							range: "^5.0.5",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						"@vitest/coverage-v8": {
-							range: "^5.0.3",
+							range: "^5.0.5",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						vitest: {
-							range: "^5.0.3",
+							range: "^5.0.5",
 							peer: "^5.0.0",
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.3",
+							range: "^8.3.4",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
