@@ -330,4 +330,65 @@ describe("generateMeta — two-input split wiring", () => {
 		// No onMessage key at all (exactOptionalPropertyTypes).
 		expect("onMessage" in singleArgs).toBe(false);
 	});
+
+	describe("self-reference paths and harvest-failure code (#771)", () => {
+		const base = (cwd: string, dtsDir: string, aeInputDir?: string) => ({
+			cwd,
+			packageName: "@scope/fixture",
+			tsconfigPath: join(cwd, "tsconfig.json"),
+			dtsDir,
+			...(aeInputDir !== undefined ? { aeInputDir } : {}),
+			entries: { index: "index", sub: "sub", "deep/thing": "deep/thing" },
+			exportPaths: { index: ".", sub: "./sub" },
+			outMetaDir: join(cwd, "dist", "prod", "npm", "meta"),
+			localPaths: [],
+			tsdoc: { suppressWarnings: [], tagDefinitions: [] },
+			onMessage: vi.fn(),
+		});
+
+		it("passes selfReferencePaths mapping each own export specifier to its declarations file to Run B only", async () => {
+			const { cwd, dtsDir, aeInputDir } = scaffold();
+			writeFileSync(join(dtsDir, "sub.d.ts"), "export interface S { s: 1 }\n");
+			mkdirSync(join(dtsDir, "deep"), { recursive: true });
+			writeFileSync(join(dtsDir, "deep", "thing.d.ts"), "export interface T { t: 1 }\n");
+			await generateMeta(base(cwd, dtsDir, aeInputDir));
+
+			const calls = mockRunApiExtractor.mock.calls.map((c) => c[0] as Record<string, unknown>);
+			expect(calls).toHaveLength(6);
+			const runA = calls.filter((c) => c.emitDocModel !== false);
+			const runB = calls.filter((c) => c.emitDocModel === false);
+			for (const a of runA) expect("selfReferencePaths" in a).toBe(false);
+			expect(runB).toHaveLength(3);
+			const expected = {
+				"@scope/fixture": [join(aeInputDir, "index.d.ts")],
+				"@scope/fixture/sub": [join(aeInputDir, "sub.d.ts")],
+				"@scope/fixture/deep/thing": [join(aeInputDir, "deep/thing.d.ts")],
+			};
+			for (const b of runB) expect(b.selfReferencePaths).toEqual(expected);
+		});
+
+		it("does not pass selfReferencePaths in the non-split single run", async () => {
+			const { cwd, dtsDir } = scaffold();
+			writeFileSync(join(dtsDir, "sub.d.ts"), "export interface S { s: 1 }\n");
+			mkdirSync(join(dtsDir, "deep"), { recursive: true });
+			writeFileSync(join(dtsDir, "deep", "thing.d.ts"), "export interface T { t: 1 }\n");
+			await generateMeta(base(cwd, dtsDir));
+			for (const c of mockRunApiExtractor.mock.calls) expect("selfReferencePaths" in (c[0] as object)).toBe(false);
+		});
+
+		it("tags the Run B failure warning with code diagnostics-harvest-failed", async () => {
+			const { cwd, dtsDir, aeInputDir } = scaffold();
+			mockRunApiExtractor.mockImplementation((options: { apiJsonPath: string; emitDocModel?: boolean }) => {
+				if (options.emitDocModel === false) throw new Error("Internal Error: Unable to follow symbol");
+				writeFileSync(options.apiJsonPath, "{}", "utf-8");
+			});
+			const opts = { ...base(cwd, dtsDir, aeInputDir), entries: { index: "index" }, exportPaths: { index: "." } };
+			await generateMeta(opts);
+			const warn = opts.onMessage.mock.calls
+				.map((c) => c[0] as Record<string, unknown>)
+				.find((m) => m.level === "warn");
+			expect(warn).toMatchObject({ source: "api-extractor", level: "warn", code: "diagnostics-harvest-failed" });
+			expect(String(warn?.text)).toContain("Could not harvest per-module source locations");
+		});
+	});
 });

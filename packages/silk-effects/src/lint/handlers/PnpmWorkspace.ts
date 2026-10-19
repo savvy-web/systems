@@ -50,7 +50,7 @@ const DEFAULT_STRINGIFY_OPTIONS = new YamlStringifyOptions({
  * This handler processes the workspace file entirely in JavaScript:
  * - Sorts the `packages` array alphabetically (if present)
  * - Sorts `onlyBuiltDependencies` and `publicHoistPattern` arrays (if present)
- * - Sorts all top-level keys alphabetically, keeping `packages` first
+ * - Sorts all top-level keys alphabetically, `packages` included
  * - Formats the output with consistent YAML styling
  * - Validates the YAML structure
  *
@@ -95,7 +95,7 @@ export class PnpmWorkspace {
 	 * - `packages` array alphabetically
 	 * - `onlyBuiltDependencies` array (if present)
 	 * - `publicHoistPattern` array (if present)
-	 * - All keys alphabetically, keeping `packages` first
+	 * - All keys alphabetically, `packages` included
 	 *
 	 * @param content - Parsed pnpm-workspace.yaml content
 	 * @returns Sorted content
@@ -103,12 +103,8 @@ export class PnpmWorkspace {
 	static sortContent(content: PnpmWorkspaceContent): PnpmWorkspaceContent {
 		const result: PnpmWorkspaceContent = {};
 
-		// Get all keys and sort them, but keep 'packages' first
-		const keys = Object.keys(content).sort((a, b) => {
-			if (a === "packages") return -1;
-			if (b === "packages") return 1;
-			return a.localeCompare(b);
-		});
+		// Sort all keys alphabetically; `packages` is not hoisted, so it never moves on the user
+		const keys = Object.keys(content).sort((a, b) => a.localeCompare(b));
 
 		for (const key of keys) {
 			const value = content[key];
