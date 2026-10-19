@@ -139,6 +139,19 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		...(e.code !== undefined ? { code: e.code } : {}),
 		...(e.ciFatal !== undefined ? { ciFatal: e.ciFatal } : {}),
 	});
+	// An entry's package-relative export path (".", "./sub"); the fallback matches how entries are named.
+	const exportPathFor = (entryName: string): string =>
+		exportPaths[entryName] ?? (entryName === "index" ? "." : `./${entryName}`);
+	// Run B only (#771): map every own export specifier to its per-module declarations file so a self-name
+	// import in an emitted .d.ts resolves to the BUILT declarations, not the source manifest's `exports`.
+	const selfReferencePaths: Record<string, ReadonlyArray<string>> = {};
+	if (splitDiagnostics) {
+		for (const name of entryNames) {
+			const exportPath = exportPathFor(name);
+			const specifier = exportPath === "." ? packageName : packageName + exportPath.slice(1);
+			selfReferencePaths[specifier] = [join(aeInputDir, `${entries[name]}.d.ts`)];
+		}
+	}
 	for (const entryName of entryNames) {
 		const modelEntryDts = join(dtsDir, `${entries[entryName]}.d.ts`);
 		// Entry names can contain path separators (e.g. "foo/index", "bin/cli"); flatten so the
@@ -146,7 +159,7 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		const safeEntry = entryName.replace(/[\\/]/g, "__");
 		const perEntryApiJson = join(outMetaDir, `${safeEntry}.entry.api.json`);
 		intermediateApiJsons.push(perEntryApiJson);
-		const isMain = (exportPaths[entryName] ?? (entryName === "index" ? "." : `./${entryName}`)) === ".";
+		const isMain = exportPathFor(entryName) === ".";
 		// Run A — the model. Reads the bundled dts so the shipped .api.json is unchanged. When we will
 		// re-run for diagnostics, this run's (wrong-location) diagnostics are normally silenced, since
 		// Run B re-derives accurate locations. CI-fatal escalation stays here: a forgotten export corrupts
@@ -219,6 +232,7 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 					tsdocConfigPath,
 					apiJsonPath: perEntryApiJson,
 					emitDocModel: false,
+					selfReferencePaths,
 					suppressWarnings: tsdoc.suppressWarnings,
 					...(runBOnMessage !== undefined ? { onMessage: runBOnMessage } : {}),
 					...(onSuppressed !== undefined ? { onSuppressed } : {}),
@@ -228,6 +242,7 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 					onMessage({
 						source: "api-extractor",
 						level: "warn",
+						code: "diagnostics-harvest-failed",
 						text: `Could not harvest per-module source locations for "${entryName}": ${String(err)}`,
 					});
 				}

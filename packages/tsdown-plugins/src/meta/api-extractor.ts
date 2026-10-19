@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -35,6 +35,13 @@ export interface RunApiExtractorOptions {
 	readonly onSuppressed?: ((entry: DiagnosticInput) => void) | undefined;
 	/** When false, the run analyzes + reports diagnostics but writes no api-model (the diagnostics run). Default true. */
 	readonly emitDocModel?: boolean | undefined;
+	/**
+	 * `compilerOptions.paths` mappings (specifier -> declaration files) added to the extractor's derived
+	 * tsconfig. Run B passes the package's own export specifiers -> the per-module declarations so a
+	 * self-name import inside an emitted `.d.ts` resolves to the BUILT declarations instead of
+	 * self-referencing the source manifest's `exports` (raw `.ts`). See systems#771.
+	 */
+	readonly selfReferencePaths?: Readonly<Record<string, ReadonlyArray<string>>> | undefined;
 }
 
 /** messageIds that become a hard build error in CI (they corrupt the .api.json). */
@@ -48,6 +55,12 @@ export interface WriteApiExtractorTsconfigOptions {
 	readonly tsconfigPath: string;
 	/** The single entry `.d.ts` this extractor run analyzes. */
 	readonly entryDtsPath: string;
+	/**
+	 * `compilerOptions.paths` entries to add (#771). Merged over the base tsconfig's own `paths` (a
+	 * derived-file `paths` REPLACES the inherited one, so the base's are re-emitted). Absent or empty
+	 * leaves the output without a `compilerOptions` key.
+	 */
+	readonly paths?: Readonly<Record<string, ReadonlyArray<string>>> | undefined;
 }
 
 /**
@@ -62,6 +75,12 @@ export interface WriteApiExtractorTsconfigOptions {
  * what the extractor's Program should hold: the entry `.d.ts` (`files`) plus the `types/*.d.ts`
  * legacy typings — the same effective roots as before minus everything under `src/`.
  *
+ * The same failure class has a second route (#771): a self-name import (`import type * as Root from
+ * "@scope/pkg"`) inside an emitted per-module `.d.ts` resolves, from a declarations tree with no
+ * package.json, via TS package self-reference through the SOURCE manifest's `exports` into raw `.ts`
+ * (`ae-wrong-input-file-type`, or an `Unable to follow symbol` crash). Run B therefore supplies `paths`
+ * mapping each own export specifier to its declarations file, which wins over self-reference.
+ *
  * Best-effort, mirroring `writeDtsEmitTsconfig`: a base that does not exist (e.g. a synthetic test
  * path) gets no variant — the original path is returned unchanged. The filename is deterministic
  * per (pid, base, entry) via a content hash (the two joined paths overflow a filename), so repeated
@@ -75,11 +94,35 @@ export function writeApiExtractorTsconfig(options: WriteApiExtractorTsconfigOpti
 	// `files` wins regardless of the inherited `exclude` (exclude never filters `files`), and the
 	// explicit empty-`include` override would be implied — but the legacy-typings glob keeps
 	// hand-authored ambient declarations under types/ analyzable, exactly as the base include did.
-	const cfg = { extends: absBase, files: [entryDts], include: [join(options.cwd, "types/*.d.ts")] };
-	const hash = createHash("sha256").update(`${absBase}\0${entryDts}`).digest("hex").slice(0, 16);
+	const ownPaths = options.paths ?? {};
+	const hasPaths = Object.keys(ownPaths).length > 0;
+	// A `compilerOptions.paths` here replaces the inherited one, so re-emit the base's (best-effort).
+	const cfg = {
+		extends: absBase,
+		files: [entryDts],
+		include: [join(options.cwd, "types/*.d.ts")],
+		...(hasPaths ? { compilerOptions: { paths: { ...readBasePaths(absBase), ...ownPaths } } } : {}),
+	};
+	const hash = createHash("sha256")
+		.update(`${absBase}\0${entryDts}${hasPaths ? `\0${JSON.stringify(ownPaths)}` : ""}`)
+		.digest("hex")
+		.slice(0, 16);
 	const path = join(tmpdir(), `tsconfig-api-extractor-${process.pid}-${hash}.json`);
 	writeFileSync(path, `${JSON.stringify(cfg, null, "\t")}\n`, "utf-8");
 	return path;
+}
+
+/** The base tsconfig's own `compilerOptions.paths`, read best-effort from plain JSON (parse failure -> none). */
+function readBasePaths(absBase: string): Record<string, ReadonlyArray<string>> {
+	try {
+		const parsed = JSON.parse(readFileSync(absBase, "utf-8")) as { compilerOptions?: { paths?: unknown } };
+		const paths = parsed.compilerOptions?.paths;
+		return typeof paths === "object" && paths !== null && !Array.isArray(paths)
+			? (paths as Record<string, ReadonlyArray<string>>)
+			: {};
+	} catch {
+		return {};
+	}
 }
 
 /**
@@ -123,6 +166,7 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 					cwd: options.cwd,
 					tsconfigPath: options.tsconfigPath,
 					entryDtsPath: options.entryDtsPath,
+					paths: options.selfReferencePaths,
 				}),
 			},
 			// includeForgottenExports keeps "forgotten" declarations (referenced but not exported) IN the
