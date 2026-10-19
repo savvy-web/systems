@@ -1,5 +1,39 @@
 # @savvy-web/tsdown-plugins
 
+## 2.9.4
+
+### Bug Fixes
+
+- API Extractor's diagnostics-only pass now resolves a package's own name (a self-reference such as `import type * as Root from "@scope/pkg"` in a sub-entry) to the built per-module declarations instead of raw `src/*.ts`. This removes a spurious, unsuppressable `ae-wrong-input-file-type` and the "Could not harvest per-module source locations" crash.
+- Entries that previously crashed now report their real `ae-*` and `tsdoc-*` diagnostics in `issues.json`.
+- A remaining harvest failure now carries the code `diagnostics-harvest-failed` instead of `null`. [#797][#797]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.4 | ^4.0.5 |
+| @effected/glob | dependency | updated | ^0.12.0 | ^0.13.0 |
+| @effected/images | dependency | updated | ^0.3.0 | ^0.4.0 |
+| @effected/jsonc | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/npm | dependency | updated | ^0.22.0 | ^0.23.0 |
+| @effected/package-json | dependency | updated | ^0.22.0 | ^0.23.0 |
+| @effected/semver | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/tsconfig-json | dependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/walker | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/workspaces | dependency | updated | ^0.34.0 | ^0.35.0 |
+| @tsdoctor/manifest | dependency | updated | ^0.2.8 | ^0.2.9 |
+| effect | dependency | updated | ^4.0.4 | ^4.0.5 |
+| tsdown | dependency | updated | ^0.23.0 | ^0.23.1 |
+
+[#797][#797]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#797]: https://github.com/savvy-web/systems/pull/797
+
 ## 2.9.3
 
 ### Dependencies

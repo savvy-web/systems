@@ -1,5 +1,37 @@
 # @savvy-web/silk-effects
 
+## 9.5.4
+
+### Bug Fixes
+
+- The `pnpm-workspace.yaml` formatter (the lint-staged handler and `savvy lint fmt pnpm-workspace`) no longer hoists the `packages` key to the top. It now sorts `packages` alphabetically with every other top-level key, so existing files have `packages` moved into sorted position the next time they are formatted. [#797][#797]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.9.0 | ^0.10.0 |
+| @effected/glob | dependency | updated | ^0.12.0 | ^0.13.0 |
+| @effected/jsonc | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/markdown | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/package-json | dependency | updated | ^0.22.0 | ^0.23.0 |
+| @effected/toml | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/walker | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/yaml | dependency | updated | ^0.21.0 | ^0.22.0 |
+| @savvy-web/silk-core | dependency | updated | 0.4.13 | 0.4.14 |
+| @effected/commands | peerDependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/git | peerDependency | updated | ^0.22.0 | ^0.23.0 |
+| @effected/templates | peerDependency | updated | ^0.12.0 | ^0.13.0 |
+| @effected/workspaces | peerDependency | updated | ^0.34.0 | ^0.35.0 |
+
+[#797][#797]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#797]: https://github.com/savvy-web/systems/pull/797
+
 ## 9.5.3
 
 ### Dependencies
