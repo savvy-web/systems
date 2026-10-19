@@ -74,7 +74,7 @@
 		"@types/shell-quote": "^1.7.5",
 		"effect": "catalog:effect",
 		"fast-check": "^4.10.2",
-		"markdownlint": "^0.41.1",
+		"markdownlint": "^0.42.0",
 		"tsx": "catalog:build",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"
