@@ -526,8 +526,8 @@ describe("Handler classes", () => {
 
 				// File should be sorted and formatted
 				const content = readFileSync(filepath, "utf-8");
-				// packages should be first (sorted), and both arrays should be sorted
-				expect(content.indexOf("packages")).toBeLessThan(content.indexOf("onlyBuiltDependencies"));
+				// keys sort alphabetically (packages is not hoisted), and both arrays should be sorted
+				expect(content.indexOf("onlyBuiltDependencies")).toBeLessThan(content.indexOf("packages"));
 				expect(content.indexOf("a-pkg")).toBeLessThan(content.indexOf("z-pkg"));
 				expect(content.indexOf("abc")).toBeLessThan(content.indexOf("zlib"));
 			} finally {
@@ -546,8 +546,17 @@ describe("Handler classes", () => {
 
 			expect(sorted.packages).toEqual(["a-pkg", "z-pkg"]);
 			expect(sorted.onlyBuiltDependencies).toEqual(["a", "z"]);
-			// packages should be first key
-			expect(Object.keys(sorted)[0]).toBe("packages");
+			expect(Object.keys(sorted)).toEqual(["onlyBuiltDependencies", "packages"]);
+		});
+
+		it("should sort packages like any other top-level key", () => {
+			const sorted = PnpmWorkspace.sortContent({
+				publicHoistPattern: ["b"],
+				packages: ["a"],
+				catalog: {},
+				overrides: {},
+			});
+			expect(Object.keys(sorted)).toEqual(["catalog", "overrides", "packages", "publicHoistPattern"]);
 		});
 
 		it("should handle skipSort option", async () => {
