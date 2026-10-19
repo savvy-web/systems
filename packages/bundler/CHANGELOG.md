@@ -1,5 +1,25 @@
 # @savvy-web/bundler
 
+## 2.5.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.9.3 | 2.9.4 |
+| @tsdown/exe | dependency | updated | ^0.23.0 | ^0.23.1 |
+| effect | dependency | updated | ^4.0.4 | ^4.0.5 |
+| rolldown | dependency | updated | ^1.2.12 | ^1.2.14 |
+| tsdown | dependency | updated | ^0.23.0 | ^0.23.1 |
+
+[#797][#797]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#797]: https://github.com/savvy-web/systems/pull/797
+
 ## 2.5.3
 
 ### Dependencies
