@@ -19,6 +19,13 @@ describe("parseChangesetSections", () => {
 		expect(result.sections[0].content).toContain("Added new login system");
 	});
 
+	it("keeps a stray h1 and everything after it inside the current section", () => {
+		const result = parseChangesetSections("## Features\n\n- a\n\n# Top\n\n- b");
+		expect(result.sections).toHaveLength(1);
+		expect(result.sections[0].content).toBe("- a\n\n# Top\n\n- b");
+		expect(result.sections[0].contentNodes.map((node) => node.type)).toEqual(["list", "heading", "list"]);
+	});
+
 	it("parses multiple sections", () => {
 		const summary = "## Features\n\n- Feature A\n\n## Bug Fixes\n\n- Fix B";
 		const result = parseChangesetSections(summary);
