@@ -1,5 +1,26 @@
 # @savvy-web/silk-effects
 
+## 9.5.5
+
+### Refactoring
+
+- Changelog rendering now parses and transforms Markdown with `@effected/markdown` instead of remark/unified. Generated changelog output is unchanged. [#805][#805]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| mdast-util-heading-range | dependency | removed | ^4.0.0 | — |
+| @effected/markdown | dependency | updated | ^0.18.0 | ^0.19.0 |
+
+[#805][#805]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#805]: https://github.com/savvy-web/systems/pull/805
+
 ## 9.5.4
 
 ### Bug Fixes
