@@ -20,12 +20,12 @@
  * @internal
  */
 
-import type { Heading, Root, RootContent } from "mdast";
-import { toString as mdastToString } from "mdast-util-to-string";
+import type { FlowContent, Root } from "@effected/markdown";
+import { MarkdownTransform, Mdast, Root as RootNode } from "@effected/markdown";
 
 import { fromHeading } from "../categories/index.js";
 import type { SectionCategory } from "../categories/types.js";
-import { parseMarkdown, stringifyMarkdown } from "./remark-pipeline.js";
+import { emitKitMarkdown, parseKitMarkdown } from "./markdown-emit.js";
 
 /**
  * A parsed section from a changeset summary.
@@ -44,7 +44,7 @@ export interface ParsedSection {
 	/** The markdown content under this heading */
 	content: string;
 	/**
-	 * The MDAST nodes under this heading.
+	 * The kit nodes under this heading.
 	 *
 	 * @remarks
 	 * The same content as {@link ParsedSection.content}, but as the parsed
@@ -52,7 +52,7 @@ export interface ParsedSection {
 	 * emit decisions (bullet vs block) are made on node types rather than
 	 * string prefixes.
 	 */
-	contentNodes: RootContent[];
+	contentNodes: FlowContent[];
 }
 
 /**
@@ -90,13 +90,10 @@ export interface ParsedChangeset {
  *
  * @remarks
  * The algorithm works in three steps:
- * 1. Parse the summary markdown into an MDAST tree via {@link parseMarkdown}
- * 2. Scan `tree.children` for h2 (`depth === 2`) headings, recording their
- *    indices
- * 3. For each h2, extract the heading text, resolve it to a
- *    {@link SectionCategory} via `fromHeading()`, and collect all nodes
- *    between this h2 and the next h2 (or end of document) as the section
- *    content
+ * 1. Parse the summary markdown into `@effected/markdown` nodes via
+ *    {@link parseKitMarkdown}
+ * 2. Hand the tree to {@link sectionsOf}, which slices it at root-level h2
+ *    headings with `MarkdownTransform.sections`
  *
  * If the summary contains h2 (`##`) headings, they are mapped to categories
  * via `fromHeading()`. Content between headings becomes the section content.
@@ -125,67 +122,76 @@ export interface ParsedChangeset {
  * @internal
  */
 export function parseChangesetSections(summary: string): ParsedChangeset {
-	const tree = parseMarkdown(summary);
+	return sectionsOf(parseKitMarkdown(summary), summary);
+}
 
-	// Find indices of all h2 headings
-	const h2Indices: number[] = [];
-	for (let i = 0; i < tree.children.length; i++) {
-		const node = tree.children[i];
-		if (node.type === "heading" && (node as Heading).depth === 2) {
-			h2Indices.push(i);
-		}
-	}
+/**
+ * Slice an already-parsed changeset tree into categorized sections.
+ *
+ * @remarks
+ * Split from {@link parseChangesetSections} so a caller can transform the
+ * tree (the renderer appends attribution with `MarkdownTransform.map`) and
+ * re-slice it without re-parsing. A section runs from its h2 to the next
+ * root-level h2 (or the end of the summary); a stray h1 inside a section stays
+ * in that section's content, as it always has.
+ *
+ * @param tree - The parsed summary
+ * @param summary - The summary source, returned verbatim as the preamble in
+ *   flat-text mode
+ * @returns Parsed sections and optional preamble
+ *
+ * @internal
+ */
+export function sectionsOf(tree: Root, summary: string): ParsedChangeset {
+	const spans = MarkdownTransform.sections(tree, { depth: 2 });
 
-	// No h2 headings → flat-text mode
-	if (h2Indices.length === 0) {
+	// No h2 headings: flat-text mode
+	if (spans.length === 0) {
 		return {
 			preamble: summary.trim(),
 			sections: [],
 		};
 	}
 
-	// Extract preamble (content before the first h2)
 	const result: ParsedChangeset = { sections: [] };
-	if (h2Indices[0] > 0) {
-		const preambleNodes = tree.children.slice(0, h2Indices[0]);
-		result.preamble = stringifyAstSlice(preambleNodes);
+	if (spans[0].headingIndex > 0) {
+		result.preamble = stringifyAstSlice(tree.children.slice(0, spans[0].headingIndex));
 	}
 
-	// Extract each section
-	for (let i = 0; i < h2Indices.length; i++) {
-		const headingIndex = h2Indices[i];
-		const headingNode = tree.children[headingIndex] as Heading;
-		const headingText = mdastToString(headingNode);
-
-		// Content extends from after the heading to the next h2 (or end)
-		const nextIndex = i + 1 < h2Indices.length ? h2Indices[i + 1] : tree.children.length;
-		const contentNodes = tree.children.slice(headingIndex + 1, nextIndex);
-		const content = stringifyAstSlice(contentNodes);
-
+	for (let i = 0; i < spans.length; i++) {
+		const span = spans[i];
+		const headingText = Mdast.toText(span.heading);
+		// A section runs to the NEXT h2, not to `span.end`: the kit also ends a
+		// section at a shallower (h1) heading, which would silently drop every
+		// node between a stray h1 and the next h2 from both section and preamble.
+		const end = i + 1 < spans.length ? spans[i + 1].headingIndex : tree.children.length;
+		const contentNodes = tree.children.slice(span.headingIndex + 1, end).filter(isFlowContent);
 		const category = fromHeading(headingText);
 		if (category) {
-			result.sections.push({ category, heading: headingText, content, contentNodes });
+			result.sections.push({ category, heading: headingText, content: stringifyAstSlice(contentNodes), contentNodes });
 		}
-		// Unknown headings are silently skipped (validation is Layer 1's job)
+		// Unknown headings are skipped (Layer 1 validation catches them)
 	}
 
 	return result;
 }
 
 /**
- * Stringify a slice of MDAST nodes back to markdown.
- *
- * @remarks
- * Wraps the nodes in a synthetic root node and delegates to
- * {@link stringifyMarkdown}. Returns an empty string for empty slices.
- *
- * @param nodes - Array of MDAST content nodes
- * @returns Trimmed markdown string, or empty string if no nodes
+ * Narrow a root child to block content (frontmatter capture is off and the
+ * dialect is GFM, so this only ever drops nothing).
  *
  * @internal
  */
-function stringifyAstSlice(nodes: RootContent[]): string {
+function isFlowContent(node: Root["children"][number]): node is FlowContent {
+	return node.type !== "frontmatter" && node.type !== "mdxjsEsm";
+}
+
+/**
+ * Stringify a slice of root children back to trimmed markdown.
+ *
+ * @internal
+ */
+function stringifyAstSlice(nodes: ReadonlyArray<Root["children"][number]>): string {
 	if (nodes.length === 0) return "";
-	const root: Root = { type: "root", children: nodes };
-	return stringifyMarkdown(root).trim();
+	return emitKitMarkdown(new RootNode({ children: nodes })).trim();
 }

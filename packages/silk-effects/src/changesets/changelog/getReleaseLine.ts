@@ -30,8 +30,9 @@
  * @internal
  */
 
-import { Effect, Schema } from "effect";
-import type { Heading, List, Paragraph, PhrasingContent, Root, RootContent } from "mdast";
+import type { FlowContent, List, PhrasingContent } from "@effected/markdown";
+import { Markdown, MarkdownTransform, Paragraph, Text } from "@effected/markdown";
+import { Effect, Result, Schema } from "effect";
 
 import { resolveCommitType } from "../categories/index.js";
 import { GitHubInfoSchema } from "../schemas/github.js";
@@ -40,21 +41,20 @@ import { GitHubService } from "../services/github.js";
 import { parseCommitMessage } from "../utils/commit-parser.js";
 import { parseIssueReferences } from "../utils/issue-refs.js";
 import { logWarning } from "../utils/logger.js";
-import { parseMarkdown, stringifyMarkdown } from "../utils/remark-pipeline.js";
-import { parseChangesetSections } from "../utils/section-parser.js";
+import { emitKitMarkdown, parseKitMarkdown } from "../utils/markdown-emit.js";
+import { sectionsOf } from "../utils/section-parser.js";
 import type { GitHubCommitInfo } from "../vendor/github-info.js";
 import type { NewChangesetWithCommit, VersionType } from "../vendor/types.js";
 import type { ChangelogEntry } from "./formatting.js";
 import { formatChangelogEntry, formatPRAndUserAttribution } from "./formatting.js";
 
 /**
- * Stringify a single MDAST block node back to markdown, trimmed.
+ * Stringify a single block node back to markdown, trimmed.
  *
  * @internal
  */
-function stringifyNode(node: RootContent): string {
-	const root: Root = { type: "root", children: [node] };
-	return stringifyMarkdown(root).trimEnd();
+function stringifyNode(node: FlowContent): string {
+	return emitKitMarkdown(node).trimEnd();
 }
 
 /**
@@ -77,19 +77,14 @@ function stringifyNode(node: RootContent): string {
  *
  * @internal
  */
-function renderSectionNode(node: RootContent): string {
+function renderSectionNode(node: FlowContent): string {
 	if (node.type === "paragraph") {
 		const lines = stringifyNode(node).split("\n");
 		const [first, ...rest] = lines;
 		return [`- ${first}`, ...rest.map((line) => (line.length > 0 ? `  ${line}` : line))].join("\n");
 	}
 	if (node.type === "heading") {
-		const heading = node as Heading;
-		const promoted: Heading = {
-			...heading,
-			depth: Math.min(Math.max(heading.depth + 1, 4), 6) as Heading["depth"],
-		};
-		return stringifyNode(promoted);
+		return stringifyNode(MarkdownTransform.shiftHeadings(node, 1, { min: 4 }));
 	}
 	return stringifyNode(node);
 }
@@ -104,9 +99,9 @@ function renderSectionNode(node: RootContent): string {
 function attributionPhrasing(attribution: string): PhrasingContent[] | undefined {
 	const trimmed = attribution.trim();
 	if (trimmed === "") return undefined;
-	const first = parseMarkdown(trimmed).children[0];
-	if (first?.type !== "paragraph") return undefined;
-	return [{ type: "text", value: " " }, ...(first as Paragraph).children];
+	const parsed = Markdown.parsePhrasingResult(trimmed);
+	if (Result.isFailure(parsed) || parsed.success.length === 0) return undefined;
+	return [new Text({ value: " " }), ...parsed.success];
 }
 
 /**
@@ -123,10 +118,10 @@ function lastRenderedBulletParagraph(list: List): Paragraph | undefined {
 	for (let i = lastItem.children.length - 1; i >= 0; i--) {
 		const child = lastItem.children[i];
 		if (child.type === "list") {
-			const nested = lastRenderedBulletParagraph(child as List);
+			const nested = lastRenderedBulletParagraph(child);
 			if (nested) return nested;
 		} else if (child.type === "paragraph") {
-			return child as Paragraph;
+			return child;
 		}
 	}
 	return undefined;
@@ -141,14 +136,14 @@ function lastRenderedBulletParagraph(list: List): Paragraph | undefined {
  *
  * @internal
  */
-function findAttributionTarget(sections: readonly { contentNodes: RootContent[] }[]): Paragraph | undefined {
+function findAttributionTarget(sections: readonly { contentNodes: FlowContent[] }[]): Paragraph | undefined {
 	let target: Paragraph | undefined;
 	for (const section of sections) {
 		for (const node of section.contentNodes) {
 			if (node.type === "paragraph") {
-				target = node as Paragraph;
+				target = node;
 			} else if (node.type === "list") {
-				const lastParagraph = lastRenderedBulletParagraph(node as List);
+				const lastParagraph = lastRenderedBulletParagraph(node);
 				if (lastParagraph) target = lastParagraph;
 			}
 		}
@@ -214,7 +209,8 @@ export function getReleaseLine(
 		}
 
 		// 2. Parse summary for sections
-		const parsed = parseChangesetSections(changeset.summary);
+		const tree = parseKitMarkdown(changeset.summary);
+		let parsed = sectionsOf(tree, changeset.summary);
 
 		// 3. Parse first line for conventional commit
 		const firstLine = changeset.summary.split("\n")[0];
@@ -248,7 +244,13 @@ export function getReleaseLine(
 			if (phrasing) {
 				const target = findAttributionTarget(parsed.sections);
 				if (target) {
-					target.children.push(...phrasing);
+					// Kit nodes are immutable: rebuild the path to the target and
+					// re-slice. Root-level indices are unchanged by a paragraph edit.
+					const attributed = MarkdownTransform.map(tree, {
+						paragraph: (para) =>
+							para === target ? new Paragraph({ ...para, children: [...para.children, ...phrasing] }) : para,
+					});
+					parsed = sectionsOf(attributed, changeset.summary);
 				} else {
 					standaloneAttribution = attribution.trim();
 				}
