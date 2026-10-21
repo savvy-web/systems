@@ -308,6 +308,20 @@ layer(testLayer)("getReleaseLine", (it) => {
 			expect(result).toContain("[the RFC](https://github.com/owner/repo/issues/9)");
 		}),
 	);
+
+	it.effect("emits canonical spellings for non-canonical authored markdown", () =>
+		Effect.gen(function* () {
+			const render = (summary: string) =>
+				getReleaseLine({ id: "spellings", summary, releases: [{ name: "pkg", type: "minor" }] }, "minor", OPTIONS);
+			expect(yield* render("## Features\n\n* alpha\n* beta")).toBe("### Features\n\n- alpha\n- beta");
+			expect(yield* render("## Features\n\nIntro sentence.\n\n* alpha\n* beta")).toBe(
+				"### Features\n\n- Intro sentence.\n\n- alpha\n- beta",
+			);
+			expect(yield* render("## Features\n\n~~~ts\nx\n~~~\n\n_em_ then\n\n---")).toBe(
+				"### Features\n\n```ts\nx\n```\n\n- *em* then\n\n***",
+			);
+		}),
+	);
 });
 
 // Kept OUTSIDE the `layer(...)` block on purpose: this test needs a DIFFERENT

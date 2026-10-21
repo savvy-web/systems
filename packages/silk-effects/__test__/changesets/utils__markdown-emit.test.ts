@@ -12,7 +12,7 @@ import { MdastDecodeError } from "@effected/markdown";
 import type { Root } from "mdast";
 import { describe, expect, it } from "vitest";
 
-import { emitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
+import { emitKitMarkdown, emitMarkdown, parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
 import { parseMarkdown } from "../../src/changesets/utils/remark-pipeline.js";
 
 describe("emitMarkdown", () => {
@@ -147,5 +147,23 @@ describe("emitMarkdown", () => {
 		// The typed kit error survives as `cause` — the defect preserves the
 		// structured failure, not just its rendered message.
 		expect((thrown as Error).cause).toBeInstanceOf(MdastDecodeError);
+	});
+});
+
+describe("parseKitMarkdown + emitKitMarkdown", () => {
+	// The kit parser records author spellings as fidelity fields; the kit path
+	// must still emit the same canonical bytes the remark path did.
+	it.each([
+		["* alpha\n* beta\n", "- alpha\n- beta\n"],
+		["+ a\n", "- a\n"],
+		["1) one\n2) two\n", "1. one\n2. two\n"],
+		["_em_ and __strong__\n", "*em* and **strong**\n"],
+		["~~~ts\nx\n~~~\n", "```ts\nx\n```\n"],
+		["a\n\n---\n\nb\n", "a\n\n***\n\nb\n"],
+		["Intro.\n\n* alpha\n* beta\n", "Intro.\n\n- alpha\n- beta\n"],
+		["Title\n=====\n", "# Title\n"],
+	])("canonicalizes %j", (source, expected) => {
+		expect(emitKitMarkdown(parseKitMarkdown(source))).toBe(expected);
+		expect(emitMarkdown(parseMarkdown(source))).toBe(expected);
 	});
 });

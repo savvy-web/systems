@@ -114,7 +114,12 @@ export function emitMarkdown(tree: Root): string {
  * @internal
  */
 export function parseKitMarkdown(text: string): KitRoot {
-	return unwrap(Markdown.parseResult(text), "markdown parse: canonical parse failed");
+	const parsed = unwrap(Markdown.parseResult(text), "markdown parse: canonical parse failed");
+	// The kit parser records author spellings (`*`/`+` bullets, `1)`
+	// delimiters, `~~~` fences, `_` emphasis, `---` breaks, setext headings)
+	// as fidelity fields that the emitter honours; the mdast round trip strips
+	// them so output stays canonical, as it was on the remark path.
+	return unwrap(Mdast.fromMdastResult(Mdast.toMdast(parsed)), "markdown parse: fidelity strip failed");
 }
 
 /**
