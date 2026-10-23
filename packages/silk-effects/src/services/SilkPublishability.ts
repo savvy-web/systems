@@ -397,7 +397,9 @@ export class SilkPublishability {
 	 *
 	 * Each detected target is joined back to its declaration: through `dist/prod/targets.json` by
 	 * group directory and registry after the prod build, or by its placeholder directory
-	 * (`dist/prod/<id>/pkg`) against `publishConfig.targets` before it. A target with no keyed
+	 * (`dist/prod/<id>/pkg`) against `publishConfig.targets` before it. A binding entry with no
+	 * `releases` (written by a bundler older than the field) takes the filter declared on
+	 * `publishConfig.targets[id]`, so upgrading the publisher before the bundler never widens it. A target with no keyed
 	 * declaration (the `access`/`private` fallbacks) has no filter and receives every version.
 	 * Filtered targets are returned with `receives: false`, never dropped, so a publisher reports the
 	 * skip from the same join it publishes from. A result with no `receives: true` entry means this
@@ -417,7 +419,7 @@ export class SilkPublishability {
 			const targets = yield* SilkPublishability.resolveTargets(pkg, pkg.workspaceRoot);
 			const fs = yield* FileSystem.FileSystem;
 			const binding = yield* readTargetsBinding(fs, pkg.path);
-			const declared = binding === null ? (yield* readRaw(fs, pkg.packageJsonPath))?.publishConfig?.targets : undefined;
+			const declared = (yield* readRaw(fs, pkg.packageJsonPath))?.publishConfig?.targets;
 			const join = binding !== null ? joinByBinding(binding) : joinByPlaceholder(declared);
 			const distTag = SilkPublishability.distTagFor(version);
 			const out: ReleaseTarget[] = [];
@@ -427,7 +429,9 @@ export class SilkPublishability {
 				);
 				const joined = join(relativeDir, target.registry);
 				const id = joined.id;
-				const releases = yield* releaseChannelOf(pkg.name, id, joined.releases);
+				// A binding entry without `releases` was written by a bundler that predates the field,
+				// so the declaration still holds the filter.
+				const releases = yield* releaseChannelOf(pkg.name, id, joined.releases ?? declaredReleasesOf(declared, id));
 				out.push({ target, id, releases, receives: SilkPublishability.receives(releases, version), distTag });
 			}
 			return out;
@@ -606,9 +610,15 @@ const joinByPlaceholder =
 		if (id === undefined || declared === undefined || !Object.hasOwn(declared, id)) {
 			return { id: undefined, releases: undefined };
 		}
-		const value = declared[id];
-		return { id, releases: typeof value === "object" && value !== null ? value.releases : undefined };
+		return { id, releases: declaredReleasesOf(declared, id) };
 	};
+
+/** The `releases` declared on `publishConfig.targets[id]`, or `undefined` when there is none. */
+const declaredReleasesOf = (declared: RawPublishTargets | undefined, id: string | undefined): unknown => {
+	if (id === undefined || declared === undefined || !Object.hasOwn(declared, id)) return undefined;
+	const value = declared[id];
+	return typeof value === "object" && value !== null ? value.releases : undefined;
+};
 
 /** True when a built target directory's package.json is `private: true`. Missing/unreadable/malformed → false. */
 const isTargetPrivate = (fs: FileSystem.FileSystem, targetDir: string): Effect.Effect<boolean> =>

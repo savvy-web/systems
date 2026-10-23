@@ -762,6 +762,55 @@ describe("SilkPublishability.resolveReleaseTargets", () => {
 		}),
 	);
 
+	it.effect("a binding without releases takes the filter declared on publishConfig.targets", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: "stable" }, github: true } },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("@s/x"));
+			const out = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "2.0.0-rc.1");
+			expect(out.map((r) => [r.id, r.releases, r.receives])).toEqual([
+				["npm", "stable", false],
+				["github", "all", true],
+			]);
+		}),
+	);
+
+	it.effect("a releases value written into the binding wins over the declaration", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: "stable" }, github: true } },
+			});
+			const binding = dualRegistryBinding("@s/x");
+			writeBinding(tmpDir, {
+				...binding,
+				targets: binding.targets.map((t) => (t.id === "npm" ? { ...t, releases: "all" } : t)),
+			});
+			const out = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "2.0.0-rc.1");
+			expect(out.map((r) => [r.id, r.releases])).toEqual([
+				["npm", "all"],
+				["github", "all"],
+			]);
+		}),
+	);
+
+	it.effect("an unknown declared releases fails even behind a binding without releases", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: "final" }, github: true } },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("@s/x"));
+			const err = yield* Effect.flip(runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0"));
+			expect(err).toMatchObject({ _tag: "ReleaseChannelError", id: "npm", value: '"final"' });
+		}),
+	);
+
 	it.effect("pre-build, the filter is read from publishConfig.targets by key", () =>
 		Effect.gen(function* () {
 			writePkg(tmpDir, {

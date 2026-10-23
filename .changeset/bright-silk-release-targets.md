@@ -6,7 +6,7 @@
 
 ### Per-target release filter
 
-`RawTargetObject` and `TargetBinding` gain `releases` (`"all" | "stable" | "prerelease"`) and `provenance` (boolean). A `provenance` declared on a binding or target object now overrides the registry-derived default in `SilkPublishability.detect`.
+`RawTargetObject` and `TargetBinding` gain `releases` (`"all" | "stable" | "prerelease"`) and `provenance` (boolean). A `targets.json` from an older bundler, which writes no `releases`, takes the filter declared on `publishConfig.targets`, so upgrading the publisher first never widens it. A `provenance` declared on a binding or target object now overrides the registry-derived default in `SilkPublishability.detect`.
 
 New `SilkPublishability` statics:
 
