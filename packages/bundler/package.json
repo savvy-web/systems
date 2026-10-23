@@ -34,7 +34,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@savvy-web/tsdown-plugins": "workspace:*",
+		"@savvy-web/tsdown-plugins": "workspace:^",
 		"@tsdown/exe": "catalog:build",
 		"effect": "catalog:effect",
 		"rolldown": "catalog:build",

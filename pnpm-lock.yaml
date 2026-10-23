@@ -526,7 +526,7 @@ importers:
   packages/bundler:
     dependencies:
       '@savvy-web/tsdown-plugins':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../tsdown-plugins/dist/dev/pkg
       '@tsdown/exe':
         specifier: catalog:build
@@ -594,7 +594,7 @@ importers:
         specifier: catalog:effected
         version: 0.36.1(effect@4.0.6)
       '@savvy-web/silk-effects':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../silk-effects/dist/dev/pkg
       effect:
         specifier: catalog:effect
@@ -665,7 +665,7 @@ importers:
         specifier: catalog:effected
         version: 0.23.0(effect@4.0.6)
       '@savvy-web/silk-effects':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../silk-effects/dist/dev/pkg
       effect:
         specifier: catalog:effect
@@ -768,7 +768,7 @@ importers:
         specifier: catalog:effected
         version: 0.36.1(effect@4.0.6)
       '@savvy-web/silk-effects':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../silk-effects/dist/dev/pkg
       effect:
         specifier: catalog:effect
@@ -819,7 +819,7 @@ importers:
         specifier: catalog:docs:peers
         version: 2.0.23(@rspack/core@2.2.9(@swc/helpers@0.5.23))(micromark-util-types@2.0.3)(micromark@4.0.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@savvy-web/bundler':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../bundler/dist/dev/pkg
       '@tsdown/css':
         specifier: catalog:build
@@ -1041,7 +1041,7 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       '@savvy-web/silk-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../silk-core/dist/dev/pkg
       mdast-util-to-string:
         specifier: ^4.0.0
