@@ -6,7 +6,7 @@ status: stable
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
+  at: 2026-10-23T15:37:52Z
 sources:
   - id: bundler-arch
     resource: ../../packages/bundler/package.json
@@ -19,7 +19,7 @@ verified:
     at: 2026-10-13T17:19:17Z
 integrity:
   generated:
-    body: 9ff26b2dcb05b3b4
+    body: 0bdddb85171b7423
   verified:
     by: human:spencer
     at: 2026-10-13T17:19:17Z
@@ -104,6 +104,8 @@ See [modules/bundler.md](../modules/bundler.md) and
   package build cycle. `resolveNextVersions` is a deliberate second copy
   of the release-plan slice `silk-effects`' planner also computes, for
   exactly that reason.
-- Both packages version independently; changesets auto-bumps
-  `@savvy-web/bundler` when `@savvy-web/tsdown-plugins` changes, through
-  the ordinary dependency relationship, not a fixed/linked group.
+- Both packages version independently, not as a fixed/linked group. The
+  bundler declares tsdown-plugins as `workspace:^` (published as
+  `^<version>`), so changesets bumps `@savvy-web/bundler` only when a
+  `@savvy-web/tsdown-plugins` release leaves that caret range (a major);
+  a minor or patch tsdown-plugins release does not move the bundler.

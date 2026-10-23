@@ -132,6 +132,40 @@ describe("SilkPublishability.layer — silk rules", () => {
 		}),
 	);
 
+	it.effect("a binding without provenance takes the provenance declared on publishConfig.targets", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@scope/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { provenance: false }, github: true } },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("@scope/x"));
+			const targets = yield* runSilk(
+				Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
+			);
+			expect(targets.map((t) => t.provenance)).toEqual([false, true]);
+		}),
+	);
+
+	it.effect("a provenance value written into the binding wins over the declaration", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@scope/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { provenance: false }, github: true } },
+			});
+			const binding = dualRegistryBinding("@scope/x");
+			writeBinding(tmpDir, {
+				...binding,
+				targets: binding.targets.map((t) => (t.id === "npm" ? { ...t, provenance: true } : t)),
+			});
+			const targets = yield* runSilk(
+				Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
+			);
+			expect(targets.map((t) => t.provenance)).toEqual([true, true]);
+		}),
+	);
+
 	it.effect("object-form targets, no binding (pre-build) → one placeholder per declared key", () =>
 		Effect.gen(function* () {
 			// Before the prod build writes targets.json, publishability and the target COUNT must
@@ -619,6 +653,12 @@ describe("SilkPublishability release helpers", () => {
 		expect(SilkPublishability.distTagFor("2.0.0-beta.3")).toBe("beta");
 		expect(SilkPublishability.distTagFor("2.0.0-rc.1+sha.abc")).toBe("rc");
 		expect(SilkPublishability.distTagFor("2.0.0-next")).toBe("next");
+	});
+
+	it("distTagFor: next for a latest identifier, so a prerelease never takes the latest tag", () => {
+		expect(SilkPublishability.distTagFor("2.0.0-latest.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-latest")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-latestish.1")).toBe("latestish");
 	});
 
 	it("distTagFor: next for a purely numeric or empty first identifier", () => {

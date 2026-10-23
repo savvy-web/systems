@@ -91,7 +91,11 @@ export interface TargetBinding {
 	 * bundler that predates the field omits it, which reads as `"all"`.
 	 */
 	readonly releases?: ReleaseChannel;
-	/** The declared provenance override; absent when the registry default applies. */
+	/**
+	 * The declared provenance override. Absent when none was declared, or in a binding from a
+	 * bundler that predates the field; either way the target object's own `provenance` applies,
+	 * then the registry default.
+	 */
 	readonly provenance?: boolean;
 }
 
@@ -246,7 +250,7 @@ export class SilkPublishability {
 							registry: t.registry,
 							directory: dirByGroup.get(t.group) ?? `dist/prod/${t.group}/pkg`,
 							access,
-							provenance: t.provenance ?? provenanceForRegistry(t.registry),
+							provenance: t.provenance ?? declaredProvenanceOf(targets, t.id) ?? provenanceForRegistry(t.registry),
 						}),
 				);
 			}
@@ -368,14 +372,15 @@ export class SilkPublishability {
 	 * A final version is `latest`. A prerelease takes its first prerelease identifier (`beta` for
 	 * `2.0.0-beta.3`, `rc` for `2.0.0-rc.1`), or `next` when that identifier is empty or would
 	 * parse as a SemVer range (`2.0.0-0`, `2.0.0-x.1`, `2.0.0-v2.1`), since npm rejects such a
-	 * dist-tag. The range check is `v*` followed by digits or a lone `x`/`X`, matching what
-	 * `semver.validRange` accepts for a prerelease identifier.
+	 * dist-tag. A `latest` identifier (`2.0.0-latest.1`) also takes `next`, so a prerelease never
+	 * becomes the version a bare install resolves. The range check is `v*` followed by digits or a
+	 * lone `x`/`X`, matching what `semver.validRange` accepts for a prerelease identifier.
 	 */
 	static distTagFor(version: string): string {
 		const prerelease = prereleaseOf(version);
 		if (prerelease === undefined) return "latest";
 		const first = prerelease.split(".")[0] ?? "";
-		return first === "" || /^v*(?:\d+|[xX])$/.test(first) ? "next" : first;
+		return first === "" || first === "latest" || /^v*(?:\d+|[xX])$/.test(first) ? "next" : first;
 	}
 
 	/** Whether a target with this {@link ReleaseChannel} receives the given version. */
@@ -618,6 +623,15 @@ const declaredReleasesOf = (declared: RawPublishTargets | undefined, id: string 
 	if (id === undefined || declared === undefined || !Object.hasOwn(declared, id)) return undefined;
 	const value = declared[id];
 	return typeof value === "object" && value !== null ? value.releases : undefined;
+};
+
+/** The boolean `provenance` declared on `publishConfig.targets[id]`, or `undefined` when there is none. */
+const declaredProvenanceOf = (declared: RawPublishTargets | undefined, id: string): boolean | undefined => {
+	if (declared === undefined || !Object.hasOwn(declared, id)) return undefined;
+	const value = declared[id];
+	return typeof value === "object" && value !== null && typeof value.provenance === "boolean"
+		? value.provenance
+		: undefined;
 };
 
 /** True when a built target directory's package.json is `private: true`. Missing/unreadable/malformed → false. */
