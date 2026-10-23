@@ -119,6 +119,8 @@ export type {
 	RawPublishTargets,
 	RawTargetObject,
 	RawTargetValue,
+	ReleaseChannel,
+	ReleaseTarget,
 	TargetBinding,
 	TargetGroupBinding,
 	TargetsBinding,

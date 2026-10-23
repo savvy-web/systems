@@ -6,6 +6,16 @@ import { Effect, FileSystem, Layer } from "effect";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 
 /**
+ * Which release versions a publish target receives (mirrors the bundler's `ReleaseChannel`).
+ *
+ * @remarks
+ * `"all"` takes every version, `"stable"` only versions without a SemVer prerelease suffix, and
+ * `"prerelease"` only versions with one. An undeclared value reads as `"all"`.
+ * @public
+ */
+export type ReleaseChannel = "all" | "stable" | "prerelease";
+
+/**
  * A single object-form publish target in the `publishConfig.targets` map (mirrors the bundler's `PublishTargetObject`).
  * @public
  */
@@ -16,6 +26,10 @@ export interface RawTargetObject {
 	readonly name?: string;
 	/** Reuse another target's group bytes. Mutually exclusive with `name`. */
 	readonly from?: string;
+	/** Which release versions this target receives. Defaults to `"all"`. */
+	readonly releases?: ReleaseChannel;
+	/** Force the provenance attestation on or off, overriding the registry-derived default. */
+	readonly provenance?: boolean;
 }
 
 /**
@@ -72,6 +86,13 @@ export interface TargetBinding {
 	readonly name: string;
 	/** The resolved registry endpoint. */
 	readonly registry: string;
+	/**
+	 * Which release versions this target receives. The bundler always writes it; a binding from a
+	 * bundler that predates the field omits it, which reads as `"all"`.
+	 */
+	readonly releases?: ReleaseChannel;
+	/** The declared provenance override; absent when the registry default applies. */
+	readonly provenance?: boolean;
 }
 
 /**
@@ -87,6 +108,26 @@ export interface TargetBinding {
 export interface TargetsBinding {
 	readonly groups: ReadonlyArray<TargetGroupBinding>;
 	readonly targets: ReadonlyArray<TargetBinding>;
+}
+
+/**
+ * A resolved publish target judged against a specific release version, with the facts a publisher needs alongside it.
+ *
+ * @remarks
+ * Returned by {@link SilkPublishability.resolveReleaseTargets}, one per resolved target whether or
+ * not it takes the version, so a publisher can report what it skipped without a second join.
+ * `id` is the `publishConfig.targets` key the target came from, or `undefined` for a package
+ * published through the `access`/`private` fallbacks, which have no keyed targets.
+ * @public
+ */
+export interface ReleaseTarget {
+	readonly target: PublishTarget;
+	readonly id: string | undefined;
+	readonly releases: ReleaseChannel;
+	/** Whether this target takes the version; `false` means its `releases` filters it out. */
+	readonly receives: boolean;
+	/** The npm dist-tag this version publishes under; see {@link SilkPublishability.distTagFor}. */
+	readonly distTag: string;
 }
 
 /**
@@ -205,7 +246,7 @@ export class SilkPublishability {
 							registry: t.registry,
 							directory: dirByGroup.get(t.group) ?? `dist/prod/${t.group}/pkg`,
 							access,
-							provenance: provenanceForRegistry(t.registry),
+							provenance: t.provenance ?? provenanceForRegistry(t.registry),
 						}),
 				);
 			}
@@ -216,16 +257,17 @@ export class SilkPublishability {
 				// An object-form target carries its own registry; honor it pre-build so a custom-registry
 				// target reports the right registry (and provenance) before targets.json exists, instead
 				// of falling back to the npm default.
+				const object = typeof target === "object" && target !== null ? target : undefined;
 				const registry =
-					typeof target === "object" && target !== null && typeof target.registry === "string"
-						? target.registry
+					typeof object?.registry === "string"
+						? object.registry
 						: (DEFAULT_REGISTRIES[id] ?? pc?.registry ?? NPM_DEFAULT);
 				return new PublishTarget({
 					name: pkgName,
 					registry,
 					directory: `dist/prod/${id}/pkg`,
 					access,
-					provenance: provenanceForRegistry(registry),
+					provenance: typeof object?.provenance === "boolean" ? object.provenance : provenanceForRegistry(registry),
 				});
 			});
 		}
@@ -309,6 +351,80 @@ export class SilkPublishability {
 				}
 			}
 			return kept;
+		});
+	}
+
+	/**
+	 * True when a version carries a SemVer prerelease suffix (`1.2.0-rc.1`). Build metadata is ignored.
+	 */
+	static isPrerelease(version: string): boolean {
+		return prereleaseOf(version) !== undefined;
+	}
+
+	/**
+	 * The npm dist-tag a version publishes under.
+	 *
+	 * @remarks
+	 * A final version is `latest`. A prerelease takes its first prerelease identifier (`beta` for
+	 * `2.0.0-beta.3`, `rc` for `2.0.0-rc.1`), or `next` when that identifier is purely numeric
+	 * (`2.0.0-0`) or empty, since npm rejects a dist-tag that parses as a version or range.
+	 */
+	static distTagFor(version: string): string {
+		const prerelease = prereleaseOf(version);
+		if (prerelease === undefined) return "latest";
+		const first = prerelease.split(".")[0] ?? "";
+		return first === "" || /^\d+$/.test(first) ? "next" : first;
+	}
+
+	/** Whether a target with this {@link ReleaseChannel} receives the given version. */
+	static receives(releases: ReleaseChannel, version: string): boolean {
+		if (releases === "all") return true;
+		return SilkPublishability.isPrerelease(version) === (releases === "prerelease");
+	}
+
+	/**
+	 * Every resolved publish target judged against a specific version: {@link SilkPublishability.resolveTargets},
+	 * each paired with its target key, its `releases` filter, whether it `receives` the version, and the dist-tag.
+	 *
+	 * @remarks
+	 * A strict superset of `resolveTargets`, which it calls first, so the private-directory filter
+	 * and the `PublishTargetBindingError` integrity check apply unchanged. The release filter runs
+	 * here rather than in the `PublishabilityDetector` layer because the kit's
+	 * `VersioningStrategy.detect` counts publishable packages through the detector, and a package
+	 * whose only target skips this version is still a publishable package.
+	 *
+	 * Each detected target is joined back to its declaration: through `dist/prod/targets.json` by
+	 * group directory and registry after the prod build, or by its placeholder directory
+	 * (`dist/prod/<id>/pkg`) against `publishConfig.targets` before it. A target with no keyed
+	 * declaration (the `access`/`private` fallbacks) has no filter and receives every version.
+	 * Filtered targets are returned with `receives: false`, never dropped, so a publisher reports the
+	 * skip from the same join it publishes from. A result with no `receives: true` entry means this
+	 * version publishes nowhere, which is not an error.
+	 */
+	static resolveReleaseTargets(
+		pkg: WorkspacePackage,
+		version: string,
+	): Effect.Effect<
+		ReadonlyArray<ReleaseTarget>,
+		PublishTargetBindingError,
+		PublishabilityDetector | FileSystem.FileSystem
+	> {
+		return Effect.gen(function* () {
+			const targets = yield* SilkPublishability.resolveTargets(pkg, pkg.workspaceRoot);
+			const fs = yield* FileSystem.FileSystem;
+			const binding = yield* readTargetsBinding(fs, pkg.path);
+			const declared = binding === null ? (yield* readRaw(fs, pkg.packageJsonPath))?.publishConfig?.targets : undefined;
+			const join = binding !== null ? joinByBinding(binding) : joinByPlaceholder(declared);
+			const distTag = SilkPublishability.distTagFor(version);
+			const out: ReleaseTarget[] = [];
+			for (const target of targets) {
+				const relativeDir = normalizeDir(
+					isAbsolute(target.directory) ? relative(pkg.path, target.directory) : target.directory,
+				);
+				const { id, releases } = join(relativeDir, target.registry);
+				out.push({ target, id, releases, receives: SilkPublishability.receives(releases, version), distTag });
+			}
+			return out;
 		});
 	}
 
@@ -429,6 +545,47 @@ const normalizeDir = (dir: string): string => {
 	const normalized = trimTrailingSlashes(withoutPrefix);
 	return normalized === "" ? "." : normalized;
 };
+
+/** The prerelease part of a version (after the first `-`, before any `+build`), or `undefined` for a final version. */
+const prereleaseOf = (version: string): string | undefined => {
+	const plus = version.indexOf("+");
+	const core = plus === -1 ? version : version.slice(0, plus);
+	const dash = core.indexOf("-");
+	return dash === -1 ? undefined : core.slice(dash + 1);
+};
+
+/** A detected target's declaration: its `publishConfig.targets` key and release filter. */
+type TargetJoin = (relativeDir: string, registry: string) => { id: string | undefined; releases: ReleaseChannel };
+
+/**
+ * Join detected targets to the binding by group directory and registry. Each binding target is
+ * consumed once, so two keys sharing a group and a registry still map one-to-one in order.
+ */
+const joinByBinding = (binding: TargetsBinding): TargetJoin => {
+	const dirByGroup = new Map(binding.groups.map((g) => [g.id, normalizeDir(g.dir)]));
+	const remaining = [...binding.targets];
+	return (relativeDir, registry) => {
+		const index = remaining.findIndex(
+			(t) => t.registry === registry && (dirByGroup.get(t.group) ?? `dist/prod/${t.group}/pkg`) === relativeDir,
+		);
+		if (index === -1) return { id: undefined, releases: "all" };
+		const [match] = remaining.splice(index, 1);
+		return { id: match?.id, releases: match?.releases ?? "all" };
+	};
+};
+
+/** Pre-build join: a placeholder target sits at `dist/prod/<id>/pkg`, so read its declaration by key. */
+const joinByPlaceholder =
+	(declared: RawPublishTargets | undefined): TargetJoin =>
+	(relativeDir) => {
+		const id = /^dist\/prod\/([^/]+)\/pkg$/.exec(relativeDir)?.[1];
+		if (id === undefined || declared === undefined || !Object.hasOwn(declared, id)) {
+			return { id: undefined, releases: "all" };
+		}
+		const value = declared[id];
+		const releases = typeof value === "object" && value !== null ? value.releases : undefined;
+		return { id, releases: releases ?? "all" };
+	};
 
 /** True when a built target directory's package.json is `private: true`. Missing/unreadable/malformed → false. */
 const isTargetPrivate = (fs: FileSystem.FileSystem, targetDir: string): Effect.Effect<boolean> =>

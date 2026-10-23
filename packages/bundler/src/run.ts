@@ -34,6 +34,7 @@ import {
 	buildTargetGroups as realBuildTargetGroups,
 	runExeBuild as realRunExeBuild,
 	writeTargetsBinding as realWriteTargetsBinding,
+	releaseWarnings,
 	removeDeclarationMaps,
 	renderReport,
 	resolveJsxConfig,
@@ -423,6 +424,13 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			target === "dev"
 				? { groups: [{ id: "dev", name: packageName }] as ReadonlyArray<BuildGroupSpec>, resolution: undefined }
 				: deriveProdGroups(publishTargets, packageName);
+		if (resolution !== undefined) {
+			// Advisory only: a valid target set no final release reaches. Attributed to the first group.
+			const anchor = resolution.groups[0]?.id ?? "npm";
+			for (const text of releaseWarnings(resolution)) {
+				collector.recordWarning(anchor, { source: "config", level: "warn", code: "targets-no-final-release", text });
+			}
+		}
 
 		const explicitFormat = config.output?.format;
 		const writeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));

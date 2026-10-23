@@ -30,8 +30,9 @@ describe("bundledPackages: selective dts inlining (deps.dts.alwaysBundle)", () =
 		// rolldown is the bundledPackages target (deps.dts onlyBundle): its Plugin type is
 		// rolled into the entry .d.ts, so there is NO surviving `from "rolldown"` import.
 		expect(importLines.some((l) => /from ["']rolldown["']/.test(l))).toBe(false);
-		// Proof the type actually inlined: rolldown source regions appear in the rollup.
-		expect(dts).toMatch(/^\/\/#region.*node_modules.*\/rolldown\//m);
+		// Proof the type actually inlined: the rollup declares rolldown's Plugin itself. The dts
+		// rollup carries no source-path comments since rolldown 1.2.15, so assert the declaration.
+		expect(dts).toMatch(/^interface Plugin\b/m);
 	});
 
 	it("keeps an unlisted external (effect) as an external import reference", () => {
@@ -42,8 +43,7 @@ describe("bundledPackages: selective dts inlining (deps.dts.alwaysBundle)", () =
 		// externals array is a subset of that, so this asserts the outcome, not the mechanism.
 		const importLines = dts.split("\n").filter((l) => /^\s*import\b/.test(l));
 		expect(importLines.some((l) => /from ["']effect["']/.test(l))).toBe(true);
-		// And effect's declarations are NOT rolled into the rollup (no region sourced
-		// from the effect package's node_modules path).
-		expect(dts).not.toMatch(/^\/\/#region.*node_modules.*\/effect\//m);
+		// And effect's declarations are NOT rolled into the rollup: nothing declares Effect locally.
+		expect(dts).not.toMatch(/^(declare )?(interface|namespace) Effect\b/m);
 	});
 });

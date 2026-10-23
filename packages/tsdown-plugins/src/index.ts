@@ -129,9 +129,10 @@ export type {
 	PublishTargetObject,
 	PublishTargetValue,
 	PublishTargets,
+	ReleaseChannel,
 	ResolvedGroup,
 	ResolvedTarget,
 	TargetResolution,
 } from "./targets/config.js";
-export { isTargetObject } from "./targets/config.js";
-export { resolveTargets } from "./targets/resolve-targets.js";
+export { RELEASE_CHANNELS, isTargetObject } from "./targets/config.js";
+export { releaseWarnings, resolveTargets } from "./targets/resolve-targets.js";

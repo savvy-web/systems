@@ -39,7 +39,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.13",
+							range: "^2.2.14",
 							peer: "^2.2.0",
 							strategy: "lock-minor",
 						},
@@ -74,7 +74,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.14",
+							range: "^1.2.15",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
@@ -143,7 +143,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.4",
+							range: "^8.3.5",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},
@@ -157,8 +157,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.5.15",
-							peer: "2.5.15",
+							range: "2.6.2",
+							peer: "2.6.2",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -187,8 +187,8 @@ await build({
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
-							range: "^0.23.3",
-							peer: "^0.23.3",
+							range: "^0.24.0",
+							peer: "^0.24.0",
 							strategy: "lock",
 						},
 						"markdownlint-cli2-formatter-codequality": {
@@ -197,8 +197,8 @@ await build({
 							strategy: "lock",
 						},
 						turbo: {
-							range: "^2.11.9",
-							peer: "^2.11.9",
+							range: "^2.11.10",
+							peer: "^2.11.10",
 							strategy: "lock",
 						},
 					},
@@ -245,8 +245,8 @@ await build({
 							strategy: "lock",
 						},
 						"markdownlint-cli2": {
-							range: "^0.23.3",
-							peer: "^0.23.3",
+							range: "^0.24.0",
+							peer: "^0.24.0",
 							strategy: "lock",
 						},
 						"markdownlint-cli2-formatter-codequality": {
@@ -299,7 +299,7 @@ await build({
 							strategy: "lock-minor",
 						},
 						vite: {
-							range: "^8.3.4",
+							range: "^8.3.5",
 							peer: "^8.3.0",
 							strategy: "lock-minor",
 						},

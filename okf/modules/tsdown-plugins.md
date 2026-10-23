@@ -8,7 +8,7 @@ resource: ../../packages/tsdown-plugins
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-10-09T17:54:20Z
+  at: 2026-10-23T06:56:15Z
 sources:
   - id: tp-index
     resource: ../../packages/tsdown-plugins/src/index.ts
@@ -30,7 +30,7 @@ sources:
     resource: ../../packages/tsdown-plugins/src/config-validation
 integrity:
   generated:
-    body: 14ff5436f17a0790
+    body: 6ecb3d8b7edafd6e
 ---
 
 # @savvy-web/tsdown-plugins
@@ -202,6 +202,31 @@ existing one).[^tp-targets] `writeTargetsBinding` writes the resolution to
 `dist/prod/targets.json` — the bundler-to-release contract the publishing
 side reads rather than re-deriving.
 
+The object form of a target also takes two per-target publish options:
+`releases?: "all" | "stable" | "prerelease"` (the exported
+`ReleaseChannel`, with `RELEASE_CHANNELS` listing its values) and
+`provenance?: boolean`, which overrides the registry-derived attestation
+default. An unknown `releases` value or a non-boolean `provenance` throws
+`ConfigValidationError` at `publishConfig.targets.<id>.releases` or
+`.provenance`.[^tp-targets] Every `ResolvedTarget` in `targets.json`
+always carries `releases` (`"all"` when undeclared, and always `"all"` for
+the `true` and string forms), plus `provenance` only when it was declared.
+A `from` target takes its filter from its own object, never from the
+target whose group it reuses: groups are still packed once, and the
+filter is applied per target at publish time, not at build time, so two
+targets that share bytes can receive different versions.
+
+`releaseWarnings(resolution)` is pure and returns advisory messages for a
+target set that is valid but probably unintended. Today there is one: every
+target is `releases: "prerelease"`, so a final version publishes nowhere.
+It is a warning rather than a `ConfigValidationError` because a
+prerelease-only package is legitimate; `runBuild` records it as a
+`source: "config"` warning with code `targets-no-final-release` (see
+[`interfaces/build-issues-json.md`](../interfaces/build-issues-json.md)).
+The publishing side of the filter is silk-effects'
+`SilkPublishability.resolveReleaseTargets` (see
+[`modules/silk-effects.md`](silk-effects.md)).
+
 ## The SEA exe wrapper
 
 `src/exe/` is the interface-only wrapper over tsdown's exe mode:
@@ -231,6 +256,7 @@ any build work on every target path.
 - [`decisions/typescript-6-dts-pin.md`](../decisions/typescript-6-dts-pin.md)
 - [`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md)
 - [`interfaces/build-issues-json.md`](../interfaces/build-issues-json.md)
+- [`decisions/release-filter-placement.md`](../decisions/release-filter-placement.md)
 
 [^tp-build]: `src/build`
 [^tp-dts]: `src/dts`
