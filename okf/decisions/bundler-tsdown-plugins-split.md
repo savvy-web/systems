@@ -17,13 +17,15 @@ verified:
     at: 2026-10-07T16:50:25Z
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-10-23T15:45:32Z
 integrity:
   generated:
     body: 0bdddb85171b7423
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: de6281b94b003d22
+    at: 2026-10-23T15:45:32Z
+    content: e40e758e4b4f0fb5
 ---
 
 # Split the build orchestrator from the plugin pack

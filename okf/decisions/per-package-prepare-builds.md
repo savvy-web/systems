@@ -15,13 +15,15 @@ verified:
     at: 2026-10-07T16:50:25Z
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-10-23T15:45:32Z
 integrity:
   generated:
     body: 4a873a220c6367ff
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: a5231e172eaf66fd
+    at: 2026-10-23T15:45:32Z
+    content: 2588bdd3b064cd2d
 ---
 
 # Build each workspace-dependency package via its own prepare script
