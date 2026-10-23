@@ -1,5 +1,62 @@
 # @savvy-web/tsdown-plugins
 
+## 2.10.0
+
+### Features
+
+#### Per-target release filter
+
+- The object form of `publishConfig.targets` gains two optional fields:
+
+- `releases` — `"all"` (default), `"stable"`, or `"prerelease"`. A target receives only the versions its channel allows; a prerelease is any version with a SemVer prerelease suffix.
+
+- `provenance` — `true` or `false` forces the provenance attestation on or off, overriding the registry-derived default.
+
+```json
+{
+  "publishConfig": {
+    "targets": {
+      "npm": { "releases": "stable" },
+      "github": { "releases": "prerelease", "provenance": false }
+    }
+  }
+}
+```
+
+- `resolveTargets` validates both fields and throws `ConfigValidationError` for an unknown `releases` value or a non-boolean `provenance`. Every `ResolvedTarget` in `dist/prod/targets.json` now always carries `releases`, plus `provenance` when declared.
+
+#### New exports
+
+- `ReleaseChannel` type and `RELEASE_CHANNELS` constant
+
+- `releaseWarnings(resolution)` returns advisory messages for a valid target set, such as one where every target is `releases: "prerelease"` and final versions publish nowhere
+
+- The build report's `DiagnosticEntry.source` gains a `"config"` value for advisory findings about the build config itself. [#809][#809]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.5 | ^4.0.6 |
+| @effected/glob | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/images | dependency | updated | ^0.4.0 | ^0.5.0 |
+| @effected/jsonc | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/npm | dependency | updated | ^0.23.0 | ^0.25.0 |
+| @effected/package-json | dependency | updated | ^0.23.0 | ^0.24.1 |
+| @effected/semver | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/tsconfig-json | dependency | updated | ^0.16.0 | ^0.17.0 |
+| @effected/walker | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/workspaces | dependency | updated | ^0.35.0 | ^0.36.1 |
+| effect | dependency | updated | ^4.0.5 | ^4.0.6 |
+
+[#809][#809]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#809]: https://github.com/savvy-web/systems/pull/809
+
 ## 2.9.4
 
 ### Bug Fixes
