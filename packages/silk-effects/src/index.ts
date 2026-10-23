@@ -20,6 +20,7 @@ export {
 	ChangesetConfigError,
 	ConfigNotFoundError,
 	PublishTargetBindingError,
+	ReleaseChannelError,
 	WorkspaceAnalysisError,
 } from "@savvy-web/silk-core";
 /**

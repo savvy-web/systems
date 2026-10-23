@@ -11,10 +11,10 @@ sources:
     resource: ../../packages/silk-core/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-28T19:31:10Z
+  at: 2026-10-23T13:23:49Z
 integrity:
   generated:
-    body: ec6d67c55c3614e0
+    body: 1f7c7c3a6bda27c9
 ---
 
 # silk-core
@@ -35,7 +35,7 @@ The domain model extracted from silk-effects' `errors/`, `schemas/`, `pr-body/`,
 
 | Directory | Contents |
 | --- | --- |
-| `errors/` | `BiomeSyncError`, `ChangesetConfigError`, `ConfigNotFoundError`, `PublishTargetBindingError`, `WorkspaceAnalysisError` |
+| `errors/` | `BiomeSyncError`, `ChangesetConfigError`, `ConfigNotFoundError`, `PublishTargetBindingError`, `ReleaseChannelError`, `WorkspaceAnalysisError` |
 | `schemas/` | `BiomeConfig`, `ConfigDiscoverySchemas`, `SavvyInstallSection`, `SavvySections`, `VersioningSchemas`, `WorkspaceAnalysisSchemas` |
 | `pr-body/` | `body`, `diagnostics`, `index`, `linked-issue`, `markers`, `references`, `region` — the [PR body contract](../interfaces/pr-body-contract.md) |
 | `utils/` | `TrailingSlash` (`trimTrailingSlashes`, a public export here) |

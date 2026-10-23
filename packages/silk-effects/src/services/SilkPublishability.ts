@@ -1,7 +1,7 @@
 import { isAbsolute, join, relative } from "node:path";
 import type { WorkspacePackage } from "@effected/workspaces";
 import { PublishTarget, PublishabilityDetector, WorkspaceDiscovery } from "@effected/workspaces";
-import { PublishTargetBindingError, trimTrailingSlashes } from "@savvy-web/silk-core";
+import { PublishTargetBindingError, ReleaseChannelError, trimTrailingSlashes } from "@savvy-web/silk-core";
 import { Effect, FileSystem, Layer } from "effect";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 
@@ -366,14 +366,16 @@ export class SilkPublishability {
 	 *
 	 * @remarks
 	 * A final version is `latest`. A prerelease takes its first prerelease identifier (`beta` for
-	 * `2.0.0-beta.3`, `rc` for `2.0.0-rc.1`), or `next` when that identifier is purely numeric
-	 * (`2.0.0-0`) or empty, since npm rejects a dist-tag that parses as a version or range.
+	 * `2.0.0-beta.3`, `rc` for `2.0.0-rc.1`), or `next` when that identifier is empty or would
+	 * parse as a SemVer range (`2.0.0-0`, `2.0.0-x.1`, `2.0.0-v2.1`), since npm rejects such a
+	 * dist-tag. The range check is `v*` followed by digits or a lone `x`/`X`, matching what
+	 * `semver.validRange` accepts for a prerelease identifier.
 	 */
 	static distTagFor(version: string): string {
 		const prerelease = prereleaseOf(version);
 		if (prerelease === undefined) return "latest";
 		const first = prerelease.split(".")[0] ?? "";
-		return first === "" || /^\d+$/.test(first) ? "next" : first;
+		return first === "" || /^v*(?:\d+|[xX])$/.test(first) ? "next" : first;
 	}
 
 	/** Whether a target with this {@link ReleaseChannel} receives the given version. */
@@ -399,14 +401,16 @@ export class SilkPublishability {
 	 * declaration (the `access`/`private` fallbacks) has no filter and receives every version.
 	 * Filtered targets are returned with `receives: false`, never dropped, so a publisher reports the
 	 * skip from the same join it publishes from. A result with no `receives: true` entry means this
-	 * version publishes nowhere, which is not an error.
+	 * version publishes nowhere, which is not an error. A declared `releases` that is not a known
+	 * channel fails with `ReleaseChannelError` rather than defaulting, since both sources are
+	 * read from disk and may have been edited by hand.
 	 */
 	static resolveReleaseTargets(
 		pkg: WorkspacePackage,
 		version: string,
 	): Effect.Effect<
 		ReadonlyArray<ReleaseTarget>,
-		PublishTargetBindingError,
+		PublishTargetBindingError | ReleaseChannelError,
 		PublishabilityDetector | FileSystem.FileSystem
 	> {
 		return Effect.gen(function* () {
@@ -421,7 +425,9 @@ export class SilkPublishability {
 				const relativeDir = normalizeDir(
 					isAbsolute(target.directory) ? relative(pkg.path, target.directory) : target.directory,
 				);
-				const { id, releases } = join(relativeDir, target.registry);
+				const joined = join(relativeDir, target.registry);
+				const id = joined.id;
+				const releases = yield* releaseChannelOf(pkg.name, id, joined.releases);
 				out.push({ target, id, releases, receives: SilkPublishability.receives(releases, version), distTag });
 			}
 			return out;
@@ -554,8 +560,26 @@ const prereleaseOf = (version: string): string | undefined => {
 	return dash === -1 ? undefined : core.slice(dash + 1);
 };
 
-/** A detected target's declaration: its `publishConfig.targets` key and release filter. */
-type TargetJoin = (relativeDir: string, registry: string) => { id: string | undefined; releases: ReleaseChannel };
+/**
+ * A detected target's declaration: its `publishConfig.targets` key and its declared `releases`,
+ * unvalidated (`undefined` when absent) because both sources are read from disk without a decode.
+ */
+type TargetJoin = (relativeDir: string, registry: string) => { id: string | undefined; releases: unknown };
+
+const RELEASE_CHANNELS: ReadonlyArray<unknown> = ["all", "stable", "prerelease"];
+
+/** An absent `releases` is `"all"`; a present one must be a known channel. */
+const releaseChannelOf = (
+	pkg: string,
+	id: string | undefined,
+	releases: unknown,
+): Effect.Effect<ReleaseChannel, ReleaseChannelError> => {
+	if (releases === undefined) return Effect.succeed("all");
+	if (RELEASE_CHANNELS.includes(releases)) return Effect.succeed(releases as ReleaseChannel);
+	return Effect.fail(
+		new ReleaseChannelError({ pkg, id: id ?? "(unkeyed)", value: JSON.stringify(releases) ?? String(releases) }),
+	);
+};
 
 /**
  * Join detected targets to the binding by group directory and registry. Each binding target is
@@ -568,9 +592,9 @@ const joinByBinding = (binding: TargetsBinding): TargetJoin => {
 		const index = remaining.findIndex(
 			(t) => t.registry === registry && (dirByGroup.get(t.group) ?? `dist/prod/${t.group}/pkg`) === relativeDir,
 		);
-		if (index === -1) return { id: undefined, releases: "all" };
+		if (index === -1) return { id: undefined, releases: undefined };
 		const [match] = remaining.splice(index, 1);
-		return { id: match?.id, releases: match?.releases ?? "all" };
+		return { id: match?.id, releases: match?.releases };
 	};
 };
 
@@ -580,11 +604,10 @@ const joinByPlaceholder =
 	(relativeDir) => {
 		const id = /^dist\/prod\/([^/]+)\/pkg$/.exec(relativeDir)?.[1];
 		if (id === undefined || declared === undefined || !Object.hasOwn(declared, id)) {
-			return { id: undefined, releases: "all" };
+			return { id: undefined, releases: undefined };
 		}
 		const value = declared[id];
-		const releases = typeof value === "object" && value !== null ? value.releases : undefined;
-		return { id, releases: releases ?? "all" };
+		return { id, releases: typeof value === "object" && value !== null ? value.releases : undefined };
 	};
 
 /** True when a built target directory's package.json is `private: true`. Missing/unreadable/malformed → false. */

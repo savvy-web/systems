@@ -6,7 +6,7 @@ status: stable
 tags: [release, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T06:56:15Z
+  at: 2026-10-23T13:23:49Z
 sources:
   - id: silk-publishability
     resource: ../../packages/silk-effects/src/services/SilkPublishability.ts
@@ -16,14 +16,16 @@ sources:
     resource: ../../packages/tsdown-plugins/src/targets/resolve-targets.ts
 integrity:
   generated:
-    body: 7a446a36dd633f38
+    body: cfc7dd18cfd010b4
   verified:
     by: human:spencer
-    at: 2026-10-23T06:59:00Z
-    content: 92acd3c14cf93c5e
+    at: 2026-10-23T13:23:23Z
+    content: 4c8d898d8e50c432
 verified:
   - by: human:spencer
     at: 2026-10-23T06:59:00Z
+  - by: human:spencer
+    at: 2026-10-23T13:23:23Z
 ---
 
 # The per-target release filter runs outside the PublishabilityDetector
@@ -47,8 +49,9 @@ private directories and enforce the `targets.json` binding.[^silk-publishability
 
 The release filter runs in the static
 `SilkPublishability.resolveReleaseTargets(pkg, version)`, which calls
-`resolveTargets` first and then filters by each target's `releases`. The
-detector layers and the pure `detect` stay version-blind: they report every
+`resolveTargets` first and then marks each resolved target with whether its
+`releases` admits the version, as a `receives` boolean; it never drops a
+target. The detector layers and the pure `detect` stay version-blind: they report every
 target a package has, whatever the version.[^silk-publishability]
 
 ## Alternatives rejected
@@ -66,8 +69,9 @@ target a package has, whatever the version.[^silk-publishability]
 
 ## Consequences
 
-- A publisher asks `resolveReleaseTargets` for a version's targets; an
-  empty result means the version publishes nowhere, which is not an
+- A publisher asks `resolveReleaseTargets` for a version's targets and
+  publishes only the entries with `receives: true`; a result with no such
+  entry means the version publishes nowhere, which is not an
   error.[^silk-publishability]
 - Anything that counts or lists publishable packages sees the same set for
   a final release and a prerelease: `listPublishable` and the kit's

@@ -17,6 +17,7 @@ export { BiomeSyncError } from "./errors/BiomeSyncError.js";
 export { ChangesetConfigError } from "./errors/ChangesetConfigError.js";
 export { ConfigNotFoundError } from "./errors/ConfigNotFoundError.js";
 export { PublishTargetBindingError } from "./errors/PublishTargetBindingError.js";
+export { ReleaseChannelError } from "./errors/ReleaseChannelError.js";
 export { WorkspaceAnalysisError } from "./errors/WorkspaceAnalysisError.js";
 /**
  * The shared PR-body contract: the frozen `silk-release` marker grammar,

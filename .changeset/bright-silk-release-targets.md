@@ -10,11 +10,11 @@
 
 New `SilkPublishability` statics:
 
-* `resolveReleaseTargets(pkg, version)` — every resolved publish target judged against a specific version, each with its target key, `releases` channel, whether it `receives` the version, and the dist-tag. A filtered target is returned with `receives: false`, not dropped; no `receives: true` entry means the version publishes nowhere, which is not an error.
-* `distTagFor(version)` — `latest` for a final version, otherwise the first prerelease identifier (`next` when it is numeric or empty)
+* `resolveReleaseTargets(pkg, version)` — every resolved publish target judged against a specific version, each with its target key, `releases` channel, whether it `receives` the version, and the dist-tag. A filtered target is returned with `receives: false`, not dropped; no `receives: true` entry means the version publishes nowhere, which is not an error. A declared `releases` that is not a known channel fails with `ReleaseChannelError` instead of being defaulted.
+* `distTagFor(version)` — `latest` for a final version, otherwise the first prerelease identifier, or `next` when that identifier is empty or would parse as a SemVer range (`0`, `x`, `v2`), which npm refuses as a dist-tag
 * `isPrerelease(version)`
 * `receives(releases, version)`
 
-New exported types: `ReleaseChannel` and `ReleaseTarget`.
+New exported types: `ReleaseChannel` and `ReleaseTarget`. `ReleaseChannelError` is re-exported from `@savvy-web/silk-core`.
 
 The filter deliberately runs outside `PublishabilityDetector`, so a package whose only target skips a given version still counts as publishable for the kit's `VersioningStrategy`.

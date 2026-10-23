@@ -627,6 +627,16 @@ describe("SilkPublishability release helpers", () => {
 		expect(SilkPublishability.distTagFor("2.0.0-")).toBe("next");
 	});
 
+	it("distTagFor: next for a first identifier npm would parse as a range (x, v<digits>)", () => {
+		expect(SilkPublishability.distTagFor("2.0.0-x.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-X.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-v2.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-vx")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-vv1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-v")).toBe("v");
+		expect(SilkPublishability.distTagFor("2.0.0-x1.0")).toBe("x1");
+	});
+
 	it("isPrerelease ignores a hyphen inside build metadata", () => {
 		expect(SilkPublishability.isPrerelease("1.0.0+build-7")).toBe(false);
 		expect(SilkPublishability.isPrerelease("1.0.0-alpha+build-7")).toBe(true);
@@ -795,6 +805,35 @@ describe("SilkPublishability.resolveReleaseTargets", () => {
 			const exit = yield* Effect.exit(runRelease(makeWsPkg(tmpDir, "yaml-effect"), "0.7.1"));
 			expect(exit._tag).toBe("Failure");
 			expect(JSON.stringify(exit)).toContain("PublishTargetBindingError");
+		}),
+	);
+
+	it.effect("rejects an unknown releases value in the binding instead of defaulting it", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: true, github: true } },
+			});
+			const binding = dualRegistryBinding("@s/x");
+			writeBinding(tmpDir, {
+				...binding,
+				targets: binding.targets.map((t) => (t.id === "github" ? { ...t, releases: "final" } : t)),
+			});
+			const err = yield* Effect.flip(runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0"));
+			expect(err).toMatchObject({ _tag: "ReleaseChannelError", pkg: "@s/x", id: "github", value: '"final"' });
+		}),
+	);
+
+	it.effect("rejects an unknown releases value in publishConfig.targets before the build", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: 1 } } },
+			});
+			const err = yield* Effect.flip(runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0"));
+			expect(err).toMatchObject({ _tag: "ReleaseChannelError", id: "npm", value: "1" });
 		}),
 	);
 });

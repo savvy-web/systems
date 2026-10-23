@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
 	"assist": {
 		"actions": {
 			"source": {
@@ -26,6 +26,8 @@
 		"includes": [
 			"**",
 			"!**/node_modules",
+			"!**/*.md",
+			"!**/pnpm-lock.yaml",
 			"!!**/dist",
 			"!!**/.repos",
 			"!!**/.turbo",
