@@ -2,7 +2,7 @@
 type: Decision
 title: The per-target release filter runs outside the PublishabilityDetector
 description: "SilkPublishability applies a target's releases filter in resolveReleaseTargets, never inside the PublishabilityDetector layers, because @effected/workspaces' VersioningStrategy.detect counts publishable packages through the detector and a package whose targets skip one version is still publishable."
-status: draft
+status: stable
 tags: [release, architecture]
 generated:
   by: okfit/claude-code
@@ -17,6 +17,13 @@ sources:
 integrity:
   generated:
     body: 7a446a36dd633f38
+  verified:
+    by: human:spencer
+    at: 2026-10-23T06:59:00Z
+    content: 92acd3c14cf93c5e
+verified:
+  - by: human:spencer
+    at: 2026-10-23T06:59:00Z
 ---
 
 # The per-target release filter runs outside the PublishabilityDetector
